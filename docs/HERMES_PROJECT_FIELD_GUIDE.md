@@ -2694,6 +2694,23 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release NNN: The Well-Digger's Rope — 2026-11-02
+
+The daily narrative pass (Tim's routine: "keep weaving multi-crossing quests like the Seven Bells and the Surveyor's Chain through
+the world"), drawn from docs/narrative-bible.md section 1, "What the Corridor is made of": the Corridor has density, not matter,
+and its water is where it runs thin.
+
+**CODE:** src/threads.ts: a new thread, `wellDigger` (band far, relic "rope", six pieces and an ending; all original writing),
+marked `wave: 2`. Threads with a `wave` are later threads: `threadIn` still picks the first ten exactly as before (the same
+hashes over `FIRST_THREADS`), and only a crossing that holds none of them rolls `laterThreadIn` (`THREAD_RULES.later` .025, its
+own hashes) among the later threads of its band. So no crossing changes the thread it offered. renderer.ts `drawThreadRelic`
+draws the "rope" relic (a knotted coil with a frayed end). The Journal, the Reciter's Tome and the Active quests list take the
+thread as they take the others (THREAD_ORDER).
+
+**BOUNDARY:** No save change (save.lore.threads already keys by thread id) and no generator change. Tests:
+`tests/threads-later.test.ts` (every first-ten assignment unchanged; the new thread only in far crossings that held none),
+`tests/threads-627.test.ts` (the first ten still ten).
+
 ## Release 701: the Rite of Ascendancy, reworked — 2026-11-02
 
 Tim (2026-11-02): "we can just reuse the asset of the weird tree... glowing... purple... as the [dais]... once you start... the

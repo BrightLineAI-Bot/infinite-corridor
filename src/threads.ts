@@ -10,7 +10,9 @@
 import { hashSeed } from "./random.ts";
 import { READING_BANDS } from "./lore.ts";
 
-export const THREAD_RULES = { chance: .07, minDepth: 3 };
+export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025 };
+// later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
+// ten, so no crossing changes the thread it already offered.
 // band: which stretch of the map holds the thread, as a distance from the Refuge (THREAD_BANDS; they overlap, so a crossing may
 // hold one of two bands' threads and even the nearest band has crossings enough). relic: how the piece is drawn (renderer.ts
 // drawThreadRelic). Pieces are found in order.
@@ -116,17 +118,36 @@ export const THREADS = {
       "The last shell is silent, and warm, as if a moment ago someone was holding it to their ear from the other side.",
     ],
     ending: "Something very large sleeps under the Far Sleep, and it dreams, and the Corridor is one of the things it dreams. The shells are where its breathing comes up. Lately it has been dreaming about a road, and someone walking it who no one ever read. It has not woken. If it does, the Corridor may end, or it may only be remembered properly, at last, by the one who dreamed it." },
+  // The daily narrative pass (2026-11-02; docs/narrative-bible.md section 1, "What the Corridor is made of": the Corridor has
+  // density, not matter; its water is where it runs thin).
+  wellDigger: { title: "The Well-Digger's Rope", band: "far", relic: "rope", colour: "#c8a878", wave: 2,
+    pieces: [
+      "A coil of rope, knotted every arm's length, the end frayed where it was cut. A tag on the first knot: \"Fourth day. The village has no water. I am digging until I find some. Knot one is how deep I was when I started counting.\"",
+      "More of the same rope, and the knots further apart. The tag: \"The ground gets easier the deeper I go. The spade goes in like it is going into bread. My wife says that is not how ground works. My wife has never dug this deep.\"",
+      "A length of rope gone dark and soft, as if it had been wet a long time. The tag: \"Found water. It is not wet. It closes round your hand like water and lets go like water and your hand comes out dry. The children drank it. They say it tastes of nothing, and that the nothing is very good.\"",
+      "The rope here is tied round a stone, as a weight. The tag: \"I let the stone down to see how deep the water goes. The rope ran out. I tied on more. The rope ran out. The stone has not touched anything. It has not stopped going down.\"",
+      "No rope this time, only the tag, pinned to the ground with a nail: \"The water is rising. Not like a flood: it is the ground that is going, getting thinner, the way the dark gets thinner before morning. The village is standing in it to the ankles and nobody is wet.\"",
+      "The end of the rope, knotted round a wooden cup, the cup full to the brim and dry. The last tag, in a child's hand: \"Papa went down to see where the stone went. He said hold the rope. We are holding it. It still pulls sometimes.\"",
+    ],
+    ending: "The rope runs down from the cup into nothing you can see, and when you put your hand to it, it pulls: once, slow, the way a man in deep water pulls to say he is still there. Somewhere a village is standing in thin ground holding a rope. The Corridor does not say what is at the other end. It only lets you feel that something is, and that it is still digging." },
 };
 export const THREAD_ORDER = Object.keys(THREADS);
+const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave); // the first ten (release 627): what a crossing offered then, it still offers
 const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 export const inBand = (band, rx, ry) => { const d = Math.abs(rx) + Math.abs(ry), [lo, hi] = THREAD_BANDS[band]; return d >= lo && d <= hi; };
 // Which thread this crossing holds, or null: one roll for whether it holds any, one for which of its band's threads.
 export function threadIn(seed, dungeonId) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return null;
   const rx = Number(m[1]), ry = Number(m[2]); if (Math.abs(rx) + Math.abs(ry) < THREAD_RULES.minDepth) return null;
-  if ((hashSeed(`${seed}:threads:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.chance) return null;
-  const here = THREAD_ORDER.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  if ((hashSeed(`${seed}:threads:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.chance) return laterThreadIn(seed, dungeonId, rx, ry);
+  const here = FIRST_THREADS.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
   return here[hashSeed(`${seed}:threads:which:v1:${dungeonId}`) % here.length];
+}
+// A thread written after the first ten, in a crossing that holds none of them (THREAD_RULES.later, by seed).
+function laterThreadIn(seed, dungeonId, rx, ry) {
+  if ((hashSeed(`${seed}:threads:later:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.later) return null;
+  const here = THREAD_ORDER.filter((id) => THREADS[id].wave && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  return here[hashSeed(`${seed}:threads:later:which:v1:${dungeonId}`) % here.length];
 }
 export function ensureThreadState(save) {
   const lore = (save.lore ||= {});

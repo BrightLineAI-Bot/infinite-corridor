@@ -13,7 +13,7 @@ const crossings = (thread, n) => { const out = []; for (let r = THREAD_RULES.min
 const map = () => ({ width: 24, height: 24, entry: { x: 4, y: 5 }, objects: [], tiles: Array.from({ length: 576 }, (_, i) => ({ x: i % 24, y: Math.floor(i / 24), kind: 'floor', blocked: false })) });
 
 test('ten threads, each written in full, each found only in crossings of its own band', () => {
-  assert.equal(THREAD_ORDER.length, 10);
+  assert.equal(THREAD_ORDER.filter((id) => !THREADS[id].wave).length, 10, 'the first ten'); assert.ok(THREAD_ORDER.length > 10, 'and later ones');
   for (const id of THREAD_ORDER) { const T = THREADS[id]; assert.ok(T.pieces.length >= 5 && T.pieces.every((p) => p.length > 20) && T.ending.length > 150, id);
     const c = crossings(id, 2); assert.equal(c.length, 2, `${id} has crossings`); for (const q of c) { const [, , , x, y] = q.split(':'); assert.ok(inBand(T.band, Number(x), Number(y))); } }
   assert.equal(threadIn(seed, `dungeon:${seed}:g1:0:1:room`), null, 'not by the Refuge'); assert.equal(threadIn(seed, 'arena:x'), null);
