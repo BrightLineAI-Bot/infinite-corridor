@@ -391,7 +391,7 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   else if (form === "pool") { if (a.kind === "mouthWarn" || a.kind === "mouth") drawMouth(ctx, a.at, s, a.kind === "mouth" ? Math.max(0, a.t) / (a.total || 1) * .6 : 1 - Math.max(0, a.t) / (a.total || 1) * .7, now); else drawPool(ctx, x, y, u * (a.kind === "under" ? .8 : 1), t, a.kind === "rise" ? 1 - Math.max(0, a.t) / (a.total || 1) : 0); }
   else if (form === "ape") {
     const fists = e.stalkFists || [], k = a.kind, strike = e.stalkStrike;
-    const pose = lift > 1 * s * .5 ? "fly" : (k === "wait" || k === "lurk" || e.stalkPerch && k === "prowl") && !fists.length ? "perch" : k === "charge" || k === "chargeWarn" ? "charge" : k === "fistWarn" || k === "slamWarn" && !fists.length ? "raise" : strike ? (strike.n === 2 ? "kick" : "punch") : k === "lasersWarn" ? "raise" : k === "lasers" ? "punch" : ["prowl", "spring", "comboWarn", "retract", "mirage"].includes(k) ? "walk" : "stand";
+    const pose = lift > 1 * s * .5 ? "fly" : (k === "wait" || k === "lurk" || e.stalkPerch && k === "prowl") && !fists.length ? "perch" : k === "charge" || k === "chargeWarn" ? "charge" : k === "fistWarn" || k === "slamWarn" && !fists.length ? "raise" : strike ? (strike.n === 2 ? "kick" : "punch") : k === "trapped" ? "perch" : k === "lasersWarn" ? "raise" : k === "lasers" ? "punch" : ["prowl", "spring", "comboWarn", "retract", "mirage"].includes(k) ? "walk" : "stand";
     drawApe(ctx, x, y, u, face, t, pose, fists.length);
     fists.forEach((f, i) => drawApeArm(ctx, { x: x + face * (APE_SHOULDER.x - (fists.length > 1 && i ? .06 : 0)) * u, y: y - APE_SHOULDER.y * u }, { x: (f.x + .5) * s, y: (f.y + .9) * s - (f.lift || 0) * s - .3 * u }, u));
   }
@@ -399,6 +399,7 @@ export function drawStalker(ctx, e, s, now, reduceMotion = false) {
   else if (a.kind === "tide") { /* it is the first wave (drawWaves) */ }
   else if ((a.kind === "prowl" || a.kind === "lurk" || a.kind === "wait") && e.stalkPerch) drawCat(ctx, x, y, u, face, t, false, "perch");
   else if (a.kind === "wait" || a.kind === "lurk") drawCatSit(ctx, x, y, u, face, t);
+  else if (a.kind === "trapped") { const shake = Math.sin(now / 45) * .04 * u; drawCat(ctx, x + shake, y, u, face, t * 2, false, "crouch"); } // release 696: caught in the enclosure, it crouches and throws itself at the bars
   else if (a.kind === "mirage") drawCat(ctx, x, y, u, face, t * 1.6, true, e.stalkSlash ? "swipe" : "leap");
   else if (a.kind === "flurry") drawCat(ctx, x, y, u, face, t, false, (e.stalkSlash?.n || 0) % 2 ? "swipe" : "crouch");
   else if (e.stalkCreep && a.kind === "prowl") drawCat(ctx, x, y, u, face, t * .55, true, "stalk");

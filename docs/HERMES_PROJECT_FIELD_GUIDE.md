@@ -2694,6 +2694,42 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 696: the Enclosure — 2026-11-02
+
+Tim (2026-11-01): "an enclosure... you build with 2 wood, 2 stone and 2 cinder iron... a little shack that the player can walk
+into... a 2 by 2... you become impervious to damage on 3 sides... you can't attack out of it... you can dodge out of it from the
+opening... you can trap the stalker... maybe you have to do 2 enclosures... it won't always work, it's like pokemon... if you trap
+him later on, after fifty percent health... the chance goes up. It's still not guaranteed."
+
+**CODE:** `src/building.ts`.
+- `BUILD.kinds.enclosure` costs { wood: 2, stone: 2, cinderIron: 2 }, with `hits` 4 and `life` 60. `canAffordBuild` now checks
+  every material in a cost.
+- `placeEnclosure` (from `placeBuild`):
+  - It lays a 2x2 starting at the target tile and extending away from the Wayfarer, open (`open`) on the side facing them.
+  - Each tile gains `enclosure` (its id) and `encSides` (its outer sides, less the open one); the originals are kept for
+    `breakBuild`.
+  - It counts as one of `BUILD.maxOut`.
+- `ENCLOSURE`:
+  - `guard` s of shelter, coming back after `recharge` s outside (`tickEnclosureGuard`, from `tickBuilds`).
+  - `enclosureShields(game, from)` turns a blow whose source lies outside the pen on a walled side.
+  - `need` 2 pens for the trap; `trap` holds `full`, `low`, `lowAt` and `time`, with `trapChance(hpFrac)`.
+  - A pen holding the Stalker never crumbles (`tickBuilds`).
+- `src/game.ts`:
+  - `footprintOpen` treats `encSides` as thin walls, like a shack's `wallSides`.
+  - `packHurt`, contact damage and hostile shots consult `enclosureShields`.
+  - `penned` stops `primaryAttack`, `fireSecondary` and `castSlot` inside a pen, with a message.
+  - `stalkerWorld` gains `pen`, `pens`, `penTrap`, `penSlip`, `penBreak` and `penOut`.
+- `src/stalker.ts` `stalkerPen` (each fight frame after `stalkerLurk`): as cat or gorilla, going into a pen with `need` standing,
+  it rolls once per pen (hashed) against `trapChance`. Trapped, it is untargetable and still in the pen (`trapped` act) for
+  `trap.time` s, then breaks the pen and comes out.
+- `src/renderer.ts` draws the pens on the ground layer (flagstones; plank walls on a stone footing with cinder-iron bands and
+  corner posts; iron bars across the opening while it holds the Stalker).
+- `src/stalker-render.ts` shows the trapped Stalker shaking against the bars (the cat crouched, the gorilla crouched).
+- `src/main.ts` describes it in the Pack's build list.
+
+**BOUNDARY:** Builds are never saved (as before); no generator change. Jumping onto a pen is not built: its walls are low walls,
+not a perch. Tests: `tests/enclosure-trap.test.ts`.
+
 ## Release 695: the Stalker's mirage, the gorilla's lasers, five ways in, low fog, water — 2026-11-01
 
 Tim (2026-11-01):

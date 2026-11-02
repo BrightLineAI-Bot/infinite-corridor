@@ -15,6 +15,10 @@ export const BUILD = {
   kinds: {
     wood: { name: "Wood wall", cost: { wood: 4 }, hits: 1 }, // release 269 (Tim: "a wall takes 4 wood"; it was 5)
     stone: { name: "Stone block", cost: { stone: 5 }, hits: 2, stack: 2 }, // release 269 (Tim: "five stone... twenty blocks with the full inventory"; it was 10)
+    // Release 696: the Enclosure (Tim: "you build with 2 wood, 2 stone and 2 cinder iron... a little shack that the player can walk
+    // into... a 2 by 2... you become impervious to damage on 3 sides... you can't attack out of it... you can dodge out of it from the
+    // opening... you can trap the stalker... maybe you have to do 2 enclosures... like pokemon... the chance goes up").
+    enclosure: { name: "Enclosure", cost: { wood: 2, stone: 2, cinderIron: 2 }, hits: 4, life: 60 },
   },
   life: 10,       // seconds a build stands
   maxOut: 5,      // builds standing at once
@@ -22,6 +26,12 @@ export const BUILD = {
   reach: 3,       // release 267: in build mode a tap builds up to this many tiles away (Tim: "3 character lengths")
 };
 export const BUILD_KINDS = Object.keys(BUILD.kinds);
+// The Enclosure: a 2x2 pen walled on three sides, open toward the Wayfarer who raised it. Inside, blows from the walled sides do not
+// land for `guard` s (again after `recharge` s outside); nothing is swung or shot out of it. With `need` or more standing, the
+// Stalker going into one may be trapped: `trap.full` chance at full health rising to `trap.low` at `trap.lowAt` of its health and
+// below, once per pen it enters; trapped, it struggles for `trap.time` s, then breaks the pen and comes out.
+export const ENCLOSURE = { size: 2, guard: 3, recharge: 3, need: 2, trap: { full: .15, low: .6, lowAt: .25, time: 45 } };
+export function trapChance(hpFrac) { const T = ENCLOSURE.trap, f = Math.max(0, Math.min(1, Number(hpFrac) || 0)); return f <= T.lowAt ? T.low : T.full + (T.low - T.full) * (1 - f) / (1 - T.lowAt); }
 
 // save.build = { kind } (additive at schema 14): the material the Build button uses, chosen in the Pack.
 export function ensureBuild(save) {
@@ -35,7 +45,7 @@ export function setBuildKind(save, kind) { ensureBuild(save); if (BUILD_KINDS.in
 // out and then it'll just automatically build with the next resource... when you're out of resources... an X"):
 // save.build.continuous (additive, boolean). The chosen kind is always tried first, so new stock of it is used again.
 export function setContinuousBuild(save, on) { ensureBuild(save); save.build.continuous = !!on; return save.build.continuous; }
-export function canAffordBuild(save, kind) { const [[mat, need]] = Object.entries(BUILD.kinds[kind].cost); return (Number(save?.materials?.[mat]) || 0) >= need; }
+export function canAffordBuild(save, kind) { return Object.entries(BUILD.kinds[kind].cost).every(([mat, need]) => (Number(save?.materials?.[mat]) || 0) >= need); }
 // The kind the Build button raises now, or null when nothing can be afforded (the button shows an X).
 export function activeBuildKind(save) {
   const { kind, continuous } = ensureBuild(save).build;
@@ -65,6 +75,7 @@ export function buildRefusal(map, x, y, kind, occupied) {
 
 // Raises a build on (x, y). `game` supplies map, area, builds, save. Returns { ok, message }.
 export function placeBuild(game, x, y, kind = activeBuildKind(game.save) || ensureBuild(game.save).build.kind, moving = true, run = null) { // release 283: continuous build picks the kind
+  if (kind === "enclosure") return placeEnclosure(game, x, y);
   const K = BUILD.kinds[kind], m = (game.save.materials ||= {}), builds = (game.builds ||= []);
   const [[mat, need]] = Object.entries(K.cost), have = Number(m[mat]) || 0;
   if (have < need) return { ok: false, message: `A ${K.name.toLowerCase()} takes ${need} ${mat} (you have ${have}).` };
@@ -108,6 +119,7 @@ export function tallBuildAt(map, width, x, y) {
 export function breakBuild(game, b) {
   const builds = game.builds || [], at = builds.indexOf(b); if (at < 0) return false;
   builds.splice(at, 1);
+  if (b.kind === "enclosure") { for (const [i, orig] of Object.entries(b.orig || {})) game.map.tiles[Number(i)] = orig; return true; }
   const w = W(game.map), i = b.y * w + b.x, t = game.map.tiles[i]; if (!t?.build) return true;
   if (t.build === "stone" && (t.buildLevel || 1) > 1) { const level = t.buildLevel - 1; game.map.tiles[i] = { ...t, buildLevel: level, elev: t.landscapeElev + level }; }
   else game.map.tiles[i] = t.buildOrig || { ...t, build: undefined, blocked: false, perch: false };
@@ -139,7 +151,8 @@ export function rushing(e, attackTags = []) { return !!(e.voidDashing || e.voidC
 // Each frame: builds crumble when their time is up, and a rushing world beast breaks any build it reaches.
 export function tickBuilds(game, dt, tagsOf = () => []) {
   if (!game.builds?.length) return;
-  for (const b of [...game.builds]) { b.life -= dt; if (b.life <= 0) breakBuild(game, b); }
+  for (const b of [...game.builds]) { b.life -= dt; if (b.trapped) b.life = Math.max(b.life, 1); if (b.life <= 0) breakBuild(game, b); } // a pen holding the Stalker stands until it breaks out
+  tickEnclosureGuard(game, dt);
   for (const e of game.enemies || []) {
     if (e.dead || !(e.worldBeast || e.questingBeast) || !rushing(e, tagsOf(e))) continue;
     const r = (e.bodyRadius || .5 * (e.scale || 1)) + BUILD.breakReach, cx = e.x + .5, cy = e.y + .6;
@@ -159,4 +172,44 @@ export function tapTarget(p, wx, wy) {
   const oct = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8) + 8) % 8; // 0 east, 1 south-east, 2 south ... (screen y down)
   const run = ["v", "ne", "h", "nw", "v", "ne", "h", "nw"][oct];
   return { x: Math.floor(tx), y: Math.floor(ty), run };
+}
+
+// ---- The Enclosure (release 696) ----
+// Raises a 2x2 pen beginning at (x, y), extending away from the Wayfarer, open on the side facing them.
+export function placeEnclosure(game, x, y) {
+  const K = BUILD.kinds.enclosure, m = (game.save.materials ||= {}), builds = (game.builds ||= []), p = game.player, w = W(game.map);
+  if (!canAffordBuild(game.save, "enclosure")) return { ok: false, message: `An enclosure takes ${Object.entries(K.cost).map(([k, n]) => `${n} ${k === "cinderIron" ? "cinder iron" : k}`).join(", ")}.` };
+  const fx = Math.floor(p.x + .5), fy = Math.floor(p.y + .75), dx = x - fx, dy = y - fy, horiz = Math.abs(dx) > Math.abs(dy);
+  const open = horiz ? (dx > 0 ? "west" : "east") : (dy > 0 ? "north" : "south");
+  const x0 = horiz ? (dx > 0 ? x : x - 1) : x, y0 = horiz ? y : (dy > 0 ? y : y - 1);
+  const tiles = [];
+  for (let oy = 0; oy < 2; oy++) for (let ox = 0; ox < 2; ox++) {
+    const tx = x0 + ox, ty = y0 + oy, why = buildRefusal(game.map, tx, ty, "enclosure", false); if (why) return { ok: false, message: why };
+    if (game.map.tiles[ty * w + tx]?.enclosure) return { ok: false, message: "Something is already built there." };
+    if (p.x + .76 > tx && p.x + .24 < tx + 1 && p.y + .88 > ty && p.y + .5 < ty + 1) return { ok: false, message: "Step back a little to build there." };
+    tiles.push({ tx, ty, sides: [ox ? "east" : "west", oy ? "south" : "north"].filter((sd) => sd !== open) });
+  }
+  if (builds.length >= BUILD.maxOut) breakBuild(game, builds[0]);
+  for (const [mat, need] of Object.entries(K.cost)) m[mat] = (Number(m[mat]) || 0) - need;
+  const id = `enclosure-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, orig = {};
+  for (const q of tiles) { const i = q.ty * w + q.tx; orig[i] = game.map.tiles[i]; game.map.tiles[i] = { ...game.map.tiles[i], enclosure: id, encSides: q.sides }; }
+  builds.push({ id, kind: "enclosure", x: x0, y: y0, open, hits: K.hits, life: K.life, orig, trapped: null });
+  return { ok: true, message: `Enclosure raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
+}
+// The pen whose 2x2 holds the point (tile space), if any.
+export function enclosureAt(game, px, py) { return (game.builds || []).find((b) => b.kind === "enclosure" && px >= b.x && px < b.x + 2 && py >= b.y && py < b.y + 2) || null; }
+export const enclosuresStanding = (game) => (game.builds || []).filter((b) => b.kind === "enclosure").length;
+// The Wayfarer's pen, by the middle of their feet.
+export function playerEnclosure(game) { const p = game.player; return enclosureAt(game, p.x + .5, p.y + .75); }
+// Each frame: the guard runs down while they are inside, and comes back after `recharge` s outside.
+export function tickEnclosureGuard(game, dt) {
+  const g = (game.encGuard ||= { left: ENCLOSURE.guard, out: ENCLOSURE.recharge }), inside = playerEnclosure(game);
+  if (inside) { g.left = Math.max(0, g.left - dt); g.out = 0; } else { g.out += dt; if (g.out >= ENCLOSURE.recharge) g.left = ENCLOSURE.guard; }
+}
+// Does the pen turn a blow from `from` (a point in tile space)? Only while the guard lasts, and never from the open side.
+export function enclosureShields(game, from) {
+  const b = playerEnclosure(game); if (!b || !from || !((game.encGuard?.left ?? ENCLOSURE.guard) > 0)) return false;
+  const cx = b.x + 1, cy = b.y + 1, open = { north: from.y < b.y, south: from.y > b.y + 2, west: from.x < b.x, east: from.x > b.x + 2 }[b.open];
+  const within = from.x >= b.x && from.x < b.x + 2 && from.y >= b.y && from.y < b.y + 2; void cx; void cy;
+  return !open && !within; // a blow from the open side, or from inside the pen itself, is not turned
 }
