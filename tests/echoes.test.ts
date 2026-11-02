@@ -22,7 +22,8 @@ const run = (g, ms, from, input = idle) => { for (let t = 0; t < ms; t += 50) g.
 const once = (key, x = 1, y = 0) => { let done = false; return { state: { x, y }, consume: (k) => k === key && !done && (done = true) }; };
 
 test('every Echo-eligible pack creature has exactly one Echo; explicit no-Echo creatures grant none; notches cap what can be set at once', () => {
-  assert.deepEqual([...ECHO_IDS].sort(), PACK_KINDS.filter(id=>!MONSTER_PACK[id].noEcho).sort());
+  // Release 699: the Stalker's Echo (Tim's task) is the one Echo of a creature outside the pack; it names its creature itself.
+  assert.deepEqual([...ECHO_IDS].filter(id=>id!=='stalker').sort(), PACK_KINDS.filter(id=>!MONSTER_PACK[id].noEcho).sort()); assert.equal(ECHOES.stalker.creature, 'The Stalker');
   assert.deepEqual(PACK_KINDS.filter(id=>MONSTER_PACK[id].noEcho), ['astralWorm']);
   assert.equal(ECHOES.astralWorm, undefined);
   assert.equal(echoDrop(freshSave(), {id:'astral-bounty-only',packKind:'astralWorm'}, true, 1), null);
