@@ -283,6 +283,8 @@ A thread runs like a hunt, but carries narrative. Each one is tracked in the Jou
    - *Seeds for an Orchard* (far; the Second Campaign): seed papers for an orchard on a battlefield.
    - *The Second Surveyor* (deep; Abel Corwin's daughter): compasses that point down, out, nowhere, then at the Wayfarer.
    - *What the Sleeper Dreams* (deep; the Far Sleep): shells that carry the breathing of the thing that dreams the Corridor.
+5. **Later threads** (one at a time, from the daily narrative pass; src/threads.ts `wave` 2 and on). They are rolled only in crossings that hold none of the first ten (`THREAD_RULES.later`), so no crossing ever changes the thread it offered.
+   - *The Well-Digger's Rope* (far; 2026-11-02): a man digging a village well finds the ground getting easier, then water that is not wet, then a stone that never stops sinking; he goes down after it, and his children are still holding the rope. Section 1's "density, not matter", told without saying it.
 
 The existing deep-dungeon story packages (the scorched echoes and memorials) get Glimpses instead of ticker lines. The summit stones' and grotto ruins' lore text, which is written but never shown, becomes touch-to-read.
 
@@ -305,7 +307,7 @@ Each step is one release, built and previewed for Tim before publishing.
    - a new landscape generation version, used only for sections not yet explored;
    - existing journeys never regenerate.
 5. **Gilgamesh** (Tim confirmed this is the legend he meant, so the Yoga Vasistha is set aside). The Glimpse "The Plant at the Bottom" is built (release 219). Still to do: the recited voice, taken from R. Campbell Thompson (1928) or Jastrow and Clay (1920) once a public-domain source text is reachable.
-6. **Ilse, the Seven Bells, margins in crossings** (Ilse built in release 415; the Seven Bells in release 431; margins in release 455), then ongoing: new Glimpses every pass, the Surveyor and the Torn Pages. The Surveyor's Chain, part one (the twelve links and Corwin's notes), was built in release 505; part two (the last map, the chain on the Atlas, and his statue at the edge of the Far Sleep) in release 551. The Torn Pages are still to come.
+6. **Ilse, the Seven Bells, margins in crossings** (Ilse built in release 415; the Seven Bells in release 431; margins in release 455), then ongoing: new Glimpses every pass, the Surveyor and the Torn Pages. The Surveyor's Chain, part one (the twelve links and Corwin's notes), was built in release 505; part two (the last map, the chain on the Atlas, and his statue at the edge of the Far Sleep) in release 551. The Torn Pages were built in release 595 (src/torn-pages.ts).
 
 **Save:** one additive block, `save.lore`, holding:
 - the heard lines (compact ids);

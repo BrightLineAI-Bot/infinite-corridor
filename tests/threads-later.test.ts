@@ -1,0 +1,20 @@
+// Threads written after the first ten (the daily narrative pass, 2026-11-02): rolled only in crossings that hold none of the first
+// ten, so every crossing keeps the thread it already offered.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { hashSeed } from '../src/random.ts';
+import { THREADS, THREAD_ORDER, THREAD_RULES, threadIn, inBand } from '../src/threads.ts';
+
+const seed = 'LATER1', ids = []; for (let x = -60; x <= 60; x += 1) for (let y = -60; y <= 60; y += 3) ids.push([x, y, `dungeon:${seed}:g1:${x}:${y}:room`]);
+const FIRST = THREAD_ORDER.filter((id) => !THREADS[id].wave);
+const before = (id, x, y) => { if (Math.abs(x) + Math.abs(y) < THREAD_RULES.minDepth || (hashSeed(`${seed}:threads:v1:${id}`) % 10000) / 10000 >= THREAD_RULES.chance) return null; const here = FIRST.filter((t) => inBand(THREADS[t].band, x, y)); return here.length ? here[hashSeed(`${seed}:threads:which:v1:${id}`) % here.length] : null; };
+
+test('every crossing that held one of the first ten threads still holds the same one', () => {
+  let n = 0; for (const [x, y, id] of ids) { const was = before(id, x, y); if (was) { n++; assert.equal(threadIn(seed, id), was, id); } } assert.ok(n > 200, `${n} checked`);
+});
+
+test("the Well-Digger's Rope is written in full and lies only in far crossings that held no thread before", () => {
+  const T = THREADS.wellDigger; assert.ok(T.wave >= 2 && T.relic === 'rope' && T.pieces.length === 6 && T.pieces.every((p) => p.length > 80) && T.ending.length > 200);
+  const found = ids.filter(([x, y, id]) => threadIn(seed, id) === 'wellDigger'); assert.ok(found.length >= 6, `${found.length} crossings, enough for every piece`);
+  for (const [x, y, id] of found) { assert.equal(before(id, x, y), null, 'it never displaces a first-ten thread'); assert.ok(inBand('far', x, y)); }
+});
