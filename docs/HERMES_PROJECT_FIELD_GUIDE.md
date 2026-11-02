@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: Arcana in the Journal — 2026-11-02
+## Release 703: Arcana in the Journal — 2026-11-02
 
 Tim (2026-11-02): "an arcana panel in the journal which has all these like threads. And all these little like story beats. I
 know, I told you not to do it, but we're doing so many of them, and I would like to see... where they're going." (Release 581

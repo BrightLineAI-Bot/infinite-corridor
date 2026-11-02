@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 702, the next is **703**.
+Taken at merge time: `main`'s release + 1 (see above). After 703, the next is **704**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | Arcana in the Journal: every thread and cross-crossing story with its progress and what has been read | Building. |
+| 703 | Claude | `claude/dreamy-rubin-yn6q2p` | Arcana in the Journal: every thread and cross-crossing story with its progress and what has been read | Merging. |
 | 702 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: a new thread, The Well-Digger's Rope (far crossings), rolled apart from the first ten | Merging. |
 | 701 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy reworked: a strange tree that burns down, ramping waves, ashes that raise the great tree (rising, rubble, flash), always its sky door | Merging. |
 | 700 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy: sapling daises, a fire-sealed five-minute survival (three tries), a great tree with Divine Viscera, sometimes a door to the sky | Merging. |
