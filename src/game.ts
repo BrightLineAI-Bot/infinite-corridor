@@ -56,7 +56,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
-import { stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
+import { stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
@@ -4479,7 +4479,7 @@ export class Game {
       revealed: () => { game.message = "THE STALKER — it was waiting for you."; },
       // Release 696: the Enclosure trap.
       penBreak: (id) => { const b = (game.builds || []).find((q) => q.id === id); if (b) breakBuild(game, b); },
-      penOut: () => { game.message = "The Stalker tears the enclosure apart and is out!"; },
+      penOut: (e) => game.stalkerBreaksOut(e), // release 699: it tears free and leaves, still on the Wayfarer's trail
       fogged: (e, time) => { // release 692: the sea's fog (Tim: "just use the fog from the sea fog"), banks round the Wayfarer, drawn by renderer.ts's sea-fog code
         game.stalkFog = { until: now + time * 1000, level: game.stalkFog?.level || 0, fog: [0, 1, 2, 3, 4].map((i) => ({ x: p.x + Math.cos(i * 1.257) * (i ? 4.5 : 0), y: p.y + Math.sin(i * 1.257) * (i ? 3.5 : 0), radius: i ? 5 : 6, swirl: i * 1.1 })) };
         game.message = "A fog rolls in, and the Stalker is gone into it."; },
@@ -4537,7 +4537,7 @@ export class Game {
   }
   tickStalker(dt, now) {
     const st = ensureStalker(this.save), p = this.player;
-    if (this.enemies.some((e) => e.dead && (e.stalkerKin || e.stalkerDecoy))) this.enemies = this.enemies.filter((e) => !(e.dead && (e.stalkerKin || e.stalkerDecoy)));
+    if (this.enemies.some((e) => e.dead && (e.stalkerKin || e.stalkerDecoy || e.stalkerGone))) this.enemies = this.enemies.filter((e) => !(e.dead && (e.stalkerKin || e.stalkerDecoy || e.stalkerGone)));
     if (this.area !== "overworld") { this._stalkPrev = null; this.stalkFog = null; if (this.area === "dungeon" && st.active?.engaged && this._stalkOver) stalkerWaitAtDoor(this.save, this._stalkOver); return; }
     const key = `${this.rx},${this.ry}`, prev = this._stalkPrev, sheltered = this.stalkerBarred(p.x, p.y);
     this._stalkPrev = { key, x: p.x, y: p.y };
@@ -4552,9 +4552,24 @@ export class Game {
     // Ground covered on foot (a dodge, the drone's booster and the glider too); never a skiff, a swim or a jump between places.
     const moved = prev && prev.key === key && !aboard(this.save) && !this.swimming ? Math.hypot(p.x - prev.x, p.y - prev.y) : 0;
     if (moved > 0 && moved <= STALKER.hunt.step) { const back = Math.atan2(prev.y - p.y, prev.x - p.x), b = this._stalkBearing ?? back, d = Math.atan2(Math.sin(back - b), Math.cos(back - b)); this._stalkBearing = b + d * Math.min(1, moved * .08); }
-    const r = stalkerTrack(this.save, moved, stalkerUnlocked(this.save, apertureTier(this.save.perception?.aperture || 0)));
+    const unlocked = stalkerUnlocked(this.save, apertureTier(this.save.perception?.aperture || 0)), r = stalkerTrack(this.save, moved, unlocked);
     if (r.warn) this.message = r.warn;
-    if (r.ready && !sheltered && p.hp > 0 && !this.swimming && !aboard(this.save) && !this.map.openSea) this.spawnStalker(null, false, now);
+    const free = !sheltered && p.hp > 0 && !this.swimming && !aboard(this.save) && !this.map.openSea;
+    if (r.ready && free) { this.spawnStalker(null, false, now); return; }
+    // Release 699: its lair trails the Wayfarer; walking into that section finds it.
+    const lair = stalkerLair(this.save, this.rx, this.ry, unlocked);
+    if (lair && lair.rx === this.rx && lair.ry === this.ry && free && this.spawnStalker(null, false, now)) this.message = `You have found the Stalker. ${this.message}`;
+  }
+  // Release 699: out of a held pen it tears free and is gone, wounds and all; the hunt drops back and its lair goes back out.
+  stalkerBreaksOut(e) {
+    for (const q of this.enemies) if (q.stalkerOf === e.id && !q.dead) { q.dead = true; q.noRewards = true; }
+    Object.assign(e, { dead: true, noRewards: true, stalkerGone: true }); stalkerEscaped(this.save, e.hp); if (this.stalkFog) this.stalkFog.until = 0;
+    this.message = "The Stalker tears the enclosure apart and is gone. It is still on your trail.";
+  }
+  // Release 699: the section its lair is in while it hunts (the Atlas pins it), or null.
+  stalkerLairPin() {
+    const st = ensureStalker(this.save); if (!st.lair || st.quiet != null || this.enemies.some((e) => e.stalker && !e.dead)) return null;
+    return { rx: st.lair.rx, ry: st.lair.ry };
   }
   // The silver marker at the screen edge: which way it is, and how close (renderer.ts).
   stalkerMarker() {
@@ -4562,7 +4577,13 @@ export class Game {
     const p = this.player, actor = this.enemies.find((e) => e.stalker && !e.dead);
     if (actor && (actor.stalkLurk || actor.stalkVeil > 0)) return null; // release 692: hidden or in its fog, nothing points to it
     if (actor) return Math.hypot(actor.x - p.x, actor.y - p.y) < 7 ? null : { angle: Math.atan2(actor.y - p.y, actor.x - p.x), strength: 1, stage: 3, text: "The Stalker" };
-    const w = stalkerWarning(this.save); if (!w) return null;
+    const w = stalkerWarning(this.save), lair = this.stalkerLairPin();
+    if (lair) { // release 699: it points to the lair, a real place, and says how many sections off it is
+      const S = STALKER.lairSection, dx = (lair.rx - this.rx) * S + S / 2 - (p.x + .5), dy = (lair.ry - this.ry) * S + S / 2 - (p.y + .5), n = Math.max(Math.abs(lair.rx - this.rx), Math.abs(lair.ry - this.ry));
+      if (!n) return null;
+      return { angle: Math.atan2(dy, dx), strength: Math.max(.35, w?.fraction || 0), stage: w?.stage || 1, text: `${w?.text || "The Stalker's trail."} ${n} section${n === 1 ? "" : "s"} off.` };
+    }
+    if (!w) return null;
     return { angle: this._stalkBearing ?? Math.PI / 2, strength: w.fraction, stage: w.stage, text: w.text };
   }
   tickWorldBeasts(dt) {
@@ -4809,7 +4830,7 @@ export class Game {
     if(e.viewportHuntId&&completeViewportHunt(this.save,e.viewportHuntId)){const hunt=this.save.viewport.contracts[e.viewportHuntId];journalOnce(this.save,`viewport-complete:${e.viewportHuntId}`,`${hunt.title} is complete. Viewport records the victory and releases its promised reward.`,hunt.title);recordViewportArrival(this.save,{id:`hunt:${e.viewportHuntId}`,title:hunt.title,text:'A consequential threat was defeated and entered the Refuge record.',kind:'hunt'});(this.questNotices||=[]).push({title:'QUEST COMPLETE',detail:`${hunt.title}${e.worldBoss?' · world threat broken':''} · return to Viewport for the enduring record`,kind:'quest'});/* release 559: queued, so another banner in the same moment never hides it */if(hunt.domain)this.save.worldFlags[`domain-cleared:${hunt.domain}`]=true}
     if (e.farArrayBoss && this.area === "dungeon" && isArrayRun(this.areaId())) { const listener = e.farArrayBoss === "listener", text = (listener ? listenerFelled(this.save) : guardianFelled(this.save)) + (listener ? latticeNote(this.save) + townNote(this.save) : ""); if (listener && beastCatchUp(this.save, liveBeastReference(this.save, characterStats(this.save)))) journalOnce(this.save, `beast-catch-up:${this.save.farArray.listeners}`, "With the Listener fallen, the great beasts of the Corridor rise to meet your strength.", "World beasts"); /* release 331 */ journalOnce(this.save, `far-array:${this.save.farArray.runs}`, text, "The Far Gate"); this.defeatNotice = { title: listener ? "THE LISTENER FALLS" : "A GATE PIECE LOCKS", detail: text, kind: "danger" }; this.message = text; }
     if (e.worldBeast && WORLD_BEASTS[e.worldBeast]) { const B = WORLD_BEASTS[e.worldBeast], won = worldBeastSlain(this.save, e.worldBeast); journalOnce(this.save, `world-beast-slain:${e.worldBeast}:${this.save.worldBeasts[e.worldBeast].slain}`, `You slew ${B.name} at ${this.rx},${this.ry}.`, B.name); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `${B.name} · +${won.marks} marks`, kind: "danger" }; this.message = won.message; } // release 235
-    if (e.stalker) { const won = stalkerSlain(this.save); for (let i = 0; i < STALKER.reward.drops; i++) this.obtainDrop("stalker"); for (const q of this.enemies) if (q.stalkerOf === e.id && !q.dead) { q.dead = true; q.noRewards = true; } journalOnce(this.save, `stalker-slain:${this.save.stalker.kills}`, `You killed the Stalker at ${this.rx},${this.ry}. It will hunt again, in time.`, "The Stalker"); this._stalkerWon = won; } // release 678
+    if (e.stalker) { const won = stalkerSlain(this.save); if (ECHOES.stalker && this.save.echoes?.owned && !this.save.echoes.owned.stalker) { this.save.echoes.owned.stalker = true; won.echo = "stalker"; } /* release 699: Stalker's Mist */ for (let i = 0; i < STALKER.reward.drops; i++) this.obtainDrop("stalker"); for (const q of this.enemies) if (q.stalkerOf === e.id && !q.dead) { q.dead = true; q.noRewards = true; } journalOnce(this.save, `stalker-slain:${this.save.stalker.kills}`, `You killed the Stalker at ${this.rx},${this.ry}. It will hunt again, in time.`, "The Stalker"); this._stalkerWon = won; } // release 678
     if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `The Questing Beast · +${won.marks} marks`, kind: "danger" }; this.message = won.message; }
     if (!e.ambient && !e.noRewards) { const done = wandererKill(this.save); if (done) { this.message = done; journalOnce(this.save, `wanderer-done:${this.save.wanderer.stage}`, done, "Old Quillon"); } }
     if (e.ambient) {
@@ -4819,7 +4840,7 @@ export class Game {
     }
     if(this.area==='dungeon') recordDungeonBossDefeat(dungeonHistory(this.save,this.areaId()),e);
     if (!((e.worldBeast && WORLD_BEASTS[e.worldBeast]) || e.questingBeast)) this.defeatNotice = enemyDefeatNotice(e, this.area); // a world boss keeps its own notice (Tim: "it should say archfiend slain")
-    if (e.stalker && this._stalkerWon) { const won = this._stalkerWon; this._stalkerWon = null; this.defeatNotice = { title: "THE STALKER FALLS", detail: `+${won.marks} marks · a ${won.sphere === "weaponSphere" ? "weapon" : "armor"} sphere · it will hunt again after ${won.quiet} new sections`, kind: "danger" }; } // release 678
+    if (e.stalker && this._stalkerWon) { const won = this._stalkerWon; this._stalkerWon = null; this.defeatNotice = { title: "THE STALKER FALLS", detail: `+${won.marks} marks · a ${won.sphere === "weaponSphere" ? "weapon" : "armor"} sphere · it will hunt again after ${won.quiet} new sections${won.echo ? ` · an Echo: ${ECHOES[won.echo].name}` : ""}`, kind: "danger" }; } // release 678
     if (tidemantleTrial(this.area, this.map, e) && grantTidemantle(this.save, `${this.areaId()}:${e.id}`)) {
       this.defeatNotice = { ...this.defeatNotice, detail: `${this.defeatNotice?.detail || ""} · the Tidemantle is yours` };
       journalOnce(this.save, "tidemantle", "Beneath the fallen guardian lay a Tidemantle, a mantle of woven tide-glass. It keeps the Wayfarer afloat on rivers, flooded halls and open sea, though swimming tires fast and nothing below the surface opens to it.", "The Tidemantle");
