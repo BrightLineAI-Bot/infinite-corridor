@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: The Well-Digger's Rope — 2026-11-02
+## Release 702: The Well-Digger's Rope — 2026-11-02
 
 The daily narrative pass (Tim's routine: "keep weaving multi-crossing quests like the Seven Bells and the Surveyor's Chain through
 the world"), drawn from docs/narrative-bible.md section 1, "What the Corridor is made of": the Corridor has density, not matter,
