@@ -1438,6 +1438,18 @@ function actor(
       const t=performance.now()/1000,pulse=.5+.5*Math.sin(t*2);ctx.fillStyle="#00000044";ctx.beginPath();ctx.ellipse(k,base,s*.42,s*.12,0,0,7);ctx.fill();
       for(let i=0;i<5;i++){const w=s*(.5-i*.07),y=base-s*(.12+i*.22);ctx.fillStyle=i%2?"#e8e2f4":"#d4cce6";ctx.fillRect(k-w/2,y-s*.12,w,s*.14);ctx.fillStyle="#9c93b866";ctx.fillRect(k-w/2,y,w,s*.03)}
       const g=ctx.createRadialGradient(k,base-s*1.35,0,k,base-s*1.35,s*.5);g.addColorStop(0,`rgba(255,244,214,${.55+.35*pulse})`);g.addColorStop(1,"rgba(255,244,214,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k,base-s*1.35,s*.5,0,7);ctx.fill();
+    } else if (kind === "saplingDais") { // the Rite of Ascendancy (ascendancy.ts): a gold-leaved sapling in a ring of old stone; burning while its rite runs
+      const t=performance.now()/1000,lit=state==="burning",pulse=.5+.5*Math.sin(t*(lit?6:2));ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.5,s*.16,0,0,7);ctx.fill();
+      for(let i=0;i<8;i++){const a=i/8*6.283,x=k+Math.cos(a)*s*.42,y=base-s*.06+Math.sin(a)*s*.14;ctx.fillStyle=i%2?"#8a8270":"#a39a84";ctx.fillRect(x-s*.06,y-s*.08,s*.12,s*.09)}
+      ctx.strokeStyle="#5a3e22";ctx.lineWidth=Math.max(2,s*.07);ctx.lineCap="round";ctx.beginPath();ctx.moveTo(k,base-s*.06);ctx.quadraticCurveTo(k+s*.05,base-s*.5,k-s*.02,base-s*.82);ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*.035);for(const [dx,dy] of [[-.2,-.62],[.2,-.55],[-.12,-.86],[.14,-.92]]){ctx.beginPath();ctx.moveTo(k,base-s*(-dy-.25));ctx.lineTo(k+s*dx,base+s*dy);ctx.stroke()}
+      const g=ctx.createRadialGradient(k,base-s*.8,0,k,base-s*.8,s*(lit?.75:.5));g.addColorStop(0,`rgba(255,226,120,${(lit?.55:.3)+.25*pulse})`);g.addColorStop(1,"rgba(255,226,120,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k,base-s*.8,s*(lit?.75:.5),0,7);ctx.fill();
+      for(const [dx,dy,r] of [[-.2,-.66,.1],[.2,-.6,.1],[-.12,-.9,.09],[.14,-.95,.09],[0,-1.02,.11]]){ctx.fillStyle=lit?"#ffd27a":"#e8c45a";ctx.beginPath();ctx.ellipse(k+s*dx,base+s*dy,s*r,s*r*.65,dx*2,0,7);ctx.fill();ctx.fillStyle="#7da84a";ctx.beginPath();ctx.ellipse(k+s*dx*.9,base+s*(dy+.03),s*r*.45,s*r*.3,dx*2,0,7);ctx.fill()}
+    } else if (kind === "visceraBloom") { // the Rite of Ascendancy's prize on its tree's crown: a slow-beating bloom of Divine Viscera
+      const t=performance.now()/1000,beat=.85+.15*Math.sin(t*3.4);ctx.fillStyle="#00000044";ctx.beginPath();ctx.ellipse(k,base,s*.3,s*.1,0,0,7);ctx.fill();
+      const g=ctx.createRadialGradient(k,base-s*.5,0,k,base-s*.5,s*.7);g.addColorStop(0,"rgba(255,120,110,.55)");g.addColorStop(1,"rgba(255,120,110,0)");ctx.fillStyle=g;ctx.beginPath();ctx.arc(k,base-s*.5,s*.7,0,7);ctx.fill();
+      for(let i=0;i<6;i++){const a=i/6*6.283+t*.4;ctx.fillStyle=i%2?"#c23a4a":"#e2667a";ctx.beginPath();ctx.ellipse(k+Math.cos(a)*s*.18,base-s*.5+Math.sin(a)*s*.12,s*.16*beat,s*.08*beat,a,0,7);ctx.fill()}
+      ctx.fillStyle="#ffe6a8";ctx.beginPath();ctx.arc(k,base-s*.5,s*.1*beat,0,7);ctx.fill();
     } else if (kind === "listeningStone") { // release 373: a dark standing stone with the Listener's violet, ringed like an ear
       ctx.fillStyle="#00000055";ctx.beginPath();ctx.ellipse(k,base,s*.36,s*.1,0,0,7);ctx.fill();
       ctx.fillStyle="#1c1726";ctx.beginPath();ctx.moveTo(k-s*.26,base);ctx.lineTo(k-s*.18,base-s*1.15);ctx.lineTo(k,base-s*1.32);ctx.lineTo(k+s*.18,base-s*1.15);ctx.lineTo(k+s*.26,base);ctx.closePath();ctx.fill();ctx.strokeStyle="#3b3550";ctx.lineWidth=Math.max(1,s*.04);ctx.stroke();

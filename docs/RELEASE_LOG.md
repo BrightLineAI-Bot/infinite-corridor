@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 699, the next is **700**.
+Taken at merge time: `main`'s release + 1 (see above). After 700, the next is **701**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 700 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy: sapling daises, a fire-sealed five-minute survival (three tries), a great tree with Divine Viscera, sometimes a door to the sky | Merging. |
 | 699 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | Hunt the Stalker: a lair the marker and Atlas point to; hunts less often; out of a pen it leaves; Stalker's Mist Echo | Building. |
 | 698 | Claude | `claude/dreamy-rubin-yn6q2p` | Worm's Upheaval back to one puddle a dodge, bursting in turn (undoes release 655's stacking) | Merging. |
 | 697 | Claude (Stalker session) | PR #344 | Closing the pen: the trap is tried when a second enclosure closes the first's opening with the Stalker inside; items work in a pen | Merged; published in r697. |

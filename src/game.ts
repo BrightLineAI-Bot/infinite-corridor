@@ -85,11 +85,13 @@ import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatt
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
+import { ASCENDANCY, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology } from "./keeps.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
+import { growRiteTree, riteTreeFits } from "./landscape.ts";
 import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
 import { BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
@@ -2375,6 +2377,7 @@ export class Game {
       this.markDeepAnnexes(); // release 675
       if ((prior ? prior.deepVersion : THE_DEEP.version) && !this.map.settlement && !this.map.hamlet && shaftHere(this.save.seed, this.rx, this.ry)) this.placeDeepShaft(); // release 677
       if ((prior ? prior.canyonVersion : CANYON.version) && !this.map.settlement && !this.map.hamlet && canyonHere(this.save.seed, this.rx, this.ry)) this.placeCrater(); // Canyon craters: only in sections first seen from now on
+      if ((prior ? prior.ascendVersion : ASCENDANCY.version) && !this.map.settlement && !this.map.hamlet && !this.map.canopy && saplingHere(this.save.seed, this.rx, this.ry)) this.placeSapling(); // the Rite of Ascendancy
       if ((prior ? prior.arcVersion : ARCOLOGY.version) && !this.map.settlement && !this.map.hamlet) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; if (v >= 5 && arcologyHere(this.save.seed, this.rx, this.ry, sectionRegion(this.save.seed, this.rx, this.ry, v)) && buildArcology(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = ARCOLOGY.messages.arrive; } // ruined arcologies: only in sections first seen from now on
       if ((prior ? prior.keepVersion : KEEPS.version) && !this.map.settlement && !this.map.hamlet && keepHere(this.save.seed, this.rx, this.ry) && buildKeep(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = KEEPS.messages.arrive; // great keeps: only in sections first seen from now on
       { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, r = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null; if (!prior) noteSeasonDiscovery(this.save, r?.id); this.season = trackSeason(this.save, r); } // release 679: the woods' season
@@ -2396,7 +2399,8 @@ export class Game {
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : { keepVersion: KEEPS.version }), // great keeps likewise
         ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : { arcVersion: ARCOLOGY.version }), // and the ruined arcologies
-        ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters // release 677: Deep Shafts likewise
+        ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
+        ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
         ...(indoor ? { indoorDungeonVersion: indoor } : {}), // release 499: the dungeon entrance may stand inside a building
         color: sectionAtlasColor(this.map), // release 559: the Atlas shows the section as it really looks (atlas-colors.ts)
         ...(this.map.landscape?.biome ? { landscape: this.map.landscape.biome } : {}), sites: this.map.objects
@@ -2991,6 +2995,7 @@ export class Game {
     }
   }
   transitionSection(dx, dy) {
+    if (this.rite && this.area === "overworld") { const p = this.player; p.x = Math.max(1.2, Math.min(SECTION_SIZE - 2.2, p.x)); p.y = Math.max(1.2, Math.min(SECTION_SIZE - 2.2, p.y)); this.message = ASCENDANCY.messages.noLeave; return false; } // the rite's fire bars every edge
     const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }, wade = this.wading();
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
     // Release 259: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
@@ -3285,6 +3290,8 @@ export class Game {
     // Release 151: a level's fixed landing point (toX/toY) can sit in a wall on some generated floors; every move to a
     // landing point now steps onto the nearest open ground, as loading an area and recovering after a fall already do.
     if (o.kind === "divineWreck") return this.pullViscera(o); // Canyon craters
+    if (o.kind === "saplingDais") return this.beginRite(o); // the Rite of Ascendancy
+    if (o.kind === "visceraBloom") return this.gatherBloom(o);
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "deepShaft") return this.enterDeep(o, action); // release 677
     if (o.kind === "deepStair") return this.descendDeep(o);
@@ -5347,6 +5354,79 @@ export class Game {
     journalOnce(this.save, `deep-annex:${A.base}`, `You went three floors down a Starfield Deep Annex, and its far door let you out at ${this.save.session.dungeonReturn.rx}, ${this.save.session.dungeonReturn.ry}.`, "Crossings");
     return true;
   }
+  // The Rite of Ascendancy (ascendancy.ts). The Sapling Dais where it is still to be done; the withered sapling when its tries
+  // are spent; the great tree, with its bloom, where it is done.
+  placeSapling() {
+    if (this.map.objects.some((o) => o.kind === "saplingDais")) return null;
+    const w = mapWidth(this.map, "overworld"), rec = this.save.ascendancy?.[riteKey(this.rx, this.ry)], id = `sapling-dais-${this.rx}-${this.ry}`; let at = null;
+    for (let r = 3; r <= 10 && !at; r++) for (let k = 0; k < 16 && !at; k++) { const a = k / 16 * Math.PI * 2 + .5, x = Math.round(16 + Math.cos(a) * r), y = Math.round(16 + Math.sin(a) * r), t = this.map.tiles[y * w + x];
+      if (t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.canopy && !(t.elev > 0) && !t.landscape?.startsWith?.("sea") && footprintOpen(this.map, w, x, y) && !this.map.objects.some((o) => Math.hypot(o.x - x, o.y - y) < 2)) at = { x, y }; }
+    if (!at) return null;
+    if (rec?.done) return this.raiseRiteTree(at);
+    if (!rec && !riteTreeFits(this.map, this.save.seed, this.rx, this.ry)) return null; // only where its tree would have room
+    const o = triesLeft(rec) <= 0 ? { id, kind: "ruinMarker", name: "Withered Sapling", lore: ASCENDANCY.messages.withered, ...at, state: "quiet", actions: ["inspect"] }
+      : { id, kind: "saplingDais", name: ASCENDANCY.name, ...at, state: this.rite?.key === riteKey(this.rx, this.ry) ? "burning" : "open", actions: ["begin"], landmark: true, lore: ASCENDANCY.messages.dais };
+    this.map.objects.push(o); if (o.kind === "saplingDais" && !this.message) this.message = ASCENDANCY.messages.dais; return o;
+  }
+  beginRite(o) {
+    const key = riteKey(this.rx, this.ry), rec = riteRecord(this.save, this.rx, this.ry);
+    if (this.rite) return { ok: false, message: (this.message = "The rite is already burning.") };
+    if (rec.done || triesLeft(rec) <= 0) return { ok: false, message: (this.message = ASCENDANCY.messages.withered) };
+    const now = this.lastUpdateNow || 0; rec.tries++; o.state = "burning";
+    this.rite = { key, at: { x: o.x, y: o.y }, started: now, until: now + ASCENDANCY.duration * 1000, nextAt: now + ASCENDANCY.grace * 1000, n: 0 };
+    this.defeatNotice = { title: "THE RITE OF ASCENDANCY", detail: `survive ${Math.round(ASCENDANCY.duration / 60)} minutes · attempt ${rec.tries} of ${ASCENDANCY.tries}`, kind: "danger" };
+    this.message = ASCENDANCY.messages.begin; this.sync(); return { ok: true, message: this.message };
+  }
+  // One frame of the rite: waves come in from just off the screen, closer together as it goes on; at the end, the tree.
+  riteTick(dt, now) {
+    const R = this.rite, A = ASCENDANCY, W = A.waves;
+    if (this.area !== "overworld" || riteKey(this.rx, this.ry) !== R.key) return this.riteFailed();
+    if (now >= R.until) return this.riteDone();
+    if (now < R.nextAt) return;
+    const alive = this.enemies.filter((e) => e.riteFoe && !e.dead).length, p = this.player, w = mapWidth(this.map, "overworld");
+    R.n++; R.nextAt = now + waveGap((now - R.started) / 1000) * 1000;
+    if (alive >= W.cap) return;
+    const kinds = [...new Set(this.enemies.filter((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.worldBeast && !e.questingBeast && !e.stalker && e.kind !== "npc" && (e.fractured || fracturedOrdinary(e) || e.riteFoe)).map((e) => e.kind))];
+    const h = hashSeed(`${this.save.seed}:rite-wave:${R.key}:${R.n}`), packs = W.packs[0] + h % (W.packs[1] - W.packs[0] + 1); let left = W.cap - alive;
+    for (let k = 0; k < packs && left >= 2; k++) {
+      const hk = hashSeed(`${this.save.seed}:rite-wave:${R.key}:${R.n}:p${k}`), base = (h >>> 4) % 628 / 100 + k * 6.283 / packs; let at = null;
+      for (let i = 0; i < 24 && !at; i++) { const a = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * .3, r = W.distance[0] + ((hk >>> 12) + i * 7) % (W.distance[1] - W.distance[0] + 1), x = Math.round(p.x + Math.cos(a) * r), y = Math.round(p.y + Math.sin(a) * r); if (x > 1 && y > 1 && x < w - 2 && y < w - 2 && this.fracturedOpen(x, y, w)) at = { x, y }; }
+      if (!at) continue;
+      const roll = ((hk >>> 9) % 1000) / 1000, rank = roll < W.rare ? "rare" : roll < W.champion ? "champion" : null, size = Math.min(left, W.pack[0] + hk % (W.pack[1] - W.pack[0] + 1));
+      for (const q of packSpawns(`${this.save.seed}:rite-wave:${R.key}:${R.n}:p${k}`, kinds.length ? kinds : A.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `rite-${R.n}-${k}`, { riteFoe: true }).slice(0, left)) { const c = this.createEnemyFromSpawn(q, "overworld"); c.aggro = true; c.riteFoe = true; this.enemies.push(c); left--; }
+    }
+    const t = Math.ceil((R.until - now) / 1000); this.message = `The rite's creatures come. ${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")} left.`;
+  }
+  riteEnd() { const R = this.rite; this.rite = null; this.enemies = this.enemies.filter((e) => !e.riteFoe || e.dead); for (const o of this.map?.objects || []) if (o.kind === "saplingDais") o.state = "open"; return R; }
+  riteFailed() {
+    const R = this.riteEnd(); if (!R) return null; const [rx, ry] = R.key.split(",").map(Number), left = triesLeft(riteRecord(this.save, rx, ry));
+    this.defeatNotice = { title: "THE RITE IS BROKEN", detail: left > 0 ? `${left} attempt${left === 1 ? "" : "s"} left at this sapling` : "the sapling withers", kind: "danger" };
+    this.message = ASCENDANCY.messages.failed(left); journalOnce(this.save, `rite-failed:${R.key}:${3 - left}`, ASCENDANCY.messages.failed(left), "The Rite of Ascendancy"); return R;
+  }
+  riteDone() {
+    const R = this.riteEnd(); if (!R) return null; const rec = riteRecord(this.save, this.rx, this.ry); rec.done = true;
+    this.map.objects = this.map.objects.filter((o) => o.kind !== "saplingDais"); this.raiseRiteTree(R.at);
+    this.defeatNotice = { title: "ASCENDANCY", detail: "a great tree rises · Divine Viscera blooms on its crown", kind: "discovery" };
+    journalOnce(this.save, `rite-done:${R.key}`, `You survived the Rite of Ascendancy at ${R.key}. A great tree rose where the sapling stood.`, "The Rite of Ascendancy");
+    this.message = ASCENDANCY.messages.done; this.sync(); return R;
+  }
+  // The tree the rite raised (the same each time), its door to the sky kept only by a share of rites, and the bloom on its crown.
+  raiseRiteTree(at) {
+    const tree = growRiteTree(this.map, this.save.seed, this.rx, this.ry), rec = riteRecord(this.save, this.rx, this.ry);
+    if (tree && !riteSkyway(this.save.seed, this.rx, this.ry)) this.map.objects = this.map.objects.filter((o) => o.id !== `canopy-gate-${this.rx}-${this.ry}`);
+    if (rec.bloom || this.map.objects.some((o) => o.kind === "visceraBloom")) return tree;
+    let spot = at;
+    if (tree) { const crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === tree.top && !this.map.objects.some((o) => Math.round(o.x) === t.x && Math.round(o.y) === t.y)).sort((a, b) => (a.y - b.y) || (a.x - b.x)); if (crown[0]) spot = { x: crown[0].x, y: crown[0].y }; }
+    this.map.objects.push({ id: `viscera-bloom-${this.rx}-${this.ry}`, kind: "visceraBloom", name: "Bloom of Divine Viscera", x: spot.x, y: spot.y, state: "open", actions: ["gather"], lore: ASCENDANCY.messages.bloom });
+    return tree;
+  }
+  gatherBloom(o) {
+    const rec = riteRecord(this.save, this.rx, this.ry); if (rec.bloom) return { ok: false, message: (this.message = "The bloom is spent.") };
+    rec.bloom = true; this.map.objects = this.map.objects.filter((q) => q !== o);
+    ensureSkylands(this.save); this.save.skylands.viscera = (Number(this.save.skylands.viscera) || 0) + ASCENDANCY.viscera;
+    this.defeatNotice = { title: "DIVINE VISCERA", detail: `+${ASCENDANCY.viscera} · spend it in the Skylands' Divine Challenge`, kind: "discovery" };
+    this.message = ASCENDANCY.messages.gathered(ASCENDANCY.viscera); this.sync(); return { ok: true, message: this.message };
+  }
   // Release 677 (the-deep.ts): a Deep Shaft in a section first seen from now on; it offers floor 1 and each checkpoint reached.
   placeDeepShaft() {
     if (this.map.objects.some((o) => o.kind === "deepShaft")) return null;
@@ -5938,6 +6018,7 @@ export class Game {
     this.tickMirage(dt); // release 649: Mirage of Blades
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
+    if (this.rite) this.riteTick(dt, now); // the Rite of Ascendancy
     this.tickFractured(now); // release 651: Fractured mode
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
@@ -6361,6 +6442,7 @@ export class Game {
     if (fellIntoHazard || this._fatalFall) p.hp = 0;
     if (this.damageNumbers) this.trackDamageNumbers(now); // release 461
     if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
+    if (p.hp <= 0 && this.rite) this.riteFailed(); // the Rite of Ascendancy: a death breaks it
     if (p.hp <= 0) {
       // Release 329 (Tim: "for world bosses... If they kill you, there should be like a... 4 second... pause... where you see
       // the boss just like moving around or milling around after you die. Just to give you like a second to like collect

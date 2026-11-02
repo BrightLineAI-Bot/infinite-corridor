@@ -58,6 +58,7 @@ export function drawRangedEffects(ctx,game,width,height) {
   drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
   drawOrbit(ctx, game, toScreen, s, t); // release 487: Orbit Volley
   drawToolForms(ctx, game, toScreen, s, t); // release 533: Nanoknives and the Arc Wave
+  if (game.rite && game.area === "overworld") drawRiteFire(ctx, toScreen, s, t); // the Rite of Ascendancy: fire round the section's edges
   for (const fx of game.effects) {
     if (fx.kind !== "gravity-well" && fx.kind !== "stillpoint") continue;
     const [x, y] = toScreen(fx), R = fx.radius * s;
@@ -114,4 +115,18 @@ export function drawRangedEffects(ctx,game,width,height) {
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
+}
+
+// The Rite of Ascendancy (ascendancy.ts): a band of flame along the section's four edges while the rite burns. Only the flames on
+// screen are drawn (at most a screen's width of them a side).
+function drawRiteFire(ctx, toScreen, s, t) {
+  const W = ctx.canvas?.width || 2000, H = ctx.canvas?.height || 2000;
+  const flame = (x, y, i) => { const [px, py] = toScreen({ x, y }); if (px < -s || py < -s * 2 || px > W + s || py > H + s) return;
+    const f = .7 + .3 * Math.sin(t * 9 + i * 1.7), h = s * (.9 + .5 * f);
+    const g = ctx.createLinearGradient(px, py, px, py - h); g.addColorStop(0, "rgba(255,120,30,.9)"); g.addColorStop(.6, "rgba(255,190,70,.65)"); g.addColorStop(1, "rgba(255,240,170,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(px - s * .35, py); ctx.quadraticCurveTo(px - s * .2, py - h * .5, px + Math.sin(t * 5 + i) * s * .12, py - h); ctx.quadraticCurveTo(px + s * .2, py - h * .5, px + s * .35, py); ctx.closePath(); ctx.fill(); };
+  ctx.save();
+  for (let i = 0; i <= 32; i += .7) { flame(i, .4, i); flame(i, 31.9, i + 3); }
+  for (let j = 0; j <= 32; j += .7) { flame(.2, j + .5, j + 7); flame(31.6, j + .5, j + 11); }
+  ctx.restore();
 }
