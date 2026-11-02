@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release NNN: Worm's Upheaval back to puddles — 2026-11-02
+## Release 698: Worm's Upheaval back to puddles — 2026-11-02
 
 Tim (2026-11-02): "the tremor worm's [Echo]... was working better before... right now it like stacks up... beneath the person
 for like 4 seconds... each Dodge made a discrete like puddle underneath the creature, and then it would just like pop... it
