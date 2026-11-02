@@ -198,7 +198,7 @@ export function tickEchoes(game, dt, now, moving) {
   if (hurt) echoEvent(game, "hurt", now);
   if (landed) echoEvent(game, "land", now);
   if (p.echoCharge && now < p.echoCharge.until) for (const e of nearest(game, me.x, me.y, .95)) if (!p.echoCharge.hit[e.id]) { p.echoCharge.hit[e.id] = true; world.damage(e, echoDamage(save)); e.hitStun = Math.max(e.hitStun || 0, .6); }
-  if (p.echoMist && now < p.echoMist.until) for (const e of nearest(game, me.x, me.y, STALKER_MIST.reach)) if (!p.echoMist.hit[e.id]) { p.echoMist.hit[e.id] = true; if (mistRot(e, world)) (game.glyphVisuals ||= []).push({ kind: "mist", x: e.x + .5, y: e.y + .45, life: .45, max: .45 }); } // release 699
+  if (p.echoMist && now < p.echoMist.until) for (const e of nearest(game, me.x, me.y, STALKER_MIST.reach)) if (!p.echoMist.hit[e.id]) { p.echoMist.hit[e.id] = true; if (mistRot(e, world)) (game.glyphVisuals ||= []).push({ kind: "mist", x: e.x + .5, y: e.y + .45, life: .7, max: .7 }); } // release 699
   if (eq.includes("weepingSaint")) {
     const f = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[p.facing] || [0, 1];
     for (const e of nearest(game, me.x, me.y, 5)) { const c = centre(e), dx = c.x - me.x, dy = c.y - me.y, m = Math.hypot(dx, dy) || 1; if ((dx * f[0] + dy * f[1]) / m > .5) e.glyphSlow = { until: Math.max(e.glyphSlow?.until || 0, now + 150), factor: Math.min(e.glyphSlow?.factor || 1, .6) }; }
