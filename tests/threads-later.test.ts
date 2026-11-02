@@ -18,3 +18,13 @@ test("the Well-Digger's Rope is written in full and lies only in far crossings t
   const found = ids.filter(([x, y, id]) => threadIn(seed, id) === 'wellDigger'); assert.ok(found.length >= 6, `${found.length} crossings, enough for every piece`);
   for (const [x, y, id] of found) { assert.equal(before(id, x, y), null, 'it never displaces a first-ten thread'); assert.ok(inBand('far', x, y)); }
 });
+
+import { readFileSync } from 'node:fs';
+// The Journal's Arcana tab (Tim, 2026-11-02: "an arcana panel in the journal which has all these like threads. And all these
+// little like story beats"): every thread and story across crossings, with progress; unfound pieces never shown.
+test('the Journal has an Arcana tab listing every thread and story across crossings, showing only what has been found', () => {
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
+  assert.match(main, /\["arcana","Arcana"\]/); assert.match(main, /if\(mode==="arcana"\)\{renderArcana\(out\)/);
+  assert.match(main, /for\(const id of THREAD_ORDER\)\{const T=THREADS\[id\],found=threadFound\(save,id\)\.length;arcanaCard\(out,T\.title,[^;]*T\.pieces\.slice\(0,found\)/, 'only the pieces found are shown');
+  for (const name of ['The Seven Bells', "The Surveyor's Chain", 'TORN_PAGES.title', '"Ilse"', '"Glimpses"']) assert.ok(main.includes(name), name);
+});

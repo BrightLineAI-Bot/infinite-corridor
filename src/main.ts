@@ -3,7 +3,7 @@ import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.ts"
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts"; // release 393; 541: preset gear
 import { FRACTURED } from "./fractured.ts"; // release 651: Fractured mode
 import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.ts"; // release 543
-import { surveyorChainPath, surveyorComplete } from "./surveyor.ts"; // release 551; 559
+import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.ts"; // release 551; 559
 import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.ts";
 import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.ts"; // release 447
 import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.ts"; // release 459 // release 395 // release 315; 321: the drone
@@ -255,9 +255,10 @@ import {
   wayfindingCues,
 } from "./world.ts";
 import { warmWayfindingSignals } from "./world.ts";
-import { bellsRung, BELLS } from "./bells.ts"; // release 431
+import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.ts"; // release 431
 import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.ts"; // release 595
-import { THREADS, threadsStarted, threadFound } from "./threads.ts"; // release 627
+import { THREADS, THREAD_ORDER, threadsStarted, threadFound } from "./threads.ts"; // release 627
+import { ILSE_MEETINGS, ilseMet } from "./ilse.ts"; // the Journal's Arcana tab
 import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.ts"; // release 605
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
@@ -1221,6 +1222,36 @@ function playGlimpse(id,{replay=false,after=null}={}){
   glimpseRun=startGlimpse($("#glimpseCanvas"),id,{reduceMotion:!!settings.reduceMotion,quality:currentQuality(),onEnd:finish});
   root.onclick=()=>{if(performance.now()-started>900)finish()};
 }
+// The Arcana (Tim, 2026-11-02: "an arcana panel in the journal which has all these like threads. And all these little like story
+// beats... I would like to see... where they're going"): every story told across crossings, how far you have followed it, what
+// you have read of it, and where to look for the rest. Pieces not yet found are never shown, only counted.
+const ARCANA_BANDS = { near: "crossings near the Refuge", middle: "crossings of the middle distance", far: "far crossings", deep: "the deep reaches" };
+function arcanaCard(out, title, count, total, where, read, ending, open = false) {
+  const card = document.createElement("article"), h = document.createElement("h4"), meta = document.createElement("p"), dots = document.createElement("p");
+  card.className = "item arcana-card"; h.textContent = title; meta.className = "options-note";
+  meta.textContent = count >= total ? `Complete · ${total} of ${total}` : count ? `${count} of ${total} found · the rest lie in ${where}` : `Not begun · look in ${where}`;
+  dots.textContent = Array.from({ length: total }, (_, i) => i < count ? "●" : "○").join(" "); dots.setAttribute("aria-label", `${count} of ${total}`);
+  card.append(h, meta, dots);
+  if (read.length || ending) { const d = document.createElement("details"), sum = document.createElement("summary"); sum.textContent = count >= total ? "Read it again" : "What you have read"; d.open = open; d.append(sum);
+    for (const [label, text] of read) { const q = document.createElement("p"); if (label) { const b = document.createElement("strong"); b.textContent = `${label}. `; q.append(b); } q.append(text); d.append(q); }
+    if (ending) { const q = document.createElement("p"), b = document.createElement("strong"); b.textContent = "The ending. "; q.append(b, ending); d.append(q); }
+    card.append(d); }
+  out.append(card);
+}
+function renderArcana(out){
+  const h=document.createElement("h3"),intro=document.createElement("p");h.textContent="Arcana";intro.className="options-note";
+  intro.textContent="The stories the Corridor tells across many crossings: how far you have followed each, what you have read, and where the rest lie. What you have not found yet stays hidden.";out.append(h,intro);
+  const section=(title)=>{const t=document.createElement("h3");t.textContent=title;out.append(t);};
+  section("Threads");
+  for(const id of THREAD_ORDER){const T=THREADS[id],found=threadFound(save,id).length;arcanaCard(out,T.title,Math.min(found,T.pieces.length),T.pieces.length,ARCANA_BANDS[T.band]||"the crossings",T.pieces.slice(0,found).map((p,i)=>[`${i+1}`,p]),found>=T.pieces.length?T.ending:null);}
+  section("Across the Corridor");
+  const rung=bellsRung(save).split("").filter(Boolean);arcanaCard(out,"The Seven Bells",rung.length,BELLS.count,"crossings near the Refuge",rung.map((k)=>[`The bell for ${BELL_GLIMPSES[k]?.who||"someone"}`,(BELL_GLIMPSES[k]?.lines||[]).join(" ")]),rung.length>=BELLS.count?BELL_FINAL:null);
+  const links=Array.isArray(save.lore?.surveyor?.links)?save.lore.surveyor.links:[];arcanaCard(out,"The Surveyor's Chain",links.length,SURVEYOR.links,"crossings far from the Refuge",links.slice().sort((a,b)=>a-b).map((i)=>[`Link ${i+1}`,SURVEYOR_NOTES[i]||""]),surveyorComplete(save)?"With every link, the last map turned out to be the world itself. Abel Corwin's statue stands where the Far Sleep begins.":null);
+  const pages=pagesFound(save);arcanaCard(out,TORN_PAGES.title,pages.length,READING_ORDER.length,"the deepest crossings of each Reading",pages.map((r)=>[READINGS[r]?.name||r,PAGE_TEXT[r]||""]),pages.length>=READING_ORDER.length?PAGES_FINAL:null);
+  const met=ilseMet(save).split("").filter(Boolean),meetings=Object.keys(ILSE_MEETINGS);arcanaCard(out,"Ilse",met.length,meetings.length,"lit roads, now and then",met.map((k)=>[ILSE_MEETINGS[k]?.name||"Ilse",(ILSE_MEETINGS[k]?.lines||[]).join(" ")]),null);
+  const glimpses=GLIMPSE_ORDER.filter((id)=>glimpseAllowed(id,settings.familySafe)),seen=witnessedGlimpses(save).filter((id)=>glimpses.includes(id));
+  const g=document.createElement("article"),gh=document.createElement("h4"),gp=document.createElement("p");g.className="item arcana-card";gh.textContent="Glimpses";gp.className="options-note";gp.textContent=`${seen.length} of ${glimpses.length} seen · through other eyes, anywhere in the Corridor. The Reciter's Tome replays them.`;g.append(gh,gp);out.append(g);
+}
 function renderTome(out){
   ensureReciters(save);const rerender=()=>openJournal("tome");
   const h=document.createElement("h3"),intro=document.createElement("p"),status=document.createElement("p");h.textContent="The Reciter's Tome";
@@ -2035,11 +2066,12 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["quests","Active quests"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["tome","Reciter's Tome"],["gate","The Far Gate"]]){const b=uiButton(label,()=>openJournal(id));if(id===mode)b.setAttribute('aria-current','page');nav.append(b)} // release 287: the open tab is marked (gold)
+  for(const [id,label] of [["chronicle","Chronicle"],["quests","Active quests"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["arcana","Arcana"],["tome","Reciter's Tome"],["gate","The Far Gate"]]){const b=uiButton(label,()=>openJournal(id));if(id===mode)b.setAttribute('aria-current','page');nav.append(b)} // release 287: the open tab is marked (gold)
   out.append(nav);
   if(mode!=="chronicle"){
     if(mode==="quests"){renderQuests(out);if(!journal.open)journal.showModal();return;}
     if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
+    if(mode==="arcana"){renderArcana(out);if(!journal.open)journal.showModal();return;}
     if(mode==="gate"){renderFarGate(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
       const heading=document.createElement("h3");heading.textContent="Deep expeditions";out.append(heading);
