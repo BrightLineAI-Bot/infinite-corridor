@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 696, the next is **697**.
+Taken at merge time: `main`'s release + 1 (see above). After 697, the next is **698**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 696 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Enclosure: a 2x2 pen (2 wood, 2 stone, 2 cinder iron), walled on three sides; a trap for the Stalker with two standing | Building. |
+| 697 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | Closing the pen: the trap is tried when a second enclosure closes the first's opening with the Stalker inside; items work in a pen | Building. |
+| 696 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Enclosure: a 2x2 pen (2 wood, 2 stone, 2 cinder iron), walled on three sides; a trap for the Stalker with two standing | Merged; published in r696. |
 | 695 | Claude (Stalker session) | PR #342 | The Stalker's mirage, the gorilla's lasers, five ways in, low ground fog, walks on water | Merged; published in r695. |
 | 694 | Claude (second session) | PR #341 | Hotfix, the broken screen (Tim's r688 diagnostic): the affix/boss-kit warning-mark fill clamped (a rounding-negative ellipse radius threw mid-frame and the leaked camera translate corrupted every later frame); 691's swallowed `ctx.save(); const cx…` restored; the canvas reset if a render throws | Merging (baton taken). Tim said publish once merged. |
 | 693 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves keep pace with your clears; world bosses say ARCHFIEND SLAIN | Merging. |

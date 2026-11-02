@@ -2694,6 +2694,28 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 697: closing the pen — 2026-11-02
+
+Tim (2026-11-02): "you should be able to use items... the pens really shouldn't get used up until you try. The roll shouldn't happen
+until you... build a second enclosure to complete the pen... you can leave the first pen down until the stalker is in [it]... then
+you can trap him by putting down the second enclosure and creating the pen... and then the roll happens".
+
+**CODE:**
+- `src/building.ts`:
+  - `placeEnclosure`: a new pen whose 2x2 covers either tile just outside another pen's opening (`openingTiles` and
+    `overlapsOpening`) closes that pen, through `game.penClosed(pen, by)`, whose answer becomes the build message.
+  - `tickBuilds` lets a pen's `trapped` go when no live, trapped enemy has that id.
+- `src/game.ts` `penClosed`: the Stalker inside the closed pen (by `enclosureAt`) gets `stalkerTrapAttempt(e, pen, by.id)`.
+  - `castSlot` and `castKey` refuse only spells in a pen (`penned`); items, the Build tool and Aperture skills work.
+  - `tileOpen` (the point check) knows `encSides` too.
+- `src/stalker.ts`:
+  - `stalkerPen` only runs the hold (no roll on entering).
+  - `stalkerTrapAttempt` is the one roll per closing (hashed by pen and closer), as cat or gorilla, never as pool, mist, mirage
+    or while lurking.
+- `src/main.ts`: the Pack's text says how to close the pen.
+
+**BOUNDARY:** Builds are never saved; no generator change. Tests: `tests/enclosure-trap.test.ts`.
+
 ## Release 696: the Enclosure — 2026-11-02
 
 Tim (2026-11-01): "an enclosure... you build with 2 wood, 2 stone and 2 cinder iron... a little shack that the player can walk
