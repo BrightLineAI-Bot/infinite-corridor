@@ -10,7 +10,7 @@
 import { hashSeed } from "./random.ts";
 
 export const FAR_REALMS = {
-  version: 1, start: 1000, cell: 40, warp: 9,
+  version: 2, start: 1000, cell: 40, warp: 9, // 2 (release 715): the pockets (FAR_POCKETS)
   // [type, from, to] on the cell's roll; later versions only add bands inside what earlier versions left ordinary.
   bands: { 1: [["giants", 0, .18]] },
 };
@@ -44,4 +44,41 @@ export function giantify(c) {
   c.maxHp = c.hp = Math.max(1, Math.round((Number(c.maxHp) || 10) * G.hp)); c.damage = Math.max(1, Math.round((Number(c.damage) || 1) * G.damage));
   c.speedMultiplier = (Number(c.speedMultiplier) || 1) * G.speed;
   return c;
+}
+
+// Release 715 (Tim: "the blob civilization can be just spread out throughout the world... different pockets, like different biome
+// regions just have different blobs... groves of stags... spread throughout... after a 1000... there should be lots of moths"):
+// pockets. From far-realm version `since`, each world region (landscape.ts regions, about 9 sections across) beyond `start` rolls
+// once on its own hash: a stag grove (more likely in wooded regions, `groveLeans`) or a blob pocket whose blob suits the region
+// (`blobByRegion`). In a pocket the overworld creatures are its kin (MONSTER_PACK groveStag, groveMoth and the five lesser blobs),
+// and `extra` more of them gather there. They are lesser kin, never world beasts.
+export const FAR_POCKETS = { since: 2, grove: .14, blob: .14, groveLean: 1.8, extra: { grove: 4, blob: 5 }, spacing: 3,
+  groveLeans: ["forest", "jungle", "amber", "savanna", "petrified", "wild", "fungal"],
+  grovePool: ["groveStag", "groveStag", "groveStag", "groveMoth", "groveMoth"],
+  blobs: ["mossBlob", "emberBlob", "frostBlob", "duskBlob", "saltBlob"],
+  blobByRegion: { forest: "mossBlob", jungle: "mossBlob", swamp: "mossBlob", fungal: "mossBlob", reef: "mossBlob", volcanic: "emberBlob", emberlands: "emberBlob", ashfields: "emberBlob", obsidian: "emberBlob", amber: "emberBlob",
+    frost: "frostBlob", lakes: "frostBlob", sea: "frostBlob", isles: "frostBlob", lunar: "duskBlob", dream: "duskBlob", fog: "duskBlob", crystal: "duskBlob", alien: "duskBlob", biomech: "duskBlob",
+    desert: "saltBlob", salt: "saltBlob", savanna: "saltBlob", glasslands: "saltBlob", petrified: "saltBlob" },
+  text: { grove: { name: "a stag grove", arrive: "Antlers move among the trees, and grey moths drift between them like ash. This is a grove of the Briar Stag's kin." },
+  blob: { name: "a blob pocket", arrive: "The ground glistens and quivers. Everything that moves here is one shape or another of ooze: a pocket of the Blob's kin." } },
+};
+export function farPocketAt(seed, rx, ry, version, region) {
+  const P = FAR_POCKETS; if (!(version >= P.since) || farDistance(rx, ry) < FAR_REALMS.start || !region?.id) return null;
+  const u = (hashSeed(`${seed}:far-pocket:v1:${region.id}`) % 100003) / 100003, g = P.grove * (P.groveLeans.includes(region.type) ? P.groveLean : 1);
+  if (u < g) return { type: "grove", id: region.id, kinds: P.grovePool, ...P.text.grove };
+  if (u < g + P.blob) { const kind = P.blobByRegion[region.type] || P.blobs[hashSeed(`${seed}:far-pocket:blob:${region.id}`) % P.blobs.length]; return { type: "blob", id: region.id, kinds: [kind], ...P.text.blob }; }
+  return null;
+}
+// The creatures of a pocket: the section's overworld creatures become its kin, and `extra` more gather on open ground.
+export function populatePocket(map, seed, rx, ry, pocket) {
+  if (!map || !pocket || map.farPocket) return map; map.farPocket = pocket.type;
+  const kinds = pocket.kinds, pick = (k) => kinds[hashSeed(`${seed}:far-pocket:kind:${rx}:${ry}:${k}`) % kinds.length], spawns = (map.enemySpawns ||= []);
+  spawns.forEach((e, i) => { if (e.packOverworld || !(e.ambient || e.passiveBehavior || e.shelterAmbush || e.districtResident || e.boss || e.elite || e.gatePredator || e.foundryId || e.viewportHuntId || e.domainId || e.huntInstanceId || e.worldBeast || e.questingBeast || e.skirmishId)) e.kind = pick(`c${i}`); }); // every ordinary creature (hunt, domain, ambient and named foes keep theirs)
+  const width = Number(map.width) || 32, height = Math.floor((map.tiles?.length || 1024) / width), taken = [...spawns, ...(map.objects || [])].filter((q) => Number.isFinite(q?.x));
+  const open = (map.tiles || []).filter((t) => !t.blocked && !t.environment && !t.structure && !t.buildingId && t.x > 2 && t.y > 2 && t.x < width - 3 && t.y < height - 3 && taken.every((q) => Math.hypot(q.x - t.x, q.y - t.y) >= FAR_POCKETS.spacing))
+    .sort((a, b) => hashSeed(`${seed}:far-pocket:spot:${rx}:${ry}:${a.x}:${a.y}`) - hashSeed(`${seed}:far-pocket:spot:${rx}:${ry}:${b.x}:${b.y}`));
+  let n = 0; const want = FAR_POCKETS.extra[pocket.type] || 0;
+  for (const t of open) { if (n >= want) break; if (taken.some((q) => Math.hypot(q.x - t.x, q.y - t.y) < FAR_POCKETS.spacing)) continue;
+    const e = { id: `far-pocket:${rx}:${ry}:${n}`, kind: pick(`x${n}`), x: t.x, y: t.y, packOverworld: true, farPocket: pocket.type }; spawns.push(e); taken.push(e); n++; }
+  return map;
 }

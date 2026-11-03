@@ -2798,6 +2798,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 715: stag groves and blob pockets — 2026-11-03
+
+Tim, 2026-11-03 (the far-reaches list): "sections where all the monsters are small versions of... the blob... different biome regions just have different blobs... groves of stags... not as powerful as the regular... world... stag... throughout after a 1000... there should be lots of moths as well".
+
+**CODE:** `FAR_POCKETS` and `farPocketAt`/`populatePocket` in `src/far-realms.ts`; `FAR_REALMS.version` is now 2. From far-realm version `since` (2), each world region (the landscape regions of `sectionRegion`) beyond 1000 rolls once on its own hash: a stag grove (`grove`, raised by `groveLean` in the wooded types `groveLeans`) or a blob pocket (`blob`, its kind from `blobByRegion`, else one of `blobs` by hash). The Game sets `this.farPocket` at section load from the atlas's `farVersion`, journals the pocket once per region, and after `populateOverworldPack` calls `populatePocket`, which turns every ordinary spawn into the pocket's kin (hunt, domain, ambient, named and skirmish foes keep theirs) and adds `extra` more on open ground. The kin are `MONSTER_PACK` entries `groveStag` (the stag's body and four of its moves), `groveMoth` (the moth's body; gust, dust, spiral) and `mossBlob`, `emberBlob`, `frostBlob`, `duskBlob`, `saltBlob` (the blob's body in their own palettes; tendrils and gas jet). All are `prototypeOnly` and `farKin`: never in `PACK_KINDS`, so no ordinary section or dungeon rolls them, and painted directly like the world beasts. Tests: `tests/far-pockets-715.test.ts`.
+
+**BOUNDARY:** The kin have no passives of the world beasts (no hunt, mend, kindle, growth or splitting) and no Echoes. Nothing within 1000 sections or on far ground seen at far-realm version 1 changes. Water creatures of a section stay what they are.
+
 ## Release 714: the far realms (the Giants' Reach) and two old friends — 2026-11-03
 
 Tim, 2026-11-03: "I'm gonna be pushing the world pretty far... at least a 1000... make sure that there's still content out in the far reaches... realms where the monsters are all really big..." (and a list of realms to follow: townsfolk who are monsters, giant townsfolk, blob pockets, a lightning-giant civilisation, a crystal civilisation, stag groves with moths, the Astral Worm's inky homeland, great mushrooms); and "if you're fighting the stag, and the stalker comes in... they should play together for a little bit because their buddies".
