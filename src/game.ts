@@ -103,7 +103,8 @@ import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
 import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.ts";
-import { beastProfileVitals, liveBeastReference, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
+import { FAR_REALMS, farRealmAt, giantify } from "./far-realms.ts";
+import { beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
@@ -2378,6 +2379,8 @@ export class Game {
       if (this.map.dream && this.save.narrative?.facts && !this.save.narrative.facts["farSleep.entered"]) { this.save.narrative.facts["farSleep.entered"] = true; this.message = "The ground thins underfoot, and the night shows through. Somewhere, someone is dreaming this. Perhaps you."; } // release 305
       noteSectionVisit(this.save, key); // release 263: a section not among the last 8 different ones counts toward the buffer
       this.noteRegion(prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION); // release 573
+      { this.farRealm = farRealmAt(this.save.seed, this.rx, this.ry, prior ? prior.farVersion || 0 : FAR_REALMS.version); const R = this.farRealm, jid = R && `far-realm:${R.type}:${R.id}`; // release 714: the far realms
+        if (R && !this.save.narrative.journal.some((j) => j.recordId === jid)) { journalOnce(this.save, jid, `${R.arrive} (${this.rx},${this.ry})`, R.name); if (!this.message) this.message = R.arrive; } }
       if (!prior) stalkerNewSection(this.save); // release 678: new sections count toward the Stalker's return
       this.markDeepAnnexes(); // release 675
       if ((prior ? prior.deepVersion : THE_DEEP.version) && !this.map.settlement && !this.map.hamlet && shaftHere(this.save.seed, this.rx, this.ry)) this.placeDeepShaft(); // release 677
@@ -2407,6 +2410,7 @@ export class Game {
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : {}), // great keeps: sections first seen from 683 until the great buildings
         ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : {}), // and the ruined arcologies (685)
         ...(prior ? (prior.buildingVersion ? { buildingVersion: prior.buildingVersion } : {}) : { buildingVersion: BUILDINGS.version }), // the great buildings take their place
+        ...(prior ? (prior.farVersion ? { farVersion: prior.farVersion } : {}) : { farVersion: FAR_REALMS.version }), // release 714: the far realms, new ground only
         ...(prior ? (prior.compoundVersion ? { compoundVersion: prior.compoundVersion } : {}) : { compoundVersion: COMPOUNDS.version }), // and the compounds
         ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
         ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
@@ -4668,6 +4672,7 @@ export class Game {
       if (e.worldBeast || e.questingBeast) { const share = Number((e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active)?.hpShare); if (share > 0 && share < 1) c.hp = Math.max(1, Math.round(c.maxHp * share)); } // release 423: it keeps the wounds you gave it
       if(e.astralCompanionOf){if(e.astralRole==='ally'){tuneWorldBeast(c,this.save,'voidWalker',characterStats(this.save));delete c.worldBeast;}Object.assign(c,{astralCompanionOf:e.astralCompanionOf,astralRole:e.astralRole,astralAllyOf:e.astralAllyOf,noRewards:!!e.noRewards,astralMountWanted:!!e.astralMountWanted});} // release 235
       if (e.retreating) Object.assign(c, { retreating: true, aggro: true, untargetable: true }); // release 239: fleeing through
+      if (area === "overworld" && this.farRealm?.type === "giants") giantify(c); // release 714: the Giants' Reach
       if (area === "dungeon" && isArrayRun(this.save.session.activeDungeonId)) {
         if (e.farArrayBoss === "listener") { const form = LISTENER_FORMS[e.listenerPhase] || LISTENER_FORMS.open; Object.assign(c, { farArrayBoss: "listener", listenerForm: e.listenerForm, listenerPhase: e.listenerPhase, packAttacks: [...form.attacks], packBossAttacks: [...form.boss], summoned: 0, foundryName: form.name }); }
         else if (e.farArrayBoss) c.farArrayBoss = e.farArrayBoss;
@@ -4848,6 +4853,20 @@ export class Game {
   dragonDue() { if (!this.dragonHere()) return false; const r = this.dragonClock(); return r.casts < DRAGON.colonize.casts && (Number(this.save.playSeconds) || 0) >= r.nextAt; }
   dragonLavaNow() { const r = this.dragonClock(), tiles = dragonCast(this.save, this.map, this.save.seed, this.rx, this.ry); r.nextAt = (Number(this.save.playSeconds) || 0) + DRAGON.colonize.every;
     this.message = r.casts >= DRAGON.colonize.casts ? "The last of the floor turns to lava. The Crimson Tyrant has claimed this ground." : `The ground breaks into lava. The Crimson Tyrant has claimed ${r.casts} of ${DRAGON.colonize.casts} parts of it.`; return tiles; }
+  // Release 714: the Briar Stag and the Stalker, when they meet, forget the Wayfarer and play (BEAST_PLAY).
+  beastPlay(dt, now) {
+    const P = BEAST_PLAY, s = (this.beastPlayState ||= { until: 0, next: 0, a: 0 }), stag = this.enemies.find((q) => q.kind === "briarStag" && !q.dead && !q.retreating), cat = this.enemies.find((q) => q.stalker && !q.dead);
+    const stop = () => { s.until = 0; for (const q of [stag, cat]) if (q) q.playing = false; };
+    if (!stag || !cat || this.area !== "overworld") { if (s.until) stop(); return; }
+    if (s.until && now >= s.until) { stop(); s.next = now + P.gap * 1000; this.message = P.end; return; }
+    if (!s.until) { if (now < s.next || Math.hypot(stag.x - cat.x, stag.y - cat.y) > P.range) return;
+      s.until = now + P.time * 1000; s.cx = (stag.x + cat.x) / 2; s.cy = (stag.y + cat.y) / 2; s.a = Math.atan2(stag.y - s.cy, stag.x - s.cx); this.message = P.start;
+      for (const q of [stag, cat]) { q.playing = true; if (q.pack) Object.assign(q.pack, { attack: null, phase: null, tele: null, state: "move", data: null }); q.stagPose = null; q.untargetable = false; q.aloft = false; } }
+    s.a += dt * P.spin; const w = mapWidth(this.map, this.area);
+    [[stag, 0], [cat, Math.PI]].forEach(([q, off]) => { const tx = s.cx + Math.cos(s.a + off) * P.radius, ty = s.cy + Math.sin(s.a + off) * P.radius * .7, dx = tx - q.x, dy = ty - q.y, d = Math.hypot(dx, dy), st = Math.min(d, P.speed * dt);
+      if (d > .01) { moveAxis(q, dx / d * st, 0, this.map, w); moveAxis(q, 0, dy / d * st, this.map, w); } q.facingX = (q === stag ? cat : stag).x >= q.x ? 1 : -1; q.hopLift = Math.abs(Math.sin(s.a * 2 + off)) * .6; });
+    stag.stagPose = Math.sin(s.a * 1.5) > .6 ? "lower" : null;
+  }
   // Release 710: the Doom Chaser's frenzy (FRENZY). Its hits build it; once it holds, land FRENZY.cure blows on it or it bursts.
   frenzyHit(now, n = 1) {
     if (this.player.hp <= 0) return; const f = (this.frenzy ||= { build: 0, active: false });
@@ -6147,6 +6166,7 @@ export class Game {
     this.tickFractured(now); // release 651: Fractured mode
     if (this.area === "overworld") this.mothHarass(); // release 708
     this.frenzyTick(dt); // release 710
+    this.beastPlay(dt, now); // release 714
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
@@ -6456,6 +6476,7 @@ export class Game {
       if(e.skirmishId&&!e.skirmishProvoked){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&updateSkirmisher(e,this.enemies,this.map,dt,skirmishHooks))continue}
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
+      if(e.playing&&!e.dead){this.performanceStats.activeEnemies++;continue} // release 714: the Stag and the Stalker at play
       if(e.stalker||e.stalkerKin||e.stalkerDecoy){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateStalker(e,this.stalkerWorld(dt,now));continue} // release 678
       if(e.gatePredator){this.performanceStats.activeEnemies++;const ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);if(this.area==="dungeon"&&!this.roamerInBounds(e)){e.x=ox;e.y=oy;e.gateWalkFor=GATE_REVENANT.walkAround}continue} // release 271: through walls, never into the black beyond (and, held at the edge, it walks around for a while)
       if(e.packKind&&e.astralMount?.status==="mounted"&&e.astralMount.ridingAway){this.performanceStats.activeEnemies++;continue} // rides the retreating Worm home

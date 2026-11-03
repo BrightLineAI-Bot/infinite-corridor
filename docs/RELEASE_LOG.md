@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 713, the next is **714**.
+Taken at merge time: `main`'s release + 1 (see above). After 714, the next is **715**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 714 | Claude | `claude/dreamy-rubin-yn6q2p` | Far realms beyond 1000 (new ground only): the Giants' Reach; the Briar Stag and the Stalker play | In flight. |
 | 713 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Compounds (Tim asked this session): courtyards inside rings of wings, outer / courtyard doors and wall-walk hatches, maze routes to the tower's boss and treasure; great buildings on new ground in L / T / U shapes and alien hives | Merging (baton taken). |
-| 712 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: two wave 3 threads of a later layer, the Weaver's Cloth and the Mirror That Remembers | In flight. |
+| 712 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: two wave 3 threads of a later layer, the Weaver's Cloth and the Mirror That Remembers | Merged (`r712-da04de26b458`). |
 | 711 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great buildings (Tim asked this session): Old Keeps and Ruined Arcologies as opaque buildings with separate floors inside (rooms, floor materials, ladders, holes, roofs to stand on for some, broken backs, a guardian and cache on top); new ground only, in place of the climbable 683/685 keeps and arcologies | Merged. Published in r711. |
 | 710 | Claude | `claude/dreamy-rubin-yn6q2p` | The second dragon, the Doom Chaser: twelve moves, black fire pools, the frenzy; both dragons redrawn | Merged (`r710-c49f147953c2`). Published in r711. |
 | 709 | Claude | `claude/dreamy-rubin-yn6q2p` | A dragon, the Crimson Tyrant: twelve moves, lava pools, a permanent lava claim on its clock, the Sunfall | Merged (`r709-3788b27b0267`). Published in r711. |

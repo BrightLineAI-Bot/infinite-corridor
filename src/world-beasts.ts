@@ -143,6 +143,13 @@ export const WORLD_BEASTS = {
   },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
+// Release 714 (Tim, 2026-11-03: "if you're fighting the stag, and the stalker comes in, or if you're fighting the stalker, and the
+// stag comes in, then [they] should get distracted... play together for a little bit... because their buddies"): when both are
+// within `range` of each other they forget the Wayfarer for `time` s and circle each other, butting and leaping (blows still land on
+// them); then they remember, and it can happen again after `gap` s.
+export const BEAST_PLAY = { range: 9, time: 8, gap: 45, radius: 2.2, spin: 1.7, speed: 6,
+  start: "The Briar Stag and the Stalker see each other, and forget you: they circle, butting and leaping, like old friends at play.",
+  end: "The game ends. The Briar Stag and the Stalker remember you." };
 // Release 708 (Tim, 2026-11-03: "the moth... his chrysalis can appear on the great trees... hanging from a branch and if you attack it
 // enough it will drop and then... it can start harassing you in the tree. But if you go down to the ground, you can just have the
 // normal fight with it"): on a great tree's branch, now and then, while the Moth is free and the Wayfarer's Aperture has opened it,
