@@ -7,15 +7,15 @@
 //
 // A labyrinth is one closed building on the overworld with one door. Inside it is a maze of chambers, each an area of its own,
 // joined by doors (the same level) and ladders (up to a loft, down to a cellar or a subcellar). The chambers are:
-//   hall    rooms split by inner walls (great-buildings.js?v=r724-477fbde1400a's floor plan)
+//   hall    rooms split by inner walls (great-buildings.js?v=r725-06eac3488773's floor plan)
 //   court   an open-air hedge maze: outside, but still inside the labyrinth
 //   cellar  a stone maze under the ground (two levels down is a subcellar)
 //   gaps    a gallery of platforms over a drop: jump the one-tile gaps; fall and you land in a cellar somewhere else
 // The chambers form a tree, so there is one way through. The vault is the chamber farthest from the door, the one real end,
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
-import { hashSeed, rng } from "./random.js?v=r724-477fbde1400a";
-import { BUILDINGS, layFloor, farthest } from "./great-buildings.js?v=r724-477fbde1400a";
+import { hashSeed, rng } from "./random.js?v=r725-06eac3488773";
+import { BUILDINGS, layFloor, farthest } from "./great-buildings.js?v=r725-06eac3488773";
 
 export const LABYRINTHS = {
   version: 1,

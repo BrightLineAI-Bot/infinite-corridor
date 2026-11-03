@@ -1,10 +1,10 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { SEASONS } from "./seasons.js?v=r724-477fbde1400a";
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r724-477fbde1400a";
-import { TREES } from "./trees.js?v=r724-477fbde1400a";
-import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.js?v=r724-477fbde1400a";
+import { SEASONS } from "./seasons.js?v=r725-06eac3488773";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r725-06eac3488773";
+import { TREES } from "./trees.js?v=r725-06eac3488773";
+import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.js?v=r725-06eac3488773";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -311,7 +311,7 @@ export function thornGlow(ctx, t, x, y, s, tiles, w) {
     const x0 = dx > 0 ? px + s : px, y0 = dy > 0 ? py + s : py, g = dx ? ctx.createLinearGradient(x0, 0, x0 - dx * s * .6, 0) : ctx.createLinearGradient(0, y0, 0, y0 - dy * s * .6);
     g.addColorStop(0, "rgba(255,110,30,.42)"); g.addColorStop(1, "rgba(255,110,30,0)"); ctx.fillStyle = g; ctx.fillRect(px, py, s + .5, s + .5); }
 }
-// Release r724-477fbde1400a: the world beasts' domains (domain-looks.ts). Ground, floor and strewn ground are painted from each domain's
+// Release 724: the world beasts' domains (domain-looks.ts). Ground, floor and strewn ground are painted from each domain's
 // colours; landmarks by their shape; the hazard in its melt colours with a crust toward the ground and a glow onto it.
 for (const id of Object.keys(DOMAIN_LOOKS)) {
   const L = DOMAIN_LOOKS[id], K = domainKinds(id), [g0, g1, speck, seam] = L.ground, [f0, f1, fl] = L.floorTone, [s0, s1] = L.scatter;

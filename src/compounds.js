@@ -12,9 +12,9 @@
 // wing with an outer door has a courtyard door: you go in, up its ladders and out onto the wall walk, across it, and down
 // through another wing's hatch and floors to reach the courtyard, and from the courtyard the tower climbs to the boss and the
 // treasure room (and, sometimes, the tower's own roof). Everything is pinned per section (`atlas.compoundVersion`).
-import { hashSeed } from "./random.js?v=r724-477fbde1400a";
-import { BUILDINGS, layFloor, farthest, addHoles } from "./great-buildings.js?v=r724-477fbde1400a";
-import { canStep } from "./landscape.js?v=r724-477fbde1400a";
+import { hashSeed } from "./random.js?v=r725-06eac3488773";
+import { BUILDINGS, layFloor, farthest, addHoles } from "./great-buildings.js?v=r725-06eac3488773";
+import { canStep } from "./landscape.js?v=r725-06eac3488773";
 
 export const COMPOUNDS = {
   version: 1,

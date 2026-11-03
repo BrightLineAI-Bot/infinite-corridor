@@ -12,10 +12,10 @@
 // The Thornglass Caldera (the Questing Beast's): black basalt round a smooth fighting floor, ringed by crystals as tall as towers
 // that have burst out of the rock, with a river of lava beyond them crossed by four causeways, one to each gate, and lava pools
 // in the corners. Nothing lives there but its beast.
-import { hashSeed } from "./random.js?v=r724-477fbde1400a";
-import { FAR_DOMAINS } from "./far-realms.js?v=r724-477fbde1400a";
-import { valueNoise } from "./landscape.js?v=r724-477fbde1400a";
-import { DOMAIN_LOOKS, domainKinds } from "./domain-looks.js?v=r724-477fbde1400a";
+import { hashSeed } from "./random.js?v=r725-06eac3488773";
+import { FAR_DOMAINS } from "./far-realms.js?v=r725-06eac3488773";
+import { valueNoise } from "./landscape.js?v=r725-06eac3488773";
+import { DOMAIN_LOOKS, domainKinds } from "./domain-looks.js?v=r725-06eac3488773";
 
 export const THORNGLASS = {
   floor: 7, // radius of the smooth fighting floor
@@ -71,7 +71,7 @@ function buildThornglass(map, key) {
   }
 }
 
-// Release r724-477fbde1400a: the world beasts' domains, one plan in each one's dress (domain-looks.ts): a fighting floor, a ring of landmark
+// Release 724: the world beasts' domains, one plan in each one's dress (domain-looks.ts): a fighting floor, a ring of landmark
 // clusters (each with a tower) and a few beyond, a hazard in a ring, rivers and pools beyond (or a sea past `sea`), causeways to
 // the gates kept clear, strewn ground round the landmarks; then any open ground cut off from the floor is bridged back.
 function buildArena(map, key, id) {
