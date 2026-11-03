@@ -1,5 +1,6 @@
 import { mealLure } from "./meals.ts";
 import { ensureDragonLava } from "./crimson-dragon.ts";
+import { ensureFarQuests } from "./far-realms.ts";
 import { ASTRAL_PROFILE } from "./astral-worm.ts";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
@@ -464,6 +465,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.
   ensureVoidScars(save, normalizeScarHistory ? undefined : null);
   ensureDragonLava(save); // release 709: the Crimson Tyrant's lava
+  ensureFarQuests(save); // release 716: the quests to the far civilisations
   return save;
 }
 
