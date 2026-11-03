@@ -95,3 +95,20 @@ export function drawMothEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
   }
   ctx.restore();
 }
+
+// Release 708: its chrysalis, hanging by a silk thread from a great tree's branch, swaying; the seams glow brighter as it is hurt.
+export function drawMothChrysalis(ctx, q, now = 0) {
+  const { k, b, u, e } = q, reduce = !!e.reduceMotion, t = now / 1000, hurt = 1 - Math.max(0, Math.min(1, (Number(e.hp) || 0) / Math.max(1, Number(e.maxHp) || 1)));
+  const sway = reduce ? 0 : Math.sin(t * 1.3) * .08 + (e.hitFlash > 0 ? Math.sin(t * 40) * .1 : 0), top = b - u * 1.55, len = u * .55;
+  ctx.save(); ctx.translate(k, top); ctx.rotate(sway);
+  ctx.strokeStyle = "rgba(230,224,210,.7)"; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.moveTo(0, -u * .2); ctx.lineTo(0, len * .2); ctx.stroke(); // the silk
+  ctx.fillStyle = "#3a2c1e"; ctx.fillRect(-u * .18, -u * .26, u * .36, u * .07); // the branch it hangs from
+  const cy = len * .2 + u * .42, g = ctx.createRadialGradient(-u * .07, cy - u * .2, u * .03, 0, cy, u * .45); g.addColorStop(0, "#a49e94"); g.addColorStop(.6, "#6a645c"); g.addColorStop(1, "#2a2420");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, len * .2); ctx.bezierCurveTo(u * .26, cy - u * .3, u * .26, cy + u * .25, 0, cy + u * .45); ctx.bezierCurveTo(-u * .26, cy + u * .25, -u * .26, cy - u * .3, 0, len * .2); ctx.fill(); ctx.strokeStyle = "#1a1612"; ctx.lineWidth = Math.max(1, u * .014); ctx.stroke();
+  const glow = (reduce ? .7 : .55 + .35 * Math.sin(t * (2 + hurt * 6))) * (.75 + hurt * .25);
+  ctx.strokeStyle = `rgba(255,150,60,${glow})`; ctx.lineWidth = Math.max(1, u * (.012 + hurt * .012));
+  for (let i = 0; i < 5; i++) { const y0 = cy - u * .28 + i * u * .14, w = u * (.15 - Math.abs(i - 2) * .025); ctx.beginPath(); ctx.moveTo(-w, y0); ctx.lineTo(-w * .3, y0 + u * .035); ctx.lineTo(w * .3, y0 - u * .015); ctx.lineTo(w, y0 + u * .03); ctx.stroke(); }
+  if (hurt > .5) { ctx.fillStyle = `rgba(255,226,176,${(hurt - .5) * 1.4})`; ctx.beginPath(); ctx.ellipse(0, cy, u * .05, u * .12, 0, 0, TAU); ctx.fill(); } // the moth's ember eyes behind the cracks
+  if (!reduce) { ctx.fillStyle = "rgba(160,152,142,.5)"; for (let i = 0; i < 3; i++) { const ph = (t * .5 + i / 3) % 1; ctx.beginPath(); ctx.arc(Math.sin(i * 2.4) * u * .15, cy + u * .45 + ph * u * .9, u * .012, 0, TAU); ctx.fill(); } } // ash sifting down
+  ctx.restore();
+}

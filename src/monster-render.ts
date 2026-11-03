@@ -9,7 +9,7 @@ import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlob
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.ts";
 import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.ts";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS } from "./ashen-moth-render.ts";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.ts";
 import { ASTRAL, astralBeamAnchors } from "./astral-worm.ts";
 
 import { liftAt, LIFT_PER_LEVEL } from "./landscape.ts";
@@ -78,6 +78,7 @@ const BODY = {
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
+  mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   astralWorm(ctx,q) { const a=q.e.astral;
     // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.
     if(a?.form==='flight'){
@@ -928,7 +929,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth") return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis") return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   const flip = ["astralWorm","astralMirage"].includes(e.kind)&&e.astral?.facingX ? (e.astral.facingX<0?-1:1) : e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);

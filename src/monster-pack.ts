@@ -384,7 +384,13 @@ export const MONSTER_PACK = {
     attacks: ["stagGore", "stagCharge", "stagRoots", "stagThorns", "stagLeap", "stagCage", "stagStomp", "stagHunt", "stagGrove", "stagMend", "stagBirds", "stagMire"], bossAttacks: [],
     palette: ["#5a4632", "#1c140c", "#9cff6a", "#e6ffd0"], render: "briarStag", tags: ["beast", "elder", "forest", "thorn"],
     lore: "A stag as big as a cart-horse, its hide bark and its crown a thicket of antler and bramble hung with pale blossom. It hooks and tosses with that crown, rushes in lines that leave brambles behind it, sends roots running through the ground and closes them round you in rings, shakes thorns from its antlers, and leaps over the canopy to come down on you. When it bellows, its crown burns green and the forest rises wherever it runs.",
-  },  ashenMoth: {
+  },  mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
+    id: "mothChrysalis", name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true,
+    stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",
+    attacks: [], bossAttacks: [], palette: ["#6a645c", "#2a2420", "#ff8a2a", "#ffe2b0"], render: "mothChrysalis", tags: ["fire", "dormant"],
+    lore: "A chrysalis of grey ash as long as a man, hanging from a branch of a great tree, warm, its seams glowing. Break it and what is inside comes out early, and angry.",
+  },
+  ashenMoth: {
     id: "ashenMoth", name: "The Ashen Moth", epithet: "The Lantern in the Smoke", unique: true,
     stats: [280, 16, 0], form: { scale: 1.6 }, sizeClass: "large", movement: "hover", brain: "orbit",
     attacks: ["mothGust", "mothDust", "mothDive", "mothSpiral", "mothSwarm", "mothCocoon", "mothKindle"], bossAttacks: ["sweepBeam"],
@@ -2623,6 +2629,7 @@ function patrolDungeon(e, s, w) {
 
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
+  if (e.kind === "mothChrysalis") { e.facingX = 1; return; } // release 708: it only hangs there
   if(e.kind === "voidWalker" && e.astralAllyOf && !w.astralAllyContext) { updateAstralWalkerAllyFixture(e,w.enemies.find(q=>q.id===e.astralAllyOf),w); return; }
   const def = packDefinition(e);
   if (!def) return;
