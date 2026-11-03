@@ -2798,6 +2798,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 714: the far realms (the Giants' Reach) and two old friends — 2026-11-03
+
+Tim, 2026-11-03: "I'm gonna be pushing the world pretty far... at least a 1000... make sure that there's still content out in the far reaches... realms where the monsters are all really big..." (and a list of realms to follow: townsfolk who are monsters, giant townsfolk, blob pockets, a lightning-giant civilisation, a crystal civilisation, stag groves with moths, the Astral Worm's inky homeland, great mushrooms); and "if you're fighting the stag, and the stalker comes in... they should play together for a little bit because their buddies".
+
+**CODE:** `src/far-realms.ts`. `FAR_REALMS` (`start` 1000 sections straight-line from Ember Refuge, realm cells `cell` 40 sections across with noise-warped borders): each cell rolls one number `u` on its own hash, and `bands[version]` gives a realm to a range of `u`, always carved from what earlier versions left ordinary, so a cell keeps its realm in every later version. `farRealmAt(seed, rx, ry, version)` returns `{ type, id, name, arrive }` or null. The Game reads it at section load (`this.farRealm`) with the version the atlas pinned (`atlas[key].farVersion`, written only for sections first seen now); arrival writes a journal entry per realm cell and a message. Realm 1, `giants` (u in [0, .18)): `giantify` scales every ordinary overworld creature by `FAR_GIANTS` (size, body, health, damage, speed) in `createEnemyFromSpawn`; world beasts, the Questing Beast, bosses, ambient creatures and the Stalker are untouched. The play: `BEAST_PLAY` in `src/world-beasts.ts` and `Game.beastPlay`: a Briar Stag and the Stalker within `range` of each other set `playing`, drop their attacks, and circle a shared point for `time` s (the enemy loop skips their AI while `playing`; blows still land), then wait `gap` s. Tests: `tests/far-realms-714.test.ts`.
+
+**BOUNDARY:** Nothing changes within 1000 sections, nor on ground seen before this release (no `farVersion`). Dungeons are untouched. The play only pauses their minds; their health, poise and the hunt are their own.
+
 ## Release 712: two threads of a later layer — 2026-11-03
 
 The daily narrative pass (Tim: "continue doing your narrative pass"). Two threads, each six pieces and an ending, in the voice of the narrative bible: the Corridor keeps what is kept and read.
