@@ -2698,7 +2698,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 
 Tim, 2026-11-03: "You can continue doing your narrative passes."
 
-**CODE:** `src/threads.ts` `THREADS.tollKeys` (band middle, relic `key`, `wave: 3`, six pieces and an ending). A third roll, `thirdThreadIn` (`THREAD_RULES.third`, its own hash keys `threads:third:v1` and `threads:third:which:v1`), is made only when neither the first-ten roll nor the wave 2 roll placed a thread; the wave 2 roll now draws only wave 2 threads, as it did before a wave 3 existed. The key is drawn in `renderer.ts` `drawThreadRelic`. Tests: `tests/threads-later.test.ts` (every first-ten and every wave 2 crossing keeps its thread). `docs/narrative-bible.md` lists it.
+**CODE:** `src/threads.ts` `THREADS.tollKeys` (band middle, relic `key`, `wave: 3`, six pieces and an ending). A third roll, `thirdThreadIn` (`THREAD_RULES.third`, its own hash keys `threads:third:v1` and `threads:third:which:v1`), is made only when neither the first-ten roll nor the wave 2 roll placed a thread; the wave 2 roll now draws only wave 2 threads, as it did before a wave 3 existed. The key is drawn in `renderer.ts` `drawThreadRelic`. Tests: `tests/threads-later.test.ts` (every first-ten and every wave 2 crossing keeps its thread). `docs/narrative-bible.md` lists it. Also: the Ashen Moth's Burning Dive (`monster-pack.ts`) now travels at most its lane's `rayLength`, so it never ends inside a wall (reviewer note on release 706; test in `tests/ashen-moth-706.test.ts`).
 
 **BOUNDARY:** No crossing changes the thread it held. Saves record found pieces by thread id (additive). The Arcana tab lists every thread in `THREAD_ORDER`, so it shows this one, found pieces only.
 
