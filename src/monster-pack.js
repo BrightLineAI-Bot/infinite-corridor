@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r703-af870d78ba3b";
-import { hashSeed } from "./random.js?v=r703-af870d78ba3b";
-import { updateAstralActor } from "./astral-worm.js?v=r703-af870d78ba3b";
+import { stageOneBeastReference } from "./stages.js?v=r705-fa47a5177092";
+import { hashSeed } from "./random.js?v=r705-fa47a5177092";
+import { updateAstralActor } from "./astral-worm.js?v=r705-fa47a5177092";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -116,6 +116,16 @@ export const ATTACK_MODULES = {
   giantMenace: { id: "giantMenace", name: "Menacing Slam", range: [0, 9], cooldown: 8, windup: .5, active: 30, recover: .5, damage: 1.5, tags: ["melee", "ground"], text: "It raises its club and stalks you with it held high. Come within reach and it slams it down (or fires a short bolt from its chest), and may do it again; keep away and it fires two quick chest beams after you before it lowers the club." },
   giantUpswing: { id: "giantUpswing", name: "Charging Upswing", range: [0, 8], cooldown: 7, windup: .35, active: 30, recover: .5, damage: 1.2, tags: ["melee", "charge"], text: "It runs at you and swings the club up. Sometimes it leaps from the swing: from the air it hurls a barrage of bolts or dashes at you in a crackle of arcs, then lands, or comes down in a slam onto where you stand." },
   giantElectrify: { id: "giantElectrify", name: "Electrify", range: [0, 14], cooldown: 18, windup: 1.6, recover: .3, damage: .7, tags: ["buff", "lightning"], text: "It raises the club to the sky and lightning strikes it. Wrapped in a crackling haze it moves faster, and bolts drop around it." },
+  // The Briar Stag's kit (release 705; Tim, 2026-11-03: "more world bosses... similar attack and aggressiveness and strength and
+  // varied amount of attacks... so they're pretty chaotic"): a stag of bark and bramble the size of a cart-horse, from the forests.
+  stagGore: { id: "stagGore", name: "Antler Hooks", range: [0, 3.6], cooldown: 3.4, windup: .45, active: 1.3, recover: .45, damage: 1.1, tags: ["melee", "combo"], text: "Two hooking sweeps of its antlers, each turning after you, then a toss that throws you back." },
+  stagCharge: { id: "stagCharge", name: "Bramble Rush", range: [3, 14], cooldown: 7, windup: .8, active: 6, recover: .6, damage: 1.4, tags: ["charge"], text: "It lowers its crown and rushes in a straight line, two or three times, turning after you between rushes. Brambles spring up along its track: they slow and scratch." },
+  stagRoots: { id: "stagRoots", name: "Running Roots", range: [0, 11], cooldown: 6, windup: .6, active: 1.6, recover: .5, damage: 1, tags: ["ground"], text: "It stamps, and three lines of roots run out from it toward you, bursting from the ground spike by spike. Step out of their lines." },
+  stagThorns: { id: "stagThorns", name: "Thorn Volley", range: [2, 12], cooldown: 6.5, windup: .55, active: 1.2, recover: .45, damage: .55, tags: ["ranged"], text: "It shakes its antlers and fans of thorns fly from them, three volleys, each turned a little from the last." },
+  stagLeap: { id: "stagLeap", name: "Canopy Leap", range: [2.5, 11], cooldown: 8, windup: .5, active: 4, recover: .7, damage: 1.5, jumpable: true, tags: ["ground", "leap"], text: "It springs high out of reach and its shadow follows you; then it falls where its shadow is. Jump the ring the landing throws out; roots burst around it." },
+  stagCage: { id: "stagCage", name: "Bramble Cage", range: [0, 9], cooldown: 11, windup: .5, active: 2.2, recover: .5, damage: .9, tags: ["ground", "control"], text: "Rings of roots close in around you, the outer first, then the next, then the last. Get out through the gaps, or before the outer ring breaks." },
+  stagStomp: { id: "stagStomp", name: "Rearing Stomp", range: [0, 4.4], cooldown: 4.2, windup: .65, active: .7, recover: .5, damage: 1.15, jumpable: true, tags: ["ground", "melee"], text: "It rears and brings its forehooves down twice; each stamp throws out a ring. Jump them." },
+  stagHunt: { id: "stagHunt", name: "The Wild Hunt", range: [0, 14], cooldown: 20, windup: 1.3, recover: .3, damage: .7, tags: ["buff"], text: "It bellows, throwing you back, and its crown catches green fire. For a while it runs faster, brambles spring up where it treads and roots burst around it." },
   // The Nanobot Knight's kit (release 245, Tim 2026-10-19: black with red accents; teleports or dissolves into mist;
   // physical hits scatter it unless elemental, a spell or an Echo-glyphed weapon; Abyss Watcher sword slides; an arm
   // laser cannon; swords falling from the sky; homing orbs that
@@ -351,6 +361,14 @@ export const MONSTER_PACK = {
     palette: ["#5d6670", "#1d2229", "#7fd6ff", "#eafaff"], render: "lightningGiant", tags: ["construct", "elder", "lightning"],
     lore: "A robot as tall as a house, with a club of iron and copper and Tesla coils on its shoulders. Lightning arcs from it to whatever it hunts. It knocks you flat with a shock, swings and slams its club, and when it calls the sky down onto itself it runs hot and fast while bolts fall all around it.",
   },
+  briarStag: {
+    id: "briarStag", name: "The Briar Stag", epithet: "The Forest That Charges", unique: true,
+    stats: [320, 17, 0], form: { scale: 1.75 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: ["stagGore", "stagCharge", "stagRoots", "stagThorns", "stagLeap", "stagCage", "stagStomp", "stagHunt"], bossAttacks: [],
+    palette: ["#5a4632", "#1c140c", "#9cff6a", "#e6ffd0"], render: "briarStag", tags: ["beast", "elder", "forest", "thorn"],
+    lore: "A stag as big as a cart-horse, its hide bark and its crown a thicket of antler and bramble hung with pale blossom. It hooks and tosses with that crown, rushes in lines that leave brambles behind it, sends roots running through the ground and closes them round you in rings, shakes thorns from its antlers, and leaps over the canopy to come down on you. When it bellows, its crown burns green and the forest rises wherever it runs.",
+  },
+
   // Unique fixture entries only; natural hunts await final r251/Gate lifecycle integration.
   astralWorm: {
     id: "astralWorm", noEcho: true, name: "The Astral Worm", epithet: "The Ink That Remembers Shapes", unique: true,
@@ -498,7 +516,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
-  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; // release 245: no pose survives a reload
+  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; enemy.stagPose = null; enemy.stagAir = 0; enemy.stagHunt = 0; // release 705 // release 245: no pose survives a reload
   return enemy;
 }
 
@@ -523,7 +541,7 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
 // damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
-export const HIT_FOOTPRINT = { pad: { twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
+export const HIT_FOOTPRINT = { pad: { briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
 export function effectFootprint(f) {
   if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
@@ -664,6 +682,18 @@ export const GIANT = {
   chargeRun: 6.5, upswingCharge: .9 /* release 641: was a second chargeTime that overrode the 8 s electrified spell above */, upswingReach: 1.8, upswingArc: 130, upswingTime: .3, jumpChance: .55, jumpHeight: 2, jumpRise: .35,
   barrageBolts: 5, barrageEvery: .1, barrageSpread: 40, airDashSpeed: 9, airDashTime: .35, airArcReach: 2.6, slamLandChance: .5, landWarn: .45, landRadius: 1.6, landFall: .25,
 };
+// The Briar Stag (release 705). Balance as data. Lengths in tiles, times in seconds.
+export const STAG = {
+  goreReach: 1.9, goreArc: 140, goreCuts: 3, goreGap: .34, goreLunge: .7, tossReach: 2.4, tossArc: 110, tossPush: 1.6,
+  chargeSpeed: 10, chargeTime: .7, charges: [2, 3], chargeTurn: .45, chargeHit: .6,
+  briarEvery: .12, briarLife: 3.5, briarRadius: .6, briarSlow: .55, briarTick: .7, briarBite: .3,
+  rootLines: 3, rootSpread: 26, rootStep: .95, rootSteps: 8, rootEvery: .09, rootWarn: .55, rootRadius: .55, rootShow: .45,
+  thornVolleys: 3, thornShots: 6, thornArc: 70, thornTwist: 11, thornSpeed: 8.5, thornLife: 1.4, thornRadius: .22, thornEvery: .38,
+  leapRise: .45, leapHang: 1.1, leapTrack: 9, leapFall: .45, leapHeight: 3, leapRadius: 1.8, leapRing: 4.4, leapSpikes: 9, leapSpikeRing: 2.6,
+  cageRings: [3.2, 2.2, 1.2], cageSpikes: [12, 9, 6], cageFirst: 1, cageEvery: .45, cageRadius: .5,
+  stompRadius: 1.7, stompRing: 4, stompGap: .55,
+  hunt: { time: 9, speed: 1.45, push: 2.4, pushRadius: 6, briarEvery: .4, spikeEvery: .7, spikeRing: [1.4, 4], spikeWarn: .6, spikeRadius: .6, spikeShare: .7 },
+};
 export const KNIGHT = {
   slides: 3, slideTime: .28, slideSpeed: 11, slideReach: 2.3, slideArc: 120, slidePause: .2,
   cannonTrack: 1.8, cannonLength: 11, cannonTick: .3, cannonWidth: .5,
@@ -705,6 +735,7 @@ export const BOSS_POISE = {
   default: { hits: [8, 12, 18], guard: 9, breakTime: 2.4 },
   mountainTurtle: { hits: [14, 20, 28], guard: 10, breakTime: 2.6 },
   lightningGiant: { hits: [14, 20, 28], guard: 10, breakTime: 2.6 },
+  briarStag: { hits: [12, 17, 24], guard: 9, breakTime: 2.4 },
   nanobotKnight: { hits: [10, 15, 22], guard: 9, breakTime: 2.4 },
   voidWalker: { hits: [12, 17, 24], guard: 10, breakTime: 2.4 },
   astralWorm: { hits: [5, 7, 10], guard: 8, breakTime: 2.8 },
@@ -983,7 +1014,7 @@ function endAttack(e, s) {
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
   e.voidDashing = false; e.voidCharging = false;
-  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false;
+  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
@@ -996,6 +1027,14 @@ const START = {
   giantElectrify(e, s) { s.tele = { type: "brace" }; e.giantPose = "raise"; },
   giantMenace(e, s) { s.tele = { type: "brace" }; e.giantPose = "menace"; },
   giantUpswing(e, s) { s.tele = { type: "brace" }; e.giantPose = "chargeLow"; },
+  stagGore(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + STAG.goreReach, arc: STAG.goreArc }; e.stagPose = "lower"; s.data.cut = 0; s.data.next = 0; },
+  stagCharge(e, s, w) { const n = STAG.charges[hashSeed(`${e.id}:${s.seq}:rushes`) % STAG.charges.length]; Object.assign(s.data, { rushes: n, rush: 0, mode: "turn", left: 0 }); s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, STAG.chargeSpeed * STAG.chargeTime), width: bodyRadius(e) * 1.2 }; e.stagPose = "lower"; },
+  stagRoots(e, s) { s.tele = { type: "brace" }; e.stagPose = "rear"; },
+  stagThorns(e, s) { s.tele = { type: "brace" }; e.stagPose = "shake"; s.data.volley = 0; s.data.next = 0; },
+  stagLeap(e, s) { s.tele = { type: "brace" }; e.stagPose = "crouch"; },
+  stagCage(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: STAG.cageRings[0], total: ATTACK_MODULES.stagCage.windup }; e.stagPose = "rear"; },
+  stagStomp(e, s) { s.tele = { type: "circle", x: e.x, y: e.y, radius: bodyRadius(e) + STAG.stompRadius }; e.stagPose = "rear"; s.data.stamps = 0; },
+  stagHunt(e, s) { s.tele = { type: "brace" }; e.stagPose = "bellow"; },
   voidHand(e, s, w) { voidBasicStart(e, s, w, "hand"); },
   voidClaw(e, s, w) { voidBasicStart(e, s, w, "claw"); },
   voidSword(e, s, w) { voidBasicStart(e, s, w, "sword"); },
@@ -1156,12 +1195,125 @@ function giantPassive(e, w) {
     w.addEffect({ kind: "giantSky", owner: e.id, x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r, radius: GIANT.stormRadius, arming: GIANT.stormWarn, armTotal: GIANT.stormWarn, life: GIANT.stormLife, total: GIANT.stormLife, damage: damageOf(e, "giantElectrify"), storm: true });
   }
 }
+// The Briar Stag (release 705): brambles it leaves, roots it raises, and the Wild Hunt (stagHunt), ticked every frame.
+function stagBriar(e, w) { w.addEffect({ kind: "briar", owner: e.id, x: e.x, y: e.y, radius: STAG.briarRadius, arming: 0, life: STAG.briarLife, total: STAG.briarLife, damage: Math.max(1, Math.ceil(e.damage * STAG.briarBite)) }); }
+function stagPassive(e, w) {
+  if (!(e.stagHunt > 0)) return;
+  const H = STAG.hunt; e.stagHunt = Math.max(0, e.stagHunt - w.dt);
+  e.stagTrail = (Number(e.stagTrail) || 0) - w.dt; if (e.stagTrail <= 0) { e.stagTrail = H.briarEvery; stagBriar(e, w); }
+  e.stagSpikeClock = (Number(e.stagSpikeClock) || 0) - w.dt;
+  if (e.stagSpikeClock <= 0) {
+    e.stagSpikeClock = H.spikeEvery; const n = e.stagSpikes = (Number(e.stagSpikes) || 0) + 1, h = hashSeed(`${e.id}:stag-spike:${n}`), a = (h % 628) / 100, r = H.spikeRing[0] + (H.spikeRing[1] - H.spikeRing[0]) * ((h >>> 10) % 100) / 100;
+    w.addEffect({ kind: "stagSpike", owner: e.id, x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r, radius: H.spikeRadius, arming: H.spikeWarn, armTotal: H.spikeWarn, life: .45, total: .45, damage: Math.max(1, Math.ceil(e.damage * H.spikeShare)) });
+  }
+}
 function resolveMelee(e, s, w, attackId, test) {
   const p = center(w.player);
   if (test(p) && w.los(e, w.player) && w.hurt(e, damageOf(e, attackId), { jumpable: false, source: attackId }) && e.kind === "lightningGiant" && e.giantCharged > 0) w.shockHit?.();
 }
 
 const RUN = {
+  stagGore(e, s, w) {
+    const A = ATTACK_MODULES.stagGore, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt;
+    if (d.next <= 0 && d.cut < STAG.goreCuts) {
+      const p = center(w.player), toss = d.cut === STAG.goreCuts - 1; d.aim = unit(p.x - e.x, p.y - e.y); e.facingX = d.aim.x >= 0 ? 1 : -1;
+      const lunge = Math.min(STAG.goreLunge, Math.max(0, distance(p, e) - bodyRadius(e) - 1)); if (lunge > 0 && !w.move(e, d.aim.x * lunge, d.aim.y * lunge)) w.detour?.(e, lunge);
+      const reach = bodyRadius(e) + (toss ? STAG.tossReach : STAG.goreReach), arc = toss ? STAG.tossArc : STAG.goreArc;
+      s.tele = { type: "arc", aim: d.aim, radius: reach, arc }; e.stagPose = toss ? "toss" : d.cut % 2 ? "hookR" : "hookL";
+      const q = center(w.player); if (inArc(e, q, d.aim, reach, arc) && w.los(e, w.player) && w.hurt(e, damageOf(e, "stagGore"), { jumpable: false, source: "stagGore" }) && toss) w.push?.(e, STAG.tossPush, reach + 1);
+      d.cut++; d.next = STAG.goreGap;
+    }
+    if (d.cut >= STAG.goreCuts && d.next <= 0 || s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  stagCharge(e, s, w) {
+    const A = ATTACK_MODULES.stagCharge, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) { Object.assign(d, { mode: "run", left: STAG.chargeTime, hit: false, drop: 0 }); s.tele = null; e.stagPose = "charge"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    if (d.mode === "turn") { // between rushes it wheels round after you, the lane showing where it will go
+      d.left -= w.dt; const p = center(w.player); d.aim = unit(p.x - e.x, p.y - e.y); e.facingX = d.aim.x >= 0 ? 1 : -1;
+      s.tele = { type: "lane", aim: d.aim, length: rayLength(w, e, d.aim, STAG.chargeSpeed * STAG.chargeTime), width: bodyRadius(e) * 1.2 };
+      if (d.left <= 0) { Object.assign(d, { mode: "run", left: STAG.chargeTime, hit: false }); s.tele = null; e.stagPose = "charge"; }
+    } else {
+      const step = STAG.chargeSpeed * w.dt, moved = w.move(e, d.aim.x * step, d.aim.y * step); d.left -= w.dt;
+      if (!d.hit && distance(center(w.player), e) <= bodyRadius(e) + STAG.chargeHit) { d.hit = true; w.hurt(e, damageOf(e, "stagCharge"), { jumpable: false, source: "stagCharge" }); }
+      d.drop -= w.dt; if (d.drop <= 0) { d.drop = STAG.briarEvery; stagBriar(e, w); }
+      if (!moved || d.left <= 0) { d.rush++; if (d.rush >= d.rushes) { s.tele = null; e.stagPose = null; toPhase(s, "recover", A.recover); return; } Object.assign(d, { mode: "turn", left: STAG.chargeTurn }); e.stagPose = "lower"; }
+    }
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  stagRoots(e, s, w) {
+    const A = ATTACK_MODULES.stagRoots;
+    if (s.phase === "windup") {
+      if (s.t > 0) return;
+      const p = center(w.player), a0 = Math.atan2(p.y - e.y, p.x - e.x), spread = STAG.rootSpread * Math.PI / 180, start = bodyRadius(e) + .4;
+      for (let i = 0; i < STAG.rootLines; i++) { const a = a0 + (STAG.rootLines > 1 ? (i / (STAG.rootLines - 1) - .5) * spread * (STAG.rootLines - 1) : 0), dir = { x: Math.cos(a), y: Math.sin(a) };
+        let steps = 0; for (let k = 0; k < STAG.rootSteps; k++) { const x = e.x + dir.x * (start + k * STAG.rootStep), y = e.y + dir.y * (start + k * STAG.rootStep); if (w.tileOpen && !w.tileOpen(x + .5, y + .5)) break; steps++; }
+        if (steps) w.addEffect({ kind: "rootLine", owner: e.id, x: e.x + dir.x * start, y: e.y + dir.y * start, dx: dir.x, dy: dir.y, steps, length: steps * STAG.rootStep, step: STAG.rootStep, every: STAG.rootEvery, warn: STAG.rootWarn, radius: STAG.rootRadius, burst: -1, arming: 0, life: STAG.rootWarn + steps * STAG.rootEvery + STAG.rootShow, damage: damageOf(e, "stagRoots") }); }
+      e.stagPose = "stamp"; s.tele = null; toPhase(s, "recover", A.recover + .4); return;
+    }
+  },
+  stagThorns(e, s, w) {
+    const A = ATTACK_MODULES.stagThorns, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt;
+    if (d.next <= 0 && d.volley < STAG.thornVolleys) {
+      const p = center(w.player), lift = { x: e.x, y: e.y - .3 }, a0 = Math.atan2(p.y - lift.y, p.x - lift.x) + (d.volley % 2 ? 1 : -1) * STAG.thornTwist * d.volley * Math.PI / 180, arc = STAG.thornArc * Math.PI / 180;
+      for (let i = 0; i < STAG.thornShots; i++) { const a = a0 + (i / (STAG.thornShots - 1) - .5) * arc; w.addEffect({ kind: "thorn", owner: e.id, x: lift.x, y: lift.y, vx: Math.cos(a) * STAG.thornSpeed, vy: Math.sin(a) * STAG.thornSpeed, radius: STAG.thornRadius, arming: 0, life: STAG.thornLife, damage: damageOf(e, "stagThorns") }); }
+      d.volley++; d.next = STAG.thornEvery; e.stagPose = d.volley % 2 ? "shake" : "shakeB";
+    }
+    if (d.volley >= STAG.thornVolleys && d.next <= 0 || s.t <= 0) toPhase(s, "recover", A.recover);
+  },
+  stagLeap(e, s, w) {
+    const A = ATTACK_MODULES.stagLeap, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) { d.stage = "rise"; d.left = STAG.leapRise; e.aloft = true; e.untargetable = true; e.stagPose = "leap"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    const p = center(w.player); d.left -= w.dt;
+    if (d.stage === "rise") { e.stagAir = STAG.leapHeight * (1 - Math.max(0, d.left) / STAG.leapRise); if (d.left <= 0) { d.stage = "hang"; d.left = STAG.leapHang; } return; }
+    if (d.stage === "hang") { // its shadow runs after you
+      e.stagAir = STAG.leapHeight; const dist = distance(p, e), step = Math.min(dist, STAG.leapTrack * w.dt); if (step > .01) w.move(e, (p.x - e.x) / dist * step, (p.y - e.y) / dist * step, { phase: true });
+      s.tele = { type: "circle", x: e.x, y: e.y, radius: STAG.leapRadius };
+      if (d.left <= 0) { d.stage = "fall"; d.left = STAG.leapFall; } return;
+    }
+    if (d.stage === "fall") {
+      e.stagAir = STAG.leapHeight * Math.max(0, d.left) / STAG.leapFall; s.tele = { type: "circle", x: e.x, y: e.y, radius: STAG.leapRadius };
+      if (d.left > 0) return;
+      e.stagAir = 0; e.aloft = false; e.untargetable = false; e.stagPose = "land"; s.tele = null;
+      if (distance(center(w.player), e) <= STAG.leapRadius + .2) w.hurt(e, damageOf(e, "stagLeap"), { jumpable: false, source: "stagLeap" });
+      w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: STAG.leapRing, arming: 0, life: .8, damage: Math.ceil(damageOf(e, "stagLeap") * .6), jumpable: true, stone: true });
+      w.addEffect({ kind: "rootRing", owner: e.id, x: e.x, y: e.y, ring: STAG.leapSpikeRing, length: STAG.leapSpikeRing /* drawn by its own spike warnings, as lanes are */, spikes: STAG.leapSpikes, turn: (hashSeed(`${e.id}:${s.seq}:land`) % 628) / 100, radius: STAG.cageRadius, arming: .35, armTotal: .35, life: .45, total: .45, damage: Math.ceil(damageOf(e, "stagLeap") * .6) });
+      toPhase(s, "recover", A.recover);
+    }
+  },
+  stagCage(e, s, w) {
+    const A = ATTACK_MODULES.stagCage;
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = s.data.target, turn = (hashSeed(`${e.id}:${s.seq}:cage`) % 628) / 100;
+    STAG.cageRings.forEach((ring, i) => { const t = STAG.cageFirst + i * STAG.cageEvery; w.addEffect({ kind: "rootRing", owner: e.id, x: p.x, y: p.y, ring, length: ring, spikes: STAG.cageSpikes[i], turn: turn + i * .4, radius: STAG.cageRadius, arming: t, armTotal: t, life: .45, total: .45, damage: damageOf(e, "stagCage") }); });
+    e.stagPose = "stamp"; s.tele = null; toPhase(s, "recover", A.recover + STAG.cageFirst);
+  },
+  stagStomp(e, s, w) {
+    const A = ATTACK_MODULES.stagStomp, d = s.data;
+    const stamp = () => {
+      if (distance(center(w.player), e) <= bodyRadius(e) + STAG.stompRadius) w.hurt(e, damageOf(e, "stagStomp"), { jumpable: true, source: "stagStomp" });
+      w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: bodyRadius(e) + STAG.stompRing, arming: 0, life: .8, damage: damageOf(e, "stagStomp"), jumpable: true, stone: true });
+      w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: bodyRadius(e) + 1, arming: 0, life: .6, damage: 0 }); d.stamps++; e.stagPose = "stamp";
+    };
+    if (s.phase === "windup") { if (s.t <= 0) { stamp(); d.next = STAG.stompGap; e.stagPose = "rear"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt; if (d.stamps < 2 && d.next <= 0) { stamp(); s.tele = null; }
+    if (s.t <= 0 || d.stamps >= 2 && d.next < -.2) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  stagHunt(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    w.push?.(e, STAG.hunt.push, STAG.hunt.pushRadius);
+    w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: STAG.hunt.pushRadius, arming: 0, life: .6, damage: 0, stone: true });
+    e.stagHunt = STAG.hunt.time; e.stagTrail = 0; e.stagSpikeClock = STAG.hunt.spikeEvery; e.stagPose = null; s.tele = null;
+    toPhase(s, "recover", ATTACK_MODULES.stagHunt.recover);
+  },
   giantArcs(e, s, w) {
     const attack = ATTACK_MODULES.giantArcs;
     if (s.phase === "windup") { if (s.t <= 0) { w.addEffect({ kind: "giantArc", owner: e.id, x: e.x, y: e.y, scale: e.scale, range: GIANT.arcRange, tick: 0, seed: s.seq, life: attack.active, total: attack.active, damage: damageOf(e, "giantArcs") }); s.tele = null; toPhase(s, "active", attack.active); } return; }
@@ -2357,6 +2509,7 @@ export function updatePackMonster(e, w) {
   if (!e.illusion) passiveStillness(e, s, w);
   if (e.kind === "morphingBlob") blobPassive(e, s, w, p, d);
   if (e.kind === "lightningGiant") { giantPassive(e, w); if (giantTraverse(e, s, w)) return; }
+  if (e.kind === "briarStag") stagPassive(e, w); // release 705
   if (e.blobletOf && blobletHome(e, s, w)) return;
   if (e.wormOf && tentacleTurret(e, s, w, p)) return;
   if (e.kind === "tremorWorm" && wormCycle(e, s, w, p)) return;
@@ -2377,7 +2530,7 @@ export function updatePackMonster(e, w) {
     if (e.watched) return;
   }
   // Move according to the brain, then start the best ready attack.
-  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * dt;
+  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * dt;
   const moved = w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   if (!moved && !move.phases) w.detour?.(e, speed);
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
@@ -2841,6 +2994,20 @@ export function tickPackEffects(effects, w) {
     }
     else if (f.kind === "giantSky") { if (!f.detonated) { f.detonated = true; if (f.damage > 0 && distance(p, f) <= f.radius + .3) giantZap(w, w.enemies.find((q) => q.id === f.owner), f.damage, "giantSky"); } }
     else if (f.kind === "orb") { if (f.homing > 0 && f.age <= f.homing) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-(f.turn || 1.5) * w.dt, Math.min((f.turn || 1.5) * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; } /* release 664: a worm tentacle's homing orb */ f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
+    else if (f.kind === "briar") { // release 705: the Briar Stag's brambles slow and scratch while they stand
+      if (distance(p, f) <= f.radius + .1) { w.slow(STAG.briarSlow, .3); if (!(f.nextBite > f.age)) { f.nextBite = f.age + STAG.briarTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "briar", beam: true }); } }
+    } else if (f.kind === "thorn") {
+      const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
+      if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;
+      else if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "stagThorns" }); }
+    } else if (f.kind === "rootLine") { // spike by spike from the stag outward; each spike strikes once as it bursts
+      const due = Math.floor((f.age - f.warn) / f.every);
+      while (f.burst < Math.min(f.steps - 1, due)) { f.burst++; const sx = f.x + f.dx * f.burst * f.step, sy = f.y + f.dy * f.burst * f.step;
+        if (!f.hit && Math.hypot(p.x - sx, p.y - sy) <= f.radius + .3) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "stagRoots" }); } }
+    } else if (f.kind === "rootRing") {
+      if (!f.detonated) { f.detonated = true; const d = distance(p, f), gap = Math.PI * 2 / f.spikes, a = ((Math.atan2(p.y - f.y, p.x - f.x) - f.turn) % gap + gap) % gap, near = Math.min(a, gap - a) * f.ring;
+        if (Math.abs(d - f.ring) <= f.radius + .3 && near <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "rootRing" }); }
+    }
     else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; if (w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }) && f.lightning) w.shockHit?.(); } }
     else if (!f.detonated) { f.detonated = true; f.life ??= .4; if (f.damage > 0 && distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: !!f.jumpable, source: f.kind }); }
     f.life = (f.life ?? .4) - w.dt;

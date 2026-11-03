@@ -8,8 +8,8 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r703-af870d78ba3b";
-import { daisDue } from "./listener-arena.js?v=r703-af870d78ba3b";
+import { hashSeed, rng } from "./random.js?v=r705-fa47a5177092";
+import { daisDue } from "./listener-arena.js?v=r705-fa47a5177092";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -56,10 +56,15 @@ export function ensureFarArray(save) {
     offer: (Array.isArray(f.offer) ? f.offer : []).filter((id) => BOONS[id]), ending: ["close", "open"].includes(f.ending) ? f.ending : null,
     endingPending: !!f.endingPending, history: (Array.isArray(f.history) ? f.history : []).slice(-12), activeRun: f.activeRun && typeof f.activeRun === "object" ? f.activeRun : null,
     quiet, relaysAt, mouth: Math.max(0, Math.floor(Number(f.mouth) || 0)), // release 357
+    toNext: Math.max(0, Math.floor(Number(f.toNext) || 0)), // Listener kills since the Gate last climbed (a journey from before counts from its current tier)
   };
   return save.farArray;
 }
 export const piecesNeeded = (gate) => FAR.piecesBase + gate;
+// Tim (2026-11-02): "you beat the listener one time... you open the first gate, and then you beat the listener 2 additional times...
+// it opens the second gate, and then you have to beat the listener 3 additional times to unlock the third gate, and then... 4
+// additional times to [unlock] the fourth gate and so on." The Gate at tier `gate` climbs after `gate` more Listener kills.
+export const killsToClimb = (gate) => Math.max(1, Math.floor(Number(gate) || 1));
 export const gateOpen = (f) => f.pieces >= piecesNeeded(f.gate);
 // How the relays were answered: restore share 0..1 (0.5 when none were answered).
 export function relayLean(save) {
@@ -156,10 +161,12 @@ export function guardianFelled(save) {
 // The Listener fell: the Gate ascends and three boons are offered; the first time, the ending choice too.
 export function listenerFelled(save) {
   const f = ensureFarArray(save), r = rng(`${save.seed}:far-array:boons:${f.gate}:${f.listeners}`), ids = Object.keys(BOONS).sort(() => r() - .5);
-  f.listeners++; f.history.push({ run: f.runs, gate: f.gate, won: "listener" }); f.gate++; f.pieces = 0; f.activeRun = null;
+  f.listeners++; f.history.push({ run: f.runs, gate: f.gate, won: "listener" }); f.pieces = 0; f.activeRun = null;
+  f.toNext = (f.toNext || 0) + 1; const need = killsToClimb(f.gate), climbed = f.toNext >= need; if (climbed) { f.gate++; f.toNext = 0; }
   f.offer = ids.slice(0, 3); if (f.listeners === 1 && !f.ending) f.endingPending = true;
   f.quiet = true; f.relaysAt = answeredRelays(save); // release 357: it moves on
-  return `The Listener falls silent. The Gate climbs to tier ${f.gate}. Choose a boon in the Journal's Far Gate. The Mouth goes quiet: answer ${LISTENER_RETURN.returnRelays} more relays and the line will say where it went.`;
+  const gateLine = climbed ? `The Gate climbs to tier ${f.gate}.` : `The Gate holds at tier ${f.gate}: fell the Listener ${need - f.toNext} more time${need - f.toNext === 1 ? "" : "s"} to climb to tier ${f.gate + 1}.`;
+  return `The Listener falls silent. ${gateLine} Choose a boon in the Journal's Far Gate. The Mouth goes quiet: answer ${LISTENER_RETURN.returnRelays} more relays and the line will say where it went.`;
 }
 // How many more relays must answer before the Listener's line speaks again (0 when it is not quiet).
 export function relaysUntilReturn(save) { const f = ensureFarArray(save); return f.quiet ? Math.max(0, f.relaysAt + LISTENER_RETURN.returnRelays - answeredRelays(save)) : 0; }

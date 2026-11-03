@@ -1,5 +1,5 @@
-import{normalizeSockets}from'./glyphs.js?v=r703-af870d78ba3b';
-import{rng,pick}from'./random.js?v=r703-af870d78ba3b';
+import{normalizeSockets}from'./glyphs.js?v=r705-fa47a5177092';
+import{rng,pick}from'./random.js?v=r705-fa47a5177092';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:1.8,turnAfter:.8,damageType:'magic',path:'boomerang'},'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-hammerfall':{name:'Hammerfall',damage:12,speed:0,lifetime:0,damageType:'physical',path:'hammer',brawlerTool:'hammerfall'},'secondary-great-sweep':{name:'Great Sweep',damage:10,speed:0,lifetime:0,damageType:'physical',path:'sweep',brawlerTool:'great-sweep'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:1.4,radius:2.15,damageType:'physical'/* release 533 (Tim: "a goblin bazooka"): physical, so Might */,path:'grenade'},
@@ -22,10 +22,10 @@ export function spellOpen(save,id){const sp=SPELLS[id];return !!sp&&(!sp.unlockT
 export const UPGRADE_CAPS={common:3,rare:4,epic:5,relic:6};
 // Release 395: a masterworked item (the town smith) goes one rank past its tier's cap.
 // Release 457 (Tim: "after Infinite 4, after you've played the second gate, you should be able to upgrade your weapons to
-// +10... +10 is the max upgrade"): from Aperture tier LATE_UPGRADE.tier (Infinite IV) with LATE_UPGRADE.listeners Listeners
-// felled (the second Gate passed), every tier's cap rises by LATE_UPGRADE.ranks: a relic to +9, a masterwork relic to +10.
-export const LATE_UPGRADE={ranks:3,tier:14,listeners:2};
-export function lateUpgradeOpen(save){const a=Math.max(0,Number(save?.perception?.aperture)||0),tier=APERTURE_BANDS.slice(1).filter(b=>a>=b.threshold).length;return tier>=LATE_UPGRADE.tier&&(Number(save?.farArray?.listeners)||0)>=LATE_UPGRADE.listeners}
+// +10... +10 is the max upgrade"): from Aperture tier LATE_UPGRADE.tier (Infinite IV) with LATE_UPGRADE.gates Gates opened (release 704)
+// (the second Gate passed), every tier's cap rises by LATE_UPGRADE.ranks: a relic to +9, a masterwork relic to +10.
+export const LATE_UPGRADE={ranks:3,tier:14,gates:2}; // gates: Gates opened (far-array.ts: the Gate at tier g climbs after g more Listener kills)
+export function lateUpgradeOpen(save){const a=Math.max(0,Number(save?.perception?.aperture)||0),tier=APERTURE_BANDS.slice(1).filter(b=>a>=b.threshold).length;return tier>=LATE_UPGRADE.tier&&Math.max(0,(Number(save?.farArray?.gate)||1)-1)>=LATE_UPGRADE.gates}
 export const itemCap=(item,save=null)=>(UPGRADE_CAPS[itemTier(item)]||3)+(item?.masterwork===true?1:0)+(save&&lateUpgradeOpen(save)?LATE_UPGRADE.ranks:0);
 export const APERTURE_SKILLS={
  'ember-form':{id:'ember-form',name:'Ember Form',branch:'Form',threshold:6,maxRank:3,cooldown:18,duration:5,description:'Grow into a guarded striking form with greater melee reach and impact.'},
