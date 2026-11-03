@@ -21,7 +21,8 @@ Taken at merge time: `main`'s release + 1 (see above). After 708, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 708 | Claude | `claude/dreamy-rubin-yn6q2p` | The Briar Stag's Burning Grove, Rooted Mend, Hunting Birds and Mire Ground; the player can burn; the Stag redrawn; the Ashen Moth's chrysalis on great trees | Merging. |
+| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | A dragon, the Crimson Tyrant: twelve moves, a permanent lava claim on its clock, the Sunfall | Building. |
+| 708 | Claude | `claude/dreamy-rubin-yn6q2p` | The Briar Stag's Burning Grove, Rooted Mend, Hunting Birds and Mire Ground; the player can burn; the Stag redrawn; the Ashen Moth's chrysalis on great trees | Merged (`r708-3316faf45579`). Published in r708. |
 | 707 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: a new thread, The Tollkeeper's Keys (middle crossings, wave 3 roll); the Ashen Moth's dive stops at its lane's end | Merged (`r707-9f6fba1549e9`). Published in r707. |
 | 706 | Claude | `claude/dreamy-rubin-yn6q2p` | Another world boss, the Ashen Moth: flying, seven attacks and the lantern beam, ash-land home, Echo | Merged (`r706-4f225c254da4`). Published in r706. |
 | 705 | Claude | `claude/dreamy-rubin-yn6q2p` | A new world boss, the Briar Stag: eight attacks, forest home, Echo | Merged (`r705-fa47a5177092`). Published in r705. |
@@ -94,6 +95,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 708, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 708 | `r708-3316faf45579` | 2026-11-03 | Fable review: no blockers. The Stag's new moves and redraw, burning, the mire; the Moth's chrysalis, silk and gale (#355). |
 | 707 | `r707-9f6fba1549e9` | 2026-11-03 | Fable review: no blockers. The Tollkeeper's Keys; the Moth's dive fix (#354). |
 | 706 | `r706-4f225c254da4` | 2026-11-03 | Fable review: no blockers. The Ashen Moth (#353). |
 | 705 | `r705-fa47a5177092` | 2026-11-03 | Fable review: no blockers. With 704, the Far Gate climbing by Tim's rule (#351); and 705, the Briar Stag (#352). |
