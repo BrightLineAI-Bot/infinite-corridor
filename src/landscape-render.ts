@@ -280,6 +280,56 @@ PAINT.canopyCrown = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c7a
 // Release 721: the great mushrooms' caps (great-mushrooms.ts), one hue per stand: a domed top, pale spots, a lighter crown.
 const CAP_HUES = { capCrimson: ["#cf3a30", "#7e1f1a", "#f6ecdc", "#f0705e", "#e0574a"], capAmber: ["#d9892e", "#8a4f17", "#fbf0d6", "#f3b45e", "#e9a04a"], capViolet: ["#8e55b0", "#4f2d68", "#f1e6f6", "#b98ad6", "#a46cc6"] }; // 722: top, shade, warts, gloss, shoulder
 for (const [kind, [top, low, spot]] of Object.entries(CAP_HUES)) PAINT[kind] = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, top], [1, low]]); c.fillRect(0, 0, s, s); c.fillStyle = "#ffffff14"; c.fillRect(0, 0, s, s * .4); for (let k = 0; k < 3; k++) { c.fillStyle = spot + (r() < .5 ? "ee" : "aa"); c.beginPath(); c.ellipse(r() * s, r() * s, s * (.07 + r() * .07), s * (.05 + r() * .05), r() * 3, 0, TAU); c.fill(); } };
+// Release 723: the Thornglass Caldera (far-domains.ts): black basalt seamed with fire, a worn fighting floor, ground strewn with
+// shards, and crystals as tall as towers bursting out of the rock (drawn whole on their tile, in the static ground cache).
+const crack = (c, s, r, n, col) => { c.strokeStyle = col; c.lineWidth = Math.max(1, s * .035); for (let i = 0; i < n; i++) { let x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += (r() - .5) * s * .5; y += (r() - .5) * s * .5; c.lineTo(x, y); } c.stroke(); } };
+PAINT.thornBasalt = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2a2027"], [1, "#17121a"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#3a2c3533" : "#0a080c55"; c.beginPath(); c.ellipse(r() * s, r() * s, s * (.08 + r() * .15), s * (.05 + r() * .08), r() * 3, 0, TAU); c.fill(); } crack(c, s, r, 2, "#ff6a1f66"); crack(c, s, r, 1, "#ffb04a44"); };
+PAINT.thornFloor = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3e3138"], [1, "#2c2229"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#1a131855"; c.lineWidth = 1; c.strokeRect(.5, .5, s - 1, s - 1); for (let i = 0; i < 4; i++) { c.fillStyle = "#ffffff0a"; c.fillRect(r() * s, r() * s, s * .2, 1.5); } crack(c, s, r, 1, "#ff7a2a55"); };
+PAINT.thornShards = (c, s, r) => { PAINT.thornBasalt(c, s, r); for (let i = 0; i < 3; i++) { const x = r() * s, y = r() * s, h = s * (.08 + r() * .14), w = h * .35, col = ["#b48cff", "#7fe0ff", "#ff9ad8"][Math.floor(r() * 3)]; c.fillStyle = col + "cc"; c.beginPath(); c.moveTo(x - w, y); c.lineTo(x, y - h); c.lineTo(x + w, y); c.closePath(); c.fill(); c.fillStyle = "#ffffff88"; c.fillRect(x - .5, y - h * .8, 1, h * .5); } };
+PAINT.thornCrystal = PAINT.thornBasalt;
+// The caldera's lava: rock beneath, the melt rounded off where two sides meet rock, a dark crust at its edge; rock beside lava
+// glows on that side (thornGlow, drawn over the rock tiles).
+function drawThornLava(ctx, t, x, y, s, tiles, w) {
+  const px = x * s, py = y * s, lava = (dx, dy) => { const n = tiles?.[(y + dy) * w + x + dx]; return !n || x + dx < 0 || x + dx >= w || n.kind === "lava"; };
+  const N = lava(0, -1), S = lava(0, 1), E = lava(1, 0), W = lava(-1, 0), R = s * .5, rad = [!N && !W ? R : 0, !N && !E ? R : 0, !S && !E ? R : 0, !S && !W ? R : 0];
+  const rock = topTexture("thornBasalt", (t.detail || 0) % 4, s); if (rock) ctx.drawImage(rock, px, py, s + .5, s + .5); else { ctx.save(); ctx.translate(px, py); PAINT.thornBasalt(ctx, s, rand(1)); ctx.restore(); }
+  const e = s * .4, X = px - (W ? e : 0), Y = py - (N ? e : 0), WW = s + .5 + (W ? e : 0) + (E ? e : 0), HH = s + .5 + (N ? e : 0) + (S ? e : 0); // reaches past the sides that meet more lava, so its crust shows only toward rock
+  const shape = () => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(X, Y, WW, HH, rad); else ctx.rect(X, Y, WW, HH); };
+  ctx.save(); ctx.beginPath(); ctx.rect(px, py, s + .5, s + .5); ctx.clip(); shape(); ctx.clip();
+  ctx.fillStyle = "#ff6a18"; ctx.fillRect(px, py, s + .5, s + .5); const q = rand(x * 41 + y * 23 + 7); // the melt: one colour across the river, lit and crusted by the tile's place, so no tile repeats
+  for (let i = 0; i < 3; i++) { const g = ctx.createRadialGradient(px + q() * s, py + q() * s, 0, px + q() * s, py + q() * s, s * (.35 + q() * .3)); g.addColorStop(0, "rgba(255,230,120,.75)"); g.addColorStop(1, "rgba(255,230,120,0)"); ctx.fillStyle = g; ctx.fillRect(px, py, s + .5, s + .5); }
+  for (let i = 0; i < 3; i++) { ctx.fillStyle = "#7a1c0a99"; ctx.beginPath(); ctx.ellipse(px + q() * s, py + q() * s, s * (.06 + q() * .12), s * (.03 + q() * .04), q() * 3, 0, TAU); ctx.fill(); }
+  ctx.strokeStyle = "#3a120a"; ctx.lineWidth = Math.max(2, s * .12); shape(); ctx.stroke(); // the crust, inside the clip so only its inner half shows
+  ctx.restore();
+  if (!staticPass) animate(ctx, t, px, py, s);
+}
+export function thornGlow(ctx, t, x, y, s, tiles, w) {
+  if (t.landscape !== "thornglass" || t.kind === "lava" || t.kind === "thornCrystal") return;
+  const px = x * s, py = y * s, lava = (dx, dy) => tiles?.[(y + dy) * w + x + dx]?.kind === "lava";
+  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { if (!lava(dx, dy)) continue;
+    const x0 = dx > 0 ? px + s : px, y0 = dy > 0 ? py + s : py, g = dx ? ctx.createLinearGradient(x0, 0, x0 - dx * s * .6, 0) : ctx.createLinearGradient(0, y0, 0, y0 - dy * s * .6);
+    g.addColorStop(0, "rgba(255,110,30,.42)"); g.addColorStop(1, "rgba(255,110,30,0)"); ctx.fillStyle = g; ctx.fillRect(px, py, s + .5, s + .5); }
+}
+export const THORN_HUES = [["#4b2a8a", "#b48cff", "#efe4ff"], ["#1d4e7a", "#7fe0ff", "#e6fbff"], ["#7a2a5e", "#ff8ad0", "#ffe6f4"]]; // base, body, tip
+function drawThornCrystal(ctx, t, x, y, s, tiles, w) {
+  const px = x * s, gy = y * s, H = THORN_HUES[((t.crystal || 1) - 1) % THORN_HUES.length], r = rand((t.detail || 0) * 7 + x * 3 + y * 11 + 1);
+  const rock = topTexture("thornBasalt", (t.detail || 0) % 4, s); if (rock) ctx.drawImage(rock, px, gy, s + .5, s + .5); else { ctx.save(); ctx.translate(px, gy); PAINT.thornBasalt(ctx, s, rand((t.detail || 0) % 4 + 1)); ctx.restore(); }
+  ctx.fillStyle = H[1] + "22"; ctx.beginPath(); ctx.ellipse(px + s / 2, gy + s * .8, s * .7, s * .35, 0, 0, TAU); ctx.fill(); // its glow on the rock
+  const tower = t.tower || 0, n = tower ? 5 + Math.floor(r() * 3) : 2 + Math.floor(r() * 3), prisms = [];
+  if (tower) { ctx.fillStyle = H[1] + "18"; ctx.beginPath(); ctx.ellipse(px + s / 2, gy + s * .7, s * 1.6, s * .7, 0, 0, TAU); ctx.fill(); } // a tower's glow spills wide
+  for (let i = 0; i < n; i++) { const big = tower && i < 3; prisms.push({ bx: px + s * (big ? .2 + r() * .6 : .05 + r() * .9), by: gy + s * (.78 + r() * .18), h: s * (big ? tower * (.65 + r() * .35) * (i === 0 ? 1.2 : 1) : .5 + r() * .9), w: s * (big ? .3 + r() * .18 : .12 + r() * .1), lean: (r() - .5) * (big ? .45 : .9) }); }
+  prisms.sort((a, b) => a.by - b.by);
+  for (const p of prisms) {
+    const tx = p.bx + Math.sin(p.lean) * p.h, ty = p.by - Math.cos(p.lean) * p.h, nx = Math.cos(p.lean) * p.w, ny = Math.sin(p.lean) * p.w, sh = p.h * .2;
+    const sx = Math.sin(p.lean) * (p.h - sh), sy = -Math.cos(p.lean) * (p.h - sh);
+    ctx.fillStyle = grad(ctx, p.bx, p.by, tx, ty, [[0, H[0]], [.55, H[1]], [1, H[2]]]); // the near face
+    ctx.beginPath(); ctx.moveTo(p.bx - nx, p.by - ny); ctx.lineTo(p.bx - nx + sx, p.by - ny + sy); ctx.lineTo(tx, ty); ctx.lineTo(p.bx + sx, p.by + sy); ctx.lineTo(p.bx, p.by); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = grad(ctx, p.bx, p.by, tx, ty, [[0, "#140c22"], [.6, H[0]], [1, H[1]]]); // the shaded face
+    ctx.beginPath(); ctx.moveTo(p.bx, p.by); ctx.lineTo(p.bx + sx, p.by + sy); ctx.lineTo(tx, ty); ctx.lineTo(p.bx + nx + sx, p.by + ny + sy); ctx.lineTo(p.bx + nx, p.by + ny); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = H[2] + "cc"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(p.bx, p.by); ctx.lineTo(p.bx + sx, p.by + sy); ctx.lineTo(tx, ty); ctx.stroke(); // the lit edge
+    ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(p.bx, p.by, p.w * 1.3, p.w * .45, 0, 0, TAU); ctx.fill(); // where it breaks the rock
+  }
+}
 export const MUSHROOM_LOOK = { gill: ["#efe3cf", "#b8a68b"], stalk: ["#f6efe0", "#c9b89a"], skirt: "#efe6d4", under: .2, side: .42, squash: .8, stalkWidth: .5, round: .5 }; // 722: the dome's side, a skirt, a thicker stalk
 // A cap tile (great-mushrooms.ts): the ground it stands on, its shadow, its stalk (the front tile of the centre column), the
 // gills under a front edge, and the top: one dome over the whole cap (a radial light from its crown), spots hashed from the
@@ -375,6 +425,8 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
     return true;
   }
   if (t.mushroom && lift > 0) { drawMushroomTile(ctx, t, x, y, s, tiles, w, lift); return true; } // release 721
+  if (t.kind === "thornCrystal") { drawThornCrystal(ctx, t, x, y, s, tiles, w); return true; } // release 723
+  if (t.landscape === "thornglass" && t.kind === "lava") { drawThornLava(ctx, t, x, y, s, tiles, w); return true; }
   if (lift > 0 && t.canopy && t.kind !== "canopyTrunk") { // release 633: a branch of the great tree hangs in the air: its underside, and its shadow far below
     ctx.fillStyle = "#00000030"; ctx.beginPath(); ctx.ellipse(px + s / 2, y * s + s * .6, s * .42, s * .16, 0, 0, TAU); ctx.fill();
     const leaf = t.kind === "canopyLeaf", under = leaf ? s * .14 : s * .26; ctx.fillStyle = leaf ? "#2c5a24" : "#4a3220"; ctx.fillRect(px, py + s, s + 1, under);
@@ -391,6 +443,7 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5);
   else { ctx.save(); ctx.translate(px, py); PAINT[t.kind](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
   if (!staticPass) animate(ctx, t, px, py, s);
+  if (t.landscape === "thornglass") thornGlow(ctx, t, x, y, s, tiles, w); // release 723
   if (t.canopy && (t.look != null || treeSeasonNow)) drawTreeWear(ctx, t, px, py, s); // release 645: the tree package's bark tints and leaves
   if (!t.canopy && !t.mushroom) drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w); // release 637: the great tree's wood is not notched with level marks
   if (lift > 0) { // rim light on edges that drop away, shade on lower sides

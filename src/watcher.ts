@@ -83,7 +83,7 @@ export function watcherTomb(id, x, y, where) { return { id, kind: "watcherTomb",
 
 // Overworld: a shrine ruin (rare) and a tomb in a shelter (rare). Only for sections first seen from release 289 on.
 export function placeWatcherOverworld(map, width, seed, rx, ry) {
-  if (!map?.tiles || (rx === 0 && ry === 0) || map.watcherPlaced) return null; map.watcherPlaced = true; // once per loaded map
+  if (!map?.tiles || (rx === 0 && ry === 0) || map.watcherPlaced || map.farDomain) return null; map.watcherPlaced = true; // once per loaded map (723: never in a domain)
   const objectsAt = occupied(map), level = (t) => t.elev || 0;
   let shrine = null;
   if (map.landscape && rng(`${seed}:watcher-shrine:v1:${rx}:${ry}`)() < WATCHER.shrine) {

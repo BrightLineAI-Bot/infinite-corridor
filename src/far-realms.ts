@@ -116,19 +116,52 @@ export function farCivAt(seed, sx, sy) {
   return null;
 }
 // The quests to the civilisations, kept in the save (additive at schema 14; normalised from ensureWorldBeasts).
+// Release 723: the domains (far-domains.ts): one bespoke section each, the arena a world beast comes home to. Found by wandering
+// onto it, or by the quest its beast's fall opens a thousand sections or more out (the same quests as the civilisations').
+export const FAR_DOMAINS = {
+  questingBeast: { beast: "questingBeast", min: 1100, span: 250, version: 1, name: "the Thornglass Caldera",
+    arrive: "Heat beats up from the ground. Crystals as tall as towers have burst out of black rock, and lava runs between them. This is the Questing Beast's own ground: the Thornglass Caldera.",
+    quest: "The Questing Beast falls, but something of it runs on, far out, to the place it was made: a caldera of crystal and fire. Your compass knows the way to the Thornglass Caldera.",
+    found: "You have reached the Thornglass Caldera.",
+    wait: [45, 110], // seconds spent in the caldera before its beast comes, hashed per visit
+    comes: "A roar rolls round the caldera. The Questing Beast has come home, and it has found you here.",
+    waiting: "The Questing Beast is not here now. Wait in its caldera, and it may come back." },
+};
+// Where a domain lies: a seeded bearing and distance; for a quest, the first section along that bearing not yet explored.
+const domainCache = new Map();
+export function farDomainCentre(seed, id) {
+  const key = `${seed}:${id}`; let c = domainCache.get(key); if (c) return c; const D = FAR_DOMAINS[id], h = (k) => (hashSeed(`${seed}:far-domain:v1:${id}:${k}`) % 100003) / 100003;
+  const a = h("bearing") * Math.PI * 2, d = D.min + h("distance") * D.span; c = { id, rx: Math.round(Math.cos(a) * d), ry: Math.round(Math.sin(a) * d), a }; domainCache.set(key, c); return c;
+}
+export function farDomainTarget(save, id) {
+  const c = farDomainCentre(save.seed, id);
+  for (let k = 0; k < 64; k++) { const d = Math.hypot(c.rx, c.ry) + k * 3, rx = Math.round(Math.cos(c.a) * d), ry = Math.round(Math.sin(c.a) * d); if (!save.atlas?.[`${rx},${ry}`]) return { rx, ry }; }
+  return { rx: c.rx, ry: c.ry };
+}
+// The domain at a section, or null: the one a quest record names there, else the seeded one on ground not seen before.
+export function farDomainAt(save, rx, ry, seenBefore = false) {
+  for (const id of Object.keys(FAR_DOMAINS)) {
+    const q = save?.farQuests?.[id]; if (q) { if (q.rx === rx && q.ry === ry) return id; continue; }
+    const c = farDomainCentre(save.seed, id); if (!seenBefore && c.rx === rx && c.ry === ry) return id;
+  }
+  return null;
+}
+const FAR_QUEST_IDS = () => [...Object.keys(FAR_CIVS), ...Object.keys(FAR_DOMAINS)];
+export const farQuestInfo = (id) => FAR_CIVS[id] || FAR_DOMAINS[id] || null;
 export function ensureFarQuests(save) {
   const raw = save?.farQuests, out = {};
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const id of Object.keys(FAR_CIVS)) { const q = raw[id]; if (q && typeof q === "object" && ["open", "found"].includes(q.status) && Number.isInteger(q.rx) && Number.isInteger(q.ry)) out[id] = { status: q.status, rx: q.rx, ry: q.ry }; }
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const id of FAR_QUEST_IDS()) { const q = raw[id]; if (q && typeof q === "object" && ["open", "found"].includes(q.status) && Number.isInteger(q.rx) && Number.isInteger(q.ry)) out[id] = { status: q.status, rx: q.rx, ry: q.ry }; }
   if (save) save.farQuests = out; return save;
 }
 // A world beast slain at (rx, ry): opens the quest to its civilisation when far enough out. Returns the civ id opened, or null.
 export function openFarQuest(save, beast, rx, ry) {
   if (farDistance(rx, ry) < FAR_REALMS.start) return null; ensureFarQuests(save);
   for (const [id, C] of Object.entries(FAR_CIVS)) if (C.beast === beast && !save.farQuests[id]) { const c = farCivCentre(save.seed, id); save.farQuests[id] = { status: "open", rx: c.rx, ry: c.ry }; return id; }
+  for (const [id, D] of Object.entries(FAR_DOMAINS)) if (D.beast === beast && !save.farQuests[id]) { const c = farDomainTarget(save, id); save.farQuests[id] = { status: "open", rx: c.rx, ry: c.ry }; return id; } // release 723
   return null;
 }
 // The open quest the compass follows (the first open one), or null.
-export function activeFarQuest(save) { for (const [id, q] of Object.entries(save?.farQuests || {})) if (q.status === "open") return { id, rx: q.rx, ry: q.ry, name: FAR_CIVS[id]?.name || id }; return null; }
+export function activeFarQuest(save) { for (const [id, q] of Object.entries(save?.farQuests || {})) if (q.status === "open") return { id, rx: q.rx, ry: q.ry, name: farQuestInfo(id)?.name || id }; return null; }
 
 // Release 719: the Ink Wastes (realm `ink`). Its land is washed in ink where the ground is drawn (renderer.ts inkWash, once per
 // section), every ordinary creature is ink-black (`farInk`, tinted in its cached sprite), and `share` of them are the Worm's own

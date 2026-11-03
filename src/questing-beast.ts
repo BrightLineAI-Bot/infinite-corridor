@@ -24,6 +24,7 @@ export const QB_SEA = { none: .9, watery: .3, wateryChance: .25 };
 export function questingBeastFor(save, map, rx, ry) {
   ensureQuestingBeast(save); const q = save.questingBeast;
   if (!map || map.settlement || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < QUESTING_BEAST.minDepth) return null;
+  if (map.farDomain && !(q.active && q.active.rx === rx && q.active.ry === ry)) return null; // release 723: in its domain it comes by waiting (Game.domainTick), not by the roll
   if (!q.active) {
     if (q.cooldown > 0) { q.cooldown--; return null; }
     if (!beastUnlocked(save, "questingBeast") || !encounterReady(save)) return null; // release 261: the buffer between meetings (273: and Aperture tier 8)
