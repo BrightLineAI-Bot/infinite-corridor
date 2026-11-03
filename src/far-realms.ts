@@ -10,13 +10,15 @@
 import { hashSeed } from "./random.ts";
 
 export const FAR_REALMS = {
-  version: 5, start: 1000, cell: 40, warp: 9, // 5 (719): the Ink Wastes; // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
+  version: 6, start: 1000, cell: 40, warp: 9, // 5 (719): the Ink Wastes; 6 (720): the folk realms; // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
   // [type, from, to] on the cell's roll; later versions only add bands inside what earlier versions left ordinary.
-  bands: { 1: [["giants", 0, .18]], 5: [["ink", .18, .3]] },
+  bands: { 1: [["giants", 0, .18]], 5: [["ink", .18, .3]], 6: [["monsterFolk", .3, .38], ["giantFolk", .38, .46]] },
 };
 // What each realm does, as data. Giants: every ordinary creature of the overworld is this much bigger and stronger.
 export const FAR_GIANTS = { scale: 1.75, body: 1.5, hp: 2.2, damage: 1.35, speed: .88 };
 export const FAR_REALM_INFO = {
+  monsterFolk: { name: "the Hollow Kin", arrive: "Smoke rises from the hearths here, and people walk the roads like anywhere else. Look closer: they do not blink. This is the country of the Hollow Kin." },
+  giantFolk: { name: "the Tall Country", arrive: "The doors here are twice the height of a man and the people who use them bend to look at you, kindly, spears on their backs. This is the Tall Country." },
   ink: { name: "the Ink Wastes", arrive: "The ground is black and soft and runs like wet paint; things move in it, and the things that walk here are black as the ground. This is the Astral Worm's homeland: the Ink Wastes." },
   giants: { name: "the Giants' Reach", arrive: "Everything here is too big: the tracks in the earth are as wide as doors, and the things that made them are close. You are in the Giants' Reach." },
 };
@@ -143,3 +145,16 @@ export function populateInk(map, seed, rx, ry) {
   let n = 0; for (const t of open) { if (n >= I.extra) break; if (taken.some((q) => Math.hypot(q.x - t.x, q.y - t.y) < 3)) continue; const e = { id: `far-ink:${rx}:${ry}:${n}`, kind: I.kinds[h(`x${n}`) % I.kinds.length], x: t.x, y: t.y, packOverworld: true }; spawns.push(e); taken.push(e); n++; }
   return map;
 }
+
+// Release 720 (Tim: "another realm where all of like the townspeople and Wanderers are actually monsters... they come in waves of
+// monsters that are just townspeople, and then another version where all the townspeople are just really, really big too, and they
+// can throw spears... during the fights"): the folk realms. In the Hollow Kin's country the travellers and the hamlets' folk turn when
+// the Wayfarer comes within `reveal` tiles: each becomes one of `kinds`, and `waves` - 1 more waves of `waveSize` come in from the
+// edges, each once fewer than `next` of the last remain (no sanctuary there). In the Tall Country the folk are `scale` times the
+// Wayfarer's size and every `spear.every` s each throws a spear at the nearest hostile creature within `spear.range`, for
+// `spear.share` of its health (at least `spear.min`).
+export const FAR_FOLK = { reveal: 4.5, waves: 3, waveSize: 4, next: 2, gap: 4, kinds: ["mirrorShade", "riftLynx", "graveLantern", "veilSpinner", "siegeBeetle", "cinderSeraph"],
+  scale: 1.8, spear: { every: 2.2, range: 9, share: .22, min: 12, life: .3 },
+  turn: "The people turn toward you all at once, and their faces come apart. They were never people. More are coming down the road.",
+  wave: "More of the Hollow Kin come out of the hearths and down the roads.", done: "The road is quiet. No more of them are coming." };
+export const isFolk = (o) => o && (o.kind === "traveler" || o.kind === "villager") && !o.wanderer && !o.elder;

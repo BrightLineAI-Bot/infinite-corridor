@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 720: the folk realms — 2026-11-03
+
+Tim, 2026-11-03: "another realm where all of like the townspeople and Wanderers are actually monsters... they come in waves of monsters that are just townspeople, and then another version where all the townspeople are just really, really big too, and they can throw spears or whatever they do during the fights". Taken as: the Hollow Kin are hostile; the Tall Country's giants are friendly and fight the monsters.
+
+**CODE:** far realms `monsterFolk` (u in [.3, .38)) and `giantFolk` ([.38, .46)), `FAR_REALMS.version` 6; `FAR_FOLK` and `isFolk` in `src/far-realms.ts` (folk: travellers and villagers, never Old Quillon or an elder). The Game marks the map `farFolk` (`monster` or `giant`) at section load. `Game.folkTick` each frame: in the Hollow Kin's country, when the Wayfarer comes within `reveal` of any folk they all turn (each becomes one of `kinds`, the objects go), then `waves` - 1 more waves of `waveSize` come in at the section's edges, each once fewer than `next` of the turned remain and `gap` s have passed, until the road is quiet; `settlementSanctuary` returns null on such a map. In the Tall Country the folk are drawn `scale` times as big (renderer.ts, travellers and villagers) and each throws a spear every `spear.every` s at the nearest hostile creature within `spear.range` for `spear.share` of its health (at least `spear.min`), through the glyph world's `damage` (drawn as an arc). Tests: `tests/far-folk-720.test.ts`.
+
+**BOUNDARY:** The turn and the waves are per visit (the map's state), not saved: come back and the Hollow Kin are people again until you come close. The spears never strike the Wayfarer. Far ground first seen at far-realm 6 only.
+
 ## Release 719: the Ink Wastes — 2026-11-03
 
 Tim, 2026-11-03: "a section with the landscape as all like inky, black and kind of like... melting... lobby... inky, blackness, kind of all over everything... ingly black creatures... use a lot of the normal creatures. But just paint them... black... mirrors the motif and themes of the astral worm, and that'll just be like his... homeland... many creatures that look like the different versions of the astral worm, like the one where he has multiple legs and the mouth and the blob... and the Griffin, and the... dragonfly, these creatures won't transform... normal size creatures".

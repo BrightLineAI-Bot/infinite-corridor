@@ -1,3 +1,4 @@
+import { FAR_FOLK } from "./far-realms.ts";
 import { astralBeamAnchors } from "./astral-worm.ts";
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { knockdownPose, drawShockSparks } from "./lightning-giant-render.ts";
@@ -2043,13 +2044,16 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
+            if (o.folkGiant) { ctx.save(); ctx.translate((o.x + .5) * s, (o.y + 1) * s); ctx.scale(FAR_FOLK.scale, FAR_FOLK.scale); ctx.translate(-(o.x + .5) * s, -(o.y + 1) * s); } // release 720: the Tall Country
             const f = o.facing || "down", step = o.state === "walking" ? Math.floor(now / 180) : 0, lift = o.mount ? .42 : 0;
             if (o.mount) actor(ctx, o.x, o.y + .05, s, o.mount, f, step, o.state === "walking" ? "walk" : "idle");
             actor(ctx, o.x, o.y - lift, s, o.look || "traveler", f, step, "idle");
             if (o.wanderer) { const q = g.save.wanderer?.quest; ctx.fillStyle = !q || q.done ? "#f0d58a" : "#9cc8b5"; ctx.font = `bold ${Math.max(10, s * .32)}px monospace`; ctx.textAlign = "center"; ctx.fillText(!q || q.done ? "!" : "…", (o.x + .5) * s, (o.y - lift - .25) * s); }
+            if (o.folkGiant) ctx.restore();
           }
           else if (o.kind === "wandererCache") { if (o.state !== "used") { actor(ctx, o.x, o.y, s, "wandererCache", "down", 0, "idle"); } }
           else if (o.quarryTurtle) quarryTurtle(ctx, o.x, o.y, s, now); // release 265: Shale, the quarry keeper
+          else if (o.kind === "villager" && o.folkGiant) { ctx.save(); ctx.translate((o.x + .5) * s, (o.y + 1) * s); ctx.scale(FAR_FOLK.scale, FAR_FOLK.scale); ctx.translate(-(o.x + .5) * s, -(o.y + 1) * s); actor(ctx, o.x, o.y, s, o.guard ? "militia" : "villager", "down", 0, "idle"); ctx.restore(); } // release 720: the Tall Country
           else if (o.kind === "villager") { actor(ctx, o.x, o.y, s, o.guard ? "militia" : "villager", "down", 0, "idle"); ctx.fillStyle = "#9cc8b5"; ctx.beginPath(); ctx.arc((o.x + 0.5) * s, o.y * s - 6, 3, 0, 7); ctx.fill(); }
           else if (o.kind === "npc") {
             const n = g.save.consequences.npcs[o.id],
