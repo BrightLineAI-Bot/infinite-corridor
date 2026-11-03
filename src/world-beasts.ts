@@ -129,6 +129,18 @@ export const WORLD_BEASTS = {
     gone: "The Crimson Tyrant has what it wanted of you, and takes to the sky. In time it will claim somewhere else.",
     claimed: "The Crimson Tyrant has made this ground its own. It will not fight you for it again.",
   },
+  // Release 710 (Tim, 2026-11-03: "The second dragon... a sweeping laser beam... eruptions everywhere... waves of dark energy... all of his
+  // attacks can be black... His name is doom chaser"): a black dragon of dark fire. It flies home over everything to the canyons' dark.
+  doomChaser: {
+    kind: "doomChaser", name: "The Doom Chaser", chance: .01, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
+    hitsToKill: 80, hpPerLevel: 36, damageShare: .24, speed: 1.1, attackGap: .22, staggerResistance: 1, rewardMarks: 240, rewardPerLevel: 24,
+    patience: 240, home: "canyon", retreatMoves: "through",
+    flee: "The Doom Chaser beats its black wings once and is gone into the sky, bound for the deep canyons.",
+    homeLine: "The Doom Chaser folds itself down into the canyon's dark, and the dark closes over it.",
+    arrive: "The light here is wrong: thin and violet, and the ground is cracked and smoking black. Something vast moves in the dark above. The Doom Chaser is here.",
+    slain: "The Doom Chaser falls out of the dark, and the violet fire in its cracks gutters and goes out.",
+    gone: "The Doom Chaser has hunted you enough, and rises into the dark. In time it will chase something else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 // Release 708 (Tim, 2026-11-03: "the moth... his chrysalis can appear on the great trees... hanging from a branch and if you attack it
@@ -409,7 +421,7 @@ export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
 // large creatures shouldn't be trapped on small islands"). Flood the section over the ground the beast can stand on or
 // cross in its retreat (retreatPassable for its retreatMoves). A region is sound when it reaches a section edge (a way
 // out) and holds at least PLACEMENT.minRegion tiles (PLACEMENT.big for the large beasts). Returns { ok: Uint8Array(1024) }.
-export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth", "crimsonTyrant"] };
+export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth", "crimsonTyrant", "doomChaser"] };
 export function placementRegions(map, here) {
   const tiles = map?.tiles || [], B = WORLD_BEASTS[here], mode = B?.retreatMoves || "walk", need = PLACEMENT.bigBeasts.includes(here) ? PLACEMENT.big : PLACEMENT.minRegion;
   const pass = (t) => !!t && (beastGround(here, t) || retreatPassable(t, mode)), label = new Int32Array(1024).fill(-1), ok = new Uint8Array(1024);
@@ -478,7 +490,7 @@ function fleeSpawn(save, here, rx, ry) {
 // rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
 // questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
 // already met (active, retreating or tracked) is never withdrawn by this.
-export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, doomChaser: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 // Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
 // the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
