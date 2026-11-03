@@ -104,7 +104,7 @@ import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
 import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.ts";
-import { FAR_REALMS, FAR_CIVS, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest } from "./far-realms.ts";
+import { FAR_REALMS, FAR_CIVS, FAR_FOLK, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest } from "./far-realms.ts";
 import { beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
@@ -1755,7 +1755,7 @@ export function activeDungeonEnemies(enemies,player,map){
  const cap=Math.max(1,Number(map?.activeEnemyCap)||DUNGEON_ACTIVE_CAP[map?.encounterProfile]||DUNGEON_ACTIVE_CAP.normal);
  return enemies.filter(e=>shouldSimulateEnemy(e,player,"dungeon")).sort((a,b)=>Number(isDungeonHunter(b,"dungeon"))-Number(isDungeonHunter(a,"dungeon"))||Number(!!b.aggro)-Number(!!a.aggro)||Number(!!b.boss)-Number(!!a.boss)||Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)||String(a.id).localeCompare(String(b.id))).slice(0,cap);
 }
-export function settlementSanctuary(map,rx,ry,save){if(!map||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;if(map.settlement?.procedural)return{x:map.settlement.x,y:map.settlement.y,radius:map.settlement.radius};return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
+export function settlementSanctuary(map,rx,ry,save){if(!map||map.farFolk==="monster"||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;if(map.settlement?.procedural)return{x:map.settlement.x,y:map.settlement.y,radius:map.settlement.radius};return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
 // Release 445 (Tim: "the character needs to jump when you actually press the button, not like a second later"): a jump
 // lasts JUMP.base ms plus JUMP.quickening per Quickening rank. The arc rises from the press itself, as fast as the
@@ -2438,6 +2438,7 @@ export class Game {
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     if(area==="overworld"&&this.farPocket)populatePocket(this.map,this.save.seed,this.rx,this.ry,this.farPocket); // release 715: a stag grove or a blob pocket
     if(area==="overworld"&&this.farRealm?.type==="ink")populateInk(this.map,this.save.seed,this.rx,this.ry); // release 719: the Ink Wastes
+    if(area==="overworld"&&(this.farRealm?.type==="monsterFolk"||this.farRealm?.type==="giantFolk"))this.map.farFolk=this.farRealm.type==="monsterFolk"?"monster":"giant"; // release 720: the folk realms
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="arrayMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};const quiet=ensureFarArray(this.save).quiet;this.map.objects.push({id:"array-mouth",kind:"arrayMouth",name:quiet?"The Quiet Mouth":"The Array Mouth",lore:quiet?"Nothing listens below it now, but the line still opens onto somewhere new each time.":"A ruined relay terminal, half sunk into ground no map has charted. Its line hums under your feet.",x:at.x,y:at.y,state:quiet?"quiet":"ready",actions:["enter"],landmark:true});this.message=quiet?`The Array Mouth is quiet: its runs go on, but the Listener is gone. ${quietMouthNote(this.save)}`:"The Array Mouth: the far end of the relay line."}
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&daisDue(ensureFarArray(this.save))&&!this.map.objects.some(o=>o.kind==="listenerDais")){const m=this.map.objects.find(o=>o.kind==="arrayMouth"),w=mapWidth(this.map,area),free=(x,y)=>{const t=this.map.tiles[y*w+x];return t&&!t.blocked&&!t.structure&&!t.environment&&!this.map.objects.some(o=>Math.round(o.x)===x&&Math.round(o.y)===y)};let at=null;for(let r=2;r<6&&!at;r++)for(const[dx,dy]of[[0,r],[r,0],[-r,0],[0,-r],[r,r],[-r,r]])if(!at&&m&&free(Math.round(m.x)+dx,Math.round(m.y)+dy))at={x:Math.round(m.x)+dx,y:Math.round(m.y)+dy};if(at){this.map.objects.push({id:"listener-dais",kind:"listenerDais",name:"The Listener's Dais",lore:"The Gate is whole. The dais hums with the Listener's line: step on, and it carries you to the hall where it waits.",...at,state:"humming",actions:["enter"],landmark:true});this.message="The Gate is whole: a dais has risen beside the Mouth. It leads to the Listener."}} // release 375
@@ -4872,6 +4873,27 @@ export class Game {
   dragonDue() { if (!this.dragonHere()) return false; const r = this.dragonClock(); return r.casts < DRAGON.colonize.casts && (Number(this.save.playSeconds) || 0) >= r.nextAt; }
   dragonLavaNow() { const r = this.dragonClock(), tiles = dragonCast(this.save, this.map, this.save.seed, this.rx, this.ry); r.nextAt = (Number(this.save.playSeconds) || 0) + DRAGON.colonize.every;
     this.message = r.casts >= DRAGON.colonize.casts ? "The last of the floor turns to lava. The Crimson Tyrant has claimed this ground." : `The ground breaks into lava. The Crimson Tyrant has claimed ${r.casts} of ${DRAGON.colonize.casts} parts of it.`; return tiles; }
+  // Release 720: the folk realms (FAR_FOLK). The Hollow Kin turn and come in waves; the Tall Country's folk throw spears at monsters.
+  folkTick(dt, now) {
+    const kind = this.area === "overworld" && this.map?.farFolk; if (!kind) return; const F = FAR_FOLK, p = this.player, st = (this.folkState ||= { map: null });
+    if (st.map !== this.map) Object.assign(st, { map: this.map, turned: false, wave: 0, mine: [], at: 0, done: false });
+    const folk = (this.map.objects || []).filter(isFolk);
+    if (kind === "monster") {
+      const spawn = (x, y, i) => { const c = this.createEnemyFromSpawn({ id: `hollow-kin:${this.rx}:${this.ry}:${st.wave}:${i}`, kind: F.kinds[hashSeed(`${this.save.seed}:hollow:${this.rx}:${this.ry}:${st.wave}:${i}`) % F.kinds.length], x, y, packOverworld: true }); c.aggro = true; this.enemies.push(c); st.mine.push(c); };
+      if (!st.turned) { if (!folk.some((o) => Math.hypot(o.x - p.x, o.y - p.y) <= F.reveal)) return;
+        st.turned = true; st.wave = 1; st.at = now; folk.forEach((o, i) => spawn(o.x, o.y, i)); this.map.objects = this.map.objects.filter((o) => !isFolk(o)); this.map.travelers = null; this.message = F.turn; return; }
+      if (st.done) return; const left = st.mine.filter((e) => !e.dead).length;
+      if (left < F.next && now - st.at >= F.gap * 1000) { if (st.wave >= F.waves) { if (!left) { st.done = true; this.message = F.done; } return; }
+        st.wave++; st.at = now; const w = mapWidth(this.map, this.area), edge = (this.map.tiles || []).filter((t) => !t.blocked && (t.x === 2 || t.y === 2 || t.x === w - 3 || t.y === 29) && footprintOpen(this.map, w, t.x, t.y));
+        for (let i = 0; i < F.waveSize && edge.length; i++) { const t = edge[hashSeed(`${this.save.seed}:hollow-edge:${this.rx}:${this.ry}:${st.wave}:${i}`) % edge.length]; spawn(t.x, t.y, i); } this.message = F.wave; }
+      return; }
+    // the Tall Country: spears at whatever hostile thing comes near its folk
+    const W = this.glyphWorld(now);
+    for (const o of folk) { o.folkGiant = true; o.spearAt ??= now + (hashSeed(o.id || `${o.x},${o.y}`) % 1000);
+      if (now < o.spearAt) continue; o.spearAt = now + F.spear.every * 1000;
+      const foe = this.enemies.filter((e) => !e.dead && !e.untargetable && !e.ambient && !e.noRewards && Math.hypot(e.x - o.x, e.y - o.y) <= F.spear.range).sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0];
+      if (!foe) continue; W.arc({ x: o.x, y: o.y - 1 }, foe, "#efe2b8"); W.damage(foe, Math.max(F.spear.min, Math.round((foe.maxHp || 40) * F.spear.share))); }
+  }
   // Release 714: the Briar Stag and the Stalker, when they meet, forget the Wayfarer and play (BEAST_PLAY).
   beastPlay(dt, now) {
     const P = BEAST_PLAY, s = (this.beastPlayState ||= { until: 0, next: 0, a: 0 }), stag = this.enemies.find((q) => q.kind === "briarStag" && !q.dead && !q.retreating), cat = this.enemies.find((q) => q.stalker && !q.dead);
@@ -6201,6 +6223,7 @@ export class Game {
     if (this.area === "overworld") this.mothHarass(); // release 708
     this.frenzyTick(dt); // release 710
     this.beastPlay(dt, now); // release 714
+    this.folkTick(dt, now); // release 720: the folk realms
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)

@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 719, the next is **720**.
+Taken at merge time: `main`'s release + 1 (see above). After 720, the next is **721**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 719 | Claude | `claude/dreamy-rubin-yn6q2p` | The Ink Wastes: an ink-washed far realm, ink-black creatures and the Astral Worm's shapes; the Stag's play fix | In flight. |
+| 720 | Claude | `claude/dreamy-rubin-yn6q2p` | The folk realms: the Hollow Kin (folk who turn and come in waves; no sanctuary) and the Tall Country (giant folk who throw spears) | In flight. |
+| 719 | Claude | `claude/dreamy-rubin-yn6q2p` | The Ink Wastes: an ink-washed far realm, ink-black creatures and the Astral Worm's shapes; the Stag's play fix | Merged (#366). |
 | 718 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Labyrinths (Tim asked this session): self-contained mazes of 14–20 chambers (halls, hedge courts, cellars, subcellars, galleries of gaps), one true path to the vault, sealed doors with keys down side branches, a shortcut back, a way out at the front | Merging (baton taken). |
 | 717 | Claude | `claude/dreamy-rubin-yn6q2p` | The Storm Halls: the Lightning Giant's far country (pillar lands, landscape v16), three kinds of lesser giant, a quest | Merged (#364). Published in r717. |
 | 716 | Claude | `claude/dreamy-rubin-yn6q2p` | The Crystal Civilisation: a far crystal country (landscape v15), crystal kin, a quest from the Psychic Crystal | Merged (#363). Published in r717. |
