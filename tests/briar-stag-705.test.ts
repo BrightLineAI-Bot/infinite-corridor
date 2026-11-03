@@ -166,4 +166,8 @@ test('mire ground: in the game, dodges there cost more and go slower, moving dra
   assert.ok(wet.dist < dry.dist * .85, `and goes less far (${dry.dist.toFixed(2)} → ${wet.dist.toFixed(2)})`);
   assert.ok(wet.after < dry.after - 5, `moving on it drains stamina (${dry.after.toFixed(1)} vs ${wet.after.toFixed(1)})`);
   const rest = run(true, true); assert.ok(rest.after > wet.after + 5, 'standing still, stamina comes back');
+  const tired = (onMire) => { const s = freshSave(); s.seed = 'MIRE'; const g = new Game(s, 0); g.enemies = []; const p = g.player; p.stamina = 0; const hp = p.hp;
+    g.packEffects = onMire ? [{ kind: 'mire', owner: 'x', x: p.x, y: p.y, radius: 8, arming: 0, life: 99, total: 99, damage: 0 }] : []; let pressed = false;
+    g.update(1 / 30, { state: { x: 1, y: 0 }, consume: (k) => k === 'dodge' && !pressed ? (pressed = true) : false, held: () => false, reset() {} }, 1000); return hp - p.hp; };
+  assert.equal(tired(false), 0, 'off the mire, an empty dodge only fails'); assert.ok(tired(true) > 0, 'on the mire, an empty dodge hurts');
 });

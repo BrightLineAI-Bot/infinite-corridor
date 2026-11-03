@@ -730,7 +730,7 @@ export const STAG = {
   grove: { trees: 5, ring: [1.6, 3.6], grow: .9, burn: [3.2, 4.6], radius: .6, touchEvery: .6, touchShare: .35, igniteFor: 3, igniteShare: .12, blast: 1.9, splinters: 6, splinterSpeed: 7.5, splinterLife: .9, splinterShare: .45 },
   mend: { share: .14 }, // of its health over the whole mend
   birds: { count: 4, every: .7, warn: .6, speed: 17, reach: 9, radius: .65, offset: 1.6 },
-  mire: { radius: 5.5, time: 8, warn: .6, dodgeSpeed: .45, dodgeCost: 2.2, drain: .07 }, // drain: share of stamina a second while moving in it
+  mire: { radius: 5.5, time: 8, warn: .6, dodgeSpeed: .45, dodgeCost: 2.2, drain: .07, exhaustedShare: .08 }, // exhaustedShare: of max health, for a dodge tried on it without the stamina // drain: share of stamina a second while moving in it
   hunt: { time: 9, speed: 1.45, push: 2.4, pushRadius: 6, briarEvery: .4, spikeEvery: .7, spikeRing: [1.4, 4], spikeWarn: .6, spikeRadius: .6, spikeShare: .7 },
 };
 export const KNIGHT = {
