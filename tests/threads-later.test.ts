@@ -28,3 +28,12 @@ test('the Journal has an Arcana tab listing every thread and story across crossi
   assert.match(main, /for\(const id of THREAD_ORDER\)\{const T=THREADS\[id\],found=threadFound\(save,id\)\.length;arcanaCard\(out,T\.title,[^;]*T\.pieces\.slice\(0,found\)/, 'only the pieces found are shown');
   for (const name of ['The Seven Bells', "The Surveyor's Chain", 'TORN_PAGES.title', '"Ilse"', '"Glimpses"']) assert.ok(main.includes(name), name);
 });
+
+// Release 707: the Tollkeeper's Keys, a wave 3 thread, rolled only where neither earlier roll placed one.
+test("the Tollkeeper's Keys is written in full, lies in middle crossings, and moves no thread already placed", async () => {
+  const T = THREADS.tollKeys; assert.ok(T.wave === 3 && T.relic === 'key' && T.pieces.length === 6 && T.pieces.every((p) => p.length > 80) && T.ending.length > 200);
+  const found = ids.filter(([x, y, id]) => threadIn(seed, id) === 'tollKeys'); assert.ok(found.length >= 6, `${found.length} crossings`);
+  for (const [x, y, id] of found) { assert.equal(before(id, x, y), null); assert.ok(inBand('middle', x, y)); }
+  const later = (x, y, id) => { if (before(id, x, y) || Math.abs(x) + Math.abs(y) < THREAD_RULES.minDepth) return null; if ((hashSeed(`${seed}:threads:later:v1:${id}`) % 10000) / 10000 >= THREAD_RULES.later) return null; const here = THREAD_ORDER.filter((t) => THREADS[t].wave === 2 && inBand(THREADS[t].band, x, y)); return here.length ? here[hashSeed(`${seed}:threads:later:which:v1:${id}`) % here.length] : null; };
+  let n = 0; for (const [x, y, id] of ids) { const was = later(x, y, id); if (was) { n++; assert.equal(threadIn(seed, id), was, 'a wave 2 crossing keeps its thread'); } } assert.ok(n > 5, `${n} wave 2 crossings checked`);
+});

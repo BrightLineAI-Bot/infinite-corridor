@@ -1277,9 +1277,9 @@ const RUN = {
   },
   mothDive(e, s, w) {
     const A = ATTACK_MODULES.mothDive, d = s.data;
-    if (s.phase === "windup") { e.mothAir = Math.min(1, (e.mothAir || 0) + w.dt * 2); if (s.t <= 0) { s.tele = null; e.mothPose = "dive"; d.drop = 0; toPhase(s, "active", A.active); } return; }
+    if (s.phase === "windup") { e.mothAir = Math.min(1, (e.mothAir || 0) + w.dt * 2); if (s.t <= 0) { s.tele = null; e.mothPose = "dive"; d.drop = 0; d.room = rayLength(w, e, d.aim, MOTH.diveSpeed * A.active); /* release 707: it stops where its lane ends, never inside a wall */ toPhase(s, "active", A.active); } return; }
     if (s.phase !== "active") return;
-    const step = MOTH.diveSpeed * w.dt; w.move(e, d.aim.x * step, d.aim.y * step, { phase: true }); e.mothAir = Math.max(0, (e.mothAir || 0) - w.dt * 3);
+    const step = Math.min(MOTH.diveSpeed * w.dt, Math.max(0, d.room ?? Infinity)); if (step > 0) { w.move(e, d.aim.x * step, d.aim.y * step, { phase: true }); d.room = (d.room ?? Infinity) - step; } e.mothAir = Math.max(0, (e.mothAir || 0) - w.dt * 3);
     if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + MOTH.diveHit) { s.hitOnce = true; w.hurt(e, damageOf(e, "mothDive"), { jumpable: false, source: "mothDive" }); }
     d.drop -= w.dt; if (d.drop <= 0) { d.drop = MOTH.diveTrail; mothFire(e, w); }
     if (s.t <= 0) { e.aloft = false; e.mothAir = 0; e.mothPose = null; toPhase(s, "recover", A.recover); }

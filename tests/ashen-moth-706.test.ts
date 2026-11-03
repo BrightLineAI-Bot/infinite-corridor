@@ -93,3 +93,9 @@ test('given up, it drifts home to the ash lands', () => {
   const g = new Game(s, 0), r = beginRetreat(s, 'ashenMoth', start.rx, start.ry, g.retreatProbe());
   assert.equal(r.home.found, true); assert.ok(BEAST_FOREST.fire.includes(sectionRegion(s.seed, r.home.rx, r.home.ry, 5).type)); assert.match(r.message, /ash lands/);
 });
+
+test('release 707: a dive stops where its lane ends, never inside a wall', () => {
+  const w = world({ player: { x: 20, y: 12 } }); const wall = (x, y) => Math.floor(x + .5) >= 17; w.tileOpen = (x, y) => !wall(x - .5, y - .5);
+  const e = moth(w, 'mothDive', 10, 12); until(w, e, 'mothDive'); step(w, ATTACK_MODULES.mothDive.windup * 1.3 + ATTACK_MODULES.mothDive.active + .1);
+  assert.ok(e.x < 16.6, `stopped short of the wall (${e.x.toFixed(2)})`);
+});
