@@ -17,7 +17,7 @@ test('one great crystal country, far out at a seeded bearing, its land crystal o
   assert.ok(d >= C.min - 1 && d <= C.min + C.span + 1, `${d}`); assert.deepEqual(farCivCentre(seed, 'crystal'), c);
   assert.notDeepEqual(farCivCentre('OTHER', 'crystal'), c, 'each world has its own');
   assert.equal(farCivAt(seed, c.rx + .5, c.ry + .5)?.id, 'crystal'); assert.equal(farCivAt(seed, c.rx + C.radius + 3, c.ry), null);
-  assert.equal(LANDSCAPE_VERSION, 16); let crystal = 0, n = 0;
+  assert.equal(LANDSCAPE_VERSION, 17); let crystal = 0, n = 0;
   for (let dx = -20; dx <= 20; dx += 4) for (let dy = -20; dy <= 20; dy += 4) { if (Math.hypot(dx, dy) > C.radius - 2) continue; n++; if (sectionRegion(seed, c.rx + dx, c.ry + dy, 15).type === 'crystal') crystal++; }
   assert.equal(crystal, n, 'all its land is crystal');
   assert.notEqual(sectionRegion(seed, c.rx, c.ry, 14).type === 'crystal' && sectionRegion(seed, c.rx + 8, c.ry, 14).type === 'crystal' && sectionRegion(seed, c.rx, c.ry + 8, 14).type === 'crystal', true, 'version 14 ground is as it was');

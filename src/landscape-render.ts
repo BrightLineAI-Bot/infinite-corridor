@@ -277,6 +277,32 @@ PAINT.canopyBranch = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#7a5
 PAINT.canopyLeaf = (c, s, r) => { c.fillStyle = "#2f6a28"; c.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a"][Math.floor(r() * 3)] + "bb"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 2, 1 + r(), r() * 3, 0, TAU); c.fill(); } c.fillStyle = "#00000022"; c.fillRect(0, 0, s, s); };
 PAINT.canopyTrunk = (c, s, r) => { PAINT.canopyCrown(c, s, r); c.fillStyle = "#00000018"; c.fillRect(0, 0, s, s); };
 PAINT.canopyCrown = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c7a30"], [1, "#2a5a22"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 16; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a", "#1f4a1a"][Math.floor(r() * 4)] + "dd"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 3, 1.5 + r() * 2, r() * 3, 0, TAU); c.fill(); } };
+// Release 721: the great mushrooms' caps (great-mushrooms.ts), one hue per stand: a domed top, pale spots, a lighter crown.
+const CAP_HUES = { capCrimson: ["#c8443c", "#8e2a26", "#f1e2d0"], capAmber: ["#d08a3a", "#93561e", "#f6e6c4"], capViolet: ["#8a5aa8", "#5a3674", "#eadcf2"] };
+for (const [kind, [top, low, spot]] of Object.entries(CAP_HUES)) PAINT[kind] = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, top], [1, low]]); c.fillRect(0, 0, s, s); c.fillStyle = "#ffffff14"; c.fillRect(0, 0, s, s * .4); for (let k = 0; k < 3; k++) { c.fillStyle = spot + (r() < .5 ? "ee" : "aa"); c.beginPath(); c.ellipse(r() * s, r() * s, s * (.07 + r() * .07), s * (.05 + r() * .05), r() * 3, 0, TAU); c.fill(); } };
+export const MUSHROOM_LOOK = { gill: ["#efe3cf", "#bfae94"], stalk: ["#f3ead8", "#cbbb9f"], under: .24, stalkWidth: .46, round: .5 };
+// A cap tile (great-mushrooms.ts): the ground it stands on, its shadow, its stalk (the front tile of the centre column), the
+// gills under a front edge, and the top: one dome over the whole cap (a radial light from its crown), spots hashed from the
+// tile, corners rounded where two sides fall away. Drawn into the static ground cache: no per-frame cost.
+function drawMushroomTile(ctx, t, x, y, s, tiles, w, lift) {
+  const M = MUSHROOM_LOOK, H = CAP_HUES[t.kind] || CAP_HUES.capCrimson, px = x * s, py = y * s - lift, gy = y * s, under = s * M.under;
+  const ground = t.under && topTexture(t.under, (t.detail || 0) % 4, s); if (ground) ctx.drawImage(ground, px, gy, s + .5, s + .5); else if (t.under && PAINT[t.under]) { ctx.save(); ctx.translate(px, gy); PAINT[t.under](ctx, s, rand(1)); ctx.restore(); }
+  { const R0 = (Math.floor(t.capR || 1) + .5) * s; ctx.save(); ctx.beginPath(); ctx.rect(px, gy, s + .5, s + .5); ctx.clip(); ctx.fillStyle = "#00000038"; ctx.beginPath(); ctx.ellipse(px + s / 2 - (t.capI || 0) * s, gy + s * .6 - (t.capJ || 0) * s, R0, R0 * .8, 0, 0, TAU); ctx.fill(); ctx.restore(); } // its shadow on the ground
+  if (t.stalk) { const sw = s * M.stalkWidth, sx = px + (s - sw) / 2; ctx.fillStyle = grad(ctx, sx, 0, sx + sw, 0, [[0, M.stalk[0]], [1, M.stalk[1]]]); ctx.fillRect(sx, py + s * .5, sw, gy + s - (py + s * .5)); ctx.fillStyle = "#00000026"; ctx.beginPath(); ctx.ellipse(px + s / 2, gy + s, sw * .8, s * .1, 0, 0, TAU); ctx.fill(); }
+  // The cap is one circle over its tiles (radius `round` past the last whole ring), its gills the same circle dropped by `under`.
+  // Each row's end tiles also draw the disc out past them to its edge, so the round cap is whole though its tiles are a stepped ring.
+  const cx = px + s / 2 - (t.capI || 0) * s, cy = py + s / 2 - (t.capJ || 0) * s, R = (Math.floor(t.capR || 1) + M.round) * s, disc = (dy) => { ctx.beginPath(); ctx.arc(cx, cy + dy, R, 0, TAU); };
+  const kin = (dx) => { const n = tiles?.[y * w + x + dx]; return !!n && x + dx >= 0 && x + dx < w && n.mushroom === t.mushroom && n.elev === t.elev; }, x0 = kin(-1) ? px : cx - R - 2, x1 = kin(1) ? px + s + .5 : cx + R + 2;
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, py, x1 - x0, s + under + .5); ctx.clip();
+  disc(under); ctx.fillStyle = grad(ctx, 0, cy + R - under, 0, cy + R + under, [[0, M.gill[1]], [1, M.gill[0]]]); ctx.fill();
+  ctx.strokeStyle = "#8f7d6466"; ctx.lineWidth = 1; for (let k = 0; k < 6; k++) { const gx = px + (k + .5) * s / 6, dx = (gx - cx) / R; if (Math.abs(dx) >= 1) continue; const edge = cy + R * Math.sqrt(1 - dx * dx); ctx.beginPath(); ctx.moveTo(gx, edge - 1); ctx.lineTo(cx + (gx - cx) * .9, edge + under * .85); ctx.stroke(); }
+  ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, py - 1, x1 - x0, s + 1.5); ctx.clip(); disc(0); ctx.clip();
+  const dome = ctx.createRadialGradient(cx - R * .3, cy - R * .35, R * .05, cx, cy, R); [[0, H[2] + "88"], [.22, H[0]], [.72, H[0]], [1, H[1]]].forEach(([o, c]) => dome.addColorStop(o, c)); ctx.fillStyle = dome; ctx.fillRect(x0, py - 1, x1 - x0, s + 2);
+  const r = rand(x * 31 + y * 17 + 3); for (let k = 0; k < 2; k++) if (r() < .7) { ctx.fillStyle = H[2] + (r() < .5 ? "ee" : "b0"); ctx.beginPath(); ctx.ellipse(px + s * (.2 + r() * .6), py + s * (.2 + r() * .6), s * (.07 + r() * .06), s * (.05 + r() * .05), r() * 3, 0, TAU); ctx.fill(); }
+  ctx.strokeStyle = "#00000040"; ctx.lineWidth = Math.max(1.5, s * .06); disc(0); ctx.stroke(); // the rim
+  ctx.restore();
+}
 for (const [type, P] of Object.entries(PALETTE_PAINT)) { const R = PALETTE_REGIONS[type]; PAINT[R.ground] = (c, s, r) => paletteGround(c, s, r, P); PAINT[R.pool.kind] = (c, s, r) => palettePool(c, s, r, P); PAINT[R.block.kind] = (c, s, r) => paletteBlock(c, s, r, P); }
 function granite(c, s, r, color = "#2d2f3155") { c.strokeStyle = color; c.lineWidth = 1; for (let i = 0; i < 3; i++) { let x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += (r() - .5) * s * .4; y += r() * s * .25; c.lineTo(x, y); } c.stroke(); } for (let i = 0; i < 10; i++) { c.fillStyle = r() < .5 ? "#a3a6a855" : "#3b3e4155"; c.fillRect(r() * s, r() * s, 1.5, 1.5); } }
 function ripples(c, s, r, color) { c.strokeStyle = color; c.lineWidth = 1; const off = r() * 6; for (let y = off; y < s; y += 5) { c.beginPath(); c.moveTo(0, y); for (let x = 0; x <= s; x += 4) c.lineTo(x, y + Math.sin((x + y) * .35) * 1.4); c.stroke(); } }
@@ -334,6 +360,7 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
     if (tex) { ctx.save(); ctx.translate(px + s / 2, py + s / 2); if (t.bridgeAxis === "y") ctx.rotate(Math.PI / 2); ctx.drawImage(tex, -s / 2, -s / 2, s + .5, s + .5); ctx.restore(); }
     return true;
   }
+  if (t.mushroom && lift > 0) { drawMushroomTile(ctx, t, x, y, s, tiles, w, lift); return true; } // release 721
   if (lift > 0 && t.canopy && t.kind !== "canopyTrunk") { // release 633: a branch of the great tree hangs in the air: its underside, and its shadow far below
     ctx.fillStyle = "#00000030"; ctx.beginPath(); ctx.ellipse(px + s / 2, y * s + s * .6, s * .42, s * .16, 0, 0, TAU); ctx.fill();
     const leaf = t.kind === "canopyLeaf", under = leaf ? s * .14 : s * .26; ctx.fillStyle = leaf ? "#2c5a24" : "#4a3220"; ctx.fillRect(px, py + s, s + 1, under);
@@ -351,13 +378,13 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   else { ctx.save(); ctx.translate(px, py); PAINT[t.kind](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
   if (!staticPass) animate(ctx, t, px, py, s);
   if (t.canopy && (t.look != null || treeSeasonNow)) drawTreeWear(ctx, t, px, py, s); // release 645: the tree package's bark tints and leaves
-  if (!t.canopy) drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w); // release 637: the great tree's wood is not notched with level marks
+  if (!t.canopy && !t.mushroom) drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w); // release 637: the great tree's wood is not notched with level marks
   if (lift > 0) { // rim light on edges that drop away, shade on lower sides
     const at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], lower = (n) => !n || (n.elev || 0) < (t.elev || 0);
     if (lower(at(0, -1))) { ctx.fillStyle = "#ffffff55"; ctx.fillRect(px, py, s + 1, Math.max(1.5, s * .05)); }
     if (lower(at(-1, 0))) { ctx.fillStyle = "#ffffff30"; ctx.fillRect(px, py, Math.max(1.5, s * .05), s); }
-    if (lower(at(1, 0))) { ctx.fillStyle = "#00000040"; ctx.fillRect(px + s - Math.max(2, s * .07), py, Math.max(2, s * .07), s + lift); }
-    ctx.fillStyle = "#0000004d"; ctx.fillRect(px, y * s + s - 2, s + 1, 2); // contact shadow at the cliff foot
+    if (lower(at(1, 0))) { ctx.fillStyle = "#00000040"; ctx.fillRect(px + s - Math.max(2, s * .07), py, Math.max(2, s * .07), t.mushroom ? s : s + lift); }
+    if (!t.mushroom) { ctx.fillStyle = "#0000004d"; ctx.fillRect(px, y * s + s - 2, s + 1, 2); } // contact shadow at the cliff foot (a cap stands on its stalk)
   }
   if (t.slope && t.kind !== "mountainTrail" && t.kind !== "castleStair") { ctx.fillStyle = "#ffffff18"; ctx.fillRect(px, py, s, s * .2); }
   return true;
