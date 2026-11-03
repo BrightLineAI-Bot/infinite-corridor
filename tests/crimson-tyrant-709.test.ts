@@ -127,3 +127,11 @@ test('in the game, the Sunfall is survived only with the Aegis or inside a pen (
   { const { g, p, src } = setup(); g.aegisUntil = 5000; const before = p.hp; g.update(1 / 60, idle, 1000); p.hp = before; g.packHurt(src, 300 * DRAGON.nova.lethal, { source: 'dragonSupernova', piercing: true }, 1016); g.update(1 / 60, idle, 1016); assert.ok(p.hp > 0, `the Aegis turns it (${p.hp})`); }
   { const { g, p, src } = setup(); g.builds = [{ kind: 'enclosure', x: Math.floor(p.x + .5) - 1, y: Math.floor(p.y + .75) - 1, open: 'west' }]; const hit = g.packHurt(src, 300 * DRAGON.nova.lethal, { source: 'dragonSupernova', piercing: true }, 1000); assert.equal(hit, false, 'the pen\'s walls turn it'); assert.equal(p.hp, 300); }
 });
+
+test('its fire leaves lava pools that burn for a while, then cool', () => {
+  const w = world({ player: { x: 20, y: 12 } }), e = dragon(w, 'dragonBlast'); until(w, e, 'dragonBlast'); step(w, 3.5);
+  const pools = w.fx.filter((f) => f.kind === 'lava'); assert.ok(pools.length >= 1, 'the Great Flame leaves a pool'); assert.ok(pools.every((f) => f.life <= DRAGON.pool.life));
+  w.player.x = pools[0].x; w.player.y = pools[0].y; const before = w.hurts.length; step(w, 1.2, () => { w.player.x = pools[0].x; w.player.y = pools[0].y; }); assert.ok(w.hurts.filter((h) => h.source === 'wormLava').length >= 1, 'standing in it burns');
+  e.packAttacks = ['dragonTailSwipe']; step(w, DRAGON.pool.life + 1); assert.equal(w.fx.filter((f) => f.kind === 'lava').length, 0, 'then it is gone'); void before;
+  const r = world({ player: { x: 18, y: 12 } }), e2 = dragon(r, 'dragonRain'); until(r, e2, 'dragonRain'); step(r, 4); assert.ok(r.fx.filter((f) => f.kind === 'lava').length >= 3, 'the rain leaves pools');
+});

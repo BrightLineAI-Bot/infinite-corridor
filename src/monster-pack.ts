@@ -757,7 +757,10 @@ export const DRAGON = {
   tailSwipe: { swipes: 2, reach: 4.2, arc: 130, gap: .45 },
   roll: { speed: 7, leg: .7, hit: .7 },
   wave: { ring: .5, radius: 7.5, arc: 120, speed: 11, linger: 3.2, tick: .6, bite: .35 },
-  nova: { rise: .9, gather: 3.3, radius: 11, height: 3, lethal: 4 }, // lethal: × the Wayfarer's health, through any guard; only out of reach, a pen or the Aegis survive it
+  nova: { rise: .9, gather: 3.3, radius: 11, height: 3, lethal: 4 },
+  // Tim (2026-11-03): "the dragons... should make lava on the floor persistent for some time... casting a spell makes a lava pool beneath
+  // your spell": its fireballs (every other rain fireball, every Great Flame) and its slams leave a pool that burns `life` s, then crusts.
+  pool: { life: 6, rain: .85, rainEvery: 2, blast: 1.5, slam: 1.3, bite: .3 }, // lethal: × the Wayfarer's health, through any guard; only out of reach, a pen or the Aegis survive it
 };
 // The Ashen Moth (release 706). Balance as data. Lengths in tiles, times in seconds.
 export const MOTH = {
@@ -819,6 +822,8 @@ function knightCut(e, s, w, id, aim, energized, arc = KNIGHT.slideArc) {
   s.data.cutAt = w.now;
 }
 const energized = (e, s, n, chance = KNIGHT.arcChance) => hashSeed(`${e.id}:${s.seq}:energy:${n}`) % 100 < chance;
+// Release 709: a pool of lava the Crimson Tyrant's fire leaves where it lands (the Tremor Worm's lava, lying still).
+function dragonPool(owner, w, x, y, radius, damage) { w.addEffect({ kind: "lava", owner, x, y, vx: 0, vy: 0, radius: WORM.lavaGrow[0], grow: radius, arming: 0, life: DRAGON.pool.life, total: DRAGON.pool.life, damage }); }
 // Release 708: is (x, y) on the Briar Stag's mire? The Game slows dodges and drains stamina there.
 export function stagMireAt(effects, x, y) { return (effects || []).some((f) => f.kind === "mire" && !(f.arming > 0) && f.life > 0 && Math.hypot(x - f.x, y - f.y) <= f.radius); }
 export function nanoScatters(e, { physical = false, echoGlyph = false } = {}) { return e?.kind === "nanobotKnight" && physical && !echoGlyph; }
@@ -1365,7 +1370,7 @@ const RUN = {
     if (s.phase !== "windup" || s.t > 0) return;
     const d = s.data, D = DRAGON.slam, r = d.both ? D.bothRadius : D.radius, p = center(w.player), dmg = damageOf(e, "dragonSlam") * (d.both ? 1.2 : 1);
     if (distance(p, d.at) <= r + .2) w.hurt(e, Math.ceil(dmg), { jumpable: false, source: "dragonSlam" });
-    w.addEffect({ kind: "dust", owner: e.id, x: d.at.x, y: d.at.y, radius: r + .5, arming: 0, life: .6, damage: 0 });
+    w.addEffect({ kind: "dust", owner: e.id, x: d.at.x, y: d.at.y, radius: r + .5, arming: 0, life: .6, damage: 0 }); dragonPool(e.id, w, d.at.x, d.at.y, DRAGON.pool.slam, Math.max(1, Math.ceil(e.damage * DRAGON.pool.bite)));
     const a0 = Math.atan2(p.y - d.at.y, p.x - d.at.x), spread = D.spread * Math.PI / 180;
     for (let i = 0; i < D.streaks; i++) { const a = a0 + (i - (D.streaks - 1) / 2) * spread, dir = { x: Math.cos(a), y: Math.sin(a) }; let steps = 0; for (let k = 0; k < D.steps; k++) { const x = d.at.x + dir.x * (r + k * D.step), y = d.at.y + dir.y * (r + k * D.step); if (w.tileOpen && !w.tileOpen(x + .5, y + .5)) break; steps++; }
       if (steps) w.addEffect({ kind: "fireLine", owner: e.id, x: d.at.x + dir.x * r, y: d.at.y + dir.y * r, dx: dir.x, dy: dir.y, steps, length: steps * D.step, step: D.step, every: D.every, warn: D.warn, radius: D.width, burst: -1, arming: 0, life: D.warn + steps * D.every + D.show, damage: Math.ceil(dmg * .7) }); }
@@ -1387,7 +1392,7 @@ const RUN = {
     if (s.phase !== "active") return;
     e.dragonSway = Math.sin((A.active - s.t) * D.sway * Math.PI); d.next -= w.dt;
     while (d.next <= 0) { d.next += D.every; d.n++; const h = hashSeed(`${e.id}:${s.seq}:rain:${d.n}`), p = center(w.player), onYou = (h % 100) / 100 < D.onYou, a = ((h >>> 7) % 628) / 100, r = onYou ? 0 : 1 + ((h >>> 3) % 100) / 100 * D.near, arm = D.arm[0] + (D.arm[1] - D.arm[0]) * ((h >>> 11) % 100) / 100;
-      w.addEffect({ kind: "dragonMeteor", owner: e.id, x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r, radius: D.radius, arming: arm, armTotal: arm, life: .4, total: .4, damage: damageOf(e, "dragonRain") }); }
+      w.addEffect({ kind: "dragonMeteor", owner: e.id, x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r, radius: D.radius, arming: arm, armTotal: arm, life: .4, total: .4, damage: damageOf(e, "dragonRain"), pool: d.n % DRAGON.pool.rainEvery === 0 ? DRAGON.pool.rain : 0, bite: Math.max(1, Math.ceil(e.damage * DRAGON.pool.bite)) }); }
     if (s.t <= 0) { e.dragonSway = 0; toPhase(s, "recover", A.recover); }
   },
   dragonBlast(e, s, w) {
@@ -3370,12 +3375,14 @@ export function tickPackEffects(effects, w) {
         if (!f.hit && Math.hypot(p.x - sx, p.y - sy) <= f.radius + .3) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: f.kind === "fireLine" ? "dragonSlam" : "stagRoots" }); } }
     } else if (f.kind === "dragonComet") { // release 709: the Great Flame flies to where it was aimed and bursts
       f.x += f.vx * w.dt; f.y += f.vy * w.dt; const owner = w.enemies.find((q) => q.id === f.owner) || null;
-      if (f.life - w.dt <= 0 || (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5))) { f.life = 0; if (distance(p, f) <= f.blast + .2) w.hurt(owner, f.damage, { jumpable: false, source: "dragonBlast" }); w.addEffect({ kind: "dragonBurst", owner: f.owner, x: f.x, y: f.y, radius: f.blast, arming: 0, life: .5, total: .5, damage: 0 }); }
+      if (f.life - w.dt <= 0 || (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5))) { f.life = 0; if (distance(p, f) <= f.blast + .2) w.hurt(owner, f.damage, { jumpable: false, source: "dragonBlast" }); w.addEffect({ kind: "dragonBurst", owner: f.owner, x: f.x, y: f.y, radius: f.blast, arming: 0, life: .5, total: .5, damage: 0 }); dragonPool(f.owner, w, f.x, f.y, DRAGON.pool.blast, Math.max(1, Math.ceil(f.damage * DRAGON.pool.bite))); }
     } else if (f.kind === "dragonScorch") { // a flame wave rolling out (ring or wedge), the ground it crossed left burning
       const D = DRAGON.wave, front = Math.min(f.reach, f.age * D.speed), d = distance(p, f), a = Math.atan2(p.y - f.y, p.x - f.x), off = Math.abs(((a - f.angle) % TAU + TAU * 1.5) % TAU - Math.PI) * 180 / Math.PI, inside = (f.arc >= 360 || off <= f.arc / 2) && d <= front;
       f.front = front; const owner = w.enemies.find((q) => q.id === f.owner) || null;
       if (!f.hit && inside && d >= front - 1.2) { f.hit = true; w.hurt(owner, f.damage, { jumpable: false, source: "dragonFlameWave" }); }
       else if (inside && !(f.nextBite > f.age)) { f.nextBite = f.age + D.tick; w.hurt(owner, f.bite, { jumpable: true, source: "dragonScorch", beam: true }); }
+    } else if (f.kind === "dragonMeteor") { // a fireball landing: it strikes once, and some leave a pool of lava
+      if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "dragonMeteor" }); if (f.pool) dragonPool(f.owner, w, f.x, f.y, f.pool, f.bite || 1); }
     } else if (f.kind === "dragonNova" || f.kind === "dragonBurst" || f.kind === "colonize") { /* drawn only */
     } else if (f.kind === "gale") { // release 708: a giant whirlwind rolling about, rebounding off walls and the section's edges
       const G = MOTH.gale, turn = Math.sin(f.age * .8 + (f.seed % 100)) * .6 * w.dt, c = Math.cos(turn), sn = Math.sin(turn); [f.vx, f.vy] = [f.vx * c - f.vy * sn, f.vx * sn + f.vy * c];
