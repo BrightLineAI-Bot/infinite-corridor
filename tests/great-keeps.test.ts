@@ -4,11 +4,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
-import { canStep } from '../src/landscape.ts';
+import { canStep, LANDSCAPE_VERSION } from '../src/landscape.ts';
 import { KEEPS, keepHere } from '../src/keeps.ts';
 
 const SEED = 'KEEPS1';
-const visit = (rx, ry) => { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld', false); return g; };
+// Since the great buildings, keeps stand only in sections first seen while they were built (683 on): pin the section so.
+const visit = (rx, ry) => { const s = freshSave(); s.seed = SEED; (s.atlas ||= {})[`${rx},${ry}`] = { keepVersion: KEEPS.version, landscapeVersion: LANDSCAPE_VERSION }; const g = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld', false); return g; };
 let found = null; const findKeep = () => { if (found) return found; for (let x = 5; x < 80 && !found; x++) for (let y = -30; y < 30 && !found; y++) if (keepHere(SEED, x, y)) { const g = visit(x, y); if (g.map.keep) found = g; } return found; };
 // Walk the section as the Wayfarer can: a step on the level or a slope, a jump up one level, a drop of any height.
 const reach = (map, from, jump = true) => { const seen = new Set([from.y * 32 + from.x]), q = [from], me = { isPlayer: true, jumping: jump };

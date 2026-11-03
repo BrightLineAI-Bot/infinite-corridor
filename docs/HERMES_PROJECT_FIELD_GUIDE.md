@@ -2694,6 +2694,50 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 709: great buildings — 2026-11-03
+
+Tim (2026-11-03): "more like actual buildings... a building that has multiple floors that you can, on each floor, walk around
+on and fight enemies, and the floor is separate from the other floor so you have to find a way to get through and a way to get
+to the top... floors can be dilapidated or falling through... opaque from the outside... some of them can have broken
+backsides... mosaic floors... carpets... wood plank floors... rendered similar to the shacks... and when you go inside, it has
+just traversable floor space".
+
+**CODE:**
+- `src/great-buildings.ts` (new; in the build and both sw.js lists):
+  - `BUILDINGS`: `chance` .09 past `minRing` 4; apartments in the `machine` regions, elsewhere keeps (`apartmentShare` .3
+    apartments); `breach` .35; per style its `footprints`, `floors` range, interior `size`, wall and floor kinds, guards,
+    guardian and cache; `split` (rooms), `extraDoors`, `holes`, `rubble`, `creatures` (per floor, floor scaling, guardian) and
+    `fall` (.1 of max health).
+  - `buildingHere(seed, rx, ry, region)` → `{ style, floors }`. `placeBuilding(map, …, exitsOpen)` lays a blocked footprint on
+    flat dry open ground clear of the exit lanes and the plaza (the section's ways out are checked as for keeps; `exitsOpen` is
+    now exported from keeps.ts), the `greatBuilding` object, and its door(s) as `dungeon` objects (`buildingDoor`, the breach
+    door with `enterAt: "breach"`) whose ids are `building:<seed>:<rx>:<ry>:<style>:<floors>:f1`.
+  - `buildingPlan(base)` lays every floor in order: rooms by splitting the floor into blocks with doorways (and joins anything
+    left cut off), each room's material (the largest is the hall), a little rubble that never cuts the floor in two, the stair
+    up among the farthest cells from where you arrive (the next floor's stair down stands on the same cell), then holes over
+    open floor below, kept off the stairs and dropped until every open cell is reachable without stepping in one.
+  - `generateBuildingFloor(seed, id)` builds one floor as a dungeon map (`map.building`, `recipe` greatBuilding): the exit (and
+    the broken wall) on the ground floor, `buildingStair` objects, guards one a room away from the arrival, and on the top floor
+    the cache (`keep-cache` / `arcology-cache`) and its guardian.
+- `src/game.ts`: `generatePinnedDungeon` builds `building:` ids (no Gate Revenant); `loadArea` places buildings in sections
+  first seen from now on (`atlas.buildingVersion`), and new sections no longer get `keepVersion` / `arcVersion`, so the
+  climbable keeps and arcologies stay only where they already were. Building floors skip the Aperture overlay, the dungeon
+  encounter population, the new traps and the Gate Revenant roll. `takeBuildingStair` / `goBuildingFloor` move between floors;
+  `buildingFall` (each frame, unless mid-jump) drops you through a hole onto the same spot a floor down; the creature hook
+  scales guards per floor and gives the guardian more health, damage and an affix.
+- `src/renderer.ts`: `greatBuilding` (roof, a band of windows a floor, the door, a torn breach) drawn after the creatures like
+  the shacks; `paintBuildingTile` for the walls (a face over open floor) and the floors; `drawBuildingStair`. `src/main.ts`
+  labels the stairs on the dungeon map.
+
+**BOUNDARY:**
+- New ground only (`atlas.buildingVersion`). Sections first seen from 683 or 685 keep their keeps and arcologies; sections seen
+  earlier get nothing.
+- Each floor is its own dungeon history and area state, so cleared floors and opened caches stay so. Nothing new is saved
+  beyond the atlas pin and the usual per-dungeon records (additive at schema 14).
+- Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
+- Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
+  first seen in 683 / 685.
+
 ## Release 708: the Briar Stag's grove, mend, birds and mire; its redraw; the Ashen Moth's chrysalis — 2026-11-03
 
 Tim, 2026-11-03: "the stag can do a move where he calls trees to grow up... they'll start burning... if you touch them... you'll get on fire... then they'll explode... burning embers... splinters out in all directions... a healing move... he raises his head... heals... not all of it... several birds... dive attack... from another side... the Earth... when you do Dodge... really slowly... takes a lot of your stamina... as if... on water... long enough to drain... half your stamina... if you stand still, your stamina will recover."

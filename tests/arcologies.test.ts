@@ -9,7 +9,7 @@ import { ARCOLOGY, arcologyHere } from '../src/keeps.ts';
 
 const SEED = 'ARCO1';
 let found = null;
-const findArc = () => { if (found) return found; for (let x = -70; x < 70 && !found; x++) for (let y = -70; y < 70 && !found; y++) if (arcologyHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld', false); if (g.map.keep?.arcology) found = g; } return found; };
+const findArc = () => { if (found) return found; for (let x = -70; x < 70 && !found; x++) for (let y = -70; y < 70 && !found; y++) if (arcologyHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) { const s = freshSave(); s.seed = SEED; (s.atlas ||= {})[`${x},${y}`] = { arcVersion: ARCOLOGY.version, landscapeVersion: LANDSCAPE_VERSION }; /* since the great buildings: a section first seen in 685 */ const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld', false); if (g.map.keep?.arcology) found = g; } return found; };
 const reach = (map, from, jump = true) => { const seen = new Set([from.y * 32 + from.x]), q = [from], me = { isPlayer: true, jumping: jump };
   while (q.length) { const p = q.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = p.x + dx, y = p.y + dy, k = y * 32 + x, t = map.tiles[k]; if (x < 0 || y < 0 || x > 31 || y > 31 || seen.has(k) || !t || t.blocked || !canStep(me, map, 32, p.x, p.y, x, y)) continue; seen.add(k); q.push({ x, y }); } }
   return seen; };

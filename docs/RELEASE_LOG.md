@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 708, the next is **709**.
+Taken at merge time: `main`'s release + 1 (see above). After 709, the next is **710**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 709 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great buildings (Tim asked this session): Old Keeps and Ruined Arcologies as opaque buildings with separate floors inside (rooms, floor materials, stairs, holes, broken backs, a guardian and cache on top); new ground only, in place of the climbable 683/685 keeps and arcologies | Merging (baton taken). |
 | 708 | Claude | `claude/dreamy-rubin-yn6q2p` | The Briar Stag's Burning Grove, Rooted Mend, Hunting Birds and Mire Ground; the player can burn; the Stag redrawn; the Ashen Moth's chrysalis on great trees | Merging. |
 | 707 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: a new thread, The Tollkeeper's Keys (middle crossings, wave 3 roll); the Ashen Moth's dive stops at its lane's end | Merged (`r707-9f6fba1549e9`). Published in r707. |
 | 706 | Claude | `claude/dreamy-rubin-yn6q2p` | Another world boss, the Ashen Moth: flying, seven attacks and the lantern beam, ash-land home, Echo | Merged (`r706-4f225c254da4`). Published in r706. |
