@@ -4,6 +4,7 @@
 import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.ts";
 import { MORPH_FORM, beamAngle } from "./listener-morph.ts";
 
+import { drawAstralWorm } from "./astral-worm-render.ts"; // release 719: the Ink Wastes' kin
 import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.ts";
 
 import { astralMountPresentation } from "./astral-worm-mount.ts";
@@ -83,6 +84,7 @@ const BODY = {
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
   doomChaser(ctx, q) { drawDoomChaser(ctx, q, q.t * 1000); }, // release 710
+  inkKin(ctx, q) { const d = MONSTER_PACK[q.e.kind]; drawAstralWorm(ctx, { x: q.k, y: q.b - q.u * .2, scale: q.u * (d?.inkScale || .4), time: q.t, form: d?.inkForm || "worm", facing: q.flip, reducedMotion: !!q.e.reduceMotion }); }, // release 719
   astralWorm(ctx,q) { const a=q.e.astral;
     // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.
     if(a?.form==='flight'){
@@ -925,6 +927,7 @@ function drawLynxBody(ctx, k, b, u, t, p, flip, run) {
 // only limb and glow animation steps at the sprite rate. The box (in creature units from the feet) holds every pose,
 // boss glow and flight lift (measured for each kind, release 167); a hit flash, which lightens what lies beneath, is
 // drawn directly over the copy.
+export const INK_TINT = { body: "rgba(7,6,14,.88)", sheen: "rgba(150,170,215,.22)" }; // release 719
 export const PACK_SPRITE = { fps: 24, left: 1.5, right: 1.5, up: 3.1, down: .75, keep: 48, staleMs: 4000 };
 const sprites = new Map();
 function makeSpriteCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
@@ -937,7 +940,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   const flip = ["astralWorm","astralMirage"].includes(e.kind)&&e.astral?.facingX ? (e.astral.facingX<0?-1:1) : e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
-  const key = `${e.kind}|${step}|${flip}|${spriteState(e)}|${scale}|${s}|${m.a}|${m.d}|${!!e.boss}|${!!e.aloft}`;
+  const key = `${e.kind}|${step}|${flip}|${spriteState(e)}|${scale}|${s}|${m.a}|${m.d}|${!!e.boss}|${!!e.aloft}|${!!e.farInk}`;
   let sp = sprites.get(e.id);
   if (!sp) { const canvas = makeSpriteCanvas(); if (!canvas) return false; sp = { canvas, key: null, used: now }; sprites.set(e.id, sp); }
   if (sp.key !== key) {
@@ -949,6 +952,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
     g.setTransform(m.a, 0, 0, m.d, (L - k) * m.a + 1, (U - b) * m.d + 1);
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
     paintPackMonster(g, { ...e, hitFlash: 0, phasing: false, phases: false, illusion: false }, s, step * 1000 / PACK_SPRITE.fps, facing, def, true);
+    if (e.farInk) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-atop"; g.fillStyle = INK_TINT.body; g.fillRect(0, 0, w, h); const sh = g.createLinearGradient(0, 0, 0, h); sh.addColorStop(0, INK_TINT.sheen); sh.addColorStop(.5, "rgba(0,0,0,0)"); g.fillStyle = sh; g.fillRect(0, 0, w, h); g.globalCompositeOperation = "source-over"; } // release 719: the Ink Wastes' creatures are ink-black (once per sprite frame, not per draw)
     sp.key = key;
   }
   sp.used = now;

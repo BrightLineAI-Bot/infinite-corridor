@@ -52,5 +52,6 @@ test('the Briar Stag and the Stalker, meeting, forget the Wayfarer and play for 
   t += 1000; g.beastPlay(1 / 30, t); assert.ok(!stag.playing, 'not again at once');
   t += BEAST_PLAY.gap * 1000; cat.x = stag.x + 3; cat.y = stag.y; g.beastPlay(1 / 30, t); assert.ok(stag.playing, 'and again later');
   g.enemies = [stag]; g.beastPlay(1 / 30, t + 50); assert.ok(!stag.playing, 'alone, no game');
+  { stag.playing = cat.playing = false; g.beastPlayState = null; g.enemies = [stag, cat]; cat.x = stag.x + 3; cat.y = stag.y; g.beastPlay(1 / 30, t + 99000); assert.ok(stag.playing); stag.retreating = true; g.beastPlay(1 / 30, t + 99050); assert.ok(!stag.playing && !cat.playing, 'a stag that turns to retreat mid-play is let go'); stag.retreating = false; }
   const far = Object.assign(createCombatant('ashenHound', stag.x + BEAST_PLAY.range + 5, stag.y, false, []), { id: 'cat2', kind: 'stalker', stalker: true }); g.enemies = [stag, far]; g.beastPlayState = null; g.beastPlay(1 / 30, t + 100); assert.ok(!stag.playing, 'too far apart');
 });

@@ -104,7 +104,7 @@ import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
 import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.ts";
-import { FAR_REALMS, FAR_CIVS, farRealmAt, giantify, farPocketAt, populatePocket, openFarQuest } from "./far-realms.ts";
+import { FAR_REALMS, FAR_CIVS, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest } from "./far-realms.ts";
 import { beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
@@ -2437,6 +2437,7 @@ export class Game {
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save)});
     if(area==="overworld"&&this.farPocket)populatePocket(this.map,this.save.seed,this.rx,this.ry,this.farPocket); // release 715: a stag grove or a blob pocket
+    if(area==="overworld"&&this.farRealm?.type==="ink")populateInk(this.map,this.save.seed,this.rx,this.ry); // release 719: the Ink Wastes
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="arrayMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};const quiet=ensureFarArray(this.save).quiet;this.map.objects.push({id:"array-mouth",kind:"arrayMouth",name:quiet?"The Quiet Mouth":"The Array Mouth",lore:quiet?"Nothing listens below it now, but the line still opens onto somewhere new each time.":"A ruined relay terminal, half sunk into ground no map has charted. Its line hums under your feet.",x:at.x,y:at.y,state:quiet?"quiet":"ready",actions:["enter"],landmark:true});this.message=quiet?`The Array Mouth is quiet: its runs go on, but the Listener is gone. ${quietMouthNote(this.save)}`:"The Array Mouth: the far end of the relay line."}
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&daisDue(ensureFarArray(this.save))&&!this.map.objects.some(o=>o.kind==="listenerDais")){const m=this.map.objects.find(o=>o.kind==="arrayMouth"),w=mapWidth(this.map,area),free=(x,y)=>{const t=this.map.tiles[y*w+x];return t&&!t.blocked&&!t.structure&&!t.environment&&!this.map.objects.some(o=>Math.round(o.x)===x&&Math.round(o.y)===y)};let at=null;for(let r=2;r<6&&!at;r++)for(const[dx,dy]of[[0,r],[r,0],[-r,0],[0,-r],[r,r],[-r,r]])if(!at&&m&&free(Math.round(m.x)+dx,Math.round(m.y)+dy))at={x:Math.round(m.x)+dx,y:Math.round(m.y)+dy};if(at){this.map.objects.push({id:"listener-dais",kind:"listenerDais",name:"The Listener's Dais",lore:"The Gate is whole. The dais hums with the Listener's line: step on, and it carries you to the hall where it waits.",...at,state:"humming",actions:["enter"],landmark:true});this.message="The Gate is whole: a dais has risen beside the Mouth. It leads to the Listener."}} // release 375
@@ -4690,6 +4691,7 @@ export class Game {
       if(e.astralCompanionOf){if(e.astralRole==='ally'){tuneWorldBeast(c,this.save,'voidWalker',characterStats(this.save));delete c.worldBeast;}Object.assign(c,{astralCompanionOf:e.astralCompanionOf,astralRole:e.astralRole,astralAllyOf:e.astralAllyOf,noRewards:!!e.noRewards,astralMountWanted:!!e.astralMountWanted});} // release 235
       if (e.retreating) Object.assign(c, { retreating: true, aggro: true, untargetable: true }); // release 239: fleeing through
       if (area === "overworld" && this.farRealm?.type === "giants") giantify(c); // release 714: the Giants' Reach
+      if (area === "overworld" && this.farRealm?.type === "ink" && !c.worldBeast && !c.questingBeast && !c.boss && !c.ambient && !c.stalker) c.farInk = true; // release 719: ink-black
       if (area === "dungeon" && isArrayRun(this.save.session.activeDungeonId)) {
         if (e.farArrayBoss === "listener") { const form = LISTENER_FORMS[e.listenerPhase] || LISTENER_FORMS.open; Object.assign(c, { farArrayBoss: "listener", listenerForm: e.listenerForm, listenerPhase: e.listenerPhase, packAttacks: [...form.attacks], packBossAttacks: [...form.boss], summoned: 0, foundryName: form.name }); }
         else if (e.farArrayBoss) c.farArrayBoss = e.farArrayBoss;
@@ -4873,7 +4875,7 @@ export class Game {
   // Release 714: the Briar Stag and the Stalker, when they meet, forget the Wayfarer and play (BEAST_PLAY).
   beastPlay(dt, now) {
     const P = BEAST_PLAY, s = (this.beastPlayState ||= { until: 0, next: 0, a: 0 }), stag = this.enemies.find((q) => q.kind === "briarStag" && !q.dead && !q.retreating), cat = this.enemies.find((q) => q.stalker && !q.dead);
-    const stop = () => { s.until = 0; for (const q of [stag, cat]) if (q) q.playing = false; };
+    const stop = () => { s.until = 0; for (const q of this.enemies) q.playing = false; }; // every one: a stag that turned to retreat mid-play is no longer `stag` here (release 719 fix)
     if (!stag || !cat || this.area !== "overworld") { if (s.until) stop(); return; }
     if (s.until && now >= s.until) { stop(); s.next = now + P.gap * 1000; this.message = P.end; return; }
     if (!s.until) { if (now < s.next || Math.hypot(stag.x - cat.x, stag.y - cat.y) > P.range) return;

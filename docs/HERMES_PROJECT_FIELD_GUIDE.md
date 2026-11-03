@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 719: the Ink Wastes — 2026-11-03
+
+Tim, 2026-11-03: "a section with the landscape as all like inky, black and kind of like... melting... lobby... inky, blackness, kind of all over everything... ingly black creatures... use a lot of the normal creatures. But just paint them... black... mirrors the motif and themes of the astral worm, and that'll just be like his... homeland... many creatures that look like the different versions of the astral worm, like the one where he has multiple legs and the mouth and the blob... and the Griffin, and the... dragonfly, these creatures won't transform... normal size creatures".
+
+**CODE:** a far realm, `FAR_REALMS.bands[5]` `ink` (u in [.18, .3); `FAR_REALMS.version` 5). The Game marks the section's map `farInk` and runs `populateInk` after the pack: of the ordinary spawns, `FAR_INK.share` become the Worm's shapes (`FAR_INK.kinds`) and the rest become creatures of `FAR_INK.painted`, overworld pack kinds drawn through the cached sprite, so the ink tint holds; `extra` more shapes gather. `createEnemyFromSpawn` sets `farInk` on every ordinary overworld creature there; `drawPackSprite` (`src/monster-render.ts`) paints such a creature's cached sprite with `INK_TINT` (a near-black wash and a pale sheen, `source-atop`) once per sprite frame, its key carrying `farInk`. The ground: `inkWash` (`src/renderer.ts`, `INK_WASH`) washes the cached ground image black and lays glossy pools and drips of ink, once when the cache is built (no per-frame cost). The shapes: `MONSTER_PACK` `inkPool`, `inkGriffin`, `inkWing`, `inkStrider`, `inkMaw` (`prototypeOnly`, `farKin`, render `inkKin`, each with `inkForm` and `inkScale`), drawn with the Astral Worm's own `drawAstralWorm` in one fixed form, with ordinary moves (bite, rupture, dive, claw, ram, leap). Also: `Game.beastPlay`'s `stop()` clears `playing` on every enemy, so a stag that turned to retreat mid-play is let go. Tests: `tests/far-ink-719.test.ts`.
+
+**BOUNDARY:** Far ground first seen at far-realm 5 only. Dungeons and the world beasts are untouched; the classic (non-pack) creatures of an ink section are replaced by painted pack kinds there, so nothing is drawn in its old colours.
+
 ## Release 717: the Storm Halls — 2026-11-03
 
 Tim, 2026-11-03: "different versions of the lightning giant... way far out at least after a 1000... all the monsters and all the creatures are lighting giants... different variations, so it looks like this is their lightning giant civilization... Same thing for the lightning giant civilization" (the quest, as for the crystals).

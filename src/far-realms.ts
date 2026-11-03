@@ -10,13 +10,14 @@
 import { hashSeed } from "./random.ts";
 
 export const FAR_REALMS = {
-  version: 4, start: 1000, cell: 40, warp: 9, // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
+  version: 5, start: 1000, cell: 40, warp: 9, // 5 (719): the Ink Wastes; // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
   // [type, from, to] on the cell's roll; later versions only add bands inside what earlier versions left ordinary.
-  bands: { 1: [["giants", 0, .18]] },
+  bands: { 1: [["giants", 0, .18]], 5: [["ink", .18, .3]] },
 };
 // What each realm does, as data. Giants: every ordinary creature of the overworld is this much bigger and stronger.
 export const FAR_GIANTS = { scale: 1.75, body: 1.5, hp: 2.2, damage: 1.35, speed: .88 };
 export const FAR_REALM_INFO = {
+  ink: { name: "the Ink Wastes", arrive: "The ground is black and soft and runs like wet paint; things move in it, and the things that walk here are black as the ground. This is the Astral Worm's homeland: the Ink Wastes." },
   giants: { name: "the Giants' Reach", arrive: "Everything here is too big: the tracks in the earth are as wide as doors, and the things that made them are close. You are in the Giants' Reach." },
 };
 
@@ -126,3 +127,19 @@ export function openFarQuest(save, beast, rx, ry) {
 }
 // The open quest the compass follows (the first open one), or null.
 export function activeFarQuest(save) { for (const [id, q] of Object.entries(save?.farQuests || {})) if (q.status === "open") return { id, rx: q.rx, ry: q.ry, name: FAR_CIVS[id]?.name || id }; return null; }
+
+// Release 719: the Ink Wastes (realm `ink`). Its land is washed in ink where the ground is drawn (renderer.ts inkWash, once per
+// section), every ordinary creature is ink-black (`farInk`, tinted in its cached sprite), and `share` of them are the Worm's own
+// shapes (`kinds`), with `extra` more.
+export const FAR_INK = { share: .5, extra: 3, kinds: ["inkPool", "inkGriffin", "inkWing", "inkStrider", "inkMaw"],
+  // the ordinary creatures that are painted black: the overworld roster drawn through the cached sprite (monster-render), so the tint holds
+  painted: ["thunderhorn", "siegeBeetle", "cinderSeraph", "riftLynx", "graveLantern", "veilSpinner", "lumenWraith", "mirrorShade"] };
+export function populateInk(map, seed, rx, ry) {
+  if (!map || map.farInkPopulated) return map; map.farInkPopulated = true; map.farInk = true;
+  const I = FAR_INK, spawns = (map.enemySpawns ||= []), h = (k) => hashSeed(`${seed}:far-ink:${rx}:${ry}:${k}`), ordinary = (e) => e.packOverworld || !(e.ambient || e.passiveBehavior || e.shelterAmbush || e.districtResident || e.boss || e.elite || e.gatePredator || e.foundryId || e.viewportHuntId || e.domainId || e.huntInstanceId || e.worldBeast || e.questingBeast || e.skirmishId);
+  spawns.forEach((e, i) => { if (!ordinary(e)) return; if ((h(`s${i}`) % 1000) / 1000 < I.share) e.kind = I.kinds[h(`k${i}`) % I.kinds.length]; else if (!e.packOverworld) { e.kind = I.painted[h(`o${i}`) % I.painted.length]; e.packOverworld = true; } });
+  const width = Number(map.width) || 32, height = Math.floor((map.tiles?.length || 1024) / width), taken = [...spawns, ...(map.objects || [])].filter((q) => Number.isFinite(q?.x));
+  const open = (map.tiles || []).filter((t) => !t.blocked && !t.environment && !t.structure && !t.buildingId && t.x > 2 && t.y > 2 && t.x < width - 3 && t.y < height - 3).sort((a, b) => h(`p${a.x},${a.y}`) - h(`p${b.x},${b.y}`));
+  let n = 0; for (const t of open) { if (n >= I.extra) break; if (taken.some((q) => Math.hypot(q.x - t.x, q.y - t.y) < 3)) continue; const e = { id: `far-ink:${rx}:${ry}:${n}`, kind: I.kinds[h(`x${n}`) % I.kinds.length], x: t.x, y: t.y, packOverworld: true }; spawns.push(e); taken.push(e); n++; }
+  return map;
+}
