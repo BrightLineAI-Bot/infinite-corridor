@@ -1564,17 +1564,19 @@ function shack(ctx,o,s,p,map){
 // Great buildings (great-buildings.ts): a closed block seen from outside, a roof over a facade with a row of windows a floor
 // and the door; a keep in dressed stone under a parapet, an arcology in stained concrete with dead neon. A broken back shows
 // as a torn gap in the roof's far edge (or the facade, when the door faces north).
-function greatBuilding(ctx,o,s){
-  const b=o.bounds,x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s,keep=o.style==="keep",grain=o.grain||0,floors=o.floors||3,south=o.door?.side!=="north";
+function greatBuilding(ctx,o,s,p){
+  const b=o.bounds,keep=o.style==="keep",grain=o.grain||0,floors=o.floors||3,south=o.door?.side!=="north",faceH=o.faceH||Math.min(b.h-2.2,1+floors*.5);
   const C=keep?{roof:"#3a3631",roofLine:"#5b544a",wall:"#5d564b",wallDark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860"}:{roof:"#3b3f44",roofLine:"#575d63",wall:"#6a6e72",wallDark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
-  const faceH=Math.min(h-s*2.2,s*(1+floors*.5)),roofY=y,roofH=h-faceH,faceY=y+roofH;
-  ctx.save();
-  ctx.fillStyle="#00000055";ctx.fillRect(x+s*.18,y+h-s*.05,w,s*.28); // a shadow at its foot
+  // a block seen from the south: the roof is the footprint raised by the facade's height (where the Wayfarer stands on it), the facade below it
+  const x=b.x*s,w=b.w*s,roofY=(b.y-faceH)*s,roofH=b.h*s,faceY=(b.y+b.h-faceH)*s,fH=faceH*s,foot=(b.y+b.h)*s;
+  const onRoof=!!o.roof&&p&&p.x>=b.x-.5&&p.x<b.x+b.w-.5&&p.y>=b.y-.5&&p.y<b.y+b.h-.5,behind=!onRoof&&p&&p.x>=b.x-.7&&p.x<b.x+b.w-.3&&p.y>=b.y-faceH-.8&&p.y<b.y+.4;
+  ctx.save();if(behind)ctx.globalAlpha=.42; // walk behind it and it lets you see yourself
+  ctx.fillStyle="#00000055";ctx.fillRect(x+s*.18,foot-s*.05,w,s*.28); // a shadow at its foot
   // the roof
   ctx.fillStyle=C.roof;ctx.fillRect(x,roofY,w,roofH);ctx.strokeStyle=C.roofLine;ctx.lineWidth=1;
   if(keep){for(let q=roofY+s*.5;q<roofY+roofH-s*.2;q+=s*.5){ctx.beginPath();ctx.moveTo(x+s*.3,q);ctx.lineTo(x+w-s*.3,q);ctx.stroke()}
     ctx.fillStyle=C.wallDark;for(let q=0;q<w;q+=s*.5){if(((q/s*2)|0)%2===0){ctx.fillRect(x+q,roofY,s*.32,s*.24);ctx.fillRect(x+q,roofY+roofH-s*.24,s*.32,s*.24)}} // the parapet's merlons
-    ctx.fillStyle=C.wall;for(const [cx,cy] of [[x,roofY],[x+w-s*1.1,roofY]]){ctx.fillRect(cx,cy,s*1.1,s*1.1);ctx.strokeStyle=C.mortar;ctx.strokeRect(cx+.5,cy+.5,s*1.1-1,s*1.1-1)} // corner turrets
+    ctx.fillStyle=C.wall;for(const cx of [x,x+w-s*1.1]){ctx.fillRect(cx,roofY,s*1.1,s*1.1);ctx.strokeStyle=C.mortar;ctx.strokeRect(cx+.5,roofY+.5,s*1.1-1,s*1.1-1)} // corner turrets
     ctx.fillStyle="#5c2f2a";ctx.beginPath();ctx.moveTo(x+w*.5,roofY+s*.35);ctx.lineTo(x+w*.5+s*.5,roofY+s*.55);ctx.lineTo(x+w*.5,roofY+s*.75);ctx.closePath();ctx.fill();ctx.strokeStyle="#2a2522";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+w*.5,roofY+s*.3);ctx.lineTo(x+w*.5,roofY+s*1.15);ctx.stroke(); // a torn banner
   }else{for(let q=x+s;q<x+w-s*.5;q+=s){ctx.beginPath();ctx.moveTo(q,roofY+s*.2);ctx.lineTo(q,roofY+roofH-s*.2);ctx.stroke()}
     ctx.fillStyle="#2d3135";ctx.fillRect(x+s*.6,roofY+s*.5,s*1.2,s*.8);ctx.fillRect(x+w-s*2,roofY+s*.7,s*.9,s*.9); // plant and vents
@@ -1582,11 +1584,15 @@ function greatBuilding(ctx,o,s){
     ctx.strokeStyle=C.trim+"88";ctx.lineWidth=2;ctx.strokeRect(x+s*.15,roofY+s*.15,w-s*.3,roofH-s*.3); // the rim's dead neon
     ctx.fillStyle="#1d1f22";ctx.fillRect(x+w*.35,roofY+roofH-s*.62,w*.3,s*.42);ctx.fillStyle=C.trim+(grain%3?"55":"cc");ctx.font=`${Math.max(7,s*.26)}px monospace`;ctx.textAlign="center";ctx.fillText(grain%2?"HAB":"ARC",x+w*.5,roofY+roofH-s*.3);ctx.textAlign="start"; // its sign
   }
+  if(o.roof){const lift=faceH*s; // a roof you can stand on: where it has fallen in, and its hatch
+    for(const c of o.roof.crumbled||[]){const cx=c.x*s,cy=c.y*s-lift,k=(c.x*7+c.y*3)%5;ctx.fillStyle="#060607";ctx.beginPath();ctx.moveTo(cx+s*.1,cy+s*.2);ctx.lineTo(cx+s*(.4+k*.05),cy+s*.05);ctx.lineTo(cx+s*.9,cy+s*.25);ctx.lineTo(cx+s*.85,cy+s*.85);ctx.lineTo(cx+s*.3,cy+s*.95);ctx.closePath();ctx.fill();ctx.fillStyle=C.wallDark;ctx.fillRect(cx+s*.62,cy+s*.6,s*.2,s*.14);ctx.fillRect(cx+s*.15,cy+s*.4,s*.16,s*.12)}
+    const hx=o.roof.hatch.x*s,hy=o.roof.hatch.y*s-lift;ctx.fillStyle="#1a1612";ctx.fillRect(hx+s*.12,hy+s*.12,s*.76,s*.76);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(hx+s*.12,hy+s*.12,s*.76,s*.76);ctx.strokeStyle="#8a7650";ctx.beginPath();ctx.moveTo(hx+s*.32,hy+s*.12);ctx.lineTo(hx+s*.32,hy+s*.88);ctx.moveTo(hx+s*.68,hy+s*.12);ctx.lineTo(hx+s*.68,hy+s*.88);for(let q=.28;q<.9;q+=.2){ctx.moveTo(hx+s*.32,hy+s*q);ctx.lineTo(hx+s*.68,hy+s*q)}ctx.stroke();
+    ctx.strokeStyle="#00000066";ctx.lineWidth=3;ctx.strokeRect(x+1.5,roofY+1.5,w-3,roofH-3);}
   // the facade: a band a floor, windows in each
-  ctx.fillStyle=C.wall;ctx.fillRect(x,faceY,w,faceH);ctx.fillStyle="#00000033";ctx.fillRect(x,faceY,w,s*.14);
-  const band=faceH/floors;
-  for(let f=0;f<floors;f++){const by=faceY+faceH-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+w,by);ctx.stroke();
-    if(keep){for(let q=x+s*.3,n=0;q<x+w;q+=s*.5,n++){ctx.beginPath();ctx.moveTo(q+(f%2)*s*.25,by);ctx.lineTo(q+(f%2)*s*.25,by+band);ctx.stroke()}}
+  ctx.fillStyle=C.wall;ctx.fillRect(x,faceY,w,fH);ctx.fillStyle="#00000033";ctx.fillRect(x,faceY,w,s*.14);
+  const band=fH/floors;
+  for(let f=0;f<floors;f++){const by=faceY+fH-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+w,by);ctx.stroke();
+    if(keep){for(let q=x+s*.3;q<x+w;q+=s*.5){ctx.beginPath();ctx.moveTo(q+(f%2)*s*.25,by);ctx.lineTo(q+(f%2)*s*.25,by+band);ctx.stroke()}}
     const n=Math.max(2,Math.floor(b.w/(keep?2:1.3)));
     for(let i=0;i<n;i++){const wx=x+(i+.5)*w/n,wy=by+band*.22,ww=s*(keep?.22:.42),wh=band*.56,k=(grain*7+i*13+f*31)%11;
       if(f===0&&south&&Math.abs(wx-(o.door.x+.5)*s)<s*.9)continue;
@@ -1594,25 +1600,28 @@ function greatBuilding(ctx,o,s){
       if(keep){ctx.beginPath();ctx.moveTo(wx-ww/2,wy+wh);ctx.lineTo(wx-ww/2,wy+ww/2);ctx.arc(wx,wy+ww/2,ww/2,Math.PI,0);ctx.lineTo(wx+ww/2,wy+wh);ctx.closePath();ctx.fill()}
       else{ctx.fillRect(wx-ww/2,wy,ww,wh);ctx.strokeStyle=k<3?"#5e646a":C.trim+"55";ctx.strokeRect(wx-ww/2+.5,wy+.5,ww-1,wh-1);if(k===1){ctx.strokeStyle="#9aa3aa88";ctx.beginPath();ctx.moveTo(wx-ww/2,wy);ctx.lineTo(wx+ww*.1,wy+wh*.6);ctx.lineTo(wx+ww/2,wy+wh*.2);ctx.stroke()}}}
   }
-  ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,w-2,h-2);
-  // weathering: a crack and a stain
-  ctx.strokeStyle="#1a1a1a99";ctx.lineWidth=1.5;ctx.beginPath();const cx0=x+w*(.2+(grain%5)*.12);ctx.moveTo(cx0,faceY+s*.1);ctx.lineTo(cx0+s*.2,faceY+faceH*.35);ctx.lineTo(cx0-s*.1,faceY+faceH*.6);ctx.stroke();
+  ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.strokeRect(x+1,roofY+1,w-2,foot-roofY-2);ctx.beginPath();ctx.moveTo(x,faceY);ctx.lineTo(x+w,faceY);ctx.stroke();
+  ctx.strokeStyle="#1a1a1a99";ctx.lineWidth=1.5;ctx.beginPath();const cx0=x+w*(.2+(grain%5)*.12);ctx.moveTo(cx0,faceY+s*.1);ctx.lineTo(cx0+s*.2,faceY+fH*.35);ctx.lineTo(cx0-s*.1,faceY+fH*.6);ctx.stroke(); // weathering
   // the door
-  if(o.door){const dx=(o.door.x+.08)*s,dw=s*.84;if(south){const dh=Math.min(band*.95,s*1.1),dy=y+h-dh;ctx.fillStyle="#08090a";ctx.fillRect(dx,dy,dw,dh);if(keep){ctx.beginPath();ctx.arc(dx+dw/2,dy,dw/2,Math.PI,0);ctx.fill()}ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.fillStyle=C.trim+"55";ctx.fillRect(dx-s*.12,y+h-s*.08,dw+s*.24,s*.08)}
-    else{ctx.fillStyle="#08090a";ctx.fillRect(dx,y,dw,s*.55);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,y,dw,s*.55)}}
+  if(o.door){const dx=(o.door.x+.08)*s,dw=s*.84;if(south){const dh=Math.min(band*.95,s*1.1),dy=foot-dh;ctx.fillStyle="#08090a";ctx.fillRect(dx,dy,dw,dh);if(keep){ctx.beginPath();ctx.arc(dx+dw/2,dy,dw/2,Math.PI,0);ctx.fill()}ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.fillStyle=C.trim+"55";ctx.fillRect(dx-s*.12,foot-s*.08,dw+s*.24,s*.08)}
+    else{ctx.fillStyle="#08090a";ctx.fillRect(dx,roofY,dw,s*.55);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,roofY,dw,s*.55)}}
   // a broken back
-  if(o.breach){const bx=(o.breach.x+.5)*s,top=o.breach.y===b.y,yy=top?y:y+h;ctx.fillStyle="#07080a";ctx.beginPath();if(top){ctx.moveTo(bx-s*.75,yy);ctx.lineTo(bx-s*.35,yy+s*.7);ctx.lineTo(bx,yy+s*.45);ctx.lineTo(bx+s*.3,yy+s*.85);ctx.lineTo(bx+s*.8,yy)}else{ctx.moveTo(bx-s*.75,yy);ctx.lineTo(bx-s*.4,yy-s*.9);ctx.lineTo(bx,yy-s*.6);ctx.lineTo(bx+s*.35,yy-s*1.05);ctx.lineTo(bx+s*.8,yy)}ctx.closePath();ctx.fill();
+  if(o.breach){const bx=(o.breach.x+.5)*s,top=o.breach.y===b.y,yy=top?roofY:foot;ctx.fillStyle="#07080a";ctx.beginPath();if(top){ctx.moveTo(bx-s*.75,yy);ctx.lineTo(bx-s*.35,yy+s*.7);ctx.lineTo(bx,yy+s*.45);ctx.lineTo(bx+s*.3,yy+s*.85);ctx.lineTo(bx+s*.8,yy)}else{ctx.moveTo(bx-s*.75,yy);ctx.lineTo(bx-s*.4,yy-s*.9);ctx.lineTo(bx,yy-s*.6);ctx.lineTo(bx+s*.35,yy-s*1.05);ctx.lineTo(bx+s*.8,yy)}ctx.closePath();ctx.fill();
     ctx.fillStyle=C.wallDark;for(let i=0;i<5;i++)ctx.fillRect(bx-s*.7+i*s*.3,(top?yy-s*.18:yy-s*.05)+((grain+i)%2)*s*.08,s*.22,s*.16)}
-  ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),x+w/2,y-s*.14);ctx.textAlign="start";
+  ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),x+w/2,roofY-s*.14);ctx.textAlign="start";
   ctx.restore();
 }
-// A great building's stair: steps rising (up) or falling away into the dark (down), its edge lit.
+// A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
+// the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
 function drawBuildingStair(ctx, o, s, now) {
-  const x = o.x * s, y = o.y * s, up = o.dir === "up", pulse = .5 + .5 * Math.sin(now / 420);
-  ctx.save(); ctx.fillStyle = "#0b0b0c"; ctx.fillRect(x, y, s, s);
-  for (let i = 0; i < 4; i++) { const k = up ? 3 - i : i, yy = y + i * s / 4; ctx.fillStyle = `rgb(${70 + k * 28},${62 + k * 24},${52 + k * 20})`; ctx.fillRect(x + s * .08, yy + 1, s * .84, s / 4 - 2); }
-  ctx.strokeStyle = `rgba(242,230,168,${.45 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
-  ctx.fillStyle = "#f2e6a8"; ctx.beginPath(); const cx = x + s * .5, cy = y + s * .5; if (up) { ctx.moveTo(cx, cy - s * .22); ctx.lineTo(cx + s * .16, cy); ctx.lineTo(cx - s * .16, cy); } else { ctx.moveTo(cx, cy + s * .22); ctx.lineTo(cx + s * .16, cy); ctx.lineTo(cx - s * .16, cy); } ctx.closePath(); ctx.fill();
+  const x = o.x * s, y = o.y * s, up = o.dir !== "down", pulse = .5 + .5 * Math.sin(now / 420);
+  ctx.save(); ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .9, s * .4, s * .1, 0, 0, 7); ctx.fill();
+  if (up) { ctx.fillStyle = "#070708"; ctx.fillRect(x + s * .14, y - s * .55, s * .72, s * .32); ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .14, y - s * .55, s * .72, s * .32); // the hatch above
+    ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo(x + s * .3, y + s * .9); ctx.lineTo(x + s * .34, y - s * .45); ctx.moveTo(x + s * .7, y + s * .9); ctx.lineTo(x + s * .66, y - s * .45); ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); for (let q = -.3; q < .85; q += .22) { ctx.moveTo(x + s * .32, y + s * q); ctx.lineTo(x + s * .68, y + s * q); } ctx.stroke(); }
+  else { ctx.fillStyle = "#050506"; ctx.fillRect(x + s * .12, y + s * .12, s * .76, s * .76); ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .12, y + s * .12, s * .76, s * .76);
+    ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.moveTo(x + s * .34, y + s * .16); ctx.lineTo(x + s * .34, y + s * .7); ctx.moveTo(x + s * .66, y + s * .16); ctx.lineTo(x + s * .66, y + s * .7); ctx.moveTo(x + s * .34, y + s * .3); ctx.lineTo(x + s * .66, y + s * .3); ctx.moveTo(x + s * .34, y + s * .5); ctx.lineTo(x + s * .66, y + s * .5); ctx.stroke(); }
+  if (o.dir === "roof") { ctx.fillStyle = `rgba(160,200,255,${.25 + .25 * pulse})`; ctx.fillRect(x + s * .18, y - s * .51, s * .64, s * .24); } // daylight through the roof hatch
   ctx.restore();
 }
 // Inside a great building: dressed or concrete walls with a face where they stand over open floor, and each room's floor.
@@ -2279,7 +2288,7 @@ export function render(ctx, g, w, h, now) {
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
-  for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?greatBuilding:architecturalBuilding;
+  for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?12:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?greatBuilding:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
     const bounds = o.bounds || { x:o.x-2, y:o.y-2, w:5, h:4 };
@@ -2299,6 +2308,7 @@ export function render(ctx, g, w, h, now) {
   if(skyA>0)ctx.restore()}
   const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&discoveredInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
+  { const R=objectLists.structures.find(o=>o.kind==="greatBuilding"&&o.roof&&p.x>=o.bounds.x-.5&&p.x<o.bounds.x+o.bounds.w-.5&&p.y>=o.bounds.y-.5&&p.y<o.bounds.y+o.bounds.h-.5); if(R)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,1); } // on a great building's roof, the Wayfarer stands over it
   const motion = now / 1000;
   for (const o of objectLists.animated)
     if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)) {

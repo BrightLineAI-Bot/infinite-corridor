@@ -3302,6 +3302,7 @@ export class Game {
     if (o.kind === "riteAshes") return this.riseFromAshes(o);
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "buildingStair") return this.takeBuildingStair(o); // great buildings
+    if (o.kind === "exit" && this.map?.building) { const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors, at = D && (o.id === "building-breach" ? D.breach || D.front : D.front); if (at) this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: at.x, y: at.y }; } // out by the door you take
     if (o.kind === "deepShaft") return this.enterDeep(o, action); // release 677
     if (o.kind === "deepStair") return this.descendDeep(o);
     if (o.kind === "emberDoor") return this.burnEmber();
@@ -3435,7 +3436,9 @@ export class Game {
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
       if (o.enterAt === "breach" && this.map.building?.breachEntry) { this.player.x = this.map.building.breachEntry.x; this.player.y = this.map.building.breachEntry.y; } // a great building's broken back
-      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${this.map.building.floors} floors · find the stair up · mind the floor`, kind: "danger" };
+      if (o.enterAt === "roof" && this.map.building?.roofLadder) { const at = buildingArrival(this.map, this.map.building.roofLadder.x, this.map.building.roofLadder.y); this.player.x = at.x; this.player.y = at.y; } // down through its roof hatch
+      if (o.buildingDoors && this.map.building) dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors = { ...o.buildingDoors }; // where each of its ways out lets you out
+      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
       if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
     } else if (r.transition === "exit") {
@@ -5389,6 +5392,10 @@ export class Game {
     relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); this.projectiles = [];
   }
   takeBuildingStair(o) {
+    if (o.dir === "roof") { // up through the hatch, onto the roof: high ground on the section itself
+      const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors; if (!D?.hatch) { this.message = "The hatch is rubbled shut."; return { ok: false, message: this.message }; }
+      this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: D.hatch.x, y: D.hatch.y }; this.leaveDungeon(BUILDINGS.messages.roof); this.sync(); return { ok: true, message: this.message };
+    }
     this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, top = B.floor >= B.floors;
     this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };
     this.message = `${o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${this.map.name.split(" · ")[1] || `floor ${B.floor}`}.`; this.sync(); return { ok: true, message: this.message };

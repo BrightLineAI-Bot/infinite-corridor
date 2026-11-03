@@ -20,7 +20,7 @@ import { growTrees, TREES_V14 } from "./trees.ts";
 export const LANDSCAPE_VERSION = 14; // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
-export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : 1);
+export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : t?.roofLift || 1); // a great building's roof is drawn at the top of its facade (great-buildings.ts)
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
 export const FALL_DAMAGE = { 1: 0, 2: .15, 3: .4 };

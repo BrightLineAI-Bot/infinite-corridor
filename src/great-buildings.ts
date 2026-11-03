@@ -20,6 +20,12 @@ export const BUILDINGS = {
   machine: ["glasslands", "biomech", "emberlands", "ashfields", "crystal", "obsidian", "alien"], // apartments stand here
   apartmentShare: .3, // elsewhere, this share are apartments and the rest keeps
   breach: .35, // share with a broken back, a second way in
+  // Tim: "you should be able to get on the roofs of these buildings, not all of them, but some of them... sections of the roof
+  // ... crumbling... get on top of the roof and look out... you can hop off... if you don't have the drone... you'll die".
+  // A roof is high ground on the overworld (`elev`, a fatal height: the drone's booster lets you down), reached by a ladder
+  // from the top floor through a hatch; `crumbled` of it has fallen in. Only in sections with a landscape layer.
+  roof: { share: .55, elev: 5, crumbled: .1 },
+  roofLadderClear: 9, // the roof ladder stands at least this far from the top floor's guardian (game.ts ARRIVAL.clear is 8)
   styles: {
     keep: {
       name: "Old Keep", footprints: [[9, 7], [8, 7], [8, 6]], floors: [3, 4], size: [28, 22],
@@ -43,8 +49,9 @@ export const BUILDINGS = {
   messages: {
     arrive: "A great building stands here, shut and dark. Its door is the way in.",
     enter: "inside",
-    climb: "You climb the stair to",
-    descend: "You go down the stair to",
+    climb: "You climb the ladder to",
+    descend: "You climb down the ladder to",
+    roof: "You climb out through the hatch onto the roof. Mind the edge: it is a long way down.",
     fall: "The floor gives way: you fall through to",
     top: "the top floor: its guardian and its cache wait somewhere across it",
   },
@@ -53,11 +60,11 @@ export const BUILDINGS = {
 export const FLOOR_KINDS = ["mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole"];
 export const WALL_KINDS = ["keepWall", "aptWall"];
 
-const ID = /^building:(.+):(-?\d+):(-?\d+):(keep|apartment):(\d+):f(\d+)$/;
+const ID = /^building:(.+):(-?\d+):(-?\d+):(keep|apartment):(\d+)(r?):f(\d+)$/; // `r`: it has a roof to stand on
 export const isBuildingId = (id) => ID.test(String(id || ""));
 export function parseBuildingId(id) {
   const m = String(id || "").match(ID); if (!m) return null;
-  return { seed: m[1], rx: Number(m[2]), ry: Number(m[3]), style: m[4], floors: Number(m[5]), floor: Number(m[6]), base: `building:${m[1]}:${m[2]}:${m[3]}:${m[4]}:${m[5]}` };
+  return { seed: m[1], rx: Number(m[2]), ry: Number(m[3]), style: m[4], floors: Number(m[5]), roof: m[6] === 'r', floor: Number(m[7]), base: `building:${m[1]}:${m[2]}:${m[3]}:${m[4]}:${m[5]}${m[6]}` };
 }
 export const buildingFloorId = (base, floor) => `${base}:f${floor}`;
 
@@ -71,6 +78,9 @@ export function buildingHere(seed, rx, ry, region) {
 }
 
 // ------------------------------------------------------------------------------------------------ outside, on the overworld
+const LIFT = .34; // landscape.ts LIFT_PER_LEVEL (not imported, so this module stays free of the landscape)
+// The facade's drawn height in tiles: a band a floor. A roof is drawn at its top, so the Wayfarer on it stands where it is drawn.
+export const facadeHeight = (H, floors) => Math.min(H - 2.2, 1 + floors * .5);
 const I = (x, y) => y * 32 + x, WET = /ocean|Ocean|lake|Lake|swamp|Swamp|toxic|Toxic|water|Water|lava|abyss|river|canyon|mire|Mire|shallows|pool|Pool/;
 // Lay the building into `map` (a 32×32 overworld section): a footprint of blocked tiles, the `greatBuilding` object that draws
 // it, the door (a `dungeon` object, so entering works as for any crossing) and, for a broken back, a second door.
@@ -96,18 +106,26 @@ export function placeBuilding(map, seed, rx, ry, plan, exitsOpen) {
       const breach = (hashSeed(`${seed}:great-building:v1:${rx}:${ry}:breach`) % 1000) / 1000 < BUILDINGS.breach;
       const bx = ox + 1 + (h("bx") % Math.max(1, W - 2)), by = south ? oy : oy + H - 1, bout = { x: bx, y: by + (south ? -1 : 1) };
       const back = breach && open(bout.x, bout.y);
-      const tiles = map.tiles.slice(), before = exitsOpen(map), footprint = [];
-      for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) { footprint.push({ x, y }); const i = I(x, y); map.tiles[i] = { ...map.tiles[i], x, y, blocked: true, slope: false, greatBuilding: true, environment: undefined }; }
+      const R = BUILDINGS.roof, roof = !!map.landscape && (hashSeed(`${seed}:great-building:v1:${rx}:${ry}:roof`) % 1000) / 1000 < R.share;
+      const faceH = facadeHeight(H, plan.floors), lift = faceH / (R.elev * LIFT), hatch = { x: ox + (W >> 1) + (h("hx") % 3) - 1, y: oy + 2 + (h("hy") % Math.max(1, H - 4)) };
+      const tiles = map.tiles.slice(), before = exitsOpen(map), footprint = [], crumbled = [];
+      for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) { footprint.push({ x, y }); const i = I(x, y);
+        if (!roof) { map.tiles[i] = { ...map.tiles[i], x, y, blocked: true, slope: false, greatBuilding: true, environment: undefined }; continue; }
+        const inner = x > ox && y > oy && x < ox + W - 1 && y < oy + H - 1, fallen = inner && Math.abs(x - hatch.x) + Math.abs(y - hatch.y) > 1 && (hashSeed(`${seed}:great-building-roof:${rx}:${ry}:${x}:${y}`) % 1000) / 1000 < R.crumbled;
+        if (fallen) crumbled.push({ x, y });
+        map.tiles[i] = { ...map.tiles[i], x, y, kind: plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology", blocked: fallen, slope: false, elev: R.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, roofHole: fallen || undefined, environment: undefined, canopy: undefined }; }
       const after = exitsOpen(map);
       if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
-      const base = `building:${seed}:${rx}:${ry}:${plan.style}:${plan.floors}`, id = `great-building-${rx}-${ry}`;
+      const base = `building:${seed}:${rx}:${ry}:${plan.style}:${plan.floors}${roof ? 'r' : ''}`, id = `great-building-${rx}-${ry}`;
       map.objects = (map.objects || []).filter((o) => !(o.x >= ox - .5 && o.x < ox + W - .5 && o.y >= oy - .5 && o.y < oy + H - .5));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !(e.x >= ox - .5 && e.x < ox + W - .5 && e.y >= oy - .5 && e.y < oy + H - .5));
-      const rec = { id, kind: "greatBuilding", name: S.name, style: plan.style, floors: plan.floors, x: dx, y: oy + H - 1, bounds: { x: ox, y: oy, w: W, h: H }, footprint, door: { x: dx, y: dy, side: south ? "south" : "north" }, breach: back ? { x: bx, y: by } : null, grain: h("grain") % 97, state: "closed", actions: [] };
+      const rec = { id, kind: "greatBuilding", name: S.name, style: plan.style, floors: plan.floors, x: dx, y: oy + H - 1, bounds: { x: ox, y: oy, w: W, h: H }, footprint, door: { x: dx, y: dy, side: south ? "south" : "north" }, breach: back ? { x: bx, y: by } : null, roof: roof ? { elev: R.elev, hatch, crumbled } : null, faceH, grain: h("grain") % 97, state: "closed", actions: [] };
       map.objects.push(rec);
-      map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: S.name, identity: `${plan.floors} floors, shut and dark`, x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: `${S.name}: ${plan.floors} floors. The door is the way in; somewhere above, its guardian and its cache.` });
-      if (back) map.objects.push({ id: `${id}-breach`, kind: "dungeon", buildingDoor: true, breachDoor: true, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: `${S.name} (broken wall)`, x: bout.x, y: bout.y, state: "open", actions: ["enter"], enterAt: "breach" });
-      map.greatBuilding = { id, base, style: plan.style, floors: plan.floors, version: BUILDINGS.version };
+      const doors = { rx, ry, front: out, breach: back ? bout : null, hatch: roof ? hatch : null };
+      map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, buildingDoors: doors, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: S.name, identity: `${plan.floors} floors, shut and dark`, x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: `${S.name}: ${plan.floors} floors. The door is the way in; somewhere above, its guardian and its cache.` });
+      if (roof) map.objects.push({ id: `${id}-hatch`, kind: "dungeon", buildingDoor: true, roofHatch: true, buildingDoors: doors, dungeonId: buildingFloorId(base, plan.floors), dungeonType: "greatBuilding", name: `${S.name} (roof hatch)`, x: hatch.x, y: hatch.y, elev: R.elev, state: "open", actions: ["enter"], enterAt: "roof" });
+      if (back) map.objects.push({ id: `${id}-breach`, kind: "dungeon", buildingDoor: true, breachDoor: true, buildingDoors: doors, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: `${S.name} (broken wall)`, x: bout.x, y: bout.y, state: "open", actions: ["enter"], enterAt: "breach" });
+      map.greatBuilding = { id, base, style: plan.style, floors: plan.floors, roof, version: BUILDINGS.version };
       return rec;
     }
   }
@@ -164,6 +182,7 @@ function layFloor(base, f, W, H, S, arrive, keepOpen) {
     for (let k = 0; k < n; k++) { const [x, y] = cells[Math.floor(r() * cells.length)]; grid[at(x, y)] = 2; } }
   for (const p of keepOpen) if (grid[at(p.x, p.y)] === 1 || p.v === 3) grid[at(p.x, p.y)] = p.v; // the door, the way in, a broken back wall
   if (grid[at(arrive.x, arrive.y)] === 1) grid[at(arrive.x, arrive.y)] = 2;
+  if (N4.every(([dx, dy]) => grid[at(arrive.x + dx, arrive.y + dy)] === 1)) for (const [dx, dy] of N4) { const x = arrive.x + dx, y = arrive.y + dy; if (x > 0 && y > 0 && x < W - 1 && y < H - 1) grid[at(x, y)] = 2; } // arriving where two walls cross: break through them
   // join anything still cut off (a doorway that opened into a later wall), and check the arrival reaches every open cell
   const reach = () => { const seen = new Uint8Array(W * H), q = [at(arrive.x, arrive.y)]; seen[q[0]] = 1; for (let i = 0; i < q.length; i++) { const k = q[i], x = k % W, y = (k / W) | 0; for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, n = at(nx, ny); if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[n] || grid[n] === 1 || grid[n] === 4) continue; seen[n] = 1; q.push(n); } } return seen; };
   for (let guard = 0; guard < 40; guard++) { const seen = reach(); let fixed = false;
@@ -218,8 +237,8 @@ export function generateBuildingFloor(seed, id) {
   const entry = P.floor === 1 ? { ...plan.entry } : stepOff(tiles, W, F.arrive);
   if (P.floor === 1) { objects.push({ id: "building-exit", kind: "exit", name: "Door out", x: plan.door.x, y: plan.door.y, state: "open", actions: ["exit"] });
     if (plan.breach) objects.push({ id: "building-breach", kind: "exit", name: "Broken wall", x: plan.breach.x, y: plan.breach.y, state: "open", actions: ["exit"] }); }
-  else objects.push({ id: "building-stair-down", kind: "buildingStair", name: `Stair down · ${S.floorNames[P.floor - 2] || `floor ${P.floor - 1}`}`, x: F.arrive.x, y: F.arrive.y, state: "open", actions: ["descend"], toId: buildingFloorId(P.base, P.floor - 1), toX: F.arrive.x, toY: F.arrive.y, toFloor: P.floor - 1, dir: "down" });
-  if (F.up) objects.push({ id: "building-stair-up", kind: "buildingStair", name: `Stair up · ${S.floorNames[P.floor] || `floor ${P.floor + 1}`}`, x: F.up.x, y: F.up.y, state: "open", actions: ["climb"], toId: buildingFloorId(P.base, P.floor + 1), toX: F.up.x, toY: F.up.y, toFloor: P.floor + 1, dir: "up" });
+  else objects.push({ id: "building-stair-down", kind: "buildingStair", name: `Ladder down · ${S.floorNames[P.floor - 2] || `floor ${P.floor - 1}`}`, x: F.arrive.x, y: F.arrive.y, state: "open", actions: ["descend"], toId: buildingFloorId(P.base, P.floor - 1), toX: F.arrive.x, toY: F.arrive.y, toFloor: P.floor - 1, dir: "down" });
+  if (F.up) objects.push({ id: "building-stair-up", kind: "buildingStair", name: `Ladder up · ${S.floorNames[P.floor] || `floor ${P.floor + 1}`}`, x: F.up.x, y: F.up.y, state: "open", actions: ["climb"], toId: buildingFloorId(P.base, P.floor + 1), toX: F.up.x, toY: F.up.y, toFloor: P.floor + 1, dir: "up" });
   // creatures: one a room, the rooms farthest from where you come in first; the top floor's guardian by its cache
   const C = BUILDINGS.creatures, h = (k) => hashSeed(`${P.base}:f${P.floor}:${k}`), n = C.perFloor[0] + h("n") % (C.perFloor[1] - C.perFloor[0] + 1);
   const taken = new Set(objects.map((o) => o.y * W + o.x)), free = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.hole && !t.doorway && !taken.has(y * W + x); };
@@ -229,9 +248,12 @@ export function generateBuildingFloor(seed, id) {
   if (F.top) { const c = spots.find((p) => !taken.has(p.y * W + p.x)) || F.far[0];
     if (c) { objects.push({ id: "building-cache", kind: "chest", name: `${S.name} Cache`, x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); taken.add(c.y * W + c.x);
       const g = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => ({ x: c.x + dx, y: c.y + dy })).find((q) => free(q.x, q.y));
-      if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true }); } }
+      if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true }); }
+    if (P.roof) { const gd = enemySpawns.find((e) => e.buildingGuardian), clear = (p) => !gd || Math.hypot(gd.x - p.x, gd.y - p.y) >= BUILDINGS.roofLadderClear; // arriving from the roof, never on the guardian's doorstep
+      const q = F.far.find((p) => free(p.x, p.y) && clear(p) && Math.abs(p.x - F.arrive.x) + Math.abs(p.y - F.arrive.y) > 3 && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => taken.has((p.y + dy) * W + p.x + dx))) || [...F.far].reverse().find((p) => free(p.x, p.y) && clear(p)) || F.far.find((p) => free(p.x, p.y));
+      if (q) { objects.push({ id: "building-roof-ladder", kind: "buildingStair", name: "Ladder up · the roof", x: q.x, y: q.y, state: "open", actions: ["climb"], dir: "roof" }); taken.add(q.y * W + q.x); } } }
   return { seed, id, recipe: "greatBuilding", name, identity: `${S.name}, ${P.floor === 1 ? "the ground floor" : `floor ${P.floor}`} of ${P.floors}`, danger: "falling floors", width: W, height: H, tiles, entry, exit: P.floor === 1 ? { ...plan.door } : null, objects, enemySpawns,
-    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null }, layoutVersion: 1, themePool: 0 }; // layoutVersion 1: dungeon-variation leaves it as laid
+    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }; // layoutVersion 1: dungeon-variation leaves it as laid
 }
 
 // The nearest open floor beside `p` (not on a stair or a hole), to stand on when you arrive by it.

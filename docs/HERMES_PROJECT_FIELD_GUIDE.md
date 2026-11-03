@@ -2700,7 +2700,10 @@ Tim (2026-11-03): "more like actual buildings... a building that has multiple fl
 on and fight enemies, and the floor is separate from the other floor so you have to find a way to get through and a way to get
 to the top... floors can be dilapidated or falling through... opaque from the outside... some of them can have broken
 backsides... mosaic floors... carpets... wood plank floors... rendered similar to the shacks... and when you go inside, it has
-just traversable floor space".
+just traversable floor space". Then: "each floor... the only thing that you can see... between floors... a ladder... you just
+climb the ladder"; "you should be able to get on the roofs of these buildings, not all of them, but some of them... sections
+of the roof... crumbling... look out and see the world around you... you can hop off... If you don't have the drone... you'll
+die".
 
 **CODE:**
 - `src/great-buildings.ts` (new; in the build and both sw.js lists):
@@ -2716,6 +2719,13 @@ just traversable floor space".
     left cut off), each room's material (the largest is the hall), a little rubble that never cuts the floor in two, the stair
     up among the farthest cells from where you arrive (the next floor's stair down stands on the same cell), then holes over
     open floor below, kept off the stairs and dropped until every open cell is reachable without stepping in one.
+  - Roofs (`roof`: `share` .55, `elev` 5, `crumbled` .1; only where the section has a landscape layer; the id's floor count
+    carries an `r`): the footprint is walkable roof at elevation 5 (`structure` "buildingRoof"), a share of its inner cells
+    fallen in (blocked), with a hatch (a `dungeon` object, `roofHatch`, `enterAt: "roof"`) into the top floor. Each roof
+    tile's `roofLift` (landscape.ts `tileLiftScale`) draws its level at the top of the facade (`facadeHeight`). A fall of 4+
+    levels is fatal (`fallDamage`); the drone's booster (DRONE_LIFT) lets you down, unchanged.
+  - Floors are joined by ladders (`buildingStair` objects, named and drawn as ladders); the top floor of a roofed building has
+    a ladder up to the roof (`dir: "roof"`), at least `roofLadderClear` from its guardian.
   - `generateBuildingFloor(seed, id)` builds one floor as a dungeon map (`map.building`, `recipe` greatBuilding): the exit (and
     the broken wall) on the ground floor, `buildingStair` objects, guards one a room away from the arrival, and on the top floor
     the cache (`keep-cache` / `arcology-cache`) and its guardian.
@@ -2723,10 +2733,12 @@ just traversable floor space".
   first seen from now on (`atlas.buildingVersion`), and new sections no longer get `keepVersion` / `arcVersion`, so the
   climbable keeps and arcologies stay only where they already were. Building floors skip the Aperture overlay, the dungeon
   encounter population, the new traps and the Gate Revenant roll. `takeBuildingStair` / `goBuildingFloor` move between floors;
-  `buildingFall` (each frame, unless mid-jump) drops you through a hole onto the same spot a floor down; the creature hook
+  the roof ladder leaves the dungeon onto the hatch (`leaveDungeon`); entering records the building's doors (`history.buildingDoors` on
+  floor 1), so each way out lets you out at its own door. `buildingFall` (each frame, unless mid-jump) drops you through a hole onto the same spot a floor down; the creature hook
   scales guards per floor and gives the guardian more health, damage and an affix.
-- `src/renderer.ts`: `greatBuilding` (roof, a band of windows a floor, the door, a torn breach) drawn after the creatures like
-  the shacks; `paintBuildingTile` for the walls (a face over open floor) and the floors; `drawBuildingStair`. `src/main.ts`
+- `src/renderer.ts`: `greatBuilding` (a block seen from the south: the roof raised by the facade's height, a band of windows a
+  floor, the door, a torn breach, a roof's fallen patches and hatch) drawn after the creatures like the shacks, faded while you
+  stand behind it; on a roof the Wayfarer is drawn over it; `paintBuildingTile` for the walls (a face over open floor) and the floors; `drawBuildingStair`. `src/main.ts`
   labels the stairs on the dungeon map.
 
 **BOUNDARY:**
