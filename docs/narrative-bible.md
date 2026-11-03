@@ -285,6 +285,7 @@ A thread runs like a hunt, but carries narrative. Each one is tracked in the Jou
    - *What the Sleeper Dreams* (deep; the Far Sleep): shells that carry the breathing of the thing that dreams the Corridor.
 5. **Later threads** (one at a time, from the daily narrative pass; src/threads.ts `wave` 2 and on). They are rolled only in crossings that hold none of the first ten (`THREAD_RULES.later`), so no crossing ever changes the thread it offered.
    - *The Well-Digger's Rope* (far; 2026-11-02): a man digging a village well finds the ground getting easier, then water that is not wet, then a stone that never stops sinking; he goes down after it, and his children are still holding the rope. Section 1's "density, not matter", told without saying it.
+   - *The Tollkeeper's Keys* (middle; 2026-11-03, wave 3): a tollkeeper keeps the keys to every door his people passed through, long after the doors are gone, because what is still kept, still is; the last key, glass, opens a keyhole in the air at the edge of the world, and he gave it to a traveller with no door of their own. Section 1's "the Corridor keeps what is read", from the other side.
 
 The existing deep-dungeon story packages (the scorched echoes and memorials) get Glimpses instead of ticker lines. The summit stones' and grotto ruins' lore text, which is written but never shown, becomes touch-to-read.
 

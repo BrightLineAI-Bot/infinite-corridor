@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release (at merge): The Tollkeeper's Keys — 2026-11-03
+
+Tim, 2026-11-03: "You can continue doing your narrative passes."
+
+**CODE:** `src/threads.ts` `THREADS.tollKeys` (band middle, relic `key`, `wave: 3`, six pieces and an ending). A third roll, `thirdThreadIn` (`THREAD_RULES.third`, its own hash keys `threads:third:v1` and `threads:third:which:v1`), is made only when neither the first-ten roll nor the wave 2 roll placed a thread; the wave 2 roll now draws only wave 2 threads, as it did before a wave 3 existed. The key is drawn in `renderer.ts` `drawThreadRelic`. Tests: `tests/threads-later.test.ts` (every first-ten and every wave 2 crossing keeps its thread). `docs/narrative-bible.md` lists it.
+
+**BOUNDARY:** No crossing changes the thread it held. Saves record found pieces by thread id (additive). The Arcana tab lists every thread in `THREAD_ORDER`, so it shows this one, found pieces only.
+
 ## Release 706: the Ashen Moth — 2026-11-03
 
 Tim, 2026-11-03 (the same ask as release 705): "a few more world bosses... similar attack and aggressiveness and strength... varied amount of attacks... pretty chaotic."
