@@ -1,4 +1,5 @@
 import { mealLure } from "./meals.ts";
+import { ensureDragonLava } from "./crimson-dragon.ts";
 import { ASTRAL_PROFILE } from "./astral-worm.ts";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
@@ -115,6 +116,18 @@ export const WORLD_BEASTS = {
     arrive: "Grey ash is falling here like snow, and the air smells of smoke. Two embers watch you from above. The Ashen Moth is here.",
     slain: "The Ashen Moth falls, and burns, and is only ash on the wind.",
     gone: "The Ashen Moth has burned you enough, and drifts away on the smoke. In time it will settle somewhere else.",
+  },
+  // Release 709 (Tim, 2026-11-03): a red dragon. It claims the ground it holds (crimson-dragon.ts) and flies home over everything.
+  crimsonTyrant: {
+    kind: "crimsonTyrant", name: "The Crimson Tyrant", chance: .02, minDepth: 8, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
+    hitsToKill: 80, hpPerLevel: 36, damageShare: .24, speed: 1, attackGap: .25, staggerResistance: 1, rewardMarks: 240, rewardPerLevel: 24,
+    patience: 240, home: "firelands", retreatMoves: "through",
+    flee: "The Crimson Tyrant spreads its wings and climbs into the smoke, bound for the ash lands.",
+    homeLine: "The Crimson Tyrant settles into the smoking ground of the ash lands like a coal into a fire.",
+    arrive: "The air here shimmers with heat and the ground is scorched black in great sweeps. Something vast and red lies coiled at the heart of it. The Crimson Tyrant is here.",
+    slain: "The Crimson Tyrant crashes down, and the fire goes out of it all at once, like a forge left in the rain.",
+    gone: "The Crimson Tyrant has what it wanted of you, and takes to the sky. In time it will claim somewhere else.",
+    claimed: "The Crimson Tyrant has made this ground its own. It will not fight you for it again.",
   },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
@@ -396,7 +409,7 @@ export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
 // large creatures shouldn't be trapped on small islands"). Flood the section over the ground the beast can stand on or
 // cross in its retreat (retreatPassable for its retreatMoves). A region is sound when it reaches a section edge (a way
 // out) and holds at least PLACEMENT.minRegion tiles (PLACEMENT.big for the large beasts). Returns { ok: Uint8Array(1024) }.
-export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth"] };
+export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth", "crimsonTyrant"] };
 export function placementRegions(map, here) {
   const tiles = map?.tiles || [], B = WORLD_BEASTS[here], mode = B?.retreatMoves || "walk", need = PLACEMENT.bigBeasts.includes(here) ? PLACEMENT.big : PLACEMENT.minRegion;
   const pass = (t) => !!t && (beastGround(here, t) || retreatPassable(t, mode)), label = new Int32Array(1024).fill(-1), ok = new Uint8Array(1024);
@@ -431,6 +444,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
   save.worldBeasts = all; ensureBeastGap(save);
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.
   ensureVoidScars(save, normalizeScarHistory ? undefined : null);
+  ensureDragonLava(save); // release 709: the Crimson Tyrant's lava
   return save;
 }
 
@@ -464,7 +478,7 @@ function fleeSpawn(save, here, rx, ry) {
 // rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
 // questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
 // already met (active, retreating or tracked) is never withdrawn by this.
-export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 // Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
 // the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
