@@ -1,0 +1,11 @@
+{
+  "evidence.zip": "7bbf4bcacf9dae318620ac39bb1de8379a40cf8cddf6eb5e811195078faac787",
+  "source-sha256.json": "0f07b29b198d6700d119a93a5dd55c7bac7238f21d53e17217788ec39029914d",
+  "MANIFEST-SHA256.json": "88f5ed26cc0f60bec72de6512ec00fdae185e078453064f30d6781b6f6a1283a",
+  "replay.py": "33d9e94f68c7a1c1a70a962bff334a8f1429d431e05c524c1d01d2c407323ff3",
+  "REPLAY.md": "6c850a552d5a7a0e918b98fd372ce0bf34b1c3a58a3499f02c5401a58bf3f8ef",
+  "DELIVERY.md": "01b56bd6164458d1172611e572752df66c3e5750978937f832f4513881d27826",
+  "README.md": "66771da6cfc764cf66230640f0c256f5db9e2ab9f5e71f8d13e90c05937d66e3",
+  "interactions/Infinite-Corridor-interactions-audit-2026-10-26.md": "ae412733371f95b08f88e163e798e2f182cd55e7afcff56ebbe17ef3e71333ba",
+  "baseline/REPORT.md": "0158a7e0d90e6d9acf9e82c3bf4bb44e524d3210f23c5014d6e51c17af13a055"
+}
