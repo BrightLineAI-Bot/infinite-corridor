@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release (at merge): the Briar Stag — 2026-11-03
+## Release 705: the Briar Stag — 2026-11-03
 
 Tim, 2026-11-03: "come up with a few more world bosses that... have a similar... attack and aggressiveness and strength and... varied amount of attacks... so it's like they're pretty chaotic when you deal with them."
 

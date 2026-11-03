@@ -543,7 +543,7 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
 export const HIT_FOOTPRINT = { pad: { briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
 export function effectFootprint(f) {
-  if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.ring || f.to || f.state === "circle" || f.state === "splash") return 0;
+  if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
 }
 // Attacks that hurt with the body itself, and what their hit test adds to the body's radius.
@@ -1284,7 +1284,7 @@ const RUN = {
       e.stagAir = 0; e.aloft = false; e.untargetable = false; e.stagPose = "land"; s.tele = null;
       if (distance(center(w.player), e) <= STAG.leapRadius + .2) w.hurt(e, damageOf(e, "stagLeap"), { jumpable: false, source: "stagLeap" });
       w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: STAG.leapRing, arming: 0, life: .8, damage: Math.ceil(damageOf(e, "stagLeap") * .6), jumpable: true, stone: true });
-      w.addEffect({ kind: "rootRing", owner: e.id, x: e.x, y: e.y, ring: STAG.leapSpikeRing, spikes: STAG.leapSpikes, turn: (hashSeed(`${e.id}:${s.seq}:land`) % 628) / 100, radius: STAG.cageRadius, arming: .35, armTotal: .35, life: .45, total: .45, damage: Math.ceil(damageOf(e, "stagLeap") * .6) });
+      w.addEffect({ kind: "rootRing", owner: e.id, x: e.x, y: e.y, ring: STAG.leapSpikeRing, length: STAG.leapSpikeRing /* drawn by its own spike warnings, as lanes are */, spikes: STAG.leapSpikes, turn: (hashSeed(`${e.id}:${s.seq}:land`) % 628) / 100, radius: STAG.cageRadius, arming: .35, armTotal: .35, life: .45, total: .45, damage: Math.ceil(damageOf(e, "stagLeap") * .6) });
       toPhase(s, "recover", A.recover);
     }
   },
@@ -1292,7 +1292,7 @@ const RUN = {
     const A = ATTACK_MODULES.stagCage;
     if (s.phase !== "windup" || s.t > 0) return;
     const p = s.data.target, turn = (hashSeed(`${e.id}:${s.seq}:cage`) % 628) / 100;
-    STAG.cageRings.forEach((ring, i) => { const t = STAG.cageFirst + i * STAG.cageEvery; w.addEffect({ kind: "rootRing", owner: e.id, x: p.x, y: p.y, ring, spikes: STAG.cageSpikes[i], turn: turn + i * .4, radius: STAG.cageRadius, arming: t, armTotal: t, life: .45, total: .45, damage: damageOf(e, "stagCage") }); });
+    STAG.cageRings.forEach((ring, i) => { const t = STAG.cageFirst + i * STAG.cageEvery; w.addEffect({ kind: "rootRing", owner: e.id, x: p.x, y: p.y, ring, length: ring, spikes: STAG.cageSpikes[i], turn: turn + i * .4, radius: STAG.cageRadius, arming: t, armTotal: t, life: .45, total: .45, damage: damageOf(e, "stagCage") }); });
     e.stagPose = "stamp"; s.tele = null; toPhase(s, "recover", A.recover + STAG.cageFirst);
   },
   stagStomp(e, s, w) {
