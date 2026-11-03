@@ -7,7 +7,7 @@ import { createCombatant, CREATURE_FORMS } from '../src/combat.ts';
 import { PACK_KINDS, MONSTER_PACK } from '../src/monster-pack.ts';
 import { ensureMech, mechAbsorb } from '../src/vehicle-gates.ts';
 const input = (x=0,y=0,jump=false,held=false) => { let press=jump; return {state:{x,y},consume:(k)=>k==='jump'&&press?(press=false,true):false,held:(k)=>held&&k==='jump'}; };
-function robot(iron=10) {const s=freshSave();s.seed='MECH';s.perception.aperture=3255;s.farArray={listeners:2};s.consumables.submersible=1;s.materials.cinderIron=iron;const g=new Game(s,0);g.enemies=[];assert.equal(g.useConsumable('submersible',0),true);return g;}
+function robot(iron=10) {const s=freshSave();s.seed='MECH';s.perception.aperture=3255;s.farArray={listeners:3,gate:3};s.consumables.submersible=1;s.materials.cinderIron=iron;const g=new Game(s,0);g.enemies=[];assert.equal(g.useConsumable('submersible',0),true);return g;}
 function advance(g,seconds,start=1000,controls=input()){for(let i=0;i<Math.round(seconds/.05);i++)g.update(.05,controls,start+(i+1)*50);return start+Math.round(seconds/.05)*50;}
 
 test('audit control: full snapshot roundtrip preserves exact mech fields, including fractional cooldown and replate delay',()=>{
@@ -58,7 +58,7 @@ test('audit control: Mirror Shade summoned illusions stay harmless through real 
 });
 
 test('audit control: the active robot stops at a naturally generated solid dungeon wall',()=>{
- const g=chasm();g.save.perception.aperture=3255;g.save.farArray={listeners:2};g.save.consumables.submersible=1;assert.equal(g.useConsumable('submersible',0),true);
+ const g=chasm();g.save.perception.aperture=3255;g.save.farArray={listeners:3,gate:3};g.save.consumables.submersible=1;assert.equal(g.useConsumable('submersible',0),true);
  const w=g.map.width;const tile=g.map.tiles.find(q=>q.x>1&&q.x<w-2&&q.y>1&&q.y<g.map.height-2&&!q.blocked&&!q.chasm&&g.map.tiles[q.y*w+q.x+1]?.blocked);assert.ok(tile);
  Object.assign(g.player,{x:tile.x,y:tile.y-.25});advance(g,3,1000,input(1,0));assert.ok(g.player.x<tile.x+1,'never crosses the solid wall');assert.equal(g.save.worldFlags.deaths||0,0);assert.equal(g.mechUp(),true);
 });

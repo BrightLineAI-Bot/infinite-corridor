@@ -8,7 +8,7 @@ import { Game } from '../src/game.ts';
 import { MECH_VOID, MECH } from '../src/vehicle-gates.ts';
 
 function atVoid(suit = true) {
-  const s = freshSave(); s.seed = 'SUB'; s.perception.aperture = 3255; s.farArray = { listeners: 2 }; s.consumables.submersible = 1; s.materials = { ...(s.materials || {}), cinderIron: 50 };
+  const s = freshSave(); s.seed = 'SUB'; s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 }; s.consumables.submersible = 1; s.materials = { ...(s.materials || {}), cinderIron: 50 };
   const g = new Game(s, 0); g.rx = 36; g.ry = 2; g.loadArea('overworld'); g.enemies = []; if (suit) g.useConsumable('submersible', 0);
   // a clean strip: meadow, then a wide star-void
   g.map.tiles = g.map.tiles.map((t) => ({ ...t, kind: t.x >= 14 ? 'starVoid' : 'sleepMeadow', blocked: t.x >= 14, landscape: 'dream', elev: 0, slope: false, structure: null, environment: null }));

@@ -57,7 +57,7 @@ test('a world beast passes through, untargetable and harmless, and leaves', () =
 });
 
 test('Spellblade strengthens Hammerfall and the Great Sweep; Charged Air the Great Sweep only', () => {
-  const s = freshSave(); s.seed = 'TOOLS'; s.perception.aperture = 10810; s.farArray = { listeners: 3 }; const g = new Game(s, 0); g.rx = 0; g.ry = 0; g.loadArea('overworld'); g.enemies = [];
+  const s = freshSave(); s.seed = 'TOOLS'; s.perception.aperture = 10810; s.farArray = { listeners: 6, gate: 4 }; const g = new Game(s, 0); g.rx = 0; g.ry = 0; g.loadArea('overworld'); g.enemies = [];
   const swing = (kind, fields, spell) => { s.lattice = { ...(s.lattice || {}), passives: fields.map((f) => `field:${f}`) }; g.effects = []; g.toolReadyAt = 0; g.spellRunning = () => spell; g.brawlerTool(kind, 5000); const e = g.effects.find((q) => q.kind === kind); return { d: e.damage, r: e.radius }; };
   const plain = swing('great-sweep', [], false), blade = swing('great-sweep', ['spellblade'], true), air = swing('great-sweep', ['charged-air'], true);
   assert.ok(blade.d > plain.d && blade.r > plain.r, 'Spellblade: sweep'); assert.ok(air.d > plain.d && air.r > plain.r, 'Charged Air: sweep');

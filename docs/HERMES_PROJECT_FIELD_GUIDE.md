@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 704: the Far Gate climbs by Tim's rule — 2026-11-03
+
+Tim, 2026-11-03: "you beat the listener one time... you open the first gate, and then you beat the listener 2 additional times... it opens the second gate, and then... 3 additional times to unlock the third gate, and then... 4 additional times [for] the fourth gate and so on."
+
+**CODE:** `src/far-array.ts` `listenerFelled` no longer raises the Gate on every Listener kill. `save.farArray.toNext` (additive at schema 14, normalised in `ensureFarArray`, 0 when absent) counts kills since the last climb; the Gate at tier `g` climbs once it reaches `killsToClimb(g)` (= g), then resets. The kill message says the Gate climbs, or how many more kills tier g+1 needs; the Far Gate page shows the same count. The unlocks that named "the second Gate" and "the fourth Gate" now read Gates opened (`gate − 1`) rather than kills: the robot ashore (`VEHICLE_GATES.mechGates` 2, three kills from the start), the drone (`droneGates` 4, ten kills) and the +10 upgrade cap (`LATE_UPGRADE.gates` 2). Pieces still reset after every kill, so each kill at a tier means gathering the Gate again. Tests: `tests/gate-climb-704.test.ts`; fixtures in the robot, drone and cap tests set `gate` with `listeners`.
+
+**BOUNDARY:** A journey from before keeps its tier, its unlocks and its boons, and counts toward the next climb from 0. The Listener's strength, the guardians and the runs still scale by Gate tier as before; nothing else reads the kill count except "a Listener defeated" (submersible, underwater), which is unchanged.
+
 ## Release 703: Arcana in the Journal — 2026-11-02
 
 Tim (2026-11-02): "an arcana panel in the journal which has all these like threads. And all these little like story beats. I

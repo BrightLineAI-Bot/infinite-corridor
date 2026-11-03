@@ -7,7 +7,7 @@ import { Game, chasmRoll } from '../src/game.ts';
 
 function runChasm(robot: boolean, frames = 30) {
   const s = freshSave(); s.seed = 'CH593';
-  s.perception.aperture = 3255; s.farArray = { listeners: 2 };
+  s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 };
   s.consumables.submersible = 1; s.materials.cinderIron = 99;
   const id = 'dungeon:CH593:g1:13:6:room';
   assert.equal(chasmRoll(s.seed, id), true);
@@ -49,7 +49,7 @@ test('audit regression: active robot must not mitigate the fatal unboosted chasm
 
 function runSkyFall(robot: boolean) {
   const s = freshSave(); s.seed = 'SKY';
-  s.perception.aperture = 3255; s.farArray = { listeners: 2 };
+  s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 };
   s.consumables.submersible = 1; s.materials.cinderIron = 99;
   const g = new Game(s, 0); g.rx = -16; g.ry = 7; g.loadArea('overworld');
   g.enemies = []; const discs = g.map.skyDiscs, p = g.player;

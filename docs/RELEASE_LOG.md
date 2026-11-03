@@ -15,23 +15,24 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 703, the next is **704**.
+Taken at merge time: `main`'s release + 1 (see above). After 704, the next is **705**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 703 | Claude | `claude/dreamy-rubin-yn6q2p` | Arcana in the Journal: every thread and cross-crossing story with its progress and what has been read | Merging. |
-| 702 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: a new thread, The Well-Digger's Rope (far crossings), rolled apart from the first ten | Merging. |
-| 701 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy reworked: a strange tree that burns down, ramping waves, ashes that raise the great tree (rising, rubble, flash), always its sky door | Merging. |
-| 700 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy: sapling daises, a fire-sealed five-minute survival (three tries), a great tree with Divine Viscera, sometimes a door to the sky | Merging. |
+| 704 | Claude | `claude/dreamy-rubin-yn6q2p` | The Far Gate climbs after 1, 2, 3, 4… more Listener kills (Tim's rule); the robot, drone and +10 cap follow Gates opened | Merging. |
+| 703 | Claude | `claude/dreamy-rubin-yn6q2p` | Arcana in the Journal: every thread and cross-crossing story with its progress and what has been read | Merged. Published in r703. |
+| 702 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: a new thread, The Well-Digger's Rope (far crossings), rolled apart from the first ten | Merged. Published in r703. |
+| 701 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy reworked: a strange tree that burns down, ramping waves, ashes that raise the great tree (rising, rubble, flash), always its sky door | Merged. Published in r703. |
+| 700 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy: sapling daises, a fire-sealed five-minute survival (three tries), a great tree with Divine Viscera, sometimes a door to the sky | Merged. Published in r703. |
 | 699 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | Hunt the Stalker: a lair the marker and Atlas point to; hunts less often; out of a pen it leaves; Stalker's Mist Echo | Building. |
-| 698 | Claude | `claude/dreamy-rubin-yn6q2p` | Worm's Upheaval back to one puddle a dodge, bursting in turn (undoes release 655's stacking) | Merging. |
+| 698 | Claude | `claude/dreamy-rubin-yn6q2p` | Worm's Upheaval back to one puddle a dodge, bursting in turn (undoes release 655's stacking) | Merged. Published in r703. |
 | 697 | Claude (Stalker session) | PR #344 | Closing the pen: the trap is tried when a second enclosure closes the first's opening with the Stalker inside; items work in a pen | Merged; published in r697. |
 | 696 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Enclosure: a 2x2 pen (2 wood, 2 stone, 2 cinder iron), walled on three sides; a trap for the Stalker with two standing | Merged; published in r696. |
 | 695 | Claude (Stalker session) | PR #342 | The Stalker's mirage, the gorilla's lasers, five ways in, low ground fog, walks on water | Merged; published in r695. |
 | 694 | Claude (second session) | PR #341 | Hotfix, the broken screen (Tim's r688 diagnostic): the affix/boss-kit warning-mark fill clamped (a rounding-negative ellipse radius threw mid-frame and the leaked camera translate corrupted every later frame); 691's swallowed `ctx.save(); const cx…` restored; the canvas reset if a render throws | Merging (baton taken). Tim said publish once merged. |
-| 693 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves keep pace with your clears; world bosses say ARCHFIEND SLAIN | Merging. |
+| 693 | Claude | `claude/dreamy-rubin-yn6q2p` | Fractured waves keep pace with your clears; world bosses say ARCHFIEND SLAIN | Merged. Published in r703. |
 | 692 | Claude (Stalker session) | `claude/stalker-overworld-boss-fldd02` | The Stalker's fog: alternate hunts come in the open, then fog the section and veil it; veils again in the fight; blue-grey mist | Building. |
 | 691 | Claude (Stalker session) | PR #338 | The Stalker lies in wait unseen and springs; the cat's flurry and tide; the puddle's mouth and six chompers; the sit and perch redrawn | Building. |
 | 690 | Claude (Stalker session) | PR #337 | The Stalker consolidated: stalking creep, hiding in its mist, sitting in wait, perched (cat at the edge, gorilla as a gargoyle), climbing; chevrons back; one look for both forms | Building. |
@@ -89,6 +90,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 703, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 703 | `r703-af870d78ba3b` | 2026-11-03 | Fable review: no blockers. With 689 to 702: among them Fractured waves that keep pace and ARCHFIEND SLAIN (693), Worm's Upheaval puddles (698), the Stalker hunt (699), the Rite of Ascendancy (700, 701), The Well-Digger's Rope (702); and 703, Arcana in the Journal. |
 | 688 | `r688-8d2e46ab31ec` | 2026-11-01 | Published by the Stalker session (Fable review: no blockers). With 685 to 687: ruined arcologies (#332), the Ascension Dais (#333), the Stalker's appendage (#334), Canyon craters and the Listener's Descent (#336). |
 | 684 | `r684-436ff24739ec` | 2026-11-01 | Published by the Stalker session. With 680 to 683: the Skylands Deep Annex (#327), the Stalker's arsenal (#328), Divine Viscera (#329), Great Keeps (#330); and 684, the Stalker refined (#331). Pre-publish review: no blockers. |
 | 679 | `r679-4d93bc15f0b3` | 2026-11-01 | With 671 to 678: Fractured waves (#320), easier-to-find wonders (#321) and their Atlas pins (#323), the Starfield Deep Annex (#322), the Deep (#325), the Stalker (#324); and 679, seasons (#326). Pre-publish review: no blockers. |

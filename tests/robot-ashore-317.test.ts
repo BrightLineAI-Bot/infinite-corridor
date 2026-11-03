@@ -6,10 +6,10 @@ import { MECH, ensureMech, mechAbsorb } from '../src/vehicle-gates.ts';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 
-const ready = () => { const s = freshSave(); s.seed = 'MECH'; s.perception.aperture = 3255; s.farArray = { listeners: 2 }; s.consumables.submersible = 1; return s; };
+const ready = () => { const s = freshSave(); s.seed = 'MECH'; s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 }; s.consumables.submersible = 1; return s; };
 
 test('gated; the first press builds it from a frame, later presses call it up and stow it', () => {
-  const low = ready(); low.farArray = { listeners: 1 }; const gl = new Game(low, 0); assert.equal(gl.useConsumable('submersible', 0), false); assert.match(gl.message, /second Gate/);
+  const low = ready(); low.farArray = { listeners: 2, gate: 2 }; const gl = new Game(low, 0); assert.equal(gl.useConsumable('submersible', 0), false); assert.match(gl.message, /second Gate/);
   const s = ready(), g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld');
   assert.equal(g.useConsumable('submersible', 0), true); assert.equal(s.consumables.submersible, 0, 'the frame is spent once'); assert.equal(s.mech.built, true); assert.ok(g.mechUp());
   assert.equal(g.useConsumable('submersible', 0), true); assert.equal(g.mechUp(), false, 'stowed');

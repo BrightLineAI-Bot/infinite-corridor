@@ -12,7 +12,7 @@ import { BRAWLER_ECHO } from '../src/brawler-spells.ts';
 
 const move = (x, y) => ({ state: { x, y }, consume: () => false, held: () => false });
 function suitedAtSea() {
-  const s = freshSave(); s.seed = 'SUB'; s.perception.aperture = 3255; s.farArray = { listeners: 2 }; s.consumables.submersible = 1; s.capabilities = { ...(s.capabilities || {}), swim: false };
+  const s = freshSave(); s.seed = 'SUB'; s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 }; s.consumables.submersible = 1; s.capabilities = { ...(s.capabilities || {}), swim: false };
   const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld'); g.enemies = [];
   assert.equal(g.useConsumable('submersible', 0), true, g.message); assert.ok(g.mechUp());
   g.map.tiles = g.map.tiles.map((t) => ({ ...t, kind: 'ocean', blocked: false, structure: null, environment: null }));

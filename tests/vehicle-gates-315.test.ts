@@ -25,8 +25,8 @@ test('each gate opens on its own conditions', () => {
   const both = { worldBeasts: { voidWalker: { slain: 1 } }, farArray: { listeners: 1 } };
   assert.equal(underwaterGate(at('Infinite II', both)).ok, false); assert.equal(underwaterGate(at('Infinite III', { farArray: { listeners: 1 } })).ok, false, 'needs the Walker too');
   assert.equal(underwaterGate(at('Infinite III', both)).ok, true);
-  assert.equal(mechGate(at('Infinite III', { farArray: { listeners: 1 } })).ok, false); assert.equal(mechGate(at('Infinite III', { farArray: { listeners: 2 } })).ok, true, 'the second Gate');
-  assert.equal(droneGate(at('Infinite III', { farArray: { listeners: 3 } })).ok, false); assert.equal(droneGate(at('Dormant', { farArray: { listeners: 4 } })).ok, true);
+  assert.equal(mechGate(at('Infinite III', { farArray: { listeners: 2, gate: 2 } })).ok, false); assert.equal(mechGate(at('Infinite III', { farArray: { listeners: 3, gate: 3 } })).ok, true, 'the second Gate');
+  assert.equal(droneGate(at('Infinite III', { farArray: { listeners: 9, gate: 4 } })).ok, false); assert.equal(droneGate(at('Dormant', { farArray: { listeners: 10, gate: 5 } })).ok, true);
   assert.match(subGate(at('Dormant')).why, /Infinite II/);
 });
 

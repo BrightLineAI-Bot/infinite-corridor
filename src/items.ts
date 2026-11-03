@@ -22,10 +22,10 @@ export function spellOpen(save,id){const sp=SPELLS[id];return !!sp&&(!sp.unlockT
 export const UPGRADE_CAPS={common:3,rare:4,epic:5,relic:6};
 // Release 395: a masterworked item (the town smith) goes one rank past its tier's cap.
 // Release 457 (Tim: "after Infinite 4, after you've played the second gate, you should be able to upgrade your weapons to
-// +10... +10 is the max upgrade"): from Aperture tier LATE_UPGRADE.tier (Infinite IV) with LATE_UPGRADE.listeners Listeners
-// felled (the second Gate passed), every tier's cap rises by LATE_UPGRADE.ranks: a relic to +9, a masterwork relic to +10.
-export const LATE_UPGRADE={ranks:3,tier:14,listeners:2};
-export function lateUpgradeOpen(save){const a=Math.max(0,Number(save?.perception?.aperture)||0),tier=APERTURE_BANDS.slice(1).filter(b=>a>=b.threshold).length;return tier>=LATE_UPGRADE.tier&&(Number(save?.farArray?.listeners)||0)>=LATE_UPGRADE.listeners}
+// +10... +10 is the max upgrade"): from Aperture tier LATE_UPGRADE.tier (Infinite IV) with LATE_UPGRADE.gates Gates opened (release 704)
+// (the second Gate passed), every tier's cap rises by LATE_UPGRADE.ranks: a relic to +9, a masterwork relic to +10.
+export const LATE_UPGRADE={ranks:3,tier:14,gates:2}; // gates: Gates opened (far-array.ts: the Gate at tier g climbs after g more Listener kills)
+export function lateUpgradeOpen(save){const a=Math.max(0,Number(save?.perception?.aperture)||0),tier=APERTURE_BANDS.slice(1).filter(b=>a>=b.threshold).length;return tier>=LATE_UPGRADE.tier&&Math.max(0,(Number(save?.farArray?.gate)||1)-1)>=LATE_UPGRADE.gates}
 export const itemCap=(item,save=null)=>(UPGRADE_CAPS[itemTier(item)]||3)+(item?.masterwork===true?1:0)+(save&&lateUpgradeOpen(save)?LATE_UPGRADE.ranks:0);
 export const APERTURE_SKILLS={
  'ember-form':{id:'ember-form',name:'Ember Form',branch:'Form',threshold:6,maxRank:3,cooldown:18,duration:5,description:'Grow into a guarded striking form with greater melee reach and impact.'},

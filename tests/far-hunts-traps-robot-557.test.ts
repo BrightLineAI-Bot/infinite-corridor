@@ -57,7 +57,7 @@ test('trap damage grows with level, up to its cap; a level-1 Wayfarer is hit as 
 
 const move = (x, y) => ({ state: { x, y }, consume: () => false, held: () => false });
 function robotAshore(owned = true) {
-  const s = freshSave(); s.seed = 'SUB'; s.perception.aperture = 3255; s.farArray = { listeners: 2 }; s.consumables.submersible = 1; s.capabilities = { ...(s.capabilities || {}), swim: false };
+  const s = freshSave(); s.seed = 'SUB'; s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 }; s.consumables.submersible = 1; s.capabilities = { ...(s.capabilities || {}), swim: false };
   if (owned) { s.boat = { owned: true, hull: BOAT.maxHull, aboard: false, home: { rx: 0, ry: 0, x: 5, y: 5 }, moored: { rx: 0, ry: 0, x: 5, y: 5 } }; ensureBoatState(s); }
   const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld'); g.enemies = [];
   assert.equal(g.useConsumable('submersible', 0), true, g.message); assert.ok(g.mechUp());
