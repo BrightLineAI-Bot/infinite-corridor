@@ -4,7 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
-import { render, wayKind } from '../src/renderer.ts';
+import { readFileSync } from 'node:fs';
+import { render, wayKind, wayLabel } from '../src/renderer.ts';
 
 const canvas = () => { const texts = []; const base = { texts, fillText(t) { texts.push(String(t)); }, strokeText(t) { texts.push(String(t)); }, measureText: (t) => ({ width: String(t).length * 6 }), createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), getTransform: () => ({}),
   ellipse(x, y, rx, ry) { if (rx < 0 || ry < 0) throw new RangeError('negative'); }, arc(x, y, r) { if (r < 0) throw new RangeError('negative'); } };
@@ -20,9 +21,13 @@ test('ways are told apart: annex and Deep stairs and a stair down are the way do
   assert.equal(wayKind({ kind: 'deepTransition', direction: 'up' }, {}), null); assert.equal(wayKind({ kind: 'exit' }, { building: { base: 'x' } }), null, 'buildings name their own doors');
 });
 
-test('a cleared annex floor labels its way down (with the floor below) and its way out; off the screen, an arrow points the way down', () => {
+test('a cleared annex floor: no words in the world; a chevron marker on each way; off the screen, a chevron at the edge toward the way down', () => {
   const g = clearedAnnex(), st = g.map.objects.find((o) => o.kind === 'annexStair'), out = g.map.objects.find((o) => o.completionExit); assert.ok(st && out);
-  g.player.x = st.x - 1; g.player.y = st.y + 1; let ctx = canvas(); render(ctx, g, 360, 640, 5000);
-  assert.ok(ctx.texts.includes(`▼ WAY DOWN · FLOOR ${st.floor}`), ctx.texts.join('|')); assert.ok(ctx.texts.some((t) => t.startsWith('WAY OUT')));
-  g.player.x = st.x + 30; g.player.y = st.y + 30; ctx = canvas(); render(ctx, g, 360, 640, 5000); assert.ok(ctx.texts.includes('WAY DOWN'), 'the edge arrow');
+  g.player.x = st.x - 1; g.player.y = st.y + 1; let ctx = canvas(); assert.doesNotThrow(() => render(ctx, g, 360, 640, 5000));
+  assert.ok(!ctx.texts.some((t) => /WAY (DOWN|OUT)/.test(t)), 'nothing written'); assert.match(wayLabel(st, g.map), /WAY DOWN · FLOOR 2/); assert.match(wayLabel(out, g.map), /WAY OUT/);
+  const src = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'); assert.match(src, /function drawWayMarker\(/); assert.match(src, /drawWayDownPointer\(ctx, g, w, h, s, p, viewLift, now\)/);
+});
+
+test('the Deep shows its floor as a number in a badge (not words), its embers as dots', () => {
+  const src = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'); assert.ok(!src.includes('THE DEEP · FLOOR ${g.map.deepFloor}'), 'no words'); assert.match(src, /fillText\(String\(g\.map\.deepFloor\)/);
 });

@@ -2856,17 +2856,21 @@ die".
   first seen in 683 / 685.
 ## Release 725: the way down and the way out — 2026-11-03
 
-Tim (2026-11-03): "I'll get to the end and there'll be the way out versus the way down... and it'll just take me out... I'm not
-sure which one I actually should go to... it should just be better marked".
+Tim (2026-11-03): "I'll get to the end and there'll be the way out versus the way down... and it'll just take me out... it should
+just be better marked". Then: "we shouldn't use [the red block character] for the exit... a different sprite... an upfacing
+chevron on its head and a downfacing chevron on its head... having that text... in the actual game... is just too obtrusive...
+the words on the side that indicate which level... an easy to identify number or... a series of dots".
 
 **CODE:** `src/renderer.ts`:
-- `wayKind(o, map)`: "down" for `annexStair`, `deepStair` and a `deepTransition` down; "out" for `exit` and `emberDoor`, except in
-  great buildings, compounds and labyrinths, whose doors are named.
-- `drawWayMarks`, in world space: a gold beam and ring over the way down, a red ring under the way out.
-- `drawWayLabels`, in screen space at the end of the frame so it sits over the dark: "▼ WAY DOWN · FLOOR n" (gold), "WAY OUT"
-  (red, "· leave the dungeon" for the cleared return, "· burns an ember" for the Ember Door). The labels are stacked so they never
-  overlap.
-- `drawWayDownPointer`: an arrow at the screen's edge toward the way down when it is off the screen.
+- `wayKind(o, map)`: "down" for `annexStair`, `deepStair` and a `deepTransition` going down; "out" for `exit` and `emberDoor`,
+  except in great buildings, compounds and labyrinths, whose doors are named.
+- `wayLabel` names a way, but nothing is written in the world.
+- `drawWayMarker` draws each way, and every `deepTransition`: a squat stone with a glowing chevron over it, ▼ gold for the way
+  down, ▲ green for a way up or out, amber for the Ember Door. This replaces the generic block sprite.
+- `drawWayMarks` draws a soft ring at the way's foot, only once it has been found (`discoveredInDungeon`).
+- `drawWayDownPointer` draws a chevron at the screen's edge toward a found way down when it is off the screen.
+- The Deep's HUD is a purple badge with the floor number, with Return Embers as orange dots under it. This replaces the text
+  "THE DEEP · FLOOR n / n RETURN EMBERS". The annex and multi-level dungeons keep their dot columns.
 
 **BOUNDARY:** Drawing only; nothing about the dungeons or saves changes. Tests: `tests/way-marks.test.ts`.
 

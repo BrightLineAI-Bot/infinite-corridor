@@ -1663,7 +1663,7 @@ export function wayKind(o, map) {
   if (o.kind === "exit" || o.kind === "emberDoor") return map?.building?.labyrinth || map?.building ? null : "out"; // buildings name their own doors
   return null;
 }
-function wayLabel(o, map) {
+export function wayLabel(o, map) { // the way's name (its interaction name carries it; nothing is written in the world)
   if (o.kind === "annexStair") return `▼ WAY DOWN · FLOOR ${o.floor}`;
   if (o.kind === "deepStair") return `▼ WAY DOWN · FLOOR ${(map.deepFloor || 1) + 1}`;
   if (o.kind === "deepTransition") return `▼ WAY DOWN`;
@@ -1672,34 +1672,31 @@ function wayLabel(o, map) {
 }
 function drawWayMarks(ctx, g, s, now) {
   const pulse = .5 + .5 * Math.sin(now / 380);
-  for (const o of g.map.objects || []) { const k = wayKind(o, g.map); if (!k || o.state === "hidden" || !renderableObject(g, o)) continue;
+  for (const o of g.map.objects || []) { const k = wayKind(o, g.map); if (!k || o.state === "hidden" || !renderableObject(g, o) || !discoveredInDungeon(g, o)) continue;
     const cx = (o.x + .5) * s, top = o.y * s - s * .9;
     ctx.save();
-    if (k === "down") { const gr = ctx.createLinearGradient(0, top - s * 2.2, 0, o.y * s + s); gr.addColorStop(0, "rgba(255,226,140,0)"); gr.addColorStop(1, `rgba(255,226,140,${.22 + .18 * pulse})`); ctx.fillStyle = gr; ctx.fillRect(cx - s * .32, top - s * 2.2, s * .64, s * 3.2);
-      ctx.strokeStyle = `rgba(255,226,140,${.55 + .35 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, o.y * s + s * .82, s * .5, s * .16, 0, 0, 7); ctx.stroke(); }
-    else { ctx.strokeStyle = `rgba(255,110,90,${.45 + .25 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, o.y * s + s * .82, s * .46, s * .14, 0, 0, 7); ctx.stroke(); }
+    ctx.strokeStyle = k === "down" ? `rgba(255,226,140,${.45 + .3 * pulse})` : `rgba(120,230,190,${.35 + .25 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, o.y * s + s * .84, s * .46, s * .14, 0, 0, 7); ctx.stroke();
     ctx.restore(); }
 }
-// In screen space, over everything: each way's label above it (nearer ways first, so labels never stack on each other), and
-// the arrow to the way down when it is off the screen.
-function drawWayLabels(ctx, g, w, h, s, p, lift, now) {
-  const at = (o) => ({ x: w / 2 + (o.x + .5 - p.x) * s, y: h / 2 + (o.y - p.y + lift) * s - s * .95 }), placed = [];
-  const ways = (g.map.objects || []).filter((o) => wayKind(o, g.map) && o.state !== "hidden" && renderableObject(g, o)).sort((a, b) => (wayKind(a, g.map) === "down" ? -1 : 1) - (wayKind(b, g.map) === "down" ? -1 : 1));
-  ctx.save(); ctx.font = `bold ${Math.max(11, Math.round(s * .3))}px sans-serif`; ctx.textAlign = "center";
-  for (const o of ways) { const q = at(o); if (q.x < -60 || q.x > w + 60 || q.y < -20 || q.y > h + 20) continue; const text = wayLabel(o, g.map), tw = ctx.measureText(text).width + 12, bh = Math.max(16, s * .42);
-    let y = q.y; while (placed.some((r) => Math.abs(r.x - q.x) < (r.w + tw) / 2 && Math.abs(r.y - y) < bh)) y -= bh + 2; placed.push({ x: q.x, y, w: tw });
-    const down = wayKind(o, g.map) === "down"; ctx.fillStyle = "#000000c8"; ctx.fillRect(q.x - tw / 2, y - bh + 3, tw, bh); ctx.strokeStyle = down ? "#ffe28c88" : "#ff7a6488"; ctx.lineWidth = 1; ctx.strokeRect(q.x - tw / 2 + .5, y - bh + 3.5, tw - 1, bh - 1);
-    ctx.fillStyle = down ? "#ffe28c" : "#ff8a74"; ctx.fillText(text, q.x, y - bh * .25); }
-  ctx.restore();
-  drawWayDownPointer(ctx, g, w, h, s, p, lift, now);
+// Tim: "we shouldn't use [the red block] for the exit... a different sprite... stairs lead up or lead down... an upfacing chevron
+// on its head and a downfacing chevron on its head". A way's marker: a squat stone with a glowing chevron above it, ▼ gold for
+// the way down, ▲ green for a way up or out (amber for the Ember Door, which burns an ember).
+function drawWayMarker(ctx, o, s, now, dir, ember = false) {
+  const cx = (o.x + .5) * s, base = (o.y + .92) * s, pulse = .5 + .5 * Math.sin(now / 360), col = dir === "down" ? [255, 226, 140] : ember ? [255, 170, 80] : [120, 230, 190];
+  ctx.save(); ctx.fillStyle = "#00000060"; ctx.beginPath(); ctx.ellipse(cx, base, s * .36, s * .1, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#3e3c44"; ctx.beginPath(); ctx.moveTo(cx - s * .3, base); ctx.lineTo(cx - s * .24, base - s * .46); ctx.lineTo(cx + s * .24, base - s * .46); ctx.lineTo(cx + s * .3, base); ctx.closePath(); ctx.fill(); // the stone
+  ctx.fillStyle = "#57555f"; ctx.fillRect(cx - s * .24, base - s * .5, s * .48, s * .08); ctx.fillStyle = `rgba(${col},${.25 + .2 * pulse})`; ctx.fillRect(cx - s * .16, base - s * .38, s * .32, s * .26); // its lit face
+  const cy = base - s * (.82 + .05 * Math.sin(now / 420)), k = s * .2, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .45); g.addColorStop(0, `rgba(${col},${.35 + .25 * pulse})`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .45, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#000b"; ctx.lineWidth = Math.max(4, s * .13); ctx.lineCap = "round"; ctx.lineJoin = "round"; const d = dir === "down" ? 1 : -1;
+  ctx.beginPath(); ctx.moveTo(cx - k, cy - d * k * .5); ctx.lineTo(cx, cy + d * k * .5); ctx.lineTo(cx + k, cy - d * k * .5); ctx.stroke(); // its chevron, outlined
+  ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = Math.max(2, s * .08); ctx.stroke(); ctx.restore();
 }
 function drawWayDownPointer(ctx, g, w, h, s, p, lift, now) {
-  const down = (g.map.objects || []).find((o) => wayKind(o, g.map) === "down" && o.state !== "hidden" && renderableObject(g, o)); if (!down) return;
+  const down = (g.map.objects || []).find((o) => wayKind(o, g.map) === "down" && o.state !== "hidden" && renderableObject(g, o) && discoveredInDungeon(g, o)); if (!down) return; // only a way you have found
   const sx = w / 2 + (down.x + .5 - p.x) * s, sy = h / 2 + (down.y + .5 - p.y + lift) * s, m = 38;
   if (sx > m && sx < w - m && sy > m && sy < h - m) return; // on the screen: its own mark shows it
   const dx = sx - w / 2, dy = sy - h / 2, k = Math.min((w / 2 - m) / Math.max(1e-6, Math.abs(dx)), (h / 2 - m) / Math.max(1e-6, Math.abs(dy))), ax = w / 2 + dx * k, ay = h / 2 + dy * k, a = Math.atan2(dy, dx), pulse = .6 + .4 * Math.sin(now / 300);
   ctx.save(); ctx.translate(ax, ay); ctx.rotate(a); ctx.fillStyle = `rgba(255,226,140,${pulse})`; ctx.strokeStyle = "#000c"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, -9); ctx.lineTo(-4, 0); ctx.lineTo(-8, 9); ctx.closePath(); ctx.stroke(); ctx.fill(); ctx.restore();
-  ctx.save(); ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "#000c"; ctx.lineWidth = 3; ctx.fillStyle = "#ffe28c"; const lx = Math.max(30, Math.min(w - 30, ax - Math.cos(a) * 22)), ly = Math.max(14, Math.min(h - 8, ay - Math.sin(a) * 22)); ctx.strokeText("WAY DOWN", lx, ly); ctx.fillText("WAY DOWN", lx, ly); ctx.restore();
 }
 // A labyrinth's key on a little plinth, turning and glowing.
 function drawLabKey(ctx, o, s, now) {
@@ -2088,6 +2085,7 @@ export function render(ctx, g, w, h, now) {
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
           else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301
+          else if (g.area === "dungeon" && wayKind(o, g.map) || (o.kind === "deepTransition")) drawWayMarker(ctx, o, s, now, o.kind === "deepTransition" ? (o.direction === "down" ? "down" : "up") : wayKind(o, g.map) === "down" ? "down" : "up", o.kind === "emberDoor"); // a way: a marker stone with a chevron
           else if (o.kind === "buildingStair") drawBuildingStair(ctx, o, s, now); // great buildings
           else if (o.kind === "labKey") drawLabKey(ctx, o, s, now); // a labyrinth's key
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
@@ -2470,7 +2468,10 @@ export function render(ctx, g, w, h, now) {
   // Release 661 (Tim: "something on the heads up display that just shows the different levels... on the right side... little
   // dots... pretty unobtrusive"): in a dungeon of several floors, a column of dots at the right edge, the top one the first floor:
   // the floor you stand on lit and ringed, floors you have found dim, the rest faint.
-  if (g.area === "dungeon" && g.map?.deepFloor) { ctx.save(); ctx.font = "bold 11px sans-serif"; ctx.textAlign = "right"; ctx.strokeStyle = "#000c"; ctx.lineWidth = 3; ctx.fillStyle = "#e8c2ff"; const label = `THE DEEP · FLOOR ${g.map.deepFloor}`, emb = `${g.save?.theDeep?.embers || 0} RETURN EMBER${(g.save?.theDeep?.embers || 0) === 1 ? "" : "S"}`; ctx.strokeText(label, w - 10, h / 2); ctx.fillText(label, w - 10, h / 2); ctx.fillStyle = "#ffb35a"; ctx.strokeText(emb, w - 10, h / 2 + 14); ctx.fillText(emb, w - 10, h / 2 + 14); ctx.restore(); } // release 677: the depth and the embers
+  if (g.area === "dungeon" && g.map?.deepFloor) { const x = w - 16, y = h / 2, e = Math.min(6, g.save?.theDeep?.embers || 0); ctx.save(); // the Deep: its floor as a number in a purple badge, the Return Embers as dots under it (Tim: "an easy to identify number or... dots")
+    ctx.fillStyle = "#2a1f38d0"; ctx.strokeStyle = "#c9a6ffaa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#efe0ff"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.fillText(String(g.map.deepFloor), x, y + 4);
+    for (let i = 0; i < e; i++) { ctx.fillStyle = "#ffb35a"; ctx.beginPath(); ctx.arc(x - (e - 1) * 3.5 + i * 7, y + 19, 2.5, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore(); } // release 725: was the words "THE DEEP · FLOOR n" and the ember count
   if (g.area === "dungeon" && g.map?.annexFloor && !g.map.multiLevel) { const A = g.map.annexFloor, gap = 14, x = w - 12, y0 = h / 2 - (A.of - 1) * gap / 2; // release 675: a deep annex's floors
     ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (A.of - 1) * gap); ctx.stroke();
     for (let i = 0; i < A.of; i++) { const y = y0 + i * gap, here = i + 1 === A.floor; ctx.fillStyle = here ? "#ffe7a6" : i + 1 < A.floor ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } }
@@ -2558,7 +2559,7 @@ export function render(ctx, g, w, h, now) {
   ctx.fillRect(labelX, labelY, boxW, 24);
   ctx.fillStyle = "#cec7b6";
   ctx.fillText(label, labelX + 8, labelY + 16, boxW - 16);
-  if (g.area === "dungeon") drawWayLabels(ctx, g, w, h, s, p, viewLift, now); // above the dark: the way down and the way out stay readable
+  if (g.area === "dungeon") drawWayDownPointer(ctx, g, w, h, s, p, viewLift, now); // off the screen, a chevron at the edge toward the way down
   if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; }
 }
 
