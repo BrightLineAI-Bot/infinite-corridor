@@ -478,6 +478,23 @@ export const MONSTER_PACK = {
     attacks: ["blobTendrils", "blobGasJet"], bossAttacks: [],
     palette: ["#e8e0cc", "#5a4c34", "#fff8e0", "#ffffff"], render: "morphingBlob", tags: ["ooze", "gas"],
     lore: "A blob of living ooze the colour of brine, kin of the Morphing Blob and much smaller, one of many that crowd a pocket of the far reaches. It whips tendrils and breathes poison." },
+  // Release 716 (Tim: "the crystal civilization... all the monsters... are psychic crystals or variations... some of them can be
+  // smaller, like half crystals... crystal walkers, like the crystal crabs"): the Crystal Civilisation's kin (far-realms.ts FAR_CIVS).
+  shardling: { id: "shardling", prototypeOnly: true, farKin: true, noEcho: true, name: "Shardling", epithet: "Half a Crystal",
+    stats: [45, 8, 0], form: { scale: .6 }, sizeClass: "small", movement: "hover", brain: "orbit",
+    attacks: ["psyPush", "psyDebris"], bossAttacks: [],
+    palette: ["#d8c8f0", "#40306a", "#f0e8ff", "#ffffff"], render: "psychicCrystal", tags: ["construct", "mind", "crystal"],
+    lore: "A crystal no bigger than a child, half the size of the great Psychic Crystal and with half its mind. It floats in the streets of the Crystal Civilisation, pushing strangers away and throwing stones." },
+  prismWarden: { id: "prismWarden", prototypeOnly: true, farKin: true, noEcho: true, name: "Prism Warden", epithet: "A Mind That Keeps the Streets",
+    stats: [105, 11, 0], form: { scale: .9 }, sizeClass: "medium", movement: "hover", brain: "orbit",
+    attacks: ["psyPull", "psyWall", "psyDebris"], bossAttacks: [],
+    palette: ["#a8e0e8", "#20485a", "#e0fbff", "#ffffff"], render: "psychicCrystal", tags: ["construct", "mind", "crystal"],
+    lore: "A tall clear crystal that keeps the streets of the Crystal Civilisation. It draws strangers in, raises walls of thought against them, and stones them." },
+  crystalStrider: { id: "crystalStrider", prototypeOnly: true, farKin: true, noEcho: true, name: "Crystal Strider", epithet: "The Geode That Walks the Streets",
+    stats: [80, 11, 0], form: { scale: 1.3 }, sizeClass: "medium", movement: "skitter", brain: "flank",
+    attacks: ["clawSweep", "leapSlam"], bossAttacks: [],
+    palette: ["#8a70b8", "#24183a", "#9ff8ff", "#f0ffff"], render: "crystalCrab", tags: ["beast", "crystal"],
+    lore: "A great crab of the Crystal Civilisation that wears a geode the size of a barrel. It sidles round you and springs, pincers first, like its little cousins in the canyons." },
   mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
     id: "mothChrysalis", prototypeOnly: true, name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true, // not a creature of the roster: only the great trees hang it
     stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",

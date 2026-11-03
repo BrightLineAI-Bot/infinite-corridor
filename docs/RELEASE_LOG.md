@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 715, the next is **716**.
+Taken at merge time: `main`'s release + 1 (see above). After 716, the next is **717**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 715 | Claude | `claude/dreamy-rubin-yn6q2p` | Far reaches: stag groves (Grove Stags, Grove Moths) and blob pockets (five lesser blobs by region) | In flight. |
+| 716 | Claude | `claude/dreamy-rubin-yn6q2p` | The Crystal Civilisation: a far crystal country (landscape v15), crystal kin, a quest from the Psychic Crystal | In flight. |
+| 715 | Claude | `claude/dreamy-rubin-yn6q2p` | Far reaches: stag groves (Grove Stags, Grove Moths) and blob pockets (five lesser blobs by region) | Merged (#362). |
 | 714 | Claude | `claude/dreamy-rubin-yn6q2p` | Far realms beyond 1000 (new ground only): the Giants' Reach; the Briar Stag and the Stalker play | Merged (#361). |
 | 713 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Compounds (Tim asked this session): courtyards inside rings of wings, outer / courtyard doors and wall-walk hatches, maze routes to the tower's boss and treasure; great buildings on new ground in L / T / U shapes and alien hives | Merging (baton taken). |
 | 712 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: two wave 3 threads of a later layer, the Weaver's Cloth and the Mirror That Remembers | Merged (`r712-da04de26b458`). |
