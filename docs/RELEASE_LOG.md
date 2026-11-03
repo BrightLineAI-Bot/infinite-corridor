@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 704, the next is **705**.
+Taken at merge time: `main`'s release + 1 (see above). After 705, the next is **706**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 704 | Claude | `claude/dreamy-rubin-yn6q2p` | The Far Gate climbs after 1, 2, 3, 4… more Listener kills (Tim's rule); the robot, drone and +10 cap follow Gates opened | Merging. |
+| 705 | Claude | `claude/dreamy-rubin-yn6q2p` | A new world boss, the Briar Stag: eight attacks, forest home, Echo | Merging. |
+| 704 | Claude | `claude/dreamy-rubin-yn6q2p` | The Far Gate climbs after 1, 2, 3, 4… more Listener kills (Tim's rule); the robot, drone and +10 cap follow Gates opened | Merged (`r704-866a96e6316f`). |
 | 703 | Claude | `claude/dreamy-rubin-yn6q2p` | Arcana in the Journal: every thread and cross-crossing story with its progress and what has been read | Merged. Published in r703. |
 | 702 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: a new thread, The Well-Digger's Rope (far crossings), rolled apart from the first ten | Merged. Published in r703. |
 | 701 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite of Ascendancy reworked: a strange tree that burns down, ramping waves, ashes that raise the great tree (rising, rubble, flash), always its sky door | Merged. Published in r703. |
