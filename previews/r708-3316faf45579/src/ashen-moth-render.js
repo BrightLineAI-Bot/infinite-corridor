@@ -1,0 +1,129 @@
+// The Ashen Moth's body and effects (release 706). Drawing only: nothing here changes combat state.
+// q: the shared pack paint context { k, b, u, s, t, flip, e } (monster-render.ts paintPackMonster).
+const TAU = Math.PI * 2;
+export const MOTH_ART = {
+  wing: "#55504a", wingDark: "#2c2824", wingEdge: "#14110e", vein: "#ff8a2a", eye: "#ff6a1a", eyeCore: "#ffe2b0",
+  body: "#3a3430", fur: "#6a625a", ember: "#ffb04a", fire: "#ff7a1a", fireCore: "#ffe8b0", ash: "#8a847c",
+  hover: .75, bob: .08, flap: 7,
+};
+export const MOTH_EFFECT_KINDS = new Set(["emberDust", "silk", "gale"]);
+
+const smoothing = new WeakMap();
+function eased(e, key, target, now, rate) {
+  const st = smoothing.get(e) || {}; smoothing.set(e, st);
+  const prev = st[key], last = st["@" + key], dt = last == null ? 0 : Math.min(.1, Math.max(0, (now - last) / 1000)); st["@" + key] = now;
+  if (!Number.isFinite(prev) || !(dt > 0)) { st[key] = target; return target; }
+  st[key] = prev + (target - prev) * Math.min(1, dt * rate); return st[key];
+}
+// Wing spread (1 open, 0 folded) and flap speed by pose.
+const POSES = { idle: [1, 1], raise: [1.1, .6], beat: [1, 2.2], shake: [1, 2.8], climb: [.9, 1.8], dive: [.25, 0], spin: [1, 1.6], fold: [0, 0] };
+
+// One wing: an upper fore-wing and a rounded hind-wing, ash grey, ember veins, an eye-spot that glows.
+function wing(ctx, A, u, side, spread, flap, kindled, now, reduce) {
+  const lift = flap * u * .12, sw = Math.max(.08, spread);
+  ctx.save(); ctx.scale(side, 1);
+  const fore = [[0, -u * .05], [u * .55 * sw, -u * .38 - lift], [u * .95 * sw, -u * .3 - lift * 1.2], [u * .9 * sw, -u * .08 - lift * .6], [u * .3 * sw, u * .02]];
+  const hind = [[0, u * .02], [u * .35 * sw, u * .02], [u * .62 * sw, u * .2 - lift * .3], [u * .45 * sw, u * .38], [u * .1 * sw, u * .22]];
+  const shape = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; ctx.quadraticCurveTo(x0 + (x1 - x0) * .2, y0 + (y1 - y0) * .8, x1, y1); } ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = A.wingEdge; ctx.lineWidth = Math.max(1, u * .012); ctx.stroke(); };
+  const g = ctx.createLinearGradient(0, -u * .4, u * sw, u * .1); g.addColorStop(0, A.wing); g.addColorStop(1, A.wingDark);
+  shape(hind, A.wingDark); shape(fore, g);
+  ctx.strokeStyle = kindled ? "rgba(255,190,90,.9)" : "rgba(255,138,42,.55)"; ctx.lineWidth = Math.max(1, u * .01);
+  for (const [x, y] of [[.85, -.3], [.92, -.12], [.6, -.36], [.5, .25], [.55, .1]]) { ctx.beginPath(); ctx.moveTo(u * .04, 0); ctx.quadraticCurveTo(u * x * sw * .5, y * u * .6 - lift * .4, u * x * sw, y * u - lift * (y < 0 ? 1 : .3)); ctx.stroke(); }
+  // The eye-spot: dark ring, ember iris, hot core.
+  const ex = u * .55 * sw, ey = -u * .2 - lift * .8, er = u * .09 * Math.max(.4, sw), pulse = reduce ? 1 : .8 + .2 * Math.sin(now / 240 + side);
+  ctx.fillStyle = A.wingEdge; ctx.beginPath(); ctx.ellipse(ex, ey, er * 1.35, er * 1.1, 0, 0, TAU); ctx.fill();
+  const eg = ctx.createRadialGradient(ex, ey, 0, ex, ey, er); eg.addColorStop(0, A.eyeCore); eg.addColorStop(.45, A.eye); eg.addColorStop(1, "rgba(255,106,26,.2)"); ctx.fillStyle = eg; ctx.globalAlpha *= pulse; ctx.beginPath(); ctx.ellipse(ex, ey, er, er * .85, 0, 0, TAU); ctx.fill(); ctx.globalAlpha /= pulse;
+  if (kindled) { // flame along the leading edge
+    for (let i = 0; i < 6; i++) { const k = i / 5, x = u * (.15 + .78 * k) * sw, y = -u * (.12 + .25 * Math.sin(k * 2.6)) - lift * (.4 + k * .8), h = u * (.07 + .04 * Math.sin(now / 90 + i * 1.9)) * (reduce ? .8 : 1);
+      ctx.fillStyle = "rgba(255,122,26,.8)"; ctx.beginPath(); ctx.moveTo(x - u * .03, y); ctx.quadraticCurveTo(x, y - h * 1.4, x + u * .03, y); ctx.closePath(); ctx.fill(); ctx.fillStyle = A.fireCore; ctx.beginPath(); ctx.arc(x, y - h * .3, u * .012, 0, TAU); ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+export function drawAshenMoth(ctx, q, now = 0) {
+  const A = MOTH_ART, { k, u, e } = q, reduce = !!e.reduceMotion, t = now / 1000, kindled = e.mothKindled > 0;
+  const [spread0, flapRate] = POSES[e.mothPose] || POSES.idle, spread = eased(e, "spread", e.mothCocoon ? 0 : spread0, now, 8);
+  const air = Math.max(0, Number(e.mothAir) || 0), hover = u * (A.hover + air * .9) + (reduce ? 0 : Math.sin(t * 2.1) * u * A.bob), b = q.b - hover;
+  const flap = reduce ? .3 : Math.sin(t * A.flap * flapRate) * Math.min(1, flapRate);
+  ctx.fillStyle = "rgba(10,8,6,.35)"; ctx.beginPath(); ctx.ellipse(k, q.b, u * .7 * Math.max(.4, spread), u * .13, 0, 0, TAU); ctx.fill(); // its shadow on the ground
+  if (kindled) { const g = ctx.createRadialGradient(k, b, u * .1, k, b, u * 1.3); g.addColorStop(0, "rgba(255,138,42,.3)"); g.addColorStop(1, "rgba(255,138,42,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(k, b, u * 1.3, u * .9, 0, 0, TAU); ctx.fill(); }
+  ctx.save(); ctx.translate(k, b);
+  if (e.mothPose === "spin" && !reduce) ctx.rotate(Math.sin(t * 9) * .25);
+  if (e.mothPose === "dive") ctx.rotate((e.facingX || 1) * .35);
+  if (e.mothCocoon) { // a cocoon of grey ash with ember cracks
+    const g = ctx.createRadialGradient(-u * .08, -u * .15, u * .05, 0, 0, u * .5); g.addColorStop(0, "#9a948c"); g.addColorStop(1, "#3a3530"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, u * .32, u * .5, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = A.wingEdge; ctx.lineWidth = Math.max(1, u * .015); ctx.stroke();
+    ctx.strokeStyle = `rgba(255,150,60,${reduce ? .8 : .5 + .4 * Math.sin(now / 120)})`; ctx.lineWidth = Math.max(1, u * .012);
+    for (let i = 0; i < 5; i++) { const y0 = -u * .38 + i * u * .17; ctx.beginPath(); ctx.moveTo(-u * .2, y0); ctx.lineTo(-u * .05, y0 + u * .05); ctx.lineTo(u * .08, y0 - u * .02); ctx.lineTo(u * .2, y0 + u * .04); ctx.stroke(); }
+    ctx.restore(); return;
+  }
+  wing(ctx, A, u, -1, spread, flap, kindled, now, reduce); wing(ctx, A, u, 1, spread, flap, kindled, now, reduce);
+  // Body: a furred thorax and a banded abdomen, a hooded head with feathered antennae ending in ember lanterns.
+  ctx.fillStyle = A.body; ctx.beginPath(); ctx.ellipse(0, u * .2, u * .1, u * .26, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = A.wingEdge; ctx.lineWidth = Math.max(1, u * .01); for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(0, u * (.08 + i * .09), u * .095 - i * u * .01, u * .02, 0, 0, Math.PI); ctx.stroke(); }
+  const fg = ctx.createRadialGradient(-u * .03, -u * .06, u * .02, 0, -u * .02, u * .16); fg.addColorStop(0, A.fur); fg.addColorStop(1, A.body); ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(0, -u * .02, u * .14, u * .15, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = A.body; ctx.beginPath(); ctx.ellipse(0, -u * .17, u * .08, u * .07, 0, 0, TAU); ctx.fill();
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = A.eye; ctx.beginPath(); ctx.arc(side * u * .045, -u * .18, u * .02, 0, TAU); ctx.fill();
+    const ax = side * u * .22, ay = -u * .44 + (reduce ? 0 : Math.sin(t * 3 + side) * u * .015);
+    ctx.strokeStyle = A.fur; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.moveTo(side * u * .03, -u * .22); ctx.quadraticCurveTo(side * u * .08, -u * .4, ax, ay); ctx.stroke();
+    for (let i = 1; i < 6; i++) { const k2 = i / 6, x = side * u * .03 + (ax - side * u * .03) * k2, y = -u * .22 + (ay + u * .22) * k2 - Math.sin(k2 * Math.PI) * u * .05; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + side * u * .03, y - u * .03); ctx.stroke(); }
+    const lg = ctx.createRadialGradient(ax, ay, 0, ax, ay, u * .07); lg.addColorStop(0, A.fireCore); lg.addColorStop(.4, A.ember); lg.addColorStop(1, "rgba(255,176,74,0)"); ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(ax, ay, u * .07, 0, TAU); ctx.fill();
+  }
+  // Ash falling from it.
+  if (!reduce) { ctx.fillStyle = "rgba(160,152,142,.55)"; for (let i = 0; i < 5; i++) { const ph = (t * .6 + i * .21) % 1; ctx.beginPath(); ctx.arc(Math.sin(i * 2.7) * u * .4, u * .2 + ph * hover, u * .012, 0, TAU); ctx.fill(); } }
+  ctx.restore();
+}
+
+// Its moth-lings (fire orbs with `moth`) and kindling dust.
+export function drawMothEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
+  const A = MOTH_ART, x = (f.x + .5) * s, y = (f.y + .62) * s, r = (Number(f.radius) || .5) * s, life = Math.max(0, Number(f.life) || 0);
+  ctx.save();
+  if (f.kind === "orb" && f.moth) {
+    const cy = y - s * .45, flap = reduceMotion ? .6 : .5 + .5 * Math.sin(now / 40 + f.x * 7), a = Math.atan2(f.vy, f.vx);
+    const g = ctx.createRadialGradient(x, cy, 0, x, cy, s * .4); g.addColorStop(0, "rgba(255,176,74,.55)"); g.addColorStop(1, "rgba(255,176,74,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, cy, s * .4, 0, TAU); ctx.fill();
+    ctx.translate(x, cy); ctx.rotate(a + Math.PI / 2); ctx.fillStyle = A.fire;
+    for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(side * s * .16 * (.4 + flap), 0, s * .16 * (.4 + flap), s * .11, side * .4, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = A.fireCore; ctx.beginPath(); ctx.ellipse(0, 0, s * .045, s * .1, 0, 0, TAU); ctx.fill();
+  } else if (f.kind === "gale") { // release 708: a giant whirlwind of ash and embers
+    const fade = Math.min(1, life, (Number(f.age) || 0) * 2), h = s * 4.6, spin = reduceMotion ? 0 : now / 140 + (f.seed % 100);
+    ctx.globalAlpha = fade; ctx.fillStyle = "rgba(30,24,20,.35)"; ctx.beginPath(); ctx.ellipse(x, y, r, r * .45, 0, 0, TAU); ctx.fill();
+    { const g = ctx.createLinearGradient(x, y - h, x, y); g.addColorStop(0, "rgba(150,140,130,.08)"); g.addColorStop(1, "rgba(120,110,100,.3)"); ctx.fillStyle = g; const sw = Math.sin(spin * .25 + 2.4) * s * .35; ctx.beginPath(); ctx.moveTo(x - r * .3, y); ctx.quadraticCurveTo(x - r * .55, y - h * .5, x - r * 1.15 + sw, y - h); ctx.lineTo(x + r * 1.15 + sw, y - h); ctx.quadraticCurveTo(x + r * .55, y - h * .5, x + r * .3, y); ctx.closePath(); ctx.fill(); } // a dusty body behind the rings
+    for (let i = 0; i < 12; i++) { const k = i / 11, yy = y - h * k, rr = r * (.3 + k * .85), sway = Math.sin(spin * .25 + k * 2.4) * s * .35 * k;
+      ctx.strokeStyle = `rgba(${150 - i * 4},${140 - i * 4},${130 - i * 4},${.75 - k * .35})`; ctx.lineWidth = Math.max(2, s * (.09 - k * .03)); ctx.beginPath(); ctx.ellipse(x + sway, yy, rr, rr * .28, 0, spin + i * .7, spin + i * .7 + Math.PI * 1.5); ctx.stroke(); }
+    for (let i = 0; i < 14; i++) { const k = ((i * .37 + (reduceMotion ? 0 : now / 1800)) % 1), a = spin * 1.3 + i * 2.1, rr = r * (.3 + k * .85); ctx.fillStyle = i % 3 ? "rgba(255,138,42,.85)" : "rgba(200,190,180,.8)"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * rr + Math.sin(spin * .25 + k * 2.4) * s * .35 * k, y - h * k + Math.sin(a) * rr * .28, Math.max(1, s * .04), 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  } else if (f.kind === "silk") { // release 708: a thread of silk with its trail, or a great knot of it
+    const lift = s * .5, pts = [...(f.trail || []), [f.x, f.y]], big = !!f.big;
+    for (let n = 0; n < (big ? 3 : 1); n++) { ctx.beginPath(); pts.forEach(([px, py], i) => { const wob = big ? Math.sin(i * 1.3 + n * 2) * s * .08 : 0, X = (px + .5) * s + wob, Y = (py + .62) * s - lift + wob * .6; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+      ctx.strokeStyle = `rgba(245,240,230,${big ? .55 : .7})`; ctx.lineWidth = Math.max(1, s * (big ? .03 : .022)); ctx.lineCap = "round"; ctx.stroke(); }
+    const hx = x, hy = y - lift, R = (Number(f.radius) || .25) * s, g = ctx.createRadialGradient(hx, hy, 0, hx, hy, R * (big ? 1.8 : 1.6)); g.addColorStop(0, "rgba(255,255,250,.95)"); g.addColorStop(.5, big ? "rgba(255,226,176,.7)" : "rgba(240,235,225,.6)"); g.addColorStop(1, "rgba(255,226,176,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, R * (big ? 1.8 : 1.6), 0, TAU); ctx.fill();
+    if (big) { ctx.strokeStyle = "rgba(255,250,240,.85)"; ctx.lineWidth = Math.max(1, s * .02); for (let i = 0; i < 4; i++) { const a = (reduceMotion ? 0 : now / 300) + i * 1.6; ctx.beginPath(); ctx.ellipse(hx, hy, R * .9, R * .4, a, 0, TAU); ctx.stroke(); } }
+  } else if (f.kind === "emberDust") {
+    if (f.arming > 0) { // a slow cloud of glowing dust, brightening as it is about to flare
+      const total = Math.max(.001, Number(f.armTotal) || 1), k = 1 - f.arming / total;
+      ctx.fillStyle = `rgba(120,110,100,${.25 + .15 * k})`; ctx.beginPath(); ctx.ellipse(x, y - s * .2, r * .9, r * .55, 0, 0, TAU); ctx.fill();
+      for (let i = 0; i < 9; i++) { const a = i * 2.4 + f.x * 3 + (reduceMotion ? 0 : now / 900), d = r * (.2 + (i % 4) * .2); ctx.fillStyle = i % 3 ? `rgba(255,138,42,${.4 + .5 * k})` : `rgba(255,226,176,${.3 + .6 * k})`; ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y - s * .2 + Math.sin(a) * d * .5, Math.max(1, s * (.025 + .02 * k)), 0, TAU); ctx.fill(); }
+    } else { // the flare
+      ctx.globalAlpha = Math.min(1, life * 3); const g = ctx.createRadialGradient(x, y - s * .2, 0, x, y - s * .2, r * 1.2); g.addColorStop(0, "rgba(255,240,200,.95)"); g.addColorStop(.4, "rgba(255,138,42,.8)"); g.addColorStop(1, "rgba(255,90,20,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - s * .2, r * 1.2, r * .9, 0, 0, TAU); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+// Release r708-3316faf45579: its chrysalis, hanging by a silk thread from a great tree's branch, swaying; the seams glow brighter as it is hurt.
+export function drawMothChrysalis(ctx, q, now = 0) {
+  const { k, b, u, e } = q, reduce = !!e.reduceMotion, t = now / 1000, hurt = 1 - Math.max(0, Math.min(1, (Number(e.hp) || 0) / Math.max(1, Number(e.maxHp) || 1)));
+  const sway = reduce ? 0 : Math.sin(t * 1.3) * .08 + (e.hitFlash > 0 ? Math.sin(t * 40) * .1 : 0), top = b - u * 1.55, len = u * .55;
+  ctx.save(); ctx.translate(k, top); ctx.rotate(sway);
+  ctx.strokeStyle = "rgba(230,224,210,.7)"; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.moveTo(0, -u * .2); ctx.lineTo(0, len * .2); ctx.stroke(); // the silk
+  ctx.fillStyle = "#3a2c1e"; ctx.fillRect(-u * .18, -u * .26, u * .36, u * .07); // the branch it hangs from
+  const cy = len * .2 + u * .42, g = ctx.createRadialGradient(-u * .07, cy - u * .2, u * .03, 0, cy, u * .45); g.addColorStop(0, "#a49e94"); g.addColorStop(.6, "#6a645c"); g.addColorStop(1, "#2a2420");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, len * .2); ctx.bezierCurveTo(u * .26, cy - u * .3, u * .26, cy + u * .25, 0, cy + u * .45); ctx.bezierCurveTo(-u * .26, cy + u * .25, -u * .26, cy - u * .3, 0, len * .2); ctx.fill(); ctx.strokeStyle = "#1a1612"; ctx.lineWidth = Math.max(1, u * .014); ctx.stroke();
+  const glow = (reduce ? .7 : .55 + .35 * Math.sin(t * (2 + hurt * 6))) * (.75 + hurt * .25);
+  ctx.strokeStyle = `rgba(255,150,60,${glow})`; ctx.lineWidth = Math.max(1, u * (.012 + hurt * .012));
+  for (let i = 0; i < 5; i++) { const y0 = cy - u * .28 + i * u * .14, w = u * (.15 - Math.abs(i - 2) * .025); ctx.beginPath(); ctx.moveTo(-w, y0); ctx.lineTo(-w * .3, y0 + u * .035); ctx.lineTo(w * .3, y0 - u * .015); ctx.lineTo(w, y0 + u * .03); ctx.stroke(); }
+  if (hurt > .5) { ctx.fillStyle = `rgba(255,226,176,${(hurt - .5) * 1.4})`; ctx.beginPath(); ctx.ellipse(0, cy, u * .05, u * .12, 0, 0, TAU); ctx.fill(); } // the moth's ember eyes behind the cracks
+  if (!reduce) { ctx.fillStyle = "rgba(160,152,142,.5)"; for (let i = 0; i < 3; i++) { const ph = (t * .5 + i / 3) % 1; ctx.beginPath(); ctx.arc(Math.sin(i * 2.4) * u * .15, cy + u * .45 + ph * u * .9, u * .012, 0, TAU); ctx.fill(); } } // ash sifting down
+  ctx.restore();
+}
