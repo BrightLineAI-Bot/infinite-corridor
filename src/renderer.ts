@@ -1641,6 +1641,7 @@ function greatBlocks(ctx,o,s,p,map){
     // the facade under an open south side
     if(!has(0,1)){const fy=(c.y+1)*s-lift,band=lift/b.floors;ctx.fillStyle=C.wall;ctx.fillRect(x,fy,s+1,lift);ctx.fillStyle="#00000033";ctx.fillRect(x,fy,s+1,s*.1);
       for(let f=0;f<b.floors;f++){const by=fy+lift-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+s,by);ctx.stroke();
+        if(b.wall){ctx.strokeStyle=C.mortar;ctx.beginPath();ctx.moveTo(x+s*((c.y&1)?.3:.7),by);ctx.lineTo(x+s*((c.y&1)?.3:.7),by+band);ctx.stroke();continue} // a curtain wall: coursed stone, no windows
         if(f===0&&d?.face==="south")continue;const q=(k+f*5)%9,ww=s*(st==="keep"?.22:.42),wh=band*.56,wx=x+s*.5,wy=by+band*.22;ctx.fillStyle=q===0?C.lit+"cc":q<3?"#090a0c":C.glass;
         if(st==="keep"){ctx.beginPath();ctx.moveTo(wx-ww/2,wy+wh);ctx.lineTo(wx-ww/2,wy+ww/2);ctx.arc(wx,wy+ww/2,ww/2,Math.PI,0);ctx.lineTo(wx+ww/2,wy+wh);ctx.closePath();ctx.fill()}
         else if(st==="hive"){ctx.beginPath();ctx.ellipse(wx,wy+wh/2,ww/2,wh/2,0,0,7);ctx.fill()}
