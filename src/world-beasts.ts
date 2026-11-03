@@ -519,6 +519,7 @@ export function worldBeastFor(save, map, rx, ry) {
   ensureWorldBeasts(save, false);
   if (!map) return null;
   wanderUnmet(save, rx, ry); // release 567: counted on every section entered, towns too
+  if (map.farDomain) return null; // release 723: a domain is its own beast's ground
   if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && !a.dungeon && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
   let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && !a.dungeon && !astralReservedCompanion(save,id) && a.rx === rx && a.ry === ry; }), claimed = false;
