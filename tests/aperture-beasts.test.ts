@@ -11,7 +11,7 @@ const atTier = (s, t) => { s.perception.aperture = t ? APERTURE_THRESHOLDS[t - 1
 const open = () => ({ width: 32, tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'floor', blocked: false })), objects: [] });
 
 test('each world beast and the Questing Beast opens at its Aperture tier', () => {
-  assert.deepEqual(BEAST_APERTURE, { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 }); // release 705: the Briar Stag
+  assert.deepEqual(BEAST_APERTURE, { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 }); // release 705: the Briar Stag
   for (const id of [...WORLD_BEAST_IDS, 'questingBeast']) {
     const need = BEAST_APERTURE[id]; assert.ok(need >= 3, id);
     assert.equal(beastUnlocked(atTier(freshSave(), need - 1), id), false, `${id} below its tier`);
