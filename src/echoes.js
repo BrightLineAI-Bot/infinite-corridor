@@ -6,8 +6,8 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { rng } from "./random.js?v=r708-3316faf45579";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r708-3316faf45579";
+import { rng } from "./random.js?v=r711-23055c964fc8";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r711-23055c964fc8";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -54,6 +54,8 @@ export const ECHOES = {
   lightningGiant: { name: "Giant's Arc", cost: 3, trigger: "kill", module: "giantArcs", text: "Kills arc lightning into up to three foes within 5 tiles." },
   briarStag: { name: "Bramble Wake", cost: 2, trigger: "dodge", module: "stagCharge", text: "Each dodge leaves brambles where you stood that slow foes by 50% for 3 s, and roots strike the nearest foe within 3 tiles." }, // release 705
   ashenMoth: { name: "Moth's Ember", cost: 2, trigger: "kill", module: "mothSwarm", text: "Kills loose a burning moth that sets the nearest foe within 5 tiles alight." }, // release 706
+  crimsonTyrant: { name: "Tyrant's Heart", cost: 3, trigger: "kill", module: "dragonFlameWave", text: "Kills burst into flame, burning foes within 2.5 tiles." }, // release 709
+  doomChaser: { name: "Chaser's Dark", cost: 3, trigger: "kill", module: "doomOrbs", text: "Kills loose a hunting dark that bursts on the nearest foe within 6 tiles." }, // release 710
   psychicCrystal: { name: "Mind Ward", cost: 2, trigger: "hurt", module: "psyPush", text: "Being hurt throws foes within 3 tiles back from you." },
   voidWalker: { name: "Rift Upheaval", cost: 2, trigger: "dodge", module: "voidSpikes", text: "Dodging marks the nearest foe within 5 tiles with a void spike; it erupts after half a second (once every 4 s)." },
   earthGolem: { name: "Golem's Landfall", cost: 2, trigger: "land", module: "golemPunch", text: "Landing a jump staggers foes within 2.5 tiles for 0.6 s." }, // Canyon craters
@@ -164,6 +166,8 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("gnawingMaw")) for (const e of nearest(game, at.x, at.y, 4, data.enemy)) { const c = centre(e), m = Math.hypot(at.x - c.x, at.y - c.y) || 1; world.nudge(e, (at.x - c.x) / m * Math.min(1, m - .4), (at.y - c.y) / m * Math.min(1, m - .4)); e.hitStun = Math.max(e.hitStun || 0, .3); }
     if (eq.includes("questingBeast")) for (const e of nearest(game, at.x, at.y, 4.5, data.enemy).slice(0, 2)) { world.arc(data.enemy, e, "#f2ece0"); world.damage(e, Math.round(dmg * 1.2)); }
     if (eq.includes("nanobotKnight")) for (const e of nearest(game, at.x, at.y, 5, data.enemy).slice(0, 2)) { world.arc(data.enemy, e, "#ff2a2a"); world.damage(e, Math.round(dmg * .8)); } // release 245
+    if (eq.includes("crimsonTyrant")) world.blast(at.x, at.y, 2.5, Math.round(dmg * .9)); // release 709
+    if (eq.includes("doomChaser")) { const foe = nearest(game, at.x, at.y, 6, data.enemy)[0]; if (foe) { const c = centre(foe); world.blast(c.x, c.y, 1.4, Math.round(dmg * .8)); world.arc(data.enemy, foe, "#a060ff"); } } // release 710
     if (eq.includes("ashenMoth")) { const foe = nearest(game, at.x, at.y, 5, data.enemy)[0]; if (foe) { foe.glyphBurn = { until: now + 3000, dps: Math.max(2, Math.round(dmg * .35)), tick: 0 }; world.arc(data.enemy, foe, "#ff8a2a"); } } // release 706
     if (eq.includes("lightningGiant")) for (const e of nearest(game, at.x, at.y, 5, data.enemy).slice(0, 3)) { world.arc(data.enemy, e, "#7fd6ff"); world.damage(e, Math.round(dmg * .7)); } // release 257
     if (eq.includes("bloblet")) p.hp = Math.min(p.maxHp || save.maxHp || p.hp, p.hp + 3); // release 235

@@ -1,15 +1,16 @@
-import { mealLure } from "./meals.js?v=r708-3316faf45579";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r708-3316faf45579";
+import { mealLure } from "./meals.js?v=r711-23055c964fc8";
+import { ensureDragonLava } from "./crimson-dragon.js?v=r711-23055c964fc8";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r711-23055c964fc8";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r708-3316faf45579";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r708-3316faf45579";
-import { sectionExits, apertureTier } from "./world.js?v=r708-3316faf45579";
-import { stageOneBeastReference } from "./stages.js?v=r708-3316faf45579";
+import { hashSeed } from "./random.js?v=r711-23055c964fc8";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r711-23055c964fc8";
+import { sectionExits, apertureTier } from "./world.js?v=r711-23055c964fc8";
+import { stageOneBeastReference } from "./stages.js?v=r711-23055c964fc8";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -116,9 +117,33 @@ export const WORLD_BEASTS = {
     slain: "The Ashen Moth falls, and burns, and is only ash on the wind.",
     gone: "The Ashen Moth has burned you enough, and drifts away on the smoke. In time it will settle somewhere else.",
   },
+  // Release 709 (Tim, 2026-11-03): a red dragon. It claims the ground it holds (crimson-dragon.ts) and flies home over everything.
+  crimsonTyrant: {
+    kind: "crimsonTyrant", name: "The Crimson Tyrant", chance: .02, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
+    hitsToKill: 80, hpPerLevel: 36, damageShare: .24, speed: 1, attackGap: .25, staggerResistance: 1, rewardMarks: 240, rewardPerLevel: 24,
+    patience: 240, home: "firelands", retreatMoves: "through",
+    flee: "The Crimson Tyrant spreads its wings and climbs into the smoke, bound for the ash lands.",
+    homeLine: "The Crimson Tyrant settles into the smoking ground of the ash lands like a coal into a fire.",
+    arrive: "The air here shimmers with heat and the ground is scorched black in great sweeps. Something vast and red lies coiled at the heart of it. The Crimson Tyrant is here.",
+    slain: "The Crimson Tyrant crashes down, and the fire goes out of it all at once, like a forge left in the rain.",
+    gone: "The Crimson Tyrant has what it wanted of you, and takes to the sky. In time it will claim somewhere else.",
+    claimed: "The Crimson Tyrant has made this ground its own. It will not fight you for it again.",
+  },
+  // Release 710 (Tim, 2026-11-03: "The second dragon... a sweeping laser beam... eruptions everywhere... waves of dark energy... all of his
+  // attacks can be black... His name is doom chaser"): a black dragon of dark fire. It flies home over everything to the canyons' dark.
+  doomChaser: {
+    kind: "doomChaser", name: "The Doom Chaser", chance: .01, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
+    hitsToKill: 80, hpPerLevel: 36, damageShare: .24, speed: 1.1, attackGap: .22, staggerResistance: 1, rewardMarks: 240, rewardPerLevel: 24,
+    patience: 240, home: "canyon", retreatMoves: "through",
+    flee: "The Doom Chaser beats its black wings once and is gone into the sky, bound for the deep canyons.",
+    homeLine: "The Doom Chaser folds itself down into the canyon's dark, and the dark closes over it.",
+    arrive: "The light here is wrong: thin and violet, and the ground is cracked and smoking black. Something vast moves in the dark above. The Doom Chaser is here.",
+    slain: "The Doom Chaser falls out of the dark, and the violet fire in its cracks gutters and goes out.",
+    gone: "The Doom Chaser has hunted you enough, and rises into the dark. In time it will chase something else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
-// Release r708-3316faf45579 (Tim, 2026-11-03: "the moth... his chrysalis can appear on the great trees... hanging from a branch and if you attack it
+// Release 708 (Tim, 2026-11-03: "the moth... his chrysalis can appear on the great trees... hanging from a branch and if you attack it
 // enough it will drop and then... it can start harassing you in the tree. But if you go down to the ground, you can just have the
 // normal fight with it"): on a great tree's branch, now and then, while the Moth is free and the Wayfarer's Aperture has opened it,
 // hangs its chrysalis. Fell it (`hits` of the Wayfarer's blows) and the Moth hatches: its hunt begins in that section. While the
@@ -396,7 +421,7 @@ export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
 // large creatures shouldn't be trapped on small islands"). Flood the section over the ground the beast can stand on or
 // cross in its retreat (retreatPassable for its retreatMoves). A region is sound when it reaches a section edge (a way
 // out) and holds at least PLACEMENT.minRegion tiles (PLACEMENT.big for the large beasts). Returns { ok: Uint8Array(1024) }.
-export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth"] };
+export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth", "crimsonTyrant", "doomChaser"] };
 export function placementRegions(map, here) {
   const tiles = map?.tiles || [], B = WORLD_BEASTS[here], mode = B?.retreatMoves || "walk", need = PLACEMENT.bigBeasts.includes(here) ? PLACEMENT.big : PLACEMENT.minRegion;
   const pass = (t) => !!t && (beastGround(here, t) || retreatPassable(t, mode)), label = new Int32Array(1024).fill(-1), ok = new Uint8Array(1024);
@@ -431,6 +456,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
   save.worldBeasts = all; ensureBeastGap(save);
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.
   ensureVoidScars(save, normalizeScarHistory ? undefined : null);
+  ensureDragonLava(save); // release 709: the Crimson Tyrant's lava
   return save;
 }
 
@@ -464,7 +490,7 @@ function fleeSpawn(save, here, rx, ry) {
 // rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
 // questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
 // already met (active, retreating or tracked) is never withdrawn by this.
-export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, doomChaser: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 // Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
 // the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them

@@ -111,7 +111,7 @@ export function drawMothEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
   ctx.restore();
 }
 
-// Release r708-3316faf45579: its chrysalis, hanging by a silk thread from a great tree's branch, swaying; the seams glow brighter as it is hurt.
+// Release 708: its chrysalis, hanging by a silk thread from a great tree's branch, swaying; the seams glow brighter as it is hurt.
 export function drawMothChrysalis(ctx, q, now = 0) {
   const { k, b, u, e } = q, reduce = !!e.reduceMotion, t = now / 1000, hurt = 1 - Math.max(0, Math.min(1, (Number(e.hp) || 0) / Math.max(1, Number(e.maxHp) || 1)));
   const sway = reduce ? 0 : Math.sin(t * 1.3) * .08 + (e.hitFlash > 0 ? Math.sin(t * 40) * .1 : 0), top = b - u * 1.55, len = u * .55;

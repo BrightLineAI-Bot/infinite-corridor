@@ -1,28 +1,28 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r708-3316faf45579";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r708-3316faf45579";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r708-3316faf45579";
-import { enemyMeleeGeometry } from "./combat.js?v=r708-3316faf45579";
-import { ruleRows } from "./elders.js?v=r708-3316faf45579";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r708-3316faf45579";
-import { BOAT } from "./boats.js?v=r708-3316faf45579";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r708-3316faf45579";
-import { isMarineTile } from "./world-beasts.js?v=r708-3316faf45579";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r708-3316faf45579"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r708-3316faf45579";
-import { setTreeSeason } from "./landscape-render.js?v=r708-3316faf45579";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r708-3316faf45579";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r708-3316faf45579";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r708-3316faf45579";
-import { TREES } from "./trees.js?v=r708-3316faf45579";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r708-3316faf45579";
-import { KIT_MOVES } from "./boss-kit.js?v=r708-3316faf45579";
-import { SKY_DISCS } from "./skylands.js?v=r708-3316faf45579"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r708-3316faf45579";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r708-3316faf45579"; // release 678
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r708-3316faf45579";
-import { drawRelayNode } from "./relay-network.js?v=r708-3316faf45579";
-import { structureOccupancy } from "./world.js?v=r708-3316faf45579";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r708-3316faf45579";
+import { astralBeamAnchors } from "./astral-worm.js?v=r711-23055c964fc8";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r711-23055c964fc8";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r711-23055c964fc8";
+import { enemyMeleeGeometry } from "./combat.js?v=r711-23055c964fc8";
+import { ruleRows } from "./elders.js?v=r711-23055c964fc8";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r711-23055c964fc8";
+import { BOAT } from "./boats.js?v=r711-23055c964fc8";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r711-23055c964fc8";
+import { isMarineTile } from "./world-beasts.js?v=r711-23055c964fc8";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r711-23055c964fc8"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r711-23055c964fc8";
+import { setTreeSeason } from "./landscape-render.js?v=r711-23055c964fc8";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r711-23055c964fc8";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r711-23055c964fc8";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r711-23055c964fc8";
+import { TREES } from "./trees.js?v=r711-23055c964fc8";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r711-23055c964fc8";
+import { KIT_MOVES } from "./boss-kit.js?v=r711-23055c964fc8";
+import { SKY_DISCS } from "./skylands.js?v=r711-23055c964fc8"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r711-23055c964fc8";
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r711-23055c964fc8"; // release 678
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r711-23055c964fc8";
+import { drawRelayNode } from "./relay-network.js?v=r711-23055c964fc8";
+import { structureOccupancy } from "./world.js?v=r711-23055c964fc8";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r711-23055c964fc8";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -82,8 +82,8 @@ function mapObjectLists(map) {
   const value = {
     objects,
     length: objects.length,
-    structures: objects.filter((o) => o.kind === "shack" || o.kind === "architecturalBuilding"),
-    shelters: objects.filter((o) => o.kind === "shack"),
+    structures: objects.filter((o) => o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding"),
+    shelters: objects.filter((o) => o.kind === "shack" || o.kind === "greatBuilding"), // a great building has no inside on the overworld; listed so the Wayfarer stays in front of its facade
     animated: objects.filter((o) => ["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)),
   };
   mapObjectCache.set(map, value);
@@ -101,6 +101,10 @@ function renderableObject(g,o){
   return !g.renderObjectPredicate||g.renderObjectPredicate(o);
 }
 const PAL = {
+  // great buildings (great-buildings.ts): their walls and floors
+  keepWall: ["#4a443b", "#544d43"], aptWall: ["#55595d", "#5f6367"],
+  mosaicFloor: ["#5a4a3a", "#5e4d3c"], carpetFloor: ["#5b2a2c", "#5f2c2e"], plankFloor: ["#6a4a2e", "#6e4d30"], flagFloor: ["#5a5650", "#5e5a53"],
+  tileFloor: ["#8a8a84", "#7e7e78"], concreteFloor: ["#5b5d5e", "#585a5b"], rubbleFloor: ["#4a4640", "#46423c"], floorHole: ["#060607", "#060607"],
   ash: ["#3b3834", "#5a5049"],
   glass: ["#345052", "#52716d"],
   ember: ["#553b34", "#85584a"],
@@ -401,6 +405,7 @@ function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=nu
     py = y * s;
   ctx.fillStyle = p[d & 1];
   ctx.fillRect(px, py, s + 1, s + 1);
+  if (BUILDING_TILES.has(t.kind)) { paintBuildingTile(ctx, t, x, y, s, d, map, w); return; } // great buildings
   if (t.kind === "river" || t.kind === "dungeonWater") {
     ctx.strokeStyle = (d & 1) ? "#8fc2c477" : "#659ca166"; ctx.lineWidth = 2;
     for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(px + ((d + q * 11) % 13), py + 7 + q * s * .26); ctx.quadraticCurveTo(px + s * .5, py + 2 + q * s * .26, px + s - 3, py + 7 + q * s * .26); ctx.stroke(); }
@@ -1556,6 +1561,104 @@ function shack(ctx,o,s,p,map){
   if(condition==="overgrown"){ctx.strokeStyle="#435a3f";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+w-s*.18,y+h);ctx.quadraticCurveTo(x+w-s*.85,y+h*.62,x+w-s*.38,wallTop);ctx.quadraticCurveTo(x+w-s*.08,y+s*1.08,x+w-s*.55,y+s*.62);ctx.stroke()}
   ctx.strokeStyle=accent+"bb";ctx.lineWidth=2;shelterSigil(ctx,x+w*.5,frontY-s*.42,s*.16,o.signGlyph);ctx.fillStyle="#c8bda4";ctx.font=`${Math.max(8,s*.18)}px monospace`;ctx.textAlign="center";ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*.12);ctx.textAlign="start";ctx.restore();
 }
+// Great buildings (great-buildings.ts): a closed block seen from outside, a roof over a facade with a row of windows a floor
+// and the door; a keep in dressed stone under a parapet, an arcology in stained concrete with dead neon. A broken back shows
+// as a torn gap in the roof's far edge (or the facade, when the door faces north).
+function greatBuilding(ctx,o,s,p){
+  const b=o.bounds,keep=o.style==="keep",grain=o.grain||0,floors=o.floors||3,south=o.door?.side!=="north",faceH=o.faceH||Math.min(b.h-2.2,1+floors*.5);
+  const C=keep?{roof:"#3a3631",roofLine:"#5b544a",wall:"#5d564b",wallDark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860"}:{roof:"#3b3f44",roofLine:"#575d63",wall:"#6a6e72",wallDark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
+  // a block seen from the south: the roof is the footprint raised by the facade's height (where the Wayfarer stands on it), the facade below it
+  const x=b.x*s,w=b.w*s,roofY=(b.y-faceH)*s,roofH=b.h*s,faceY=(b.y+b.h-faceH)*s,fH=faceH*s,foot=(b.y+b.h)*s;
+  const onRoof=!!o.roof&&p&&p.x>=b.x-.5&&p.x<b.x+b.w-.5&&p.y>=b.y-.5&&p.y<b.y+b.h-.5,behind=!onRoof&&p&&p.x>=b.x-.7&&p.x<b.x+b.w-.3&&p.y>=b.y-faceH-.8&&p.y<b.y+.4;
+  ctx.save();if(behind)ctx.globalAlpha=.42; // walk behind it and it lets you see yourself
+  ctx.fillStyle="#00000055";ctx.fillRect(x+s*.18,foot-s*.05,w,s*.28); // a shadow at its foot
+  // the roof
+  ctx.fillStyle=C.roof;ctx.fillRect(x,roofY,w,roofH);ctx.strokeStyle=C.roofLine;ctx.lineWidth=1;
+  if(keep){for(let q=roofY+s*.5;q<roofY+roofH-s*.2;q+=s*.5){ctx.beginPath();ctx.moveTo(x+s*.3,q);ctx.lineTo(x+w-s*.3,q);ctx.stroke()}
+    ctx.fillStyle=C.wallDark;for(let q=0;q<w;q+=s*.5){if(((q/s*2)|0)%2===0){ctx.fillRect(x+q,roofY,s*.32,s*.24);ctx.fillRect(x+q,roofY+roofH-s*.24,s*.32,s*.24)}} // the parapet's merlons
+    ctx.fillStyle=C.wall;for(const cx of [x,x+w-s*1.1]){ctx.fillRect(cx,roofY,s*1.1,s*1.1);ctx.strokeStyle=C.mortar;ctx.strokeRect(cx+.5,roofY+.5,s*1.1-1,s*1.1-1)} // corner turrets
+    ctx.fillStyle="#5c2f2a";ctx.beginPath();ctx.moveTo(x+w*.5,roofY+s*.35);ctx.lineTo(x+w*.5+s*.5,roofY+s*.55);ctx.lineTo(x+w*.5,roofY+s*.75);ctx.closePath();ctx.fill();ctx.strokeStyle="#2a2522";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+w*.5,roofY+s*.3);ctx.lineTo(x+w*.5,roofY+s*1.15);ctx.stroke(); // a torn banner
+  }else{for(let q=x+s;q<x+w-s*.5;q+=s){ctx.beginPath();ctx.moveTo(q,roofY+s*.2);ctx.lineTo(q,roofY+roofH-s*.2);ctx.stroke()}
+    ctx.fillStyle="#2d3135";ctx.fillRect(x+s*.6,roofY+s*.5,s*1.2,s*.8);ctx.fillRect(x+w-s*2,roofY+s*.7,s*.9,s*.9); // plant and vents
+    ctx.fillStyle="#53585e";ctx.beginPath();ctx.arc(x+w-s*1.55,roofY+s*1.15,s*.32,0,7);ctx.fill(); // a water tank
+    ctx.strokeStyle=C.trim+"88";ctx.lineWidth=2;ctx.strokeRect(x+s*.15,roofY+s*.15,w-s*.3,roofH-s*.3); // the rim's dead neon
+    ctx.fillStyle="#1d1f22";ctx.fillRect(x+w*.35,roofY+roofH-s*.62,w*.3,s*.42);ctx.fillStyle=C.trim+(grain%3?"55":"cc");ctx.font=`${Math.max(7,s*.26)}px monospace`;ctx.textAlign="center";ctx.fillText(grain%2?"HAB":"ARC",x+w*.5,roofY+roofH-s*.3);ctx.textAlign="start"; // its sign
+  }
+  if(o.roof){const lift=faceH*s; // a roof you can stand on: where it has fallen in, and its hatch
+    for(const c of o.roof.crumbled||[]){const cx=c.x*s,cy=c.y*s-lift,k=(c.x*7+c.y*3)%5;ctx.fillStyle="#060607";ctx.beginPath();ctx.moveTo(cx+s*.1,cy+s*.2);ctx.lineTo(cx+s*(.4+k*.05),cy+s*.05);ctx.lineTo(cx+s*.9,cy+s*.25);ctx.lineTo(cx+s*.85,cy+s*.85);ctx.lineTo(cx+s*.3,cy+s*.95);ctx.closePath();ctx.fill();ctx.fillStyle=C.wallDark;ctx.fillRect(cx+s*.62,cy+s*.6,s*.2,s*.14);ctx.fillRect(cx+s*.15,cy+s*.4,s*.16,s*.12)}
+    const hx=o.roof.hatch.x*s,hy=o.roof.hatch.y*s-lift;ctx.fillStyle="#1a1612";ctx.fillRect(hx+s*.12,hy+s*.12,s*.76,s*.76);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(hx+s*.12,hy+s*.12,s*.76,s*.76);ctx.strokeStyle="#8a7650";ctx.beginPath();ctx.moveTo(hx+s*.32,hy+s*.12);ctx.lineTo(hx+s*.32,hy+s*.88);ctx.moveTo(hx+s*.68,hy+s*.12);ctx.lineTo(hx+s*.68,hy+s*.88);for(let q=.28;q<.9;q+=.2){ctx.moveTo(hx+s*.32,hy+s*q);ctx.lineTo(hx+s*.68,hy+s*q)}ctx.stroke();
+    ctx.strokeStyle="#00000066";ctx.lineWidth=3;ctx.strokeRect(x+1.5,roofY+1.5,w-3,roofH-3);}
+  // the facade: a band a floor, windows in each
+  ctx.fillStyle=C.wall;ctx.fillRect(x,faceY,w,fH);ctx.fillStyle="#00000033";ctx.fillRect(x,faceY,w,s*.14);
+  const band=fH/floors;
+  for(let f=0;f<floors;f++){const by=faceY+fH-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+w,by);ctx.stroke();
+    if(keep){for(let q=x+s*.3;q<x+w;q+=s*.5){ctx.beginPath();ctx.moveTo(q+(f%2)*s*.25,by);ctx.lineTo(q+(f%2)*s*.25,by+band);ctx.stroke()}}
+    const n=Math.max(2,Math.floor(b.w/(keep?2:1.3)));
+    for(let i=0;i<n;i++){const wx=x+(i+.5)*w/n,wy=by+band*.22,ww=s*(keep?.22:.42),wh=band*.56,k=(grain*7+i*13+f*31)%11;
+      if(f===0&&south&&Math.abs(wx-(o.door.x+.5)*s)<s*.9)continue;
+      ctx.fillStyle=k===0?C.lit+"cc":k<3?"#090a0c":C.glass;
+      if(keep){ctx.beginPath();ctx.moveTo(wx-ww/2,wy+wh);ctx.lineTo(wx-ww/2,wy+ww/2);ctx.arc(wx,wy+ww/2,ww/2,Math.PI,0);ctx.lineTo(wx+ww/2,wy+wh);ctx.closePath();ctx.fill()}
+      else{ctx.fillRect(wx-ww/2,wy,ww,wh);ctx.strokeStyle=k<3?"#5e646a":C.trim+"55";ctx.strokeRect(wx-ww/2+.5,wy+.5,ww-1,wh-1);if(k===1){ctx.strokeStyle="#9aa3aa88";ctx.beginPath();ctx.moveTo(wx-ww/2,wy);ctx.lineTo(wx+ww*.1,wy+wh*.6);ctx.lineTo(wx+ww/2,wy+wh*.2);ctx.stroke()}}}
+  }
+  ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.strokeRect(x+1,roofY+1,w-2,foot-roofY-2);ctx.beginPath();ctx.moveTo(x,faceY);ctx.lineTo(x+w,faceY);ctx.stroke();
+  ctx.strokeStyle="#1a1a1a99";ctx.lineWidth=1.5;ctx.beginPath();const cx0=x+w*(.2+(grain%5)*.12);ctx.moveTo(cx0,faceY+s*.1);ctx.lineTo(cx0+s*.2,faceY+fH*.35);ctx.lineTo(cx0-s*.1,faceY+fH*.6);ctx.stroke(); // weathering
+  // the door
+  if(o.door){const dx=(o.door.x+.08)*s,dw=s*.84;if(south){const dh=Math.min(band*.95,s*1.1),dy=foot-dh;ctx.fillStyle="#08090a";ctx.fillRect(dx,dy,dw,dh);if(keep){ctx.beginPath();ctx.arc(dx+dw/2,dy,dw/2,Math.PI,0);ctx.fill()}ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.fillStyle=C.trim+"55";ctx.fillRect(dx-s*.12,foot-s*.08,dw+s*.24,s*.08)}
+    else{ctx.fillStyle="#08090a";ctx.fillRect(dx,roofY,dw,s*.55);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,roofY,dw,s*.55)}}
+  // a broken back
+  if(o.breach){const bx=(o.breach.x+.5)*s,top=o.breach.y===b.y,yy=top?roofY:foot;ctx.fillStyle="#07080a";ctx.beginPath();if(top){ctx.moveTo(bx-s*.75,yy);ctx.lineTo(bx-s*.35,yy+s*.7);ctx.lineTo(bx,yy+s*.45);ctx.lineTo(bx+s*.3,yy+s*.85);ctx.lineTo(bx+s*.8,yy)}else{ctx.moveTo(bx-s*.75,yy);ctx.lineTo(bx-s*.4,yy-s*.9);ctx.lineTo(bx,yy-s*.6);ctx.lineTo(bx+s*.35,yy-s*1.05);ctx.lineTo(bx+s*.8,yy)}ctx.closePath();ctx.fill();
+    ctx.fillStyle=C.wallDark;for(let i=0;i<5;i++)ctx.fillRect(bx-s*.7+i*s*.3,(top?yy-s*.18:yy-s*.05)+((grain+i)%2)*s*.08,s*.22,s*.16)}
+  ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),x+w/2,roofY-s*.14);ctx.textAlign="start";
+  ctx.restore();
+}
+// A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
+// the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
+function drawBuildingStair(ctx, o, s, now) {
+  const x = o.x * s, y = o.y * s, up = o.dir !== "down", pulse = .5 + .5 * Math.sin(now / 420);
+  ctx.save(); ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .9, s * .4, s * .1, 0, 0, 7); ctx.fill();
+  if (up) { ctx.fillStyle = "#070708"; ctx.fillRect(x + s * .14, y - s * .55, s * .72, s * .32); ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .14, y - s * .55, s * .72, s * .32); // the hatch above
+    ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo(x + s * .3, y + s * .9); ctx.lineTo(x + s * .34, y - s * .45); ctx.moveTo(x + s * .7, y + s * .9); ctx.lineTo(x + s * .66, y - s * .45); ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); for (let q = -.3; q < .85; q += .22) { ctx.moveTo(x + s * .32, y + s * q); ctx.lineTo(x + s * .68, y + s * q); } ctx.stroke(); }
+  else { ctx.fillStyle = "#050506"; ctx.fillRect(x + s * .12, y + s * .12, s * .76, s * .76); ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .12, y + s * .12, s * .76, s * .76);
+    ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.moveTo(x + s * .34, y + s * .16); ctx.lineTo(x + s * .34, y + s * .7); ctx.moveTo(x + s * .66, y + s * .16); ctx.lineTo(x + s * .66, y + s * .7); ctx.moveTo(x + s * .34, y + s * .3); ctx.lineTo(x + s * .66, y + s * .3); ctx.moveTo(x + s * .34, y + s * .5); ctx.lineTo(x + s * .66, y + s * .5); ctx.stroke(); }
+  if (o.dir === "roof") { ctx.fillStyle = `rgba(160,200,255,${.25 + .25 * pulse})`; ctx.fillRect(x + s * .18, y - s * .51, s * .64, s * .24); } // daylight through the roof hatch
+  ctx.restore();
+}
+// Inside a great building: dressed or concrete walls with a face where they stand over open floor, and each room's floor.
+const BUILDING_TILES = new Set(["keepWall", "aptWall", "mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole"]);
+function paintBuildingTile(ctx, t, x, y, s, d, map, w) {
+  const px = x * s, py = y * s, k = t.kind, at = (dx, dy) => map[(y + dy) * w + x + dx], same = (dx, dy) => at(dx, dy)?.kind === k;
+  if (k === "keepWall" || k === "aptWall") {
+    const keep = k === "keepWall", below = at(0, 1), face = below && !below.blocked;
+    ctx.fillStyle = keep ? "#2d2925" : "#2b2e31"; ctx.fillRect(px, py, s + 1, s + 1); // the wall's top
+    ctx.fillStyle = keep ? "#3a352f" : "#3a3e42"; ctx.fillRect(px + 1, py + 1, s - 2, (face ? s * .45 : s) - 2);
+    if (face) { ctx.fillStyle = keep ? "#6b6255" : "#74787b"; ctx.fillRect(px, py + s * .45, s + 1, s * .55 + 1); // the face, over open floor
+      ctx.strokeStyle = keep ? "#3a342c" : "#4a4e52"; ctx.lineWidth = 1;
+      if (keep) { for (const q of [.62, .8]) { ctx.beginPath(); ctx.moveTo(px, py + s * q); ctx.lineTo(px + s, py + s * q); ctx.stroke(); } const o = (y & 1) * s * .5; ctx.beginPath(); ctx.moveTo(px + s * .25 + o * .5, py + s * .45); ctx.lineTo(px + s * .25 + o * .5, py + s * .62); ctx.moveTo(px + s * .7 - o * .3, py + s * .62); ctx.lineTo(px + s * .7 - o * .3, py + s * .8); ctx.stroke(); }
+      else { ctx.strokeRect(px + .5, py + s * .45 + .5, s - 1, s * .55 - 1); if ((d & 3) === 1) { ctx.fillStyle = "#58c7c233"; ctx.fillRect(px + s * .2, py + s * .6, s * .6, s * .06); } }
+      ctx.fillStyle = "#00000044"; ctx.fillRect(px, py + s - 3, s + 1, 3); }
+    return;
+  }
+  if (k === "floorHole") { // a hole through to the floor below: dark, its broken edge, a glint of the floor beneath
+    ctx.fillStyle = "#020203"; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle = "#16130f"; ctx.fillRect(px + s * .3, py + s * .55, s * .4, s * .3);
+    ctx.fillStyle = "#3d342a"; for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const n = at(dx, dy); if (n && n.kind !== "floorHole" && !n.blocked) { for (let i = 0; i < 3; i++) { const q = (d + i * 5) % 7 / 7; if (dy) ctx.fillRect(px + q * s * .8, dy < 0 ? py : py + s - s * .12, s * .2, s * .12); else ctx.fillRect(dx < 0 ? px : px + s - s * .12, py + q * s * .8, s * .12, s * .2); } } }
+    return;
+  }
+  ctx.lineWidth = 1;
+  if (k === "mosaicFloor") { const cols = ["#8a6a3e", "#6e3a2e", "#3e5a5a", "#9a8a62"], n = 4, q = s / n; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const v = ((x * n + i) * 7 + (y * n + j) * 3 + ((x * n + i) ^ (y * n + j))) % 9; ctx.fillStyle = v < 4 ? cols[v] : (i + j + x + y) % 2 ? "#5a4a3a" : "#64523f"; ctx.fillRect(px + i * q + .5, py + j * q + .5, q - 1, q - 1); } }
+  else if (k === "carpetFloor") { const border = !same(-1, 0) || !same(1, 0) || !same(0, -1) || !same(0, 1); ctx.fillStyle = "#7a3236"; ctx.fillRect(px, py, s + 1, s + 1); ctx.strokeStyle = "#c19a5a66"; ctx.beginPath(); ctx.moveTo(px + s * .5, py + s * .2); ctx.lineTo(px + s * .8, py + s * .5); ctx.lineTo(px + s * .5, py + s * .8); ctx.lineTo(px + s * .2, py + s * .5); ctx.closePath(); ctx.stroke();
+    if (border) { ctx.fillStyle = "#3e1d22"; if (!same(-1, 0)) ctx.fillRect(px, py, s * .14, s + 1); if (!same(1, 0)) ctx.fillRect(px + s * .86, py, s * .14 + 1, s + 1); if (!same(0, -1)) ctx.fillRect(px, py, s + 1, s * .14); if (!same(0, 1)) ctx.fillRect(px, py + s * .86, s + 1, s * .14 + 1); }
+    if ((d & 3) === 3) { ctx.fillStyle = "#2a141633"; ctx.fillRect(px + s * .55, py + s * .1, s * .3, s * .35); } }
+  else if (k === "plankFloor") { for (let i = 0; i < 4; i++) { const yy = py + i * s / 4; ctx.fillStyle = (i + y + d) % 3 === 0 ? "#5e4128" : (i + y) % 2 ? "#6f4d2f" : "#76533a"; ctx.fillRect(px, yy, s + 1, s / 4); ctx.strokeStyle = "#3a2716"; ctx.beginPath(); ctx.moveTo(px, yy + .5); ctx.lineTo(px + s, yy + .5); const seam = px + ((x * 5 + i * 3 + y) % 4) * s / 4; ctx.moveTo(seam, yy); ctx.lineTo(seam, yy + s / 4); ctx.stroke(); }
+    if ((d & 3) === 2) { ctx.fillStyle = "#1d140c"; ctx.fillRect(px + s * .6, py + s * .26, s * .22, s * .2); } }
+  else if (k === "flagFloor") { ctx.strokeStyle = "#35322c"; ctx.lineWidth = 1.5; const o = (y & 1) * s * .5; ctx.beginPath(); ctx.moveTo(px, py + s * .5); ctx.lineTo(px + s, py + s * .5); ctx.moveTo(px + (o + s * .25) % s, py); ctx.lineTo(px + (o + s * .25) % s, py + s * .5); ctx.moveTo(px + (o + s * .75) % s, py + s * .5); ctx.lineTo(px + (o + s * .75) % s, py + s); ctx.stroke(); ctx.fillStyle = "#6a655c33"; ctx.fillRect(px + s * .08, py + s * .08, s * .3, s * .3); }
+  else if (k === "tileFloor") { const q = s / 2; for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { ctx.fillStyle = (i + j + x + y) % 2 ? "#9c9c95" : "#6a6d6c"; ctx.fillRect(px + i * q, py + j * q, q, q); } ctx.strokeStyle = "#3f413f88"; ctx.strokeRect(px + .5, py + .5, s - 1, s - 1); if ((d & 3) === 1) { ctx.strokeStyle = "#2a2c2b"; ctx.beginPath(); ctx.moveTo(px + s * .1, py + s * .3); ctx.lineTo(px + s * .45, py + s * .55); ctx.lineTo(px + s * .7, py + s * .45); ctx.stroke(); } }
+  else if (k === "concreteFloor") { ctx.fillStyle = "#4a4c4d"; for (let i = 0; i < 5; i++) ctx.fillRect(px + ((d * 7 + i * 11 + x * 3) % 10) / 10 * s, py + ((d * 3 + i * 7 + y * 5) % 10) / 10 * s, 2, 2); ctx.strokeStyle = "#47494a"; ctx.strokeRect(px + .5, py + .5, s - 1, s - 1); if ((d & 3) === 0 && (x + y) % 3 === 0) { ctx.fillStyle = "#58c7c222"; ctx.fillRect(px + s * .15, py + s * .7, s * .7, s * .05); } }
+  else if (k === "rubbleFloor") { for (let i = 0; i < (t.blocked ? 7 : 4); i++) { const rx = px + ((d * 5 + i * 7) % 9) / 9 * s * .8, ry = py + ((d * 3 + i * 5) % 9) / 9 * s * .8, r = s * (t.blocked ? .22 : .13); ctx.fillStyle = i % 2 ? "#6a6359" : "#57514a"; ctx.beginPath(); ctx.moveTo(rx, ry + r); ctx.lineTo(rx + r * .8, ry); ctx.lineTo(rx + r * 1.7, ry + r * .6); ctx.lineTo(rx + r, ry + r * 1.4); ctx.closePath(); ctx.fill(); } if (t.blocked) { ctx.fillStyle = "#00000055"; ctx.fillRect(px + 2, py + s - 5, s - 4, 4); } }
+  if (t.doorway) { ctx.fillStyle = "#00000022"; ctx.fillRect(px, py, s + 1, s + 1); }
+  // shadow cast by a wall standing to the north
+  const n = at(0, -1); if (n?.blocked && n.kind !== "rubbleFloor") { ctx.fillStyle = "#00000040"; ctx.fillRect(px, py, s + 1, s * .22); }
+}
 function architecturalBuilding(ctx,o,s,p,map){
   const meta=structureRenderMeta(o),b=o.bounds,inside=structureOccupancy(map,32,p.x,p.y,o.id)===o.id,colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"],fortress:["#302b27","#9b8268"]}[o.districtStyle]||["#333","#888"],accent={copper:"#b37954",ivory:"#d5c8a7",oxide:"#9a6457",violet:"#9278a8"}[o.accent]||colors[1],cells=meta.cells,set=meta.set;
   ctx.save();if(inside){ctx.strokeStyle=accent+"77";ctx.lineWidth=2;for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}ctx.restore();return}
@@ -1849,6 +1952,7 @@ export function render(ctx, g, w, h, now) {
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
           else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301
+          else if (o.kind === "buildingStair") drawBuildingStair(ctx, o, s, now); // great buildings
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
@@ -1887,7 +1991,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#a9b9ab";
             ctx.fillText(o.role, cx, cy - 27);
             ctx.textAlign = "start";
-          } else if (o.kind === "shack" || o.kind === "architecturalBuilding") { /* roofs render after actors so exterior views conceal contents */ }
+          } else if (o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding" || o.buildingDoor) { /* roofs render after actors so exterior views conceal contents; a great building draws its own doors */ }
           else if (o.kind === "architecturalDistrict") { /* district title is carried by its buildings */ }
           else if (o.kind === "viewport") {
             actor(ctx, o.x, o.y, s, "viewport");
@@ -2184,7 +2288,7 @@ export function render(ctx, g, w, h, now) {
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
-  for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)){const drawStructure=o.kind==="shack"?shack:architecturalBuilding;
+  for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?12:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?greatBuilding:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
     const bounds = o.bounds || { x:o.x-2, y:o.y-2, w:5, h:4 };
@@ -2204,6 +2308,7 @@ export function render(ctx, g, w, h, now) {
   if(skyA>0)ctx.restore()}
   const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&discoveredInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
+  { const R=objectLists.structures.find(o=>o.kind==="greatBuilding"&&o.roof&&p.x>=o.bounds.x-.5&&p.x<o.bounds.x+o.bounds.w-.5&&p.y>=o.bounds.y-.5&&p.y<o.bounds.y+o.bounds.h-.5); if(R)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,1); } // on a great building's roof, the Wayfarer stands over it
   const motion = now / 1000;
   for (const o of objectLists.animated)
     if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)) {

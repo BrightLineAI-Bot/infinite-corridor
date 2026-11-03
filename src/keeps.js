@@ -10,8 +10,8 @@
 //   → the corner towers (4); the far wall's gatehouse tower (4) → a bridge over the courtyard (4) → the keep's wall walk (4)
 //   → jump up to the keep's upper floor (5) → jump up to its crown (6), where a Keep Rest and the keep's cache wait.
 // Creatures hold the courtyard, the wall walk and the towers (they cannot change level). Bounded: one keep a section, built once.
-import { hashSeed } from "./random.js?v=r708-3316faf45579";
-import { canStep } from "./landscape.js?v=r708-3316faf45579";
+import { hashSeed } from "./random.js?v=r711-23055c964fc8";
+import { canStep } from "./landscape.js?v=r711-23055c964fc8";
 
 export const KEEPS = {
   version: 1,
@@ -72,7 +72,7 @@ function climbable(map, from) {
   return seen;
 }
 // Which of the section's four ways out can be walked to from its middle, on foot (no jumping), as the Wayfarer.
-function exitsOpen(map) {
+export function exitsOpen(map) {
   const ex = map.exits || {}, seen = new Uint8Array(1024), q = [16 * 32 + 16], me = { isPlayer: true, jumping: false }; seen[q[0]] = 1;
   for (let i = 0; i < q.length; i++) { const k = q[i], px = k % 32, py = (k / 32) | 0;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = px + dx, y = py + dy, n = y * 32 + x, t = map.tiles[n]; if (x < 0 || y < 0 || x > 31 || y > 31 || seen[n] || !t || t.blocked || !canStep(me, map, 32, px, py, x, y)) continue; seen[n] = 1; q.push(n); } }
