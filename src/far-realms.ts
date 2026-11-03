@@ -126,6 +126,42 @@ export const FAR_DOMAINS = {
     wait: [45, 110], // seconds spent in the caldera before its beast comes, hashed per visit
     comes: "A roar rolls round the caldera. The Questing Beast has come home, and it has found you here.",
     waiting: "The Questing Beast is not here now. Wait in its caldera, and it may come back." },
+  voidWalker: { beast: "voidWalker", min: 1100, span: 250, version: 1, name: "the Unlit Shore", wait: [45, 110], // release 724
+    arrive: "Islands of black rock stand in a sea of starless dark. Nothing shines here; even the fog is dim. This is the Void Walker's shore.",
+    quest: "The Void Walker falls, and the dark it carried runs home, far out, to a shore where there are no stars. Your compass knows the way to the Unlit Shore.",
+    found: "You have reached the Unlit Shore.", comes: "The fog thickens and something walks out of it. The Void Walker has come back to its shore.", waiting: "The Void Walker is not on its shore now. Wait here in the dark, and it may come back." },
+  crimsonTyrant: { beast: "crimsonTyrant", min: 1137, span: 250, version: 1, name: "the Red Throne", wait: [45, 110], // release 724
+    arrive: "A plateau of red glass rises out of a lake of fire, set about with spikes of black and crimson. This is the Crimson Tyrant's throne.",
+    quest: "The Crimson Tyrant falls, but its fire remembers a throne far out, where the mountain is all red glass. Your compass knows the way to the Red Throne.",
+    found: "You have reached the Red Throne.", comes: "A shadow crosses the fire and the air bursts hot. The Crimson Tyrant has come back to its throne.", waiting: "The Crimson Tyrant's throne is empty now. Wait, and it may come back to claim it." },
+  doomChaser: { beast: "doomChaser", min: 1174, span: 250, version: 1, name: "the Black Pyre", wait: [45, 110], // release 724
+    arrive: "Ash lies deep over everything, and black fire burns in it without smoke. Charred pillars stand like the bones of a building. This is the Doom Chaser's pyre.",
+    quest: "The Doom Chaser falls, and its black fire goes on burning, far out, where it was first lit. Your compass knows the way to the Black Pyre.",
+    found: "You have reached the Black Pyre.", comes: "The black fire leaps all at once. The Doom Chaser has come back to its pyre.", waiting: "The black fire burns low. Wait here, and the Doom Chaser may come back to feed it." },
+  morphingBlob: { beast: "morphingBlob", min: 1211, span: 250, version: 1, name: "the Rendering Pit", wait: [45, 110], // release 724
+    arrive: "A sunken basin of sour mud, its pools green and steaming, its edges piled with old bones. This is where the Morphing Blob was rendered down.",
+    quest: "The Morphing Blob falls, and what is left of it seeps away toward a pit far out, where it began. Your compass knows the way to the Rendering Pit.",
+    found: "You have reached the Rendering Pit.", comes: "The pools heave and climb out of themselves. The Morphing Blob has come back to its pit.", waiting: "The pools lie still. Wait here, and the Morphing Blob may rise out of them." },
+  tremorWorm: { beast: "tremorWorm", min: 1248, span: 250, version: 1, name: "the Hollow Dunes", wait: [45, 110], // release 724
+    arrive: "A bowl of pale sand, ribbed with the bones of the ground and holed with burrows that go down and down. This is the Tremor Worm's hollow.",
+    quest: "The Tremor Worm falls, and far out the dunes shift where it was born. Your compass knows the way to the Hollow Dunes.",
+    found: "You have reached the Hollow Dunes.", comes: "The sand trembles, then heaves. The Tremor Worm has come back to its hollow.", waiting: "The sand is quiet. Wait here, and the Tremor Worm may come up out of it." },
+  mountainTurtle: { beast: "mountainTurtle", min: 1105, span: 250, version: 1, name: "the Glass Shoal", wait: [45, 110], // release 724
+    arrive: "An atoll of blue ice in an open sea, ringed with spires of frozen glass. This is the Mountain Turtle's shoal.",
+    quest: "The Mountain Turtle falls, and far out a shoal of ice is waiting for it to come home. Your compass knows the way to the Glass Shoal.",
+    found: "You have reached the Glass Shoal.", comes: "The ice cracks and groans under a great weight. The Mountain Turtle has come back to its shoal.", waiting: "The shoal is empty. Wait here on the ice, and the Mountain Turtle may come back." },
+  ashenMoth: { beast: "ashenMoth", min: 1142, span: 250, version: 1, name: "the Cinder Orchard", wait: [45, 110], // release 724
+    arrive: "Rows of burnt trees, their branches hung with split husks, stand in ash still warm underfoot. This is the Ashen Moth's orchard.",
+    quest: "The Ashen Moth falls, and its dust drifts away toward an orchard far out where it grew. Your compass knows the way to the Cinder Orchard.",
+    found: "You have reached the Cinder Orchard.", comes: "Ash rises from the ground in a whirl of wings. The Ashen Moth has come back to its orchard.", waiting: "No wings stir in the orchard now. Wait here, and the Ashen Moth may come back." },
+  nanobotKnight: { beast: "nanobotKnight", min: 1179, span: 250, version: 1, name: "the Forge Spire", wait: [45, 110], // release 724
+    arrive: "Plated ground, humming pylons and channels of molten slag: a foundry with no one left to work it. This is the Nanobot Knight's forge.",
+    quest: "The Nanobot Knight falls, and its swarm scatters, homing on a forge far out where it was made. Your compass knows the way to the Forge Spire.",
+    found: "You have reached the Forge Spire.", comes: "The pylons flare and a swarm pours together. The Nanobot Knight has come back to its forge.", waiting: "The pylons hum and nothing comes. Wait here, and the Nanobot Knight may come back to its forge." },
+  briarStag: { beast: "briarStag", min: 1216, span: 250, version: 1, name: "the Thornheart Glade", wait: [45, 110], // release 724
+    arrive: "A glade walled with briars older than any forest, their thorns as long as swords and hung with pale flowers. This is the Briar Stag's heart.",
+    quest: "The Briar Stag falls, and far out the briars stir where it first took root. Your compass knows the way to the Thornheart Glade.",
+    found: "You have reached the Thornheart Glade.", comes: "The briars part with a crack of wood. The Briar Stag has come back to its glade.", waiting: "The glade is still. Wait here among the briars, and the Briar Stag may come back." },
 };
 // Where a domain lies: a seeded bearing and distance; for a quest, the first section along that bearing not yet explored.
 const domainCache = new Map();

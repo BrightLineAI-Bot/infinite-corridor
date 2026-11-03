@@ -15,6 +15,7 @@
 import { hashSeed } from "./random.ts";
 import { FAR_DOMAINS } from "./far-realms.ts";
 import { valueNoise } from "./landscape.ts";
+import { DOMAIN_LOOKS, domainKinds } from "./domain-looks.ts";
 
 export const THORNGLASS = {
   floor: 7, // radius of the smooth fighting floor
@@ -30,8 +31,9 @@ function noise(seed, x, y) { const n = hashSeed(`${seed}:${Math.floor(x)}:${Math
 // Rebuilds the section as the domain `id`. Returns map.farDomain.
 export function buildDomain(map, seed, rx, ry, id) {
   const D = FAR_DOMAINS[id]; if (!D || !map?.tiles?.length) return null;
-  if (id === "questingBeast") buildThornglass(map, `${seed}:domain:${id}:v${D.version}:${rx}:${ry}`);
-  map.objects = []; map.enemySpawns = []; map.farDomain = id; map.weather = "embers";
+  const key = `${seed}:domain:${id}:v${D.version}:${rx}:${ry}`;
+  if (id === "questingBeast") buildThornglass(map, key); else buildArena(map, key, id); // 724: the world beasts' domains
+  map.objects = []; map.enemySpawns = []; map.farDomain = id; map.weather = id === "questingBeast" ? "embers" : DOMAIN_LOOKS[id]?.weather || undefined; if (!map.weather) delete map.weather;
   map.landscape = { ...(map.landscape || {}), biome: "domain", name: D.name.replace(/^the /, "The ") };
   delete map.settlement; delete map.canopy; delete map.mushrooms; delete map.openSea; delete map.paletteRegion;
   return map.farDomain;
@@ -68,10 +70,48 @@ function buildThornglass(map, key) {
     if (!fixed) break;
   }
 }
+
+// Release 724: the world beasts' domains, one plan in each one's dress (domain-looks.ts): a fighting floor, a ring of landmark
+// clusters (each with a tower) and a few beyond, a hazard in a ring, rivers and pools beyond (or a sea past `sea`), causeways to
+// the gates kept clear, strewn ground round the landmarks; then any open ground cut off from the floor is bridged back.
+function buildArena(map, key, id) {
+  const L = DOMAIN_LOOKS[id], K = domainKinds(id), F = L.features, Z = L.hazard, h = (k) => hashSeed(`${key}:${k}`), u = (k) => (h(k) % 100003) / 100003, ex = map.exits || {};
+  const set = (t, kind, blocked = false, extra = {}) => { const { x, y } = t; for (const k of Object.keys(t)) delete t[k]; Object.assign(t, { x, y, kind, blocked, elev: 0, landscape: "arena", look: id, detail: h(`d${x},${y}`) % 97, ...extra }); };
+  const gates = [["north", ex.north, 0], ["south", ex.south, 31], ["west", 0, ex.west], ["east", 31, ex.east]].filter(([, a, b]) => Number.isFinite(a) && Number.isFinite(b));
+  const road = (x, y) => gates.some(([side, gx, gy]) => side === "north" || side === "south" ? Math.abs(x - gx) <= 1.6 && (side === "north" ? y <= 16 : y >= 16) : Math.abs(y - gy) <= 1.6 && (side === "west" ? x <= 16 : x >= 16));
+  const marks = [], n = F.count[0] + h("n") % (F.count[1] - F.count[0] + 1), a0 = u("a0") * Math.PI * 2;
+  for (let i = 0; i < n; i++) { const a = a0 + (i + u(`j${i}`) * .6) * Math.PI * 2 / n, r = F.ring[0] + u(`r${i}`) * (F.ring[1] - F.ring[0]); marks.push({ x: 16 + Math.cos(a) * r, y: 16 + Math.sin(a) * r, s: F.size[0] + u(`s${i}`) * (F.size[1] - F.size[0]) }); }
+  for (let i = 0; i < F.outer; i++) { const a = u(`oa${i}`) * Math.PI * 2, r = F.outerRing[0] + u(`or${i}`) * (F.outerRing[1] - F.outerRing[0]); marks.push({ x: 16 + Math.cos(a) * r, y: 16 + Math.sin(a) * r, s: F.size[0] + u(`os${i}`) * (F.size[1] - F.size[0]) * .6 }); }
+  const thicket = Z.kind === "thicket", hazard = (t) => thicket ? set(t, K.thicket, true) : set(t, Z.kind, false, Z.kind === "lava" ? { volcanic: true } : {});
+  for (const t of map.tiles) {
+    const d = Math.hypot(t.x - 16, t.y - 16), wobble = (valueNoise(`${key}:w`, t.x / 4, t.y / 4) - .5) * 2, onRoad = road(t.x, t.y);
+    let near = 99, ci = -1; marks.forEach((c, i) => { const q = Math.hypot(t.x - c.x, t.y - c.y) - c.s; if (q < near) { near = q; ci = i; } });
+    const ring = Z.ring && d >= Z.ring[0] + wobble && d <= Z.ring[1] + wobble, sea = Z.sea && d > Z.sea + wobble * 1.2;
+    const river = Z.river > 0 && d > 10 && Math.abs(valueNoise(`${key}:river`, t.x / Z.riverScale, t.y / Z.riverScale) - .5) < Z.river, pool = d > 10.5 && valueNoise(`${key}:pool`, t.x / Z.poolScale, t.y / Z.poolScale) > Z.pools;
+    if (d < L.floor + wobble * .6) set(t, K.floor);
+    else if (!onRoad && near <= 0 && t.x > 0 && t.y > 0 && t.x < 31 && t.y < 31) set(t, K.feature, true, { hue: h(`hue${ci}`) % F.hues.length, cluster: ci });
+    else if (!onRoad && (ring || sea || river || pool)) hazard(t);
+    else if (near <= 1.4) set(t, K.scatter);
+    else set(t, K.ground);
+  }
+  const front = new Map(); for (const t of map.tiles) if (t.kind === K.feature) { const c = marks[t.cluster], b = front.get(t.cluster); if (!b || t.y > b.y || (t.y === b.y && Math.abs(t.x - c.x) < Math.abs(b.x - c.x))) front.set(t.cluster, t); }
+  for (const [i, t] of front) t.tower = +(F.tower[0] + u(`tw${i}`) * (F.tower[1] - F.tower[0])).toFixed(2);
+  // cut off ground is joined back by the fewest hazard or landmark tiles (a breadth-first search from it to reached ground,
+  // crossing open ground freely), so rings and hedges keep their shape
+  const open = (t) => !t.blocked && !HAZARDS.has(t.kind);
+  for (let round = 0; round < 400; round++) {
+    const seen = reach(map), lost = map.tiles.find((t) => !seen[idx(t.x, t.y)] && open(t)); if (!lost) break;
+    const cost = new Int32Array(1024).fill(1e9), from = new Int32Array(1024).fill(-1), q = [idx(lost.x, lost.y)]; cost[q[0]] = 0; let hit = -1; // 0-1 breadth-first: open ground costs nothing
+    while (q.length) { const k = q.shift(); if (seen[k]) { hit = k; break; }
+      const x = k % 32, y = (k / 32) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const j = idx(nx, ny), w = open(map.tiles[j]) ? 0 : 1, nc = cost[k] + w; if (nc < cost[j]) { cost[j] = nc; from[j] = k; if (w) q.push(j); else q.unshift(j); } } }
+    for (let k = hit; k >= 0; k = from[k]) { const c = map.tiles[k]; if (!open(c)) set(c, K.ground); }
+  }
+}
+const HAZARDS = new Set(["lava", "abyss", "ocean", "deepOcean", "toxicWater"]);
 function reach(map) {
   const seen = new Uint8Array(1024), q = [idx(16, 16)]; seen[q[0]] = 1;
   for (let i = 0; i < q.length; i++) { const k = q[i], x = k % 32, y = Math.floor(k / 32);
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, j = idx(nx, ny), t = map.tiles[j]; if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || seen[j] || !t || t.blocked || t.kind === "lava") continue; seen[j] = 1; q.push(j); } }
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, j = idx(nx, ny), t = map.tiles[j]; if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || seen[j] || !t || t.blocked || HAZARDS.has(t.kind)) continue; seen[j] = 1; q.push(j); } }
   return seen;
 }
 export const domainReach = reach;
@@ -83,7 +123,7 @@ export function domainWait(seed, id, rx, ry, visit, atOnce = false) {
 // Where the beast comes in: a floor tile on the far side of the floor from the Wayfarer.
 export function domainArrival(map, player) {
   const a = Math.atan2(16 - player.y, 16 - player.x), want = { x: 16 + Math.cos(a) * 5, y: 16 + Math.sin(a) * 5 };
-  const open = map.tiles.filter((t) => t.kind === "thornFloor" && !t.blocked);
+  const open = map.tiles.filter((t) => (t.kind === "thornFloor" || /Floor$/.test(t.kind) && t.landscape === "arena") && !t.blocked);
   open.sort((p, q) => Math.hypot(p.x - want.x, p.y - want.y) - Math.hypot(q.x - want.x, q.y - want.y));
   return open[0] || { x: 16, y: 16 };
 }
