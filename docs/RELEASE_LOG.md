@@ -22,13 +22,13 @@ Taken at merge time: `main`'s release + 1 (see above). After 725, the next is **
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 725 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Dungeon way marks (Tim asked this session): chevron marker stones for the way down (▼) and out (▲) instead of the red block, an edge chevron to a found way down, the Deep's floor as a number badge; no text in the world | Merging (baton taken). |
-| 724 | Claude | `claude/dreamy-rubin-yn6q2p` | Nine more far domains (world-beast arenas beyond 1000, each with its quest and its beast coming home) | In flight. |
-| 723 | Claude | `claude/dreamy-rubin-yn6q2p` | Far domains: the Questing Beast's Thornglass Caldera (a bespoke crystal-and-lava arena section beyond 1000), its quest, and the beast coming home when you wait | Merged (#370). |
-| 722 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms made mushroomy: domed caps with a shaded side, warts, gills, a skirt and a thick bulbed stalk; low caps stand taller | Merged (#369). |
-| 721 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms beyond 1000 sections (landscape v17): stands of tree-tall caps hopped up one level at a time, a cache on top | Merged (#368). |
-| 720 | Claude | `claude/dreamy-rubin-yn6q2p` | The folk realms: the Hollow Kin (folk who turn and come in waves; no sanctuary) and the Tall Country (giant folk who throw spears) | Merged (#367). |
-| 719 | Claude | `claude/dreamy-rubin-yn6q2p` | The Ink Wastes: an ink-washed far realm, ink-black creatures and the Astral Worm's shapes; the Stag's play fix | Merged (#366). |
-| 718 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Labyrinths (Tim asked this session): self-contained mazes of 14–20 chambers (halls, hedge courts, cellars, subcellars, galleries of gaps), one true path to the vault, sealed doors with keys down side branches, a shortcut back, a way out at the front | Merging (baton taken). |
+| 724 | Claude | `claude/dreamy-rubin-yn6q2p` | Nine more far domains (world-beast arenas beyond 1000, each with its quest and its beast coming home) | Merged (#371). Published in r724. |
+| 723 | Claude | `claude/dreamy-rubin-yn6q2p` | Far domains: the Questing Beast's Thornglass Caldera (a bespoke crystal-and-lava arena section beyond 1000), its quest, and the beast coming home when you wait | Merged (#370). Published in r724. |
+| 722 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms made mushroomy: domed caps with a shaded side, warts, gills, a skirt and a thick bulbed stalk; low caps stand taller | Merged (#369). Published in r724. |
+| 721 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms beyond 1000 sections (landscape v17): stands of tree-tall caps hopped up one level at a time, a cache on top | Merged (#368). Published in r724. |
+| 720 | Claude | `claude/dreamy-rubin-yn6q2p` | The folk realms: the Hollow Kin (folk who turn and come in waves; no sanctuary) and the Tall Country (giant folk who throw spears) | Merged (#367). Published in r724. |
+| 719 | Claude | `claude/dreamy-rubin-yn6q2p` | The Ink Wastes: an ink-washed far realm, ink-black creatures and the Astral Worm's shapes; the Stag's play fix | Merged (#366). Published in r724. |
+| 718 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Labyrinths (Tim asked this session): self-contained mazes of 14–20 chambers (halls, hedge courts, cellars, subcellars, galleries of gaps), one true path to the vault, sealed doors with keys down side branches, a shortcut back, a way out at the front | Merged. Published in r724. |
 | 717 | Claude | `claude/dreamy-rubin-yn6q2p` | The Storm Halls: the Lightning Giant's far country (pillar lands, landscape v16), three kinds of lesser giant, a quest | Merged (#364). Published in r717. |
 | 716 | Claude | `claude/dreamy-rubin-yn6q2p` | The Crystal Civilisation: a far crystal country (landscape v15), crystal kin, a quest from the Psychic Crystal | Merged (#363). Published in r717. |
 | 715 | Claude | `claude/dreamy-rubin-yn6q2p` | Far reaches: stag groves (Grove Stags, Grove Moths) and blob pockets (five lesser blobs by region) | Merged (#362). Published in r717. |
@@ -111,6 +111,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 725, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 724 | `r724-477fbde1400a` | 2026-11-03 | Fable review: no blockers. 718, labyrinths (second session); 719, the Ink Wastes (#366); 720, the folk realms (#367); 721, the great mushrooms (#368); 722, the mushrooms made mushroomy (#369); 723, the Thornglass Caldera (#370); 724, the world beasts' domains (#371). |
 | 717 | `r717-28789eeae12c` | 2026-11-03 | Fable review: no blockers. The far realms: 714, the Giants' Reach and the Stag and Stalker at play (#361); 715, stag groves and blob pockets (#362); 716, the Crystal Civilisation (#363); 717, the Storm Halls (#364). |
 | 713 | `r713-ad6fe6859fbd` | 2026-11-03 | Fable review: no blockers. With 712, two threads of a later layer (#359); and 713, compounds (#360). |
 | 711 | `r711-23055c964fc8` | 2026-11-03 | Fable review: no blockers. With 709, the Crimson Tyrant (#356); 710, the Doom Chaser and the dragons redrawn (#357); and 711, the great buildings (#358). |
