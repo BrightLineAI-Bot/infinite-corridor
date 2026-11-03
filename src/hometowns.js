@@ -8,9 +8,9 @@
 // chosen home ("rx,ry"; Ember Refuge, "0,0", when unset). Home is where the Atlas's Return button goes, and where the farm,
 // the quarry and the regrowth ring sit (refuge-lands.ts, by `homeCenter`). A town becomes home from the Atlas once its
 // Wayglass is lit.
-import { hashSeed } from "./random.js?v=r711-23055c964fc8";
-import { hamletIdentity, hamletSection } from "./settlements.js?v=r711-23055c964fc8";
-import { openSeaSection } from "./landscape.js?v=r711-23055c964fc8";
+import { hashSeed } from "./random.js?v=r713-ad6fe6859fbd";
+import { hamletIdentity, hamletSection } from "./settlements.js?v=r713-ad6fe6859fbd";
+import { openSeaSection } from "./landscape.js?v=r713-ad6fe6859fbd";
 
 export const HOMETOWNS = { search: 4 };
 const REFUGE = "0,0";

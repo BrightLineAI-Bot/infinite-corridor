@@ -7,8 +7,8 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r711-23055c964fc8";
-import { READING_BANDS } from "./lore.js?v=r711-23055c964fc8";
+import { hashSeed } from "./random.js?v=r713-ad6fe6859fbd";
+import { READING_BANDS } from "./lore.js?v=r713-ad6fe6859fbd";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -142,6 +142,32 @@ export const THREADS = {
       "The last ring holds no key at all, only the tag: \"I gave the glass key to a traveller who did not know where they came from. If you are reading this, it was you. Turn it when you are ready. The toll is paid.\"",
     ],
     ending: "The tollkeeper kept every door his people ever passed through, long after the doors were gone, because a door that someone still holds the key to is not quite lost. The Corridor works like that: what is still kept, still is. He gave the last key away to someone with no door of their own. You feel for it in your pocket and do not find it, and then you do, warm, as if you had been carrying it the whole time." },
+  // The narrative pass of release 712: two more wave 3 threads in a later layer (`layer: 1`). The bands overlap, so a wave 3 crossing
+  // picks only among the earliest layer that has a thread in band there: the Tollkeeper's crossings (middle, 7 to 35) keep it, and these
+  // two share the far band's wave 3 crossings that held nothing, from 36 to 70 out (the far band's outer half). Kept out of the deep
+  // band on purpose: the deep's thread density is the first ten's own rate (threads-627 checks it).
+  weaver: { title: "The Weaver's Cloth", band: "far", relic: "spool", colour: "#c8a0b8", wave: 3, layer: 1,
+    pieces: [
+      "A spool of grey thread, wound tight, with a scrap of cloth pinned to it. The note: \"For the Refuge, a blanket big enough for everyone. I have the warp up. I will weave a row for every person who comes through the door.\"",
+      "A spool of red thread, half used. The note: \"A boy came in today with his shoes in his hand, so the shoes would not wear out. I wove his row in red. It is the brightest row so far. He asked to see it every morning.\"",
+      "A spool of something that is not thread at all: a long braid of someone's hair, very fine. The note: \"An old woman with no name she could remember. She gave me this to weave her row with. It is the softest row. Nobody minds that it is hair.\"",
+      "An empty spool, chewed at one end. The note: \"No one came this week. I wove a row anyway, of nothing, the loom going through the motions. When I held it up to the lamp the empty row had a shape in it. I think it is someone on their way.\"",
+      "A spool of thread that glows faintly, the colour of the light in a crossing. The note: \"The blanket is longer than the room. Longer than the Refuge. I unroll it and it goes on into the Corridor and I cannot find the end. The rows I have not woven yet are already there, waiting.\"",
+      "The last spool holds only a tag: \"I found your row. I did not weave it. It was there when I reached it, the colour of the road, with a gap in it the shape of a door. I have left the needle in it. Finish it when you come.\"",
+    ],
+    ending: "Somewhere in the Refuge a blanket goes on being woven, a row for everyone who has ever come in from the Corridor, and it is longer than the place that holds it. The weaver never reached its end, because the end is still coming in at the door. Your row is in it, the colour of the road, with the needle left where you can find it.",
+  },
+  mirror: { title: "The Mirror That Remembers", band: "far", relic: "mirror", colour: "#b8d0e0", wave: 3, layer: 1,
+    pieces: [
+      "A shard of mirror wrapped in cloth, with a label: \"Do not look into this unless you are ready to be remembered. It does not show you. It shows the last person who looked, and it is very polite about it.\"",
+      "A second shard, larger, its back scratched with a name too worn to read. The label: \"Today it showed a woman I have never met, combing her hair. She looked up and nodded to me as if we had agreed something. I nodded back. I hope I have kept my side of it.\"",
+      "A shard in a wooden frame, the frame burnt at one corner. The label: \"It showed me my mother at my age. She did not know me. Mirrors here keep what they saw, the way the Corridor keeps what is read, and it is very lonely to be kept and not known.\"",
+      "A shard that is only dark, as if it reflected a room with no lamp. The label: \"Nobody had looked into this one for so long that it forgot how to show anything. I sat with it all night and talked. By morning it showed a candle. I think it was mine.\"",
+      "A shard that shows, if you are not careful, the back of a traveller's head, walking away into the deep dark of a crossing. The label: \"Do not call out. They do not know they are being kept. When they turn round, they will be somewhere else.\"",
+      "The last shard fits the others like the last piece of a plate. The label: \"Put them together and it shows whoever is still coming. I have put them together. It shows you. You are tired and you are nearly here. I have kept a chair.\"",
+    ],
+    ending: "The mirror is whole now, and it shows no one who has gone, only someone still on the way: you, tired, nearly there. Whoever made it understood the deep crossings better than anyone: here nothing seen is ever quite lost, and to be remembered is not the same as to be found. Somewhere at the end of a corridor there is a chair kept for you.",
+  },
 };
 export const THREAD_ORDER = Object.keys(THREADS);
 const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave); // the first ten (release 627): what a crossing offered then, it still offers
@@ -166,7 +192,8 @@ function laterThreadIn(seed, dungeonId, rx, ry) {
 // A later thread is always a new wave with its own roll.
 function thirdThreadIn(seed, dungeonId, rx, ry) {
   if ((hashSeed(`${seed}:threads:third:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.third) return null;
-  const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 3 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  const all = THREAD_ORDER.filter((id) => THREADS[id].wave === 3 && inBand(THREADS[id].band, rx, ry)); if (!all.length) return null;
+  const first = Math.min(...all.map((id) => THREADS[id].layer || 0)), here = all.filter((id) => (THREADS[id].layer || 0) === first); // release 712: an earlier layer keeps its crossings
   return here[hashSeed(`${seed}:threads:third:which:v1:${dungeonId}`) % here.length];
 }
 export function ensureThreadState(save) {

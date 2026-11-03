@@ -12,10 +12,11 @@
 // somewhere across the floor from where you came in, and above the ground floor, holes where the floor has fallen through
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
-import { hashSeed, rng } from "./random.js?v=r711-23055c964fc8";
+import { hashSeed, rng } from "./random.js?v=r713-ad6fe6859fbd";
 
 export const BUILDINGS = {
-  version: 1,
+  version: 2, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
+  hiveRegions: ["alien", "biomech"], shapes: ["rect", "L", "T", "U", "L"],
   chance: .09, minRing: 4,
   machine: ["glasslands", "biomech", "emberlands", "ashfields", "crystal", "obsidian", "alien"], // apartments stand here
   apartmentShare: .3, // elsewhere, this share are apartments and the rest keeps
@@ -39,6 +40,14 @@ export const BUILDINGS = {
       guards: ["glassMite", "sparkWarden", "cinderWisp", "veilMoth"], guardian: "voidSentinel", cache: "arcology-cache",
       floorNames: ["Atrium", "Second Floor", "Third Floor", "Fourth Floor", "Penthouse"],
     },
+    // Tim: "some of the... alien buildings would be cool": the compounds' hives (compounds.ts). Standalone buildings never
+    // roll this style (their roll is pinned to keep / apartment), so the buildings of release 711 are unchanged.
+    hive: {
+      name: "Alien Hive", footprints: [[8, 7]], floors: [3, 4], size: [24, 20],
+      wall: "hiveWall", hall: "chitinFloor", rooms: ["fleshFloor", "chitinFloor", "crystalFloor", "fleshFloor"],
+      guards: ["glassMite", "veilMoth", "coilStalker", "cinderWisp"], guardian: "voidSentinel", cache: "arcology-cache",
+      floorNames: ["Hollow", "Second Gallery", "Third Gallery", "Crown"],
+    },
   },
   split: { min: 4, at: 9 }, // rooms: a block is split while its side is at least `at`; no room narrower than `min`
   extraDoors: .25, // share of inner walls given a second doorway (collapsed brickwork)
@@ -57,10 +66,10 @@ export const BUILDINGS = {
   },
 };
 
-export const FLOOR_KINDS = ["mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole"];
-export const WALL_KINDS = ["keepWall", "aptWall"];
+export const FLOOR_KINDS = ["mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor"];
+export const WALL_KINDS = ["keepWall", "aptWall", "hiveWall"];
 
-const ID = /^building:(.+):(-?\d+):(-?\d+):(keep|apartment):(\d+)(r?):f(\d+)$/; // `r`: it has a roof to stand on
+const ID = /^building:(.+):(-?\d+):(-?\d+):(keep|apartment|hive):(\d+)(r?):f(\d+)$/; // `r`: it has a roof to stand on
 export const isBuildingId = (id) => ID.test(String(id || ""));
 export function parseBuildingId(id) {
   const m = String(id || "").match(ID); if (!m) return null;
@@ -132,6 +141,72 @@ export function placeBuilding(map, seed, rx, ry, plan, exitsOpen) {
   return null;
 }
 
+// Version 2 (Tim, 2026-11-03: "different shapes like some of the shapes of the shacks, or some of the... alien buildings"):
+// the footprint is a rectangle with a corner (L), both back corners (T) or a notch in its back (U) left out, drawn by the
+// renderer's block painter like the compounds; hives stand in `hiveRegions`; built over natural ground (rock, brush, low
+// rises and trees are cleared). Interiors are as in version 1. Sections pinned to version 1 keep `placeBuilding`.
+export function buildingHereV2(seed, rx, ry, region) {
+  const p = buildingHere(seed, rx, ry, region); if (!p) return null;
+  const h = (k) => hashSeed(`${seed}:great-building:v2:${rx}:${ry}:${k}`);
+  if (BUILDINGS.hiveRegions.includes(region?.type)) { const S = BUILDINGS.styles.hive; p.style = "hive"; p.floors = S.floors[0] + h("floors") % (S.floors[1] - S.floors[0] + 1); }
+  p.shape = BUILDINGS.shapes[h("shape") % BUILDINGS.shapes.length]; return p;
+}
+const CLEAR_OBJECTS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
+export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
+  if (!map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
+  const S = BUILDINGS.styles[plan.style], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
+  const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
+  const lane = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16) || (Math.abs(y - 16) <= 1 && (between(x, ex.north) || between(x, ex.south))) || (Math.abs(x - 16) <= 1 && (between(y, ex.west) || between(y, ex.east))) || (x >= 13 && x <= 19 && y >= 13 && y <= 19);
+  const objAt = (x, y) => (map.objects || []).some((o) => !o.decor && !o.environmental && !CLEAR_OBJECTS.has(o.kind) && Math.round(o.x) === x && Math.round(o.y) === y);
+  const natural = (t) => !!t && !t.structure && !t.buildingId && !t.canopy && !t.keep && !t.greatBuilding && !WET.test(t.kind || "") && !(t.environment && t.environment !== "tree") && (t.elev || 0) <= 2;
+  const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y);
+  const open = (x, y) => { const t = map.tiles[I(x, y)]; return natural(t) && !t.blocked && !t.slope && !(t.elev > 0) && !objAt(x, y); };
+  const h = (k) => hashSeed(`${seed}:great-building-spot:v2:${rx}:${ry}:${k}`), R = BUILDINGS.roof, shape = plan.shape || "rect";
+  let tries = 0;
+  for (const [W, H] of [...S.footprints, ...(plan.style === "hive" ? [[7, 7], [7, 6]] : [])]) {
+    const spots = []; for (let oy = 2; oy <= 30 - H; oy++) for (let ox = 2; ox <= 30 - W; ox++) spots.push([ox, oy]);
+    spots.sort((a, b) => h(a) - h(b));
+    for (const [ox, oy] of spots.slice(0, 260)) {
+      const south = oy + H / 2 < 16, backHalf = (y) => south ? y < oy + (H >> 1) : y >= oy + H - (H >> 1), cw = Math.max(2, Math.floor(W / 3)), flip = h("flip") % 2;
+      const cut = (x, y) => shape === "L" ? backHalf(y) && (flip ? x >= ox + W - cw - 1 : x < ox + cw + 1) : shape === "T" ? backHalf(y) && (x < ox + cw || x >= ox + W - cw) : shape === "U" ? backHalf(y) && x >= ox + cw && x < ox + W - cw && (south ? y < oy + (H >> 1) - 1 : y > oy + H - (H >> 1)) : false;
+      const cells = []; for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) if (!cut(x, y)) cells.push({ x, y });
+      if (!cells.every((c) => ground(c.x, c.y))) continue;
+      const set = new Set(cells.map((c) => I(c.x, c.y))), has = (x, y) => set.has(I(x, y));
+      const dx = ox + (W >> 1), dy = south ? oy + H - 1 : oy, out = { x: dx, y: dy + (south ? 1 : -1) };
+      if (!has(dx, dy) || !open(out.x, out.y)) continue;
+      const inner = cells.filter((c) => [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => has(c.x + a, c.y + b)));
+      const roof = !!map.landscape && inner.length > 0 && (hashSeed(`${seed}:great-building:v1:${rx}:${ry}:roof`) % 1000) / 1000 < R.share;
+      const faceH = facadeHeight(H, plan.floors), lift = faceH / (R.elev * LIFT);
+      const hatch = roof && inner.length ? inner[h("hatch") % inner.length] : null;
+      const breachWanted = (hashSeed(`${seed}:great-building:v1:${rx}:${ry}:breach`) % 1000) / 1000 < BUILDINGS.breach;
+      const backFace = cells.filter((c) => !has(c.x, c.y + (south ? -1 : 1)) && c.x > ox && c.x < ox + W - 1).map((c) => ({ ...c, out: { x: c.x, y: c.y + (south ? -1 : 1) } })).filter((c) => open(c.out.x, c.out.y));
+      const bc = breachWanted && backFace.length ? backFace[h("bx") % backFace.length] : null;
+      const tiles = map.tiles.slice(), before = exitsOpen(map), crumbled = [];
+      for (const c of cells) { const i = I(c.x, c.y);
+        if (!roof) { map.tiles[i] = { ...map.tiles[i], x: c.x, y: c.y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; continue; }
+        const fallen = inner.includes(c) && !(hatch && Math.abs(c.x - hatch.x) + Math.abs(c.y - hatch.y) <= 1) && (hashSeed(`${seed}:great-building-roof:${rx}:${ry}:${c.x}:${c.y}`) % 1000) / 1000 < R.crumbled;
+        if (fallen) crumbled.push({ x: c.x, y: c.y });
+        map.tiles[i] = { ...map.tiles[i], x: c.x, y: c.y, kind: plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology", blocked: fallen, slope: false, elev: R.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, roofHole: fallen || undefined, environment: undefined, canopy: undefined }; }
+      const after = exitsOpen(map);
+      if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
+      const base = `building:${seed}:${rx}:${ry}:${plan.style}:${plan.floors}${roof ? "r" : ""}`, id = `great-building-${rx}-${ry}`;
+      map.objects = (map.objects || []).filter((o) => !set.has(I(Math.round(o.x), Math.round(o.y))));
+      map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));
+      // the interior's broken back is on its far wall; outside, it opens where the building's back face lets it
+      const doors = { rx, ry, front: out, breach: bc ? bc.out : null, hatch };
+      const rec = { id, kind: "greatBuilding", v: 2, name: S.name, style: plan.style, shape, floors: plan.floors, x: dx, y: oy + H - 1, bounds: { x: ox, y: oy, w: W, h: H }, footprint: cells, door: { x: dx, y: dy, side: south ? "south" : "north" }, breach: bc ? { x: bc.x, y: bc.y } : null, roof: roof ? { elev: R.elev, hatch, crumbled } : null, faceH,
+        blocks: [{ part: "b", cells, faceH, floors: plan.floors }], doors: [{ x: dx, y: dy, face: south ? "south" : "north" }, ...(bc ? [{ x: bc.x, y: bc.y, face: south ? "north" : "south", breach: true }] : [])], hatches: hatch ? [hatch] : [], crumbled, grain: h("grain") % 97, state: "closed", actions: [] };
+      map.objects.push(rec);
+      map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, buildingDoors: doors, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: S.name, identity: `${plan.floors} floors, shut and dark`, x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: `${S.name}: ${plan.floors} floors. The door is the way in; somewhere above, its guardian and its cache.` });
+      if (hatch) map.objects.push({ id: `${id}-hatch`, kind: "dungeon", buildingDoor: true, roofHatch: true, buildingDoors: doors, dungeonId: buildingFloorId(base, plan.floors), dungeonType: "greatBuilding", name: `${S.name} (roof hatch)`, x: hatch.x, y: hatch.y, elev: R.elev, state: "open", actions: ["enter"], enterAt: "roof" });
+      if (bc) map.objects.push({ id: `${id}-breach`, kind: "dungeon", buildingDoor: true, breachDoor: true, buildingDoors: doors, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: `${S.name} (broken wall)`, x: bc.out.x, y: bc.out.y, state: "open", actions: ["enter"], enterAt: "breach" });
+      map.greatBuilding = { id, base, style: plan.style, floors: plan.floors, roof, shape, version: 2 };
+      return rec;
+    }
+  }
+  return null;
+}
+
 // ------------------------------------------------------------------------------------------------ inside, a floor at a time
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const memo = new Map();
@@ -157,7 +232,7 @@ export function buildingPlan(base) {
   if (memo.size > 24) memo.clear(); memo.set(base, plan); return plan;
 }
 
-function layFloor(base, f, W, H, S, arrive, keepOpen) {
+export function layFloor(base, f, W, H, S, arrive, keepOpen) {
   const r = rng(`${base}:floor:${f}`), grid = new Array(W * H).fill(1), room = new Array(W * H).fill(-1), leaves = [];
   const at = (x, y) => y * W + x, wall = (x, y) => grid[at(x, y)] === 1;
   for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) grid[at(x, y)] = 0;
@@ -199,14 +274,14 @@ function layFloor(base, f, W, H, S, arrive, keepOpen) {
 }
 
 // Open cells by distance from `from`, farthest first (only cells `ok` allows, ignoring holes).
-function farthest(L, from, ok) {
+export function farthest(L, from, ok) {
   const { W, H, grid } = L, dist = new Int32Array(W * H).fill(-1), q = [from.y * W + from.x]; dist[q[0]] = 0;
   for (let i = 0; i < q.length; i++) { const k = q[i], x = k % W, y = (k / W) | 0; for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, n = ny * W + nx; if (nx < 1 || ny < 1 || nx >= W - 1 || ny >= H - 1 || dist[n] >= 0 || grid[n] === 1 || grid[n] === 4) continue; dist[n] = dist[k] + 1; q.push(n); } }
   const out = []; for (let k = 0; k < W * H; k++) if (dist[k] > 0 && grid[k] === 0 && ok(k % W, (k / W) | 0)) out.push({ x: k % W, y: (k / W) | 0, d: dist[k] });
   return out.sort((a, b) => b.d - a.d || a.y - b.y || a.x - b.x);
 }
 
-function addHoles(base, F, below, W, H) {
+export function addHoles(base, F, below, W, H) {
   const B = BUILDINGS.holes, at = (x, y) => y * W + x, near = (p, x, y) => p && Math.abs(p.x - x) + Math.abs(p.y - y) <= B.clear;
   const ok = (x, y) => F.grid[at(x, y)] === 0 && below.grid[at(x, y)] === 0 && !near(F.arrive, x, y) && !near(F.up, x, y) && !near(below.up, x, y) && !near(below.arrive, x, y);
   const cand = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (ok(x, y)) cand.push([x, y]);
