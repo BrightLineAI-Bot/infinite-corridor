@@ -119,7 +119,7 @@ export const WORLD_BEASTS = {
   },
   // Release 709 (Tim, 2026-11-03): a red dragon. It claims the ground it holds (crimson-dragon.ts) and flies home over everything.
   crimsonTyrant: {
-    kind: "crimsonTyrant", name: "The Crimson Tyrant", chance: .02, minDepth: 8, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
+    kind: "crimsonTyrant", name: "The Crimson Tyrant", chance: .02, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
     hitsToKill: 80, hpPerLevel: 36, damageShare: .24, speed: 1, attackGap: .25, staggerResistance: 1, rewardMarks: 240, rewardPerLevel: 24,
     patience: 240, home: "firelands", retreatMoves: "through",
     flee: "The Crimson Tyrant spreads its wings and climbs into the smoke, bound for the ash lands.",
