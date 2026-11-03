@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release (at merge): The Tollkeeper's Keys — 2026-11-03
+## Release 707: The Tollkeeper's Keys — 2026-11-03
 
 Tim, 2026-11-03: "You can continue doing your narrative passes."
 
