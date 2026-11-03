@@ -1748,6 +1748,18 @@ function architecturalBuilding(ctx,o,s,p,map){
 const GROUND_MAX_PIXELS = 8.4e6; // ~32 MB; larger sections are cached at a reduced scale
 const ground = { canvas: null, map: null, s: 0, scale: 0, building: null, top: 0, reveal: null, revealSize: 0, revealIds: null, refs: [], kinds: [], blocked: [], elev: [], scarSurface: null };
 function makeGroundCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
+// Release 719: the Ink Wastes' ground: everything drawn washed nearly black, with soft glossy runs of ink and drips, painted into the
+// cached ground image once (never per frame). Deterministic per section size, so a revisit looks the same.
+export const INK_WASH = { wash: "rgba(6,5,12,.8)", blobs: 46, blob: "rgba(12,11,22,.92)", gloss: "rgba(150,170,220,.16)", drip: .45 };
+export function inkWash(gc, mw, mh, s, top) {
+  const W = INK_WASH, rnd = (i) => { const v = Math.sin(i * 12.9898 + mw * 78.233) * 43758.5453; return v - Math.floor(v); };
+  gc.save(); gc.globalCompositeOperation = "source-atop"; gc.fillStyle = W.wash; gc.fillRect(0, -top, mw * s, mh * s + top);
+  for (let i = 0; i < W.blobs; i++) { const x = rnd(i) * mw * s, y = rnd(i + 97) * mh * s, r = (.8 + rnd(i + 191) * 2.2) * s;
+    gc.fillStyle = W.blob; gc.beginPath(); gc.ellipse(x, y, r, r * .55, 0, 0, Math.PI * 2); gc.fill();
+    if (rnd(i + 313) < W.drip) { gc.beginPath(); gc.ellipse(x + r * .3, y + r * .5, r * .12, r * .35, 0, 0, Math.PI * 2); gc.fill(); }
+    gc.strokeStyle = W.gloss; gc.lineWidth = Math.max(1, s * .06); gc.beginPath(); gc.ellipse(x - r * .25, y - r * .15, r * .45, r * .18, -.2, Math.PI * 1.1, Math.PI * 1.8); gc.stroke(); }
+  gc.restore();
+}
 function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view, scarSurface) {
   const T = g.map?.tiles, m = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
   if (!T || T.length !== mw * mh || !m || typeof ctx.drawImage !== "function") return false;
@@ -1799,6 +1811,7 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view, scarSurface)
     setLandscapeStaticPass(true);
     try { for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { if (!seen(x, y)) fogTile(gc, x, y, s); else tile(gc, T[y * mw + x], x, y, s, T, mw, activeBuildingId, scarSurface); } }
     finally { setLandscapeStaticPass(false); }
+    if (g.map.farInk && !dungeon) inkWash(gc, mw, mh, s, top); // release 719: the Ink Wastes
     Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, scarSurface, top, reveal, revealSize, revealIds: reveal && reveal !== "full" ? new Set(reveal) : null, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
     renderCacheStats.groundBuilds = (renderCacheStats.groundBuilds || 0) + 1;
   }

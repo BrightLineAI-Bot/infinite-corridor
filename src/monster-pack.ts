@@ -512,6 +512,35 @@ export const MONSTER_PACK = {
     attacks: ["giantShock", "giantSlam"], bossAttacks: [],
     palette: ["#7a6a58", "#221c16", "#ffe08a", "#fff8e0"], render: "lightningGiant", tags: ["construct", "lightning"],
     lore: "A broad-shouldered robot that hauls stone and charge through the Storm Halls. It does not like to be interrupted: it slams the ground and the shock runs out through it." },
+  // Release 719 (Tim: "a section with the landscape as all like inky, black... melting... ingly black creatures... the astral
+  // worm... his homeland... many creatures that look like the different versions of the astral worm... multiple legs and the mouth
+  // and the blob... the griffin... the dragonfly... these creatures won't transform... smaller versions of him... normal size"):
+  // the Ink Wastes' own kin (far-realms.ts FAR_INK), each one of the Worm's shapes kept for good (drawn with drawAstralWorm).
+  inkPool: { id: "inkPool", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Pool", epithet: "A Shape of the Astral Worm", inkForm: "pool", inkScale: .68,
+    stats: [70, 9, 0], form: { scale: 1 }, sizeClass: "medium", movement: "walk", brain: "duelist",
+    attacks: ["bite", "groundRupture"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "A pool of living ink that keeps the Astral Worm's resting shape, as wide as a cart, that rises at your feet and bites." },
+  inkGriffin: { id: "inkGriffin", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Griffin", epithet: "A Shape of the Astral Worm", inkForm: "griffin", inkScale: .58,
+    stats: [85, 11, 0], form: { scale: 1 }, sizeClass: "medium", movement: "hover", brain: "duelist",
+    attacks: ["diveBomb", "clawSweep"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "An eagle and a lion grown from one black ink, the size of a horse: the Astral Worm's griffin shape, small and settled into it for good. It stoops and rakes." },
+  inkWing: { id: "inkWing", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Wing", epithet: "A Shape of the Astral Worm", inkForm: "flight", inkScale: .52,
+    stats: [55, 9, 0], form: { scale: 1 }, sizeClass: "medium", movement: "hover", brain: "duelist",
+    attacks: ["diveBomb", "bite"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "A long black dragonfly of ink, the Astral Worm's flying shape in small. It darts in and bites." },
+  inkStrider: { id: "inkStrider", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Strider", epithet: "A Shape of the Astral Worm", inkForm: "trample", inkScale: .56,
+    stats: [90, 11, 0], form: { scale: 1 }, sizeClass: "medium", movement: "walk", brain: "duelist",
+    attacks: ["ramCharge", "bite"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "A many-legged thing of ink, the Astral Worm's trampling shape, that runs you down and stamps." },
+  inkMaw: { id: "inkMaw", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Maw", epithet: "A Shape of the Astral Worm", inkForm: "bite", inkScale: .56,
+    stats: [75, 12, 0], form: { scale: 1 }, sizeClass: "medium", movement: "walk", brain: "duelist",
+    attacks: ["bite", "leapSlam"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "Mostly mouth: the Astral Worm's biting shape in small, a black maw on legs of ink." },
   mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
     id: "mothChrysalis", prototypeOnly: true, name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true, // not a creature of the roster: only the great trees hang it
     stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",
