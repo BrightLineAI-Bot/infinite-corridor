@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 723, the next is **724**.
+Taken at merge time: `main`'s release + 1 (see above). After 724, the next is **725**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 723 | Claude | `claude/dreamy-rubin-yn6q2p` | Far domains: the Questing Beast's Thornglass Caldera (a bespoke crystal-and-lava arena section beyond 1000), its quest, and the beast coming home when you wait | In flight. |
+| 724 | Claude | `claude/dreamy-rubin-yn6q2p` | Nine more far domains (world-beast arenas beyond 1000, each with its quest and its beast coming home) | In flight. |
+| 723 | Claude | `claude/dreamy-rubin-yn6q2p` | Far domains: the Questing Beast's Thornglass Caldera (a bespoke crystal-and-lava arena section beyond 1000), its quest, and the beast coming home when you wait | Merged (#370). |
 | 722 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms made mushroomy: domed caps with a shaded side, warts, gills, a skirt and a thick bulbed stalk; low caps stand taller | Merged (#369). |
 | 721 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms beyond 1000 sections (landscape v17): stands of tree-tall caps hopped up one level at a time, a cache on top | Merged (#368). |
 | 720 | Claude | `claude/dreamy-rubin-yn6q2p` | The folk realms: the Hollow Kin (folk who turn and come in waves; no sanctuary) and the Tall Country (giant folk who throw spears) | Merged (#367). |

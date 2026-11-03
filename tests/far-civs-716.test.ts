@@ -37,7 +37,7 @@ test('its creatures are crystal kin: half crystals, prism wardens and crystal st
 
 test('the quest: the Psychic Crystal slain far out opens it, the save keeps it, the compass follows it, arriving completes it', () => {
   const s = freshSave(); s.seed = seed;
-  assert.equal(openFarQuest(s, 'psychicCrystal', 300, 0), null, 'not near home'); assert.equal(openFarQuest(s, 'briarStag', 1200, 0), null, 'only its own beast');
+  assert.equal(openFarQuest(s, 'psychicCrystal', 300, 0), null, 'not near home'); assert.equal(openFarQuest(s, 'astralWorm', 1200, 0), null, 'only its own beast'); // 724: the Briar Stag now opens its own domain
   assert.equal(openFarQuest(s, 'psychicCrystal', 1200, 0), 'crystal'); const c = farCivCentre(seed, 'crystal');
   assert.deepEqual(activeFarQuest(s), { id: 'crystal', rx: c.rx, ry: c.ry, name: FAR_CIVS.crystal.name }); assert.equal(openFarQuest(s, 'psychicCrystal', 1200, 0), null, 'once');
   const m = migrateSave(JSON.parse(JSON.stringify(s))); assert.deepEqual(m.farQuests.crystal, { status: 'open', rx: c.rx, ry: c.ry });
