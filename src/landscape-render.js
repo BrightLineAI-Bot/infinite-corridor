@@ -1,9 +1,10 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { SEASONS } from "./seasons.js?v=r717-28789eeae12c";
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r717-28789eeae12c";
-import { TREES } from "./trees.js?v=r717-28789eeae12c";
+import { SEASONS } from "./seasons.js?v=r724-477fbde1400a";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r724-477fbde1400a";
+import { TREES } from "./trees.js?v=r724-477fbde1400a";
+import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.js?v=r724-477fbde1400a";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -277,6 +278,190 @@ PAINT.canopyBranch = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#7a5
 PAINT.canopyLeaf = (c, s, r) => { c.fillStyle = "#2f6a28"; c.fillRect(0, 0, s, s); for (let i = 0; i < 10; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a"][Math.floor(r() * 3)] + "bb"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 2, 1 + r(), r() * 3, 0, TAU); c.fill(); } c.fillStyle = "#00000022"; c.fillRect(0, 0, s, s); };
 PAINT.canopyTrunk = (c, s, r) => { PAINT.canopyCrown(c, s, r); c.fillStyle = "#00000018"; c.fillRect(0, 0, s, s); };
 PAINT.canopyCrown = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c7a30"], [1, "#2a5a22"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 16; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a", "#1f4a1a"][Math.floor(r() * 4)] + "dd"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 3, 1.5 + r() * 2, r() * 3, 0, TAU); c.fill(); } };
+// Release 721: the great mushrooms' caps (great-mushrooms.ts), one hue per stand: a domed top, pale spots, a lighter crown.
+const CAP_HUES = { capCrimson: ["#cf3a30", "#7e1f1a", "#f6ecdc", "#f0705e", "#e0574a"], capAmber: ["#d9892e", "#8a4f17", "#fbf0d6", "#f3b45e", "#e9a04a"], capViolet: ["#8e55b0", "#4f2d68", "#f1e6f6", "#b98ad6", "#a46cc6"] }; // 722: top, shade, warts, gloss, shoulder
+for (const [kind, [top, low, spot]] of Object.entries(CAP_HUES)) PAINT[kind] = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, top], [1, low]]); c.fillRect(0, 0, s, s); c.fillStyle = "#ffffff14"; c.fillRect(0, 0, s, s * .4); for (let k = 0; k < 3; k++) { c.fillStyle = spot + (r() < .5 ? "ee" : "aa"); c.beginPath(); c.ellipse(r() * s, r() * s, s * (.07 + r() * .07), s * (.05 + r() * .05), r() * 3, 0, TAU); c.fill(); } };
+// Release 723: the Thornglass Caldera (far-domains.ts): black basalt seamed with fire, a worn fighting floor, ground strewn with
+// shards, and crystals as tall as towers bursting out of the rock (drawn whole on their tile, in the static ground cache).
+const crack = (c, s, r, n, col) => { c.strokeStyle = col; c.lineWidth = Math.max(1, s * .035); for (let i = 0; i < n; i++) { let x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += (r() - .5) * s * .5; y += (r() - .5) * s * .5; c.lineTo(x, y); } c.stroke(); } };
+PAINT.thornBasalt = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#2a2027"], [1, "#17121a"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 6; i++) { c.fillStyle = r() < .5 ? "#3a2c3533" : "#0a080c55"; c.beginPath(); c.ellipse(r() * s, r() * s, s * (.08 + r() * .15), s * (.05 + r() * .08), r() * 3, 0, TAU); c.fill(); } crack(c, s, r, 2, "#ff6a1f66"); crack(c, s, r, 1, "#ffb04a44"); };
+PAINT.thornFloor = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3e3138"], [1, "#2c2229"]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#1a131855"; c.lineWidth = 1; c.strokeRect(.5, .5, s - 1, s - 1); for (let i = 0; i < 4; i++) { c.fillStyle = "#ffffff0a"; c.fillRect(r() * s, r() * s, s * .2, 1.5); } crack(c, s, r, 1, "#ff7a2a55"); };
+PAINT.thornShards = (c, s, r) => { PAINT.thornBasalt(c, s, r); for (let i = 0; i < 3; i++) { const x = r() * s, y = r() * s, h = s * (.08 + r() * .14), w = h * .35, col = ["#b48cff", "#7fe0ff", "#ff9ad8"][Math.floor(r() * 3)]; c.fillStyle = col + "cc"; c.beginPath(); c.moveTo(x - w, y); c.lineTo(x, y - h); c.lineTo(x + w, y); c.closePath(); c.fill(); c.fillStyle = "#ffffff88"; c.fillRect(x - .5, y - h * .8, 1, h * .5); } };
+PAINT.thornCrystal = PAINT.thornBasalt;
+// The caldera's lava: rock beneath, the melt rounded off where two sides meet rock, a dark crust at its edge; rock beside lava
+// glows on that side (thornGlow, drawn over the rock tiles).
+function drawThornLava(ctx, t, x, y, s, tiles, w) {
+  const px = x * s, py = y * s, lava = (dx, dy) => { const n = tiles?.[(y + dy) * w + x + dx]; return !n || x + dx < 0 || x + dx >= w || n.kind === "lava"; };
+  const N = lava(0, -1), S = lava(0, 1), E = lava(1, 0), W = lava(-1, 0), R = s * .5, rad = [!N && !W ? R : 0, !N && !E ? R : 0, !S && !E ? R : 0, !S && !W ? R : 0];
+  const rock = topTexture("thornBasalt", (t.detail || 0) % 4, s); if (rock) ctx.drawImage(rock, px, py, s + .5, s + .5); else { ctx.save(); ctx.translate(px, py); PAINT.thornBasalt(ctx, s, rand(1)); ctx.restore(); }
+  const e = s * .4, X = px - (W ? e : 0), Y = py - (N ? e : 0), WW = s + .5 + (W ? e : 0) + (E ? e : 0), HH = s + .5 + (N ? e : 0) + (S ? e : 0); // reaches past the sides that meet more lava, so its crust shows only toward rock
+  const shape = () => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(X, Y, WW, HH, rad); else ctx.rect(X, Y, WW, HH); };
+  ctx.save(); ctx.beginPath(); ctx.rect(px, py, s + .5, s + .5); ctx.clip(); shape(); ctx.clip();
+  ctx.fillStyle = "#ff6a18"; ctx.fillRect(px, py, s + .5, s + .5); const q = rand(x * 41 + y * 23 + 7); // the melt: one colour across the river, lit and crusted by the tile's place, so no tile repeats
+  for (let i = 0; i < 3; i++) { const g = ctx.createRadialGradient(px + q() * s, py + q() * s, 0, px + q() * s, py + q() * s, s * (.35 + q() * .3)); g.addColorStop(0, "rgba(255,230,120,.75)"); g.addColorStop(1, "rgba(255,230,120,0)"); ctx.fillStyle = g; ctx.fillRect(px, py, s + .5, s + .5); }
+  for (let i = 0; i < 3; i++) { ctx.fillStyle = "#7a1c0a99"; ctx.beginPath(); ctx.ellipse(px + q() * s, py + q() * s, s * (.06 + q() * .12), s * (.03 + q() * .04), q() * 3, 0, TAU); ctx.fill(); }
+  ctx.strokeStyle = "#3a120a"; ctx.lineWidth = Math.max(2, s * .12); shape(); ctx.stroke(); // the crust, inside the clip so only its inner half shows
+  ctx.restore();
+  if (!staticPass) animate(ctx, t, px, py, s);
+}
+export function thornGlow(ctx, t, x, y, s, tiles, w) {
+  if (t.landscape !== "thornglass" || t.kind === "lava" || t.kind === "thornCrystal") return;
+  const px = x * s, py = y * s, lava = (dx, dy) => tiles?.[(y + dy) * w + x + dx]?.kind === "lava";
+  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { if (!lava(dx, dy)) continue;
+    const x0 = dx > 0 ? px + s : px, y0 = dy > 0 ? py + s : py, g = dx ? ctx.createLinearGradient(x0, 0, x0 - dx * s * .6, 0) : ctx.createLinearGradient(0, y0, 0, y0 - dy * s * .6);
+    g.addColorStop(0, "rgba(255,110,30,.42)"); g.addColorStop(1, "rgba(255,110,30,0)"); ctx.fillStyle = g; ctx.fillRect(px, py, s + .5, s + .5); }
+}
+// Release r724-477fbde1400a: the world beasts' domains (domain-looks.ts). Ground, floor and strewn ground are painted from each domain's
+// colours; landmarks by their shape; the hazard in its melt colours with a crust toward the ground and a glow onto it.
+for (const id of Object.keys(DOMAIN_LOOKS)) {
+  const L = DOMAIN_LOOKS[id], K = domainKinds(id), [g0, g1, speck, seam] = L.ground, [f0, f1, fl] = L.floorTone, [s0, s1] = L.scatter;
+  PAINT[K.ground] = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, g0], [1, g1]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 7; i++) { c.fillStyle = r() < .5 ? speck + "55" : "#00000033"; c.beginPath(); c.ellipse(r() * s, r() * s, s * (.05 + r() * .12), s * (.03 + r() * .07), r() * 3, 0, TAU); c.fill(); } crack(c, s, r, 1, seam); };
+  PAINT[K.floor] = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, f0], [1, f1]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#00000022"; c.lineWidth = 1; c.strokeRect(.5, .5, s - 1, s - 1); for (let i = 0; i < 4; i++) { c.fillStyle = fl + "14"; c.fillRect(r() * s, r() * s, s * .22, 1.5); } crack(c, s, r, 1, seam); };
+  PAINT[K.scatter] = (c, s, r) => { PAINT[K.ground](c, s, r); for (let i = 0; i < 4; i++) { const x = r() * s, y = r() * s, z = s * (.05 + r() * .08); c.fillStyle = (r() < .5 ? s0 : s1) + "cc"; c.beginPath(); c.ellipse(x, y, z, z * .7, r() * 3, 0, TAU); c.fill(); } };
+  PAINT[K.feature] = PAINT[K.ground]; PAINT[K.thicket] = PAINT[K.ground];
+}
+const groundOf = (t) => t.landscape === "arena" ? domainKinds(t.look).ground : "thornBasalt";
+function drawGroundUnder(ctx, kind, t, px, py, s) { const tex = topTexture(kind, (t.detail || 0) % 4, s); if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5); else if (PAINT[kind]) { ctx.save(); ctx.translate(px, py); PAINT[kind](ctx, s, rand((t.detail || 0) % 4 + 1)); ctx.restore(); } }
+// A domain's hazard: the ground beneath, the hazard rounded off where two sides meet ground, a crust at its edge, and its own
+// surface: melt (lava, black fire, slag, embers), toxic water, open sea, a starless void, a sand pit.
+function drawArenaHazard(ctx, t, x, y, s, tiles, w) {
+  const look = DOMAIN_LOOKS[t.look]?.hazard?.look || "lava", M = DOMAIN_MELTS[look], px = x * s, py = y * s, same = (dx, dy) => { const n = tiles?.[(y + dy) * w + x + dx]; return !n || x + dx < 0 || x + dx >= w || n.kind === t.kind; };
+  const N = same(0, -1), S = same(0, 1), E = same(1, 0), W = same(-1, 0), R = s * .5, rad = [!N && !W ? R : 0, !N && !E ? R : 0, !S && !E ? R : 0, !S && !W ? R : 0];
+  drawGroundUnder(ctx, groundOf(t), t, px, py, s);
+  const e = s * .4, X = px - (W ? e : 0), Y = py - (N ? e : 0), WW = s + .5 + (W ? e : 0) + (E ? e : 0), HH = s + .5 + (N ? e : 0) + (S ? e : 0);
+  const shape = () => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(X, Y, WW, HH, rad); else ctx.rect(X, Y, WW, HH); };
+  ctx.save(); ctx.beginPath(); ctx.rect(px, py, s + .5, s + .5); ctx.clip(); shape(); ctx.clip();
+  ctx.fillStyle = M[0]; ctx.fillRect(px, py, s + .5, s + .5); const q = rand(x * 41 + y * 23 + 7);
+  if (look === "void") { for (let i = 0; i < 4; i++) { ctx.fillStyle = q() < .5 ? "#ffffff" : "#b8b0ff"; ctx.globalAlpha = .2 + q() * .5; ctx.fillRect(px + q() * s, py + q() * s, 1.2, 1.2); } ctx.globalAlpha = 1; }
+  else if (look === "pit") { const g = ctx.createRadialGradient(px + s / 2, py + s / 2, 0, px + s / 2, py + s / 2, s * .8); g.addColorStop(0, "#0a0604"); g.addColorStop(1, M[0]); ctx.fillStyle = g; ctx.fillRect(px, py, s + .5, s + .5); }
+  else for (let i = 0; i < 3; i++) { const g = ctx.createRadialGradient(px + q() * s, py + q() * s, 0, px + q() * s, py + q() * s, s * (.35 + q() * .3)); g.addColorStop(0, M[1]); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.fillRect(px, py, s + .5, s + .5); }
+  if (look === "sea") { ctx.strokeStyle = "#ffffff33"; ctx.lineWidth = 1; for (let i = 0; i < 2; i++) { const yy = py + q() * s; ctx.beginPath(); ctx.moveTo(px, yy); ctx.quadraticCurveTo(px + s / 2, yy - 3, px + s, yy); ctx.stroke(); } }
+  ctx.strokeStyle = M[3]; ctx.lineWidth = Math.max(2, s * (look === "sea" ? .08 : .12)); shape(); ctx.stroke();
+  ctx.restore();
+  if (!staticPass && (t.kind === "lava")) animate(ctx, t, px, py, s);
+}
+function arenaGlow(ctx, t, x, y, s, tiles, w) {
+  const Z = DOMAIN_LOOKS[t.look]?.hazard; if (!Z || Z.kind === "thicket") return; const M = DOMAIN_MELTS[Z.look], px = x * s, py = y * s;
+  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const n = tiles?.[(y + dy) * w + x + dx]; if (!n || n.kind !== Z.kind || n.look !== t.look) continue;
+    const x0 = dx > 0 ? px + s : px, y0 = dy > 0 ? py + s : py, g = dx ? ctx.createLinearGradient(x0, 0, x0 - dx * s * .6, 0) : ctx.createLinearGradient(0, y0, 0, y0 - dy * s * .6);
+    g.addColorStop(0, M[2]); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.fillRect(px, py, s + .5, s + .5); }
+}
+// A domain's landmarks, by shape: prisms of crystal or ice ("spike"), black monoliths ("slab"), charred columns, ribs of bone or
+// stone, burnt trees hung with husks, humming pylons, and great briars. The front tile of a cluster carries its tower.
+function drawArenaFeature(ctx, t, x, y, s) {
+  const L = DOMAIN_LOOKS[t.look], F = L.features, H = F.hues[(t.hue || 0) % F.hues.length], px = x * s, gy = y * s, r = rand((t.detail || 0) * 7 + x * 3 + y * 11 + 1), tall = (t.tower || 0) * s;
+  drawGroundUnder(ctx, domainKinds(t.look).ground, t, px, gy, s);
+  ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(px + s / 2, gy + s * .85, s * .55, s * .2, 0, 0, TAU); ctx.fill();
+  const prism = (bx, by, h, w, lean, flat = 0) => { const tx = bx + Math.sin(lean) * h, ty = by - Math.cos(lean) * h, sh = h * (flat ? .02 : .2), sx = Math.sin(lean) * (h - sh), sy = -Math.cos(lean) * (h - sh), nx = Math.cos(lean) * w, ny = Math.sin(lean) * w, fw = flat ? w * .9 : 0;
+    ctx.fillStyle = grad(ctx, bx, by, tx, ty, [[0, H[0]], [.55, H[1]], [1, H[2]]]); ctx.beginPath(); ctx.moveTo(bx - nx, by - ny); ctx.lineTo(bx - nx + sx, by - ny + sy); ctx.lineTo(tx - fw, ty); ctx.lineTo(bx + sx, by + sy); ctx.lineTo(bx, by); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = grad(ctx, bx, by, tx, ty, [[0, "#00000088"], [.6, H[0]], [1, H[1]]]); ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + sx, by + sy); ctx.lineTo(tx + fw, ty); ctx.lineTo(bx + nx + sx, by + ny + sy); ctx.lineTo(bx + nx, by + ny); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = H[2] + "cc"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + sx, by + sy); ctx.lineTo(tx, ty); ctx.stroke(); };
+  const base = () => ({ bx: px + s * (.2 + r() * .6), by: gy + s * (.78 + r() * .18) });
+  if (F.shape === "spike" || F.shape === "slab") {
+    const slab = F.shape === "slab", n = tall ? (slab ? 2 : 5) : (slab ? 1 : 2 + Math.floor(r() * 2)), list = [];
+    for (let i = 0; i < n; i++) { const b = base(), big = tall && i < 2; list.push({ ...b, h: big ? tall * (.7 + r() * .3) : s * (.5 + r() * .8), w: s * (slab ? (big ? .42 : .3) : big ? .22 : .12) * (.8 + r() * .4), lean: (r() - .5) * (slab ? .15 : .7) }); }
+    list.sort((a, b) => a.by - b.by); for (const p of list) prism(p.bx, p.by, p.h, p.w, p.lean, slab);
+    if (slab && tall) { ctx.fillStyle = H[2] + "55"; ctx.fillRect(px + s * .45, gy + s * .8 - tall * .8, 1.5, tall * .5); } // a seam of light in the stone
+  } else if (F.shape === "column") {
+    const n = tall ? 2 : 1; for (let i = 0; i < n; i++) { const { bx, by } = base(), h = i === 0 && tall ? tall : s * (.6 + r() * .9), w = s * (.22 + r() * .1);
+      ctx.fillStyle = grad(ctx, bx - w, 0, bx + w, 0, [[0, H[0]], [.4, H[1]], [1, H[0]]]); ctx.fillRect(bx - w, by - h, w * 2, h);
+      ctx.fillStyle = "#00000055"; for (let k = 1; k < 4; k++) ctx.fillRect(bx - w, by - h * k / 4, w * 2, 1.5);
+      ctx.fillStyle = H[1]; ctx.beginPath(); ctx.ellipse(bx, by - h, w, w * .35, 0, 0, TAU); ctx.fill(); ctx.fillStyle = H[2] + "88"; ctx.beginPath(); ctx.ellipse(bx, by - h - s * .08, w * .5, w * .3, 0, 0, TAU); ctx.fill(); } // its top still smoulders
+  } else if (F.shape === "rib") {
+    const n = tall ? 3 : 2, h = tall || s * (.7 + r() * .5); ctx.lineCap = "round";
+    for (let i = 0; i < n; i++) { const bx = px + s * (.15 + i * .3), lean = (r() - .5) * .3, hh = h * (.65 + r() * .35); ctx.strokeStyle = H[1]; ctx.lineWidth = s * .14; ctx.beginPath(); ctx.moveTo(bx, gy + s * .85); ctx.quadraticCurveTo(bx - s * .35 + lean * s, gy + s * .85 - hh * .7, bx + s * .2, gy + s * .85 - hh); ctx.stroke(); ctx.strokeStyle = H[2] + "aa"; ctx.lineWidth = s * .04; ctx.stroke(); }
+    ctx.lineCap = "butt";
+  } else if (F.shape === "tree") {
+    const bx = px + s * .5, by = gy + s * .85, h = tall || s * (.8 + r() * .6); ctx.strokeStyle = H[1]; ctx.lineCap = "round"; ctx.lineWidth = s * .2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + (r() - .5) * s * .2, by - h); ctx.stroke();
+    const branch = (x0, y0, a, len, wd, depth) => { if (depth > 3 || len < s * .12) return; const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len; ctx.lineWidth = wd; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); if (depth >= 2 && r() < .6) { ctx.save(); ctx.fillStyle = H[2]; ctx.beginPath(); ctx.ellipse(x1, y1 + s * .12, s * .06, s * .12, 0, 0, TAU); ctx.fill(); ctx.restore(); } branch(x1, y1, a - .5 - r() * .3, len * .7, wd * .65, depth + 1); branch(x1, y1, a + .5 + r() * .3, len * .7, wd * .65, depth + 1); };
+    branch(bx, by - h * .7, -Math.PI / 2 - .6, h * .35, s * .1, 0); branch(bx, by - h * .85, -Math.PI / 2 + .5, h * .32, s * .09, 0); ctx.lineCap = "butt";
+  } else if (F.shape === "pylon") {
+    const bx = px + s * .5, by = gy + s * .88, h = tall || s * (.9 + r() * .5), w = s * .28;
+    ctx.fillStyle = grad(ctx, bx - w, 0, bx + w, 0, [[0, H[0]], [.5, H[1]], [1, H[0]]]); ctx.beginPath(); ctx.moveTo(bx - w, by); ctx.lineTo(bx - w * .7, by - h); ctx.lineTo(bx + w * .7, by - h); ctx.lineTo(bx + w, by); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = H[2]; ctx.fillRect(bx - 1.5, by - h * .92, 3, h * .75); ctx.globalAlpha = .35; ctx.fillRect(bx - w * .5, by - h * .92, w, h * .75); ctx.globalAlpha = 1; // its glowing core
+    ctx.fillStyle = "#00000066"; for (let k = 1; k < 5; k++) ctx.fillRect(bx - w, by - h * k / 5, w * 2, 1.5); ctx.fillStyle = H[2]; ctx.beginPath(); ctx.arc(bx, by - h - s * .06, s * .07, 0, TAU); ctx.fill();
+  } else if (F.shape === "briar") {
+    const h = tall || s * (.8 + r() * .5); ctx.lineCap = "round";
+    for (let i = 0; i < (tall ? 6 : 4); i++) { const bx = px + s * (.1 + r() * .8), by = gy + s * .9, c1 = bx + (r() - .5) * s * 1.4, top = by - h * (.5 + r() * .5); ctx.strokeStyle = i % 2 ? H[0] : H[1]; ctx.lineWidth = s * (.08 + r() * .06); ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(c1, (by + top) / 2, bx + (r() - .5) * s * .8, top); ctx.stroke();
+      ctx.fillStyle = H[0]; for (let k = 0; k < 3; k++) { const tt = .3 + k * .25, xx = bx + (c1 - bx) * tt * .8, yy = by + (top - by) * tt; ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx + s * .12, yy - s * .04); ctx.lineTo(xx, yy + s * .04); ctx.fill(); }
+      if (r() < .6) { ctx.fillStyle = H[2]; ctx.beginPath(); ctx.arc(bx + (r() - .5) * s * .6, top + s * .05, s * .06, 0, TAU); ctx.fill(); } }
+    ctx.lineCap = "butt";
+  }
+}
+function drawArenaThicket(ctx, t, x, y, s, tiles, w) { // a briar hedge: a raised, dense mass of thorned stems, joined to its neighbours
+  const L = DOMAIN_LOOKS[t.look], H = L.features.hues[0], K = domainKinds(t.look), px = x * s, gy = y * s, r = rand(x * 17 + y * 29 + 3), up = s * .45;
+  const same = (dx, dy) => tiles?.[(y + dy) * w + x + dx]?.kind === K.thicket && x + dx >= 0 && x + dx < w;
+  const N = same(0, -1), S = same(0, 1), E = same(1, 0), W = same(-1, 0), R = s * .45, rad = [!N && !W ? R : 0, !N && !E ? R : 0, !S && !E ? R : 0, !S && !W ? R : 0];
+  drawGroundUnder(ctx, K.ground, t, px, gy, s);
+  if (!S) { ctx.fillStyle = "#00000044"; ctx.fillRect(px, gy + s * .75, s + .5, s * .25); }
+  ctx.save(); ctx.beginPath(); ctx.rect(px, gy - up - (N ? up : 0), s + .5, s + up + (N ? up : 0) + .5); ctx.clip(); ctx.beginPath(); const e = s * .4, X = px - (W ? e : 0), Y = gy - up - (N ? e : 0), WW = s + .5 + (W ? e : 0) + (E ? e : 0), HH = s + up + (N ? e : 0) + (S ? e : -s * .15); // past the sides it shares, so its edge shows only where the hedge ends
+  if (ctx.roundRect) ctx.roundRect(X, Y, WW, HH, rad); else ctx.rect(X, Y, WW, HH); ctx.clip();
+  ctx.fillStyle = grad(ctx, 0, gy - up, 0, gy + s, [[0, "#243a1a"], [.6, "#14220e"], [1, "#0a1306"]]); ctx.fillRect(px - 1, gy - up * 2, s + 2, s + up * 3);
+  for (let i = 0; i < 14; i++) { const dark = r() < .45; ctx.fillStyle = dark ? "#0e1a0a" : ["#3e6428", "#2c4a1c", "#527a32"][Math.floor(r() * 3)]; ctx.beginPath(); ctx.ellipse(px + r() * s, gy - up + r() * (s + up * .5), s * (.12 + r() * .12), s * (.08 + r() * .08), r() * 3, 0, TAU); ctx.fill(); }
+  ctx.lineCap = "round"; for (let i = 0; i < 5; i++) { const x0 = px + r() * s, y0 = gy + s * (.2 + r() * .6); ctx.strokeStyle = r() < .5 ? H[0] : H[1]; ctx.lineWidth = s * (.05 + r() * .04); ctx.beginPath(); ctx.moveTo(x0, y0); const x1 = x0 + (r() - .5) * s, y1 = y0 - s * (.4 + r() * .5); ctx.quadraticCurveTo(x0 + (r() - .5) * s, (y0 + y1) / 2, x1, y1); ctx.stroke();
+    ctx.fillStyle = H[1]; for (let k = 1; k < 3; k++) { const xx = x0 + (x1 - x0) * k / 3, yy = y0 + (y1 - y0) * k / 3; ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx + s * .1, yy - s * .05); ctx.lineTo(xx, yy + s * .04); ctx.fill(); } } ctx.lineCap = "butt";
+  if (r() < .45) { ctx.fillStyle = H[2]; ctx.beginPath(); ctx.arc(px + s * (.2 + r() * .6), gy - up * .5 + r() * s * .5, s * .06, 0, TAU); ctx.fill(); }
+  if (!N) { ctx.fillStyle = "#8ab05a66"; ctx.fillRect(px, gy - up, s + .5, s * .06); } // light along its top
+  ctx.strokeStyle = "#050a03"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(X, Y, WW, HH, rad); else ctx.rect(X, Y, WW, HH); ctx.stroke(); // its dark edge (inside the clip)
+  ctx.restore();
+}
+export const THORN_HUES = [["#4b2a8a", "#b48cff", "#efe4ff"], ["#1d4e7a", "#7fe0ff", "#e6fbff"], ["#7a2a5e", "#ff8ad0", "#ffe6f4"]]; // base, body, tip
+function drawThornCrystal(ctx, t, x, y, s, tiles, w) {
+  const px = x * s, gy = y * s, H = THORN_HUES[((t.crystal || 1) - 1) % THORN_HUES.length], r = rand((t.detail || 0) * 7 + x * 3 + y * 11 + 1);
+  const rock = topTexture("thornBasalt", (t.detail || 0) % 4, s); if (rock) ctx.drawImage(rock, px, gy, s + .5, s + .5); else { ctx.save(); ctx.translate(px, gy); PAINT.thornBasalt(ctx, s, rand((t.detail || 0) % 4 + 1)); ctx.restore(); }
+  ctx.fillStyle = H[1] + "22"; ctx.beginPath(); ctx.ellipse(px + s / 2, gy + s * .8, s * .7, s * .35, 0, 0, TAU); ctx.fill(); // its glow on the rock
+  const tower = t.tower || 0, n = tower ? 5 + Math.floor(r() * 3) : 2 + Math.floor(r() * 3), prisms = [];
+  if (tower) { ctx.fillStyle = H[1] + "18"; ctx.beginPath(); ctx.ellipse(px + s / 2, gy + s * .7, s * 1.6, s * .7, 0, 0, TAU); ctx.fill(); } // a tower's glow spills wide
+  for (let i = 0; i < n; i++) { const big = tower && i < 3; prisms.push({ bx: px + s * (big ? .2 + r() * .6 : .05 + r() * .9), by: gy + s * (.78 + r() * .18), h: s * (big ? tower * (.65 + r() * .35) * (i === 0 ? 1.2 : 1) : .5 + r() * .9), w: s * (big ? .3 + r() * .18 : .12 + r() * .1), lean: (r() - .5) * (big ? .45 : .9) }); }
+  prisms.sort((a, b) => a.by - b.by);
+  for (const p of prisms) {
+    const tx = p.bx + Math.sin(p.lean) * p.h, ty = p.by - Math.cos(p.lean) * p.h, nx = Math.cos(p.lean) * p.w, ny = Math.sin(p.lean) * p.w, sh = p.h * .2;
+    const sx = Math.sin(p.lean) * (p.h - sh), sy = -Math.cos(p.lean) * (p.h - sh);
+    ctx.fillStyle = grad(ctx, p.bx, p.by, tx, ty, [[0, H[0]], [.55, H[1]], [1, H[2]]]); // the near face
+    ctx.beginPath(); ctx.moveTo(p.bx - nx, p.by - ny); ctx.lineTo(p.bx - nx + sx, p.by - ny + sy); ctx.lineTo(tx, ty); ctx.lineTo(p.bx + sx, p.by + sy); ctx.lineTo(p.bx, p.by); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = grad(ctx, p.bx, p.by, tx, ty, [[0, "#140c22"], [.6, H[0]], [1, H[1]]]); // the shaded face
+    ctx.beginPath(); ctx.moveTo(p.bx, p.by); ctx.lineTo(p.bx + sx, p.by + sy); ctx.lineTo(tx, ty); ctx.lineTo(p.bx + nx + sx, p.by + ny + sy); ctx.lineTo(p.bx + nx, p.by + ny); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = H[2] + "cc"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(p.bx, p.by); ctx.lineTo(p.bx + sx, p.by + sy); ctx.lineTo(tx, ty); ctx.stroke(); // the lit edge
+    ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(p.bx, p.by, p.w * 1.3, p.w * .45, 0, 0, TAU); ctx.fill(); // where it breaks the rock
+  }
+}
+export const MUSHROOM_LOOK = { gill: ["#efe3cf", "#b8a68b"], stalk: ["#f6efe0", "#c9b89a"], skirt: "#efe6d4", under: .2, side: .42, squash: .8, stalkWidth: .5, round: .5 }; // 722: the dome's side, a skirt, a thicker stalk
+// A cap tile (great-mushrooms.ts): the ground it stands on, its shadow, its stalk (the front tile of the centre column), the
+// gills under a front edge, and the top: one dome over the whole cap (a radial light from its crown), spots hashed from the
+// tile, corners rounded where two sides fall away. Drawn into the static ground cache: no per-frame cost.
+function drawMushroomTile(ctx, t, x, y, s, tiles, w, lift) {
+  const M = MUSHROOM_LOOK, H = CAP_HUES[t.kind] || CAP_HUES.capCrimson, px = x * s, py = y * s - lift, gy = y * s, under = s * M.under, side = s * M.side;
+  const ground = t.under && topTexture(t.under, (t.detail || 0) % 4, s); if (ground) ctx.drawImage(ground, px, gy, s + .5, s + .5); else if (t.under && PAINT[t.under]) { ctx.save(); ctx.translate(px, gy); PAINT[t.under](ctx, s, rand(1)); ctx.restore(); }
+  const R = (Math.floor(t.capR || 1) + M.round) * s, RY = R * M.squash, cx = px + s / 2 - (t.capI || 0) * s, cy = py + s / 2 - (t.capJ || 0) * s;
+  // On the ground (each tile draws its own square of it): the cap's shadow, then the stalk, which stands at the cap's front so it
+  // shows below the lip: thick and pale, swelling to a bulb, with a skirt just under the gills and small caps at its foot.
+  ctx.save(); ctx.beginPath(); ctx.rect(px, gy, s + .5, s + .5); ctx.clip();
+  ctx.fillStyle = "#00000038"; ctx.beginPath(); ctx.ellipse(cx, cy + lift + s * .2, R * .95, RY * .9, 0, 0, TAU); ctx.fill();
+  const sw = R * M.stalkWidth, foot = cy + lift + Math.floor(t.capR || 1) * s + s * .3, lip = cy + RY + side + under, top = cy;
+  ctx.fillStyle = grad(ctx, cx - sw / 2, 0, cx + sw / 2, 0, [[0, M.stalk[1]], [.3, M.stalk[0]], [.65, M.stalk[0]], [1, M.stalk[1]]]);
+  ctx.beginPath(); ctx.moveTo(cx - sw * .42, top); ctx.lineTo(cx + sw * .42, top); ctx.quadraticCurveTo(cx + sw * .5, (top + foot) / 2, cx + sw * .62, foot); ctx.lineTo(cx - sw * .62, foot); ctx.quadraticCurveTo(cx - sw * .5, (top + foot) / 2, cx - sw * .42, top); ctx.fill();
+  ctx.fillStyle = grad(ctx, 0, foot - s * .2, 0, foot + s * .12, [[0, M.stalk[0]], [1, M.stalk[1]]]); ctx.beginPath(); ctx.ellipse(cx, foot, sw * .72, s * .17, 0, 0, TAU); ctx.fill(); // the bulb
+  if (foot - lip > s * .45) { const ring = lip + s * .08; ctx.fillStyle = M.skirt; ctx.beginPath(); ctx.moveTo(cx - sw * .46, ring); ctx.lineTo(cx + sw * .46, ring); ctx.quadraticCurveTo(cx + sw * .66, ring + s * .12, cx + sw * .6, ring + s * .26); ctx.quadraticCurveTo(cx, ring + s * .36, cx - sw * .6, ring + s * .26); ctx.quadraticCurveTo(cx - sw * .66, ring + s * .12, cx - sw * .46, ring); ctx.fill(); ctx.strokeStyle = "#00000026"; ctx.lineWidth = 1; ctx.stroke(); }
+  { const r = rand(Math.round(cx) * 3 + Math.round(cy) * 7 + 5); for (let k = 0; k < 4; k++) { const bx = cx + (r() < .5 ? -1 : 1) * (sw * .7 + r() * s * .5), by = foot + s * (r() * .12 - .02), br = s * (.12 + r() * .1); ctx.fillStyle = M.stalk[0]; ctx.fillRect(bx - br * .22, by - br * 1.3, br * .44, br * 1.3); ctx.fillStyle = H[0]; ctx.beginPath(); ctx.ellipse(bx, by - br * 1.3, br, br * .7, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = H[2]; ctx.beginPath(); ctx.arc(bx - br * .3, by - br * 1.6, br * .18, 0, TAU); ctx.fill(); } }
+  ctx.restore();
+  // The cap: a dome seen from above and in front: its top (an ellipse over its tiles), its curved front side (the top dropped by
+  // `side`) and the gills under its lip (dropped by `side` + `under`). Each row's end tiles draw the dome out past them to its
+  // edge, so the round cap is whole though its tiles are a stepped ring.
+  const disc = (dy, k = 1) => { ctx.beginPath(); ctx.ellipse(cx, cy + dy, R * k, RY * k, 0, 0, TAU); };
+  const kin = (dx) => { const n = tiles?.[y * w + x + dx]; return !!n && x + dx >= 0 && x + dx < w && n.mushroom === t.mushroom && n.elev === t.elev; }, x0 = kin(-1) ? px : cx - R - 2, x1 = kin(1) ? px + s + .5 : cx + R + 2;
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, py, x1 - x0, s + side + under + .5); ctx.clip();
+  disc(side + under, .9); ctx.fillStyle = grad(ctx, 0, cy + RY + side - under, 0, cy + RY + side + under, [[0, M.gill[1]], [1, M.gill[0]]]); ctx.fill();
+  ctx.strokeStyle = "#8f7d6488"; ctx.lineWidth = 1; for (let k = 0; k < 7; k++) { const gx = px + (k + .5) * s / 7, dx = (gx - cx) / (R * .9); if (Math.abs(dx) >= 1) continue; const edge = cy + side + RY * Math.sqrt(1 - dx * dx); ctx.beginPath(); ctx.moveTo(gx, edge - 1); ctx.lineTo(cx + (gx - cx) * .8, edge + under * .9); ctx.stroke(); }
+  disc(side); ctx.fillStyle = grad(ctx, 0, cy + RY - side * .2, 0, cy + RY + side, [[0, H[1]], [.55, H[0]], [1, H[1]]]); ctx.fill(); // the dome's front, shaded under its shoulder
+  ctx.strokeStyle = H[1]; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.ellipse(cx, cy + side, R - 1, RY - 1, 0, Math.PI * .08, Math.PI * .92); ctx.stroke(); // its lip
+  ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, py - 1, x1 - x0, s + 1.5); ctx.clip(); disc(0); ctx.clip();
+  const dome = ctx.createRadialGradient(cx - R * .2, cy - RY * .35, R * .05, cx, cy + RY * .1, R * 1.05); [[0, H[3]], [.32, H[0]], [.92, H[0]], [1, H[4] || H[0]]].forEach(([o, c]) => dome.addColorStop(o, c)); ctx.fillStyle = dome; ctx.fillRect(x0, py - 1, x1 - x0, s + 2);
+  // warts: round and raised, larger toward the crown, hashed per tile so they never line up
+  const r = rand(x * 31 + y * 17 + 3), d = Math.hypot(t.capI || 0, t.capJ || 0) / ((t.capR || 1) + .5);
+  for (let k = 0; k < 3; k++) if (r() < .8 - d * .3) { const wx = px + s * (.15 + r() * .7), wy = py + s * (.15 + r() * .7), wr = s * (.09 + r() * .07) * (1.15 - d * .5); ctx.fillStyle = "#00000030"; ctx.beginPath(); ctx.ellipse(wx + wr * .15, wy + wr * .25, wr, wr * .75, 0, 0, TAU); ctx.fill(); ctx.fillStyle = H[2]; ctx.beginPath(); ctx.ellipse(wx, wy, wr, wr * .75, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#ffffff99"; ctx.beginPath(); ctx.ellipse(wx - wr * .3, wy - wr * .3, wr * .35, wr * .22, 0, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
 for (const [type, P] of Object.entries(PALETTE_PAINT)) { const R = PALETTE_REGIONS[type]; PAINT[R.ground] = (c, s, r) => paletteGround(c, s, r, P); PAINT[R.pool.kind] = (c, s, r) => palettePool(c, s, r, P); PAINT[R.block.kind] = (c, s, r) => paletteBlock(c, s, r, P); }
 function granite(c, s, r, color = "#2d2f3155") { c.strokeStyle = color; c.lineWidth = 1; for (let i = 0; i < 3; i++) { let x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += (r() - .5) * s * .4; y += r() * s * .25; c.lineTo(x, y); } c.stroke(); } for (let i = 0; i < 10; i++) { c.fillStyle = r() < .5 ? "#a3a6a855" : "#3b3e4155"; c.fillRect(r() * s, r() * s, 1.5, 1.5); } }
 function ripples(c, s, r, color) { c.strokeStyle = color; c.lineWidth = 1; const off = r() * 6; for (let y = off; y < s; y += 5) { c.beginPath(); c.moveTo(0, y); for (let x = 0; x <= s; x += 4) c.lineTo(x, y + Math.sin((x + y) * .35) * 1.4); c.stroke(); } }
@@ -334,6 +519,12 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
     if (tex) { ctx.save(); ctx.translate(px + s / 2, py + s / 2); if (t.bridgeAxis === "y") ctx.rotate(Math.PI / 2); ctx.drawImage(tex, -s / 2, -s / 2, s + .5, s + .5); ctx.restore(); }
     return true;
   }
+  if (t.mushroom && lift > 0) { drawMushroomTile(ctx, t, x, y, s, tiles, w, lift); return true; } // release 721
+  if (t.kind === "thornCrystal") { drawThornCrystal(ctx, t, x, y, s, tiles, w); return true; } // release 723
+  if (t.landscape === "thornglass" && t.kind === "lava") { drawThornLava(ctx, t, x, y, s, tiles, w); return true; }
+  if (t.landscape === "arena" && t.look && DOMAIN_LOOKS[t.look]) { // release 724
+    const K = domainKinds(t.look); if (t.kind === K.feature) { drawArenaFeature(ctx, t, x, y, s); return true; } if (t.kind === K.thicket) { drawArenaThicket(ctx, t, x, y, s, tiles, w); return true; }
+    if (t.kind === DOMAIN_LOOKS[t.look].hazard.kind) { drawArenaHazard(ctx, t, x, y, s, tiles, w); return true; } }
   if (lift > 0 && t.canopy && t.kind !== "canopyTrunk") { // release 633: a branch of the great tree hangs in the air: its underside, and its shadow far below
     ctx.fillStyle = "#00000030"; ctx.beginPath(); ctx.ellipse(px + s / 2, y * s + s * .6, s * .42, s * .16, 0, 0, TAU); ctx.fill();
     const leaf = t.kind === "canopyLeaf", under = leaf ? s * .14 : s * .26; ctx.fillStyle = leaf ? "#2c5a24" : "#4a3220"; ctx.fillRect(px, py + s, s + 1, under);
@@ -350,14 +541,16 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5);
   else { ctx.save(); ctx.translate(px, py); PAINT[t.kind](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
   if (!staticPass) animate(ctx, t, px, py, s);
+  if (t.landscape === "thornglass") thornGlow(ctx, t, x, y, s, tiles, w); // release 723
+  else if (t.landscape === "arena") arenaGlow(ctx, t, x, y, s, tiles, w); // release 724
   if (t.canopy && (t.look != null || treeSeasonNow)) drawTreeWear(ctx, t, px, py, s); // release 645: the tree package's bark tints and leaves
-  if (!t.canopy) drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w); // release 637: the great tree's wood is not notched with level marks
+  if (!t.canopy && !t.mushroom) drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w); // release 637: the great tree's wood is not notched with level marks
   if (lift > 0) { // rim light on edges that drop away, shade on lower sides
     const at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], lower = (n) => !n || (n.elev || 0) < (t.elev || 0);
     if (lower(at(0, -1))) { ctx.fillStyle = "#ffffff55"; ctx.fillRect(px, py, s + 1, Math.max(1.5, s * .05)); }
     if (lower(at(-1, 0))) { ctx.fillStyle = "#ffffff30"; ctx.fillRect(px, py, Math.max(1.5, s * .05), s); }
-    if (lower(at(1, 0))) { ctx.fillStyle = "#00000040"; ctx.fillRect(px + s - Math.max(2, s * .07), py, Math.max(2, s * .07), s + lift); }
-    ctx.fillStyle = "#0000004d"; ctx.fillRect(px, y * s + s - 2, s + 1, 2); // contact shadow at the cliff foot
+    if (lower(at(1, 0))) { ctx.fillStyle = "#00000040"; ctx.fillRect(px + s - Math.max(2, s * .07), py, Math.max(2, s * .07), t.mushroom ? s : s + lift); }
+    if (!t.mushroom) { ctx.fillStyle = "#0000004d"; ctx.fillRect(px, y * s + s - 2, s + 1, 2); } // contact shadow at the cliff foot (a cap stands on its stalk)
   }
   if (t.slope && t.kind !== "mountainTrail" && t.kind !== "castleStair") { ctx.fillStyle = "#ffffff18"; ctx.fillRect(px, py, s, s * .2); }
   return true;

@@ -2,9 +2,9 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r717-28789eeae12c";
-import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterChance, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.js?v=r717-28789eeae12c";
-import { LETHAL_KINDS } from "./landscape.js?v=r717-28789eeae12c";
+import { hashSeed } from "./random.js?v=r724-477fbde1400a";
+import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterChance, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.js?v=r724-477fbde1400a";
+import { LETHAL_KINDS } from "./landscape.js?v=r724-477fbde1400a";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
@@ -24,6 +24,7 @@ export const QB_SEA = { none: .9, watery: .3, wateryChance: .25 };
 export function questingBeastFor(save, map, rx, ry) {
   ensureQuestingBeast(save); const q = save.questingBeast;
   if (!map || map.settlement || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < QUESTING_BEAST.minDepth) return null;
+  if (map.farDomain && !(q.active && q.active.rx === rx && q.active.ry === ry)) return null; // release 723: in its domain it comes by waiting (Game.domainTick), not by the roll
   if (!q.active) {
     if (q.cooldown > 0) { q.cooldown--; return null; }
     if (!beastUnlocked(save, "questingBeast") || !encounterReady(save)) return null; // release 261: the buffer between meetings (273: and Aperture tier 8)

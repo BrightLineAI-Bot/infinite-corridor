@@ -7,16 +7,19 @@
 // borders wavered by noise. Each cell rolls one number u in [0, 1) on its own hash; each version of this table gives a realm to a
 // further band of u (`bands`), always carved out of what was still `ordinary`, so a cell keeps its realm in every later version.
 // Only sections first seen with a version hold a realm (the atlas pins `farVersion`); ground seen before keeps none. Pure.
-import { hashSeed } from "./random.js?v=r717-28789eeae12c";
+import { hashSeed } from "./random.js?v=r724-477fbde1400a";
 
 export const FAR_REALMS = {
-  version: 4, start: 1000, cell: 40, warp: 9, // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
+  version: 6, start: 1000, cell: 40, warp: 9, // 5 (719): the Ink Wastes; 6 (720): the folk realms; // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
   // [type, from, to] on the cell's roll; later versions only add bands inside what earlier versions left ordinary.
-  bands: { 1: [["giants", 0, .18]] },
+  bands: { 1: [["giants", 0, .18]], 5: [["ink", .18, .3]], 6: [["monsterFolk", .3, .38], ["giantFolk", .38, .46]] },
 };
 // What each realm does, as data. Giants: every ordinary creature of the overworld is this much bigger and stronger.
 export const FAR_GIANTS = { scale: 1.75, body: 1.5, hp: 2.2, damage: 1.35, speed: .88 };
 export const FAR_REALM_INFO = {
+  monsterFolk: { name: "the Hollow Kin", arrive: "Smoke rises from the hearths here, and people walk the roads like anywhere else. Look closer: they do not blink. This is the country of the Hollow Kin." },
+  giantFolk: { name: "the Tall Country", arrive: "The doors here are twice the height of a man and the people who use them bend to look at you, kindly, spears on their backs. This is the Tall Country." },
+  ink: { name: "the Ink Wastes", arrive: "The ground is black and soft and runs like wet paint; things move in it, and the things that walk here are black as the ground. This is the Astral Worm's homeland: the Ink Wastes." },
   giants: { name: "the Giants' Reach", arrive: "Everything here is too big: the tracks in the earth are as wide as doors, and the things that made them are close. You are in the Giants' Reach." },
 };
 
@@ -96,7 +99,7 @@ export const FAR_CIVS = {
     name: "the Crystal Civilisation", arrive: "The ground rings underfoot. Spires of crystal stand in rows like streets, and things of crystal float and walk between them. You have found the Crystal Civilisation.",
     quest: "With the Psychic Crystal fallen, its thoughts scatter, and one goes home: far out, there is a whole country of its kind. Your compass knows the way to the Crystal Civilisation.",
     found: "You have reached the Crystal Civilisation." },
-  // Release r717-28789eeae12c: the Lightning Giant's people, on the pillar lands, in the far quarter the seed sets.
+  // Release 717: the Lightning Giant's people, on the pillar lands, in the far quarter the seed sets.
   storm: { since: 4, landSince: 16, min: 1200, span: 300, radius: 26, land: "pillars", beast: "lightningGiant", extra: 6, kinds: ["stormling", "stormling", "sparkHauler", "sparkHauler", "coilWarden"],
     name: "the Storm Halls", arrive: "Thunder rolls without a cloud. Tall stone stands everywhere like towers, coils hum on their heads, and the robots of the Lightning Giant's people walk between them. You have found the Storm Halls.",
     quest: "With the Lightning Giant fallen, its last charge runs out along the ground toward home: far out, its people have built a whole country. Your compass knows the way to the Storm Halls.",
@@ -113,16 +116,114 @@ export function farCivAt(seed, sx, sy) {
   return null;
 }
 // The quests to the civilisations, kept in the save (additive at schema 14; normalised from ensureWorldBeasts).
+// Release 723: the domains (far-domains.ts): one bespoke section each, the arena a world beast comes home to. Found by wandering
+// onto it, or by the quest its beast's fall opens a thousand sections or more out (the same quests as the civilisations').
+export const FAR_DOMAINS = {
+  questingBeast: { beast: "questingBeast", min: 1100, span: 250, version: 1, name: "the Thornglass Caldera",
+    arrive: "Heat beats up from the ground. Crystals as tall as towers have burst out of black rock, and lava runs between them. This is the Questing Beast's own ground: the Thornglass Caldera.",
+    quest: "The Questing Beast falls, but something of it runs on, far out, to the place it was made: a caldera of crystal and fire. Your compass knows the way to the Thornglass Caldera.",
+    found: "You have reached the Thornglass Caldera.",
+    wait: [45, 110], // seconds spent in the caldera before its beast comes, hashed per visit
+    comes: "A roar rolls round the caldera. The Questing Beast has come home, and it has found you here.",
+    waiting: "The Questing Beast is not here now. Wait in its caldera, and it may come back." },
+  voidWalker: { beast: "voidWalker", min: 1100, span: 250, version: 1, name: "the Unlit Shore", wait: [45, 110], // release 724
+    arrive: "Islands of black rock stand in a sea of starless dark. Nothing shines here; even the fog is dim. This is the Void Walker's shore.",
+    quest: "The Void Walker falls, and the dark it carried runs home, far out, to a shore where there are no stars. Your compass knows the way to the Unlit Shore.",
+    found: "You have reached the Unlit Shore.", comes: "The fog thickens and something walks out of it. The Void Walker has come back to its shore.", waiting: "The Void Walker is not on its shore now. Wait here in the dark, and it may come back." },
+  crimsonTyrant: { beast: "crimsonTyrant", min: 1137, span: 250, version: 1, name: "the Red Throne", wait: [45, 110], // release 724
+    arrive: "A plateau of red glass rises out of a lake of fire, set about with spikes of black and crimson. This is the Crimson Tyrant's throne.",
+    quest: "The Crimson Tyrant falls, but its fire remembers a throne far out, where the mountain is all red glass. Your compass knows the way to the Red Throne.",
+    found: "You have reached the Red Throne.", comes: "A shadow crosses the fire and the air bursts hot. The Crimson Tyrant has come back to its throne.", waiting: "The Crimson Tyrant's throne is empty now. Wait, and it may come back to claim it." },
+  doomChaser: { beast: "doomChaser", min: 1174, span: 250, version: 1, name: "the Black Pyre", wait: [45, 110], // release 724
+    arrive: "Ash lies deep over everything, and black fire burns in it without smoke. Charred pillars stand like the bones of a building. This is the Doom Chaser's pyre.",
+    quest: "The Doom Chaser falls, and its black fire goes on burning, far out, where it was first lit. Your compass knows the way to the Black Pyre.",
+    found: "You have reached the Black Pyre.", comes: "The black fire leaps all at once. The Doom Chaser has come back to its pyre.", waiting: "The black fire burns low. Wait here, and the Doom Chaser may come back to feed it." },
+  morphingBlob: { beast: "morphingBlob", min: 1211, span: 250, version: 1, name: "the Rendering Pit", wait: [45, 110], // release 724
+    arrive: "A sunken basin of sour mud, its pools green and steaming, its edges piled with old bones. This is where the Morphing Blob was rendered down.",
+    quest: "The Morphing Blob falls, and what is left of it seeps away toward a pit far out, where it began. Your compass knows the way to the Rendering Pit.",
+    found: "You have reached the Rendering Pit.", comes: "The pools heave and climb out of themselves. The Morphing Blob has come back to its pit.", waiting: "The pools lie still. Wait here, and the Morphing Blob may rise out of them." },
+  tremorWorm: { beast: "tremorWorm", min: 1248, span: 250, version: 1, name: "the Hollow Dunes", wait: [45, 110], // release 724
+    arrive: "A bowl of pale sand, ribbed with the bones of the ground and holed with burrows that go down and down. This is the Tremor Worm's hollow.",
+    quest: "The Tremor Worm falls, and far out the dunes shift where it was born. Your compass knows the way to the Hollow Dunes.",
+    found: "You have reached the Hollow Dunes.", comes: "The sand trembles, then heaves. The Tremor Worm has come back to its hollow.", waiting: "The sand is quiet. Wait here, and the Tremor Worm may come up out of it." },
+  mountainTurtle: { beast: "mountainTurtle", min: 1105, span: 250, version: 1, name: "the Glass Shoal", wait: [45, 110], // release 724
+    arrive: "An atoll of blue ice in an open sea, ringed with spires of frozen glass. This is the Mountain Turtle's shoal.",
+    quest: "The Mountain Turtle falls, and far out a shoal of ice is waiting for it to come home. Your compass knows the way to the Glass Shoal.",
+    found: "You have reached the Glass Shoal.", comes: "The ice cracks and groans under a great weight. The Mountain Turtle has come back to its shoal.", waiting: "The shoal is empty. Wait here on the ice, and the Mountain Turtle may come back." },
+  ashenMoth: { beast: "ashenMoth", min: 1142, span: 250, version: 1, name: "the Cinder Orchard", wait: [45, 110], // release 724
+    arrive: "Rows of burnt trees, their branches hung with split husks, stand in ash still warm underfoot. This is the Ashen Moth's orchard.",
+    quest: "The Ashen Moth falls, and its dust drifts away toward an orchard far out where it grew. Your compass knows the way to the Cinder Orchard.",
+    found: "You have reached the Cinder Orchard.", comes: "Ash rises from the ground in a whirl of wings. The Ashen Moth has come back to its orchard.", waiting: "No wings stir in the orchard now. Wait here, and the Ashen Moth may come back." },
+  nanobotKnight: { beast: "nanobotKnight", min: 1179, span: 250, version: 1, name: "the Forge Spire", wait: [45, 110], // release 724
+    arrive: "Plated ground, humming pylons and channels of molten slag: a foundry with no one left to work it. This is the Nanobot Knight's forge.",
+    quest: "The Nanobot Knight falls, and its swarm scatters, homing on a forge far out where it was made. Your compass knows the way to the Forge Spire.",
+    found: "You have reached the Forge Spire.", comes: "The pylons flare and a swarm pours together. The Nanobot Knight has come back to its forge.", waiting: "The pylons hum and nothing comes. Wait here, and the Nanobot Knight may come back to its forge." },
+  briarStag: { beast: "briarStag", min: 1216, span: 250, version: 1, name: "the Thornheart Glade", wait: [45, 110], // release 724
+    arrive: "A glade walled with briars older than any forest, their thorns as long as swords and hung with pale flowers. This is the Briar Stag's heart.",
+    quest: "The Briar Stag falls, and far out the briars stir where it first took root. Your compass knows the way to the Thornheart Glade.",
+    found: "You have reached the Thornheart Glade.", comes: "The briars part with a crack of wood. The Briar Stag has come back to its glade.", waiting: "The glade is still. Wait here among the briars, and the Briar Stag may come back." },
+};
+// Where a domain lies: a seeded bearing and distance; for a quest, the first section along that bearing not yet explored.
+const domainCache = new Map();
+export function farDomainCentre(seed, id) {
+  const key = `${seed}:${id}`; let c = domainCache.get(key); if (c) return c; const D = FAR_DOMAINS[id], h = (k) => (hashSeed(`${seed}:far-domain:v1:${id}:${k}`) % 100003) / 100003;
+  const a = h("bearing") * Math.PI * 2, d = D.min + h("distance") * D.span; c = { id, rx: Math.round(Math.cos(a) * d), ry: Math.round(Math.sin(a) * d), a }; domainCache.set(key, c); return c;
+}
+export function farDomainTarget(save, id) {
+  const c = farDomainCentre(save.seed, id);
+  for (let k = 0; k < 64; k++) { const d = Math.hypot(c.rx, c.ry) + k * 3, rx = Math.round(Math.cos(c.a) * d), ry = Math.round(Math.sin(c.a) * d); if (!save.atlas?.[`${rx},${ry}`]) return { rx, ry }; }
+  return { rx: c.rx, ry: c.ry };
+}
+// The domain at a section, or null: the one a quest record names there, else the seeded one on ground not seen before.
+export function farDomainAt(save, rx, ry, seenBefore = false) {
+  for (const id of Object.keys(FAR_DOMAINS)) {
+    const q = save?.farQuests?.[id]; if (q) { if (q.rx === rx && q.ry === ry) return id; continue; }
+    const c = farDomainCentre(save.seed, id); if (!seenBefore && c.rx === rx && c.ry === ry) return id;
+  }
+  return null;
+}
+const FAR_QUEST_IDS = () => [...Object.keys(FAR_CIVS), ...Object.keys(FAR_DOMAINS)];
+export const farQuestInfo = (id) => FAR_CIVS[id] || FAR_DOMAINS[id] || null;
 export function ensureFarQuests(save) {
   const raw = save?.farQuests, out = {};
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const id of Object.keys(FAR_CIVS)) { const q = raw[id]; if (q && typeof q === "object" && ["open", "found"].includes(q.status) && Number.isInteger(q.rx) && Number.isInteger(q.ry)) out[id] = { status: q.status, rx: q.rx, ry: q.ry }; }
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const id of FAR_QUEST_IDS()) { const q = raw[id]; if (q && typeof q === "object" && ["open", "found"].includes(q.status) && Number.isInteger(q.rx) && Number.isInteger(q.ry)) out[id] = { status: q.status, rx: q.rx, ry: q.ry }; }
   if (save) save.farQuests = out; return save;
 }
 // A world beast slain at (rx, ry): opens the quest to its civilisation when far enough out. Returns the civ id opened, or null.
 export function openFarQuest(save, beast, rx, ry) {
   if (farDistance(rx, ry) < FAR_REALMS.start) return null; ensureFarQuests(save);
   for (const [id, C] of Object.entries(FAR_CIVS)) if (C.beast === beast && !save.farQuests[id]) { const c = farCivCentre(save.seed, id); save.farQuests[id] = { status: "open", rx: c.rx, ry: c.ry }; return id; }
+  for (const [id, D] of Object.entries(FAR_DOMAINS)) if (D.beast === beast && !save.farQuests[id]) { const c = farDomainTarget(save, id); save.farQuests[id] = { status: "open", rx: c.rx, ry: c.ry }; return id; } // release 723
   return null;
 }
 // The open quest the compass follows (the first open one), or null.
-export function activeFarQuest(save) { for (const [id, q] of Object.entries(save?.farQuests || {})) if (q.status === "open") return { id, rx: q.rx, ry: q.ry, name: FAR_CIVS[id]?.name || id }; return null; }
+export function activeFarQuest(save) { for (const [id, q] of Object.entries(save?.farQuests || {})) if (q.status === "open") return { id, rx: q.rx, ry: q.ry, name: farQuestInfo(id)?.name || id }; return null; }
+
+// Release 719: the Ink Wastes (realm `ink`). Its land is washed in ink where the ground is drawn (renderer.ts inkWash, once per
+// section), every ordinary creature is ink-black (`farInk`, tinted in its cached sprite), and `share` of them are the Worm's own
+// shapes (`kinds`), with `extra` more.
+export const FAR_INK = { share: .5, extra: 3, kinds: ["inkPool", "inkGriffin", "inkWing", "inkStrider", "inkMaw"],
+  // the ordinary creatures that are painted black: the overworld roster drawn through the cached sprite (monster-render), so the tint holds
+  painted: ["thunderhorn", "siegeBeetle", "cinderSeraph", "riftLynx", "graveLantern", "veilSpinner", "lumenWraith", "mirrorShade"] };
+export function populateInk(map, seed, rx, ry) {
+  if (!map || map.farInkPopulated) return map; map.farInkPopulated = true; map.farInk = true;
+  const I = FAR_INK, spawns = (map.enemySpawns ||= []), h = (k) => hashSeed(`${seed}:far-ink:${rx}:${ry}:${k}`), ordinary = (e) => e.packOverworld || !(e.ambient || e.passiveBehavior || e.shelterAmbush || e.districtResident || e.boss || e.elite || e.gatePredator || e.foundryId || e.viewportHuntId || e.domainId || e.huntInstanceId || e.worldBeast || e.questingBeast || e.skirmishId);
+  spawns.forEach((e, i) => { if (!ordinary(e)) return; if ((h(`s${i}`) % 1000) / 1000 < I.share) e.kind = I.kinds[h(`k${i}`) % I.kinds.length]; else if (!e.packOverworld) { e.kind = I.painted[h(`o${i}`) % I.painted.length]; e.packOverworld = true; } });
+  const width = Number(map.width) || 32, height = Math.floor((map.tiles?.length || 1024) / width), taken = [...spawns, ...(map.objects || [])].filter((q) => Number.isFinite(q?.x));
+  const open = (map.tiles || []).filter((t) => !t.blocked && !t.environment && !t.structure && !t.buildingId && t.x > 2 && t.y > 2 && t.x < width - 3 && t.y < height - 3).sort((a, b) => h(`p${a.x},${a.y}`) - h(`p${b.x},${b.y}`));
+  let n = 0; for (const t of open) { if (n >= I.extra) break; if (taken.some((q) => Math.hypot(q.x - t.x, q.y - t.y) < 3)) continue; const e = { id: `far-ink:${rx}:${ry}:${n}`, kind: I.kinds[h(`x${n}`) % I.kinds.length], x: t.x, y: t.y, packOverworld: true }; spawns.push(e); taken.push(e); n++; }
+  return map;
+}
+
+// Release 720 (Tim: "another realm where all of like the townspeople and Wanderers are actually monsters... they come in waves of
+// monsters that are just townspeople, and then another version where all the townspeople are just really, really big too, and they
+// can throw spears... during the fights"): the folk realms. In the Hollow Kin's country the travellers and the hamlets' folk turn when
+// the Wayfarer comes within `reveal` tiles: each becomes one of `kinds`, and `waves` - 1 more waves of `waveSize` come in from the
+// edges, each once fewer than `next` of the last remain (no sanctuary there). In the Tall Country the folk are `scale` times the
+// Wayfarer's size and every `spear.every` s each throws a spear at the nearest hostile creature within `spear.range`, for
+// `spear.share` of its health (at least `spear.min`).
+export const FAR_FOLK = { reveal: 4.5, waves: 3, waveSize: 4, next: 2, gap: 4, kinds: ["mirrorShade", "riftLynx", "graveLantern", "veilSpinner", "siegeBeetle", "cinderSeraph"],
+  scale: 1.8, spear: { every: 2.2, range: 9, share: .22, min: 12, life: .3 },
+  turn: "The people turn toward you all at once, and their faces come apart. They were never people. More are coming down the road.",
+  wave: "More of the Hollow Kin come out of the hearths and down the roads.", done: "The road is quiet. No more of them are coming." };
+export const isFolk = (o) => o && (o.kind === "traveler" || o.kind === "villager") && !o.wanderer && !o.elder;

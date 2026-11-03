@@ -12,7 +12,7 @@
 // somewhere across the floor from where you came in, and above the ground floor, holes where the floor has fallen through
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
-import { hashSeed, rng } from "./random.js?v=r717-28789eeae12c";
+import { hashSeed, rng } from "./random.js?v=r724-477fbde1400a";
 
 export const BUILDINGS = {
   version: 2, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
@@ -66,8 +66,8 @@ export const BUILDINGS = {
   },
 };
 
-export const FLOOR_KINDS = ["mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor"];
-export const WALL_KINDS = ["keepWall", "aptWall", "hiveWall"];
+export const FLOOR_KINDS = ["mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor", "yardGrass", "cellarFloor"];
+export const WALL_KINDS = ["keepWall", "aptWall", "hiveWall", "hedgeWall", "cellarWall"];
 
 const ID = /^building:(.+):(-?\d+):(-?\d+):(keep|apartment|hive):(\d+)(r?):f(\d+)$/; // `r`: it has a roof to stand on
 export const isBuildingId = (id) => ID.test(String(id || ""));

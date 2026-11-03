@@ -1,17 +1,17 @@
-import { mealLure } from "./meals.js?v=r717-28789eeae12c";
-import { ensureDragonLava } from "./crimson-dragon.js?v=r717-28789eeae12c";
-import { ensureFarQuests } from "./far-realms.js?v=r717-28789eeae12c";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r717-28789eeae12c";
+import { mealLure } from "./meals.js?v=r724-477fbde1400a";
+import { ensureDragonLava } from "./crimson-dragon.js?v=r724-477fbde1400a";
+import { ensureFarQuests } from "./far-realms.js?v=r724-477fbde1400a";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r724-477fbde1400a";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r717-28789eeae12c";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r717-28789eeae12c";
-import { sectionExits, apertureTier } from "./world.js?v=r717-28789eeae12c";
-import { stageOneBeastReference } from "./stages.js?v=r717-28789eeae12c";
+import { hashSeed } from "./random.js?v=r724-477fbde1400a";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r724-477fbde1400a";
+import { sectionExits, apertureTier } from "./world.js?v=r724-477fbde1400a";
+import { stageOneBeastReference } from "./stages.js?v=r724-477fbde1400a";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -519,6 +519,7 @@ export function worldBeastFor(save, map, rx, ry) {
   ensureWorldBeasts(save, false);
   if (!map) return null;
   wanderUnmet(save, rx, ry); // release 567: counted on every section entered, towns too
+  if (map.farDomain) { const own = save.worldBeasts?.[map.farDomain]?.active; if (!(own && !own.retreat && !own.dungeon && own.rx === rx && own.ry === ry)) return null; } // release 723: a domain is its own beast's ground (724: and its own beast, once it has come, is there when you come back)
   if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && !a.dungeon && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
   let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && !a.dungeon && !astralReservedCompanion(save,id) && a.rx === rx && a.ry === ry; }), claimed = false;

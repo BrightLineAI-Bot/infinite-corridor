@@ -1,8 +1,8 @@
 // The Doom Chaser's body and effects (release 710). Drawing only: nothing here changes combat state.
 // q: the shared pack paint context { k, b, u, s, t, flip, e } (monster-render.ts paintPackMonster). An original black dragon wearing
 // the shared dragon body (crimson-dragon-render.ts drawDragonBody) in burnt-glass black, violet fire showing through its cracks.
-import { drawDragonBody } from "./crimson-dragon-render.js?v=r717-28789eeae12c";
-import { DANGER } from "./monster-pack.js?v=r717-28789eeae12c";
+import { drawDragonBody } from "./crimson-dragon-render.js?v=r724-477fbde1400a";
+import { DANGER } from "./monster-pack.js?v=r724-477fbde1400a";
 
 const TAU = Math.PI * 2;
 export const DOOM_ART = {

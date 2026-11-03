@@ -7,9 +7,9 @@
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r717-28789eeae12c";
-import { hashSeed } from "./random.js?v=r717-28789eeae12c";
-import { updateAstralActor } from "./astral-worm.js?v=r717-28789eeae12c";
+import { stageOneBeastReference } from "./stages.js?v=r724-477fbde1400a";
+import { hashSeed } from "./random.js?v=r724-477fbde1400a";
+import { updateAstralActor } from "./astral-worm.js?v=r724-477fbde1400a";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -495,7 +495,7 @@ export const MONSTER_PACK = {
     attacks: ["clawSweep", "leapSlam"], bossAttacks: [],
     palette: ["#8a70b8", "#24183a", "#9ff8ff", "#f0ffff"], render: "crystalCrab", tags: ["beast", "crystal"],
     lore: "A great crab of the Crystal Civilisation that wears a geode the size of a barrel. It sidles round you and springs, pincers first, like its little cousins in the canyons." },
-  // Release r717-28789eeae12c (Tim: "different versions of the lightning giant... way far out... all the monsters and all the creatures are
+  // Release 717 (Tim: "different versions of the lightning giant... way far out... all the monsters and all the creatures are
   // lighting giants... different variations, so it looks like this is their lightning giant civilization"): its kin (FAR_CIVS.storm).
   stormling: { id: "stormling", prototypeOnly: true, farKin: true, noEcho: true, name: "Stormling", epithet: "A Young Giant",
     stats: [75, 10, 0], form: { scale: .95 }, sizeClass: "large", movement: "walk", brain: "duelist",
@@ -512,6 +512,35 @@ export const MONSTER_PACK = {
     attacks: ["giantShock", "giantSlam"], bossAttacks: [],
     palette: ["#7a6a58", "#221c16", "#ffe08a", "#fff8e0"], render: "lightningGiant", tags: ["construct", "lightning"],
     lore: "A broad-shouldered robot that hauls stone and charge through the Storm Halls. It does not like to be interrupted: it slams the ground and the shock runs out through it." },
+  // Release 719 (Tim: "a section with the landscape as all like inky, black... melting... ingly black creatures... the astral
+  // worm... his homeland... many creatures that look like the different versions of the astral worm... multiple legs and the mouth
+  // and the blob... the griffin... the dragonfly... these creatures won't transform... smaller versions of him... normal size"):
+  // the Ink Wastes' own kin (far-realms.ts FAR_INK), each one of the Worm's shapes kept for good (drawn with drawAstralWorm).
+  inkPool: { id: "inkPool", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Pool", epithet: "A Shape of the Astral Worm", inkForm: "pool", inkScale: .68,
+    stats: [70, 9, 0], form: { scale: 1 }, sizeClass: "medium", movement: "walk", brain: "duelist",
+    attacks: ["bite", "groundRupture"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "A pool of living ink that keeps the Astral Worm's resting shape, as wide as a cart, that rises at your feet and bites." },
+  inkGriffin: { id: "inkGriffin", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Griffin", epithet: "A Shape of the Astral Worm", inkForm: "griffin", inkScale: .58,
+    stats: [85, 11, 0], form: { scale: 1 }, sizeClass: "medium", movement: "hover", brain: "duelist",
+    attacks: ["diveBomb", "clawSweep"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "An eagle and a lion grown from one black ink, the size of a horse: the Astral Worm's griffin shape, small and settled into it for good. It stoops and rakes." },
+  inkWing: { id: "inkWing", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Wing", epithet: "A Shape of the Astral Worm", inkForm: "flight", inkScale: .52,
+    stats: [55, 9, 0], form: { scale: 1 }, sizeClass: "medium", movement: "hover", brain: "duelist",
+    attacks: ["diveBomb", "bite"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "A long black dragonfly of ink, the Astral Worm's flying shape in small. It darts in and bites." },
+  inkStrider: { id: "inkStrider", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Strider", epithet: "A Shape of the Astral Worm", inkForm: "trample", inkScale: .56,
+    stats: [90, 11, 0], form: { scale: 1 }, sizeClass: "medium", movement: "walk", brain: "duelist",
+    attacks: ["ramCharge", "bite"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "A many-legged thing of ink, the Astral Worm's trampling shape, that runs you down and stamps." },
+  inkMaw: { id: "inkMaw", prototypeOnly: true, farKin: true, noEcho: true, name: "Ink Maw", epithet: "A Shape of the Astral Worm", inkForm: "bite", inkScale: .56,
+    stats: [75, 12, 0], form: { scale: 1 }, sizeClass: "medium", movement: "walk", brain: "duelist",
+    attacks: ["bite", "leapSlam"], bossAttacks: [],
+    palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
+    lore: "Mostly mouth: the Astral Worm's biting shape in small, a black maw on legs of ink." },
   mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
     id: "mothChrysalis", prototypeOnly: true, name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true, // not a creature of the roster: only the great trees hang it
     stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",
