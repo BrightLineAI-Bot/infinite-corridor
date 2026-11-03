@@ -18,7 +18,7 @@ function world({ size = 32, player = { x: 16, y: 12 } } = {}) {
     open, tileOpen: (x, y) => open(x - .5, y - .5), los: () => true,
     move(e, dx, dy) { if (!open(e.x + dx, e.y + dy)) return false; e.x += dx; e.y += dy; return true; },
     hurt(source, amount, opts = {}) { w.hurts.push({ amount, source: opts.source }); w.player.hp -= amount; return true; },
-    slow() {}, push() { w.pushes++; return true; }, pull() {}, poison() {}, stun() {},
+    slow() {}, push() { w.pushes++; return true; }, pulls: 0, pull() { w.pulls++; return true; }, poison() {}, stun() {},
     addEffect(effect) { addPackEffect(w.fx, effect, w.now); }, effects: () => w.fx,
   };
   return w;
@@ -35,7 +35,7 @@ const by = (w, source) => w.hurts.filter((h) => h.source === source).length;
 test('registry: a flying world beast with seven attacks and a lantern beam, its own home, poise, Echo and Aperture gate', () => {
   const B = WORLD_BEASTS.ashenMoth, def = MONSTER_PACK.ashenMoth;
   assert.equal(B.home, 'firelands'); assert.equal(B.tries, 4); assert.equal(B.retreatMoves, 'through'); assert.equal(def.movement, 'hover');
-  assert.equal(def.attacks.length, 9); // release 708: Silk Threads, Silk Burst assert.deepEqual(def.bossAttacks, ['sweepBeam']); for (const id of [...def.attacks, ...def.bossAttacks]) assert.ok(ATTACK_MODULES[id], id);
+  assert.equal(def.attacks.length, 10); // release 708: Silk Threads, Silk Burst, Ash Gale assert.deepEqual(def.bossAttacks, ['sweepBeam']); for (const id of [...def.attacks, ...def.bossAttacks]) assert.ok(ATTACK_MODULES[id], id);
   assert.ok(ECHOES.ashenMoth); assert.ok(BOSS_POISE.ashenMoth); assert.equal(BEAST_APERTURE.ashenMoth, 7);
   assert.ok(BEAST_HOMES.firelands.tile({ kind: 'ash' })); assert.equal(BEAST_HOMES.firelands.tile({ kind: 'grass' }), false);
 });
@@ -112,4 +112,14 @@ test('silk threads: a fan that bends toward you for a while, then flies straight
   const b = world({ player: { x: 20, y: 12 } }), e2 = moth(b, 'mothThreadBlast'); until(b, e2, 'mothThreadBlast'); step(b, 3);
   assert.ok(by(b, 'mothThreadBlast') >= 1, 'the knots find you'); const ctx = new Proxy({}, { get: (_, k) => k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}, set: () => true });
   drawPackEffects(ctx, [{ kind: 'silk', x: 3, y: 3, vx: 1, vy: 0, radius: .24, trail: [[1, 3], [2, 3]], life: 1, damage: 3 }, { kind: 'silk', big: true, x: 5, y: 3, vx: 1, vy: 0, radius: .55, trail: [[3, 3], [4, 3]], life: 1, damage: 3 }], 32, 1000);
+});
+
+test('ash gale: two giant whirlwinds roll about for a while, rebounding, dragging and battering whoever they catch', () => {
+  const w = world({ player: { x: 16, y: 12 } }), e = moth(w, 'mothGale'); until(w, e, 'mothGale'); step(w, ATTACK_MODULES.mothGale.windup * 1.3);
+  const gales = w.fx.filter((f) => f.kind === 'gale'); assert.equal(gales.length, MOTH.gale.count); assert.ok(gales[0].radius >= 2, 'giant');
+  const g = gales[0], start = { x: g.x, y: g.y }; let minX = 99, maxX = -99, minY = 99, maxY = -99;
+  step(w, 6, () => { minX = Math.min(minX, g.x); maxX = Math.max(maxX, g.x); minY = Math.min(minY, g.y); maxY = Math.max(maxY, g.y); });
+  assert.ok(Math.hypot(g.x - start.x, g.y - start.y) > 1 || maxX - minX > 4, 'it rolls about'); assert.ok(minX >= MOTH.gale.edge - .01 && maxX <= 31 - MOTH.gale.edge + .01 && minY >= MOTH.gale.edge - .01 && maxY <= 31 - MOTH.gale.edge + .01, 'and stays on the screen');
+  w.player.x = g.x; w.player.y = g.y; const hurt = by(w, 'mothGale'); step(w, 1, () => { w.player.x = g.x; w.player.y = g.y; }); assert.ok(by(w, 'mothGale') > hurt, 'caught, you are battered'); assert.ok(w.pulls > 0, 'and dragged');
+  e.packAttacks = ['mothGust']; step(w, MOTH.gale.life); assert.equal(w.fx.filter((f) => f.kind === 'gale').length, 0, 'they blow out in time');
 });

@@ -148,6 +148,8 @@ export const ATTACK_MODULES = {
   // the nanobot knight's homing orbs... but they should home in on the player for a while").
   mothThreads: { id: "mothThreads", name: "Silk Threads", range: [0, 12], cooldown: 7, windup: .6, recover: .5, damage: .55, tags: ["ranged"], text: "Threads of white silk lash out from its body in a fan, curving after you for a moment before they fly straight, trailing silk." },
   mothThreadBlast: { id: "mothThreadBlast", name: "Silk Burst", range: [0, 13], cooldown: 10, windup: 1, recover: .6, damage: 1.3, tags: ["ranged"], text: "Its threads gather into two great knots of silk that launch at you one after the other and follow you for a while. Each bursts where it strikes." },
+  // Release 708 (Tim, 2026-11-03: "the moth can make large whirlwinds, like gigantic whirlwinds that roll around the... screen for a while").
+  mothGale: { id: "mothGale", name: "Ash Gale", range: [0, 14], cooldown: 16, windup: 1, recover: .5, damage: .6, tags: ["control", "summon"], text: "It beats up two great whirlwinds of ash and embers that roll about the land for a while, rebounding off whatever stops them. Caught in one, you are dragged toward its heart, slowed and battered." },
   // The Nanobot Knight's kit (release 245, Tim 2026-10-19: black with red accents; teleports or dissolves into mist;
   // physical hits scatter it unless elemental, a spell or an Echo-glyphed weapon; Abyss Watcher sword slides; an arm
   // laser cannon; swords falling from the sky; homing orbs that
@@ -398,7 +400,7 @@ export const MONSTER_PACK = {
   ashenMoth: {
     id: "ashenMoth", name: "The Ashen Moth", epithet: "The Lantern in the Smoke", unique: true,
     stats: [280, 16, 0], form: { scale: 1.6 }, sizeClass: "large", movement: "hover", brain: "orbit",
-    attacks: ["mothGust", "mothDust", "mothDive", "mothSpiral", "mothSwarm", "mothCocoon", "mothKindle", "mothThreads", "mothThreadBlast"], bossAttacks: ["sweepBeam"],
+    attacks: ["mothGust", "mothDust", "mothDive", "mothSpiral", "mothSwarm", "mothCocoon", "mothKindle", "mothThreads", "mothThreadBlast", "mothGale"], bossAttacks: ["sweepBeam"],
     palette: ["#4a4440", "#16120f", "#ff8a2a", "#ffe2b0"], render: "ashenMoth", tags: ["beast", "elder", "fire", "flying"],
     lore: "A moth as wide as a house, grey as cold ash, the eyes on its wings two embers that never go out. Its wings throw you back and shake down burning dust; it dives through you and leaves the ground alight, turns spirals of embers, sends little burning moths after you, hides in a cocoon of ash that bursts, and sweeps you with the light of its lantern eyes. Kindled, it burns from wingtip to wingtip.",
   },
@@ -576,7 +578,7 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
 // damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
-export const HIT_FOOTPRINT = { pad: { silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
+export const HIT_FOOTPRINT = { pad: { gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
 export function effectFootprint(f) {
   if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
@@ -727,6 +729,7 @@ export const MOTH = {
   cocoonRing: 5, cocoonEmbers: 10,
   // Release 708: silk. Homing gentler than the Knight's orbs (orbTurn 3.2 rad/s for 2 s): `turn` rad/s for `home` s, then straight.
   threads: { count: 7, arc: 150, speed: 7, turn: 1.9, home: 1.2, life: 2.2, radius: .24, trail: 9 },
+  gale: { count: 2, radius: 2.2, speed: 2.6, life: 10, tick: .5, pull: 2.2, slow: .6, edge: 1 }, // edge: kept this far inside the section
   burst: { count: 2, gap: .45, speed: 6, turn: 1.5, home: 1.6, life: 3, radius: .55, blast: 1.4, trail: 12 },
   kindle: { time: 9, speed: 1.4, trailEvery: .35, dustEvery: .8, dustRing: [1, 3.5], dustArm: .7, dustRadius: .8, dustShare: .7 },
 };
@@ -1103,6 +1106,7 @@ const START = {
   mothCocoon(e, s) { s.tele = { type: "brace" }; e.mothPose = "fold"; },
   mothKindle(e, s) { s.tele = { type: "brace" }; e.mothPose = "raise"; },
   mothThreads(e, s) { s.tele = { type: "brace" }; e.mothPose = "raise"; },
+  mothGale(e, s) { s.tele = { type: "brace" }; e.mothPose = "beat"; },
   mothThreadBlast(e, s) { s.tele = { type: "brace" }; e.mothPose = "fold"; s.data.shot = 0; s.data.next = 0; },
   voidHand(e, s, w) { voidBasicStart(e, s, w, "hand"); },
   voidClaw(e, s, w) { voidBasicStart(e, s, w, "claw"); },
@@ -1345,6 +1349,12 @@ const RUN = {
       for (let i = 0; i < MOTH.cocoonEmbers; i++) mothEmber(e, w, i * Math.PI * 2 / MOTH.cocoonEmbers, Math.ceil(dmg * .6));
       toPhase(s, "recover", A.recover);
     }
+  },
+  mothGale(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const G = MOTH.gale, p = center(w.player), base = Math.atan2(p.y - e.y, p.x - e.x);
+    for (let i = 0; i < G.count; i++) { const a = base + (i ? 1 : -1) * .9, d = bodyRadius(e) + 1.5; w.addEffect({ kind: "gale", owner: e.id, x: e.x + Math.cos(a) * d, y: e.y + Math.sin(a) * d, vx: Math.cos(a) * G.speed, vy: Math.sin(a) * G.speed, radius: G.radius, arming: 0, life: G.life, total: G.life, seed: hashSeed(`${e.id}:${s.seq}:gale:${i}`), damage: damageOf(e, "mothGale") }); }
+    e.mothPose = null; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.mothGale.recover);
   },
   mothThreads(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
@@ -3196,6 +3206,14 @@ export function tickPackEffects(effects, w) {
       const due = Math.floor((f.age - f.warn) / f.every);
       while (f.burst < Math.min(f.steps - 1, due)) { f.burst++; const sx = f.x + f.dx * f.burst * f.step, sy = f.y + f.dy * f.burst * f.step;
         if (!f.hit && Math.hypot(p.x - sx, p.y - sy) <= f.radius + .3) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "stagRoots" }); } }
+    } else if (f.kind === "gale") { // release 708: a giant whirlwind rolling about, rebounding off walls and the section's edges
+      const G = MOTH.gale, turn = Math.sin(f.age * .8 + (f.seed % 100)) * .6 * w.dt, c = Math.cos(turn), sn = Math.sin(turn); [f.vx, f.vy] = [f.vx * c - f.vy * sn, f.vx * sn + f.vy * c];
+      let nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt; const lo = G.edge, hi = 31 - G.edge;
+      if (nx < lo || nx > hi || (w.tileOpen && !w.tileOpen(nx + .5, f.y + .5))) { f.vx = -f.vx; nx = f.x; }
+      if (ny < lo || ny > hi || (w.tileOpen && !w.tileOpen(f.x + .5, ny + .5))) { f.vy = -f.vy; ny = f.y; }
+      f.x = nx; f.y = ny;
+      if (distance(p, f) <= f.radius) { w.pull?.(f, G.pull * w.dt, f.radius + .5); w.slow(G.slow, .3); if (!(f.nextBite > f.age)) { f.nextBite = f.age + G.tick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "mothGale", beam: true }); } }
+      if (!w.enemies.some((q) => q.id === f.owner && !q.dead) && f.life > 1) f.life = 1;
     } else if (f.kind === "silk") { // release 708: the Moth's threads, homing for `home` s, a trail of silk behind
       if (f.age <= f.home) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-f.turn * w.dt, Math.min(f.turn * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; }
       const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt; (f.trail ||= []).push([before.x, before.y]); if (f.trail.length > f.trailMax) f.trail.shift();

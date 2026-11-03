@@ -6,7 +6,7 @@ export const MOTH_ART = {
   body: "#3a3430", fur: "#6a625a", ember: "#ffb04a", fire: "#ff7a1a", fireCore: "#ffe8b0", ash: "#8a847c",
   hover: .75, bob: .08, flap: 7,
 };
-export const MOTH_EFFECT_KINDS = new Set(["emberDust", "silk"]);
+export const MOTH_EFFECT_KINDS = new Set(["emberDust", "silk", "gale"]);
 
 const smoothing = new WeakMap();
 function eased(e, key, target, now, rate) {
@@ -84,6 +84,14 @@ export function drawMothEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
     ctx.translate(x, cy); ctx.rotate(a + Math.PI / 2); ctx.fillStyle = A.fire;
     for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(side * s * .16 * (.4 + flap), 0, s * .16 * (.4 + flap), s * .11, side * .4, 0, TAU); ctx.fill(); }
     ctx.fillStyle = A.fireCore; ctx.beginPath(); ctx.ellipse(0, 0, s * .045, s * .1, 0, 0, TAU); ctx.fill();
+  } else if (f.kind === "gale") { // release 708: a giant whirlwind of ash and embers
+    const fade = Math.min(1, life, (Number(f.age) || 0) * 2), h = s * 4.6, spin = reduceMotion ? 0 : now / 140 + (f.seed % 100);
+    ctx.globalAlpha = fade; ctx.fillStyle = "rgba(30,24,20,.35)"; ctx.beginPath(); ctx.ellipse(x, y, r, r * .45, 0, 0, TAU); ctx.fill();
+    { const g = ctx.createLinearGradient(x, y - h, x, y); g.addColorStop(0, "rgba(150,140,130,.08)"); g.addColorStop(1, "rgba(120,110,100,.3)"); ctx.fillStyle = g; const sw = Math.sin(spin * .25 + 2.4) * s * .35; ctx.beginPath(); ctx.moveTo(x - r * .3, y); ctx.quadraticCurveTo(x - r * .55, y - h * .5, x - r * 1.15 + sw, y - h); ctx.lineTo(x + r * 1.15 + sw, y - h); ctx.quadraticCurveTo(x + r * .55, y - h * .5, x + r * .3, y); ctx.closePath(); ctx.fill(); } // a dusty body behind the rings
+    for (let i = 0; i < 12; i++) { const k = i / 11, yy = y - h * k, rr = r * (.3 + k * .85), sway = Math.sin(spin * .25 + k * 2.4) * s * .35 * k;
+      ctx.strokeStyle = `rgba(${150 - i * 4},${140 - i * 4},${130 - i * 4},${.75 - k * .35})`; ctx.lineWidth = Math.max(2, s * (.09 - k * .03)); ctx.beginPath(); ctx.ellipse(x + sway, yy, rr, rr * .28, 0, spin + i * .7, spin + i * .7 + Math.PI * 1.5); ctx.stroke(); }
+    for (let i = 0; i < 14; i++) { const k = ((i * .37 + (reduceMotion ? 0 : now / 1800)) % 1), a = spin * 1.3 + i * 2.1, rr = r * (.3 + k * .85); ctx.fillStyle = i % 3 ? "rgba(255,138,42,.85)" : "rgba(200,190,180,.8)"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * rr + Math.sin(spin * .25 + k * 2.4) * s * .35 * k, y - h * k + Math.sin(a) * rr * .28, Math.max(1, s * .04), 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1;
   } else if (f.kind === "silk") { // release 708: a thread of silk with its trail, or a great knot of it
     const lift = s * .5, pts = [...(f.trail || []), [f.x, f.y]], big = !!f.big;
     for (let n = 0; n < (big ? 3 : 1); n++) { ctx.beginPath(); pts.forEach(([px, py], i) => { const wob = big ? Math.sin(i * 1.3 + n * 2) * s * .08 : 0, X = (px + .5) * s + wob, Y = (py + .62) * s - lift + wob * .6; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
