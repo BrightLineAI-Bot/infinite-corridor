@@ -7,10 +7,10 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r706-4f225c254da4";
-import { READING_BANDS } from "./lore.js?v=r706-4f225c254da4";
+import { hashSeed } from "./random.js?v=r707-9f6fba1549e9";
+import { READING_BANDS } from "./lore.js?v=r707-9f6fba1549e9";
 
-export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025 };
+export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
 // ten, so no crossing changes the thread it already offered.
 // band: which stretch of the map holds the thread, as a distance from the Refuge (THREAD_BANDS; they overlap, so a crossing may
@@ -130,6 +130,18 @@ export const THREADS = {
       "The end of the rope, knotted round a wooden cup, the cup full to the brim and dry. The last tag, in a child's hand: \"Papa went down to see where the stone went. He said hold the rope. We are holding it. It still pulls sometimes.\"",
     ],
     ending: "The rope runs down from the cup into nothing you can see, and when you put your hand to it, it pulls: once, slow, the way a man in deep water pulls to say he is still there. Somewhere a village is standing in thin ground holding a rope. The Corridor does not say what is at the other end. It only lets you feel that something is, and that it is still digging." },
+  // The narrative pass of release 707 (docs/narrative-bible.md section 1: the Corridor keeps what is read and loses what is not;
+  // doors in it open onto where things were read last). Wave 3: rolled apart from waves 1 and 2, so no crossing changes.
+  tollKeys: { title: "The Tollkeeper's Keys", band: "middle", relic: "key", colour: "#d8c070", wave: 3,
+    pieces: [
+      "An iron key as long as your forearm, on a ring with a paper tag: \"Gate of the North Road. Toll one copper. If the gate is gone, the key still knows where it stood.\"",
+      "A brass key, smaller, its teeth worn smooth. The tag: \"The mill door. The mill burned in my grandfather's time, but people still knock, so I keep the key. Sometimes the knocking stops when I turn it in the air.\"",
+      "A small key of bone. The tag, in a careful hand: \"Our house. I locked it when we left for the Refuge. I told the children we would come back. There is no house now and no road to it, but I lock it again every night, so it is kept.\"",
+      "A key no longer than a finger, warm to hold. The tag: \"I do not know what this opens. I found it in my pocket after a dream about a door with light under it. Every key I have ever carried has been to somewhere I was. This one is to somewhere I have not been yet.\"",
+      "A key of glass, so clear you see it only by the tag tied to it: \"I tried it in the air at the edge of the world and the air had a keyhole. I did not turn it. I am the tollkeeper; I have never once been the one who goes through.\"",
+      "The last ring holds no key at all, only the tag: \"I gave the glass key to a traveller who did not know where they came from. If you are reading this, it was you. Turn it when you are ready. The toll is paid.\"",
+    ],
+    ending: "The tollkeeper kept every door his people ever passed through, long after the doors were gone, because a door that someone still holds the key to is not quite lost. The Corridor works like that: what is still kept, still is. He gave the last key away to someone with no door of their own. You feel for it in your pocket and do not find it, and then you do, warm, as if you had been carrying it the whole time." },
 };
 export const THREAD_ORDER = Object.keys(THREADS);
 const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave); // the first ten (release 627): what a crossing offered then, it still offers
@@ -145,9 +157,15 @@ export function threadIn(seed, dungeonId) {
 }
 // A thread written after the first ten, in a crossing that holds none of them (THREAD_RULES.later, by seed).
 function laterThreadIn(seed, dungeonId, rx, ry) {
-  if ((hashSeed(`${seed}:threads:later:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.later) return null;
-  const here = THREAD_ORDER.filter((id) => THREADS[id].wave && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  if ((hashSeed(`${seed}:threads:later:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.later) return thirdThreadIn(seed, dungeonId, rx, ry);
+  const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 2 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return thirdThreadIn(seed, dungeonId, rx, ry);
   return here[hashSeed(`${seed}:threads:later:which:v1:${dungeonId}`) % here.length];
+}
+// Release r707-9f6fba1549e9: wave 3 threads, rolled only where neither earlier roll placed a thread (THREAD_RULES.third), so none moves.
+function thirdThreadIn(seed, dungeonId, rx, ry) {
+  if ((hashSeed(`${seed}:threads:third:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.third) return null;
+  const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 3 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  return here[hashSeed(`${seed}:threads:third:which:v1:${dungeonId}`) % here.length];
 }
 export function ensureThreadState(save) {
   const lore = (save.lore ||= {});

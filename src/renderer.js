@@ -1,28 +1,28 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r706-4f225c254da4";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r706-4f225c254da4";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r706-4f225c254da4";
-import { enemyMeleeGeometry } from "./combat.js?v=r706-4f225c254da4";
-import { ruleRows } from "./elders.js?v=r706-4f225c254da4";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r706-4f225c254da4";
-import { BOAT } from "./boats.js?v=r706-4f225c254da4";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r706-4f225c254da4";
-import { isMarineTile } from "./world-beasts.js?v=r706-4f225c254da4";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r706-4f225c254da4"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r706-4f225c254da4";
-import { setTreeSeason } from "./landscape-render.js?v=r706-4f225c254da4";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r706-4f225c254da4";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r706-4f225c254da4";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r706-4f225c254da4";
-import { TREES } from "./trees.js?v=r706-4f225c254da4";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r706-4f225c254da4";
-import { KIT_MOVES } from "./boss-kit.js?v=r706-4f225c254da4";
-import { SKY_DISCS } from "./skylands.js?v=r706-4f225c254da4"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r706-4f225c254da4";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r706-4f225c254da4"; // release 678
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r706-4f225c254da4";
-import { drawRelayNode } from "./relay-network.js?v=r706-4f225c254da4";
-import { structureOccupancy } from "./world.js?v=r706-4f225c254da4";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r706-4f225c254da4";
+import { astralBeamAnchors } from "./astral-worm.js?v=r707-9f6fba1549e9";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r707-9f6fba1549e9";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r707-9f6fba1549e9";
+import { enemyMeleeGeometry } from "./combat.js?v=r707-9f6fba1549e9";
+import { ruleRows } from "./elders.js?v=r707-9f6fba1549e9";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r707-9f6fba1549e9";
+import { BOAT } from "./boats.js?v=r707-9f6fba1549e9";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r707-9f6fba1549e9";
+import { isMarineTile } from "./world-beasts.js?v=r707-9f6fba1549e9";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r707-9f6fba1549e9"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r707-9f6fba1549e9";
+import { setTreeSeason } from "./landscape-render.js?v=r707-9f6fba1549e9";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r707-9f6fba1549e9";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r707-9f6fba1549e9";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r707-9f6fba1549e9";
+import { TREES } from "./trees.js?v=r707-9f6fba1549e9";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r707-9f6fba1549e9";
+import { KIT_MOVES } from "./boss-kit.js?v=r707-9f6fba1549e9";
+import { SKY_DISCS } from "./skylands.js?v=r707-9f6fba1549e9"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r707-9f6fba1549e9";
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r707-9f6fba1549e9"; // release 678
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r707-9f6fba1549e9";
+import { drawRelayNode } from "./relay-network.js?v=r707-9f6fba1549e9";
+import { structureOccupancy } from "./world.js?v=r707-9f6fba1549e9";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r707-9f6fba1549e9";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1024,6 +1024,7 @@ export function drawThreadRelic(ctx, o, s, now) {
     case "book": R(-.18, -.14, .36, .28); ctx.fillStyle = "#2a241c55"; ctx.fillRect(-s * .02, -s * .14, s * .04, s * .28); break;
     case "seed": ctx.rotate(.2); ctx.beginPath(); ctx.moveTo(0, -s * .2); ctx.quadraticCurveTo(s * .16, 0, 0, s * .16); ctx.quadraticCurveTo(-s * .16, 0, 0, -s * .2); ctx.fill(); ctx.stroke(); break;
     case "rope": ctx.lineWidth = Math.max(2, s * .05); for (let r = .16; r > .04; r -= .045) { ctx.beginPath(); ctx.ellipse(0, s * .06, s * r, s * r * .55, 0, 0, 7); ctx.stroke(); } ctx.strokeStyle = c; ctx.lineWidth = Math.max(1.5, s * .035); for (let r = .16; r > .04; r -= .045) { ctx.beginPath(); ctx.ellipse(0, s * .06, s * r, s * r * .55, 0, 0, 7); ctx.stroke(); } ctx.strokeStyle = "#2a241c"; ctx.beginPath(); ctx.moveTo(s * .14, s * .06); ctx.quadraticCurveTo(s * .2, -s * .12, s * .08, -s * .2); ctx.stroke(); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(s * .08, -s * .2, s * .04, 0, 7); ctx.fill(); ctx.stroke(); break; // the Well-Digger's Rope
+    case "key": ctx.lineWidth = Math.max(1.5, s * .035); ctx.strokeStyle = "#2a241c"; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(-s * .1, 0, s * .07, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#2a241c"; ctx.beginPath(); ctx.arc(-s * .1, 0, s * .025, 0, 7); ctx.fill(); ctx.fillStyle = c; ctx.fillRect(-s * .04, -s * .018, s * .2, s * .036); ctx.strokeRect(-s * .04, -s * .018, s * .2, s * .036); ctx.fillRect(s * .1, s * .018, s * .03, s * .05); ctx.fillRect(s * .05, s * .018, s * .03, s * .035); break; // release 707: the Tollkeeper's Keys
     case "compass": ctx.beginPath(); ctx.arc(0, 0, s * .16, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#b03a2e"; ctx.beginPath(); ctx.moveTo(0, -s * .12); ctx.lineTo(s * .04, 0); ctx.lineTo(-s * .04, 0); ctx.fill(); break;
     default: ctx.beginPath(); ctx.moveTo(-s * .18, s * .14); ctx.quadraticCurveTo(-s * .2, -s * .16, s * .02, -s * .18); ctx.quadraticCurveTo(s * .22, -s * .1, s * .12, s * .1); ctx.quadraticCurveTo(0, s * .2, -s * .18, s * .14); ctx.fill(); ctx.stroke(); // a shell
   }

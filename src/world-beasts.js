@@ -1,15 +1,15 @@
-import { mealLure } from "./meals.js?v=r706-4f225c254da4";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r706-4f225c254da4";
+import { mealLure } from "./meals.js?v=r707-9f6fba1549e9";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r707-9f6fba1549e9";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r706-4f225c254da4";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r706-4f225c254da4";
-import { sectionExits, apertureTier } from "./world.js?v=r706-4f225c254da4";
-import { stageOneBeastReference } from "./stages.js?v=r706-4f225c254da4";
+import { hashSeed } from "./random.js?v=r707-9f6fba1549e9";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r707-9f6fba1549e9";
+import { sectionExits, apertureTier } from "./world.js?v=r707-9f6fba1549e9";
+import { stageOneBeastReference } from "./stages.js?v=r707-9f6fba1549e9";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -105,7 +105,7 @@ export const WORLD_BEASTS = {
     slain: "The Briar Stag goes down on its knees; its crown withers, and its blossoms fall like snow.",
     gone: "The Briar Stag has run you down enough, and bounds away. In time it will rut somewhere else.",
   },
-  // Release r706-4f225c254da4 (the same ask): a moth of ash and ember. It flies home over everything to the ash lands and settles into the ash.
+  // Release 706 (the same ask): a moth of ash and ember. It flies home over everything to the ash lands and settles into the ash.
   ashenMoth: {
     kind: "ashenMoth", name: "The Ashen Moth", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .21, speed: 1.1, attackGap: .22, staggerResistance: .9, rewardMarks: 185, rewardPerLevel: 18,
