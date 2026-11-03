@@ -93,7 +93,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits } from "./landscape.ts";
 import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
-import { BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
+import { STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot, addStone } from "./digging.ts";
@@ -4281,6 +4281,7 @@ export class Game {
       held(source) { return now < (p.heldUntil || 0) && p.heldBy === source.id; },
       release(source) { if (p.heldBy === source.id) p.heldUntil = 0; },
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * step, ddy / dd * step); return true; }, // release 235: the Blob's jet
+      ignite(seconds, dps) { if (now < (p.dodgeUntil || 0)) return; const f = game.playerFire; game.playerFire = { left: Math.max(f?.left || 0, seconds), dps: Math.max(f?.dps || 0, dps), tick: f?.tick ?? 1 }; }, // release 708: set alight (the Briar Stag's burning trees)
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(ensureEliteState(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
       elevation: (x, y) => elevationAt(map, width, x, y), // release 235: high ground stays above the Blob
@@ -6056,13 +6057,14 @@ export class Game {
     this.tickFractured(now); // release 651: Fractured mode
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
+    if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) this.castSlot("a");
     if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge")) {
-      const r = dodge(p, now, x, y, dodgeCost(this.save));
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) p.dodgeMired = mired; // release 708: the Briar Stag's mire
       if (!r.ok) this.message = "Not enough stamina to dodge.";
       else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (fieldOn(this.save, "drift-field")) { const q = this.player, cx = q.x + .5, cy = q.y + .45, f = this.ownSpellFx(true).filter((e) => Math.hypot(e.x - cx, e.y - cy) <= FIELD_PASSIVES["drift-field"].reach).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (f) this.driftField = { id: f.id, at: q.dodgeUntil || now }; } /* release 515: Drift Field */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "shadowStep") && !this.shadowCloneActive(now)) { const o = cloneOffset({ x: Number(x) || p.lastMoveVector?.x || 0, y: Number(y) || p.lastMoveVector?.y || 1 }, this.save.lastAim, SHADOW_STEP.behind); this.shadowClone = { ox: o.x, oy: o.y, until: now + SHADOW_STEP.seconds * 1000, marginalia: true }; } /* release 461: Shadow Step */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.dodgeBurst(p.x + .5, p.y + .45, EMBER_WAKE.radius, EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1), now); /* release 459; 481: dodgeBurst */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
     }
@@ -6093,13 +6095,14 @@ export class Game {
     if (this.area === "overworld" && aboard(this.save) && (input.held?.("build") && activeButton(this.save).mode === "build" || ["spell", "spell2"].some((k, i) => input.held?.(k) && slotTool(this.save, i ? "b" : "a")?.tool === "build"))) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
     else { this.buildHold = 0; this.buildHoldDone = false; } // release 265: raise a wood wall or stone block in front
     const dodging = now < (p.dodgeUntil || 0);
+    this.stagMireMoving = dodging || Math.hypot(x, y) > .15; // release 708
     if (dodging) {
       x = p.dodgeX;
       y = p.dodgeY;
     }
     const swimming = this.swimsHere(footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y)), underfoot = this.map.landscape ? tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind : null;
     const sailing = this.area === "overworld" && aboard(this.save);
-    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (this.map.underwater ? DIVE.speed : 1) * (sailing ? BOAT.speed : swimming ? (this.mechUp() ? MECH_WATER.speed : TIDEMANTLE.speed) : dodging ? 1 : mireSpeed(underfoot)),
+    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (this.map.underwater ? DIVE.speed : 1) * (sailing ? BOAT.speed : swimming ? (this.mechUp() ? MECH_WATER.speed : TIDEMANTLE.speed) : dodging ? (p.dodgeMired ? STAG.mire.dodgeSpeed : 1) : mireSpeed(underfoot)),
       dx = x * speed * dt,
       dy = y * speed * dt;
     // Sailing has momentum: velocity eases toward the stick; a dodge is an oar burst.
@@ -6335,6 +6338,7 @@ export class Game {
     // Release 283: dungeon water is deadly. Entered (or still swum) without stamina it drowns; otherwise it wounds quickly.
     if (this.swimming && !this.mechUp() && this.area === "dungeon" && !this.map.underwater) { /* release 507: not in the robot */ const toll = dungeonWaterToll(p, dt, this.save.maxHp); if (toll === Infinity) { p.hp = 0; this.message = "Out of stamina in the dark water: it drags you under."; } else if (toll > 0) { p.hp = Math.max(0, p.hp - toll); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "The dungeon water bites: get out before your stamina gives."; } } }
     if (this.swimming && !this.mechUp() && p.hp > 0) { /* release 507: the robot costs no stamina in water */ const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
+    else if (this.stagMireMoving && stagMireAt(this.packEffects, p.x, p.y)) p.stamina = Math.max(0, p.stamina - (p.maxStamina || this.save.maxStamina) * STAG.mire.drain * dt); // release 708: moving on the mire drains stamina; standing still it comes back
     else p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * (1 + armorGlyphBonus(this.save).staminaRegen) * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);

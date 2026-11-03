@@ -162,6 +162,8 @@ function laterThreadIn(seed, dungeonId, rx, ry) {
   return here[hashSeed(`${seed}:threads:later:which:v1:${dungeonId}`) % here.length];
 }
 // Release 707: wave 3 threads, rolled only where neither earlier roll placed a thread (THREAD_RULES.third), so none moves.
+// Never add another wave 2 thread to a band: crossings that hold a wave 3 thread because no wave 2 thread was in band would move.
+// A later thread is always a new wave with its own roll.
 function thirdThreadIn(seed, dungeonId, rx, ry) {
   if ((hashSeed(`${seed}:threads:third:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.third) return null;
   const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 3 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;

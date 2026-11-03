@@ -21,7 +21,8 @@ Taken at merge time: `main`'s release + 1 (see above). After 707, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 707 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: a new thread, The Tollkeeper's Keys (middle crossings, wave 3 roll); the Ashen Moth's dive stops at its lane's end | Merging. |
+| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | The Briar Stag's Burning Grove, Rooted Mend, Hunting Birds and Mire Ground; the player can burn | Building. |
+| 707 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: a new thread, The Tollkeeper's Keys (middle crossings, wave 3 roll); the Ashen Moth's dive stops at its lane's end | Merged (`r707-9f6fba1549e9`). |
 | 706 | Claude | `claude/dreamy-rubin-yn6q2p` | Another world boss, the Ashen Moth: flying, seven attacks and the lantern beam, ash-land home, Echo | Merged (`r706-4f225c254da4`). Published in r706. |
 | 705 | Claude | `claude/dreamy-rubin-yn6q2p` | A new world boss, the Briar Stag: eight attacks, forest home, Echo | Merged (`r705-fa47a5177092`). Published in r705. |
 | 704 | Claude | `claude/dreamy-rubin-yn6q2p` | The Far Gate climbs after 1, 2, 3, 4… more Listener kills (Tim's rule); the robot, drone and +10 cap follow Gates opened | Merged (`r704-866a96e6316f`). |

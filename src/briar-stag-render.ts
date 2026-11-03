@@ -8,7 +8,7 @@ export const STAG_ART = {
   bramble: "#3d2a18", thorn: "#e8e0c8", blossom: "#f4f0ff", blossomCore: "#ffd8f0", eye: "#c8ff8a", fire: "#9cff6a", fireCore: "#e6ffd0",
   stride: .16, stanceShare: .6, settle: 6,
 };
-export const STAG_EFFECT_KINDS = new Set(["briar", "thorn", "rootLine", "rootRing", "stagSpike"]);
+export const STAG_EFFECT_KINDS = new Set(["briar", "thorn", "rootLine", "rootRing", "stagSpike", "burnTree", "birdDive", "mire"]);
 
 const gaits = new WeakMap();
 function gait(e, now, s, u) {
@@ -45,6 +45,7 @@ const POSES = {
   leap: { pitch: .1, head: .2, tuck: 1, gallop: 0, open: 0 },
   land: { pitch: -.12, head: -.35, tuck: .3, gallop: 0, open: 0, squat: .7 },
   bellow: { pitch: .18, head: .62, tuck: 0, gallop: 0, open: 1 },
+  mend: { pitch: .1, head: .75, tuck: 0, gallop: 0, open: 0 }, // release 708: crown raised to the sky
 };
 
 export function drawBriarStag(ctx, q, now = 0) {
@@ -58,6 +59,7 @@ export function drawBriarStag(ctx, q, now = 0) {
   const lift = Math.min(1, air / Math.max(1, u * 2));
   ctx.fillStyle = `rgba(8,6,4,${.42 * (1 - lift * .55)})`; ctx.beginPath(); ctx.ellipse(k, ground, u * .62 * (1 - lift * .4), u * .12 * (1 - lift * .4), 0, 0, TAU); ctx.fill();
   if (hunting) { const g = ctx.createRadialGradient(k, b - u * .7, u * .1, k, b - u * .7, u * 1.1); g.addColorStop(0, "rgba(156,255,106,.26)"); g.addColorStop(1, "rgba(156,255,106,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(k, b - u * .7, u * 1, u * 1.05, 0, 0, TAU); ctx.fill(); }
+  if (e.stagMending) { const g = ctx.createRadialGradient(k, b - u * 1.2, u * .05, k, b - u * 1.2, u * .9); g.addColorStop(0, "rgba(200,255,170,.45)"); g.addColorStop(1, "rgba(200,255,170,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(k, b - u * 1.2, u * .9, 0, TAU); ctx.fill(); if (!reduce) { ctx.fillStyle = "rgba(220,255,190,.8)"; for (let i = 0; i < 6; i++) { const ph = (t * .7 + i / 6) % 1; ctx.beginPath(); ctx.arc(k + Math.sin(i * 2.1) * u * .5, b - ph * u * 1.6, u * .018, 0, TAU); ctx.fill(); } } } // release 708: mending
   ctx.save(); ctx.translate(k, 0); ctx.scale(flip, 1);
   const lw = Math.max(1, u * .012), hipX = -u * .32, hipY = b - u * (.58 - squat * .1), shX = u * .3;
   // The body pivots about the hind hips when it rears.
@@ -151,7 +153,7 @@ export function drawStagEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
   } else if (f.kind === "thorn") {
     const a = Math.atan2(f.vy, f.vx), L = s * .34, cy = y - s * .35; ctx.translate(x, cy); ctx.rotate(a);
     ctx.strokeStyle = "rgba(230,255,208,.35)"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.moveTo(-L * 1.4, 0); ctx.lineTo(-L * .3, 0); ctx.stroke();
-    ctx.fillStyle = A.thorn; ctx.strokeStyle = A.bark; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L * .5, 0); ctx.lineTo(-L * .5, -s * .05); ctx.lineTo(-L * .35, 0); ctx.lineTo(-L * .5, s * .05); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = f.ember ? "#ff9a3a" : A.thorn; ctx.strokeStyle = A.bark; ctx.lineWidth = 1; if (f.ember) { ctx.shadowColor = "#ff7a1a"; ctx.shadowBlur = s * .2; } ctx.beginPath(); ctx.moveTo(L * .5, 0); ctx.lineTo(-L * .5, -s * .05); ctx.lineTo(-L * .35, 0); ctx.lineTo(-L * .5, s * .05); ctx.closePath(); ctx.fill(); ctx.stroke();
   } else if (f.kind === "rootLine") {
     for (let k = 0; k < f.steps; k++) {
       const px = (f.x + f.dx * k * f.step + .5) * s, py = (f.y + f.dy * k * f.step + .62) * s, at = f.warn + k * f.every, since = age - at;
@@ -164,6 +166,28 @@ export function drawStagEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
       const a = f.turn + i * TAU / f.spikes, px = (f.x + Math.cos(a) * f.ring + .5) * s, py = (f.y + Math.sin(a) * f.ring + .62) * s;
       if (!armed) warn(ctx, px, py, r, progress); else { ctx.globalAlpha = Math.min(1, life * 4); spike(ctx, px, py, s * .95, s * .18, Math.min(1, (f.total - life) * 10)); ctx.globalAlpha = 1; }
     }
+  } else if (f.kind === "burnTree") { // release 708: it grows, burns, then explodes
+    const age = Number(f.age) || 0, grow = Math.min(1, age / Math.max(.01, f.grow)), burning = age >= f.grow, end = f.grow + f.burn, left = end - age, h = s * 1.5 * (.3 + .7 * grow), tw = s * .14;
+    if (age < end) { if (left < 1.2) warn(ctx, x, y, STAG.grove.blast * s, 1 - Math.max(0, left) / 1.2); else { ctx.fillStyle = "rgba(255,80,190,.12)"; ctx.beginPath(); ctx.ellipse(x, y, r * 1.3, r * .7, 0, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = burning ? "#2a160c" : "#4a3220"; ctx.beginPath(); ctx.moveTo(x - tw, y); ctx.lineTo(x - tw * .6, y - h * .55); ctx.lineTo(x + tw * .6, y - h * .55); ctx.lineTo(x + tw, y); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = burning ? "#2a160c" : "#4a3220"; ctx.lineWidth = Math.max(1, s * .05); for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x, y - h * .5); ctx.lineTo(x + sd * s * .35 * grow, y - h * .85); ctx.stroke(); }
+      if (!burning) { ctx.fillStyle = "#5f8a3a"; ctx.beginPath(); ctx.ellipse(x, y - h * .82, s * .45 * grow, s * .35 * grow, 0, 0, TAU); ctx.fill(); }
+      else { const fl = reduceMotion ? 1 : .8 + .2 * Math.sin(now / 70 + f.x); ctx.globalAlpha = .9; for (let i = 0; i < 7; i++) { const fx = x + Math.sin(i * 1.9) * s * .32, fy = y - h * (.45 + (i % 3) * .2), fh = s * (.35 + (i % 2) * .15) * fl; ctx.fillStyle = i % 2 ? "rgba(255,180,60,.9)" : "rgba(255,90,26,.85)"; ctx.beginPath(); ctx.moveTo(fx - s * .1, fy); ctx.quadraticCurveTo(fx + (reduceMotion ? 0 : Math.sin(now / 90 + i) * s * .05), fy - fh * 1.3, fx + s * .1, fy); ctx.closePath(); ctx.fill(); } ctx.globalAlpha = 1;
+        const g = ctx.createRadialGradient(x, y - h * .6, 0, x, y - h * .6, s * 1.1); g.addColorStop(0, "rgba(255,140,40,.35)"); g.addColorStop(1, "rgba(255,140,40,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - h * .6, s * 1.1, 0, TAU); ctx.fill(); } }
+    else { ctx.globalAlpha = Math.min(1, life * 2.5); const g = ctx.createRadialGradient(x, y - s * .4, 0, x, y - s * .4, STAG.grove.blast * s); g.addColorStop(0, "rgba(255,240,190,.95)"); g.addColorStop(.45, "rgba(255,120,30,.8)"); g.addColorStop(1, "rgba(255,80,20,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - s * .3, STAG.grove.blast * s, STAG.grove.blast * s * .8, 0, 0, TAU); ctx.fill(); }
+  } else if (f.kind === "birdDive") { // its line, then a great dark bird stooping along it
+    const ang = Math.atan2(f.dy, f.dx), L = f.length * s, armed = !(f.arming > 0);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = armed ? "rgba(255,80,190,.08)" : DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 1.5; if (!armed) ctx.setLineDash([s * .15, s * .1]); ctx.fillRect(0, -f.radius * s, L, f.radius * 2 * s); ctx.strokeRect(0, -f.radius * s, L, f.radius * 2 * s); ctx.restore();
+    if (armed && Number.isFinite(f.bx)) { const bx = (f.bx + .5) * s, by = (f.by + .62) * s - s * .5, flap = reduceMotion ? .5 : .5 + .5 * Math.sin(now / 50);
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(ang); ctx.fillStyle = "#2a2420"; ctx.beginPath(); ctx.ellipse(0, 0, s * .4, s * .12, 0, 0, TAU); ctx.fill();
+      for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * .1, 0); ctx.quadraticCurveTo(-s * .1, sd * s * (.5 + .3 * flap), -s * .55, sd * s * (.7 + .2 * flap)); ctx.lineTo(-s * .2, sd * s * .08); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = "#e8c070"; ctx.beginPath(); ctx.moveTo(s * .4, 0); ctx.lineTo(s * .55, s * .04); ctx.lineTo(s * .4, s * .07); ctx.closePath(); ctx.fill(); ctx.restore(); }
+  } else if (f.kind === "mire") { // soft ground: dark, rippling, like water that is not wet
+    const armed = !(f.arming > 0), fade = Math.min(1, life * 1.5), grow = armed ? 1 : 1 - f.arming / Math.max(.01, f.armTotal || 1);
+    ctx.globalAlpha = fade * (.45 + .2 * grow); ctx.fillStyle = "#3a3024"; ctx.beginPath(); ctx.ellipse(x, y, r * grow, r * .6 * grow, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = "rgba(160,190,140,.5)"; ctx.lineWidth = Math.max(1, s * .03);
+    for (let i = 0; i < 3; i++) { const k = reduceMotion ? (i + 1) / 4 : ((now / 1600 + i / 3) % 1); ctx.beginPath(); ctx.ellipse(x, y, r * k * grow, r * .6 * k * grow, 0, 0, TAU); ctx.stroke(); }
+    ctx.globalAlpha = 1;
   } else if (f.kind === "stagSpike") {
     if (!(f.arming > 0)) { ctx.globalAlpha = Math.min(1, life * 4); spike(ctx, x, y, s * .95, s * .2, Math.min(1, ((f.total || .45) - life) * 10)); if (!reduceMotion) { ctx.fillStyle = "rgba(156,255,106,.5)"; ctx.beginPath(); ctx.arc(x, y - s * .5, s * .08, 0, TAU); ctx.fill(); } }
   }

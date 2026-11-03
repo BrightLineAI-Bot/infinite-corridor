@@ -2354,7 +2354,7 @@ function frame(now) {
       buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
     if(save.meal)buffs.push(`MEAL ${mealLeft(save.meal)}`); // release 447
     {const run=game.area==="dungeon"&&marginRun(save,game.areaId());if(run?.perks?.length)buffs.push(`MARGINALIA ${run.perks.map(id=>MARGINALIA[id]?.name||id).join(", ")}`)} // release 459
-    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);
+    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);/* release 708 */
     if(probe.running){const left=Math.ceil(probe.remaining);buffs.push(`PROBE ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`)}
     $("#buff").textContent = buffs.join(" · ");
   }
