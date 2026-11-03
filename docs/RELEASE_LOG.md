@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 708, the next is **709**.
+Taken at merge time: `main`'s release + 1 (see above). After 709, the next is **710**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| (at merge) | Claude | `claude/dreamy-rubin-yn6q2p` | A dragon, the Crimson Tyrant: twelve moves, a permanent lava claim on its clock, the Sunfall | Building. |
+| 709 | Claude | `claude/dreamy-rubin-yn6q2p` | A dragon, the Crimson Tyrant: twelve moves, lava pools, a permanent lava claim on its clock, the Sunfall | Merging. |
 | 708 | Claude | `claude/dreamy-rubin-yn6q2p` | The Briar Stag's Burning Grove, Rooted Mend, Hunting Birds and Mire Ground; the player can burn; the Stag redrawn; the Ashen Moth's chrysalis on great trees | Merged (`r708-3316faf45579`). Published in r708. |
 | 707 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: a new thread, The Tollkeeper's Keys (middle crossings, wave 3 roll); the Ashen Moth's dive stops at its lane's end | Merged (`r707-9f6fba1549e9`). Published in r707. |
 | 706 | Claude | `claude/dreamy-rubin-yn6q2p` | Another world boss, the Ashen Moth: flying, seven attacks and the lantern beam, ash-land home, Echo | Merged (`r706-4f225c254da4`). Published in r706. |

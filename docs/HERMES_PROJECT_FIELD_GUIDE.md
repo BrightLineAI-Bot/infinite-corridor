@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release (at merge): the Crimson Tyrant — 2026-11-03
+## Release 709: the Crimson Tyrant — 2026-11-03
 
 Tim, 2026-11-03: a red dragon modelled loosely on a great elder dragon (an original design), larger than the Astral Worm, with a swishing tail, wings and four legs, and the moves listed below; "turning things to lava... forever... you can't interrupt him... if you die... after he's done it 4 times then he just leaves... the timer... doesn't stop when the player dies... a supernova... get out of the way, use the pen or... time the aegis".
 
