@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 706: the Ashen Moth — 2026-11-03
+
+Tim, 2026-11-03 (the same ask as release 705): "a few more world bosses... similar attack and aggressiveness and strength... varied amount of attacks... pretty chaotic."
+
+**CODE:** `WORLD_BEASTS.ashenMoth` (`src/world-beasts.ts`): four tries, 60 hits plus 28 a level, a blow of .21 of their health, speed 1.1, `BEAST_APERTURE` 7, a big beast, listed after the Briar Stag. It flies home over everything (`retreatMoves: "through"`) to `BEAST_HOMES.firelands`, "the ash lands": a section whose region is one of `BEAST_FOREST.fire` (ashfields, emberlands, volcanic; `game.ts` `retreatProbe().firelands`), settling on its ash, ember or basalt ground. The creature is `MONSTER_PACK.ashenMoth` (`src/monster-pack.ts`; hover, the orbit brain), its balance in `MOTH`: Ash Gust (a cone that hurts and pushes, leaving smouldering `emberDust`), Kindling Dust (six `emberDust` clouds, one on you, flaring in turn), Burning Dive (aloft, then a straight dive through you leaving `flameTrail`), Ember Spiral (paired fire `orb`s in a turning spiral), Moth Swarm (five homing fire `orb`s marked `moth`), Ash Cocoon (`iceShield` and untargetable, then a jumpable ring and a ring of embers) and Kindled (`mothKindle`: faster, fire where it flies, dust drifting down, ticked by `mothPassive`); its boss attack is the shared `sweepBeam`. Poise `BOSS_POISE.ashenMoth`; Echo Moth's Ember (on kill). Drawn in `src/ashen-moth-render.ts` (new; in `scripts/build.mjs` and both service-worker lists). Tests: `tests/ashen-moth-706.test.ts`.
+
+**BOUNDARY:** It reuses the existing fire orb, fire trail, shockwave and sweeping beam, so it adds one new effect kind (`emberDust`, which detonates through the shared one-shot branch). Listed last among the beasts, it changes no other beast's claims. Saves: its `save.worldBeasts.ashenMoth` record is added by `ensureWorldBeasts` (additive at schema 14). Overworld hunts only.
+
 ## Release 705: the Briar Stag — 2026-11-03
 
 Tim, 2026-11-03: "come up with a few more world bosses that... have a similar... attack and aggressiveness and strength and... varied amount of attacks... so it's like they're pretty chaotic when you deal with them."

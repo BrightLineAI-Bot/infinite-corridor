@@ -105,6 +105,17 @@ export const WORLD_BEASTS = {
     slain: "The Briar Stag goes down on its knees; its crown withers, and its blossoms fall like snow.",
     gone: "The Briar Stag has run you down enough, and bounds away. In time it will rut somewhere else.",
   },
+  // Release 706 (the same ask): a moth of ash and ember. It flies home over everything to the ash lands and settles into the ash.
+  ashenMoth: {
+    kind: "ashenMoth", name: "The Ashen Moth", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    hitsToKill: 60, hpPerLevel: 28, damageShare: .21, speed: 1.1, attackGap: .22, staggerResistance: .9, rewardMarks: 185, rewardPerLevel: 18,
+    patience: 180, home: "firelands", retreatMoves: "through",
+    flee: "The Ashen Moth rises on a hot wind and drifts away toward the ash lands.",
+    homeLine: "The Ashen Moth settles on the smoking ash and folds its wings, and you cannot tell it from the ground.",
+    arrive: "Grey ash is falling here like snow, and the air smells of smoke. Two embers watch you from above. The Ashen Moth is here.",
+    slain: "The Ashen Moth falls, and burns, and is only ash on the wind.",
+    gone: "The Ashen Moth has burned you enough, and drifts away on the smoke. In time it will settle somewhere else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 // One exact shared marine classification for encounter placement, movement, attack variants and scars.
@@ -127,9 +138,10 @@ export const BEAST_HOMES = {
   canyon: { name: "a canyon", section: (q) => q.canyon, tile: (t) => t.kind === "canyon" },
   glass: { name: "the glass", section: (q) => q.dominant === "glass", tile: (t) => t.kind === "glass" },
   dungeon: { name: "a dungeon", section: (q) => q.dungeon, object: (o) => o.kind === "dungeon" },
+  firelands: { name: "the ash lands", section: (q) => q.firelands, tile: (t) => ["ash", "ember", "ashSlope", "basalt", "basaltFissure"].includes(t.kind) }, // release 706: a section of an ashfields, emberlands or volcanic region (game.ts retreatProbe)
   forest: { name: "the deep woods", section: (q) => q.forest, object: (o) => o.kind === "tree" && o.forest === true }, // release 705: a forest region's section (game.ts retreatProbe); it goes in among its trees
 };
-export const BEAST_FOREST = { regions: 5 }; // release 705: the Briar Stag's deep woods are sections of a forest region (landscape.ts regions from version 5, the forests' own)
+export const BEAST_FOREST = { regions: 5, fire: ["ashfields", "emberlands", "volcanic"] }; // fire (release 706): the regions that are the Ashen Moth's ash lands; // release 705: the Briar Stag's deep woods are sections of a forest region (landscape.ts regions from version 5, the forests' own)
 // How a retreating beast crosses the land (Tim: "it should still respect the geometry of the world"): `walk` goes around
 // walls, jumps chasms and needs a bridge over water; `burrow` passes under walls but not under water; `through` (the
 // Mountain Turtle, too big to care) goes over everything. Its body is its own business: only the tile it walks matters.
@@ -368,7 +380,7 @@ export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
 // large creatures shouldn't be trapped on small islands"). Flood the section over the ground the beast can stand on or
 // cross in its retreat (retreatPassable for its retreatMoves). A region is sound when it reaches a section edge (a way
 // out) and holds at least PLACEMENT.minRegion tiles (PLACEMENT.big for the large beasts). Returns { ok: Uint8Array(1024) }.
-export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag"] };
+export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth"] };
 export function placementRegions(map, here) {
   const tiles = map?.tiles || [], B = WORLD_BEASTS[here], mode = B?.retreatMoves || "walk", need = PLACEMENT.bigBeasts.includes(here) ? PLACEMENT.big : PLACEMENT.minRegion;
   const pass = (t) => !!t && (beastGround(here, t) || retreatPassable(t, mode)), label = new Int32Array(1024).fill(-1), ok = new Uint8Array(1024);
@@ -436,7 +448,7 @@ function fleeSpawn(save, here, rx, ry) {
 // rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
 // questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
 // already met (active, retreating or tracked) is never withdrawn by this.
-export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 // Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
 // the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
