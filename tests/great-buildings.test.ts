@@ -31,10 +31,10 @@ test('rolled past the heartland, apartments in the machine-touched lands, and mo
 
 test('outside: a closed block with one door facing the way in; the section stays passable; the same each visit', () => {
   for (const style of ['keep', 'apartment']) { const at = find(style), g = visit(at.x, at.y), B = g.map.objects.find((o) => o.kind === 'greatBuilding'), b = B.bounds;
-    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { const t = g.map.tiles[y * 32 + x]; assert.ok(t.blocked || t.elev >= BUILDINGS.roof.elev, 'opaque and solid: no walking in from the side (a roof is far above the ground)'); }
+    for (const { x, y } of B.footprint) { const t = g.map.tiles[y * 32 + x]; assert.ok(t.blocked || t.elev >= BUILDINGS.roof.elev, 'opaque and solid: no walking in from the side (a roof is far above the ground)'); }
     const door = g.map.objects.find((o) => o.buildingDoor && !o.breachDoor); assert.ok(door && door.kind === 'dungeon'); assert.ok(!g.map.tiles[door.y * 32 + door.x].blocked);
     assert.match(door.dungeonId, new RegExp(`^building:${SEED}:${at.x}:${at.y}:${style}:\\dr?:f1$`));
-    assert.ok(!g.map.enemySpawns.some((e) => e.x >= b.x && e.x < b.x + b.w && e.y >= b.y && e.y < b.y + b.h), 'nothing spawns inside the walls');
+    assert.ok(!g.map.enemySpawns.some((e) => B.footprint.some((c) => c.x === e.x && c.y === e.y)), 'nothing spawns inside the walls');
     const again = visit(at.x, at.y); assert.deepEqual(again.map.objects.find((o) => o.kind === 'greatBuilding').bounds, b); }
 });
 
@@ -99,7 +99,7 @@ test('a floor is the same every time it is built, and its state is its own (a cl
 
 test('the exterior is drawn after the creatures (opaque), and its doors are drawn by the building', () => {
   const src = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8');
-  assert.match(src, /o\.kind === "greatBuilding"\),/); assert.match(src, /o\.kind==="greatBuilding"\?greatBuilding:/); assert.match(src, /o\.kind === "greatBuilding" \|\| o\.buildingDoor\)/);
+  assert.match(src, /o\.kind === "greatBuilding"\),/); assert.match(src, /o\.kind==="greatBuilding"\?\(o\.blocks\?greatBlocks:greatBuilding\):/); assert.match(src, /o\.kind === "greatBuilding" \|\| o\.buildingDoor\)/);
   for (const k of FLOOR_KINDS) assert.ok(src.includes(`"${k}"`), k);
 });
 
@@ -151,4 +151,13 @@ test('across many buildings, every floor holds together: all of it reachable, a 
       if (f === floors && (!m.objects.some((o) => o.kind === 'chest') || (roof && !m.objects.some((o) => o.dir === 'roof')))) bad.push(`${base}: the top floor`);
       const gd = m.enemySpawns.find((e) => e.buildingGuardian), rl = m.objects.find((o) => o.dir === 'roof'); if (gd && rl && Math.hypot(gd.x - rl.x, gd.y - rl.y) < BUILDINGS.roofLadderClear) bad.push(`${base}: roof ladder by the guardian`); } }
   assert.deepEqual(bad, []);
+});
+
+test('version 1 sections (first seen in 711) keep their rectangular buildings exactly; new ground gets shapes and hives', async () => {
+  const { buildingHereV2 } = await import('../src/great-buildings.ts');
+  let v1 = null; for (let d = 4; d < 40 && !v1; d++) for (let x = -d; x <= d && !v1; x++) for (const y of [d - Math.abs(x), Math.abs(x) - d]) { if (!buildingHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) continue; const s = freshSave(); (s.atlas ||= {})[`${x},${y}`] = { buildingVersion: 1, landscapeVersion: LANDSCAPE_VERSION }; const g = visit(x, y, s); const B = g.map.objects.find((o) => o.kind === 'greatBuilding'); if (B) v1 = B; }
+  assert.ok(v1 && !v1.v && !v1.blocks && v1.footprint.length === v1.bounds.w * v1.bounds.h, 'a 711 building: a full rectangle, drawn as before');
+  const shapes = new Set(); let hive = false;
+  for (let x = -30; x <= 30; x++) for (let y = -30; y <= 30; y++) { const r = sectionRegion(SEED, x, y, LANDSCAPE_VERSION), p = buildingHereV2(SEED, x, y, r); if (!p) continue; shapes.add(p.shape); if (p.style === 'hive') { hive = true; assert.ok(BUILDINGS.hiveRegions.includes(r.type)); } }
+  assert.ok(['rect', 'L', 'T', 'U'].every((k) => shapes.has(k)), [...shapes].join()); assert.ok(hive, 'hives in the alien lands');
 });

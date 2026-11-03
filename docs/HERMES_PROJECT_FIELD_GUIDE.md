@@ -2694,6 +2694,55 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 713: compounds; shaped buildings and hives — 2026-11-03
+
+Tim (2026-11-03): "buildings that have courtyards in the middle, and multiple doors so that you can come in and out of the
+building from different places... the building can seem larger on the inside... a Back Door to the keep... an entrance to a
+Courtyard... different shapes like some of the shapes of the shacks, or some of the... alien buildings... some of them are like
+mazes where you have to go in and out, through different doors... some doors that you can only access from within the
+Courtyard... cross the Courtyard to get to the stairs... to the treasure room or the boss room". (Castles spanning several
+sections are the next step.)
+
+**CODE:**
+- `src/compounds.ts` (new; in the build and both sw.js lists):
+  - `COMPOUNDS`: `chance` .14 past `minRing` 5; `maze` .6; `sizes` 14×12 down to 11×10; `ring` 3; `tower(W, H)`; wing and tower
+    floor counts; the wall walk's `elev` 5, `crumbled` .07, `rise` 2 (natural ground up to this is levelled); `towerRoof`,
+    `wingCache`, interior sizes, `courtyardGuards`; names per style (keep, apartment, hive).
+  - `compoundHere` → `{ style }` (hives in `BUILDINGS.hiveRegions`, arcology blocks in the machine regions, else keeps).
+    `compoundTopology(seed, rx, ry, style)` is pure: wings N/E/S/W and the tower, each with its floors, `outer`, `court` and
+    `hatch` doors. In a maze no wing has both an outer and a courtyard door, and every wing with either has a hatch.
+  - `placeCompound(map, …, exitsOpen)`: over natural ground clear of the exit lanes and the plaza (rock, brush, low rises, trees
+    and trail marks are cleared). The ring and the tower are roof tiles at elevation 5 (`roofLift` from each block's facade
+    height); the courtyard is levelled and paved (natural for hives). Doors are `dungeon` objects (`compoundDoor`; `enterAt`
+    outer / court / roof) carrying the part's `buildingDoors` (`exits` by exit id, `hatch`). Some wall-walk cells have fallen in,
+    mended until one walk joins every hatch. The layout is kept only if the section's ways out stay open, every outer door can be
+    walked to, and `solvable` (outside → courtyard → tower by doors and the wall walk). Two courtyard guards.
+  - `compoundPartPlan(base)` / `generateCompoundFloor(seed, id)`: ids `compound:<seed>:<rx>:<ry>:<style>:<w0-3|t>:<floors>[r]:f<n>`.
+    Each part's floors are laid with great-buildings.ts's `layFloor`, `farthest` and `addHoles` (now exported): floor 1's outer
+    door on the bottom wall, its courtyard door on the top (the tower's at the bottom), ladders between floors, the hatch ladder
+    on the top floor. The tower's top is its boss (the building guardian) and treasure; some wings have a cache on top.
+- `src/great-buildings.ts`: `BUILDINGS.version` 2. `buildingHereV2` (hives in `hiveRegions`; a `shape` from rect / L / T / U)
+  and `placeBuildingV2` (shaped footprints over natural ground; drawn as blocks). Version 1 sections keep `buildingHere` and
+  `placeBuilding` unchanged. Style `hive` (`hiveWall`; `chitinFloor`, `fleshFloor`, `crystalFloor`); the id pattern takes `hive`.
+- `src/game.ts`: compound ids are built by `generateCompoundFloor`. `loadArea` places a compound in sections first seen from
+  now on (`atlas.compoundVersion`), then a great building by the section's `buildingVersion` (1: as in 711; 2: shaped). Entering
+  by an outer or courtyard door puts you at that door's spot inside (`map.building.entries`). Each exit lets you out at its own
+  door (`buildingDoors.exits`).
+- `src/renderer.ts`: `greatBlocks`. Each block is drawn cell by cell, north to south: the roof raised by the block's facade height,
+  a facade with a window a floor under every open south side, and doors (in the facade on a south face, as an arch at the roof's
+  edge on other faces), hatches and fallen patches. Only the cells standing between you and the camera fade. The player is drawn
+  over any roof (`structure` "buildingRoof"). Hive walls and floors are painted.
+
+**BOUNDARY:**
+- New ground only (`atlas.compoundVersion`, `buildingVersion` 2). Sections seen in 711–712 keep their rectangular buildings
+  exactly (version 1).
+- Each wing and the tower are dungeon histories of their own. No new save fields beyond the atlas pins and the per-dungeon
+  door record.
+- Bounded: one compound or building a section, at most 240 spots for each size and 8 rejected layouts.
+- Tests: `tests/compounds.test.ts` (topology, the enclosed courtyard, the wall walk, the maze walked end to end, doors letting you
+  out where they stand, a floor sweep, new ground only and resume, a render smoke test).
+  `tests/great-buildings.test.ts` covers footprints and version 1.
+
 ## Release 711: great buildings — 2026-11-03
 
 Tim (2026-11-03): "more like actual buildings... a building that has multiple floors that you can, on each floor, walk around

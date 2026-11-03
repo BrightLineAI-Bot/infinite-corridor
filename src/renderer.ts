@@ -105,6 +105,7 @@ const PAL = {
   keepWall: ["#4a443b", "#544d43"], aptWall: ["#55595d", "#5f6367"],
   mosaicFloor: ["#5a4a3a", "#5e4d3c"], carpetFloor: ["#5b2a2c", "#5f2c2e"], plankFloor: ["#6a4a2e", "#6e4d30"], flagFloor: ["#5a5650", "#5e5a53"],
   tileFloor: ["#8a8a84", "#7e7e78"], concreteFloor: ["#5b5d5e", "#585a5b"], rubbleFloor: ["#4a4640", "#46423c"], floorHole: ["#060607", "#060607"],
+  hiveWall: ["#3a2a44", "#40304a"], chitinFloor: ["#3d3046", "#42344b"], fleshFloor: ["#5a2e3e", "#5e3142"], crystalFloor: ["#3a4a66", "#3e4f6b"], // compounds' hives
   ash: ["#3b3834", "#5a5049"],
   glass: ["#345052", "#52716d"],
   ember: ["#553b34", "#85584a"],
@@ -1613,6 +1614,42 @@ function greatBuilding(ctx,o,s,p){
   ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),x+w/2,roofY-s*.14);ctx.textAlign="start";
   ctx.restore();
 }
+// Compounds (compounds.ts): blocks of cells, each seen from the south: every cell's roof raised by its block's facade height
+// (where the Wayfarer stands on it), a facade under every cell whose south side is open, a window a floor in each; drawn north
+// to south so nearer walls stand in front. Doors on a south face are drawn in the facade; on other faces, as a dark arch at the
+// roof's edge. Faded while you stand behind it.
+function greatBlocks(ctx,o,s,p,map){
+  const st=o.style,grain=o.grain||0,C=st==="keep"?{roof:"#3a3631",line:"#5b544a",wall:"#5d564b",dark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860",court:null}:st==="hive"?{roof:"#2e2238",line:"#4b3858",wall:"#4a3550",dark:"#2a1d31",mortar:"#1f1524",trim:"#b07ad0",glass:"#120b18",lit:"#d58cff"}:{roof:"#3b3f44",line:"#575d63",wall:"#6a6e72",dark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
+  const all=[];for(const b of o.blocks){const set=new Set(b.cells.map(c=>c.y*32+c.x));for(const c of b.cells)all.push({c,b,set})}
+  all.sort((a,q)=>a.c.y-q.c.y||a.c.x-q.c.x);
+  const onRoof=map?.[Math.round(p.y)*32+Math.round(p.x)]?.structure==="buildingRoof",px=Math.round(p.x),py=p.y+.5;
+  const covers=(c,b,set)=>!onRoof&&Math.abs(c.x-px)<=1&&py>=c.y-b.faceH-.5&&py<c.y+(set.has((c.y+1)*32+c.x)?0:1); // what stands between you and the camera fades, nothing else
+  const doorAt=new Map((o.doors||[]).map(d=>[`${d.x},${d.y}`,d])),hatchAt=new Map((o.hatches||[]).map(q=>[`${q.x},${q.y}`,q])),fallen=new Set((o.crumbled||[]).map(c=>`${c.x},${c.y}`));
+  ctx.save();
+  for(const {c,b,set} of all){ctx.globalAlpha=covers(c,b,set)?.38:1;const lift=b.faceH*s,x=c.x*s,y=c.y*s-lift,has=(dx,dy)=>set.has((c.y+dy)*32+c.x+dx),k=(c.x*7+c.y*13+grain)%11;
+    // roof
+    ctx.fillStyle=b.part==="t"?C.dark:C.roof;ctx.fillRect(x,y,s+1,s+1);ctx.strokeStyle=C.line;ctx.lineWidth=1;
+    if(st==="keep"){ctx.beginPath();ctx.moveTo(x,y+s*.5);ctx.lineTo(x+s,y+s*.5);ctx.stroke();if(!has(0,-1)||!has(0,1)){ctx.fillStyle=C.dark;if(((c.x+grain)&1)===0)ctx.fillRect(x+s*.2,has(0,-1)?y+s*.76:y,s*.6,s*.24)}}
+    else if(st==="hive"){ctx.fillStyle=C.line+"55";ctx.beginPath();ctx.ellipse(x+s*.5,y+s*.5,s*.32,s*.22,(k%3)*.6,0,7);ctx.fill()}
+    else{ctx.strokeRect(x+.5,y+.5,s-1,s-1);if(k===3){ctx.fillStyle="#2d3135";ctx.fillRect(x+s*.2,y+s*.2,s*.5,s*.4)}}
+    ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.beginPath();if(!has(-1,0)){ctx.moveTo(x+1,y);ctx.lineTo(x+1,y+s)}if(!has(1,0)){ctx.moveTo(x+s-1,y);ctx.lineTo(x+s-1,y+s)}if(!has(0,-1)){ctx.moveTo(x,y+1);ctx.lineTo(x+s,y+1)}ctx.stroke();
+    if(fallen.has(`${c.x},${c.y}`)){ctx.fillStyle="#060607";ctx.beginPath();ctx.moveTo(x+s*.1,y+s*.2);ctx.lineTo(x+s*(.4+(k%5)*.05),y+s*.05);ctx.lineTo(x+s*.9,y+s*.25);ctx.lineTo(x+s*.85,y+s*.85);ctx.lineTo(x+s*.3,y+s*.95);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.62,y+s*.6,s*.2,s*.14)}
+    const hq=hatchAt.get(`${c.x},${c.y}`);if(hq){ctx.fillStyle="#1a1612";ctx.fillRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle="#8a7650";ctx.beginPath();ctx.moveTo(x+s*.32,y+s*.12);ctx.lineTo(x+s*.32,y+s*.88);ctx.moveTo(x+s*.68,y+s*.12);ctx.lineTo(x+s*.68,y+s*.88);for(let q=.28;q<.9;q+=.2){ctx.moveTo(x+s*.32,y+s*q);ctx.lineTo(x+s*.68,y+s*q)}ctx.stroke()}
+    const d=doorAt.get(`${c.x},${c.y}`);if(d&&d.face!=="south"){ctx.fillStyle="#08090a";const w=s*.6;if(d.face==="north"){ctx.fillRect(x+s*.2,y,w,s*.34)}else if(d.face==="west"){ctx.fillRect(x,y+s*.2,s*.3,w)}else{ctx.fillRect(x+s*.7,y+s*.2,s*.3,w)}ctx.strokeStyle=C.trim;ctx.lineWidth=1.5;ctx.strokeRect(d.face==="north"?x+s*.2:d.face==="west"?x:x+s*.7,d.face==="north"?y:y+s*.2,d.face==="north"?w:s*.3,d.face==="north"?s*.34:w)}
+    // the facade under an open south side
+    if(!has(0,1)){const fy=(c.y+1)*s-lift,band=lift/b.floors;ctx.fillStyle=C.wall;ctx.fillRect(x,fy,s+1,lift);ctx.fillStyle="#00000033";ctx.fillRect(x,fy,s+1,s*.1);
+      for(let f=0;f<b.floors;f++){const by=fy+lift-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+s,by);ctx.stroke();
+        if(f===0&&d?.face==="south")continue;const q=(k+f*5)%9,ww=s*(st==="keep"?.22:.42),wh=band*.56,wx=x+s*.5,wy=by+band*.22;ctx.fillStyle=q===0?C.lit+"cc":q<3?"#090a0c":C.glass;
+        if(st==="keep"){ctx.beginPath();ctx.moveTo(wx-ww/2,wy+wh);ctx.lineTo(wx-ww/2,wy+ww/2);ctx.arc(wx,wy+ww/2,ww/2,Math.PI,0);ctx.lineTo(wx+ww/2,wy+wh);ctx.closePath();ctx.fill()}
+        else if(st==="hive"){ctx.beginPath();ctx.ellipse(wx,wy+wh/2,ww/2,wh/2,0,0,7);ctx.fill()}
+        else{ctx.fillRect(wx-ww/2,wy,ww,wh);ctx.strokeStyle=C.trim+"55";ctx.strokeRect(wx-ww/2+.5,wy+.5,ww-1,wh-1)}}
+      if(d?.face==="south"){const dh=Math.min(band*.95,s*1.05),dx=x+s*.1,dw=s*.8,dy=(c.y+1)*s-dh;ctx.fillStyle="#08090a";ctx.fillRect(dx,dy,dw,dh);if(st==="keep"){ctx.beginPath();ctx.arc(dx+dw/2,dy,dw/2,Math.PI,0);ctx.fill()}ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh)}
+      ctx.strokeStyle=C.trim+"77";ctx.lineWidth=1.5;ctx.beginPath();if(!has(-1,0)){ctx.moveTo(x+1,fy);ctx.lineTo(x+1,fy+lift)}if(!has(1,0)){ctx.moveTo(x+s-1,fy);ctx.lineTo(x+s-1,fy+lift)}ctx.stroke();
+      ctx.fillStyle="#00000044";ctx.fillRect(x,(c.y+1)*s-2,s+1,4);}
+  }
+  ctx.globalAlpha=1;const b=o.bounds;ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),(b.x+b.w/2)*s,(b.y-Math.max(...o.blocks.map(q=>q.faceH)))*s-s*.14);ctx.textAlign="start";
+  ctx.restore();
+}
 // A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
 // the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
 function drawBuildingStair(ctx, o, s, now) {
@@ -1627,9 +1664,13 @@ function drawBuildingStair(ctx, o, s, now) {
   ctx.restore();
 }
 // Inside a great building: dressed or concrete walls with a face where they stand over open floor, and each room's floor.
-const BUILDING_TILES = new Set(["keepWall", "aptWall", "mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole"]);
+const BUILDING_TILES = new Set(["keepWall", "aptWall", "hiveWall", "mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor"]);
 function paintBuildingTile(ctx, t, x, y, s, d, map, w) {
   const px = x * s, py = y * s, k = t.kind, at = (dx, dy) => map[(y + dy) * w + x + dx], same = (dx, dy) => at(dx, dy)?.kind === k;
+  if (k === "hiveWall") { const below = at(0, 1), face = below && !below.blocked; // a hive's wall: ridged chitin, its face veined
+    ctx.fillStyle = "#24182c"; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle = "#33243d"; ctx.beginPath(); ctx.ellipse(px + s * .5, py + s * .3, s * .48, s * .26, 0, 0, 7); ctx.fill();
+    if (face) { ctx.fillStyle = "#5a3f66"; ctx.fillRect(px, py + s * .45, s + 1, s * .55 + 1); ctx.strokeStyle = "#b07ad055"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px + s * .2, py + s * .5); ctx.quadraticCurveTo(px + s * .5, py + s * .75, px + s * .3, py + s); ctx.moveTo(px + s * .75, py + s * .5); ctx.quadraticCurveTo(px + s * .55, py + s * .7, px + s * .8, py + s); ctx.stroke(); ctx.fillStyle = "#00000044"; ctx.fillRect(px, py + s - 3, s + 1, 3); }
+    return; }
   if (k === "keepWall" || k === "aptWall") {
     const keep = k === "keepWall", below = at(0, 1), face = below && !below.blocked;
     ctx.fillStyle = keep ? "#2d2925" : "#2b2e31"; ctx.fillRect(px, py, s + 1, s + 1); // the wall's top
@@ -1657,6 +1698,9 @@ function paintBuildingTile(ctx, t, x, y, s, d, map, w) {
   else if (k === "tileFloor") { const q = s / 2; for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { ctx.fillStyle = (i + j + x + y) % 2 ? "#9c9c95" : "#6a6d6c"; ctx.fillRect(px + i * q, py + j * q, q, q); } ctx.strokeStyle = "#3f413f88"; ctx.strokeRect(px + .5, py + .5, s - 1, s - 1); if ((d & 3) === 1) { ctx.strokeStyle = "#2a2c2b"; ctx.beginPath(); ctx.moveTo(px + s * .1, py + s * .3); ctx.lineTo(px + s * .45, py + s * .55); ctx.lineTo(px + s * .7, py + s * .45); ctx.stroke(); } }
   else if (k === "concreteFloor") { ctx.fillStyle = "#4a4c4d"; for (let i = 0; i < 5; i++) ctx.fillRect(px + ((d * 7 + i * 11 + x * 3) % 10) / 10 * s, py + ((d * 3 + i * 7 + y * 5) % 10) / 10 * s, 2, 2); ctx.strokeStyle = "#47494a"; ctx.strokeRect(px + .5, py + .5, s - 1, s - 1); if ((d & 3) === 0 && (x + y) % 3 === 0) { ctx.fillStyle = "#58c7c222"; ctx.fillRect(px + s * .15, py + s * .7, s * .7, s * .05); } }
   else if (k === "rubbleFloor") { for (let i = 0; i < (t.blocked ? 7 : 4); i++) { const rx = px + ((d * 5 + i * 7) % 9) / 9 * s * .8, ry = py + ((d * 3 + i * 5) % 9) / 9 * s * .8, r = s * (t.blocked ? .22 : .13); ctx.fillStyle = i % 2 ? "#6a6359" : "#57514a"; ctx.beginPath(); ctx.moveTo(rx, ry + r); ctx.lineTo(rx + r * .8, ry); ctx.lineTo(rx + r * 1.7, ry + r * .6); ctx.lineTo(rx + r, ry + r * 1.4); ctx.closePath(); ctx.fill(); } if (t.blocked) { ctx.fillStyle = "#00000055"; ctx.fillRect(px + 2, py + s - 5, s - 4, 4); } }
+  else if (k === "chitinFloor") { ctx.strokeStyle = "#5a4868"; ctx.lineWidth = 1; for (const [cx, cy] of [[.25, .25], [.75, .25], [.5, .7]]) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283, qx = px + s * cx + Math.cos(a) * s * .2, qy = py + s * cy + Math.sin(a) * s * .2; i ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.closePath(); ctx.stroke(); } }
+  else if (k === "fleshFloor") { ctx.fillStyle = "#7a3a4e"; ctx.beginPath(); ctx.ellipse(px + s * (.3 + (d & 1) * .3), py + s * .5, s * .26, s * .16, (d % 3) * .5, 0, 7); ctx.fill(); ctx.strokeStyle = "#9a5468aa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, py + s * .3); ctx.quadraticCurveTo(px + s * .5, py + s * .1, px + s, py + s * .4); ctx.stroke(); }
+  else if (k === "crystalFloor") { ctx.fillStyle = "#6a86b8"; ctx.beginPath(); ctx.moveTo(px + s * .2, py + s * .8); ctx.lineTo(px + s * .35, py + s * .3); ctx.lineTo(px + s * .5, py + s * .8); ctx.closePath(); ctx.fill(); ctx.fillStyle = "#a8c0e8aa"; ctx.beginPath(); ctx.moveTo(px + s * .55, py + s * .7); ctx.lineTo(px + s * .7, py + s * .2); ctx.lineTo(px + s * .82, py + s * .7); ctx.closePath(); ctx.fill(); }
   if (t.doorway) { ctx.fillStyle = "#00000022"; ctx.fillRect(px, py, s + 1, s + 1); }
   // shadow cast by a wall standing to the north
   const n = at(0, -1); if (n?.blocked && n.kind !== "rubbleFloor") { ctx.fillStyle = "#00000040"; ctx.fillRect(px, py, s + 1, s * .22); }
@@ -2290,7 +2334,7 @@ export function render(ctx, g, w, h, now) {
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
-  for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?12:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?greatBuilding:architecturalBuilding;
+  for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?16:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?(o.blocks?greatBlocks:greatBuilding):architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
     const bounds = o.bounds || { x:o.x-2, y:o.y-2, w:5, h:4 };
@@ -2310,7 +2354,7 @@ export function render(ctx, g, w, h, now) {
   if(skyA>0)ctx.restore()}
   const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&discoveredInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
-  { const R=objectLists.structures.find(o=>o.kind==="greatBuilding"&&o.roof&&p.x>=o.bounds.x-.5&&p.x<o.bounds.x+o.bounds.w-.5&&p.y>=o.bounds.y-.5&&p.y<o.bounds.y+o.bounds.h-.5); if(R)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,1); } // on a great building's roof, the Wayfarer stands over it
+  { const R=g.area==="overworld"&&g.map?.greatBuilding&&g.map.tiles[Math.round(p.y)*mw+Math.round(p.x)]?.structure==="buildingRoof"; if(R)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,1); } // on a great building's roof, the Wayfarer stands over it
   const motion = now / 1000;
   for (const o of objectLists.animated)
     if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)) {
