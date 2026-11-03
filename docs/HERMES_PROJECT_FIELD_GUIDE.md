@@ -2694,7 +2694,7 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
-## Release 709: great buildings — 2026-11-03
+## Release 710: great buildings — 2026-11-03
 
 Tim (2026-11-03): "more like actual buildings... a building that has multiple floors that you can, on each floor, walk around
 on and fight enemies, and the floor is separate from the other floor so you have to find a way to get through and a way to get
@@ -2737,6 +2737,13 @@ just traversable floor space".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 709: the Crimson Tyrant — 2026-11-03
+
+Tim, 2026-11-03: a red dragon modelled loosely on a great elder dragon (an original design), larger than the Astral Worm, with a swishing tail, wings and four legs, and the moves listed below; "turning things to lava... forever... you can't interrupt him... if you die... after he's done it 4 times then he just leaves... the timer... doesn't stop when the player dies... a supernova... get out of the way, use the pen or... time the aegis".
+
+**CODE:** `WORLD_BEASTS.crimsonTyrant` (`src/world-beasts.ts`): four tries, 80 hits plus 36 a level, a blow of .24 of their health, `BEAST_APERTURE` 8, a big beast, home the ash lands, flies home over everything. The creature is `MONSTER_PACK.crimsonTyrant` (scale 2.6, hover, duelist), its balance in `DRAGON` (`src/monster-pack.ts`): Burning Pass (`dragonStrafe`: aloft and untargetable, a straight pass dropping `dragonMeteor` blasts and `flameTrail`), Searing Slam (one or both forefeet, three `fireLine` streaks, sharing the root-line tick), Wing Lash (a hop back, then an arc and a push), Ember Rain (`dragonMeteor`s falling round you for four seconds), Great Flame (three charged `dragonComet`s that burst where you stood), Claim the Ground (`dragonColonize`, `scheduled`: never chosen, only started by `w.dragonDue`, and neither stagger nor evasion stops it), Claw Whirl (sometimes a spiral of `clawBeam`s, sharing the thorn tick), Tail Whirl, Tail Lash, Rolling Crush, Flame Wave (`dragonScorch`: a ring or a 120° wedge whose front strikes once and whose ground bites while it lingers) and Sunfall (`dragonSupernova`, only below 80% health: aloft, then `nova.lethal` × the Wayfarer's health through any dodge, `piercing`; `packHurt` lets the enclosure's walls turn it, and the Aegis restores health as it always does). Its lava lives in `src/crimson-dragon.ts`: `save.dragonLava["rx,ry"] = { casts, nextAt, tiles }` (additive at schema 14, normalised by `ensureDragonLava` from `ensureWorldBeasts`); `castTiles` takes the next quarter of the section's open floor in seeded patches (never raised ground, slopes, water, structures, buildings or within `colonize.border` of the edge); `applyDragonLava` lays the tiles on every load. `game.ts`: `dragonDue`/`dragonLavaNow` keep its clock in seconds of play, `dragonCatchUp` makes the casts that fell due while the Wayfarer was away, and a death in a section it has fully claimed ends its hunt for good. Lava pools (Tim: "the dragons... should make lava on the floor persistent for some time... casting a spell makes a lava pool beneath your spell"): `dragonPool` lays the Tremor Worm's `lava` effect, still, under every other Ember Rain fireball, every Great Flame burst and every slam, for `DRAGON.pool.life` s. Echo Tyrant's Heart (kills burst in flame). Drawn in `src/crimson-dragon-render.ts` (new; `crimson-dragon` and `crimson-dragon-render` in `scripts/build.mjs` and both service-worker lists). Burning (`game.playerFire`) is also cleared where poison is, on death and area change (reviewer note on release 708). Tests: `tests/crimson-tyrant-709.test.ts`.
+
+**BOUNDARY:** The lava is permanent by design and is the only lasting change a world beast makes to the land besides the Void Walker's scars; it never touches the section's edge, so the Wayfarer can always arrive and leave. Listed last among the beasts, it changes no other beast's claims. The second dragon Tim mentioned waits for its description.
 
 ## Release 708: the Briar Stag's grove, mend, birds and mire; its redraw; the Ashen Moth's chrysalis — 2026-11-03
 
