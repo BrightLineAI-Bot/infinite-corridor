@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 707, the next is **708**.
+Taken at merge time: `main`'s release + 1 (see above). After 708, the next is **709**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 707 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: a new thread, The Tollkeeper's Keys (middle crossings, wave 3 roll); the Ashen Moth's dive stops at its lane's end | Merging. |
+| 708 | Claude | `claude/dreamy-rubin-yn6q2p` | The Briar Stag's Burning Grove, Rooted Mend, Hunting Birds and Mire Ground; the player can burn; the Stag redrawn; the Ashen Moth's chrysalis on great trees | Merging. |
+| 707 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: a new thread, The Tollkeeper's Keys (middle crossings, wave 3 roll); the Ashen Moth's dive stops at its lane's end | Merged (`r707-9f6fba1549e9`). Published in r707. |
 | 706 | Claude | `claude/dreamy-rubin-yn6q2p` | Another world boss, the Ashen Moth: flying, seven attacks and the lantern beam, ash-land home, Echo | Merged (`r706-4f225c254da4`). Published in r706. |
 | 705 | Claude | `claude/dreamy-rubin-yn6q2p` | A new world boss, the Briar Stag: eight attacks, forest home, Echo | Merged (`r705-fa47a5177092`). Published in r705. |
 | 704 | Claude | `claude/dreamy-rubin-yn6q2p` | The Far Gate climbs after 1, 2, 3, 4… more Listener kills (Tim's rule); the robot, drone and +10 cap follow Gates opened | Merged (`r704-866a96e6316f`). |
@@ -93,6 +94,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 707, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 707 | `r707-9f6fba1549e9` | 2026-11-03 | Fable review: no blockers. The Tollkeeper's Keys; the Moth's dive fix (#354). |
 | 706 | `r706-4f225c254da4` | 2026-11-03 | Fable review: no blockers. The Ashen Moth (#353). |
 | 705 | `r705-fa47a5177092` | 2026-11-03 | Fable review: no blockers. With 704, the Far Gate climbing by Tim's rule (#351); and 705, the Briar Stag (#352). |
 | 703 | `r703-af870d78ba3b` | 2026-11-03 | Fable review: no blockers. With 689 to 702: among them Fractured waves that keep pace and ARCHFIEND SLAIN (693), Worm's Upheaval puddles (698), the Stalker hunt (699), the Rite of Ascendancy (700, 701), The Well-Digger's Rope (702); and 703, Arcana in the Journal. |

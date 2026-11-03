@@ -118,6 +118,22 @@ export const WORLD_BEASTS = {
   },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
+// Release 708 (Tim, 2026-11-03: "the moth... his chrysalis can appear on the great trees... hanging from a branch and if you attack it
+// enough it will drop and then... it can start harassing you in the tree. But if you go down to the ground, you can just have the
+// normal fight with it"): on a great tree's branch, now and then, while the Moth is free and the Wayfarer's Aperture has opened it,
+// hangs its chrysalis. Fell it (`hits` of the Wayfarer's blows) and the Moth hatches: its hunt begins in that section. While the
+// Wayfarer stays up in the tree it only harries them (`harass`); on the ground it fights as it always does.
+export const CHRYSALIS = { version: 1, chance: .45, hits: 10, harass: ["mothSpiral", "mothSwarm", "mothDust", "mothGust", "mothThreads", "mothThreadBlast"],
+  found: "Something hangs from a branch of the great tree: a chrysalis of grey ash, warm, its seams glowing. Something inside is waiting.",
+  hatch: "The chrysalis tears loose and falls, and splits in a burst of ash: the Ashen Moth unfolds its wings." };
+export function mothChrysalisFor(save, map, rx, ry) {
+  ensureWorldBeasts(save, false); const q = save.worldBeasts.ashenMoth, cn = map?.canopy;
+  if (!cn?.top || map.settlement || q.active || q.cooldown > 0 || !beastUnlocked(save, "ashenMoth")) return null;
+  if ((hashSeed(`${save.seed}:moth-chrysalis:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= CHRYSALIS.chance) return null;
+  const branches = (map.tiles || []).filter((t) => t.kind === "canopyBranch" && t.elev > 0 && !t.slope).sort((a, b) => hashSeed(`chrysalis:${a.x},${a.y}`) - hashSeed(`chrysalis:${b.x},${b.y}`));
+  const at = branches[0]; if (!at) return null;
+  return { id: `moth-chrysalis:${q.cycle}:${rx},${ry}`, kind: "mothChrysalis", x: at.x, y: at.y, boss: false, mothChrysalis: true, traits: [] };
+}
 // One exact shared marine classification for encounter placement, movement, attack variants and scars.
 // Lake, river, swamp, dungeon water and shallows retain their existing behavior.
 export const isMarineTile = (tile) => tile?.kind === "ocean" || tile?.kind === "deepOcean";

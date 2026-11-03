@@ -126,6 +126,15 @@ export const ATTACK_MODULES = {
   stagCage: { id: "stagCage", name: "Bramble Cage", range: [0, 9], cooldown: 11, windup: .5, active: 2.2, recover: .5, damage: .9, tags: ["ground", "control"], text: "Rings of roots close in around you, the outer first, then the next, then the last. Get out through the gaps, or before the outer ring breaks." },
   stagStomp: { id: "stagStomp", name: "Rearing Stomp", range: [0, 4.4], cooldown: 4.2, windup: .65, active: .7, recover: .5, damage: 1.15, jumpable: true, tags: ["ground", "melee"], text: "It rears and brings its forehooves down twice; each stamp throws out a ring. Jump them." },
   stagHunt: { id: "stagHunt", name: "The Wild Hunt", range: [0, 14], cooldown: 20, windup: 1.3, recover: .3, damage: .7, tags: ["buff"], text: "It bellows, throwing you back, and its crown catches green fire. For a while it runs faster, brambles spring up where it treads and roots burst around it." },
+  // Release 708 (Tim, 2026-11-03: "the stag can do a move where he calls trees to grow up... they'll start burning... if you touch
+  // them... you'll get on fire... then they'll explode... a blast radius... burning embers... splinters out in all directions... a
+  // healing move... he raises his head up and he heals... not all of it... calls... birds... dive attack... from another side... the
+  // Earth... when you do Dodge, it feels like you're dodging really slowly... takes a lot of your stamina... as if... on water...
+  // long enough to drain... half your stamina... if you stand still, your stamina will recover").
+  stagGrove: { id: "stagGrove", name: "Burning Grove", range: [0, 10], cooldown: 12, windup: .8, recover: .5, damage: 1.2, tags: ["ground", "fire", "summon"], text: "Trees burst up around you and catch fire. Touch one and you burn. Then each one explodes, a blast and a spray of burning splinters in every direction." },
+  stagMend: { id: "stagMend", name: "Rooted Mend", range: [0, 14], cooldown: 22, windup: .6, active: 4, recover: .4, damage: 0, hurtBelow: .75, tags: ["heal"], text: "It raises its crown to the sky and its wounds begin to close. Hit it hard while it mends." },
+  stagBirds: { id: "stagBirds", name: "Hunting Birds", range: [0, 14], cooldown: 10, windup: .7, active: 3, recover: .4, damage: 1, tags: ["ranged", "summon"], text: "It calls, and great birds stoop across the land from the edges of sight, one after another, each from a different side. Each marks its line just before it comes." },
+  stagMire: { id: "stagMire", name: "Mire Ground", range: [0, 12], cooldown: 16, windup: .9, recover: .5, damage: 0, tags: ["control"], text: "The ground round you softens as if it were water: dodges are slow and short and cost far more stamina, and moving drains it. Stand still and it comes back." },
   // The Ashen Moth's kit (release 706; the same ask): a moth as wide as a house, of ash and ember, from the Firelands.
   mothGust: { id: "mothGust", name: "Ash Gust", range: [0, 8], cooldown: 5, windup: .55, recover: .45, damage: .8, tags: ["control"], text: "A beat of its wings throws you back and scatters ash; the ash smoulders, then catches." },
   mothDust: { id: "mothDust", name: "Kindling Dust", range: [0, 11], cooldown: 7, windup: .6, recover: .5, damage: 1.1, tags: ["ground", "fire"], text: "It shakes clouds of glowing dust down round you, one on you. Each flares up a moment later." },
@@ -134,6 +143,13 @@ export const ATTACK_MODULES = {
   mothSwarm: { id: "mothSwarm", name: "Moth Swarm", range: [2, 12], cooldown: 9, windup: .7, recover: .5, damage: .7, tags: ["ranged", "orbs"], text: "Small burning moths leave its wings and chase you for a moment, then fly straight on." },
   mothCocoon: { id: "mothCocoon", name: "Ash Cocoon", range: [0, 14], cooldown: 14, windup: .5, active: 2.6, recover: .4, damage: 1, tags: ["defense", "fire"], text: "It wraps itself in ash; nothing hurts it. Then the cocoon bursts in a ring of fire and a scatter of embers." },
   mothKindle: { id: "mothKindle", name: "Kindled", range: [0, 14], cooldown: 20, windup: 1.2, recover: .3, damage: .7, tags: ["buff", "fire"], text: "Its wings catch fire. For a while it flies faster, fire falls where it passes and burning dust drifts down round it." },
+  // Release 708 (Tim, 2026-11-03: "he shoots out a bunch of... threads... from him towards you... and then another attack where all
+  // the threads are together... 2 strong blasts... both of these moves should track the player... not indefinitely... not as much as
+  // the nanobot knight's homing orbs... but they should home in on the player for a while").
+  mothThreads: { id: "mothThreads", name: "Silk Threads", range: [0, 12], cooldown: 7, windup: .6, recover: .5, damage: .55, tags: ["ranged"], text: "Threads of white silk lash out from its body in a fan, curving after you for a moment before they fly straight, trailing silk." },
+  mothThreadBlast: { id: "mothThreadBlast", name: "Silk Burst", range: [0, 13], cooldown: 10, windup: 1, recover: .6, damage: 1.3, tags: ["ranged"], text: "Its threads gather into two great knots of silk that launch at you one after the other and follow you for a while. Each bursts where it strikes." },
+  // Release 708 (Tim, 2026-11-03: "the moth can make large whirlwinds, like gigantic whirlwinds that roll around the... screen for a while").
+  mothGale: { id: "mothGale", name: "Ash Gale", range: [0, 14], cooldown: 16, windup: 1, recover: .5, damage: .6, tags: ["control", "summon"], text: "It beats up two great whirlwinds of ash and embers that roll about the land for a while, rebounding off whatever stops them. Caught in one, you are dragged toward its heart, slowed and battered." },
   // The Nanobot Knight's kit (release 245, Tim 2026-10-19: black with red accents; teleports or dissolves into mist;
   // physical hits scatter it unless elemental, a spell or an Echo-glyphed weapon; Abyss Watcher sword slides; an arm
   // laser cannon; swords falling from the sky; homing orbs that
@@ -372,13 +388,19 @@ export const MONSTER_PACK = {
   briarStag: {
     id: "briarStag", name: "The Briar Stag", epithet: "The Forest That Charges", unique: true,
     stats: [320, 17, 0], form: { scale: 1.75 }, sizeClass: "large", movement: "walk", brain: "duelist",
-    attacks: ["stagGore", "stagCharge", "stagRoots", "stagThorns", "stagLeap", "stagCage", "stagStomp", "stagHunt"], bossAttacks: [],
+    attacks: ["stagGore", "stagCharge", "stagRoots", "stagThorns", "stagLeap", "stagCage", "stagStomp", "stagHunt", "stagGrove", "stagMend", "stagBirds", "stagMire"], bossAttacks: [],
     palette: ["#5a4632", "#1c140c", "#9cff6a", "#e6ffd0"], render: "briarStag", tags: ["beast", "elder", "forest", "thorn"],
     lore: "A stag as big as a cart-horse, its hide bark and its crown a thicket of antler and bramble hung with pale blossom. It hooks and tosses with that crown, rushes in lines that leave brambles behind it, sends roots running through the ground and closes them round you in rings, shakes thorns from its antlers, and leaps over the canopy to come down on you. When it bellows, its crown burns green and the forest rises wherever it runs.",
-  },  ashenMoth: {
+  },  mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
+    id: "mothChrysalis", prototypeOnly: true, name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true, // not a creature of the roster: only the great trees hang it
+    stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",
+    attacks: [], bossAttacks: [], palette: ["#6a645c", "#2a2420", "#ff8a2a", "#ffe2b0"], render: "mothChrysalis", tags: ["fire", "dormant"],
+    lore: "A chrysalis of grey ash as long as a man, hanging from a branch of a great tree, warm, its seams glowing. Break it and what is inside comes out early, and angry.",
+  },
+  ashenMoth: {
     id: "ashenMoth", name: "The Ashen Moth", epithet: "The Lantern in the Smoke", unique: true,
     stats: [280, 16, 0], form: { scale: 1.6 }, sizeClass: "large", movement: "hover", brain: "orbit",
-    attacks: ["mothGust", "mothDust", "mothDive", "mothSpiral", "mothSwarm", "mothCocoon", "mothKindle"], bossAttacks: ["sweepBeam"],
+    attacks: ["mothGust", "mothDust", "mothDive", "mothSpiral", "mothSwarm", "mothCocoon", "mothKindle", "mothThreads", "mothThreadBlast", "mothGale"], bossAttacks: ["sweepBeam"],
     palette: ["#4a4440", "#16120f", "#ff8a2a", "#ffe2b0"], render: "ashenMoth", tags: ["beast", "elder", "fire", "flying"],
     lore: "A moth as wide as a house, grey as cold ash, the eyes on its wings two embers that never go out. Its wings throw you back and shake down burning dust; it dives through you and leaves the ground alight, turns spirals of embers, sends little burning moths after you, hides in a cocoon of ash that bursts, and sweeps you with the light of its lantern eyes. Kindled, it burns from wingtip to wingtip.",
   },
@@ -531,7 +553,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
-  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; enemy.stagPose = null; enemy.stagAir = 0; enemy.stagHunt = 0; /* release 705 */ enemy.mothPose = null; enemy.mothAir = 0; enemy.mothKindled = 0; enemy.mothCocoon = false; // release 706 // release 245: no pose survives a reload
+  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; enemy.stagPose = null; enemy.stagAir = 0; enemy.stagHunt = 0; enemy.stagMending = false; /* release 705; 708 */ enemy.mothPose = null; enemy.mothAir = 0; enemy.mothKindled = 0; enemy.mothCocoon = false; // release 706 // release 245: no pose survives a reload
   return enemy;
 }
 
@@ -556,7 +578,7 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
 // damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
-export const HIT_FOOTPRINT = { pad: { emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
+export const HIT_FOOTPRINT = { pad: { gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
 export function effectFootprint(f) {
   if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
@@ -705,6 +727,10 @@ export const MOTH = {
   spiralEvery: .16, spiralTurn: .45, emberSpeed: 6, emberLife: 1.6, emberRadius: .26,
   swarm: 5, swarmSpeed: 4, swarmTurn: 2.5, swarmHome: 1.8, swarmLife: 4, swarmRadius: .3,
   cocoonRing: 5, cocoonEmbers: 10,
+  // Release 708: silk. Homing gentler than the Knight's orbs (orbTurn 3.2 rad/s for 2 s): `turn` rad/s for `home` s, then straight.
+  threads: { count: 7, arc: 150, speed: 7, turn: 1.9, home: 1.2, life: 2.2, radius: .24, trail: 9 },
+  gale: { count: 2, radius: 2.2, speed: 2.6, life: 10, tick: .5, pull: 2.2, slow: .6, edge: 1 }, // edge: kept this far inside the section
+  burst: { count: 2, gap: .45, speed: 6, turn: 1.5, home: 1.6, life: 3, radius: .55, blast: 1.4, trail: 12 },
   kindle: { time: 9, speed: 1.4, trailEvery: .35, dustEvery: .8, dustRing: [1, 3.5], dustArm: .7, dustRadius: .8, dustShare: .7 },
 };
 // The Briar Stag (release 705). Balance as data. Lengths in tiles, times in seconds.
@@ -717,6 +743,11 @@ export const STAG = {
   leapRise: .45, leapHang: 1.1, leapTrack: 9, leapFall: .45, leapHeight: 3, leapRadius: 1.8, leapRing: 4.4, leapSpikes: 9, leapSpikeRing: 2.6,
   cageRings: [3.2, 2.2, 1.2], cageSpikes: [12, 9, 6], cageFirst: 1, cageEvery: .45, cageRadius: .5,
   stompRadius: 1.7, stompRing: 4, stompGap: .55,
+  // Release 708: the grove, the mend, the birds and the mire.
+  grove: { trees: 5, ring: [1.6, 3.6], grow: .9, burn: [3.2, 4.6], radius: .6, touchEvery: .6, touchShare: .35, igniteFor: 3, igniteShare: .12, blast: 1.9, splinters: 6, splinterSpeed: 7.5, splinterLife: .9, splinterShare: .45 },
+  mend: { share: .14 }, // of its health over the whole mend
+  birds: { count: 4, every: .7, warn: .6, speed: 17, reach: 9, radius: .65, offset: 1.6 },
+  mire: { radius: 5.5, time: 8, warn: .6, dodgeSpeed: .45, dodgeCost: 2.2, drain: .07, exhaustedShare: .08 }, // exhaustedShare: of max health, for a dodge tried on it without the stamina // drain: share of stamina a second while moving in it
   hunt: { time: 9, speed: 1.45, push: 2.4, pushRadius: 6, briarEvery: .4, spikeEvery: .7, spikeRing: [1.4, 4], spikeWarn: .6, spikeRadius: .6, spikeShare: .7 },
 };
 export const KNIGHT = {
@@ -748,6 +779,8 @@ function knightCut(e, s, w, id, aim, energized, arc = KNIGHT.slideArc) {
   s.data.cutAt = w.now;
 }
 const energized = (e, s, n, chance = KNIGHT.arcChance) => hashSeed(`${e.id}:${s.seq}:energy:${n}`) % 100 < chance;
+// Release 708: is (x, y) on the Briar Stag's mire? The Game slows dodges and drains stamina there.
+export function stagMireAt(effects, x, y) { return (effects || []).some((f) => f.kind === "mire" && !(f.arming > 0) && f.life > 0 && Math.hypot(x - f.x, y - f.y) <= f.radius); }
 export function nanoScatters(e, { physical = false, echoGlyph = false } = {}) { return e?.kind === "nanobotKnight" && physical && !echoGlyph; }
 // The Psychic Crystal (release 249). Balance as data.
 // Boss poise (release 307, Tim: "all the bosses should be able to be staggered... a tiered stagger system... a few hits,
@@ -1040,7 +1073,7 @@ function endAttack(e, s) {
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
   e.voidDashing = false; e.voidCharging = false;
-  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false;
+  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
@@ -1061,6 +1094,10 @@ const START = {
   stagCage(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: STAG.cageRings[0], total: ATTACK_MODULES.stagCage.windup }; e.stagPose = "rear"; },
   stagStomp(e, s) { s.tele = { type: "circle", x: e.x, y: e.y, radius: bodyRadius(e) + STAG.stompRadius }; e.stagPose = "rear"; s.data.stamps = 0; },
   stagHunt(e, s) { s.tele = { type: "brace" }; e.stagPose = "bellow"; },
+  stagGrove(e, s) { s.tele = { type: "brace" }; e.stagPose = "rear"; },
+  stagMend(e, s) { s.tele = { type: "brace" }; e.stagPose = "mend"; },
+  stagBirds(e, s) { s.tele = { type: "brace" }; e.stagPose = "bellow"; s.data.next = 0; s.data.birds = 0; },
+  stagMire(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: STAG.mire.radius, total: ATTACK_MODULES.stagMire.windup }; e.stagPose = "stamp"; },
   mothGust(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + MOTH.gustReach, arc: MOTH.gustArc }; e.mothPose = "raise"; },
   mothDust(e, s) { s.tele = { type: "brace" }; e.mothPose = "shake"; },
   mothDive(e, s, w) { s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, MOTH.diveSpeed * ATTACK_MODULES.mothDive.active), width: bodyRadius(e) * .9 }; e.mothPose = "climb"; e.aloft = true; },
@@ -1068,6 +1105,9 @@ const START = {
   mothSwarm(e, s) { s.tele = { type: "brace" }; e.mothPose = "raise"; },
   mothCocoon(e, s) { s.tele = { type: "brace" }; e.mothPose = "fold"; },
   mothKindle(e, s) { s.tele = { type: "brace" }; e.mothPose = "raise"; },
+  mothThreads(e, s) { s.tele = { type: "brace" }; e.mothPose = "raise"; },
+  mothGale(e, s) { s.tele = { type: "brace" }; e.mothPose = "beat"; },
+  mothThreadBlast(e, s) { s.tele = { type: "brace" }; e.mothPose = "fold"; s.data.shot = 0; s.data.next = 0; },
   voidHand(e, s, w) { voidBasicStart(e, s, w, "hand"); },
   voidClaw(e, s, w) { voidBasicStart(e, s, w, "claw"); },
   voidSword(e, s, w) { voidBasicStart(e, s, w, "sword"); },
@@ -1310,6 +1350,28 @@ const RUN = {
       toPhase(s, "recover", A.recover);
     }
   },
+  mothGale(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const G = MOTH.gale, p = center(w.player), base = Math.atan2(p.y - e.y, p.x - e.x);
+    for (let i = 0; i < G.count; i++) { const a = base + (i ? 1 : -1) * .9, d = bodyRadius(e) + 1.5; w.addEffect({ kind: "gale", owner: e.id, x: e.x + Math.cos(a) * d, y: e.y + Math.sin(a) * d, vx: Math.cos(a) * G.speed, vy: Math.sin(a) * G.speed, radius: G.radius, arming: 0, life: G.life, total: G.life, seed: hashSeed(`${e.id}:${s.seq}:gale:${i}`), damage: damageOf(e, "mothGale") }); }
+    e.mothPose = null; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.mothGale.recover);
+  },
+  mothThreads(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const T = MOTH.threads, p = center(w.player), a0 = Math.atan2(p.y - e.y, p.x - e.x), arc = T.arc * Math.PI / 180;
+    for (let i = 0; i < T.count; i++) { const a = a0 + (i / (T.count - 1) - .5) * arc; w.addEffect({ kind: "silk", owner: e.id, x: e.x, y: e.y, vx: Math.cos(a) * T.speed, vy: Math.sin(a) * T.speed, turn: T.turn, home: T.home, radius: T.radius, trailMax: T.trail, trail: [], arming: 0, life: T.life, damage: damageOf(e, "mothThreads") }); }
+    e.mothPose = "beat"; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.mothThreads.recover);
+  },
+  mothThreadBlast(e, s, w) {
+    const B = MOTH.burst, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", B.gap * B.count + .1); return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt;
+    if (d.next <= 0 && d.shot < B.count) { const p = center(w.player), a = Math.atan2(p.y - e.y, p.x - e.x) + (d.shot ? .5 : -.5); // they leave to either side, then bend in
+      w.addEffect({ kind: "silk", big: true, owner: e.id, x: e.x, y: e.y, vx: Math.cos(a) * B.speed, vy: Math.sin(a) * B.speed, turn: B.turn, home: B.home, radius: B.radius, blast: B.blast, trailMax: B.trail, trail: [], arming: 0, life: B.life, damage: damageOf(e, "mothThreadBlast") });
+      d.shot++; d.next = B.gap; e.mothPose = "beat"; }
+    if (s.t <= 0) { e.mothPose = null; toPhase(s, "recover", ATTACK_MODULES.mothThreadBlast.recover); }
+  },
   mothKindle(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
     e.mothKindled = MOTH.kindle.time; e.mothTrail = 0; e.mothDustClock = MOTH.kindle.dustEvery; e.mothPose = null; s.tele = null;
@@ -1409,6 +1471,40 @@ const RUN = {
     if (s.phase !== "active") return;
     d.next -= w.dt; if (d.stamps < 2 && d.next <= 0) { stamp(); s.tele = null; }
     if (s.t <= 0 || d.stamps >= 2 && d.next < -.2) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  stagGrove(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = center(w.player), G = STAG.grove, dmg = damageOf(e, "stagGrove"), turn = (hashSeed(`${e.id}:${s.seq}:grove`) % 628) / 100;
+    for (let i = 0; i < G.trees; i++) { const h = hashSeed(`${e.id}:${s.seq}:tree:${i}`), a = turn + i * Math.PI * 2 / G.trees, r = G.ring[0] + (G.ring[1] - G.ring[0]) * ((h % 100) / 100), burn = G.burn[0] + (G.burn[1] - G.burn[0]) * i / Math.max(1, G.trees - 1), x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r;
+      if (w.tileOpen && !w.tileOpen(x + .5, y + .5)) continue;
+      w.addEffect({ kind: "burnTree", owner: e.id, x, y, radius: G.radius, grow: G.grow, burn, arming: 0, life: G.grow + burn + .45, total: G.grow + burn + .45, length: G.blast /* draws its own warnings */, damage: dmg, seed: h }); }
+    e.stagPose = "stamp"; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.stagGrove.recover);
+  },
+  stagMend(e, s, w) {
+    const A = ATTACK_MODULES.stagMend;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    e.stagPose = "mend"; e.stagMending = true; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * STAG.mend.share * w.dt / A.active);
+    if (s.t <= 0) { e.stagMending = false; e.stagPose = null; toPhase(s, "recover", A.recover); }
+  },
+  stagBirds(e, s, w) {
+    const A = ATTACK_MODULES.stagBirds, d = s.data, B = STAG.birds;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt;
+    if (d.next <= 0 && d.birds < B.count) {
+      const p = center(w.player), h = hashSeed(`${e.id}:${s.seq}:bird:${d.birds}`), a = d.birds * 2.1 + (h % 100) / 60, off = ((h >>> 8) % 100 / 100 - .5) * 2 * B.offset;
+      const dir = { x: Math.cos(a), y: Math.sin(a) }, n = { x: -dir.y, y: dir.x }, x = p.x - dir.x * B.reach + n.x * off, y = p.y - dir.y * B.reach + n.y * off;
+      w.addEffect({ kind: "birdDive", owner: e.id, x, y, dx: dir.x, dy: dir.y, length: B.reach * 2, speed: B.speed, radius: B.radius, arming: B.warn, armTotal: B.warn, life: B.reach * 2 / B.speed + .1, damage: damageOf(e, "stagBirds") });
+      d.birds++; d.next = B.every;
+    }
+    if (s.t <= 0 || d.birds >= B.count && d.next <= 0) { e.stagPose = null; toPhase(s, "recover", A.recover); }
+  },
+  stagMire(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const p = s.data.target, M = STAG.mire;
+    w.addEffect({ kind: "mire", owner: e.id, x: p.x, y: p.y, radius: M.radius, arming: M.warn, armTotal: M.warn, life: M.time, total: M.time, damage: 0 });
+    s.tele = null; e.stagPose = null; toPhase(s, "recover", ATTACK_MODULES.stagMire.recover);
   },
   stagHunt(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
@@ -2194,6 +2290,7 @@ function attackReady(e, s, w, id, d) {
   if (e.phases && !w.open(e.x, e.y)) return false;
   if (attack.los && !w.los(e, w.player, attack.tags.includes("ranged"))) return false;
   if (id === "voidSupernova" && voidEffects(w).some((f) => f.owner === e.id && f.kind === "voidRift" && f.tracking && !f.activated)) return false;
+  if (attack.hurtBelow && !((Number(e.hp) || 0) < (Number(e.maxHp) || 0) * attack.hurtBelow)) return false; // release 708: a heal only once it is hurt
   if (e.kind === "tremorWorm" && attack.posture === "full" && Number.isFinite(s.worm?.fullAt) && (w.now - s.worm.fullAt) / 1000 < WORM.fullGap) return false; // release 664: it comes all the way out only now and then
   if (id === "mirrorSwap" && !w.enemies.some((q) => !q.dead && q.illusion && q.summonedBy === e.id)) return false;
   if (id === "mirrorClones" && w.enemies.filter((q) => !q.dead && q.illusion && q.summonedBy === e.id).length >= 2) return false;
@@ -2568,6 +2665,7 @@ function patrolDungeon(e, s, w) {
 
 // One simulation step for a pack creature. `w` is the world adapter built by the game (or a test).
 export function updatePackMonster(e, w) {
+  if (e.kind === "mothChrysalis") { e.facingX = 1; return; } // release 708: it only hangs there
   if(e.kind === "voidWalker" && e.astralAllyOf && !w.astralAllyContext) { updateAstralWalkerAllyFixture(e,w.enemies.find(q=>q.id===e.astralAllyOf),w); return; }
   const def = packDefinition(e);
   if (!def) return;
@@ -3108,6 +3206,31 @@ export function tickPackEffects(effects, w) {
       const due = Math.floor((f.age - f.warn) / f.every);
       while (f.burst < Math.min(f.steps - 1, due)) { f.burst++; const sx = f.x + f.dx * f.burst * f.step, sy = f.y + f.dy * f.burst * f.step;
         if (!f.hit && Math.hypot(p.x - sx, p.y - sy) <= f.radius + .3) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "stagRoots" }); } }
+    } else if (f.kind === "gale") { // release 708: a giant whirlwind rolling about, rebounding off walls and the section's edges
+      const G = MOTH.gale, turn = Math.sin(f.age * .8 + (f.seed % 100)) * .6 * w.dt, c = Math.cos(turn), sn = Math.sin(turn); [f.vx, f.vy] = [f.vx * c - f.vy * sn, f.vx * sn + f.vy * c];
+      let nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt; const lo = G.edge, hi = 31 - G.edge;
+      if (nx < lo || nx > hi || (w.tileOpen && !w.tileOpen(nx + .5, f.y + .5))) { f.vx = -f.vx; nx = f.x; }
+      if (ny < lo || ny > hi || (w.tileOpen && !w.tileOpen(f.x + .5, ny + .5))) { f.vy = -f.vy; ny = f.y; }
+      f.x = nx; f.y = ny;
+      if (distance(p, f) <= f.radius) { w.pull?.(f, G.pull * w.dt, f.radius + .5); w.slow(G.slow, .3); if (!(f.nextBite > f.age)) { f.nextBite = f.age + G.tick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "mothGale", beam: true }); } }
+      if (!w.enemies.some((q) => q.id === f.owner && !q.dead) && f.life > 1) f.life = 1;
+    } else if (f.kind === "silk") { // release 708: the Moth's threads, homing for `home` s, a trail of silk behind
+      if (f.age <= f.home) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-f.turn * w.dt, Math.min(f.turn * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; }
+      const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt; (f.trail ||= []).push([before.x, before.y]); if (f.trail.length > f.trailMax) f.trail.shift();
+      const owner = w.enemies.find((q) => q.id === f.owner) || null, burst = () => { if (f.big) { if (distance(p, f) <= f.blast + .3) w.hurt(owner, f.damage, { jumpable: false, source: "mothThreadBlast" }); w.addEffect({ kind: "dust", owner: f.owner, x: f.x, y: f.y, radius: f.blast, arming: 0, life: .5, damage: 0 }); } };
+      if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) { burst(); f.life = 0; }
+      else if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; f.life = 0; if (f.big) burst(); else w.hurt(owner, f.damage, { jumpable: false, source: "mothThreads" }); }
+    } else if (f.kind === "burnTree") { // release 708: grows, burns (touch it and you burn), then explodes in splinters
+      const G = STAG.grove, owner = w.enemies.find((q) => q.id === f.owner) || null, d = distance(p, f);
+      if (f.age >= f.grow && f.age < f.grow + f.burn && d <= f.radius + .25 && !(f.nextBite > f.age)) { f.nextBite = f.age + G.touchEvery; if (w.hurt(owner, Math.max(1, Math.ceil(f.damage * G.touchShare)), { jumpable: false, source: "burnTree" })) w.ignite?.(G.igniteFor, Math.max(1, Math.ceil(f.damage * G.igniteShare))); }
+      if (!f.burst && f.age >= f.grow + f.burn) { f.burst = true;
+        if (d <= G.blast + .3) w.hurt(owner, f.damage, { jumpable: false, source: "burnTreeBlast" });
+        for (let i = 0; i < G.splinters; i++) { const a = (f.seed % 628) / 100 + i * Math.PI * 2 / G.splinters; w.addEffect({ kind: "thorn", ember: true, owner: f.owner, x: f.x, y: f.y, vx: Math.cos(a) * G.splinterSpeed, vy: Math.sin(a) * G.splinterSpeed, radius: STAG.thornRadius, arming: 0, life: G.splinterLife, damage: Math.max(1, Math.ceil(f.damage * G.splinterShare)) }); } }
+    } else if (f.kind === "birdDive") { // a bird stooping along its line once the line has shown
+      const t = f.age - (f.armTotal || 0), a = Math.max(0, (t - w.dt) * f.speed), b = Math.min(f.length, t * f.speed);
+      f.bx = f.x + f.dx * b; f.by = f.y + f.dy * b;
+      if (!f.hit && b > a && segmentDistance(p, { x: f.x + f.dx * a, y: f.y + f.dy * a }, { x: f.bx, y: f.by }) <= f.radius + .3) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "stagBirds" }); }
+    } else if (f.kind === "mire") { /* the Game reads it: soft ground (stagMireAt) */
     } else if (f.kind === "rootRing") {
       if (!f.detonated) { f.detonated = true; const d = distance(p, f), gap = Math.PI * 2 / f.spikes, a = ((Math.atan2(p.y - f.y, p.x - f.x) - f.turn) % gap + gap) % gap, near = Math.min(a, gap - a) * f.ring;
         if (Math.abs(d - f.ring) <= f.radius + .3 && near <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "rootRing" }); }
