@@ -5,14 +5,14 @@ import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { UPGRADE_CAPS, LATE_UPGRADE, lateUpgradeOpen, itemCap, upgradeCost, upgradeEquipment, normalizeItemUpgrade, APERTURE_BANDS } from '../src/items.ts';
 
-const late = (s) => { s.perception.aperture = APERTURE_BANDS[LATE_UPGRADE.tier].threshold; s.farArray = { ...(s.farArray || {}), listeners: LATE_UPGRADE.listeners }; return s; };
+const late = (s) => { s.perception.aperture = APERTURE_BANDS[LATE_UPGRADE.tier].threshold; s.farArray = { ...(s.farArray || {}), listeners: 3, gate: LATE_UPGRADE.gates + 1 }; return s; };
 const relic = (rank, masterwork = false) => ({ id: 'r', name: 'Relic Blade', slot: 'primary', tier: 'relic', power: 20 + rank, basePower: 20, upgradeRank: rank, masterwork });
 
 test('the late cap opens only at Infinite IV with the second Gate passed', () => {
   assert.equal(APERTURE_BANDS[LATE_UPGRADE.tier].name, 'Infinite IV');
   const s = freshSave(); assert.equal(lateUpgradeOpen(s), false);
-  s.perception.aperture = APERTURE_BANDS[LATE_UPGRADE.tier].threshold; s.farArray = { ...s.farArray, listeners: 1 }; assert.equal(lateUpgradeOpen(s), false, 'one Listener is not enough');
-  s.farArray.listeners = 2; assert.equal(lateUpgradeOpen(s), true);
+  s.perception.aperture = APERTURE_BANDS[LATE_UPGRADE.tier].threshold; s.farArray = { ...s.farArray, listeners: 2, gate: 2 }; assert.equal(lateUpgradeOpen(s), false, 'one Gate opened is not enough');
+  s.farArray.listeners = 3; s.farArray.gate = 3; assert.equal(lateUpgradeOpen(s), true);
   s.perception.aperture = APERTURE_BANDS[LATE_UPGRADE.tier].threshold - 1; assert.equal(lateUpgradeOpen(s), false, 'Infinite III is not enough');
 });
 

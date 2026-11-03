@@ -7,7 +7,7 @@ import { DRONE, DRONE_LIFT, setMechMode } from '../src/vehicle-gates.ts';
 import { Game } from '../src/game.ts';
 import { freshSave } from '../src/types.ts';
 
-const ready = () => { const s = freshSave(); s.seed = 'DRONE'; s.perception.aperture = 3255; s.farArray = { listeners: 4 }; s.consumables.submersible = 1; s.maxHp = 100; return s; };
+const ready = () => { const s = freshSave(); s.seed = 'DRONE'; s.perception.aperture = 3255; s.farArray = { listeners: 10, gate: 5 }; s.consumables.submersible = 1; s.maxHp = 100; return s; };
 const flying = () => { const s = ready(), g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld'); g.enemies = []; setMechMode(s, 'drone'); g.useConsumable('submersible', 0); s.mech.fuel = DRONE.carry;
   const w = 32; for (const t of g.map.tiles) Object.assign(t, { kind: 'ash', blocked: false, elev: 0, slope: false, environment: null, structure: null, buildingId: null }); g.map.objects = []; g.map.enemySpawns = [];
   Object.assign(g.player, { x: 10, y: 10, hp: 100, maxHp: 100 }); return { s, g, w }; };

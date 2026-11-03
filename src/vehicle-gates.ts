@@ -4,16 +4,17 @@
 // you've beaten either the void Walker or... the listener"; "you can't go underwater with a submersible until... infinite
 // tier 3, and... to unlock underwater travel... you have to have beaten the void Walker and... the listener at least once";
 // "infinite tier 3 and beyond... after you've unlocked the second gate with the listener... take the submersible on land";
-// "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Listener kills (far-array.ts): the
-// second gate is unlocked by the second kill. Pure rules; boats.ts, diving.ts and game.ts ask these.
+// "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Gate's climbs (far-array.ts; release 704:
+// the Gate at tier g climbs after g more Listener kills, so the second Gate opens on the third kill). Pure rules; boats.ts, diving.ts and game.ts ask these.
 import { apertureTier } from "./world.ts";
 import { listenerKills } from "./stages.ts";
 
-export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechListeners: 2, droneListeners: 4 };
+export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechGates: 2, droneGates: 4 }; // Gates opened (far-array.ts: the Gate at tier g climbs after g more Listener kills)
 const TIER_NAMES = { 12: "Infinite II", 13: "Infinite III" };
 const tierOf = (save) => apertureTier(save?.perception?.aperture || 0);
 const walkerSlain = (save) => (Number(save?.worldBeasts?.voidWalker?.slain) || 0) > 0;
 const listenerSlain = (save) => listenerKills(save) > 0;
+const gatesOpened = (save) => Math.max(0, (Number(save?.farArray?.gate) || 1) - 1); // the Gate starts at tier 1; each climb opens one
 
 // Each returns { ok, why } — why names what is still missing.
 export function diveGate(save) {
@@ -29,12 +30,12 @@ export function underwaterGate(save) {
   return { ok, why: ok ? "" : `Taking the submersible under needs the ${TIER_NAMES[VEHICLE_GATES.underwaterTier]} band${tier ? "" : " (not yet)"}, the Void Walker defeated${w ? "" : " (not yet)"} and a Listener defeated${l ? "" : " (not yet)"}.` };
 }
 export function mechGate(save) {
-  const tier = tierOf(save) >= VEHICLE_GATES.mechTier, gates = listenerKills(save) >= VEHICLE_GATES.mechListeners, ok = tier && gates;
-  return { ok, why: ok ? "" : `Walking the submersible ashore needs the ${TIER_NAMES[VEHICLE_GATES.mechTier]} band${tier ? "" : " (not yet)"} and the second Gate unlocked (${Math.min(listenerKills(save), VEHICLE_GATES.mechListeners)}/${VEHICLE_GATES.mechListeners} Listeners).` };
+  const tier = tierOf(save) >= VEHICLE_GATES.mechTier, gates = gatesOpened(save) >= VEHICLE_GATES.mechGates, ok = tier && gates;
+  return { ok, why: ok ? "" : `Walking the submersible ashore needs the ${TIER_NAMES[VEHICLE_GATES.mechTier]} band${tier ? "" : " (not yet)"} and the second Gate unlocked (${Math.min(gatesOpened(save), VEHICLE_GATES.mechGates)}/${VEHICLE_GATES.mechGates} Gates opened).` };
 }
 export function droneGate(save) {
-  const ok = listenerKills(save) >= VEHICLE_GATES.droneListeners;
-  return { ok, why: ok ? "" : `A drone answers once the fourth Gate is unlocked (${Math.min(listenerKills(save), VEHICLE_GATES.droneListeners)}/${VEHICLE_GATES.droneListeners} Listeners).` };
+  const ok = gatesOpened(save) >= VEHICLE_GATES.droneGates;
+  return { ok, why: ok ? "" : `A drone answers once the fourth Gate is unlocked (${Math.min(gatesOpened(save), VEHICLE_GATES.droneGates)}/${VEHICLE_GATES.droneGates} Gates opened).` };
 }
 
 // The robot ashore (release 317; Tim: "take the submersible... on land... walk around... boost over chasms... higher defenses...

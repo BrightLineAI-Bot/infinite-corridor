@@ -6,7 +6,7 @@ import { DRONE, setMechMode, ensureMech } from '../src/vehicle-gates.ts';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 
-const ready = (listeners = 4) => { const s = freshSave(); s.seed = 'DRONE'; s.perception.aperture = 3255; s.farArray = { listeners }; s.consumables.submersible = 1; return s; };
+const ready = (gates = 4) => { const s = freshSave(); s.seed = 'DRONE'; s.perception.aperture = 3255; s.farArray = { listeners: gates * (gates + 1) / 2, gate: gates + 1 }; s.consumables.submersible = 1; return s; };
 const ashore = (s) => { const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld'); g.enemies = []; return g; };
 
 test('the drone needs the fourth Gate; the frame calls up whichever is chosen', () => {

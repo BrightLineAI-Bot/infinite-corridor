@@ -7,7 +7,7 @@ import { SMELT, smeltSphere } from '../src/items.ts';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 
-const ready = (iron = 10) => { const s = freshSave(); s.seed = 'MECH'; s.perception.aperture = 3255; s.farArray = { listeners: 2 }; s.consumables.submersible = 1; s.materials.cinderIron = iron; return s; };
+const ready = (iron = 10) => { const s = freshSave(); s.seed = 'MECH'; s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 }; s.consumables.submersible = 1; s.materials.cinderIron = iron; return s; };
 const up = (iron) => { const s = ready(iron), g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld'); g.useConsumable('submersible', 0); return { s, g }; };
 
 test('the button cycles robot → empowered → stowed; without iron it stows straight away', () => {
