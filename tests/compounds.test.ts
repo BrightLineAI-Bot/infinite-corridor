@@ -99,3 +99,10 @@ test('compounds and shaped buildings draw without throwing from outside, behind 
   let shaped = 0; for (let x = -8; x <= 8 && shaped < 4; x++) for (let y = -8; y <= 8 && shaped < 4; y++) { const g = visit(x, y), B = g.map.objects.find((o) => o.kind === 'greatBuilding' && o.v === 2 && !o.compound); if (!B) continue; shaped++; const ctx = strictCtx(); g.player.x = B.bounds.x + 1; g.player.y = B.bounds.y - 1; assert.doesNotThrow(() => render(ctx, g, 360, 640, 5000)); assert.equal(ctx.depth, 0); }
   assert.ok(shaped > 0, 'a shaped building drawn');
 });
+
+test('a wing whose outer door found no open ground outside: that door is rubbled shut from inside', () => {
+  const at = find(false), g = visit(at.x, at.y), od = g.map.objects.find((o) => o.compoundDoor && o.enterAt === 'outer'); act(g, od, 'enter');
+  const h = g.save.consequences.dungeons[`${g.map.building.base}:f1`]; delete h.buildingDoors.exits['building-exit-outer']; // as if no door had stood outside
+  const ex = g.map.objects.find((o) => o.id === 'building-exit-outer'); g.player.x = ex.x; g.player.y = ex.y; const r = g.interact('exit', ex.id);
+  assert.ok(!r.ok); assert.match(r.message, /rubbled shut/); assert.equal(g.area, 'dungeon');
+});

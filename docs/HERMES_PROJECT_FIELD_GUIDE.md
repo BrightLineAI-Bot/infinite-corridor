@@ -2694,6 +2694,52 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 717: labyrinths — 2026-11-03
+
+Tim (2026-11-03): "I want the mazes to be pretty intense and interesting... you find yourself outside, in the same building, but
+a different section of the building, and then you go in... almost self-contained dungeons, but you move in and out of them
+through the doors... pretty tricky to get to the end... when you get to the end... the exit door... to the front... platforms...
+jumping... multiple floors that aren't necessarily obvious... a subcellar... an actual maze where there's only one right
+path... only one real end".
+
+**CODE:**
+- `src/labyrinths.ts` (new; in the build and both sw.js lists):
+  - `LABYRINTHS`: `chance` .06 past `minRing` 6; `chambers` 14–20 with `minPath` 9; chamber `size` 27×19 (odd, for the mazes);
+    `levelChange` .38 within `levels` −2..2; `gapsShare`, `courtShare`; galleries' `island` 3, `gap` 1, `missing`, `bridged` and
+    `edge` (a gap's lip); `deadCache` .4; `guards`; `footprint`s; names per style; court and cellar tile kinds.
+  - `labyrinthHere`; `labyrinthPlan(base)` is pure. It grows a tree of chambers from the door, mostly from the newest (long
+    corridors) and sometimes from an older one (branches), until its farthest chamber is `minPath` deep. That chamber is the
+    vault. Each chamber gets a kind from its level (below ground: cellar; above: hall or gaps; on it: hall or court). A passage is
+    a door on the same level or a ladder between levels, and each passage has a hashed slot in each of its two chambers. A
+    gallery's fall lands in a lower chamber.
+  - `generateLabyrinthChamber(seed, id)` (ids `labyrinth:<seed>:<rx>:<ry>:<style>:f<n>`):
+    - Halls use great-buildings.ts's `layFloor`. Courts (`yardGrass`/`hedgeWall`) and cellars (`cellarFloor`/`cellarWall`) are
+      perfect mazes carved on the odd cells. Galleries are 3×3 platforms over holes, with missing platforms restored until every
+      passage's platform is joined, and some gaps bridged.
+    - Passages are `buildingStair` objects (`dir` door / up / down, `labyrinth`). Creatures and caches stand only on ground
+      reachable from where you come in, gaps jumped. The vault has the guardian, the treasure and "Way out · the front".
+  - `placeLabyrinth`: one closed block over natural ground with one door, drawn by the block painter.
+- `src/game.ts`: labyrinth ids are built by `generateLabyrinthChamber`; placement in sections first seen from now on
+  (`atlas.labVersion`), before compounds and great buildings. A labyrinth passage moves you to its other side with its own
+  notice. `buildingFall` follows `map.building.fallTo` (a gallery drops you into another chamber) and, in a labyrinth, spares you
+  within `edge` of solid ground, so a timed running jump clears a gap (the window is about 0.7 tiles). A compound exit with no
+  door recorded outside is "rubbled shut".
+- `src/renderer.ts`: labyrinth doors drawn as arches; hedge, grass and cellar tiles. `src/main.ts`: DOOR on the dungeon map.
+
+**BOUNDARY:**
+- New ground only (`atlas.labVersion`). Every chamber is a dungeon history of its own; there are no new save fields beyond the
+  atlas pin and the door record.
+- Chambers are bounded at 27×19 and build in about 13 ms. Only the chamber you are in is loaded.
+- Tests: `tests/labyrinths.test.ts`. It covers:
+  - the tree, the one vault and depth, every edge type;
+  - reachability in every chamber of 30 labyrinths;
+  - the true path walked and out at the front;
+  - a running jump across a gap, and an early one falling into the chamber below;
+  - new ground only, determinism and resume;
+  - a render smoke test.
+
+  `tests/compounds.test.ts` covers the rubbled door.
+
 ## Release 713: compounds; shaped buildings and hives — 2026-11-03
 
 Tim (2026-11-03): "buildings that have courtyards in the middle, and multiple doors so that you can come in and out of the

@@ -105,6 +105,7 @@ const PAL = {
   keepWall: ["#4a443b", "#544d43"], aptWall: ["#55595d", "#5f6367"],
   mosaicFloor: ["#5a4a3a", "#5e4d3c"], carpetFloor: ["#5b2a2c", "#5f2c2e"], plankFloor: ["#6a4a2e", "#6e4d30"], flagFloor: ["#5a5650", "#5e5a53"],
   tileFloor: ["#8a8a84", "#7e7e78"], concreteFloor: ["#5b5d5e", "#585a5b"], rubbleFloor: ["#4a4640", "#46423c"], floorHole: ["#060607", "#060607"],
+  hedgeWall: ["#2c4a2a", "#30502e"], yardGrass: ["#4f6a3a", "#53703d"], cellarWall: ["#1c1a18", "#211f1c"], cellarFloor: ["#33302b", "#36332e"], // labyrinths
   hiveWall: ["#3a2a44", "#40304a"], chitinFloor: ["#3d3046", "#42344b"], fleshFloor: ["#5a2e3e", "#5e3142"], crystalFloor: ["#3a4a66", "#3e4f6b"], // compounds' hives
   ash: ["#3b3834", "#5a5049"],
   glass: ["#345052", "#52716d"],
@@ -1654,7 +1655,11 @@ function greatBlocks(ctx,o,s,p,map){
 // the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
 function drawBuildingStair(ctx, o, s, now) {
   const x = o.x * s, y = o.y * s, up = o.dir !== "down", pulse = .5 + .5 * Math.sin(now / 420);
-  ctx.save(); ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .9, s * .4, s * .1, 0, 0, 7); ctx.fill();
+  ctx.save();
+  if (o.dir === "door") { // a labyrinth's door: an arch in the wall, dark beyond, its frame lit
+    ctx.fillStyle = "#3a2f24"; ctx.fillRect(x + s * .06, y + s * .04, s * .88, s * .96); ctx.fillStyle = "#070708"; ctx.beginPath(); ctx.moveTo(x + s * .2, y + s); ctx.lineTo(x + s * .2, y + s * .42); ctx.arc(x + s * .5, y + s * .42, s * .3, Math.PI, 0); ctx.lineTo(x + s * .8, y + s); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); return; }
+  ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .9, s * .4, s * .1, 0, 0, 7); ctx.fill();
   if (up) { ctx.fillStyle = "#070708"; ctx.fillRect(x + s * .14, y - s * .55, s * .72, s * .32); ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .14, y - s * .55, s * .72, s * .32); // the hatch above
     ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo(x + s * .3, y + s * .9); ctx.lineTo(x + s * .34, y - s * .45); ctx.moveTo(x + s * .7, y + s * .9); ctx.lineTo(x + s * .66, y - s * .45); ctx.stroke();
     ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); for (let q = -.3; q < .85; q += .22) { ctx.moveTo(x + s * .32, y + s * q); ctx.lineTo(x + s * .68, y + s * q); } ctx.stroke(); }
@@ -1664,9 +1669,16 @@ function drawBuildingStair(ctx, o, s, now) {
   ctx.restore();
 }
 // Inside a great building: dressed or concrete walls with a face where they stand over open floor, and each room's floor.
-const BUILDING_TILES = new Set(["keepWall", "aptWall", "hiveWall", "mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor"]);
+const BUILDING_TILES = new Set(["hedgeWall", "yardGrass", "cellarWall", "cellarFloor", "keepWall", "aptWall", "hiveWall", "mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor"]);
 function paintBuildingTile(ctx, t, x, y, s, d, map, w) {
   const px = x * s, py = y * s, k = t.kind, at = (dx, dy) => map[(y + dy) * w + x + dx], same = (dx, dy) => at(dx, dy)?.kind === k;
+  if (k === "hedgeWall") { const below = at(0, 1), face = below && !below.blocked; // a labyrinth court's hedge: clipped leaves, darker where it meets the path
+    ctx.fillStyle = "#243f22"; ctx.fillRect(px, py, s + 1, s + 1); for (let i = 0; i < 5; i++) { ctx.fillStyle = i % 2 ? "#3a6334" : "#2f552b"; ctx.beginPath(); ctx.arc(px + s * (.2 + ((d + i * 3) % 5) * .15), py + s * (.18 + ((d * 2 + i) % 4) * .14), s * .17, 0, 7); ctx.fill(); }
+    if (face) { ctx.fillStyle = "#1d331b"; ctx.fillRect(px, py + s * .62, s + 1, s * .38 + 1); ctx.fillStyle = "#2a4826"; for (let i = 0; i < 3; i++) ctx.fillRect(px + s * (.1 + i * .3), py + s * .66, s * .18, s * .1); ctx.fillStyle = "#00000044"; ctx.fillRect(px, py + s - 3, s + 1, 3); }
+    return; }
+  if (k === "cellarWall") { const below = at(0, 1), face = below && !below.blocked; ctx.fillStyle = "#151311"; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle = "#24211d"; ctx.fillRect(px + 1, py + 1, s - 2, (face ? s * .45 : s) - 2);
+    if (face) { ctx.fillStyle = "#3a352e"; ctx.fillRect(px, py + s * .45, s + 1, s * .55 + 1); ctx.strokeStyle = "#1e1b17"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, py + s * .7); ctx.lineTo(px + s, py + s * .7); ctx.moveTo(px + s * ((y & 1) ? .3 : .65), py + s * .45); ctx.lineTo(px + s * ((y & 1) ? .3 : .65), py + s * .7); ctx.stroke(); if ((d & 3) === 0) { ctx.fillStyle = "#3e5a3a55"; ctx.fillRect(px + s * .5, py + s * .78, s * .2, s * .14); } ctx.fillStyle = "#00000055"; ctx.fillRect(px, py + s - 3, s + 1, 3); }
+    return; }
   if (k === "hiveWall") { const below = at(0, 1), face = below && !below.blocked; // a hive's wall: ridged chitin, its face veined
     ctx.fillStyle = "#24182c"; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle = "#33243d"; ctx.beginPath(); ctx.ellipse(px + s * .5, py + s * .3, s * .48, s * .26, 0, 0, 7); ctx.fill();
     if (face) { ctx.fillStyle = "#5a3f66"; ctx.fillRect(px, py + s * .45, s + 1, s * .55 + 1); ctx.strokeStyle = "#b07ad055"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px + s * .2, py + s * .5); ctx.quadraticCurveTo(px + s * .5, py + s * .75, px + s * .3, py + s); ctx.moveTo(px + s * .75, py + s * .5); ctx.quadraticCurveTo(px + s * .55, py + s * .7, px + s * .8, py + s); ctx.stroke(); ctx.fillStyle = "#00000044"; ctx.fillRect(px, py + s - 3, s + 1, 3); }
@@ -1698,6 +1710,8 @@ function paintBuildingTile(ctx, t, x, y, s, d, map, w) {
   else if (k === "tileFloor") { const q = s / 2; for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { ctx.fillStyle = (i + j + x + y) % 2 ? "#9c9c95" : "#6a6d6c"; ctx.fillRect(px + i * q, py + j * q, q, q); } ctx.strokeStyle = "#3f413f88"; ctx.strokeRect(px + .5, py + .5, s - 1, s - 1); if ((d & 3) === 1) { ctx.strokeStyle = "#2a2c2b"; ctx.beginPath(); ctx.moveTo(px + s * .1, py + s * .3); ctx.lineTo(px + s * .45, py + s * .55); ctx.lineTo(px + s * .7, py + s * .45); ctx.stroke(); } }
   else if (k === "concreteFloor") { ctx.fillStyle = "#4a4c4d"; for (let i = 0; i < 5; i++) ctx.fillRect(px + ((d * 7 + i * 11 + x * 3) % 10) / 10 * s, py + ((d * 3 + i * 7 + y * 5) % 10) / 10 * s, 2, 2); ctx.strokeStyle = "#47494a"; ctx.strokeRect(px + .5, py + .5, s - 1, s - 1); if ((d & 3) === 0 && (x + y) % 3 === 0) { ctx.fillStyle = "#58c7c222"; ctx.fillRect(px + s * .15, py + s * .7, s * .7, s * .05); } }
   else if (k === "rubbleFloor") { for (let i = 0; i < (t.blocked ? 7 : 4); i++) { const rx = px + ((d * 5 + i * 7) % 9) / 9 * s * .8, ry = py + ((d * 3 + i * 5) % 9) / 9 * s * .8, r = s * (t.blocked ? .22 : .13); ctx.fillStyle = i % 2 ? "#6a6359" : "#57514a"; ctx.beginPath(); ctx.moveTo(rx, ry + r); ctx.lineTo(rx + r * .8, ry); ctx.lineTo(rx + r * 1.7, ry + r * .6); ctx.lineTo(rx + r, ry + r * 1.4); ctx.closePath(); ctx.fill(); } if (t.blocked) { ctx.fillStyle = "#00000055"; ctx.fillRect(px + 2, py + s - 5, s - 4, 4); } }
+  else if (k === "yardGrass") { ctx.strokeStyle = "#6b8a4a"; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const gx = px + s * (.15 + ((d + i * 7) % 7) * .11), gy = py + s * (.3 + ((d * 3 + i * 5) % 6) * .1); ctx.beginPath(); ctx.moveTo(gx, gy + s * .12); ctx.lineTo(gx + s * .03, gy); ctx.stroke(); } if ((x * 3 + y) % 7 === 0) { ctx.fillStyle = "#9a8f6a55"; ctx.fillRect(px + s * .3, py + s * .4, s * .4, s * .25); } }
+  else if (k === "cellarFloor") { ctx.strokeStyle = "#24211d"; ctx.lineWidth = 1; ctx.strokeRect(px + .5, py + .5, s - 1, s - 1); if ((d & 3) === 1) { ctx.fillStyle = "#1a2a2a55"; ctx.beginPath(); ctx.ellipse(px + s * .5, py + s * .6, s * .25, s * .1, 0, 0, 7); ctx.fill(); } if ((d & 3) === 2) { ctx.fillStyle = "#4a443b"; ctx.fillRect(px + s * .2, py + s * .3, s * .12, s * .08); } }
   else if (k === "chitinFloor") { ctx.strokeStyle = "#5a4868"; ctx.lineWidth = 1; for (const [cx, cy] of [[.25, .25], [.75, .25], [.5, .7]]) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283, qx = px + s * cx + Math.cos(a) * s * .2, qy = py + s * cy + Math.sin(a) * s * .2; i ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.closePath(); ctx.stroke(); } }
   else if (k === "fleshFloor") { ctx.fillStyle = "#7a3a4e"; ctx.beginPath(); ctx.ellipse(px + s * (.3 + (d & 1) * .3), py + s * .5, s * .26, s * .16, (d % 3) * .5, 0, 7); ctx.fill(); ctx.strokeStyle = "#9a5468aa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, py + s * .3); ctx.quadraticCurveTo(px + s * .5, py + s * .1, px + s, py + s * .4); ctx.stroke(); }
   else if (k === "crystalFloor") { ctx.fillStyle = "#6a86b8"; ctx.beginPath(); ctx.moveTo(px + s * .2, py + s * .8); ctx.lineTo(px + s * .35, py + s * .3); ctx.lineTo(px + s * .5, py + s * .8); ctx.closePath(); ctx.fill(); ctx.fillStyle = "#a8c0e8aa"; ctx.beginPath(); ctx.moveTo(px + s * .55, py + s * .7); ctx.lineTo(px + s * .7, py + s * .2); ctx.lineTo(px + s * .82, py + s * .7); ctx.closePath(); ctx.fill(); }
