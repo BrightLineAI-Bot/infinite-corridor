@@ -37,3 +37,20 @@ test("the Tollkeeper's Keys is written in full, lies in middle crossings, and mo
   const later = (x, y, id) => { if (before(id, x, y) || Math.abs(x) + Math.abs(y) < THREAD_RULES.minDepth) return null; if ((hashSeed(`${seed}:threads:later:v1:${id}`) % 10000) / 10000 >= THREAD_RULES.later) return null; const here = THREAD_ORDER.filter((t) => THREADS[t].wave === 2 && inBand(THREADS[t].band, x, y)); return here.length ? here[hashSeed(`${seed}:threads:later:which:v1:${id}`) % here.length] : null; };
   let n = 0; for (const [x, y, id] of ids) { const was = later(x, y, id); if (was) { n++; assert.equal(threadIn(seed, id), was, 'a wave 2 crossing keeps its thread'); } } assert.ok(n > 5, `${n} wave 2 crossings checked`);
 });
+
+// Release 712: the Weaver's Cloth and the Mirror That Remembers, wave 3 threads of a later layer: they fill only wave 3 crossings that
+// held nothing, so every crossing that held the Tollkeeper's Keys (or any thread) still holds it.
+test("the Weaver's Cloth and the Mirror That Remembers are written in full, lie only where nothing lay, and move no thread", () => {
+  for (const [id, relic] of [['weaver', 'spool'], ['mirror', 'mirror']]) { const T = THREADS[id]; assert.ok(T.wave === 3 && T.layer === 1 && T.relic === relic && T.pieces.length === 6 && T.pieces.every((p) => p.length > 80) && T.ending.length > 200, id); }
+  const wide = []; for (let x = -90; x <= 90; x += 1) for (let y = -90; y <= 90; y += 2) wide.push([x, y, `dungeon:${seed}:g1:${x}:${y}:room`]);
+  const old = (x, y, id) => { const t = threadIn(seed, id); return t === 'weaver' || t === 'mirror' ? 'NEW' : t; };
+  let weaver = 0, mirror = 0;
+  for (const [x, y, id] of wide) { const t = threadIn(seed, id), d = Math.abs(x) + Math.abs(y);
+    if (t === 'weaver') { weaver++; assert.ok(inBand('far', x, y) && d >= 36, `${x},${y}`); }
+    if (t === 'mirror') { mirror++; assert.ok(inBand('far', x, y) && d >= 36, `${x},${y}`); }
+    if (t === 'tollKeys') assert.ok(inBand('middle', x, y)); }
+  assert.ok(weaver >= 6 && mirror >= 6, `weaver ${weaver}, mirror ${mirror}`); void old;
+  // every wave 3 crossing that the 707 rule gave the Tollkeeper still has it
+  const rule707 = (x, y, id) => { const t = threadIn(seed, id); if (t !== 'tollKeys' && t !== 'weaver' && t !== 'mirror') return undefined; return inBand('middle', x, y) ? 'tollKeys' : null; };
+  for (const [x, y, id] of wide) { const was = rule707(x, y, id); if (was === 'tollKeys') assert.equal(threadIn(seed, id), 'tollKeys', id); if (was === null) assert.ok(['weaver', 'mirror'].includes(threadIn(seed, id))); }
+});
