@@ -66,8 +66,8 @@ export const BUILDINGS = {
   },
 };
 
-export const FLOOR_KINDS = ["mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor"];
-export const WALL_KINDS = ["keepWall", "aptWall", "hiveWall"];
+export const FLOOR_KINDS = ["mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor", "yardGrass", "cellarFloor"];
+export const WALL_KINDS = ["keepWall", "aptWall", "hiveWall", "hedgeWall", "cellarWall"];
 
 const ID = /^building:(.+):(-?\d+):(-?\d+):(keep|apartment|hive):(\d+)(r?):f(\d+)$/; // `r`: it has a roof to stand on
 export const isBuildingId = (id) => ID.test(String(id || ""));
