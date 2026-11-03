@@ -20,7 +20,7 @@ test('a great tree\'s crown holds a rest point: step on it and it is where you w
 });
 
 test('with the drone out, a long fall is still a freefall (Jump opens the glider); a drop off the booster is not', () => {
-  const s = freshSave(); s.seed = 'CROWN'; s.perception.aperture = 3255; s.farArray = { listeners: 4 }; s.consumables.submersible = 1; s.glider = true;
+  const s = freshSave(); s.seed = 'CROWN'; s.perception.aperture = 3255; s.farArray = { listeners: 10, gate: 5 }; s.consumables.submersible = 1; s.glider = true;
   const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld'); g.enemies = []; setMechMode(s, 'drone'); g.useConsumable('submersible', 0); assert.ok(g.droneUp());
   for (const t of g.map.tiles) Object.assign(t, { kind: 'ash', blocked: false, elev: 0, slope: false, environment: null, structure: null, buildingId: null });
   const hi = g.map.tiles[10 * 32 + 10]; hi.elev = 8; Object.assign(g.player, { x: 10, y: 10.2, hp: 100, maxHp: 100 }); let t = 1000;

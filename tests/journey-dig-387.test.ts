@@ -6,7 +6,7 @@ import { journeyStats } from '../src/persistence.ts';
 import { DIG, wallTreasure, digStep, saveTier } from '../src/digging.ts';
 
 test('journey figures come from what the save already keeps', () => {
-  const s = freshSave(); s.playSeconds = 5400; s.explored = { '0,0': true, '1,0': true }; s.farArray = { listeners: 2 }; s.worldBeasts = { blob: { slain: 2 }, worm: { slain: 1 } };
+  const s = freshSave(); s.playSeconds = 5400; s.explored = { '0,0': true, '1,0': true }; s.farArray = { listeners: 3, gate: 3 }; s.worldBeasts = { blob: { slain: 2 }, worm: { slain: 1 } };
   s.consequences.dungeons = { a: { resolved: true }, b: { guardianDefeated: true }, c: {} }; s.hometowns = { towns: [{}, {}] }; s.digging = { dug: { a: ['1,1', '2,2'], b: ['3,3'] } };
   const rows = Object.fromEntries(journeyStats(s));
   assert.equal(rows['Time played'], '1.5 h'); assert.equal(rows['Sections explored'], 2); assert.equal(rows['Dungeons cleared'], 2);

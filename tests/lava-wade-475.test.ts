@@ -8,7 +8,7 @@ import { freshSave, migrateSave } from '../src/types.ts';
 import { rng } from '../src/random.ts';
 import { apertureReach, perceptionOverlay } from '../src/world.ts';
 
-const ready = () => { const s = freshSave(); s.seed = 'LAVA'; s.perception.aperture = 3255; s.farArray = { listeners: 2 }; s.consumables.submersible = 1; return s; };
+const ready = () => { const s = freshSave(); s.seed = 'LAVA'; s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 }; s.consumables.submersible = 1; return s; };
 const lavaRow = (g, from, to) => { const w = g.map.width || 32, row = 16; for (let x = 0; x < w; x++) { const lava = x >= from && x <= to; Object.assign(g.map.tiles[row * w + x], { kind: lava ? 'lava' : 'ash', blocked: false, elev: 0, landscape: null, environment: lava ? 'lava' : null }); } return row; };
 const walk = (g, n, dir = 1, start = 1000) => { let t = start; const input = { state: { x: dir, y: 0 }, consume: () => false, held: () => false }; for (let i = 0; i < n; i++) { g.update(.05, input, t); t += 50; } return t; };
 
