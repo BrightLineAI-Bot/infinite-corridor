@@ -1,20 +1,20 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r713-ad6fe6859fbd";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r713-ad6fe6859fbd";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r717-28789eeae12c";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r717-28789eeae12c";
 
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r713-ad6fe6859fbd";
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r717-28789eeae12c";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r713-ad6fe6859fbd";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r713-ad6fe6859fbd";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r713-ad6fe6859fbd";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r713-ad6fe6859fbd";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r713-ad6fe6859fbd";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r713-ad6fe6859fbd";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r713-ad6fe6859fbd";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r717-28789eeae12c";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r717-28789eeae12c";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r717-28789eeae12c";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r717-28789eeae12c";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r717-28789eeae12c";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r717-28789eeae12c";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r717-28789eeae12c";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r713-ad6fe6859fbd";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r717-28789eeae12c";
 
 const TAU = Math.PI * 2;
 
@@ -933,7 +933,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser") return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   const flip = ["astralWorm","astralMirage"].includes(e.kind)&&e.astral?.facingX ? (e.astral.facingX<0?-1:1) : e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);

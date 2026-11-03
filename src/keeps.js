@@ -10,8 +10,8 @@
 //   → the corner towers (4); the far wall's gatehouse tower (4) → a bridge over the courtyard (4) → the keep's wall walk (4)
 //   → jump up to the keep's upper floor (5) → jump up to its crown (6), where a Keep Rest and the keep's cache wait.
 // Creatures hold the courtyard, the wall walk and the towers (they cannot change level). Bounded: one keep a section, built once.
-import { hashSeed } from "./random.js?v=r713-ad6fe6859fbd";
-import { canStep } from "./landscape.js?v=r713-ad6fe6859fbd";
+import { hashSeed } from "./random.js?v=r717-28789eeae12c";
+import { canStep } from "./landscape.js?v=r717-28789eeae12c";
 
 export const KEEPS = {
   version: 1,

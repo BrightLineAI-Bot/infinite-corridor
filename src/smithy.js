@@ -8,9 +8,9 @@
 // - Socket: one extra glyph socket on a weapon, tool or armor (item.extraSockets, once per item).
 // - Masterwork: one rank past the tier's upgrade cap (item.masterwork, once per item; items.ts itemCap).
 // The item fields are additive and kept by normalizeItemUpgrade. Pure rules: no DOM.
-import { hashSeed, rng } from "./random.js?v=r713-ad6fe6859fbd";
-import { AFFIX_POOLS, rollAffixValue, itemTier, ITEM_TIERS, normalizeItemUpgrade } from "./items.js?v=r713-ad6fe6859fbd";
-import { normalizeSockets, socketCount, GLYPHS } from "./glyphs.js?v=r713-ad6fe6859fbd";
+import { hashSeed, rng } from "./random.js?v=r717-28789eeae12c";
+import { AFFIX_POOLS, rollAffixValue, itemTier, ITEM_TIERS, normalizeItemUpgrade } from "./items.js?v=r717-28789eeae12c";
+import { normalizeSockets, socketCount, GLYPHS } from "./glyphs.js?v=r717-28789eeae12c";
 
 export const SMITHY = {
   unlock: { salvage: 1, reforge: 1, socket: 2, masterwork: 3 },

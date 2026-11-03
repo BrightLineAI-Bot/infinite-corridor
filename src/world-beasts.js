@@ -1,16 +1,17 @@
-import { mealLure } from "./meals.js?v=r713-ad6fe6859fbd";
-import { ensureDragonLava } from "./crimson-dragon.js?v=r713-ad6fe6859fbd";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r713-ad6fe6859fbd";
+import { mealLure } from "./meals.js?v=r717-28789eeae12c";
+import { ensureDragonLava } from "./crimson-dragon.js?v=r717-28789eeae12c";
+import { ensureFarQuests } from "./far-realms.js?v=r717-28789eeae12c";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r717-28789eeae12c";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.js?v=r713-ad6fe6859fbd";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r713-ad6fe6859fbd";
-import { sectionExits, apertureTier } from "./world.js?v=r713-ad6fe6859fbd";
-import { stageOneBeastReference } from "./stages.js?v=r713-ad6fe6859fbd";
+import { hashSeed } from "./random.js?v=r717-28789eeae12c";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r717-28789eeae12c";
+import { sectionExits, apertureTier } from "./world.js?v=r717-28789eeae12c";
+import { stageOneBeastReference } from "./stages.js?v=r717-28789eeae12c";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -143,6 +144,13 @@ export const WORLD_BEASTS = {
   },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
+// Release 714 (Tim, 2026-11-03: "if you're fighting the stag, and the stalker comes in, or if you're fighting the stalker, and the
+// stag comes in, then [they] should get distracted... play together for a little bit... because their buddies"): when both are
+// within `range` of each other they forget the Wayfarer for `time` s and circle each other, butting and leaping (blows still land on
+// them); then they remember, and it can happen again after `gap` s.
+export const BEAST_PLAY = { range: 9, time: 8, gap: 45, radius: 2.2, spin: 1.7, speed: 6,
+  start: "The Briar Stag and the Stalker see each other, and forget you: they circle, butting and leaping, like old friends at play.",
+  end: "The game ends. The Briar Stag and the Stalker remember you." };
 // Release 708 (Tim, 2026-11-03: "the moth... his chrysalis can appear on the great trees... hanging from a branch and if you attack it
 // enough it will drop and then... it can start harassing you in the tree. But if you go down to the ground, you can just have the
 // normal fight with it"): on a great tree's branch, now and then, while the Moth is free and the Wayfarer's Aperture has opened it,
@@ -457,6 +465,7 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.
   ensureVoidScars(save, normalizeScarHistory ? undefined : null);
   ensureDragonLava(save); // release 709: the Crimson Tyrant's lava
+  ensureFarQuests(save); // release 716: the quests to the far civilisations
   return save;
 }
 
