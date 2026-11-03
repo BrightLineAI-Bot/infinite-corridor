@@ -2888,7 +2888,13 @@ boss room".
 - Any `enterAt` key finds its spot in `map.building.entries`.
 - An exit with `exitsTo` lets you out in its own section and tile.
 
-`src/renderer.ts`: wall blocks drawn as coursed stone without windows.
+`src/renderer.ts`:
+- Wall blocks are drawn as coursed stone without windows.
+- Age (Tim: "these castles... look kind of too clean... old... falling apart... parts of the walls aren't there... more detail to
+  the walls"): `greatBlocks` weathers every cell by a hash of its place: the stone's tone, moss, a fallen-in roof patch, broken
+  battlements on an open edge, a chipped facade top, a crack, a vine, rubble at the foot, and on curtain walls a stretch fallen to
+  a heap. The heap is drawn only; the tile stays blocked.
+- `greatBuilding` (version 1, release 711) gets the same column by column.
 
 **BOUNDARY:**
 - New ground only, all four sections at once: a corner with one section explored before has no castle.
