@@ -2798,6 +2798,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 716: the Crystal Civilisation — 2026-11-03
+
+Tim, 2026-11-03: "a large crystal civilization that you can find... all the monsters in there are... psychic crystals... variations... some of them can be smaller, like half crystals... crystal walkers, like the crystal crabs... we won't have the other regular monsters in that section... dungeons... regular... a quest which takes you there... after you beat the crystal over a 1000".
+
+**CODE:** `FAR_CIVS.crystal` in `src/far-realms.ts` (`FAR_REALMS.version` 3): its centre (`farCivCentre`) lies `min` to `min + span` sections out at a seeded bearing; `farCivAt(seed, sx, sy)` is true within `radius`. `landscape.ts` `LANDSCAPE_VERSION` is 15: from version 15 `regionAt` gives a civilisation's country its `land` region type (crystal), so new ground there is crystal shale, prism pools and crystal clusters and reads as crystal on the Atlas. From far-realm version `since` (3), `farPocketAt` returns the civilisation for its sections (before any pocket), so `populatePocket` turns its ordinary overworld creatures into its kin and adds `extra` more. The kin (`MONSTER_PACK`, `prototypeOnly`, `farKin`): `shardling` (the Crystal's body at .6; push, debris), `prismWarden` (.9; pull, wall, debris), `crystalStrider` (the Crystal Hermit's body at 1.3; claw sweep, leap slam). The quest: `save.farQuests[id] = { status, rx, ry }` (additive at schema 14, normalised by `ensureFarQuests` from `ensureWorldBeasts`); `openFarQuest` is called from `Game.defeatEnemy` for every slain world beast and opens the quest of the civilisation whose `beast` it was, `FAR_REALMS.start` or more out; `activeFarQuest` feeds the compass (`main.ts navigationTargets`, after a pinned or hunt target); arriving in the country marks it `found` with a QUEST COMPLETE notice. Tests: `tests/far-civs-716.test.ts`; the ten landscape-version pins now read 15.
+
+**BOUNDARY:** Only sections first seen at landscape 15 have the crystal land, and only far-realm 3 ground its kin; nothing within 1000 changes. Dungeons keep their ordinary creatures. The civilisation's own world beast is still the ordinary Psychic Crystal.
+
 ## Release 715: stag groves and blob pockets — 2026-11-03
 
 Tim, 2026-11-03 (the far-reaches list): "sections where all the monsters are small versions of... the blob... different biome regions just have different blobs... groves of stags... not as powerful as the regular... world... stag... throughout after a 1000... there should be lots of moths as well".
