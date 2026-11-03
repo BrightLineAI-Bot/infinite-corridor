@@ -21,7 +21,7 @@ export const GREAT_MUSHROOMS = {
   minTiles: 120, // a section needs this much of one region's ground to try
   stands: [1, 2], tries: 90,
   caps: [1.5, 2.3, 2.9], // radius of the caps at levels 1, 2 and 3
-  lift: 1.8, // a cap's drawn height per level, as a multiple of an ordinary level (tileLiftScale)
+  lift: 1.8, rise: .8, // a cap's drawn height per level, as a multiple of an ordinary level (tileLiftScale); 722: low caps get `rise` levels more, so even the first stands on a stalk you can see
   hues: ["capCrimson", "capAmber", "capViolet"], // one hue per stand
   cache: "chest",
   name: "great mushrooms", text: "Mushrooms as tall as trees stand here, their caps broad enough to stand on.",
@@ -68,7 +68,7 @@ export function growMushrooms(map, seed, rx, ry, { reachable, version = GREAT_MU
     if (!fine) continue;
     // Tried on the tiles: undone if it walls ground off or its top cannot be climbed to.
     const before = reachable(map), saved = new Map();
-    for (const [k, c] of plan) { const t = map.tiles[k]; saved.set(k, { ...t }); Object.assign(t, { kind: G.hues[(h("hue") + stands.length) % G.hues.length], elev: c.elev, slope: false, blocked: false, mushroom: stands.length + 1, roofLift: G.lift, under: t.kind, capI: c.i, capJ: c.j, capR: c.r }); }
+    for (const [k, c] of plan) { const t = map.tiles[k]; saved.set(k, { ...t }); Object.assign(t, { kind: G.hues[(h("hue") + stands.length) % G.hues.length], elev: c.elev, slope: false, blocked: false, mushroom: stands.length + 1, roofLift: G.lift * (1 + G.rise / c.elev), under: t.kind, capI: c.i, capJ: c.j, capR: c.r }); }
     const after = reachable(map), top = caps[caps.length - 1];
     let walled = !after[idx(top.x, top.y)];
     for (let k = 0; k < 1024 && !walled; k++) if (before[k] && !after[k] && !plan.has(k)) walled = true;

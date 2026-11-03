@@ -278,29 +278,43 @@ PAINT.canopyLeaf = (c, s, r) => { c.fillStyle = "#2f6a28"; c.fillRect(0, 0, s, s
 PAINT.canopyTrunk = (c, s, r) => { PAINT.canopyCrown(c, s, r); c.fillStyle = "#00000018"; c.fillRect(0, 0, s, s); };
 PAINT.canopyCrown = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, "#3c7a30"], [1, "#2a5a22"]]); c.fillRect(0, 0, s, s); for (let i = 0; i < 16; i++) { c.fillStyle = ["#4f9a3f", "#2c6326", "#6fb85a", "#1f4a1a"][Math.floor(r() * 4)] + "dd"; c.beginPath(); c.ellipse(r() * s, r() * s, 2 + r() * 3, 1.5 + r() * 2, r() * 3, 0, TAU); c.fill(); } };
 // Release 721: the great mushrooms' caps (great-mushrooms.ts), one hue per stand: a domed top, pale spots, a lighter crown.
-const CAP_HUES = { capCrimson: ["#c8443c", "#8e2a26", "#f1e2d0"], capAmber: ["#d08a3a", "#93561e", "#f6e6c4"], capViolet: ["#8a5aa8", "#5a3674", "#eadcf2"] };
+const CAP_HUES = { capCrimson: ["#cf3a30", "#7e1f1a", "#f6ecdc", "#f0705e", "#e0574a"], capAmber: ["#d9892e", "#8a4f17", "#fbf0d6", "#f3b45e", "#e9a04a"], capViolet: ["#8e55b0", "#4f2d68", "#f1e6f6", "#b98ad6", "#a46cc6"] }; // 722: top, shade, warts, gloss, shoulder
 for (const [kind, [top, low, spot]] of Object.entries(CAP_HUES)) PAINT[kind] = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, top], [1, low]]); c.fillRect(0, 0, s, s); c.fillStyle = "#ffffff14"; c.fillRect(0, 0, s, s * .4); for (let k = 0; k < 3; k++) { c.fillStyle = spot + (r() < .5 ? "ee" : "aa"); c.beginPath(); c.ellipse(r() * s, r() * s, s * (.07 + r() * .07), s * (.05 + r() * .05), r() * 3, 0, TAU); c.fill(); } };
-export const MUSHROOM_LOOK = { gill: ["#efe3cf", "#bfae94"], stalk: ["#f3ead8", "#cbbb9f"], under: .24, stalkWidth: .46, round: .5 };
+export const MUSHROOM_LOOK = { gill: ["#efe3cf", "#b8a68b"], stalk: ["#f6efe0", "#c9b89a"], skirt: "#efe6d4", under: .2, side: .42, squash: .8, stalkWidth: .5, round: .5 }; // 722: the dome's side, a skirt, a thicker stalk
 // A cap tile (great-mushrooms.ts): the ground it stands on, its shadow, its stalk (the front tile of the centre column), the
 // gills under a front edge, and the top: one dome over the whole cap (a radial light from its crown), spots hashed from the
 // tile, corners rounded where two sides fall away. Drawn into the static ground cache: no per-frame cost.
 function drawMushroomTile(ctx, t, x, y, s, tiles, w, lift) {
-  const M = MUSHROOM_LOOK, H = CAP_HUES[t.kind] || CAP_HUES.capCrimson, px = x * s, py = y * s - lift, gy = y * s, under = s * M.under;
+  const M = MUSHROOM_LOOK, H = CAP_HUES[t.kind] || CAP_HUES.capCrimson, px = x * s, py = y * s - lift, gy = y * s, under = s * M.under, side = s * M.side;
   const ground = t.under && topTexture(t.under, (t.detail || 0) % 4, s); if (ground) ctx.drawImage(ground, px, gy, s + .5, s + .5); else if (t.under && PAINT[t.under]) { ctx.save(); ctx.translate(px, gy); PAINT[t.under](ctx, s, rand(1)); ctx.restore(); }
-  { const R0 = (Math.floor(t.capR || 1) + .5) * s; ctx.save(); ctx.beginPath(); ctx.rect(px, gy, s + .5, s + .5); ctx.clip(); ctx.fillStyle = "#00000038"; ctx.beginPath(); ctx.ellipse(px + s / 2 - (t.capI || 0) * s, gy + s * .6 - (t.capJ || 0) * s, R0, R0 * .8, 0, 0, TAU); ctx.fill(); ctx.restore(); } // its shadow on the ground
-  if (t.stalk) { const sw = s * M.stalkWidth, sx = px + (s - sw) / 2; ctx.fillStyle = grad(ctx, sx, 0, sx + sw, 0, [[0, M.stalk[0]], [1, M.stalk[1]]]); ctx.fillRect(sx, py + s * .5, sw, gy + s - (py + s * .5)); ctx.fillStyle = "#00000026"; ctx.beginPath(); ctx.ellipse(px + s / 2, gy + s, sw * .8, s * .1, 0, 0, TAU); ctx.fill(); }
-  // The cap is one circle over its tiles (radius `round` past the last whole ring), its gills the same circle dropped by `under`.
-  // Each row's end tiles also draw the disc out past them to its edge, so the round cap is whole though its tiles are a stepped ring.
-  const cx = px + s / 2 - (t.capI || 0) * s, cy = py + s / 2 - (t.capJ || 0) * s, R = (Math.floor(t.capR || 1) + M.round) * s, disc = (dy) => { ctx.beginPath(); ctx.arc(cx, cy + dy, R, 0, TAU); };
+  const R = (Math.floor(t.capR || 1) + M.round) * s, RY = R * M.squash, cx = px + s / 2 - (t.capI || 0) * s, cy = py + s / 2 - (t.capJ || 0) * s;
+  // On the ground (each tile draws its own square of it): the cap's shadow, then the stalk, which stands at the cap's front so it
+  // shows below the lip: thick and pale, swelling to a bulb, with a skirt just under the gills and small caps at its foot.
+  ctx.save(); ctx.beginPath(); ctx.rect(px, gy, s + .5, s + .5); ctx.clip();
+  ctx.fillStyle = "#00000038"; ctx.beginPath(); ctx.ellipse(cx, cy + lift + s * .2, R * .95, RY * .9, 0, 0, TAU); ctx.fill();
+  const sw = R * M.stalkWidth, foot = cy + lift + Math.floor(t.capR || 1) * s + s * .3, lip = cy + RY + side + under, top = cy;
+  ctx.fillStyle = grad(ctx, cx - sw / 2, 0, cx + sw / 2, 0, [[0, M.stalk[1]], [.3, M.stalk[0]], [.65, M.stalk[0]], [1, M.stalk[1]]]);
+  ctx.beginPath(); ctx.moveTo(cx - sw * .42, top); ctx.lineTo(cx + sw * .42, top); ctx.quadraticCurveTo(cx + sw * .5, (top + foot) / 2, cx + sw * .62, foot); ctx.lineTo(cx - sw * .62, foot); ctx.quadraticCurveTo(cx - sw * .5, (top + foot) / 2, cx - sw * .42, top); ctx.fill();
+  ctx.fillStyle = grad(ctx, 0, foot - s * .2, 0, foot + s * .12, [[0, M.stalk[0]], [1, M.stalk[1]]]); ctx.beginPath(); ctx.ellipse(cx, foot, sw * .72, s * .17, 0, 0, TAU); ctx.fill(); // the bulb
+  if (foot - lip > s * .45) { const ring = lip + s * .08; ctx.fillStyle = M.skirt; ctx.beginPath(); ctx.moveTo(cx - sw * .46, ring); ctx.lineTo(cx + sw * .46, ring); ctx.quadraticCurveTo(cx + sw * .66, ring + s * .12, cx + sw * .6, ring + s * .26); ctx.quadraticCurveTo(cx, ring + s * .36, cx - sw * .6, ring + s * .26); ctx.quadraticCurveTo(cx - sw * .66, ring + s * .12, cx - sw * .46, ring); ctx.fill(); ctx.strokeStyle = "#00000026"; ctx.lineWidth = 1; ctx.stroke(); }
+  { const r = rand(Math.round(cx) * 3 + Math.round(cy) * 7 + 5); for (let k = 0; k < 4; k++) { const bx = cx + (r() < .5 ? -1 : 1) * (sw * .7 + r() * s * .5), by = foot + s * (r() * .12 - .02), br = s * (.12 + r() * .1); ctx.fillStyle = M.stalk[0]; ctx.fillRect(bx - br * .22, by - br * 1.3, br * .44, br * 1.3); ctx.fillStyle = H[0]; ctx.beginPath(); ctx.ellipse(bx, by - br * 1.3, br, br * .7, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = H[2]; ctx.beginPath(); ctx.arc(bx - br * .3, by - br * 1.6, br * .18, 0, TAU); ctx.fill(); } }
+  ctx.restore();
+  // The cap: a dome seen from above and in front: its top (an ellipse over its tiles), its curved front side (the top dropped by
+  // `side`) and the gills under its lip (dropped by `side` + `under`). Each row's end tiles draw the dome out past them to its
+  // edge, so the round cap is whole though its tiles are a stepped ring.
+  const disc = (dy, k = 1) => { ctx.beginPath(); ctx.ellipse(cx, cy + dy, R * k, RY * k, 0, 0, TAU); };
   const kin = (dx) => { const n = tiles?.[y * w + x + dx]; return !!n && x + dx >= 0 && x + dx < w && n.mushroom === t.mushroom && n.elev === t.elev; }, x0 = kin(-1) ? px : cx - R - 2, x1 = kin(1) ? px + s + .5 : cx + R + 2;
-  ctx.save(); ctx.beginPath(); ctx.rect(x0, py, x1 - x0, s + under + .5); ctx.clip();
-  disc(under); ctx.fillStyle = grad(ctx, 0, cy + R - under, 0, cy + R + under, [[0, M.gill[1]], [1, M.gill[0]]]); ctx.fill();
-  ctx.strokeStyle = "#8f7d6466"; ctx.lineWidth = 1; for (let k = 0; k < 6; k++) { const gx = px + (k + .5) * s / 6, dx = (gx - cx) / R; if (Math.abs(dx) >= 1) continue; const edge = cy + R * Math.sqrt(1 - dx * dx); ctx.beginPath(); ctx.moveTo(gx, edge - 1); ctx.lineTo(cx + (gx - cx) * .9, edge + under * .85); ctx.stroke(); }
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, py, x1 - x0, s + side + under + .5); ctx.clip();
+  disc(side + under, .9); ctx.fillStyle = grad(ctx, 0, cy + RY + side - under, 0, cy + RY + side + under, [[0, M.gill[1]], [1, M.gill[0]]]); ctx.fill();
+  ctx.strokeStyle = "#8f7d6488"; ctx.lineWidth = 1; for (let k = 0; k < 7; k++) { const gx = px + (k + .5) * s / 7, dx = (gx - cx) / (R * .9); if (Math.abs(dx) >= 1) continue; const edge = cy + side + RY * Math.sqrt(1 - dx * dx); ctx.beginPath(); ctx.moveTo(gx, edge - 1); ctx.lineTo(cx + (gx - cx) * .8, edge + under * .9); ctx.stroke(); }
+  disc(side); ctx.fillStyle = grad(ctx, 0, cy + RY - side * .2, 0, cy + RY + side, [[0, H[1]], [.55, H[0]], [1, H[1]]]); ctx.fill(); // the dome's front, shaded under its shoulder
+  ctx.strokeStyle = H[1]; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.ellipse(cx, cy + side, R - 1, RY - 1, 0, Math.PI * .08, Math.PI * .92); ctx.stroke(); // its lip
   ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(x0, py - 1, x1 - x0, s + 1.5); ctx.clip(); disc(0); ctx.clip();
-  const dome = ctx.createRadialGradient(cx - R * .3, cy - R * .35, R * .05, cx, cy, R); [[0, H[2] + "88"], [.22, H[0]], [.72, H[0]], [1, H[1]]].forEach(([o, c]) => dome.addColorStop(o, c)); ctx.fillStyle = dome; ctx.fillRect(x0, py - 1, x1 - x0, s + 2);
-  const r = rand(x * 31 + y * 17 + 3); for (let k = 0; k < 2; k++) if (r() < .7) { ctx.fillStyle = H[2] + (r() < .5 ? "ee" : "b0"); ctx.beginPath(); ctx.ellipse(px + s * (.2 + r() * .6), py + s * (.2 + r() * .6), s * (.07 + r() * .06), s * (.05 + r() * .05), r() * 3, 0, TAU); ctx.fill(); }
-  ctx.strokeStyle = "#00000040"; ctx.lineWidth = Math.max(1.5, s * .06); disc(0); ctx.stroke(); // the rim
+  const dome = ctx.createRadialGradient(cx - R * .2, cy - RY * .35, R * .05, cx, cy + RY * .1, R * 1.05); [[0, H[3]], [.32, H[0]], [.92, H[0]], [1, H[4] || H[0]]].forEach(([o, c]) => dome.addColorStop(o, c)); ctx.fillStyle = dome; ctx.fillRect(x0, py - 1, x1 - x0, s + 2);
+  // warts: round and raised, larger toward the crown, hashed per tile so they never line up
+  const r = rand(x * 31 + y * 17 + 3), d = Math.hypot(t.capI || 0, t.capJ || 0) / ((t.capR || 1) + .5);
+  for (let k = 0; k < 3; k++) if (r() < .8 - d * .3) { const wx = px + s * (.15 + r() * .7), wy = py + s * (.15 + r() * .7), wr = s * (.09 + r() * .07) * (1.15 - d * .5); ctx.fillStyle = "#00000030"; ctx.beginPath(); ctx.ellipse(wx + wr * .15, wy + wr * .25, wr, wr * .75, 0, 0, TAU); ctx.fill(); ctx.fillStyle = H[2]; ctx.beginPath(); ctx.ellipse(wx, wy, wr, wr * .75, 0, 0, TAU); ctx.fill(); ctx.fillStyle = "#ffffff99"; ctx.beginPath(); ctx.ellipse(wx - wr * .3, wy - wr * .3, wr * .35, wr * .22, 0, 0, TAU); ctx.fill(); }
   ctx.restore();
 }
 for (const [type, P] of Object.entries(PALETTE_PAINT)) { const R = PALETTE_REGIONS[type]; PAINT[R.ground] = (c, s, r) => paletteGround(c, s, r, P); PAINT[R.pool.kind] = (c, s, r) => palettePool(c, s, r, P); PAINT[R.block.kind] = (c, s, r) => paletteBlock(c, s, r, P); }

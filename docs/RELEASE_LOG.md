@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 721, the next is **722**.
+Taken at merge time: `main`'s release + 1 (see above). After 722, the next is **723**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 721 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms beyond 1000 sections (landscape v17): stands of tree-tall caps hopped up one level at a time, a cache on top | In flight. |
+| 722 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms made mushroomy: domed caps with a shaded side, warts, gills, a skirt and a thick bulbed stalk; low caps stand taller | In flight. |
+| 721 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms beyond 1000 sections (landscape v17): stands of tree-tall caps hopped up one level at a time, a cache on top | Merged (#368). |
 | 720 | Claude | `claude/dreamy-rubin-yn6q2p` | The folk realms: the Hollow Kin (folk who turn and come in waves; no sanctuary) and the Tall Country (giant folk who throw spears) | Merged (#367). |
 | 719 | Claude | `claude/dreamy-rubin-yn6q2p` | The Ink Wastes: an ink-washed far realm, ink-black creatures and the Astral Worm's shapes; the Stag's play fix | Merged (#366). |
 | 718 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Labyrinths (Tim asked this session): self-contained mazes of 14–20 chambers (halls, hedge courts, cellars, subcellars, galleries of gaps), one true path to the vault, sealed doors with keys down side branches, a shortcut back, a way out at the front | Merging (baton taken). |

@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 722: the great mushrooms, mushroomy — 2026-11-03
+
+Tim, 2026-11-03: "The mushrooms look kind of like trees, so they need to be more mushroomy."
+
+**CODE:** `drawMushroomTile` (`src/landscape-render.ts`) redrawn: each cap is an ellipse (`MUSHROOM_LOOK.squash`) with its front side (the top dropped by `side`, shaded under the shoulder, a lip line) and the gills (dropped by `side` + `under`); a dome gradient with a gloss and a shoulder colour (`CAP_HUES` now five colours each); raised warts with a shadow and a highlight, larger toward the crown. The stalk is drawn by every cap tile into its own ground square, centred under the cap and standing at its front (`stalkWidth` of the cap's radius), with a bulb, a skirt just under the gills when there is room, and small caps around its foot. `GREAT_MUSHROOMS.rise` gives a cap a drawn height of `lift × (1 + rise / level)`, so a level-1 cap stands high enough to show its stalk.
+
+**BOUNDARY:** Drawing only: the stands, their levels, the climb and the cache are as in 721 (`roofLift` is a drawn height; gameplay reads `elev`). Everything is drawn into the static ground cache.
+
 ## Release 721: the great mushrooms — 2026-11-03
 
 Tim, 2026-11-03: "a biome with larger mushrooms... not comically large mushrooms, but just large mushrooms... the size of some of those like accent trees... Maybe you can hop on those a little bit... just do some light platforming on the mushrooms... those can start popping out over a thousand when you're at over a thousand squares, you know, straight line distance from 00". Taken as: stands of walkable caps one level apart, at least 1000 sections straight-line from 0,0, in the regions where mushrooms belong.
