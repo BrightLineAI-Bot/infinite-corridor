@@ -49,22 +49,25 @@ export function drawCrimsonTyrant(ctx, q, now = 0) {
   const limb = (pts, w0, w1, tone) => { const n = pts.length; ctx.fillStyle = tone; ctx.beginPath(); const L = [], Rt = []; for (let i = 0; i < n; i++) { const [x, y] = pts[i], [px, py] = pts[Math.max(0, i - 1)], [nx, ny] = pts[Math.min(n - 1, i + 1)], dx = nx - px, dy = ny - py, l = Math.hypot(dx, dy) || 1, w = (w0 + (w1 - w0) * i / (n - 1)) / 2; L.push([x - dy / l * w, y + dx / l * w]); Rt.push([x + dy / l * w, y - dx / l * w]); } ctx.moveTo(...L[0]); for (const p of L) ctx.lineTo(...p); for (const p of Rt.reverse()) ctx.lineTo(...p); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.bone; ctx.lineWidth = lw; ctx.stroke(); };
   const claws = (x, y, dir = 1) => { ctx.fillStyle = A.horn; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(x + i * u * .05, y - u * .02); ctx.quadraticCurveTo(x + i * u * .05 + dir * u * .05, y, x + i * u * .06 + dir * u * .09, y + u * .01); ctx.lineTo(x + i * u * .05, y + u * .01); ctx.closePath(); ctx.fill(); } };
   // ---- the wing: an arm of bone with three long fingers and a membrane between them.
-  const wingAt = (sx, sy, far) => {
-    const spread = wing, up = -1.1 - spread * .9 + flap, reach = u * (.5 + spread * 1.15);
-    const ex = sx + Math.cos(up) * reach * .45, ey = sy + Math.sin(up) * reach * .45;
-    const tips = [0, 1, 2].map((i) => { const a = up + (.25 + i * .42) * (spread * .9 + .1) + (far ? .08 : 0), L = reach * (1 - i * .18); return [ex + Math.cos(a) * L, ey + Math.sin(a) * L * (spread > .4 ? 1 : .55)]; });
-    const g = ctx.createLinearGradient(sx, sy - reach, sx, sy + reach * .3); g.addColorStop(0, far ? A.membrane : A.membraneLight); g.addColorStop(1, far ? A.hideDark : A.membrane);
-    ctx.fillStyle = g; ctx.globalAlpha *= far ? .85 : .95; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey);
-    for (const [x, y] of tips) ctx.lineTo(x, y);
-    ctx.quadraticCurveTo((tips[2][0] + sx) / 2 - u * .1, (tips[2][1] + sy) / 2 + u * .15, sx - u * .25, sy + u * .05); ctx.closePath(); ctx.fill(); ctx.globalAlpha /= far ? .85 : .95;
+  const wingAt = (sx, sy, far) => { // folded: fingers swept back along the body; spread: a wide fan over the back
+    const k2 = Math.max(0, Math.min(1, wing)), lerp = (a, b2) => a + (b2 - a) * k2, arm = lerp(-2.25, -1.7) + flap * .6, armL = u * lerp(.28, .48);
+    const ex = sx + Math.cos(arm) * armL, ey = sy + Math.sin(arm) * armL;
+    const fold = [-2.75, -2.95, -3.1], open = [-1.2, -1.85, -2.6], lenF = [.6, .52, .42], lenO = [1.25, 1.1, .85];
+    const tips = [0, 1, 2].map((i) => { const a = lerp(fold[i], open[i]) + flap * (1 - i * .3), L = u * lerp(lenF[i], lenO[i]) * (far ? .9 : 1); return [ex + Math.cos(a) * L, ey + Math.sin(a) * L]; });
+    const back = [sx - u * lerp(.45, .6), sy + u * .02];
+    const g = ctx.createLinearGradient(ex, ey - u * .8, sx, sy + u * .2); g.addColorStop(0, far ? A.membrane : A.membraneLight); g.addColorStop(1, far ? A.hideDark : A.membrane);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.lineTo(...tips[0]);
+    const scallop = (a, b2) => { const mx = (a[0] + b2[0]) / 2, my = (a[1] + b2[1]) / 2, dx = ex - mx, dy = ey - my; ctx.quadraticCurveTo(mx + dx * .28, my + dy * .28, b2[0], b2[1]); };
+    scallop(tips[0], tips[1]); scallop(tips[1], tips[2]); scallop(tips[2], back); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = A.bone; ctx.lineWidth = Math.max(1, u * .022); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); for (const [x, y] of tips) { ctx.moveTo(ex, ey); ctx.lineTo(x, y); } ctx.stroke();
-    ctx.fillStyle = A.horn; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex - u * .03, ey - u * .09); ctx.lineTo(ex + u * .04, ey - u * .02); ctx.closePath(); ctx.fill(); // the wing claw
+    ctx.strokeStyle = "rgba(40,6,4,.4)"; ctx.lineWidth = Math.max(1, u * .008); ctx.stroke();
+    ctx.fillStyle = A.horn; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(arm - 1.2) * u * .09, ey + Math.sin(arm - 1.2) * u * .09); ctx.lineTo(ex + Math.cos(arm + .4) * u * .04, ey + Math.sin(arm + .4) * u * .04); ctx.closePath(); ctx.fill(); // the wing claw
   };
   const [wfx, wfy] = R(.1, -.42); wingAt(wfx - u * .05, wfy, true);
   // ---- the tail: long, heavy, tapering to a spiked club, swinging behind.
-  { const segs = 12, pts = []; let x = hipX - u * .1, y = hipY - u * .05, a = Math.PI + .15;
-    for (let i = 0; i <= segs; i++) { pts.push([x, y]); a += (tailSwing * .12) + Math.sin(t * 2 + i * .6) * (reduce ? 0 : .02); const L = u * .2; x += Math.cos(a) * L; y += Math.sin(a) * L * .45 + u * .012 * i * .3; }
-    limb(pts, u * .36, u * .05, A.hide);
+  { const segs = 11, pts = []; let x = hipX - u * .05, y = hipY - u * .08, a = Math.PI - .45; // a heavy tail that tapers to a spiked tip, swaying in an S
+    for (let i = 0; i <= segs; i++) { pts.push([x, y]); const k2 = i / segs; a += .09 + Math.sin(t * 1.8 - i * .55) * (reduce ? 0 : .09) * k2 + tailSwing * .1 * k2; x += Math.cos(a) * u * .14; y += Math.sin(a) * u * .14 * .55; }
+    limb(pts, u * .32, u * .03, A.hide);
     ctx.fillStyle = A.belly; for (let i = 1; i < segs; i += 2) { const [px, py] = pts[i]; ctx.beginPath(); ctx.ellipse(px, py + u * .04 * (1 - i / segs), u * .05 * (1 - i / segs) + u * .01, u * .025, 0, 0, TAU); ctx.fill(); }
     ctx.fillStyle = A.horn; for (let i = 0; i < segs; i += 2) { const [px, py] = pts[i], hgt = u * .09 * (1 - i / segs) + u * .02; ctx.beginPath(); ctx.moveTo(px - u * .04, py - u * .12 * (1 - i / segs)); ctx.lineTo(px - u * .06, py - u * .12 * (1 - i / segs) - hgt); ctx.lineTo(px + u * .01, py - u * .12 * (1 - i / segs)); ctx.closePath(); ctx.fill(); }
     const [tx, ty] = pts[segs]; ctx.fillStyle = A.horn; ctx.beginPath(); for (let i = 0; i < 5; i++) { const aa = i * TAU / 5 + t * (reduce ? 0 : .5); ctx.lineTo(tx + Math.cos(aa) * u * .11, ty + Math.sin(aa) * u * .07); ctx.lineTo(tx + Math.cos(aa + .6) * u * .04, ty + Math.sin(aa + .6) * u * .03); } ctx.closePath(); ctx.fill(); }
@@ -94,7 +97,7 @@ export function drawCrimsonTyrant(ctx, q, now = 0) {
   const fa = ha + 1.25 + head * .6; ctx.save(); ctx.translate(hx, hy); ctx.rotate(fa);
   // horns behind the head: two great swept horns, then a crown of short ones
   ctx.fillStyle = A.horn; ctx.strokeStyle = A.hornLight; ctx.lineWidth = lw;
-  for (const [ox, len, bend] of [[-.04, .5, -.5], [.02, .42, -.35]]) { ctx.beginPath(); ctx.moveTo(u * ox, -u * .07); ctx.bezierCurveTo(u * (ox - .12), -u * .2, u * (ox - .3), -u * (.2 + len * .3), u * (ox - len), -u * (.05 + len * bend * -.3)); ctx.lineTo(u * (ox - .02), -u * .02); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  for (const [ox, len] of [[-.04, .42], [.03, .34]]) { ctx.beginPath(); ctx.moveTo(u * ox, -u * .08); ctx.bezierCurveTo(u * (ox - .1), -u * .2, u * (ox - .28), -u * .24, u * (ox - len), -u * .12); ctx.bezierCurveTo(u * (ox - .26), -u * .17, u * (ox - .1), -u * .12, u * (ox + .04), -u * .05); ctx.closePath(); ctx.fill(); ctx.stroke(); } // two swept horns, crescent-thin
   for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(u * (.02 + i * .05), -u * .08); ctx.lineTo(u * (-.02 + i * .05), -u * .17); ctx.lineTo(u * (.05 + i * .05), -u * .07); ctx.closePath(); ctx.fill(); }
   // skull and upper jaw, lower jaw hinged open
   const open = jaw * .5;
