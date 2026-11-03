@@ -2749,6 +2749,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 712: two threads of a later layer — 2026-11-03
+
+The daily narrative pass (Tim: "continue doing your narrative pass"). Two threads, each six pieces and an ending, in the voice of the narrative bible: the Corridor keeps what is kept and read.
+
+**CODE:** `THREADS.weaver` ("The Weaver's Cloth", relic `spool`) and `THREADS.mirror` ("The Mirror That Remembers", relic `mirror`) in `src/threads.ts`, both `wave: 3` and `layer: 1`, both in the far band. `thirdThreadIn` now picks only among the earliest `layer` that has a wave 3 thread in band at that crossing, so the middle band's Tollkeeper (layer 0, distance 7 to 35) keeps every crossing it held, and the new threads fill the wave 3 crossings that held nothing (distance 36 to 70). The relics are drawn in `src/renderer.ts` (`drawThreadRelic`). The Journal's Arcana tab lists them through `THREAD_ORDER`. Tests: `tests/threads-later.test.ts`.
+
+**BOUNDARY:** No crossing changes the thread it held. They are kept out of the deep band, whose density is the first ten threads' own rate (`threads-627`). A later wave 3 thread goes in a new `layer` (or a band with none) in the same way; never add one to an existing layer whose band overlaps another's.
+
 ## Release 710: the Doom Chaser — 2026-11-03
 
 Tim, 2026-11-03: the second dragon, a black dragon in the spirit of a great dark-eater dragon and a frenzy-spreading black wyvern (an original design): "a sweeping laser beam that just like makes eruptions everywhere... flies in the air and launches waves of dark energy... all of his attacks can be black... slam attacks... a similar number of different moves... His name is doom chaser"; and "casting a spell makes a lava pool beneath your spell", which for this dragon means pools of black fire.
