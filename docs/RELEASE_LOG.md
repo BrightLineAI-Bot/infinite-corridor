@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 725, the next is **726**.
+Taken at merge time: `main`'s release + 1 (see above). After 726, the next is **727**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 726 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great Castles (Tim asked this session): a castle on the corner of four sections, a quarter in each; courts joined only through the wings' side doors into the next section; the keep's lord and treasure; new ground only | Merging (baton taken). |
 | 725 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Dungeon way marks (Tim asked this session): chevron marker stones for the way down (▼) and out (▲) instead of the red block, an edge chevron to a found way down, the Deep's floor as a number badge; no text in the world | Merging (baton taken). |
 | 724 | Claude | `claude/dreamy-rubin-yn6q2p` | Nine more far domains (world-beast arenas beyond 1000, each with its quest and its beast coming home) | Merged (#371). Published in r724. |
 | 723 | Claude | `claude/dreamy-rubin-yn6q2p` | Far domains: the Questing Beast's Thornglass Caldera (a bespoke crystal-and-lava arena section beyond 1000), its quest, and the beast coming home when you wait | Merged (#370). Published in r724. |

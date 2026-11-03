@@ -2854,6 +2854,60 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 726: Great Castles — 2026-11-03
+
+Tim (2026-11-03): "a large castle structure... as large as some of those chasms... that extends between a couple different
+tiles, and then traversing it requires you to go in and out of the building... some doors that you can only access from within
+the Courtyard... find the path to get to the Courtyard... cross the Courtyard to get to the stairs... to the treasure room or the
+boss room".
+
+**CODE:** `src/castles.ts` (new; in the build and both sw.js lists):
+- `CASTLES`: anchors on a corner grid (`every` 3), `chance` .45, `minRing` 7. Each quarter is `Q` 10×10 at its section's corner.
+  Also wing and keep floor counts, interior sizes, courtyard guards and names.
+- `castleCorner(rx, ry)` gives a section's corner and quarter. `quarterSection`, `quarterXY`.
+- `castleAt(seed, X, Y, sectionExits, isSettlement, seen)` says whether the corner holds a castle. It needs the chance roll,
+  every section past the ring, none a settlement, hamlet or open sea, none explored before castles, and the four lanes that cross
+  the borders meeting at the corner all clear of it.
+- `castleTopology` (pure) assigns the quarters: the keep's quarter k; the gate a, diagonal to it; the way between b; the feint d.
+  - Wing a has the outer gate and a side door into court b.
+  - Wing b has a side door into court k.
+  - Wing d has a gate and a side door round into court a.
+  - Every wing has a courtyard door. Side doors stand on a hashed floor.
+- `castleLayout` (pure) gives each quarter's door and gate cells.
+- `placeCastleQuarter` builds the quarter: the curtain wall on the section's edges, the L of the wing, the paved court and, in k,
+  the keep's 3×3. It lays a causeway from the outer gate to the section's middle, then the door objects (`castleDoor`,
+  `enterAt` outer / court / side<q>), two courtyard guards and the `greatBuilding` blocks (wing, wall, keep).
+- `castlePartPlan` / `generateCastleFloor` (ids `castle:<seed>:<X>:<Y>:<w0-3|k>:<floors>:f<n>`): floors laid with
+  great-buildings.ts's `layFloor`, the doors on their floors, and `map.building.exitsTo`, each exit's section and tile. The keep's
+  top floor holds its lord (the building guardian), its treasure, and "Way out · the castle gate".
+
+`src/game.ts`:
+- Castle ids are built by `generateCastleFloor`.
+- `castleHere(X, Y)` (settlements, hamlets and open sea memoised per section) places the quarter in sections first seen from now
+  on (`atlas.castleVersion`), before the labyrinths.
+- Any `enterAt` key finds its spot in `map.building.entries`.
+- An exit with `exitsTo` lets you out in its own section and tile.
+
+`src/renderer.ts`:
+- Wall blocks are drawn as coursed stone without windows.
+- Age (Tim: "these castles... look kind of too clean... old... falling apart... parts of the walls aren't there... more detail to
+  the walls"): `greatBlocks` weathers every cell by a hash of its place: the stone's tone, moss, a fallen-in roof patch, broken
+  battlements on an open edge, a chipped facade top, a crack, a vine, rubble at the foot, and on curtain walls a stretch fallen to
+  a heap. The heap is drawn only; the tile stays blocked.
+- `greatBuilding` (version 1, release 711) gets the same column by column.
+
+**BOUNDARY:**
+- New ground only, all four sections at once: a corner with one section explored before has no castle.
+- Each wing and the keep keep their own dungeon histories; nothing else is saved beyond the atlas pin.
+- Tests: `tests/castles.test.ts`. It covers:
+  - the corner grid and the lanes;
+  - the four quarters, the enclosed courts and the reachable gates;
+  - the way through walked across three sections and out at the gate;
+  - the keep's court reached only by the right wing;
+  - new ground only;
+  - a floor sweep;
+  - a render smoke test.
+
 ## Release 725: the way down and the way out — 2026-11-03
 
 Tim (2026-11-03): "I'll get to the end and there'll be the way out versus the way down... and it'll just take me out... it should

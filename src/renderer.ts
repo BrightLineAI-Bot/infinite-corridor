@@ -1607,6 +1607,12 @@ function greatBuilding(ctx,o,s,p){
   }
   ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.strokeRect(x+1,roofY+1,w-2,foot-roofY-2);ctx.beginPath();ctx.moveTo(x,faceY);ctx.lineTo(x+w,faceY);ctx.stroke();
   ctx.strokeStyle="#1a1a1a99";ctx.lineWidth=1.5;ctx.beginPath();const cx0=x+w*(.2+(grain%5)*.12);ctx.moveTo(cx0,faceY+s*.1);ctx.lineTo(cx0+s*.2,faceY+fH*.35);ctx.lineTo(cx0-s*.1,faceY+fH*.6);ctx.stroke(); // weathering
+  for(let i=0;i<b.w;i++){const wr=(Math.imul(b.x+i+31,73856093)^Math.imul(b.y+17,19349663)^Math.imul(grain+7,83492791))>>>0,u=wr%100,v=(wr>>>8)%100,cx1=x+i*s; // age, column by column: chips along the top, moss, vines, rubble at the foot, fallen roof
+    if(u<40){ctx.fillStyle="#08080a";ctx.beginPath();ctx.moveTo(cx1+s*.1,faceY);ctx.lineTo(cx1+s*.3,faceY+s*.2);ctx.lineTo(cx1+s*.55,faceY);ctx.closePath();ctx.fill()}
+    if(v<20){ctx.fillStyle="#3f5a2e77";ctx.fillRect(cx1+s*.4,faceY,s*.12,fH*(.35+(u%4)*.1))}
+    if(u>=82){ctx.fillStyle="#5d5446";for(let j=0;j<3;j++){const rx=cx1+s*(.1+j*.28),ry=foot-s*.04;ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx+s*.1,ry-s*.1);ctx.lineTo(rx+s*.2,ry);ctx.closePath();ctx.fill()}}
+    if(v>=88){ctx.fillStyle="#4f6a3a88";ctx.beginPath();ctx.arc(cx1+s*.5,roofY+roofH*(.3+(u%5)*.1),s*.16,0,7);ctx.fill()}
+    if(v>=50&&v<54){ctx.fillStyle="#0a0a0c";ctx.fillRect(cx1+s*.2,roofY+roofH*.4,s*.6,s*.5)}}
   // the door
   if(o.door){const dx=(o.door.x+.08)*s,dw=s*.84;if(south){const dh=Math.min(band*.95,s*1.1),dy=foot-dh;ctx.fillStyle="#08090a";ctx.fillRect(dx,dy,dw,dh);if(keep){ctx.beginPath();ctx.arc(dx+dw/2,dy,dw/2,Math.PI,0);ctx.fill()}ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.fillStyle=C.trim+"55";ctx.fillRect(dx-s*.12,foot-s*.08,dw+s*.24,s*.08)}
     else{ctx.fillStyle="#08090a";ctx.fillRect(dx,roofY,dw,s*.55);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,roofY,dw,s*.55)}}
@@ -1635,18 +1641,33 @@ function greatBlocks(ctx,o,s,p,map){
     else if(st==="hive"){ctx.fillStyle=C.line+"55";ctx.beginPath();ctx.ellipse(x+s*.5,y+s*.5,s*.32,s*.22,(k%3)*.6,0,7);ctx.fill()}
     else{ctx.strokeRect(x+.5,y+.5,s-1,s-1);if(k===3){ctx.fillStyle="#2d3135";ctx.fillRect(x+s*.2,y+s*.2,s*.5,s*.4)}}
     ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.beginPath();if(!has(-1,0)){ctx.moveTo(x+1,y);ctx.lineTo(x+1,y+s)}if(!has(1,0)){ctx.moveTo(x+s-1,y);ctx.lineTo(x+s-1,y+s)}if(!has(0,-1)){ctx.moveTo(x,y+1);ctx.lineTo(x+s,y+1)}ctx.stroke();
+    // age (Tim: "they should be old... falling apart... parts of the walls aren't there... more detail to the walls"): every
+    // cell weathered by its own hash: the stone's tone, moss, a fallen-in patch, broken battlements along an open edge
+    const wear=(Math.imul(c.x+31,73856093)^Math.imul(c.y+17,19349663)^Math.imul(grain+7,83492791))>>>0,w1=wear%100,w2=(wear>>>8)%100,w3=(wear>>>16)%100;
+    ctx.fillStyle=w1<50?"#00000022":"#ffffff10";ctx.fillRect(x+s*((w2%3)*.2),y+s*((w3%3)*.2),s*.5,s*.45);
+    if(w2<22){ctx.fillStyle=st==="hive"?"#5a3a6a88":"#4f6a3a99";for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(x+s*(.25+((w3+i*29)%5)*.12),y+s*(.3+((w1+i*17)%5)*.1),s*(.09+i*.02),0,7);ctx.fill()}} // moss
+    if(!b.wall&&w3<9&&has(-1,0)&&has(1,0)&&has(0,-1)&&has(0,1)){ctx.fillStyle="#0a0a0c";ctx.beginPath();ctx.moveTo(x+s*.2,y+s*.25);ctx.lineTo(x+s*.55,y+s*.12);ctx.lineTo(x+s*.82,y+s*.4);ctx.lineTo(x+s*.66,y+s*.82);ctx.lineTo(x+s*.25,y+s*.7);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.36,y+s*.5,s*.18,s*.12)} // fallen in
+    if(st==="keep"&&(!has(0,-1)||!has(0,1))){const top=!has(0,-1)?y:y+s*.76;ctx.fillStyle="#00000055";for(let i=0;i<3;i++)if(((wear>>>(i*3))&7)<2)ctx.fillRect(x+s*(.05+i*.33),top,s*.26,s*.24)} // battlements broken away
     if(fallen.has(`${c.x},${c.y}`)){ctx.fillStyle="#060607";ctx.beginPath();ctx.moveTo(x+s*.1,y+s*.2);ctx.lineTo(x+s*(.4+(k%5)*.05),y+s*.05);ctx.lineTo(x+s*.9,y+s*.25);ctx.lineTo(x+s*.85,y+s*.85);ctx.lineTo(x+s*.3,y+s*.95);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.62,y+s*.6,s*.2,s*.14)}
     const hq=hatchAt.get(`${c.x},${c.y}`);if(hq){ctx.fillStyle="#1a1612";ctx.fillRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle="#8a7650";ctx.beginPath();ctx.moveTo(x+s*.32,y+s*.12);ctx.lineTo(x+s*.32,y+s*.88);ctx.moveTo(x+s*.68,y+s*.12);ctx.lineTo(x+s*.68,y+s*.88);for(let q=.28;q<.9;q+=.2){ctx.moveTo(x+s*.32,y+s*q);ctx.lineTo(x+s*.68,y+s*q)}ctx.stroke()}
     const d=doorAt.get(`${c.x},${c.y}`);if(d&&d.face!=="south"){ctx.fillStyle="#08090a";const w=s*.6;if(d.face==="north"){ctx.fillRect(x+s*.2,y,w,s*.34)}else if(d.face==="west"){ctx.fillRect(x,y+s*.2,s*.3,w)}else{ctx.fillRect(x+s*.7,y+s*.2,s*.3,w)}ctx.strokeStyle=C.trim;ctx.lineWidth=1.5;ctx.strokeRect(d.face==="north"?x+s*.2:d.face==="west"?x:x+s*.7,d.face==="north"?y:y+s*.2,d.face==="north"?w:s*.3,d.face==="north"?s*.34:w)}
     // the facade under an open south side
     if(!has(0,1)){const fy=(c.y+1)*s-lift,band=lift/b.floors;ctx.fillStyle=C.wall;ctx.fillRect(x,fy,s+1,lift);ctx.fillStyle="#00000033";ctx.fillRect(x,fy,s+1,s*.1);
       for(let f=0;f<b.floors;f++){const by=fy+lift-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+s,by);ctx.stroke();
+        if(b.wall){ctx.strokeStyle=C.mortar;ctx.beginPath();ctx.moveTo(x+s*((c.y&1)?.3:.7),by);ctx.lineTo(x+s*((c.y&1)?.3:.7),by+band);ctx.stroke();continue} // a curtain wall: coursed stone, no windows
         if(f===0&&d?.face==="south")continue;const q=(k+f*5)%9,ww=s*(st==="keep"?.22:.42),wh=band*.56,wx=x+s*.5,wy=by+band*.22;ctx.fillStyle=q===0?C.lit+"cc":q<3?"#090a0c":C.glass;
         if(st==="keep"){ctx.beginPath();ctx.moveTo(wx-ww/2,wy+wh);ctx.lineTo(wx-ww/2,wy+ww/2);ctx.arc(wx,wy+ww/2,ww/2,Math.PI,0);ctx.lineTo(wx+ww/2,wy+wh);ctx.closePath();ctx.fill()}
         else if(st==="hive"){ctx.beginPath();ctx.ellipse(wx,wy+wh/2,ww/2,wh/2,0,0,7);ctx.fill()}
         else{ctx.fillRect(wx-ww/2,wy,ww,wh);ctx.strokeStyle=C.trim+"55";ctx.strokeRect(wx-ww/2+.5,wy+.5,ww-1,wh-1)}}
       if(d?.face==="south"){const dh=Math.min(band*.95,s*1.05),dx=x+s*.1,dw=s*.8,dy=(c.y+1)*s-dh;ctx.fillStyle="#08090a";ctx.fillRect(dx,dy,dw,dh);if(st==="keep"){ctx.beginPath();ctx.arc(dx+dw/2,dy,dw/2,Math.PI,0);ctx.fill()}ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh)}
       ctx.strokeStyle=C.trim+"77";ctx.lineWidth=1.5;ctx.beginPath();if(!has(-1,0)){ctx.moveTo(x+1,fy);ctx.lineTo(x+1,fy+lift)}if(!has(1,0)){ctx.moveTo(x+s-1,fy);ctx.lineTo(x+s-1,fy+lift)}ctx.stroke();
+      { const fy2=(c.y+1)*s-lift; // the facade's age: a chipped top, a crack, a moss streak, a stain; rubble at its foot; a stretch fallen to a heap
+        ctx.fillStyle="#0000002a";ctx.fillRect(x+s*((w3%4)*.2),fy2+s*.1,s*.3,lift*.8);
+        if(w1<38){ctx.fillStyle="#08080a";ctx.beginPath();ctx.moveTo(x+s*(.1+(w2%4)*.12),fy2);ctx.lineTo(x+s*(.25+(w2%4)*.12),fy2+s*(.18+(w3%3)*.06));ctx.lineTo(x+s*(.45+(w2%4)*.12),fy2);ctx.closePath();ctx.fill()}
+        if(w2>=40&&w2<62){ctx.strokeStyle="#151517cc";ctx.lineWidth=1.3;ctx.beginPath();const cx2=x+s*(.3+(w3%4)*.12);ctx.moveTo(cx2,fy2+s*.05);ctx.lineTo(cx2+s*.12,fy2+lift*.35);ctx.lineTo(cx2-s*.06,fy2+lift*.62);ctx.lineTo(cx2+s*.05,fy2+lift*.9);ctx.stroke()}
+        if(w3>=60&&w3<78){ctx.fillStyle=st==="hive"?"#6a3a7a55":"#3f5a2e77";ctx.fillRect(x+s*(.15+(w1%4)*.15),fy2,s*.12,lift*(.4+(w2%5)*.1));ctx.beginPath();ctx.arc(x+s*(.21+(w1%4)*.15),fy2,s*.12,0,7);ctx.fill()} // vine
+        if(w1>=80){ctx.fillStyle="#5d5446";for(let i=0;i<4;i++){const rx2=x+s*(.08+((w2+i*23)%9)*.1),ry2=(c.y+1)*s-s*(.04+((w3+i*11)%3)*.05);ctx.beginPath();ctx.moveTo(rx2,ry2);ctx.lineTo(rx2+s*.12,ry2-s*.1);ctx.lineTo(rx2+s*.22,ry2);ctx.closePath();ctx.fill()}} // rubble at its foot
+        if(b.wall&&w2<14){ctx.fillStyle=C.roof;ctx.fillRect(x,fy2,s+1,lift*.55);ctx.fillStyle="#6a6152";ctx.beginPath();ctx.moveTo(x,(c.y+1)*s);ctx.lineTo(x+s*.15,fy2+lift*.5);ctx.lineTo(x+s*.4,fy2+lift*.62);ctx.lineTo(x+s*.6,fy2+lift*.45);ctx.lineTo(x+s*.85,fy2+lift*.6);ctx.lineTo(x+s,(c.y+1)*s);ctx.closePath();ctx.fill();ctx.fillStyle="#4a4339";ctx.fillRect(x+s*.3,(c.y+1)*s-s*.2,s*.2,s*.12)} } // a stretch of curtain fallen to a heap (still impassable)
       ctx.fillStyle="#00000044";ctx.fillRect(x,(c.y+1)*s-2,s+1,4);}
   }
   ctx.globalAlpha=1;const b=o.bounds;ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),(b.x+b.w/2)*s,(b.y-Math.max(...o.blocks.map(q=>q.faceH)))*s-s*.14);ctx.textAlign="start";
