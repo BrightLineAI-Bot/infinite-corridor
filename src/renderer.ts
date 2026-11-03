@@ -1652,6 +1652,55 @@ function greatBlocks(ctx,o,s,p,map){
   ctx.globalAlpha=1;const b=o.bounds;ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),(b.x+b.w/2)*s,(b.y-Math.max(...o.blocks.map(q=>q.faceH)))*s-s*.14);ctx.textAlign="start";
   ctx.restore();
 }
+// The way down and the way out (Tim, 2026-11-03: "I'll get to the end and there'll be the way out versus the way down... and
+// it'll just take me out... I'm not sure which one I actually should go to... it should just be better marked"): over every
+// way down (an annex stair, the Deep's stair, a deep dungeon's stair down) a gold beam and "▼ WAY DOWN · FLOOR n"; over every
+// way out (a door out, the cleared return, the Ember Door) "WAY OUT" in red. When the way down is off the screen, an arrow at
+// the edge points to it.
+const WAY_DOWN = new Set(["annexStair", "deepStair"]);
+export function wayKind(o, map) {
+  if (WAY_DOWN.has(o.kind) || (o.kind === "deepTransition" && o.direction === "down")) return "down";
+  if (o.kind === "exit" || o.kind === "emberDoor") return map?.building?.labyrinth || map?.building ? null : "out"; // buildings name their own doors
+  return null;
+}
+function wayLabel(o, map) {
+  if (o.kind === "annexStair") return `▼ WAY DOWN · FLOOR ${o.floor}`;
+  if (o.kind === "deepStair") return `▼ WAY DOWN · FLOOR ${(map.deepFloor || 1) + 1}`;
+  if (o.kind === "deepTransition") return `▼ WAY DOWN`;
+  if (o.kind === "emberDoor") return "WAY OUT · burns an ember";
+  return o.completionExit ? "WAY OUT · leave the dungeon" : "WAY OUT";
+}
+function drawWayMarks(ctx, g, s, now) {
+  const pulse = .5 + .5 * Math.sin(now / 380);
+  for (const o of g.map.objects || []) { const k = wayKind(o, g.map); if (!k || o.state === "hidden" || !renderableObject(g, o)) continue;
+    const cx = (o.x + .5) * s, top = o.y * s - s * .9;
+    ctx.save();
+    if (k === "down") { const gr = ctx.createLinearGradient(0, top - s * 2.2, 0, o.y * s + s); gr.addColorStop(0, "rgba(255,226,140,0)"); gr.addColorStop(1, `rgba(255,226,140,${.22 + .18 * pulse})`); ctx.fillStyle = gr; ctx.fillRect(cx - s * .32, top - s * 2.2, s * .64, s * 3.2);
+      ctx.strokeStyle = `rgba(255,226,140,${.55 + .35 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, o.y * s + s * .82, s * .5, s * .16, 0, 0, 7); ctx.stroke(); }
+    else { ctx.strokeStyle = `rgba(255,110,90,${.45 + .25 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, o.y * s + s * .82, s * .46, s * .14, 0, 0, 7); ctx.stroke(); }
+    ctx.restore(); }
+}
+// In screen space, over everything: each way's label above it (nearer ways first, so labels never stack on each other), and
+// the arrow to the way down when it is off the screen.
+function drawWayLabels(ctx, g, w, h, s, p, lift, now) {
+  const at = (o) => ({ x: w / 2 + (o.x + .5 - p.x) * s, y: h / 2 + (o.y - p.y + lift) * s - s * .95 }), placed = [];
+  const ways = (g.map.objects || []).filter((o) => wayKind(o, g.map) && o.state !== "hidden" && renderableObject(g, o)).sort((a, b) => (wayKind(a, g.map) === "down" ? -1 : 1) - (wayKind(b, g.map) === "down" ? -1 : 1));
+  ctx.save(); ctx.font = `bold ${Math.max(11, Math.round(s * .3))}px sans-serif`; ctx.textAlign = "center";
+  for (const o of ways) { const q = at(o); if (q.x < -60 || q.x > w + 60 || q.y < -20 || q.y > h + 20) continue; const text = wayLabel(o, g.map), tw = ctx.measureText(text).width + 12, bh = Math.max(16, s * .42);
+    let y = q.y; while (placed.some((r) => Math.abs(r.x - q.x) < (r.w + tw) / 2 && Math.abs(r.y - y) < bh)) y -= bh + 2; placed.push({ x: q.x, y, w: tw });
+    const down = wayKind(o, g.map) === "down"; ctx.fillStyle = "#000000c8"; ctx.fillRect(q.x - tw / 2, y - bh + 3, tw, bh); ctx.strokeStyle = down ? "#ffe28c88" : "#ff7a6488"; ctx.lineWidth = 1; ctx.strokeRect(q.x - tw / 2 + .5, y - bh + 3.5, tw - 1, bh - 1);
+    ctx.fillStyle = down ? "#ffe28c" : "#ff8a74"; ctx.fillText(text, q.x, y - bh * .25); }
+  ctx.restore();
+  drawWayDownPointer(ctx, g, w, h, s, p, lift, now);
+}
+function drawWayDownPointer(ctx, g, w, h, s, p, lift, now) {
+  const down = (g.map.objects || []).find((o) => wayKind(o, g.map) === "down" && o.state !== "hidden" && renderableObject(g, o)); if (!down) return;
+  const sx = w / 2 + (down.x + .5 - p.x) * s, sy = h / 2 + (down.y + .5 - p.y + lift) * s, m = 38;
+  if (sx > m && sx < w - m && sy > m && sy < h - m) return; // on the screen: its own mark shows it
+  const dx = sx - w / 2, dy = sy - h / 2, k = Math.min((w / 2 - m) / Math.max(1e-6, Math.abs(dx)), (h / 2 - m) / Math.max(1e-6, Math.abs(dy))), ax = w / 2 + dx * k, ay = h / 2 + dy * k, a = Math.atan2(dy, dx), pulse = .6 + .4 * Math.sin(now / 300);
+  ctx.save(); ctx.translate(ax, ay); ctx.rotate(a); ctx.fillStyle = `rgba(255,226,140,${pulse})`; ctx.strokeStyle = "#000c"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, -9); ctx.lineTo(-4, 0); ctx.lineTo(-8, 9); ctx.closePath(); ctx.stroke(); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "#000c"; ctx.lineWidth = 3; ctx.fillStyle = "#ffe28c"; const lx = Math.max(30, Math.min(w - 30, ax - Math.cos(a) * 22)), ly = Math.max(14, Math.min(h - 8, ay - Math.sin(a) * 22)); ctx.strokeText("WAY DOWN", lx, ly); ctx.fillText("WAY DOWN", lx, ly); ctx.restore();
+}
 // A labyrinth's key on a little plinth, turning and glowing.
 function drawLabKey(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .5) * s, t = now / 1000, bob = Math.sin(t * 2.4) * s * .05, glow = .5 + .5 * Math.sin(t * 3);
@@ -2416,6 +2465,7 @@ export function render(ctx, g, w, h, now) {
       ctx.arc(cx + Math.cos(spin) * s * 0.52, cy + Math.sin(spin) * s * 0.52, 2, 0, 7);
       ctx.fill();
     }
+  if (g.area === "dungeon") drawWayMarks(ctx, g, s, now); // which way is down and which is out, plainly marked
   ctx.restore();
   // Release 661 (Tim: "something on the heads up display that just shows the different levels... on the right side... little
   // dots... pretty unobtrusive"): in a dungeon of several floors, a column of dots at the right edge, the top one the first floor:
@@ -2508,6 +2558,7 @@ export function render(ctx, g, w, h, now) {
   ctx.fillRect(labelX, labelY, boxW, 24);
   ctx.fillStyle = "#cec7b6";
   ctx.fillText(label, labelX + 8, labelY + 16, boxW - 16);
+  if (g.area === "dungeon") drawWayLabels(ctx, g, w, h, s, p, viewLift, now); // above the dark: the way down and the way out stay readable
   if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; }
 }
 

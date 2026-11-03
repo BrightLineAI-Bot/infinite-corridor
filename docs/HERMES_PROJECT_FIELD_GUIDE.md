@@ -2854,6 +2854,22 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 725: the way down and the way out — 2026-11-03
+
+Tim (2026-11-03): "I'll get to the end and there'll be the way out versus the way down... and it'll just take me out... I'm not
+sure which one I actually should go to... it should just be better marked".
+
+**CODE:** `src/renderer.ts`:
+- `wayKind(o, map)`: "down" for `annexStair`, `deepStair` and a `deepTransition` down; "out" for `exit` and `emberDoor`, except in
+  great buildings, compounds and labyrinths, whose doors are named.
+- `drawWayMarks`, in world space: a gold beam and ring over the way down, a red ring under the way out.
+- `drawWayLabels`, in screen space at the end of the frame so it sits over the dark: "▼ WAY DOWN · FLOOR n" (gold), "WAY OUT"
+  (red, "· leave the dungeon" for the cleared return, "· burns an ember" for the Ember Door). The labels are stacked so they never
+  overlap.
+- `drawWayDownPointer`: an arrow at the screen's edge toward the way down when it is off the screen.
+
+**BOUNDARY:** Drawing only; nothing about the dungeons or saves changes. Tests: `tests/way-marks.test.ts`.
+
 ## Release 724: the world beasts' domains — 2026-11-03
 
 Tim, 2026-11-03: "let's build all those boss arenas. Those sound great" (the nine proposed after 723: the Unlit Shore, the Red Throne, the Black Pyre, the Rendering Pit, the Hollow Dunes, the Glass Shoal, the Cinder Orchard, the Forge Spire, the Thornheart Glade).
