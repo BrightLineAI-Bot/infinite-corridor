@@ -52,6 +52,7 @@ export const ECHOES = {
   mountainTurtle: { name: "Turtle's Ward", cost: 3, trigger: "hurt", module: "turtleShield", text: "Being hurt grows ice over you: no blow lands for a second (once every 8 s)." },
   nanobotKnight: { name: "Nanite Seekers", cost: 3, trigger: "kill", module: "knightOrbs", text: "Kills loose nanite seekers into up to two foes within 5 tiles." },
   lightningGiant: { name: "Giant's Arc", cost: 3, trigger: "kill", module: "giantArcs", text: "Kills arc lightning into up to three foes within 5 tiles." },
+  briarStag: { name: "Bramble Wake", cost: 2, trigger: "dodge", module: "stagCharge", text: "Each dodge leaves brambles where you stood that slow foes by 50% for 3 s, and roots strike the nearest foe within 3 tiles." }, // release 705
   psychicCrystal: { name: "Mind Ward", cost: 2, trigger: "hurt", module: "psyPush", text: "Being hurt throws foes within 3 tiles back from you." },
   voidWalker: { name: "Rift Upheaval", cost: 2, trigger: "dodge", module: "voidSpikes", text: "Dodging marks the nearest foe within 5 tiles with a void spike; it erupts after half a second (once every 4 s)." },
   earthGolem: { name: "Golem's Landfall", cost: 2, trigger: "land", module: "golemPunch", text: "Landing a jump staggers foes within 2.5 tiles for 0.6 s." }, // Canyon craters
@@ -134,6 +135,7 @@ export function echoEvent(game, event, now, data = {}) {
   if (event === "dodge") {
     if (eq.includes("thunderhorn")) p.echoCharge = { until: p.dodgeUntil || now + 300, hit: {} };
     if (eq.includes("riftLynx")) p.echoPounceUntil = now + 1200;
+    if (eq.includes("briarStag")) { (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.6, until: now + 3000, slow: .5 }); const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#9cff6a"); world.damage(foe, Math.round(dmg * .6)); } } // release 705
     if (eq.includes("pallidCrawler")) p.stamina = Math.min(save.maxStamina, p.stamina + 5);
     if (eq.includes("veilSpinner")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.4, until: now + 3000, slow: .5 });
     if (eq.includes("tremorWorm")) { // release 237 (restored: one puddle a dodge, each bursting on its own)

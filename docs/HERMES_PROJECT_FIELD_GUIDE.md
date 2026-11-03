@@ -2694,6 +2694,14 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release (at merge): the Briar Stag — 2026-11-03
+
+Tim, 2026-11-03: "come up with a few more world bosses that... have a similar... attack and aggressiveness and strength and... varied amount of attacks... so it's like they're pretty chaotic when you deal with them."
+
+**CODE:** A world beast like the others (`src/world-beasts.ts` `WORLD_BEASTS.briarStag`: four tries, 66 hits of the Wayfarer's blow plus 30 a level, a blow of .22 of their health, speed 1.15, attack gap .2; `BEAST_APERTURE` 6; a big beast for placement). Its home is new, `BEAST_HOMES.forest`, "the deep woods": a section of a forest region (`game.ts` `retreatProbe().forest` reads `sectionRegion(seed, rx, ry, BEAST_FOREST.regions)`), and it goes in among the forest trees. The creature is `MONSTER_PACK.briarStag` (`src/monster-pack.ts`), eight attacks with their balance in `STAG`: Antler Hooks (two hooks that turn after you, then a toss that pushes), Bramble Rush (two or three straight rushes, wheeling between them, dropping `briar` that slows and scratches), Running Roots (three `rootLine`s that burst spike by spike), Thorn Volley (three turning fans of `thorn`s), Canopy Leap (aloft and untargetable, the shadow tracks you, then the landing hit, a jumpable ring and a `rootRing`), Bramble Cage (three `rootRing`s at your feet, outer first; the gaps between spikes are safe), Rearing Stomp (two jumpable rings) and The Wild Hunt (a push, then `stagHunt` seconds of more speed, brambles where it runs and `stagSpike`s round it, ticked by `stagPassive`). Poise `BOSS_POISE.briarStag`; its Echo is Bramble Wake (`src/echoes.ts`, on dodge). Body and effects are drawn in `src/briar-stag-render.ts` (new module; in `scripts/build.mjs` and both service-worker lists). Tests: `tests/briar-stag-705.test.ts`; `tests/aperture-beasts.test.ts` lists its tier.
+
+**BOUNDARY:** Nothing about the other beasts changes: each beast's claim roll hashes its own id, and the Stag is listed last, so it claims only a section no other beast claimed. It is met only on new hunts in the open world (no dungeon hunts). Saves: `save.worldBeasts.briarStag` is created by `ensureWorldBeasts` like every beast's record (additive at schema 14). The rings and lines draw their own warnings; `effectFootprint` skips ring effects.
+
 ## Release 704: the Far Gate climbs by Tim's rule — 2026-11-03
 
 Tim, 2026-11-03: "you beat the listener one time... you open the first gate, and then you beat the listener 2 additional times... it opens the second gate, and then... 3 additional times to unlock the third gate, and then... 4 additional times [for] the fourth gate and so on."

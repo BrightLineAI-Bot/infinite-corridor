@@ -92,6 +92,19 @@ export const WORLD_BEASTS = {
     gone: "The Void Walker closes its hunt. In time, another rend will open.",
   },
   astralWorm: ASTRAL_PROFILE,
+  // Listed last: each beast's claim is rolled in this order, so the Stag takes only sections no older beast claimed.
+  // Release 705 (Tim, 2026-11-03: "a few more world bosses... similar attack and aggressiveness and strength... varied amount of
+  // attacks... pretty chaotic"): a stag of bark and bramble. It retreats to the deep woods and is lost among the trees.
+  briarStag: {
+    kind: "briarStag", name: "The Briar Stag", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    hitsToKill: 66, hpPerLevel: 30, damageShare: .22, speed: 1.15, attackGap: .2, staggerResistance: .95, rewardMarks: 185, rewardPerLevel: 18,
+    patience: 180, home: "forest", retreatMoves: "walk",
+    flee: "The Briar Stag tosses its burning crown and bounds away toward the deep woods.",
+    homeLine: "The Briar Stag steps in among the trees, and the brambles close behind it.",
+    arrive: "The undergrowth here has been torn up in long furrows, and something is crashing through the trees. The Briar Stag is here.",
+    slain: "The Briar Stag goes down on its knees; its crown withers, and its blossoms fall like snow.",
+    gone: "The Briar Stag has run you down enough, and bounds away. In time it will rut somewhere else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 // One exact shared marine classification for encounter placement, movement, attack variants and scars.
@@ -114,7 +127,9 @@ export const BEAST_HOMES = {
   canyon: { name: "a canyon", section: (q) => q.canyon, tile: (t) => t.kind === "canyon" },
   glass: { name: "the glass", section: (q) => q.dominant === "glass", tile: (t) => t.kind === "glass" },
   dungeon: { name: "a dungeon", section: (q) => q.dungeon, object: (o) => o.kind === "dungeon" },
+  forest: { name: "the deep woods", section: (q) => q.forest, object: (o) => o.kind === "tree" && o.forest === true }, // release 705: a forest region's section (game.ts retreatProbe); it goes in among its trees
 };
+export const BEAST_FOREST = { regions: 5 }; // release 705: the Briar Stag's deep woods are sections of a forest region (landscape.ts regions from version 5, the forests' own)
 // How a retreating beast crosses the land (Tim: "it should still respect the geometry of the world"): `walk` goes around
 // walls, jumps chasms and needs a bridge over water; `burrow` passes under walls but not under water; `through` (the
 // Mountain Turtle, too big to care) goes over everything. Its body is its own business: only the tile it walks matters.
@@ -353,7 +368,7 @@ export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
 // large creatures shouldn't be trapped on small islands"). Flood the section over the ground the beast can stand on or
 // cross in its retreat (retreatPassable for its retreatMoves). A region is sound when it reaches a section edge (a way
 // out) and holds at least PLACEMENT.minRegion tiles (PLACEMENT.big for the large beasts). Returns { ok: Uint8Array(1024) }.
-export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm"] };
+export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag"] };
 export function placementRegions(map, here) {
   const tiles = map?.tiles || [], B = WORLD_BEASTS[here], mode = B?.retreatMoves || "walk", need = PLACEMENT.bigBeasts.includes(here) ? PLACEMENT.big : PLACEMENT.minRegion;
   const pass = (t) => !!t && (beastGround(here, t) || retreatPassable(t, mode)), label = new Int32Array(1024).fill(-1), ok = new Uint8Array(1024);
@@ -421,7 +436,7 @@ function fleeSpawn(save, here, rx, ry) {
 // rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
 // questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
 // already met (active, retreating or tracked) is never withdrawn by this.
-export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 // Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
 // the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
