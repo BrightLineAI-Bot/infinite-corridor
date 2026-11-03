@@ -2798,6 +2798,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 717: the Storm Halls — 2026-11-03
+
+Tim, 2026-11-03: "different versions of the lightning giant... way far out at least after a 1000... all the monsters and all the creatures are lighting giants... different variations, so it looks like this is their lightning giant civilization... Same thing for the lightning giant civilization" (the quest, as for the crystals).
+
+**CODE:** `FAR_CIVS.storm` in `src/far-realms.ts` (`FAR_REALMS.version` 4; `since` 4, `landSince` 16): one round country of `radius` 26, centred 1200 to 1500 out at its own seeded bearing, its land `pillars`. Each civilisation now carries `landSince`, the landscape version from which `regionAt` gives it its land, so a later civilisation never changes ground pinned to an earlier version (`LANDSCAPE_VERSION` 16; the Crystal Civilisation's `landSince` is 15). Its kin (`prototypeOnly`, `farKin`, the Lightning Giant's body): `stormling` (.95; swing, shock), `sparkHauler` (1.15, juggernaut; shock, slam), `coilWarden` (1.4; arcs, swing, slam). The Lightning Giant slain `FAR_REALMS.start` or more out opens its quest through the same `openFarQuest` as the Crystal's. Tests: `tests/far-storm-717.test.ts`; the landscape-version pins read 16.
+
+**BOUNDARY:** The kin have none of the great Giant's passive (no shock counter, electrify or menace) and its body is drawn in its own colours whatever the palette; their difference is size and kit. Nothing within 1000 sections or on ground of an earlier version changes.
+
 ## Release 716: the Crystal Civilisation — 2026-11-03
 
 Tim, 2026-11-03: "a large crystal civilization that you can find... all the monsters in there are... psychic crystals... variations... some of them can be smaller, like half crystals... crystal walkers, like the crystal crabs... we won't have the other regular monsters in that section... dungeons... regular... a quest which takes you there... after you beat the crystal over a 1000".
