@@ -2854,6 +2854,26 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 725: the way down and the way out — 2026-11-03
+
+Tim (2026-11-03): "I'll get to the end and there'll be the way out versus the way down... and it'll just take me out... it should
+just be better marked". Then: "we shouldn't use [the red block character] for the exit... a different sprite... an upfacing
+chevron on its head and a downfacing chevron on its head... having that text... in the actual game... is just too obtrusive...
+the words on the side that indicate which level... an easy to identify number or... a series of dots".
+
+**CODE:** `src/renderer.ts`:
+- `wayKind(o, map)`: "down" for `annexStair`, `deepStair` and a `deepTransition` going down; "out" for `exit` and `emberDoor`,
+  except in great buildings, compounds and labyrinths, whose doors are named.
+- `wayLabel` names a way, but nothing is written in the world.
+- `drawWayMarker` draws each way, and every `deepTransition`: a squat stone with a glowing chevron over it, ▼ gold for the way
+  down, ▲ green for a way up or out, amber for the Ember Door. This replaces the generic block sprite.
+- `drawWayMarks` draws a soft ring at the way's foot, only once it has been found (`discoveredInDungeon`).
+- `drawWayDownPointer` draws a chevron at the screen's edge toward a found way down when it is off the screen.
+- The Deep's HUD is a purple badge with the floor number, with Return Embers as orange dots under it. This replaces the text
+  "THE DEEP · FLOOR n / n RETURN EMBERS". The annex and multi-level dungeons keep their dot columns.
+
+**BOUNDARY:** Drawing only; nothing about the dungeons or saves changes. Tests: `tests/way-marks.test.ts`.
+
 ## Release 724: the world beasts' domains — 2026-11-03
 
 Tim, 2026-11-03: "let's build all those boss arenas. Those sound great" (the nine proposed after 723: the Unlit Shore, the Red Throne, the Black Pyre, the Rendering Pit, the Hollow Dunes, the Glass Shoal, the Cinder Orchard, the Forge Spire, the Thornheart Glade).

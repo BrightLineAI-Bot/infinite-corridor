@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 724, the next is **725**.
+Taken at merge time: `main`'s release + 1 (see above). After 725, the next is **726**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 725 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Dungeon way marks (Tim asked this session): chevron marker stones for the way down (▼) and out (▲) instead of the red block, an edge chevron to a found way down, the Deep's floor as a number badge; no text in the world | Merging (baton taken). |
 | 724 | Claude | `claude/dreamy-rubin-yn6q2p` | Nine more far domains (world-beast arenas beyond 1000, each with its quest and its beast coming home) | In flight. |
 | 723 | Claude | `claude/dreamy-rubin-yn6q2p` | Far domains: the Questing Beast's Thornglass Caldera (a bespoke crystal-and-lava arena section beyond 1000), its quest, and the beast coming home when you wait | Merged (#370). |
 | 722 | Claude | `claude/dreamy-rubin-yn6q2p` | The great mushrooms made mushroomy: domed caps with a shaded side, warts, gills, a skirt and a thick bulbed stalk; low caps stand taller | Merged (#369). |
