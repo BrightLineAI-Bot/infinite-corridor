@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 714, the next is **715**.
+Taken at merge time: `main`'s release + 1 (see above). After 715, the next is **716**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 714 | Claude | `claude/dreamy-rubin-yn6q2p` | Far realms beyond 1000 (new ground only): the Giants' Reach; the Briar Stag and the Stalker play | In flight. |
+| 715 | Claude | `claude/dreamy-rubin-yn6q2p` | Far reaches: stag groves (Grove Stags, Grove Moths) and blob pockets (five lesser blobs by region) | In flight. |
+| 714 | Claude | `claude/dreamy-rubin-yn6q2p` | Far realms beyond 1000 (new ground only): the Giants' Reach; the Briar Stag and the Stalker play | Merged (#361). |
 | 713 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Compounds (Tim asked this session): courtyards inside rings of wings, outer / courtyard doors and wall-walk hatches, maze routes to the tower's boss and treasure; great buildings on new ground in L / T / U shapes and alien hives | Merging (baton taken). |
 | 712 | Claude | `claude/dreamy-rubin-yn6q2p` | Narrative pass: two wave 3 threads of a later layer, the Weaver's Cloth and the Mirror That Remembers | Merged (`r712-da04de26b458`). |
 | 711 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great buildings (Tim asked this session): Old Keeps and Ruined Arcologies as opaque buildings with separate floors inside (rooms, floor materials, ladders, holes, roofs to stand on for some, broken backs, a guardian and cache on top); new ground only, in place of the climbable 683/685 keeps and arcologies | Merged. Published in r711. |
@@ -100,6 +101,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 714, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 713 | `r713-ad6fe6859fbd` | 2026-11-03 | Fable review: no blockers. With 712, two threads of a later layer (#359); and 713, compounds (#360). |
 | 711 | `r711-23055c964fc8` | 2026-11-03 | Fable review: no blockers. With 709, the Crimson Tyrant (#356); 710, the Doom Chaser and the dragons redrawn (#357); and 711, the great buildings (#358). |
 | 708 | `r708-3316faf45579` | 2026-11-03 | Fable review: no blockers. The Stag's new moves and redraw, burning, the mire; the Moth's chrysalis, silk and gale (#355). |
 | 707 | `r707-9f6fba1549e9` | 2026-11-03 | Fable review: no blockers. The Tollkeeper's Keys; the Moth's dive fix (#354). |
