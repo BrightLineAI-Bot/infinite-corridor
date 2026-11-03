@@ -6,12 +6,16 @@ import { DRAGON, DANGER } from "./monster-pack.ts";
 const TAU = Math.PI * 2;
 export const DRAGON_ART = {
   hide: "#a8221a", hideDark: "#5a0f0b", hideLight: "#d2452e", belly: "#e09a4a", bellyDark: "#a86428", horn: "#2a1c18", hornLight: "#5a4a40",
-  membrane: "#7a1410", membraneLight: "#b8382a", bone: "#3a0c0a", eye: "#ffd24a", fire: "#ff7a1a", fireCore: "#fff0c0", ember: "#ffb04a", glow: "255,140,40", aura: "255,170,60", teeth: "#fff4e0", cracks: null, horns: [[-.04, .42], [.03, .34]], scallop: .28,
+  membrane: "#7a1410", membraneLight: "#b8382a", bone: "#3a0c0a", eye: "#ffd24a", fire: "#ff7a1a", fireCore: "#fff0c0", ember: "#ffb04a", glow: "255,140,40", aura: "255,170,60", teeth: "#fff4e0", cracks: null, horns: [[-.06, .6], [0, .5], [.05, .38]], scallop: .28,
+  // Its build (release 710): long and lean, a long neck, a long thin tail trailing out behind.
+  build: { bodyLen: 1.14, bodyH: .74, legLen: 1.18, legW: .78, neckLen: 1.4, neckW: .78, tailSegs: 19, tailStep: .095, tailW: .3, tailTip: .012, tailBend: .03, tailWave: .07, tailStart: .38, headScale: 1.15, snout: 1.25, lean: true },
 };
 export const DRAGON_EFFECT_KINDS = new Set(["fireLine", "dragonMeteor", "dragonComet", "dragonBurst", "dragonScorch", "colonize", "dragonNova", "clawBeam"]);
 
 // The walk: one stride cycle per `stride` tiles walked; feet swing `reach` and lift `lift` (in u).
 export const DRAGON_GAIT = { stride: 2.4, reach: .16, lift: .07 };
+// The default build (the Doom Chaser's, heavy): each dragon's art table may override any of it (`build`).
+export const DRAGON_BUILD = { bodyLen: 1, bodyH: 1, legLen: 1, legW: 1, neckLen: 1, neckW: 1, tailSegs: 12, tailStep: .1, tailW: .4, tailTip: .05, tailBend: .085, tailWave: 0, tailStart: .55, headScale: 1.3, snout: 1, lean: false };
 const smoothing = new WeakMap();
 function eased(e, key, target, now, rate) {
   const st = smoothing.get(e) || {}; smoothing.set(e, st);
@@ -61,9 +65,9 @@ export function drawDragonBody(ctx, q, now = 0, A = DRAGON_ART) {
   { const down = st.lastDy = moved > .001 ? Math.sign(mvy) : (st.lastDy || 0); ctx.translate(0, ground); ctx.rotate(vert * down * .1 * Math.sign(face)); ctx.translate(0, -ground); }
   ctx.scale(face * (1 - vert * .22), 1);
   if (e.dragonPose === "roll") { ctx.translate(0, b - u * .4); ctx.rotate(reduce ? .8 : t * 9); ctx.translate(0, -(b - u * .4)); }
-  const lw = Math.max(1, u * .009), hipX = -u * .3, hipY = b - u * .44;
+  const BD = { ...DRAGON_BUILD, ...(A.build || {}) }, lw = Math.max(1, u * .009), hipX = -u * .3, hipY = b - u * .44 * BD.legLen;
   // Body-local coordinates (x forward, y down, in u from the hips), tilted by `rear` about the hips, breathing.
-  const R = (x, y) => { const c = Math.cos(-rear), sn = Math.sin(-rear), X0 = x * u, Y0 = y * u * (1 + breathe); return [hipX + X0 * c - Y0 * sn, hipY + X0 * sn + Y0 * c]; };
+  const R = (x, y) => { const c = Math.cos(-rear), sn = Math.sin(-rear), X0 = x * u * BD.bodyLen, Y0 = y * u * BD.bodyH * (1 + breathe); return [hipX + X0 * c - Y0 * sn, hipY + X0 * sn + Y0 * c]; };
   const smooth = (pts, closed = true) => { const n = pts.length; ctx.beginPath(); if (closed) { const m = (i) => [(pts[i % n][0] + pts[(i + 1) % n][0]) / 2, (pts[i % n][1] + pts[(i + 1) % n][1]) / 2]; ctx.moveTo(...m(n - 1)); for (let i = 0; i < n; i++) { const mm = m(i); ctx.quadraticCurveTo(pts[i][0], pts[i][1], mm[0], mm[1]); } ctx.closePath(); } else { ctx.moveTo(...pts[0]); for (let i = 1; i < n - 1; i++) ctx.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2); ctx.lineTo(...pts[n - 1]); } };
   // A tapering tube along a spine, its outline smoothed; returns its two edges.
   const limb = (pts, w0, w1, tone, edge = A.bone) => { const n = pts.length, L = [], Rt = []; for (let i = 0; i < n; i++) { const [x, y] = pts[i], [px, py] = pts[Math.max(0, i - 1)], [nx, ny] = pts[Math.min(n - 1, i + 1)], dx = nx - px, dy = ny - py, l = Math.hypot(dx, dy) || 1, w = (w0 + (w1 - w0) * i / (n - 1)) / 2; L.push([x - dy / l * w, y + dx / l * w]); Rt.push([x + dy / l * w, y - dx / l * w]); }
@@ -89,33 +93,34 @@ export function drawDragonBody(ctx, q, now = 0, A = DRAGON_ART) {
   const leg = (front, far, off) => {
     const ph = phase + off, swing = walking * Math.sin(ph) * u * DRAGON_GAIT.reach, lifted = walking * Math.max(0, Math.cos(ph)) * u * DRAGON_GAIT.lift, tone = far ? A.hideDark : A.hide;
     const [sx, sy] = front ? R(.66, -.1) : R(.04, -.1), slam = front && (e.dragonPose === "rear" || e.dragonPose === "rearBoth") ? u * .3 : 0;
-    const fx = sx + (front ? u * .08 : u * .02) + swing + (far ? u * .06 : 0), fy = Math.min(footY(lifted) - slam - (air ? u * .08 : 0), sy + u * (front ? .58 : .62)), tuck = Math.min(1, air / (u * .3));
+    const fx = sx + (front ? u * .08 : u * .02) + swing + (far ? u * .06 : 0), fy = Math.min(footY(lifted) - slam - (air ? u * .08 : 0), sy + u * (front ? .58 : .62) * BD.legLen), tuck = Math.min(1, air / (u * .3));
     const tx2 = fx + (sx - u * (front ? .05 : .22) - fx) * tuck, ty2 = fy + (sy + u * .3 - fy) * tuck;
-    if (front) { const fx = tx2, fy = ty2, wx = fx - u * .03, wy = fy - u * .08, [kx, ky] = ik(sx, sy, wx, wy, u * .29, u * .27, 1);
-      limb([[sx, sy - u * .06], [kx, ky], [wx, wy], [fx, fy - u * .02]], u * .3, u * .09, tone); ctx.fillStyle = tone; ctx.beginPath(); ctx.arc(kx, ky, u * .07, 0, TAU); ctx.fill(); /* the elbow */ claws(fx + u * .02, fy - u * .015); }
-    else { const fx = tx2, fy = ty2, hx = fx - u * .13, hy = fy - u * .14, [kx, ky] = ik(sx, sy, hx, hy, u * .3, u * .27, -1);
-      limb([[sx, sy - u * .04], [kx, ky], [hx, hy], [fx, fy - u * .02]], u * .4, u * .09, tone); ctx.fillStyle = tone; ctx.beginPath(); ctx.arc(kx, ky, u * .08, 0, TAU); ctx.fill(); /* the knee */
+    if (front) { const fx = tx2, fy = ty2, wx = fx - u * .03, wy = fy - u * .08, [kx, ky] = ik(sx, sy, wx, wy, u * .29 * BD.legLen, u * .27 * BD.legLen, 1);
+      limb([[sx, sy - u * .06], [kx, ky], [wx, wy], [fx, fy - u * .02]], u * .3 * BD.legW, u * .09 * BD.legW, tone); ctx.fillStyle = tone; ctx.beginPath(); ctx.arc(kx, ky, u * .07 * BD.legW, 0, TAU); ctx.fill(); /* the elbow */ claws(fx + u * .02, fy - u * .015); }
+    else { const fx = tx2, fy = ty2, hx = fx - u * .13, hy = fy - u * .14, [kx, ky] = ik(sx, sy, hx, hy, u * .3 * BD.legLen, u * .27 * BD.legLen, -1);
+      limb([[sx, sy - u * .04], [kx, ky], [hx, hy], [fx, fy - u * .02]], u * .4 * BD.legW, u * .09 * BD.legW, tone); ctx.fillStyle = tone; ctx.beginPath(); ctx.arc(kx, ky, u * .08 * BD.legW, 0, TAU); ctx.fill(); /* the knee */
       if (!far) { ctx.fillStyle = A.hideLight; ctx.globalAlpha = .35; ctx.beginPath(); ctx.ellipse(sx - u * .02, sy - u * .02, u * .14, u * .09, .5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; } // the light on the haunch
       claws(fx + u * .02, fy - u * .015); }
   };
   // ---- the far wing and far legs, behind the body
   { const [wx, wy] = R(.42, -.44); wingAt(wx - u * .04, wy, true); }
   leg(false, true, Math.PI); leg(true, true, 0);
+  const hideGrad = ctx.createLinearGradient(0, hipY - u * .5 * BD.bodyH, 0, b); hideGrad.addColorStop(0, A.hideLight); hideGrad.addColorStop(.45, A.hide); hideGrad.addColorStop(1, A.hideDark); let tailPts = null, tailEdges = null;
   // ---- the tail: grows out of the hips as thick as the body there, dips toward the ground, sways, and ends in a spiked club
-  { const segs = 12, pts = [R(.15, -.18), R(-.15, -.14)]; let [x, y] = pts[1], a = Math.PI - .55 + rear * .6;
-    for (let i = 1; i <= segs; i++) { const k2 = i / segs; a += .085 + Math.sin(t * 1.8 - i * .5) * (reduce ? 0 : .05) * k2 + tailSwing * .07 * k2; x += Math.cos(a) * u * .1; y = Math.min(b - u * .06, y + Math.sin(a) * u * .1 * .7); pts.push([x, y]); }
-    const g = ctx.createLinearGradient(0, b - u * .7, 0, b); g.addColorStop(0, A.hideLight); g.addColorStop(.45, A.hide); g.addColorStop(1, A.hideDark);
-    const tail = limb(pts, u * .4, u * .05, g);
+  { const segs = BD.tailSegs, pts = [R(.15, -.18), R(-.15, -.14)]; let [x, y] = pts[1], a = Math.PI - BD.tailStart + rear * .6;
+    for (let i = 1; i <= segs; i++) { const k2 = i / segs; a += BD.tailBend + BD.tailWave * Math.sin(i * .5 - .6) + Math.sin(t * 1.8 - i * .5) * (reduce ? 0 : .05) * k2 * (12 / segs) + tailSwing * .07 * k2 * (12 / segs); x += Math.cos(a) * u * BD.tailStep; y = Math.min(b - u * .04, y + Math.sin(a) * u * BD.tailStep * .7); pts.push([x, y]); }
+    const g = hideGrad; tailPts = pts;
+    const tail = limb(pts, u * BD.tailW, u * BD.tailTip, g); tailEdges = tail;
     ctx.strokeStyle = A.belly; ctx.lineWidth = Math.max(1, u * .03); ctx.globalAlpha = .55; smooth(tail.R.slice(2), false); ctx.stroke(); ctx.globalAlpha = 1; // the paler underside
-    ctx.fillStyle = A.horn; for (let i = 2; i < tail.L.length - 1; i += 1) { const [px, py] = tail.L[i], hgt = u * (.075 * (1 - i / pts.length) + .015); ctx.beginPath(); ctx.moveTo(px - u * .035, py + u * .01); ctx.lineTo(px - u * .05, py - hgt); ctx.lineTo(px + u * .015, py + u * .01); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = A.horn; for (let i = 2; i < tail.L.length - 1; i += 1) { const [px, py] = tail.L[i], hgt = u * (.075 * (1 - i / pts.length) + .012) * (BD.tailW / .4); ctx.beginPath(); ctx.moveTo(px - u * .035, py + u * .01); ctx.lineTo(px - u * .05, py - hgt); ctx.lineTo(px + u * .015, py + u * .01); ctx.closePath(); ctx.fill(); }
     const [tx, ty] = pts[pts.length - 1], [px2, py2] = pts[pts.length - 3], ta = Math.atan2(ty - py2, tx - px2); ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta); ctx.fillStyle = A.horn; ctx.beginPath(); ctx.moveTo(-u * .06, 0); ctx.lineTo(-u * .02, -u * .09); ctx.lineTo(u * .05, -u * .03); ctx.lineTo(u * .13, 0); ctx.lineTo(u * .05, u * .03); ctx.lineTo(-u * .02, u * .09); ctx.closePath(); ctx.fill(); ctx.restore(); }
   // ---- neck and head: a tapering S-curve rising from the chest to a long horned head
-  const [nx0, ny0] = R(.86, -.26), ha = -.8 - head * .9, n1x = nx0 + Math.cos(ha) * u * .3, n1y = ny0 + Math.sin(ha) * u * .3, hx = n1x + Math.cos(ha + .55 + head * .3) * u * .26, hy = n1y + Math.sin(ha + .55 + head * .3) * u * .26;
+  const [nx0, ny0] = R(.86, -.26), ha = -.8 - head * .9, n1x = nx0 + Math.cos(ha) * u * .3 * BD.neckLen, n1y = ny0 + Math.sin(ha) * u * .3 * BD.neckLen, hx = n1x + Math.cos(ha + .55 + head * .3) * u * .26 * BD.neckLen, hy = n1y + Math.sin(ha + .55 + head * .3) * u * .26 * BD.neckLen;
   const neckPts = []; for (let i = 0; i <= 6; i++) { const s2 = i / 6, mx = (1 - s2) * (1 - s2) * (nx0 - u * .06) + 2 * (1 - s2) * s2 * n1x + s2 * s2 * hx, my = (1 - s2) * (1 - s2) * (ny0 + u * .04) + 2 * (1 - s2) * s2 * n1y + s2 * s2 * hy; neckPts.push([mx, my]); }
-  { const g = ctx.createLinearGradient(nx0 - u * .2, ny0 - u * .3, nx0 + u * .2, ny0 + u * .1); g.addColorStop(0, A.hideLight); g.addColorStop(1, A.hide); const neck = limb(neckPts, u * .4, u * .2, g);
+  { const g = ctx.createLinearGradient(nx0 - u * .2, ny0 - u * .3, nx0 + u * .2, ny0 + u * .1); g.addColorStop(0, A.hideLight); g.addColorStop(1, A.hide); const neck = limb(neckPts, u * .4 * BD.neckW, u * .2 * BD.neckW, g);
     ctx.strokeStyle = A.belly; ctx.globalAlpha = .3; ctx.lineWidth = Math.max(1, u * .04); smooth(neck.L.map(([px, py], i) => [px * .8 + neckPts[i][0] * .2, py * .8 + neckPts[i][1] * .2]), false); ctx.stroke(); ctx.globalAlpha = 1; // the pale throat
     ctx.fillStyle = A.horn; for (let i = 0; i < neck.R.length - 1; i++) { const [px, py] = neck.R[i], hh = u * (.07 - i * .006); ctx.beginPath(); ctx.moveTo(px - u * .03, py + u * .01); ctx.lineTo(px - u * .05, py - hh); ctx.lineTo(px + u * .02, py + u * .01); ctx.closePath(); ctx.fill(); } }
-  const fa = ha + 1.25 + head * .6; ctx.save(); ctx.translate(hx, hy); ctx.rotate(fa); ctx.scale(1.3, 1.3);
+  const fa = ha + 1.25 + head * .6; ctx.save(); ctx.translate(hx, hy); ctx.rotate(fa); ctx.scale(BD.headScale * BD.snout, BD.headScale);
   // horns behind the head: two great swept horns, then a crown of short ones
   ctx.fillStyle = A.horn; ctx.strokeStyle = A.hornLight; ctx.lineWidth = lw;
   for (const [ox, len] of A.horns || DRAGON_ART.horns) { ctx.beginPath(); ctx.moveTo(u * ox, -u * .08); ctx.bezierCurveTo(u * (ox - .1), -u * .2, u * (ox - .28), -u * .24, u * (ox - len), -u * .12); ctx.bezierCurveTo(u * (ox - .26), -u * .17, u * (ox - .1), -u * .12, u * (ox + .04), -u * .05); ctx.closePath(); ctx.fill(); ctx.stroke(); }
@@ -135,9 +140,14 @@ export function drawDragonBody(ctx, q, now = 0, A = DRAGON_ART) {
   // ---- body: a deep chest and strong shoulders, narrowing to the hips where the tail takes over; scaled hide; a pale armoured belly.
   const body = [R(-.28, -.02), R(-.2, -.26), R(.12, -.36), R(.5, -.44), R(.86, -.36), R(1.02, -.16), R(.92, .06), R(.55, .13), R(.2, .1), R(-.12, .06)];
   { const [gx0, gy0] = R(.4, -.5), [gx1, gy1] = R(.4, .18), g = ctx.createLinearGradient(gx0, gy0, gx1, gy1); g.addColorStop(0, A.hideLight); g.addColorStop(.45, A.hide); g.addColorStop(1, A.hideDark);
-    smooth(body); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.bone; ctx.lineWidth = lw; ctx.stroke();
+    smooth(body); ctx.fillStyle = hideGrad; ctx.fill(); ctx.strokeStyle = A.bone; ctx.lineWidth = lw; ctx.stroke(); void g;
+    if (tailPts) { const n = tailPts.length, w = (i) => u * (BD.tailW + (BD.tailTip - BD.tailW) * i / (n - 1)), root = tailPts.slice(0, 5); /* the tail's root laid over the body's rear outline: one creature, no seam */
+      limb(root, w(0), w(4), hideGrad, null); ctx.strokeStyle = A.bone; ctx.lineWidth = lw; smooth(tailEdges.L.slice(2, 6), false); ctx.stroke(); smooth(tailEdges.R.slice(2, 6), false); ctx.stroke(); }
     ctx.save(); smooth(body); ctx.clip();
-    ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = lw; for (let r = 0; r < 4; r++) for (let i = 0; i < 9; i++) { const [px, py] = R(-.05 + i * .11 + (r % 2) * .055, -.36 + r * .1); ctx.beginPath(); ctx.arc(px, py, u * .045, .2, Math.PI - .2); ctx.stroke(); } // scale rows
+    if (BD.lean) { ctx.strokeStyle = A.hideDark; ctx.globalAlpha = .55; ctx.lineWidth = u * .07; smooth([R(-.3, -.22), R(.1, -.34), R(.5, -.42), R(.9, -.34)], false); ctx.stroke(); ctx.globalAlpha = 1; /* the darker line of the back */
+      ctx.strokeStyle = "rgba(0,0,0,.22)"; ctx.lineWidth = Math.max(1, u * .012); for (let i = 0; i < 6; i++) { const [ax, ay] = R(.28 + i * .09, -.3), [cx2, cy2] = R(.22 + i * .09, -.1), [bx, by] = R(.26 + i * .085, .06); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(cx2, cy2, bx, by); ctx.stroke(); } /* ribs under a lean flank */
+      ctx.fillStyle = A.hideLight; ctx.globalAlpha = .3; for (const [mx, my, rx, ry] of [[.8, -.2, .16, .12], [.02, -.16, .17, .12]]) { const [ex2, ey2] = R(mx, my); ctx.beginPath(); ctx.ellipse(ex2, ey2, u * rx, u * ry, -.4, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; /* shoulder and haunch */ }
+    else { ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = lw; } if (!BD.lean) for (let r = 0; r < 4; r++) for (let i = 0; i < 9; i++) { const [px, py] = R(-.05 + i * .11 + (r % 2) * .055, -.36 + r * .1); ctx.beginPath(); ctx.arc(px, py, u * .045, .2, Math.PI - .2); ctx.stroke(); } // scale rows
     ctx.fillStyle = A.belly; for (let i = 0; i < 6; i++) { const [px, py] = R(.1 + i * .13, .1 - Math.sin(i * .55) * .03); ctx.beginPath(); ctx.ellipse(px, py, u * .075, u * .045, -rear, 0, TAU); ctx.fill(); ctx.strokeStyle = A.bellyDark; ctx.lineWidth = lw; ctx.stroke(); }
     if (A.cracks) { const pulse = reduce ? .8 : .65 + .35 * Math.sin(t * 2.2); for (const [wd, al] of [[u * .03, .25], [u * .01, .9]]) { ctx.strokeStyle = `rgba(${A.cracks},${al * pulse})`; ctx.lineWidth = Math.max(1, wd); for (let i = 0; i < 4; i++) { const pts = [R(.06 + i * .2, -.38 + (i % 2) * .05), R(.14 + i * .2, -.22), R(.09 + i * .2, -.07), R(.18 + i * .2, .06)]; ctx.beginPath(); ctx.moveTo(...pts[0]); for (const q2 of pts.slice(1)) ctx.lineTo(...q2); ctx.stroke(); } } }
     ctx.restore();
