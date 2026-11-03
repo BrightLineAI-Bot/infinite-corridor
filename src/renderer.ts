@@ -1651,6 +1651,15 @@ function greatBlocks(ctx,o,s,p,map){
   ctx.globalAlpha=1;const b=o.bounds;ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),(b.x+b.w/2)*s,(b.y-Math.max(...o.blocks.map(q=>q.faceH)))*s-s*.14);ctx.textAlign="start";
   ctx.restore();
 }
+// A labyrinth's key on a little plinth, turning and glowing.
+function drawLabKey(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .5) * s, t = now / 1000, bob = Math.sin(t * 2.4) * s * .05, glow = .5 + .5 * Math.sin(t * 3);
+  ctx.save(); ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .34, s * .3, s * .09, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#4a443b"; ctx.fillRect(cx - s * .2, cy + s * .14, s * .4, s * .2);
+  const g = ctx.createRadialGradient(cx, cy - s * .1 + bob, 0, cx, cy - s * .1 + bob, s * .5); g.addColorStop(0, `rgba(255,220,130,${.35 + .3 * glow})`); g.addColorStop(1, "rgba(255,220,130,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy - s * .1 + bob, s * .5, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#e8c45a"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.arc(cx - s * .12, cy - s * .1 + bob, s * .1, 0, 7); ctx.moveTo(cx - s * .02, cy - s * .1 + bob); ctx.lineTo(cx + s * .22, cy - s * .1 + bob); ctx.moveTo(cx + s * .14, cy - s * .1 + bob); ctx.lineTo(cx + s * .14, cy - s * .02 + bob); ctx.moveTo(cx + s * .2, cy - s * .1 + bob); ctx.lineTo(cx + s * .2, cy - s * .03 + bob); ctx.stroke();
+  ctx.restore();
+}
 // A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
 // the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
 function drawBuildingStair(ctx, o, s, now) {
@@ -1658,7 +1667,10 @@ function drawBuildingStair(ctx, o, s, now) {
   ctx.save();
   if (o.dir === "door") { // a labyrinth's door: an arch in the wall, dark beyond, its frame lit
     ctx.fillStyle = "#3a2f24"; ctx.fillRect(x + s * .06, y + s * .04, s * .88, s * .96); ctx.fillStyle = "#070708"; ctx.beginPath(); ctx.moveTo(x + s * .2, y + s); ctx.lineTo(x + s * .2, y + s * .42); ctx.arc(x + s * .5, y + s * .42, s * .3, Math.PI, 0); ctx.lineTo(x + s * .8, y + s); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); return; }
+    ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.stroke();
+    if (o.lock && !o.unlocked) { ctx.fillStyle = "#c9a24a"; ctx.fillRect(x + s * .38, y + s * .5, s * .24, s * .2); ctx.strokeStyle = "#c9a24a"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc(x + s * .5, y + s * .5, s * .09, Math.PI, 0); ctx.stroke(); } // sealed: a padlock
+    if (o.barred && !o.opened) { ctx.strokeStyle = "#6a6458"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); for (const q of [.3, .5, .7]) { ctx.moveTo(x + s * q, y + s * .2); ctx.lineTo(x + s * q, y + s); } ctx.moveTo(x + s * .2, y + s * .55); ctx.lineTo(x + s * .8, y + s * .55); ctx.stroke(); } // barred from the other side
+    ctx.restore(); return; }
   ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .9, s * .4, s * .1, 0, 0, 7); ctx.fill();
   if (up) { ctx.fillStyle = "#070708"; ctx.fillRect(x + s * .14, y - s * .55, s * .72, s * .32); ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .14, y - s * .55, s * .72, s * .32); // the hatch above
     ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo(x + s * .3, y + s * .9); ctx.lineTo(x + s * .34, y - s * .45); ctx.moveTo(x + s * .7, y + s * .9); ctx.lineTo(x + s * .66, y - s * .45); ctx.stroke();
@@ -1666,6 +1678,7 @@ function drawBuildingStair(ctx, o, s, now) {
   else { ctx.fillStyle = "#050506"; ctx.fillRect(x + s * .12, y + s * .12, s * .76, s * .76); ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .12, y + s * .12, s * .76, s * .76);
     ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.moveTo(x + s * .34, y + s * .16); ctx.lineTo(x + s * .34, y + s * .7); ctx.moveTo(x + s * .66, y + s * .16); ctx.lineTo(x + s * .66, y + s * .7); ctx.moveTo(x + s * .34, y + s * .3); ctx.lineTo(x + s * .66, y + s * .3); ctx.moveTo(x + s * .34, y + s * .5); ctx.lineTo(x + s * .66, y + s * .5); ctx.stroke(); }
   if (o.dir === "roof") { ctx.fillStyle = `rgba(160,200,255,${.25 + .25 * pulse})`; ctx.fillRect(x + s * .18, y - s * .51, s * .64, s * .24); } // daylight through the roof hatch
+  if (o.lock && !o.unlocked) { ctx.fillStyle = "#c9a24a"; ctx.fillRect(x + s * .38, y + s * .4, s * .24, s * .2); ctx.strokeStyle = "#c9a24a"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc(x + s * .5, y + s * .4, s * .09, Math.PI, 0); ctx.stroke(); } // a sealed ladder
   ctx.restore();
 }
 // Inside a great building: dressed or concrete walls with a face where they stand over open floor, and each room's floor.
@@ -2013,6 +2026,7 @@ export function render(ctx, g, w, h, now) {
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
           else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301
           else if (o.kind === "buildingStair") drawBuildingStair(ctx, o, s, now); // great buildings
+          else if (o.kind === "labKey") drawLabKey(ctx, o, s, now); // a labyrinth's key
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {

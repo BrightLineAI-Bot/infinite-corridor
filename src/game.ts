@@ -246,6 +246,14 @@ function dressDeepFloor(map, floor) {
     if ((dx || dy) && t && !t.blocked && !t.environment && !map.objects.some((o) => o.x === x && o.y === y) && !map.objects.some((o) => o.kind === "emberDoor")) map.objects.push({ id: "ember-door", kind: "emberDoor", name: "Ember Door", x, y, state: "open", actions: ["burn"] }); }
   return map;
 }
+// A labyrinth chamber as this journey left it: keys already taken are gone, sealed doors whose key you hold are open, a
+// shortcut opened from the far side is open from the hall too (all kept on the labyrinth's first chamber's history).
+function labyrinthState(save, map) {
+  if (!map?.building?.labyrinth) return map; const L = dungeonHistory(save, `${map.building.base}:f1`), keys = L.labKeys || [], opened = L.labOpen || [];
+  map.objects = map.objects.filter((o) => !(o.kind === "labKey" && keys.includes(o.keyId)));
+  for (const o of map.objects) { if (o.lock && keys.includes(o.lock)) o.unlocked = true; if (o.barred && opened.includes(o.shortcutKey)) o.opened = true; }
+  return map;
+}
 export function generatePinnedDungeon(save, id, options = {}) {
   const history = pinDungeonLayout(save, id), canonical = `dungeon:${save.seed}:g${save.worldGeneration}`;
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
@@ -273,7 +281,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
-  else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id)) { map = isLabyrinthId(id) ? generateLabyrinthChamber(save.seed, id) : isCompoundId(id) ? generateCompoundFloor(save.seed, id) : generateBuildingFloor(save.seed, id); history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
+  else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id)) { map = isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id)) : isCompoundId(id) ? generateCompoundFloor(save.seed, id) : generateBuildingFloor(save.seed, id); history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
   else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); map = generateCanyon(save.seed, id, c.drilled, c.strained); } // Canyon craters
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
@@ -3312,6 +3320,7 @@ export class Game {
     if (o.kind === "riteAshes") return this.riseFromAshes(o);
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "buildingStair") return this.takeBuildingStair(o); // great buildings
+    if (o.kind === "labKey") return this.takeLabKey(o); // a labyrinth's key
     if (o.kind === "exit" && this.map?.building?.compound && !dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors?.exits?.[o.id] && dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors) { this.message = "This door is rubbled shut from outside."; return { ok: false, message: this.message }; } // a wing whose door could not open onto the land
     if (o.kind === "exit" && this.map?.building) { const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors, at = D && (D.exits?.[o.id] || (o.id === "building-breach" ? D.breach || D.front : D.front)); if (at) this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: at.x, y: at.y }; } // out by the door you take
     if (o.kind === "deepShaft") return this.enterDeep(o, action); // release 677
@@ -3450,7 +3459,7 @@ export class Game {
       if ((o.enterAt === "outer" || o.enterAt === "court") && this.map.building?.entries?.[o.enterAt]) { this.player.x = this.map.building.entries[o.enterAt].x; this.player.y = this.map.building.entries[o.enterAt].y; } // a compound's doors each open onto their own spot
       if (o.enterAt === "roof" && this.map.building?.roofLadder) { const at = buildingArrival(this.map, this.map.building.roofLadder.x, this.map.building.roofLadder.y); this.player.x = at.x; this.player.y = at.y; } // down through its roof hatch
       if (o.buildingDoors && this.map.building) dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors = { ...o.buildingDoors }; // where each of its ways out lets you out
-      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
+      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: this.map.building.labyrinth ? `one way through, one real end · ${this.labyrinthProgress()}` : `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
       if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
     } else if (r.transition === "exit") {
@@ -5435,13 +5444,23 @@ export class Game {
     this.loadArea("dungeon", false); const at = buildingArrival(this.map, x, y); this.player.x = at.x; this.player.y = at.y;
     relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); this.projectiles = [];
   }
+  // A labyrinth's progress: chambers found (of all), keys held (of all).
+  labyrinthProgress() { const B = this.map?.building; if (!B?.labyrinth) return ""; const H = dungeonHistory(this.save, `${B.base}:f1`); const seen = (H.labSeen ||= []); if (!seen.includes(B.node)) seen.push(B.node);
+    return `${seen.length} of ${B.of} chambers found${B.keys?.length ? ` · keys ${(H.labKeys || []).length} of ${B.keys.length}` : ""}`; }
+  takeLabKey(o) { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`); H.labKeys = [...new Set([...(H.labKeys || []), o.keyId])]; this.map.objects = this.map.objects.filter((q) => q !== o);
+    for (const q of this.map.objects) if (q.lock === o.keyId) q.unlocked = true;
+    this.message = `You take the ${o.name}. Somewhere along the way, a sealed door will open for it. (${this.labyrinthProgress()})`; this.sync(); return { ok: true, message: this.message }; }
   takeBuildingStair(o) {
     if (o.dir === "roof") { // up through the hatch, onto the roof: high ground on the section itself
       const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors; if (!D?.hatch) { this.message = "The hatch is rubbled shut."; return { ok: false, message: this.message }; }
       this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: D.hatch.x, y: D.hatch.y }; this.leaveDungeon(BUILDINGS.messages.roof); this.sync(); return { ok: true, message: this.message };
     }
-    if (o.labyrinth) { this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, where = this.map.name.split(" · ")[1] || "the next chamber";
-      this.defeatNotice = { title: this.map.name.toUpperCase(), detail: B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? "jump the gaps · a fall lands you far below" : B.kind === "court" ? "out under the sky, still inside" : "find the way on", kind: "danger" };
+    if (o.labyrinth) { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`);
+      if (o.lock && !(H.labKeys || []).includes(o.lock)) { this.message = `Sealed. It wants the ${o.lockName}.`; return { ok: false, message: this.message }; }
+      if (o.barred && !(H.labOpen || []).includes(o.shortcutKey)) { this.message = "Barred from the other side."; return { ok: false, message: this.message }; }
+      if (o.shortcutOpens) { H.labOpen = [...new Set([...(H.labOpen || []), o.shortcutOpens])]; } // opened from the far side: open from the hall now too
+      this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, where = this.map.name.split(" · ")[1] || "the next chamber";
+      this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? "jump the gaps · a fall lands you far below" : B.kind === "court" ? "out under the sky, still inside" : "find the way on"} · ${this.labyrinthProgress()}`, kind: "danger" };
       this.message = `${o.dir === "door" ? LABYRINTHS.messages.door : o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${where}.`; this.sync(); return { ok: true, message: this.message }; }
     this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, top = B.floor >= B.floors;
     this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };

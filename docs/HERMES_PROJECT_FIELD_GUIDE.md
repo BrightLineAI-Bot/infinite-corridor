@@ -2718,13 +2718,23 @@ path... only one real end".
       passage's platform is joined, and some gaps bridged.
     - Passages are `buildingStair` objects (`dir` door / up / down, `labyrinth`). Creatures and caches stand only on ground
       reachable from where you come in, gaps jumped. The vault has the guardian, the treasure and "Way out · the front".
+  - Engagement (Tim: "mazes that would engage me without becoming... tiresome or tedious... they could be pretty long"):
+    - `gates` (.35 and .7 along the true path): a sealed passage whose key (`labKey`, named per style) lies at the deepest end of
+      a side branch that leaves the path before it.
+    - `shortcut` (.72 along): a door back to the first hall, barred on the hall's side until it is opened from the far side.
+    - `braid` .3: a share of each maze's blind ends opened into loops.
+    - Each chamber's `region` (sealed doors behind it) keeps a gallery's fall from carrying you past one.
   - `placeLabyrinth`: one closed block over natural ground with one door, drawn by the block painter.
 - `src/game.ts`: labyrinth ids are built by `generateLabyrinthChamber`; placement in sections first seen from now on
   (`atlas.labVersion`), before compounds and great buildings. A labyrinth passage moves you to its other side with its own
   notice. `buildingFall` follows `map.building.fallTo` (a gallery drops you into another chamber) and, in a labyrinth, spares you
   within `edge` of solid ground, so a timed running jump clears a gap (the window is about 0.7 tiles). A compound exit with no
   door recorded outside is "rubbled shut".
-- `src/renderer.ts`: labyrinth doors drawn as arches; hedge, grass and cellar tiles. `src/main.ts`: DOOR on the dungeon map.
+- `src/game.ts` also: `labyrinthState` (taken keys gone, sealed doors whose key is held open, an opened shortcut open), `takeLabKey`,
+  sealed and barred passages refused with their reason, and `labyrinthProgress` (chambers found of all, keys held of all, in each
+  notice). This state is kept on the labyrinth's first chamber's history (`labKeys`, `labOpen`, `labSeen`; additive).
+- `src/renderer.ts`: labyrinth doors drawn as arches, with a padlock while sealed and bars while barred; keys on their plinths;
+  hedge, grass and cellar tiles. `src/main.ts`: DOOR / SEALED / BARRED / KEY on the dungeon map.
 
 **BOUNDARY:**
 - New ground only (`atlas.labVersion`). Every chamber is a dungeon history of its own; there are no new save fields beyond the

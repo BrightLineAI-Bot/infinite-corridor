@@ -26,6 +26,12 @@ export const LABYRINTHS = {
   gapsShare: .4, courtShare: .45, // above the ground, this share are galleries of gaps; on it, this share are courts
   island: 3, gap: 1, missing: .22, bridged: .2, edge: .25, // `edge`: a gap's lip: within this of solid ground you have not yet fallen // galleries: 3×3 platforms, 1-tile gaps; this share of platforms gone, of gaps bridged
   deadCache: .4, // share of dead ends with a cache
+  // Tim: "mazes that would engage me without becoming... tiresome or tedious... they could be pretty long". Dead ends earn their
+  // keep: up to `gates` sealed doors on the true path, each opened by a key lying at the end of a side branch before it; a
+  // `shortcut` door deep along the path leads back to the first hall (barred from the hall's side until opened from the far
+  // side); the mazes are `braid`ed (a share of their blind ends opened into loops).
+  gates: [.35, .7], shortcut: .72, braid: .3,
+  keys: { keep: ["Bronze Key", "Iron Key"], apartment: ["Blue Keycard", "Red Keycard"], hive: ["Spore Sigil", "Ichor Sigil"] },
   guards: [1, 3],
   footprint: [[11, 8], [10, 8], [10, 7], [9, 7]],
   styles: {
@@ -75,8 +81,17 @@ export function labyrinthPlan(base) {
   for (const q of nodes) { const v = r();
     q.kind = q.n === end ? "hall" : q.level < 0 ? "cellar" : q.level > 0 ? (v < L.gapsShare ? "gaps" : "hall") : (v < L.courtShare ? "court" : "hall");
     if (q.n === 0) q.kind = "hall"; q.depth = depth[q.n]; q.vault = q.n === end; q.dead = q.n !== end && !q.kids.length; q.cache = q.dead && r() < L.deadCache; }
+  // the true path; sealed doors on it, their keys at the ends of side branches that leave the path before them
+  const path = []; for (let k = end; k >= 0; k = nodes[k].parent) path.unshift(k); const onPath = new Set(path), gates = [], claimed = new Set();
+  const subtree = (root) => { const out = [root]; for (let i = 0; i < out.length; i++) out.push(...nodes[out[i]].kids); return out; };
+  L.gates.forEach((frac, gi) => { const at = Math.floor(path.length * frac); if (at < 1 || at >= path.length - 1) return;
+    const roots = nodes.filter((q) => !onPath.has(q.n) && q.parent >= 0 && onPath.has(q.parent) && path.indexOf(q.parent) <= at && !claimed.has(q.n));
+    if (!roots.length) return; const root = roots[Math.floor(r() * roots.length)], branch = subtree(root.n), leaf = branch.map((n) => nodes[n]).reduce((a, b) => (b.depth > a.depth ? b : a));
+    for (const n of branch) claimed.add(n); const key = { id: `key${gi}`, name: L.keys[P.style][gi] }; leaf.key = key; leaf.cache = false; gates.push({ from: path[at], to: path[at + 1], key }); });
   // the passages: a door on the same level, a ladder between levels (the way down, below a loft, may be a long fall)
   const edges = []; for (const q of nodes) if (q.parent >= 0) { const p = nodes[q.parent]; edges.push({ a: p.n, b: q.n, type: p.level === q.level ? "door" : "ladder" }); }
+  for (const g of gates) { const e = edges.find((v) => (v.a === g.from && v.b === g.to) || (v.a === g.to && v.b === g.from)); if (e) e.lock = g.key; }
+  { const deep = path[Math.floor(path.length * L.shortcut)]; if (deep && deep !== end && path.indexOf(deep) >= 3 && nodes[deep].kind !== "gaps") edges.push({ a: deep, b: 0, type: "door", shortcut: true }); } // back to the first hall
   for (const q of nodes) q.edges = edges.filter((e) => e.a === q.n || e.b === q.n);
   // where each passage stands in each of its two chambers
   const [W, H] = L.size;
@@ -94,8 +109,10 @@ export function labyrinthPlan(base) {
   // the front: node 0's door out, on its bottom wall; the vault's way out
   const front = { x: W >> 1, y: H - 1, inner: { x: W >> 1, y: H - 2 } };
   // a fall in a gallery lands in a cellar (the deepest the tree reaches nearest it), else the door's own chamber
-  for (const q of nodes) if (q.kind === "gaps") { const lower = nodes.filter((o) => o.level < q.level && o.kind !== "gaps"); q.fallTo = lower.length ? lower[hashSeed(`${base}:fall:${q.n}`) % lower.length].n : 0; }
-  const plan = { base, ...P, W, H, nodes, edges, end, front, S: L.styles[P.style] };
+  // how many sealed doors stand between the door and each chamber: a fall never carries you past one
+  for (const q of nodes) q.region = q.parent < 0 ? 0 : nodes[q.parent].region + (edges.some((e) => e.lock && e.a === q.parent && e.b === q.n) ? 1 : 0);
+  for (const q of nodes) if (q.kind === "gaps") { const lower = nodes.filter((o) => o.level < q.level && o.kind !== "gaps" && o.region <= q.region); q.fallTo = lower.length ? lower[hashSeed(`${base}:fall:${q.n}`) % lower.length].n : 0; }
+  const plan = { base, ...P, W, H, nodes, edges, end, front, path, gates, S: L.styles[P.style] };
   if (memo.size > 24) memo.clear(); memo.set(base, plan); return plan;
 }
 
@@ -105,6 +122,9 @@ function carveMaze(base, q, W, H, open) {
   const g = new Array(W * H).fill(1), r = rng(`${base}:maze:${q.n}`), at = (x, y) => y * W + x, stack = [[1, 1]]; g[at(1, 1)] = 0;
   while (stack.length) { const [x, y] = stack[stack.length - 1], nb = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([dx, dy]) => [x + dx, y + dy, dx, dy]).filter(([nx, ny]) => nx > 0 && ny > 0 && nx < W - 1 && ny < H - 1 && g[at(nx, ny)] === 1);
     if (!nb.length) { stack.pop(); continue; } const [nx, ny, dx, dy] = nb[Math.floor(r() * nb.length)]; g[at(x + dx / 2, y + dy / 2)] = 0; g[at(nx, ny)] = 0; stack.push([nx, ny]); }
+  // braid: open a share of the blind ends into loops (fewer long walks back)
+  for (let y = 1; y < H - 1; y += 2) for (let x = 1; x < W - 1; x += 2) { const walls = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => g[at(x + dx, y + dy)] === 1 && x + 2 * dx > 0 && y + 2 * dy > 0 && x + 2 * dx < W - 1 && y + 2 * dy < H - 1);
+    if (walls.length === 3 && r() < LABYRINTHS.braid) { const [dx, dy] = walls[Math.floor(r() * walls.length)]; g[at(x + dx, y + dy)] = 0; } }
   for (const p of open) { g[at(p.x, p.y)] = p.wall ? 2 : 0; g[at(p.inner.x, p.inner.y)] = 0; }
   return g;
 }
@@ -147,7 +167,9 @@ export function generateLabyrinthChamber(seed, id) {
   const objects = [], name = `${plan.S.name} · ${q.vault ? plan.S.vault : q.kind === "cellar" && q.level <= -2 ? plan.S.subcellar : plan.S[q.kind]}`;
   for (const [other, spot] of q.slots) { const o = plan.nodes[other], there = o.slots.get(q.n), e = q.edges.find((v) => v.a === other || v.b === other), oname = o.vault ? plan.S.vault : o.kind === "cellar" && o.level <= -2 ? plan.S.subcellar : plan.S[o.kind];
     const dir = e.type === "door" ? "door" : o.level > q.level ? "up" : "down";
-    objects.push({ id: `lab-pass-${other}`, kind: "buildingStair", name: `${dir === "door" ? "Door" : dir === "up" ? "Ladder up" : "Ladder down"} · ${oname}`, x: spot.x, y: spot.y, state: "open", actions: [dir === "down" ? "descend" : "climb"], toId: nodeId(P.base, other), toX: there.inner.x, toY: there.inner.y, dir, labyrinth: true }); }
+    const lock = e.lock && e.a === q.n && e.b === other ? e.lock : e.lock && e.b === q.n && e.a === other && plan.path.indexOf(q.n) < plan.path.indexOf(other) ? e.lock : null; // sealed from the near side of the true path
+    const barred = e.shortcut && q.n === 0, short = e.shortcut && q.n !== 0;
+    objects.push({ id: `lab-pass-${other}`, kind: "buildingStair", name: `${short ? "Door · back to the entrance" : barred ? "Barred door" : dir === "door" ? "Door" : dir === "up" ? "Ladder up" : "Ladder down"}${short || barred ? "" : ` · ${oname}`}${lock ? ` (sealed: the ${lock.name})` : ""}`, x: spot.x, y: spot.y, state: "open", actions: [dir === "down" ? "descend" : "climb"], toId: nodeId(P.base, other), toX: there.inner.x, toY: there.inner.y, dir, labyrinth: true, ...(lock ? { lock: lock.id, lockName: lock.name } : {}), ...(barred ? { barred: true, shortcutKey: `${other}` } : {}), ...(short ? { shortcutOpens: `${q.n}` } : {}) }); }
   if (q.n === 0) objects.push({ id: "building-exit", kind: "exit", name: "Door out", x: plan.front.x, y: plan.front.y, state: "open", actions: ["exit"] });
   const C = BUILDINGS.creatures, h = (k) => hashSeed(`${id}:${k}`), taken = new Set(objects.map((o) => o.y * W + o.x));
   const free = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.hole && !t.doorway && !taken.has(y * W + x) && Math.abs(x - arrive.x) + Math.abs(y - arrive.y) >= C.far; };
@@ -163,9 +185,10 @@ export function generateLabyrinthChamber(seed, id) {
     if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true });
     objects.push({ id: "building-exit", kind: "exit", name: "Way out · the front", x: plan.front.x, y: plan.front.y, state: "open", actions: ["exit"] }); }
   else if (q.cache) { const c = cells.find((p) => !taken.has(p.y * W + p.x)); if (c) objects.push({ id: "building-cache", kind: "chest", name: "Forgotten Cache", x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); }
+  if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0]; if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
   const fall = q.kind === "gaps" ? plan.nodes[q.fallTo] : null, fallAt = fall ? (fall.slots.values().next().value?.inner || { x: W >> 1, y: H >> 1 }) : null;
   return { seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,
-    building: { base: P.base, style: P.style, floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
+    building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
 }
 
 // ------------------------------------------------------------------------------------------------ outside, on the overworld

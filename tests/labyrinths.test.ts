@@ -21,10 +21,10 @@ const reachable = (m, from) => { const W = m.width, ok = (x, y) => { const t = m
 test('a maze of chambers in a tree: one vault, the farthest from the door, at least nine chambers in; halls, courts, cellars, subcellars, galleries', () => {
   const kinds = {}; let sub = 0;
   for (let i = 0; i < 60; i++) { const P = labyrinthPlan(`labyrinth:T${i}:${i}:${-i}:${['keep', 'apartment', 'hive'][i % 3]}`), vaults = P.nodes.filter((q) => q.vault);
-    assert.equal(vaults.length, 1, 'one real end'); assert.equal(P.edges.length, P.nodes.length - 1, 'a tree: one way through');
+    assert.equal(vaults.length, 1, 'one real end'); assert.equal(P.edges.filter((e) => !e.shortcut).length, P.nodes.length - 1, 'a tree: one way through (and a shortcut back)');
     assert.ok(vaults[0].depth + 1 >= LABYRINTHS.minPath, `${vaults[0].depth + 1} chambers in`); assert.ok(P.nodes.every((q) => q.depth <= vaults[0].depth), 'the vault is the farthest');
     for (const q of P.nodes) { kinds[q.kind] = (kinds[q.kind] || 0) + 1; if (q.level <= -2) sub++; }
-    for (const e of P.edges) { const a = P.nodes[e.a], b = P.nodes[e.b]; assert.equal(e.type, a.level === b.level ? 'door' : 'ladder'); assert.ok(Math.abs(a.level - b.level) <= 1); } }
+    for (const e of P.edges.filter((v) => !v.shortcut)) { const a = P.nodes[e.a], b = P.nodes[e.b]; assert.equal(e.type, a.level === b.level ? 'door' : 'ladder'); assert.ok(Math.abs(a.level - b.level) <= 1); } }
   for (const k of ['hall', 'court', 'cellar', 'gaps']) assert.ok(kinds[k] > 10, `${k}: ${kinds[k]}`); assert.ok(sub > 10, 'subcellars');
 });
 
@@ -38,13 +38,37 @@ test('in every chamber every passage can be reached (a gallery by jumping its ga
   assert.deepEqual(bad, []);
 });
 
-test('outside: one closed building with one door; inside, the true path walked door by door and ladder by ladder to the vault; its way out lets you out at the front', () => {
-  const { g, door } = enter(); assert.ok(g.map.building.labyrinth); assert.equal(g.map.building.node, 0);
-  const P = labyrinthPlan(g.map.building.base), end = P.nodes.find((q) => q.vault), path = []; for (let n = end.n; n >= 0; n = P.nodes[n].parent) path.unshift(n);
-  for (let i = 1; i < path.length; i++) { const o = g.map.objects.find((q) => q.id === `lab-pass-${path[i]}`); assert.ok(o, `the way on from ${path[i - 1]}`); g.player.x = o.x; g.player.y = o.y; const r = g.interact(o.actions[0], o.id); assert.ok(r.ok, r.message); assert.equal(g.map.building.node, path[i]); }
-  assert.ok(g.map.building.vault); assert.ok(g.map.objects.some((o) => o.kind === 'chest')); const boss = g.enemies.find((e) => e.id.endsWith(':guardian')); assert.ok(boss?.affixes?.length, 'its guardian');
+// Walk from chamber to chamber along the tree's passages (as a player who knows the way would), using any passage present.
+const go = (g, to) => { const P = labyrinthPlan(g.map.building.base), up = (n) => { const out = [n]; while (P.nodes[out[out.length - 1]].parent >= 0) out.push(P.nodes[out[out.length - 1]].parent); return out; };
+  const a = up(g.map.building.node), b = up(to), meet = a.find((n) => b.includes(n)), route = [...a.slice(1, a.indexOf(meet) + 1), ...b.slice(0, b.indexOf(meet)).reverse()];
+  for (const n of route) { const o = g.map.objects.find((q) => q.id === `lab-pass-${n}`); g.player.x = o.x; g.player.y = o.y; const r = g.interact(o.actions[0], o.id); if (!r.ok) return r; assert.equal(g.map.building.node, n); }
+  return { ok: true }; };
+
+test('outside: one closed building with one door; the true path is sealed until its keys are fetched from side branches; the vault\'s way out lets you out at the front', () => {
+  const { g, door } = enter(); assert.ok(g.map.building.labyrinth); assert.equal(g.map.building.node, 0); assert.match(g.defeatNotice.detail, /1 of \d+ chambers found/);
+  const P = labyrinthPlan(g.map.building.base); assert.ok(P.gates.length >= 1, 'sealed doors on the way');
+  for (const gate of P.gates) { // walk to the sealed door: it will not open without its key
+    const r = go(g, gate.from); assert.ok(r.ok, r.message); const o = g.map.objects.find((q) => q.id === `lab-pass-${gate.to}`); assert.ok(o.lock); g.player.x = o.x; g.player.y = o.y;
+    const no = g.interact(o.actions[0], o.id); assert.ok(!no.ok); assert.match(no.message, new RegExp(gate.key.name));
+    const leaf = P.nodes.find((q) => q.key?.id === gate.key.id); assert.ok(P.path.indexOf(leaf.n) < 0, 'the key lies off the true path'); assert.ok(go(g, leaf.n).ok);
+    const key = g.map.objects.find((q) => q.kind === 'labKey'); g.player.x = key.x; g.player.y = key.y; assert.ok(g.interact('take', key.id).ok);
+    assert.ok(go(g, gate.to).ok, 'with the key the way is open'); }
+  assert.ok(go(g, P.end).ok); assert.ok(g.map.building.vault); assert.ok(g.map.objects.some((o) => o.kind === 'chest')); const boss = g.enemies.find((e) => e.id.endsWith(':guardian')); assert.ok(boss?.affixes?.length, 'its guardian');
   const out = g.map.objects.find((o) => o.id === 'building-exit'); g.player.x = out.x; g.player.y = out.y; const r = g.interact('exit', out.id); assert.ok(r.ok, r.message);
   assert.equal(g.area, 'overworld'); assert.deepEqual([g.player.x, g.player.y], [door.x, door.y], 'out at the front, not back through the maze');
+  // the keys are kept: back inside, a sealed door you opened stays open
+  g.player.x = door.x; g.player.y = door.y; g.interact('enter', door.id); assert.ok(go(g, P.gates[0].to).ok);
+});
+
+test('the shortcut: deep along the way, a door back to the first hall; barred from the hall until it has been opened from the far side', () => {
+  let at = null; for (let d = LABYRINTHS.minRing; d < 40 && !at; d++) for (let x = -d; x <= d && !at; x++) for (const y of [d - Math.abs(x), Math.abs(x) - d]) { if (!labyrinthHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) continue; const v = visit(x, y), door = v.map.objects.find((o) => o.labyrinthDoor); if (door && labyrinthPlan(door.dungeonId.replace(/:f1$/, '')).edges.some((e) => e.shortcut)) at = { x, y }; }
+  assert.ok(at); const g = visit(at.x, at.y), door = g.map.objects.find((o) => o.labyrinthDoor); g.player.x = door.x; g.player.y = door.y; g.interact('enter', door.id);
+  const P = labyrinthPlan(g.map.building.base), e = P.edges.find((v) => v.shortcut), barred = g.map.objects.find((o) => o.id === `lab-pass-${e.a}`); assert.ok(barred?.barred);
+  g.player.x = barred.x; g.player.y = barred.y; const no = g.interact('climb', barred.id); assert.ok(!no.ok); assert.match(no.message, /Barred/);
+  // fetch the keys the way needs, then walk to the deep chamber and take the shortcut home
+  for (const gate of P.gates) { if (P.path.indexOf(gate.from) >= P.path.indexOf(e.a)) continue; const leaf = P.nodes.find((q) => q.key?.id === gate.key.id); assert.ok(go(g, leaf.n).ok); const key = g.map.objects.find((q) => q.kind === 'labKey'); g.player.x = key.x; g.player.y = key.y; g.interact('take', key.id); }
+  assert.ok(go(g, e.a).ok); const sc = g.map.objects.find((o) => o.id === 'lab-pass-0'); assert.ok(sc.shortcutOpens); g.player.x = sc.x; g.player.y = sc.y; assert.ok(g.interact('climb', sc.id).ok); assert.equal(g.map.building.node, 0);
+  const now = g.map.objects.find((o) => o.id === `lab-pass-${e.a}`); assert.ok(now.opened, 'open from the hall now'); g.player.x = now.x; g.player.y = now.y; assert.ok(g.interact('climb', now.id).ok); assert.equal(g.map.building.node, e.a);
 });
 
 test('a gallery: a running jump clears a gap; jump too early and you fall, far down, into another chamber', () => {
