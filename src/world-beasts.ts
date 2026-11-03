@@ -123,7 +123,7 @@ export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 // normal fight with it"): on a great tree's branch, now and then, while the Moth is free and the Wayfarer's Aperture has opened it,
 // hangs its chrysalis. Fell it (`hits` of the Wayfarer's blows) and the Moth hatches: its hunt begins in that section. While the
 // Wayfarer stays up in the tree it only harries them (`harass`); on the ground it fights as it always does.
-export const CHRYSALIS = { version: 1, chance: .45, hits: 10, harass: ["mothSpiral", "mothSwarm", "mothDust", "mothGust"],
+export const CHRYSALIS = { version: 1, chance: .45, hits: 10, harass: ["mothSpiral", "mothSwarm", "mothDust", "mothGust", "mothThreads", "mothThreadBlast"],
   found: "Something hangs from a branch of the great tree: a chrysalis of grey ash, warm, its seams glowing. Something inside is waiting.",
   hatch: "The chrysalis tears loose and falls, and splits in a burst of ash: the Ashen Moth unfolds its wings." };
 export function mothChrysalisFor(save, map, rx, ry) {

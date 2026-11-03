@@ -35,7 +35,7 @@ const by = (w, source) => w.hurts.filter((h) => h.source === source).length;
 test('registry: a flying world beast with seven attacks and a lantern beam, its own home, poise, Echo and Aperture gate', () => {
   const B = WORLD_BEASTS.ashenMoth, def = MONSTER_PACK.ashenMoth;
   assert.equal(B.home, 'firelands'); assert.equal(B.tries, 4); assert.equal(B.retreatMoves, 'through'); assert.equal(def.movement, 'hover');
-  assert.equal(def.attacks.length, 7); assert.deepEqual(def.bossAttacks, ['sweepBeam']); for (const id of [...def.attacks, ...def.bossAttacks]) assert.ok(ATTACK_MODULES[id], id);
+  assert.equal(def.attacks.length, 9); // release 708: Silk Threads, Silk Burst assert.deepEqual(def.bossAttacks, ['sweepBeam']); for (const id of [...def.attacks, ...def.bossAttacks]) assert.ok(ATTACK_MODULES[id], id);
   assert.ok(ECHOES.ashenMoth); assert.ok(BOSS_POISE.ashenMoth); assert.equal(BEAST_APERTURE.ashenMoth, 7);
   assert.ok(BEAST_HOMES.firelands.tile({ kind: 'ash' })); assert.equal(BEAST_HOMES.firelands.tile({ kind: 'grass' }), false);
 });
@@ -98,4 +98,18 @@ test('release 707: a dive stops where its lane ends, never inside a wall', () =>
   const w = world({ player: { x: 20, y: 12 } }); const wall = (x, y) => Math.floor(x + .5) >= 17; w.tileOpen = (x, y) => !wall(x - .5, y - .5);
   const e = moth(w, 'mothDive', 10, 12); until(w, e, 'mothDive'); step(w, ATTACK_MODULES.mothDive.windup * 1.3 + ATTACK_MODULES.mothDive.active + .1);
   assert.ok(e.x < 16.6, `stopped short of the wall (${e.x.toFixed(2)})`);
+});
+
+// Release 708: Silk Threads and Silk Burst: projectiles that home on you for a while (less than the Knight's orbs), trailing silk.
+test('silk threads: a fan that bends toward you for a while, then flies straight; the burst: two great knots that follow and burst', async () => {
+  const { KNIGHT } = await import('../src/monster-pack.ts');
+  assert.ok(MOTH.threads.turn * MOTH.threads.home < KNIGHT.orbTurn * KNIGHT.orbHome && MOTH.burst.turn * MOTH.burst.home < KNIGHT.orbTurn * KNIGHT.orbHome, 'gentler homing than the Knight\'s orbs');
+  const w = world({ player: { x: 20, y: 12 } }), e = moth(w, 'mothThreads'); until(w, e, 'mothThreads'); step(w, ATTACK_MODULES.mothThreads.windup * 1.3);
+  const silk = w.fx.filter((f) => f.kind === 'silk'); assert.equal(silk.length, MOTH.threads.count);
+  const outer = silk.reduce((m, f) => Math.abs(f.vy) > Math.abs(m.vy) ? f : m); const a0 = Math.atan2(outer.vy, outer.vx); w.player.y = 12 + (outer.vy > 0 ? 4 : -4); step(w, .5);
+  assert.notEqual(Math.atan2(outer.vy, outer.vx).toFixed(2), a0.toFixed(2), 'it bends after you'); assert.ok(outer.trail.length > 3, 'trailing silk');
+  step(w, MOTH.threads.home - .4); const before = Math.atan2(outer.vy, outer.vx); w.player.y = 12 - (outer.vy > 0 ? 6 : -6); step(w, .4); if (outer.life > 0) assert.equal(Math.atan2(outer.vy, outer.vx).toFixed(3), before.toFixed(3), 'and then flies straight');
+  const b = world({ player: { x: 20, y: 12 } }), e2 = moth(b, 'mothThreadBlast'); until(b, e2, 'mothThreadBlast'); step(b, 3);
+  assert.ok(by(b, 'mothThreadBlast') >= 1, 'the knots find you'); const ctx = new Proxy({}, { get: (_, k) => k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}, set: () => true });
+  drawPackEffects(ctx, [{ kind: 'silk', x: 3, y: 3, vx: 1, vy: 0, radius: .24, trail: [[1, 3], [2, 3]], life: 1, damage: 3 }, { kind: 'silk', big: true, x: 5, y: 3, vx: 1, vy: 0, radius: .55, trail: [[3, 3], [4, 3]], life: 1, damage: 3 }], 32, 1000);
 });

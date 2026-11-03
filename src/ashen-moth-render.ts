@@ -6,7 +6,7 @@ export const MOTH_ART = {
   body: "#3a3430", fur: "#6a625a", ember: "#ffb04a", fire: "#ff7a1a", fireCore: "#ffe8b0", ash: "#8a847c",
   hover: .75, bob: .08, flap: 7,
 };
-export const MOTH_EFFECT_KINDS = new Set(["emberDust"]);
+export const MOTH_EFFECT_KINDS = new Set(["emberDust", "silk"]);
 
 const smoothing = new WeakMap();
 function eased(e, key, target, now, rate) {
@@ -84,6 +84,13 @@ export function drawMothEffect(ctx, f, s, now, { reduceMotion = false } = {}) {
     ctx.translate(x, cy); ctx.rotate(a + Math.PI / 2); ctx.fillStyle = A.fire;
     for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(side * s * .16 * (.4 + flap), 0, s * .16 * (.4 + flap), s * .11, side * .4, 0, TAU); ctx.fill(); }
     ctx.fillStyle = A.fireCore; ctx.beginPath(); ctx.ellipse(0, 0, s * .045, s * .1, 0, 0, TAU); ctx.fill();
+  } else if (f.kind === "silk") { // release 708: a thread of silk with its trail, or a great knot of it
+    const lift = s * .5, pts = [...(f.trail || []), [f.x, f.y]], big = !!f.big;
+    for (let n = 0; n < (big ? 3 : 1); n++) { ctx.beginPath(); pts.forEach(([px, py], i) => { const wob = big ? Math.sin(i * 1.3 + n * 2) * s * .08 : 0, X = (px + .5) * s + wob, Y = (py + .62) * s - lift + wob * .6; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+      ctx.strokeStyle = `rgba(245,240,230,${big ? .55 : .7})`; ctx.lineWidth = Math.max(1, s * (big ? .03 : .022)); ctx.lineCap = "round"; ctx.stroke(); }
+    const hx = x, hy = y - lift, R = (Number(f.radius) || .25) * s, g = ctx.createRadialGradient(hx, hy, 0, hx, hy, R * (big ? 1.8 : 1.6)); g.addColorStop(0, "rgba(255,255,250,.95)"); g.addColorStop(.5, big ? "rgba(255,226,176,.7)" : "rgba(240,235,225,.6)"); g.addColorStop(1, "rgba(255,226,176,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, R * (big ? 1.8 : 1.6), 0, TAU); ctx.fill();
+    if (big) { ctx.strokeStyle = "rgba(255,250,240,.85)"; ctx.lineWidth = Math.max(1, s * .02); for (let i = 0; i < 4; i++) { const a = (reduceMotion ? 0 : now / 300) + i * 1.6; ctx.beginPath(); ctx.ellipse(hx, hy, R * .9, R * .4, a, 0, TAU); ctx.stroke(); } }
   } else if (f.kind === "emberDust") {
     if (f.arming > 0) { // a slow cloud of glowing dust, brightening as it is about to flare
       const total = Math.max(.001, Number(f.armTotal) || 1), k = 1 - f.arming / total;
