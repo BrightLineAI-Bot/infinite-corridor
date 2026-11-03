@@ -87,7 +87,8 @@ import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MI
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { ASCENDANCY, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
-import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology } from "./keeps.ts";
+import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
+import { BUILDINGS, buildingHere, placeBuilding, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale } from "./great-buildings.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
@@ -269,6 +270,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
+  else if (isBuildingId(id)) { map = generateBuildingFloor(save.seed, id); history.gatePredatorSpawnThreshold = 0; } // great buildings: a floor each
   else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); map = generateCanyon(save.seed, id, c.drilled, c.strained); } // Canyon craters
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
@@ -2003,7 +2005,7 @@ export class Game {
     this._apertureInstalled = true;
     ensurePerception(this.save);
     const decorate = () => {
-      if (this.area !== "dungeon" || !this.map || !this.enemies) return;
+      if (this.area !== "dungeon" || !this.map || !this.enemies || this.map.building) return; // great buildings hold only what they lay
       const annex = String(this.save.session.activeDungeonId).endsWith(
           ":aperture-annex",
         ),
@@ -2052,7 +2054,7 @@ export class Game {
         stateId=area==="dungeon"&&levelId?`${id}:level:${levelId}`:id,
         had = !!this.save.session.areas[stateId];
       load(area, capture);
-      if (area === "dungeon") {
+      if (area === "dungeon" && !this.map?.building) {
         const annex = String(this.save.session.activeDungeonId).endsWith(
             ":aperture-annex",
           ),
@@ -2209,6 +2211,7 @@ export class Game {
       this._apertureInstalled &&
       this.area === "dungeon" &&
       this.map &&
+      !this.map.building &&
       !this.map.objects.some((o) => o.kind === "apertureMemory")
     ) {
       const annex = String(this.save.session.activeDungeonId).endsWith(
@@ -2356,9 +2359,9 @@ export class Game {
       if(guardian){history.guardianKind??=history.ladder?ladderGuardian(this.save.seed,packAreaId,history.ladder.tier,guardianKindFor(this.save.seed,packAreaId),GUARDIAN_POOL):guardianKindFor(this.save.seed,packAreaId);/* release 319 */guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
     }
     if(packAdopted&&this.map.encounterVersion&&this.map.monsterPack!==MONSTER_PACK_VERSION){this.map.enemySpawns=this.map.enemySpawns.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0;this.map.encounterGroups=[]}
-    if (area === "dungeon" && !this.map.deepDungeon && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
+    if (area === "dungeon" && !this.map.deepDungeon && !this.map.building && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
-    if(area==="dungeon"&&!this.map.arena&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1",monsterPack:packAdopted});this.trapSeeds=[];if(area==="dungeon"&&!this.map.arena&&this.save.consequences?.dungeons?.[this.save.session.activeDungeonId]?.trapsVersion&&!this.map.objects?.some(o=>o.newTrap))addNewTraps(this.map,this.save.seed,this.areaId(),this.save.consequences.dungeons[this.save.session.activeDungeonId].trapsVersion);/* release 523: only crossings first generated from now on */
+    if(area==="dungeon"&&!this.map.arena&&!this.map.building&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1",monsterPack:packAdopted});this.trapSeeds=[];if(area==="dungeon"&&!this.map.arena&&!this.map.building&&this.save.consequences?.dungeons?.[this.save.session.activeDungeonId]?.trapsVersion&&!this.map.objects?.some(o=>o.newTrap))addNewTraps(this.map,this.save.seed,this.areaId(),this.save.consequences.dungeons[this.save.session.activeDungeonId].trapsVersion);/* release 523: only crossings first generated from now on */
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
       const remembered = this.save.checkpoints?.[`${this.rx},${this.ry}`];
       if (remembered && !remembered.crown && !this.map.objects.some((o) => o.kind === "checkpoint")) { // release 672: a Crown Rest (669) is rebuilt on its crown, never a Wayglass on flattened ground
@@ -2379,8 +2382,9 @@ export class Game {
       if ((prior ? prior.deepVersion : THE_DEEP.version) && !this.map.settlement && !this.map.hamlet && shaftHere(this.save.seed, this.rx, this.ry)) this.placeDeepShaft(); // release 677
       if ((prior ? prior.canyonVersion : CANYON.version) && !this.map.settlement && !this.map.hamlet && canyonHere(this.save.seed, this.rx, this.ry)) this.placeCrater(); // Canyon craters: only in sections first seen from now on
       if ((prior ? prior.ascendVersion : ASCENDANCY.version) && !this.map.settlement && !this.map.hamlet && !this.map.canopy && saplingHere(this.save.seed, this.rx, this.ry)) this.placeSapling(); // the Rite of Ascendancy
-      if ((prior ? prior.arcVersion : ARCOLOGY.version) && !this.map.settlement && !this.map.hamlet) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; if (v >= 5 && arcologyHere(this.save.seed, this.rx, this.ry, sectionRegion(this.save.seed, this.rx, this.ry, v)) && buildArcology(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = ARCOLOGY.messages.arrive; } // ruined arcologies: only in sections first seen from now on
-      if ((prior ? prior.keepVersion : KEEPS.version) && !this.map.settlement && !this.map.hamlet && keepHere(this.save.seed, this.rx, this.ry) && buildKeep(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = KEEPS.messages.arrive; // great keeps: only in sections first seen from now on
+      if ((prior ? prior.arcVersion : 0) && !this.map.settlement && !this.map.hamlet) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; if (v >= 5 && arcologyHere(this.save.seed, this.rx, this.ry, sectionRegion(this.save.seed, this.rx, this.ry, v)) && buildArcology(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = ARCOLOGY.messages.arrive; } // ruined arcologies: only in sections first seen from now on
+      if ((prior ? prior.keepVersion : 0) && !this.map.settlement && !this.map.hamlet && keepHere(this.save.seed, this.rx, this.ry) && buildKeep(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = KEEPS.messages.arrive; // great keeps: only in sections first seen from now on
+      if ((prior ? prior.buildingVersion : BUILDINGS.version) && !this.map.settlement && !this.map.hamlet) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = buildingHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeBuilding(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen) && !this.message) this.message = BUILDINGS.messages.arrive; } // great buildings: only in sections first seen from now on (in place of the keeps and arcologies)
       { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, r = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null; if (!prior) noteSeasonDiscovery(this.save, r?.id); this.season = trackSeason(this.save, r); } // release 679: the woods' season
       if (!prior) { atlas[key] = atlas[key] || {}; if (noteDiscovery(this.save)) this.message = "Word comes on the wind: around Ember Refuge, the groves and the quarry have grown back."; } // release 265: regrowth every 20 new sections
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
@@ -2398,8 +2402,9 @@ export class Game {
         ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
-        ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : { keepVersion: KEEPS.version }), // great keeps likewise
-        ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : { arcVersion: ARCOLOGY.version }), // and the ruined arcologies
+        ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : {}), // great keeps: sections first seen from 683 until the great buildings
+        ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : {}), // and the ruined arcologies (685)
+        ...(prior ? (prior.buildingVersion ? { buildingVersion: prior.buildingVersion } : {}) : { buildingVersion: BUILDINGS.version }), // the great buildings take their place
         ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
         ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
         ...(indoor ? { indoorDungeonVersion: indoor } : {}), // release 499: the dungeon entrance may stand inside a building
@@ -3296,6 +3301,8 @@ export class Game {
     if (o.kind === "visceraBloom") return this.gatherBloom(o);
     if (o.kind === "riteAshes") return this.riseFromAshes(o);
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
+    if (o.kind === "buildingStair") return this.takeBuildingStair(o); // great buildings
+    if (o.kind === "exit" && this.map?.building) { const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors, at = D && (o.id === "building-breach" ? D.breach || D.front : D.front); if (at) this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: at.x, y: at.y }; } // out by the door you take
     if (o.kind === "deepShaft") return this.enterDeep(o, action); // release 677
     if (o.kind === "deepStair") return this.descendDeep(o);
     if (o.kind === "emberDoor") return this.burnEmber();
@@ -3428,6 +3435,10 @@ export class Game {
       if (horde?.left > 0) this.message = `The crossing is thick with Gate Revenants: ${horde.left} remain.`;
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
+      if (o.enterAt === "breach" && this.map.building?.breachEntry) { this.player.x = this.map.building.breachEntry.x; this.player.y = this.map.building.breachEntry.y; } // a great building's broken back
+      if (o.enterAt === "roof" && this.map.building?.roofLadder) { const at = buildingArrival(this.map, this.map.building.roofLadder.x, this.map.building.roofLadder.y); this.player.x = at.x; this.player.y = at.y; } // down through its roof hatch
+      if (o.buildingDoors && this.map.building) dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors = { ...o.buildingDoors }; // where each of its ways out lets you out
+      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
       if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
     } else if (r.transition === "exit") {
@@ -4718,6 +4729,7 @@ export class Game {
       if (area === "dungeon" && this.map?.deepFloor && !c.deepScaled) { const f = this.map.deepFloor, k = floorScale(f); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.deepScaled = true; // release 677: harder each floor
         if (GUARDIAN_ROLES.includes(c.dungeonRole)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, guardianAffixes(f)); else if (!c.affixes && !c.ambient && (hashSeed(`${this.save.seed}:deep-affix:${f}:${c.id}`) % 1000) / 1000 < floorAffixShare(f)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, 1); }
       if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
+      if (area === "dungeon" && this.map?.building && e.buildingGuard && !c.buildingScaled) { const k = buildingScale(this.map.building.floor), G = BUILDINGS.creatures.guardian; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp * (e.buildingGuardian ? G.hp : 1))); c.damage = Math.max(1, Math.round(c.damage * k.damage * (e.buildingGuardian ? G.damage : 1))); if (c.baseDamage) c.baseDamage = c.damage; if (e.buildingGuardian) { c.packName = `${this.map.building.style === "keep" ? "Keep" : "Arcology"} Guardian`; c.affixes = rollAffixes(`${this.save.seed}:building-guardian:${c.id}`, G.affixes); } c.buildingScaled = true; c.buildingGuard = true; } // great buildings: each floor up is harder; the top floor's guardian most of all
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -5387,6 +5399,32 @@ export class Game {
     if (!at) return null;
     const stair = { id: "annex-stair", kind: "annexStair", name: `Annex Stair · down to floor ${A.floor + 1}`, x: at.x, y: at.y, state: "open", actions: ["descend"], toId: annexFloorId(A.base, A.floor + 1), floor: A.floor + 1 };
     this.map.objects.push(stair); return stair;
+  }
+  // Great buildings (great-buildings.ts): a stair up or down to the next floor, each floor an area of its own.
+  goBuildingFloor(toId, x, y) {
+    const prev = dungeonHistory(this.save, this.areaId()); prev.visitOpen = false; this.snapshotArea();
+    this.save.session.activeDungeonId = toId; this.save.session.activeDungeonLevelId = null; pinDungeonLayout(this.save, toId);
+    const h = dungeonHistory(this.save, toId); h.visits++; h.visitOpen = true;
+    this.loadArea("dungeon", false); const at = buildingArrival(this.map, x, y); this.player.x = at.x; this.player.y = at.y;
+    relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); this.projectiles = [];
+  }
+  takeBuildingStair(o) {
+    if (o.dir === "roof") { // up through the hatch, onto the roof: high ground on the section itself
+      const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors; if (!D?.hatch) { this.message = "The hatch is rubbled shut."; return { ok: false, message: this.message }; }
+      this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: D.hatch.x, y: D.hatch.y }; this.leaveDungeon(BUILDINGS.messages.roof); this.sync(); return { ok: true, message: this.message };
+    }
+    this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, top = B.floor >= B.floors;
+    this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };
+    this.message = `${o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${this.map.name.split(" · ")[1] || `floor ${B.floor}`}.`; this.sync(); return { ok: true, message: this.message };
+  }
+  // Standing in a hole (not mid-jump) drops you to the floor below, onto the same spot, hurt.
+  buildingFall() {
+    const B = this.map.building, w = this.map.width, px = Math.floor(this.player.x + .5), py = Math.floor(this.player.y + .5), t = this.map.tiles[py * w + px];
+    if (!t?.hole || B.floor <= 1) return false;
+    const below = this.areaId().replace(/:f\d+$/, `:f${B.floor - 1}`), hurt = Math.max(1, Math.round(this.save.maxHp * BUILDINGS.fall));
+    this.goBuildingFloor(below, px, py); this.player.x = px; this.player.y = py; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon"));
+    this.player.hp = Math.max(1, this.player.hp - hurt);
+    this.message = `${BUILDINGS.messages.fall} ${this.map.name.split(" · ")[1] || `floor ${B.floor - 1}`} (−${hurt}).`; this.sync(); return true;
   }
   descendAnnex(o) {
     const prev = dungeonHistory(this.save, this.areaId()); prev.visitOpen = false; this.snapshotArea();
@@ -6099,6 +6137,7 @@ export class Game {
     this.tickMirage(dt); // release 649: Mirage of Blades
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
+    if (this.area === "dungeon" && this.map?.building && now >= this.jumpUntil) this.buildingFall(); // great buildings: a step into a hole drops you a floor
     if (this.rite) this.riteTick(dt, now); // the Rite of Ascendancy
     if (this.treeRise) { if (this.area === "overworld") this.tickTreeRise(now); else this.treeRise = null; }
     this.tickFractured(now); // release 651: Fractured mode

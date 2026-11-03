@@ -2694,6 +2694,61 @@ Tim, 2026-10-21: "build will be like another one of those toggle buttons... when
 - A fence's run is only how it is drawn: it blocks its whole tile.
 - Tests: `tests/building.test.ts` covers build mode and the trap.
 
+## Release 711: great buildings — 2026-11-03
+
+Tim (2026-11-03): "more like actual buildings... a building that has multiple floors that you can, on each floor, walk around
+on and fight enemies, and the floor is separate from the other floor so you have to find a way to get through and a way to get
+to the top... floors can be dilapidated or falling through... opaque from the outside... some of them can have broken
+backsides... mosaic floors... carpets... wood plank floors... rendered similar to the shacks... and when you go inside, it has
+just traversable floor space". Then: "each floor... the only thing that you can see... between floors... a ladder... you just
+climb the ladder"; "you should be able to get on the roofs of these buildings, not all of them, but some of them... sections
+of the roof... crumbling... look out and see the world around you... you can hop off... If you don't have the drone... you'll
+die".
+
+**CODE:**
+- `src/great-buildings.ts` (new; in the build and both sw.js lists):
+  - `BUILDINGS`: `chance` .09 past `minRing` 4; apartments in the `machine` regions, elsewhere keeps (`apartmentShare` .3
+    apartments); `breach` .35; per style its `footprints`, `floors` range, interior `size`, wall and floor kinds, guards,
+    guardian and cache; `split` (rooms), `extraDoors`, `holes`, `rubble`, `creatures` (per floor, floor scaling, guardian) and
+    `fall` (.1 of max health).
+  - `buildingHere(seed, rx, ry, region)` → `{ style, floors }`. `placeBuilding(map, …, exitsOpen)` lays a blocked footprint on
+    flat dry open ground clear of the exit lanes and the plaza (the section's ways out are checked as for keeps; `exitsOpen` is
+    now exported from keeps.ts), the `greatBuilding` object, and its door(s) as `dungeon` objects (`buildingDoor`, the breach
+    door with `enterAt: "breach"`) whose ids are `building:<seed>:<rx>:<ry>:<style>:<floors>:f1`.
+  - `buildingPlan(base)` lays every floor in order: rooms by splitting the floor into blocks with doorways (and joins anything
+    left cut off), each room's material (the largest is the hall), a little rubble that never cuts the floor in two, the stair
+    up among the farthest cells from where you arrive (the next floor's stair down stands on the same cell), then holes over
+    open floor below, kept off the stairs and dropped until every open cell is reachable without stepping in one.
+  - Roofs (`roof`: `share` .55, `elev` 5, `crumbled` .1; only where the section has a landscape layer; the id's floor count
+    carries an `r`): the footprint is walkable roof at elevation 5 (`structure` "buildingRoof"), a share of its inner cells
+    fallen in (blocked), with a hatch (a `dungeon` object, `roofHatch`, `enterAt: "roof"`) into the top floor. Each roof
+    tile's `roofLift` (landscape.ts `tileLiftScale`) draws its level at the top of the facade (`facadeHeight`). A fall of 4+
+    levels is fatal (`fallDamage`); the drone's booster (DRONE_LIFT) lets you down, unchanged.
+  - Floors are joined by ladders (`buildingStair` objects, named and drawn as ladders); the top floor of a roofed building has
+    a ladder up to the roof (`dir: "roof"`), at least `roofLadderClear` from its guardian.
+  - `generateBuildingFloor(seed, id)` builds one floor as a dungeon map (`map.building`, `recipe` greatBuilding): the exit (and
+    the broken wall) on the ground floor, `buildingStair` objects, guards one a room away from the arrival, and on the top floor
+    the cache (`keep-cache` / `arcology-cache`) and its guardian.
+- `src/game.ts`: `generatePinnedDungeon` builds `building:` ids (no Gate Revenant); `loadArea` places buildings in sections
+  first seen from now on (`atlas.buildingVersion`), and new sections no longer get `keepVersion` / `arcVersion`, so the
+  climbable keeps and arcologies stay only where they already were. Building floors skip the Aperture overlay, the dungeon
+  encounter population, the new traps and the Gate Revenant roll. `takeBuildingStair` / `goBuildingFloor` move between floors;
+  the roof ladder leaves the dungeon onto the hatch (`leaveDungeon`); entering records the building's doors (`history.buildingDoors` on
+  floor 1), so each way out lets you out at its own door. `buildingFall` (each frame, unless mid-jump) drops you through a hole onto the same spot a floor down; the creature hook
+  scales guards per floor and gives the guardian more health, damage and an affix.
+- `src/renderer.ts`: `greatBuilding` (a block seen from the south: the roof raised by the facade's height, a band of windows a
+  floor, the door, a torn breach, a roof's fallen patches and hatch) drawn after the creatures like the shacks, faded while you
+  stand behind it; on a roof the Wayfarer is drawn over it; `paintBuildingTile` for the walls (a face over open floor) and the floors; `drawBuildingStair`. `src/main.ts`
+  labels the stairs on the dungeon map.
+
+**BOUNDARY:**
+- New ground only (`atlas.buildingVersion`). Sections first seen from 683 or 685 keep their keeps and arcologies; sections seen
+  earlier get nothing.
+- Each floor is its own dungeon history and area state, so cleared floors and opened caches stay so. Nothing new is saved
+  beyond the atlas pin and the usual per-dungeon records (additive at schema 14).
+- Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
+- Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
+  first seen in 683 / 685.
 ## Release 710: the Doom Chaser — 2026-11-03
 
 Tim, 2026-11-03: the second dragon, a black dragon in the spirit of a great dark-eater dragon and a frenzy-spreading black wyvern (an original design): "a sweeping laser beam that just like makes eruptions everywhere... flies in the air and launches waves of dark energy... all of his attacks can be black... slam attacks... a similar number of different moves... His name is doom chaser"; and "casting a spell makes a lava pool beneath your spell", which for this dragon means pools of black fire.

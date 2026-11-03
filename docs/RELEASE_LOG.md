@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 710, the next is **711** (reserved, see below), then **712**.
+Taken at merge time: `main`'s release + 1 (see above). After 711, the next is **712**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 711 | Claude (other session) | `claude/tremor-worm-rework-dqd8an` | Great buildings: opaque keeps/arcologies with multi-floor interiors (new ground only) | Reserved; first claimed 709, which was already merged. |
+| 711 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great buildings (Tim asked this session): Old Keeps and Ruined Arcologies as opaque buildings with separate floors inside (rooms, floor materials, ladders, holes, roofs to stand on for some, broken backs, a guardian and cache on top); new ground only, in place of the climbable 683/685 keeps and arcologies | Merging (baton taken). |
 | 710 | Claude | `claude/dreamy-rubin-yn6q2p` | The second dragon, the Doom Chaser: twelve moves, black fire pools, the frenzy | In flight. |
 | 709 | Claude | `claude/dreamy-rubin-yn6q2p` | A dragon, the Crimson Tyrant: twelve moves, lava pools, a permanent lava claim on its clock, the Sunfall | Merging. |
 | 708 | Claude | `claude/dreamy-rubin-yn6q2p` | The Briar Stag's Burning Grove, Rooted Mend, Hunting Birds and Mire Ground; the player can burn; the Stag redrawn; the Ashen Moth's chrysalis on great trees | Merged (`r708-3316faf45579`). Published in r708. |

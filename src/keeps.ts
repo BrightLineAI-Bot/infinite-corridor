@@ -72,7 +72,7 @@ function climbable(map, from) {
   return seen;
 }
 // Which of the section's four ways out can be walked to from its middle, on foot (no jumping), as the Wayfarer.
-function exitsOpen(map) {
+export function exitsOpen(map) {
   const ex = map.exits || {}, seen = new Uint8Array(1024), q = [16 * 32 + 16], me = { isPlayer: true, jumping: false }; seen[q[0]] = 1;
   for (let i = 0; i < q.length; i++) { const k = q[i], px = k % 32, py = (k / 32) | 0;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = px + dx, y = py + dy, n = y * 32 + x, t = map.tiles[n]; if (x < 0 || y < 0 || x > 31 || y > 31 || seen[n] || !t || t.blocked || !canStep(me, map, 32, px, py, x, y)) continue; seen[n] = 1; q.push(n); } }
