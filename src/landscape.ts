@@ -18,7 +18,7 @@ import { growTrees, TREES_V14 } from "./trees.ts";
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 15; // 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land; // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 16; // 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
 export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : t?.roofLift || 1); // a great building's roof is drawn at the top of its facade (great-buildings.ts)
@@ -165,7 +165,7 @@ export function regionAt(seed, sx, sy, version = 4) {
   if (version >= 5 && type === "wild") type = wildRegionType(seed, best.id, version);
   if (version >= 10) type = v10RegionType(seed, best.id, type); // release 625
   if (version >= 11) type = v11RegionType(seed, best.id, type); // release 629
-  if (version >= 15) { const civ = farCivAt(seed, sx, sy); if (civ) type = civ.land; } // release 716: a civilisation's country is its own land
+  if (version >= 15) { const civ = farCivAt(seed, sx, sy); if (civ && version >= civ.landSince) type = civ.land; } // release 716: a civilisation's country is its own land (717: from its own version)
   const ring = Math.hypot(sx, sy), fade = Math.max(0, Math.min(1, (ring - REGIONS.heartland) / REGIONS.fadeIn)); // the heartland round Ember Refuge keeps the old mix
   return { id: best.id, type: fade > 0 ? type : "wild", hold: Math.min(1, (second - bd) / REGIONS.blend) * fade, gap: fade > 0 ? second - bd : Infinity };
 }

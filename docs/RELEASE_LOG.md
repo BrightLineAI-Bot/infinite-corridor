@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 716, the next is **717**.
+Taken at merge time: `main`'s release + 1 (see above). After 717, the next is **718**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 716 | Claude | `claude/dreamy-rubin-yn6q2p` | The Crystal Civilisation: a far crystal country (landscape v15), crystal kin, a quest from the Psychic Crystal | In flight. |
+| 717 | Claude | `claude/dreamy-rubin-yn6q2p` | The Storm Halls: the Lightning Giant's far country (pillar lands, landscape v16), three kinds of lesser giant, a quest | In flight. |
+| 716 | Claude | `claude/dreamy-rubin-yn6q2p` | The Crystal Civilisation: a far crystal country (landscape v15), crystal kin, a quest from the Psychic Crystal | Merged (#363). |
 | 715 | Claude | `claude/dreamy-rubin-yn6q2p` | Far reaches: stag groves (Grove Stags, Grove Moths) and blob pockets (five lesser blobs by region) | Merged (#362). |
 | 714 | Claude | `claude/dreamy-rubin-yn6q2p` | Far realms beyond 1000 (new ground only): the Giants' Reach; the Briar Stag and the Stalker play | Merged (#361). |
 | 713 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Compounds (Tim asked this session): courtyards inside rings of wings, outer / courtyard doors and wall-walk hatches, maze routes to the tower's boss and treasure; great buildings on new ground in L / T / U shapes and alien hives | Merging (baton taken). |

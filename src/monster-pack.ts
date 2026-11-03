@@ -495,6 +495,23 @@ export const MONSTER_PACK = {
     attacks: ["clawSweep", "leapSlam"], bossAttacks: [],
     palette: ["#8a70b8", "#24183a", "#9ff8ff", "#f0ffff"], render: "crystalCrab", tags: ["beast", "crystal"],
     lore: "A great crab of the Crystal Civilisation that wears a geode the size of a barrel. It sidles round you and springs, pincers first, like its little cousins in the canyons." },
+  // Release 717 (Tim: "different versions of the lightning giant... way far out... all the monsters and all the creatures are
+  // lighting giants... different variations, so it looks like this is their lightning giant civilization"): its kin (FAR_CIVS.storm).
+  stormling: { id: "stormling", prototypeOnly: true, farKin: true, noEcho: true, name: "Stormling", epithet: "A Young Giant",
+    stats: [75, 10, 0], form: { scale: .95 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: ["giantSwing", "giantShock"], bossAttacks: [],
+    palette: ["#6d757e", "#1d2229", "#9fe0ff", "#eafaff"], render: "lightningGiant", tags: ["construct", "lightning"],
+    lore: "A young robot of the Storm Halls, half the height of the great Lightning Giant, its coils still small. It swings its club and grounds a shock through you." },
+  coilWarden: { id: "coilWarden", prototypeOnly: true, farKin: true, noEcho: true, name: "Coil Warden", epithet: "Keeper of the Storm Halls",
+    stats: [140, 13, 0], form: { scale: 1.4 }, sizeClass: "huge", movement: "walk", brain: "duelist",
+    attacks: ["giantArcs", "giantSwing", "giantSlam"], bossAttacks: [],
+    palette: ["#5a626c", "#181c22", "#7fd6ff", "#eafaff"], render: "lightningGiant", tags: ["construct", "lightning"],
+    lore: "A tall old robot that keeps the streets of the Storm Halls, its coils crackling. Lightning arcs from it to whoever comes too close, and its club comes down hard." },
+  sparkHauler: { id: "sparkHauler", prototypeOnly: true, farKin: true, noEcho: true, name: "Spark Hauler", epithet: "A Worker of the Storm Halls",
+    stats: [100, 11, 0], form: { scale: 1.15 }, sizeClass: "large", movement: "walk", brain: "juggernaut",
+    attacks: ["giantShock", "giantSlam"], bossAttacks: [],
+    palette: ["#7a6a58", "#221c16", "#ffe08a", "#fff8e0"], render: "lightningGiant", tags: ["construct", "lightning"],
+    lore: "A broad-shouldered robot that hauls stone and charge through the Storm Halls. It does not like to be interrupted: it slams the ground and the shock runs out through it." },
   mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
     id: "mothChrysalis", prototypeOnly: true, name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true, // not a creature of the roster: only the great trees hang it
     stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",

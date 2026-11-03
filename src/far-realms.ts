@@ -10,7 +10,7 @@
 import { hashSeed } from "./random.ts";
 
 export const FAR_REALMS = {
-  version: 3, start: 1000, cell: 40, warp: 9, // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS)
+  version: 4, start: 1000, cell: 40, warp: 9, // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
   // [type, from, to] on the cell's roll; later versions only add bands inside what earlier versions left ordinary.
   bands: { 1: [["giants", 0, .18]] },
 };
@@ -92,10 +92,15 @@ export function populatePocket(map, seed, rx, ry, pocket) {
 // version `since`, its overworld creatures are its kin (as in a pocket). Slay its world beast (`beast`) `FAR_REALMS.start` or more
 // out and the Journal opens a quest to it (`save.farQuests[id]`), which the compass follows until you arrive.
 export const FAR_CIVS = {
-  crystal: { since: 3, min: 1150, span: 300, radius: 26, land: "crystal", beast: "psychicCrystal", extra: 6, kinds: ["shardling", "shardling", "prismWarden", "crystalStrider", "crystalStrider"],
+  crystal: { since: 3, landSince: 15, min: 1150, span: 300, radius: 26, land: "crystal", beast: "psychicCrystal", extra: 6, kinds: ["shardling", "shardling", "prismWarden", "crystalStrider", "crystalStrider"],
     name: "the Crystal Civilisation", arrive: "The ground rings underfoot. Spires of crystal stand in rows like streets, and things of crystal float and walk between them. You have found the Crystal Civilisation.",
     quest: "With the Psychic Crystal fallen, its thoughts scatter, and one goes home: far out, there is a whole country of its kind. Your compass knows the way to the Crystal Civilisation.",
     found: "You have reached the Crystal Civilisation." },
+  // Release 717: the Lightning Giant's people, on the pillar lands, in the far quarter the seed sets.
+  storm: { since: 4, landSince: 16, min: 1200, span: 300, radius: 26, land: "pillars", beast: "lightningGiant", extra: 6, kinds: ["stormling", "stormling", "sparkHauler", "sparkHauler", "coilWarden"],
+    name: "the Storm Halls", arrive: "Thunder rolls without a cloud. Tall stone stands everywhere like towers, coils hum on their heads, and the robots of the Lightning Giant's people walk between them. You have found the Storm Halls.",
+    quest: "With the Lightning Giant fallen, its last charge runs out along the ground toward home: far out, its people have built a whole country. Your compass knows the way to the Storm Halls.",
+    found: "You have reached the Storm Halls." },
 };
 const civCache = new Map();
 export function farCivCentre(seed, id) {
