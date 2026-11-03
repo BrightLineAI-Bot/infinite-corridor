@@ -93,7 +93,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits } from "./landscape.ts";
 import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
-import { DRAGON, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
+import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot, addStone } from "./digging.ts";
@@ -3661,7 +3661,7 @@ export class Game {
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
-    this.eliteHazards=[];this.packEffects=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});this.playerFire=null;/* release 709: burning ends here too */
+    this.eliteHazards=[];this.packEffects=[];Object.assign(ensureEliteState(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */
     input.reset?.();
     this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
     this.rx = c.rx;
@@ -3975,8 +3975,10 @@ export class Game {
     { const b = source && buildBetween(this, source); if (b) { const melee = (ATTACK_MODULES[source.pack?.attack]?.tags || []).includes("melee"); strikeBuild(this, b, melee && !!(source.worldBeast || source.questingBeast)); return false; } } // release 265: a build takes the blow
     const veil = this.save.magicSkills?.active?.id === 'veil-guard' ? .12 + .08 * skillRank(this.save, 'veil-guard') : 0;
     if (bossPaced(source) && options.source !== "astralDrain") amount *= BOSS_PACE.damage; // release 421 (the Astral Worm's drain keeps its release-307 size: it is also its heal)
+    if (this.frenzy?.active) amount *= 1 + FRENZY.extra; // release 710: the frenzy takes more out of you
     p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil))));
     p.invulnerableUntil = now + (options.beam ? 320 : 700);
+    if (source?.kind === "doomChaser") this.frenzyHit(now); // release 710
     return true;
   }
   // Explicit prototype fixture entry only. Natural pairing stays disabled until reviewed integration.
@@ -4285,6 +4287,7 @@ export class Game {
       release(source) { if (p.heldBy === source.id) p.heldUntil = 0; },
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * step, ddy / dd * step); return true; }, // release 235: the Blob's jet
       dragonDue: () => game.dragonDue(), dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
+      frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
       ignite(seconds, dps) { if (now < (p.dodgeUntil || 0)) return; const f = game.playerFire; game.playerFire = { left: Math.max(f?.left || 0, seconds), dps: Math.max(f?.dps || 0, dps), tick: f?.tick ?? 1 }; }, // release 708: set alight (the Briar Stag's burning trees)
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(ensureEliteState(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
@@ -4829,6 +4832,20 @@ export class Game {
   dragonDue() { if (!this.dragonHere()) return false; const r = this.dragonClock(); return r.casts < DRAGON.colonize.casts && (Number(this.save.playSeconds) || 0) >= r.nextAt; }
   dragonLavaNow() { const r = this.dragonClock(), tiles = dragonCast(this.save, this.map, this.save.seed, this.rx, this.ry); r.nextAt = (Number(this.save.playSeconds) || 0) + DRAGON.colonize.every;
     this.message = r.casts >= DRAGON.colonize.casts ? "The last of the floor turns to lava. The Crimson Tyrant has claimed this ground." : `The ground breaks into lava. The Crimson Tyrant has claimed ${r.casts} of ${DRAGON.colonize.casts} parts of it.`; return tiles; }
+  // Release 710: the Doom Chaser's frenzy (FRENZY). Its hits build it; once it holds, land FRENZY.cure blows on it or it bursts.
+  frenzyHit(now, n = 1) {
+    if (this.player.hp <= 0) return; const f = (this.frenzy ||= { build: 0, active: false });
+    if (f.active) return; f.build += n; f.forget = FRENZY.forget;
+    if (f.build >= FRENZY.build) { Object.assign(f, { active: true, left: FRENZY.time, cure: 0, hpSeen: null }); this.message = `The frenzy takes hold! Land ${FRENZY.cure} blows on the Doom Chaser to throw it off.`; }
+  }
+  frenzyTick(dt) {
+    const f = this.frenzy; if (!f) return; const d = this.enemies.find((q) => q.kind === "doomChaser" && !q.dead), p = this.player;
+    if (!f.active) { f.forget -= dt; if (f.forget <= 0 || !d) this.frenzy = null; return; }
+    if (!d || p.hp <= 0) { this.frenzy = null; return; }
+    if (f.hpSeen != null && d.hp < f.hpSeen) f.cure++; f.hpSeen = d.hp; f.left -= dt;
+    if (f.cure >= FRENZY.cure) { this.frenzy = null; this.message = "You throw the frenzy off."; return; }
+    if (f.left <= 0) { this.frenzy = null; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * FRENZY.burst * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); this.message = "The frenzy bursts inside you!"; }
+  }
   // Release 708: the chrysalis falls and the Ashen Moth hatches where it hung; its hunt starts in this section.
   hatchMoth(e) {
     const q = this.save.worldBeasts?.ashenMoth; if (!q || q.active) return null;
@@ -6086,6 +6103,7 @@ export class Game {
     if (this.treeRise) { if (this.area === "overworld") this.tickTreeRise(now); else this.treeRise = null; }
     this.tickFractured(now); // release 651: Fractured mode
     if (this.area === "overworld") this.mothHarass(); // release 708
+    this.frenzyTick(dt); // release 710
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
