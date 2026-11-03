@@ -132,7 +132,7 @@ export const WORLD_BEASTS = {
   // Release 710 (Tim, 2026-11-03: "The second dragon... a sweeping laser beam... eruptions everywhere... waves of dark energy... all of his
   // attacks can be black... His name is doom chaser"): a black dragon of dark fire. It flies home over everything to the canyons' dark.
   doomChaser: {
-    kind: "doomChaser", name: "The Doom Chaser", chance: .02, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
+    kind: "doomChaser", name: "The Doom Chaser", chance: .01, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
     hitsToKill: 80, hpPerLevel: 36, damageShare: .24, speed: 1.1, attackGap: .22, staggerResistance: 1, rewardMarks: 240, rewardPerLevel: 24,
     patience: 240, home: "canyon", retreatMoves: "through",
     flee: "The Doom Chaser beats its black wings once and is gone into the sky, bound for the deep canyons.",

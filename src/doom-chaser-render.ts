@@ -8,7 +8,7 @@ const TAU = Math.PI * 2;
 export const DOOM_ART = {
   hide: "#1d1a26", hideDark: "#0a090f", hideLight: "#3a3450", belly: "#2a2436", bellyDark: "#120f19", horn: "#07060a", hornLight: "#4c3c66",
   membrane: "#130f1c", membraneLight: "#33264a", bone: "#040307", eye: "#d27aff", fire: "#8a3aff", fireCore: "#f2e2ff", ember: "#b070ff",
-  glow: "150,70,255", aura: "130,60,230", teeth: "#d8cce8", cracks: "180,100,255",
+  glow: "150,70,255", aura: "130,60,230", teeth: "#d8cce8", cracks: "180,100,255", horns: [[-.07, .52], [-.02, .46], [.03, .38], [.07, .3]], scallop: .48,
 };
 export const DOOM_EFFECT_KINDS = new Set(["doomErupt", "doomScale", "darkPool", "doomWave", "doomTar", "doomOrb", "doomBurst"]);
 
@@ -22,8 +22,8 @@ const ground = (e, s) => [(e.x + .5) * s, (e.y + .62) * s];
 
 export function drawDoomChaser(ctx, q, now = 0) {
   const { k, b, u, e } = q, s = q.s || u, t = now / 1000, reduce = !!e.reduceMotion, air = Math.max(0, Number(e.dragonAir) || 0) * s, attack = e.pack?.attack;
-  // Smoke of darkness round it, under the body.
-  if (!reduce) { for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + t * .4, r = u * (.9 + .2 * Math.sin(t * 1.3 + i)); ctx.fillStyle = "rgba(30,14,50,.18)"; ctx.beginPath(); ctx.ellipse(k + Math.cos(a) * r, b - air - u * .3 + Math.sin(a) * r * .3, u * .35, u * .2, 0, 0, TAU); ctx.fill(); } }
+  // Motes of darkness drifting up off it.
+  if (!reduce) for (let i = 0; i < 7; i++) { const p = (t * .35 + i / 7) % 1, x = k + Math.sin(i * 2.3 + t * .5) * u * .7, y = b - air - u * (.2 + p * 1.1); ctx.fillStyle = `rgba(150,80,255,${.45 * (1 - p)})`; ctx.beginPath(); ctx.arc(x, y, u * (.012 + .012 * (1 - p)), 0, TAU); ctx.fill(); }
   // Its breath: a sweeping cone of black flame (drawn on the ground, beneath the body).
   const br = attack === "doomBreath" && e.doomBreath; if (br) { const [gx, gy] = ground(e, s), a0 = br.angle - br.arc * Math.PI / 360, a1 = br.angle + br.arc * Math.PI / 360, R = br.reach * s;
     ctx.fillStyle = "rgba(40,10,70,.45)"; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.ellipse(gx, gy, R, R * .62, 0, a0, a1); ctx.closePath(); ctx.fill();
