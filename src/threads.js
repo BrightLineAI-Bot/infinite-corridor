@@ -7,8 +7,8 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r707-9f6fba1549e9";
-import { READING_BANDS } from "./lore.js?v=r707-9f6fba1549e9";
+import { hashSeed } from "./random.js?v=r708-3316faf45579";
+import { READING_BANDS } from "./lore.js?v=r708-3316faf45579";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -161,7 +161,9 @@ function laterThreadIn(seed, dungeonId, rx, ry) {
   const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 2 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return thirdThreadIn(seed, dungeonId, rx, ry);
   return here[hashSeed(`${seed}:threads:later:which:v1:${dungeonId}`) % here.length];
 }
-// Release r707-9f6fba1549e9: wave 3 threads, rolled only where neither earlier roll placed a thread (THREAD_RULES.third), so none moves.
+// Release 707: wave 3 threads, rolled only where neither earlier roll placed a thread (THREAD_RULES.third), so none moves.
+// Never add another wave 2 thread to a band: crossings that hold a wave 3 thread because no wave 2 thread was in band would move.
+// A later thread is always a new wave with its own roll.
 function thirdThreadIn(seed, dungeonId, rx, ry) {
   if ((hashSeed(`${seed}:threads:third:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.third) return null;
   const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 3 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;

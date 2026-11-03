@@ -1,28 +1,28 @@
-import { astralBeamAnchors } from "./astral-worm.js?v=r707-9f6fba1549e9";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r707-9f6fba1549e9";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r707-9f6fba1549e9";
-import { enemyMeleeGeometry } from "./combat.js?v=r707-9f6fba1549e9";
-import { ruleRows } from "./elders.js?v=r707-9f6fba1549e9";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r707-9f6fba1549e9";
-import { BOAT } from "./boats.js?v=r707-9f6fba1549e9";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r707-9f6fba1549e9";
-import { isMarineTile } from "./world-beasts.js?v=r707-9f6fba1549e9";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r707-9f6fba1549e9"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r707-9f6fba1549e9";
-import { setTreeSeason } from "./landscape-render.js?v=r707-9f6fba1549e9";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r707-9f6fba1549e9";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r707-9f6fba1549e9";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r707-9f6fba1549e9";
-import { TREES } from "./trees.js?v=r707-9f6fba1549e9";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r707-9f6fba1549e9";
-import { KIT_MOVES } from "./boss-kit.js?v=r707-9f6fba1549e9";
-import { SKY_DISCS } from "./skylands.js?v=r707-9f6fba1549e9"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r707-9f6fba1549e9";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r707-9f6fba1549e9"; // release 678
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r707-9f6fba1549e9";
-import { drawRelayNode } from "./relay-network.js?v=r707-9f6fba1549e9";
-import { structureOccupancy } from "./world.js?v=r707-9f6fba1549e9";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r707-9f6fba1549e9";
+import { astralBeamAnchors } from "./astral-worm.js?v=r708-3316faf45579";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r708-3316faf45579";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r708-3316faf45579";
+import { enemyMeleeGeometry } from "./combat.js?v=r708-3316faf45579";
+import { ruleRows } from "./elders.js?v=r708-3316faf45579";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r708-3316faf45579";
+import { BOAT } from "./boats.js?v=r708-3316faf45579";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r708-3316faf45579";
+import { isMarineTile } from "./world-beasts.js?v=r708-3316faf45579";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r708-3316faf45579"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r708-3316faf45579";
+import { setTreeSeason } from "./landscape-render.js?v=r708-3316faf45579";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r708-3316faf45579";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r708-3316faf45579";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r708-3316faf45579";
+import { TREES } from "./trees.js?v=r708-3316faf45579";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r708-3316faf45579";
+import { KIT_MOVES } from "./boss-kit.js?v=r708-3316faf45579";
+import { SKY_DISCS } from "./skylands.js?v=r708-3316faf45579"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r708-3316faf45579";
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r708-3316faf45579"; // release 678
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r708-3316faf45579";
+import { drawRelayNode } from "./relay-network.js?v=r708-3316faf45579";
+import { structureOccupancy } from "./world.js?v=r708-3316faf45579";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r708-3316faf45579";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -2081,6 +2081,7 @@ export function render(ctx, g, w, h, now) {
       if (g.area === "overworld" && g.save.boat?.aboard && !g._seaSuit && (g.save.boat.sub || g.save.boat.mechSub) && !g._longboatFront) drawSubmersible(ctx, p.x, p.y - lift / s, s, p.facing, now, "front", g._subDive); // release 311: the window's glass and the arms
       if (g._longboatFront && g.area === "overworld" && g.save.boat?.aboard) drawLongboat(ctx, p.x, p.y - lift / s, s, p.facing, now, g.longboatSide || "right", "front"); // release 269
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
+      if (g.playerFire?.left > 0) { const t = now / 1000, cx = (p.x + .5) * s, cy = (p.y - lift / s + .55) * s; for (let i = 0; i < 6; i++) { const ph = (t * 1.6 + i / 6) % 1, fx = cx + Math.sin(i * 2.3 + t * 3) * s * .22, fh = s * (.28 + .2 * Math.sin(i + t * 9)) * (1 - ph * .5); ctx.fillStyle = i % 2 ? "rgba(255,176,42,.85)" : "rgba(255,90,26,.75)"; ctx.beginPath(); ctx.moveTo(fx - s * .07, cy - ph * s * .5); ctx.quadraticCurveTo(fx, cy - ph * s * .5 - fh, fx + s * .07, cy - ph * s * .5); ctx.fill(); } } // release 708: on fire
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
       if (now < (p.attackUntil || 0)) {
         const a = {

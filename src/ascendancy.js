@@ -17,7 +17,7 @@
 //   (landscape.ts growRiteTree; its platforms climb out of the earth over `rise` s, rubble falling), the same each time you come
 //   back, with a Divine Viscera bloom on its crown (`viscera`, once) and its door to the sky (`skyway`): a skyway to another tree.
 // Save: additive at schema 14 (`save.ascendancy`: { ["rx,ry"]: { tries, done, risen, bloom } }).
-import { hashSeed } from "./random.js?v=r707-9f6fba1549e9";
+import { hashSeed } from "./random.js?v=r708-3316faf45579";
 
 export const ASCENDANCY = {
   version: 1,
