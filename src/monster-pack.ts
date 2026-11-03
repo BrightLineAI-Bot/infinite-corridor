@@ -153,6 +153,22 @@ export const ATTACK_MODULES = {
   dragonRoll: { id: "dragonRoll", name: "Rolling Crush", range: [0, 3.6], cooldown: 7, windup: .5, active: 1.6, recover: .6, damage: 1.3, tags: ["charge"], text: "Close in, it throws itself down and rolls across you, then back." },
   dragonFlameWave: { id: "dragonFlameWave", name: "Flame Wave", range: [0, 9], cooldown: 8, windup: .7, recover: .6, damage: 1, tags: ["ground", "fire"], text: "A wave of flame rolls out from it, all the way round or in a wide wedge toward you, and the ground it crosses stays burning for a while." },
   dragonSupernova: { id: "dragonSupernova", name: "Sunfall", range: [0, 99], cooldown: 32, windup: .9, active: 4.2, recover: 1.4, damage: 1, hurtBelow: .8, tags: ["fire", "flying"], text: "It climbs into the sky and draws the heat of everything round it into itself, then bursts like a falling sun. Get out of its reach, shelter in a pen, or meet it with the Aegis: nothing else lives through it." },
+  // The Doom Chaser's kit (release 710; Tim, 2026-11-03: "The second dragon... a sweeping laser beam that just like makes eruptions
+  // everywhere... flies in the air and launches waves of dark energy... all of his attacks can be black... slam attacks... a similar
+  // number of different moves... His name is doom chaser"). An original black dragon: dark fire, black flame pools under its spells,
+  // and a frenzy that its blows sow in you (FRENZY).
+  doomBeam: { id: "doomBeam", name: "Ruin Beam", range: [3, 12], cooldown: 10, windup: 1, active: 2.4, recover: .8, damage: .5, los: true, tags: ["ranged", "beam", "dark"], text: "Its throat fills with black light and a beam sweeps across the ground; everywhere it passes, black fire erupts a moment later." },
+  doomWaves: { id: "doomWaves", name: "Dark Tide", range: [3, 14], cooldown: 9, windup: .8, active: 2.2, recover: .8, damage: 1, tags: ["ranged", "dark", "flying"], text: "It climbs into the air and beats its wings, and wide crescents of dark energy roll across the ground at you, one after another." },
+  doomBreath: { id: "doomBreath", name: "Black Breath", range: [0, 6.5], cooldown: 7, windup: .7, active: 1.6, recover: .6, damage: .45, tags: ["ranged", "dark"], text: "It breathes a sweeping cone of black flame, and pools of it burn where it fell." },
+  doomWingSlam: { id: "doomWingSlam", name: "Wing Walk", range: [0, 6], cooldown: 7, windup: .6, active: 2, recover: .6, damage: 1.2, tags: ["melee", "ground", "dark"], text: "It walks at you on its wings, slamming them down left and right; each slam bursts and leaves black fire." },
+  doomPounce: { id: "doomPounce", name: "Doom Pounce", range: [3, 9], cooldown: 8, windup: .6, active: 1.2, recover: .7, damage: 1.4, tags: ["charge", "dark"], text: "It springs at you and comes down claws first, and dark fire bursts round where it lands." },
+  doomScales: { id: "doomScales", name: "Shed Scales", range: [0, 10], cooldown: 11, windup: .8, recover: .6, damage: 1, tags: ["ground", "dark"], text: "It shakes itself and black scales scatter round you; a moment later each one bursts." },
+  doomTar: { id: "doomTar", name: "Tar Spit", range: [2, 11], cooldown: 9, windup: .7, active: 1.2, recover: .6, damage: .6, tags: ["ranged", "control", "dark"], text: "It spits globs of black tar that cling and slow; a little later the tar catches and burns." },
+  doomFall: { id: "doomFall", name: "Falling Dark", range: [2, 14], cooldown: 12, windup: .7, active: 3, recover: 1, damage: 1.6, tags: ["charge", "dark", "flying"], text: "It climbs out of sight and its shadow hunts you; then it falls on you, and the dark bursts outward in a ring of fire." },
+  doomJaws: { id: "doomJaws", name: "Tail and Jaws", range: [0, 4], cooldown: 4.5, windup: .5, active: 1.6, recover: .5, damage: 1.2, tags: ["melee", "combo"], text: "Two lunging bites, then its tail sweeps round behind them." },
+  doomOrbs: { id: "doomOrbs", name: "Hunting Dark", range: [2, 14], cooldown: 10, windup: .7, active: 1.2, recover: .5, damage: .8, tags: ["ranged", "dark"], text: "Orbs of darkness leave its jaws and hunt you for a while, then fly on straight; each bursts on what it meets." },
+  doomEclipse: { id: "doomEclipse", name: "Eclipse", range: [0, 99], cooldown: 26, windup: 1, active: 4.5, recover: 1.2, damage: .45, hurtBelow: .65, tags: ["beam", "dark", "flying"], text: "Hurt, it rises and hangs in the air, a black sun at its heart, and beams turn round it like the hands of a clock, black fire erupting along them." },
+  doomRoar: { id: "doomRoar", name: "Frenzied Roar", range: [0, 8], cooldown: 14, windup: .8, recover: .8, damage: .5, tags: ["control", "dark"], text: "It roars: the blast throws you back, and the frenzy it spreads takes a step closer." },
   // The Ashen Moth's kit (release 706; the same ask): a moth as wide as a house, of ash and ember, from the Firelands.
   mothGust: { id: "mothGust", name: "Ash Gust", range: [0, 8], cooldown: 5, windup: .55, recover: .45, damage: .8, tags: ["control"], text: "A beat of its wings throws you back and scatters ash; the ash smoulders, then catches." },
   mothDust: { id: "mothDust", name: "Kindling Dust", range: [0, 11], cooldown: 7, windup: .6, recover: .5, damage: 1.1, tags: ["ground", "fire"], text: "It shakes clouds of glowing dust down round you, one on you. Each flares up a moment later." },
@@ -416,6 +432,13 @@ export const MONSTER_PACK = {
     palette: ["#a8221a", "#3a0a08", "#ffb04a", "#ffe8c0"], render: "crimsonTyrant", tags: ["beast", "elder", "fire", "dragon", "flying"],
     lore: "A dragon as long as a street, red as a forge, horned and winged, its tail never still. It burns the air, the ground and anything that stands on it; it slams, lashes, whirls and rolls; it rains fire and hurls great balls of it; and given time it claims a place for its own, turning the floor to lava a stretch at a time until there is nothing else. Then it bursts like a falling sun.",
   },
+  doomChaser: { // release 710
+    id: "doomChaser", name: "The Doom Chaser", epithet: "The Dark That Follows", unique: true,
+    stats: [420, 20, 0], form: { scale: 2.5 }, sizeClass: "huge", movement: "hover", brain: "duelist",
+    attacks: ["doomBeam", "doomWaves", "doomBreath", "doomWingSlam", "doomPounce", "doomScales", "doomTar", "doomFall", "doomJaws", "doomOrbs", "doomEclipse", "doomRoar"], bossAttacks: [],
+    palette: ["#1c1a24", "#08070c", "#a060ff", "#f0dcff"], render: "doomChaser", tags: ["beast", "elder", "dark", "dragon", "flying"],
+    lore: "A black dragon as long as a street, its scales like burnt glass, violet fire showing through the cracks between them. It sweeps the ground with a beam of black light that leaves the earth erupting behind it, throws waves of darkness from the air, walks on its wings and slams them down, spits tar that catches fire, sheds scales that burst, and falls on you out of the sky. Its blows sow a frenzy in you; strike it hard enough and you throw the frenzy off, or it bursts inside you.",
+  },
   mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
     id: "mothChrysalis", prototypeOnly: true, name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true, // not a creature of the roster: only the great trees hang it
     stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",
@@ -578,7 +601,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
-  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; enemy.stagPose = null; enemy.stagAir = 0; enemy.stagHunt = 0; enemy.stagMending = false; /* release 705; 708 */ enemy.mothPose = null; enemy.mothAir = 0; enemy.mothKindled = 0; enemy.mothCocoon = false; /* release 706 */ enemy.dragonPose = null; enemy.dragonAir = 0; enemy.dragonCharge = 0; // release 709 // release 245: no pose survives a reload
+  enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; enemy.stagPose = null; enemy.stagAir = 0; enemy.stagHunt = 0; enemy.stagMending = false; /* release 705; 708 */ enemy.mothPose = null; enemy.mothAir = 0; enemy.mothKindled = 0; enemy.mothCocoon = false; /* release 706 */ enemy.dragonPose = null; enemy.dragonAir = 0; enemy.dragonCharge = 0; enemy.doomRays = null; enemy.doomBreath = null; // release 709 // release 245: no pose survives a reload
   return enemy;
 }
 
@@ -603,7 +626,7 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
 // damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
-export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
+export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
 export function effectFootprint(f) {
   if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
@@ -762,6 +785,27 @@ export const DRAGON = {
   // your spell": its fireballs (every other rain fireball, every Great Flame) and its slams leave a pool that burns `life` s, then crusts.
   pool: { life: 6, rain: .85, rainEvery: 2, blast: 1.5, slam: 1.3, bite: .3 }, // lethal: × the Wayfarer's health, through any guard; only out of reach, a pen or the Aegis survive it
 };
+// The Doom Chaser (release 710). Balance as data. Lengths in tiles, times in seconds.
+export const DOOM = {
+  beam: { reach: 12, sweep: 1.5, tick: .3, width: .55, eruptEvery: .14, eruptArm: .75, eruptRadius: .9, eruptShare: .8 }, // sweep: radians, the whole pass
+  waves: { count: 3, height: 1.6, speed: 8.5, half: 1.7, life: 1.8, radius: .45 },
+  breath: { reach: 6.5, arc: 50, tick: .35, sweep: .9, pools: 3 },
+  wing: { slams: 4, step: 1.1, reach: 1.2, radius: 1.7, side: .9 },
+  pounce: { speed: 13, max: 7, radius: 2, ring: 6, ringRadius: 3.2, height: 1.2 },
+  scales: { count: 9, ring: [1.2, 4.5], arm: [1.3, 2.1], radius: 1 },
+  tar: { globs: 3, spread: 2.4, fly: .7, radius: 1.3, slow: .55, ignite: 2.4, burn: 3.5, tick: .5, bite: .4 },
+  fall: { rise: .7, track: 1.8, trackSpeed: 7, drop: .45, height: 4, radius: 2.6, ring: 8, ringRadius: 4.2 },
+  jaws: { bites: 2, lunge: 1.4, reach: 1.9, arc: 90, gap: .4, tailReach: 4, tailArc: 200 },
+  orbs: { count: 5, speed: 4.2, turn: 1.6, home: 2.6, life: 5, radius: .35, blast: 1.1 },
+  eclipse: { beams: 3, spin: .7, reach: 11, tick: .35, width: .55, eruptEvery: .25, height: 2.2 },
+  roar: { radius: 6, push: 2.5, frenzy: 1 },
+  // Tim (2026-11-03): "casting a spell makes a lava pool beneath your spell": its spells leave pools of black fire that burn `life` s.
+  pool: { life: 6, radius: 1.1, bite: .3, tick: .7 },
+};
+// Release 710: the frenzy the Doom Chaser's blows sow in the Wayfarer. Every `build` of its hits within `forget` s of each other and the
+// frenzy takes hold for `time` s: they take `extra` more from everything. Land `cure` blows on the Doom Chaser in that time to throw it
+// off; otherwise it bursts for `burst` of their health (their guard and armour count, a dodge does not).
+export const FRENZY = { build: 3, forget: 10, time: 14, cure: 6, extra: .15, burst: .25 };
 // The Ashen Moth (release 706). Balance as data. Lengths in tiles, times in seconds.
 export const MOTH = {
   gustReach: 6.5, gustArc: 100, gustPush: 2.2, gustAsh: 3,
@@ -824,6 +868,10 @@ function knightCut(e, s, w, id, aim, energized, arc = KNIGHT.slideArc) {
 const energized = (e, s, n, chance = KNIGHT.arcChance) => hashSeed(`${e.id}:${s.seq}:energy:${n}`) % 100 < chance;
 // Release 709: a pool of lava the Crimson Tyrant's fire leaves where it lands (the Tremor Worm's lava, lying still).
 function dragonPool(owner, w, x, y, radius, damage) { w.addEffect({ kind: "lava", owner, x, y, vx: 0, vy: 0, radius: WORM.lavaGrow[0], grow: radius, arming: 0, life: DRAGON.pool.life, total: DRAGON.pool.life, damage }); }
+// Release 710: the Doom Chaser's black fire: a pool that burns where its spells land, and fire that erupts from the ground once.
+function doomPool(owner, w, x, y, radius = DOOM.pool.radius, damage = 1) { w.addEffect({ kind: "darkPool", owner, x, y, radius, arming: 0, life: DOOM.pool.life, total: DOOM.pool.life, damage }); }
+const doomBite = (e) => Math.max(1, Math.ceil((Number(e.damage) || 1) * DOOM.pool.bite));
+function doomErupt(e, w, x, y, arm, radius, damage, pool = 0) { w.addEffect({ kind: "doomErupt", owner: e.id, x, y, radius, arming: arm, armTotal: arm, life: .5, total: .5, damage, pool, bite: doomBite(e) }); }
 // Release 708: is (x, y) on the Briar Stag's mire? The Game slows dodges and drains stamina there.
 export function stagMireAt(effects, x, y) { return (effects || []).some((f) => f.kind === "mire" && !(f.arming > 0) && f.life > 0 && Math.hypot(x - f.x, y - f.y) <= f.radius); }
 export function nanoScatters(e, { physical = false, echoGlyph = false } = {}) { return e?.kind === "nanobotKnight" && physical && !echoGlyph; }
@@ -841,6 +889,7 @@ export const BOSS_POISE = {
   briarStag: { hits: [12, 17, 24], guard: 9, breakTime: 2.4 },
   ashenMoth: { hits: [10, 15, 22], guard: 9, breakTime: 2.4 },
   crimsonTyrant: { hits: [16, 22, 30], guard: 10, breakTime: 2.6 },
+  doomChaser: { hits: [16, 22, 30], guard: 10, breakTime: 2.6 },
   nanobotKnight: { hits: [10, 15, 22], guard: 9, breakTime: 2.4 },
   voidWalker: { hits: [12, 17, 24], guard: 10, breakTime: 2.4 },
   astralWorm: { hits: [5, 7, 10], guard: 8, breakTime: 2.8 },
@@ -1119,7 +1168,7 @@ function endAttack(e, s) {
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
   e.voidDashing = false; e.voidCharging = false;
-  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0;
+  e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0; e.doomRays = null; e.doomBreath = null;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
@@ -1144,6 +1193,18 @@ const START = {
   dragonRoll(e, s, w) { s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, DRAGON.roll.speed * DRAGON.roll.leg), width: bodyRadius(e) }; e.dragonPose = "crouch"; },
   dragonFlameWave(e, s) { const ring = hashSeed(`${e.id}:${s.seq}:wave`) % 100 < DRAGON.wave.ring * 100; s.data.ring = ring; s.tele = ring ? { type: "ring", radius: DRAGON.wave.radius } : { type: "arc", aim: s.data.aim, radius: DRAGON.wave.radius, arc: DRAGON.wave.arc }; e.dragonPose = "breath"; },
   dragonSupernova(e, s) { s.tele = { type: "brace" }; e.dragonPose = "rise"; },
+  doomBeam(e, s, w) { const base = Math.atan2(s.data.aim.y, s.data.aim.x), dir = hashSeed(`${e.id}:${s.seq}:beam`) % 2 ? 1 : -1, from = base - dir * DOOM.beam.sweep / 2; Object.assign(s.data, { from, to: base + dir * DOOM.beam.sweep / 2, angle: from, tick: 0, erupt: 0, n: 0, wind: s.t }); s.tele = { type: "beam", angle: from, length: rayLength(w, e, { x: Math.cos(from), y: Math.sin(from) }, DOOM.beam.reach), charging: true }; e.dragonPose = "charge"; },
+  doomWaves(e, s) { s.tele = { type: "brace" }; e.dragonPose = "rise"; s.data.sent = 0; },
+  doomBreath(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: DOOM.breath.reach, arc: DOOM.breath.arc + DOOM.breath.sweep * 180 / Math.PI }; e.dragonPose = "charge"; Object.assign(s.data, { tick: 0, pools: 0 }); },
+  doomWingSlam(e, s) { s.tele = { type: "brace" }; e.dragonPose = "wingWalk"; Object.assign(s.data, { slam: 0, next: 0 }); },
+  doomPounce(e, s, w) { const d = Math.max(1, Math.min(DOOM.pounce.max, distance(s.data.target, e))); s.data.len = d; s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, d), width: 1.2 }; e.dragonPose = "crouch"; },
+  doomScales(e, s) { s.tele = { type: "brace" }; e.dragonPose = "roar"; },
+  doomTar(e, s) { s.tele = { type: "brace" }; e.dragonPose = "charge"; s.data.spat = 0; },
+  doomFall(e, s) { s.tele = { type: "brace" }; e.dragonPose = "rise"; },
+  doomJaws(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + DOOM.jaws.reach + DOOM.jaws.lunge, arc: DOOM.jaws.arc }; e.dragonPose = "crouch"; Object.assign(s.data, { bite: 0, next: 0, tail: false }); },
+  doomOrbs(e, s) { s.tele = { type: "brace" }; e.dragonPose = "headUp"; s.data.sent = 0; },
+  doomEclipse(e, s) { s.tele = { type: "brace" }; e.dragonPose = "rise"; Object.assign(s.data, { tick: 0, erupt: 0, n: 0, turn: (hashSeed(`${e.id}:${s.seq}:eclipse`) % 628) / 100 }); },
+  doomRoar(e, s) { s.tele = { type: "ring", radius: DOOM.roar.radius }; e.dragonPose = "crouch"; },
   stagGore(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + STAG.goreReach, arc: STAG.goreArc }; e.stagPose = "lower"; s.data.cut = 0; s.data.next = 0; },
   stagCharge(e, s, w) { const n = STAG.charges[hashSeed(`${e.id}:${s.seq}:rushes`) % STAG.charges.length]; Object.assign(s.data, { rushes: n, rush: 0, mode: "turn", left: 0 }); s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, STAG.chargeSpeed * STAG.chargeTime), width: bodyRadius(e) * 1.2 }; e.stagPose = "lower"; },
   stagRoots(e, s) { s.tele = { type: "brace" }; e.stagPose = "rear"; },
@@ -1462,6 +1523,132 @@ const RUN = {
       w.addEffect({ kind: "dragonNova", owner: e.id, x: e.x, y: e.y, radius: D.radius, arming: 0, life: .9, total: .9, damage: 0 });
       if (distance(p, e) <= D.radius) w.hurt(e, Math.ceil((w.playerMaxHp?.() || 200) * D.lethal), { jumpable: false, source: "dragonSupernova", piercing: true }); }
     if (s.t <= 0) { e.aloft = false; e.untargetable = false; e.dragonAir = 0; e.dragonCharge = 0; s.tele = null; e.dragonPose = "land"; toPhase(s, "recover", A.recover); }
+  },
+  doomBeam(e, s, w) {
+    const A = ATTACK_MODULES.doomBeam, d = s.data, D = DOOM.beam;
+    if (s.phase === "windup") { e.dragonCharge = 1 - Math.max(0, s.t) / Math.max(.01, d.wind); if (s.t <= 0) { e.dragonPose = "breath"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    const k = 1 - Math.max(0, s.t) / A.active; d.angle = d.from + (d.to - d.from) * k;
+    const dir = { x: Math.cos(d.angle), y: Math.sin(d.angle) }, len = rayLength(w, e, dir, D.reach);
+    s.tele = null; e.doomRays = [{ angle: d.angle, length: len }]; e.facingX = dir.x >= 0 ? 1 : -1;
+    d.tick -= w.dt; if (d.tick <= 0 && segmentDistance(center(w.player), e, { x: e.x + dir.x * len, y: e.y + dir.y * len }) <= D.width) { w.hurt(e, damageOf(e, "doomBeam"), { jumpable: false, source: "doomBeam", beam: true }); d.tick = D.tick; }
+    d.erupt -= w.dt; while (d.erupt <= 0) { d.erupt += D.eruptEvery; d.n++; const r = 1.5 + (hashSeed(`${e.id}:${s.seq}:erupt:${d.n}`) % 100) / 100 * Math.max(0, len - 1.5); doomErupt(e, w, e.x + dir.x * r, e.y + dir.y * r, D.eruptArm, D.eruptRadius, Math.ceil(damageOf(e, "doomBeam") * D.eruptShare)); }
+    if (s.t <= 0) { e.doomRays = null; e.dragonCharge = 0; toPhase(s, "recover", A.recover); }
+  },
+  doomWaves(e, s, w) {
+    const A = ATTACK_MODULES.doomWaves, d = s.data, D = DOOM.waves;
+    if (s.phase === "windup") { e.aloft = true; e.untargetable = true; e.dragonAir = Math.min(D.height, (e.dragonAir || 0) + w.dt * 3); if (s.t <= 0) { s.tele = null; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    e.dragonAir = D.height; const due = Math.min(D.count, 1 + Math.floor((A.active - s.t) / (A.active / D.count)));
+    while (d.sent < due) { const p = center(w.player), dir = unit(p.x - e.x, p.y - e.y); e.facingX = dir.x >= 0 ? 1 : -1; e.dragonPose = d.sent % 2 ? "wingLash" : "hop";
+      w.addEffect({ kind: "doomWave", owner: e.id, x: e.x + dir.x, y: e.y + dir.y, vx: dir.x * D.speed, vy: dir.y * D.speed, radius: D.radius, half: D.half, length: D.half, arming: 0, life: D.life, total: D.life, damage: damageOf(e, "doomWaves") }); d.sent++; }
+    if (s.t <= 0) { e.aloft = false; e.untargetable = false; e.dragonAir = 0; e.dragonPose = "land"; toPhase(s, "recover", A.recover); }
+  },
+  doomBreath(e, s, w) {
+    const A = ATTACK_MODULES.doomBreath, d = s.data, D = DOOM.breath;
+    if (s.phase === "windup") { if (s.t <= 0) { e.dragonPose = "breath"; s.tele = null; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    const k = 1 - Math.max(0, s.t) / A.active, a = Math.atan2(d.aim.y, d.aim.x) + (k - .5) * D.sweep, aim = { x: Math.cos(a), y: Math.sin(a) };
+    e.doomBreath = { angle: a, reach: D.reach, arc: D.arc }; e.facingX = aim.x >= 0 ? 1 : -1;
+    d.tick -= w.dt; if (d.tick <= 0 && inArc(e, center(w.player), aim, D.reach, D.arc)) { w.hurt(e, damageOf(e, "doomBreath"), { jumpable: false, source: "doomBreath", beam: true }); d.tick = D.tick; }
+    while (d.pools < Math.min(D.pools, Math.floor(k * D.pools + .5))) { d.pools++; const r = D.reach * (d.pools % 2 ? .5 : .8); doomPool(e.id, w, e.x + aim.x * r, e.y + aim.y * r, DOOM.pool.radius * 1.2, doomBite(e)); }
+    if (s.t <= 0) { e.doomBreath = null; toPhase(s, "recover", A.recover); }
+  },
+  doomWingSlam(e, s, w) {
+    const A = ATTACK_MODULES.doomWingSlam, d = s.data, D = DOOM.wing;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt;
+    if (d.next <= 0 && d.slam < D.slams) { const p = center(w.player), dir = unit(p.x - e.x, p.y - e.y), side = d.slam % 2 ? 1 : -1, r = bodyRadius(e) + D.reach;
+      if (distance(p, e) > r + D.step) w.move(e, dir.x * D.step, dir.y * D.step); e.facingX = dir.x >= 0 ? 1 : -1;
+      doomErupt(e, w, e.x + dir.x * r - dir.y * side * D.side, e.y + dir.y * r + dir.x * side * D.side, .3, D.radius, damageOf(e, "doomWingSlam"), DOOM.pool.radius);
+      e.dragonPose = side > 0 ? "wingR" : "wingL"; d.slam++; d.next = A.active / D.slams; }
+    if (s.t <= 0 || d.slam >= D.slams && d.next <= 0) toPhase(s, "recover", A.recover);
+  },
+  doomPounce(e, s, w) {
+    const A = ATTACK_MODULES.doomPounce, d = s.data, D = DOOM.pounce;
+    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; e.dragonPose = "hop"; d.room = rayLength(w, e, d.aim, d.len); d.flown = 0; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    if (!d.landed) { const step = Math.min(D.speed * w.dt, Math.max(0, d.room - d.flown)); if (step > 0 && w.move(e, d.aim.x * step, d.aim.y * step, { phase: true })) d.flown += step; else d.flown = d.room;
+      e.dragonAir = Math.sin(Math.PI * Math.min(1, d.flown / Math.max(.1, d.room))) * D.height; e.facingX = d.aim.x >= 0 ? 1 : -1;
+      if (d.flown >= d.room - .01) { d.landed = true; e.dragonAir = 0; e.dragonPose = "slamBoth"; const dmg = damageOf(e, "doomPounce");
+        if (distance(center(w.player), e) <= bodyRadius(e) + D.radius) w.hurt(e, dmg, { jumpable: false, source: "doomPounce" });
+        w.addEffect({ kind: "doomBurst", owner: e.id, x: e.x, y: e.y, radius: bodyRadius(e) + D.radius, arming: 0, life: .5, total: .5, damage: 0 });
+        for (let i = 0; i < D.ring; i++) { const a = i * TAU / D.ring + (s.seq % 7) * .3; doomErupt(e, w, e.x + Math.cos(a) * D.ringRadius, e.y + Math.sin(a) * D.ringRadius, .5, .8, Math.ceil(dmg * .6)); }
+        doomPool(e.id, w, e.x, e.y, DOOM.pool.radius * 1.4, doomBite(e)); } }
+    if (s.t <= 0 || d.landed) { e.dragonAir = 0; toPhase(s, "recover", A.recover); }
+  },
+  doomScales(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const D = DOOM.scales, p = center(w.player);
+    for (let i = 0; i < D.count; i++) { const h = hashSeed(`${e.id}:${s.seq}:scale:${i}`), a = (h % 628) / 100, r = i === 0 ? 0 : D.ring[0] + ((h >>> 9) % 100) / 100 * (D.ring[1] - D.ring[0]), arm = D.arm[0] + ((h >>> 5) % 100) / 100 * (D.arm[1] - D.arm[0]);
+      w.addEffect({ kind: "doomScale", owner: e.id, x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r, from: { x: e.x, y: e.y }, radius: D.radius, arming: arm, armTotal: arm, life: .45, total: .45, damage: damageOf(e, "doomScales") }); }
+    e.dragonPose = "roar"; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.doomScales.recover);
+  },
+  doomTar(e, s, w) {
+    const A = ATTACK_MODULES.doomTar, d = s.data, D = DOOM.tar;
+    if (s.phase === "windup") { if (s.t <= 0) { e.dragonPose = "breath"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    const due = Math.min(D.globs, 1 + Math.floor((A.active - s.t) / (A.active / D.globs)));
+    while (d.spat < due) { const p = center(w.player), h = hashSeed(`${e.id}:${s.seq}:tar:${d.spat}`), a = (h % 628) / 100, r = d.spat === 0 ? 0 : ((h >>> 8) % 100) / 100 * D.spread;
+      w.addEffect({ kind: "doomTar", owner: e.id, x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r, from: { x: e.x, y: e.y }, radius: D.radius, arming: D.fly, armTotal: D.fly, life: D.ignite + D.burn, total: D.ignite + D.burn, damage: Math.max(1, Math.ceil(e.damage * D.bite)), splash: damageOf(e, "doomTar") }); d.spat++; }
+    if (s.t <= 0) toPhase(s, "recover", A.recover);
+  },
+  doomFall(e, s, w) {
+    const A = ATTACK_MODULES.doomFall, d = s.data, D = DOOM.fall;
+    if (s.phase === "windup") { e.aloft = true; e.untargetable = true; e.dragonAir = Math.min(D.height, (e.dragonAir || 0) + w.dt * 6); if (s.t <= 0) { d.mode = "track"; d.left = D.track; e.dragonPose = "fly"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    const p = center(w.player);
+    if (d.mode === "track") { e.dragonAir = D.height; const dd = distance(p, e); if (dd > .1) { const st = Math.min(dd, D.trackSpeed * w.dt); w.move(e, (p.x - e.x) / dd * st, (p.y - e.y) / dd * st, { phase: true }); e.facingX = p.x >= e.x ? 1 : -1; }
+      s.tele = { type: "ring", radius: bodyRadius(e) + D.radius }; d.left -= w.dt; if (d.left <= 0) { d.mode = "drop"; d.left = D.drop; } }
+    else if (d.mode === "drop") { d.left -= w.dt; e.dragonAir = D.height * Math.max(0, d.left) / D.drop;
+      if (d.left <= 0) { d.mode = "done"; e.dragonAir = 0; e.aloft = false; e.untargetable = false; e.dragonPose = "slamBoth"; s.tele = null; const dmg = damageOf(e, "doomFall");
+        if (distance(p, e) <= bodyRadius(e) + D.radius) w.hurt(e, dmg, { jumpable: false, source: "doomFall" });
+        w.addEffect({ kind: "doomBurst", owner: e.id, x: e.x, y: e.y, radius: bodyRadius(e) + D.radius, arming: 0, life: .6, total: .6, damage: 0 });
+        for (let i = 0; i < D.ring; i++) { const a = i * TAU / D.ring + (s.seq % 5) * .4; doomErupt(e, w, e.x + Math.cos(a) * D.ringRadius, e.y + Math.sin(a) * D.ringRadius, .45, .9, Math.ceil(dmg * .55)); }
+        doomPool(e.id, w, e.x, e.y, DOOM.pool.radius * 1.6, doomBite(e)); toPhase(s, "recover", A.recover); return; } }
+    if (s.t <= 0) { e.aloft = false; e.untargetable = false; e.dragonAir = 0; s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  doomJaws(e, s, w) {
+    const A = ATTACK_MODULES.doomJaws, d = s.data, D = DOOM.jaws;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); return; }
+    d.next -= w.dt; if (d.next > 0) return;
+    const p = center(w.player), dir = unit(p.x - e.x, p.y - e.y); e.facingX = dir.x >= 0 ? 1 : -1;
+    if (d.bite < D.bites) { const reach = bodyRadius(e) + D.reach; if (distance(p, e) > reach) w.move(e, dir.x * D.lunge, dir.y * D.lunge); e.dragonPose = "bite"; s.tele = { type: "arc", aim: dir, radius: reach, arc: D.arc };
+      if (inArc(e, p, dir, reach, D.arc)) w.hurt(e, damageOf(e, "doomJaws"), { jumpable: false, source: "doomJaws" }); d.bite++; d.next = D.gap; }
+    else if (!d.tail) { d.tail = true; const reach = bodyRadius(e) + D.tailReach; e.dragonPose = "tailR"; s.tele = { type: "arc", aim: dir, radius: reach, arc: D.tailArc };
+      if (inArc(e, p, dir, reach, D.tailArc)) w.hurt(e, Math.ceil(damageOf(e, "doomJaws") * 1.1), { jumpable: false, source: "doomTail" }); d.next = D.gap; }
+    else { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  doomOrbs(e, s, w) {
+    const A = ATTACK_MODULES.doomOrbs, d = s.data, D = DOOM.orbs;
+    if (s.phase === "windup") { if (s.t <= 0) { e.dragonPose = "breath"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    const due = Math.min(D.count, 1 + Math.floor((A.active - s.t) / (A.active / D.count)));
+    while (d.sent < due) { const p = center(w.player), base = Math.atan2(p.y - e.y, p.x - e.x), a = base + (d.sent - (D.count - 1) / 2) * .45, m = bodyRadius(e) * 1.4;
+      w.addEffect({ kind: "doomOrb", owner: e.id, x: e.x + Math.cos(base) * m, y: e.y + Math.sin(base) * m, vx: Math.cos(a) * D.speed, vy: Math.sin(a) * D.speed, radius: D.radius, blast: D.blast, home: D.home, turn: D.turn, arming: 0, life: D.life, total: D.life, damage: damageOf(e, "doomOrbs") }); d.sent++; }
+    if (s.t <= 0) toPhase(s, "recover", A.recover);
+  },
+  doomEclipse(e, s, w) {
+    const A = ATTACK_MODULES.doomEclipse, d = s.data, D = DOOM.eclipse;
+    if (s.phase === "windup") { e.aloft = true; e.dragonAir = Math.min(D.height, (e.dragonAir || 0) + w.dt * 3); if (s.t <= 0) { e.dragonPose = "eclipse"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    e.dragonAir = D.height; e.dragonCharge = 1; s.tele = null;
+    const el = A.active - Math.max(0, s.t), p = center(w.player), rays = [];
+    for (let i = 0; i < D.beams; i++) { const a = d.turn + i * TAU / D.beams + el * D.spin, dir = { x: Math.cos(a), y: Math.sin(a) }; rays.push({ angle: a, length: rayLength(w, e, dir, D.reach), dir }); }
+    e.doomRays = rays.map(({ angle, length }) => ({ angle, length }));
+    d.tick -= w.dt; if (d.tick <= 0 && rays.some((r) => segmentDistance(p, e, { x: e.x + r.dir.x * r.length, y: e.y + r.dir.y * r.length }) <= D.width)) { w.hurt(e, damageOf(e, "doomEclipse"), { jumpable: false, source: "doomEclipse", beam: true }); d.tick = D.tick; }
+    d.erupt -= w.dt; while (d.erupt <= 0) { d.erupt += D.eruptEvery; d.n++; const r = rays[d.n % rays.length], at = 1.5 + (hashSeed(`${e.id}:${s.seq}:ecl:${d.n}`) % 100) / 100 * Math.max(0, r.length - 1.5); doomErupt(e, w, e.x + r.dir.x * at, e.y + r.dir.y * at, DOOM.beam.eruptArm, DOOM.beam.eruptRadius, Math.ceil(damageOf(e, "doomEclipse") * 1.4)); }
+    if (s.t <= 0) { e.doomRays = null; e.aloft = false; e.dragonAir = 0; e.dragonCharge = 0; e.dragonPose = "land"; toPhase(s, "recover", A.recover); }
+  },
+  doomRoar(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const D = DOOM.roar, p = center(w.player);
+    if (distance(p, e) <= D.radius && w.hurt(e, damageOf(e, "doomRoar"), { jumpable: false, source: "doomRoar" })) { w.push?.(e, D.push, D.radius + 1); w.frenzy?.(D.frenzy); }
+    w.addEffect({ kind: "doomBurst", owner: e.id, x: e.x, y: e.y, radius: D.radius, arming: 0, life: .7, total: .7, damage: 0, ring: true });
+    e.dragonPose = "roar"; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.doomRoar.recover);
   },
   mothGust(e, s, w) {
     if (s.phase !== "windup" || s.t > 0) return;
@@ -3383,7 +3570,25 @@ export function tickPackEffects(effects, w) {
       else if (inside && !(f.nextBite > f.age)) { f.nextBite = f.age + D.tick; w.hurt(owner, f.bite, { jumpable: true, source: "dragonScorch", beam: true }); }
     } else if (f.kind === "dragonMeteor") { // a fireball landing: it strikes once, and some leave a pool of lava
       if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "dragonMeteor" }); if (f.pool) dragonPool(f.owner, w, f.x, f.y, f.pool, f.bite || 1); }
-    } else if (f.kind === "dragonNova" || f.kind === "dragonBurst" || f.kind === "colonize") { /* drawn only */
+    } else if (f.kind === "doomErupt" || f.kind === "doomScale") { // release 710: black fire bursting from the ground (or a shed scale bursting), once; some leave a pool
+      if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: f.kind }); if (f.pool) doomPool(f.owner, w, f.x, f.y, f.pool, f.bite || 1); }
+    } else if (f.kind === "darkPool") { // the Doom Chaser's black fire, burning where its spells fell
+      if (distance(p, f) <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + DOOM.pool.tick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "darkPool", beam: true }); }
+    } else if (f.kind === "doomWave") { // a crescent of dark energy rolling along the ground: it strikes once across its whole width (jump it)
+      f.x += f.vx * w.dt; f.y += f.vy * w.dt; const sp = Math.hypot(f.vx, f.vy) || 1, ux = f.vx / sp, uy = f.vy / sp, rx = p.x - f.x, ry = p.y - f.y, along = rx * ux + ry * uy, across = Math.abs(ry * ux - rx * uy);
+      if (!f.hit && along <= f.radius + .3 && along >= -(f.radius + .3 + sp * w.dt) && across <= f.half) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "doomWaves" }); }
+      if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = Math.min(f.life, .15);
+    } else if (f.kind === "doomTar") { // tar where it landed: it slows, then catches and burns
+      const owner = w.enemies.find((q) => q.id === f.owner) || null, inside = distance(p, f) <= f.radius, burning = f.age - (f.armTotal || 0) >= DOOM.tar.ignite; f.lit = burning;
+      if (!f.splashed) { f.splashed = true; if (inside) w.hurt(owner, f.splash || f.damage, { jumpable: false, source: "doomTar" }); }
+      if (inside) { w.slow(DOOM.tar.slow, .25); if (burning && !(f.nextBite > f.age)) { f.nextBite = f.age + DOOM.tar.tick; w.hurt(owner, f.damage, { jumpable: true, source: "doomTarFire", beam: true }); } }
+    } else if (f.kind === "doomOrb") { // hunting dark: homes for `home` s, then flies straight; bursts on whatever it meets
+      if (f.age <= f.home) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-f.turn * w.dt, Math.min(f.turn * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; }
+      f.x += f.vx * w.dt; f.y += f.vy * w.dt;
+      if ((w.shotBlocked ? w.shotBlocked(f.x + .5, f.y + .5) : w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) || distance(p, f) <= f.radius + .3 || f.life - w.dt <= 0) {
+        f.life = 0; if (distance(p, f) <= f.blast + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "doomOrbs" });
+        w.addEffect({ kind: "doomBurst", owner: f.owner, x: f.x, y: f.y, radius: f.blast, arming: 0, life: .4, total: .4, damage: 0 }); continue; }
+    } else if (f.kind === "dragonNova" || f.kind === "dragonBurst" || f.kind === "colonize" || f.kind === "doomBurst") { /* drawn only */
     } else if (f.kind === "gale") { // release 708: a giant whirlwind rolling about, rebounding off walls and the section's edges
       const G = MOTH.gale, turn = Math.sin(f.age * .8 + (f.seed % 100)) * .6 * w.dt, c = Math.cos(turn), sn = Math.sin(turn); [f.vx, f.vy] = [f.vx * c - f.vy * sn, f.vx * sn + f.vy * c];
       let nx = f.x + f.vx * w.dt, ny = f.y + f.vy * w.dt; const lo = G.edge, hi = 31 - G.edge;

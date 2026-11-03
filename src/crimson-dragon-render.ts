@@ -6,7 +6,7 @@ import { DRAGON, DANGER } from "./monster-pack.ts";
 const TAU = Math.PI * 2;
 export const DRAGON_ART = {
   hide: "#a8221a", hideDark: "#5a0f0b", hideLight: "#d2452e", belly: "#e09a4a", bellyDark: "#a86428", horn: "#2a1c18", hornLight: "#5a4a40",
-  membrane: "#7a1410", membraneLight: "#b8382a", bone: "#3a0c0a", eye: "#ffd24a", fire: "#ff7a1a", fireCore: "#fff0c0", ember: "#ffb04a",
+  membrane: "#7a1410", membraneLight: "#b8382a", bone: "#3a0c0a", eye: "#ffd24a", fire: "#ff7a1a", fireCore: "#fff0c0", ember: "#ffb04a", glow: "255,140,40", aura: "255,170,60", teeth: "#fff4e0", cracks: null,
 };
 export const DRAGON_EFFECT_KINDS = new Set(["fireLine", "dragonMeteor", "dragonComet", "dragonBurst", "dragonScorch", "colonize", "dragonNova", "clawBeam"]);
 
@@ -26,10 +26,15 @@ const POSES = {
   colonize: { head: 1, wing: .7, rear: .2, jaw: .5 }, roar: { head: .6, wing: .9, rear: .15, jaw: 1 }, spinReady: { head: -.1, wing: .2, rear: 0, jaw: .2 }, spin: { head: -.1, wing: .3, rear: 0, jaw: .3 },
   tailSpin: { head: 0, wing: .2, rear: 0, jaw: .2 }, tailReady: { head: 0, wing: .2, rear: 0, jaw: 0 }, tailL: { head: 0, wing: .2, rear: 0, jaw: .2, tail: -1 }, tailR: { head: 0, wing: .2, rear: 0, jaw: .2, tail: 1 },
   roll: { head: -.2, wing: 0, rear: 0, jaw: 0 }, nova: { head: .5, wing: 1, rear: .1, jaw: 1 },
+  // release 710 (the Doom Chaser): walking on its wings, a lunging bite, hanging under its black sun
+  wingWalk: { head: -.15, wing: .9, rear: -.08, jaw: .4 }, wingL: { head: -.25, wing: 1, rear: -.15, jaw: .6 }, wingR: { head: -.2, wing: .75, rear: -.05, jaw: .6 },
+  bite: { head: -.3, wing: .3, rear: -.12, jaw: 1 }, eclipse: { head: .4, wing: 1, rear: .1, jaw: .8 },
 };
 
-export function drawCrimsonTyrant(ctx, q, now = 0) {
-  const A = DRAGON_ART, { k, u, flip, e } = q, reduce = !!e.reduceMotion, t = now / 1000, P = POSES[e.dragonPose] || POSES.idle;
+export function drawCrimsonTyrant(ctx, q, now = 0) { drawDragonBody(ctx, q, now, DRAGON_ART); }
+// The shared dragon body (release 710: the Doom Chaser wears it in its own colours).
+export function drawDragonBody(ctx, q, now = 0, A = DRAGON_ART) {
+  const { k, u, flip, e } = q, reduce = !!e.reduceMotion, t = now / 1000, P = POSES[e.dragonPose] || POSES.idle;
   const air = Math.max(0, Number(e.dragonAir) || 0) * (q.s || u), ground = q.b, b = ground - air;
   const head = eased(e, "head", P.head + (e.dragonSway || 0) * .15, now, 7), wing = eased(e, "wing", P.wing, now, 6), rear = eased(e, "rear", P.rear, now, 7), jaw = eased(e, "jaw", P.jaw, now, 10);
   const charge = Math.max(0, Math.min(1, Number(e.dragonCharge) || 0)), flap = reduce ? 0 : Math.sin(t * (wing > .7 ? 6 : 1.4)) * (wing > .7 ? .2 : .04);
@@ -37,10 +42,10 @@ export function drawCrimsonTyrant(ctx, q, now = 0) {
   // Shadow, smaller as it climbs.
   const lift = Math.min(1, air / Math.max(1, u * 2));
   ctx.fillStyle = `rgba(10,4,2,${.45 * (1 - lift * .5)})`; ctx.beginPath(); ctx.ellipse(k, ground, u * 1.1 * (1 - lift * .3), u * .2 * (1 - lift * .3), 0, 0, TAU); ctx.fill();
-  if (charge > 0 || e.dragonPose === "nova") { const R = u * (.8 + charge * 1.2), g = ctx.createRadialGradient(k, b - u * .6, u * .1, k, b - u * .6, R); g.addColorStop(0, `rgba(255,170,60,${.25 + charge * .35})`); g.addColorStop(1, "rgba(255,120,40,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(k, b - u * .6, R, 0, TAU); ctx.fill(); }
+  if (charge > 0 || e.dragonPose === "nova") { const R = u * (.8 + charge * 1.2), g = ctx.createRadialGradient(k, b - u * .6, u * .1, k, b - u * .6, R); g.addColorStop(0, `rgba(${A.aura},${.25 + charge * .35})`); g.addColorStop(1, `rgba(${A.aura},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(k, b - u * .6, R, 0, TAU); ctx.fill(); }
   ctx.save(); ctx.translate(k, 0);
   // A whirl: the body turns on the spot (the facing flips as it goes round), blurred arcs round it.
-  let face = flip; if (e.dragonSpin) { const c = Math.cos(e.dragonSpin); face = c >= 0 ? 1 : -1; ctx.scale(Math.max(.25, Math.abs(c)), 1); ctx.strokeStyle = "rgba(255,180,90,.35)"; ctx.lineWidth = u * .05; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(0, b - u * .3, u * (1.1 + i * .25), u * (.3 + i * .06), 0, e.dragonSpin + i, e.dragonSpin + i + 2); ctx.stroke(); } }
+  let face = flip; if (e.dragonSpin) { const c = Math.cos(e.dragonSpin); face = c >= 0 ? 1 : -1; ctx.scale(Math.max(.25, Math.abs(c)), 1); ctx.strokeStyle = `rgba(${A.aura},.35)`; ctx.lineWidth = u * .05; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(0, b - u * .3, u * (1.1 + i * .25), u * (.3 + i * .06), 0, e.dragonSpin + i, e.dragonSpin + i + 2); ctx.stroke(); } }
   ctx.scale(face, 1);
   if (e.dragonPose === "roll") { ctx.translate(0, b - u * .4); ctx.rotate(reduce ? .8 : t * 9); ctx.translate(0, -(b - u * .4)); }
   const lw = Math.max(1, u * .01), hipX = -u * .45, hipY = b - u * .5;
@@ -86,6 +91,7 @@ export function drawCrimsonTyrant(ctx, q, now = 0) {
     ctx.save(); ctx.beginPath(); ctx.moveTo(...body[0]); for (const p of body) ctx.lineTo(...p); ctx.closePath(); ctx.clip();
     ctx.fillStyle = A.belly; for (let i = 0; i < 6; i++) { const [px, py] = R(.12 + i * .12, .12 - Math.sin(i * .5) * .03); ctx.beginPath(); ctx.ellipse(px, py, u * .07, u * .05, -rear, 0, TAU); ctx.fill(); ctx.strokeStyle = A.bellyDark; ctx.lineWidth = lw; ctx.stroke(); }
     ctx.strokeStyle = "rgba(60,8,6,.35)"; ctx.lineWidth = lw; for (let i = 0; i < 8; i++) { const [ax, ay] = R(.05 + i * .11, -.42 + Math.abs(i - 3.5) * .02); const [bx, by] = R(.1 + i * .11, .05); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(ax + u * .04, (ay + by) / 2, bx, by); ctx.stroke(); }
+    if (A.cracks) { const pulse = reduce ? .8 : .65 + .35 * Math.sin(t * 2.2); for (const [wd, al] of [[u * .03, .25], [u * .01, .9]]) { ctx.strokeStyle = `rgba(${A.cracks},${al * pulse})`; ctx.lineWidth = Math.max(1, wd); for (let i = 0; i < 4; i++) { const pts = [R(.08 + i * .2, -.36 + (i % 2) * .05), R(.16 + i * .2, -.2), R(.11 + i * .2, -.05), R(.2 + i * .2, .08)]; ctx.beginPath(); ctx.moveTo(...pts[0]); for (const q2 of pts.slice(1)) ctx.lineTo(...q2); ctx.stroke(); } } }
     ctx.restore();
     ctx.fillStyle = A.horn; for (let i = 0; i < 7; i++) { const [px, py] = R(.02 + i * .12, -.4 - Math.sin(i * .45) * .1); ctx.beginPath(); ctx.moveTo(px - u * .05, py + u * .02); ctx.lineTo(px - u * .07, py - u * .13); ctx.lineTo(px + u * .03, py + u * .01); ctx.closePath(); ctx.fill(); } }
   step(hsx - u * .04, hsy + u * .03, false, false);
@@ -102,10 +108,10 @@ export function drawCrimsonTyrant(ctx, q, now = 0) {
   // skull and upper jaw, lower jaw hinged open
   const open = jaw * .5;
   ctx.save(); ctx.rotate(open * .5); ctx.fillStyle = A.hideDark; ctx.beginPath(); ctx.moveTo(-u * .02, u * .02); ctx.lineTo(u * .36, u * .03); ctx.lineTo(u * .33, u * .08); ctx.lineTo(-u * .02, u * .1); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.bone; ctx.stroke();
-  ctx.fillStyle = "#fff4e0"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(u * (.06 + i * .06), u * .03); ctx.lineTo(u * (.08 + i * .06), -u * .005); ctx.lineTo(u * (.1 + i * .06), u * .03); ctx.closePath(); ctx.fill(); } ctx.restore();
-  if (jaw > .2 || charge > 0) { const g = ctx.createRadialGradient(u * .16, u * .04, 0, u * .16, u * .04, u * (.12 + charge * .25)); g.addColorStop(0, A.fireCore); g.addColorStop(.5, `rgba(255,140,40,${.5 + charge * .5})`); g.addColorStop(1, "rgba(255,90,20,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u * .16, u * .04, u * (.12 + charge * .25), 0, TAU); ctx.fill(); }
+  ctx.fillStyle = A.teeth; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(u * (.06 + i * .06), u * .03); ctx.lineTo(u * (.08 + i * .06), -u * .005); ctx.lineTo(u * (.1 + i * .06), u * .03); ctx.closePath(); ctx.fill(); } ctx.restore();
+  if (jaw > .2 || charge > 0) { const g = ctx.createRadialGradient(u * .16, u * .04, 0, u * .16, u * .04, u * (.12 + charge * .25)); g.addColorStop(0, A.fireCore); g.addColorStop(.5, `rgba(${A.glow},${.5 + charge * .5})`); g.addColorStop(1, `rgba(${A.glow},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u * .16, u * .04, u * (.12 + charge * .25), 0, TAU); ctx.fill(); }
   ctx.fillStyle = A.hide; ctx.beginPath(); ctx.moveTo(-u * .1, -u * .08); ctx.bezierCurveTo(u * .05, -u * .13, u * .25, -u * .08, u * .4, -u * .02); ctx.lineTo(u * .39, u * .03); ctx.lineTo(u * .02, u * .03); ctx.quadraticCurveTo(-u * .1, u * .02, -u * .1, -u * .08); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.bone; ctx.lineWidth = lw; ctx.stroke();
-  ctx.fillStyle = "#fff4e0"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(u * (.08 + i * .06), u * .03); ctx.lineTo(u * (.1 + i * .06), u * .06); ctx.lineTo(u * (.12 + i * .06), u * .03); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = A.teeth; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(u * (.08 + i * .06), u * .03); ctx.lineTo(u * (.1 + i * .06), u * .06); ctx.lineTo(u * (.12 + i * .06), u * .03); ctx.closePath(); ctx.fill(); }
   ctx.strokeStyle = A.hideDark; ctx.beginPath(); ctx.moveTo(u * .02, -u * .07); ctx.quadraticCurveTo(u * .12, -u * .1, u * .2, -u * .07); ctx.stroke(); // brow ridge
   ctx.fillStyle = A.eye; ctx.beginPath(); ctx.ellipse(u * .1, -u * .055, u * .028, u * .014, -.15, 0, TAU); ctx.fill(); ctx.fillStyle = "#1a0400"; ctx.fillRect(u * .098, -u * .066, u * .006, u * .022);
   ctx.fillStyle = "#1a0400"; ctx.beginPath(); ctx.ellipse(u * .36, -u * .02, u * .012, u * .007, 0, 0, TAU); ctx.fill(); // nostril
