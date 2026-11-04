@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 751: riding protects nothing; the drone has limits — 2026-11-04
+
+Tim: "The mounts shouldn't give you any extra defense... if you take them into fire it should hurt the character... the only defense: lava is not an instant kill, it's like a two-second kill." And: "if you fly the drone across some area of the Pentagon that's going to break the whole map... your drone will explode or fizzle out... the rules are different here."
+
+**CODE:** `src/beast-mounts.ts` `MOUNT_RIDE.lavaSeconds` 2 (with `lavaWade` / `lavaDeath`). `src/game.ts`: mounted lava is not a lethal step; standing in lava on a mount takes `maxHp / lavaSeconds` per second at the frame's end, after every guard (Aegis, Shadow Boxing, Sanctum, Ink Shield do not reduce it), never mid-leap; on foot lava still kills at once. `riderDown()` now runs before the elite-hazard and rootbound checks, so elite trails, ooze pools and root eruptions meet the mount's feet (before, a tall mount's rider was out of their reach). `src/vehicle-gates.ts` `DRONE_FIZZLE` (zones `pentagon`: blocked Pentagon tiles; `castle`: Great Castle `castleWall`; `allow: ["droneOk"]`, `optIn: "droneZone"`, `burst` 1.2 s, 14 sparks) with `droneZoneOf(tile)` and `droneForbiddenAt(map, width, x, y)`. `game.ts` `droneFizzle(zone, now)` runs when an overworld booster lift's next footprint reaches a zone: the burst, `endDroneLift`, the drone stowed, the message and a journal line once per zone; the ordinary `fallDamage` landing follows in the same frame. `src/renderer.ts` `drawDroneFizzle` (flash, ring, sparks, puff; still flash and ring with reduced motion).
+
+**BOUNDARY:** No generator or save change (schema 14). Before this the walls already stopped the drone, silently; now it fails visibly and you fall (fall rules: 1 level free, 2 levels 15%, 3 levels 40%, 4+ death). Courts, ordinary great-building, compound and labyrinth roofs and the keep's v2 top are open air; the drone still lowers you from a keep top into its court. The glider is unchanged and can still glide over these walls from a high point (question to Tim). Riding still clears chasms and lava mid-leap. Tests: `tests/drone-fizzle.test.ts` (6), `tests/beast-mounts.test.ts` (16). Not tested on a device.
+
 ## Release 750: the Pentagon's finale — 2026-11-04
 
 Tim: "If you finish the Pentagon, you've done a lot, so you should be rewarded with something beautiful... after you beat the boss a wall opens and a Starfield annex... a short Starfield walkway that winds a little... a ceremonial dais... it says Transit... only back to the door."

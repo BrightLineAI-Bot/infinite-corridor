@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 750, the next is **751**.
+Taken at merge time: `main`'s release + 1 (see above). After 751, the next is **752**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 750 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's finale: after the Regent, a starfield walkway to a Transit dais that returns you to the front door | In flight. |
+| 751 | Claude | `claude/dreamy-rubin-yn6q2p` | Mounts give no defence (mounted lava a 2 s burn); the drone fizzles at Pentagon walls and castle wings | In flight. |
+| 750 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's finale: after the Regent, a starfield walkway to a Transit dais that returns you to the front door | Merged (#398). |
 | 749 | Claude | `claude/dreamy-rubin-yn6q2p` | Digging respects the way through: interiors dig only toward walked ground; building stone holds | Merged (#397). |
 | 748 | Claude | `claude/dreamy-rubin-yn6q2p` | Beast mounts: pen-caught world beasts and the Stalker ridden at real size in fitted saddles; stable of 3; 12 min / 35 sections; pens priced by size, a slip breaks the pen | Merged (#396). |
 | 747 | Claude | `claude/dreamy-rubin-yn6q2p` | Roofs and height: the Wayfarer drawn once at the roof's height, one-press hatch, bounded way-round searches; the elevation rule (ground melee can't reach two levels up; shots and fliers can) | Merged (#395). |
