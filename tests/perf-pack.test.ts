@@ -84,7 +84,7 @@ test('a kill no longer copies the awarded map, and an award is still granted onc
 
 // ---------------------------------------------------------------- persistence (perf P2/P3, Tim's findings 4 and 8)
 function fakeStorage() {
-  const data = new Map(), ls = new Map(), ctl = { data, ls, failWrite: false, reads: [] };
+  const data = new Map(), ls = new Map(), ctl = { data, ls, failWrite: false, failReadKey: null, reads: [] };
   const inRange = (k, r) => r && typeof r === 'object' ? k >= r.lower && k <= r.upper : k === r;
   const keysIn = (r) => [...data.keys()].filter((k) => inRange(k, r)).sort();
   function transaction() {
@@ -92,7 +92,7 @@ function fakeStorage() {
     const settle = () => setTimeout(() => { if (tx.pending || tx.settled) return; tx.settled = true; if (tx.error) tx.onerror?.(); else tx.oncomplete?.(); }, 0);
     const request = (fn, kind) => { const q = {}; tx.pending++; setTimeout(() => { try { if (kind === 'write' && ctl.failWrite) throw new Error('fake write failure'); q.result = fn(); q.onsuccess?.(); } catch (e) { q.error = tx.error = e; q.onerror?.(); } tx.pending--; settle(); }, 0); return q; };
     tx.objectStore = () => ({
-      get: (k) => request(() => { ctl.reads.push(k); return structuredClone(data.get(k)); }, 'read'),
+      get: (k) => request(() => { ctl.reads.push(k); if (k === ctl.failReadKey) throw new Error('fake read failure'); return structuredClone(data.get(k)); }, 'read'),
       put: (v, k) => { const c = structuredClone(v); return request(() => { data.set(k, c); }, 'write'); },
       delete: (k) => request(() => { for (const key of keysIn(k)) data.delete(key); }, 'write'),
       getAllKeys: (r) => request(() => { ctl.reads.push(`keys:${r?.lower}`); return keysIn(r); }, 'read'),
@@ -145,6 +145,46 @@ test('between full writes the autosave stores a small delta; reading it back giv
   ctl.failWrite = true; s.xp = 100; await P.saveGame(s); await P.flushSaves().catch(() => {}); ctl.failWrite = false;
   s.xp = 101; await P.saveGame(s); await P.flushSaves().catch(() => {}); // this flush still reports the earlier failure (as before)
   assert.equal(ctl.data.has('journey:1::delta'), false); assert.equal(ctl.data.get('journey:1').xp, 101);
+});
+
+test('a journey loaded from its records resumes the delta base: the first autosave after a boot writes a delta, and reads back exactly', async () => {
+  const ctl = fakeStorage(), P = await freshPersistence(); P.setActiveSlot(1);
+  const s = plain('REBOOT'); s.session.areas = { 'overworld:1:0:g1': { enemies: [], objects: {} } };
+  await P.saveGame(s); await P.flushSaves(); s.xp = 5; s.worldFlags.k = 1; await P.saveGame(s); await P.flushSaves();
+  const main = structuredClone(ctl.data.get('journey:1'));
+  const Q = await freshPersistence(), loaded = await Q.loadSave(); assert.equal(loaded.xp, 5);
+  loaded.xp = 6; loaded.narrative.journal.push({ recordId: 'after-boot', text: 'x' });
+  await Q.saveGame(loaded); await Q.flushSaves();
+  assert.deepEqual(ctl.data.get('journey:1'), main, 'no whole main record after the boot');
+  const back = await (await freshPersistence()).loadSave();
+  assert.deepEqual(norm(back), norm(migrateSave(structuredClone(loaded))), 'the old delta and the new change are both there');
+  assert.equal(back.worldFlags.k, 1);
+});
+
+test('when the delta record cannot be read, the older main record is never loaded as the journey', async () => {
+  const ctl = fakeStorage(), P = await freshPersistence(); P.setActiveSlot(1);
+  const s = plain('DELTA-READ'); s.session.areas = { 'overworld:1:0:g1': { enemies: [], objects: {} } };
+  await P.saveGame(s); await P.flushSaves(); s.level = 30; await P.saveGame(s); await P.flushSaves();
+  assert.ok(ctl.data.has('journey:1::delta'));
+  const records = new Map(ctl.data), mirror = ctl.ls.get('infinite-corridor:slot-mirror:1');
+  assert.equal(JSON.parse(mirror).level, 1, 'the mirror is the older (first) write');
+  // No mirror: the slot is blocked (release 735) and nothing is written.
+  ctl.ls.delete('infinite-corridor:slot-mirror:1'); ctl.failReadKey = 'journey:1::delta';
+  const Q = await freshPersistence(), loaded = await Q.loadSave();
+  assert.notEqual(loaded.seed, 'DELTA-READ', 'not the stale main record');
+  assert.match(Q.saveBlocked(1), /could not be read/);
+  await Q.saveGame(loaded); await Q.flushSaves();
+  assert.deepEqual(new Map(ctl.data), records, 'nothing written over it');
+  // An older mirror: it plays (as for any unreadable database, release 734), but its writes cannot replace the journey
+  // while the delta stays unreadable, and once it reads again the whole journey is kept as a recovery snapshot first.
+  ctl.ls.set('infinite-corridor:slot-mirror:1', mirror);
+  const R = await freshPersistence(), fromMirror = await R.loadSave(); assert.equal(fromMirror.level, 1);
+  await R.saveGame(fromMirror); await R.flushSaves().catch(() => {});
+  assert.deepEqual(ctl.data.get('journey:1'), records.get('journey:1')); assert.deepEqual(ctl.data.get('journey:1::delta'), records.get('journey:1::delta'));
+  ctl.failReadKey = null; await R.saveGame(fromMirror); await R.flushSaves().catch(() => {});
+  assert.equal(ctl.data.get('recovery:1:1')?.level, 30, 'the newer journey is kept for Recover before the mirror replaces it');
+  ctl.ls.delete('infinite-corridor:slot-mirror:1'); ctl.data.set('journey:1', records.get('journey:1')); ctl.data.set('journey:1::delta', records.get('journey:1::delta'));
+  assert.equal((await (await freshPersistence()).loadSave()).level, 30, 'with both records readable, the whole journey loads');
 });
 
 test('listing journeys reads each main record only (no area records, no full migrate) and keeps health and size', async () => {

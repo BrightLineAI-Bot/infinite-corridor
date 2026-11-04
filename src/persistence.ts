@@ -91,6 +91,15 @@ function putOp(ops, path, kind, value = undefined, full = undefined) {
   if (kind !== "add" && (kind === "del" || (value && typeof value === "object"))) { const below = id + SEP; for (const k of ops.keys()) if (k.startsWith(below)) ops.delete(k); } // only to keep the delta small: ops apply in order, so a later set covers them anyway
   ops.delete(id); ops.set(id, { path, kind, value, w: kind === "del" ? 1 : nodeCount(value, SAVE_DELTA.countCap) });
 }
+function sameValue(a, b) {
+  if (Object.is(a, b)) return true;
+  if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
+  if (Array.isArray(a)) { if (!Array.isArray(b) || a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (!sameValue(a[i], b[i])) return false; return true; }
+  if (Array.isArray(b) || !isPlainObject(a) || !isPlainObject(b)) return false;
+  const ka = Object.keys(a); if (ka.length !== Object.keys(b).length) return false;
+  for (const k of ka) if (!own(b, k) || !sameValue(a[k], b[k])) return false;
+  return true;
+}
 function diffSnapshots(a, b, path, ops) {
   if (Object.is(a, b)) return;
   if (isPlainObject(a) && isPlainObject(b)) {
@@ -99,7 +108,8 @@ function diffSnapshots(a, b, path, ops) {
     for (const k of Object.keys(a)) if (!(skip && k === "areas") && !own(b, k)) putOp(ops, [...path, k], "del");
     return;
   }
-  if (Array.isArray(a) && Array.isArray(b) && b.length > a.length && a.every((x, i) => Object.is(x, b[i]))) { putOp(ops, path, "add", b.slice(a.length), b); return; }
+  // Arrays: an unchanged one (by value: a base resumed after a boot shares nothing) is skipped; one that only grew appends.
+  if (Array.isArray(a) && Array.isArray(b) && b.length >= a.length && a.every((x, i) => sameValue(x, b[i]))) { if (b.length > a.length) putOp(ops, path, "add", b.slice(a.length), b); return; }
   putOp(ops, path, "set", b);
 }
 function applyOps(root, ops) {
@@ -161,10 +171,28 @@ async function writeJourney(key, value) {
   try { onWriteTiming?.({ ms: Math.round(queuedMs * 10) / 10, areas: puts.length, of: keys.length, delta: !!ops }); } catch {}
 }
 // The main record with its delta applied (areas still apart), or a record from before 555 as it is.
+// A read of the delta that fails fails the whole read (readJourney throws, so loadSave treats the database as unreadable:
+// the mirror if healthy, else the slot is blocked); a main record is never taken alone while its delta may hold newer play.
+const readDeltas = new Map(); // journey key -> { stamp, ops } as last read: the base a loaded journey's next delta builds on
 async function readMain(key) {
-  const main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return main;
-  applyDelta(main, await read(deltaKey(key)));
+  const main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) { readDeltas.delete(key); return main; }
+  const stamp = main.session[MAIN_STAMP], delta = await read(deltaKey(key)), applied = applyDelta(main, delta);
+  readDeltas.set(key, { stamp, ops: applied && Array.isArray(delta.ops) ? delta.ops : [] });
   return main;
+}
+// Perf pack (follow-up): the first autosave after every boot wrote the 3.9 MB main record whole, because the delta's base
+// was known only to the page that wrote it. A journey loaded from its split records now resumes that base: the stored main
+// record as read (its delta applied, areas left out) stands as the last write, and the stored delta's ops are kept, so the
+// first autosave writes a delta too. The base is the stored record itself, compared by value where it is not shared, so a
+// difference made by migrateSave is written like any other change. A base older than SAVE_DELTA.everyMs writes whole.
+function primeJournal(key, stored, save) {
+  const d = readDeltas.get(key); readDeltas.delete(key);
+  const at = typeof d?.stamp === "string" ? parseInt(d.stamp.split("-")[0], 36) : NaN;
+  if (!Number.isFinite(at) || !stored?.session || typeof stored.session !== "object") return;
+  const snapshot = { ...stored, session: { ...stored.session, areas: null } }, ops = new Map();
+  for (const [path, kind, value] of d.ops) if (Array.isArray(path)) ops.set(path.join(SEP), { path, kind, value, w: kind === "del" ? 1 : nodeCount(value, SAVE_DELTA.countCap) });
+  sharedSnapshots.add(snapshot); journals.set(key, { snapshot, stamp: d.stamp, ops, at });
+  countKeys(snapshot); mainCopies.set(save, snapshot); // the first snapshot shares the stored parts that still match, by value
 }
 async function readJourney(key) {
   const main = await readMain(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return main;
@@ -223,7 +251,7 @@ export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLeg
   const chosen=choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||freshSave();
   // Release 555: a journey read from the database already has its areas stored there, so the first autosave need not write
   // them all again: each loaded area is its own stored copy until the game replaces it.
-  if(chosen===fromDb.save&&assembled.has(stored))primeStoredAreas(slotKey(activeSlot),chosen);
+  if(chosen===fromDb.save&&assembled.has(stored)){primeStoredAreas(slotKey(activeSlot),chosen);primeJournal(slotKey(activeSlot),stored,chosen)}
   return chosen}
 function primeStoredAreas(key,save){const areas=save?.session?.areas;if(!areas||typeof areas!=="object")return;const known=new Map();for(const[k,area]of Object.entries(areas)){if(!area||typeof area!=="object"||compactedAreas.has(area))continue;/* perf pack: an area migrateSave compacted is written again */areaCopies.set(area,area);known.set(k,area)}storedAreas.set(key,known)}
 export function createSlotWriteCoordinator(writer){let chain=Promise.resolve(),queued=new Map();return{enqueue(slot,snapshot){queued.set(slot,snapshot);chain=chain.catch(()=>{}).then(async()=>{const batch=[...queued];queued=new Map();for(const[key,value]of batch)await writer(key,value)});return chain},flush(){return chain}}}
