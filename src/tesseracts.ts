@@ -14,7 +14,7 @@
 // their own: `killHeal` (health back on a kill) and `selfHarm` (health lost with each swing).
 //
 // Save (additive, schema 14): save.tesseracts = { owned: [{ uid, kind, grade, name, lines: [{ k, v, bad }], from }], slots:
-// [uid|null ×3], seq, got: { <source>: true } }. Rolls are hashes of the seed and the source, so a source gives its glyph once.
+// [uid|null ×3], seq, got: { <source>: true }, echo: glyphs ever set (once any is) }. Rolls are hashes of the seed and the source, so a source gives its glyph once.
 import { hashSeed } from "./random.ts";
 
 export const TESSERACTS = {
@@ -51,6 +51,19 @@ export const TESSERACTS = {
     sealed: { name: "Sealed", q: .85, bad: .3, kinds: ["edge", "ward", "gale", "star"] }, // release 732: the Pentagon's sealed chambers, opened with the Regent's Seal
     sovereign: { name: "Sovereign", q: .95, bad: .2, kinds: ["sovereign"] },
   },
+  // What setting one costs, said once per set and never counted (docs/narrative-bible.md section 1, Tim 2026-11-04: "you're
+  // giving part of yourself... You are less you, and you are fading, like the memories, to become more Corridor"). The n-th
+  // glyph the Wayfarer ever sets gives echoes[n-1]; past the last, nothing. Flavour only: no line changes a number.
+  echoes: [
+    "You set it. For a breath you remember a kitchen, a window, someone humming at the sink. Then the humming stops.",
+    "You set it. The name of the street you grew up on is on the tip of your tongue, and stays there.",
+    "You set it. For a moment your own hand looks like a hand in a drawing.",
+    "You set it. There was a song. You are sure there was a song.",
+    "You set it. Something is quieter than it was.",
+    "You set it. Something you knew is not there now. You do not miss it.",
+    "You set it.",
+    "…",
+  ],
   names: ["of the Fivefold Court", "of the Eyeless Face", "of the Fallen Gate", "of the Under-Heart", "of the Lightless Nave", "of the Drowned Choir", "of the Bone Stair", "of the Long Corridor", "of the Five Faces", "of the Regent's Wake"],
 };
 const EFFECT_IDS = Object.keys(TESSERACTS.effects);
@@ -60,6 +73,7 @@ export function ensureTesseracts(save) {
   const owned = (Array.isArray(T.owned) ? T.owned : []).filter(ok).map((g) => ({ ...g, lines: g.lines.filter((l) => TESSERACTS.effects[l?.k] && Number.isFinite(l.v)) }));
   const have = new Set(owned.map((g) => g.uid)), slots = Array.from({ length: TESSERACTS.slots }, (_, i) => (have.has(T.slots?.[i]) ? T.slots[i] : null));
   save.tesseracts = { ...T, owned, slots: slots.map((u, i) => (slots.indexOf(u) === i ? u : null)), seq: Math.max(0, Math.floor(Number(T.seq) || 0)), got: T.got && typeof T.got === "object" ? { ...T.got } : {} };
+  if (T.echo !== undefined) save.tesseracts.echo = Math.max(0, Math.floor(Number(T.echo) || 0)); // glyphs ever set (TESSERACTS.echoes)
   return save;
 }
 
@@ -82,12 +96,16 @@ export function grantTesseract(save, source, gradeId, floor = 0, from = "") {
   T.owned.push(g); while (T.owned.length > TESSERACTS.keep) { const i = T.owned.findIndex((q) => !T.slots.includes(q.uid)); if (i < 0) break; T.owned.splice(i, 1); }
   return g;
 }
+// The line for the n-th glyph ever set (1-based), or null past the last.
+export const tesseractEcho = (n) => TESSERACTS.echoes[Math.floor(n) - 1] || null;
 export function setTesseract(save, slot, uid) {
   ensureTesseracts(save); const T = save.tesseracts; if (slot < 0 || slot >= TESSERACTS.slots) return { ok: false, message: "No such slot." };
   if (uid && !T.owned.some((g) => g.uid === uid)) return { ok: false, message: "You do not have that glyph." };
+  const fresh = !!uid && !T.slots.includes(uid); // set now, not moved from another slot
   for (let i = 0; i < T.slots.length; i++) if (uid && T.slots[i] === uid) T.slots[i] = null; // one glyph, one slot
   T.slots[slot] = uid || null; const g = T.owned.find((q) => q.uid === uid);
-  return { ok: true, message: g ? `${g.name} set.` : "Slot cleared." };
+  const echo = fresh ? tesseractEcho((T.echo = (Number(T.echo) || 0) + 1)) : null;
+  return { ok: true, echo, message: g ? (echo ? `${g.name}. ${echo}` : `${g.name} set.`) : "Slot cleared." };
 }
 export function shatterTesseract(save, uid) {
   ensureTesseracts(save); const T = save.tesseracts, i = T.owned.findIndex((g) => g.uid === uid); if (i < 0) return { ok: false, message: "You do not have that glyph." };

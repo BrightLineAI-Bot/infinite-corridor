@@ -340,3 +340,74 @@ export function generatePentagonChamber(seed, id) {
   return { seed, id, recipe: "greatBuilding", name: `${P.name} · ${q.name}${q.trial ? " · a trial" : ""}`, identity: `${P.name}: ${q.name}`, danger: "ghouls", width: W, height: H, tiles, entry: { ...arrive }, exit: null, objects, enemySpawns,
     building: { base: Pp.base, style: "keep", floor: depth, floors: V2 ? 3 + plan.nh - 1 : 5, labyrinth: true, pentagon: true, node: q.n, kind: q.floorKind, of: plan.nodes.length, keys: plan.keyNode ? [{ id: "key0", name: "Regent's Key" }] : plan.V >= 3 ? P.shardNames.slice(0, P.secrets).map((name, k) => ({ id: `shard${k}`, name })) : [], trial: !!q.trial, trials: plan.trials.length, entries, exitsTo, vault: V2 ? vault : q.id === "h2", ...(V2 ? { V: plan.V, dread, boss: !!boss, levers: plan.levers.length, champions: plan.trials.length + plan.nh - 1, heartFloor: q.kind === "heart" ? hi : -1 } : {}), breachEntry: null, roofLadder: null, fallTo: null }, layoutVersion: 1, themePool: 0 };
 }
+
+// ------------------------------------------------------------------------------------------------ what the walls say
+// Tim, 2026-11-04 (docs/narrative-bible.md, section 1, "The Pentagons, the keeps and the Tesseracts" and "Why the game
+// exists"): "Nobody is certain what the Pentagons are... It shouldn't be overdone... these are just interesting thoughts."
+// A few chambers, not many, have marks in a wall. Each leans one way: the Corridor outcropping (`outcrop`), a people of
+// the Corridor who built it (`people`), two realities pressed together at a fold (`seam`), or nothing anyone wrote
+// (`none`). They contradict each other on purpose; nothing settles it, nothing counts them, and no quest follows.
+//
+// Placement is laid over a chamber when it loads (as a crossing's margin is): the chamber's own generation is untouched,
+// so floors already explored regenerate byte for byte. Whether a chamber has marks is a hash of the seed and the chamber;
+// which marks, one of those not yet read (a chamber where marks were read keeps them). Save (additive, schema 14,
+// normalised in lore.ts ensureLore): save.lore.inscriptions = [ids read], save.lore.inscribedAt = { chamberId: id }.
+// `vent`: vent-life. A few creatures of the keeps and Pentagons live on the warmth of the seam; their Codex entries say so.
+export const PENTAGON_LORE = {
+  chance: .22, minFromEntry: 4, // the share of chambers with marks; never right at the way in
+  name: "Marks in the wall", title: "In the Pentagon's walls",
+  inscriptions: [
+    { id: "outcrop0", lean: "outcrop", text: "Scratched small beside a door: “We did not lay these stones. We found the rooms already square, and swept them.”" },
+    { id: "outcrop1", lean: "outcrop", text: "Chalked along a lintel in a careful hand: “North Face measured again. Longer than last year. No one has built anything.”" },
+    { id: "outcrop2", lean: "outcrop", text: "Cut low in the wall, the letters shallow: “It came up here the way frost comes up on a pane. All we did was name the rooms.”" },
+    { id: "people0", lean: "people", text: "A builder’s dedication, deep and square: “Raised by the silver-handed, who walked the Corridor before it had roads, for those who come after and do not stay.”" },
+    { id: "people1", lean: "people", text: "A mason’s tally of five marks, and beside it: “Our hands are longer than yours. Mind the high steps.”" },
+    { id: "people2", lean: "people", text: "Pressed into the mortar, the print of a hand with too many joints, and under it, neatly: “I made this wall. Remember that someone did.”" },
+    { id: "seam0", lean: "seam", text: "In a surveyor’s hand, beside a sketch of layered rock: “Not built. Folded. Two beds of stone that never lay together, pressed until they stood up.”" },
+    { id: "seam1", lean: "seam", text: "Scratched with a nail: “The fold is warm. Put your palm where the two kinds of stone meet. It is warm all year.”" },
+    { id: "seam2", lean: "seam", text: "Ruled lines, and a date in no calendar: “The grain of the outer wall runs one way and the grain of the inner another. Something came through here, and the stone set round it.”" },
+    { id: "none0", lean: "none", text: "Lines in the stone in no hand at all: not cut, not written, as if the wall had grown them. You read them, and afterwards cannot say what they said." },
+  ],
+  vent: {
+    pallidCrawler: "In the Pentagons they crowd into the angles where two walls meet wrongly, pressed flat to the stone, feeding on the warmth where two pages meet.",
+    graveLantern: "Its light is brightest near the seams of the great buildings, where the stone is faintly warm. It seems to drink there, slowly, the way a wick drinks oil.",
+    ashling: "The ashlings of the keeps are not the ashlings of the furnaces. They sleep in cracks where one kind of stone has grown into another, and those cracks are always warm.",
+  },
+};
+const inscription = (id) => PENTAGON_LORE.inscriptions.find((q) => q.id === id) || null;
+const readList = (save) => (Array.isArray(save?.lore?.inscriptions) ? save.lore.inscriptions : []);
+// Which marks a chamber holds (an inscription id), or null. A chamber where marks were read keeps them; otherwise a hashed
+// share of chambers hold one of the marks not yet read, and once every one is read, new chambers hold none.
+export function inscriptionIn(save, chamberId) {
+  if (!isPentagonId(chamberId)) return null;
+  const L = PENTAGON_LORE, kept = save?.lore?.inscribedAt?.[chamberId]; if (typeof kept === "string" && inscription(kept)) return kept;
+  const h = hashSeed(`${save?.seed}:pentagon-lore:v1:${chamberId}`); if ((h % 10000) / 10000 >= L.chance) return null;
+  const read = new Set(readList(save)), left = L.inscriptions.filter((q) => !read.has(q.id));
+  return left.length ? left[(h >>> 11) % left.length].id : null;
+}
+// Lays the chamber's marks on open floor against a wall, reachable from the way in, away from it, and clear of every other
+// object and creature. Returns the object or null.
+export function addPentagonInscription(map, save, chamberId) {
+  if (!map?.building?.pentagon || !map.tiles?.length || map.objects?.some((o) => o.kind === "pentInscription")) return null;
+  const id = inscriptionIn(save, chamberId); if (!id) return null;
+  const W = map.width, H = map.height, T = map.tiles, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? null : T[y * W + x]), e = map.entry || { x: W >> 1, y: H >> 1 };
+  const taken = new Set([...(map.objects || []), ...(map.enemySpawns || [])].map((o) => Math.round(o.y) * W + Math.round(o.x)));
+  const reach = new Set([e.y * W + e.x]), st = [e]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, t = at(x, y); if (!t || t.blocked || reach.has(y * W + x)) continue; reach.add(y * W + x); st.push({ x, y }); } }
+  const wallBy = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => at(x + dx, y + dy)?.blocked);
+  const spots = [...reach].map((k) => ({ x: k % W, y: (k / W) | 0 })).filter(({ x, y }) => { const t = at(x, y); return !t.doorway && !t.plate && !taken.has(y * W + x) && Math.abs(x - e.x) + Math.abs(y - e.y) >= PENTAGON_LORE.minFromEntry && wallBy(x, y); }).sort((a, b) => a.y - b.y || a.x - b.x);
+  if (!spots.length) return null;
+  const c = spots[hashSeed(`${save?.seed}:pentagon-lore-at:v1:${chamberId}`) % spots.length], read = readList(save).includes(id);
+  const o = { id: "pent-inscription", kind: "pentInscription", inscription: id, chamberId, name: PENTAGON_LORE.name, x: c.x, y: c.y, state: read ? "read" : "waiting", actions: ["read"] };
+  (map.objects ||= []).push(o); return o;
+}
+// Reading the marks: their words; the first time, remembered (save.lore). Returns { ok, first, text, message }.
+export function readPentagonInscription(save, o) {
+  const q = inscription(o?.inscription); if (!q) return { ok: false, message: "The marks are worn past reading." };
+  const lore = (save.lore ||= {}), list = Array.isArray(lore.inscriptions) ? lore.inscriptions : (lore.inscriptions = []), first = !list.includes(q.id);
+  if (first) list.push(q.id);
+  if (o.chamberId) { if (!lore.inscribedAt || typeof lore.inscribedAt !== "object") lore.inscribedAt = {}; lore.inscribedAt[o.chamberId] = q.id; }
+  o.state = "read";
+  return { ok: true, first, text: q.text, message: q.text };
+}
+// The marks read so far, in the order of the table.
+export function inscriptionsRead(save) { const read = new Set(readList(save)); return PENTAGON_LORE.inscriptions.filter((q) => read.has(q.id)); }
