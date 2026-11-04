@@ -1715,6 +1715,26 @@ export function attackInRange(enemy, player) {
     enemyDangerRadius(enemy)
   );
 }
+// Tim (2026-11-04, after his roof report): a blow does not carry between very different heights. When the Wayfarer and a
+// creature stand `levels` or more elevation levels apart (the Wayfarer on a great building's roof, five up; the creature on the
+// ground), a body blow (bite, claw, swing, charge, leap; the creatures' melee) misses either way, the Wayfarer's swings
+// included. Shots, beams, lobbed and area attacks still reach; and a creature that flies reaches, and is reached by, everything.
+// A world beast counts by its movement (a flying one hits you on the roof; a walking one's jaws do not).
+export const ELEVATION_REACH = {
+  levels: 2, // this many levels apart, or more: body blows do not reach
+  flyingMoves: ["hover", "fly", "phase"], // monster-pack MOVEMENT_MODES that fly
+  flyingKinds: ["veilMoth", "cinderWisp", "vesperwing", "gravitantBell"], // the older creatures that fly
+  bodyTags: ["melee", "charge", "leap"], // pack attack modules that land with the body
+  bodySources: ["bite", "blobTouch", "wormEmerge", "wormGrab", "wormSwipe", "doomTail"], // body blows named outside the modules
+};
+export function fliesHigh(e) { const R = ELEVATION_REACH; return !!e && (e.flying === true || e.aloft === true || R.flyingMoves.includes(e.movement) || R.flyingKinds.includes(e.kind)); }
+export function isBodyBlow(source) { if (typeof source !== "string") return false; const R = ELEVATION_REACH; return R.bodySources.includes(source) || (ATTACK_MODULES[source]?.tags || []).some((t) => R.bodyTags.includes(t)) && !(ATTACK_MODULES[source]?.tags || []).some((t) => t === "ranged" || t === "beam"); }
+// Does a body blow carry between `a` and `b`? Levels default to the ground under each (sections without a landscape: always).
+export function bodyBlowReaches(map, width, a, b, aLevel = null, bLevel = null) {
+  if (!map?.landscape || !a || !b) return true;
+  const la = aLevel ?? elevationAt(map, width, a.x, a.y), lb = bLevel ?? elevationAt(map, width, b.x, b.y);
+  return Math.abs(la - lb) < ELEVATION_REACH.levels || fliesHigh(a) || fliesHigh(b);
+}
 export function hasLineOfSight(enemy, player, map, width, projectile=false, allowMarineTerrain=false) {
   const dx = player.x - enemy.x,
     dy = player.y - enemy.y,
@@ -3108,6 +3128,9 @@ export class Game {
     return amount;
   }
   elevationHere(x, y) { return elevationAt(this.map, mapWidth(this.map, this.area), x, y); }
+  // The Wayfarer's height in levels: the ground under them, or the drone's lift or a glide's height (ELEVATION_REACH).
+  playerLevel() { if (this.area === "overworld" && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; return this.elevationHere(this.player.x, this.player.y); }
+  bodyReach(e) { return bodyBlowReaches(this.map, mapWidth(this.map, this.area), e, this.player, null, this.playerLevel()); }
   glyphWorld(now) {
     const game = this, p = this.player;
     return {
@@ -4345,6 +4368,7 @@ export class Game {
     const p = this.player;
     if (source?.illusion || !(amount > 0) || now <= (p.invulnerableUntil || 0) && !options.piercing) return false; // release 709: the Sunfall pierces a dodge
     if (options.jumpable && now < (this.jumpUntil || 0)) return false;
+    if (source && isBodyBlow(options.source) && !this.bodyReach(source)) return false; // Tim (2026-11-04): a body blow does not carry five levels up or down (ELEVATION_REACH)
     if (source && enclosureShields(this, { x: source.x + .5, y: source.y + .6 })) return false; // release 696: the enclosure's walls turn it
     { const b = source && buildBetween(this, source); if (b) { const melee = (ATTACK_MODULES[source.pack?.attack]?.tags || []).includes("melee"); strikeBuild(this, b, melee && !!(source.worldBeast || source.questingBeast)); return false; } } // release 265: a build takes the blow
     const veil = this.save.magicSkills?.active?.id === 'veil-guard' ? .12 + .08 * skillRank(this.save, 'veil-guard') : 0;
@@ -5499,7 +5523,7 @@ export class Game {
     this.player.meleeStrike = { ...geometry };
     const hits = primaryAttackHits(
       this.player,
-      [...this.enemies.filter(e=>!e.untargetable), ...this.npcTargets()],
+      [...this.enemies.filter(e=>!e.untargetable&&this.bodyReach(e)), ...this.npcTargets()], // Tim (2026-11-04): the Wayfarer's swing does not reach a creature far below or above (ELEVATION_REACH)
       this.map,
       mapWidth(this.map, this.area),
       profile,
@@ -7051,6 +7075,7 @@ export class Game {
         updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}) &&
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden") &&
+        this.bodyReach(e) && // Tim (2026-11-04): a ground creature's blow does not reach the Wayfarer on a roof (ELEVATION_REACH)
         !((b) => b && strikeBuild(this, b))(buildBetween(this, e)) && // release 265: a build between takes the blow
         !enclosureShields(this, { x: e.x + .5, y: e.y + .6 }) // release 696: the enclosure's walls turn it
       ) {

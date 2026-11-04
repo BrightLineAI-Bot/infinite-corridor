@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { freshSave } from '../src/types.ts';
-import { Game, chaseSearch, boundedChaseStep, navTick, navStats, NAV, footprintOpen, activeDungeonEnemies, shouldSimulateEnemy } from '../src/game.ts';
+import { Game, ELEVATION_REACH, bodyBlowReaches, fliesHigh, isBodyBlow, chaseSearch, boundedChaseStep, navTick, navStats, NAV, footprintOpen, activeDungeonEnemies, shouldSimulateEnemy } from '../src/game.ts';
 import { render, roofTileUnder, standingOnRoof } from '../src/renderer.ts';
 import { tileUnder, liftAt } from '../src/landscape.ts';
 import { generateBuildingFloor } from '../src/great-buildings.ts';
@@ -137,4 +137,55 @@ test('generation is untouched: great-building and compound floors hash as before
   const door = g.map.objects.find((o) => o.compoundDoor && o.enterAt === 'outer'), base = door.dungeonId.replace(/:f\d+$/, ''), n = +base.match(/:(\d+)r?$/)[1], comp = [];
   for (let f = 1; f <= n; f++) comp.push(generateCompoundFloor(SEED, `${base}:f${f}`));
   assert.equal(h(comp), 'f7007e07b2264a00');
+});
+
+// Tim (2026-11-04): between very different heights body blows miss, either way; shots, beams and blasts reach; fliers reach all.
+// The Wayfarer on the roof's south rim (23, 9.2: feet on roof row 9, elevation 5); creatures on the ground just below (row 10).
+const rim = () => { const g = onSection(23, 9.2); g.player.x = 23; g.player.y = 9.2; g.enemies = []; return g; };
+const foe = (g, kind, x, y, extra = {}) => { const e = g.createEnemyFromSpawn({ id: `t-${kind}-${x}-${y}`, kind, x, y }); Object.assign(e, { aggro: true }, extra); g.enemies.push(e); return e; };
+const still = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
+
+test('elevation reach: the threshold and the flying test are data; the roof is five levels over the ground below it', () => {
+  assert.equal(ELEVATION_REACH.levels, 2); assert.ok(ELEVATION_REACH.flyingMoves.includes('fly') && ELEVATION_REACH.bodyTags.includes('melee'));
+  const g = rim(); assert.equal(g.playerLevel(), 5); assert.equal(g.elevationHere(23, 10.4), 0);
+  assert.ok(isBodyBlow('bite') && isBodyBlow('clawSweep') && isBodyBlow('ramCharge') && !isBodyBlow('sweepBeam') && !isBodyBlow('mortarVolley') && !isBodyBlow(undefined));
+  assert.ok(fliesHigh({ kind: 'veilMoth' }) && fliesHigh({ movement: 'hover' }) && fliesHigh({ flying: true }) && !fliesHigh({ kind: 'ashling', movement: 'walk' }));
+  assert.ok(bodyBlowReaches(g.map, 32, { x: 23, y: 10.4 }, g.player, null, 1), 'one level apart: in reach');
+});
+
+test("a ground creature's melee does not reach the Wayfarer on the roof (it does when the rule is lifted)", () => {
+  const run = (levels) => { const keep = ELEVATION_REACH.levels; ELEVATION_REACH.levels = levels;
+    try { const g = rim(), e = foe(g, 'ashling', 23, 10.35); const hp0 = g.player.hp; let now = 2000;
+      for (let i = 0; i < 600; i++) { g.player.x = 23; g.player.y = 9.2; g.update(1 / 60, still, now += 1000 / 60); }
+      return { lost: hp0 - g.player.hp, near: Math.hypot(e.x - g.player.x, e.y - g.player.y) }; } finally { ELEVATION_REACH.levels = keep; } };
+  const ruled = run(2), open = run(99);
+  assert.ok(open.lost > 0, `without the rule the ashling below lands its blows (${open.lost} lost, ${open.near.toFixed(2)} away)`);
+  assert.equal(ruled.lost, 0, 'with it, nothing lands from five levels below');
+});
+
+test("from the ground, shots and beams still reach the roof; body blows do not; a flier's every attack does", () => {
+  const g = rim(), ground = foe(g, 'ashling', 23, 10.35), moth = foe(g, 'veilMoth', 22, 10.35), wing = foe(g, 'ashling', 24, 10.35, { flying: true, movement: 'fly' });
+  let now = 5000; const hurt = (src, source) => { g.player.invulnerableUntil = 0; const hp = g.player.hp; g.packHurt(src, 3, { jumpable: false, source }, now += 1000); return hp - g.player.hp; };
+  assert.equal(hurt(ground, 'bite'), 0, 'a bite from below misses'); assert.equal(hurt(ground, 'clawSweep'), 0); assert.equal(hurt(ground, 'ramCharge'), 0);
+  assert.ok(hurt(ground, 'mortarVolley') > 0, 'a lobbed volley from below lands'); assert.ok(hurt(ground, 'sweepBeam') > 0, 'a beam lands');
+  assert.ok(hurt(moth, 'bite') > 0, 'a moth flies up and bites'); assert.ok(hurt(wing, 'clawSweep') > 0, 'a flying beast claws');
+  // a ground archer's real shot: a spark warden fires from below and its bolt lands on the roof
+  const g2 = rim(), archer = foe(g2, 'sparkWarden', 23, 12.4); const hp0 = g2.player.hp; let t = 2000;
+  for (let i = 0; i < 900 && g2.player.hp === hp0; i++) { g2.player.x = 23; g2.player.y = 9.2; g2.update(1 / 60, still, t += 1000 / 60); }
+  assert.ok(g2.player.hp < hp0, `the archer's shot reaches the roof (${Math.hypot(archer.x - 23, archer.y - 9.2).toFixed(1)} away)`);
+});
+
+test("mirrored: the Wayfarer's swing misses a ground creature five levels below, reaches a flier there, and a shot reaches both", () => {
+  const g = rim(), ground = foe(g, 'ashling', 23, 10.35), moth = foe(g, 'veilMoth', 23.3, 10.1);
+  g.save.lastAim = { x: 0, y: 1 }; g.player.meleeAim = { x: 0, y: 1 };
+  const hits = g.primaryAttack(10000, { x: 0, y: 1 });
+  assert.ok(!hits.includes(ground), 'the blade does not reach down off the roof'); assert.ok(hits.includes(moth), 'it reaches the moth flying alongside');
+  // a ground creature beside you on the roof is hit as ever
+  const g3 = rim(), beside = foe(g3, 'ashling', 22.2, 9.2); g3.save.lastAim = { x: -1, y: 0 }; g3.player.meleeAim = { x: -1, y: 0 };
+  assert.ok(g3.primaryAttack(10000, { x: -1, y: 0 }).includes(beside), 'same height: the swing lands');
+  // the Spark Coil's shot flies down to the ground creature below
+  const g2 = rim(), below = foe(g2, 'ashling', 23, 11.4); below.aggro = false; const hp0 = below.hp; let now = 20000;
+  g2.save.pendingAim = { x: below.x + .5, y: below.y + .45 }; assert.ok(g2.fireSecondary(now, { x: 0, y: 1 }));
+  for (let i = 0; i < 90 && below.hp === hp0; i++) { g2.player.x = 23; g2.player.y = 9.2; below.x = 23; below.y = 11.4; g2.update(1 / 60, still, now += 1000 / 60); }
+  assert.ok(below.hp < hp0, 'the shot reaches it');
 });
