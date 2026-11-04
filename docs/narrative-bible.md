@@ -205,6 +205,7 @@ You almost never see the same Glimpse twice. A Glimpse is offered only while uns
 23. **The Glob.** Your vision is diffuse, with no edges, only pressure and colour. You divide, and you see from both halves.
 24. **The Swirl.** A vortex of colour fields with no subject, no up and no down. It goes on a moment too long.
 25. **The Eye Within.** Something with eyes at every scale: the view falls endlessly into its own eye.
+26. **Inside the Wall** (built; `insideTheWall`, placed: it surfaces only in a Pentagon, sometimes, the first time marks in a wall are read). No eyes, only pressure and warmth. You are the wall: two beds of stone that were never meant to touch, pressed together at a buckled seam that is faintly warm, where small pale things cling and feed. Something warm and heavy comes along the outside of you, one step at a time. The pale things scatter. The seam leans toward it, and the stone begins, very slowly, to bend round it. The intrusion is the Wayfarer.
 
 ### How they are drawn: free, in the browser
 

@@ -1,6 +1,6 @@
 import "./proving-ground.ts";
 import { SAVE_VERSION } from "./types.ts";
-import { GLIMPSES, GLIMPSE_ORDER } from "./glimpses.ts";
+import { GLIMPSES } from "./glimpses.ts";
 import { startGlimpse } from "./glimpse-render.ts";
 
 const errorLog=[];
@@ -16,6 +16,6 @@ document.querySelector("#pgReset")?.addEventListener("click",()=>{if(!confirm("R
 // Release 195: a Glimpse viewer, so a preview can show every Glimpse (the production game opens them in play).
 const glimpses=document.querySelector("#pgGlimpses"),glimpseRoot=document.querySelector("#glimpse"),glimpseHint=document.querySelector("#glimpseHint");let glimpseRun=null;
 function playGlimpse(id){if(glimpseRun)return;glimpses.close();glimpseRoot.hidden=false;glimpseHint.classList.remove("shown");const started=performance.now(),hintTimer=setTimeout(()=>glimpseHint.classList.add("shown"),2500);const finish=()=>{if(!glimpseRun)return;glimpseRun.stop();glimpseRun=null;clearTimeout(hintTimer);glimpseRoot.hidden=true};glimpseRun=startGlimpse(document.querySelector("#glimpseCanvas"),id,{reduceMotion:matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false,onEnd:finish});glimpseRoot.onclick=()=>{if(performance.now()-started>900)finish()}}
-document.querySelector("#pgGlimpseList")?.replaceChildren(...GLIMPSE_ORDER.map(id=>{const b=document.createElement("button");b.type="button";b.textContent=GLIMPSES[id].name;b.addEventListener("click",()=>playGlimpse(id));return b}));
+document.querySelector("#pgGlimpseList")?.replaceChildren(...Object.keys(GLIMPSES).map(id=>{const b=document.createElement("button");b.type="button";b.textContent=GLIMPSES[id].name;b.addEventListener("click",()=>playGlimpse(id));return b}));
 document.querySelector("#pgGlimpsesToggle")?.addEventListener("click",()=>glimpses.showModal());
 document.querySelector("#pgGlimpsesClose")?.addEventListener("click",()=>glimpses.close());
