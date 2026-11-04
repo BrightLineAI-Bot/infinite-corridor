@@ -92,7 +92,7 @@ import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exit
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale } from "./great-buildings.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor } from "./compounds.ts";
 import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber } from "./labyrinths.ts";
-import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
+import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection } from "./castles.ts";
 import { TESSERACTS, grantTesseract } from "./tesseracts.ts";
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen } from "./pentagon.ts";
@@ -5691,7 +5691,8 @@ export class Game {
     const at = placeTurtleShell(this.map, e, { player: this.player, exitsOpen, seed: this.save.seed, cycle });
     if (!at) { this.message = `${this.message ? this.message + " " : ""}${TURTLE_SHELL.messages.none}`; return null; }
     const rec = { id: shellId(cycle), cycle, slain: this.save.worldBeasts[TURTLE_SHELL.beast]?.slain || 0, rx: this.rx, ry: this.ry, x: at.x, y: at.y, skirt: at.skirt, lab: shellLabyrinthBase(this.save.seed, cycle, this.rx, this.ry), at: Math.round(Number(this.save.playSeconds) || 0) };
-    addShell(this.save, rec); applyTurtleShell(this.map, rec);
+    for (const old of addShell(this.save, rec)) if (old.rx === this.rx && old.ry === this.ry && liftTurtleShell(this.map, old.id)) this.save.turtleShells.faded = this.save.turtleShells.faded.filter((f) => f.id !== old.id); // the old shell, here, crumbles as you watch
+    applyTurtleShell(this.map, rec);
     if (this.seaIce?.tiles?.size) for (const i of [...this.seaIce.tiles.keys()]) if (!this.map.tiles[i]?.seaIce) this.seaIce.tiles.delete(i); // sand where its ice was: nothing left to thaw there
     for (const q of this.enemies) if (!q.dead && q !== e && !q.flying && !q.seaKind) relocateIfStranded(q, this.map, 32);
     const text = at.skirt ? TURTLE_SHELL.messages.skirt : TURTLE_SHELL.messages.rest; this.message = `${this.message ? this.message + " " : ""}${text}`;

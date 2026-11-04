@@ -59,7 +59,7 @@ test('the gateway enters the Shell-Labyrinth at the current interior version; le
   g.player.x = gate.x; g.player.y = gate.y; assert.equal(g.nearestObject()?.id, gate.id, 'an Act prompt at the gateway'); assert.ok(g.interact('enter', gate.id).ok);
   assert.equal(g.area, 'dungeon'); assert.equal(g.areaId(), `${r.lab}:f1`); assert.ok(isLabyrinthId(g.areaId()));
   assert.equal(g.map.building.interiorVersion, BUILDINGS.interior.version); assert.equal(g.save.consequences.dungeons[`${r.lab}:f1`].interiorVersion, BUILDINGS.interior.version);
-  assert.match(g.map.name, /^The Shell-Labyrinth · /); assert.equal(g.map.tint, LABYRINTHS.styles.shell.tint);
+  assert.match(g.map.name, /^The Shell-Labyrinth · /); assert.equal(g.map.building.kind, 'hall'); assert.equal(g.map.dress, 'clockwork', 'the first hall is clockwork');
   const out = g.map.objects.find((o) => o.kind === 'exit'); g.player.x = out.x; g.player.y = out.y; assert.ok(g.interact('exit', out.id).ok);
   assert.equal(g.area, 'overworld'); assert.deepEqual([g.rx, g.ry, g.player.x, g.player.y], [3, 4, gate.x, gate.y], 'back at the gateway');
   // and by the vault's way out
@@ -81,7 +81,7 @@ test('Shell-Labyrinths are deterministic per kill and always solvable (keys, sea
   assert.equal(n, 48);
   assert.notEqual(js(labyrinthPlan(shellLabyrinthBase(SEED, 0, 3, 4)).edges), js(labyrinthPlan(shellLabyrinthBase(SEED, 1, 3, 4)).edges), 'another kill, another maze');
   // the existing labyrinths are untouched by the new style (no tint, the same keys and rooms)
-  const old = 'labyrinth:A7:61:69:keep'; const m = generateLabyrinthChamber('A7', `${old}:f1`, 2); assert.equal(m.tint, undefined); assert.match(m.name, /^Labyrinth Keep/);
+  const old = 'labyrinth:A7:61:69:keep'; const m = generateLabyrinthChamber('A7', `${old}:f1`, 2); assert.equal(m.dress, undefined); assert.ok(m.tiles.every((t) => !t.landscape)); assert.match(m.name, /^Labyrinth Keep/);
 });
 
 test('reload keeps the shell exactly; a dungeon resumed inside it regenerates the same chamber', () => {
@@ -104,15 +104,37 @@ test('no shell for kills before this release; a section with no shell is byte-id
   }
 });
 
-test('at most six shells stand: laying a seventh fades the oldest, drops its labyrinth state, and the next visit there says so once', () => {
-  const s = freshSave(); s.seed = SEED; const g = new Game(s, 0), spots = [[3, 4], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4]];
-  for (const [rx, ry] of spots) { g.rx = rx; g.ry = ry; g.loadArea('overworld', false); slay(g); if (rx === 3) { const gate = gateOf(g); g.player.x = gate.x; g.player.y = gate.y; g.interact('enter', gate.id); const out = g.map.objects.find((o) => o.kind === 'exit'); g.player.x = out.x; g.player.y = out.y; g.interact('exit', out.id); } }
-  const S = g.save.turtleShells; assert.equal(S.list.length, TURTLE_SHELL.keep); assert.deepEqual(S.list.map((r) => r.rx), [5, 6, 7, 8, 9, 10]); assert.deepEqual(S.faded.map((f) => f.rx), [3, 4]);
+test("one shell at a time (Tim): the next Turtle's fall fades the old shell and drops its labyrinth state; the next visit there says so once", () => {
+  assert.equal(TURTLE_SHELL.keep, 1);
+  const s = freshSave(); s.seed = SEED; const g = new Game(s, 0);
+  for (const rx of [3, 4, 5]) { g.rx = rx; g.ry = 4; g.loadArea('overworld', false); slay(g); if (rx === 3) { const gate = gateOf(g); g.player.x = gate.x; g.player.y = gate.y; g.interact('enter', gate.id); const out = g.map.objects.find((o) => o.kind === 'exit'); g.player.x = out.x; g.player.y = out.y; g.interact('exit', out.id); }
+    assert.equal(g.save.turtleShells.list.length, 1, 'only the newest stands'); assert.equal(g.save.turtleShells.list[0].rx, rx); assert.ok(shellOf(g), 'and it appears at once'); }
+  const S = g.save.turtleShells; assert.deepEqual(S.faded.map((f) => f.rx), [3, 4]);
   const lab = shellLabyrinthBase(SEED, 0, 3, 4); assert.ok(!Object.keys(g.save.consequences.dungeons).some((k) => k.startsWith(`${lab}:f`)), 'its histories gone'); assert.ok(!Object.keys(g.save.session.areas).some((k) => k.startsWith(`${lab}:f`)), 'and its snapshots');
   g.rx = 3; g.ry = 4; g.loadArea('overworld'); assert.equal(g.message, TURTLE_SHELL.messages.fade); assert.ok(!shellOf(g), 'no shell'); assert.deepEqual(g.save.turtleShells.faded.map((f) => f.rx), [4]);
   g.message = ''; g.loadArea('overworld'); assert.notEqual(g.message, TURTLE_SHELL.messages.fade, 'told once');
-  g.rx = 10; g.ry = 4; g.loadArea('overworld'); assert.ok(shellOf(g), 'the newest stands');
-  assert.ok(js(S).length < 2000, `records are small (${js(S).length} chars)`);
+  g.rx = 5; g.ry = 4; g.loadArea('overworld'); assert.ok(shellOf(g), 'the newest stands until the next Turtle falls');
+  const g2 = reload(g); assert.ok(shellOf(g2), 'and after a reload');
+  assert.ok(js(S).length < 1000, `records are small (${js(S).length} chars)`);
+  // the next Turtle falls in the same section: the old shell goes as you watch, its ground back as it was, and the new one rests
+  const before = js(visit(5, 4, (() => { const q = freshSave(); q.seed = SEED; return q; })()).map.tiles.map((t) => [t.kind, !!t.blocked]));
+  const old = g.save.turtleShells.list[0]; slay(g, 24, 22); const now = g.save.turtleShells.list[0];
+  assert.notEqual(now.id, old.id); assert.equal(g.map.objects.filter((o) => o.kind === 'turtleShell').length, 1); assert.equal(shellOf(g).id, now.id);
+  assert.ok(!g.map.objects.some((o) => o.id === `${old.id}-gate`), 'the old gateway is gone'); assert.ok(!g.save.turtleShells.faded.some((f) => f.id === old.id), 'no later message: you saw it go');
+  const cells = new Set(shellCells(now.x, now.y).map((c) => c.y * 32 + c.x)); assert.equal(js(g.map.tiles.map((t, i) => cells.has(i) ? null : [t.kind, !!t.blocked])), js(JSON.parse(before).map((t, i) => cells.has(i) ? null : t)), 'only the new shell changes the ground');
+  assert.equal(js(reload(g).map.tiles.map((t) => [t.kind, !!t.blocked])), js(g.map.tiles.map((t) => [t.kind, !!t.blocked])), 'as it will load');
+});
+
+test("every kill's Shell-Labyrinth is its own, dressed or not, and the same on every visit", () => {
+  const sig = (seed, base) => js(labyrinthPlan(base).nodes.map((q) => generateLabyrinthChamber(seed, `${base}:f${q.n + 1}`, 2).tiles.map((t) => (t.hole ? 2 : t.blocked ? 1 : 0)).join('')));
+  const seen = new Map();
+  for (const seed of ['TIM1', 'A7']) for (let cycle = 0; cycle < 20; cycle++) for (const [rx, ry] of [[3, 4], [3, 5]]) {
+    const base = shellLabyrinthBase(seed, cycle, rx, ry), a = sig(seed, base);
+    assert.equal(sig(seed, base), a, `${base}: the same on revisits`);
+    assert.ok(!seen.has(a), `${base} shares its layout with ${seen.get(a)}`); seen.set(a, base);
+    const dressed = js(labyrinthPlan(base).nodes.map((q) => generateLabyrinthChamber(seed, `${base}:f${q.n + 1}`, 2).dress)); assert.ok(dressed.includes('clockwork') && dressed.includes('mosaic'), 'both looks in every shell');
+  }
+  assert.equal(seen.size, 80);
 });
 
 test('at sea: a Turtle slain on the water rests on the nearest reachable shallows or shore; in open water it heaps a ring of sand', () => {
@@ -176,4 +198,22 @@ test('the shell is drawn (headless canvas) and its record is normalised additive
   const r = g.save.turtleShells.list[0]; g.player.x = r.x; g.player.y = r.y + 2; render(ctx, g, 390, 844, 1000); assert.ok(calls.length > 100);
   const s = { turtleShells: { list: [{ cycle: 1, rx: 0, ry: 0, x: 5, y: 6, lab: 'labyrinth:X~shell1:0:0:shell', note: 'kept' }, { cycle: 'x' }], future: 1 } }; ensureTurtleShells(s);
   assert.equal(s.turtleShells.list.length, 1); assert.equal(s.turtleShells.list[0].note, 'kept'); assert.equal(s.turtleShells.future, 1); assert.equal(s.turtleShells.list[0].id, 'turtle-shell-1');
+});
+
+test('Tim: the Shell-Labyrinth wears the clockwork (Brass Engine) and mosaic (Mosaic Sanctum) dungeon themes, by chamber; only the looks change', () => {
+  const D = LABYRINTHS.dress, seen = { clockwork: 0, mosaic: 0 };
+  for (const [seed, cycle] of [['TIM1', 0], ['A7', 3], ['KX9', 7]]) {
+    const base = shellLabyrinthBase(seed, cycle, 2, -5), P = labyrinthPlan(base);
+    const dressed = P.nodes.map((q) => generateLabyrinthChamber(seed, `${base}:f${q.n + 1}`, 2));
+    const themes = LABYRINTHS.styles.shell.themes; delete LABYRINTHS.styles.shell.themes;
+    let plain; try { plain = P.nodes.map((q) => generateLabyrinthChamber(seed, `${base}:f${q.n + 1}`, 2)); } finally { LABYRINTHS.styles.shell.themes = themes; }
+    for (const q of P.nodes) { const m = dressed[q.n], want = themes[q.vault ? 'vault' : q.kind]; assert.equal(m.dress, want, `${base} f${q.n + 1} (${q.kind})`); seen[want]++;
+      const shape = (map) => js(map.tiles.map((t) => [!!t.blocked, !!t.hole, !!t.doorway, !!t.open]));
+      assert.equal(shape(m), shape(plain[q.n]), 'what blocks, falls and opens is exactly as laid');
+      assert.equal(js(m.objects), js(plain[q.n].objects)); assert.equal(js(m.enemySpawns), js(plain[q.n].enemySpawns));
+      for (const t of m.tiles) { if (t.hole) { assert.equal(t.kind, 'floorHole'); continue; } assert.equal(t.landscape, 'underlands');
+        assert.ok(t.blocked ? [D[want].wall, D[want].accent].includes(t.kind) : t.kind === D[want].floor, `${t.kind} in a ${want} chamber`); } }
+    assert.ok(P.nodes.some((q) => q.vault && dressed[q.n].dress === 'mosaic'), 'the vault is a mosaic sanctum');
+  }
+  assert.ok(seen.clockwork > 5 && seen.mosaic > 5, JSON.stringify(seen));
 });

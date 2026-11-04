@@ -2041,7 +2041,6 @@ export function render(ctx, g, w, h, now) {
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId, scarSurface);
     }
   drawVoidScarOverlay(ctx,g,s,mw,mh,{l,t,r,b},scarSurface);
-  if (g.area === "dungeon" && g.map?.tint) { ctx.fillStyle = g.map.tint; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s); } // a chamber's wash of colour (the Shell-Labyrinth's ivory)
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0;

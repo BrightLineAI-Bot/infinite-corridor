@@ -9,8 +9,8 @@
 //
 // Nothing here is generation: a shell is a small record in `save.turtleShells` (one per kill, from this release on), and
 // loading its section lays the shell over the generated tiles at runtime. A section with no record is exactly as generated.
-// At most `keep` shells stand; laying another fades the oldest (its labyrinth's state is dropped), and the next visit to
-// where it lay says so.
+// One shell stands at a time (`keep`): the next Turtle's fall fades the old one (its labyrinth's state is dropped), and the next
+// visit to where it lay says so.
 import { hashSeed } from "./random.ts";
 import { LABYRINTHS } from "./labyrinths.ts";
 import { coherenceCore, coherenceHub, joinsCore, LETHAL_KINDS } from "./landscape.ts";
@@ -18,7 +18,7 @@ import { coherenceCore, coherenceHub, joinsCore, LETHAL_KINDS } from "./landscap
 export const TURTLE_SHELL = {
   version: 1,
   beast: "mountainTurtle",
-  keep: 6, // shells standing at once (and faded ones remembered for their message)
+  keep: 1, remember: 6, // Tim (2026-11-04): one shell at a time, until the next Turtle falls; faded ones remembered for their message
   footprint: { half: 2, rows: 3 }, // 5 tiles wide (x - 2 .. x + 2), 3 deep (y - 2 .. y); the gateway is the tile below (x, y + 1)
   margin: 2, // never closer than this to a section's edge
   search: 400, // candidate spots tried, nearest the fall first
@@ -41,7 +41,7 @@ export const TURTLE_SHELL = {
 const I = (x, y) => y * 32 + x;
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const marine = (t) => !!t && (t.kind === "ocean" || t.kind === "deepOcean" || !!t.seaIce); // the Turtle's sea ice thaws: it is open sea
-const FIXED = (t) => !!t && !!(t.structure || t.buildingId || t.greatBuilding || t.courtyard || t.keep || t.keepPart || t.canopy || t.mushroom || t.causeway || t.castle || t.landscape === "castle" || t.skyPlatform || t.kind === "skyBridge" || t.kind === "bridge" || t.kind === "logBridge" || t.kind === "dock" || t.kind === "voidScar" || t.pit || t.chasm || t.turtleShell || t.seaIce || (t.environment && t.environment !== "tree"));
+const FIXED = (t) => !!t && !!(t.structure || t.buildingId || t.greatBuilding || t.courtyard || t.keep || t.keepPart || t.canopy || t.mushroom || t.causeway || t.castle || t.landscape === "castle" || t.skyPlatform || t.kind === "skyBridge" || t.kind === "bridge" || t.kind === "logBridge" || t.kind === "dock" || t.kind === "voidScar" || t.pit || t.chasm || t.turtleShell || t.shellSkirt || t.seaIce || (t.environment && t.environment !== "tree"));
 
 // The labyrinth behind a shell's gateway: its base id (labyrinths.ts ids, style `shell`), from the kill.
 export const shellLabyrinthBase = (seed, cycle, rx, ry) => `labyrinth:${seed}~shell${cycle}:${rx}:${ry}:${TURTLE_SHELL.style}`;
@@ -71,7 +71,7 @@ export function addShell(save, rec) {
   const S = ensureTurtleShells(save); if (S.list.some((r) => r.id === rec.id)) return [];
   S.list.push(rec); const gone = [];
   while (S.list.length > TURTLE_SHELL.keep) { const old = S.list.shift(); gone.push(old); S.faded.push({ id: old.id, rx: old.rx, ry: old.ry, lab: old.lab }); }
-  while (S.faded.length > TURTLE_SHELL.keep) S.faded.shift();
+  while (S.faded.length > TURTLE_SHELL.remember) S.faded.shift();
   for (const old of gone) dropLabyrinth(save, old.lab);
   return gone;
 }
@@ -156,6 +156,7 @@ export function placeTurtleShell(map, at, { player = null, exitsOpen = null, see
 export function applyTurtleShell(map, rec) {
   if (!map?.tiles || map.tiles.length !== 1024 || (map.objects || []).some((o) => o.id === rec.id)) return false;
   const T = map.tiles, K = TURTLE_SHELL.skirt, cells = shellCells(rec.x, rec.y), set = new Set(cells.map((p) => I(p.x, p.y)));
+  const under = ((map._shellUnder ||= {})[rec.id] = []); for (const p of [...cells, ...(rec.skirt ? skirtCells(rec.x, rec.y) : [])]) { const i = I(p.x, p.y); if (T[i]) under.push([i, T[i]]); } // the ground it covers, for liftTurtleShell
   for (const p of cells) { const i = I(p.x, p.y), t = T[i]; if (!t) continue; T[i] = { ...t, ...(rec.skirt ? { kind: K.kind, landscape: K.landscape, elev: 0, slope: false } : {}), blocked: true, seaIce: undefined, turtleShell: rec.id }; }
   if (rec.skirt) for (const p of skirtCells(rec.x, rec.y)) { const i = I(p.x, p.y), t = T[i]; if (t && marine(t)) T[i] = { ...t, kind: K.kind, landscape: K.landscape, blocked: false, elev: 0, slope: false, seaIce: undefined, shellSkirt: rec.id }; }
   map.objects = (map.objects || []).filter((o) => !(o.decor && set.has(I(Math.round(o.x), Math.round(o.y)))));
@@ -163,4 +164,10 @@ export function applyTurtleShell(map, rec) {
   map.objects.push({ id: rec.id, kind: "turtleShell", name: TURTLE_SHELL.name, x: rec.x, y: rec.y, bounds: { x: rec.x - F.half, y: rec.y - F.rows + 1, w: F.half * 2 + 1, h: F.rows }, footprint: cells, state: "still", actions: [], landmark: true, lore: TURTLE_SHELL.messages.lore });
   map.objects.push({ id: `${rec.id}-gate`, kind: "dungeon", buildingDoor: true, shellGate: true, buildingDoors: { rx: rec.rx, ry: rec.ry, front, exits: {}, hatch: null }, dungeonId: `${rec.lab}:f1`, dungeonType: "labyrinth", name: TURTLE_SHELL.gate, identity: "the gateway in the Mountain Turtle's shell", x: front.x, y: front.y, state: "open", actions: ["enter"], landmark: true, lore: `${TURTLE_SHELL.gate}: ${LABYRINTHS.messages.arrive.replace(/^A labyrinth stands here: /, "")}` });
   return true;
+}
+// A shell fading while its section is loaded (the next Turtle fell here): its ground and objects as they were before it lay.
+export function liftTurtleShell(map, id) {
+  const under = map?._shellUnder?.[id]; if (!under) return false;
+  for (const [i, t] of under) if (map.tiles[i]?.turtleShell === id || map.tiles[i]?.shellSkirt === id) map.tiles[i] = t;
+  map.objects = (map.objects || []).filter((o) => o.id !== id && o.id !== `${id}-gate`); delete map._shellUnder[id]; return true;
 }

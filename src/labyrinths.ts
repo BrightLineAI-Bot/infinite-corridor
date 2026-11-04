@@ -38,11 +38,21 @@ export const LABYRINTHS = {
     keep: { name: "Labyrinth Keep", hall: "Hall", court: "Hedge Court", cellar: "Cellar", subcellar: "Subcellar", gaps: "Gallery of Gaps", vault: "Vault" },
     apartment: { name: "Arcology Maze", hall: "Hab Ward", court: "Sky Garden", cellar: "Service Level", subcellar: "Sub-basement", gaps: "Broken Atrium", vault: "Core Vault" },
     hive: { name: "Hive Labyrinth", hall: "Brood Hall", court: "Spore Garden", cellar: "Burrow", subcellar: "Deep Burrow", gaps: "Rift Gallery", vault: "Queen's Chamber" },
-    // The Shell-Labyrinth (turtle-shell.ts): the maze inside a slain Mountain Turtle's shell. Never rolled on the overworld; its
-    // rooms are the Old Keep's (`building`), washed the colour of old ivory and coral (`tint`, drawn over the chamber).
-    shell: { name: "The Shell-Labyrinth", hall: "Nacre Hall", court: "Coral Court", cellar: "Hollow of the Shell", subcellar: "Marrow Hollow", gaps: "Gallery of Ribs", vault: "Heart of the Shell", building: "keep", tint: "rgba(250,210,188,.2)" },
+    // The Shell-Labyrinth (turtle-shell.ts): the maze inside a slain Mountain Turtle's shell. Never rolled on the overworld. Its
+    // rooms are laid out as the Old Keep's (`building`); Tim (2026-11-04): "let's use the clockwork dungeon theme, and the mosaic
+    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.ts's Brass Engine and Mosaic
+    // Sanctum tiles, see SHELL_THEMES): the halls and galleries are clockwork, the courts, undercrofts and the vault mosaic.
+    shell: { name: "The Shell-Labyrinth", hall: "Gear Hall", court: "Mosaic Court", cellar: "Mosaic Undercroft", subcellar: "Deep Undercroft", gaps: "Gallery of Gears", vault: "Heart of the Shell", building: "keep",
+      themes: { hall: "clockwork", gaps: "clockwork", court: "mosaic", cellar: "mosaic", vault: "mosaic" } },
   },
   floors: { court: ["yardGrass", "hedgeWall"], cellar: ["cellarFloor", "cellarWall"] },
+  // A chamber's dress (styles' `themes`): the floor and wall of an underlands.ts theme, drawn by landscape-render.ts. `quarter`:
+  // the floor is a 2x2 motif (a buried gear, a rosette); `accent`: some walls show it (pipes by hash share, pillars on a 4-grid).
+  // Only tiles' looks change: what blocks, what is a hole and what is a doorway stay exactly as laid.
+  dress: {
+    clockwork: { floor: "gratingFloor", wall: "brassWall", accent: "brassPipe", share: .2, quarter: true },
+    mosaic: { floor: "templeMosaic", wall: "templeWall", accent: "templePillar", grid: 4, quarter: true },
+  },
   messages: {
     arrive: "A labyrinth stands here: one door in, and somewhere deep inside, its one real end.",
     door: "You go through the door into",
@@ -170,6 +180,12 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
     if (v === 5) tiles.push({ x, y, kind: "floorHole", blocked: false, hole: true, detail: k % 4 });
     else if (v === 1 || v === 4) tiles.push({ x, y, kind: v === 4 ? "rubbleFloor" : wallKind, blocked: true, rubble: v === 4 || undefined, detail: (x * 3 + y) % 4 });
     else tiles.push({ x, y, kind: floorKind, blocked: false, doorway: v === 2, detail: (x * 7 + y * 3) % 4, ...(q.kind === "court" ? { open: true } : {}) }); }
+  // a style's dress (the Shell-Labyrinth's clockwork and mosaic): looks only
+  const theme = plan.S.themes ? plan.S.themes[q.vault ? "vault" : q.kind] : null;
+  if (theme) { const D = L.dress[theme];
+    for (const t of tiles) { if (t.hole) continue; const quarter = D.quarter ? { detail: (t.x & 1) + (t.y & 1) * 2 } : {};
+      if (t.blocked) { const accent = D.grid ? t.x % D.grid === 2 && t.y % D.grid === 2 : (hashSeed(`${id}:dress:${t.x},${t.y}`) % 1000) / 1000 < D.share; Object.assign(t, { kind: accent && t.x > 0 && t.y > 0 && t.x < W - 1 && t.y < H - 1 ? D.accent : D.wall, landscape: "underlands", ...(D.grid ? quarter : {}) }); }
+      else Object.assign(t, { kind: D.floor, landscape: "underlands", ...quarter }); } }
   // passages
   const objects = [], name = `${plan.S.name} · ${q.vault ? plan.S.vault : q.kind === "cellar" && q.level <= -2 ? plan.S.subcellar : plan.S[q.kind]}`;
   for (const [other, spot] of q.slots) { const o = plan.nodes[other], there = o.slots.get(q.n), e = q.edges.find((v) => v.a === other || v.b === other), oname = o.vault ? plan.S.vault : o.kind === "cellar" && o.level <= -2 ? plan.S.subcellar : plan.S[o.kind];
@@ -197,7 +213,7 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
   if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0] || (V >= 2 ? nearKey() : null); if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
   const fall = q.kind === "gaps" ? plan.nodes[q.fallTo] : null, fallAt = fall ? (fall.slots.values().next().value?.inner || { x: W >> 1, y: H >> 1 }) : null;
   return { seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,
-    ...(plan.S.tint ? { tint: plan.S.tint } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
+    ...(theme ? { dress: theme } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
 }
 
 // ------------------------------------------------------------------------------------------------ outside, on the overworld
