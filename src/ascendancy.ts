@@ -44,6 +44,7 @@ export const ASCENDANCY = {
     begin: "The Rite of Ascendancy begins. The strange tree catches fire, and fire rises round the edges of the land: survive until it has burned down.",
     noLeave: "The fire bars the way. Survive the rite.",
     failed: (left) => `The rite is broken. The fire sinks away.${left > 0 ? ` The strange tree can bear ${left} more rite${left === 1 ? "" : "s"}.` : " The strange tree dies."}`,
+    resumeRefund: "The rite you began here was lost when the journey closed. The fire has sunk away, and the attempt is given back: touch the strange tree to begin again.", // release 736 (review F7)
     withered: "A strange tree gone grey and dead. Its rite will not come again.",
     done: "The rite is done. The strange tree has burned down to a heap of ashes, still warm. Touch them.",
     ashes: "A heap of warm ashes where the strange tree burned. The ground under it is soaked with the blood of the fallen.",
@@ -61,7 +62,7 @@ export function ensureAscendancy(save) {
   const raw = save?.ascendancy, out = {};
   if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const [k, r] of Object.entries(raw).slice(-ASCENDANCY.maxRecords)) {
     if (!/^-?\d+,-?\d+$/.test(k) || !r || typeof r !== "object") continue;
-    out[k] = { tries: Math.max(0, Math.min(ASCENDANCY.tries, Math.floor(Number(r.tries) || 0))), done: r.done === true, risen: r.risen === true, bloom: r.bloom === true };
+    out[k] = { ...r, tries: Math.max(0, Math.min(ASCENDANCY.tries, Math.floor(Number(r.tries) || 0))), done: r.done === true, risen: r.risen === true, bloom: r.bloom === true };
   }
   if (save) save.ascendancy = out;
   return save;

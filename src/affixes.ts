@@ -15,7 +15,7 @@
 // - Shaman (`SHAMAN`): now and then a pack has a shaman standing apart, channelling; while it lives, its packmates within `radius` of
 //   it cannot be harmed (a ward shimmers round them, a ring round the shaman). Kill the shaman first.
 // Runtime state on the creatures (`affixClock`, `inAura`, `wardedBy`) and in game.affixHazards (never saved; at most `maxHazards`).
-import { hashSeed } from "./random.ts";
+import { hashSeed, byHash } from "./random.ts";
 
 export const AFFIXES = {
   volcanic: { name: "Volcanic", color: "#ff6a2a", every: 3.2, arm: .8, radius: 1.15, life: 4, dps: .35 },
@@ -31,7 +31,7 @@ export const AURA = { radius: 5, reduce: .3, damage: 1.2 };
 export const SHAMAN = { chance: .2, kind: "sparkWarden", distance: [5, 7], radius: 11, hp: 1.6, speed: .3 };
 
 // `n` different affixes for `key` (the same key always gives the same).
-export function rollAffixes(key, n) { return [...AFFIX_IDS].sort((a, b) => hashSeed(`${key}:affix:${a}`) - hashSeed(`${key}:affix:${b}`)).slice(0, n); }
+export function rollAffixes(key, n) { return [...AFFIX_IDS].sort(byHash((a) => `${key}:affix:${a}`)).slice(0, n); }
 export const affixNames = (e) => (e?.affixes || []).map((a) => AFFIXES[a]?.name).filter(Boolean);
 // Where drone `i` of a Drone Swarm creature orbits at time `t` (s).
 export function dronePos(e, i, t) { const D = AFFIXES.droneSwarm, a = t * D.spin + i * Math.PI * 2 / D.count; return { x: e.x + .5 + Math.cos(a) * D.orbit, y: e.y + .3 + Math.sin(a) * D.orbit * .6 }; }
