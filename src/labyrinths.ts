@@ -194,7 +194,9 @@ export function generateLabyrinthChamber(seed, id) {
 // ------------------------------------------------------------------------------------------------ outside, on the overworld
 const I = (x, y) => y * 32 + x, WET = /ocean|Ocean|lake|Lake|swamp|Swamp|toxic|Toxic|water|Water|lava|abyss|river|canyon|mire|Mire|shallows|pool|Pool/;
 const CLEARS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
-export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen) {
+// `doorOk(map, at)` (world coherence 1, new ground only): the door must join the land the exits join (landscape.ts joinsCore);
+// a spot whose door stands in a closed pocket is passed over (WG-05). Without it, placement is as it always was.
+export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
   if (!map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const L = LABYRINTHS, ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -203,7 +205,7 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen) {
   const natural = (t) => !!t && !t.structure && !t.buildingId && !t.canopy && !t.keep && !t.greatBuilding && !WET.test(t.kind || "") && !(t.environment && t.environment !== "tree") && (t.elev || 0) <= 2;
   const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y), open = (x, y) => { const t = map.tiles[I(x, y)]; return natural(t) && !t.blocked && !t.slope && !(t.elev > 0) && !objAt(x, y); };
   const h = (k) => hashSeed(`${seed}:labyrinth-spot:${rx}:${ry}:${k}`), base = `labyrinth:${seed}:${rx}:${ry}:${plan.style}`, S = L.styles[plan.style];
-  let tries = 0;
+  let tries = 0, doorMiss = 0;
   for (const [W, H] of L.footprint) {
     const spots = []; for (let oy = 2; oy <= 30 - H; oy++) for (let ox = 2; ox <= 30 - W; ox++) spots.push([ox, oy]); spots.sort((a, b) => h(a) - h(b));
     for (const [ox, oy] of spots.slice(0, 240)) {
@@ -212,6 +214,7 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen) {
       const tiles = map.tiles.slice(), before = exitsOpen(map), cells = [];
       for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) { cells.push({ x, y }); const i = I(x, y); map.tiles[i] = { ...map.tiles[i], x, y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; }
       const after = exitsOpen(map); if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
+      if (doorOk && !doorOk(map, out)) { map.tiles = tiles; if (++doorMiss >= doorOk.tries) return null; continue; }
       const set = new Set(cells.map((c) => I(c.x, c.y))), id = `labyrinth-${rx}-${ry}`, floors = 3 + h("floors") % 2, faceH = 1 + floors * .5;
       map.objects = (map.objects || []).filter((o) => !set.has(I(Math.round(o.x), Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));

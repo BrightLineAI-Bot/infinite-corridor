@@ -71,7 +71,8 @@ const partBase = (seed, rx, ry, style, p) => `compound:${seed}:${rx}:${ry}:${sty
 
 // ------------------------------------------------------------------------------------------------ outside
 const I = (x, y) => y * 32 + x, WET = /ocean|Ocean|lake|Lake|swamp|Swamp|toxic|Toxic|water|Water|lava|abyss|river|canyon|mire|Mire|shallows|pool|Pool/;
-export function placeCompound(map, seed, rx, ry, plan, exitsOpen) {
+// `doorOk(map, at)` (world coherence 1, new ground only): each outer door must join the land the exits join (WG-05).
+export function placeCompound(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
   if (!map?.landscape || !map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const C = COMPOUNDS, T = compoundTopology(seed, rx, ry, plan.style), ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -84,7 +85,7 @@ export function placeCompound(map, seed, rx, ry, plan, exitsOpen) {
   const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y), open = (x, y) => x >= 0 && y >= 0 && x < 32 && y < 32 && plain(map.tiles[I(x, y)]) && !objAt(x, y);
   const h = (k) => hashSeed(`${seed}:compound-spot:${rx}:${ry}:${k}`), R = C.ring;
   const wingFace = compoundFaceH(T.wings[0].floors), towerFace = compoundFaceH(T.tower.floors);
-  let tries = 0;
+  let tries = 0, doorMiss = 0;
   for (const [W, H] of C.sizes) {
     const [tw, th] = C.tower(W, H);
     const spots = []; for (let oy = 1; oy <= 31 - H; oy++) for (let ox = 1; ox <= 31 - W; ox++) spots.push([ox, oy]);
@@ -123,6 +124,7 @@ export function placeCompound(map, seed, rx, ry, plan, exitsOpen) {
       for (const c of court) { const i = I(c.x, c.y), t = map.tiles[i]; map.tiles[i] = { ...t, ...(plan.style !== "hive" || t.blocked ? { kind: plan.style === "hive" ? "arcFloor" : plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology" } : {}), blocked: false, slope: false, elev: 0, courtyard: true, environment: undefined }; } // levelled and paved
       const after = exitsOpen(map), outsideOk = T.wings.filter((q) => doors[q.part].exits["building-exit-outer"]).every((q) => walkable(map, doors[q.part].exits["building-exit-outer"]));
       if (!before.every((o, i) => !o || after[i]) || !outsideOk) { map.tiles = tiles; map.objects = objects; map.enemySpawns = spawns; if (++tries >= 8) return null; continue; }
+      if (doorOk && !T.wings.filter((q) => doors[q.part].exits["building-exit-outer"]).every((q) => doorOk(map, doors[q.part].exits["building-exit-outer"]))) { map.tiles = tiles; map.objects = objects; map.enemySpawns = spawns; if (++doorMiss >= doorOk.tries) return null; continue; }
       const inside = (o) => o.x >= ox - .5 && o.x < ox + W - .5 && o.y >= oy - .5 && o.y < oy + H - .5, id = `compound-${rx}-${ry}`, S = C.styles[plan.style];
       map.objects = (map.objects || []).filter((o) => !inside(o) || (plan.style === "hive" && (o.decor || o.environmental) && !CLEARS.has(o.kind) && court.some((q) => q.x === Math.round(o.x) && q.y === Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !inside(e));
