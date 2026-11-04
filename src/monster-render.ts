@@ -99,6 +99,25 @@ function cachedHaunt(ctx, q, draw, box) {
   const scale = q.u / u, bob = Math.sin(q.t * HAUNT_SPRITE.bob[0]) * q.u * HAUNT_SPRITE.bob[1];
   ctx.drawImage(sprite, q.k - sprite.width * scale / 2, q.b - u * box.foot * scale + bob, sprite.width * scale, sprite.height * scale);
 }
+// The Mountain Turtle's shell, left where it fell (turtle-shell.ts): the Turtle's own ziggurat drawn tucked (legs and head
+// drawn in), lifeless and a shade darker, painted once into a small canvas per tile size and stamped each frame. Its tomb door
+// is the gateway. (x, y) is the middle of the footprint's front row; s the tile size.
+const shellSprites = new Map();
+export const shellSpriteCount = () => shellSprites.size;
+export function drawTurtleShell(ctx, x, y, s, spec) {
+  const u = Math.max(8, Math.round(s * spec.scale)), q = { k: 0, b: 0, u, s, t: 0, p: MONSTER_PACK.mountainTurtle.palette, flip: 1, e: { kind: "mountainTurtle", tucked: true }, state: "idle" };
+  const k = (x + .5) * s, b = (y + spec.foot) * s, canMake = typeof document !== "undefined" && typeof document.createElement === "function";
+  if (!canMake) { BODY.mountainTurtle(ctx, { ...q, k, b }); return; }
+  let sprite = shellSprites.get(u);
+  if (!sprite) {
+    sprite = document.createElement("canvas"); sprite.width = Math.ceil(u * spec.w); sprite.height = Math.ceil(u * spec.h);
+    const g = sprite.getContext("2d"); if (!g) { BODY.mountainTurtle(ctx, { ...q, k, b }); return; }
+    BODY.mountainTurtle(g, { ...q, k: sprite.width / 2, b: sprite.height - u * .06 });
+    g.globalCompositeOperation = "source-atop"; g.fillStyle = spec.dim; g.fillRect(0, 0, sprite.width, sprite.height); // no life in it
+    shellSprites.set(u, sprite); if (shellSprites.size > spec.max) shellSprites.delete(shellSprites.keys().next().value);
+  }
+  const scale = s * spec.scale / u; ctx.drawImage(sprite, k - sprite.width * scale / 2, b - (sprite.height - u * .06) * scale, sprite.width * scale, sprite.height * scale);
+}
 // Release 731: the haunts (haunts.ts). A Gloomwisp: a floating orb of dark gas, wreathed in drifting blue-lit smoke (release 737; violet before), with two bright
 // slanted eyes and a wide jagged grin; it swells and brightens as it winds up a puff.
 function drawGloomwisp(ctx, q) {
