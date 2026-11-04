@@ -92,6 +92,7 @@ import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exit
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale } from "./great-buildings.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor } from "./compounds.ts";
 import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber } from "./labyrinths.ts";
+import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection } from "./castles.ts";
 import { TESSERACTS, grantTesseract } from "./tesseracts.ts";
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen } from "./pentagon.ts";
@@ -2619,6 +2620,7 @@ export class Game {
     // and quest progress are restored; they never complete those objectives themselves.
     applyVoidScars(this.save, this.map, this.areaStateId());
     if (area === "overworld") { applyDragonLava(this.save, this.map, this.rx, this.ry); this.dragonCatchUp(); } // release 709: the Crimson Tyrant's lava stays lava
+    if (area === "overworld") this.layTurtleShells(); // a slain Mountain Turtle's shell, laid over the section from its record (turtle-shell.ts)
     if (area === "dungeon") {
       // Wall glints were generated before the persistent overlay. A consumed wall must not regain a
       // floating treasure marker when the dungeon is loaded again.
@@ -3589,7 +3591,8 @@ export class Game {
     } else if (r.transition === "chest") {
       this.obtainDrop(o.rewardSource || "chest");
       const B = this.map?.building; // Tesseract glyphs (release 729): a labyrinth's vault, the Pentagon's reliquaries and the Regent's hoard
-      if (B && o.id === "building-cache" && B.vault && B.labyrinth && !B.pentagon) this.awardTesseract(`${B.base}:vault`, "labyrinth");
+      if (B && o.id === "building-cache" && B.vault && B.labyrinth && !B.pentagon && B.style === TURTLE_SHELL.style) this.payShellVault(B); // the Shell-Labyrinth: a Tesseract glyph or Divine Viscera
+      else if (B && o.id === "building-cache" && B.vault && B.labyrinth && !B.pentagon) this.awardTesseract(`${B.base}:vault`, "labyrinth");
       else if (B?.pentagon && B.V >= 3 && o.reliquary) this.awardTesseract(`${B.base}:reliquary:${B.node}`, "reliquary");
       else if (B?.pentagon && B.V >= 5 && o.sealedVault) this.awardTesseract(`${B.base}:sealed:${B.node}`, "sealed");
       else if (B?.pentagon && B.V >= 3 && B.vault && o.id === "building-cache") this.awardTesseract(`${B.base}:hoard`, dungeonHistory(this.save, `${B.base}:f1`).regentGrade || "regent");
@@ -5104,7 +5107,8 @@ export class Game {
     if(e.viewportHuntId&&completeViewportHunt(this.save,e.viewportHuntId)){const hunt=this.save.viewport.contracts[e.viewportHuntId];journalOnce(this.save,`viewport-complete:${e.viewportHuntId}`,`${hunt.title} is complete. Viewport records the victory and releases its promised reward.`,hunt.title);recordViewportArrival(this.save,{id:`hunt:${e.viewportHuntId}`,title:hunt.title,text:'A consequential threat was defeated and entered the Refuge record.',kind:'hunt'});(this.questNotices||=[]).push({title:'QUEST COMPLETE',detail:`${hunt.title}${e.worldBoss?' · world threat broken':''} · return to Viewport for the enduring record`,kind:'quest'});/* release 559: queued, so another banner in the same moment never hides it */if(hunt.domain)this.save.worldFlags[`domain-cleared:${hunt.domain}`]=true}
     if (e.farArrayBoss && this.area === "dungeon" && isArrayRun(this.areaId())) { const listener = e.farArrayBoss === "listener", text = (listener ? listenerFelled(this.save) : guardianFelled(this.save)) + (listener ? latticeNote(this.save) + townNote(this.save) : ""); if (listener && beastCatchUp(this.save, liveBeastReference(this.save, characterStats(this.save)))) journalOnce(this.save, `beast-catch-up:${this.save.farArray.listeners}`, "With the Listener fallen, the great beasts of the Corridor rise to meet your strength.", "World beasts"); /* release 331 */ journalOnce(this.save, `far-array:${this.save.farArray.runs}`, text, "The Far Gate"); this.defeatNotice = { title: listener ? "THE LISTENER FALLS" : "A GATE PIECE LOCKS", detail: text, kind: "danger" }; this.message = text; }
     if (e.mothChrysalis) this.hatchMoth(e); // release 708
-    if (e.worldBeast && WORLD_BEASTS[e.worldBeast]) { const B = WORLD_BEASTS[e.worldBeast], won = worldBeastSlain(this.save, e.worldBeast); journalOnce(this.save, `world-beast-slain:${e.worldBeast}:${this.save.worldBeasts[e.worldBeast].slain}`, `You slew ${B.name} at ${this.rx},${this.ry}.`, B.name); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `${B.name} · +${won.marks} marks`, kind: "danger" }; this.message = won.message; } // release 235
+    if (e.worldBeast === TURTLE_SHELL.beast && this.save.worldBeasts?.[e.worldBeast]) this._shellCycle = this.save.worldBeasts[e.worldBeast].cycle; // the kill's cycle, before the fall advances it
+    if (e.worldBeast && WORLD_BEASTS[e.worldBeast]) { const B = WORLD_BEASTS[e.worldBeast], won = worldBeastSlain(this.save, e.worldBeast); journalOnce(this.save, `world-beast-slain:${e.worldBeast}:${this.save.worldBeasts[e.worldBeast].slain}`, `You slew ${B.name} at ${this.rx},${this.ry}.`, B.name); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `${B.name} · +${won.marks} marks`, kind: "danger" }; this.message = won.message; if (e.worldBeast === TURTLE_SHELL.beast) this.restTurtleShell(e, this._shellCycle); } // release 235
     if (e.worldBeast) { const civ = openFarQuest(this.save, e.worldBeast, this.rx, this.ry); if (civ) { const C = farQuestInfo(civ); journalOnce(this.save, `far-quest:${civ}`, C.quest, C.name); (this.questNotices ||= []).push({ title: C.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // release 716
     if (e.stalker) { const won = stalkerSlain(this.save); if (ECHOES.stalker && this.save.echoes?.owned && !this.save.echoes.owned.stalker) { this.save.echoes.owned.stalker = true; won.echo = "stalker"; } /* release 699: Stalker's Mist */ for (let i = 0; i < STALKER.reward.drops; i++) this.obtainDrop("stalker"); for (const q of this.enemies) if (q.stalkerOf === e.id && !q.dead) { q.dead = true; q.noRewards = true; } journalOnce(this.save, `stalker-slain:${this.save.stalker.kills}`, `You killed the Stalker at ${this.rx},${this.ry}. It will hunt again, in time.`, "The Stalker"); this._stalkerWon = won; } // release 678
     if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `The Questing Beast · +${won.marks} marks`, kind: "danger" }; this.message = won.message; const dom = openFarQuest(this.save, "questingBeast", this.rx, this.ry); if (dom) { const D = FAR_DOMAINS[dom]; journalOnce(this.save, `far-quest:${dom}`, D.quest, D.name.replace(/^the /, "The ")); (this.questNotices ||= []).push({ title: D.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // 723: far out, it opens the quest to its domain
@@ -5679,6 +5683,36 @@ export class Game {
     if (B.vault && B.V >= 4 && !H.pentSigil) { H.pentSigil = true; journalOnce(this.save, `pentagon-seal:${B.base}`, PENTAGON.messages.sealV4, PENTAGON.name); this.defeatNotice = { title: "THE FIVEFOLD SEAL", detail: "the Regent's; it opens the sigil doors you go back to", kind: "discovery" }; }
     if (B.vault) { const down = new Set([...(H.pentBosses || [])]).size; H.regentGrade = down >= (B.champions || 8) ? "sovereign" : "regent"; this.message = (H.regentGrade === "sovereign" ? "The Regent falls, the last of the Fivefold Court's champions. Her hoard glows." : "The Regent falls.") + (B.V >= 4 ? ` ${PENTAGON.messages.sealV4}` : ""); return; }
     if (B.heartFloor >= PENTAGON.deepGlyphFrom && B.boss) this.awardTesseract(`${B.base}:keeper:${B.node}`, "deep", B.heartFloor - PENTAGON.deepGlyphFrom);
+  }
+  // The Mountain Turtle's shell (turtle-shell.ts). Its fall on the overworld leaves the shell where it fell, recorded in the
+  // save; past kills have none. Each load of the section lays the recorded shells over the generated ground.
+  restTurtleShell(e, cycle) {
+    this._shellCycle = null; if (this.area !== "overworld" || !Number.isInteger(cycle) || !this.map) return null;
+    const at = placeTurtleShell(this.map, e, { player: this.player, exitsOpen, seed: this.save.seed, cycle });
+    if (!at) { this.message = `${this.message ? this.message + " " : ""}${TURTLE_SHELL.messages.none}`; return null; }
+    const rec = { id: shellId(cycle), cycle, slain: this.save.worldBeasts[TURTLE_SHELL.beast]?.slain || 0, rx: this.rx, ry: this.ry, x: at.x, y: at.y, skirt: at.skirt, lab: shellLabyrinthBase(this.save.seed, cycle, this.rx, this.ry), at: Math.round(Number(this.save.playSeconds) || 0) };
+    addShell(this.save, rec); applyTurtleShell(this.map, rec);
+    if (this.seaIce?.tiles?.size) for (const i of [...this.seaIce.tiles.keys()]) if (!this.map.tiles[i]?.seaIce) this.seaIce.tiles.delete(i); // sand where its ice was: nothing left to thaw there
+    for (const q of this.enemies) if (!q.dead && q !== e && !q.flying && !q.seaKind) relocateIfStranded(q, this.map, 32);
+    const text = at.skirt ? TURTLE_SHELL.messages.skirt : TURTLE_SHELL.messages.rest; this.message = `${this.message ? this.message + " " : ""}${text}`;
+    journalOnce(this.save, `turtle-shell:${rec.id}`, `${text} (${this.rx}, ${this.ry})`, WORLD_BEASTS[TURTLE_SHELL.beast].name);
+    (this.questNotices ||= []).push({ title: "THE SHELL-LABYRINTH", detail: "a gateway in the Turtle's shell · Act to enter", kind: "discovery" });
+    return rec;
+  }
+  layTurtleShells() {
+    if (!this.save.turtleShells) ensureTurtleShells(this.save);
+    for (const f of takeFaded(this.save, this.rx, this.ry)) { this.message = TURTLE_SHELL.messages.fade; journalOnce(this.save, `turtle-shell-faded:${f.id}`, `${TURTLE_SHELL.messages.fade} (${this.rx}, ${this.ry})`, WORLD_BEASTS[TURTLE_SHELL.beast].name); }
+    for (const r of shellsAt(this.save, this.rx, this.ry)) applyTurtleShell(this.map, r);
+  }
+  // The Shell-Labyrinth's vault pays once: a Tesseract glyph or Divine Viscera, as the kill decided (TURTLE_SHELL.vault).
+  payShellVault(B) {
+    const H = dungeonHistory(this.save, `${B.base}:f1`); if (H.shellVault) return null;
+    H.shellVault = shellVaultReward(B.base);
+    if (H.shellVault === "tesseract") return this.awardTesseract(`${B.base}:vault`, "labyrinth");
+    ensureSkylands(this.save); const n = TURTLE_SHELL.vault.viscera; this.save.skylands.viscera = (Number(this.save.skylands.viscera) || 0) + n;
+    this.defeatNotice = { title: "DIVINE VISCERA", detail: `+${n} · from the heart of the shell · spend it in the Skylands' Divine Challenge`, kind: "discovery" };
+    this.message = `${this.message ? this.message + " " : ""}In the heart of the shell: ${n} Divine Viscera.`; journalOnce(this.save, `shell-viscera:${B.base}`, `${n} Divine Viscera, from the heart of the Mountain Turtle's shell.`, TURTLE_SHELL.gate);
+    return { viscera: n };
   }
   awardTesseract(source, grade, floor = 0) { const g = grantTesseract(this.save, source, grade, floor, this.map?.name || ""); if (!g) return null; const K = TESSERACTS.kinds[g.kind];
     this.message = `${this.message ? this.message + " " : ""}A Tesseract glyph: ${g.name}. Set it in Glyphs.`; this.defeatNotice = { title: "A TESSERACT GLYPH", detail: `${K.sigil} ${g.name}`, kind: "discovery" }; journalOnce(this.save, `tesseract:${source}`, `${g.name}, from ${g.from || "the deep"}.`, "Tesseract glyphs"); return g; }

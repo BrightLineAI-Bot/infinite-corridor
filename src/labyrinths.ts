@@ -31,13 +31,16 @@ export const LABYRINTHS = {
   // `shortcut` door deep along the path leads back to the first hall (barred from the hall's side until opened from the far
   // side); the mazes are `braid`ed (a share of their blind ends opened into loops).
   gates: [.35, .7], shortcut: .72, braid: .3,
-  keys: { keep: ["Bronze Key", "Iron Key"], apartment: ["Blue Keycard", "Red Keycard"], hive: ["Spore Sigil", "Ichor Sigil"] },
+  keys: { keep: ["Bronze Key", "Iron Key"], apartment: ["Blue Keycard", "Red Keycard"], hive: ["Spore Sigil", "Ichor Sigil"], shell: ["Ivory Key", "Coral Key"] },
   guards: [1, 3],
   footprint: [[11, 8], [10, 8], [10, 7], [9, 7]],
   styles: {
     keep: { name: "Labyrinth Keep", hall: "Hall", court: "Hedge Court", cellar: "Cellar", subcellar: "Subcellar", gaps: "Gallery of Gaps", vault: "Vault" },
     apartment: { name: "Arcology Maze", hall: "Hab Ward", court: "Sky Garden", cellar: "Service Level", subcellar: "Sub-basement", gaps: "Broken Atrium", vault: "Core Vault" },
     hive: { name: "Hive Labyrinth", hall: "Brood Hall", court: "Spore Garden", cellar: "Burrow", subcellar: "Deep Burrow", gaps: "Rift Gallery", vault: "Queen's Chamber" },
+    // The Shell-Labyrinth (turtle-shell.ts): the maze inside a slain Mountain Turtle's shell. Never rolled on the overworld; its
+    // rooms are the Old Keep's (`building`), washed the colour of old ivory and coral (`tint`, drawn over the chamber).
+    shell: { name: "The Shell-Labyrinth", hall: "Nacre Hall", court: "Coral Court", cellar: "Hollow of the Shell", subcellar: "Marrow Hollow", gaps: "Gallery of Ribs", vault: "Heart of the Shell", building: "keep", tint: "rgba(250,210,188,.2)" },
   },
   floors: { court: ["yardGrass", "hedgeWall"], cellar: ["cellarFloor", "cellarWall"] },
   messages: {
@@ -49,7 +52,7 @@ export const LABYRINTHS = {
   },
 };
 
-const ID = /^labyrinth:(.+):(-?\d+):(-?\d+):(keep|apartment|hive):f(\d+)$/;
+const ID = /^labyrinth:(.+):(-?\d+):(-?\d+):(keep|apartment|hive|shell):f(\d+)$/;
 export const isLabyrinthId = (id) => ID.test(String(id || ""));
 export function parseLabyrinthId(id) { const m = String(id || "").match(ID); return m ? { seed: m[1], rx: Number(m[2]), ry: Number(m[3]), style: m[4], node: Number(m[5]) - 1, base: `labyrinth:${m[1]}:${m[2]}:${m[3]}:${m[4]}` } : null; }
 const nodeId = (base, n) => `${base}:f${n + 1}`;
@@ -155,7 +158,7 @@ export function carveGaps(base, q, W, H, open, V = 1) {
 export function generateLabyrinthChamber(seed, id, V = 1) {
   const P = parseLabyrinthId(id), plan = P && labyrinthPlan(P.base); if (!plan) return null;
   const q = plan.nodes[P.node]; if (!q) return null;
-  const L = LABYRINTHS, S = BUILDINGS.styles[P.style], { W, H } = plan, open = [...q.slots.values()]; if (q.n === 0 || q.vault) open.push({ ...plan.front, wall: true });
+  const L = LABYRINTHS, S = BUILDINGS.styles[L.styles[P.style].building || P.style], { W, H } = plan, open = [...q.slots.values()]; if (q.n === 0 || q.vault) open.push({ ...plan.front, wall: true });
   let grid, room = null, mat = null, far = null;
   const arrive = open[0]?.inner || { x: W >> 1, y: H >> 1 };
   if (q.kind === "court" || q.kind === "cellar") grid = carveMaze(P.base, q, W, H, open);
@@ -194,7 +197,7 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
   if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0] || (V >= 2 ? nearKey() : null); if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
   const fall = q.kind === "gaps" ? plan.nodes[q.fallTo] : null, fallAt = fall ? (fall.slots.values().next().value?.inner || { x: W >> 1, y: H >> 1 }) : null;
   return { seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,
-    building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
+    ...(plan.S.tint ? { tint: plan.S.tint } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
 }
 
 // ------------------------------------------------------------------------------------------------ outside, on the overworld
