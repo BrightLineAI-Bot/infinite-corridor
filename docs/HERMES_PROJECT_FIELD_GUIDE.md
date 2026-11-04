@@ -2854,6 +2854,76 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 729: Tesseract glyphs; the Pentagon, version 3 — 2026-11-04
+
+Tim (2026-11-04): "when you get the Fivefold Seal, I don't want it to unlock all the doors... if you get to the end without beating
+all the bosses or unlocking all the doors, that's fine. But I still want you to be able to go back and complete any other puzzles
+and secrets"; "special glyphs... only get some of them on deeper floors... the final boss will have better loot if you beat all the
+champions before you get to him... like the gems in the Chalice Dungeons... 2 of them can be good, 2 of them can be bad... from a
+labyrinth... a higher chance to have negative effects and lower positive bonuses... rare enough... hunting for them... the
+indicators on the ground... use them to point to these labyrinths and superstructures".
+
+**CODE:** `src/tesseracts.ts` (new; in the build and both sw.js lists):
+- `TESSERACTS` holds the data:
+  - 13 effects. Each has its bonus and cost ranges; `killHeal` is a bonus only and `selfHarm` a cost only.
+  - Five kinds (Edge, Ward, Gale, Star, Sovereign), each with its favoured effects.
+  - Five grades (labyrinth, deep, reliquary, regent, sovereign), each with its `q` strength and its `bad` chance for the two
+    trailing lines, plus `perFloor` for deep.
+  - Three slots, a cap of 60 owned, and 3 dust for shattering one.
+- `rollTesseract(seed, source, grade, floor)` is pure. It rolls four lines: the first two are bonuses (the first from the kind's
+  favoured effects) and the last two are costs by the grade's chance. No effect appears twice.
+- `grantTesseract` gives a source's glyph once ever (`got`).
+- `setTesseract`, `shatterTesseract`.
+- `tesseractBonus` (costs come out negative; `selfHarm` is the harm).
+- `tesseractLine` formats a line.
+- `ensureTesseracts` runs in `freshSave` and `migrateSave` (`src/types.ts`).
+
+`src/glyphs.ts` `armorGlyphBonus`: adds the slotted glyphs' lines past the caps and returns `killHeal` and `selfHarm`. Every place
+that already reads armor-glyph bonuses (health, defense, speed, attack speed, skill recharge and duration, stamina, dodge cost,
+dodge bursts, damage) gets them.
+
+`src/pentagon.ts` (`PENTAGON.version` 3):
+- The Seal is only the `sigil` on h1→h2.
+- The fallen ring doors are `shortcut` passes. `e.far` is the side farther from the land on the base graph; that side carries
+  `shortcutOpens` and the other side `barred` + `shortcutKey`, using the labyrinths' existing mechanics.
+- There are no sigil court doors.
+- Two `secret` nodes (s0 and s1, Hidden Reliquaries) open off ring chambers by passes that carry `lock: shard<k>` and
+  `secretDoor`. Their shards are `labKey` objects: shard0 in another ring chamber, shard1 on Heart floor `shardDeep`. Each
+  reliquary holds a `reliquary` chest.
+- No `bossGate` from version 3 on.
+- `building.champions` (lords + keepers) and `building.heartFloor`.
+
+`src/game.ts`:
+- Drops:
+  - `defeatEnemy` heals by `killHeal`, then calls `pentagonChampionDown`. A keeper from floor `deepGlyphFrom` down gives a Deep
+    glyph that rises a grade step per floor. The Regent's fall sets `regentGrade`: sovereign when `pentBosses` holds every
+    champion.
+  - Chests: a labyrinth's vault cache gives a Labyrinth glyph, a reliquary a Reliquary glyph, and the Regent's hoard a glyph of
+    `regentGrade` (regent if he still stands).
+  - `awardTesseract` writes the notice and the journal.
+- `primaryAttack` takes `selfHarm` with each swing, never below 1 health.
+- `wonderCue` / `wonderTarget` add a gold ground cue (`signalKind: "wonder"`), memoised per section. It points toward the nearest
+  Pentagon centre within `WONDER_CUE.pentagon` sections or labyrinth within `WONDER_CUE.labyrinth`, on unexplored ground and
+  checked against settlements, castles and Pentagons. The settled check shares the castles' memo.
+
+`src/main.ts` (Glyphs screen): a Tesseract section with three slots and each glyph's lines in green (bonus) or red (cost), Set /
+Set here, and a two-tap Shatter. `styles.css`: `.tess-line`, `.tess-good`, `.tess-bad`. `src/renderer.ts`: the gold pentagon
+cue icon.
+
+**BOUNDARY:**
+- Additive at schema 14: `save.tesseracts`, plus the history fields `regentGrade` and `labOpen` / `labKeys` (shortcuts, shards).
+- Pentagons of version 1 and 2 are untouched. Version 3 is the Pentagon of new ground.
+- A labyrinth's vault chest already opened gives nothing more; one opened from now on gives its glyph once.
+- Tests:
+  - `tests/tesseracts.test.ts`: the rolls, the grade ordering, the save and migration, the stats, `selfHarm` and `killHeal`, a
+    labyrinth's vault, and the hunt cue.
+  - `tests/pentagon.test.ts`: the version 2 tests are pinned to `pentVersion: 2`. Version 3 adds:
+    - a 300-seed plan sweep;
+    - a full run with the game: shortcuts opened from behind; barred and secret doors refused first; the Seal, levers and
+      trials; six floors with a Tesseract glyph from each deep keeper; the deep shard; both reliquaries; the hoard's grade;
+      and out;
+    - the Sovereign rule.
+
 ## Release 728: the Pentagon, version 2 — 2026-11-04
 
 Tim (2026-11-04): "the sense I get to be like of exploring it... like Bloodborne... you're going so far... and then you finally
