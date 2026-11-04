@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game } from '../src/game.ts';
+import { Game, clearSectionTerrainCache, sectionTerrainCacheStats } from '../src/game.ts';
 import { render } from '../src/renderer.ts';
 import { LANDSCAPE_VERSION } from '../src/landscape.ts';
 import { PENTAGON, pentagonPlan, generatePentagonChamber, placePentagonSection, pentagonLinkEnds, pentagonLinkKey } from '../src/pentagon.ts';
@@ -184,3 +184,15 @@ test('the shortcuts draw without throwing, shut, open and opening', () => {
   assert.equal(g.shortcutBurst, null, 'the burst ends');
   const ext = P.world.find((w) => w.exterior); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { visit(g, cx + dx, cy + dy); const o = g.map.objects.find((q) => q.enterAt === ext.key); if (o) { g.player.x = o.x; g.player.y = o.y; assert.doesNotThrow(() => render(ctx, g, 360, 640, 5000)); } }
 });
+
+// Release 738's section terrain cache holds only the terrain passes; the Pentagon is laid after, on the copy it hands out. A
+// v5-pinned Pentagon and a v6 one over the same unseen section share the kept terrain and never each other's Pentagon.
+test('the terrain cache: a v6 section never gets a v5 Pentagon, nor a v5 one a v6, whichever loads first', () => {
+  const { cx, cy } = find(), rx = cx - 1, ry = cy - 1, snap = (g) => JSON.stringify([g.map.tiles, g.map.objects.filter((o) => o.kind !== 'traveler'), g.map.pentagon]);
+  const fresh = (mk) => { clearSectionTerrainCache(); const g = visit(mk(), rx, ry); return snap(g); };
+  const v5 = () => pinned(SEED, cx, cy, 5), v6 = () => game(), want5 = fresh(v5), want6 = fresh(v6);
+  assert.ok(want5.includes(':v5:') && !want5.includes(':v6:')); assert.ok(want6.includes(':v6:') && !want6.includes(':v5:'));
+  for (const order of [[v5, v6], [v6, v5]]) { clearSectionTerrainCache(); const [a, b] = order.map((mk) => visit(mk(), rx, ry)); assert.ok(sectionTerrainCacheStats().hits >= 1, 'the second load is served from the cache');
+    for (const [g, mk] of [[a, order[0]], [b, order[1]]]) assert.equal(snap(g), mk === v5 ? want5 : want6); }
+});
+
