@@ -5,7 +5,7 @@
 // own time; and an Aperture relic leaves 0.8 of a stat point from now on.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { freshSave, migrateSave, ensurePerception } from '../src/types.ts';
+import { freshSave, migrateSave, ensurePerception, ensurePerceptionInPlace } from '../src/types.ts';
 import { Game, characterStats, BEAST_REGION_RAMP, ORDINARY_THREAT, DAMAGE_REDUCTION, SPELL_POWER, APERTURE_RELIC_STAT, reductionCurve, beastRegionalThreat, ordinaryThreat, regionalScale, relicStatGain } from '../src/game.ts';
 import { regionalThreat } from '../src/world.ts';
 import { applyPoison } from '../src/elites.ts';
@@ -155,6 +155,10 @@ test('an Aperture relic leaves 0.8 of a stat point from now on; points already g
   const back = migrateSave(JSON.parse(JSON.stringify(s))); assert.equal(back.perception.relicCarry, .8); assert.equal(back.statPoints, 11);
   const old = JSON.parse(JSON.stringify(s)); delete old.perception.relicCarry; old.statPoints = 40; const m = migrateSave(old); assert.equal(m.perception.relicCarry, 0); assert.equal(m.statPoints, 40);
   const bad = JSON.parse(JSON.stringify(s)); bad.perception.relicCarry = 'x'; assert.equal(migrateSave(bad).perception.relicCarry, 0);
+  // The in-place fast path (release 738) keeps a sound carry without copying, and repairs a missing or bad one.
+  const fast = save(); ensurePerception(fast); fast.perception.relicCarry = .4; const p0 = fast.perception; ensurePerceptionInPlace(fast); assert.equal(fast.perception, p0); assert.equal(fast.perception.relicCarry, .4);
+  delete fast.perception.relicCarry; ensurePerceptionInPlace(fast); assert.equal(fast.perception.relicCarry, 0);
+  fast.perception.relicCarry = 7; ensurePerceptionInPlace(fast); assert.ok(fast.perception.relicCarry < 1);
 });
 
 test('a held Stage 1 measure at the old 0.45 guard follows the live reduction above it: nothing tuned to hurt you gets easier', () => {
