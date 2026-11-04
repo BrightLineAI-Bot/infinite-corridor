@@ -49,11 +49,18 @@ export function ensureBeastCeiling(save) {
   return c;
 }
 const measure = (ref, kills) => ({ ...Object.fromEntries(FIELDS.map((k) => [k, ref[k]])), kills });
+// Balance pack (Tim, 2026-11-04): damage reduction now climbs past its old 0.45 cap (game.ts DAMAGE_REDUCTION), and nothing
+// tuned to hurt the Wayfarer may get easier for it. A held measure whose guard sat at the old cap therefore follows the
+// Wayfarer's live reduction above it (beasts, the Questing Beast, the Stalker, the Gate Revenant and the Wardens made from
+// it all read this), so what they deal after reduction is unchanged; below the old cap the hold is as before.
+export const BEAST_GUARD_HOLD = { oldCap: .45 };
 export function stageOneBeastReference(save, ref) {
   if (apertureTier(save?.perception?.aperture || 0) < STAGES.freezeTier) return ref;
   const k = listenerKills(save); let c = ensureBeastCeiling(save);
   if (!c || (k >= STAGES.thawKills && (c.kills ?? -1) < k)) c = save.beastCeiling = measure(ref, k);
-  return { ...ref, ...Object.fromEntries(FIELDS.map((f) => [f, Math.min(ref[f], c[f])])) };
+  const held = { ...ref, ...Object.fromEntries(FIELDS.map((f) => [f, Math.min(ref[f], c[f])])) }, live = Number(ref.guard) || 0;
+  if (c.guard >= BEAST_GUARD_HOLD.oldCap && live > held.guard) held.guard = live;
+  return held;
 }
 // A Listener just fell (game.ts): from the `thawKills`-th kill, the beasts catch up to the Wayfarer as they stand now.
 // `ref` is the unheld reference (world-beasts.ts liveBeastReference).

@@ -1,7 +1,7 @@
 // Audit-only tests pinned to r603 4a30ef33. No gameplay changes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Game, footprintOpen, footprintHazard } from '../src/game.ts';
+import { Game, footprintOpen, footprintHazard, ordinaryThreat, wayfarerTuned } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { createCombatant, CREATURE_FORMS } from '../src/combat.ts';
 import { PACK_KINDS, MONSTER_PACK } from '../src/monster-pack.ts';
@@ -66,6 +66,6 @@ test('audit control: the active robot stops at a naturally generated solid dunge
 test('audit control: real loaded dungeon scales beyond ring 40 and snapshot reload does not scale it twice',()=>{
  const make=(rx)=>{const s=freshSave();s.seed='AUDIT-SCALE';s.session.activeDungeonId='dungeon:AUDIT-SCALE:g1:3:2:room';s.session.dungeonReturn={rx,ry:0,x:16,y:16};const g=new Game(s,0);g.rx=rx;g.ry=0;g.loadArea('dungeon',false);return g;};
  const near=make(0),far=make(100);let checked=0;
- for(const e of far.enemies){const base=near.enemies.find(q=>q.id===e.id);if(!base||e.foundryValidated||e.farArrayBoss||e.worldBeast)continue;assert.equal(e.maxHp,Math.round(base.maxHp*10),e.kind);assert.equal(e.threatRing,100);checked++;}assert.ok(checked>0);
+ for(const e of far.enemies){const base=near.enemies.find(q=>q.id===e.id);if(!base||e.foundryValidated||e.farArrayBoss||e.worldBeast)continue;assert.equal(e.maxHp,Math.round(base.maxHp*10*(wayfarerTuned(e)?1:ordinaryThreat(100).hp)),e.kind);assert.equal(e.threatRing,100);checked++;}assert.ok(checked>0);
  const hp=far.enemies.map(e=>[e.id,e.hp,e.maxHp]);const resumed=new Game(migrateSave(JSON.parse(JSON.stringify(far.exportSnapshot(1000)))),0);assert.deepEqual(resumed.enemies.map(e=>[e.id,e.hp,e.maxHp]),hp);
 });
