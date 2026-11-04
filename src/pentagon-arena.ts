@@ -18,13 +18,9 @@ import { hashSeed, byHash } from "./random.ts";
 import { pentagonPlan, pentagonVaultId, pentagonFinaleId } from "./pentagon.ts";
 import { WORLD_BEASTS, liveBeastReference, BEAST_BALANCE, BEAST_BASELINE } from "./world-beasts.ts";
 
-// The finale creature the monsters agent is building in parallel (a ghost with a darkness phase). Wire it at merge by setting `kind`
-// to its MONSTER_PACK id (and its own `profile` if it wants one); while `kind` names no creature the pick leaves it out.
-export const FINALE_GHOST = {
-  kind: "",
-  name: "",
-  profile: { hitsToKill: 70, hpPerLevel: 30, damageShare: .22, staggerResistance: .95, speed: 1.1, attackGap: .25 },
-};
+// The finale's own creature, the Gloomvast (haunts.ts GLOOM_FINALE: a haunt grown grand, with its Dark). While `kind` names no creature
+// the pick leaves it out.
+export const FINALE_GHOST = { kind: "gloomvast", name: "The Gloomvast", profile: { hitsToKill: 72.5, hpPerLevel: 37.5, damageShare: .1528, staggerResistance: .7, speed: 1, attackGap: .55 } }; // haunts.ts GLOOM_FINALE: its author's values, which cancel this row's factors and BEAST_BALANCE
 
 export const PENTAGON_ARENA = {
   version: 1,
@@ -44,7 +40,7 @@ export const PENTAGON_ARENA = {
     { id: "doomChaser", kind: "doomChaser", beast: "doomChaser", hp: 1.6, damage: 1.35 },
     { id: "voidWalker", kind: "voidWalker", beast: "voidWalker", hp: 2.4, damage: 2.15 },
     { id: "astralWorm", kind: "astralWorm", beast: "astralWorm", hp: 3, damage: 2.15 },
-    { id: "ghost", kind: FINALE_GHOST.kind, profile: FINALE_GHOST.profile, hp: 1.6, damage: 1.6, name: FINALE_GHOST.name },
+    { id: "gloomvast", kind: FINALE_GHOST.kind, profile: FINALE_GHOST.profile, hp: 1.6, damage: 1.6, name: FINALE_GHOST.name },
   ],
   bounty: { marks: 240, perLevel: 24 }, // paid once, when the finale beast falls (the beast's usual drops come with it)
   names: {

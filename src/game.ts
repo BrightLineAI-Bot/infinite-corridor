@@ -106,7 +106,7 @@ import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
-import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, isPackKind, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
+import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, isInteriorArea, markWalked, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot, addStone } from "./digging.ts";
@@ -117,7 +117,7 @@ import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-
 import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farDomainCentre, farQuestInfo } from "./far-realms.ts";
 import { buildDomain, domainWait, domainArrival } from "./far-domains.ts";
 import { ROOF_DWELLERS, roofSpawns, roofTick, tuneDweller, useRoof } from "./roof-dwellers.ts"; // the Pentagon roofs' dwellers
-import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn } from "./haunts.ts";
+import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn, GLOOM_FINALE, gloomFinaleSpawn, gloomVitals, gloomOrbSpots, gloomDarkLevel } from "./haunts.ts";
 import { beastUnlocked as beastOpenFor, ensureWorldBeasts as ensureBeastsFor, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
@@ -694,11 +694,11 @@ export function ordinaryThreat(ring) {
 }
 // Foes tuned to the Wayfarer (or harmless) keep regional threat alone; every other foe is "ordinary" here, its guardians and
 // elites included, so they stay proportionally above the trash around them.
-export function wayfarerTuned(e) { return !!(e.worldBeast || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast); }
+export function wayfarerTuned(e) { return !!(e.worldBeast || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
 // The one regional scaling of a fresh foe (scaleFresh, and foes made later in the same ground). A beast keeps its share of health.
 export function regionalScale(e, q) {
   if (e.pentFinaleBeast) { e.threatRing = q.ring; e.xpMultiplier = q.xpMultiplier; return e; } // the Stillworks' beast took its regional ramp when it was made (tunePentagonArenaBeast)
-  const beast = !!(e.worldBeast || e.questingBeast), m = beast ? beastRegionalThreat(q) : q, o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
+  const beast = !!(e.worldBeast || e.questingBeast || e.gloomFinale), m = beast ? beastRegionalThreat(q) : q, /* the Gloomvast takes regional threat as the beasts do (BEAST_REGION_RAMP) */ o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
   const share = beast && e.maxHp > 0 ? Math.max(0, Math.min(1, (Number(e.hp) || 0) / e.maxHp)) : 1;
   e.threatRing = q.ring;
   e.maxHp = Math.round(e.maxHp * m.hpMultiplier * o.hp);
@@ -2072,9 +2072,9 @@ export function shouldSimulateEnemy(e,player,area="overworld"){
 // woken, bosses, the nearest, then by id).
 export function activeDungeonEnemies(enemies,player,map){
  const cap=Math.max(1,Number(map?.activeEnemyCap)||DUNGEON_ACTIVE_CAP[map?.encounterProfile]||DUNGEON_ACTIVE_CAP.normal),keyed=[];
- for(const e of enemies)if(shouldSimulateEnemy(e,player,"dungeon"))keyed.push({e,h:Number(isDungeonHunter(e,"dungeon")),a:Number(!!e.aggro),b:Number(!!e.boss),d:Math.hypot(e.x-player.x,e.y-player.y)});
+ let orbs=null;for(const e of enemies){if(e.gloomOrbOf&&!e.dead){(orbs||=[]).push(e);continue}/* the Gloomvast's decoys always move (bounded by GLOOM_FINALE.darkness.cap) and take no place from the others */if(shouldSimulateEnemy(e,player,"dungeon"))keyed.push({e,h:Number(isDungeonHunter(e,"dungeon")),a:Number(!!e.aggro),b:Number(!!e.boss),d:Math.hypot(e.x-player.x,e.y-player.y)})}
  keyed.sort((a,b)=>b.h-a.h||b.a-a.a||b.b-a.b||a.d-b.d||String(a.e.id).localeCompare(String(b.e.id)));
- const out=new Array(Math.min(cap,keyed.length));for(let i=0;i<out.length;i++)out[i]=keyed[i].e;return out;
+ const out=new Array(Math.min(cap,keyed.length));for(let i=0;i<out.length;i++)out[i]=keyed[i].e;if(orbs)out.push(...orbs);return out;
 }
 export function settlementSanctuary(map,rx,ry,save){if(!map||map.farFolk==="monster"||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;if(map.settlement?.procedural)return{x:map.settlement.x,y:map.settlement.y,radius:map.settlement.radius};return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
@@ -2578,8 +2578,9 @@ export class Game {
       hamlet:!seen||seen.hamletVersion||town?.mouth?[seen?.hamletVersion||HAMLET_VERSION,!!town,legacyMouthHamlet(save,rx,ry)]:null,
       trails:!seen||!!seen.travelVersion,bridgeLanes:!!coh};}
   areaStateId(){const id=this.areaId();return this.area==="dungeon"&&this.map?.multiLevel&&this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id;}
-  snapshotArea() {
+  snapshotArea(leaving = true) {
     if (!this.map) return;
+    if (leaving) this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (a save made in place keeps it: exportSnapshot)
     for(const e of this.enemies)this.syncAstralClone(e);
     const objects = {};
     for (const o of this.map.objects)
@@ -2592,7 +2593,7 @@ export class Game {
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
       leftAt: Number(this.save.playSeconds) || 0, // release 651: when it was last held, for Fractured mode's return
-      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast && !e.fracReinforcement && !e.roofDweller /* roof-dwellers.ts: made again from the plan; the slain are on the Pentagon's history */).map((e) => { const dead = deadFoeRecord(e); if (dead !== e) return dead; /* perf pack: a dead, rewarded foe is kept as a tombstone */ return ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } }); }), // release 259: the Blob's remnant is never saved
+      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast && !e.fracReinforcement && !e.roofDweller && !e.gloomOrbOf /* the Gloomvast's decoys are laid again from its Dark; */ /* roof-dwellers.ts: made again from the plan; the slain are on the Pentagon's history */).map((e) => { const dead = deadFoeRecord(e); if (dead !== e) return dead; /* perf pack: a dead, rewarded foe is kept as a tombstone */ return ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } }); }), // release 259: the Blob's remnant is never saved
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
@@ -2624,6 +2625,7 @@ export class Game {
   }
   loadArea(area, capture = true) {
     this.season = null; // release 679: set again below for a section of the woods
+    this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (snapshotArea ends it too)
     if (capture) this.snapshotArea();
     if (area !== "overworld") this.glide = null; // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
     this.affixHazards = []; // release 657
@@ -2884,6 +2886,7 @@ export class Game {
         if (merged.gatePredator) { tuneGatePredator(merged, this.save, characterStats(this.save)); resetGateAttack(merged, true); }
         return merged;
       });
+      for(const saved of s.enemies||[])if(saved.gloomFinale&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);resetPackRuntime(restored);this.enemies.push(restored)} // the Gloomvast, spawned by its arena at run time (spawnGloomFinale), comes back as it was
       for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId||saved.astralMountFixture||saved.riteFoe&&area==="overworld"&&this.rite?.key===riteKey(this.rx,this.ry)/* release 736 (F7): a Rite resumed keeps its foes */)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);if(restored.gatePredator){tuneGatePredator(restored,this.save,characterStats(this.save));resetGateAttack(restored, true)}this.enemies.push(restored)}
       for(const saved of s.enemies||[])if(saved.astralOwner&&!saved.dead&&this.enemies.length<32&&!this.enemies.some(e=>e.id===saved.id)){const owner=this.enemies.find(e=>e.id===saved.astralOwner&&!e.dead),clone=owner?.astral?.clones?.find(c=>c.id===saved.id&&c.hp>0);if(clone){const restored={...saved,hp:Math.min(saved.hp,clone.hp),noRewards:true,summonedBy:owner.id,ai:{...saved.ai}};delete restored.worldBeast;delete restored.questingBeast;ensureAI(restored);this.enemies.push(restored);}}
       for (const o of this.map.objects)
@@ -3095,7 +3098,7 @@ export class Game {
     const clock =
       this.paused && this.pauseStarted !== null ? this.pauseStarted : now;
     this.sync();
-    this.snapshotArea();
+    this.snapshotArea(false); // a save in place, not a leaving
     Object.assign(this.save.session, {
       area: this.area,
       rx: this.rx,
@@ -3177,6 +3180,7 @@ export class Game {
     this.glide = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
+    this.endGloomDarks(); // the Gloomvast's Dark ends with a death or a journey by Wayglass
   }
   restoreRuntime(r, now) {
     if (!r || typeof r !== "object") return;
@@ -4865,6 +4869,8 @@ export class Game {
       frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
       confuse(seconds) { if (!(seconds > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return; if (!(now < (p.confusedUntil || 0))) game.message = HAUNT.text.confused; p.confusedUntil = Math.max(p.confusedUntil || 0, now + seconds * 1000); }, // release 731: the haunts turn you about
       curse: (source, n) => game.layHauntCurses(source, n, now), // release 737: a landed puff or howl lays haunt curses
+      say: (text) => { if (text) game.message = text; }, // the Gloomvast's Dark and reveal (haunts.ts GLOOM_FINALE.text)
+      gloomSpots: (c, n, key) => game.gloomSpots(c, n, key), spawnGloomOrb: (owner, x, y, tag, brain) => game.spawnGloomOrb(owner, x, y, tag, brain),
       ignite(seconds, dps) { if (now < (p.dodgeUntil || 0)) return; const f = game.playerFire, on = f && f.left > 0; if (on && f.dps > dps) return; game.playerFire = { left: on && f.dps === dps ? Math.max(f.left, seconds) : seconds, dps, tick: f?.tick ?? 1 }; }, // balance pack (C11): the stronger burn keeps its own time // release 708: set alight (the Briar Stag's burning trees)
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(eliteStateInPlace(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
@@ -5377,6 +5383,8 @@ export class Game {
       if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
       if (area === "dungeon" && this.map?.building && e.buildingGuard && !c.buildingScaled) { const k = buildingScale(this.map.building.floor), G = BUILDINGS.creatures.guardian; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp * (e.buildingGuardian ? G.hp : 1))); c.damage = Math.max(1, Math.round(c.damage * k.damage * (e.buildingGuardian ? G.damage : 1))); if (c.baseDamage) c.baseDamage = c.damage; if (e.buildingGuardian) { c.packName = `${this.map.building.style === "keep" ? "Keep" : "Arcology"} Guardian`; c.affixes = rollAffixes(`${this.save.seed}:building-guardian:${c.id}`, G.affixes); } if (e.pentBoss) { const B = e.pentBoss, g = e.buildingGuardian ? G : { hp: 1, damage: 1 }; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp / g.hp * B.hp)); c.damage = Math.max(1, Math.round(c.damage / g.damage * B.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.packName = B.name; c.pentBoss = true; c.affixes = rollAffixes(`${this.save.seed}:pentagon-boss:${c.id}`, B.affixes); } c.buildingScaled = true; c.buildingGuard = true; } // great buildings: each floor up is harder; the top floor's guardian most of all
       if (e.pentFinaleBeast) tunePentagonArenaBeast(c, e.pentFinaleBeast, this.save, characterStats(this.save), beastRegionalThreat(regionalThreat(this.rx, this.ry))); // the Stillworks' finale beast (pentagon-arena.ts)
+      if (e.gloomFinale) this.tuneGloomFinale(c, e.gloomFinale); // the Gloomvast: last, so nothing above changes its tuning
+      else if (e.kind === GLOOM_FINALE.kind) this.gloomInit(c); // a Gloomvast an arena tuned itself (the Stillworks' roster): its vitals kept, its kit and Dark made ready
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -5550,6 +5558,71 @@ export class Game {
     const g = this.scaleToRegion(this.createEnemyFromSpawn({ id: `${knot.wisps[0].id}:gorge:${Math.round(now)}`, kind: "gloomgorge", x: knot.x, y: knot.y, traits: [] })), pooled = knot.wisps.reduce((n, w) => n + Math.max(0, Number(w.maxHp) || 0), 0);
     if (pooled > g.maxHp) g.maxHp = g.hp = Math.round(pooled); /* balance pack (tim.md 2): at least the wisps it swallowed */ g.aggro = true; this.enemies.push(g); this.hauntGorged = true;
     this.message = HAUNT.text.merge; return g;
+  }
+  // The Gloomvast (haunts.ts GLOOM_FINALE; the Pentagon finale's haunt). Tuned to the Wayfarer as they stand (the live
+  // reference with their real level and health, not the Stage 1 hold or the beasts' starter floors): health and damage from GLOOM_FINALE.vitals, scaled by the arena's `hpScale` and
+  // `damageScale`. Its kit is its own: no hybrid attack, no guardian kit, no affixes.
+  tuneGloomFinale(c, o = {}) {
+    const V = GLOOM_FINALE.vitals, def = MONSTER_PACK[GLOOM_FINALE.kind], stats = characterStats(this.save), live = liveBeastReference(this.save, stats);
+    const v = gloomVitals({ ...live, level: Math.max(1, Number(this.save.level) || 1), maxHp: Math.max(1, Number(this.save.maxHp) || stats.maxHp || 60) }, o); // the Wayfarer as they are: their own level and health, not the beasts' starter floors
+    Object.assign(c, { gloomFinale: { v: GLOOM_FINALE.version, name: o.name || null, hpScale: o.hpScale || 1, damageScale: o.damageScale || 1 }, hp: v.hp, maxHp: v.hp, damage: v.damage, baseDamage: v.damage,
+      staggerResistance: V.staggerResistance, attackGap: V.attackGap, attackCooldownScale: V.cooldown, speedMultiplier: V.speed, packName: o.name || def.name });
+    return this.gloomInit(c);
+  }
+  // Its body, kit and Dark state, for any Gloomvast however its vitals were set (tuneGloomFinale, or an arena's own tuning such as
+  // the Stillworks' tunePentagonArenaBeast, whose health, damage and ring are kept). It never springs aside (`evasive`): the Dark is its evasion.
+  gloomInit(c) {
+    const V = GLOOM_FINALE.vitals, def = MONSTER_PACK[GLOOM_FINALE.kind];
+    Object.assign(c, { boss: true, scale: V.scale, baseScale: V.scale, bodyRadius: .38 + (V.scale - 1) * .3, telegraphScale: 1, evasive: false,
+      hybridAttack: null, hybridDonor: null, packAttacks: [...def.attacks], packBossAttacks: [], kitMoves: [],
+      gloomSeed: hashSeed(`${this.save.seed}:${c.id}:gloom-v1`), gloomDarks: 0, gloomDark: null, gloomVeil: false, gloomGap: 0, gloomFade: 0, gloomReel: 0 });
+    delete c.kitRole; delete c.affixes; delete c.eliteId; return c;
+  }
+  // Spawns the Gloomvast at (x, y) now, for an arena that calls it up at run time (an arena that lays its foes on the map puts
+  // gloomFinaleSpawn(id, x, y, opts) in map.enemySpawns instead). Regionally scaled once, aggressive at once. Returns it.
+  spawnGloomFinale(x, y, opts = {}) {
+    const id = opts.id || `${this.areaId()}:gloomvast`, have = this.enemies.find((e) => e.id === id && !e.dead); if (have) return have;
+    const c = this.scaleToRegion(this.createEnemyFromSpawn(gloomFinaleSpawn(id, x, y, opts)));
+    if (opts.aggro !== false) c.aggro = true; this.enemies.push(c); ((this.save.codex ||= {}).creatures ||= {})[GLOOM_FINALE.kind] = true; return c;
+  }
+  gloomSpots(c, n, key) { return gloomOrbSpots(this.map, mapWidth(this.map, this.area), c, n, `${this.save.seed}:${key}`); }
+  // One decoy of the Gloomvast's Dark: a cold light with its health (so no blow bursts it), a share of its damage, its body
+  // size (so it is struck as easily), its regional ring (scaled once, through it), no reward. At most darkness.cap alive.
+  spawnGloomOrb(owner, x, y, tag, brain) {
+    const D = GLOOM_FINALE.darkness; if (!owner || this.enemies.filter((q) => !q.dead && q.gloomOrbOf === owner.id).length >= D.cap) return null;
+    const c = createCombatant(GLOOM_FINALE.orbKind, x, y, false, []), hp = Math.max(1, Math.round((Number(owner.maxHp) || 1) * D.decoyHp));
+    Object.assign(c, { id: `${owner.id}:shade:${tag}`, gloomOrbOf: owner.id, summonedBy: owner.id, noRewards: true, aggro: true, gloomVeil: true, hp, maxHp: hp, gloomHp: hp, damage: Math.max(1, Math.round((Number(owner.damage) || 1) * D.decoyDamage)), brain: brain || "orbit", bodyRadius: owner.bodyRadius, threatRing: owner.threatRing ?? 0, xpMultiplier: 0 });
+    ensureAI(c); this.enemies.push(c); return c;
+  }
+  // A light pack world for ending a Dark outside the creatures' own update.
+  gloomWorld(now = this.lastUpdateNow || 0) { return { enemies: this.enemies, player: this.player, dt: 0, now, addEffect: (f) => addPackEffect(this.packEffects ||= [], f, now), say: (m) => { if (m) this.message = m; } }; }
+  // Every frame: a fallen Gloomvast's Dark ends at once; decoys whose Dark is over (or whose Gloomvast is gone) go.
+  gloomTick(now) {
+    let spent = false;
+    for (const e of this.enemies) {
+      if (e.kind === GLOOM_FINALE.kind && e.gloomDark && (e.dead || !(e.hp > 0))) gloomDarkEnd(e, this.gloomWorld(now), false);
+      if (e.gloomOrbOf && !e.dead && !this.enemies.some((q) => q.id === e.gloomOrbOf && !q.dead && q.gloomDark)) { e.dead = true; e.noRewards = e.rewarded = true; }
+      if (e.gloomOrbOf && e.dead) spent = true;
+    }
+    if (spent) this.enemies = this.enemies.filter((e) => !(e.gloomOrbOf && e.dead));
+  }
+  // A decoy keeps only `decoyTake` of each blow that landed since the last frame (at least 1), whatever struck it.
+  gloomMend() {
+    const take = GLOOM_FINALE.darkness.decoyTake;
+    for (const q of this.enemies) { if (!q.gloomOrbOf || q.dead) continue; const was = Number.isFinite(q.gloomHp) ? q.gloomHp : q.hp, lost = was - q.hp; if (lost > 0) q.hp = Math.max(1, was - Math.max(1, Math.round(lost * take))); q.gloomHp = q.hp; }
+  }
+  // Ends every Dark here at once (the Wayfarer leaves, dies or travels): no decoys stay, the dark does not linger.
+  endGloomDarks() {
+    if (!this.enemies?.some((e) => e.kind === GLOOM_FINALE.kind && (e.gloomDark || e.gloomFade > 0 || e.gloomVeil))) return;
+    const w = this.gloomWorld();
+    for (const e of this.enemies) if (e.kind === GLOOM_FINALE.kind) { if (e.pack?.attack === "vastDark") { e.pack.attack = null; e.pack.phase = null; e.pack.tele = null; e.pack.state = "move"; } gloomDarkEnd(e, w, false); e.gloomFade = 0; }
+    this.enemies = this.enemies.filter((e) => !e.gloomOrbOf);
+  }
+  // What the renderer darkens: { level 0..1, light } for the darkest Gloomvast here, or null. Never while the Wayfarer lies fallen.
+  gloomDarkness() {
+    if (this.fallen || !(this.player?.hp > 0)) return null; let level = 0;
+    for (const e of this.enemies || []) if (e.kind === GLOOM_FINALE.kind) level = Math.max(level, gloomDarkLevel(e));
+    if (!(level > 0)) return null; const o = (this._gloomDarkOut ||= { level: 0, light: GLOOM_FINALE.darkness.light }); o.level = level; return o; // one object, reused each frame
   }
   // Release 723: in a domain, its beast comes once the Wayfarer has waited there long enough this visit (at once on the visit that
   // completes the quest). A Questing Beast hunting elsewhere leaves that section for its own; one already here is just fought.
@@ -7266,6 +7339,7 @@ export class Game {
     this.hauntTick(dt, now); // release 731: the haunts split and pour together
     this.roofStep(dt); // the Pentagon roofs' dwellers wake, pursue and go back to sleep
     this.curseTick(now); // release 737: haunt curses wear off
+    this.gloomTick(now); // the Gloomvast: a fallen one's Dark ends, spent decoys go
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = eliteStateInPlace(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
@@ -7710,6 +7784,7 @@ export class Game {
     // Release 609 (Codex play-test, issue 1): a fatal fall or a step into a lethal drop stays fatal; the robot's plating, a hull,
     // Ink Shield or any guard settled above must not turn it back into an ordinary blow.
     if (fellIntoHazard || this._fatalFall) p.hp = 0;
+    this.gloomMend(); // the Gloomvast's decoys keep only GLOOM_FINALE.darkness.decoyTake of each blow (before the damage numbers read health)
     if (this.damageNumbers) this.trackDamageNumbers(now); // release 461
     if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
     if (p.hp <= 0 && this.rite) this.riteFailed(); // the Rite of Ascendancy: a death breaks it

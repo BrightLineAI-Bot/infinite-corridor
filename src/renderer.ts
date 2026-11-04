@@ -18,7 +18,7 @@ import { TREES } from "./trees.ts";
 import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell } from "./monster-render.ts";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
@@ -2202,7 +2202,7 @@ export function render(ctx, g, w, h, now) {
   // Active combat effects, including Supernova, intentionally paint over fog. They never reveal tiles or actors.
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
-  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
+  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&!e.gloomVeil&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
   for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? Math.max(0, Math.min(1, 1 - (h.armAt - now) / ((A?.arm || .5) * 1000))) : 1; /* release 694: rounding put k a hair below 0 the frame a mark was laid, and a negative radius threw */ if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
     if (arming) { ctx.strokeStyle = A.color; ctx.globalAlpha = .45 + .45 * k; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.stroke(); ctx.fillStyle = A.color + "40"; ctx.beginPath(); ctx.ellipse(x, y, R * k, R * .6 * k, 0, 0, 7); ctx.fill(); }
     else if (h.kind === "volcanic" || h.kind === "venomous") { ctx.globalAlpha = Math.min(1, (h.until - now) / 600) * .75; const gr = ctx.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, h.kind === "volcanic" ? "#ffd27a" : "#d8ff9a"); gr.addColorStop(.5, A.color); gr.addColorStop(1, A.color + "00"); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); }
@@ -2392,7 +2392,7 @@ export function render(ctx, g, w, h, now) {
         },
       });
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
+    if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         fn: () => {
@@ -2623,8 +2623,14 @@ export function render(ctx, g, w, h, now) {
     grad.addColorStop(0, "rgba(6,10,18,0)"); grad.addColorStop(1, `rgba(6,10,18,${.92 * fade})`);
     ctx.fillStyle = grad; ctx.fillRect(l * s, t * s, (r - l) * s, (b - t) * s);
   }
+  { // The Gloomvast's Dark (haunts.ts GLOOM_FINALE): the view darkened to a small light round the Wayfarer (one cached mask), then
+    // its cold lights (decoys and itself, alike) and their warnings over the dark
+    const dark = g.gloomDarkness?.(), veiled = dark ? g.enemies.filter((e) => e.gloomVeil && !e.dead && visibleInCamera(e, l, t, r, b, 3)) : [] /* only while a Dark shows */, quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
+    if (dark) { const vx = p.x * s - w / 2 - 2, vy = (p.y - viewLift) * s - h / 2 - 2; drawGloomDark(ctx, (p.x + .5) * s, (p.y + .6 - viewLift) * s, s, { x0: vx, y0: vy, x1: vx + w + 4, y1: vy + h + 4 }, dark, { low: budget.quality === "low", reduceMotion: quiet, now }); }
+    if (veiled.length) { drawPackTelegraphs(ctx, veiled, s, now, () => true, { ground: groundLift, reduceMotion: quiet }); drawGloomVeiled(ctx, veiled, s, now, { low: budget.quality === "low", reduceMotion: quiet }); }
+  }
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2)) {
+    if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && !e.gloomVeil && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2)) {
       const barY = e.kind === "stalker" ? e.y - .1 - Math.max(0, (Number(e.scale) || 1) - 1) * .75 - (Number(e.stalkLift) || 0) : e.packKind ? e.y - 0.1 - Math.max(0, (Number(e.scale) || 1) - 1) * 0.75 - (e.flying ? 0.35 : 0) - (e.kind === "psychicCrystal" ? crystalLift(e) : 0) : e.y - 0.1;
       ctx.fillStyle = "#211617";
       ctx.fillRect(e.x * s, barY * s, s, 3);
@@ -2634,7 +2640,7 @@ export function render(ctx, g, w, h, now) {
   drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
-  { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
+  { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
   for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?16:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?(o.blocks?greatBlocks:greatBuilding):architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
