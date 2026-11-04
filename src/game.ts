@@ -96,7 +96,7 @@ import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundF
 import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
-import { TESSERACTS, grantTesseract } from "./tesseracts.ts";
+import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor } from "./pentagon.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -333,7 +333,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
-  else if (isPentagonFinaleId(id)) { map = generatePentagonFinale(save.seed, id); history.gatePredatorSpawnThreshold = 0; } // the Pentagon's finale: a walk among the stars (PENTAGON.finale)
+  else if (isPentagonFinaleId(id)) { if (history.finaleFloor === undefined) history.finaleFloor = fresh ? PENTAGON.finale.floor : 1; map = generatePentagonFinale(save.seed, id, history.finaleFloor); history.gatePredatorSpawnThreshold = 0; } // the walkway's generator pinned (1: stars you cannot step onto; 2: a drop) // the Pentagon's finale: a walk among the stars (PENTAGON.finale)
   else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id) || isPentagonId(id)) { map = isPentagonId(id) ? labyrinthState(save, generatePentagonChamber(save.seed, id)) : isCastleId(id) ? generateCastleFloor(save.seed, id, iv) : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id, iv)) : isCompoundId(id) ? generateCompoundFloor(save.seed, id, iv) : generateBuildingFloor(save.seed, id, iv); history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
   else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); if (fresh && history.canyonGenerator === undefined) history.canyonGenerator = CANYON.generator; map = generateCanyon(save.seed, id, c.drilled, c.strained, history.canyonGenerator || 1); } // Canyon craters; release 735: generator 2 for craters first entered from now on
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
@@ -2859,6 +2859,7 @@ export class Game {
       // floating treasure marker when the dungeon is loaded again.
       this.map.wallGlints = (this.map.wallGlints || []).filter(q => this.map.tiles[q.y * mapWidth(this.map, area) + q.x]?.blocked);
       if (this.map.objects?.some((o) => o.dir === "roofExit") && !this.roofExitGuarded()) this.openRoofExit(); // release 746: the vault reached with no guardian standing
+      if (this.map.pentFinale) this.refreshDais(); // the dais's choices, as this journey has used them
       if (this.map.building?.pentagon && this.map.building.vault && (!this.roofExitGuarded() || dungeonHistory(this.save, `${this.map.building.base}:f1`).regentGrade)) this.openPentagonFinale(); // the Pentagon's finale: the Regent fell (now, or in a journey before it: none stands, or v3+ recorded his fall), the wall stands open
     }
     const ar=this.save.worldBeasts?.astralWorm?.active?.astralRetreat;
@@ -3730,7 +3731,7 @@ export class Game {
     if (o.kind === "buildingStair") return this.takeBuildingStair(o); // great buildings
     if (o.kind === "pentShortcut") return this.pentagonShortcut(o); // the Pentagon's shortcut links (v6)
     if (o.kind === "pentFinaleWall") return this.pentagonFinaleWalk(o); // the finale's opened wall, either side
-    if (o.kind === "pentDais") return this.pentagonTransit(o); // and its dais
+    if (o.kind === "pentDais") return this.pentagonDais(o, action); // and its dais: Transit, and its rerolls
     if (o.kind === "labKey") return this.takeLabKey(o); // a labyrinth's key
     if (o.kind === "pentRubble") { const m = (this.save.materials ||= {}); m.stone = Math.max(Number(m.stone) || 0, 10); setBuildKind(this.save, "stone"); this.message = `${PENTAGON.messages.rubble}: you have ${m.stone} stone, and a block is ready to build.`; this.sync(); return { ok: true, message: this.message }; } // enough for a block on the plate
     if (o.kind === "pentRelic") { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`); H.pentRelics = [...new Set([...(H.pentRelics || []), o.relic])]; o.state = "read"; this.message = `${o.lore} (${PENTAGON.messages.relic}: ${H.pentRelics.length} of ${PENTAGON.relics.length + (this.map.building.V >= 5 ? PENTAGON.sealedRelics.length : 0)})`; journalOnce(this.save, `pentagon-relic:${this.map.building.base}:${o.relic}`, o.lore, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; }
@@ -4105,7 +4106,8 @@ export class Game {
     reconcileAstralCompanions(this);this.syncAstralRiders();
     stopRide(this.save); // release 748: death gets you down; the mount stays stabled with its time
     this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
-    if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
+    const walk = this.area === "dungeon" && !!this.map?.pentFinale; // the Pentagon's finale: a fall from the walkway wakes you at its start (PENTAGON.finale)
+    if (this.area === "dungeon" && !walk) {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
     const c = this.safeCheckpoint(); // release 734 (F2): a null active checkpoint threw here on every frame
     this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
     this.save.session.displacementJourney=null;
@@ -4127,6 +4129,7 @@ export class Game {
     this.effects = [];
     this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
     input.reset?.();
+    if (walk) { const e = this.map.entry || { x: 1, y: 7 }; p.x = e.x; p.y = e.y; p.invulnerableUntil = now + 2000; this.fallen = null; this.snapshotArea(); this.message = `${PENTAGON.finale.messages.fell}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; return; } // the same floor, at the walkway's start, beside the doorway back
     this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
     this.rx = c.rx;
     this.ry = c.ry;
@@ -6225,6 +6228,7 @@ export class Game {
   openPentagonFinale() {
     const B = this.map?.building; if (!B?.pentagon || !B.vault) return null;
     const F = PENTAGON.finale, H = dungeonHistory(this.save, `${B.base}:f1`), was = !!H.pentFinale; let o = this.map.objects.find((q) => q.kind === "pentFinaleWall");
+    if (!(B.V >= 3)) this.awardTesseract(`${B.base}:hoard`, "regent"); // a Pentagon begun before Tesseracts (v1, v2): the Regent's fall gives the glyph a v3+ hoard holds (the same source, so once)
     if (was && o) return o;
     if (!o) o = pentagonFinaleIn(this.save, this.areaId(), this.map, true); if (!o) return null;
     H.pentFinale = F.version; journalOnce(this.save, `pentagon-finale:${B.base}`, F.messages.opens, PENTAGON.name);
@@ -6241,6 +6245,35 @@ export class Game {
     journalOnce(this.save, `pentagon-finale-walk:${this.map.building?.base}`, F.messages.walk, PENTAGON.name);
     this.message = F.messages.walk; this.defeatNotice = { title: F.names.floor.toUpperCase(), detail: "a walkway among the stars · a dais at its end", kind: "discovery" };
     this.sync(); return { ok: true, message: this.message };
+  }
+  // The dais (PENTAGON.finale.reroll): per Pentagon, one free reroll of a line on a Tesseract glyph you carry, then one more for
+  // Divine Viscera; then only Transit. Act opens its choices while a reroll is left (a pick list: a glyph, then its line);
+  // otherwise Act is Transit. The count is kept on the base floor's history (`pentRerolls`). Each reroll is a hash of the seed,
+  // the Pentagon, the reroll's index, the glyph and the line (tesseracts.ts rerollTesseractLine): reloading never changes it.
+  daisRerolls() { const P = parsePentagonFinaleId(this.areaId()), R = PENTAGON.finale.reroll; if (!P) return { P: null, used: 0, left: 0 }; const H = dungeonHistory(this.save, `${P.base}:f1`), used = Math.max(0, Math.floor(Number(H.pentRerolls) || 0)); return { P, H, used, left: Math.max(0, R.free + R.paid - used), paid: used >= R.free }; }
+  daisGlyphs() { ensureTesseracts(this.save); const T = this.save.tesseracts, set = T.slots.filter(Boolean); return [...T.owned].sort((a, b) => (set.includes(b.uid) ? 1 : 0) - (set.includes(a.uid) ? 1 : 0) || Number(b.uid.slice(1)) - Number(a.uid.slice(1))).slice(0, PENTAGON.finale.reroll.list); }
+  refreshDais(o = this.map?.objects?.find((q) => q.kind === "pentDais")) {
+    if (!o) return null; const F = PENTAGON.finale, R = F.reroll, r = this.daisRerolls(), glyphs = r.left ? this.daisGlyphs() : [], cost = r.paid ? ` (${R.viscera} Divine Viscera)` : " (free)", labels = { transit: "Transit" };
+    let actions = ["transit"]; const g = o.pick && glyphs.find((q) => q.uid === o.pick); if (!g) o.pick = null;
+    if (g) { actions = [...g.lines.map((l, i) => { const a = `reroll:${g.uid}:${i}`; labels[a] = `Cut again: ${tesseractLine(l)}${cost}`; return a; }), "pick:", "transit"]; labels["pick:"] = "Choose another glyph"; }
+    else for (const q of glyphs) { const a = `pick:${q.uid}`; labels[a] = `Reroll a line of ${q.name}${cost}`; actions.push(a); }
+    o.actions = actions; o.actionLabels = labels;
+    o.lore = `${F.messages.dais} ${r.left ? `${r.left} reroll${r.left > 1 ? "s" : ""} of a Tesseract glyph's line left here: ${r.paid ? `this one for ${R.viscera} Divine Viscera` : `the first free, the next for ${R.viscera} Divine Viscera`}.` : F.messages.rerollsDone}`;
+    return o;
+  }
+  pentagonDais(o, action) {
+    const F = PENTAGON.finale, R = F.reroll, r = this.daisRerolls(), done = (message, ok = true) => { this.refreshDais(o); this.message = message; this.sync(); return { ok, message }; };
+    if (!action || action === "transit") { if (!action && r.left && this.daisGlyphs().length) { this.refreshDais(o); this.interactionRequested = o.id; return { ok: true, message: (this.message = F.messages.reroll) }; } return this.pentagonTransit(o); }
+    if (action.startsWith("pick:")) { o.pick = action.slice(5) || null; return done(o.pick ? F.messages.reroll : F.messages.reroll); }
+    const m = /^reroll:(t\d+):(\d+)$/.exec(action); if (!m) return done("That action is not available.", false);
+    if (!r.left) return done(F.messages.rerollsDone, false);
+    ensureTesseracts(this.save); const g = this.save.tesseracts.owned.find((q) => q.uid === m[1]), i = Number(m[2]); if (!g?.lines?.[i]) return done(F.messages.noTesseract, false);
+    if (r.paid) { ensureSkylands(this.save); const have = Number(this.save.skylands.viscera) || 0; if (have < R.viscera) return done(`${F.messages.needViscera}: ${R.viscera} (you have ${have}).`, false); this.save.skylands.viscera = have - R.viscera; }
+    const line = rerollTesseractLine(this.save.seed, `${r.P.base}:reroll${r.used}:${g.uid}:${i}`, g, i); if (!line) return done(F.messages.rerollsDone, false);
+    const before = tesseractLine(g.lines[i]); g.lines[i] = line; r.H.pentRerolls = r.used + 1; o.pick = null;
+    journalOnce(this.save, `pentagon-dais-reroll:${r.P.base}:${r.used}`, `${F.messages.rerolled} (${g.name}): ${before} became ${tesseractLine(line)}.`, PENTAGON.name);
+    this.defeatNotice = { title: "THE DAIS CUTS AGAIN", detail: `${g.name} · ${tesseractLine(line)}`, kind: "discovery" };
+    return done(`${F.messages.rerolled}: ${before} becomes ${tesseractLine(line)}.${r.paid ? ` (${R.viscera} Divine Viscera spent.)` : ""}`);
   }
   // The dais: Transit, to the Pentagon's front door (its first gate, outside) and nowhere else.
   pentagonTransit(o) {
