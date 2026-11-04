@@ -72,7 +72,7 @@ import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
-import { MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, catchRefusal, catchRoll, penCostScale, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 737: penning catches, the stable and riding
+import { MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 737: penning catches, the stable and riding
 import { setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.ts";
@@ -4561,10 +4561,16 @@ export class Game {
   penClosed(pen, by) {
     const inside = this.enemies.filter((q) => !q.dead && !q.stalkerKin && !q.stalkerDecoy && (q.stalker || q.worldBeast || q.questingBeast) && enclosureAt(this, q.x + .5, q.y + .75) === pen);
     if (!inside.length) return "The pen is closed. Nothing is inside it.";
-    const e = inside.find(catchableActor) || inside[0];
-    if (e.stalker && catchableActor(e)) return stalkerTrapAttempt(e, pen, by.id) ? this.catchBeast(e, "stalker", pen) : "The Stalker slips out before the pen can close on it.";
-    const why = catchRefusal(e, pen); if (why) return why;
-    const id = mountIdFor(e); if (!catchRoll(e, pen, by.id)) return `${MOUNT_BEASTS[id].name} slips out before the pen can close on it.`;
+    // The answer says why a try failed. No try made (never penned, too small, out of reach): the closing pen comes down and its
+    // materials come back (a too-small pen with it). A try that failed (Tim, 2026-11-04): the beast slips out, the pen breaks
+    // and the materials of both pieces are lost; to try again both are built anew (building.ts placeEnclosure acts on `undo`).
+    const e = inside.find(catchableActor) || inside[0], again = " The pen breaks, and the materials in both pieces are lost: build the enclosure and its closing piece again to try again.";
+    if (e.stalker && catchableActor(e)) return stalkerTrapAttempt(e, pen, by.id) ? this.catchBeast(e, "stalker", pen) : { message: `The Stalker slips out before the pen can close on it.${again}`, undo: "crumble", also: [pen] };
+    const why = catchRefusal(e, pen), id = mountIdFor(e);
+    if (why && neverCaught(e)) return { message: `${why} The closing pen comes down, its materials returned.`, undo: "refund" };
+    if (why && id && (Number(pen.size) || ENCLOSURE.size) < MOUNT_BEASTS[id].pen) return { message: `Too small: ${why} Both pens come down, their materials returned; build again near it and the pen is sized for it.`, undo: "refund", also: [pen] };
+    if (why) return { message: `${why} No try was made: the closing pen comes down, its materials returned.`, undo: "refund" };
+    if (!catchRoll(e, pen, by.id)) return { message: `${MOUNT_BEASTS[id].name} slips out before the pen can close on it.${again}`, undo: "crumble", also: [pen] };
     return this.catchBeast(e, id, pen);
   }
   // Caught: its hunt ends as a fall does, with nothing paid (Tim: "the only reward is being able to ride it"), and it goes to the
@@ -4582,7 +4588,6 @@ export class Game {
   }
   // Release 737: a pen is built for the biggest catchable beast within MOUNT_RIDE.sense tiles (building.ts placeEnclosure).
   penSize() { const p = this.player; let n = ENCLOSURE.size; for (const e of this.enemies || []) if (catchableActor(e) && Math.hypot(e.x - p.x, e.y - p.y) <= MOUNT_RIDE.sense) n = Math.max(n, MOUNT_BEASTS[mountIdFor(e)].pen); return n; }
-  penCost(n) { return penCostScale(n); }
   // ---- Riding (release 737) ----
   mountRide() { return this.area === "overworld" && this.player?.hp > 0 ? ridingMount(this.save) : null; }
   mountLeap(now) { return !!this.mountRide() && now < (this.jumpUntil || 0); } // airborne on a mount: chasms and water pass under

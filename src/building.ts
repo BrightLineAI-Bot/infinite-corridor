@@ -32,6 +32,12 @@ export const BUILD_KINDS = Object.keys(BUILD.kinds);
 // full health rising to `trap.low` at `trap.lowAt` of its health and below; caught, it struggles for `trap.time` s, then breaks the
 // pen and comes out. (`need`: the pens it takes, the one it is in and the one that closes it.)
 export const ENCLOSURE = { size: 2, guard: 3, recharge: 3, need: 2, trap: { full: .15, low: .6, lowAt: .25, time: 45 } };
+// Release 737 (Tim, 2026-11-04: "bigger beasts need more materials"): what a pen of each side costs, growing with its area (the 2x2
+// is BUILD.kinds.enclosure's own cost). A side past the table costs its largest row.
+export const PEN_COST = { 2: { wood: 2, stone: 2, cinderIron: 2 }, 3: { wood: 5, stone: 5, cinderIron: 4 }, 4: { wood: 8, stone: 8, cinderIron: 6 } };
+export function penCost(n) { const sides = Object.keys(PEN_COST).map(Number).sort((a, b) => a - b), k = sides.filter((v) => v <= n).pop() ?? sides[0]; return PEN_COST[k]; }
+export const costText = (cost) => Object.entries(cost).map(([k, n]) => `${n} ${k === "cinderIron" ? "cinder iron" : k}`).join(", ");
+const affords = (save, cost) => Object.entries(cost).every(([mat, need]) => (Number(save?.materials?.[mat]) || 0) >= need);
 export function trapChance(hpFrac) { const T = ENCLOSURE.trap, f = Math.max(0, Math.min(1, Number(hpFrac) || 0)); return f <= T.lowAt ? T.low : T.full + (T.low - T.full) * (1 - f) / (1 - T.lowAt); }
 
 // save.build = { kind } (additive at schema 14): the material the Build button uses, chosen in the Pack.
@@ -46,7 +52,7 @@ export function setBuildKind(save, kind) { ensureBuild(save); if (BUILD_KINDS.in
 // out and then it'll just automatically build with the next resource... when you're out of resources... an X"):
 // save.build.continuous (additive, boolean). The chosen kind is always tried first, so new stock of it is used again.
 export function setContinuousBuild(save, on) { ensureBuild(save); save.build.continuous = !!on; return save.build.continuous; }
-export function canAffordBuild(save, kind, scale = 1) { return Object.entries(BUILD.kinds[kind].cost).every(([mat, need]) => (Number(save?.materials?.[mat]) || 0) >= need * scale); } // release 737: `scale`, a bigger pen's cost
+export function canAffordBuild(save, kind) { return Object.entries(BUILD.kinds[kind].cost).every(([mat, need]) => (Number(save?.materials?.[mat]) || 0) >= need); }
 // The kind the Build button raises now, or null when nothing can be afforded (the button shows an X).
 export function activeBuildKind(save) {
   const { kind, continuous } = ensureBuild(save).build;
@@ -178,11 +184,11 @@ export function tapTarget(p, wx, wy) {
 // ---- The Enclosure (release 696) ----
 // Raises a 2x2 pen beginning at (x, y), extending away from the Wayfarer, open on the side facing them.
 // Release 737 (beast mounts): `game.penSize()` (when it has one) sizes the pen for the biggest catchable beast near: a pen of side
-// n spans n×n tiles, centred across the way, and costs `game.penCost(n)` times the base materials.
+// n spans n×n tiles, centred across the way, and costs `penCost(n)` (PEN_COST).
 export function placeEnclosure(game, x, y) {
-  const N = Math.max(ENCLOSURE.size, Math.floor(Number(game.penSize?.()) || ENCLOSURE.size)), mult = Math.max(1, Number(game.penCost?.(N)) || 1);
+  const N = Math.max(ENCLOSURE.size, Math.floor(Number(game.penSize?.()) || ENCLOSURE.size)), cost = N > ENCLOSURE.size ? penCost(N) : BUILD.kinds.enclosure.cost;
   const K = BUILD.kinds.enclosure, m = (game.save.materials ||= {}), builds = (game.builds ||= []), p = game.player, w = W(game.map);
-  if (!canAffordBuild(game.save, "enclosure", mult)) return { ok: false, message: `${N > ENCLOSURE.size ? `A ${N}×${N} enclosure` : "An enclosure"} takes ${Object.entries(K.cost).map(([k, n]) => `${n * mult} ${k === "cinderIron" ? "cinder iron" : k}`).join(", ")}.` };
+  if (!affords(game.save, cost)) return { ok: false, message: `${N > ENCLOSURE.size ? `A ${N}×${N} enclosure (sized for the beast near)` : "An enclosure"} takes ${costText(cost)}.` };
   const fx = Math.floor(p.x + .5), fy = Math.floor(p.y + .75), dx = x - fx, dy = y - fy, horiz = Math.abs(dx) > Math.abs(dy);
   const open = horiz ? (dx > 0 ? "west" : "east") : (dy > 0 ? "north" : "south"), across = Math.floor((N - 1) / 2); // centred across the way (0 for the 2x2, as before)
   const x0 = horiz ? (dx > 0 ? x : x - (N - 1)) : x - across, y0 = horiz ? y - across : (dy > 0 ? y : y - (N - 1));
@@ -194,14 +200,28 @@ export function placeEnclosure(game, x, y) {
     tiles.push({ tx, ty, sides: [ox === 0 && "west", ox === N - 1 && "east", oy === 0 && "north", oy === N - 1 && "south"].filter((sd) => sd && sd !== open) });
   }
   if (builds.length >= BUILD.maxOut) breakBuild(game, builds[0]);
-  for (const [mat, need] of Object.entries(K.cost)) m[mat] = (Number(m[mat]) || 0) - need * mult;
+  for (const [mat, need] of Object.entries(cost)) m[mat] = (Number(m[mat]) || 0) - need;
   const id = `enclosure-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, orig = {};
   for (const q of tiles) { const i = q.ty * w + q.tx; orig[i] = game.map.tiles[i]; game.map.tiles[i] = { ...game.map.tiles[i], enclosure: id, encSides: q.sides }; }
-  const pen = { id, kind: "enclosure", x: x0, y: y0, size: N, open, hits: K.hits, life: K.life, orig, trapped: null }; builds.push(pen);
+  const pen = { id, kind: "enclosure", x: x0, y: y0, size: N, open, hits: K.hits, life: K.life, orig, trapped: null, cost: { ...cost } }; builds.push(pen);
   // Release 697: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
+  // Release 737: game.penClosed may answer { message, undo }: "refund" (no try was made: the closing pen comes down and its materials
+  // come back; `also` pens with it), or "crumble" (the beast slipped out: the closing pen and `also` break, their materials lost).
   let said = null;
-  for (const other of builds) if (other !== pen && other.kind === "enclosure" && !other.trapped && overlapsOpening(other, pen)) said = game.penClosed?.(other, pen) || said;
+  for (const other of [...builds]) if (other !== pen && other.kind === "enclosure" && !other.trapped && builds.includes(other) && overlapsOpening(other, pen)) {
+    const r = game.penClosed?.(other, pen); if (!r) continue;
+    if (typeof r === "string") { said = r; continue; }
+    said = r.message;
+    if (r.undo === "refund") for (const b of [pen, ...(r.also || [])]) dismantlePen(game, b, true);
+    else if (r.undo === "crumble") for (const b of [pen, ...(r.also || [])]) dismantlePen(game, b, false);
+  }
   return { ok: true, message: said || `${N > ENCLOSURE.size ? `A ${N}×${N} enclosure` : "Enclosure"} raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
+}
+// Release 737: takes a pen down cleanly (its tiles as they were); `refund` gives back what it cost.
+export function dismantlePen(game, b, refund = false) {
+  if (!breakBuild(game, b)) return false;
+  if (refund) { const m = (game.save.materials ||= {}); for (const [mat, n] of Object.entries(b.cost || BUILD.kinds.enclosure.cost)) m[mat] = (Number(m[mat]) || 0) + n; }
+  return true;
 }
 // The two tiles just outside a pen's opening, and whether another pen's 2x2 covers either.
 export const penSide = (b) => Math.max(ENCLOSURE.size, Math.floor(Number(b?.size) || ENCLOSURE.size)); // release 737: pens bigger than 2x2

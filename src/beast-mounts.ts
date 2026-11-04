@@ -3,35 +3,35 @@
 // air, and the Wayfarer's own attacks, spells and tools work from its back; the mount itself never fights. Each mount gives
 // `MOUNT_RIDE.seconds` of riding or `MOUNT_RIDE.sections` different sections ridden, whichever comes first, and is then gone.
 // Tim's decisions (2026-11-04): a catch pays nothing (no marks, materials, spoils, XP or reward flags; its hunt still ends as a
-// fall does); the Questing Beast, the Psychic Crystal, the Void Walker and the Lightning Giant can never be penned or caught.
+// fall does); the Questing Beast, the Psychic Crystal, the Void Walker, the Lightning Giant and the Nanobot Knight can never be caught.
 // Data and save rules only; game.ts calls in, renderer.ts draws.
 import { hashSeed } from "./random.ts";
 import { trapChance } from "./building.ts";
 
-// One row per catchable beast. `pen`: the pen's side in tiles it takes (scaled to its footprint); `scale`: its renderer's scale
-// as a mount (so the big ones do not fill the screen); `seat`: how high the Wayfarer sits, in tiles; `speed`: walking speed
-// multiplier while riding; `jump`: jump time multiplier while riding (dodges are unchanged).
+// One row per catchable beast. `pen`: the pen's side in tiles it takes (scaled to its footprint); `scale`: its renderer's scale as a
+// mount, its real size as met in the world (Tim, 2026-11-04: "so you can be riding a pretty huge beast"; the pack form's scale x the
+// world-beast boss scale, the Stalker's STALKER.size); `seat`: how high on its back the Wayfarer sits, in tiles; `saddle`: what is
+// strapped on under the rider ("strap", a saddle with girth and stirrups; "harness", a seat frame lashed round a body; "frame", a
+// riding frame braced between wings); `speed`: walking speed multiplier while riding; `jump`: jump time multiplier (dodges unchanged).
 export const MOUNT_BEASTS = {
-  stalker: { name: "The Stalker", pen: 2, scale: 1, seat: .42, speed: 1.75, jump: 1.6 },
-  morphingBlob: { name: "The Morphing Blob", pen: 2, scale: .8, seat: .5, speed: 1.45, jump: 1.5 },
-  tremorWorm: { name: "The Tremor Worm", pen: 3, scale: .9, seat: .8, speed: 1.6, jump: 1.5 },
-  mountainTurtle: { name: "The Mountain Turtle", pen: 4, scale: 1.5, seat: .95, speed: 1.4, jump: 1.45 },
-  nanobotKnight: { name: "The Nanobot Knight", pen: 2, scale: 1, seat: 1.15, speed: 1.6, jump: 1.55 },
-  astralWorm: { name: "The Astral Worm", pen: 3, scale: .8, seat: .12, speed: 1.7, jump: 1.6 },
-  briarStag: { name: "The Briar Stag", pen: 3, scale: .85, seat: .7, speed: 1.85, jump: 1.7 },
-  ashenMoth: { name: "The Ashen Moth", pen: 3, scale: .95, seat: .55, speed: 1.7, jump: 1.75 },
-  crimsonTyrant: { name: "The Crimson Tyrant", pen: 4, scale: .5, seat: .62, speed: 1.7, jump: 1.75 },
-  doomChaser: { name: "The Doom Chaser", pen: 4, scale: .5, seat: .62, speed: 1.75, jump: 1.75 },
+  stalker: { name: "The Stalker", pen: 2, scale: 1.4, seat: .62, saddle: "strap", speed: 1.75, jump: 1.6 },
+  morphingBlob: { name: "The Morphing Blob", pen: 2, scale: 1.96, seat: 1.2, saddle: "harness", speed: 1.45, jump: 1.5 },
+  tremorWorm: { name: "The Tremor Worm", pen: 3, scale: 2.3, seat: 1.9, saddle: "harness", speed: 1.6, jump: 1.5 },
+  mountainTurtle: { name: "The Mountain Turtle", pen: 4, scale: 3.92, seat: 2.3, saddle: "harness", speed: 1.4, jump: 1.45 },
+  astralWorm: { name: "The Astral Worm", pen: 3, scale: 1.35, seat: .2, saddle: "harness", speed: 1.7, jump: 1.6 },
+  briarStag: { name: "The Briar Stag", pen: 3, scale: 2.36, seat: 1.75, saddle: "strap", speed: 1.85, jump: 1.7 },
+  ashenMoth: { name: "The Ashen Moth", pen: 3, scale: 2.16, seat: 1.2, saddle: "frame", speed: 1.7, jump: 1.75 },
+  crimsonTyrant: { name: "The Crimson Tyrant", pen: 4, scale: 3.51, seat: 1.9, saddle: "frame", speed: 1.7, jump: 1.75 },
+  doomChaser: { name: "The Doom Chaser", pen: 4, scale: 3.38, seat: 1.85, saddle: "frame", speed: 1.75, jump: 1.75 },
 };
 export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
-// Never penned or caught (Tim, 2026-11-04).
-export const MOUNT_NEVER = ["questingBeast", "psychicCrystal", "voidWalker", "lightningGiant"];
+export const SADDLE_NAMES = { strap: "Saddled", harness: "Harnessed", frame: "Riding frame" };
+// Never penned or caught (Tim, 2026-11-04; the Nanobot Knight the same day: "not rideable").
+export const MOUNT_NEVER = ["questingBeast", "psychicCrystal", "voidWalker", "lightningGiant", "nanobotKnight"];
 // `cap` mounts in the stable; a catch beyond it lets the oldest go. `seconds` / `sections`: a mount's riding life (Tim: "10–15
 // minutes... or 30–40 unique sections"). `knockoff`: one frame's loss of this share of maximum health throws the Wayfarer off.
-// `sense`: a pen is sized for the biggest catchable beast within this many tiles. `cost`: a pen of side n costs its base
-// materials times ceil(n / 2).
+// `sense`: a pen is sized for the biggest catchable beast within this many tiles (building.ts PEN_COST prices each size).
 export const MOUNT_RIDE = { cap: 3, seconds: 720, sections: 35, knockoff: .35, sense: 14 };
-export const penCostScale = (size) => Math.max(1, Math.ceil((Number(size) || 2) / 2));
 
 // Which mount a live actor would be, or null. `never` names an excluded beast.
 export function mountIdFor(e) {
@@ -52,7 +52,7 @@ export function catchRefusal(e, pen) {
   if (e.retreating || e.fleeTo || e.untargetable || e.aloft || e.hidden) return `${MOUNT_BEASTS[id].name} slips out before the pen can close on it.`;
   return null;
 }
-const nameOf = (id) => ({ psychicCrystal: "The Psychic Crystal", voidWalker: "The Void Walker", lightningGiant: "The Lightning Giant" })[id] || "It";
+const nameOf = (id) => ({ psychicCrystal: "The Psychic Crystal", voidWalker: "The Void Walker", lightningGiant: "The Lightning Giant", nanobotKnight: "The Nanobot Knight" })[id] || "It";
 // One roll per closing (hashed by beast, pen and closer), at the Stalker's trap odds of its health.
 export function catchRoll(e, pen, salt = "") {
   return (hashSeed(`${e.id}:catch:${pen?.id}:${salt}`) % 1000) / 1000 < trapChance(e.hp / Math.max(1, e.maxHp));

@@ -3,8 +3,8 @@
 // Crystal, the Void Walker and the Lightning Giant can never be penned or caught.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MOUNT_BEASTS, MOUNT_IDS, MOUNT_NEVER, MOUNT_RIDE, ensureMounts, stableMount, catchRefusal, penCostScale } from '../src/beast-mounts.ts';
-import { BUILD, placeBuild, breakBuild, enclosureAt, ENCLOSURE } from '../src/building.ts';
+import { MOUNT_BEASTS, MOUNT_IDS, MOUNT_NEVER, MOUNT_RIDE, ensureMounts, stableMount, catchRefusal } from '../src/beast-mounts.ts';
+import { BUILD, placeBuild, enclosureAt, ENCLOSURE, PEN_COST } from '../src/building.ts';
 import { WORLD_BEASTS } from '../src/world-beasts.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, JUMP } from '../src/game.ts';
@@ -28,26 +28,28 @@ function penned(g, id, hpShare = .1) {
   e.x = pen.x + n / 2 - .5; e.y = pen.y + n / 2 - .75; assert.equal(enclosureAt(g, e.x + .5, e.y + .75), pen, `${id} stands in the pen`);
   return { e, pen, n };
 }
-// Closes the pen (a second one across its opening), trying again with a fresh closer until it holds or `tries` run out.
+// Closes the pen (a second one across its opening). A slip breaks both pieces (Tim: the materials are lost), so each new try builds
+// the enclosure round the beast again, then its closing piece, until it holds or `tries` run out. Returns { message, slips }.
 function close(g, pen, tries = 40) {
-  let last = '';
+  let last = '', slips = 0; const e = g.enemies.find((q) => !q.dead);
   for (let i = 0; i < tries; i++) {
+    if (!g.builds.includes(pen)) { g.player.x = 10; g.player.y = 6; g.player.facing = 'down'; const r0 = placeBuild(g, 10, 7, 'enclosure'); assert.ok(r0.ok, r0.message); pen = g.builds[g.builds.length - 1]; e.x = pen.x + pen.size / 2 - .5; e.y = pen.y + pen.size / 2 - .75; }
     g.player.x = 10; g.player.y = pen.y - pen.size - 2; g.player.facing = 'down';
     const r = placeBuild(g, 10, pen.y - pen.size, 'enclosure'); assert.ok(r.ok, r.message); last = r.message;
-    if (/caught/.test(r.message) || /cannot be penned|too big/.test(r.message)) return r.message;
-    breakBuild(g, g.builds[g.builds.length - 1]);
+    if (!/slips out/.test(r.message)) return { message: r.message, slips };
+    slips++; assert.match(r.message, /pen breaks, and the materials in both pieces are lost/); assert.equal(g.builds.length, 0, 'both pieces are broken');
   }
-  return last;
+  return { message: last, slips };
 }
 const rewardState = (s) => JSON.stringify({ currency: s.currency, xp: s.xp, level: s.level, spheres: [s.materials.weaponSphere, s.materials.armorSphere, s.materials.lumenDust], consumables: s.consumables, echoes: s.echoes?.owned, glyphs: s.glyphs, flags: Object.keys(s.worldFlags || {}).filter((k) => k.startsWith('drop:')), slain: Object.fromEntries(Object.entries(s.worldBeasts).map(([k, v]) => [k, [v.slain, !!v.spoils]])), kills: s.stalker?.kills });
 
 test('every catchable beast is caught in a pen sized for it, its hunt ends, and nothing is paid', () => {
-  assert.deepEqual([...MOUNT_IDS].sort(), ['ashenMoth', 'astralWorm', 'briarStag', 'crimsonTyrant', 'doomChaser', 'morphingBlob', 'mountainTurtle', 'nanobotKnight', 'stalker', 'tremorWorm']);
+  assert.deepEqual([...MOUNT_IDS].sort(), ['ashenMoth', 'astralWorm', 'briarStag', 'crimsonTyrant', 'doomChaser', 'morphingBlob', 'mountainTurtle', 'stalker', 'tremorWorm']);
   for (const id of MOUNT_IDS) {
     const g = game(`MOUNTS-${id}`), { pen, n } = penned(g, id);
     assert.equal(n, n0(id), `${id}: the pen is ${n0(id)}×${n0(id)}`);
     const before = rewardState(g.save), cyc = id === 'stalker' ? null : g.save.worldBeasts[id].cycle;
-    const msg = close(g, pen); assert.match(msg, /caught/, `${id}: ${msg}`);
+    const { message: msg } = close(g, pen); assert.match(msg, /caught/, `${id}: ${msg}`);
     assert.equal(g.save.mounts.stable.length, 1); assert.equal(g.save.mounts.stable[0].beast, id);
     assert.ok(!g.enemies.some((q) => q.worldBeast === id || q.stalker), 'it is gone from the field');
     if (id === 'stalker') { assert.equal(g.save.stalker.active, null); assert.ok(g.save.stalker.quiet > 0, 'it rests before it hunts again'); }
@@ -57,16 +59,16 @@ test('every catchable beast is caught in a pen sized for it, its hunt ends, and 
   }
 });
 
-test('the Questing Beast, the Psychic Crystal, the Void Walker and the Lightning Giant can never be penned or caught', () => {
-  assert.deepEqual(MOUNT_NEVER, ['questingBeast', 'psychicCrystal', 'voidWalker', 'lightningGiant']);
-  for (const id of ['psychicCrystal', 'voidWalker', 'lightningGiant']) {
+test('the Questing Beast, the Psychic Crystal, the Void Walker, the Lightning Giant and the Nanobot Knight can never be penned or caught', () => {
+  assert.deepEqual(MOUNT_NEVER, ['questingBeast', 'psychicCrystal', 'voidWalker', 'lightningGiant', 'nanobotKnight']);
+  for (const id of ['psychicCrystal', 'voidWalker', 'lightningGiant', 'nanobotKnight']) {
     assert.equal(MOUNT_BEASTS[id], undefined);
     const g = game(`NEVER-${id}`); g.save.worldBeasts[id].active = { rx: g.rx, ry: g.ry, tries: 0 };
     const e = g.createEnemyFromSpawn({ id: `world-beast:${id}:0`, kind: WORLD_BEASTS[id].kind, x: 10.5, y: 8, boss: true, worldBeast: id, traits: [] }, 'overworld');
     Object.assign(e, { untargetable: false, retreating: false }); e.hp = 1; g.enemies = [e];
     placeBuild(g, 10, 7, 'enclosure'); const pen = g.builds[0]; assert.equal(pen.size, 2, 'no pen is sized for it'); e.x = pen.x + .5; e.y = pen.y + .25;
-    const before = rewardState(g.save), msg = close(g, pen, 3);
-    assert.match(msg, /cannot be penned/, `${id}: ${msg}`); assert.ok(!e.dead, 'still free'); assert.equal(ensureMounts(g.save).stable.length, 0);
+    const before = rewardState(g.save), wood = g.save.materials.wood, { message: msg } = close(g, pen, 3);
+    assert.match(msg, /cannot be penned.*materials returned/, `${id}: ${msg}`); assert.equal(g.save.materials.wood, wood, 'no try: the closing piece is refunded'); assert.deepEqual(g.builds, [pen], 'and taken down; the first pen stands'); assert.ok(!e.dead, 'still free'); assert.equal(ensureMounts(g.save).stable.length, 0);
     assert.ok(g.save.worldBeasts[id].active, 'its hunt goes on'); assert.equal(rewardState(g.save), before);
   }
   assert.match(catchRefusal({ questingBeast: true, id: 'qb', hp: 1, maxHp: 10 }, { size: 4 }), /Questing Beast cannot be penned/);
@@ -77,10 +79,17 @@ test('a pen too small for the beast does not hold it; big pens cost more', () =>
   placeBuild(g, 10, 7, 'enclosure'); const pen = g.builds[0]; assert.equal(pen.size, ENCLOSURE.size, 'built with no beast near: 2×2');
   g.save.worldBeasts.mountainTurtle.active = { rx: g.rx, ry: g.ry, tries: 0 };
   const e = g.createEnemyFromSpawn({ id: 'world-beast:mountainTurtle:0', kind: 'mountainTurtle', x: pen.x + .5, y: pen.y + .25, boss: true, worldBeast: 'mountainTurtle', traits: [] }, 'overworld'); e.hp = 1; g.enemies = [e];
-  assert.match(g.penClosed(pen, { id: 'x' }), /too big for this pen: it takes one 4×4/);
+  // Closed on it (with a closing piece that is itself only 2x2), the try is refused as too small, and both come down, refunded.
+  const wood = g.save.materials.wood; g.penSize = () => 2; g.player.x = 10; g.player.y = 3; const r = placeBuild(g, 10, 5, 'enclosure'); delete g.penSize;
+  assert.match(r.message, /Too small: .*too big for this pen: it takes one 4×4.*Both pens come down, their materials returned/); assert.equal(g.builds.length, 0, 'cleanly dismantled');
+  assert.equal(g.save.materials.wood, wood + BUILD.kinds.enclosure.cost.wood, 'both pieces refunded'); assert.ok(!e.dead && g.save.worldBeasts.mountainTurtle.active);
+  // Built again near it, the pen is sized for it, and costs its PEN_COST row.
   assert.equal(g.penSize(), 4, 'built near the Turtle, a pen is 4×4');
-  const wood = g.save.materials.wood; g.player.x = 20; g.player.y = 6; assert.ok(placeBuild(g, 20, 7, 'enclosure').ok);
-  assert.equal(g.builds[g.builds.length - 1].size, 4); assert.equal(wood - g.save.materials.wood, BUILD.kinds.enclosure.cost.wood * penCostScale(4));
+  assert.ok(PEN_COST[3].wood > PEN_COST[2].wood && PEN_COST[4].wood > PEN_COST[3].wood && PEN_COST[2].wood === BUILD.kinds.enclosure.cost.wood, 'cost grows with the pen');
+  const before = { ...g.save.materials }; g.player.x = 20; g.player.y = 6; assert.ok(placeBuild(g, 20, 7, 'enclosure').ok);
+  assert.equal(g.builds[g.builds.length - 1].size, 4); for (const [k, n] of Object.entries(PEN_COST[4])) assert.equal(before[k] - g.save.materials[k], n, k);
+  const poor = game('POOR'); poor.enemies = [e]; poor.save.materials = { ...poor.save.materials, wood: 7, stone: 99, cinderIron: 99 }; e.x = 12; e.y = 12;
+  assert.match(placeBuild(poor, 10, 7, 'enclosure').message, /A 4×4 enclosure \(sized for the beast near\) takes 8 wood, 8 stone, 6 cinder iron/, 'the cost is shown');
 });
 
 test('the stable keeps three: a fourth catch lets the oldest go, with a clear message', () => {
@@ -88,9 +97,26 @@ test('the stable keeps three: a fourth catch lets the oldest go, with a clear me
   assert.equal(s.mounts.stable.length, 3); const r = stableMount(s, 'doomChaser');
   assert.equal(r.released.id, a.id, 'the oldest goes'); assert.deepEqual(s.mounts.stable.map((m) => m.id), [b.id, c.id, r.mount.id]);
   const g = game('CAP'); for (const id of ['briarStag', 'stalker', 'ashenMoth']) stableMount(g.save, id);
-  const { pen } = penned(g, 'morphingBlob'); const msg = close(g, pen); assert.match(msg, /caught/); assert.match(msg, /stable holds 3: the Briar Stag, the oldest, is let go/);
+  const { pen } = penned(g, 'morphingBlob'); const { message: msg } = close(g, pen); assert.match(msg, /caught/); assert.match(msg, /stable holds 3: the Briar Stag, the oldest, is let go/);
   assert.deepEqual(g.save.mounts.stable.map((m) => m.beast), ['stalker', 'ashenMoth', 'morphingBlob']);
   assert.equal(MOUNT_RIDE.cap, 3);
+});
+
+test('a beast that slips out breaks the pen: the materials of both pieces are lost, and both are built again to try again', () => {
+  let seen = 0;
+  for (const id of ['briarStag', 'stalker', 'crimsonTyrant']) {
+    const g = game(`SLIP-${id}`), { pen } = penned(g, id, 1), n = pen.size, cost = n > 2 ? PEN_COST[n] : BUILD.kinds.enclosure.cost; // at full health it mostly slips
+    for (let i = 0; i < 12; i++) {
+      if (!g.builds.length) { g.player.x = 10; g.player.y = 6; assert.ok(placeBuild(g, 10, 7, 'enclosure').ok); const p0 = g.builds[0], e = g.enemies[0]; e.x = p0.x + n / 2 - .5; e.y = p0.y + n / 2 - .75; }
+      const p0 = g.builds[0], before = { ...g.save.materials }; g.player.x = 10; g.player.y = p0.y - n - 2;
+      const r = placeBuild(g, 10, p0.y - n, 'enclosure'); assert.ok(r.ok, r.message);
+      if (/caught/.test(r.message)) break;
+      assert.match(r.message, /slips out before the pen can close on it\. The pen breaks, and the materials in both pieces are lost/); seen++;
+      assert.equal(g.builds.length, 0, 'both pieces break'); for (const [k, c] of Object.entries(cost)) assert.equal(before[k] - g.save.materials[k], c, 'the closing piece is not refunded');
+      assert.ok(!g.enemies[0].dead && g.enemies[0].hp === g.enemies[0].maxHp, 'it is still free');
+    }
+  }
+  assert.ok(seen >= 3, `slips were seen (${seen})`);
 });
 
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
