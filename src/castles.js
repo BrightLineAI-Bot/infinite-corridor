@@ -12,8 +12,8 @@
 // into the keep's courtyard, up the keep to its lord and its treasure, and its gate lets you out at the front. The fourth quarter
 // is a feint: its wing leads to its own sealed courtyard and back round. Everything is a hash of the seed and the corner, and a
 // castle stands only where all four sections are new ground (`atlas.castleVersion`) and none of their lanes reaches the corner.
-import { hashSeed } from "./random.js?v=r732-683fdfd90b67";
-import { BUILDINGS, layFloor, farthest, addHoles } from "./great-buildings.js?v=r732-683fdfd90b67";
+import { hashSeed } from "./random.js?v=r733-cb40b95e99a7";
+import { BUILDINGS, layFloor, farthest, addHoles } from "./great-buildings.js?v=r733-cb40b95e99a7";
 
 export const CASTLES = {
   version: 1,

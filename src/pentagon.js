@@ -12,9 +12,9 @@
 // is built onto its pressure plate, and the Heart itself stays sealed until three trial chambers have been cleared of their
 // ghouls. Relics in the chambers tell what happened to the Fivefold Court. Everything is a hash of the seed and the centre;
 // a Pentagon stands only where all nine sections are new ground (`atlas.pentVersion`).
-import { hashSeed, rng } from "./random.js?v=r732-683fdfd90b67";
-import { BUILDINGS, layFloor, farthest } from "./great-buildings.js?v=r732-683fdfd90b67";
-import { carveMaze } from "./labyrinths.js?v=r732-683fdfd90b67";
+import { hashSeed, rng } from "./random.js?v=r733-cb40b95e99a7";
+import { BUILDINGS, layFloor, farthest } from "./great-buildings.js?v=r733-cb40b95e99a7";
+import { carveMaze } from "./labyrinths.js?v=r733-cb40b95e99a7";
 
 export const PENTAGON = {
   version: 5, // 5: release 732 (below); 4: release 730; 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
