@@ -167,17 +167,20 @@ export const VIEWPORT_CLOSED = Object.freeze({
 export const VIEWPORT_QUIET_INPUT = Object.freeze({ state: Object.freeze({ x: 0, y: 0 }), consume: () => false, held: () => false, reset() {} });
 const vcClamp = (v) => (v < 0 ? 0 : v > 1 ? 1 : v), vcEase = (v) => { v = vcClamp(v); return v * v * (3 - 2 * v); };
 const vcHash = (n) => { let h = Math.imul((n | 0) ^ 0x9e3779b9, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
-// seq: { t, c (s since the recovery, null before it), frozen (s the world stood still), deaths, done }.
-export function viewportClosedStart(deaths = 0, resolved = false) { return { t: 0, c: resolved ? 0 : null, frozen: 0, deaths: Number(deaths) || 0, done: false }; }
+// seq: { t, c (s into the closing, null in the fall), frozen (s the world stood still), deaths, live, resolved, done }.
+// live (a great beast is present, Game.fallen.live): the world keeps running and is drawn through the fall and the closing,
+// the beast looming over the corpse; the recovery runs at black. Otherwise the recovery runs after the fall and the closing
+// is drawn over a snapshot of the last frame, the world frozen.
+export function viewportClosedStart(deaths = 0, resolved = false, live = false) { return { t: 0, c: resolved ? 0 : null, frozen: 0, deaths: Number(deaths) || 0, live: !!live && !resolved, resolved: !!resolved, done: false }; }
 export function viewportClosedTotal() { const V = VIEWPORT_CLOSED; return V.close + V.hold + V.open; }
 // What to show for a sequence: the phase, whether the world runs and is drawn, and the overlay's amounts.
 export function viewportClosedStage(seq, reduceMotion = false) {
-  const V = VIEWPORT_CLOSED, motion = !reduceMotion, out = { phase: "done", world: true, black: 0, text: 0, noise: 0, slit: 1, tears: false, flicker: false, scan: 0 };
+  const V = VIEWPORT_CLOSED, motion = !reduceMotion, out = { phase: "done", world: true, live: false, black: 0, text: 0, noise: 0, slit: 1, tears: false, flicker: false, scan: 0 };
   if (!seq || seq.done) return out;
   if (seq.c === null) { out.phase = "fall"; return out; }
-  const c = seq.c;
+  const pending = seq.live && !seq.resolved, c = pending ? Math.min(seq.c, V.close - 1e-6) : seq.c;
   if (c < V.close) {
-    out.phase = "closing"; out.world = false;
+    out.phase = "closing"; out.world = pending; out.live = pending;
     out.black = vcEase((c - V.fadeFrom) / (V.close - V.fadeFrom));
     out.text = vcClamp(c / V.textIn) * (1 - vcClamp((c - (V.close - V.textOut)) / V.textOut));
     out.noise = motion ? V.staticPeak * vcEase(c / V.staticRise) : 0;
@@ -192,18 +195,25 @@ export function viewportClosedStage(seq, reduceMotion = false) {
 // One frame of bookkeeping. fallen: the Game holds the Wayfarer in the beat of the fall; deaths: save.worldFlags.deaths;
 // known: the count when no sequence ran. Returns { seq, start, snap (take the snapshot now, before drawing), release (the
 // world runs again: shift its clocks by seq.frozen), end }.
-export function viewportClosedTick(seq, { dt = 0, fallen = false, deaths = 0, known = 0, reduceMotion = false } = {}) {
+export function viewportClosedTick(seq, { dt = 0, fallen = false, live = false, deaths = 0, known = 0, reduceMotion = false } = {}) {
   const V = VIEWPORT_CLOSED, ev = { seq, start: false, snap: false, release: false, end: false };
   dt = Math.max(0, Math.min(.25, Number(dt) || 0));
-  if (seq && seq.c !== null && (fallen || deaths > seq.deaths)) seq = ev.seq = null; // felled again while re-opening: start over
+  if (seq && seq.resolved && (fallen || deaths > seq.deaths)) seq = ev.seq = null; // felled again while re-opening: start over
   if (!seq) {
-    if (fallen) { ev.seq = viewportClosedStart(deaths, false); ev.start = true; }
+    if (fallen) { ev.seq = viewportClosedStart(deaths, false, live); ev.start = true; }
     else if (deaths > known) { ev.seq = viewportClosedStart(deaths, true); ev.start = ev.snap = true; }
     return ev;
   }
-  if (seq.c === null) {
+  const recovered = !fallen || deaths > seq.deaths;
+  if (!seq.resolved) {
     seq.t += dt;
-    if (!fallen || deaths > seq.deaths) { seq.c = 0; seq.deaths = deaths; ev.snap = true; }
+    if (seq.live) { // the world runs on until the recovery, which lands at black
+      if (recovered) { seq.resolved = true; seq.deaths = deaths; seq.c = Math.max(seq.c ?? 0, V.close); }
+      else if (seq.t >= V.fall) seq.c = seq.t - V.fall;
+      if (!recovered && seq.t > V.fall + V.close + V.wait) seq.done = ev.end = true;
+      return ev;
+    }
+    if (recovered) { seq.resolved = true; seq.c = 0; seq.deaths = deaths; ev.snap = true; }
     else if (seq.t > V.fall + V.wait) seq.done = ev.end = true;
     return ev;
   }
@@ -233,12 +243,12 @@ export function drawViewportClosed(ctx, stage, w, h, t, art = {}, quality = "bal
   const V = VIEWPORT_CLOSED, q = V.quality[quality] || V.quality.balanced, tick = Math.floor(t * V.flickerHz);
   ctx.save();
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-  if (!stage.world) {
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, w, h);
-    const snap = art.snapshot;
+  const snap = art.snapshot; // for a live closing, the game's own canvas (tears are copied from it)
+  if (!stage.world) { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, w, h); }
+  {
     if (snap && stage.black < 1) {
       const sw = art.sw || snap.width, sh = art.sh || snap.height;
-      ctx.imageSmoothingEnabled = true; ctx.drawImage(snap, 0, 0, sw, sh, 0, 0, w, h);
+      if (!stage.world) { ctx.imageSmoothingEnabled = true; ctx.drawImage(snap, 0, 0, sw, sh, 0, 0, w, h); }
       if (stage.tears) { const tt = Math.floor(t * V.tearHz);
         for (let i = 0; i < q.tears; i++) { const k = tt * 7 + i * 131; if (vcHash(k) > V.tearChance) continue;
           const y = vcHash(k + 1) * h, bh = Math.max(1, h * (.004 + .018 * vcHash(k + 2))), dx = (vcHash(k + 3) - .5) * w * .07;

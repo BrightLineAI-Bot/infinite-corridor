@@ -14,7 +14,7 @@ import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
-import { vendorShop, buyFromVendor, walkerCrossingMap } from "./game.ts";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS } from "./landscape.ts"; // release 573
 import { skylandLabel } from "./skylands.ts";
@@ -288,6 +288,7 @@ const perfEnabled = new URLSearchParams(location.search).has("perf") || settings
 function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
 game.deathPause = true; // release 329: the played game pauses after a world beast fells the Wayfarer (Game.tickFallen)
 game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every death holds a short beat of the fall, then the sequence (viewportFrame)
+game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
 function applyPresentationSettings(){game.beastTries=settings.beastTries!==false;/* release 345 */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
 const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
@@ -2330,7 +2331,7 @@ function warmSpillTerrain() {
 // rest point, shifting the world's clocks by the frozen time (so the recovery's protection is still there). Nothing of it
 // is saved: a reload at any point lands at the rest point, or, inside the beat, dies and recovers once.
 let viewportSeq = null, viewportKnownDeaths = Number(save.worldFlags?.deaths) || 0, viewportNoiseKey = "";
-const viewportArt = { snapshot: null, sw: 0, sh: 0, noise: [], scan: null };
+const viewportArt = { snapshot: null, sw: 0, sh: 0, noise: [], scan: null }, viewportLiveArt = { snapshot: null, sw: 0, sh: 0, noise: null, scan: null };
 function viewportReduced() { return !!(settings.reduceMotion || settings.safeMode); }
 function viewportCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
 function viewportPrepare() {
@@ -2351,11 +2352,11 @@ function viewportEnd() {
 function viewportFrame(dt, now) {
   try {
     const deaths = Number(save.worldFlags?.deaths) || 0;
-    const ev = viewportClosedTick(viewportSeq, { dt, fallen: !!game.fallen, deaths, known: viewportKnownDeaths, reduceMotion: viewportReduced() });
+    const ev = viewportClosedTick(viewportSeq, { dt, fallen: !!game.fallen, live: !!game.fallen?.live, deaths, known: viewportKnownDeaths, reduceMotion: viewportReduced() });
     viewportSeq = ev.seq;
     if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
     if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
-    if (ev.release && viewportSeq) { game.setPaused(true, now - viewportSeq.frozen * 1000); game.setPaused(false, now); }
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 740's one clock list: the respawn's protection outlasts the black
     if (ev.end) { viewportEnd(); return null; }
     return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
@@ -2391,7 +2392,7 @@ function frame(now) {
       drawDungeonSystems();
       drawRangedEffects();
     }
-    if (viewportStage) drawViewportClosed(ctx, viewportStage, innerWidth, innerHeight, viewportSeq?.t || 0, viewportArt, currentQuality());
+    if (viewportStage) drawViewportClosed(ctx, viewportStage, innerWidth, innerHeight, viewportSeq?.t || 0, viewportStage.live ? Object.assign(viewportLiveArt, { snapshot: canvas, sw: canvas.width, sh: canvas.height, noise: viewportArt.noise, scan: viewportArt.scan }) : viewportArt, currentQuality());
   });
   if (!viewportSeq) updateMessage(game.message); // the recovery's message waits until the Wayfarer wakes
   measured("hud", () => {

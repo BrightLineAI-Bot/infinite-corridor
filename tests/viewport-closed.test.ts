@@ -2,12 +2,12 @@
 // then the Wayfarer wakes at the rest point. Presentation only: the recovery runs exactly once, as before.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Game } from '../src/game.ts';
+import { Game, DEATH_LOOM, DEATH_PAUSE, shiftClocks } from '../src/game.ts';
 import { freshSave } from '../src/types.ts';
 import { VIEWPORT_CLOSED as V, VIEWPORT_QUIET_INPUT, viewportClosedStart, viewportClosedStage, viewportClosedTick, viewportClosedTotal, viewportNoiseFrames, drawViewportClosed } from '../src/combat-visuals.ts';
 
 const FRAME = 1 / 60;
-const field = () => { const s = freshSave(); s.seed = 'VIEWPORT'; const g = new Game(s, 0); g.deathBeat = V.fall; g.deathPause = true; g.rx = 2; g.ry = 1; g.loadArea('overworld'); g.enemies = []; return { s, g }; };
+const field = () => { const s = freshSave(); s.seed = 'VIEWPORT'; const g = new Game(s, 0); g.deathBeat = V.fall; g.deathBeastBeat = V.fall + V.close; g.deathPause = true; g.rx = 2; g.ry = 1; g.loadArea('overworld'); g.enemies = []; return { s, g }; };
 // Drives the Game the way main.ts does: the world updates only while the stage lets it, always with the quiet input, and
 // a release shifts the world's clocks by the frozen time.
 function play(g, s, { reduceMotion = false, from = 1000, frames = 400, onFrame = null } = {}) {
@@ -16,9 +16,9 @@ function play(g, s, { reduceMotion = false, from = 1000, frames = 400, onFrame =
     now += FRAME * 1000;
     const before = seq ? viewportClosedStage(seq, reduceMotion) : null;
     if (!before || before.world) g.update(FRAME, seq ? VIEWPORT_QUIET_INPUT : (onFrame?.input || VIEWPORT_QUIET_INPUT), now);
-    const ev = viewportClosedTick(seq, { dt: FRAME, fallen: !!g.fallen, deaths: s.worldFlags.deaths || 0, known, reduceMotion });
+    const ev = viewportClosedTick(seq, { dt: FRAME, fallen: !!g.fallen, live: !!g.fallen?.live, deaths: s.worldFlags.deaths || 0, known, reduceMotion });
     seq = ev.seq; starts += ev.start; snaps += ev.snap; ends += ev.end;
-    if (ev.release && seq) { releases++; g.setPaused(true, now - seq.frozen * 1000); g.setPaused(false, now); }
+    if (ev.release && seq) { releases++; shiftClocks(g, seq.frozen * 1000); }
     if (ev.end) { seq = null; known = s.worldFlags.deaths || 0; }
     log.push({ i, now, phase: seq ? viewportClosedStage(seq, reduceMotion).phase : 'none', stage: seq ? viewportClosedStage(seq, reduceMotion) : null, t: seq?.t ?? null, hp: g.player.hp, rx: g.rx, ry: g.ry, deaths: s.worldFlags.deaths || 0 });
     onFrame?.(i, g, seq, log);
@@ -113,12 +113,53 @@ test('a hazard death keeps its cause through the beat', () => {
   assert.equal(s.worldFlags.deaths, 1); assert.match(g.message, /Lost to the canyon/); assert.equal(s.lastDeath.cause, 'canyon');
 });
 
-test('every death kind goes through the sequence: a world beast no longer holds the 4 s pace', () => {
-  const { s, g } = field(), beast = g.createEnemyFromSpawn({ kind: 'ashling', x: 18, y: 16 }); beast.worldBeast = 'mountainTurtle'; g.enemies = [beast];
-  g.player.hp = 0; g.update(FRAME, VIEWPORT_QUIET_INPUT, 1000);
-  assert.ok(g.fallen?.beat, 'the short beat, not the long pace');
-  for (let t = 1000; t < 1000 + V.fall * 1000 + 100; t += 16) g.update(FRAME, VIEWPORT_QUIET_INPUT, t);
-  assert.equal(g.fallen, null); assert.equal(s.worldFlags.deaths, 1);
+const beastField = (flag = 'worldBeast') => { const f = field(), w = f.g.map.width || 32; for (let y = 6; y < 26; y++) for (let x = 6; x < 28; x++) Object.assign(f.g.map.tiles[y * w + x], { kind: 'ash', blocked: false });
+  Object.assign(f.g.player, { x: 12, y: 16 }); const beast = f.g.createEnemyFromSpawn({ kind: 'ashling', x: 19, y: 16 });
+  if (flag === 'worldBeast') beast.worldBeast = 'mountainTurtle'; else if (flag === 'questingBeast') beast.questingBeast = true; else beast.stalker = true;
+  f.g.enemies = [beast]; return { ...f, beast }; };
+
+test('a beast death keeps the world live, the beast over the corpse, until black; the recovery runs once, at black', () => {
+  for (const flag of ['worldBeast', 'questingBeast', 'stalker']) {
+    const { s, g, beast } = beastField(flag), corpse = { x: g.player.x, y: g.player.y }; g.player.hp = 0;
+    g.update(FRAME, VIEWPORT_QUIET_INPUT, 1000);
+    assert.ok(g.fallen?.live, `${flag}: the world stays live`);
+    let near = Infinity, lastLive = null, drewSnapshot = false, recoveredAt = null; const seen = new Set();
+    const r = play(g, s, { from: 1000, frames: 360, onFrame(i, game, seq, log) { const f = log.at(-1);
+      if (f.stage) seen.add(`${f.phase}:${f.stage.world}`);
+      if (f.phase === 'closing') { assert.ok(f.stage.world && f.stage.live, `${flag}: the closing is drawn live`); assert.equal(f.rx, 2, 'still where they fell'); lastLive = f; near = Math.min(near, Math.hypot(beast.x - corpse.x, beast.y - corpse.y)); assert.ok(game.player.hp <= 0, 'still a corpse'); }
+      if (recoveredAt === null && f.deaths === 1) recoveredAt = f;
+      drewSnapshot ||= f.phase === 'closing' && !f.stage.world; } });
+    assert.equal(s.worldFlags.deaths, 1, `${flag}: recovered exactly once`); assert.equal(r.snaps, 0, 'no snapshot: the closing was live');
+    assert.ok(!drewSnapshot); assert.ok(lastLive && lastLive.stage.black > .9, 'faded almost to black over the live world');
+    assert.equal(recoveredAt.phase, 'black', `${flag}: the recovery lands at black`);
+    const toBlack = (recoveredAt.now - 1000) / 1000; assert.ok(toBlack >= 2.5 && toBlack <= 3.5, `${flag}: death to black ${toBlack.toFixed(2)} s`);
+    assert.ok(near <= DEATH_LOOM.reach + DEATH_PAUSE.millRadius + .1, `${flag}: the beast came over the corpse (${near.toFixed(2)})`);
+    assert.ok(near < 7 - .5, `${flag}: it closed in from 7 tiles`);
+    assert.equal(g.rx, s.activeCheckpoint.rx); assert.equal(g.player.hp, s.maxHp); assert.equal(r.releases, 1); assert.equal(r.ends, 1);
+    assert.deepEqual([...seen].filter((k) => k.startsWith('black')), ['black:false'], 'frozen and hidden at black');
+  }
+});
+
+test('a beast looms and paces near the corpse; the world beast is not attacking while the Viewport closes', () => {
+  const { s, g, beast } = beastField(), hp0 = g.save.maxHp; g.player.hp = 0; g.update(FRAME, VIEWPORT_QUIET_INPUT, 1000);
+  let t = 1000; const path = [];
+  while (g.fallen) { t += 16; g.update(FRAME, VIEWPORT_QUIET_INPUT, t); path.push(Math.hypot(beast.x - 12, beast.y - 16)); assert.ok(!beast.aggro || !g.fallen, 'calm'); assert.equal(g.projectiles.filter((q) => q.hostile).length, 0); }
+  assert.ok(path[0] > path[Math.floor(path.length / 2)], 'it closed in'); assert.ok(Math.max(...path.slice(Math.floor(path.length * .6))) <= DEATH_LOOM.reach + DEATH_PAUSE.millRadius + .1, 'then it stays over the corpse');
+  assert.equal(s.worldFlags.deaths, 1); assert.equal(g.player.hp, hp0);
+});
+
+test('an ordinary death keeps the short beat and the frozen snapshot', () => {
+  const { s, g } = field(); g.player.hp = 0; g.update(FRAME, VIEWPORT_QUIET_INPUT, 1000);
+  assert.ok(g.fallen?.beat && !g.fallen.live); const r = play(g, s, { from: 1000, frames: 360 });
+  assert.equal(r.snaps, 1); assert.ok(r.log.some((f) => f.phase === 'closing' && !f.stage.world)); assert.equal(s.worldFlags.deaths, 1);
+});
+
+test('reload during a live beast closing dies again and recovers once', () => {
+  const { s, g } = beastField(); g.player.hp = 0; g.update(FRAME, VIEWPORT_QUIET_INPUT, 1000); let copy = null;
+  play(g, s, { from: 1000, frames: 120, onFrame(i, game, seq, log) { if (!copy && log.at(-1).phase === 'closing') { game.exportSnapshot(log.at(-1).now); copy = structuredClone(s); } } });
+  assert.ok(copy); assert.equal(copy.worldFlags.deaths || 0, 0, 'saved before the recovery');
+  const g2 = new Game(copy, 0); g2.deathBeat = V.fall; g2.deathBeastBeat = V.fall + V.close; const r = play(g2, copy, { from: 9000, frames: 400 });
+  assert.equal(copy.worldFlags.deaths, 1); assert.equal(g2.player.hp, copy.maxHp); assert.equal(r.ends, 1); assert.equal(r.seq, null);
 });
 
 test('a dungeon death recovers once through the sequence, at the entrance as before', () => {
