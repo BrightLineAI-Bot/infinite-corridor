@@ -967,3 +967,6 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 
 /* Release 575: the Transit Lattice's folds */
 .lattice-group>summary{cursor:pointer;color:#e7d7b7;font:bold 1rem serif;padding:4px 0}.lattice-group>summary small{font:400 .8rem system-ui;color:#a39a88}.lattice-group.on>summary{color:#e8c483}.lattice-group[open]>summary{margin-bottom:6px}.lattice-views{margin:6px 0 8px}.lattice-head{margin:10px 0 0;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;color:#a39a88}
+
+/* Viewport Closed (2026-11-04): while the Viewport is closed the HUD and controls step aside (pause still answers: Esc, P, back) */
+body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #eventBanner{opacity:0;pointer-events:none;transition:opacity .3s}
