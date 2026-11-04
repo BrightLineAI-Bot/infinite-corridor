@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, generatePinnedDungeon, roofExitPlan } from '../src/game.ts';
+import { Game, generatePinnedDungeon, roofExitPlan, clearSectionTerrainCache } from '../src/game.ts';
 import { sectionRegion, LANDSCAPE_VERSION, fallDamage } from '../src/landscape.ts';
 import { BUILDINGS, ROOF_EXIT, buildingHereV2, roofLanding } from '../src/great-buildings.ts';
 import { compoundHere, compoundTopology } from '../src/compounds.ts';
@@ -137,6 +137,18 @@ test('a sweep: every kind of vault, at both interior versions, finds a stair spo
     const g = visit(x, y), B = g.map.greatBuilding; if (!B || !(B.roofTop || B.compound)) continue; roofs++;
     assert.ok(roofLanding(g.map, B.compound ? 'tower' : B.labyrinth ? 'labyrinth' : 'building'), `${x},${y}: a landing`); }
   assert.ok(roofs >= 10, `${roofs} roofs`);
+});
+
+test('the kept section terrain (release 738) holds no roofs: old and new versions over the same section, in either order, match a cache-cleared load', () => {
+  const state = (g) => JSON.stringify([g.map.tiles, g.map.objects, g.map.enemySpawns]);
+  const cases = [['building', plainBuilding(false), { buildingVersion: 2 }], ['labyrinth', labyrinth(), { labVersion: 1 }]];
+  { const c = castle(), k = quarterSection(c.X, c.Y, castleTopology(SEED, c.X, c.Y).k); cases.push(['castle keep', { x: k.rx, y: k.ry }, { castleVersion: 1 }]); }
+  for (const [what, at, oldPins] of cases) {
+    const key = `${at.x},${at.y}`, pinned = visit(at.x, at.y).save.atlas[key], load = (pins) => { const s = freshSave(); s.atlas = { [key]: { ...pinned, ...pins } }; return state(visit(at.x, at.y, s)); };
+    clearSectionTerrainCache(); const oldCold = load(oldPins); clearSectionTerrainCache(); const newCold = load({});
+    assert.notEqual(oldCold, newCold, `${what}: the versions differ`);
+    clearSectionTerrainCache(); assert.equal(load(oldPins), oldCold, `${what}: old first`); assert.equal(load({}), newCold, `${what}: then new, from the kept terrain`);
+    clearSectionTerrainCache(); assert.equal(load({}), newCold, `${what}: new first`); assert.equal(load(oldPins), oldCold, `${what}: then old, from the kept terrain`); }
 });
 
 // Fingerprints of sections and interiors first generated under release 739 (seed TIM1), with their 739 atlas pins.
