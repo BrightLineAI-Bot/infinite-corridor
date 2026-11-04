@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 745: the Mountain Turtle's shell — 2026-11-04
+
+Tim: walk into the shell's gateway to a labyrinth dungeon; clockwork and mosaic themes; the vault gives a Tesseract glyph or Divine Viscera; one shell at a time; every labyrinth unique and deterministic; turtles aren't allowed in dungeons.
+
+**CODE:** `src/turtle-shell.ts` (new; in `scripts/build.mjs` and both `sw.js` lists). `TURTLE_SHELL` holds the data (`keep` 1, `remember` 6, footprint 5×3, search and shore ranges, the sand `skirt`, `vault` .5 Tesseract / 3 viscera, sprite, messages). `placeTurtleShell` (pure) picks the nearest level, open, object-free footprint off lanes and plaza with its south gateway joined to the coherence core, or at sea a shore a skiff can land on; every open exit and every interactable joined to the core stays so; failing that, a sand-ringed spot in open water (sea ice counts as sea). `applyTurtleShell` / `liftTurtleShell` lay or remove a shell on a loaded section (blocked tiles, a `turtleShell` object and a `shellGate` labyrinth door). Records live in `save.turtleShells` (`list`, `faded`), normalised by `ensureTurtleShells`; `addShell` fades the old shell and deletes its labyrinth's histories and snapshots. In `game.ts`, `defeatEnemy` → `restTurtleShell` (overworld only), `loadArea` → `layTurtleShells` on the copy `sectionTerrain` hands out, and `payShellVault` pays `shellVaultReward` once (`history.shellVault`). `labyrinths.ts` adds the `shell` style (id `labyrinth:<seed>~shell<cycle>:<rx>:<ry>:shell`) and `LABYRINTHS.dress`: clockwork tiles for halls and galleries, mosaic tiles for courts, undercrofts and the vault (looks only). `monster-render.ts` `drawTurtleShell` draws a cached, darkened, tucked Turtle sprite.
+
+**BOUNDARY:** Schema 14, one additive key. No generator change: sections without a shell and existing labyrinths are byte for byte as before (digest of 60 sections and 3 labyrinths compared). Kills before this release leave no shell; a Turtle never fights in a dungeon. One shell stands at a time. The atlas and Walker previews do not show the shell. Tests: `tests/turtle-shell.test.ts` (13). Not tested on a device.
+
 ## Release 744: the Pentagon's shortcuts — 2026-11-04
 
 Tim asked for Nioh/Dark Souls-style shortcuts in the Pentagons, plus multiple entrances and exterior doors.

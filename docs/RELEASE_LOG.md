@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 744, the next is **745**.
+Taken at merge time: `main`'s release + 1 (see above). After 745, the next is **746**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 744 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's shortcuts: v6 shortcut links opened from the deep side, 3–5 side entrances with exterior doors bolted from within | In flight. |
+| 745 | Claude | `claude/dreamy-rubin-yn6q2p` | The Mountain Turtle's shell: a slain Turtle's shell stays, its gateway opens a unique deterministic clockwork/mosaic Shell-Labyrinth; vault pays a Tesseract or Divine Viscera; one shell at a time | In flight. |
+| 744 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's shortcuts: v6 shortcut links opened from the deep side, 3–5 side entrances with exterior doors bolted from within | Merged (#392). |
 | 743 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagons' walls: sparse contradictory marks in Pentagon chambers, vent-life Codex lines, Tesseract lines that grow quieter, one Glimpse from inside a wall (Tim's lore, kept sparse) | Merged (#391). |
 | 742 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts glow blue; stacking curses (no shoot, attack, jump, dodge, tools, spells, items; FRAIL), up to four, on the 740 clock/runtime/clear mechanisms; Gloomgorge halo no longer clipped | Merged (#390). |
 | 741 | Claude | `claude/dreamy-rubin-yn6q2p` | Viewport Closed: a short fall, VIEWPORT CLOSED, light static and a fade to black, then waking at the rest point; a great beast looms over the corpse until black | Merged (#389). |
