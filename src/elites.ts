@@ -24,7 +24,9 @@ export function recordPortalPrey(save,kind){const s=ensureEliteState(save),c=s.c
 export const STRONG_POISON={duration:10,maxHpFraction:.03,minDps:2};
 export function strongPoisonDps(maxHp){return Math.max(STRONG_POISON.minDps,Math.round((Number(maxHp)||0)*STRONG_POISON.maxHpFraction))}
 export function applyStrongPoison(status,maxHp){return applyPoison(status,STRONG_POISON.duration,strongPoisonDps(maxHp))}
-export function applyPoison(status,duration=8,dps=2){status.poisonDps=Math.max(Number(dps)||2,status.poison>0?Number(status.poisonDps)||2:0);status.poison=Math.max(Number(status.poison)||0,duration);status.poisonTick=Math.min(Number(status.poisonTick)||1,1);return status}
+// Balance pack (C11): the stronger poison holds, with its own remaining time; a weaker one meanwhile is shrugged off, and an equal
+// one only extends it. (It used to take the longest time and the highest strength apart, so a short strong dose ran long.)
+export function applyPoison(status,duration=8,dps=2){const d=Number(dps)||2,on=(Number(status.poison)||0)>0,cur=on?Number(status.poisonDps)||2:0;if(on&&cur>d)return status;status.poison=on&&cur===d?Math.max(Number(status.poison)||0,duration):duration;status.poisonDps=d;status.poisonTick=Math.min(Number(status.poisonTick)||1,1);return status}
 export function tickEliteStatus(status,dt,onDamage=()=>{}){status.poison=Math.max(0,(Number(status.poison)||0)-dt);status.stun=Math.max(0,(Number(status.stun)||0)-dt);status.stunGuard=Math.max(0,(Number(status.stunGuard)||0)-dt);if(status.poison>0){status.poisonTick-=dt;while(status.poisonTick<=0){onDamage(Number(status.poisonDps)||2);status.poisonTick+=1}}else{status.poisonTick=0;status.poisonDps=0}return status}
 export function cleansePoison(save){const s=ensureEliteState(save);if(!(save.consumables.clearrootAmpoule>0)||!(s.status.poison>0))return false;save.consumables.clearrootAmpoule--;s.status.poison=s.status.poisonTick=0;return true}
 // Release 734 (F1): `move(dx, dy)` is the game's collision mover. The Gravitant Bell's pull wrote the position directly, so it

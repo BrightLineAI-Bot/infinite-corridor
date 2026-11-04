@@ -537,9 +537,54 @@ export function storeInventoryItem(save, item, keep = false) {
 }
 // Aperture Resonance: the number of Aperture bands reached beyond Resonant (tier 3), and what each one grants.
 export const APERTURE_RESONANCE = { hp: 6, melee: 2, magic: 2 };
+// Balance pack (Tim, 2026-11-04: "slightly less, -20%"): each Aperture relic attuned from now on leaves APERTURE_RELIC_STAT.points
+// of a permanent stat point, not a whole one. The fraction is carried in save.perception.relicCarry (additive, normalised in
+// ensurePerception) and whole points are paid as soon as they gather, in tenths so the sum never drifts. Points already given stay.
+export const APERTURE_RELIC_STAT = { points: .8 };
+export function relicStatGain(save) {
+  const p = save.perception, tenths = Math.round((Math.max(0, Number(p.relicCarry) || 0) + APERTURE_RELIC_STAT.points) * 10), whole = Math.floor(tenths / 10);
+  p.relicCarry = (tenths - whole * 10) / 10; save.statPoints = Math.max(0, Math.floor(Number(save.statPoints) || 0)) + whole; return whole;
+}
 export function apertureResonance(save) { return Math.max(0, apertureTier(save?.perception?.aperture || 0) - 3); }
 // Release 140: a global multiplier on all monster damage (balance data, one place to tune).
 export const ENEMY_DAMAGE_SCALE = 1.3;
+// Balance pack (Tim, 2026-11-04). Data tables; the logic below only reads them.
+// 1. World beasts, the Questing Beast and the Stalker are tuned to the Wayfarer, so regional threat comes in late: none below
+//    `from`, a linear ramp (hp and damage multipliers from 1 to the full regional value) to `full`, the full value beyond.
+export const BEAST_REGION_RAMP = { from: 100, full: 150 };
+// 2. Ordinary foes (everything regionally scaled except the beasts and foes tuned to the Wayfarer) take more health and a bit
+//    more damage past the early rings: [ring, hp ×, damage ×], linear between rows, flat past the last; none from `farStart`
+//    (the far realms keep their own tuning). Applied with regional threat, to fresh spawns only.
+export const ORDINARY_THREAT = { rows: [[15, 1, 1], [45, 1.4, 1.3], [100, 1.6, 1.7], [190, 1.7, 2]], farStart: FAR_REALMS.start };
+// 3. Damage reduction: the old curve up to `soft`, then diminishing returns toward `cap` (x / (x + knee) of the room left).
+export const DAMAGE_REDUCTION = { soft: .45, cap: .75, knee: .6 };
+// 4. Spells: each hit is (spell base × base + magic bonus + focus × (Focus − 1)) × scale.
+export const SPELL_POWER = { base: 1.5, focus: 1, scale: 1.15 };
+export function reductionCurve(raw) { const D = DAMAGE_REDUCTION, r = Math.max(0, Number(raw) || 0); if (r <= D.soft) return r; const x = r - D.soft; return D.soft + (D.cap - D.soft) * x / (x + D.knee); }
+export function beastRegionalThreat(q) {
+  const R = BEAST_REGION_RAMP, t = Math.max(0, Math.min(1, ((Number(q?.ring) || 0) - R.from) / (R.full - R.from))), lerp = (m) => t >= 1 ? m : 1 + ((Number(m) || 1) - 1) * t;
+  return { ...q, hpMultiplier: lerp(q.hpMultiplier), damageMultiplier: lerp(q.damageMultiplier) };
+}
+export function ordinaryThreat(ring) {
+  const T = ORDINARY_THREAT, r = Math.max(0, Number(ring) || 0), rows = T.rows; if (r >= T.farStart || r <= rows[0][0]) return { hp: 1, damage: 1 };
+  for (let i = 1; i < rows.length; i++) { const [a, h0, d0] = rows[i - 1], [b, h1, d1] = rows[i]; if (r <= b) { const t = (r - a) / (b - a); return { hp: h0 + (h1 - h0) * t, damage: d0 + (d1 - d0) * t }; } }
+  const last = rows[rows.length - 1]; return { hp: last[1], damage: last[2] };
+}
+// Foes tuned to the Wayfarer (or harmless) keep regional threat alone; every other foe is "ordinary" here, its guardians and
+// elites included, so they stay proportionally above the trash around them.
+export function wayfarerTuned(e) { return !!(e.worldBeast || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast); }
+// The one regional scaling of a fresh foe (scaleFresh, and foes made later in the same ground). A beast keeps its share of health.
+export function regionalScale(e, q) {
+  const beast = !!(e.worldBeast || e.questingBeast), m = beast ? beastRegionalThreat(q) : q, o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
+  const share = beast && e.maxHp > 0 ? Math.max(0, Math.min(1, (Number(e.hp) || 0) / e.maxHp)) : 1;
+  e.threatRing = q.ring;
+  e.maxHp = Math.round(e.maxHp * m.hpMultiplier * o.hp);
+  e.hp = share < 1 ? Math.max(1, Math.round(e.maxHp * share)) : e.maxHp; // C5: the Questing Beast keeps its wounds
+  e.damage = Math.max(1, Math.round(e.damage * m.damageMultiplier * o.damage));
+  e.xpMultiplier = q.xpMultiplier;
+  return e;
+}
+
 // Release 295: what a dodge costs (armor glyph Still lowers it).
 // Release 383: the empowered robot adds MECH_POWER.damage to every blow, magic shot and spell, by the same path as the armor glyphs.
 // Release 447 (meals.ts): a Refuge meal adds its bonus by the same path, while it lasts; release 459 (marginalia.ts): so do
@@ -580,8 +625,7 @@ export function characterStats(save) {
   return {
     maxHp: Math.round((60 + (level - 1) * 6 + (vigor - 1) * 8 + resonance * APERTURE_RESONANCE.hp + boons.hp) * (1 + ag.hp)),
     maxStamina: 50 + (level - 1) + (finesse - 1) * 3 + boons.stamina,
-    damageReduction: Math.min(
-      0.45,
+    damageReduction: reductionCurve( // balance pack: diminishing returns past DAMAGE_REDUCTION.soft, toward its cap
       (resolve - 1) * 0.02 + armorPower * 0.025 + charmPower * 0.01 +
         affixValue(armor, "ward") + affixValue(charm, "ward") + extraReduction(save) + pairingMods(save).guard + boons.guard + ag.defense,
     ),
@@ -2129,11 +2173,7 @@ export class Game {
         for (const e of this.enemies) {
           if (e.foundryValidated) continue;
           if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
-          e.threatRing = q.ring;
-          e.maxHp = Math.round(e.maxHp * q.hpMultiplier);
-          e.hp = e.maxHp;
-          e.damage = Math.max(1, Math.round(e.damage * q.damageMultiplier));
-          e.xpMultiplier = q.xpMultiplier;
+          regionalScale(e, q); // balance pack: beasts ramp in from ring 100; ordinary foes take ORDINARY_THREAT
         }
       };
       const currentId =
@@ -2177,11 +2217,7 @@ export class Game {
         for (const e of this.enemies) {
           if (e.foundryValidated) continue;
           if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
-          e.threatRing = q.ring;
-          e.maxHp = Math.round(e.maxHp * q.hpMultiplier);
-          e.hp = e.maxHp;
-          e.damage = Math.max(1, Math.round(e.damage * q.damageMultiplier));
-          e.xpMultiplier = q.xpMultiplier;
+          regionalScale(e, q); // balance pack: beasts ramp in from ring 100; ordinary foes take ORDINARY_THREAT
         }
       }
       const tier = Math.min(3, apertureTier(this.save.perception.aperture)); // the visual tint only knows three tiers
@@ -2249,8 +2285,8 @@ export class Game {
         const key = "relic-stat:" + this.areaId();
         if (!this.save.perception.awarded[key]) {
           this.save.perception.awarded[key] = true;
-          this.save.statPoints++;
-          this.message = `${r.message} The relic leaves one permanent stat point.`;
+          const got = relicStatGain(this.save);
+          this.message = got > 0 ? `${r.message} The relic leaves ${got > 1 ? `${got} permanent stat points` : "one permanent stat point"}.` : `${r.message} The relic's mark gathers toward a permanent stat point.`;
           r.message = this.message;
         }
       }
@@ -2631,8 +2667,8 @@ export class Game {
       const refill = !!this.fracturedHere(area) && Number.isFinite(Number(s.leftAt)) && (Number(this.save.playSeconds) || 0) - Number(s.leftAt) >= FRACTURED.repopulate; // release 651: away long enough, it fills up again
       this.enemies = this.enemies.map((e) => {
         const restored = by.get(e.id);
-        if (!restored) return e;
-        if (refill && restored.dead && fracturedOrdinary(restored)) return e;
+        if (!restored) return e.fractured ? this.scaleToRegion(e) : e; // balance pack (tim.md 1): a Fractured pack new to known ground
+        if (refill && restored.dead && fracturedOrdinary(restored)) return this.scaleToRegion(e); // and a refill
         const merged = {
           ...e,
           ...(isTombstone(restored) ? tombstoneBlanks(restored, e) : null), // perf pack: a tombstone's empty identity stays empty
@@ -4514,7 +4550,7 @@ export class Game {
       dragonDue: () => game.dragonDue(), dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
       frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
       confuse(seconds) { if (!(seconds > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return; if (!(now < (p.confusedUntil || 0))) game.message = HAUNT.text.confused; p.confusedUntil = Math.max(p.confusedUntil || 0, now + seconds * 1000); }, // release 731: the haunts turn you about
-      ignite(seconds, dps) { if (now < (p.dodgeUntil || 0)) return; const f = game.playerFire; game.playerFire = { left: Math.max(f?.left || 0, seconds), dps: Math.max(f?.dps || 0, dps), tick: f?.tick ?? 1 }; }, // release 708: set alight (the Briar Stag's burning trees)
+      ignite(seconds, dps) { if (now < (p.dodgeUntil || 0)) return; const f = game.playerFire, on = f && f.left > 0; if (on && f.dps > dps) return; game.playerFire = { left: on && f.dps === dps ? Math.max(f.left, seconds) : seconds, dps, tick: f?.tick ?? 1 }; }, // balance pack (C11): the stronger burn keeps its own time // release 708: set alight (the Briar Stag's burning trees)
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(eliteStateInPlace(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
       elevation: (x, y) => elevationAt(map, width, x, y), // release 235: high ground stays above the Blob
@@ -4522,7 +4558,7 @@ export class Game {
       stun(seconds) { if (!(seconds > 0) || p.hp <= 0) return; if (!(now < (p.stunnedUntil || 0))) p.stunnedAt = now; p.stunnedUntil = Math.max(p.stunnedUntil || 0, now + seconds * 1000); game.message = "The shock knocks you flat!"; },
       // One landed lightning hit from the Lightning Giant: every GIANT.stunHits-th one knocks the Wayfarer down (Tim 2026-10-21).
       shockHit() { if (p.hp <= 0 || now < (p.stunnedUntil || 0)) return; p.shockCount = (p.shockCount || 0) + 1; p.shockAt = now; if (p.shockCount >= GIANT.stunHits) { p.shockCount = 0; this.stun(GIANT.stunTime); } },
-      slow(factor, seconds) { p.slowFactor = Math.min(now < (p.slowUntil || 0) ? (p.slowFactor || 1) : 1, factor); p.slowUntil = Math.max(p.slowUntil || 0, now + seconds * 1000); },
+      slow(factor, seconds) { const on = now < (p.slowUntil || 0), cur = on ? (p.slowFactor || 1) : 1; if (on && cur < factor) return; p.slowUntil = on && cur === factor ? Math.max(p.slowUntil, now + seconds * 1000) : now + seconds * 1000; p.slowFactor = factor; }, // balance pack (C11): the stronger slow keeps its own time
       addEffect: (effect) => addPackEffect(game.packEffects ||= [], effect, now),
       spawnMinion(owner, kind, x, y, index) {
         const c = createCombatant(kind, x, y, false, []);
@@ -4751,9 +4787,9 @@ export class Game {
       spot = open.sort((q, r) => elev(r) - elev(q))[0] || null; }
     if (!spot) return null;
     const stats = characterStats(this.save), rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, stats);
-    const beast = beastProfileVitals({ hitsToKill: 0, hpPerLevel: 0, damageShare: STALKER.vitals.damageShare }, this.save, stats), q = regionalThreat(this.rx, this.ry), v = stalkerVitals(rev.maxHp, beast.damage, q);
+    const beast = beastProfileVitals({ hitsToKill: 0, hpPerLevel: 0, damageShare: STALKER.vitals.damageShare }, this.save, stats), q = regionalThreat(this.rx, this.ry), v = stalkerVitals(rev.maxHp, beast.damage, beastRegionalThreat(q)); // balance pack: regional threat ramps in from BEAST_REGION_RAMP.from
     const key = `${this.save.seed}:stalker:${st.seq}:${st.kills}`, c = createCombatant("ashenHound", spot.x, spot.y, false, []);
-    Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: v.hp, hp: Math.min(v.hp, st.active?.hp || v.hp), damage: v.damage, baseDamage: v.damage,
+    Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: Math.max(v.hp, Number(st.active?.hp) || 0) /* balance pack: a stalk under way keeps the health it has */, hp: st.active?.hp || v.hp, damage: v.damage, baseDamage: v.damage,
       range: 0, meleePatterns: [], scale: STALKER.size, baseScale: STALKER.size, bodyRadius: .5, threatRing: q.ring, xpMultiplier: q.xpMultiplier * 2, staggerImmune: true,
       affixes: rollAffixes(key, STALKER.affixes[0] + (hashSeed(`${key}:affix-count`) % (STALKER.affixes[1] - STALKER.affixes[0] + 1))), stalkForm: at ? "cat" : hashSeed(`${key}:first`) % 2 ? "ape" : "cat" });
     // Release 695: how it comes for you, by turns: lying in wait ahead (lurk), running at you from across the section (run), in
@@ -4936,7 +4972,7 @@ export class Game {
       if (e.fracWarden) { // release 666: half a Gate Revenant for this Wayfarer, grown huge, a mixed moveset, two affixes, aggressive
         const W = FRACTURE_WARDEN, rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, characterStats(this.save));
         Object.assign(c, { fracWarden: true, fracKey: e.fracKey, fractured: true, packName: "Fracture Warden", aggro: true, attackGap: W.attackGap, attackCooldownScale: W.cooldownScale, staggerResistance: W.staggerResistance, brain: "duelist", evasive: true });
-        c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * W.revenantShare)); c.baseDamage = c.damage;
+        c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * (W.damageShare ?? W.revenantShare))); c.baseDamage = c.damage;
         c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; c.bodyRadius = (c.bodyRadius || .38) * W.scale; c.speedMultiplier = (c.speedMultiplier || 1) * W.speed;
         if (c.packKind) { c.packAttacks = wardenAttacks(this.save.seed, e.fracKey || c.id); c.packBossAttacks = []; }
         c.affixes = rollAffixes(`${this.save.seed}:fracture-warden:${c.id}`, W.affixes);
@@ -5052,6 +5088,9 @@ export class Game {
     installCompletionExit(this.map,history); this.placeAnnexStair(history); this.placeDeepStair(history); // release 675; 677
     return clear;
   }
+  // Balance pack (tim.md findings 1 and 2): a foe made after its ground loaded (a Fractured wave, a Warden's call, a refill, a
+  // new density pack in known ground, a haunt's split or its Gloomgorge) takes the regional scaling a fresh load gives, once.
+  scaleToRegion(e) { if (!e || e.threatRing != null || this.map?.skyland) return e; return regionalScale(e, regionalThreat(this.rx, this.ry)); }
   // Release 709: the Crimson Tyrant's claim. Its clock runs in seconds of play while its hunt holds this section, here or not.
   dragonHere() { const q = this.save.worldBeasts?.crimsonTyrant?.active; return !!q && !q.retreat && !q.dungeon && q.rx === this.rx && q.ry === this.ry && this.area === "overworld"; }
   dragonClock() { const r = dragonRecord(this.save, this.rx, this.ry); if (r.nextAt == null) r.nextAt = (Number(this.save.playSeconds) || 0) + DRAGON.colonize.first; return r; }
@@ -5069,12 +5108,13 @@ export class Game {
     this._hauntCheck = (this._hauntCheck || 0) - dt;
     for (const w of wisps) { if (!w.aggro || w.hauntChild || (w.splits || 0) >= HAUNT.split.max) continue; w.splitIn = (w.splitIn ?? splitDelay(w.id, w.splits || 0)) - dt;
       if (w.splitIn <= 0 && wisps.length < HAUNT.split.cap) { w.splits = (w.splits || 0) + 1; w.splitIn = splitDelay(w.id, w.splits); const a = ((hashSeed(`${w.id}:${w.splits}`) % 628) / 100), R = HAUNT.split.range;
-        const c = this.createEnemyFromSpawn({ id: `${w.id}:s${w.splits}`, kind: "gloomwisp", x: w.x + Math.cos(a) * R, y: w.y + Math.sin(a) * R, traits: [] }); Object.assign(c, { aggro: true, noRewards: true, hauntChild: true }); this.enemies.push(c); wisps.push(c); } }
+        const c = this.scaleToRegion(this.createEnemyFromSpawn({ id: `${w.id}:s${w.splits}`, kind: "gloomwisp", x: w.x + Math.cos(a) * R, y: w.y + Math.sin(a) * R, traits: [] })); Object.assign(c, { aggro: true, noRewards: true, hauntChild: true }); this.enemies.push(c); wisps.push(c); } }
     if (this._hauntCheck > 0) return; this._hauntCheck = HAUNT.merge.check;
     if (this.hauntGorged || this.enemies.some((e) => e.kind === "gloomgorge" && !e.dead)) return; // one per visit
     const knot = hauntKnot(wisps); if (!knot) return;
     for (const w of knot.wisps) { w.dead = true; w.hp = 0; w.noRewards = true; w.merged = true; }
-    const g = this.createEnemyFromSpawn({ id: `${knot.wisps[0].id}:gorge:${Math.round(now)}`, kind: "gloomgorge", x: knot.x, y: knot.y, traits: [] }); g.aggro = true; this.enemies.push(g); this.hauntGorged = true;
+    const g = this.scaleToRegion(this.createEnemyFromSpawn({ id: `${knot.wisps[0].id}:gorge:${Math.round(now)}`, kind: "gloomgorge", x: knot.x, y: knot.y, traits: [] })), pooled = knot.wisps.reduce((n, w) => n + Math.max(0, Number(w.maxHp) || 0), 0);
+    if (pooled > g.maxHp) g.maxHp = g.hp = Math.round(pooled); /* balance pack (tim.md 2): at least the wisps it swallowed */ g.aggro = true; this.enemies.push(g); this.hauntGorged = true;
     this.message = HAUNT.text.merge; return g;
   }
   // Release 723: in a domain, its beast comes once the Wayfarer has waited there long enough this visit (at once on the visit that
@@ -5137,13 +5177,14 @@ export class Game {
   frenzyHit(now, n = 1) {
     if (this.player.hp <= 0) return; const f = (this.frenzy ||= { build: 0, active: false });
     if (f.active) return; f.build += n; f.forget = FRENZY.forget;
-    if (f.build >= FRENZY.build) { Object.assign(f, { active: true, left: FRENZY.time, cure: 0, hpSeen: null }); this.message = `The frenzy takes hold! Land ${FRENZY.cure} blows on the Doom Chaser to throw it off.`; }
+    if (f.build >= FRENZY.build) { Object.assign(f, { active: true, left: FRENZY.time, cure: 0 }); this.message = `The frenzy takes hold! Land ${FRENZY.cure} blows on the Doom Chaser to throw it off.`; }
   }
+  frenzyBlow(e) { const f = this.frenzy; if (f?.active && e?.kind === "doomChaser" && !e.dead) f.cure = (f.cure || 0) + 1; }
   frenzyTick(dt) {
     const f = this.frenzy; if (!f) return; const d = this.enemies.find((q) => q.kind === "doomChaser" && !q.dead), p = this.player;
     if (!f.active) { f.forget -= dt; if (f.forget <= 0 || !d) this.frenzy = null; return; }
     if (!d || p.hp <= 0) { this.frenzy = null; return; }
-    if (f.hpSeen != null && d.hp < f.hpSeen) f.cure++; f.hpSeen = d.hp; f.left -= dt;
+    f.left -= dt; // balance pack (C10): only the Wayfarer's own blows count toward the cure (frenzyBlow), not any drop in health
     if (f.cure >= FRENZY.cure) { this.frenzy = null; this.message = "You throw the frenzy off."; return; }
     if (f.left <= 0) { this.frenzy = null; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * FRENZY.burst * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); this.message = "The frenzy bursts inside you!"; }
   }
@@ -5352,6 +5393,7 @@ export class Game {
       const boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, base = (profile.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage) * (echo ? echo.share : 1) * pounce * (1 + (boxing?.damage || 0)) * (this.spellbladeOn(now) ? 1 + FIELD_PASSIVES.spellblade.damage : 1), /* release 515: Spellblade */ /* release 485: Shadow Boxing */ /* release 335: armor Volatile */ scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: !!echo }, now); // release 245: plain steel scatters the Nanobot Knight
       const hpBefore = Math.max(0,e.hp);
       e.hp -= dealt;
+      if (!echo) this.frenzyBlow(e); // balance pack (C10): a swing is a blow
       if (boxing && dealt > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + dealt * boxing.heal); // release 485: Shadow Boxing heals
       this.astralPlayerHit(e,Math.max(0,hpBefore-Math.max(0,e.hp)));
       e.hitFlash = scattered ? 0 : 0.18;
@@ -5512,7 +5554,7 @@ export class Game {
       radius: spell.radius * glyphs.mods.radius,
       pulse: spell.pulse,
       untilPulse: 0,
-      damage: Math.max(1, Math.round((spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage))), // release 335: armor Ignite scales the whole spell
+      damage: Math.max(1, Math.round(this.spellPower(spell) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage))), // release 335: armor Ignite scales the whole spell
       pulseIndex: 0,
       hits: {},
       glyphHost: "spell",
@@ -5527,6 +5569,9 @@ export class Game {
     this.message = `${spell.name} answers.`;
     return true;
   }
+  // Balance pack (C7): a spell's power before its glyph, Pairing and armor multipliers (SPELL_POWER): Focus counts beyond the
+  // flat magic bonus, so a Focus build casts about as hard as a Might build swings.
+  spellPower(spell) { const S = SPELL_POWER, focus = Math.max(1, Number(this.save.stats?.Focus) || 1); return ((Number(spell.damage) || 0) * S.base + (Number(characterStats(this.save).magicBonus) || 0) + S.focus * (focus - 1)) * S.scale; }
   // Release 547 (tool-forms.ts FIRE_BURST): a fan of cinder shells toward the lock, else the nearest foe in reach, else the way
   // you face; each bursts (the projectile detonation) where it lands or on the first foe it meets.
   castFireBurst(spell, cds, key, now = this.lastUpdateNow || 0) {
@@ -5534,7 +5579,7 @@ export class Game {
     const p = this.player, cx = p.x + .5, cy = p.y + .45, t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), spell.maxRange * AUTO_AIM.spellScale)?.e || null;
     const d = foe ? projectileDirection(foe.x + .5 - cx, foe.y + .45 - cy, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), glyphs = this.glyphLoadout("spell", spell.id), F = FIRE_BURST;
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
-    const damage = Math.max(1, Math.round((spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage)));
+    const damage = Math.max(1, Math.round(this.spellPower(spell) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage)));
     for (let i = 0; i < F.count; i++) { const a = (F.count > 1 ? i / (F.count - 1) - .5 : 0) * F.spread, c = Math.cos(a), sn = Math.sin(a);
       this.projectiles.push({ id: `fire-burst-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x: cx + d.x * .3, y: cy + d.y * .3, dx: d.x * c - d.y * sn, dy: d.x * sn + d.y * c, speed: F.speed, life: F.reach * glyphs.mods.range / F.speed, damage, damageType: "magic", path: "grenade", age: 0, hits: {}, blastRadius: spell.radius * glyphs.mods.radius, glyphHost: "spell", glyphSpell: spell.id, fireBomb: true }); }
     cds[key] = spell.cooldown * glyphs.mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
@@ -5555,7 +5600,7 @@ export class Game {
   launchOrbit(timedOut = false, now = this.lastUpdateNow || 0) {
     const o = this.orbit, spell = SPELLS["orbit-volley"]; if (!o || o.flight) return false;
     const held = (now - o.start) / 1000, L = orbitLaunch(held, timedOut), glyphs = this.glyphLoadout("spell", spell.id), p = this.player, cx = p.x + .5, cy = p.y + .45, cds = this.save.magicSkills.cooldowns;
-    const power = (spell.damage + characterStats(this.save).magicBonus) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage);
+    const power = this.spellPower(spell) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage);
     const t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), ORBIT.reach)?.e, d = foe ? projectileDirection(foe.x - p.x, foe.y - p.y, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
     const at = foe ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * ORBIT.reach, y: cy + d.y * ORBIT.reach };
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
@@ -6066,7 +6111,7 @@ export class Game {
       const size = Math.min(left, mode.pack[0] + hk % (mode.pack[1] - mode.pack[0] + 1) + (elite ? mode.surge : 0) + Math.floor(P.size * pace)), roll = ((hk >>> 9) % 1000) / 1000;
       const rank = elite ? (roll < .35 ? "rare" : "champion") : roll < mode.rare * .5 ? "rare" : roll < mode.champion ? "champion" : null; rare ||= rank === "rare";
       const pack = packSpawns(`${this.save.seed}:frac-wave:${key}:${st.n}:p${k}`, kinds.length ? kinds : F.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-r-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true });
-      for (const q of pack.slice(0, left)) { const c = this.createEnemyFromSpawn(q); c.aggro = true; this.enemies.push(c); left--; came++; } // never past the room (657: a shaman counts)
+      for (const q of pack.slice(0, left)) { const c = this.scaleToRegion(this.createEnemyFromSpawn(q)); c.aggro = true; this.enemies.push(c); left--; came++; } // never past the room (657: a shaman counts)
     }
     st.nextAt = now + (came ? mode.press * P.press[pace] : 2) * 1000; // a wave left standing is joined by the next
     if (came) { if (!st.wave) st.waveAt = now; st.wave = true; this.message = elite ? F.messages.elite : rare ? F.messages.rare : F.messages.wave; }
@@ -6096,7 +6141,7 @@ export class Game {
       const kinds = [...new Set(this.enemies.filter((e) => !e.fracWarden && (e.fractured || fracturedOrdinary(e))).map((e) => e.kind))].filter((k) => k !== "npc");
       const rank = st.calls % W.adds.championEvery === 0 ? "champion" : null;
       const pack = packSpawns(`${this.save.seed}:fracture-call:${key}:${st.calls}`, kinds.length ? kinds : FRACTURED.fallback, warden.x, warden.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-wa-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true, fracWardenAdd: true });
-      for (const q of pack.filter((q) => !q.fracShaman).slice(0, size)) { const e = this.createEnemyFromSpawn(q); Object.assign(e, { aggro: true, fracWardenAdd: true }); this.enemies.push(e); }
+      for (const q of pack.filter((q) => !q.fracShaman).slice(0, size)) { const e = this.scaleToRegion(this.createEnemyFromSpawn(q)); Object.assign(e, { aggro: true, fracWardenAdd: true }); this.enemies.push(e); }
       if (pack.length) this.message = W.messages.call;
     }
     return true;
@@ -6766,7 +6811,7 @@ export class Game {
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
-      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
+      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (!shot.hostile && !shot.echo) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow */ if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
       (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
       (bx, by) => { const b = buildOn(this, bx, by); if (b) strikeBuild(this, b); }, // release 265: a build absorbs the shot
     );
@@ -6781,7 +6826,7 @@ export class Game {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
       (fx, e) => fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage, // release 335: a spell's pulses keep the glyphs it was cast with
-      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + actual * fx.healShare); /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
+      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + actual * fx.healShare); /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); },
     );
     for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);
     this.tickGlyphs(dt, now);
