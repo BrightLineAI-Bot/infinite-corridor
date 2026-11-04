@@ -18,7 +18,7 @@
 // - Loot: reinforcements drop an item only `trashDrop` of the time (auto-picked up and salvaged as always); champions and
 //   rares drop more and give more experience.
 // Bounded: one reinforcement roll a frame at most, a fixed number of tile checks per spawn, the live cap.
-import { hashSeed } from "./random.ts";
+import { hashSeed, byHash } from "./random.ts";
 import { rollAffixes, SHAMAN } from "./affixes.ts";
 
 export const FRACTURED = {
@@ -156,4 +156,4 @@ export function wardenBody(seed, key, kinds, isPack) {
   const own = kinds.filter((k) => isPack(k)), pool = own.length ? own : FRACTURE_WARDEN.bodies;
   return pool[hashSeed(`${seed}:fracture-warden:${key}`) % pool.length];
 }
-export function wardenAttacks(seed, key) { const A = FRACTURE_WARDEN.attacks; return [...A].sort((a, b) => hashSeed(`${seed}:${key}:wa:${a}`) - hashSeed(`${seed}:${key}:wa:${b}`)).slice(0, 7); }
+export function wardenAttacks(seed, key) { const A = FRACTURE_WARDEN.attacks; return [...A].sort(byHash((a) => `${seed}:${key}:wa:${a}`)).slice(0, 7); }

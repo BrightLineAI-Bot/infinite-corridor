@@ -8,7 +8,7 @@ import { ASTRAL_PROFILE } from "./astral-worm.ts";
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed } from "./random.ts";
+import { hashSeed, byHash } from "./random.ts";
 import { LETHAL_KINDS, canStep } from "./landscape.ts";
 import { sectionExits, apertureTier } from "./world.ts";
 import { stageOneBeastReference } from "./stages.ts";
@@ -163,7 +163,7 @@ export function mothChrysalisFor(save, map, rx, ry) {
   ensureWorldBeasts(save, false); const q = save.worldBeasts.ashenMoth, cn = map?.canopy;
   if (!cn?.top || map.settlement || q.active || q.cooldown > 0 || !beastUnlocked(save, "ashenMoth")) return null;
   if ((hashSeed(`${save.seed}:moth-chrysalis:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= CHRYSALIS.chance) return null;
-  const branches = (map.tiles || []).filter((t) => t.kind === "canopyBranch" && t.elev > 0 && !t.slope).sort((a, b) => hashSeed(`chrysalis:${a.x},${a.y}`) - hashSeed(`chrysalis:${b.x},${b.y}`));
+  const branches = (map.tiles || []).filter((t) => t.kind === "canopyBranch" && t.elev > 0 && !t.slope).sort(byHash((a) => `chrysalis:${a.x},${a.y}`));
   const at = branches[0]; if (!at) return null;
   return { id: `moth-chrysalis:${q.cycle}:${rx},${ry}`, kind: "mothChrysalis", x: at.x, y: at.y, boss: false, mothChrysalis: true, traits: [] };
 }
@@ -304,7 +304,7 @@ export function beginRetreat(save, id, rx, ry, probe) {
   for (let d = 0; d <= RETREAT.search && !home; d++) {
     const ring = [];
     for (let dx = -d; dx <= d; dx++) for (const dy of new Set([d - Math.abs(dx), -(d - Math.abs(dx))])) ring.push({ rx: rx + dx, ry: ry + dy });
-    ring.sort((a, b) => hashSeed(`${save.seed}:beast-home:${id}:${a.rx},${a.ry}`) - hashSeed(`${save.seed}:beast-home:${id}:${b.rx},${b.ry}`));
+    ring.sort(byHash((a) => `${save.seed}:beast-home:${id}:${a.rx},${a.ry}`));
     home = ring.find((c) => !(c.rx === 0 && c.ry === 0) && H.section(probe(c.rx, c.ry))) || null;
   }
   const away = Object.values(SIDES)[hashSeed(`${save.seed}:beast-away:${id}:${q.cycle}`) % 4];
@@ -349,7 +349,7 @@ export function replanRetreat(save, id, rx, ry, probe) {
   let home = null;
   if (r.replans <= RETREAT_REPLAN.replans) for (let d = 1; d <= RETREAT.search && !home; d++) {
     const ring = []; for (let dx = -d; dx <= d; dx++) for (const dy of new Set([d - Math.abs(dx), -(d - Math.abs(dx))])) ring.push({ rx: rx + dx, ry: ry + dy });
-    ring.sort((a, b) => hashSeed(`${save.seed}:beast-home:${id}:${a.rx},${a.ry}`) - hashSeed(`${save.seed}:beast-home:${id}:${b.rx},${b.ry}`));
+    ring.sort(byHash((a) => `${save.seed}:beast-home:${id}:${a.rx},${a.ry}`));
     home = ring.find((c) => !(c.rx === 0 && c.ry === 0) && !r.tried.includes(`${c.rx},${c.ry}`) && H.section(probe(c.rx, c.ry))) || null;
   }
   const away = Object.values(SIDES)[hashSeed(`${save.seed}:beast-away:${id}:${q.cycle}:${r.replans}`) % 4];
@@ -537,7 +537,7 @@ export function worldBeastFor(save, map, rx, ry) {
   const open = map.tiles.filter((t) => beastGround(here, t) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24); // release 257: the Giant may be met at sea
   // Release 261: only ground it could retreat from (placementRegions); a beast already met keeps whatever ground it had.
   const regions = placementRegions(map, here), sound = open.filter((t) => regions.ok[t.y * 32 + t.x]), pool = sound.length || q.active.tries ? (sound.length ? sound : open) : [];
-  const at = pool.sort((a, b) => hashSeed(`wb:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wb:${here}:${q.cycle}:${b.x},${b.y}`))[0];
+  const at = pool.sort(byHash((a) => `wb:${here}:${q.cycle}:${a.x},${a.y}`))[0];
   if (!at) { if (!q.active.tries) { q.active = null; if (claimed) ensureBeastGap(save).fresh = ENCOUNTER.newSections; } return null; } // no valid terrain for this beast: it does not hold the section (and was never met)
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
 }
@@ -635,7 +635,7 @@ export function worldBeastForDungeon(save, map, dungeonId) {
   const near = (t) => water.some((w) => Math.abs(w.x - t.x) + Math.abs(w.y - t.y) <= 4);
   const reachable = here === "voidWalker" ? walkerReachableTiles(map, entry) : null;
   const spots = map.tiles.filter((t) => (!reachable || reachable.has(t.y * width + t.x)) && ((!t.blocked && !LETHAL_KINDS.has(t.kind) && t.kind !== "dungeonWater") || here === "astralWorm" && astralSpawnWater(t)) && t.x > 1 && t.y > 1 && t.x < width - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= 7);
-  const pool = here === "psychicCrystal" && spots.filter(near).length ? spots.filter(near) : spots, at = pool.sort((a, b) => hashSeed(`wbd:${here}:${q.cycle}:${a.x},${a.y}`) - hashSeed(`wbd:${here}:${q.cycle}:${b.x},${b.y}`))[0];
+  const pool = here === "psychicCrystal" && spots.filter(near).length ? spots.filter(near) : spots, at = pool.sort(byHash((a) => `wbd:${here}:${q.cycle}:${a.x},${a.y}`))[0];
   if (!at) { if (!q.active.tries && !q.active.retreat) q.active = null; return null; }
   return { id: `world-beast:${here}:${q.cycle}${q.active.retreat && here !== "voidWalker" ? ":flee" : ""}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, retreating: !!q.active.retreat, inDungeon: true, traits: [] };
 }
