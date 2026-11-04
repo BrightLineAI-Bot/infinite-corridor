@@ -10,7 +10,7 @@ import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "
 import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.ts"; // release 339; 341
 import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.ts";
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.ts";
+import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
@@ -143,7 +143,7 @@ function openShop(vendorId = "vendor-vela") {
 }
 setTimeout(() => {
   canvas.addEventListener("worldtap", (e) => {
-    if (game.paused) return;
+    if (game.paused || viewportSeq) return; // Viewport Closed: taps are ignored too
     const r = canvas.getBoundingClientRect(),
       q = screenToWorld(
         game,
@@ -287,6 +287,7 @@ const perfEnabled = new URLSearchParams(location.search).has("perf") || settings
   navigationStats = { lookups: 0, rebuilds: 0 };
 function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
 game.deathPause = true; // release 329: the played game pauses after a world beast fells the Wayfarer (Game.tickFallen)
+game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every death holds a short beat of the fall, then the sequence (viewportFrame)
 function applyPresentationSettings(){game.beastTries=settings.beastTries!==false;/* release 345 */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
 const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
@@ -2323,6 +2324,42 @@ function warmSpillTerrain() {
     catch (error) { spillWarmFor = key; spillWarming = false; console.warn("Supernova warm-up failed", error); }
   });
 }
+// Viewport Closed (Tim, 2026-11-04). The Game holds a dead Wayfarer for a short beat of the fall (deathBeat), then recovers
+// at the rest point exactly as before. viewportFrame tracks it: at the recovery it keeps a snapshot of the last frame
+// (the fall), shows VIEWPORT CLOSED, light static and the fade to black over it with the world frozen, then re-opens on the
+// rest point, shifting the world's clocks by the frozen time (so the recovery's protection is still there). Nothing of it
+// is saved: a reload at any point lands at the rest point, or, inside the beat, dies and recovers once.
+let viewportSeq = null, viewportKnownDeaths = Number(save.worldFlags?.deaths) || 0, viewportNoiseKey = "";
+const viewportArt = { snapshot: null, sw: 0, sh: 0, noise: [], scan: null };
+function viewportReduced() { return !!(settings.reduceMotion || settings.safeMode); }
+function viewportCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+function viewportPrepare() {
+  const quality = currentQuality(), q = VIEWPORT_CLOSED.quality[quality] || VIEWPORT_CLOSED.quality.balanced, aspect = Math.round(innerHeight / Math.max(1, innerWidth) * 10) / 10, key = `${quality}:${aspect}`;
+  if (key !== viewportNoiseKey) { viewportNoiseKey = key; viewportArt.noise = viewportNoiseFrames(viewportCanvas, quality, aspect); }
+  if (!viewportArt.scan) { const c = viewportCanvas(1, 3), x = c.getContext("2d"); x.fillStyle = "rgba(0,0,0,.55)"; x.fillRect(0, 2, 1, 1); viewportArt.scan = ctx.createPattern(c, "repeat"); }
+  const sw = Math.max(1, Math.round(canvas.width * q.snapshot)), sh = Math.max(1, Math.round(canvas.height * q.snapshot));
+  if (!viewportArt.snapshot) viewportArt.snapshot = viewportCanvas(sw, sh);
+  else if (viewportArt.snapshot.width < sw || viewportArt.snapshot.height < sh) { viewportArt.snapshot.width = Math.max(sw, viewportArt.snapshot.width); viewportArt.snapshot.height = Math.max(sh, viewportArt.snapshot.height); }
+  viewportArt.sw = sw; viewportArt.sh = sh;
+}
+function viewportEnd() {
+  viewportSeq = null; viewportKnownDeaths = Number(save.worldFlags?.deaths) || 0;
+  document.body.classList.remove("viewport-closed");
+  input.reset(); last = performance.now();
+  updateMessage(game.message, true);
+}
+function viewportFrame(dt, now) {
+  try {
+    const deaths = Number(save.worldFlags?.deaths) || 0;
+    const ev = viewportClosedTick(viewportSeq, { dt, fallen: !!game.fallen, deaths, known: viewportKnownDeaths, reduceMotion: viewportReduced() });
+    viewportSeq = ev.seq;
+    if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
+    if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
+    if (ev.release && viewportSeq) { game.setPaused(true, now - viewportSeq.frozen * 1000); game.setPaused(false, now); }
+    if (ev.end) { viewportEnd(); return null; }
+    return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
+  } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
+}
 function frame(now) {
   try {
   probeInterval = now - last;
@@ -2333,24 +2370,30 @@ function frame(now) {
   // Release 199: while a Glimpse plays nothing else runs: no keys, no update, whatever has tried to resume the game.
   if (glimpseRun) { game.setPaused(true, now); return; }
   if (input.consume("pause")) game.paused ? resume() : pause();
+  if (viewportSeq) input.reset(); // Viewport Closed: everything but pause is ignored until the Wayfarer wakes
   if (input.consume("map")) openMap();
   if (input.consume("journal")) openJournal();
   if (input.consume("menu")) openPack();
   if(tickScene(now))return;
+  const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
-  measured("update", () => game.update(dt, input, now));
+  if (!viewportBefore || viewportBefore.world) measured("update", () => game.update(dt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, now));
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   if (game.paused) return;
+  const viewportStage = viewportFrame(probeInterval / 1000, now);
   warmCompassSignals();
   warmSpillTerrain();
   measured("render", () => {
     renderTimings.on = probe.running;
-    render(ctx, game, innerWidth, innerHeight, now);
-    drawDungeonSystems();
-    drawRangedEffects();
+    if (!viewportStage || viewportStage.world) {
+      render(ctx, game, innerWidth, innerHeight, now);
+      drawDungeonSystems();
+      drawRangedEffects();
+    }
+    if (viewportStage) drawViewportClosed(ctx, viewportStage, innerWidth, innerHeight, viewportSeq?.t || 0, viewportArt, currentQuality());
   });
-  updateMessage(game.message);
+  if (!viewportSeq) updateMessage(game.message); // the recovery's message waits until the Wayfarer wakes
   measured("hud", () => {
     updateHud(now);
     updateNavigationCompass();

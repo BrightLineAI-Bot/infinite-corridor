@@ -3935,7 +3935,7 @@ export class Game {
       e.x = nx; e.y = ny; e.facing = Math.cos(e.millAngle) >= 0 ? "right" : "left"; e.walkPhase = (e.walkPhase || 0) + dt * 6;
     }
     this.projectiles = this.projectiles.filter((q) => !q.hostile);
-    if (now >= this.fallen.until) { this.fallen = null; for (const e of this.enemies) { delete e.millHome; delete e.millAngle; delete e.millTurn; } this.player.stunnedUntil = 0; this.resolveDeath(now, input); this.save.hp = this.player.hp; this.save.stamina = this.player.stamina; Object.assign(this.save.position, { area: this.area, rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }); }
+    if (now >= this.fallen.until) { const f = this.fallen; this.fallen = null; for (const e of this.enemies) { delete e.millHome; delete e.millAngle; delete e.millTurn; } this.player.stunnedUntil = 0; this.resolveDeath(now, input, !!f.hazard, f.terrain ?? null); /* the Viewport Closed beat keeps a hazard death's cause */ this.save.hp = this.player.hp; this.save.stamina = this.player.stamina; Object.assign(this.save.position, { area: this.area, rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }); }
   }
   mechUp() { return this.save.mech?.active === true && this.save.mech.mode !== "drone" && !aboard(this.save); }
   // Release 507: surface water carries the Wayfarer with the Tidemantle, or inside the robot (MECH_WATER).
@@ -7019,7 +7019,14 @@ export class Game {
       // yourself"): felled in a fight with a world beast or the Questing Beast, the Wayfarer lies fallen for DEATH_PAUSE
       // seconds while the beast calms and paces (tickFallen); then the usual recovery at the checkpoint (resolveDeath).
       // The played game turns it on (main.ts sets deathPause); headless simulations recover at once, as before.
-      if (this.deathPause && !fellIntoHazard && !this.fallen && this.enemies.some((e) => !e.dead && (e.worldBeast || e.questingBeast))) {
+      // Viewport Closed (Tim, 2026-11-04): the played game sets deathBeat (combat-visuals.ts VIEWPORT_CLOSED.fall). Every death,
+      // of any kind, then holds for that short live beat of the fall (no control, nothing more can hurt) before the same
+      // recovery runs once; what the player sees after it is presentation (main.ts). The world-beast pause above is unused then.
+      if (this.deathBeat > 0 && !this.fallen) {
+        const until = now + this.deathBeat * 1000;
+        this.fallen = { until, beat: true, hazard: !!fellIntoHazard, terrain: terrainHazard ?? null }; p.hp = 0; p.stunnedAt = now; p.stunnedUntil = until + 1000; this.jumpUntil = 0; // stunnedUntil past the beat: the pose stays down
+        this.projectiles = this.projectiles.filter((q) => !q.hostile);
+      } else if (this.deathPause && !fellIntoHazard && !this.fallen && this.enemies.some((e) => !e.dead && (e.worldBeast || e.questingBeast))) {
         const until = now + DEATH_PAUSE.seconds * 1000, beast = this.enemies.find((e) => !e.dead && (e.worldBeast || e.questingBeast));
         this.fallen = { until }; p.hp = 0; p.stunnedAt = now; p.stunnedUntil = until; this.jumpUntil = 0;
         this.projectiles = this.projectiles.filter((q) => !q.hostile);
