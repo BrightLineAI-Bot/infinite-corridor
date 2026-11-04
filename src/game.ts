@@ -6228,7 +6228,6 @@ export class Game {
   openPentagonFinale() {
     const B = this.map?.building; if (!B?.pentagon || !B.vault) return null;
     const F = PENTAGON.finale, H = dungeonHistory(this.save, `${B.base}:f1`), was = !!H.pentFinale; let o = this.map.objects.find((q) => q.kind === "pentFinaleWall");
-    if (!(B.V >= 3)) this.awardTesseract(`${B.base}:hoard`, "regent"); // a Pentagon begun before Tesseracts (v1, v2): the Regent's fall gives the glyph a v3+ hoard holds (the same source, so once)
     if (was && o) return o;
     if (!o) o = pentagonFinaleIn(this.save, this.areaId(), this.map, true); if (!o) return null;
     H.pentFinale = F.version; journalOnce(this.save, `pentagon-finale:${B.base}`, F.messages.opens, PENTAGON.name);

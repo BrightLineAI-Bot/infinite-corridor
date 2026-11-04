@@ -201,10 +201,10 @@ test('in play: stepping off the path is a fall (the death beat), then the walkwa
 // ------------------------------------------------------------------------------------------------ the dais's rerolls
 const glyphs = (g, n = 2) => { const { grantTesseract } = TESS; for (let i = 0; i < n; i++) grantTesseract(g.save, `test:glyph:${i}`, i ? 'deep' : 'regent', 0, 'a test'); return g.save.tesseracts.owned; };
 const atDais = (g, P) => { loadVault(g, P); if (regent(g) && !regent(g).dead) fell(g); act(g, opening(g), 'use'); const d = g.map.objects.find((o) => o.kind === 'pentDais'); g.player.x = d.x; g.player.y = d.y + 1; return d; };
-test('the Regent\'s fall pays a Tesseract: the v3+ hoard as before, and v1/v2 Pentagons the same glyph at his fall, once', () => {
+test('the Regent\'s rewards are unchanged by the finale: his fall grants no glyph of its own (v1/v2 none; v3+ the hoard, when opened)', () => {
   const { cx, cy } = find();
-  for (const V of [1, 2]) { const g = pinned(SEED, cx, cy, V), P = pentagonPlan(SEED, cx, cy, V); loadVault(g, P); const n0 = (g.save.tesseracts?.owned || []).length; fell(g);
-    assert.equal(g.save.tesseracts.owned.length, n0 + 1, `v${V}: a Tesseract`); assert.ok(g.save.tesseracts.got[`${P.base}:hoard`]); g.loadArea('dungeon', false); assert.equal(g.save.tesseracts.owned.length, n0 + 1, 'once'); }
+  for (const V of [1, 2]) { const g = pinned(SEED, cx, cy, V), P = pentagonPlan(SEED, cx, cy, V); loadVault(g, P); const n0 = (g.save.tesseracts?.owned || []).length; fell(g); g.loadArea('dungeon', false);
+    assert.equal((g.save.tesseracts?.owned || []).length, n0, `v${V}: no extra Tesseract`); assert.ok(opening(g)); }
   const g = game(), P = pentagonPlan(SEED, cx, cy, PENTAGON.version); loadVault(g, P); fell(g); assert.ok(!(g.save.tesseracts?.got || {})[`${P.base}:hoard`], 'v6: still the hoard\'s, when opened');
   const chest = g.map.objects.find((o) => o.id === 'building-cache'); g.player.x = chest.x; g.player.y = chest.y; g.interact('open', chest.id); assert.ok(g.save.tesseracts.got[`${P.base}:hoard`], 'the hoard pays it');
 });
