@@ -114,7 +114,8 @@ export function applyFracturedRank(c, spawn, seed) {
 export const FRACTURE_WARDEN = {
   kills: { fractured: 36, frenzied: 54 }, // the meter's size per mode
   worth: { champion: 2, rare: 3, shaman: 2 },
-  revenantShare: .5, scale: 1.6, speed: 1.2, attackGap: .3, cooldownScale: .7, staggerResistance: .6, affixes: 2,
+  revenantShare: .5, damageShare: 1, scale: 1.6, // release 739 (Tim, 2026-11-04: "double the fracture wardens' damage"): damage at `damageShare` of the Revenant's, health still at `revenantShare`
+  speed: 1.2, attackGap: .3, cooldownScale: .7, staggerResistance: .6, affixes: 2,
   spawnDistance: [5, 7], // tiles from the Wayfarer
   bodies: ["thunderhorn", "riftLynx", "mirrorShade", "sunderjaw", "amalgam"], // when the area has no pack creature of its own
   attacks: ["clawSweep", "ramCharge", "blinkStrike", "sigilScatter", "spikeVolley", "leapSlam", "sweepBeam", "groundRupture", "shockwave", "mortarVolley"],

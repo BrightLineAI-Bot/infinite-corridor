@@ -4972,7 +4972,7 @@ export class Game {
       if (e.fracWarden) { // release 666: half a Gate Revenant for this Wayfarer, grown huge, a mixed moveset, two affixes, aggressive
         const W = FRACTURE_WARDEN, rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, characterStats(this.save));
         Object.assign(c, { fracWarden: true, fracKey: e.fracKey, fractured: true, packName: "Fracture Warden", aggro: true, attackGap: W.attackGap, attackCooldownScale: W.cooldownScale, staggerResistance: W.staggerResistance, brain: "duelist", evasive: true });
-        c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * W.revenantShare)); c.baseDamage = c.damage;
+        c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * (W.damageShare ?? W.revenantShare))); c.baseDamage = c.damage;
         c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; c.bodyRadius = (c.bodyRadius || .38) * W.scale; c.speedMultiplier = (c.speedMultiplier || 1) * W.speed;
         if (c.packKind) { c.packAttacks = wardenAttacks(this.save.seed, e.fracKey || c.id); c.packBossAttacks = []; }
         c.affixes = rollAffixes(`${this.save.seed}:fracture-warden:${c.id}`, W.affixes);
