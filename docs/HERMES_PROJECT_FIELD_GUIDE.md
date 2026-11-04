@@ -2854,6 +2854,35 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 732: the Pentagon, version 5 — 2026-11-04
+
+Tim (2026-11-04): "there might be secrets and things that you hadn't seen... that you can access with the key".
+
+**CODE:** `src/pentagon.ts` (`PENTAGON.version` 5):
+- `PENTAGON.sealed` (3) sealed chambers, nodes k0–k2 of kind `sealed`. Each hangs off its own outer or inner chamber (none
+  that already hosts a reliquary) by a `sigil` pass, so it can be reached only with the Regent's Seal. As in version 4, a
+  sigil door opens on its first use with the Seal.
+- Each sealed chamber holds:
+  - a warden (`node.warden`: a named kind from `PENTAGON.bosses` that no lord, keeper or other warden has, spawned as a
+    `pentBoss` with `PENTAGON.warden` stats) and two ghouls;
+  - a `sealedVault` chest;
+  - a relic from `PENTAGON.sealedRelics` (relic ids 7–9), which no other chamber holds.
+- Sealed chambers get no ordinary relics. Their depth is 2 and their dread that of the inner ring.
+
+`src/tesseracts.ts`: a `sealed` grade (q .85, bad .3), between the Regent's and the Sovereign.
+
+`src/game.ts`: a `sealedVault` chest gives a Sealed Tesseract glyph once. From version 5 a relic's count reads "of 10".
+
+**BOUNDARY:**
+- No save change beyond existing history fields: `pentOpened`, `pentBosses`, `pentRelics` and `tesseracts.got`.
+- Versions 1–4 are untouched; the version 4 tests are pinned to `pentVersion: 4`.
+- Tests (`tests/pentagon.test.ts`):
+  - a 300-seed plan sweep: three sealed chambers, each with one way in through a sigil door from its own host, and each
+    warden unlike any other boss;
+  - with the game: shut without the Seal; the Regent gives it; the door is not open by itself; first use opens it and the
+    second goes through; the named warden with two or more affixes; a Sealed glyph from the hoard; the sealed relic, counted
+    of 10.
+
 ## Release 731: the haunts — 2026-11-04
 
 Tim, 2026-11-04: "cool creatures that... floated around... put them in the keeps... in various places... they can confuse you. So that instead of moving forward, you move backwards for a time. And... they can multiply if enough... get together, then they form one big... ghost creature... a fatter body. The big, scary mouth and face and arms and legs... sharp pointy... at the ends of its arms and legs." Taken as original creatures in that spirit, not copies of any existing ones.

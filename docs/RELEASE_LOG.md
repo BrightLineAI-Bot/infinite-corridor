@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 731, the next is **732**.
+Taken at merge time: `main`'s release + 1 (see above). After 732, the next is **733**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 732 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v5 (Tim asked this session, "secrets... that you can access with the key"): three sealed chambers behind sigil doors, opened with the Regent's Seal, each with a warden, a Sealed Tesseract glyph and a relic of its own | Merging (baton taken). |
 | 731 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts: Gloomwisps (confusing puffs that reverse movement; they split) pouring together into a Gloomgorge; in keeps, castle courts, building/castle/Pentagon floors and the rare wild | In flight. |
-| 730 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v4 (Tim asked this session): keepers hold their ladders until beaten; the Regent drops the Fivefold Seal; each sigil door opens only when used with it; reliquaries keep their shards | Merging (baton taken). |
+| 730 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v4 (Tim asked this session): keepers hold their ladders until beaten; the Regent drops the Fivefold Seal; each sigil door opens only when used with it; reliquaries keep their shards | Merged (`r730-f2326bfc0753`). |
 | 729 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Tesseract glyphs (Tim asked this session, "like the gems in the Chalice Dungeons... 2 good, 2 bad"): rolled one-of-a-kind glyphs from labyrinth vaults and the Pentagon, three slots, a gold hunt cue; the Pentagon v3: the Seal opens only the way on, fallen doors are shortcuts, two shard-locked reliquaries, keepers optional, a Sovereign hoard for all champions | Merged (`r729-d4d5675deedd`). |
 | 728 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v2 (Tim asked this session, "like Bloodborne... the Chalice Dungeons... three levers"): three levers in three courts open the central court; the Fivefold Seal opens sigil-door shortcuts; lords in the trial halls; the Heart six floors deep with a keeper on each; dread; 727 Pentagons kept | Merged (`r728-31535be48cb5`). |
 | 727 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon (Tim asked this session): a five-sided megastructure over nine sections, two gates, ring courts and a central court, chambers round two rings, the Regent's Key, a pressure plate held by a built block, three trials, the Heart and the Regent's Vault, relics of the Fivefold Court; new ground only | Merged (`r727-ccd5855516f6`). |
