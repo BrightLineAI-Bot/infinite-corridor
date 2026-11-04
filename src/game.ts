@@ -55,7 +55,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST } from "./tool-forms.ts";
+import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -144,7 +144,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
 export const PLAYER_CLOCKS = ["attackReadyAt", "attackUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
-export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "aegisUntil", "boxingUntil", "imbueUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt"];
+export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "boxingUntil", "imbueUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt"];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
@@ -152,7 +152,7 @@ export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"]
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
 export const RESUME_PLAYER_CLOCKS = ["slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
-export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "aegisUntil", "boxingUntil", "imbueUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt"];
+export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "boxingUntil", "imbueUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
   const p = game.player || {};
@@ -562,6 +562,15 @@ export function grantBrawlerGear(save) {
   }
   return given;
 }
+// The Aether Orrery (tool-forms.ts), given once at the same Aperture band as the brawler gear (a pack with no room waits).
+export function grantOrreryGear(save) {
+  save.worldFlags ||= {}; save.inventory ||= []; save.equipment ||= {};
+  const O = ORRERY, item = O.item;
+  if (save.worldFlags[O.flag] || APERTURE_BANDS.indexOf(apertureBand(save.perception?.aperture || 0)) < O.band) return false;
+  const owned = save.equipment.secondary?.name === item.name || save.inventory.some((q) => q?.name === item.name);
+  if (!owned) { if (save.inventory.length >= EQUIPMENT_CAPACITY) return false; save.inventory.push(normalizeSockets({ ...item })); }
+  save.worldFlags[O.flag] = true; return !owned;
+}
 // Release 607 (Tim, 2026-10-31: "I have like 43000 marks... maybe 100000 cinder iron... the economy of the game... is almost
 // without consequence"; he took the recommendation): salvage pays SMITHY.salvage.iron by tier (1/1/2/2, was 1/2/3/4), and a
 // piece salvaged only because the pack was full (`auto`) pays no iron at all, just its glyph dust. Kill and clear marks halve
@@ -773,6 +782,7 @@ export function settleProgression(save) {
   }
   grantMilestoneGear(save);
   grantBrawlerGear(save); // release 489; 493
+  grantOrreryGear(save); // the Aether Orrery
   syncCharacterStats(save);
   return levels;
 }
@@ -2054,7 +2064,7 @@ export class Game {
     this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
-    { const given = grantBrawlerGear(save); if (given.length) this.message = `In your pack: ${given.join(", ")}. The Iron Fists are a weapon (Attack); Hammerfall and Great Sweep are tools.`; } if (giftResonances(save).length) this.glyphNotice = "Every resonance is now written in your codex (Glyphs)."; /* release 527 */ // release 489; 493
+    { const given = grantBrawlerGear(save); if (given.length) this.message = `In your pack: ${given.join(", ")}. The Iron Fists are a weapon (Attack); Hammerfall and Great Sweep are tools.`; } if (grantOrreryGear(save)) this.message = ORRERY.messages.given; /* the Aether Orrery */ if (giftResonances(save).length) this.glyphNotice = "Every resonance is now written in your codex (Glyphs)."; /* release 527 */ // release 489; 493
     if (!["attack", "tool", "act", "build"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
@@ -2195,7 +2205,7 @@ export class Game {
     if (this._weaponSystemsInstalled) return;
     this._weaponSystemsInstalled = true;
     const fire = this.fireSecondary.bind(this);
-    this.fireSecondary = (now = 0, direction = null) => {
+    this.fireSecondary = (now = 0, direction = null, action = null) => { // action: the Aether Orrery charges while that button is held
       if (!direction && !this._attackFiring) {
         this.save.aimMode = this.save.aimMode === "tool" ? null : "tool";
         this.save.toolMode = this.save.aimMode === "tool";
@@ -2204,7 +2214,7 @@ export class Game {
           : "Tool aim stowed.";
         return false;
       }
-      return fire(now, direction);
+      return fire(now, direction, action);
     };
     const attack = this.primaryAttack.bind(this);
     this.primaryAttack = (now = 0, direction = null) => {
@@ -3039,6 +3049,7 @@ export class Game {
     if (v && !this.paused) {
       this.pauseStarted = now;
       this.recoverPosition();
+      if (this.orrery) this.orrery.charge = null; // the Aether Orrery: a charge held into the pause is dropped, never released
     }
     if (!v && this.paused && this.pauseStarted !== null) {
       shiftClocks(this, Math.max(0, now - this.pauseStarted)); // release 736 (F5/C12): every timer, from the one list
@@ -3132,6 +3143,7 @@ export class Game {
     p.sailVx = p.sailVy = 0;
     this.glide = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
+    this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
   }
   restoreRuntime(r, now) {
     if (!r || typeof r !== "object") return;
@@ -5807,10 +5819,11 @@ export class Game {
     this.attackProfile = profile;
     return hits;
   }
-  fireSecondary(now = 0, direction = null) {
+  fireSecondary(now = 0, direction = null, action = null) {
     if (this.penned(now)) return false;
     { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
+    if (this.isOrrery()) return orreryPress(this, now, direction, action); // tool-forms.ts: the Aether Orrery's own tap, halo and charge
     if (this.projectiles.filter(p=>!p.dead&&!p.shard/* Sunburst shards have their own cap (SUNBURST.maxLive) */).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
@@ -6074,6 +6087,22 @@ export class Game {
     if (spell.id === "aegis") { this.aegisUntil = now + B.ms; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485
     if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; if (echoPlan(this.glyphLoadout("spell", spell.id)) && !this.shadowCloneActive(now)) { const o = cloneOffset(null, this.save.lastAim, SHADOW_CLONE.near); this.shadowClone = { ox: o.x, oy: o.y, until: now + BRAWLER_ECHO.echoClone * 1000, boxing: true }; this.message += " An echo of you boxes beside you."; } return true; } // release 485; 503: Echo spawns a short melee clone
     return false;
+  }
+  // The Aether Orrery (tool-forms.ts): its power is spell power (Focus and magic bonus, SPELL_POWER) for ORRERY.base, times the
+  // tool's glyph damage and the Pairing's and armor's spell damage. orreryStrike lands one of its pulses or contact hits on a
+  // foe (glyph damage; glyph procs and the frenzy blow only when `full`).
+  isOrrery() { return !!rangedWeapon(this.save.equipment?.secondary)?.orrery; }
+  orreryWhere() { return `${this.area}:${this.areaId()}`; }
+  orreryPower() { return this.spellPower({ damage: ORRERY.base }) * hostLoadout(this.save, "tool").mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage); }
+  bodyRadius(e) { return enemyBodyRadius(e); }
+  orreryStrike(e, amount, now = this.lastUpdateNow || 0, full = false) {
+    if (!e || e.dead || e.untargetable || e.hidden || e.kind === "npc") return 0;
+    const l = this.glyphLoadout("tool"); if (e.kind === "nanobotKnight" && this.scatterCheck(e, false, glyphsReachSwarm(l), now)) return 0;
+    alertEnemy(e); const before = Math.max(0, e.hp), dealt = glyphDamage(l, e, amount, {}, now); e.hp -= dealt; e.hitFlash = .12;
+    this.astralPlayerHit(e, Math.max(0, before - Math.max(0, e.hp)));
+    if (full) { this.frenzyBlow(e); glyphHit(this.glyphWorld(now), l, e, dealt, {}); }
+    if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); }
+    return dealt;
   }
   // Release 493: Hammerfall and Great Sweep as tools (BRAWLER numbers). A tool's power: (Iron-Fists-style base + its power
   // × perPower + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
@@ -7116,11 +7145,12 @@ export class Game {
       const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) this.brawlerTool(bt, now); else { // release 493: Hammerfall and Great Sweep
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
         aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale)); // release 343; 347: a locked target first
-      this.fireSecondary(now, aim || this.save.lastAim);
+      this.fireSecondary(now, aim || this.save.lastAim, "tool"); // the Aether Orrery charges while Tool is held
     } }
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
+    tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.area === "dungeon" && this.map?.building && now >= this.jumpUntil) this.buildingFall(); // great buildings: a step into a hole drops you a floor
@@ -7371,7 +7401,7 @@ export class Game {
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
-      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (!shot.hostile && !shot.echo && !shot.shard) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
+      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.orrery) orreryOnHit(this, shot, e, now); /* the Aether Orrery's combos */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
       (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
       (bx, by) => { const b = buildOn(this, bx, by); if (b) strikeBuild(this, b); }, // release 265: a build absorbs the shot
       (shot, nx, ny) => this.sunburst(shot, nx, ny), // Sunburst Ricochet

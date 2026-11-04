@@ -194,7 +194,7 @@ setTimeout(() => {
     $("#spellInfo").textContent =
       `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
     $("#toolInfo").textContent =
-      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}`;
+      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
     act?.classList.toggle("selected", save.aimMode === "act");
