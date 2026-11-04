@@ -1,21 +1,21 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r733-cb40b95e99a7";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r733-cb40b95e99a7";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r735-7051faeb03e6";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r735-7051faeb03e6";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r733-cb40b95e99a7"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r733-cb40b95e99a7";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r735-7051faeb03e6"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r735-7051faeb03e6";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r733-cb40b95e99a7";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r733-cb40b95e99a7";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r733-cb40b95e99a7";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r733-cb40b95e99a7";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r733-cb40b95e99a7";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r733-cb40b95e99a7";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r733-cb40b95e99a7";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r735-7051faeb03e6";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r735-7051faeb03e6";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r735-7051faeb03e6";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r735-7051faeb03e6";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r735-7051faeb03e6";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r735-7051faeb03e6";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r735-7051faeb03e6";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r733-cb40b95e99a7";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r735-7051faeb03e6";
 
 const TAU = Math.PI * 2;
 
@@ -77,7 +77,7 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 
 // ---------------------------------------------------------------- creatures
 
-// Release r733-cb40b95e99a7 (Tim: the ghosts are expensive to draw; the ghostly look can come from a still picture, no moving shapes needed): each
+// Release 733 (Tim: the ghosts are expensive to draw; the ghostly look can come from a still picture, no moving shapes needed): each
 // haunt is painted once per kind, pose (idle, winding up, striking), facing and drawn size into its own small canvas, at a fixed
 // moment (t = 0), and every frame only that picture is stamped, bobbing gently. Its gradients, smoke and motes cost nothing after
 // the first frame. `box` is the canvas in body units (width, height, and where the feet sit); the cache is bounded (`max`).
