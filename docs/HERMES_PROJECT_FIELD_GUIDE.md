@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 747: roofs and height — 2026-11-04
+
+Tim's probe from a roof: the roof disappeared, two Wayfarers showed, the hatch needed several presses. His rule: "ground creatures can hit you if they had melee attacks other creatures can't... Flying creatures can still hit you", mirrored for the player; one press on the hatch is fine.
+
+**CODE:** `src/game.ts` and `src/renderer.ts`: on a roof the Wayfarer is drawn once, at the roof's height, and the hatch opens on the first Act; the way-round searches are bounded. `ELEVATION_REACH` (data: `levels` 2, `flyingMoves` hover/fly/phase, `flyingKinds`, `bodyTags` melee/charge/leap, `bodySources` bite/blobTouch/wormEmerge/wormGrab/wormSwipe/doomTail) with `fliesHigh`, `isBodyBlow` and `bodyBlowReaches`; `playerLevel()` (the tile underfoot, or the drone-lift or glide height) and `bodyReach(e)`. Checked in three places: older creatures' melee in the enemy loop, `packHurt` by attack name (`options.source`; an attack also tagged ranged or beam still reaches), and `primaryAttack`'s targets. A creature flies if `e.flying`, `e.aloft`, or its movement or kind is listed; world beasts count by their movement.
+
+**BOUNDARY:** Only where the area has landscape heights (dungeons unaffected). Ranged, beam, lobbed and area attacks unchanged. No generation or save change. Not covered yet: Iron Fists punches (they deal damage through effects) and rare contact damage outside `packHurt` and the enemy loop (mire seep bites, the Stalker, sea creatures, the Gate Revenant's own path). Tests: `tests/roof-and-hatch.test.ts` (13). Not tested on a device.
+
 ## Release 746: a way out from the top — 2026-11-04
 
 Tim: "there should always be an exit to the roof" from a vault; "People probably won't like having to die... I think that's okay."
