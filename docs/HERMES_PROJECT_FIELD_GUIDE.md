@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 733: the haunts, drawn cheaply — 2026-11-04
+
+Tim, 2026-11-04: the ghosts are expensive to draw; "the ethereal look can just come from a static character model... we don't have to have like moving shapes and forms in them."
+
+**CODE:** `cachedHaunt` and `HAUNT_SPRITE` (`src/monster-render.ts`): `BODY.gloomwisp` and `BODY.gloomgorge` paint `drawGloomwisp` / `drawGloomgorge` once into a small canvas per kind, pose (idle, windup, attack), facing and rounded body size, at a fixed moment (t = 0), and stamp that canvas every frame with a gentle bob (`bob`). The canvas is `w` × `h` body units with the feet at `foot`; at most `max` pictures are kept (oldest dropped). Without a DOM canvas (tests) the haunt is painted directly. Measured in Chromium: one Gloomgorge and ten Gloomwisps went from about 2.0 ms to 0.04 ms a frame.
+
+**BOUNDARY:** Drawing only. The smoke, motes and flicker are frozen into the picture; pose changes (winding up, striking) still show.
+
 ## Release 732: the Pentagon, version 5 — 2026-11-04
 
 Tim (2026-11-04): "there might be secrets and things that you hadn't seen... that you can access with the key".
