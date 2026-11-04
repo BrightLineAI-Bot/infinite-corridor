@@ -1,4 +1,4 @@
-// Beast mounts (release 737; Tim, 2026-11-04): a pen closed on a world beast (or the Stalker) that holds catches it, and the
+// Beast mounts (release 748; Tim, 2026-11-04): a pen closed on a world beast (or the Stalker) that holds catches it, and the
 // Wayfarer keeps it in a stable of three and rides it. Riding is faster, jumps go farther and carry over chasms while in the
 // air, and the Wayfarer's own attacks, spells and tools work from its back; the mount itself never fights. Each mount gives
 // `MOUNT_RIDE.seconds` of riding or `MOUNT_RIDE.sections` different sections ridden, whichever comes first, and is then gone.
@@ -34,7 +34,7 @@ export const MOUNT_NEVER = ["questingBeast", "psychicCrystal", "voidWalker", "li
 // minutes... or 30–40 unique sections"). `knockoff`: one frame's loss of this share of maximum health throws the Wayfarer off.
 // `sense`: a pen is sized for the biggest catchable beast within this many tiles (building.ts PEN_COST prices each size).
 export const MOUNT_RIDE = { cap: 3, seconds: 720, sections: 35, knockoff: .35, sense: 14 };
-// Release 737 (Tim, 2026-11-04: "hits should land on the rider where drawn"): how far above its feet the rider sits, in tiles. While
+// Release 748 (Tim, 2026-11-04: "hits should land on the rider where drawn"): how far above its feet the rider sits, in tiles. While
 // mounted, the hostile phase of each frame sees the Wayfarer there (game.ts riderUp / riderDown); terrain stays at the feet.
 export const riderLiftOf = (m) => Number(MOUNT_BEASTS[m?.beast]?.seat) || 0;
 

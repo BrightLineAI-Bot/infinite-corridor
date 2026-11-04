@@ -213,7 +213,7 @@ export function stalkerSlain(save) {
   const sphere = q.kills % 2 ? "weaponSphere" : "armorSphere"; save.materials ||= {}; save.materials[sphere] = (save.materials[sphere] || 0) + 1;
   return { marks, sphere, quiet: q.quiet };
 }
-// Release 737 (Tim, 2026-11-04: penning catches; "the only reward is being able to ride it"): caught in a pen, its hunt ends as a
+// Release 748 (Tim, 2026-11-04: penning catches; "the only reward is being able to ride it"): caught in a pen, its hunt ends as a
 // kill's does (it rests `reset` new sections, then hunts again), but nothing is paid: no marks, sphere, drops, Echo or kill counted.
 export function stalkerCaught(save) {
   const q = ensureStalker(save); q.active = null; q.ground = 0; q.warned = 0; q.lair = null;

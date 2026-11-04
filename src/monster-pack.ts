@@ -3567,7 +3567,7 @@ function tickGateEffect(f, w) {
 }
 
 // Ground effects: arming, detonation (once, if the player is inside), webs that slow, and rings.
-// Release 737 (Tim, 2026-11-04): what lies on the ground (pools, trails, webs, tar, brambles) is met at the Wayfarer's feet; on a
+// Release 748 (Tim, 2026-11-04): what lies on the ground (pools, trails, webs, tar, brambles) is met at the Wayfarer's feet; on a
 // mount that is the mount's feet (`w.feet`), while blows, shots, blasts and beams meet the rider where drawn (`w.player`).
 export const GROUND_EFFECTS = new Set(["web", "ooze", "lava", "flameTrail", "frostTrail", "flesh", "briar", "darkPool", "doomTar", "mire"]);
 export function tickPackEffects(effects, w) {
@@ -3575,7 +3575,7 @@ export function tickPackEffects(effects, w) {
   const body = center(w.player), feet = w.feet ? center(w.feet()) : body, p = body;
   // New effects wait until the next tick: an emitter cannot recursively simulate its own new outputs this frame.
   for (const f of [...effects]) {
-    const p = GROUND_EFFECTS.has(f.kind) ? feet : body; // release 737: a ground pool at the feet, everything else at the body
+    const p = GROUND_EFFECTS.has(f.kind) ? feet : body; // release 748: a ground pool at the feet, everything else at the body
     if (tickGateEffect(f, w)) continue;
     if (tickVoidEffect(f, w, w.dt)) continue;
     f.age = (f.age || 0) + w.dt;
@@ -3699,7 +3699,7 @@ export function tickPackEffects(effects, w) {
       const D = DRAGON.wave, front = Math.min(f.reach, f.age * D.speed), d = distance(p, f), a = Math.atan2(p.y - f.y, p.x - f.x), off = Math.abs(((a - f.angle) % TAU + TAU * 1.5) % TAU - Math.PI) * 180 / Math.PI, inside = (f.arc >= 360 || off <= f.arc / 2) && d <= front;
       f.front = front; const owner = w.enemies.find((q) => q.id === f.owner) || null;
       if (!f.hit && inside && d >= front - 1.2) { f.hit = true; w.hurt(owner, f.damage, { jumpable: false, source: "dragonFlameWave" }); }
-      else if (!(f.nextBite > f.age) && (() => { const dg = distance(feet, f), ag = Math.atan2(feet.y - f.y, feet.x - f.x), og = Math.abs(((ag - f.angle) % TAU + TAU * 1.5) % TAU - Math.PI) * 180 / Math.PI; return (f.arc >= 360 || og <= f.arc / 2) && dg <= front; })()) { f.nextBite = f.age + D.tick; w.hurt(owner, f.bite, { jumpable: true, source: "dragonScorch", beam: true }); } // release 737: the burning ground behind the front, at the feet
+      else if (!(f.nextBite > f.age) && (() => { const dg = distance(feet, f), ag = Math.atan2(feet.y - f.y, feet.x - f.x), og = Math.abs(((ag - f.angle) % TAU + TAU * 1.5) % TAU - Math.PI) * 180 / Math.PI; return (f.arc >= 360 || og <= f.arc / 2) && dg <= front; })()) { f.nextBite = f.age + D.tick; w.hurt(owner, f.bite, { jumpable: true, source: "dragonScorch", beam: true }); } // release 748: the burning ground behind the front, at the feet
     } else if (f.kind === "dragonMeteor") { // a fireball landing: it strikes once, and some leave a pool of lava
       if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "dragonMeteor" }); if (f.pool) dragonPool(f.owner, w, f.x, f.y, f.pool, f.bite || 1); }
     } else if (f.kind === "doomErupt" || f.kind === "doomScale") { // release 710: black fire bursting from the ground (or a shed scale bursting), once; some leave a pool

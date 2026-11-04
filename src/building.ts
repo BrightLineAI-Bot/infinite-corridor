@@ -32,7 +32,7 @@ export const BUILD_KINDS = Object.keys(BUILD.kinds);
 // full health rising to `trap.low` at `trap.lowAt` of its health and below; caught, it struggles for `trap.time` s, then breaks the
 // pen and comes out. (`need`: the pens it takes, the one it is in and the one that closes it.)
 export const ENCLOSURE = { size: 2, guard: 3, recharge: 3, need: 2, trap: { full: .15, low: .6, lowAt: .25, time: 45 } };
-// Release 737 (Tim, 2026-11-04: "bigger beasts need more materials"): what a pen of each side costs, growing with its area (the 2x2
+// Release 748 (Tim, 2026-11-04: "bigger beasts need more materials"): what a pen of each side costs, growing with its area (the 2x2
 // is BUILD.kinds.enclosure's own cost). A side past the table costs its largest row.
 export const PEN_COST = { 2: { wood: 2, stone: 2, cinderIron: 2 }, 3: { wood: 4, stone: 4, cinderIron: 3 }, 4: { wood: 5, stone: 5, cinderIron: 4 } }; // per piece (Tim: a whole 4x4 try, both pieces, is 10 wood, 10 stone, 8 cinder iron)
 export function penCost(n) { const sides = Object.keys(PEN_COST).map(Number).sort((a, b) => a - b), k = sides.filter((v) => v <= n).pop() ?? sides[0]; return PEN_COST[k]; }
@@ -183,7 +183,7 @@ export function tapTarget(p, wx, wy) {
 
 // ---- The Enclosure (release 696) ----
 // Raises a 2x2 pen beginning at (x, y), extending away from the Wayfarer, open on the side facing them.
-// Release 737 (beast mounts): `game.penSize()` (when it has one) sizes the pen for the biggest catchable beast near: a pen of side
+// Release 748 (beast mounts): `game.penSize()` (when it has one) sizes the pen for the biggest catchable beast near: a pen of side
 // n spans n×n tiles, centred across the way, and costs `penCost(n)` (PEN_COST).
 export function placeEnclosure(game, x, y) {
   const N = Math.max(ENCLOSURE.size, Math.floor(Number(game.penSize?.()) || ENCLOSURE.size)), cost = N > ENCLOSURE.size ? penCost(N) : BUILD.kinds.enclosure.cost;
@@ -205,7 +205,7 @@ export function placeEnclosure(game, x, y) {
   for (const q of tiles) { const i = q.ty * w + q.tx; orig[i] = game.map.tiles[i]; game.map.tiles[i] = { ...game.map.tiles[i], enclosure: id, encSides: q.sides }; }
   const pen = { id, kind: "enclosure", x: x0, y: y0, size: N, open, hits: K.hits, life: K.life, orig, trapped: null, cost: { ...cost } }; builds.push(pen);
   // Release 697: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
-  // Release 737: game.penClosed may answer { message, undo }: "refund" (no try was made: the closing pen comes down and its materials
+  // Release 748: game.penClosed may answer { message, undo }: "refund" (no try was made: the closing pen comes down and its materials
   // come back; `also` pens with it), or "crumble" (the beast slipped out: the closing pen and `also` break, their materials lost).
   let said = null;
   for (const other of [...builds]) if (other !== pen && other.kind === "enclosure" && !other.trapped && builds.includes(other) && overlapsOpening(other, pen)) {
@@ -217,14 +217,14 @@ export function placeEnclosure(game, x, y) {
   }
   return { ok: true, message: said || `${N > ENCLOSURE.size ? `A ${N}×${N} enclosure` : "Enclosure"} raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
 }
-// Release 737: takes a pen down cleanly (its tiles as they were); `refund` gives back what it cost.
+// Release 748: takes a pen down cleanly (its tiles as they were); `refund` gives back what it cost.
 export function dismantlePen(game, b, refund = false) {
   if (!breakBuild(game, b)) return false;
   if (refund) { const m = (game.save.materials ||= {}); for (const [mat, n] of Object.entries(b.cost || BUILD.kinds.enclosure.cost)) m[mat] = (Number(m[mat]) || 0) + n; }
   return true;
 }
 // The two tiles just outside a pen's opening, and whether another pen's 2x2 covers either.
-export const penSide = (b) => Math.max(ENCLOSURE.size, Math.floor(Number(b?.size) || ENCLOSURE.size)); // release 737: pens bigger than 2x2
+export const penSide = (b) => Math.max(ENCLOSURE.size, Math.floor(Number(b?.size) || ENCLOSURE.size)); // release 748: pens bigger than 2x2
 export function openingTiles(b) { const n = penSide(b), run = Array.from({ length: n }, (_, i) => i); return { north: run.map((i) => [b.x + i, b.y - 1]), south: run.map((i) => [b.x + i, b.y + n]), west: run.map((i) => [b.x - 1, b.y + i]), east: run.map((i) => [b.x + n, b.y + i]) }[b.open] || []; }
 export function overlapsOpening(b, other) { const n = penSide(other); return openingTiles(b).some(([x, y]) => x >= other.x && x < other.x + n && y >= other.y && y < other.y + n); }
 // The pen whose square holds the point (tile space), if any.

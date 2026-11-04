@@ -1,4 +1,4 @@
-// Release 737: the Wayfarer's mount, drawn with the beast's own renderer at its real size (MOUNT_BEASTS.scale), a saddle, harness
+// Release 748: the Wayfarer's mount, drawn with the beast's own renderer at its real size (MOUNT_BEASTS.scale), a saddle, harness
 // or riding frame on its back (MOUNT_BEASTS.saddle), and the Wayfarer drawn last, on top, so even the biggest never hides them.
 // The pack beasts reuse monster-render's cached sprites (one per mount id); the Stalker is drawn as its cat; each saddle is painted
 // once into a small cached canvas per style, size and facing.
