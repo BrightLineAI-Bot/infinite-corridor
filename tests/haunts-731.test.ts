@@ -72,3 +72,17 @@ test('haunted keeps on the overworld hold wisps, the same every visit, and the h
   const ctx = new Proxy({}, { get: (_, key) => key === 'createLinearGradient' || key === 'createRadialGradient' ? () => ({ addColorStop() {} }) : key === 'getTransform' ? undefined : () => {}, set: () => true });
   for (const id of ['gloomwisp', 'gloomgorge']) for (const st of [null, 'windup', 'active']) { const e = Object.assign(createCombatant(id, 4, 4, false, []), { id }); if (st) e.pack = { attack: 'gorgeHowl', phase: st }; drawPackMonster(ctx, e, 32, 1000, 'down'); }
 });
+
+test('733: a haunt is painted once per kind, pose, facing and size, then stamped; the cache stays bounded', async () => {
+  const { HAUNT_SPRITE, hauntSpriteCount } = await import('../src/monster-render.ts');
+  const paints = { n: 0 }, stub = () => new Proxy({}, { get: (_, k) => k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k === 'getTransform' ? undefined : () => { if (k === 'arc') paints.n++; }, set: () => true });
+  const prev = globalThis.document; globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => stub() }) };
+  try {
+    const target = stub(), drawn = [], ctx = new Proxy({}, { get: (_, k) => k === 'drawImage' ? (...a) => drawn.push(a) : k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k === 'getTransform' ? undefined : () => {}, set: () => true });
+    const e = Object.assign(createCombatant('gloomgorge', 4, 4, false, []), { id: 'gc', facingX: 1 }), before = hauntSpriteCount();
+    for (let i = 0; i < 30; i++) drawPackMonster(ctx, e, 32, 1000 + i * 16, 'down');
+    const afterFirst = paints.n; assert.equal(hauntSpriteCount(), before + 1, 'one picture for that pose and facing'); assert.ok(drawn.length >= 30, 'stamped every frame');
+    for (let i = 0; i < 30; i++) drawPackMonster(ctx, e, 32, 3000 + i * 16, 'down'); assert.equal(paints.n, afterFirst, 'no repainting');
+    for (let s = 20; s < 120; s++) drawPackMonster(ctx, e, s, 1000, 'down'); assert.ok(hauntSpriteCount() <= HAUNT_SPRITE.max, 'bounded');
+  } finally { globalThis.document = prev; }
+});

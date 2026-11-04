@@ -77,6 +77,28 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 
 // ---------------------------------------------------------------- creatures
 
+// Release 733 (Tim: the ghosts are expensive to draw; the ghostly look can come from a still picture, no moving shapes needed): each
+// haunt is painted once per kind, pose (idle, winding up, striking), facing and drawn size into its own small canvas, at a fixed
+// moment (t = 0), and every frame only that picture is stamped, bobbing gently. Its gradients, smoke and motes cost nothing after
+// the first frame. `box` is the canvas in body units (width, height, and where the feet sit); the cache is bounded (`max`).
+// Without a DOM canvas (tests) the haunt is painted directly.
+export const HAUNT_SPRITE = { wisp: { w: 2.2, h: 1.7, foot: 1.5 }, gorge: { w: 4.2, h: 2.8, foot: 2.45 }, max: 48, bob: [1.6, .035] };
+const hauntSprites = new Map();
+export const hauntSpriteCount = () => hauntSprites.size;
+function cachedHaunt(ctx, q, draw, box) {
+  const canMake = typeof document !== "undefined" && typeof document.createElement === "function";
+  if (!canMake) return draw(ctx, q);
+  const u = Math.max(4, Math.round(q.u)), pose = q.state === "windup" ? "windup" : q.state === "attack" ? "attack" : "idle", key = `${q.e.kind}:${pose}:${q.flip}:${u}`;
+  let sprite = hauntSprites.get(key);
+  if (!sprite) {
+    sprite = document.createElement("canvas"); sprite.width = Math.ceil(u * box.w); sprite.height = Math.ceil(u * box.h);
+    const g = sprite.getContext("2d"); if (!g) return draw(ctx, q);
+    draw(g, { ...q, u, k: sprite.width / 2, b: u * box.foot, t: 0, state: pose });
+    hauntSprites.set(key, sprite); if (hauntSprites.size > HAUNT_SPRITE.max) hauntSprites.delete(hauntSprites.keys().next().value);
+  }
+  const scale = q.u / u, bob = Math.sin(q.t * HAUNT_SPRITE.bob[0]) * q.u * HAUNT_SPRITE.bob[1];
+  ctx.drawImage(sprite, q.k - sprite.width * scale / 2, q.b - u * box.foot * scale + bob, sprite.width * scale, sprite.height * scale);
+}
 // Release 731: the haunts (haunts.ts). A Gloomwisp: a floating orb of dark gas, wreathed in drifting violet smoke, with two bright
 // slanted eyes and a wide jagged grin; it swells and brightens as it winds up a puff.
 function drawGloomwisp(ctx, q) {
@@ -173,8 +195,8 @@ const BODY = {
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
   doomChaser(ctx, q) { drawDoomChaser(ctx, q, q.t * 1000); }, // release 710
-  gloomwisp(ctx, q) { drawGloomwisp(ctx, q); }, // release 731
-  gloomgorge(ctx, q) { drawGloomgorge(ctx, q); },
+  gloomwisp(ctx, q) { cachedHaunt(ctx, q, drawGloomwisp, HAUNT_SPRITE.wisp); }, // release 731 (733: drawn once, then stamped)
+  gloomgorge(ctx, q) { cachedHaunt(ctx, q, drawGloomgorge, HAUNT_SPRITE.gorge); },
   inkKin(ctx, q) { const d = MONSTER_PACK[q.e.kind]; drawAstralWorm(ctx, { x: q.k, y: q.b - q.u * .2, scale: q.u * (d?.inkScale || .4), time: q.t, form: d?.inkForm || "worm", facing: q.flip, reducedMotion: !!q.e.reduceMotion }); }, // release 719
   astralWorm(ctx,q) { const a=q.e.astral;
     // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.

@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 732, the next is **733**.
+Taken at merge time: `main`'s release + 1 (see above). After 733, the next is **734**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 733 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts drawn cheaply: each ghost painted once per pose, facing and size, then stamped (about 50x cheaper) | In flight. |
 | 732 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v5 (Tim asked this session, "secrets... that you can access with the key"): three sealed chambers behind sigil doors, opened with the Regent's Seal, each with a warden, a Sealed Tesseract glyph and a relic of its own | Merging (baton taken). |
 | 731 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts: Gloomwisps (confusing puffs that reverse movement; they split) pouring together into a Gloomgorge; in keeps, castle courts, building/castle/Pentagon floors and the rare wild | In flight. |
 | 730 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v4 (Tim asked this session): keepers hold their ladders until beaten; the Regent drops the Fivefold Seal; each sigil door opens only when used with it; reliquaries keep their shards | Merged (`r730-f2326bfc0753`). |
