@@ -159,7 +159,8 @@ export function buildingHereV2(seed, rx, ry, region) {
   p.shape = BUILDINGS.shapes[h("shape") % BUILDINGS.shapes.length]; return p;
 }
 const CLEAR_OBJECTS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
-export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
+// `doorOk(map, at)` (world coherence 1, new ground only): the front door must join the land the exits join (WG-05).
+export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
   if (!map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const S = BUILDINGS.styles[plan.style], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -169,7 +170,7 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
   const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y);
   const open = (x, y) => { const t = map.tiles[I(x, y)]; return natural(t) && !t.blocked && !t.slope && !(t.elev > 0) && !objAt(x, y); };
   const h = (k) => hashSeed(`${seed}:great-building-spot:v2:${rx}:${ry}:${k}`), R = BUILDINGS.roof, shape = plan.shape || "rect";
-  let tries = 0;
+  let tries = 0, doorMiss = 0;
   for (const [W, H] of [...S.footprints, ...(plan.style === "hive" ? [[7, 7], [7, 6]] : [])]) {
     const spots = []; for (let oy = 2; oy <= 30 - H; oy++) for (let ox = 2; ox <= 30 - W; ox++) spots.push([ox, oy]);
     spots.sort((a, b) => h(a) - h(b));
@@ -196,6 +197,7 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
         map.tiles[i] = { ...map.tiles[i], x: c.x, y: c.y, kind: plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology", blocked: fallen, slope: false, elev: R.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, roofHole: fallen || undefined, environment: undefined, canopy: undefined }; }
       const after = exitsOpen(map);
       if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
+      if (doorOk && !doorOk(map, out)) { map.tiles = tiles; if (++doorMiss >= doorOk.tries) return null; continue; }
       const base = `building:${seed}:${rx}:${ry}:${plan.style}:${plan.floors}${roof ? "r" : ""}`, id = `great-building-${rx}-${ry}`;
       map.objects = (map.objects || []).filter((o) => !set.has(I(Math.round(o.x), Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));
