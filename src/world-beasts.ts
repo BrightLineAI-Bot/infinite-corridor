@@ -563,11 +563,8 @@ export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - 
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
 export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
-// Balance pack (Tim, 2026-11-04): damage reduction now climbs past its old 0.45 cap (game.ts DAMAGE_REDUCTION), and the beasts
-// must hit exactly as hard as before. A held (Stage 1) measure that sat at the old cap therefore follows the Wayfarer's
-// reduction above it, so the new headroom never weakens a held beast; below the old cap the hold is unchanged.
-export const BEAST_GUARD_HOLD = { oldCap: .45 };
-export function beastTuningReference(save, stats = {}) { const live = liveBeastReference(save, stats), r = stageOneBeastReference(save, live); return r.guard >= BEAST_GUARD_HOLD.oldCap && live.guard > r.guard ? { ...r, guard: live.guard } : r; }
+export { BEAST_GUARD_HOLD } from "./stages.ts"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
+export function beastTuningReference(save, stats = {}) { return stageOneBeastReference(save, liveBeastReference(save, stats)); }
 // The Wayfarer as they stand, before any Stage 1 hold (release 331: also what a Listener kill catches the beasts up to).
 export function liveBeastReference(save, stats = {}) {
   const actualLevel = Math.max(1, Number(save.level) || 1), level = Math.max(BEAST_BASELINE.level, actualLevel);

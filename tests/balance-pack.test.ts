@@ -11,6 +11,10 @@ import { regionalThreat } from '../src/world.ts';
 import { applyPoison } from '../src/elites.ts';
 import { ensureQuestingBeast } from '../src/questing-beast.ts';
 import { FAR_REALMS } from '../src/far-realms.ts';
+import { stageOneBeastReference, BEAST_GUARD_HOLD, STAGES } from '../src/stages.ts';
+import { APERTURE_BANDS } from '../src/items.ts';
+import { createCombatant } from '../src/combat.ts';
+import { tuneGatePredator } from '../src/monster-pack.ts';
 
 const save = (seed = 'BALPACK') => { const s = freshSave(); s.seed = seed; return s; };
 const close = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
@@ -151,4 +155,16 @@ test('an Aperture relic leaves 0.8 of a stat point from now on; points already g
   const back = migrateSave(JSON.parse(JSON.stringify(s))); assert.equal(back.perception.relicCarry, .8); assert.equal(back.statPoints, 11);
   const old = JSON.parse(JSON.stringify(s)); delete old.perception.relicCarry; old.statPoints = 40; const m = migrateSave(old); assert.equal(m.perception.relicCarry, 0); assert.equal(m.statPoints, 40);
   const bad = JSON.parse(JSON.stringify(s)); bad.perception.relicCarry = 'x'; assert.equal(migrateSave(bad).perception.relicCarry, 0);
+});
+
+test('a held Stage 1 measure at the old 0.45 guard follows the live reduction above it: nothing tuned to hurt you gets easier', () => {
+  assert.equal(BEAST_GUARD_HOLD.oldCap, .45);
+  const held = (guard) => { const s = save('HELDBP'); s.perception.aperture = APERTURE_BANDS[STAGES.freezeTier].threshold + 1; s.farArray = { listeners: 1, gate: 1 }; s.beastCeiling = { level: 26, perHit: 399, maxHp: 680, guard, kills: 1 }; s.level = 28; s.stats.Vigor = 80; s.maxHp = characterStats(s).maxHp; return s; };
+  assert.equal(stageOneBeastReference(held(.45), { level: 30, perHit: 500, maxHp: 900, guard: .69 }).guard, .69, 'past the old cap it follows');
+  assert.equal(stageOneBeastReference(held(.45), { level: 30, perHit: 500, maxHp: 900, guard: .4 }).guard, .4);
+  assert.equal(stageOneBeastReference(held(.3), { level: 30, perHit: 500, maxHp: 900, guard: .69 }).guard, .3, 'a measure below the old cap holds as before');
+  assert.equal(stageOneBeastReference(held(.45), { level: 30, perHit: 500, maxHp: 900, guard: .69 }).perHit, 399, 'the rest stays held');
+  // The Gate Revenant (and the Wardens made from it) deal the same after reduction to a high-reduction Wayfarer as at 0.45.
+  const net = (armor) => { const s = held(.45); s.equipment.armor = { ...s.equipment.armor, power: armor }; const st = characterStats(s), e = tuneGatePredator(Object.assign(createCombatant('gateRevenant', 0, 0, false, []), { gatePredator: true }), s, st); return { dr: st.damageReduction, hit: e.damage * (1 - st.damageReduction) }; };
+  const a = net(18), b = net(60); assert.equal(a.dr, .45); assert.ok(b.dr > .6); assert.ok(Math.abs(a.hit - b.hit) <= 1.5, `${a.hit} vs ${b.hit}`);
 });
