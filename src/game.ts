@@ -1,3 +1,4 @@
+import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
 import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.ts";
@@ -261,10 +262,22 @@ function labyrinthState(save, map) {
   if (L.pentSigil) map.objects = map.objects.filter((o) => o.kind !== "pentSigil"); // the Pentagon's Fivefold Seal, once taken
   return map;
 }
+// Release 735: the interior version of a great building, compound, castle part or labyrinth, pinned per interior. Recorded on
+// the history of the floor generated first; an interior any floor of which was generated before (by an earlier release) keeps
+// version 1, so a building already explored is laid out exactly as it was. Read before `generatorVersion` is set for `id`.
+function interiorVersion(save, id, history, fresh) {
+  if (history.interiorVersion !== undefined) return history.interiorVersion;
+  const prefix = id.replace(/:f\d+$/, ":f"), D = save.consequences.dungeons || {}, A = save.session.areas || {};
+  let v = fresh ? BUILDINGS.interior.version : 1;
+  for (const [k, h] of Object.entries(D)) { if (k === id || !k.startsWith(prefix) || !/^\d+$/.test(k.slice(prefix.length)) || !h) continue; if (h.interiorVersion !== undefined) { v = h.interiorVersion; break; } if (h.generatorVersion !== undefined) v = 1; }
+  if (v !== 1 && Object.keys(A).some((k) => k !== id && k.startsWith(prefix) && /^\d+$/.test(k.slice(prefix.length)))) v = 1;
+  history.interiorVersion = v; return v;
+}
 export function generatePinnedDungeon(save, id, options = {}) {
   const history = pinDungeonLayout(save, id), canonical = `dungeon:${save.seed}:g${save.worldGeneration}`;
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
   const fresh = history.generatorVersion === undefined && id !== canonical && !save.session.areas[id];
+  const interior = isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id), iv = interior ? interiorVersion(save, id, history, fresh) : 1; // release 735
   if (history.generatorVersion === undefined) history.generatorVersion = id === canonical || save.session.areas[id] ? 2 : DUNGEON_GENERATOR_V5;
   // Release 146: dungeons first generated from now on may use the automaton layout (pool 2) and threefold layout 2.
   if (fresh && history.layoutPool === undefined) history.layoutPool = 5; // release 301: plain short crossings and warp daises (4: release 148's organic patterns; 3: release 147's)
@@ -280,6 +293,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (fresh && history.mire === undefined) { const rung = !/:canopy$/.test(id) && !history.deepAnnex && rollMireCrypt(save.seed, id, history.layoutPool) ? rungOf('poisonCrypt') : null; history.mire = rung ? { version: MIRE_CRYPT.version, merged: 0, found: false, ...(rung === 'taste' ? { taste: true } : {}) } : false; } // release 303: the Poison Crypt; 319: a taste is a small one
   if (ordinary && history.ladder && !rungOf('gatePredator')) history.gatePredatorSpawnThreshold = 0; // release 319
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
+  if (fresh && history.deepPlacement === undefined && isDeepV2Id(id)) history.deepPlacement = DEEP_PLACEMENT.version; // release 735: deep-v2 placements (deep-dungeons.ts)
   // Release 351 (docs/narrative-bible.md section 7, step 4): a crossing first found in the Far Sleep is a Sleeper's Hall.
   if (ordinary && history.dream === undefined) { const at = id.match(/:g\d+:(-?\d+):(-?\d+):/); if (at && farSleepSection(Number(at[1]), Number(at[2])) && !/:canopy$/.test(id) && !history.deepAnnex) history.dream = dreamHallRoll(save.seed, id) ? DREAM_HALL.version : 0; } // release 435: a share of them, not every one (0 pins "ordinary")
   if ((ordinary || history.deepAnnex) && history.chasm === undefined) history.chasm = /:canopy$/.test(id) || (history.deepAnnex && history.deepAnnex.floor < 3) || (!history.deepAnnex && !history.mire && !history.dream && chasmRoll(save.seed, id)) ? CHASM.version : 0; // release 593; 631: the canopy's crossing is always a Starfield
@@ -288,13 +302,13 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
-  else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id) || isPentagonId(id)) { map = isPentagonId(id) ? labyrinthState(save, generatePentagonChamber(save.seed, id)) : isCastleId(id) ? generateCastleFloor(save.seed, id) : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id)) : isCompoundId(id) ? generateCompoundFloor(save.seed, id) : generateBuildingFloor(save.seed, id); history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
-  else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); map = generateCanyon(save.seed, id, c.drilled, c.strained); } // Canyon craters
+  else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id) || isPentagonId(id)) { map = isPentagonId(id) ? labyrinthState(save, generatePentagonChamber(save.seed, id)) : isCastleId(id) ? generateCastleFloor(save.seed, id, iv) : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id, iv)) : isCompoundId(id) ? generateCompoundFloor(save.seed, id, iv) : generateBuildingFloor(save.seed, id, iv); history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
+  else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); if (fresh && history.canyonGenerator === undefined) history.canyonGenerator = CANYON.generator; map = generateCanyon(save.seed, id, c.drilled, c.strained, history.canyonGenerator || 1); } // Canyon craters; release 735: generator 2 for craters first entered from now on
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
-  else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1});
+  else map = generateDungeon(save.seed,id,{...options,threefoldLayout:history.threefoldLayout||1,...(history.deepPlacement>=2?{deepPlacement:history.deepPlacement}:{})});
   if (history.layoutVersion === 1 && !map.arena && !id.startsWith('displacement:') && !id.startsWith('elite-portal:') && !id.includes('aperture-annex')) varyDungeonLayout(map,save.seed,id);
   if (history.watcherVersion && !id.startsWith('displacement:') && !id.startsWith('dive:') && !map.multiLevel) placeWatcherDungeon(map, map.width || Math.round(Math.sqrt(map.tiles.length)), save.seed, id); // release 289
   if (history.chasm && !map.arena) carveChasm(map, save.seed, `${id}:${options.levelId || "root"}`); // release 593
@@ -2475,7 +2489,7 @@ export class Game {
       this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && q.kind !== 'npc').length)); } }
     this.hauntGorged = false; { const hid = area === "dungeon" ? this.areaId() : `${this.rx},${this.ry}`, inside = area === "dungeon" && (isBuildingId(hid) || isCastleId(hid) || isPentagonId(hid)); // release 731: the haunts
       const plan = hauntPlan(this.save.seed, hid, { keep: area === "overworld" && !!(this.map.keep || this.map.greatBuilding?.castle), interior: inside, wild: area === "overworld" && !!(this.map.fogMoor || this.map.dream), depth: Math.abs(this.rx) + Math.abs(this.ry) });
-      if (plan && !this.map.hauntPlaced) { this.map.hauntPlaced = true; const k = area === "overworld" && this.map.keep ? this.map.keep : null; this.map.enemySpawns.push(...hauntSpawns(this.map, mapWidth(this.map, area), this.save.seed, hid, plan, k && { x: k.x, y: k.y, w: k.w, h: k.h }, !k && this.map.greatBuilding?.castle ? (t) => t.landscape === "castle" : null)); } }
+      if (plan && !this.map.hauntPlaced) { this.map.hauntPlaced = true; const k = area === "overworld" && this.map.keep ? this.map.keep : null; this.map.enemySpawns.push(...hauntSpawns(this.map, mapWidth(this.map, area), this.save.seed, hid, plan, k && { x: k.x, y: k.y, w: k.w, h: k.h }, !k && this.map.greatBuilding?.castle ? (t) => !!(t.courtyard && t.greatBuilding) : null)); } } // release 735: a castle's courts, not the causeway outside its walls
     if (area === "overworld" && this.map.farDomain) { this.map.enemySpawns = this.map.enemySpawns.filter((e) => this.map.farDomain === "questingBeast" ? e.questingBeast : e.worldBeast === this.map.farDomain && !e.retreating); this.map.objects = (this.map.objects || []).filter((o) => o.domain); if (this.domainMessage) this.message = this.domainMessage; } this.domainMessage = null; // release 723: nothing lives in a domain but its beast
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     if (area === "overworld" && this.map?.canopy?.top && !this.map.objects.some((o) => o.kind === "crownRest")) { // release 669: a rest point on every great tree's crown
@@ -3449,6 +3463,7 @@ export class Game {
     if (o.kind === "warpDais") return this.useWarpDais(o); // release 301
     if (o.strange && (action || validActions(o, this.save)[0]) === "touch") { const r = touchStrange(this.save, o, this.rx, this.ry); this.message = r.message; if (r.ok) this.glimpseCue = "strange"; return r; }
     if ((action || validActions(o, this.save)[0]) === "enter" && entranceKind(o)) this.openEntrance(o); // release 319; 323: never sealed
+    if (o.kind === "chest" && o.id === "building-cache" && o.state === "closed" && this.regentHoldsHoard()) { this.message = PENTAGON.messages.hoardHeld; return { ok: false, message: this.message }; } // release 735
     const chosen = action || validActions(o, this.save)[0],
       before = this.save.hp,
       r = applyInteraction(o, chosen, this.save, this.areaId(), this.area === "dungeon" ? { dungeonDepth: Math.max(0, (this.map?.multiLevel ? this.map.levels || [] : []).findIndex((q) => q.id === this.map.levelId)) } : {}); // release 287
@@ -5602,6 +5617,13 @@ export class Game {
     if (!o.sigilKey || (H.pentOpened || []).includes(o.sigilKey)) return null;
     H.pentOpened = [...(H.pentOpened || []), o.sigilKey]; o.unsealed = true; this.message = PENTAGON.messages.sigilOpens; this.sync(); return { ok: true, message: this.message };
   }
+  // Release 735: the Regent's Hoard (Pentagon v3+) stays shut while the Regent lives, so opening it first can never forfeit the
+  // Sovereign grade. Only a living Regent holds it: once she has fallen (regentGrade), or where none stands, it opens as before.
+  regentHoldsHoard() {
+    const B = this.map?.building; if (this.area !== "dungeon" || !B?.pentagon || !(B.V >= 3) || !B.vault) return false;
+    if (dungeonHistory(this.save, `${B.base}:f1`).regentGrade) return false;
+    return (this.enemies || []).some((e) => e.pentBoss && String(e.id).endsWith(":guardian") && !e.dead && e.hp > 0); // the Regent's spawn id (pentagon.ts)
+  }
   pentagonChampionDown(e) {
     const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`);
     if (B.vault && B.V >= 4 && !H.pentSigil) { H.pentSigil = true; journalOnce(this.save, `pentagon-seal:${B.base}`, PENTAGON.messages.sealV4, PENTAGON.name); this.defeatNotice = { title: "THE FIVEFOLD SEAL", detail: "the Regent's; it opens the sigil doors you go back to", kind: "discovery" }; }
@@ -5649,7 +5671,7 @@ export class Game {
     if (!t?.hole || (B.floor <= 1 && !B.fallTo)) return false;
     if (B.labyrinth) { const fx = this.player.x + .5 - px, fy = this.player.y + .5 - py, E = LABYRINTHS.edge, lip = (dx, dy) => { const n = this.map.tiles[(py + dy) * w + px + dx]; return n && !n.blocked && !n.hole; }; if ((fx < E && lip(-1, 0)) || (fx > 1 - E && lip(1, 0)) || (fy < E && lip(0, -1)) || (fy > 1 - E && lip(0, 1))) return false; } // a gallery's lip: a running jump has room
     const below = B.fallTo ? B.fallTo.id : this.areaId().replace(/:f\d+$/, `:f${B.floor - 1}`), hurt = Math.max(1, Math.round(this.save.maxHp * BUILDINGS.fall)), to = B.fallTo ? { x: B.fallTo.x, y: B.fallTo.y } : { x: px, y: py }; // a labyrinth's gallery drops you into a cellar somewhere else
-    this.goBuildingFloor(below, to.x, to.y); this.player.x = to.x; this.player.y = to.y; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon"));
+    this.goBuildingFloor(below, to.x, to.y); { const t2 = this.map.tiles[to.y * this.map.width + to.x]; if (t2 && !t2.hole && !t2.blocked) { this.player.x = to.x; this.player.y = to.y; } } relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); // release 735: landing on a hole below, you land beside it (goBuildingFloor's step-off) rather than dropping straight through a second floor
     this.player.hp = Math.max(1, this.player.hp - hurt);
     this.message = B.fallTo ? `${LABYRINTHS.messages.fall} ${this.map.name.split(" · ")[1] || "the dark"} (−${hurt}).` : `${BUILDINGS.messages.fall} ${this.map.name.split(" · ")[1] || `floor ${B.floor - 1}`} (−${hurt}).`; this.sync(); return true;
   }
