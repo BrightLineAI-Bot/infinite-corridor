@@ -24,8 +24,8 @@ export const coordinatesFor = (kill) => piecesNeeded(kill) + 1;
 export function ensureLattice(save) {
   const l = save.lattice && typeof save.lattice === "object" ? save.lattice : {}, int = (v, max = Infinity) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
   const list = (v) => (Array.isArray(v) ? v : []).filter((q, i, a) => typeof q === "string" && q && a.indexOf(q) === i);
-  const extra = { passive: int(l.extra?.passive, TRANSIT_LATTICE.extra.passive), echo: int(l.extra?.echo, TRANSIT_LATTICE.extra.echo) };
-  save.lattice = { coordinates: int(l.coordinates), paidFor: int(l.paidFor), extra, passives: list(l.passives).slice(0, TRANSIT_LATTICE.base.passive + extra.passive), echoes: list(l.echoes).slice(0, TRANSIT_LATTICE.base.echo + extra.echo) };
+  const extra = { ...(l.extra && typeof l.extra === "object" ? l.extra : {}), passive: int(l.extra?.passive, TRANSIT_LATTICE.extra.passive), echo: int(l.extra?.echo, TRANSIT_LATTICE.extra.echo) };
+  save.lattice = { ...l, coordinates: int(l.coordinates), paidFor: int(l.paidFor), extra, passives: list(l.passives).slice(0, TRANSIT_LATTICE.base.passive + extra.passive), echoes: list(l.echoes).slice(0, TRANSIT_LATTICE.base.echo + extra.echo) };
   grantCoordinates(save);
   return save.lattice;
 }

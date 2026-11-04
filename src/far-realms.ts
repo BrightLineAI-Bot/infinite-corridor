@@ -186,7 +186,10 @@ const FAR_QUEST_IDS = () => [...Object.keys(FAR_CIVS), ...Object.keys(FAR_DOMAIN
 export const farQuestInfo = (id) => FAR_CIVS[id] || FAR_DOMAINS[id] || null;
 export function ensureFarQuests(save) {
   const raw = save?.farQuests, out = {};
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const id of FAR_QUEST_IDS()) { const q = raw[id]; if (q && typeof q === "object" && ["open", "found"].includes(q.status) && Number.isInteger(q.rx) && Number.isInteger(q.ry)) out[id] = { status: q.status, rx: q.rx, ry: q.ry }; }
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    // Release 736 (review S7): a known quest keeps fields a newer release added (unknown quest ids are still dropped).
+    for (const id of FAR_QUEST_IDS()) { const q = raw[id]; if (q && typeof q === "object" && ["open", "found"].includes(q.status) && Number.isInteger(q.rx) && Number.isInteger(q.ry)) out[id] = { ...q, status: q.status, rx: q.rx, ry: q.ry }; }
+  }
   if (save) save.farQuests = out; return save;
 }
 // A world beast slain at (rx, ry): opens the quest to its civilisation when far enough out. Returns the civ id opened, or null.

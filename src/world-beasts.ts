@@ -459,7 +459,8 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
     if (a && !a.patience) delete a.patience; // both are added only once there is something to keep
     if (a && !(Number(a.wounds) > 0 && Number(a.wounds) < 1)) delete a.wounds; else if (a) a.wounds = Number(a.wounds); // release 353: the share of health a hurt beast has left
     if (a) { const chase = Math.max(0, Math.floor(Number(q.active.chase) || 0)); if (chase) a.chase = chase; else delete a.chase; } // release 259: sections it has followed this encounter
-    all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils (release 263): its first-kill Sigil and Echo were given
+    all[id] = { ...q, cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils (release 263): its first-kill Sigil and Echo were given
+    if (all[id].spoils !== true) delete all[id].spoils; // release 736 (review S7): the entry keeps fields from a newer release
   }
   save.worldBeasts = all; ensureBeastGap(save);
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.

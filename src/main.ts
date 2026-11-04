@@ -2314,7 +2314,7 @@ function warmCompassSignals() {
 function frame(now) {
   try {
   probeInterval = now - last;
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); // release 736 (review F9): a frame stamped before resume() set `last` gave a negative step
   recordPerf("frame", now - last);
   last = now;
   measured("input",()=>input.update(dt));
