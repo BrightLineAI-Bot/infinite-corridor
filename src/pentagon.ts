@@ -99,6 +99,29 @@ export const PENTAGON = {
     notice: "A SHORTCUT OPENS", burst: 1.2,
   },
   entrances: { count: [3, 5], exterior: [1, 2], approach: 5 }, // side entrances round the outer wall (open ones and exterior shortcut doors); tiles of paved way out from each
+  // The finale (Tim, 2026-11-04: "If you finish the Pentagon, you've done a lot, so you should be rewarded with something
+  // beautiful. After you beat the boss, a wall opens and a Starfield annex opens up: a short Starfield walkway that winds a
+  // little. At its end there's a nice little ceremonial dais you can touch; it says 'Transit' and takes you back to the
+  // Pentagon's front door — only there, because you don't have the coordinates to transit anywhere else"). Every version:
+  // when the Regent falls, a wall of the vault opens (history `pentFinale` on the base floor, `version`), laid over the vault
+  // as an object on its outer wall, never into its tiles. Beyond it, a floor of its own (`${base}:finale`): open stars, a
+  // pale walkway winding over them, a dais at its far end. The stars are not walkable (no fall, no foes: a quiet place).
+  finale: {
+    version: 1, size: [29, 15], // the walkway floor (W, H)
+    walk: { half: 1, waves: 1.25, amp: [2, 3.2] }, // the walkway's half-width; how many bends it makes; how far it swings (tiles)
+    dais: { r: 2.3, inset: 4 }, // the dais's round landing (radius) and how far in from the far end it stands
+    shards: 7, shardClear: 2, // floating stones in the void (looks only, never walkable), and how far from the walkway
+    burst: 1.6, arriveOut: 1.5, // the notice's burst (seconds); how far out along the gate's paved way the dais sets you down (tiles)
+    names: { floor: "The Starfield Walk", wall: "The opened wall · a walkway among the stars", back: "The opened wall · back to the Regent's Vault", dais: "Transit · a ceremonial dais" },
+    notice: "THE WALL OPENS", detail: "beyond it, a walkway among the stars",
+    messages: {
+      opens: "With a sound like a held breath let go, the vault's far wall splits along its seams and swings outward. Beyond it there is no stone at all: only stars, and a pale way across them.",
+      walk: "The Pentagon falls away behind you. A pale path winds out over the dark, and the stars go down for ever on either side.",
+      back: "You step back through the wall, into the Regent's Vault.",
+      dais: "A low round dais of five steps, ringed in pale light. One word is cut into its face: Transit. It holds a single set of coordinates, and they are the Pentagon's own front door.",
+      arrive: "The dais takes you. Stars, a cold wind, then stone underfoot: you stand outside the Pentagon's gate. The dais knew no other place to send you.",
+    },
+  },
   warden: { hp: 3.4, damage: 1.4, affixes: 2, ghouls: 2 },
   secrets: 2, shardDeep: 3, deepGlyphFrom: 2, // reliquaries; the Heart floor that holds the second shard; keepers from this floor give glyphs
   secretNames: ["Hidden Reliquary of the Faces", "Hidden Reliquary of the Heart"], shardNames: ["Shard of the Faces", "Shard of the Heart"],
@@ -475,3 +498,66 @@ export function pentagonLinkEnds(plan, map) {
   return out;
 }
 export const pentagonLinkKey = (id) => `link:${id}`;
+// ------------------------------------------------------------------------------------------------ the finale: a walk among the stars
+// PENTAGON.finale. The walkway is a floor of its own, `${base}:finale`, generated only once the Regent has fallen; every
+// Pentagon version has the same one (a new id, so no explored floor changes). The opening in the vault is an object laid on
+// the vault's outer wall, beside floor you can reach from the way in, clear of every door, link end and object (as generated,
+// so it never moves); the vault's tiles are never touched. All pure.
+export const pentagonFinaleId = (base) => `${base}:finale`;
+const FINALE_ID = /^(pentagon:(.+):(-?\d+):(-?\d+)(?::v(\d+))?):finale$/;
+export const isPentagonFinaleId = (id) => FINALE_ID.test(String(id || ""));
+export function parsePentagonFinaleId(id) { const m = String(id || "").match(FINALE_ID); return m ? { base: m[1], seed: m[2], cx: Number(m[3]), cy: Number(m[4]), V: Number(m[5] || 1) } : null; }
+// The vault chamber's id (the Regent's floor, the bottom of the Heart) and the Pentagon's front door on the land (its first gate,
+// just outside: the same spot the vault's own way out leads to), as { rx, ry, x, y }.
+export function pentagonVaultId(plan) { const q = plan.nodes.find((n) => n.id === `h${plan.nh - 1}`); return q ? chamberId(plan, q) : null; }
+export function pentagonFrontDoor(plan) {
+  const w = plan.gate, i = Number(w.node.slice(1)), o = w.out, L = toLocal(plan.cx, plan.cy, o.gx, o.gy), far = facePoint(i >> 1, PENTAGON.bands.out + 1.2 + PENTAGON.finale.arriveOut, i & 1 ? FACE_T : -FACE_T), A = toLocal(plan.cx, plan.cy, far.gx, far.gy);
+  return A.rx === L.rx && A.ry === L.ry ? { rx: A.rx, ry: A.ry, x: A.x, y: A.y } : { rx: L.rx, ry: L.ry, x: L.x, y: L.y }; // a step out from the gate, on its paved way (or at the gate, where that step would cross into the next section)
+}
+// Where the vault's wall opens: a tile of its outer wall (left, right or top), the floor before it reachable from the way in,
+// no door, stair, link end, object or creature within a tile of either (two of a way through); the farthest such from the way
+// in. { x, y, inner } or null.
+export function pentagonFinaleSpot(map) {
+  if (!map?.tiles?.length || !map.entry) return null; const W = map.width, H = map.height, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? null : map.tiles[y * W + x]), e = map.entry;
+  const seen = new Set([e.y * W + e.x]), st = [e]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, t = at(x, y); if (!t || t.blocked || seen.has(y * W + x)) continue; seen.add(y * W + x); st.push({ x, y }); } }
+  const things = [...(map.objects || []), ...(map.enemySpawns || [])].map((o) => ({ x: Math.round(o.x), y: Math.round(o.y), way: o.kind === "exit" || o.kind === "buildingStair" || o.kind === "pentShortcut" }));
+  const clear = (x, y) => things.every((o) => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) > (o.way ? 2 : 1));
+  const sides = []; for (let y = 2; y <= H - 3; y++) sides.push([0, y, 1, y], [W - 1, y, W - 2, y]); for (let x = 2; x <= W - 3; x++) sides.push([x, 0, x, 1]);
+  const cand = [];
+  for (const [x, y, ix, iy] of sides) { const t = at(x, y), n = at(ix, iy); if (!t?.blocked || t.doorway || !n || n.blocked || n.doorway || n.plate || n.hole || !seen.has(iy * W + ix)) continue;
+    if (!clear(x, y) || !clear(ix, iy)) continue;
+    cand.push({ x, y, inner: { x: ix, y: iy }, d: Math.hypot(ix - e.x, iy - e.y), h: hashSeed(`${map.id}:finale-wall:${x},${y}`) }); }
+  cand.sort((a, b) => b.d - a.d || a.h - b.h); const c = cand[0]; return c ? { x: c.x, y: c.y, inner: c.inner } : null;
+}
+export function pentagonFinaleWall(base, spot) {
+  const F = PENTAGON.finale; return { id: "pent-finale-wall", kind: "pentFinaleWall", name: F.names.wall, x: spot.x, y: spot.y, inner: { ...spot.inner }, toId: pentagonFinaleId(base), face: spot.x === 0 ? "west" : spot.y === 0 ? "north" : "east", state: "open", actions: ["use"], lore: F.messages.opens };
+}
+// The walkway floor: stars (blocked: nothing to fall into), a pale walkway `walk.half` tiles either side of a line that bends
+// gently from the opened wall (west) to the dais's round landing (east), and a few floating stones. The way back leads to the
+// vault, beside its opened wall.
+export function generatePentagonFinale(seed, id) {
+  const Pp = parsePentagonFinaleId(id); if (!Pp) return null; const plan = pentagonPlan(Pp.seed, Pp.cx, Pp.cy, Pp.V), F = PENTAGON.finale, [W, H] = F.size, A = F.walk;
+  const h = (k) => hashSeed(`${id}:finale:v${F.version}:${k}`), u01 = (k) => (h(k) % 10000) / 10000;
+  const mid = Math.round((H - 1) / 2), amp = A.amp[0] + u01("amp") * (A.amp[1] - A.amp[0]), phase = u01("phase") * Math.PI * 2, sign = h("sign") & 1 ? 1 : -1;
+  const dx = W - 1 - F.dais.inset, R = Math.ceil(F.dais.r), lo = A.half + 1, hi = H - 2 - A.half;
+  const row = (x) => { const u = Math.max(0, Math.min(1, (x - 1) / Math.max(1, dx - 1))); return Math.max(lo, Math.min(hi, Math.round(mid + sign * amp * Math.sin(Math.PI * u) * Math.sin(phase + 2 * Math.PI * A.waves * u)))); };
+  const tiles = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) tiles.push({ x, y, kind: "void", chasm: true, blocked: true, detail: (x * 7 + y * 3) % 4 });
+  const floor = (x, y, kind = "starWalk") => { if (x < 1 || y < 1 || x > W - 2 || y > H - 2) return; const t = tiles[y * W + x]; if (!t.blocked && kind === "starWalk") return; tiles[y * W + x] = { x, y, kind, blocked: false, detail: t.detail, ...(kind === "starDais" ? { daisX: dx, daisY: dy } : {}) }; }; // a dais tile knows the dais's centre (its rings are painted across the landing)
+  const dy = Math.max(R + 1, Math.min(H - 2 - R, row(dx)));
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (Math.hypot(x - dx, y - dy) <= F.dais.r) floor(x, y, "starDais");
+  let prev = mid; for (let x = 1; x <= dx; x++) { const yc = row(x), a = Math.min(yc, prev), b = Math.max(yc, prev); for (let y = a - A.half; y <= b + A.half; y++) floor(x, y); prev = yc; }
+  for (let y = Math.min(dy, prev); y <= Math.max(dy, prev); y++) floor(dx, y); // the walkway meets the dais's landing
+  // floating stones in the void, well clear of the walkway (looks only)
+  const open = (x, y) => !!tiles[y * W + x] && !tiles[y * W + x].blocked, far = [];
+  for (let y = 1; y < H - 1; y++) for (let x = 2; x < W - 1; x++) { let ok = true; for (let j = -F.shardClear; j <= F.shardClear && ok; j++) for (let i = -F.shardClear; i <= F.shardClear && ok; i++) if (x + i >= 0 && x + i < W && open(x + i, y + j)) ok = false; if (ok) far.push({ x, y }); }
+  far.sort(byHash((c) => `${id}:finale-shard:${c.x},${c.y}`)); const shards = [];
+  for (const c of far) { if (shards.length >= F.shards) break; if (shards.some((q) => Math.max(Math.abs(q.x - c.x), Math.abs(q.y - c.y)) < 3)) continue; shards.push(c); tiles[c.y * W + c.x] = { ...tiles[c.y * W + c.x], kind: "starShard" }; }
+  const entry = { x: 1, y: mid }, vault = pentagonVaultId(plan);
+  const objects = [
+    { id: "pent-finale-back", kind: "pentFinaleWall", back: true, name: F.names.back, x: 0, y: mid, toId: vault, face: "east", state: "open", actions: ["use"], lore: F.messages.back },
+    { id: "pent-finale-dais", kind: "pentDais", name: F.names.dais, x: dx, y: dy, state: "ready", actions: ["transit"], lore: F.messages.dais },
+  ];
+  return { seed, id, recipe: "greatBuilding", name: `${PENTAGON.name} · ${F.names.floor}`, identity: `${PENTAGON.name}: ${F.names.floor}`, danger: "none", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns: [],
+    building: { base: Pp.base, style: "keep", floor: 3 + plan.nh, floors: 3 + plan.nh, pentagon: true, finale: true, V: plan.V, node: -1, kind: "starfield", of: plan.nodes.length, keys: [], entries: {}, exitsTo: {}, vault: false, breachEntry: null, roofLadder: null, fallTo: null },
+    pentFinale: F.version, chasm: 1, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
+}

@@ -2979,6 +2979,7 @@ function openInteraction(id, confirmAttack = false) {
         standDown: "Stand down / Spare",
         retrain: `Retrain stats (${STAT_RESPEC.marks} marks)`, // release 347
         enter: "Enter",
+        transit: "Transit", // the Pentagon's finale: its dais
         bypass: "Leave unexplored",
         restore: "Restore the Relay",
         sever: "Sever the Relay",
