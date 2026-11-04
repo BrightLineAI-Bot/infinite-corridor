@@ -108,7 +108,15 @@ export const PENTAGON = {
   // as an object on its outer wall, never into its tiles. Beyond it, a floor of its own (`${base}:finale`): open stars, a
   // pale walkway winding over them, a dais at its far end. The stars are not walkable (no fall, no foes: a quiet place).
   finale: {
-    version: 1, size: [29, 15], // the walkway floor (W, H)
+    version: 1, size: [29, 15], // `version`: the opening's history value; size: the walkway floor (W, H)
+    // the walkway floor's generator, pinned on its history (`finaleFloor`): 1 (release 750) stars you cannot step onto; 2 (Tim,
+    // 2026-11-04: "Falling off the pathway will kill you, but it'll just take you to the front of the pathway of the Starfield
+    // passage") stars you can step off into and fall: a death that wakes you at the walkway's start, beside the doorway back
+    floor: 2,
+    // the dais's rerolls (Tim, 2026-11-04: "one reroll on a Tesseract passive; and if you have Divine Viscera you can pay 10
+    // Divine Viscera to reroll one more Tesseract passive. Only those two times"), per Pentagon, counted on its base floor's
+    // history (`pentRerolls`); `list`: how many Tesseracts the dais offers at once (set ones first, then the newest)
+    reroll: { free: 1, paid: 1, viscera: 10, list: 12 },
     walk: { half: 1, waves: 1.25, amp: [2, 3.2] }, // the walkway's half-width; how many bends it makes; how far it swings (tiles)
     dais: { r: 2.3, inset: 4 }, // the dais's round landing (radius) and how far in from the far end it stands
     shards: 7, shardClear: 2, // floating stones in the void (looks only, never walkable), and how far from the walkway
@@ -120,6 +128,12 @@ export const PENTAGON = {
       walk: "The Pentagon falls away behind you. A pale path winds out over the dark, and the stars go down for ever on either side.",
       back: "You step back through the wall, into the Regent's Vault.",
       dais: "A low round dais of five steps, ringed in pale light. One word is cut into its face: Transit. It holds a single set of coordinates, and they are the Pentagon's own front door.",
+      fell: "You step off the path and fall, and fall, through the stars. Then stone underfoot again: you wake at the start of the walkway, the vault's doorway behind you.",
+      reroll: "Choose a Tesseract glyph, then the line on it the dais should cut again.",
+      rerolled: "The dais's light runs through the glyph. One line of it fades and is cut again",
+      rerollsDone: "The dais has cut what it will cut. Only Transit remains.",
+      needViscera: "The dais wants Divine Viscera for another cutting",
+      noTesseract: "The dais would cut a Tesseract glyph again, but you carry none.",
       arrive: "The dais takes you. Stars, a cold wind, then stone underfoot: you stand outside the Pentagon's gate. The dais knew no other place to send you.",
     },
   },
@@ -630,23 +644,23 @@ export function pentagonFinaleWall(base, spot) {
 // The walkway floor: stars (blocked: nothing to fall into), a pale walkway `walk.half` tiles either side of a line that bends
 // gently from the opened wall (west) to the dais's round landing (east), and a few floating stones. The way back leads to the
 // vault, beside its opened wall.
-export function generatePentagonFinale(seed, id) {
+export function generatePentagonFinale(seed, id, floorV = PENTAGON.finale.floor) {
   const Pp = parsePentagonFinaleId(id); if (!Pp) return null; const plan = pentagonPlan(Pp.seed, Pp.cx, Pp.cy, Pp.V), F = PENTAGON.finale, [W, H] = F.size, A = F.walk;
   const h = (k) => hashSeed(`${id}:finale:v${F.version}:${k}`), u01 = (k) => (h(k) % 10000) / 10000;
   const mid = Math.round((H - 1) / 2), amp = A.amp[0] + u01("amp") * (A.amp[1] - A.amp[0]), phase = u01("phase") * Math.PI * 2, sign = h("sign") & 1 ? 1 : -1;
   const dx = W - 1 - F.dais.inset, R = Math.ceil(F.dais.r), lo = A.half + 1, hi = H - 2 - A.half;
   const row = (x) => { const u = Math.max(0, Math.min(1, (x - 1) / Math.max(1, dx - 1))); return Math.max(lo, Math.min(hi, Math.round(mid + sign * amp * Math.sin(Math.PI * u) * Math.sin(phase + 2 * Math.PI * A.waves * u)))); };
-  const tiles = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) tiles.push({ x, y, kind: "void", chasm: true, blocked: true, detail: (x * 7 + y * 3) % 4 });
-  const floor = (x, y, kind = "starWalk") => { if (x < 1 || y < 1 || x > W - 2 || y > H - 2) return; const t = tiles[y * W + x]; if (!t.blocked && kind === "starWalk") return; tiles[y * W + x] = { x, y, kind, blocked: false, detail: t.detail, ...(kind === "starDais" ? { daisX: dx, daisY: dy } : {}) }; }; // a dais tile knows the dais's centre (its rings are painted across the landing)
+  const tiles = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) tiles.push(floorV >= 2 ? { x, y, kind: "canyon", environment: "canyon", chasm: true, blocked: false, detail: (x * 7 + y * 3) % 4 } : { x, y, kind: "void", chasm: true, blocked: true, detail: (x * 7 + y * 3) % 4 }); // v2: a drop you can step into
+  const floor = (x, y, kind = "starWalk") => { if (x < 1 || y < 1 || x > W - 2 || y > H - 2) return; const t = tiles[y * W + x]; if (kind === "starWalk" && (t.kind === "starWalk" || t.kind === "starDais")) return; tiles[y * W + x] = { x, y, kind, blocked: false, detail: t.detail, ...(kind === "starDais" ? { daisX: dx, daisY: dy } : {}) }; }; // a dais tile knows the dais's centre (its rings are painted across the landing)
   const dy = Math.max(R + 1, Math.min(H - 2 - R, row(dx)));
   for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (Math.hypot(x - dx, y - dy) <= F.dais.r) floor(x, y, "starDais");
   let prev = mid; for (let x = 1; x <= dx; x++) { const yc = row(x), a = Math.min(yc, prev), b = Math.max(yc, prev); for (let y = a - A.half; y <= b + A.half; y++) floor(x, y); prev = yc; }
   for (let y = Math.min(dy, prev); y <= Math.max(dy, prev); y++) floor(dx, y); // the walkway meets the dais's landing
   // floating stones in the void, well clear of the walkway (looks only)
-  const open = (x, y) => !!tiles[y * W + x] && !tiles[y * W + x].blocked, far = [];
+  const open = (x, y) => !!tiles[y * W + x] && !tiles[y * W + x].blocked && !tiles[y * W + x].chasm, far = [];
   for (let y = 1; y < H - 1; y++) for (let x = 2; x < W - 1; x++) { let ok = true; for (let j = -F.shardClear; j <= F.shardClear && ok; j++) for (let i = -F.shardClear; i <= F.shardClear && ok; i++) if (x + i >= 0 && x + i < W && open(x + i, y + j)) ok = false; if (ok) far.push({ x, y }); }
   far.sort(byHash((c) => `${id}:finale-shard:${c.x},${c.y}`)); const shards = [];
-  for (const c of far) { if (shards.length >= F.shards) break; if (shards.some((q) => Math.max(Math.abs(q.x - c.x), Math.abs(q.y - c.y)) < 3)) continue; shards.push(c); tiles[c.y * W + c.x] = { ...tiles[c.y * W + c.x], kind: "starShard" }; }
+  for (const c of far) { if (shards.length >= F.shards) break; if (shards.some((q) => Math.max(Math.abs(q.x - c.x), Math.abs(q.y - c.y)) < 3)) continue; shards.push(c); tiles[c.y * W + c.x] = { ...tiles[c.y * W + c.x], kind: "starShard", blocked: true, environment: undefined }; }
   const entry = { x: 1, y: mid }, vault = pentagonVaultId(plan);
   const objects = [
     { id: "pent-finale-back", kind: "pentFinaleWall", back: true, name: F.names.back, x: 0, y: mid, toId: vault, face: "east", state: "open", actions: ["use"], lore: F.messages.back },
@@ -654,7 +668,7 @@ export function generatePentagonFinale(seed, id) {
   ];
   return { seed, id, recipe: "greatBuilding", name: `${PENTAGON.name} · ${F.names.floor}`, identity: `${PENTAGON.name}: ${F.names.floor}`, danger: "none", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns: [],
     building: { base: Pp.base, style: "keep", floor: 3 + plan.nh, floors: 3 + plan.nh, pentagon: true, finale: true, V: plan.V, node: -1, kind: "starfield", of: plan.nodes.length, keys: [], entries: {}, exitsTo: {}, vault: false, breachEntry: null, roofLadder: null, fallTo: null },
-    pentFinale: F.version, chasm: 1, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
+    pentFinale: F.version, finaleFloor: floorV, chasm: 1, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
 }
 // ------------------------------------------------------------------------------------------------ v7: the roof, for others
 // Is tile (x, y) of the overworld section `map` part of a Pentagon's roof walk: the roof itself or one of its balconies (not

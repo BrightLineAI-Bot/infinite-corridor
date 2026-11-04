@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 752, the next is **753**.
+Taken at merge time: `main`'s release + 1 (see above). After 753, the next is **754**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 752 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's roof (v7): walkable roof, outer stair, balconies with doors; roof dwellers (gargoyles, demons, rooks, Seraph, colossi) seen only on the roof | In flight. |
+| 753 | Claude | `claude/dreamy-rubin-yn6q2p` | Dais Tesseract rerolls and the walkway fall; Imbue Weapon; Sunburst Ricochet; the Aether Orrery | In flight. |
+| 752 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's roof (v7): walkable roof, outer stair, balconies with doors; roof dwellers (gargoyles, demons, rooks, Seraph, colossi) seen only on the roof | Merged (#400). |
 | 751 | Claude | `claude/dreamy-rubin-yn6q2p` | Mounts give no defence (mounted lava a 2 s burn); the drone fizzles at Pentagon walls and castle wings | Merged (#399). |
 | 750 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's finale: after the Regent, a starfield walkway to a Transit dais that returns you to the front door | Merged (#398). |
 | 749 | Claude | `claude/dreamy-rubin-yn6q2p` | Digging respects the way through: interiors dig only toward walked ground; building stone holds | Merged (#397). |
