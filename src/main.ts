@@ -1757,9 +1757,9 @@ function openPack(tab) {
   const statHelp = {
     Might: "+2 melee damage per rank.",
     Finesse: "+3 maximum stamina per rank.",
-    Focus: "+1 spell and projectile damage per rank.",
+    Focus: "+1 projectile damage and about +2.3 spell damage per rank.",
     Vigor: "+8 maximum health per rank.",
-    Resolve: "+2% damage resistance per rank.",
+    Resolve: "+2% damage resistance per rank up to 45% in all; past 45% every rank (and more armor) still adds, with diminishing returns toward a 75% cap.",
   };
   for (const stat of STATS) {
     const row = document.createElement("div"),
@@ -2001,11 +2001,11 @@ const STAT_GLOSSARY=[
   ["Aperture band","Dormant, Stirring, Open, and Resonant thresholds unlock disciplines and add deterministic possibilities to future eligible encounters without scaling every creature."],
   ["Aerial Step","A short traversal discipline that permits movement across lethal water or pits. It cannot cross blocked walls or gates and returns the Wayfarer to stable ground if it expires over danger."],
   ["Might","Each rank adds 2 melee damage."],
-  ["Focus","Each rank adds 1 projectile and spell damage."],
+  ["Focus","Each rank adds 1 projectile damage and about 2.3 spell damage (spells hit for their base, the magic bonus and Focus, then a little more)."],
   ["Finesse","Each rank adds 3 maximum stamina."],
   ["Vigor","Each rank adds 8 maximum health."],
-  ["Resolve","Each rank adds 2% damage resistance."],
-  ["Resistance","Reduces incoming damage, up to the current 45% cap. Armor, charms, Resolve, and Ward affixes contribute."],
+  ["Resolve","Each rank adds 2% damage resistance until resistance reaches 45%; past 45% each rank still adds, with diminishing returns toward the 75% cap."],
+  ["Resistance","Reduces incoming damage. Armor, charms, Resolve, and Ward affixes add up in full to 45%; beyond that their total keeps raising it with diminishing returns, toward a hard cap of 75%."],
   ["Movement","A percentage increase to ordinary movement speed; it does not reduce stamina costs."],
 ];
 const PLACE_LORE={
