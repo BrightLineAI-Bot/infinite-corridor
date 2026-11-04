@@ -224,3 +224,53 @@ test('mounted, ground pools meet the mount\'s feet; blasts meet the rider where 
   const foot = (fx) => { const g = game('POOLS'); g.player.x = 16; g.player.y = 16; g.packEffects = [{ ...fx, x: 16, y: 16 }]; const hp = g.player.hp; g.update(.05, idle, 2000); return hp - g.player.hp; };
   assert.ok(foot(lava) > 0 && foot(meteor) > 0);
 });
+
+// Tim, 2026-11-04: "The mounts shouldn't give you any extra defense. You're just riding them. If you take them into fire or
+// something, it should hurt the character. The only defense they give you: if you go into lava, it's not an instant kill, it's like
+// a two-second kill."
+test('riding gives no defence: blows, ground pools, fire and elite trails hurt the rider exactly as on foot, on every mount', () => {
+  for (const id of ['mountainTurtle', 'tremorWorm', 'briarStag']) {
+    const lift = MOUNT_BEASTS[id].seat;
+    // Health lost in one frame, on foot or riding `id`, with `set` laying the hurt down first.
+    const once = (ride, set) => { const g = game('RIDER'); if (ride) { stableMount(g.save, id); g.summonMount(); } g.player.x = 16; g.player.y = 16; g.player.hp = g.save.maxHp; g.player.invulnerableUntil = 0; set(g); const hp = g.player.hp; g.update(.05, idle, 2000); return hp - g.player.hp; };
+    const blast = (dy) => (g) => { g.effects = [{ id: 'fx', hostile: true, x: 16.5, y: 16.52 + dy, radius: .4, damage: 20, life: 1 }]; };
+    const pool = (fx) => (g) => { g.packEffects = [{ owner: 'none', arming: 0, life: 5, total: 5, damage: 20, ...fx, x: 16, y: 16 }]; };
+    const elite = (g) => { g.eliteHazards = [{ id: 'elite-hazard-test', owner: 'none', kind: 'ooze', x: 16, y: 16, life: 6, radius: 1.15, damage: 4, poison: true, nextHit: 0 }]; };
+    const foot = once(false, blast(0)), rider = once(true, blast(-lift)); assert.ok(foot > 0); assert.equal(rider, foot, `${id}: a blast on the rider takes what it takes on foot (${foot})`);
+    for (const fx of [{ kind: 'lava', vx: 0, vy: 0, radius: .6, grow: .6 }, { kind: 'flameTrail', radius: .6 }, { kind: 'darkPool', radius: .6 }]) {
+      const f = once(false, pool(fx)), r = once(true, pool(fx)); assert.ok(f > 0, `${fx.kind} burns on foot`); assert.equal(r, f, `${id}: ${fx.kind} at the mount's feet burns the rider at full strength (${f})`);
+    }
+    const ef = once(false, elite), er = once(true, elite); assert.ok(ef > 0); assert.equal(er, ef, `${id}: an elite's ooze trail at the mount's feet bites as on foot (${ef})`);
+  }
+  // Burning (a status) runs on the rider unchanged.
+  const burn = (ride) => { const g = game('RIDER'); if (ride) { stableMount(g.save, 'briarStag'); g.summonMount(); } g.player.x = 16; g.player.y = 16; g.player.hp = g.save.maxHp; g.playerFire = { left: 3, tick: 0, dps: 6 }; let t = 2000; for (let i = 0; i < 40; i++) g.update(.05, idle, (t += 50)); return g.save.maxHp - g.player.hp; };
+  assert.ok(burn(false) > 0); assert.equal(burn(true), burn(false), 'burning hurts the same mounted');
+});
+
+const lavaField = (g, x0, x1 = 32) => { for (let y = 0; y < 32; y++) for (let x = x0; x < x1; x++) Object.assign(g.map.tiles[y * W + x], { kind: 'lava' }); };
+test('lava: on foot it is still instant death; mounted it burns through full health in about two seconds, and you can ride out', () => {
+  assert.equal(MOUNT_RIDE.lavaSeconds, 2);
+  const a = game('LAVA-FOOT'); lavaField(a, 13); a.player.x = 12.2; a.player.y = 12; a.player.hp = a.save.maxHp; walk(a, 6);
+  assert.equal(a.save.worldFlags.deaths, 1, 'on foot, a step into lava kills at once');
+  // Mounted, standing in it: alive after a second (about half left), dead at about two seconds.
+  const b = game('LAVA-RIDE'); stableMount(b.save, 'briarStag'); b.summonMount(); lavaField(b, 13); b.player.x = 12.2; b.player.y = 12; b.player.hp = b.save.maxHp;
+  let t = walk(b, 3); assert.ok(b.player.x > 12.6, 'the mount wades in'); assert.ok(!b.save.worldFlags.deaths && b.player.hp > 0, 'not an instant kill'); assert.match(b.message, /burns you both/);
+  let frames = 0; const hp0 = b.player.hp; while (!b.save.worldFlags.deaths && frames < 80) { b.update(.05, idle, (t += 50)); frames++; if (frames === 20) { assert.ok(Math.abs(b.player.hp - (hp0 - b.save.maxHp / 2)) <= 1, `half of full health a second (${b.player.hp.toFixed(1)})`); assert.ok(b.save.mounts.riding, 'the burn does not throw you off'); } }
+  const inLava = frames * .05 + 3 * .05; assert.ok(inLava >= 1.8 && inLava <= 2.3, `about two seconds in the lava (${inLava.toFixed(2)} s)`);
+  assert.equal(b.save.worldFlags.deaths, 1, 'and then it kills'); assert.equal(b.save.mounts.stable.length, 1, 'the mount waits in the stable');
+  // Ridden in and straight out again: burnt, alive, still riding.
+  const c = game('LAVA-OUT'); stableMount(c.save, 'briarStag'); c.summonMount(); lavaField(c, 13, 15); c.player.x = 12.2; c.player.y = 12; c.player.hp = c.save.maxHp;
+  walk(c, 20); assert.ok(c.player.x > 15, `across (x ${c.player.x.toFixed(2)})`); assert.ok(!c.save.worldFlags.deaths && c.player.hp > 0 && c.player.hp < c.save.maxHp, `burnt but alive (${c.player.hp.toFixed(1)})`); assert.ok(c.save.mounts.riding);
+  // Leaping over it on a mount nothing burns (the leap is movement); where it lands is what counts.
+  const d = game('LAVA-LEAP'); stableMount(d.save, 'briarStag'); d.summonMount(); lavaField(d, 13, 15); d.player.x = 12.2; d.player.y = 12; d.player.hp = d.save.maxHp;
+  walk(d, 30, 1, 0); assert.ok(d.player.x > 15 && d.player.hp === d.save.maxHp && !d.save.worldFlags.deaths, 'a leap over the lava');
+});
+
+test('mounted in lava: a save and reload mid-burn resumes exactly, and the burn goes on', () => {
+  const g = game('LAVA-RESUME'); stableMount(g.save, 'briarStag'); g.summonMount(); lavaField(g, 13); g.player.x = 12.2; g.player.y = 12; g.player.hp = g.save.maxHp;
+  const t = walk(g, 6); const hp = g.player.hp, x = g.player.x, y = g.player.y; assert.ok(hp > 0 && hp < g.save.maxHp);
+  const snap = JSON.parse(JSON.stringify(g.exportSnapshot(t))); assert.equal(snap.position.x, x); assert.equal(snap.position.y, y); assert.equal(snap.hp, hp);
+  const back = new Game(migrateSave(snap), 9000); const mounts = (q) => JSON.stringify(q.save.mounts);
+  assert.equal(back.mountRide()?.beast, 'briarStag', 'still riding'); assert.equal(mounts(back), mounts(g), 'the ride resumes as it was'); assert.ok(Math.abs(back.player.hp - hp) < 1e-9, 'health as it was');
+  flat(back); lavaField(back, 13); back.enemies = []; back.player.x = x; back.player.y = y; back.update(.05, idle, 9050); assert.ok(back.player.hp < hp && back.player.hp > 0, 'the burn goes on where it left off');
+});

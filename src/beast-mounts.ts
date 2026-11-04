@@ -33,7 +33,11 @@ export const MOUNT_NEVER = ["questingBeast", "psychicCrystal", "voidWalker", "li
 // `cap` mounts in the stable; a catch beyond it lets the oldest go. `seconds` / `sections`: a mount's riding life (Tim: "10–15
 // minutes... or 30–40 unique sections"). `knockoff`: one frame's loss of this share of maximum health throws the Wayfarer off.
 // `sense`: a pen is sized for the biggest catchable beast within this many tiles (building.ts PEN_COST prices each size).
-export const MOUNT_RIDE = { cap: 3, seconds: 720, sections: 35, knockoff: .35, sense: 14 };
+// Tim, 2026-11-04: "The mounts shouldn't give you any extra defense. You're just riding them. If you take them into fire or something,
+// it should hurt the character. The only defense they give you: if you go into lava, it's not an instant kill, it's like a two-second
+// kill." `lavaSeconds`: standing in lava on a mount takes this long to burn through full health (on foot lava kills at once).
+export const MOUNT_RIDE = { cap: 3, seconds: 720, sections: 35, knockoff: .35, sense: 14, lavaSeconds: 2,
+  lavaWade: "Your mount wades into the lava and it burns you both: ride out of it, now!", lavaDeath: "The lava burns through the saddle, and takes the Wayfarer." };
 // Release 748 (Tim, 2026-11-04: "hits should land on the rider where drawn"): how far above its feet the rider sits, in tiles. While
 // mounted, the hostile phase of each frame sees the Wayfarer there (game.ts riderUp / riderDown); terrain stays at the feet.
 export const riderLiftOf = (m) => Number(MOUNT_BEASTS[m?.beast]?.seat) || 0;
