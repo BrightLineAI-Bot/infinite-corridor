@@ -16,7 +16,7 @@ import { hashSeed } from "./random.ts";
 import { BUILDINGS, layFloor, farthest, addHoles, guardianBeside } from "./great-buildings.ts";
 
 export const CASTLES = {
-  version: 2, // 2 (release 740, Tim: "there should always be an exit to the roof"): the keep's top is a roof to stand on, `roof.elev`
+  version: 2, // 2 (release 746, Tim: "there should always be an exit to the roof"): the keep's top is a roof to stand on, `roof.elev`
   // up (a fatal drop; the glider or the drone's booster lets you down), reached by the roof exit from the Throne of the Keep once
   // its lord has fallen. A castle any of whose sections was first seen under version 1 keeps version 1 (`castleVersionOf`).
   roof: { elev: 5 },

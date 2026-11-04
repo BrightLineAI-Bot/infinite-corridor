@@ -55,7 +55,7 @@ export function hauntSpawns(map, width, seed, areaKey, plan, box = null, where =
   const h = (k) => hashSeed(`${seed}:haunt-at:v1:${areaKey}:${k}`), height = Math.floor(map.tiles.length / width);
   const ok = (t, x, y) => t && !t.blocked && !LETHAL_KINDS.has(t.kind) && !t.pit && x > 1 && y > 1 && x < width - 2 && y < height - 2 && (!box || (x >= box.x && y >= box.y && x < box.x + box.w && y < box.y + box.h)) && (!where || where(t));
   // release 735: never on a hole, a doorway or an object's tile (a stair, a chest, a door); inside, clear of the way in
-  const objAt = new Set((map.objects || []).filter((o) => o.dir !== "roofExit").map((o) => `${Math.round(o.x)},${Math.round(o.y)}`)), ins = plan.place === "interior"; // release 740: the vault's roof exit is laid over the floor later; the haunts stand where they always did
+  const objAt = new Set((map.objects || []).filter((o) => o.dir !== "roofExit").map((o) => `${Math.round(o.x)},${Math.round(o.y)}`)), ins = plan.place === "interior"; // release 746: the vault's roof exit is laid over the floor later; the haunts stand where they always did
   const arrivals = ins ? [map.entry, ...Object.values(map.building?.entries || {})].filter((p) => Number.isFinite(p?.x) && Number.isFinite(p?.y)) : [];
   const clear = (t, x, y) => !t.hole && !t.doorway && !objAt.has(`${x},${y}`), far = (x, y) => arrivals.every((p) => Math.hypot(x - p.x, y - p.y) >= HAUNT.clear.entry);
   const cand = []; for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) { const t = map.tiles[y * width + x]; if (ok(t, x, y) && clear(t, x, y)) cand.push([x, y]); }

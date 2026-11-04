@@ -343,7 +343,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.chasm && !map.arena) carveChasm(map, save.seed, `${id}:${options.levelId || "root"}`); // release 593
   if (history.deepAnnex) { const f = history.deepAnnex.floor; map.annexFloor = { floor: f, of: DEEP_ANNEX.floors }; map.annexName = `${DEEP_ANNEX.name} · Floor ${f}`; } // release 675
   if (isPentagonId(id) && map?.building?.pentagon) pentagonLinksIn(save, id, map); // the Pentagon's shortcut links (v6; laid over one begun before)
-  if (interior) addRoofExit(save, id, map, history); // release 740: the vault's roof exit, laid over the floor (never into its tiles)
+  if (interior) addRoofExit(save, id, map, history); // release 746: the vault's roof exit, laid over the floor (never into its tiles)
   return map;
 }
 // The Pentagon's shortcut links in a chamber (pentagon.ts pentagonLinkEnds): laid in from version 6; over a Pentagon begun
@@ -357,7 +357,7 @@ function pentagonLinksIn(save, id, map) {
   for (const o of pentagonLinkEnds(plan, { ...map, objects: [...(raw?.objects || []), ...(map.objects || [])], enemySpawns: [...(raw?.enemySpawns || []), ...(map.enemySpawns || [])] })) {
     if (opened.includes(pentagonLinkKey(o.link))) o.state = "open"; map.objects.push(o); }
 }
-// Release 740 (Tim, 2026-11-04: "there should always be an exit to the roof"): which roof exit a vault floor has, if any.
+// Release 746 (Tim, 2026-11-04: "there should always be an exit to the roof"): which roof exit a vault floor has, if any.
 // { part, rx, ry, roof } or null. Whether the building has a roof to come out on is recorded by the door you came in by
 // (`buildingDoors.roofTop`, kept on the first floor's history as you enter; great buildings from version 3, castles and
 // labyrinths from version 2, where the section has a landscape). A great building without one (ground explored before roofs)
@@ -2792,7 +2792,7 @@ export class Game {
       // Wall glints were generated before the persistent overlay. A consumed wall must not regain a
       // floating treasure marker when the dungeon is loaded again.
       this.map.wallGlints = (this.map.wallGlints || []).filter(q => this.map.tiles[q.y * mapWidth(this.map, area) + q.x]?.blocked);
-      if (this.map.objects?.some((o) => o.dir === "roofExit") && !this.roofExitGuarded()) this.openRoofExit(); // release 740: the vault reached with no guardian standing
+      if (this.map.objects?.some((o) => o.dir === "roofExit") && !this.roofExitGuarded()) this.openRoofExit(); // release 746: the vault reached with no guardian standing
     }
     const ar=this.save.worldBeasts?.astralWorm?.active?.astralRetreat;
     if(ar&&astralRetreatSceneMatches(ar.scenes?.[ar.sceneKey],this)){const carried=astralRetreatSpawn(this.save.worldBeasts.astralWorm.active);if(carried){const existing=this.enemies.find(e=>e.worldBeast==='astralWorm');if(existing)Object.assign(existing,carried);else this.enemies.push(carried);ensureAI(existing||carried);}}
@@ -5371,7 +5371,7 @@ export class Game {
     if (e.rewarded) return;
     if (!e.summonedBy && !e.illusion && !e.astralCompanionOf) { const kh = armorGlyphBonus(this.save).killHeal; if (kh > 0) this.player.hp = Math.min(this.save.maxHp || this.player.hp, this.player.hp + Math.max(1, Math.round((this.save.maxHp || 60) * kh))); } // a Tesseract glyph: health back on a kill
     if (e.pentBoss && this.area === "dungeon" && this.map?.building?.pentagon && this.map.building.V >= 3) this.pentagonChampionDown(e); // the Pentagon's champions and the Regent (v3)
-    if (this.area === "dungeon" && String(e.id).endsWith(":guardian") && this.map?.objects?.some((o) => o.dir === "roofExit")) this.openRoofExit(true); // release 740: the vault's guardian falls, its roof exit opens
+    if (this.area === "dungeon" && String(e.id).endsWith(":guardian") && this.map?.objects?.some((o) => o.dir === "roofExit")) this.openRoofExit(true); // release 746: the vault's guardian falls, its roof exit opens
     if(e.noRewards){e.rewarded=true;return}
     if(e.arenaId&&this.map?.arena){const history=dungeonHistory(this.save,this.areaId());history.resolved=true;history.guardianDefeated=true;history.visitOpen=false;this.defeatNotice={title:'WORLD THREAT BROKEN',detail:`${this.map.name} · the persistent arena falls quiet`,kind:'danger'}}
     if(e.foundryId){
@@ -6046,7 +6046,7 @@ export class Game {
     for (const q of this.map.objects) if (q.lock === o.keyId) q.unlocked = true;
     this.message = `You take the ${o.name}. Somewhere along the way, a sealed door will open for it. (${this.labyrinthProgress()})`; this.sync(); return { ok: true, message: this.message }; }
   takeBuildingStair(o) {
-    if (o.dir === "roofExit") return this.takeRoofExit(o); // release 740
+    if (o.dir === "roofExit") return this.takeRoofExit(o); // release 746
     if (o.dir === "roof") { // up through the hatch, onto the roof: high ground on the section itself
       const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors; if (!D?.hatch) { this.message = "The hatch is rubbled shut."; return { ok: false, message: this.message }; }
       this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: D.hatch.x, y: D.hatch.y }; this.leaveDungeon(BUILDINGS.messages.roof); this.sync(); return { ok: true, message: this.message };
@@ -6065,7 +6065,7 @@ export class Game {
     this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };
     this.message = `${o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${this.map.name.split(" · ")[1] || `floor ${B.floor}`}.`; this.sync(); return { ok: true, message: this.message };
   }
-  // Release 740: the vault's roof exit. Open once the vault's guardian has fallen (or where none stands), for good: kept on the
+  // Release 746: the vault's roof exit. Open once the vault's guardian has fallen (or where none stands), for good: kept on the
   // vault floor's history (`roofExit`). It lets you out onto the building's roof on its own section (`roofLanding`), or, where
   // the building has no roof to stand on, by its front door.
   roofExitGuarded() { return (this.enemies || []).some((e) => String(e.id).endsWith(":guardian") && !e.dead && e.hp > 0); }

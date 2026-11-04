@@ -18,7 +18,7 @@ import { hashSeed, rng, byHash } from "./random.ts";
 import { BUILDINGS, layFloor, farthest, guardianBeside } from "./great-buildings.ts";
 
 export const LABYRINTHS = {
-  version: 2, // 2 (release 740, Tim: "there should always be an exit to the roof"): the block's top is a roof to stand on, `roof.elev`
+  version: 2, // 2 (release 746, Tim: "there should always be an exit to the roof"): the block's top is a roof to stand on, `roof.elev`
   // up (a fatal drop), reached only by the vault's roof exit once its guardian has fallen; sections pinned to 1 keep a closed block
   roof: { elev: 5 },
   chance: .06, minRing: 6,
