@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 727, the next is **728**.
+Taken at merge time: `main`'s release + 1 (see above). After 728, the next is **729**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 727 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon (Tim asked this session): a five-sided megastructure over nine sections, two gates, ring courts and a central court, chambers round two rings, the Regent's Key, a pressure plate held by a built block, three trials, the Heart and the Regent's Vault, relics of the Fivefold Court; new ground only | Merging (baton taken). |
+| 728 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v2 (Tim asked this session, "like Bloodborne... the Chalice Dungeons... three levers"): three levers in three courts open the central court; the Fivefold Seal opens sigil-door shortcuts; lords in the trial halls; the Heart six floors deep with a keeper on each; dread; 727 Pentagons kept | Merging (baton taken). |
+| 727 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon (Tim asked this session): a five-sided megastructure over nine sections, two gates, ring courts and a central court, chambers round two rings, the Regent's Key, a pressure plate held by a built block, three trials, the Heart and the Regent's Vault, relics of the Fivefold Court; new ground only | Merged (`r727-ccd5855516f6`). |
 | 726 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Great Castles (Tim asked this session): a castle on the corner of four sections, a quarter in each; courts joined only through the wings' side doors into the next section; the keep's lord and treasure; new ground only | Merged (`r726-06fac040cc6c`). |
 | 725 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | Dungeon way marks (Tim asked this session): chevron marker stones for the way down (▼) and out (▲) instead of the red block, an edge chevron to a found way down, the Deep's floor as a number badge; no text in the world | Merged. Published in r725. |
 | 724 | Claude | `claude/dreamy-rubin-yn6q2p` | Nine more far domains (world-beast arenas beyond 1000, each with its quest and its beast coming home) | Merged (#371). Published in r724. |
