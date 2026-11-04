@@ -1568,15 +1568,21 @@ function shack(ctx,o,s,p,map){
   if(condition==="overgrown"){ctx.strokeStyle="#435a3f";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+w-s*.18,y+h);ctx.quadraticCurveTo(x+w-s*.85,y+h*.62,x+w-s*.38,wallTop);ctx.quadraticCurveTo(x+w-s*.08,y+s*1.08,x+w-s*.55,y+s*.62);ctx.stroke()}
   ctx.strokeStyle=accent+"bb";ctx.lineWidth=2;shelterSigil(ctx,x+w*.5,frontY-s*.42,s*.16,o.signGlyph);ctx.fillStyle="#c8bda4";ctx.font=`${Math.max(8,s*.18)}px monospace`;ctx.textAlign="center";ctx.fillText(o.name.toUpperCase(),x+w/2,y-s*.12);ctx.textAlign="start";ctx.restore();
 }
+// Roof report (2026-11-04): is the Wayfarer standing on a roof (structure "buildingRoof")? The tile under the feet, as landscape.ts tileUnder
+// and movement read it (x + .5, y + .75), so the drawing, the roof's cutaway and a fall all agree on where they are.
+export const roofTileUnder = (tiles, w, p) => !!p && tiles?.[Math.floor(p.y + .75) * w + Math.floor(p.x + .5)]?.structure === "buildingRoof";
+export const standingOnRoof = (g, w) => g.area === "overworld" && roofTileUnder(g.map?.tiles, w, g.player); // (or lifted off it by the drone, or gliding from it)
+// ... and on the ground just north of a building's block, where its roof and facade, drawn after the creatures, hide them?
+export const behindRoof = (tiles, w, p) => { const x = Math.floor(p.x + .5), y = Math.floor(p.y + .75); for (let dy = 1; dy <= 4; dy++) { const t = tiles?.[(y + dy) * w + x]; if (t?.greatBuilding) return true; } return false; };
 // Great buildings (great-buildings.ts): a closed block seen from outside, a roof over a facade with a row of windows a floor
 // and the door; a keep in dressed stone under a parapet, an arcology in stained concrete with dead neon. A broken back shows
 // as a torn gap in the roof's far edge (or the facade, when the door faces north).
-function greatBuilding(ctx,o,s,p){
+function greatBuilding(ctx,o,s,p,map){
   const b=o.bounds,keep=o.style==="keep",grain=o.grain||0,floors=o.floors||3,south=o.door?.side!=="north",faceH=o.faceH||Math.min(b.h-2.2,1+floors*.5);
   const C=keep?{roof:"#3a3631",roofLine:"#5b544a",wall:"#5d564b",wallDark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860"}:{roof:"#3b3f44",roofLine:"#575d63",wall:"#6a6e72",wallDark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
   // a block seen from the south: the roof is the footprint raised by the facade's height (where the Wayfarer stands on it), the facade below it
   const x=b.x*s,w=b.w*s,roofY=(b.y-faceH)*s,roofH=b.h*s,faceY=(b.y+b.h-faceH)*s,fH=faceH*s,foot=(b.y+b.h)*s;
-  const onRoof=!!o.roof&&p&&p.x>=b.x-.5&&p.x<b.x+b.w-.5&&p.y>=b.y-.5&&p.y<b.y+b.h-.5,behind=!onRoof&&p&&p.x>=b.x-.7&&p.x<b.x+b.w-.3&&p.y>=b.y-faceH-.8&&p.y<b.y+.4;
+  const onRoof=!!o.roof&&!!p&&(map?roofTileUnder(map,32,p):p.x>=b.x-.5&&p.x<b.x+b.w-.5&&p.y>=b.y-.5&&p.y<b.y+b.h-.5),behind=!onRoof&&p&&p.x>=b.x-.7&&p.x<b.x+b.w-.3&&p.y>=b.y-faceH-.8&&p.y<b.y+.4;
   ctx.save();if(behind)ctx.globalAlpha=.42; // walk behind it and it lets you see yourself
   ctx.fillStyle="#00000055";ctx.fillRect(x+s*.18,foot-s*.05,w,s*.28); // a shadow at its foot
   // the roof
@@ -1633,7 +1639,7 @@ function greatBlocks(ctx,o,s,p,map,view){
   const vis=(c,b)=>!view||(c.x>=view.l-1&&c.x<=view.r+1&&c.y>=view.t-1&&c.y-b.faceH<=view.b+1); // the Pentagon's sections hold hundreds of cells: draw the ones in view
   const all=[];for(const b of o.blocks){const set=new Set(b.cells.map(c=>c.y*32+c.x));for(const c of b.cells)if(vis(c,b))all.push({c,b,set})}
   all.sort((a,q)=>a.c.y-q.c.y||a.c.x-q.c.x);
-  const onRoof=map?.[Math.round(p.y)*32+Math.round(p.x)]?.structure==="buildingRoof",px=Math.round(p.x),py=p.y+.5;
+  const onRoof=roofTileUnder(map,32,p),px=Math.round(p.x),py=p.y+.5; // roof report 2026-11-04: the tile under the feet, as movement and the player draw read it
   const covers=(c,b,set)=>!onRoof&&Math.abs(c.x-px)<=1&&py>=c.y-b.faceH-.5&&py<c.y+(set.has((c.y+1)*32+c.x)?0:1); // what stands between you and the camera fades, nothing else
   const doorAt=new Map((o.doors||[]).map(d=>[`${d.x},${d.y}`,d])),hatchAt=new Map((o.hatches||[]).map(q=>[`${q.x},${q.y}`,q])),fallen=new Set((o.crumbled||[]).map(c=>`${c.x},${c.y}`));
   ctx.save();
@@ -2435,7 +2441,11 @@ export function render(ctx, g, w, h, now) {
   const cn = g.area === "overworld" && g.map?.canopy?.top ? g.map.canopy : null; // release 633: only trees built tall
   if (cn) for (const tr of cn.trees || [cn]) if (Math.abs(tr.x0 + 1.5 - p.x) < w / s + 4) draws.push({ y: tr.y0 - .5, inSky: true, fn: () => drawCanopyDressing(ctx, tr, s, now) }); // release 645: every tree of a grove
   if (g.glide && g.area === "overworld") { const gl = groundLift(p.x, p.y) * s, sz = Math.max(.25, 1 - g.glide.z / 40); ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82) * s - gl, s * .45 * sz, s * .14 * sz, 0, 0, Math.PI * 2); ctx.fill(); } // release 635: the glide's shadow far below
-  draws.push(playerDraw);
+  // Tim's roof report (2026-11-04: "two versions of the character... it looked like it stood at an edge"): standing on a great
+  // building's or compound's roof (the tile under the feet, as movement reads it), the Wayfarer is drawn once, after the roofs,
+  // lifted to the roof's drawn height; never in this pass, where the roof drawn later covered it.
+  const roofUnder = standingOnRoof(g, mw);
+  if (!roofUnder) draws.push(playerDraw);
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
     const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);
@@ -2519,9 +2529,16 @@ export function render(ctx, g, w, h, now) {
     ctx.restore();
   }
   if(skyA>0)ctx.restore()}
-  const frontShelter=objectLists.shelters.find(o=>renderableObject(g,o)&&discoveredInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
+  const frontShelter=objectLists.shelters.find(o=>!roofUnder&&renderableObject(g,o)&&discoveredInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
+  // roof report 2026-11-04: not from a roof's front row (it drew a second Wayfarer on the ground below), and at the ground's own height
+  const shelterRaise=frontShelter?groundLift(p.x,p.y):0;if(shelterRaise){ctx.save();ctx.translate(0,-shelterRaise*s)}
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
-  { const R=g.area==="overworld"&&g.map?.greatBuilding&&g.map.tiles[Math.round(p.y)*mw+Math.round(p.x)]?.structure==="buildingRoof"; if(R)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,1); } // on a great building's roof, the Wayfarer stands over it
+  if(shelterRaise)ctx.restore();
+  if(roofUnder){ // roof report 2026-11-04: on a roof, the Wayfarer stands over it, at the roof's height (the one draw), and the roof's lethal edges near them are marked over it
+    drawTraversalCues(ctx,g.map,mw,p,s,now,null,(x,y)=>g.map.tiles[y*mw+x]?.structure==="buildingRoof");
+    const raise=groundLift(p.x,p.y)+(playerDraw.lift||0);ctx.save();if(raise)ctx.translate(0,-raise*s);playerDraw.fn();ctx.restore(); }
+  else if(g.area==="overworld"&&g.map?.greatBuilding&&behindRoof(g.map.tiles,mw,p)){ // roof report 2026-11-04: walking behind a building's facade, a faint Wayfarer shows through it
+    const raise=groundLift(p.x,p.y)+(playerDraw.lift||0);ctx.save();ctx.globalAlpha=GIANT_TREE.ghost;if(raise)ctx.translate(0,-raise*s);playerDraw.fn();ctx.restore(); }
   const motion = now / 1000;
   for (const o of objectLists.animated)
     if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)) {

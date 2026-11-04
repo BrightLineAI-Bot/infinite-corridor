@@ -837,13 +837,40 @@ export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, o
   }
   return moved;
 }
-function boundedChaseStep(entity,player,map,width,radius=12){
-  const sx=Math.round(entity.x),sy=Math.round(entity.y),gx=Math.round(player.x),gy=Math.round(player.y),start=`${sx},${sy}`,queue=[[sx,sy]],seen=new Set([start]),first=new Map([[start,null]]);let best=[sx,sy],bestDistance=Math.hypot(gx-sx,gy-sy);
-  for(let index=0;index<queue.length&&index<625;index++){
-    const [x,y]=queue[index],distance=Math.hypot(gx-x,gy-y);if(distance<bestDistance){best=[x,y];bestDistance=distance}if(x===gx&&y===gy){best=[x,y];break}
-    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,key=`${nx},${ny}`;if(seen.has(key)||Math.abs(nx-sx)>radius||Math.abs(ny-sy)>radius||!footprintOpen(map,width,nx,ny,false,entity._marineTraversal===true))continue;seen.add(key);queue.push([nx,ny]);first.set(key,first.get(`${x},${y}`)||[nx,ny])}
+// Perf (Tim's probe, 2026-11-04: update() spikes of 50-125 ms in building interiors with many creatures): a creature that
+// cannot step straight at the Wayfarer searches a bounded patch round itself for the first step of a way round. Pack creatures
+// ask again on every frame they stay blocked (thin interior walls keep them blocked), and chasers whose retries fall due together
+// all search in one frame; each search built strings, arrays and a Map per cell. Now the search runs over typed arrays (the same
+// breadth-first order, the same answer), a creature's answer is kept while it, the Wayfarer and the map are where they were
+// (NAV.keepFrames at most), and at most NAV.budget searches run in one frame: past that a creature keeps its last answer.
+export const NAV = { radius: 12, nodes: 625, keepFrames: 30, budget: 6 };
+let navFrame = 0, navSpent = 0, navAsked = 0, navStamp = 0, navSeen = new Int32Array(0), navFirst = new Int32Array(0), navQueue = new Int32Array(0);
+const navKept = new WeakMap(), NAV_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+export function navTick() { navFrame++; navSpent = 0; navAsked = 0; } // once a frame (Game.packWorld); until the first, searches are not counted
+export const navStats = () => ({ frame: navFrame, asked: navAsked, spent: navSpent }); // this frame: searches asked for, and run
+export function boundedChaseStep(entity,player,map,width,radius=NAV.radius){
+  navAsked++;
+  const sx=Math.round(entity.x),sy=Math.round(entity.y),gx=Math.round(player.x),gy=Math.round(player.y),marine=entity._marineTraversal===true,kept=navKept.get(entity);
+  if(kept&&kept.map===map&&kept.tiles===map.tiles&&kept.sx===sx&&kept.sy===sy&&kept.gx===gx&&kept.gy===gy&&kept.marine===marine&&kept.radius===radius&&navFrame-kept.frame<=NAV.keepFrames)return kept.step&&[kept.step[0],kept.step[1]];
+  if(navFrame>0&&navSpent>=NAV.budget)return kept&&kept.map===map&&kept.step?[kept.step[0],kept.step[1]]:null; // this frame's searches are spent
+  navSpent++;
+  const step=chaseSearch(sx,sy,gx,gy,map,width,radius,marine);
+  navKept.set(entity,{map,tiles:map.tiles,sx,sy,gx,gy,marine,radius,frame:navFrame,step});
+  return step&&[step[0],step[1]];
+}
+// The search itself (exported for its test): breadth first from the creature's tile over open footprints within `radius`,
+// NAV.nodes tiles at most; the first step towards the tile nearest the Wayfarer's (theirs, when reached), or null.
+export function chaseSearch(sx,sy,gx,gy,map,width,radius=NAV.radius,marine=false){
+  const side=2*radius+1,n=side*side;
+  if(navSeen.length<n){navSeen=new Int32Array(n);navFirst=new Int32Array(n);navQueue=new Int32Array(n);navStamp=0}
+  if(++navStamp>2e9){navSeen.fill(0);navStamp=1}
+  const stamp=navStamp,start=radius+radius*side;
+  navSeen[start]=stamp;navFirst[start]=-1;navQueue[0]=start;let tail=1,best=start,bestDistance=Math.hypot(gx-sx,gy-sy);
+  for(let head=0;head<tail&&head<NAV.nodes;head++){
+    const i=navQueue[head],x=sx-radius+i%side,y=sy-radius+((i/side)|0),distance=Math.hypot(gx-x,gy-y);if(distance<bestDistance){best=i;bestDistance=distance}if(x===gx&&y===gy){best=i;break}
+    for(const d of NAV_DIRS){const nx=x+d[0],ny=y+d[1];if(Math.abs(nx-sx)>radius||Math.abs(ny-sy)>radius)continue;const j=(nx-sx+radius)+(ny-sy+radius)*side;if(navSeen[j]===stamp||!footprintOpen(map,width,nx,ny,false,marine))continue;navSeen[j]=stamp;navQueue[tail++]=j;navFirst[j]=navFirst[i]===-1?j:navFirst[i]}
   }
-  return first.get(`${best[0]},${best[1]}`)||null;
+  if(best===start)return null;const f=navFirst[best];return [sx-radius+f%side,sy-radius+((f/side)|0)];
 }
 
 // Runtime navigation permission is derived from the current area/kind, never from player boat ownership or
@@ -1883,9 +1910,13 @@ export function shouldSimulateEnemy(e,player,area="overworld"){
   if(e.aggro||e.boss||e.eliteId||e.worldBoss||e.gatePredator||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0||e.summonedBy)return true;
   return Math.hypot(e.x-player.x,e.y-player.y)<=10;
 }
+// Perf (2026-11-04): the order's keys are worked out once a creature, not twice a comparison (the same order: hunters, the
+// woken, bosses, the nearest, then by id).
 export function activeDungeonEnemies(enemies,player,map){
- const cap=Math.max(1,Number(map?.activeEnemyCap)||DUNGEON_ACTIVE_CAP[map?.encounterProfile]||DUNGEON_ACTIVE_CAP.normal);
- return enemies.filter(e=>shouldSimulateEnemy(e,player,"dungeon")).sort((a,b)=>Number(isDungeonHunter(b,"dungeon"))-Number(isDungeonHunter(a,"dungeon"))||Number(!!b.aggro)-Number(!!a.aggro)||Number(!!b.boss)-Number(!!a.boss)||Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)||String(a.id).localeCompare(String(b.id))).slice(0,cap);
+ const cap=Math.max(1,Number(map?.activeEnemyCap)||DUNGEON_ACTIVE_CAP[map?.encounterProfile]||DUNGEON_ACTIVE_CAP.normal),keyed=[];
+ for(const e of enemies)if(shouldSimulateEnemy(e,player,"dungeon"))keyed.push({e,h:Number(isDungeonHunter(e,"dungeon")),a:Number(!!e.aggro),b:Number(!!e.boss),d:Math.hypot(e.x-player.x,e.y-player.y)});
+ keyed.sort((a,b)=>b.h-a.h||b.a-a.a||b.b-a.b||a.d-b.d||String(a.e.id).localeCompare(String(b.e.id)));
+ const out=new Array(Math.min(cap,keyed.length));for(let i=0;i<out.length;i++)out[i]=keyed[i].e;return out;
 }
 export function settlementSanctuary(map,rx,ry,save){if(!map||map.farFolk==="monster"||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;if(map.settlement?.procedural)return{x:map.settlement.x,y:map.settlement.y,radius:map.settlement.radius};return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
@@ -3327,11 +3358,21 @@ export class Game {
     for (const o of this.map.objects || []) { if (!WAYGLASS_ZONE.kinds.includes(o.kind)) continue; const n = Math.hypot(o.x - this.player.x, o.y - this.player.y); if (n < d && (!usable || validActions(o, this.save).length)) { f = o; d = n; } }
     return f;
   }
+  // Roof report (Tim, 2026-11-04: a roof hatch "took several presses of Act"): on a great building's or compound's roof, what
+  // Act reaches is measured from the tile under the feet (as movement reads it). Standing on the hatch or any of the 8 tiles round
+  // it reaches it first; nothing down on the ground below the roof is reached from up there, and a hatch is not reached from below.
+  reachOf(o) {
+    const p = this.player, n = Math.hypot(o.x - p.x, o.y - p.y);
+    if (this.area !== "overworld" || !this.map?.greatBuilding) return n;
+    const W = mapWidth(this.map, this.area), fx = Math.floor(p.x + .5), fy = Math.floor(p.y + .75), roof = (x, y) => this.map.tiles[y * W + x]?.structure === "buildingRoof", up = roof(fx, fy);
+    if (o.roofHatch) { if (!up) return Infinity; const c = Math.max(Math.abs(Math.round(o.x) - fx), Math.abs(Math.round(o.y) - fy)); return c <= 1 ? c * .25 : n; }
+    return up && !roof(Math.round(o.x), Math.round(o.y)) ? Infinity : n;
+  }
   nearestObject() {
     let f = null,
       d = 1.5;
     for (const o of this.map.objects) {
-      const n = Math.hypot(o.x - this.player.x, o.y - this.player.y);
+      const n = this.reachOf(o);
       if (n < d && (validActions(o, this.save).length || o.kind === "huntInstance" || o.kind === "huntScar")) {
         f = o;
         d = n;
@@ -3456,7 +3497,7 @@ export class Game {
       ? this.map.objects.find(
           (q) =>
             q.id === objectId &&
-            Math.hypot(q.x - this.player.x, q.y - this.player.y) < 1.5,
+            this.reachOf(q) < 1.5,
         )
       : (this.wayglassNear() || this.nearestObject()); // release 557: the Wayglass first
     // Wood (release 119): with nothing else to act on, Act at deep water's edge builds a skiff from wood.
@@ -3470,6 +3511,7 @@ export class Game {
         ok: false,
         message: (this.message = "Nothing nearby responds."),
       };
+    if (!action && o.roofHatch && o.kind === "dungeon") action = "enter"; // roof report (2026-11-04): a roof hatch is a ladder down, taken at the first press like the ladder up to it (no crossing chooser)
     if (o.skyway && (o.disc ? this.skyLevel || 0 : elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) < (o.elev || 0)) return { ok: false, message: (this.message = "The skyway door hangs above you. Climb the floating platforms to reach it: jump from one to the next.") }; // release 585
     if (o.completionExit) {
       if (!dungeonHistory(this.save,this.areaId()).combatClear?.completed) return {ok:false,message:this.message='The return remains sealed while a required guardian lives.'};
@@ -4468,6 +4510,7 @@ export class Game {
     }
   }
   packWorld(dt, now, sanctuary = null) {
+    navTick(); // perf (2026-11-04): made once a frame, before the creatures move: this frame's way-round searches start again
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area), p = this.player, last = this._packLastPlayer || p, game = this;
     const displacePlayer = (dx, dy) => {
       if (game.area !== "overworld" || !aboard(game.save)) return moveAxis(p, dx, dy, map, width, true);
