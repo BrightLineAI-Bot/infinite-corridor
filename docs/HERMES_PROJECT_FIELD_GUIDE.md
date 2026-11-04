@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 741: Viewport Closed — 2026-11-04
+
+Tim, 2026-11-04: "When you die... it should say VIEWPORT CLOSED, then the screen gets some static... and slowly fades out to nothingness, into black. Then your character wakes up again at the last rest point." Then: keep the cursor; "the world bosses should still be wandering a little... over your corpse as the world fades out."
+
+**CODE:** `src/combat-visuals.ts`: `VIEWPORT_CLOSED` (timings, static/flicker/tear amounts, colours, per-quality settings), `VIEWPORT_QUIET_INPUT`, the canvas-free sequence `viewportClosedStart/Total/Stage/Tick` (fall → closing → black → opening → done; `live` mode for a beast death), `viewportNoiseFrames` (2–4 small cached noise frames) and `drawViewportClosed` (bounded draws, no per-pixel work). `src/game.ts`: `Game.deathBeat` (set only by main.ts) holds a death in `fallen` (`beat: true`, keeping the hazard cause) before the unchanged `resolveDeath`; with a world beast, the Questing Beast or the Stalker present (`deathBeast`), `fallen.live` keeps the world running through the closing and `DEATH_LOOM` walks the beast to the corpse and paces it there (release 329's pacing), respawn at black. `src/main.ts` `viewportFrame` drives it: a snapshot for ordinary deaths, the live canvas for beast deaths, no input during the sequence, the respawn message held until waking, and the frozen time shifted with 740's `shiftClocks` so the respawn protection is still there on waking; `body.viewport-closed` hides the HUD (styles.css). Tests: `tests/viewport-closed.test.ts`.
+
+**BOUNDARY:** Presentation only: what death costs and where you wake are unchanged, respawn runs exactly once, and a reload at any stage lands playable at the rest point. Headless sims and the Proving Ground leave `deathBeat` unset and recover at once. The release-329 `deathPause` is kept but not reached in the live game (the live beast closing replaces it).
+
 ## Release 740: exact resume and player fixes — 2026-11-04
 
 Tim, 2026-11-04 (after the full-game review): "go through the rest of the bug fixes and changes... so the game just gets normalized." Fixes the player-systems and resume findings F3–F14, S7–S9 and C12–C13; infinite dodge and potions without cooldown are kept.
