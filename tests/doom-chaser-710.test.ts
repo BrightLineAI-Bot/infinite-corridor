@@ -110,7 +110,7 @@ test('in the game, the frenzy: its hits build it; then you take more, and either
     const before = p.hp; g.packHurt(d, 10, { source: 'doomJaws' }, t); t += 1000; assert.equal(g.frenzy.active, true, 'it takes hold');
     const mid = p.hp; g.packHurt({ id: 'x', x: p.x + 2, y: p.y, kind: 'ashenMoth' }, 100, { source: 'test' }, t); t += 1000; const withFrenzy = mid - p.hp; assert.ok(before > mid);
     const { g: g2, p: p2 } = setup(); const m2 = p2.hp; g2.packHurt({ id: 'x', x: p2.x + 2, y: p2.y, kind: 'ashenMoth' }, 100, { source: 'test' }, 1000); assert.ok(withFrenzy > m2 - p2.hp, 'it takes more out of you');
-    g.frenzyTick(.1); for (let i = 0; i < FRENZY.cure; i++) { d.hp -= 20; g.frenzyTick(.1); } g.frenzyTick(.1); assert.equal(g.frenzy, null, 'thrown off'); }
+    g.frenzyTick(.1); for (let i = 0; i < FRENZY.cure; i++) { d.hp -= 20; g.frenzyBlow(d); g.frenzyTick(.1); } g.frenzyTick(.1); assert.equal(g.frenzy, null, 'thrown off'); }
   { const { g, p, d } = setup(); g.frenzyHit(1000, FRENZY.build); assert.equal(g.frenzy.active, true); const before = p.hp;
     for (let t = 0; t <= FRENZY.time + .5; t += .5) g.frenzyTick(.5); assert.equal(g.frenzy, null); assert.ok(before - p.hp >= Math.floor(400 * FRENZY.burst * .25), 'it burst'); void d; }
   { const { g } = setup(); g.frenzyHit(1000, 1); g.enemies = []; g.frenzyTick(.1); assert.equal(g.frenzy, null, 'gone with the Doom Chaser'); g.update(1 / 60, idle, 2000); }

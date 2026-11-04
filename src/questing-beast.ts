@@ -2,7 +2,7 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.ts";
+import { hashSeed, byHash } from "./random.ts";
 import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterChance, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 
@@ -12,8 +12,10 @@ export const QUESTING_BEAST = { chance: 0.035, minDepth: 4, tries: 4, cooldownSl
 
 export function ensureQuestingBeast(s) {
   const q = s.questingBeast && typeof s.questingBeast === "object" ? s.questingBeast : {};
-  const a = q.active && typeof q.active === "object" && Number.isInteger(q.active.rx) && Number.isInteger(q.active.ry) ? { rx: q.active.rx, ry: q.active.ry, tries: Math.max(0, Number(q.active.tries) || 0), ...(Number(q.active.hpShare) > 0 && Number(q.active.hpShare) <= 1 ? { hpShare: Number(q.active.hpShare) } : {}) } : null; // hpShare: release 423, its kept wounds
-  s.questingBeast = { v: 1, cycle: Math.max(0, Number(q.cycle) || 0), cooldown: Math.max(0, Number(q.cooldown) || 0), active: a, slain: Math.max(0, Number(q.slain) || 0), escaped: Math.max(0, Number(q.escaped) || 0), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils: release 263
+  const a = q.active && typeof q.active === "object" && Number.isInteger(q.active.rx) && Number.isInteger(q.active.ry) ? { ...q.active, rx: q.active.rx, ry: q.active.ry, tries: Math.max(0, Number(q.active.tries) || 0), ...(Number(q.active.hpShare) > 0 && Number(q.active.hpShare) <= 1 ? { hpShare: Number(q.active.hpShare) } : {}) } : null; // hpShare: release 423, its kept wounds
+  if (q.active && !(Number(q.active.hpShare) > 0 && Number(q.active.hpShare) <= 1) && a) delete a.hpShare;
+  s.questingBeast = { ...q, v: 1, cycle: Math.max(0, Number(q.cycle) || 0), cooldown: Math.max(0, Number(q.cooldown) || 0), active: a, slain: Math.max(0, Number(q.slain) || 0), escaped: Math.max(0, Number(q.escaped) || 0), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils: release 263
+  if (s.questingBeast.spoils !== true) delete s.questingBeast.spoils;
   return s;
 }
 
@@ -35,7 +37,7 @@ export function questingBeastFor(save, map, rx, ry) {
   }
   if (q.active.rx !== rx || q.active.ry !== ry) return null;
   const open = map.tiles.filter((t) => !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
-  const at = open.sort((a, b) => hashSeed(`qb:${q.cycle}:${a.x},${a.y}`) - hashSeed(`qb:${q.cycle}:${b.x},${b.y}`))[0];
+  const at = open.sort(byHash((a) => `qb:${q.cycle}:${a.x},${a.y}`))[0];
   if (!at) return null;
   return { id: `questing-beast:${q.cycle}`, kind: "questingBeast", x: at.x, y: at.y, boss: true, questingBeast: true, traits: [] };
 }

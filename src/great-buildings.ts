@@ -12,7 +12,7 @@
 // somewhere across the floor from where you came in, and above the ground floor, holes where the floor has fallen through
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
-import { hashSeed, rng } from "./random.ts";
+import { hashSeed, rng, byHash } from "./random.ts";
 
 export const BUILDINGS = {
   version: 2, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
@@ -159,7 +159,8 @@ export function buildingHereV2(seed, rx, ry, region) {
   p.shape = BUILDINGS.shapes[h("shape") % BUILDINGS.shapes.length]; return p;
 }
 const CLEAR_OBJECTS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
-export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
+// `doorOk(map, at)` (world coherence 1, new ground only): the front door must join the land the exits join (WG-05).
+export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
   if (!map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const S = BUILDINGS.styles[plan.style], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -169,7 +170,7 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
   const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y);
   const open = (x, y) => { const t = map.tiles[I(x, y)]; return natural(t) && !t.blocked && !t.slope && !(t.elev > 0) && !objAt(x, y); };
   const h = (k) => hashSeed(`${seed}:great-building-spot:v2:${rx}:${ry}:${k}`), R = BUILDINGS.roof, shape = plan.shape || "rect";
-  let tries = 0;
+  let tries = 0, doorMiss = 0;
   for (const [W, H] of [...S.footprints, ...(plan.style === "hive" ? [[7, 7], [7, 6]] : [])]) {
     const spots = []; for (let oy = 2; oy <= 30 - H; oy++) for (let ox = 2; ox <= 30 - W; ox++) spots.push([ox, oy]);
     spots.sort((a, b) => h(a) - h(b));
@@ -196,6 +197,7 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
         map.tiles[i] = { ...map.tiles[i], x: c.x, y: c.y, kind: plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology", blocked: fallen, slope: false, elev: R.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, roofHole: fallen || undefined, environment: undefined, canopy: undefined }; }
       const after = exitsOpen(map);
       if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
+      if (doorOk && !doorOk(map, out)) { map.tiles = tiles; if (++doorMiss >= doorOk.tries) return null; continue; }
       const base = `building:${seed}:${rx}:${ry}:${plan.style}:${plan.floors}${roof ? "r" : ""}`, id = `great-building-${rx}-${ry}`;
       map.objects = (map.objects || []).filter((o) => !set.has(I(Math.round(o.x), Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));
@@ -275,7 +277,7 @@ export function layFloor(base, f, W, H, S, arrive, keepOpen) {
   // rubble: a few blocked heaps in the rooms, never cutting the floor in two
   const seen0 = reach(), count = (s) => s.reduce((n, v) => n + v, 0), total = count(seen0), cells = [];
   for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) if (grid[at(x, y)] === 0 && Math.abs(x - arrive.x) + Math.abs(y - arrive.y) > 2) cells.push([x, y]);
-  cells.sort((a, b) => hashSeed(`${base}:rub:${f}:${a}`) - hashSeed(`${base}:rub:${f}:${b}`));
+  cells.sort(byHash((a) => `${base}:rub:${f}:${a}`));
   for (const [x, y] of cells.slice(0, Math.round(cells.length * BUILDINGS.rubble))) { grid[at(x, y)] = 4; if (count(reach()) !== total - 1) grid[at(x, y)] = 0; }
   return { W, H, grid, room, leaves, mat, walls };
 }
@@ -293,7 +295,7 @@ export function addHoles(base, F, below, W, H, V = 1) {
   const belowHole = V >= 2 ? new Set((below.holes || []).map(([x, y]) => at(x, y))) : null; // interior v2: never over a hole below
   const ok = (x, y) => F.grid[at(x, y)] === 0 && below.grid[at(x, y)] === 0 && !near(F.arrive, x, y) && !near(F.up, x, y) && !near(below.up, x, y) && !near(below.arrive, x, y) && !(belowHole && belowHole.has(at(x, y)));
   const cand = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (ok(x, y)) cand.push([x, y]);
-  cand.sort((a, b) => hashSeed(`${base}:hole:${F.floor}:${a}`) - hashSeed(`${base}:hole:${F.floor}:${b}`));
+  cand.sort(byHash((a) => `${base}:hole:${F.floor}:${a}`));
   const want = Math.round(cand.length * B.share), holes = [];
   for (const [x, y] of cand) { if (holes.length >= want) break; for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]].slice(0, B.cluster)) { const hx = x + dx, hy = y + dy; if (ok(hx, hy) && !holes.some((q) => q[0] === hx && q[1] === hy)) holes.push([hx, hy]); } }
   // every open cell must still be reachable from the arrival without stepping in a hole: drop holes (newest first) until so
