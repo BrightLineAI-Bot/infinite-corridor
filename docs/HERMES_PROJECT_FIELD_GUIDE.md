@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 736: dungeons that can always be finished — 2026-11-04
+
+Tim, 2026-11-04 (after the full-game review): "your recommendations... are fine... make sure the world doesn't break apart." Fixes the review's dungeon and interior findings D1–D6 and D8–D12 (D7 is in the performance release).
+
+**CODE:** Interior version 2: `BUILDINGS.interior` (`src/great-buildings.ts`), pinned per interior as `history.interiorVersion` by `interiorVersion` in `src/game.ts` (an interior any floor of which was generated before, or has a session snapshot, keeps version 1); `generateBuildingFloor`, `generateCompoundFloor`, `generateCastleFloor` and `generateLabyrinthChamber` take `V` (default 1) and key their plan memos by it. Version 2: `addHoles` skips cells over a hole below; `guardianBeside` falls back to the nearest reachable free tile within `guardianReach`; `carveGaps` keeps a bottom/right gallery door's platform; a labyrinth key falls back to the nearest reachable floor. Deep placement 2: `DEEP_PLACEMENT` (`src/deep-dungeons.ts`), `history.deepPlacement` → `options.deepPlacement`; `repairDeepPlacements` moves story objects onto hub-reachable floor and Oath Door objects onto a usable cell; `populateDungeonTerrainHazards` (`src/arenas.ts`) treats `sealedGate`/`gateId` tiles as open when `map.deepPlacement >= 2`. Canyon generator 2: `CANYON.generator` (`history.canyonGenerator`); lava and pool caverns keep `wreckClear` from the deepest one; `varyDungeonLayout` never moves a generator-2 warden onto an `environment` tile. Runtime, every journey: `regentHoldsHoard` with `PENTAGON.messages.hoardHeld`; `buildingFall` keeps the step-off tile when the landing is a hole; crater spawns move off lethal tiles within `spawnReach`; `hauntSpawns` excludes holes, doorways and object tiles and keeps `HAUNT.clear.entry` from arrivals; the castle haunt filter is `courtyard && greatBuilding`. Tests: `tests/dungeon-coherence.test.ts`.
+
+**BOUNDARY:** Schema 14; new history fields additive, set only when a history is first generated. Interiors, deep-v2 dungeons and craters generated before keep version 1 byte for byte (20,088 pinned regenerations identical); version-1 maps keep their original softlocks. For existing journeys only crater enemy spawn positions (those on lethal ground), haunt positions, a fall onto a hole and the hoard refusal change. The labyrinth vault Tesseract and building/keep caches can still be opened while their guardian lives.
+
 ## Release 735: the Beekeeper's Jars (wave 4) — 2026-11-04
 
 Daily narrative pass (Tim's routine): one more later thread, in the near band, which had none.

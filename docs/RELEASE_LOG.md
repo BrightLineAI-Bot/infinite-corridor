@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 735, the next is **736**.
+Taken at merge time: `main`'s release + 1 (see above). After 736, the next is **737**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 735 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: the Beekeeper's Jars, a wave 4 thread of six honey jars in the near band | In flight. |
+| 736 | Claude | `claude/dreamy-rubin-yn6q2p` | Dungeons that can always be finished (full-game review D1–D6, D8–D12): interior v2, deep placement 2, canyon generator 2; runtime hoard, fall, crater-spawn and haunt rules | In flight. |
+| 735 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: the Beekeeper's Jars, a wave 4 thread of six honey jars in the near band | Merged (#383). |
 | 734 | Claude | `claude/dreamy-rubin-yn6q2p` | Safety fixes from the full-game review: unknown/future save versions kept as damaged, the localStorage mirror kept within budget, null entries no longer stop start-up, broken checkpoints repaired, the Gravitant Bell's pull collides | Merged (#382), preview r734-b548ba1a6cfb. |
 | 733 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts drawn cheaply: each ghost painted once per pose, facing and size, then stamped (about 50x cheaper) | Merged (#381). Published in r733. |
 | 732 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v5 (Tim asked this session, "secrets... that you can access with the key"): three sealed chambers behind sigil doors, opened with the Regent's Seal, each with a warden, a Sealed Tesseract glyph and a relic of its own | Merging (baton taken). |
