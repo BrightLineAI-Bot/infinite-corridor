@@ -1516,8 +1516,9 @@ function actor(
     );
 }
 export function drawWaymarkIcon(ctx,signalKind,s){
-  const colors={beacon:'#72d7df',crossing:'#d5a464',danger:'#d16b62',event:'#a68ad2'},c=colors[signalKind]||'#b7b49d';ctx.strokeStyle=c;ctx.fillStyle=c+'22';ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();
-  if(signalKind==='beacon')ctx.arc(0,0,s*.27,0,Math.PI*1.65);
+  const colors={beacon:'#72d7df',crossing:'#d5a464',danger:'#d16b62',event:'#a68ad2',wonder:'#ffd36a'},c=colors[signalKind]||'#b7b49d';ctx.strokeStyle=c;ctx.fillStyle=c+'22';ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();
+  if(signalKind==='wonder'){for(let i=0;i<5;i++){const a=i*Math.PI*2/5;ctx[i?'lineTo':'moveTo'](Math.cos(a)*s*.24,Math.sin(a)*s*.24)}ctx.closePath();ctx.moveTo(s*.24,0);ctx.lineTo(s*.42,0);} // release 729: a megastructure (a pentagon, its point the way)
+  else if(signalKind==='beacon')ctx.arc(0,0,s*.27,0,Math.PI*1.65);
   else if(signalKind==='crossing'){ctx.moveTo(-s*.25,-s*.2);ctx.lineTo(s*.22,0);ctx.lineTo(-s*.25,s*.2);}
   else if(signalKind==='danger'){ctx.moveTo(-s*.22,-s*.25);ctx.lineTo(-s*.22,s*.25);ctx.lineTo(s*.25,0);ctx.closePath();}
   else{ctx.arc(0,0,s*.23,0,Math.PI*1.5);ctx.lineTo(s*.28,0);}

@@ -12,7 +12,8 @@ const SEED = 'TIM1';
 const game = (seed = SEED, save = null) => { const s = save || freshSave(); s.seed = seed; return new Game(s, 0); };
 const findIn = (g) => { for (let cx = -64; cx <= 64; cx += PENTAGON.every) for (let cy = -64; cy <= 64; cy += PENTAGON.every) if (g.pentagonHere(cx, cy)) return { cx, cy }; return null; };
 // release 728 made version 2 the Pentagon of new ground; these tests pin a section to version 1, the 727 Pentagon, which stays as it was
-const v1 = (seed, cx, cy) => { const s = freshSave(); s.seed = seed; s.atlas = { [`${cx + 1},${cy + 1}`]: { landscapeVersion: LANDSCAPE_VERSION, pentVersion: 1 } }; return new Game(s, 0); };
+const pinned = (seed, cx, cy, V) => { const s = freshSave(); s.seed = seed; s.atlas = { [`${cx + 1},${cy + 1}`]: { landscapeVersion: LANDSCAPE_VERSION, pentVersion: V } }; return new Game(s, 0); };
+const v1 = (seed, cx, cy) => pinned(seed, cx, cy, 1), v2 = (seed, cx, cy) => pinned(seed, cx, cy, 2); // release 729 made version 3 the Pentagon of new ground
 let found = null; const find = () => (found ||= findIn(game()));
 const visit = (g, rx, ry) => { g.rx = rx; g.ry = ry; g.loadArea('overworld', false); return g; };
 // the nine sections as one 96×96 ground, and where each world door stands on it
@@ -114,8 +115,8 @@ test('the sections and the chambers draw without throwing', () => {
 // the Chalice Dungeons... deeper and deeper... pull three levers... at different portions within the courtyard... then the gate
 // opens... not too tedious".
 const V2 = 2;
-test('v2: new ground gets the second Pentagon, a section seen under 727 keeps the first', () => {
-  const { cx, cy } = find(), g = game(); visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v2:')), 'new ground: v2');
+test('v2: a section seen under 728 keeps the second Pentagon, one seen under 727 the first', () => {
+  const { cx, cy } = find(), g = v2(SEED, cx, cy); visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v2:')), 'pinned 2: v2');
   const old = v1(SEED, cx, cy); visit(old, cx, cy); assert.ok(old.map.objects.filter((o) => o.pentagonDoor).every((o) => !o.dungeonId.includes(':v2:')), 'pinned: v1');
   assert.equal(parsePentagonId(`pentagon:${SEED}:${cx}:${cy}:v2:f3`).V, 2); assert.equal(parsePentagonId(`pentagon:${SEED}:${cx}:${cy}:f3`).V, 1);
 });
@@ -134,7 +135,7 @@ test('v2 plan: three levers in three courts shut the central doors; the Seal in 
 });
 
 test('v2 outside: the levers stand in their own courts, walled off like the doors', () => {
-  for (const seed of [SEED, 'S17']) { const g = game(seed), { cx, cy } = findIn(g), P = pentagonPlan(seed, cx, cy, V2), { doors, flood } = ground(g, cx, cy);
+  for (const seed of [SEED, 'S17']) { const { cx, cy } = findIn(game(seed)), g = v2(seed, cx, cy), P = pentagonPlan(seed, cx, cy, V2), { doors, flood } = ground(g, cx, cy);
     for (const L of P.levers) { const court = P.world.filter((w) => w.place === `c${L.f}`).map((w) => w.key), seen = flood(L.gx, L.gy);
       assert.ok(court.every((k) => seen.has(doors.get(k).gy * 96 + doors.get(k).gx)), `${seed}: lever ${L.f} shares its court's doors`);
       for (const [k, d] of doors) if (!court.includes(k)) assert.ok(!seen.has(d.gy * 96 + d.gx), `${seed}: lever ${L.f} walks to ${k}`);
@@ -142,7 +143,7 @@ test('v2 outside: the levers stand in their own courts, walled off like the door
 });
 
 test('v2 the way through: levers, the Seal, its sigil doors, three lords, six floors down past their keepers to the Regent; out at the gate', () => {
-  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V2), { doors } = ground(g, cx, cy), base = P.base, H = () => g.save.consequences.dungeons[`${base}:f1`] || {};
+  const { cx, cy } = find(), g = v2(SEED, cx, cy), P = pentagonPlan(SEED, cx, cy, V2), { doors } = ground(g, cx, cy), base = P.base, H = () => g.save.consequences.dungeons[`${base}:f1`] || {};
   let T = 1e6, place = 'land'; const tick = () => g.update(.05, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, (T += 50));
   const act = (o, a) => { assert.ok(o, a); g.player.x = o.x; g.player.y = o.y; return g.interact(a, o.id); };
   const idOf = (to) => `${base}:f${P.nodes.find((n) => n.id === to).n + 1}`, node = () => P.nodes[g.map.building.node].id;
@@ -185,7 +186,71 @@ test('v2: every chamber holds together; the lever sections and the deep floors d
       for (const o of m.objects) if (!seen.has(o.y * W + o.x)) bad.push(`${seed} ${q.id}: ${o.id}`); for (const e of m.enemySpawns) if (!seen.has(e.y * W + e.x)) bad.push(`${seed} ${q.id}: ${e.id}`);
       if ((q.lord || q.boss) && !m.enemySpawns.some((e) => e.pentBoss)) bad.push(`${seed} ${q.id}: no boss`); if (q.seal && !m.objects.some((o) => o.kind === 'pentSigil')) bad.push(`${seed}: no Seal`); } }
   assert.deepEqual(bad, []);
-  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V2);
+  const { cx, cy } = find(), g = v2(SEED, cx, cy), P = pentagonPlan(SEED, cx, cy, V2);
   for (const L of P.levers) { visit(g, cx - 1 + Math.floor(L.gx / 32), cy - 1 + Math.floor(L.gy / 32)); g.player.x = 16; g.player.y = 16; assert.doesNotThrow(() => render(ctx, g, 360, 640, 5000)); }
   for (const id of [P.sealNode, P.trials[0], 'h1', 'h4', `h${P.nh - 1}`]) { const q = P.nodes.find((n) => n.id === id); g.save.session.activeDungeonId = `${P.base}:f${q.n + 1}`; g.loadArea('dungeon', false); assert.ok(g.map.building.dread > 0); assert.doesNotThrow(() => render(ctx, g, 360, 640, 5000), id); }
+});
+
+// ------------------------------------------------------------------------------------------------ version 3 (release 729)
+// Tim: "when you get the Fivefold Seal, I don't want it to unlock all the doors... if you get to the end without beating all the
+// bosses or unlocking all the doors, that's fine. But I still want you to be able to go back and complete any other puzzles and
+// secrets"; Tesseract glyphs from the deep keepers, the reliquaries and the Regent (Sovereign when all the champions fell first).
+const V3 = 3;
+test('v3 plan: the Seal opens only the way on; fallen doors are shortcuts barred from the far side; two reliquaries behind shard doors, one shard deep', () => {
+  for (let i = 0; i < 300; i++) { const seed = 'X' + i, P = pentagonPlan(seed, i * 8, -i * 8, V3);
+    assert.deepEqual(P.edges.filter((e) => e.sigil).map((e) => `${e.a}-${e.b}`), ['h1-h2'], `${seed}: one sigil door`); assert.ok(!P.world.some((w) => w.sigil));
+    for (const e of P.edges.filter((e) => e.shortcut)) assert.ok([e.a, e.b].includes(e.far), `${seed}: a shortcut opens from one side`);
+    const secrets = P.nodes.filter((n) => n.kind === 'secret'); assert.equal(secrets.length, PENTAGON.secrets);
+    for (const q of secrets) { const e = P.edges.find((x) => x.b === q.id); assert.ok(e?.secret, `${seed}: ${q.id} behind a shard door`); const holder = P.nodes.find((n) => n.shard?.id === e.secret); assert.ok(holder && holder.id !== e.a && holder.kind !== 'secret', `${seed}: its shard lies elsewhere`); }
+    assert.ok(P.nodes.find((n) => n.shard?.id === 'shard1').id.startsWith('h'), `${seed}: one shard lies deep`);
+    for (const t of P.trials) assert.ok(!t.startsWith('s')); }
+});
+
+test('v3 the way through: shortcuts open from behind, keepers can be passed, shards open the reliquaries, Tesseract glyphs from the deep and a Sovereign hoard', () => {
+  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V3), { doors } = ground(g, cx, cy), base = P.base, H = () => g.save.consequences.dungeons[`${base}:f1`] || {};
+  assert.ok(g.map || true); visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v3:')), 'new ground: v3');
+  let T = 1e6, place = 'land'; const tick = () => g.update(.05, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, (T += 50));
+  const act = (o, a) => { assert.ok(o, a); g.player.x = o.x; g.player.y = o.y; return g.interact(a, o.id); };
+  const idOf = (to) => `${base}:f${P.nodes.find((n) => n.id === to).n + 1}`, node = () => P.nodes[g.map.building.node].id, seen = new Set();
+  const moves = (v) => { const h = H(), keys = h.labKeys || [], open = h.labOpen || [], out = [];
+    for (const e of P.edges) for (const [a, b] of [[e.a, e.b], [e.b, e.a]]) { if (a !== v) continue; if (e.sigil && !h.pentSigil) continue; if (e.secret && !keys.includes(e.secret)) continue; if (e.shortcut && a !== e.far && !open.includes(e.shortcut)) continue; out.push({ to: b, edge: e }); }
+    for (const w of P.world) { if (w.toGate) { if (w.node === v) out.push({ to: 'land', exit: w }); continue; } if (w.node === v && !(w.gate && (h.pentLevers || []).length < 3)) out.push({ to: w.place, exit: w }); if (w.place === v && !(w.sealed && (h.pentTrials || []).length < 3)) out.push({ to: w.node, enter: w }); }
+    return out; };
+  const path = (from, to) => { const prev = new Map([[from, null]]), q = [from]; while (q.length) { const v = q.shift(); for (const m of moves(v)) if (!prev.has(m.to)) { prev.set(m.to, { v, m }); q.push(m.to); } } if (!prev.has(to)) return null; const p = []; for (let c = to; prev.get(c); c = prev.get(c).v) p.unshift(prev.get(c).m); return p; };
+  let plated = false;
+  const hop = (m) => {
+    if (m.edge) { const o = g.map.objects.find((o) => o.kind === 'buildingStair' && o.toId === idOf(m.to)); assert.ok(o, `a door ${place} to ${m.to}`); assert.ok(!o.bossGate, 'no keeper holds a way shut');
+      if (o.plateLock && !plated) { act(g.map.objects.find((q) => q.kind === 'pentRubble'), 'take'); const pl = g.map.tiles.find((t) => t.plate), W = g.map.width; const [a, b] = [[-1, 0], [1, 0], [0, -1], [0, 1]].find(([a, b]) => !g.map.tiles[(pl.y + b) * W + pl.x + a]?.blocked); g.player.x = pl.x + a; g.player.y = pl.y + b - .25; assert.ok(g.buildAt(pl.x + .5, pl.y + .5).ok); plated = true; }
+      const r = act(o, o.actions[0]); assert.ok(r.ok, r.message); }
+    else if (m.exit) { const r = act(g.map.objects.find((o) => o.id === `building-exit-${m.exit.key}`), 'exit'); assert.ok(r.ok, r.message); }
+    else { const d = doors.get(m.enter.key); visit(g, d.rx, d.ry); const r = act(g.map.objects.find((o) => o.enterAt === m.enter.key), 'enter'); assert.ok(r.ok, r.message); }
+    place = m.to; if (/^[oihs]\d/.test(m.to)) assert.equal(node(), m.to);
+    if (g.area === 'dungeon') for (const o of g.map.objects) { const k = o.barred && !(H().labOpen || []).includes(o.shortcutKey) ? 'barred' : o.secretDoor && !(H().labKeys || []).includes(o.lock) ? 'secret' : null; if (!k || seen.has(k)) continue; const at = { x: g.player.x, y: g.player.y }; assert.ok(!act(o, o.actions[0]).ok, `a ${k} door refuses`); seen.add(k); g.player.x = at.x; g.player.y = at.y; } };
+  const kill = (bossToo = true) => { for (const e of g.enemies) if (e.buildingGuard && (bossToo || !e.pentBoss)) { e.hp = 0; e.dead = true; g.defeatEnemy(e); } tick(); };
+  const there = () => { if (g.area === 'overworld') { const f = place.startsWith('c') ? Number(place.slice(1)) : -1, L = P.levers.find((l) => l.f === f); if (L && !(H().pentLevers || []).includes(f)) { visit(g, cx - 1 + Math.floor(L.gx / 32), cy - 1 + Math.floor(L.gy / 32)); assert.ok(act(g.map.objects.find((o) => o.kind === 'pentLever' && o.lever === f), 'pull').ok); } return; }
+    for (const k of g.map.objects.filter((o) => o.kind === 'labKey' || o.kind === 'pentSigil')) assert.ok(act(k, 'take').ok);
+    const B = g.map.building; if ((B.trial && !(H().pentTrials || []).includes(B.node)) || (B.boss && !(H().pentBosses || []).includes(B.node))) kill(); };
+  const go = (to) => { const p = path(place, to); if (!p) return false; p.forEach(hop); there(); return true; };
+  const gs = doors.get(P.gate.key); visit(g, gs.rx, gs.ry); const gate = g.map.objects.find((o) => o.enterAt === P.gate.key), front = { rx: g.rx, ry: g.ry, x: gate.x, y: gate.y };
+  // the shortcuts: from the far side each opens, and stays open from the near side
+  for (const e of P.edges.filter((e) => e.shortcut)) { assert.ok(go(e.far), `to ${e.far}`); const near = e.far === e.a ? e.b : e.a; const o = g.map.objects.find((q) => q.kind === 'buildingStair' && q.toId === idOf(near)); assert.ok(o.shortcutOpens); hop({ to: near, edge: e }); assert.ok(H().labOpen.includes(e.shortcut)); }
+  for (let round = 0; round < 6 && !(path(place, 'h0') && H().pentSigil); round++) for (const t of [P.sealNode, ...P.trials, P.plateE.b, ...P.levers.map((l) => `c${l.f}`)]) go(t);
+  assert.ok(H().pentSigil); const glyphs0 = g.save.tesseracts.owned.length;
+  for (let k = 0; k < P.nh; k++) assert.ok(go(`h${k}`), `down to h${k}`); // every keeper down on the way (there() kills them), the deep ones each give a glyph
+  assert.equal(g.save.tesseracts.owned.length - glyphs0, P.nh - 1 - PENTAGON.deepGlyphFrom, 'a Tesseract glyph from each deep keeper');
+  assert.ok(H().labKeys.includes('shard1'), 'the deep shard');
+  const regent = g.enemies.find((e) => e.id.endsWith(':guardian')); regent.hp = 0; regent.dead = true; g.defeatEnemy(regent); tick();
+  for (const q of P.nodes.filter((n) => n.kind === 'secret')) { if (!H().labKeys.includes(P.edges.find((e) => e.b === q.id).secret)) assert.ok(go(P.nodes.find((n) => n.shard?.id === P.edges.find((e) => e.b === q.id).secret).id)); }
+  const champions = new Set(H().pentBosses).size; assert.equal(H().regentGrade, champions >= P.trials.length + P.nh - 1 ? 'sovereign' : 'regent');
+  const hoard = g.map.objects.find((o) => o.kind === 'chest' && o.id === 'building-cache'); if (hoard) { act(hoard, 'open'); assert.equal(g.save.tesseracts.owned.at(-1).grade, H().regentGrade); }
+  for (const q of P.nodes.filter((n) => n.kind === 'secret')) { assert.ok(go(q.id), `into ${q.id}`); const n = g.save.tesseracts.owned.length; act(g.map.objects.find((o) => o.reliquary), 'open'); assert.equal(g.save.tesseracts.owned.length, n + 1, 'a reliquary glyph'); assert.equal(g.save.tesseracts.owned.at(-1).grade, 'reliquary'); }
+  assert.deepEqual([...seen].sort(), ['barred', 'secret']);
+  assert.ok(go('land'), 'out'); void front;
+});
+
+test('v3: the Regent\'s hoard is Sovereign only when every champion fell before him', () => {
+  const { cx, cy } = find(), P = pentagonPlan(SEED, cx, cy, V3), q = P.nodes.find((n) => n.id === `h${P.nh - 1}`);
+  for (const all of [false, true]) { const g = game(); g.save.consequences.dungeons[`${P.base}:f1`] = { pentBosses: all ? [...P.trials.map((t) => P.nodes.find((n) => n.id === t).n), ...P.nodes.filter((n) => n.boss).map((n) => n.n)] : [1, 2] };
+    g.save.session.activeDungeonId = `${P.base}:f${q.n + 1}`; g.loadArea('dungeon', false); const r = g.enemies.find((e) => e.id.endsWith(':guardian')); r.hp = 0; r.dead = true; g.defeatEnemy(r);
+    assert.equal(g.save.consequences.dungeons[`${P.base}:f1`].regentGrade, all ? 'sovereign' : 'regent'); }
 });

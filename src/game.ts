@@ -92,6 +92,7 @@ import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor } from "./compounds.ts";
 import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber } from "./labyrinths.ts";
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor } from "./castles.ts";
+import { TESSERACTS, grantTesseract } from "./tesseracts.ts";
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan } from "./pentagon.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -534,6 +535,7 @@ export const DAMAGE_NUMBERS = { life: 900, rise: .9, cap: 48 }; // release 461
 // creatures) gets `hp` and `damage`; and `count` more of the crossing's ordinary foes stand near the others, by seed, with
 // stable ids (never added to a cleared crossing, an arena, a Far Array run or a hunt instance).
 export const DUNGEON_BOOST = { hp: 1.2, damage: 1.2, count: .2, near: 3 };
+const WONDER_CUE = { pentagon: 14, labyrinth: 6 }; // release 729: how far (sections) the gold cue looks for a Pentagon, a labyrinth
 const GUARDIAN_ROLES = ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"];
 export const SKY_TREE = { search: 6, loads: 4, chance: .55, annexSearch: 10, annexLoads: 8 }; // 678: the annex's last gate looks wider, unseen trees only // release 663: sky gates land on a great tree: rings searched round the drop, sections built at most, the trees' grow chance
 // Release 651: an ordinary creature, which Fractured mode copies into packs and brings back (never a guardian, boss, hunt,
@@ -2639,6 +2641,7 @@ export class Game {
           this.map,
         ),
       );
+      { const w = this.wonderCue(); if (w) this.map.objects.push(w); } // release 729: a cue toward the nearest unexplored Pentagon or labyrinth
       for (const o of this.map.objects)
         if (o.kind === "dungeon")
           dungeonHistory(
@@ -3512,8 +3515,13 @@ export class Game {
       };
       this.save.checkpoints[this.rx + "," + this.ry] =
         this.save.activeCheckpoint;
-    } else if (r.transition === "chest")
+    } else if (r.transition === "chest") {
       this.obtainDrop(o.rewardSource || "chest");
+      const B = this.map?.building; // Tesseract glyphs (release 729): a labyrinth's vault, the Pentagon's reliquaries and the Regent's hoard
+      if (B && o.id === "building-cache" && B.vault && B.labyrinth && !B.pentagon) this.awardTesseract(`${B.base}:vault`, "labyrinth");
+      else if (B?.pentagon && B.V >= 3 && o.reliquary) this.awardTesseract(`${B.base}:reliquary:${B.node}`, "reliquary");
+      else if (B?.pentagon && B.V >= 3 && B.vault && o.id === "building-cache") this.awardTesseract(`${B.base}:hoard`, dungeonHistory(this.save, `${B.base}:f1`).regentGrade || "regent");
+    }
     this.reconcileConsequences();
     this.sync();
     return r;
@@ -4992,6 +5000,8 @@ export class Game {
   defeatEnemy(e) {
     this.syncAstralClone(e);
     if (e.rewarded) return;
+    if (!e.summonedBy && !e.illusion && !e.astralCompanionOf) { const kh = armorGlyphBonus(this.save).killHeal; if (kh > 0) this.player.hp = Math.min(this.save.maxHp || this.player.hp, this.player.hp + Math.max(1, Math.round((this.save.maxHp || 60) * kh))); } // a Tesseract glyph: health back on a kill
+    if (e.pentBoss && this.area === "dungeon" && this.map?.building?.pentagon && this.map.building.V >= 3) this.pentagonChampionDown(e); // the Pentagon's champions and the Regent (v3)
     if(e.noRewards){e.rewarded=true;return}
     if(e.arenaId&&this.map?.arena){const history=dungeonHistory(this.save,this.areaId());history.resolved=true;history.guardianDefeated=true;history.visitOpen=false;this.defeatNotice={title:'WORLD THREAT BROKEN',detail:`${this.map.name} · the persistent arena falls quiet`,kind:'danger'}}
     if(e.foundryId){
@@ -5142,6 +5152,7 @@ export class Game {
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
     if (!echo && now < (this.boxingUntil || 0)) this.shadowBoxStep(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now); // release 485
     if (!echo) this.player.attackReadyAt = now + 420 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
+    if (!echo) { const harm = armorGlyphBonus(this.save).selfHarm; if (harm > 0) this.player.hp = Math.max(1, this.player.hp - Math.max(1, Math.round((this.save.maxHp || 60) * harm))); } // a Tesseract glyph's cost: each swing bites back (never to death)
     this.player.attackUntil = now + 240;
     this.player.meleeUntil = now + 240;
     const baseProfile = primaryProfile(this.save.equipment.primary),
@@ -5532,6 +5543,34 @@ export class Game {
     const inPent = (rx, ry) => { const c = pentagonCentre(rx, ry); return !!c && this.pentagonHere(c.cx, c.cy); }; // a Pentagon's sections hold no castle
     return castleAt(seed, X, Y, sectionExits, (rx, ry) => settled(rx, ry) || inPent(rx, ry), (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !!a && !a.castleVersion; });
   }
+  // Release 729 (Tim: "hunting for them is going to be pretty important... we already have the indicators on the ground that
+  // point to different things... we can use them to point to these labyrinths and superstructures"): one more ground cue, gold,
+  // toward the nearest Pentagon (its centre, within WONDER_CUE.pentagon sections) or labyrinth (within WONDER_CUE.labyrinth) that
+  // stands on ground not yet explored. Memoised per section.
+  wonderCue() {
+    if (this.map?.settlement || this.map?.greatBuilding?.pentagon) return null; const key = `${this.rx},${this.ry}`, memo = (this._wonderMemo ||= new Map());
+    if (!memo.has(key)) { if (memo.size > 64) memo.clear(); memo.set(key, this.wonderTarget()); } const t = memo.get(key); if (!t) return null;
+    const spot = [[15, 16], [18, 14], [12, 17], [16, 12], [20, 17]].find(([x, y]) => !this.map.tiles[y * 32 + x]?.blocked && !this.map.objects.some((o) => Math.round(o.x) === x && Math.round(o.y) === y)); if (!spot) return null;
+    return { id: "waymark-wonder", kind: "wayfindingCue", signalKind: "wonder", x: spot[0], y: spot[1], dirX: Math.sign(t.rx - this.rx), dirY: Math.sign(t.ry - this.ry), targetRx: t.rx, targetRy: t.ry, name: t.name, state: "quiet", actions: [] };
+  }
+  wonderTarget() {
+    const atlas = this.save.atlas || {}, seed = this.save.seed, W = WONDER_CUE, d = (x, y) => Math.abs(x - this.rx) + Math.abs(y - this.ry), out = [];
+    const E = PENTAGON.every; for (let cy = Math.floor((this.ry - W.pentagon) / E) * E; cy <= this.ry + W.pentagon; cy += E) for (let cx = Math.floor((this.rx - W.pentagon) / E) * E; cx <= this.rx + W.pentagon; cx += E) {
+      if (atlas[`${cx},${cy}`] || d(cx, cy) > W.pentagon || d(cx, cy) <= 1) continue; if (this.pentagonHere(cx, cy)) out.push({ rx: cx, ry: cy, name: PENTAGON.name, d: d(cx, cy) }); }
+    const memo = (this._castleSettle ||= new Map()), settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, !!generateRegion(seed, rx, ry, this.save.worldGeneration).settlement || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
+    for (let r = 2; r <= W.labyrinth; r++) for (let oy = -r; oy <= r; oy++) for (const ox of [r - Math.abs(oy), Math.abs(oy) - r]) { const rx = this.rx + ox, ry = this.ry + oy; if (atlas[`${rx},${ry}`] || !labyrinthHere(seed, rx, ry, null)) continue;
+      const c = pentagonCentre(rx, ry); if (c && this.pentagonHere(c.cx, c.cy)) continue; const k = castleCorner(rx, ry); if (k && this.castleHere(k.X, k.Y)) continue; if (settled(rx, ry)) continue; out.push({ rx, ry, name: "a labyrinth", d: r }); }
+    return out.sort((a, b) => a.d - b.d)[0] || null;
+  }
+  // The Pentagon v3: a deep keeper gives a Tesseract glyph; the Regent's fall decides his hoard's grade (Sovereign when every
+  // champion fell first). Champions: the lords of the trial halls and the Heart's keepers, as recorded in pentBosses.
+  pentagonChampionDown(e) {
+    const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`);
+    if (B.vault) { const down = new Set([...(H.pentBosses || [])]).size; H.regentGrade = down >= (B.champions || 8) ? "sovereign" : "regent"; this.message = H.regentGrade === "sovereign" ? "The Regent falls, the last of the Fivefold Court's champions. Her hoard glows." : "The Regent falls."; return; }
+    if (B.heartFloor >= PENTAGON.deepGlyphFrom && B.boss) this.awardTesseract(`${B.base}:keeper:${B.node}`, "deep", B.heartFloor - PENTAGON.deepGlyphFrom);
+  }
+  awardTesseract(source, grade, floor = 0) { const g = grantTesseract(this.save, source, grade, floor, this.map?.name || ""); if (!g) return null; const K = TESSERACTS.kinds[g.kind];
+    this.message = `${this.message ? this.message + " " : ""}A Tesseract glyph: ${g.name}. Set it in Glyphs.`; this.defeatNotice = { title: "A TESSERACT GLYPH", detail: `${K.sigil} ${g.name}`, kind: "discovery" }; journalOnce(this.save, `tesseract:${source}`, `${g.name}, from ${g.from || "the deep"}.`, "Tesseract glyphs"); return g; }
   // Which Pentagon stands here: the version pinned by the first of its sections you saw (each section seen records the version
   // of its day; a Pentagon begun under release 727 stays the 727 one).
   pentagonVersion(cx, cy) { const atlas = this.save.atlas || {}; let v = PENTAGON.version; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const a = atlas[`${cx + dx},${cy + dy}`]; if (a?.pentVersion) v = Math.min(v, a.pentVersion); } return v; }
