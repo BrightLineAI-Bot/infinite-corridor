@@ -67,6 +67,13 @@ What this settles, for us:
 - **The Tesseracts cost a piece of you.** A Tesseract glyph's bad aspects are not a balance tax: they are the part of the Wayfarer given over. Setting one is being read a little more by the Corridor and remembering a little less of yourself. This ties to section 1: the Wayfarer is unread, and every Tesseract is the Corridor starting to read them, at a price.
 - **How the game says it:** never directly. Seams for it: Pentagon chamber inscriptions that contradict each other (one a builder's dedication, one a geologist's note on "the fold", one in no hand at all); vent-life creature entries in the Codex that describe them feeding on "the warmth where two pages meet"; Tesseract flavour lines in the second person that grow quieter and less specific the more are set ("You set it. Something you knew is not there now. You do not miss it."); a Glimpse from inside a Pentagon wall, for which the Wayfarer is the intrusion.
 
+### The Pentagons' roofs (Tim, 2026-11-04)
+
+Tim: "The roof is just another path. There could be gargoyles and angels and demons up there... just on top of the roof, for fun. Some bird creatures up there too... you won't see them, and they won't aggro to you, unless you're on the roof." Then: "a big stone lumbering creature" with a laser in its chest.
+
+- **What lives up there** (`src/roof-dwellers.ts`): Eave Gargoyles, Ridge Demons, flocks of Slate Rooks, now and then a Cinder Seraph (the pack's existing angel), and one or two Battlement Colossi per Pentagon. They are seen only from the roof; from the ground the roof is empty.
+- **How the Codex speaks of them:** sparsely, and never says what they are. A carving that is "not always carving"; a demon that walks the ridges "as if it has always walked them. Perhaps it has"; birds that "look cut from" the parapet; a lamp where a heart would be, and whatever it looks at long enough "is not there afterwards". Each entry ends the same way: seen only by those who stand on the roof. Whether they are the Pentagon's guardians, its vent-life, or the Corridor looking back is left open, as everything about the Pentagons is.
+
 ### Why the game exists (Tim, 2026-11-04)
 
 "The whole goal of this experiment, of this game, is to help me have a non-traditional thought. I'm putting all of my thoughts into this game so that through exploration and interactions and discovery I can arrive at a non-traditional thought." And on the Pentagon lore: "It shouldn't be overdone... it's not going to lead to a full story... these are just interesting thoughts and experiments."

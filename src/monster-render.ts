@@ -207,6 +207,165 @@ function drawGloomgorge(ctx, q) {
   ctx.restore();
 }
 
+// ---- The Pentagon roofs' dwellers (roof-dwellers.ts) ---------------------------------------------------------------------
+// Each is painted once per kind, pose (idle, winding up, striking; the Colossus's windup by its attack), facing, drawn size, wake
+// stage (0–3 while it wakes, 4 awake), wing beat (the Rooks: two) and whether it is aloft, into a small canvas, and stamped every
+// frame with a gentle bob (cachedRoof, as cachedHaunt does; bounded by `max`). `box`: the canvas in body units (w, h, feet at `foot`).
+// While a dweller wakes its picture changes in four steps: the Gargoyle cracks out of stone, the Demon rises from its crouch with
+// its fire catching, the Rooks unfold and lift, the Colossus's eyes and lamp come on. Without a DOM canvas (tests) each is painted
+// directly.
+export const ROOF_SPRITE = { gargoyle: { w: 2.1, h: 1.9, foot: 1.6 }, demon: { w: 2.2, h: 2.4, foot: 2.05 }, rook: { w: 2.2, h: 2.1, foot: 1.75 }, colossus: { w: 2.3, h: 2.1, foot: 1.85 }, max: 64, bob: [1.4, .02], flap: 7 };
+const roofSprites = new Map();
+export const roofSpriteCount = () => roofSprites.size;
+export function roofWakeStage(e) { const T = Number(e?.roofWakeTotal) || 0, w = Number(e?.roofWake) || 0; return T > 0 && w > 0 ? Math.max(0, Math.min(3, Math.floor((1 - w / T) * 4))) : 4; }
+function cachedRoof(ctx, q, draw, box) {
+  const e = q.e, wake = roofWakeStage(e), flying = e.kind === "slateRook" && wake >= 2, frame = flying ? Math.floor(q.t * ROOF_SPRITE.flap) % 2 : 0, aloft = !!e.aloft;
+  const pose = q.state === "windup" ? `windup:${e.pack?.attack || ""}` : q.state === "attack" ? `attack:${e.pack?.attack || ""}` : "idle";
+  const canMake = typeof document !== "undefined" && typeof document.createElement === "function", r = { ...q, wake, frame, aloft, pose };
+  if (!canMake) return draw(ctx, r);
+  const u = Math.max(4, Math.round(q.u)), key = `${e.kind}:${pose}:${q.flip}:${u}:${wake}:${frame}:${aloft ? 1 : 0}`;
+  let sprite = roofSprites.get(key);
+  if (!sprite) {
+    sprite = document.createElement("canvas"); sprite.width = Math.ceil(u * box.w); sprite.height = Math.ceil(u * box.h);
+    const g = sprite.getContext("2d"); if (!g) return draw(ctx, r);
+    draw(g, { ...r, u, k: sprite.width / 2, b: u * box.foot, t: 0 });
+    roofSprites.set(key, sprite); if (roofSprites.size > ROOF_SPRITE.max) roofSprites.delete(roofSprites.keys().next().value);
+  }
+  const scale = q.u / u, bob = wake >= 4 ? Math.sin(q.t * ROOF_SPRITE.bob[0]) * q.u * ROOF_SPRITE.bob[1] : 0;
+  ctx.drawImage(sprite, q.k - sprite.width * scale / 2, q.b - u * box.foot * scale + bob, sprite.width * scale, sprite.height * scale);
+}
+const mixHex = (a, b, k) => { const p = parseInt(a.slice(1, 7), 16), q = parseInt(b.slice(1, 7), 16), m = (s) => Math.round(((p >> s) & 255) * (1 - k) + ((q >> s) & 255) * k); return `rgb(${m(16)},${m(8)},${m(0)})`; };
+function poly(ctx, pts) { ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); }
+function cracks(ctx, lines, color, w) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = "round"; for (const l of lines) { ctx.beginPath(); l.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); } }
+// The Eave Gargoyle: a crouched, horned thing of weathered stone, a beaked and fanged muzzle, bat wings folded like a cloak behind its
+// shoulders, a long tail curled round its feet. Winding up it flares its wings and rears; striking, one clawed arm rakes forward.
+function drawRoofGargoyle(ctx, q) {
+  const { k, b, u, flip, wake, pose } = q, [stoneLive, deep, ember, pale] = q.p, alive = wake >= 4, stoneK = alive ? 0 : 1 - wake / 4;
+  const stone = mixHex(stoneLive, "#9a978f", stoneK), dark = mixHex(deep, "#55524c", stoneK), f = flip, wind = pose.startsWith("windup"), act = pose.startsWith("attack");
+  const X = (x) => k + f * x * u, Y = (y) => b - y * u;
+  ctx.save();
+  shadowAt(ctx, k, b, u * .42, u * .1, .4);
+  // wings, behind
+  const spread = wind ? 1.35 : act ? 1.15 : 1, lift = wind ? .12 : 0;
+  for (const side of [-1, 1]) { const sx = side * .14, tip = [side * .5 * spread, 1.28 + lift], rim = [side * .38 * spread, .5];
+    ctx.fillStyle = dark; poly(ctx, [[X(sx), Y(.86)], [X(tip[0]), Y(tip[1])], [X(tip[0] * .92), Y(.98)], [X(tip[0] * .78 + side * .02), Y(.86)], [X(tip[0] * .64), Y(.74)], [X(rim[0]), Y(rim[1])], [X(sx * .5), Y(.6)]]); ctx.fill();
+    ctx.strokeStyle = stone; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(X(sx), Y(.86)); ctx.lineTo(X(tip[0]), Y(tip[1])); ctx.moveTo(X(sx), Y(.84)); ctx.lineTo(X(tip[0] * .78), Y(.86)); ctx.moveTo(X(sx), Y(.8)); ctx.lineTo(X(rim[0]), Y(rim[1])); ctx.stroke(); }
+  // tail, curled round the feet
+  ctx.strokeStyle = dark; ctx.lineWidth = u * .07; ctx.beginPath(); ctx.moveTo(X(-.18), Y(.28)); ctx.quadraticCurveTo(X(-.5), Y(.05), X(-.12), Y(.02)); ctx.quadraticCurveTo(X(.18), Y(.0), X(.26), Y(.08)); ctx.stroke();
+  ctx.fillStyle = dark; poly(ctx, [[X(.26), Y(.08)], [X(.36), Y(.16)], [X(.34), Y(.02)]]); ctx.fill();
+  // haunches and feet
+  const body = ctx.createLinearGradient(0, Y(1), 0, Y(0)); body.addColorStop(0, stone); body.addColorStop(1, dark);
+  ctx.fillStyle = body; for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(X(side * .17), Y(.22), u * .16, u * .19, side * f * .3, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = dark; for (const side of [-1, 1]) for (let i = 0; i < 3; i++) { const fx = side * .17 + (i - 1) * .06; poly(ctx, [[X(fx - .025), Y(.04)], [X(fx + .025), Y(.04)], [X(fx + .01), Y(-.01)]]); ctx.fill(); }
+  // the hunched torso
+  ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(X(.03), Y(.56 + lift * .5), u * .27, u * .3, -f * .25, 0, TAU); ctx.fill();
+  ctx.fillStyle = mixHex(stone, "#ffffff", .12); ctx.beginPath(); ctx.ellipse(X(.1), Y(.52 + lift * .5), u * .12, u * .17, -f * .2, 0, TAU); ctx.fill(); // the chest, a lighter worn stone
+  // arms: one at rest on the perch, the near one raking when it strikes
+  const hand = act ? [.52, .5] : wind ? [.3, .72] : [.3, .12];
+  ctx.strokeStyle = dark; ctx.lineWidth = u * .085; ctx.beginPath(); ctx.moveTo(X(.1), Y(.68)); ctx.quadraticCurveTo(X(.34), Y(.55), X(hand[0]), Y(hand[1])); ctx.stroke();
+  ctx.strokeStyle = stone; ctx.lineWidth = u * .07; ctx.beginPath(); ctx.moveTo(X(-.12), Y(.66)); ctx.quadraticCurveTo(X(-.02), Y(.36), X(.06), Y(.12)); ctx.stroke();
+  ctx.fillStyle = pale; for (const [hx, hy] of [hand, [.06, .12]]) for (let i = -1; i <= 1; i++) { const a = (act && hx === hand[0] ? -.2 : 1.35) + i * .35; poly(ctx, [[X(hx), Y(hy)], [X(hx + Math.cos(a) * .12 - .01), Y(hy - Math.sin(a) * .12)], [X(hx + .02), Y(hy + .02)]]); ctx.fill(); }
+  // the head: brow, horns swept back, a jutting muzzle with fangs
+  const hx = .17, hy = .94 + lift;
+  ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(X(hx), Y(hy), u * .14, u * .13, 0, 0, TAU); ctx.fill();
+  poly(ctx, [[X(hx + .06), Y(hy + .06)], [X(hx + .29), Y(hy - .02)], [X(hx + .27), Y(hy - .1)], [X(hx + .05), Y(hy - .1)]]); ctx.fill(); // muzzle
+  ctx.fillStyle = pale; for (const tx of [.12, .2]) { poly(ctx, [[X(hx + tx), Y(hy - .09)], [X(hx + tx + .03), Y(hy - .09)], [X(hx + tx + .015), Y(hy - .16)]]); ctx.fill(); }
+  ctx.fillStyle = dark; for (const side of [-1, 1]) { poly(ctx, [[X(hx - .02 + side * .05), Y(hy + .1)], [X(hx - .2 + side * .02), Y(hy + .3)], [X(hx - .1 + side * .03), Y(hy + .08)]]); ctx.fill(); } // horns
+  ctx.strokeStyle = dark; ctx.lineWidth = Math.max(1, u * .02); ctx.beginPath(); ctx.moveTo(X(hx - .04), Y(hy + .07)); ctx.lineTo(X(hx + .12), Y(hy + .04)); ctx.stroke(); // the brow
+  // eyes: dark while it is stone; then embers
+  if (wake >= 1) { ctx.fillStyle = ember; ctx.globalAlpha = Math.min(1, .35 + wake * .2); for (const ex of [.1, .19]) { ctx.beginPath(); ctx.arc(X(hx + ex), Y(hy + .01), u * .022, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; }
+  else { ctx.fillStyle = "#3c3a36"; for (const ex of [.1, .19]) { ctx.beginPath(); ctx.arc(X(hx + ex), Y(hy + .01), u * .018, 0, TAU); ctx.fill(); } }
+  // the stone breaking: cracks lit from within, then flakes falling away
+  if (!alive) {
+    const lines = [[[.02, .8], [.08, .62], [.0, .5], [.06, .36]], [[-.2, .3], [-.12, .2], [-.18, .1]], [[.18, 1.02], [.22, .9]], [[-.3, 1.0], [-.22, .86], [-.28, .72]]].slice(0, 1 + wake);
+    cracks(ctx, lines.map((l) => l.map(([x, y]) => [X(x), Y(y)])), wake >= 1 ? ember : "#5d5a54", Math.max(1, u * .02));
+    if (wake >= 2) { ctx.fillStyle = "#a9a59c"; for (const [x, y, z] of [[.34, .36, .05], [-.36, .5, .04], [.22, .16, .035], [-.1, .04, .03], [.42, .72, .03]]) { poly(ctx, [[X(x - z), Y(y)], [X(x + z), Y(y + z * .6)], [X(x + z * .4), Y(y - z)]]); ctx.fill(); } }
+  } else cracks(ctx, [[[.02, .8], [.08, .62], [.0, .5]].map(([x, y]) => [X(x), Y(y)])], "#00000040", Math.max(1, u * .015)); // healed seams
+  ctx.restore();
+}
+// The Ridge Demon: tall on goat's legs and hooves, broad-shouldered, a hide the red-black of cooling slag cracked through with a
+// slow fire, two long horns sweeping up and back, a spade-tipped tail, one hand always holding a little flame. Winding up the
+// cleave both arms go high; striking they come down in front. Waking it rises from a crouch and its fire catches.
+function drawRidgeDemon(ctx, q) {
+  const { k, b, u, flip: f, wake, pose } = q, [hide, deep, fire, glowc] = q.p, rise = wake >= 4 ? 1 : .72 + wake * .07, lit = wake >= 4 ? 1 : wake / 4;
+  const wind = pose.startsWith("windup"), act = pose.startsWith("attack"), cleave = pose.endsWith("demonCleave"), X = (x) => k + f * x * u, Y = (y) => b - y * u * rise;
+  ctx.save(); shadowAt(ctx, k, b, u * .38, u * .09, .45);
+  // tail
+  ctx.strokeStyle = deep; ctx.lineWidth = u * .045; ctx.beginPath(); ctx.moveTo(X(-.12), Y(.72)); ctx.quadraticCurveTo(X(-.55), Y(.55), X(-.48), Y(.2)); ctx.stroke();
+  ctx.fillStyle = deep; poly(ctx, [[X(-.48), Y(.24)], [X(-.56), Y(.12)], [X(-.48), Y(.04)], [X(-.4), Y(.12)]]); ctx.fill();
+  // legs: thigh forward, shin back, a cloven hoof
+  for (const side of [-1, 1]) { const o = side * .13; ctx.strokeStyle = side > 0 ? hide : deep; ctx.lineWidth = u * .11; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(X(o), Y(.78)); ctx.lineTo(X(o + .1), Y(.45)); ctx.lineTo(X(o - .04), Y(.16)); ctx.lineTo(X(o + .02), Y(.03)); ctx.stroke();
+    ctx.fillStyle = "#120504"; poly(ctx, [[X(o - .05), Y(.06)], [X(o + .08), Y(.06)], [X(o + .09), Y(0)], [X(o - .06), Y(0)]]); ctx.fill(); }
+  // the torso: a broad chest over a narrow waist
+  const g = ctx.createLinearGradient(0, Y(1.35), 0, Y(.7)); g.addColorStop(0, hide); g.addColorStop(1, deep); ctx.fillStyle = g;
+  poly(ctx, [[X(-.3), Y(1.3)], [X(.32), Y(1.3)], [X(.18), Y(.78)], [X(-.16), Y(.78)]]); ctx.fill();
+  ctx.fillStyle = deep; ctx.beginPath(); ctx.ellipse(X(.01), Y(.8), u * .19, u * .08, 0, 0, TAU); ctx.fill(); // the hips
+  // the fire in its cracks
+  cracks(ctx, [[[-.12, 1.22], [-.04, 1.08], [-.1, .94], [-.02, .84]], [[.16, 1.2], [.1, 1.06], [.18, .96]], [[-.24, 1.26], [-.2, 1.14]]].map((l) => l.map(([x, y]) => [X(x), Y(y)])), mixHex(deep, fire, lit), Math.max(1, u * .022));
+  // arms: overhead for the cleave's windup, down in front when it lands; otherwise the near hand holds its flame
+  const up = wind && cleave, down = act && cleave, hand = up ? [[.18, 1.78], [-.1, 1.75]] : down ? [[.55, .72], [.38, .66]] : [[.42, .92], [-.36, .9]];
+  [[.3, 1.24], [-.28, 1.24]].forEach(([sx, sy], i) => { ctx.strokeStyle = i ? deep : hide; ctx.lineWidth = u * .1; ctx.beginPath(); ctx.moveTo(X(sx), Y(sy)); ctx.quadraticCurveTo(X((sx + hand[i][0]) / 2 + (up ? 0 : .08)), Y((sy + hand[i][1]) / 2 + (up ? .1 : -.06)), X(hand[i][0]), Y(hand[i][1])); ctx.stroke();
+    ctx.fillStyle = "#e9d2b0"; for (let j = -1; j <= 1; j++) { poly(ctx, [[X(hand[i][0] + j * .03), Y(hand[i][1])], [X(hand[i][0] + j * .04 + .03), Y(hand[i][1] - (up ? -.1 : .1))], [X(hand[i][0] + j * .03 + .02), Y(hand[i][1] + .01)]]); ctx.fill(); } });
+  if (lit > 0 && !up && !down) { const [fx, fy] = hand[0]; for (const [r, a, c] of [[.12, .35, fire], [.075, .7, glowc], [.035, .95, "#ffffff"]]) { ctx.globalAlpha = a * lit; ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(X(fx - r), Y(fy + .02)); ctx.quadraticCurveTo(X(fx), Y(fy + r * 3.2), X(fx + r), Y(fy + .02)); ctx.quadraticCurveTo(X(fx), Y(fy - r * .8), X(fx - r), Y(fy + .02)); ctx.fill(); } ctx.globalAlpha = 1; } // its flame
+  if (pose.endsWith("firefall") && wind) { ctx.globalAlpha = .6; ctx.fillStyle = fire; ctx.beginPath(); ctx.arc(X(0), Y(1.72), u * .12, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; } // the firefall gathers over its head
+  // the head: long-faced, a heavy brow, eyes of fire, two horns sweeping up and back
+  const hx = .04, hy = 1.42; ctx.fillStyle = hide; ctx.beginPath(); ctx.ellipse(X(hx), Y(hy), u * .11, u * .13, 0, 0, TAU); ctx.fill();
+  poly(ctx, [[X(hx + .02), Y(hy - .04)], [X(hx + .16), Y(hy - .1)], [X(hx + .02), Y(hy - .16)]]); ctx.fill(); // the jaw, jutting
+  for (const side of [-1, 1]) { ctx.fillStyle = side > 0 ? "#2a1a12" : "#1a0e08"; ctx.beginPath(); ctx.moveTo(X(hx + side * .07), Y(hy + .08)); ctx.quadraticCurveTo(X(hx + side * .1 - .18), Y(hy + .42), X(hx - .3 + side * .04), Y(hy + .5)); ctx.quadraticCurveTo(X(hx + side * .02 - .1), Y(hy + .3), X(hx + side * .02), Y(hy + .05)); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = mixHex("#3a1a10", glowc, lit); for (const ex of [.04, .1]) { ctx.beginPath(); ctx.ellipse(X(hx + ex), Y(hy + .02), u * .022, u * .012, 0, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
+// The Slate Rook: a stocky grey bird with a pale hooked beak and a yellow eye. Perched it sits folded and still as the stone; as it
+// wakes it unfolds; flying, its wings beat in two frames over a small shadow, and it hangs a little higher when it rises to dive.
+function drawSlateRook(ctx, q) {
+  const { k, b, u, flip: f, wake, frame, aloft, pose } = q, [grey, deep, eyec, beak] = q.p, flying = wake >= 2, lift = aloft ? .95 : flying ? .42 + (frame ? .03 : 0) : 0;
+  const X = (x) => k + f * x * u, Y = (y) => b - (y + lift) * u;
+  ctx.save(); shadowAt(ctx, k, b, u * (flying ? .2 : .24), u * .06, flying ? .3 : .4); if (aloft) ctx.globalAlpha = .6;
+  if (!flying) { // perched: wings folded along its back; at wake 1 half open
+    const open = wake === 1 ? .5 : 0;
+    ctx.fillStyle = deep; poly(ctx, [[X(-.22), Y(.2)], [X(.12), Y(.42 + open * .2)], [X(-.05 - open * .3), Y(.5 + open * .3)], [X(-.36), Y(.3)]]); ctx.fill();
+  } else { const up = frame === 0; for (const side of [-1, 1]) { ctx.fillStyle = side > 0 ? grey : mixHex(grey, deep, .5); poly(ctx, [[X(-.04), Y(.32)], [X(.1), Y(.34)], [X(side * .55 * (up ? .9 : 1)), Y(up ? .78 : .12)], [X(side * .4), Y(up ? .6 : .2)], [X(side * .22), Y(up ? .5 : .26)]]); ctx.fill(); } }
+  ctx.fillStyle = deep; poly(ctx, [[X(-.18), Y(.24)], [X(-.42), Y(.18)], [X(-.4), Y(.3)]]); ctx.fill(); // the tail
+  const g = ctx.createLinearGradient(0, Y(.5), 0, Y(.1)); g.addColorStop(0, grey); g.addColorStop(1, deep); ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(X(0), Y(.28), u * .2, u * .14, f * -.15, 0, TAU); ctx.fill(); // the body
+  ctx.beginPath(); ctx.arc(X(.15), Y(.44), u * .09, 0, TAU); ctx.fill(); // the head
+  ctx.fillStyle = beak; poly(ctx, [[X(.22), Y(.47)], [X(.35), Y(.42)], [X(.3), Y(.38)], [X(.22), Y(.41)]]); ctx.fill();
+  ctx.fillStyle = eyec; ctx.beginPath(); ctx.arc(X(.17), Y(.46), u * .022, 0, TAU); ctx.fill(); ctx.fillStyle = "#0a0a0a"; ctx.beginPath(); ctx.arc(X(.175), Y(.46), u * .01, 0, TAU); ctx.fill();
+  if (!flying) { ctx.strokeStyle = beak; ctx.lineWidth = Math.max(1, u * .02); for (const fx of [-.04, .06]) { ctx.beginPath(); ctx.moveTo(X(fx), Y(.16)); ctx.lineTo(X(fx), Y(.02)); ctx.stroke(); } } // legs on the perch
+  else if (pose.startsWith("windup")) { ctx.strokeStyle = beak; ctx.lineWidth = Math.max(1, u * .02); for (const fx of [-.02, .06]) { ctx.beginPath(); ctx.moveTo(X(fx), Y(.16)); ctx.lineTo(X(fx + .08), Y(.06)); ctx.stroke(); } } // talons out
+  ctx.restore();
+}
+// The Battlement Colossus: fitted blocks of grey stone stacked into a broad, short-necked giant on two pillar legs, huge block fists,
+// a small head with two slit eyes, and in the middle of its chest a round lamp of red glass. Idle the lamp smoulders; winding up the
+// Heart Lamp it burns white-hot with rings round it; winding up the slam both fists go above its head, and land on the roof.
+function drawRoofColossus(ctx, q) {
+  const { k, b, u, flip: f, wake, pose } = q, [stone, deep, lamp, hot] = q.p, lit = wake >= 4 ? 1 : wake / 4, laser = pose === "windup:chestLaser" || pose === "attack:chestLaser";
+  const slamUp = pose === "windup:stoneSlam", slamDown = pose === "attack:stoneSlam", X = (x) => k + f * x * u, Y = (y) => b - y * u;
+  ctx.save(); shadowAt(ctx, k, b, u * .5, u * .12, .5);
+  const block = (x0, y0, x1, y1, c) => { ctx.fillStyle = c; ctx.fillRect(Math.min(X(x0), X(x1)), Y(y1), Math.abs(X(x1) - X(x0)), Y(y0) - Y(y1)); ctx.strokeStyle = "#00000055"; ctx.lineWidth = Math.max(1, u * .012); ctx.strokeRect(Math.min(X(x0), X(x1)), Y(y1), Math.abs(X(x1) - X(x0)), Y(y0) - Y(y1)); };
+  // legs: pillars of three courses each
+  for (const side of [-1, 1]) for (let c = 0; c < 3; c++) block(side * .2 - .11, c * .16, side * .2 + .11, c * .16 + .16, c % 2 ? deep : mixHex(stone, deep, .3));
+  // the torso: courses of blocks, wider at the shoulders
+  const rows = [[.48, .6, .3], [.6, .78, .36], [.78, .98, .4], [.98, 1.18, .44]];
+  rows.forEach(([y0, y1, w], i) => { const half = w; block(-half, y0, -half / 3, y1, i % 2 ? stone : mixHex(stone, deep, .18)); block(-half / 3, y0, half / 3, y1, i % 2 ? mixHex(stone, deep, .12) : stone); block(half / 3, y0, half, y1, i % 2 ? stone : mixHex(stone, deep, .25)); });
+  // arms: block shoulders, a forearm, a fist; raised for the slam, down on the roof when it lands
+  for (const side of [-1, 1]) { const near = side === 1, sx = side * .5;
+    if (slamUp) { block(sx - .1, 1.08, sx + .1, 1.4, deep); block(side * .3 - .13, 1.38, side * .3 + .13, 1.6, near ? stone : deep); }
+    else { const drop = slamDown ? .32 : 0; block(sx - .11, .86, sx + .11, 1.2, near ? stone : deep); block(sx - .1, .5 - drop * .6, sx + .1, .86, deep); block(sx - .14, .26 - drop, sx + .14, .5 - drop * .6, near ? mixHex(stone, deep, .1) : deep); } }
+  // the head, small, set low between the shoulders
+  block(-.13, 1.18, .13, 1.4, mixHex(stone, deep, .1)); ctx.fillStyle = "#14110e"; ctx.fillRect(Math.min(X(-.09), X(.09)), Y(1.32), Math.abs(X(.09) - X(-.09)), u * .03);
+  if (lit > 0) { ctx.fillStyle = mixHex("#401008", lamp, lit); for (const ex of [-.055, .055]) ctx.fillRect(X(ex) - u * .03, Y(1.32), u * .06, u * .025); }
+  // the lamp: smouldering, or burning white with rings round it as the Heart Lamp gathers
+  const lx = X(.02), ly = Y(.88), r = u * .12;
+  ctx.fillStyle = "#1c0c08"; ctx.beginPath(); ctx.arc(lx, ly, r * 1.18, 0, TAU); ctx.fill(); // its socket
+  ctx.fillStyle = mixHex("#3a120c", laser ? hot : lamp, laser ? 1 : lit * .85); ctx.beginPath(); ctx.arc(lx, ly, r, 0, TAU); ctx.fill();
+  if (laser) { ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(lx, ly, r * .5, 0, TAU); ctx.fill(); ctx.strokeStyle = lamp; ctx.lineWidth = Math.max(1, u * .02); for (const rr of [1.5, 2]) { ctx.globalAlpha = .7 / rr; ctx.beginPath(); ctx.arc(lx, ly, r * rr, 0, TAU); ctx.stroke(); } ctx.globalAlpha = 1; }
+  else if (lit > 0) { ctx.fillStyle = hot; ctx.globalAlpha = .5 * lit; ctx.beginPath(); ctx.arc(lx - r * .3, ly - r * .3, r * .3, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+  // weathering: a chipped corner and lichen
+  ctx.fillStyle = "#6d7a52aa"; for (const [x, y] of [[-.36, 1.12], [.3, .64], [-.2, .1]]) { ctx.beginPath(); ctx.arc(X(x), Y(y), u * .025, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
+
 const BODY = {
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
@@ -216,6 +375,10 @@ const BODY = {
   doomChaser(ctx, q) { drawDoomChaser(ctx, q, q.t * 1000); }, // release 710
   gloomwisp(ctx, q) { cachedHaunt(ctx, q, drawGloomwisp, HAUNT_SPRITE.wisp); }, // release 731 (733: drawn once, then stamped)
   gloomgorge(ctx, q) { cachedHaunt(ctx, q, drawGloomgorge, HAUNT_SPRITE.gorge); },
+  roofGargoyle(ctx, q) { cachedRoof(ctx, q, drawRoofGargoyle, ROOF_SPRITE.gargoyle); }, // the Pentagon roofs (roof-dwellers.ts): drawn once, then stamped
+  ridgeDemon(ctx, q) { cachedRoof(ctx, q, drawRidgeDemon, ROOF_SPRITE.demon); },
+  slateRook(ctx, q) { cachedRoof(ctx, q, drawSlateRook, ROOF_SPRITE.rook); },
+  roofColossus(ctx, q) { cachedRoof(ctx, q, drawRoofColossus, ROOF_SPRITE.colossus); },
   inkKin(ctx, q) { const d = MONSTER_PACK[q.e.kind]; drawAstralWorm(ctx, { x: q.k, y: q.b - q.u * .2, scale: q.u * (d?.inkScale || .4), time: q.t, form: d?.inkForm || "worm", facing: q.flip, reducedMotion: !!q.e.reduceMotion }); }, // release 719
   astralWorm(ctx,q) { const a=q.e.astral;
     // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.
@@ -1072,7 +1235,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   let sp = sprites.get(e.id);
@@ -1093,7 +1256,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
     sp.key = key;
   }
   sp.used = now;
-  const alpha = ((e.phasing || (e.phases && e.untargetable)) ? .45 : e.aloft && e.kind === "cinderSeraph" ? .35 : 1) * (e.fleeFade ?? 1), prior = ctx.globalAlpha;
+  const alpha = ((e.phasing || (e.phases && e.untargetable)) ? .45 : e.aloft && e.kind === "cinderSeraph" ? .35 : 1) * (e.fleeFade ?? 1) * (e.roofWake > 0 ? .25 + .75 * roofWakeStage(e) / 4 : 1), prior = ctx.globalAlpha; // a roof dweller of the shared pack unfolds out of the air as it wakes
   ctx.globalAlpha = prior * alpha * (e.illusion ? .92 : 1);
   ctx.drawImage(sp.canvas, k - L - 1 / m.a, b - U - 1 / m.d, sp.canvas.width / m.a, sp.canvas.height / m.d);
   ctx.globalAlpha = prior;
@@ -1364,9 +1527,16 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, h
     }
     else if (tele.type === "arc") { const a = Math.atan2(tele.aim.y, tele.aim.x), half = tele.arc * Math.PI / 360; ctx.fillStyle = DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, tele.radius * s, a - half, a + half); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     else if (tele.type === "rect") { const a = tele.aim, w = tele.width * s, px = -a.y * w, py = a.x * w, l = tele.length * s; ctx.fillStyle = DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + px, cy + py); ctx.lineTo(cx + a.x * l + px, cy + a.y * l + py); ctx.lineTo(cx + a.x * l - px, cy + a.y * l - py); ctx.lineTo(cx - px, cy - py); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    else if (tele.type === "laser") { // the Battlement Colossus's Heart Lamp (roof-dwellers.ts): the lamp gathers, the aim line follows, holds, flashes
+      const scale = Math.max(.6, Number(e.scale) || 1), lx = cx, ly = (e.y + .82) * s - (tele.chest || 1) * s * scale, ex = cx + Math.cos(tele.angle) * tele.length * s, ey = cy + Math.sin(tele.angle) * tele.length * s, k = Math.max(0, Math.min(1, tele.charge || 0)), W = 0.6 * s;
+      ctx.fillStyle = "#ff3a2a"; for (const [r, a] of [[1, .16], [.62, .32], [.3, .7]]) { ctx.globalAlpha = a * (.4 + .6 * k); ctx.beginPath(); ctx.arc(lx, ly, s * scale * (.12 + .3 * k) * r, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1;
+      if (tele.locked) { const flash = Math.floor(now / 70) % 2, px = -Math.sin(tele.angle) * W, py = Math.cos(tele.angle) * W; ctx.fillStyle = flash ? DANGER.fillStrong : DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + px, cy + py); ctx.lineTo(ex + px, ey + py); ctx.lineTo(ex - px, ey - py); ctx.lineTo(cx - px, cy - py); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeStyle = flash ? "#ffffff" : "#ff3a2a"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(ex, ey); ctx.stroke(); }
+      else { ctx.strokeStyle = `rgba(255,58,42,${(.45 + .4 * pulse).toFixed(3)})`; ctx.lineWidth = Math.max(1.5, s * .045); ctx.setLineDash([s * .22, s * .12]); ctx.lineDashOffset = -now / 25; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(ex, ey); ctx.stroke(); ctx.setLineDash([]); }
+    }
     else if (tele.type === "beam") {
-      const ex = cx + Math.cos(tele.angle) * tele.length * s, ey = cy + Math.sin(tele.angle) * tele.length * s;
-      if (tele.charging) { ctx.strokeStyle = DANGER.edge; ctx.lineWidth = Math.max(1, s * .04 * pulse); ctx.setLineDash([s * .2, s * .12]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke(); ctx.setLineDash([]); }
+      const ex = cx + Math.cos(tele.angle) * tele.length * s, ey = cy + Math.sin(tele.angle) * tele.length * s, cyL = tele.chest ? (e.y + .82) * s - tele.chest * s * Math.max(.6, Number(e.scale) || 1) : cy;
+      if (tele.chest) { for (const [w, a] of [[.9, "33"], [.5, "99"], [.2, "ff"]]) { ctx.strokeStyle = (w < .3 ? "#ffffff" : "#ff3a2a") + a; ctx.lineWidth = s * w * (.9 + pulse * .2); ctx.beginPath(); ctx.moveTo(cx, cyL); ctx.lineTo(ex, ey); ctx.stroke(); } glow(ctx, ex, ey, s * .6, "#ff3a2a", .8); glow(ctx, cx, cyL, s * .7, "#ffffff", .6); } // the Heart Lamp fires from the chest
+      else if (tele.charging) { ctx.strokeStyle = DANGER.edge; ctx.lineWidth = Math.max(1, s * .04 * pulse); ctx.setLineDash([s * .2, s * .12]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke(); ctx.setLineDash([]); }
       else { const bc = tele.laser ? "#ff3a2a" : c; for (const [w, a] of [[.55, "33"], [.3, "88"], [.12, "ff"]]) { ctx.strokeStyle = (w < .2 ? "#ffffff" : bc) + a; ctx.lineWidth = s * w * (.9 + pulse * .2); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke(); } glow(ctx, ex, ey, s * .45, bc, .7); }
     } else if (tele.type === "circle") { drawWarningCircle(ctx, (tele.x + .5) * s, (tele.y + .6) * s, tele.radius * s, DANGER.hex, pulse, 1 - Math.max(0, tele.left ?? e.pack.t) / (tele.total || .75)); }
     else if (tele.type === "blink") { const bx = (tele.x + .5) * s, by = (tele.y + .6) * s; glow(ctx, bx, by - s * .2, s * .6, c, .6 * pulse); ctx.strokeStyle = c + "cc"; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(bx, by, s * (.25 + i * .15) * pulse, s * (.12 + i * .07) * pulse, 0, 0, TAU); ctx.stroke(); } }
