@@ -2997,7 +2997,7 @@ function openInteraction(id, confirmAttack = false) {
         repair:"Repair the hull",
       };
       body.append(
-        uiButton(labels[action] || skylandLabel(action, save) || (/^descend:\d+$/.test(action) ? (action === 'descend:1' ? 'Descend · floor 1' : `Descend · checkpoint, floor ${action.slice(8)}`) : null) || action, () =>
+        uiButton(labels[action] || o.actionLabels?.[action] || skylandLabel(action, save) || (/^descend:\d+$/.test(action) ? (action === 'descend:1' ? 'Descend · floor 1' : `Descend · checkpoint, floor ${action.slice(8)}`) : null) || action, () =>
           action === "attack"
             ? openInteraction(id, true)
             : performInteraction(id, action),
@@ -3012,7 +3012,7 @@ function performInteraction(id, action) {
   persist();
   if (
     result?.ok &&
-    ["enter", "exit", "bypass", "restore", "sever"].includes(action)
+    ["enter", "exit", "bypass", "restore", "sever", "transit"].includes(action)
   ) {
     resume();
     return;
