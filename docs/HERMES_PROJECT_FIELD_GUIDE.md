@@ -2854,6 +2854,16 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 749: digging respects the way through — 2026-11-04
+
+Tim: "We shouldn't be able to dig through the secrets or break the actual labyrinth path... It should be reinforced through the regular game rules... that don't require invisible walls."
+
+Audit (2,040 generated interiors): digging could never pass a gate (every lock, lever, plate, sigil, barred shortcut, trial and vault is a door or ladder between closed chambers, and the shovel already refused a chamber's outer edge), but inside a chamber it skipped the path: 77% of unvisited doors, ladders, keys and caches were reached sooner by digging than walking. After: 0. On the land, 282 current-version and 2,418 version-1 building/labyrinth block tiles could be dug; after: 0.
+
+**CODE:** `src/digging.ts` `DIG_GATES` (data: the interior area-id pattern `^(labyrinth|pentagon|castle|building|compound):`, which includes the Shell-Labyrinth; `walked.radius` 1; messages `unwalked`, `sealed`, `outerWall`, `building`). `markWalked(walked, map, x, y)` marks floor round the Wayfarer in a per-tile byte array (a diagonal only past an open side). `planDig(..., { walked })` in an interior refuses a breakthrough into floor not yet walked, refuses floor unreachable on foot even with the iron shovel, and gives the `outerWall` reason at the border; `overworldDiggable` refuses `greatBuilding` tiles with the `building` reason. In `game.ts`, `walkedHere()` makes one `Uint8Array` per interior map; `markWalked()` runs each frame in `update` (at most 9 writes) and in `digAhead`, which passes `walked` to every plan. The record is not saved: a reload starts a new walk.
+
+**BOUNDARY:** Checked on dig only; no generator changed (pinned interior hashes in the test); tunnels dug before keep re-applying through `applyTunnels`. Ordinary dungeons, the Deep, canyons and temporary places keep the release 225/379/411 rules, including the iron shovel breaking into hollow pockets. No seals were added (nothing inside a chamber needed one). Trade-off: on a first pass about 90% of treasure walls beside the path won't dig yet, because breaking them would open onto unwalked ground; they dig once you've walked the far side (question to Tim). Tests: `tests/dig-gates.test.ts` (7). Not tested on a device.
+
 ## Release 748: beast mounts — 2026-11-04
 
 Tim: penning a world beast catches it, with no spoils, to ride; a stable of up to 3; 12 minutes or 35 sections; never the Questing Beast, Psychic Crystal, Void Walker, Lightning Giant or Nanobot Knight; mounts at real size with saddles fitted per body; pen materials by size; a failed catch loses the materials; hits land on the rider.
