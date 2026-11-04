@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 733, the next is **734**.
+Taken at merge time: `main`'s release + 1 (see above). After 734, the next is **735**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 733 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts drawn cheaply: each ghost painted once per pose, facing and size, then stamped (about 50x cheaper) | In flight. |
+| 734 | Claude | `claude/dreamy-rubin-yn6q2p` | Safety fixes from the full-game review: unknown/future save versions kept as damaged, the localStorage mirror kept within budget, null entries no longer stop start-up, broken checkpoints repaired, the Gravitant Bell's pull collides | In flight. |
+| 733 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts drawn cheaply: each ghost painted once per pose, facing and size, then stamped (about 50x cheaper) | Merged (#381). Published in r733. |
 | 732 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v5 (Tim asked this session, "secrets... that you can access with the key"): three sealed chambers behind sigil doors, opened with the Regent's Seal, each with a warden, a Sealed Tesseract glyph and a relic of its own | Merging (baton taken). |
 | 731 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts: Gloomwisps (confusing puffs that reverse movement; they split) pouring together into a Gloomgorge; in keeps, castle courts, building/castle/Pentagon floors and the rare wild | In flight. |
 | 730 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v4 (Tim asked this session): keepers hold their ladders until beaten; the Regent drops the Fivefold Seal; each sigil door opens only when used with it; reliquaries keep their shards | Merged (`r730-f2326bfc0753`). |
@@ -119,6 +120,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 733, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 733 | `r733-cb40b95e99a7` | 2026-11-04 | Fable review (732→733): no blockers. 733, the haunts drawn cheaply (#381); 731/732 already live in r732. |
 | 724 | `r724-477fbde1400a` | 2026-11-03 | Fable review: no blockers. 718, labyrinths (second session); 719, the Ink Wastes (#366); 720, the folk realms (#367); 721, the great mushrooms (#368); 722, the mushrooms made mushroomy (#369); 723, the Thornglass Caldera (#370); 724, the world beasts' domains (#371). |
 | 717 | `r717-28789eeae12c` | 2026-11-03 | Fable review: no blockers. The far realms: 714, the Giants' Reach and the Stag and Stalker at play (#361); 715, stag groves and blob pockets (#362); 716, the Crystal Civilisation (#363); 717, the Storm Halls (#364). |
 | 713 | `r713-ad6fe6859fbd` | 2026-11-03 | Fable review: no blockers. With 712, two threads of a later layer (#359); and 713, compounds (#360). |
