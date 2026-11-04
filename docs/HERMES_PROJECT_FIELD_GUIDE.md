@@ -2854,13 +2854,49 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
-## Release 730: the haunts — 2026-11-04
+## Release 731: the haunts — 2026-11-04
 
 Tim, 2026-11-04: "cool creatures that... floated around... put them in the keeps... in various places... they can confuse you. So that instead of moving forward, you move backwards for a time. And... they can multiply if enough... get together, then they form one big... ghost creature... a fatter body. The big, scary mouth and face and arms and legs... sharp pointy... at the ends of its arms and legs." Taken as original creatures in that spirit, not copies of any existing ones.
 
 **CODE:** `src/haunts.ts` (`HAUNT` data; `hauntPlan`, `hauntSpawns`, `hauntKnot`, `splitDelay`). `MONSTER_PACK.gloomwisp` (attacks `wispBewilder`, `bite`) and `MONSTER_PACK.gloomgorge` (`clawSweep`, `devourPull`, `leapSlam`, `gorgeHowl`), both `prototypeOnly` and `farKin` (painted directly: `drawGloomwisp`, `drawGloomgorge` in `src/monster-render.ts`; Tim then asked that the Gorge look "not of this world... isn't fully here... features... well merged", so it is drawn half-there: a breathing outline with its spines in the same skin, thinning to smoke below the waist, translucent with a rim of light, two faint out-of-step outlines, slow swells of gas inside, rising motes and a flicker; slanted eyes in a haze, a dark gash of a mouth with pale teeth, limbs tapering out of the body into long hooked claws). `wispBewilder`/`gorgeHowl` run through `hauntConfuse` (`src/monster-pack.ts`): at the windup's end the Wayfarer within range is hurt a little and `w.confuse(seconds)` is called (`HAUNT.confuse.wisp`/`.gorge`). The pack world's `confuse` sets `player.confusedUntil` (not during a dodge) and says so once; while it lasts the movement input is reversed in `Game.update` (the dodge's own direction is untouched); the HUD shows CONFUSED. `Game.hauntTick` (every frame): a placed, hunting wisp splits `split.max` times at hashed intervals, up to `split.cap` wisps (children are `hauntChild`, `noRewards`, and never split); every `merge.check` seconds, if no Gloomgorge has formed this visit (`hauntGorged`, reset on load), `merge.count` wisps within `merge.radius` pour into one at their centre (the wisps die without reward). Placement in `loadArea`, before the enemies are made: `hauntPlan(seed, areaKey, …)` for an overworld section with a keep or a castle quarter (`keep`), a great building, castle or Pentagon floor (`interior`), or a fog moor or Far Sleep section at depth `minDepth`+ (`wild`); `hauntSpawns` puts the wisps on open, safe floor (inside a keep's rectangle, or on a castle's own tiles).
 
 **BOUNDARY:** No save change: haunts are hashed from the seed and the area; the area's usual enemy state keeps the ones you killed. Domains keep only their own beast, so no haunt appears in one. Only spawned wisps give rewards, and a Gloomgorge forms at most once a visit, so a haunt cannot be farmed.
+## Release 730: the Pentagon, version 4 — 2026-11-04
+
+Tim (2026-11-04): "you have to beat all the bosses to get through... you can't go through their ladders until you beat them...
+whatever doors are locked when you get to the final boss will remain locked. But you can get that [Seal]... any door that you find
+will just become unlocked... when you go to them and interact with them". His answers: the Regent drops the Seal; the reliquaries
+keep their own shards.
+
+**CODE:** `src/pentagon.ts` (`PENTAGON.version` 4):
+- Every Heart keeper's ladder down is a `bossGate` again.
+- There is no `sealNode` and no Seal object. There are no shortcuts, and h1→h2 is not sigil.
+- Sigil doors:
+  - the fallen ring doors;
+  - doors from outer and inner chambers into their courts where none stood;
+  - inner-ring links where the ring is broken.
+  Each carries `sigilKey` (`e:<a>-<b>` for a pass, `w:<key>` for a world door, shared by its overworld door and its exit).
+- The reliquaries and shards are as in version 3.
+- New messages: `sigilV4`, `sigilOpens`, `sealV4`.
+
+`src/game.ts`:
+- `pentagonSigilDoor(o, base)` decides every sigil door:
+  - without the Seal, it refuses;
+  - in versions 2 and 3, it passes once the Seal is held;
+  - from version 4, the first use with the Seal records the key in `pentOpened`, opens that door only and does not go
+    through; after that it passes.
+- `pentagonChampionDown` gives the Seal (`pentSigil`) when the Regent falls, with a journal entry and a notice.
+- `labyrinthState` and the overworld placement show a version 4 sigil door as open only once its key is in `pentOpened`.
+- Since every boss is now required, the Regent's hoard is always Sovereign in version 4.
+
+**BOUNDARY:**
+- Additive at schema 14: the history field `pentOpened`.
+- Versions 1–3 are untouched.
+- Tests: `tests/pentagon.test.ts`. The version 3 tests are pinned to `pentVersion: 3`, and their barred- and shard-door
+  refusals are now checked directly. Version 4 adds:
+  - a 300-seed plan sweep;
+  - a full run with the game: keepers refuse their ladders until they fall, there is no Seal before the Regent, he gives it,
+    no door opens by itself, a sigil door opens on its first use (and only that door), and it goes through on the second.
 
 ## Release 729: Tesseract glyphs; the Pentagon, version 3 — 2026-11-04
 

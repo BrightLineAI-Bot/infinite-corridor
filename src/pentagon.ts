@@ -17,7 +17,7 @@ import { BUILDINGS, layFloor, farthest } from "./great-buildings.ts";
 import { carveMaze } from "./labyrinths.ts";
 
 export const PENTAGON = {
-  version: 3, // 3: release 729 (below); 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
+  version: 4, // 4: release 730 (below); 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
   every: 8, chance: .5, minRing: 10, // centre sections on a grid of `every`; this share of the eligible ones
   bands: { out: 36, outer: 29, court: 23, inner: 18, heart: 3 }, // pentagon "apothem" bands (tiles from the centre, along each face's normal)
   approach: 12, // tiles of paved way out from each gate
@@ -56,6 +56,15 @@ export const PENTAGON = {
   // - the Heart's keepers are champions, not gates: a keeper's way down is never held shut. The deep keepers (from the Bone
   //   Stair down) each give a Tesseract glyph; the Regent's hoard gives a Sovereign one if every champion (the lords and the
   //   keepers) fell before him.
+  // Version 4 (Tim, 2026-11-04: "you have to beat all the bosses to get through... you can't go through their ladders until you
+  // beat them... the doors that are locked when you get to the final boss remain locked. But you can get that [Seal]... any
+  // door that you find will just become unlocked... when you go to them and interact with them"; the Regent drops it; the
+  // reliquaries keep their shards):
+  // - every keeper holds its ladder down shut until it falls (as in version 2);
+  // - the Fivefold Seal is the Regent's: it is yours when he falls;
+  // - the sigil doors (the fallen ring doors, and doors into the courts where none stood) stay shut until, Seal in hand, you
+  //   open each one by using it (`sigilKey`, recorded in pentOpened); none open by themselves;
+  // - the reliquaries and their shards as in version 3.
   secrets: 2, shardDeep: 3, deepGlyphFrom: 2, // reliquaries; the Heart floor that holds the second shard; keepers from this floor give glyphs
   secretNames: ["Hidden Reliquary of the Faces", "Hidden Reliquary of the Heart"], shardNames: ["Shard of the Faces", "Shard of the Heart"],
   levers: 3,
@@ -73,6 +82,9 @@ export const PENTAGON = {
     leversDone: "Far off, the inner ring's great doors grind open onto the central court.",
     gate: "The great door will not move. Its chains run off into the courts: levers pulled",
     sigil: "A five-sided sigil is cut into the door. It wants the Fivefold Seal.",
+    sigilV4: "A five-sided sigil is cut into the door. It wants the Fivefold Seal, and the Regent holds it.",
+    sigilOpens: "The Fivefold Seal fits the sigil. The door grinds open, and stays open.",
+    sealV4: "In her hand, the Fivefold Seal: every sigil door in the rings will open to it, one by one, as you come to them.",
     seal: "The Fivefold Seal: five faces round an eyeless one. Every sigil door in the rings will open to it now.",
     bossGate: "The way down is held shut while its keeper lives",
     bossDown: "falls. The way down opens",
@@ -123,9 +135,9 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
   const node = (id) => nodes.find((q) => q.id === id), pass = (a, b, extra = {}) => edges.push({ a, b, ...extra });
   // round the outer ring (some doors fallen shut), round the inner, down the Heart
   const shut = new Set(); while (shut.size < P.broken) shut.add(Math.floor(r() * 10));
-  for (let i = 0; i < 10; i++) if (!shut.has(i)) pass(`o${i}`, `o${(i + 1) % 10}`); else if (V >= 3) pass(`o${i}`, `o${(i + 1) % 10}`, { shortcut: `fall${i}` }); else if (V >= 2) pass(`o${i}`, `o${(i + 1) % 10}`, { sigil: true }); // v2: a fallen door opens to the Seal; v3: a shortcut barred from its far side
+  for (let i = 0; i < 10; i++) if (!shut.has(i)) pass(`o${i}`, `o${(i + 1) % 10}`); else if (V === 3) pass(`o${i}`, `o${(i + 1) % 10}`, { shortcut: `fall${i}` }); else if (V >= 2) pass(`o${i}`, `o${(i + 1) % 10}`, { sigil: true }); // v2: a fallen door opens to the Seal; v3: a shortcut barred from its far side
   for (let i = 0; i < 5; i++) if (r() < .6) pass(`i${i}`, `i${(i + 1) % 5}`);
-  for (let i = 0; i < nh - 1; i++) pass(`h${i}`, `h${i + 1}`, V >= 2 && i === 1 ? { sigil: true } : {});
+  for (let i = 0; i < nh - 1; i++) pass(`h${i}`, `h${i + 1}`, (V === 2 || V === 3) && i === 1 ? { sigil: true } : {});
   // world doors: two gates in the outer facade; court doors from the outer ring and into the inner; the central court's doors
   const world = []; const gates = []; while (gates.length < 2) { const g = Math.floor(r() * 10); if (!gates.includes(g) && (gates.length === 0 || Math.abs(g - gates[0]) >= 3)) gates.push(g); }
   for (const g of gates) world.push({ node: `o${g}`, place: "land", key: `gate${g}` });
@@ -148,8 +160,9 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
   if (V >= 2) { const lostOuter = () => nodes.some((q) => q.kind === "outer" && !reach("land", (v, u) => v === "central" || u === "central").has(q.id));
     for (const i of [...shut].sort((a, b) => a - b)) if (lostOuter()) { const e = edges.find((q) => q.a === `o${i}` && (q.sigil || q.shortcut)); if (e) { delete e.sigil; delete e.shortcut; } } }
   // v2: sigil doors from outer chambers into their courts where no door stands
-  if (V === 2) for (let i = 0; i < 10; i++) if (!world.some((w) => w.node === `o${i}` && w.place === `c${i >> 1}`)) world.push({ node: `o${i}`, place: `c${i >> 1}`, key: `sigil${i}`, sigil: true });
-  if (V === 2) for (let f = 0; f < 5; f++) if (!world.some((w) => w.node === `i${f}` && w.place === `c${f}`)) world.push({ node: `i${f}`, place: `c${f}`, key: `isigil${f}`, sigil: true }); // and from inner chambers
+  if (V === 2 || V >= 4) for (let i = 0; i < 10; i++) if (!world.some((w) => w.node === `o${i}` && w.place === `c${i >> 1}`)) world.push({ node: `o${i}`, place: `c${i >> 1}`, key: `sigil${i}`, sigil: true });
+  if (V >= 4) for (let i = 0; i < 5; i++) if (!edges.some((e) => e.a === `i${i}` && e.b === `i${(i + 1) % 5}`)) pass(`i${i}`, `i${(i + 1) % 5}`, { sigil: true }); // v4: and round the inner ring where it is broken
+  if (V === 2 || V >= 4) for (let f = 0; f < 5; f++) if (!world.some((w) => w.node === `i${f}` && w.place === `c${f}`)) world.push({ node: `i${f}`, place: `c${f}`, key: `isigil${f}`, sigil: true }); // and from inner chambers
   let keyNode = null, lockW = null, sealNode = null; const levers = [];
   if (V < 2) {
     // the key: on a door the way to the central court must pass if it can; the key in a chamber reachable without it
@@ -160,7 +173,7 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
     if (keyNode) { lockW.lock = "key0"; node(keyNode).key = { id: "key0", name: "Regent's Key" }; }
   } else { // v2: the Seal in the chamber farthest from the land; the central doors shut on three levers in three courts
     const adj = graph(), dist = new Map([["land", 0]]), q = ["land"]; while (q.length) { const v = q.shift(); for (const u of adj.get(v) || []) if (!dist.has(u)) { dist.set(u, dist.get(v) + 1); q.push(u); } }
-    sealNode = nodes.filter((n) => /^[oi]\d/.test(n.id) && dist.has(n.id)).sort((a, b) => dist.get(b.id) - dist.get(a.id) || a.n - b.n)[0].id; node(sealNode).seal = true;
+    sealNode = nodes.filter((n) => /^[oi]\d/.test(n.id) && dist.has(n.id)).sort((a, b) => dist.get(b.id) - dist.get(a.id) || a.n - b.n)[0].id; if (V >= 4) sealNode = null; else node(sealNode).seal = true; // v4: the Regent's
     for (const w of world) if (w.place === "central" && w.node.startsWith("i")) w.gate = "levers";
     while (levers.length < P.levers) { const f = Math.floor(r() * 5); if (!levers.includes(f)) levers.push(f); }
   }
@@ -229,7 +242,7 @@ export function placePentagonSection(map, seed, cx, cy, rx, ry, V = 1) {
   const N = P.names, doors = [];
   for (const w of plan.world) { if (w.toGate) continue; const L = toLocal(cx, cy, w.out.gx, w.out.gy), D = toLocal(cx, cy, w.door.gx, w.door.gy); if (L.rx !== rx || L.ry !== ry) continue;
     const q = plan.nodes.find((n) => n.id === w.node), name = w.key === "heart" ? N.heart[0] : w.place === "land" ? `${P.name}: a gate` : q.name;
-    map.objects.push({ id: `pent-${w.key}`, kind: "dungeon", buildingDoor: true, pentagonDoor: true, dungeonId: chamberId(plan, q), pentBase: plan.base, dungeonType: "pentagon", ...(w.sigil ? { sigil: true } : {}), name, identity: w.place === "land" ? "one of the five-sided wall's two gates" : "a door into the rings", x: L.x, y: L.y, state: "open", actions: ["enter"], enterAt: w.key, ...(w.sealed ? { pentSeal: w.sealed } : {}), ...(w.place === "land" ? { landmark: true, lore: `${P.name}: a wall of building on five faces, round courts within courts. The Fivefold Court is long gone; something else keeps it now.` } : {}) });
+    map.objects.push({ id: `pent-${w.key}`, kind: "dungeon", buildingDoor: true, pentagonDoor: true, dungeonId: chamberId(plan, q), pentBase: plan.base, dungeonType: "pentagon", ...(w.sigil ? { sigil: true, ...(V >= 4 ? { sigilKey: `w:${w.key}` } : {}) } : {}), name, identity: w.place === "land" ? "one of the five-sided wall's two gates" : "a door into the rings", x: L.x, y: L.y, state: "open", actions: ["enter"], enterAt: w.key, ...(w.sealed ? { pentSeal: w.sealed } : {}), ...(w.place === "land" ? { landmark: true, lore: `${P.name}: a wall of building on five faces, round courts within courts. The Fivefold Court is long gone; something else keeps it now.` } : {}) });
     if (D.rx === rx && D.ry === ry) doors.push({ x: D.x, y: D.y, face: L.y > D.y ? "south" : L.y < D.y ? "north" : L.x > D.x ? "east" : "west" }); }
   // v2: the great levers, one in each of three courts
   for (const L of plan.levers) { const l = toLocal(cx, cy, L.gx, L.gy); if (l.rx !== rx || l.ry !== ry) continue;
@@ -266,10 +279,10 @@ export function generatePentagonChamber(seed, id) {
   const objects = [], exitsTo = {}, entries = {}, N = P.names;
   for (const p of q.ports) { if (p.kind === "world") { const w = p.world, oid = `building-exit-${w.key}`; entries[w.key] = { ...p.inner };
       const to = w.toGate ? plan.gate.out : w.out, L = toLocal(plan.cx, plan.cy, to.gx, to.gy);
-      objects.push({ id: oid, kind: "exit", name: w.toGate ? "Way out · the outer gate" : w.place === "land" ? "Gate out" : w.place === "central" ? "Door · the central court" : `Door · ${N.faces[Number(w.place.slice(1))]} court`, x: p.x, y: p.y, state: "open", actions: ["exit"], ...(w.lock ? { lock: w.lock, lockName: "Regent's Key" } : {}), ...(w.gate ? { gate: w.gate } : {}), ...(w.sigil ? { sigil: true } : {}) });
+      objects.push({ id: oid, kind: "exit", name: w.toGate ? "Way out · the outer gate" : w.place === "land" ? "Gate out" : w.place === "central" ? "Door · the central court" : `Door · ${N.faces[Number(w.place.slice(1))]} court`, x: p.x, y: p.y, state: "open", actions: ["exit"], ...(w.lock ? { lock: w.lock, lockName: "Regent's Key" } : {}), ...(w.gate ? { gate: w.gate } : {}), ...(w.sigil ? { sigil: true, ...(plan.V >= 4 ? { sigilKey: `w:${w.key}` } : {}) } : {}) });
       exitsTo[oid] = { rx: L.rx, ry: L.ry, x: L.x, y: L.y }; continue; }
     const o = plan.nodes.find((n) => n.id === p.to), there = o.ports.find((pp) => pp.kind === "pass" && pp.to === q.id), heart = q.kind === "heart", dir = heart ? (o.n > q.n ? "down" : "up") : "door";
-    objects.push({ id: `lab-pass-${o.n}`, kind: "buildingStair", name: `${dir === "door" ? "Door" : dir === "down" ? "Ladder down" : "Ladder up"} · ${o.name}`, x: p.x, y: p.y, state: "open", actions: [dir === "down" ? "descend" : "climb"], toId: chamberId(plan, o), toX: there.inner.x, toY: there.inner.y, dir, labyrinth: true, ...(plateSpot && p === plateSpot ? { plateLock: true } : {}), ...(p.edge.sigil ? { sigil: true } : {}), ...(dir === "down" && q.boss && plan.V === 2 ? { bossGate: true } : {}),
+    objects.push({ id: `lab-pass-${o.n}`, kind: "buildingStair", name: `${dir === "door" ? "Door" : dir === "down" ? "Ladder down" : "Ladder up"} · ${o.name}`, x: p.x, y: p.y, state: "open", actions: [dir === "down" ? "descend" : "climb"], toId: chamberId(plan, o), toX: there.inner.x, toY: there.inner.y, dir, labyrinth: true, ...(plateSpot && p === plateSpot ? { plateLock: true } : {}), ...(p.edge.sigil ? { sigil: true } : {}), ...(dir === "down" && q.boss && (plan.V === 2 || plan.V >= 4) ? { bossGate: true } : {}), ...(p.edge.sigil && plan.V >= 4 ? { sigilKey: `e:${p.edge.a}-${p.edge.b}` } : {}),
       ...(p.edge.shortcut ? (p.edge.far === q.id ? { shortcutOpens: p.edge.shortcut } : { barred: true, shortcutKey: p.edge.shortcut }) : {}), ...(p.edge.secret && o.kind === "secret" ? { lock: p.edge.secret, lockName: p.edge.shardName, secretDoor: true } : {}) }); }
   const h = (k) => hashSeed(`${id}:${k}`), taken = new Set(objects.map((o) => o.y * W + o.x)), ok = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.doorway && !taken.has(y * W + x); };
   const reach = new Set([arrive.y * W + arrive.x]), st = [arrive]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, k = y * W + x, t = tiles[k]; if (!t || t.blocked || reach.has(k)) continue; reach.add(k); st.push({ x, y }); } }

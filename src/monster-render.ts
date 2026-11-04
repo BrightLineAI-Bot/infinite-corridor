@@ -77,7 +77,7 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 
 // ---------------------------------------------------------------- creatures
 
-// Release 730: the haunts (haunts.ts). A Gloomwisp: a floating orb of dark gas, wreathed in drifting violet smoke, with two bright
+// Release 731: the haunts (haunts.ts). A Gloomwisp: a floating orb of dark gas, wreathed in drifting violet smoke, with two bright
 // slanted eyes and a wide jagged grin; it swells and brightens as it winds up a puff.
 function drawGloomwisp(ctx, q) {
   const { k, b, u, t, flip } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, bob = Math.sin(t * 2.4) * u * .05, cx = k, cy = b - u * .62 + bob, r = u * (.33 + wind * .04);
@@ -94,7 +94,7 @@ function drawGloomwisp(ctx, q) {
   ctx.fillStyle = "#f4ecff"; for (let i = 0; i < 7; i++) { const tx = cx - r * .46 + i * r * .153, ty = cy + r * (.2 + .16 * Math.sin((i / 6) * Math.PI)); ctx.beginPath(); ctx.moveTo(tx - r * .05, ty); ctx.lineTo(tx + r * .05, ty); ctx.lineTo(tx, ty + r * .1); ctx.fill(); }
   ctx.restore();
 }
-// The Gloomgorge (release 730; drawn again at Tim's word: "not of this world... coming into our existence... isn't fully here...
+// The Gloomgorge (release 731; drawn again at Tim's word: "not of this world... coming into our existence... isn't fully here...
 // features... more subtle... well merged"): a body that is only half here. Its outline breathes and wavers, its back rises into
 // soft spines that are part of the same skin, and below the waist it thins into smoke. A faint rim of light runs round it, a
 // second outline drifts out of step with the first, gas currents turn slowly inside it and motes rise off it. The eyes are two
@@ -162,7 +162,7 @@ const BODY = {
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
   doomChaser(ctx, q) { drawDoomChaser(ctx, q, q.t * 1000); }, // release 710
-  gloomwisp(ctx, q) { drawGloomwisp(ctx, q); }, // release 730
+  gloomwisp(ctx, q) { drawGloomwisp(ctx, q); }, // release 731
   gloomgorge(ctx, q) { drawGloomgorge(ctx, q); },
   inkKin(ctx, q) { const d = MONSTER_PACK[q.e.kind]; drawAstralWorm(ctx, { x: q.k, y: q.b - q.u * .2, scale: q.u * (d?.inkScale || .4), time: q.t, form: d?.inkForm || "worm", facing: q.flip, reducedMotion: !!q.e.reduceMotion }); }, // release 719
   astralWorm(ctx,q) { const a=q.e.astral;

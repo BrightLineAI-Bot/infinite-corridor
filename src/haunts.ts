@@ -1,4 +1,4 @@
-// The haunts (release 730). Tim, 2026-11-04: "cool creatures that... floated around... put them in the keeps... in various
+// The haunts (release 731). Tim, 2026-11-04: "cool creatures that... floated around... put them in the keeps... in various
 // places... they can confuse you. So that instead of moving forward, you move backwards for a time. And... they can multiply if
 // enough... get together, then they form one big... ghost creature... a fatter body. The big, scary mouth and face and arms and
 // legs... sharp pointy... points at the ends of its arms and legs." Original creatures in that spirit:

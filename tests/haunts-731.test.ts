@@ -1,4 +1,4 @@
-// Release 730 (Tim, 2026-11-04): floating ghosts in the keeps and other places that confuse you (you move backwards for a time),
+// Release 731 (Tim, 2026-11-04): floating ghosts in the keeps and other places that confuse you (you move backwards for a time),
 // multiply, and pour together into one big clawed ghost with a huge mouth.
 import test from 'node:test';
 import assert from 'node:assert/strict';

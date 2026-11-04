@@ -202,7 +202,7 @@ export const ATTACK_MODULES = {
   // red and larger when it attacks; blue or purple before a grab); force push; force pull; a command grab that holds you
   // a few seconds while it winds up a powerful attack; debris it levitates and throws; a psychic wall that reflects
   // ranged attacks while blades pass through).
-  // Release 730: the haunts (haunts.ts). A puff or a howl of gloom that confuses: the Wayfarer's movement runs backwards a while.
+  // Release 731: the haunts (haunts.ts). A puff or a howl of gloom that confuses: the Wayfarer's movement runs backwards a while.
   wispBewilder: { id: "wispBewilder", name: "Bewildering Puff", range: [0, 2.6], cooldown: 5.5, windup: .6, recover: .5, damage: .4, tags: ["control"], text: "A puff of gloom. Breathe it and left is right, forward is back, for a few heartbeats." },
   gorgeHowl: { id: "gorgeHowl", name: "Gloom Howl", range: [0, 5.5], cooldown: 9, windup: 1, recover: .8, damage: .8, tags: ["control"], text: "The Gloomgorge throws back its head and howls; everything near it is turned about for longer." },
   psyPush: { id: "psyPush", name: "Force Push", range: [0, 4.5], cooldown: 4, windup: .55, active: .35, recover: .45, damage: .7, tags: ["control"], text: "A ring of force throws you back. Hit a wall and it hurts more." },
@@ -484,7 +484,7 @@ export const MONSTER_PACK = {
     lore: "A blob of living ooze the colour of brine, kin of the Morphing Blob and much smaller, one of many that crowd a pocket of the far reaches. It whips tendrils and breathes poison." },
   // Release 716 (Tim: "the crystal civilization... all the monsters... are psychic crystals or variations... some of them can be
   // smaller, like half crystals... crystal walkers, like the crystal crabs"): the Crystal Civilisation's kin (far-realms.ts FAR_CIVS).
-  // Release 730: the haunts (haunts.ts): Gloomwisps that multiply and pour together into a Gloomgorge.
+  // Release 731: the haunts (haunts.ts): Gloomwisps that multiply and pour together into a Gloomgorge.
   gloomwisp: { id: "gloomwisp", prototypeOnly: true, farKin: true, noEcho: true, name: "Gloomwisp", epithet: "A Grin in the Dark",
     stats: [34, 6, 0], form: { scale: .95 }, sizeClass: "small", movement: "hover", brain: "orbit",
     attacks: ["wispBewilder", "bite"], bossAttacks: [],
@@ -1416,7 +1416,7 @@ const START = {
   },
   knightBackslash(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach + KNIGHT.arcReach, arc: KNIGHT.comboArc }; s.data.cut = false; }, // release 427: its reach shown (it had none)
   psyPush(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pushRadius }; },
-  wispBewilder(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.wispBewilder.range[1] }; }, // release 730
+  wispBewilder(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.wispBewilder.range[1] }; }, // release 731
   gorgeHowl(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.gorgeHowl.range[1] }; },
   psyPull(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pullRadius, inhale: true }; },
   psyGrab(e, s, w) { s.tele = { type: "tether", x: w.player.x, y: w.player.y }; },
@@ -1535,7 +1535,7 @@ function resolveMelee(e, s, w, attackId, test) {
   if (test(p) && w.los(e, w.player) && w.hurt(e, damageOf(e, attackId), { jumpable: false, source: attackId }) && e.kind === "lightningGiant" && e.giantCharged > 0) w.shockHit?.();
 }
 
-// Release 730: a ring of gloom from a haunt: on the windup's end, the Wayfarer inside it is hurt a little and confused.
+// Release 731: a ring of gloom from a haunt: on the windup's end, the Wayfarer inside it is hurt a little and confused.
 function hauntConfuse(e, s, w, id, seconds) {
   const A = ATTACK_MODULES[id], r = A.range[1];
   if (s.phase === "windup" && s.t <= 0) { if (distance(center(w.player), e) <= r + .2) { w.hurt(e, damageOf(e, id), { jumpable: false, source: id }); w.confuse?.(seconds); }
@@ -2323,7 +2323,7 @@ const RUN = {
     }
     if (s.phase === "strike" && s.t <= 0) { resolveMelee(e, s, w, "knightMist", (q) => inArc(e, q, s.data.aim, bodyRadius(e) + KNIGHT.slideReach, KNIGHT.slideArc)); s.data.cutAt = w.now; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightMist.recover); }
   },
-  wispBewilder(e, s, w) { hauntConfuse(e, s, w, "wispBewilder", HAUNT.confuse.wisp); }, // release 730
+  wispBewilder(e, s, w) { hauntConfuse(e, s, w, "wispBewilder", HAUNT.confuse.wisp); }, // release 731
   gorgeHowl(e, s, w) { hauntConfuse(e, s, w, "gorgeHowl", HAUNT.confuse.gorge); },
   psyPush(e, s, w) {
     const attack = ATTACK_MODULES.psyPush, p = center(w.player);
