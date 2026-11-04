@@ -131,5 +131,5 @@ export function generatePentagonArena(seed, id, row = null) {
   const enemySpawns = row ? [{ id: `${id}:finale`, kind: row.kind, x: col, y: Math.round(cy) - 1, boss: true, traits: [], pentFinaleBeast: row.id }] : [];
   return { seed, id, recipe: "greatBuilding", name: `Pentagon · ${A.names.floor}`, identity: `Pentagon: ${A.names.floor}`, danger: "the finale", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
     building: { base: Pp.base, style: "keep", floor: 3 + plan.nh, floors: 3 + plan.nh, pentagon: true, finale: true, arena: true, V: plan.V, node: -1, kind: "stillworks", of: plan.nodes.length, keys: [], entries: {}, exitsTo: {}, vault: false, breachEntry: null, roofLadder: null, fallTo: null },
-    pentFinale: 1, pentArena: A.version, arena: true, stillworks: { cx, cy, radius: A.radius }, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
+    pentArena: A.version, arena: true, stillworks: { cx, cy, radius: A.radius }, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
 }

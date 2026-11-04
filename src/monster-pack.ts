@@ -225,6 +225,12 @@ export const ATTACK_MODULES = {
   voidSupernova: { id: "voidSupernova", name: "Supernova", range: [0, 14], cooldown: 30, windup: 1.1, active: 7.8, recover: .6, damage: 1.2, los: true, tags: ["void", "ground", "charge"], text: "A great void consumes dungeon terrain, draws you through local eruptions and two or three radial particle waves. The Walker teleports and dashes straight through sampled positions, leaving one-second damaging trails." },
   golemPunch: { id: "golemPunch", name: "Golem Fist", range: [0, 1.9], cooldown: 2.1, windup: .62, recover: .75, damage: 1.45, los: true, tags: ["melee"], text: "Rears back a fist of packed earth and drives it forward. Slow to throw; step aside." }, // Canyon craters
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
+  // The Pentagon roofs' dwellers (roof-dwellers.ts; Tim, 2026-11-04): the demon's heavy cleave, the colossus's ground slam and its
+  // chest laser. The slam is a body blow (tagged melee: under ELEVATION_REACH it does not carry between heights); the laser is a beam
+  // and does. The laser's timings, reach and width are COLOSSUS.laser; its damage multiplier is here.
+  demonCleave: { id: "demonCleave", name: "Horned Cleave", range: [0, 2.6], cooldown: 2.6, windup: .62, recover: .75, damage: 1.45, los: true, tags: ["melee"], text: "Both arms come down together in a wide, heavy arc." },
+  stoneSlam: { id: "stoneSlam", name: "Ground Slam", range: [0, 2.4], cooldown: 3.6, windup: .85, recover: 1, damage: 1.5, jumpable: true, tags: ["melee", "ground"], text: "Raises both fists and pounds the roof round its feet. Jump it, or do not be close." },
+  chestLaser: { id: "chestLaser", name: "Heart Lamp", range: [3, 11], cooldown: 8.5, windup: 2, active: .3, recover: 1.5, damage: 6, los: true, tags: ["ranged", "beam"], text: "The lamp in its chest fills with light while a red line follows you; the line stops, flashes, and the lamp fires along it. Be off the line, or dodge through it." },
 };
 
 // The ten creatures. `stats` uses the same [hp, damage, range] shape as the base combatant table.
@@ -556,6 +562,30 @@ export const MONSTER_PACK = {
     attacks: ["bite", "leapSlam"], bossAttacks: [],
     palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
     lore: "Mostly mouth: the Astral Worm's biting shape in small, a black maw on legs of ink." },
+  // The Pentagon roofs (roof-dwellers.ts; Tim, 2026-11-04: "gargoyles and angels and demons up there... some bird creatures"; then
+  // "a big stone lumbering creature... a laser from its chest"). Original designs. `roofKin`: they live only on a Pentagon's roof,
+  // hidden and still until the Wayfarer stands up there; drawn once into cached pictures (monster-render.ts cachedRoof). The angel
+  // of the roster is the existing Cinder Seraph (ROOF_DWELLERS.kinds), not a new creature.
+  roofGargoyle: { id: "roofGargoyle", prototypeOnly: true, roofKin: true, noEcho: true, name: "Eave Gargoyle", epithet: "Stone Until It Is Not",
+    stats: [58, 10, 0], form: { scale: 1.05 }, sizeClass: "medium", movement: "walk", brain: "duelist",
+    attacks: ["clawSweep", "leapSlam"], bossAttacks: ["shockwave"],
+    palette: ["#77746d", "#34322e", "#ff9a3c", "#d9d3c5"], render: "roofGargoyle", tags: ["construct", "stone", "roof"],
+    lore: "A crouched shape on the eaves, horned, its wings folded like a cloak. From the ground it is carving. Up there it is not always carving." },
+  ridgeDemon: { id: "ridgeDemon", prototypeOnly: true, roofKin: true, noEcho: true, name: "Ridge Demon", epithet: "Horned on the Heights",
+    stats: [96, 13, 0], form: { scale: 1.3 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: ["demonCleave", "firefall", "clawSweep"], bossAttacks: ["ramCharge"],
+    palette: ["#5c1c18", "#1d0907", "#ff6a1f", "#ffd59a"], render: "ridgeDemon", tags: ["fiend", "fire", "roof"],
+    lore: "Tall, horned, hoofed, its hide cracked through with a slow fire. It walks the ridges of the roof as if it has always walked them. Perhaps it has." },
+  slateRook: { id: "slateRook", prototypeOnly: true, roofKin: true, noEcho: true, name: "Slate Rook", epithet: "The Flock on the Parapet",
+    stats: [16, 5, 0], form: { scale: .78 }, sizeClass: "small", movement: "fly", brain: "flank",
+    attacks: ["bite", "diveBomb"], bossAttacks: [],
+    palette: ["#3b414e", "#14161c", "#e9c35a", "#f1eee4"], render: "slateRook", tags: ["beast", "flying", "roof"],
+    lore: "Grey birds that sit so still on the parapet they look cut from it. They rise all at once, and they do not settle for long." },
+  roofColossus: { id: "roofColossus", prototypeOnly: true, roofKin: true, noEcho: true, name: "Battlement Colossus", epithet: "A Lamp Where the Heart Would Be",
+    stats: [210, 14, 0], form: { scale: 1.9 }, sizeClass: "huge", movement: "lurch", brain: "duelist",
+    attacks: ["stoneSlam", "chestLaser"], bossAttacks: ["shockwave"],
+    palette: ["#8a8478", "#3a362f", "#ff4a2a", "#ffe2c4"], render: "roofColossus", tags: ["construct", "stone", "roof", "light"],
+    lore: "Fitted blocks the size of a cart, stacked into a body that walks very slowly. In its chest, a round lamp. Whatever the lamp looks at long enough is not there afterwards." },
   mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
     id: "mothChrysalis", prototypeOnly: true, name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true, // not a creature of the roster: only the great trees hang it
     stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",
@@ -670,7 +700,7 @@ export function validateMonster(def) {
 // monster (only modules their movement can perform), so encounters keep surprising.
 export function packVariant(kind, identity) {
   const def = MONSTER_PACK[kind];
-  if (!def || kind === "voidWalker") return { hybridAttack: null, donor: null };
+  if (!def || kind === "voidWalker" || def.roofKin) return { hybridAttack: null, donor: null }; // the roof dwellers keep their own kits
   const n = hashSeed(`pack-variant:v${MONSTER_PACK_VERSION}:${kind}:${identity}`);
   if (n % 100 >= 22) return { hybridAttack: null, donor: null };
   const move = MOVEMENT_MODES[def.movement], own = new Set([...def.attacks, ...(def.bossAttacks || [])]);
@@ -839,6 +869,11 @@ export const WORM = {
 // should be... pale hot pink... understated and not very bright... translucent... the uniform color for damage all across
 // the game"): every warning of where a blow will land uses these.
 export const DANGER = { fill: "rgba(255,80,190,.18)", fillStrong: "rgba(255,80,190,.32)", edge: "rgba(255,130,210,.72)", hex: "#ff7ccf" };
+// The Battlement Colossus (roof-dwellers.ts; Tim, 2026-11-04: its chest laser "telegraphed clearly... a charge-up glow and a visible aim
+// line with time to dodge... incredibly powerful"). The windup (ATTACK_MODULES.chestLaser.windup) is `track` seconds of the aim line
+// following the Wayfarer at no more than `turn` radians a second, then `lock` seconds with the line held still and flashing; then the
+// lamp fires once along it, `reach` tiles (walls stop it), hitting within `width` of the line. `slam` is the ground slam's radius.
+export const COLOSSUS = { laser: { track: 1.3, lock: .7, turn: 2.2, reach: 11, width: .6, chest: .88 }, slam: { radius: 2.4 } };
 export const TURTLE = {
   // Release 261 (Tim: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your
   // boat can slide across it... they'll persist for... 5, maybe 10 seconds, and then... unfreeze"): open sea within
@@ -1417,6 +1452,9 @@ const START = {
   knightBackslash(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach + KNIGHT.arcReach, arc: KNIGHT.comboArc }; s.data.cut = false; }, // release 427: its reach shown (it had none)
   psyPush(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pushRadius }; },
   wispBewilder(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.wispBewilder.range[1] }; }, // release 731
+  demonCleave(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.8, arc: 170 }; }, // the roof dwellers (roof-dwellers.ts)
+  stoneSlam(e, s) { s.tele = { type: "ring", radius: COLOSSUS.slam.radius }; },
+  chestLaser(e, s, w) { const L = COLOSSUS.laser, angle = Math.atan2(s.data.aim.y, s.data.aim.x); Object.assign(s.data, { angle, fired: false }); s.tele = { type: "laser", angle, length: rayLength(w, e, s.data.aim, L.reach), charge: 0, locked: false, chest: L.chest }; },
   gorgeHowl(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.gorgeHowl.range[1] }; },
   psyPull(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pullRadius, inhale: true }; },
   psyGrab(e, s, w) { s.tele = { type: "tether", x: w.player.x, y: w.player.y }; },
@@ -2324,6 +2362,29 @@ const RUN = {
     }
     if (s.phase === "strike" && s.t <= 0) { resolveMelee(e, s, w, "knightMist", (q) => inArc(e, q, s.data.aim, bodyRadius(e) + KNIGHT.slideReach, KNIGHT.slideArc)); s.data.cutAt = w.now; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightMist.recover); }
   },
+  demonCleave(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "demonCleave", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.8 + .3, 170)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.demonCleave.recover); } },
+  stoneSlam(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) { const R = COLOSSUS.slam.radius; if (distance(center(w.player), e) <= R + .3) w.hurt(e, damageOf(e, "stoneSlam"), { jumpable: true, source: "stoneSlam" });
+      w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: R, arming: 0, life: .55, damage: 0 }); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.stoneSlam.recover); }
+  },
+  // The Heart Lamp: the aim line follows (turning at most COLOSSUS.laser.turn a second), then holds and flashes for `lock`, then fires once.
+  chestLaser(e, s, w) {
+    const A = ATTACK_MODULES.chestLaser, L = COLOSSUS.laser, p = center(w.player);
+    if (s.phase === "windup") {
+      s.data.total ??= Math.max(s.t + w.dt, L.lock);
+      if (s.t > L.lock) { const want = Math.atan2(p.y - e.y, p.x - e.x); let d = want - s.data.angle; d = Math.atan2(Math.sin(d), Math.cos(d)); const m = L.turn * w.dt; s.data.angle += Math.max(-m, Math.min(m, d)); }
+      const dir = { x: Math.cos(s.data.angle), y: Math.sin(s.data.angle) };
+      s.tele = { type: "laser", angle: s.data.angle, length: rayLength(w, e, dir, L.reach), charge: Math.max(0, Math.min(1, 1 - s.t / s.data.total)), locked: s.t <= L.lock, chest: L.chest };
+      if (s.t <= 0) toPhase(s, "active", A.active);
+      return;
+    }
+    if (s.phase === "active") {
+      const dir = { x: Math.cos(s.data.angle), y: Math.sin(s.data.angle) }, len = rayLength(w, e, dir, L.reach);
+      if (!s.data.fired) { s.data.fired = true; if (segmentDistance(p, e, { x: e.x + dir.x * len, y: e.y + dir.y * len }) <= L.width) w.hurt(e, damageOf(e, "chestLaser"), { jumpable: false, source: "chestLaser", beam: true }); }
+      s.tele = { type: "beam", angle: s.data.angle, length: len, charging: false, laser: true, chest: L.chest };
+      if (s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+    }
+  },
   wispBewilder(e, s, w) { hauntConfuse(e, s, w, "wispBewilder", HAUNT.confuse.wisp, HAUNT.curse.lay.wisp); }, // release 731; 737: curses
   gorgeHowl(e, s, w) { hauntConfuse(e, s, w, "gorgeHowl", HAUNT.confuse.gorge, HAUNT.curse.lay.gorge); },
   psyPush(e, s, w) {
@@ -3169,7 +3230,8 @@ export function updatePackMonster(e, w) {
     }
   }
   if (e.fleeTo) { fleeStep(e, s, w); return; }
-  if (e.illusion && (w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
+  if (e.roofDweller && (e.roofWake > 0 || e.roofReturning)) { if (e.roofWake > 0) e.facingX = (w.player.x - e.x) >= 0 ? 1 : -1; return; } // roof-dwellers.ts: waking, or flying home to its perch
+  if (e.illusion &&(w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
   const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain], roaming = isDungeonRoamer(e, w.area), hunting = isDungeonHunter(e, w.area);
   // Release 287 (Tim: "the crystal doesn't have to aggro to you, he can just be wandering around... if you touch him, or if
   // you attack him, he'll aggro"): a roaming dungeon Crystal ignores the Wayfarer until touched or hurt (hits alert it).

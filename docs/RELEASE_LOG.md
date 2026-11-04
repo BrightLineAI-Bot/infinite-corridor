@@ -15,13 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 750, the next is **751**.
+Taken at merge time: `main`'s release + 1 (see above). After 753, the next is **754**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 750 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's finale: after the Regent, a starfield walkway to a Transit dais that returns you to the front door | In flight. |
+| 753 | Claude | `claude/dreamy-rubin-yn6q2p` | Dais Tesseract rerolls and the walkway fall; Imbue Weapon; Sunburst Ricochet; the Aether Orrery | In flight. |
+| 752 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's roof (v7): walkable roof, outer stair, balconies with doors; roof dwellers (gargoyles, demons, rooks, Seraph, colossi) seen only on the roof | Merged (#400). |
+| 751 | Claude | `claude/dreamy-rubin-yn6q2p` | Mounts give no defence (mounted lava a 2 s burn); the drone fizzles at Pentagon walls and castle wings | Merged (#399). |
+| 750 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's finale: after the Regent, a starfield walkway to a Transit dais that returns you to the front door | Merged (#398). |
 | 749 | Claude | `claude/dreamy-rubin-yn6q2p` | Digging respects the way through: interiors dig only toward walked ground; building stone holds | Merged (#397). |
 | 748 | Claude | `claude/dreamy-rubin-yn6q2p` | Beast mounts: pen-caught world beasts and the Stalker ridden at real size in fitted saddles; stable of 3; 12 min / 35 sections; pens priced by size, a slip breaks the pen | Merged (#396). |
 | 747 | Claude | `claude/dreamy-rubin-yn6q2p` | Roofs and height: the Wayfarer drawn once at the roof's height, one-press hatch, bounded way-round searches; the elevation rule (ground melee can't reach two levels up; shots and fliers can) | Merged (#395). |

@@ -42,7 +42,7 @@ test('a Needle Caster at +6 becomes a Blunderbuss: three pellets in a cone; it s
 });
 
 test('Arc Wave turns each shot of the cone into a piercing wave', () => {
-  assert.equal(TOOL_FORM_KEYS.length, 4); // release 535: the Corridor Golem; 537: Cluster Shell assert.equal(FIELD_KEYS.length, 5);
+  assert.equal(TOOL_FORM_KEYS.length, 5); // release 535: the Corridor Golem; 537: Cluster Shell; Sunburst Ricochet (the Lumen Spindle) assert.equal(FIELD_KEYS.length, 5);
   for (const k of TOOL_FORM_KEYS) assert.ok(fieldForm(k));
   const { s, g } = arena({ name: 'Blunderbuss', basePower: 5, power: 11, upgradeRank: 6 }, ['arc-wave']);
   assert.equal(toggleLatticePassive(s, 'field:arc-wave').ok, true); assert.equal(toggleLatticePassive(s, 'field:arc-wave').ok, true); // clear and set again

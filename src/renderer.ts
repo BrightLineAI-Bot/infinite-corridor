@@ -6,7 +6,7 @@ import { enemyMeleeGeometry } from "./combat.ts";
 import { ruleRows } from "./elders.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
-import { MECH, DRONE } from "./vehicle-gates.ts";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
 import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.ts"; // 613: Starfield rafts
 import { SEASONS, treeSeason } from "./seasons.ts";
@@ -741,6 +741,23 @@ function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
   ctx.fillStyle = "#14202a"; ctx.beginPath(); ctx.ellipse(cx + dir * u * .38, cy, u * .36, u * .3, 0, 0, 7); ctx.fill();
   ctx.fillStyle = "#5fd6f0"; ctx.beginPath(); ctx.arc(cx + dir * u * .45, cy, u * .15, 0, 7); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(cx + dir * u * .5, cy - u * .06, u * .05, 0, 7); ctx.fill();
   if (heal > 0) { ctx.globalAlpha = Math.min(1, heal) * .7; ctx.strokeStyle = "#7dff9a"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.ellipse(cx, cy, u * 1.35, u * 1.1, 0, 0, 7); ctx.stroke(); }
+  ctx.restore();
+}
+// The drone fizzle (Tim, 2026-11-04: "your drone will explode or fizzle out, noticeably"; vehicle-gates.ts DRONE_FIZZLE): where the
+// lift failed, a white-hot flash, a ring bursting outward, DRONE_FIZZLE.sparks sparks flying off and falling, and a dark puff. With
+// reduced motion a short still flash and ring. Fixed angles per spark (no allocation, nothing random).
+function drawDroneFizzle(ctx, fz, s, now, reduce = false) {
+  const span = Math.max(1, fz.until - fz.at), k = Math.max(0, Math.min(1, (now - fz.at) / span)); if (k >= 1) return;
+  const cx = (fz.x + .5) * s, cy = (fz.y - .52) * s, u = s * .34, fade = 1 - k; // where the carrying drone was drawn
+  ctx.save();
+  if (k < .25) { const f = 1 - k / .25, glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, u * 2.4); glow.addColorStop(0, `rgba(255,250,220,${.95 * f})`); glow.addColorStop(.4, `rgba(140,220,255,${.6 * f})`); glow.addColorStop(1, "rgba(140,220,255,0)"); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, u * 2.4, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = fade; ctx.strokeStyle = "#9fe6ff"; ctx.lineWidth = Math.max(1.5, s * .06 * fade); ctx.beginPath(); ctx.arc(cx, cy, u * (reduce ? 1.4 : .6 + 2.6 * Math.sqrt(k)), 0, 7); ctx.stroke();
+  if (!reduce) {
+    ctx.strokeStyle = "#fff2b0"; ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, s * .04);
+    for (let i = 0; i < DRONE_FIZZLE.sparks; i++) { const a = i * 2.39996 + .4, sp = .9 + (i * 37 % 10) / 10, r = u * (.4 + 3.2 * k * sp), x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r + s * 1.6 * k * k, tail = u * .35 * fade;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - Math.cos(a) * tail, y - Math.sin(a) * tail - s * .3 * k); ctx.stroke(); }
+    ctx.globalAlpha = .45 * fade; ctx.fillStyle = "#2a2f36"; ctx.beginPath(); ctx.arc(cx, cy - s * .5 * k, u * (.5 + 1.2 * k), 0, 7); ctx.fill();
+  }
   ctx.restore();
 }
 // The empowered robot (release 389; redrawn in release 391, Tim: "less... more understated... more like a spacesuit...
@@ -1659,20 +1676,40 @@ function greatBuilding(ctx,o,s,p,map){
 // (where the Wayfarer stands on it), a facade under every cell whose south side is open, a window a floor in each; drawn north
 // to south so nearer walls stand in front. Doors on a south face are drawn in the facade; on other faces, as a dark arch at the
 // roof's edge. Faded while you stand behind it.
+// The Pentagon v7 (pentagon.ts PENTAGON.balconies, .stair): a balcony or a step of the outer stair, raised ground outside the
+// outer face drawn at its height on the roof's scale (where movement lifts the Wayfarer): a stone slab, a pier down to the
+// ground with its coursing, and on a balcony's door cell the door into the wall behind it. Drawn after the roof row behind.
+function drawPentLedge(ctx,c,s,tiles,C,ledgeAt){
+  const t=tiles?.[c.y*32+c.x],level=(c.elev||0)-(t?.slope?.5:0),lift=Math.max(0,level)*LIFT_PER_LEVEL*(t?.roofLift||1)*s,x=c.x*s,y=c.y*s-lift,foot=(c.y+1)*s,has=(dx,dy)=>ledgeAt.has((c.y+dy)*32+c.x+dx);
+  ctx.fillStyle="#00000044";ctx.fillRect(x+s*.1,foot-s*.08,s*.9,s*.16); // its shadow at the foot
+  ctx.fillStyle=C.wall;ctx.fillRect(x,y+s,s+1,Math.max(0,lift-s*.02)); // the pier
+  ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();for(let q=y+s+s*.34;q<foot-2;q+=s*.34){ctx.moveTo(x,q);ctx.lineTo(x+s,q)}ctx.stroke();
+  ctx.fillStyle="#00000030";ctx.fillRect(x+s*.72,y+s,s*.28,lift);
+  if(c.kind==="balcony"){ctx.fillStyle="#4c463c";ctx.fillRect(x,y,s+1,s+1);ctx.fillStyle=C.trim+"66";if(!has(0,1))ctx.fillRect(x,y+s*.86,s+1,s*.14);if(!has(-1,0))ctx.fillRect(x,y,s*.1,s);if(!has(1,0))ctx.fillRect(x+s*.9,y,s*.1,s); // the slab and its rail
+    ctx.fillStyle=C.dark;for(const k of [.2,.62])ctx.fillRect(x+s*k,y+s,s*.18,s*.3); // corbels under the lip
+    if(c.door){const dx=c.door.x-c.x,dy=c.door.y-c.y;ctx.fillStyle="#08090a";ctx.strokeStyle=C.trim;ctx.lineWidth=1.5;
+      if(dy<0){ctx.fillRect(x+s*.2,y-s*.82,s*.6,s*.82);ctx.beginPath();ctx.arc(x+s*.5,y-s*.82,s*.3,Math.PI,0);ctx.fill();ctx.strokeRect(x+s*.2,y-s*.82,s*.6,s*.82)}
+      else if(dy>0){ctx.beginPath();ctx.moveTo(x+s*.2,y+s*.9);ctx.lineTo(x+s*.2,y+s*.5);ctx.arc(x+s*.5,y+s*.5,s*.3,Math.PI,0);ctx.lineTo(x+s*.8,y+s*.9);ctx.closePath();ctx.fill();ctx.stroke()}
+      else{const ex=dx<0?x:x+s*.7;ctx.fillRect(ex,y-s*.5,s*.3,s*1.1);ctx.strokeRect(ex,y-s*.5,s*.3,s*1.1)}}}
+  else{ctx.fillStyle="#5a5347";ctx.fillRect(x,y,s+1,s+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1.5;ctx.beginPath();for(const k of [.33,.66]){ctx.moveTo(x+s*k,y+s*.08);ctx.lineTo(x+s*k,y+s*.92)}ctx.stroke();ctx.fillStyle="#ffffff14";ctx.fillRect(x,y,s+1,s*.12)} // a step of the stair
+}
 function greatBlocks(ctx,o,s,p,map,view){
   const st=o.style,grain=o.grain||0,C=st==="keep"?{roof:"#3a3631",line:"#5b544a",wall:"#5d564b",dark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860",court:null}:st==="hive"?{roof:"#2e2238",line:"#4b3858",wall:"#4a3550",dark:"#2a1d31",mortar:"#1f1524",trim:"#b07ad0",glass:"#120b18",lit:"#d58cff"}:{roof:"#3b3f44",line:"#575d63",wall:"#6a6e72",dark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
   const vis=(c,b)=>!view||(c.x>=view.l-1&&c.x<=view.r+1&&c.y>=view.t-1&&c.y-b.faceH<=view.b+1); // the Pentagon's sections hold hundreds of cells: draw the ones in view
   const all=[];for(const b of o.blocks){const set=new Set(b.cells.map(c=>c.y*32+c.x));for(const c of b.cells)if(vis(c,b))all.push({c,b,set})}
-  all.sort((a,q)=>a.c.y-q.c.y||a.c.x-q.c.x);
+  for(const c of o.ledges||[])if(vis(c,{faceH:3}))all.push({c,ledge:true}); // the Pentagon v7: its balconies and outer stair, each drawn after the roof row behind it
+  all.sort((a,q)=>a.c.y-q.c.y||(a.ledge?1:0)-(q.ledge?1:0)||a.c.x-q.c.x);
+  const parapet=new Set((o.parapet||[]).map(c=>c.y*32+c.x)),ledgeAt=new Set((o.ledges||[]).map(c=>c.y*32+c.x));
   const onRoof=roofTileUnder(map,32,p),px=Math.round(p.x),py=p.y+.5; // roof report 2026-11-04: the tile under the feet, as movement and the player draw read it
   const covers=(c,b,set)=>!onRoof&&Math.abs(c.x-px)<=1&&py>=c.y-b.faceH-.5&&py<c.y+(set.has((c.y+1)*32+c.x)?0:1); // what stands between you and the camera fades, nothing else
   const doorAt=new Map((o.doors||[]).map(d=>[`${d.x},${d.y}`,d])),hatchAt=new Map((o.hatches||[]).map(q=>[`${q.x},${q.y}`,q])),fallen=new Set((o.crumbled||[]).map(c=>`${c.x},${c.y}`));
   ctx.save();
-  for(const {c,b,set} of all){ctx.globalAlpha=covers(c,b,set)?.38:1;const lift=b.faceH*s,x=c.x*s,y=c.y*s-lift,has=(dx,dy)=>set.has((c.y+dy)*32+c.x+dx),k=(c.x*7+c.y*13+grain)%11;
+  for(const item of all){if(item.ledge){ctx.globalAlpha=1;drawPentLedge(ctx,item.c,s,map,C,ledgeAt);continue}const {c,b,set}=item;ctx.globalAlpha=covers(c,b,set)?.38:1;const lift=b.faceH*s,x=c.x*s,y=c.y*s-lift,has=(dx,dy)=>set.has((c.y+dy)*32+c.x+dx),k=(c.x*7+c.y*13+grain)%11;
     // roof
     ctx.fillStyle=b.part==="t"?C.dark:C.roof;ctx.fillRect(x,y,s+1,s+1);ctx.strokeStyle=C.line;ctx.lineWidth=1;
     if(st==="keep"){ctx.beginPath();ctx.moveTo(x,y+s*.5);ctx.lineTo(x+s,y+s*.5);ctx.stroke();if(!has(0,-1)||!has(0,1)){ctx.fillStyle=C.dark;if(((c.x+grain)&1)===0)ctx.fillRect(x+s*.2,has(0,-1)?y+s*.76:y,s*.6,s*.24)}}
-    else if(st==="hive"){ctx.fillStyle=C.line+"55";ctx.beginPath();ctx.ellipse(x+s*.5,y+s*.5,s*.32,s*.22,(k%3)*.6,0,7);ctx.fill()}
+    if(parapet.size&&parapet.has(c.y*32+c.x)){ctx.fillStyle=C.dark;ctx.fillRect(x,y,s+1,s+1);ctx.fillStyle=C.wall;for(const [mx,my] of [[.08,.1],[.56,.1],[.32,.56]])ctx.fillRect(x+s*mx,y+s*my,s*.36,s*.32);ctx.strokeStyle=C.mortar;ctx.strokeRect(x+.5,y+.5,s-1,s-1)} // the v7 roof's parapet: merlons along the roof's inner edge
+    if(st==="keep"){}else if(st==="hive"){ctx.fillStyle=C.line+"55";ctx.beginPath();ctx.ellipse(x+s*.5,y+s*.5,s*.32,s*.22,(k%3)*.6,0,7);ctx.fill()}
     else{ctx.strokeRect(x+.5,y+.5,s-1,s-1);if(k===3){ctx.fillStyle="#2d3135";ctx.fillRect(x+s*.2,y+s*.2,s*.5,s*.4)}}
     ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.beginPath();if(!has(-1,0)){ctx.moveTo(x+1,y);ctx.lineTo(x+1,y+s)}if(!has(1,0)){ctx.moveTo(x+s-1,y);ctx.lineTo(x+s-1,y+s)}if(!has(0,-1)){ctx.moveTo(x,y+1);ctx.lineTo(x+s,y+1)}ctx.stroke();
     // age (Tim: "they should be old... falling apart... parts of the walls aren't there... more detail to the walls"): every
@@ -1680,7 +1717,7 @@ function greatBlocks(ctx,o,s,p,map,view){
     const wear=(Math.imul(c.x+31,73856093)^Math.imul(c.y+17,19349663)^Math.imul(grain+7,83492791))>>>0,w1=wear%100,w2=(wear>>>8)%100,w3=(wear>>>16)%100;
     ctx.fillStyle=w1<50?"#00000022":"#ffffff10";ctx.fillRect(x+s*((w2%3)*.2),y+s*((w3%3)*.2),s*.5,s*.45);
     if(w2<22){ctx.fillStyle=st==="hive"?"#5a3a6a88":"#4f6a3a99";for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(x+s*(.25+((w3+i*29)%5)*.12),y+s*(.3+((w1+i*17)%5)*.1),s*(.09+i*.02),0,7);ctx.fill()}} // moss
-    if(!b.wall&&w3<9&&has(-1,0)&&has(1,0)&&has(0,-1)&&has(0,1)){ctx.fillStyle="#0a0a0c";ctx.beginPath();ctx.moveTo(x+s*.2,y+s*.25);ctx.lineTo(x+s*.55,y+s*.12);ctx.lineTo(x+s*.82,y+s*.4);ctx.lineTo(x+s*.66,y+s*.82);ctx.lineTo(x+s*.25,y+s*.7);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.36,y+s*.5,s*.18,s*.12)} // fallen in
+    if(!b.wall&&w3<9&&!map?.[c.y*32+c.x]?.pentRoof&&has(-1,0)&&has(1,0)&&has(0,-1)&&has(0,1)){ctx.fillStyle="#0a0a0c";ctx.beginPath();ctx.moveTo(x+s*.2,y+s*.25);ctx.lineTo(x+s*.55,y+s*.12);ctx.lineTo(x+s*.82,y+s*.4);ctx.lineTo(x+s*.66,y+s*.82);ctx.lineTo(x+s*.25,y+s*.7);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.36,y+s*.5,s*.18,s*.12)} // fallen in
     if(st==="keep"&&(!has(0,-1)||!has(0,1))){const top=!has(0,-1)?y:y+s*.76;ctx.fillStyle="#00000055";for(let i=0;i<3;i++)if(((wear>>>(i*3))&7)<2)ctx.fillRect(x+s*(.05+i*.33),top,s*.26,s*.24)} // battlements broken away
     if(fallen.has(`${c.x},${c.y}`)){ctx.fillStyle="#060607";ctx.beginPath();ctx.moveTo(x+s*.1,y+s*.2);ctx.lineTo(x+s*(.4+(k%5)*.05),y+s*.05);ctx.lineTo(x+s*.9,y+s*.25);ctx.lineTo(x+s*.85,y+s*.85);ctx.lineTo(x+s*.3,y+s*.95);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.62,y+s*.6,s*.2,s*.14)}
     const hq=hatchAt.get(`${c.x},${c.y}`);if(hq){ctx.fillStyle="#1a1612";ctx.fillRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle="#8a7650";ctx.beginPath();ctx.moveTo(x+s*.32,y+s*.12);ctx.lineTo(x+s*.32,y+s*.88);ctx.moveTo(x+s*.68,y+s*.12);ctx.lineTo(x+s*.68,y+s*.88);for(let q=.28;q<.9;q+=.2){ctx.moveTo(x+s*.32,y+s*q);ctx.lineTo(x+s*.68,y+s*q)}ctx.stroke()}
@@ -2531,6 +2568,7 @@ export function render(ctx, g, w, h, now) {
   // lifted to the roof's drawn height; never in this pass, where the roof drawn later covered it.
   const roofUnder = standingOnRoof(g, mw);
   if (!roofUnder) draws.push(playerDraw);
+  { const fz = g.area === "overworld" ? g.droneFizzleFx : null; if (fz && now < fz.until && visibleInCamera(fz, l, t, r, b, 4)) { const under = tileUnder(g.map, mw, fz.x, fz.y); draws.push({ y: fz.y + .01, x: fz.x, lift: (fz.levels || 0) * LIFT_PER_LEVEL * tileLiftScale(under), inSky: true, fn: () => drawDroneFizzle(ctx, fz, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) }); } } // the drone fizzle
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
     const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);

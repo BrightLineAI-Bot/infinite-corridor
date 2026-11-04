@@ -89,6 +89,21 @@ export function rollTesseract(seed, source, gradeId, floor = 0) {
   for (const i of [2, 3]) { const cost = u(`b${i}`) < G.bad; lines.push(cost ? bad(pick(EFFECT_IDS.filter((id) => E[id].bad), `l${i}`), `v${i}`) : good(pick(EFFECT_IDS.filter((id) => E[id].good), `l${i}`), `v${i}`)); }
   return { kind, grade: gradeId, name: `${G.name === K.name ? G.name : `${G.name} ${K.name}`} Tesseract ${TESSERACTS.names[h("name") % TESSERACTS.names.length]}`, lines };
 }
+// Cut line `i` of glyph `g` again (the Pentagon's dais, pentagon.ts PENTAGON.finale.reroll), by the rules that rolled it: its
+// grade's strength (`q`, a Deep glyph's floor unknown, so taken at the grade's own) and cost chance; the first line from its
+// kind's favoured effects, the second a bonus, the last two a cost by the grade's `bad` chance; never an effect another line of
+// it holds, nor (where another is left) the one it had. Pure: `source` (the Pentagon, the reroll's index, the glyph) decides it.
+export function rerollTesseractLine(seed, source, g, i) {
+  const G = TESSERACTS.grades[g?.grade] || TESSERACTS.grades.labyrinth, E = TESSERACTS.effects, K = TESSERACTS.kinds[g?.kind] || TESSERACTS.kinds.edge, h = (k) => hashSeed(`${seed}:tesseract-reroll:v1:${source}:${k}`), u = (k) => (h(k) % 10000) / 10000;
+  if (!g?.lines?.[i]) return null; const q = G.q, others = new Set(g.lines.filter((_, j) => j !== i).map((l) => l.k)), was = g.lines[i].k;
+  const pick = (from) => { const pool = from.filter((id) => !others.has(id)), fresh = pool.filter((id) => id !== was), use = fresh.length ? fresh : pool; return use.length ? use[h("l") % use.length] : null; };
+  const good = (id) => { const [a, b] = E[id].good; return { k: id, v: Math.round((a + (b - a) * q * (.6 + .4 * u("v"))) * 1000) / 1000, bad: false }; };
+  const bad = (id) => { const [a, b] = E[id].bad; return { k: id, v: Math.round((a + (b - a) * ((1 - q) * .6 + .4 * u("v"))) * 1000) / 1000, bad: true }; };
+  const goods = EFFECT_IDS.filter((id) => E[id].good), costs = EFFECT_IDS.filter((id) => E[id].bad);
+  if (i === 0) { const id = pick(K.favour.filter((x) => E[x].good)) || pick(goods); return id ? good(id) : null; }
+  if (i === 1 || u("b") >= G.bad) { const id = pick(goods); return id ? good(id) : null; }
+  const id = pick(costs); return id ? bad(id) : null;
+}
 // Give the glyph a source holds, once ever. Returns it, or null if that source already gave its glyph.
 export function grantTesseract(save, source, gradeId, floor = 0, from = "") {
   ensureTesseracts(save); const T = save.tesseracts; if (T.got[source]) return null; T.got[source] = true;
