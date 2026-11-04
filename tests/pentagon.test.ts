@@ -320,8 +320,8 @@ test('v5 plan: three sealed chambers, each off its own ring chamber behind a sig
 });
 
 test('v5: a sealed chamber is shut until the Regent gives the Seal; then its door opens on use; its warden, a Sealed Tesseract glyph and a relic found nowhere else', () => {
-  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V5), base = P.base, H = () => g.save.consequences.dungeons[`${base}:f1`] || {}, idOf = (q) => `${base}:f${q.n + 1}`;
-  visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v5:')), 'new ground: v5');
+  const { cx, cy } = find(), g = pinned(SEED, cx, cy, V5), P = pentagonPlan(SEED, cx, cy, V5), base = P.base, H = () => g.save.consequences.dungeons[`${base}:f1`] || {}, idOf = (q) => `${base}:f${q.n + 1}`; // the Pentagon shortcuts made version 6 the Pentagon of new ground
+  visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v5:')), 'pinned 5: v5');
   const act = (o, a) => { assert.ok(o, a); g.player.x = o.x; g.player.y = o.y; return g.interact(a, o.id); }, load = (q) => { g.save.session.activeDungeonId = idOf(q); g.loadArea('dungeon', false); };
   const k0 = P.nodes.find((n) => n.id === 'k0'), host = P.nodes.find((n) => n.id === P.edges.find((e) => e.b === 'k0').a), door = () => g.map.objects.find((o) => o.kind === 'buildingStair' && o.toId === idOf(k0));
   load(host); assert.ok(door().sigil && !door().unsealed); assert.ok(!act(door(), door().actions[0]).ok, 'shut without the Seal');
