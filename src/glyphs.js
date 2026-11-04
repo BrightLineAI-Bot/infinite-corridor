@@ -7,7 +7,8 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r725-06eac3488773";
+import { hashSeed } from "./random.js?v=r732-683fdfd90b67";
+import { tesseractBonus } from "./tesseracts.js?v=r732-683fdfd90b67";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -85,6 +86,7 @@ export function armorGlyphBonus(save) {
   for (const id of save?.equipment?.armor?.glyphs || []) { const a = ARMOR_GLYPHS[id]; if (a) for (const k of Object.keys(ARMOR_GLYPH_CAP)) if (a[k]) out[k] += a[k]; }
   for (const k of Object.keys(out)) out[k] = Math.min(out[k], ARMOR_GLYPH_CAP[k]);
   for (const id of triadsOf(save?.equipment?.armor?.glyphs || [])) for (const [k, v] of Object.entries(TRIADS[id].armor)) out[k] = (out[k] || 0) + v; // release 529: armor triads, past the caps
+  const tb = tesseractBonus(save); for (const k of Object.keys(ARMOR_GLYPH_CAP)) if (tb[k]) out[k] = (out[k] || 0) + tb[k]; out.killHeal = tb.killHeal; out.selfHarm = tb.selfHarm; // release 729: Tesseract glyphs, past the caps, costs and all
   return out;
 }
 

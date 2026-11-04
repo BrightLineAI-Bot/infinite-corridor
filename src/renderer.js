@@ -1,29 +1,29 @@
-import { FAR_FOLK } from "./far-realms.js?v=r725-06eac3488773";
-import { astralBeamAnchors } from "./astral-worm.js?v=r725-06eac3488773";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r725-06eac3488773";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r725-06eac3488773";
-import { enemyMeleeGeometry } from "./combat.js?v=r725-06eac3488773";
-import { ruleRows } from "./elders.js?v=r725-06eac3488773";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r725-06eac3488773";
-import { BOAT } from "./boats.js?v=r725-06eac3488773";
-import { MECH, DRONE } from "./vehicle-gates.js?v=r725-06eac3488773";
-import { isMarineTile } from "./world-beasts.js?v=r725-06eac3488773";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r725-06eac3488773"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r725-06eac3488773";
-import { setTreeSeason } from "./landscape-render.js?v=r725-06eac3488773";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r725-06eac3488773";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r725-06eac3488773";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r725-06eac3488773";
-import { TREES } from "./trees.js?v=r725-06eac3488773";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r725-06eac3488773";
-import { KIT_MOVES } from "./boss-kit.js?v=r725-06eac3488773";
-import { SKY_DISCS } from "./skylands.js?v=r725-06eac3488773"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r725-06eac3488773";
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r725-06eac3488773"; // release 678
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r725-06eac3488773";
-import { drawRelayNode } from "./relay-network.js?v=r725-06eac3488773";
-import { structureOccupancy } from "./world.js?v=r725-06eac3488773";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r725-06eac3488773";
+import { FAR_FOLK } from "./far-realms.js?v=r732-683fdfd90b67";
+import { astralBeamAnchors } from "./astral-worm.js?v=r732-683fdfd90b67";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r732-683fdfd90b67";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r732-683fdfd90b67";
+import { enemyMeleeGeometry } from "./combat.js?v=r732-683fdfd90b67";
+import { ruleRows } from "./elders.js?v=r732-683fdfd90b67";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r732-683fdfd90b67";
+import { BOAT } from "./boats.js?v=r732-683fdfd90b67";
+import { MECH, DRONE } from "./vehicle-gates.js?v=r732-683fdfd90b67";
+import { isMarineTile } from "./world-beasts.js?v=r732-683fdfd90b67";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r732-683fdfd90b67"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r732-683fdfd90b67";
+import { setTreeSeason } from "./landscape-render.js?v=r732-683fdfd90b67";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil } from "./landscape-render.js?v=r732-683fdfd90b67";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r732-683fdfd90b67";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r732-683fdfd90b67";
+import { TREES } from "./trees.js?v=r732-683fdfd90b67";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r732-683fdfd90b67";
+import { KIT_MOVES } from "./boss-kit.js?v=r732-683fdfd90b67";
+import { SKY_DISCS } from "./skylands.js?v=r732-683fdfd90b67"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.js?v=r732-683fdfd90b67";
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r732-683fdfd90b67"; // release 678
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r732-683fdfd90b67";
+import { drawRelayNode } from "./relay-network.js?v=r732-683fdfd90b67";
+import { structureOccupancy } from "./world.js?v=r732-683fdfd90b67";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r732-683fdfd90b67";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -408,7 +408,7 @@ function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=nu
     py = y * s;
   ctx.fillStyle = p[d & 1];
   ctx.fillRect(px, py, s + 1, s + 1);
-  if (BUILDING_TILES.has(t.kind)) { paintBuildingTile(ctx, t, x, y, s, d, map, w); return; } // great buildings
+  if (BUILDING_TILES.has(t.kind)) { paintBuildingTile(ctx, t, x, y, s, d, map, w); if (t.plate) drawPressurePlate(ctx, x, y, s); return; } // great buildings (and the Pentagon's pressure plate)
   if (t.kind === "river" || t.kind === "dungeonWater") {
     ctx.strokeStyle = (d & 1) ? "#8fc2c477" : "#659ca166"; ctx.lineWidth = 2;
     for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(px + ((d + q * 11) % 13), py + 7 + q * s * .26); ctx.quadraticCurveTo(px + s * .5, py + 2 + q * s * .26, px + s - 3, py + 7 + q * s * .26); ctx.stroke(); }
@@ -1516,8 +1516,9 @@ function actor(
     );
 }
 export function drawWaymarkIcon(ctx,signalKind,s){
-  const colors={beacon:'#72d7df',crossing:'#d5a464',danger:'#d16b62',event:'#a68ad2'},c=colors[signalKind]||'#b7b49d';ctx.strokeStyle=c;ctx.fillStyle=c+'22';ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();
-  if(signalKind==='beacon')ctx.arc(0,0,s*.27,0,Math.PI*1.65);
+  const colors={beacon:'#72d7df',crossing:'#d5a464',danger:'#d16b62',event:'#a68ad2',wonder:'#ffd36a'},c=colors[signalKind]||'#b7b49d';ctx.strokeStyle=c;ctx.fillStyle=c+'22';ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();
+  if(signalKind==='wonder'){for(let i=0;i<5;i++){const a=i*Math.PI*2/5;ctx[i?'lineTo':'moveTo'](Math.cos(a)*s*.24,Math.sin(a)*s*.24)}ctx.closePath();ctx.moveTo(s*.24,0);ctx.lineTo(s*.42,0);} // release 729: a megastructure (a pentagon, its point the way)
+  else if(signalKind==='beacon')ctx.arc(0,0,s*.27,0,Math.PI*1.65);
   else if(signalKind==='crossing'){ctx.moveTo(-s*.25,-s*.2);ctx.lineTo(s*.22,0);ctx.lineTo(-s*.25,s*.2);}
   else if(signalKind==='danger'){ctx.moveTo(-s*.22,-s*.25);ctx.lineTo(-s*.22,s*.25);ctx.lineTo(s*.25,0);ctx.closePath();}
   else{ctx.arc(0,0,s*.23,0,Math.PI*1.5);ctx.lineTo(s*.28,0);}
@@ -1607,6 +1608,12 @@ function greatBuilding(ctx,o,s,p){
   }
   ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.strokeRect(x+1,roofY+1,w-2,foot-roofY-2);ctx.beginPath();ctx.moveTo(x,faceY);ctx.lineTo(x+w,faceY);ctx.stroke();
   ctx.strokeStyle="#1a1a1a99";ctx.lineWidth=1.5;ctx.beginPath();const cx0=x+w*(.2+(grain%5)*.12);ctx.moveTo(cx0,faceY+s*.1);ctx.lineTo(cx0+s*.2,faceY+fH*.35);ctx.lineTo(cx0-s*.1,faceY+fH*.6);ctx.stroke(); // weathering
+  for(let i=0;i<b.w;i++){const wr=(Math.imul(b.x+i+31,73856093)^Math.imul(b.y+17,19349663)^Math.imul(grain+7,83492791))>>>0,u=wr%100,v=(wr>>>8)%100,cx1=x+i*s; // age, column by column: chips along the top, moss, vines, rubble at the foot, fallen roof
+    if(u<40){ctx.fillStyle="#08080a";ctx.beginPath();ctx.moveTo(cx1+s*.1,faceY);ctx.lineTo(cx1+s*.3,faceY+s*.2);ctx.lineTo(cx1+s*.55,faceY);ctx.closePath();ctx.fill()}
+    if(v<20){ctx.fillStyle="#3f5a2e77";ctx.fillRect(cx1+s*.4,faceY,s*.12,fH*(.35+(u%4)*.1))}
+    if(u>=82){ctx.fillStyle="#5d5446";for(let j=0;j<3;j++){const rx=cx1+s*(.1+j*.28),ry=foot-s*.04;ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx+s*.1,ry-s*.1);ctx.lineTo(rx+s*.2,ry);ctx.closePath();ctx.fill()}}
+    if(v>=88){ctx.fillStyle="#4f6a3a88";ctx.beginPath();ctx.arc(cx1+s*.5,roofY+roofH*(.3+(u%5)*.1),s*.16,0,7);ctx.fill()}
+    if(v>=50&&v<54){ctx.fillStyle="#0a0a0c";ctx.fillRect(cx1+s*.2,roofY+roofH*.4,s*.6,s*.5)}}
   // the door
   if(o.door){const dx=(o.door.x+.08)*s,dw=s*.84;if(south){const dh=Math.min(band*.95,s*1.1),dy=foot-dh;ctx.fillStyle="#08090a";ctx.fillRect(dx,dy,dw,dh);if(keep){ctx.beginPath();ctx.arc(dx+dw/2,dy,dw/2,Math.PI,0);ctx.fill()}ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.fillStyle=C.trim+"55";ctx.fillRect(dx-s*.12,foot-s*.08,dw+s*.24,s*.08)}
     else{ctx.fillStyle="#08090a";ctx.fillRect(dx,roofY,dw,s*.55);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,roofY,dw,s*.55)}}
@@ -1620,9 +1627,10 @@ function greatBuilding(ctx,o,s,p){
 // (where the Wayfarer stands on it), a facade under every cell whose south side is open, a window a floor in each; drawn north
 // to south so nearer walls stand in front. Doors on a south face are drawn in the facade; on other faces, as a dark arch at the
 // roof's edge. Faded while you stand behind it.
-function greatBlocks(ctx,o,s,p,map){
+function greatBlocks(ctx,o,s,p,map,view){
   const st=o.style,grain=o.grain||0,C=st==="keep"?{roof:"#3a3631",line:"#5b544a",wall:"#5d564b",dark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860",court:null}:st==="hive"?{roof:"#2e2238",line:"#4b3858",wall:"#4a3550",dark:"#2a1d31",mortar:"#1f1524",trim:"#b07ad0",glass:"#120b18",lit:"#d58cff"}:{roof:"#3b3f44",line:"#575d63",wall:"#6a6e72",dark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
-  const all=[];for(const b of o.blocks){const set=new Set(b.cells.map(c=>c.y*32+c.x));for(const c of b.cells)all.push({c,b,set})}
+  const vis=(c,b)=>!view||(c.x>=view.l-1&&c.x<=view.r+1&&c.y>=view.t-1&&c.y-b.faceH<=view.b+1); // the Pentagon's sections hold hundreds of cells: draw the ones in view
+  const all=[];for(const b of o.blocks){const set=new Set(b.cells.map(c=>c.y*32+c.x));for(const c of b.cells)if(vis(c,b))all.push({c,b,set})}
   all.sort((a,q)=>a.c.y-q.c.y||a.c.x-q.c.x);
   const onRoof=map?.[Math.round(p.y)*32+Math.round(p.x)]?.structure==="buildingRoof",px=Math.round(p.x),py=p.y+.5;
   const covers=(c,b,set)=>!onRoof&&Math.abs(c.x-px)<=1&&py>=c.y-b.faceH-.5&&py<c.y+(set.has((c.y+1)*32+c.x)?0:1); // what stands between you and the camera fades, nothing else
@@ -1635,18 +1643,33 @@ function greatBlocks(ctx,o,s,p,map){
     else if(st==="hive"){ctx.fillStyle=C.line+"55";ctx.beginPath();ctx.ellipse(x+s*.5,y+s*.5,s*.32,s*.22,(k%3)*.6,0,7);ctx.fill()}
     else{ctx.strokeRect(x+.5,y+.5,s-1,s-1);if(k===3){ctx.fillStyle="#2d3135";ctx.fillRect(x+s*.2,y+s*.2,s*.5,s*.4)}}
     ctx.strokeStyle=C.trim+"99";ctx.lineWidth=2;ctx.beginPath();if(!has(-1,0)){ctx.moveTo(x+1,y);ctx.lineTo(x+1,y+s)}if(!has(1,0)){ctx.moveTo(x+s-1,y);ctx.lineTo(x+s-1,y+s)}if(!has(0,-1)){ctx.moveTo(x,y+1);ctx.lineTo(x+s,y+1)}ctx.stroke();
+    // age (Tim: "they should be old... falling apart... parts of the walls aren't there... more detail to the walls"): every
+    // cell weathered by its own hash: the stone's tone, moss, a fallen-in patch, broken battlements along an open edge
+    const wear=(Math.imul(c.x+31,73856093)^Math.imul(c.y+17,19349663)^Math.imul(grain+7,83492791))>>>0,w1=wear%100,w2=(wear>>>8)%100,w3=(wear>>>16)%100;
+    ctx.fillStyle=w1<50?"#00000022":"#ffffff10";ctx.fillRect(x+s*((w2%3)*.2),y+s*((w3%3)*.2),s*.5,s*.45);
+    if(w2<22){ctx.fillStyle=st==="hive"?"#5a3a6a88":"#4f6a3a99";for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(x+s*(.25+((w3+i*29)%5)*.12),y+s*(.3+((w1+i*17)%5)*.1),s*(.09+i*.02),0,7);ctx.fill()}} // moss
+    if(!b.wall&&w3<9&&has(-1,0)&&has(1,0)&&has(0,-1)&&has(0,1)){ctx.fillStyle="#0a0a0c";ctx.beginPath();ctx.moveTo(x+s*.2,y+s*.25);ctx.lineTo(x+s*.55,y+s*.12);ctx.lineTo(x+s*.82,y+s*.4);ctx.lineTo(x+s*.66,y+s*.82);ctx.lineTo(x+s*.25,y+s*.7);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.36,y+s*.5,s*.18,s*.12)} // fallen in
+    if(st==="keep"&&(!has(0,-1)||!has(0,1))){const top=!has(0,-1)?y:y+s*.76;ctx.fillStyle="#00000055";for(let i=0;i<3;i++)if(((wear>>>(i*3))&7)<2)ctx.fillRect(x+s*(.05+i*.33),top,s*.26,s*.24)} // battlements broken away
     if(fallen.has(`${c.x},${c.y}`)){ctx.fillStyle="#060607";ctx.beginPath();ctx.moveTo(x+s*.1,y+s*.2);ctx.lineTo(x+s*(.4+(k%5)*.05),y+s*.05);ctx.lineTo(x+s*.9,y+s*.25);ctx.lineTo(x+s*.85,y+s*.85);ctx.lineTo(x+s*.3,y+s*.95);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.62,y+s*.6,s*.2,s*.14)}
     const hq=hatchAt.get(`${c.x},${c.y}`);if(hq){ctx.fillStyle="#1a1612";ctx.fillRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle="#8a7650";ctx.beginPath();ctx.moveTo(x+s*.32,y+s*.12);ctx.lineTo(x+s*.32,y+s*.88);ctx.moveTo(x+s*.68,y+s*.12);ctx.lineTo(x+s*.68,y+s*.88);for(let q=.28;q<.9;q+=.2){ctx.moveTo(x+s*.32,y+s*q);ctx.lineTo(x+s*.68,y+s*q)}ctx.stroke()}
     const d=doorAt.get(`${c.x},${c.y}`);if(d&&d.face!=="south"){ctx.fillStyle="#08090a";const w=s*.6;if(d.face==="north"){ctx.fillRect(x+s*.2,y,w,s*.34)}else if(d.face==="west"){ctx.fillRect(x,y+s*.2,s*.3,w)}else{ctx.fillRect(x+s*.7,y+s*.2,s*.3,w)}ctx.strokeStyle=C.trim;ctx.lineWidth=1.5;ctx.strokeRect(d.face==="north"?x+s*.2:d.face==="west"?x:x+s*.7,d.face==="north"?y:y+s*.2,d.face==="north"?w:s*.3,d.face==="north"?s*.34:w)}
     // the facade under an open south side
     if(!has(0,1)){const fy=(c.y+1)*s-lift,band=lift/b.floors;ctx.fillStyle=C.wall;ctx.fillRect(x,fy,s+1,lift);ctx.fillStyle="#00000033";ctx.fillRect(x,fy,s+1,s*.1);
       for(let f=0;f<b.floors;f++){const by=fy+lift-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+s,by);ctx.stroke();
+        if(b.wall){ctx.strokeStyle=C.mortar;ctx.beginPath();ctx.moveTo(x+s*((c.y&1)?.3:.7),by);ctx.lineTo(x+s*((c.y&1)?.3:.7),by+band);ctx.stroke();continue} // a curtain wall: coursed stone, no windows
         if(f===0&&d?.face==="south")continue;const q=(k+f*5)%9,ww=s*(st==="keep"?.22:.42),wh=band*.56,wx=x+s*.5,wy=by+band*.22;ctx.fillStyle=q===0?C.lit+"cc":q<3?"#090a0c":C.glass;
         if(st==="keep"){ctx.beginPath();ctx.moveTo(wx-ww/2,wy+wh);ctx.lineTo(wx-ww/2,wy+ww/2);ctx.arc(wx,wy+ww/2,ww/2,Math.PI,0);ctx.lineTo(wx+ww/2,wy+wh);ctx.closePath();ctx.fill()}
         else if(st==="hive"){ctx.beginPath();ctx.ellipse(wx,wy+wh/2,ww/2,wh/2,0,0,7);ctx.fill()}
         else{ctx.fillRect(wx-ww/2,wy,ww,wh);ctx.strokeStyle=C.trim+"55";ctx.strokeRect(wx-ww/2+.5,wy+.5,ww-1,wh-1)}}
       if(d?.face==="south"){const dh=Math.min(band*.95,s*1.05),dx=x+s*.1,dw=s*.8,dy=(c.y+1)*s-dh;ctx.fillStyle="#08090a";ctx.fillRect(dx,dy,dw,dh);if(st==="keep"){ctx.beginPath();ctx.arc(dx+dw/2,dy,dw/2,Math.PI,0);ctx.fill()}ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh)}
       ctx.strokeStyle=C.trim+"77";ctx.lineWidth=1.5;ctx.beginPath();if(!has(-1,0)){ctx.moveTo(x+1,fy);ctx.lineTo(x+1,fy+lift)}if(!has(1,0)){ctx.moveTo(x+s-1,fy);ctx.lineTo(x+s-1,fy+lift)}ctx.stroke();
+      { const fy2=(c.y+1)*s-lift; // the facade's age: a chipped top, a crack, a moss streak, a stain; rubble at its foot; a stretch fallen to a heap
+        ctx.fillStyle="#0000002a";ctx.fillRect(x+s*((w3%4)*.2),fy2+s*.1,s*.3,lift*.8);
+        if(w1<38){ctx.fillStyle="#08080a";ctx.beginPath();ctx.moveTo(x+s*(.1+(w2%4)*.12),fy2);ctx.lineTo(x+s*(.25+(w2%4)*.12),fy2+s*(.18+(w3%3)*.06));ctx.lineTo(x+s*(.45+(w2%4)*.12),fy2);ctx.closePath();ctx.fill()}
+        if(w2>=40&&w2<62){ctx.strokeStyle="#151517cc";ctx.lineWidth=1.3;ctx.beginPath();const cx2=x+s*(.3+(w3%4)*.12);ctx.moveTo(cx2,fy2+s*.05);ctx.lineTo(cx2+s*.12,fy2+lift*.35);ctx.lineTo(cx2-s*.06,fy2+lift*.62);ctx.lineTo(cx2+s*.05,fy2+lift*.9);ctx.stroke()}
+        if(w3>=60&&w3<78){ctx.fillStyle=st==="hive"?"#6a3a7a55":"#3f5a2e77";ctx.fillRect(x+s*(.15+(w1%4)*.15),fy2,s*.12,lift*(.4+(w2%5)*.1));ctx.beginPath();ctx.arc(x+s*(.21+(w1%4)*.15),fy2,s*.12,0,7);ctx.fill()} // vine
+        if(w1>=80){ctx.fillStyle="#5d5446";for(let i=0;i<4;i++){const rx2=x+s*(.08+((w2+i*23)%9)*.1),ry2=(c.y+1)*s-s*(.04+((w3+i*11)%3)*.05);ctx.beginPath();ctx.moveTo(rx2,ry2);ctx.lineTo(rx2+s*.12,ry2-s*.1);ctx.lineTo(rx2+s*.22,ry2);ctx.closePath();ctx.fill()}} // rubble at its foot
+        if(b.wall&&w2<14){ctx.fillStyle=C.roof;ctx.fillRect(x,fy2,s+1,lift*.55);ctx.fillStyle="#6a6152";ctx.beginPath();ctx.moveTo(x,(c.y+1)*s);ctx.lineTo(x+s*.15,fy2+lift*.5);ctx.lineTo(x+s*.4,fy2+lift*.62);ctx.lineTo(x+s*.6,fy2+lift*.45);ctx.lineTo(x+s*.85,fy2+lift*.6);ctx.lineTo(x+s,(c.y+1)*s);ctx.closePath();ctx.fill();ctx.fillStyle="#4a4339";ctx.fillRect(x+s*.3,(c.y+1)*s-s*.2,s*.2,s*.12)} } // a stretch of curtain fallen to a heap (still impassable)
       ctx.fillStyle="#00000044";ctx.fillRect(x,(c.y+1)*s-2,s+1,4);}
   }
   ctx.globalAlpha=1;const b=o.bounds;ctx.fillStyle="#d8ccae";ctx.font=`${Math.max(8,s*.2)}px monospace`;ctx.textAlign="center";ctx.fillText(String(o.name).toUpperCase(),(b.x+b.w/2)*s,(b.y-Math.max(...o.blocks.map(q=>q.faceH)))*s-s*.14);ctx.textAlign="start";
@@ -1706,6 +1729,52 @@ function drawLabKey(ctx, o, s, now) {
   const g = ctx.createRadialGradient(cx, cy - s * .1 + bob, 0, cx, cy - s * .1 + bob, s * .5); g.addColorStop(0, `rgba(255,220,130,${.35 + .3 * glow})`); g.addColorStop(1, "rgba(255,220,130,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy - s * .1 + bob, s * .5, 0, 7); ctx.fill();
   ctx.strokeStyle = "#e8c45a"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.arc(cx - s * .12, cy - s * .1 + bob, s * .1, 0, 7); ctx.moveTo(cx - s * .02, cy - s * .1 + bob); ctx.lineTo(cx + s * .22, cy - s * .1 + bob); ctx.moveTo(cx + s * .14, cy - s * .1 + bob); ctx.lineTo(cx + s * .14, cy - s * .02 + bob); ctx.moveTo(cx + s * .2, cy - s * .1 + bob); ctx.lineTo(cx + s * .2, cy - s * .03 + bob); ctx.stroke();
   ctx.restore();
+}
+// The Pentagon (pentagon.ts): a pressure plate let into the floor, its rim worn bright; loose rubble to build a block with; a
+// relic of the Fivefold Court, a cracked tablet on a low plinth with a faint glow until it is read.
+function drawPressurePlate(ctx, x, y, s) {
+  ctx.save(); ctx.fillStyle = "#00000066"; ctx.fillRect(x + s * .1, y + s * .12, s * .8, s * .8); ctx.fillStyle = "#6e6452"; ctx.fillRect(x + s * .14, y + s * .14, s * .72, s * .72);
+  ctx.strokeStyle = "#c9b27a"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.strokeRect(x + s * .14, y + s * .14, s * .72, s * .72); ctx.strokeStyle = "#3a342b"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + s * .3, y + s * .5); ctx.lineTo(x + s * .7, y + s * .5); ctx.moveTo(x + s * .5, y + s * .3); ctx.lineTo(x + s * .5, y + s * .7); ctx.stroke(); ctx.restore();
+}
+function drawPentRubble(ctx, o, s) {
+  const x = o.x * s, y = o.y * s; ctx.save(); ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .82, s * .4, s * .12, 0, 0, 7); ctx.fill();
+  for (const [dx, dy, r, c] of [[.3, .66, .17, "#6b6152"], [.62, .7, .2, "#5a5144"], [.46, .5, .15, "#7d7262"], [.72, .52, .1, "#4c453a"], [.22, .48, .09, "#82776a"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x + s * (dx - r), y + s * (dy + r * .6)); ctx.lineTo(x + s * (dx - r * .5), y + s * (dy - r)); ctx.lineTo(x + s * (dx + r * .7), y + s * (dy - r * .7)); ctx.lineTo(x + s * (dx + r), y + s * (dy + r * .6)); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+}
+function drawPentRelic(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, y = o.y * s, lit = o.state !== "read", glow = .5 + .5 * Math.sin(now / 520); ctx.save();
+  ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, y + s * .86, s * .32, s * .1, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#3f3a33"; ctx.fillRect(cx - s * .26, y + s * .66, s * .52, s * .18); // the plinth
+  if (lit) { const g = ctx.createRadialGradient(cx, y + s * .42, 0, cx, y + s * .42, s * .5); g.addColorStop(0, `rgba(190,215,255,${.25 + .2 * glow})`); g.addColorStop(1, "rgba(190,215,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, y + s * .42, s * .5, 0, 7); ctx.fill(); }
+  ctx.fillStyle = lit ? "#8d8574" : "#6a6457"; ctx.beginPath(); ctx.moveTo(cx - s * .18, y + s * .68); ctx.lineTo(cx - s * .18, y + s * .28); ctx.arc(cx, y + s * .28, s * .18, Math.PI, 0); ctx.lineTo(cx + s * .18, y + s * .68); ctx.closePath(); ctx.fill(); // the tablet
+  ctx.strokeStyle = "#2b2823"; ctx.lineWidth = 1; ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(cx - s * .1, y + s * (.34 + i * .1)); ctx.lineTo(cx + s * .1, y + s * (.34 + i * .1)); } ctx.moveTo(cx + s * .06, y + s * .14); ctx.lineTo(cx - s * .02, y + s * .4); ctx.lineTo(cx + s * .08, y + s * .6); ctx.stroke(); // its letters, and the crack through them
+  ctx.restore();
+}
+// Version 2 (release 728): the Fivefold Seal's sigil, cut into a door it has not yet opened; the great levers in the courts;
+// the Seal itself, a five-sided disc with an eyeless face, turning; the dread that closes in the deeper you go.
+const pentPath = (ctx, cx, cy, r, a0 = -Math.PI / 2) => { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = a0 + i * Math.PI * 2 / 5; ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } ctx.closePath(); };
+function drawSigilMark(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .45) * s, pulse = .5 + .5 * Math.sin(now / 500); ctx.save(); ctx.strokeStyle = `rgba(176,140,255,${.55 + .35 * pulse})`; ctx.lineWidth = Math.max(1.5, s * .06);
+  pentPath(ctx, cx, cy, s * .26); ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy, s * .08, 0, 7); ctx.stroke(); ctx.restore();
+}
+function drawPentLever(ctx, o, s, now) {
+  const x = o.x * s, y = o.y * s, down = o.state === "pulled", a = down ? .75 : -.75; ctx.save(); ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .88, s * .4, s * .12, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#3e3a33"; ctx.fillRect(x + s * .2, y + s * .6, s * .6, s * .3); ctx.fillStyle = "#57524a"; ctx.fillRect(x + s * .2, y + s * .6, s * .6, s * .07); // its block
+  ctx.strokeStyle = "#7a6a4e"; ctx.lineWidth = Math.max(3, s * .1); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x + s * .5, y + s * .66); ctx.lineTo(x + s * (.5 + Math.sin(a) * .42), y + s * (.66 - Math.cos(a) * .42)); ctx.stroke(); // its arm
+  ctx.fillStyle = down ? "#8a7a5a" : `rgba(232,196,90,${.7 + .3 * Math.sin(now / 400)})`; ctx.beginPath(); ctx.arc(x + s * (.5 + Math.sin(a) * .44), y + s * (.66 - Math.cos(a) * .44), s * .09, 0, 7); ctx.fill(); ctx.restore();
+}
+function drawPentSeal(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .4) * s + Math.sin(now / 420) * s * .04, a0 = now / 1800, glow = .5 + .5 * Math.sin(now / 300); ctx.save();
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .6); g.addColorStop(0, `rgba(176,140,255,${.35 + .25 * glow})`); g.addColorStop(1, "rgba(176,140,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .6, 0, 7); ctx.fill();
+  ctx.fillStyle = "#cfc6e8"; pentPath(ctx, cx, cy, s * .24, a0); ctx.fill(); ctx.strokeStyle = "#5b4a8a"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = "#5b4a8a"; for (let i = 0; i < 5; i++) { const a = a0 + i * Math.PI * 2 / 5 - Math.PI / 2; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * s * .15, cy + Math.sin(a) * s * .15, s * .03, 0, 7); ctx.fill(); }
+  ctx.beginPath(); ctx.arc(cx, cy, s * .06, 0, 7); ctx.fill(); ctx.restore();
+}
+// The dread (a cached screen image like the vignette): the dark closes in from the edges, leaving `share` of the view lit.
+function drawDread(ctx, w, h, share) {
+  if (!(share > 0)) return; let o = render.dread; const key = `${w}x${h}:${share.toFixed(2)}`;
+  if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
+    const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${.5 + share * .35})`); v.addColorStop(1, `rgba(2,2,6,${.8 + share * .18})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
+  ctx.drawImage(o.canvas, 0, 0, w, h);
 }
 // A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
 // the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
@@ -2088,6 +2157,10 @@ export function render(ctx, g, w, h, now) {
           else if (g.area === "dungeon" && wayKind(o, g.map) || (o.kind === "deepTransition")) drawWayMarker(ctx, o, s, now, o.kind === "deepTransition" ? (o.direction === "down" ? "down" : "up") : wayKind(o, g.map) === "down" ? "down" : "up", o.kind === "emberDoor"); // a way: a marker stone with a chevron
           else if (o.kind === "buildingStair") drawBuildingStair(ctx, o, s, now); // great buildings
           else if (o.kind === "labKey") drawLabKey(ctx, o, s, now); // a labyrinth's key
+          else if (o.kind === "pentRubble") drawPentRubble(ctx, o, s); // the Pentagon's rubble
+          else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
+          else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
+          else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
@@ -2369,6 +2442,7 @@ export function render(ctx, g, w, h, now) {
     if (skyA > 0 && d !== playerDraw && !d.inSky && !(Number.isFinite(d.x) && tileUnder(g.map, mw, d.x, d.y)?.canopy)) { if (skyA >= .98) continue; ctx.save(); if (raise) ctx.translate(0, -raise * s); ctx.globalAlpha = (d.alpha ?? 1) * (1 - skyA); d.fn(); ctx.restore(); continue; }
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
+  for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && discoveredInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk
     const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
@@ -2440,7 +2514,7 @@ export function render(ctx, g, w, h, now) {
       for(const c of cells)if(g.map.tiles[c.y*mw+c.x]?.kind!=="voidScar"&&discoveredInDungeon(g,c))ctx.rect(c.x*s,c.y*s,s,s);
       ctx.clip();
     }
-    drawStructure(ctx,o,s,p,g.map.tiles);
+    drawStructure(ctx,o,s,p,g.map.tiles,{l,t,r,b});
     ctx.restore();
   }
   if(skyA>0)ctx.restore()}
@@ -2525,6 +2599,7 @@ export function render(ctx, g, w, h, now) {
       y = ((i * 73 + Math.sin(phase * 0.07) * 45) % (h + 60)) - 30;
     ctx.fillRect(x, y, i % 3 === 0 ? 3 : 2, 1);
   }
+  if (g.area === "dungeon" && g.map?.building?.dread) drawDread(ctx, w, h, g.map.building.dread); // the Pentagon's dread (v2)
   if (!drawScreenOverlay(ctx, w, h)) {
     ctx.fillStyle = "#5c4a3b0c";
     ctx.fillRect(0, 0, w, h);
