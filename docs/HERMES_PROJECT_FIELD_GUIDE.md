@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 740: exact resume and player fixes — 2026-11-04
+
+Tim, 2026-11-04 (after the full-game review): "go through the rest of the bug fixes and changes... so the game just gets normalized." Fixes the player-systems and resume findings F3–F14, S7–S9 and C12–C13; infinite dodge and potions without cooldown are kept.
+
+**CODE:** `src/game.ts` holds one list of wall-clock timers (`PLAYER_CLOCKS`, `GAME_CLOCKS`, `GAME_NESTED_CLOCKS` incl. `edgeHold.at`, `PLAYER_NESTED_CLOCKS`), shifted by `shiftClocks` on unpause; `resumeRuntime` / `restoreRuntime` store `playerRuntime.clocks` (ms remaining) plus `slowFactor`, `heldBy`, `stunnedFor`, `fire`, `frenzy`, `rite`, `sailVx`/`sailVy`, `poisonSoak`, `raftZ`, `swimming`/`swimKind`, `fatalFallPending`, and the saved runtime spreads the previous one; `clearCarriedStates` runs on death and Wayglass travel; `hazardWhereMoved` reads lethal ground where a move ends; `DODGE_COST` {base 15, min 1.5}; a dais left burning with no rite is reset and, if the journal has no failure for that attempt, refunded (`src/ascendancy.ts`); `useUpgradeSphere` never lowers gear; swim exhaustion in whole points; `src/main.ts` clamps dt ≥ 0; `src/proving-ground-labs.ts` finds an isles section by biome. Nested normalisers spread their input first (far-realms, questing-beast, world-beasts, glyphs, echoes, constellation, far-array, hometowns, transit-lattice, travelers, ascendancy, linked-dungeons, crimson-dragon; codex kept in `migrateLegacySave`; the atlas rebuild spreads the previous entry). `sanitizeSaveShape` repairs `session.area`, clamps positions, maps an `explored` list and clamps history counts; the XP limits rise to 1e300. Tests: `tests/player-resume-fixes.test.ts`.
+
+**BOUNDARY:** Schema 14; `clocks` and `rite` additive (older saves load as before). Unknown Echo and far-quest ids are still dropped (existing tests require it); only unknown fields are kept. Dodge has no cooldown; active Arcanum buffs (e.g. Aerial Step) still carry through death. A rite broken by leaving or dying stays spent.
+
 ## Release 739: combat balance — 2026-11-04
 
 Tim, 2026-11-04 (after the full-game review): world bosses are right in the endgame ("2 to 3 hits and you're dead, by design") but should be lower scaled before ring 150; ordinary and dungeon monsters are trivial and should take a few hits and matter; better gear and stats must keep mitigating past 45%; a spell build must be as viable as a Might build; Aperture a little slower (−20%); keep infinite dodge and potions without cooldown; never lower his own damage.

@@ -20,7 +20,7 @@ export function ensureDragonLava(save) {
   const raw = save?.dragonLava, out = {};
   if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const [k, r] of Object.entries(raw).slice(-DRAGON_LAVA.maxSections)) {
     if (!/^-?\d+,-?\d+$/.test(k) || !r || typeof r !== "object") continue;
-    out[k] = { casts: Math.max(0, Math.min(DRAGON.colonize.casts, Math.floor(Number(r.casts) || 0))), nextAt: Number.isFinite(Number(r.nextAt)) ? Number(r.nextAt) : null,
+    out[k] = { ...r, casts: Math.max(0, Math.min(DRAGON.colonize.casts, Math.floor(Number(r.casts) || 0))), nextAt: Number.isFinite(Number(r.nextAt)) ? Number(r.nextAt) : null,
       tiles: (Array.isArray(r.tiles) ? r.tiles : []).filter((i) => Number.isInteger(i) && i >= 0 && i < 1024).slice(0, 1024) };
   }
   if (save) save.dragonLava = out;
