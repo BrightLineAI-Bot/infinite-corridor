@@ -102,7 +102,7 @@ function drawGloomwisp(ctx, q) {
 // tapering out of the body into long hooked claws that fade at their roots.
 function drawGloomgorge(ctx, q) {
   const { k, b, u, t, flip } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, act = q.state === "attack" ? 1 : 0;
-  const bob = Math.sin(t * 1.6) * u * .035, cx = k, cy = b - u * .62 + bob, W = u * .6, H = u * .5, TAU = Math.PI * 2;
+  const bob = Math.sin(t * 1.6) * u * .035, cx = k, cy = b - u * .62 + bob, W = u * .68, H = u * .52, TAU = Math.PI * 2; // fat
   const rgba = (hex, a) => { const n = parseInt(hex.slice(1, 7), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`; };
   const spikes = [1.18, 1.34, 1.5, 1.66, 1.82].map((f) => f * Math.PI);
   // the outline: an ellipse that breathes and wavers, spines rising off its back, a ragged fringe of smoke below
@@ -122,13 +122,17 @@ function drawGloomgorge(ctx, q) {
     const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, rgba(deep, 0)); g.addColorStop(.35, rgba(deep, .85)); g.addColorStop(1, rgba(dark, .95)); ctx.fillStyle = g;
     const mx = (x0 + x1) / 2, my2 = (y0 + y1) / 2 + Math.hypot(x1 - x0, y1 - y0) * .18; // a slack elbow, hanging
     ctx.beginPath(); ctx.moveTo(x0 + px * w0, y0 + py * w0); ctx.quadraticCurveTo(mx + px * w0 * .9, my2 + py * w0 * .9, x1 + px * w0 * .35, y1 + py * w0 * .35); ctx.lineTo(x1 - px * w0 * .35, y1 - py * w0 * .35); ctx.quadraticCurveTo(mx - px * w0 * .9, my2 - py * w0 * .9, x0 - px * w0, y0 - py * w0); ctx.closePath(); ctx.fill();
-    const dx = (x1 - x0) / (Math.hypot(x1 - x0, y1 - y0) || 1), dy = (y1 - y0) / (Math.hypot(x1 - x0, y1 - y0) || 1); ctx.lineCap = "round";
-    for (let i = -1; i <= 1; i++) { const bx = x1 + px * w0 * .3 * i, by = y1 + py * w0 * .3 * i, ex = bx + (dx + px * i * .25) * reach, ey = by + (dy + py * i * .25) * reach, hx = ex + side * reach * .25, hy = ey + reach * .3;
-      const cg = ctx.createLinearGradient(bx, by, hx, hy); cg.addColorStop(0, rgba("#d8c8ff", .15)); cg.addColorStop(1, rgba("#f6f0ff", .9)); ctx.strokeStyle = cg; ctx.lineWidth = Math.max(1, u * .035 * (1 - Math.abs(i) * .25));
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(ex, ey, hx, hy); ctx.stroke(); } ctx.lineCap = "butt"; };
-  for (const side of [-1, 1]) { const lx = cx + side * W * .45; limb(lx, cy + H * .95, lx + side * u * .1, b - u * .08, u * .08, side, u * .14); } // legs, coming out of the smoke
+    const L1 = Math.hypot(x1 - x0, y1 - y0) || 1, dx = (x1 - x0) / L1, dy = (y1 - y0) / L1;
+    // claws: three short hooked talons, thick at the root and dark there, curving to a hard pale point
+    for (let i = -1; i <= 1; i++) { const spread = i * .42, cdx = dx * Math.cos(spread) - dy * Math.sin(spread), cdy = dx * Math.sin(spread) + dy * Math.cos(spread), len = reach * (i ? .78 : 1);
+      const bx = x1 + px * w0 * .42 * i, by = y1 + py * w0 * .42 * i, bw = w0 * .34, nx2 = -cdy, ny2 = cdx, hook = side * (dx >= 0 ? 1 : -1);
+      const tx = bx + cdx * len + nx2 * len * .35 * hook, ty = by + cdy * len + ny2 * len * .35 * hook + len * .2; // the point turns down and in
+      const g = ctx.createLinearGradient(bx, by, tx, ty); g.addColorStop(0, rgba(deep, .95)); g.addColorStop(.45, rgba("#cbb8f0", .95)); g.addColorStop(1, rgba("#fbf8ff", 1)); ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(bx + nx2 * bw, by + ny2 * bw); ctx.quadraticCurveTo(bx + cdx * len * .7 + nx2 * bw * .9, by + cdy * len * .7 + ny2 * bw * .9, tx, ty); ctx.quadraticCurveTo(bx + cdx * len * .45 - nx2 * bw * .2, by + cdy * len * .45 - ny2 * bw * .2, bx - nx2 * bw, by - ny2 * bw); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = rgba("#ffffff", .35); ctx.lineWidth = Math.max(.6, u * .008); ctx.beginPath(); ctx.moveTo(bx + cdx * len * .3 + nx2 * bw * .5, by + cdy * len * .3 + ny2 * bw * .5); ctx.quadraticCurveTo(bx + cdx * len * .7 + nx2 * bw * .6, by + cdy * len * .7 + ny2 * bw * .6, tx, ty); ctx.stroke(); } };
+  for (const side of [-1, 1]) { const lx = cx + side * W * .45; limb(lx, cy + H * .95, lx + side * u * .1, b - u * .08, u * .085, side, u * .09); } // legs, coming out of the smoke
   const swing = act ? Math.sin(t * 16) * .5 : wind ? -.6 : Math.sin(t * 1.7) * .15;
-  for (const side of [-1, 1]) { const lead = side === flip, sx = cx + side * W * .92, sy = cy - H * .02, ax = sx + side * u * (.42 + (lead ? swing * .12 : 0)), ay = sy + u * (.16 - (lead ? swing * .3 : 0)); limb(sx, sy, ax, ay, u * .09, side, u * .2); } // arms
+  for (const side of [-1, 1]) { const lead = side === flip, sx = cx + side * W * .92, sy = cy - H * .02, ax = sx + side * u * (.42 + (lead ? swing * .12 : 0)), ay = sy + u * (.16 - (lead ? swing * .3 : 0)); limb(sx, sy, ax, ay, u * .095, side, u * .11); } // arms
   // the body: dark at its heart, a rim of light where it meets this world, thinning to smoke below the waist
   outline(0, 0, 1, 0); ctx.fillStyle = fade(deep, .92); ctx.fill();
   ctx.save(); outline(0, 0, 1, 0); ctx.clip();
@@ -137,18 +141,25 @@ function drawGloomgorge(ctx, q) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, z); g.addColorStop(0, rgba(glow, .1)); g.addColorStop(1, rgba(glow, 0)); ctx.fillStyle = g; ctx.fillRect(x - z, y - z, z * 2, z * 2); }
   { const g = ctx.createLinearGradient(0, cy + H * .2, 0, cy + H * 1.6); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, rgba(glow, .18)); ctx.fillStyle = g; ctx.fillRect(cx - W * 1.6, cy + H * .2, W * 3.2, H * 1.5); } // the smoke catches a little light
   // the face, set into the dark rather than on it
-  const ey = cy - H * .3, lit = .85 + .15 * Math.sin(t * 5.3) * Math.sin(t * 1.3);
+  // a brow of deeper dark over the eyes, so they glare out of a hollow
+  { const g = ctx.createLinearGradient(0, cy - H * .62, 0, cy - H * .12); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(.6, "rgba(6,2,12,.45)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy - H * .32, W * .72, H * .3, 0, 0, TAU); ctx.fill(); }
+  const ey = cy - H * .34, lit = .85 + .15 * Math.sin(t * 5.3) * Math.sin(t * 1.3);
   for (const side of [-1, 1]) { const ex = cx + side * W * .3 + flip * W * .05;
     const halo = ctx.createRadialGradient(ex, ey, 0, ex, ey, W * .3); halo.addColorStop(0, rgba(eye, .45 * lit + wind * .2)); halo.addColorStop(1, rgba(eye, 0)); ctx.fillStyle = halo; ctx.fillRect(ex - W * .32, ey - W * .32, W * .64, W * .64);
-    const ox = ex + side * W * .2, ix = ex - side * W * .17; ctx.fillStyle = rgba(eye, .95 * lit); ctx.beginPath(); ctx.moveTo(ox, ey - H * .15); ctx.lineTo(ix, ey + H * .01); ctx.quadraticCurveTo(ex - side * W * .02, ey + H * .13, ox, ey - H * .03); ctx.closePath(); ctx.fill(); // slanted down to the middle: it means you harm
+    const ox = ex + side * W * .22, ix = ex - side * W * .17; ctx.fillStyle = rgba(eye, .95 * lit); ctx.beginPath(); ctx.moveTo(ox, ey - H * .17); ctx.lineTo(ix, ey + H * .02); ctx.quadraticCurveTo(ex - side * W * .02, ey + H * .15, ox, ey - H * .03); ctx.closePath(); ctx.fill(); // slanted down to the middle: it means you harm
     ctx.fillStyle = "rgba(40,8,24,.85)"; ctx.beginPath(); ctx.ellipse(ex + flip * W * .02 + side * W * .02, ey - H * .03, W * .02, H * .065, 0, 0, TAU); ctx.fill(); }
-  const open = act ? .75 : wind ? .55 : .18 + .05 * Math.sin(t * 2.1), my = cy + H * .1, mw = W * .7, mh = H * (.12 + open * .42);
-  const gash = () => { ctx.beginPath(); ctx.moveTo(cx - mw, my - H * .04); ctx.bezierCurveTo(cx - mw * .5, my + mh * .2, cx + mw * .5, my + mh * .2, cx + mw, my - H * .04); ctx.bezierCurveTo(cx + mw * .45, my + mh * 1.25, cx - mw * .45, my + mh * 1.25, cx - mw, my - H * .04); ctx.closePath(); };
-  gash(); { const g = ctx.createRadialGradient(cx, my + mh * .6, 0, cx, my + mh * .5, mw); g.addColorStop(0, rgba(glow, .35 + open * .3)); g.addColorStop(.45, "rgba(18,4,16,.95)"); g.addColorStop(1, "rgba(8,2,10,.95)"); ctx.fillStyle = g; ctx.fill(); }
-  ctx.save(); gash(); ctx.clip(); ctx.fillStyle = "rgba(240,232,255,.8)";
-  for (let i = 0; i < 9; i++) { const f = (i + .5) / 9, tx = cx - mw + f * mw * 2, ty = my - H * .04 + Math.sin(f * Math.PI) * mh * .2, tw = W * .03 * (1 - Math.abs(f - .5)); ctx.beginPath(); ctx.moveTo(tx - tw, ty - 1); ctx.lineTo(tx + tw, ty - 1); ctx.lineTo(tx, ty + H * (.08 + .05 * Math.sin(f * Math.PI))); ctx.fill(); } // teeth from above
-  for (let i = 0; i < 7; i++) { const f = (i + .5) / 7, tx = cx - mw * .8 + f * mw * 1.6, ty = my - H * .04 + Math.sin(f * Math.PI) * mh * 1.05, tw = W * .025 * (1 - Math.abs(f - .5)); ctx.beginPath(); ctx.moveTo(tx - tw, ty + 1); ctx.lineTo(tx + tw, ty + 1); ctx.lineTo(tx, ty - H * .07); ctx.fill(); } // and below
+  // the grin: wide, curling up toward the cheeks, deep when it opens, lit from somewhere far down the throat
+  const open = act ? .75 : wind ? .55 : .2 + .05 * Math.sin(t * 2.1), my = cy + H * .12, mw = W * .86, mh = H * (.16 + open * .45), lift = H * .2;
+  const gash = () => { ctx.beginPath(); ctx.moveTo(cx - mw, my - lift); ctx.bezierCurveTo(cx - mw * .55, my + mh * .05, cx + mw * .55, my + mh * .05, cx + mw, my - lift); ctx.bezierCurveTo(cx + mw * .55, my + mh * 1.35, cx - mw * .55, my + mh * 1.35, cx - mw, my - lift); ctx.closePath(); };
+  gash(); { const g = ctx.createRadialGradient(cx, my + mh * .7, 0, cx, my + mh * .55, mw * .9); g.addColorStop(0, rgba(glow, .45 + open * .3)); g.addColorStop(.4, "rgba(22,4,18,.97)"); g.addColorStop(1, "rgba(6,1,8,.98)"); ctx.fillStyle = g; ctx.fill(); }
+  const upper = (f) => my - lift + (1 - Math.pow(2 * f - 1, 2)) * (lift + mh * .05) * .98, lower = (f) => my - lift + (1 - Math.pow(2 * f - 1, 2)) * (lift + mh * 1.02);
+  ctx.save(); gash(); ctx.clip();
+  for (let i = 0; i < 13; i++) { const f = (i + .5) / 13, tx = cx - mw + f * mw * 2, ty = upper(f), mid = 1 - Math.abs(f - .5) * 1.4, tw = W * .045 * mid, th = H * (.09 + .1 * mid) * (i % 2 ? .75 : 1); // jagged teeth from above
+    const g = ctx.createLinearGradient(tx, ty, tx, ty + th); g.addColorStop(0, "rgba(200,190,220,.9)"); g.addColorStop(1, "rgba(250,246,255,.95)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(tx - tw, ty - 2); ctx.lineTo(tx + tw, ty - 2); ctx.lineTo(tx + tw * .15, ty + th); ctx.closePath(); ctx.fill(); }
+  for (let i = 0; i < 10; i++) { const f = (i + .5) / 10 * .84 + .08, tx = cx - mw + f * mw * 2, ty = lower(f), mid = 1 - Math.abs(f - .5) * 1.4, tw = W * .04 * mid, th = H * (.08 + .08 * mid) * (i % 2 ? .8 : 1); // and from below
+    const g = ctx.createLinearGradient(tx, ty, tx, ty - th); g.addColorStop(0, "rgba(190,180,215,.85)"); g.addColorStop(1, "rgba(250,246,255,.95)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(tx - tw, ty + 2); ctx.lineTo(tx + tw, ty + 2); ctx.lineTo(tx - tw * .15, ty - th); ctx.closePath(); ctx.fill(); }
   ctx.restore();
+  ctx.strokeStyle = rgba(glow, .22); ctx.lineWidth = Math.max(1, u * .012); gash(); ctx.stroke(); // its lips catch the rim light
   ctx.restore(); // the body's clip
   ctx.strokeStyle = rgba(glow, .16); ctx.lineWidth = Math.max(1, u * .012); outline(0, 0, 1, 0); ctx.stroke(); // the edge where it is not quite here
   for (let i = 0; i < 10; i++) { const life = (t * .35 + i / 10) % 1, x = cx + Math.sin(i * 7.3 + t * .8) * W * .9, y = cy - H * .2 - life * u * .9; ctx.fillStyle = rgba(glow, .5 * (1 - life) * Math.min(1, life * 4)); ctx.beginPath(); ctx.arc(x, y, u * (.012 + .012 * (1 - life)), 0, TAU); ctx.fill(); } // motes rising off it
