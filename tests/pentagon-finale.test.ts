@@ -10,6 +10,7 @@ import { Game } from '../src/game.ts';
 import { render } from '../src/renderer.ts';
 import { LANDSCAPE_VERSION } from '../src/landscape.ts';
 import { serializeSave, deserializeSave } from '../src/persistence.ts';
+import { pentagonArenaId } from '../src/pentagon-arena.ts';
 import { PENTAGON, pentagonPlan, generatePentagonChamber, pentagonLinkEnds, pentagonVaultId, pentagonFinaleSpot, pentagonFinaleId, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFrontDoor, isPentagonId } from '../src/pentagon.ts';
 
 const SEED = 'TIM1', F = PENTAGON.finale, N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -24,6 +25,8 @@ const opening = (g) => g.map.objects.find((o) => o.kind === 'pentFinaleWall');
 const act = (g, o, a) => { assert.ok(o, a); g.player.x = o.inner ? o.inner.x : o.x; g.player.y = o.inner ? o.inner.y : o.y + (o.kind === 'pentDais' ? 1 : 0); return g.interact(a, o.id); };
 // every walkable tile reached from `from` on foot (4-neighbour, base movement: no swimming, gliding or robot)
 const flood = (m, from) => { const W = m.width, seen = new Set([from.y * W + from.x]), st = [from]; while (st.length) { const c = st.pop(); for (const [dx, dy] of N4) { const x = c.x + dx, y = c.y + dy, t = m.tiles[y * W + x]; if (x < 0 || y < 0 || x >= W || y >= m.height || !t || t.blocked || seen.has(y * W + x)) continue; seen.add(y * W + x); st.push({ x, y }); } } return seen; };
+// From release 751 the opened wall leads through the Stillworks first (tests/pentagon-finale-arena.test.ts): fell its beast, then take the seam on to the walkway.
+const walkOn = (g) => { let r = act(g, opening(g), 'use'); if (g.map.pentArena) { const b = g.enemies.find((e) => e.pentFinaleBeast && !e.dead); if (b) { b.hp = 0; b.dead = true; g.defeatEnemy(b); } r = act(g, g.map.objects.find((q) => q.kind === 'pentArenaGate' && q.to === 'walk'), 'use'); } return r; };
 const touchable = (m, seen, o) => [...seen].some((k) => Math.hypot((k % m.width) - o.x, Math.floor(k / m.width) - o.y) < 1.5);
 
 // ------------------------------------------------------------------------------------------------ pure: the walkway, the spot
@@ -76,14 +79,14 @@ test('the opening appears only once the Regent falls: then the wall opens with a
   assert.ok(g.questNotices.some((q) => q.title === F.notice), 'the notice'); assert.ok(g.shortcutBurst && g.shortcutBurst.x === o.x && g.shortcutBurst.y === o.y, 'a burst where it opened');
   assert.ok(g.save.narrative.journal.some((j) => j.text === F.messages.opens), 'journalled');
   assert.deepEqual(g.map.tiles, raw.tiles, 'no tile changes: an object laid on the wall'); assert.ok(g.map.tiles[o.y * g.map.width + o.x].blocked);
-  assert.equal(o.toId, pentagonFinaleId(P.base));
+  assert.equal(o.toId, pentagonArenaId(P.base), 'through the Stillworks first (release 751)');
   const n = g.questNotices.length; g.loadArea('dungeon', false); assert.ok(opening(g)); assert.equal(g.questNotices.length, n, 'told once');
   assert.deepEqual([opening(g).x, opening(g).y], [o.x, o.y], 'the same spot');
 });
 
 test('through the wall: the walkway among the stars, quiet; the dais reads Transit and sets you down outside the front door, walkable, and nowhere else', () => {
   const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, PENTAGON.version); loadVault(g, P); fell(g);
-  const r = act(g, opening(g), 'use'); assert.ok(r.ok, r.message); assert.equal(g.areaId(), pentagonFinaleId(P.base)); assert.equal(g.area, 'dungeon');
+  const r = walkOn(g); assert.ok(r.ok, r.message); assert.equal(g.areaId(), pentagonFinaleId(P.base)); assert.equal(g.area, 'dungeon');
   assert.equal(r.message, F.messages.walk); assert.ok(g.map.chasm && g.map.pentFinale, 'the Starfield look');
   const t = g.map.tiles[Math.round(g.player.y) * g.map.width + Math.round(g.player.x)]; assert.ok(t && !t.blocked, 'on the walkway');
   assert.equal(g.enemies.filter((e) => !e.dead).length, 0, 'no foes'); assert.deepEqual(g.map.objects.map((o) => o.kind).sort(), ['pentDais', 'pentFinaleWall'], 'nothing else laid there');
@@ -96,15 +99,16 @@ test('through the wall: the walkway among the stars, quiet; the dais reads Trans
   const ok = flood({ ...g.map, width: 32, height: 32 }, { x: Math.round(g.player.x), y: Math.round(g.player.y) }); assert.ok([...ok].some((k) => Math.hypot((k % 32) - gate.x, Math.floor(k / 32) - gate.y) < 1.5), 'the gate within reach');
   // and the same dais in another Pentagon takes you to that one's door
   const g2 = game('S17'); let at2 = null; for (let x = -64; x <= 64 && !at2; x += PENTAGON.every) for (let y = -64; y <= 64 && !at2; y += PENTAGON.every) if (g2.pentagonHere(x, y)) at2 = { cx: x, cy: y };
-  if (at2) { const Q = pentagonPlan('S17', at2.cx, at2.cy, PENTAGON.version); loadVault(g2, Q); fell(g2); act(g2, opening(g2), 'use'); act(g2, g2.map.objects.find((o) => o.kind === 'pentDais'), 'transit'); const d2 = pentagonFrontDoor(Q); assert.deepEqual([g2.rx, g2.ry], [d2.rx, d2.ry]); }
+  if (at2) { const Q = pentagonPlan('S17', at2.cx, at2.cy, PENTAGON.version); loadVault(g2, Q); fell(g2); walkOn(g2); act(g2, g2.map.objects.find((o) => o.kind === 'pentDais'), 'transit'); const d2 = pentagonFrontDoor(Q); assert.deepEqual([g2.rx, g2.ry], [d2.rx, d2.ry]); }
 });
 
 test('the way back from the walkway leads into the vault beside its opened wall; the walk is repeatable and journals once', () => {
   const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, PENTAGON.version); loadVault(g, P); fell(g); const o = opening(g);
-  act(g, o, 'use'); const back = g.map.objects.find((q) => q.kind === 'pentFinaleWall'); const r = act(g, back, 'use'); assert.ok(r.ok, r.message);
+  walkOn(g); const back = g.map.objects.find((q) => q.kind === 'pentFinaleWall'); act(g, back, 'use'); assert.equal(g.areaId(), pentagonArenaId(P.base), 'back into the Stillworks');
+  const r = act(g, g.map.objects.find((q) => q.kind === 'pentArenaGate' && q.to === 'vault'), 'use'); assert.ok(r.ok, r.message);
   assert.equal(g.areaId(), pentagonVaultId(P)); assert.ok(Math.hypot(g.player.x - o.inner.x, g.player.y - o.inner.y) < 1.5, 'beside the wall'); assert.ok(!regent(g) || regent(g).dead, 'the Regent stays down');
-  act(g, opening(g), 'use'); act(g, g.map.objects.find((q) => q.kind === 'pentDais'), 'transit'); assert.equal(g.area, 'overworld');
-  loadVault(g, P); act(g, opening(g), 'use'); act(g, g.map.objects.find((q) => q.kind === 'pentDais'), 'transit'); assert.equal(g.area, 'overworld');
+  walkOn(g); act(g, g.map.objects.find((q) => q.kind === 'pentDais'), 'transit'); assert.equal(g.area, 'overworld');
+  loadVault(g, P); walkOn(g); act(g, g.map.objects.find((q) => q.kind === 'pentDais'), 'transit'); assert.equal(g.area, 'overworld');
   for (const text of [F.messages.opens, F.messages.walk, F.messages.arrive]) assert.equal(g.save.narrative.journal.filter((j) => j.text === text).length, 1, text);
   assert.ok(!g.save.narrative.journal.some((j) => /You left/.test(j.text) && /finale/.test(j.recordId || '')), 'not a crossing left unexplored');
 });
@@ -113,7 +117,7 @@ test('persistent: the opening survives a reload, a death; exact resume on the wa
   const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, PENTAGON.version); loadVault(g, P); fell(g); const o = opening(g);
   const h = game(SEED, migrateSave(JSON.parse(JSON.stringify(g.save)))); loadVault(h, P); assert.ok(opening(h), 'kept through a reload'); assert.deepEqual([opening(h).x, opening(h).y], [o.x, o.y]);
   h.player.hp = 0; h.recoverFromDeath(0); loadVault(h, P); assert.ok(opening(h), 'kept through a death'); assert.equal(H(h, P).pentFinale, F.version);
-  act(h, opening(h), 'use'); const dais = h.map.objects.find((q) => q.kind === 'pentDais'); h.player.x = dais.x - 3; h.player.y = dais.y; const at = [h.player.x, h.player.y], id = h.areaId();
+  walkOn(h); const dais = h.map.objects.find((q) => q.kind === 'pentDais'); h.player.x = dais.x - 3; h.player.y = dais.y; const at = [h.player.x, h.player.y], id = h.areaId();
   const r = new Game(deserializeSave(serializeSave(h.exportSnapshot(300))), 900); assert.equal(r.area, 'dungeon'); assert.equal(r.areaId(), id); assert.deepEqual([r.player.x, r.player.y], at, 'the same spot');
   assert.ok(r.map.pentFinale && r.map.objects.some((q) => q.kind === 'pentDais'));
   const t = act(r, r.map.objects.find((q) => q.kind === 'pentDais'), 'transit'); assert.ok(t.ok); assert.deepEqual([r.rx, r.ry], [pentagonFrontDoor(P).rx, pentagonFrontDoor(P).ry]);
@@ -133,7 +137,7 @@ test('old journeys: a Pentagon whose Regent fell before this release gets the op
     assert.deepEqual(h.map.tiles, generatePentagonChamber(SEED, pentagonVaultId(P)).tiles, `v${V}: tiles as generated`); assert.deepEqual(h.map.tiles, k.map.tiles);
     const still = (q) => q.kind !== 'traveler' && q.kind !== 'pentFinaleWall'; assert.deepEqual(h.map.objects.filter(still), k.map.objects.filter(still), `v${V}: every other object where it was`);
     assert.deepEqual(h.map.enemySpawns, k.map.enemySpawns);
-    act(h, opening(h), 'use'); assert.equal(h.areaId(), pentagonFinaleId(P.base)); act(h, h.map.objects.find((q) => q.kind === 'pentDais'), 'transit'); assert.deepEqual([h.rx, h.ry], [pentagonFrontDoor(P).rx, pentagonFrontDoor(P).ry]); }
+    walkOn(h); assert.equal(h.areaId(), pentagonFinaleId(P.base)); act(h, h.map.objects.find((q) => q.kind === 'pentDais'), 'transit'); assert.deepEqual([h.rx, h.ry], [pentagonFrontDoor(P).rx, pentagonFrontDoor(P).ry]); }
 });
 
 test('an old Pentagon whose Regent still stands gets nothing until he falls', () => {

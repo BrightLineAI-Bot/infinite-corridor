@@ -21,6 +21,7 @@ import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell } from "./monster-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
 import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
@@ -421,6 +422,7 @@ function drawCloudTile(ctx, t, x, y, s, tiles, w) {
 }
 function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
   if (t?.kind === "voidScar") { drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,scarSurface); return; }
+  if (drawStillworksTile(ctx, t, x, y, s)) return; // the Stillworks (pentagon-arena-render.ts): cached sprites per band and edge
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
   if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
   if (t?.chasm) { drawStarChasm(ctx, t, x, y, s); if (t.kind === "starShard") drawStarShard(ctx, t, x, y, s); return; } // release 593; the Pentagon's finale: a stone adrift
@@ -2099,6 +2101,7 @@ export function render(ctx, g, w, h, now) {
   const viewLift = g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
+  if (g.area === "dungeon" && g.map?.stillworks) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
   const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
     const animated = render.animatedTiles || (render.animatedTiles = []), glitter = render.chasmGlitter || (render.chasmGlitter = []); animated.length = 0; glitter.length = 0;
@@ -2119,6 +2122,7 @@ export function render(ctx, g, w, h, now) {
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId, scarSurface);
     }
   drawVoidScarOverlay(ctx,g,s,mw,mh,{l,t,r,b},scarSurface);
+  if (g.area === "dungeon" && g.map?.stillworks) drawStillworksLight(ctx, g, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // its great order, the heart's figure, the light falling inward, the counting in the grain
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0;
@@ -2246,6 +2250,7 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentShortcut") drawPentShortcut(ctx, o, s, now); // and its shortcut links (v6)
           else if (o.kind === "pentFinaleWall") drawPentFinaleWall(ctx, o, s, now); // the finale's opened wall
           else if (o.kind === "pentDais") drawPentDais(ctx, o, s, now); // and its dais
+          else if (o.kind === "stillMonolith" || o.kind === "pentArenaGate") drawStillworksObject(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the Stillworks' standing lattices and gates
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {

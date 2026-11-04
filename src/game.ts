@@ -97,6 +97,7 @@ import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyr
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { TESSERACTS, grantTesseract } from "./tesseracts.ts";
+import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor } from "./pentagon.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -104,7 +105,7 @@ import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
-import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
+import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, isPackKind, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { DIG, isInteriorArea, markWalked, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot, addStone } from "./digging.ts";
@@ -272,6 +273,7 @@ export function pinDungeonLayout(save, id) {
   // Release 289: the Watcher's sigil and tombs only in dungeons first entered from now on.
   if (history.watcherVersion === undefined) history.watcherVersion = visited() ? 0 : WATCHER.version;
   // Relay Network: decided once, before the first visit; crossings entered before this release never gain a relay.
+  if ((isPentagonFinaleId(id) || isPentagonArenaId(id)) && history.relayNode === undefined) history.relayNode = false; // the Pentagon's finale (its arena and its walkway) holds no relay node, decided before the first visit pins one
   relayNodeDecision(save, id, history, `dungeon:${save.seed}:g${save.worldGeneration}`);
   return history;
 }
@@ -304,7 +306,7 @@ function interiorVersion(save, id, history, fresh) {
   history.interiorVersion = v; return v;
 }
 export function generatePinnedDungeon(save, id, options = {}) {
-  if (isPentagonFinaleId(id)) { const h = dungeonHistory(save, id); if (h.relayNode === undefined) h.relayNode = false; } // the Pentagon's finale is a quiet place: no relay node (nor bells, pages, threads, margins or wanderers: loadArea)
+  if (isPentagonFinaleId(id) || isPentagonArenaId(id)) { const h = dungeonHistory(save, id); if (h.relayNode === undefined) h.relayNode = false; } // the Pentagon's finale is a quiet place: no relay node (nor bells, pages, threads, margins or wanderers: loadArea)
   const history = pinDungeonLayout(save, id), canonical = `dungeon:${save.seed}:g${save.worldGeneration}`;
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
   const fresh = history.generatorVersion === undefined && id !== canonical && !save.session.areas[id];
@@ -334,6 +336,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
   else if (isPentagonFinaleId(id)) { map = generatePentagonFinale(save.seed, id); history.gatePredatorSpawnThreshold = 0; } // the Pentagon's finale: a walk among the stars (PENTAGON.finale)
+  else if (isPentagonArenaId(id)) { map = pentagonArenaIn(save, id); history.gatePredatorSpawnThreshold = 0; } // the Pentagon's finale arena, before the walk (pentagon-arena.ts)
   else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id) || isPentagonId(id)) { map = isPentagonId(id) ? labyrinthState(save, generatePentagonChamber(save.seed, id)) : isCastleId(id) ? generateCastleFloor(save.seed, id, iv) : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id, iv)) : isCompoundId(id) ? generateCompoundFloor(save.seed, id, iv) : generateBuildingFloor(save.seed, id, iv); history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
   else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); if (fresh && history.canyonGenerator === undefined) history.canyonGenerator = CANYON.generator; map = generateCanyon(save.seed, id, c.drilled, c.strained, history.canyonGenerator || 1); } // Canyon craters; release 735: generator 2 for craters first entered from now on
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
@@ -347,6 +350,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.deepAnnex) { const f = history.deepAnnex.floor; map.annexFloor = { floor: f, of: DEEP_ANNEX.floors }; map.annexName = `${DEEP_ANNEX.name} · Floor ${f}`; } // release 675
   if (isPentagonId(id) && map?.building?.pentagon) pentagonLinksIn(save, id, map); // the Pentagon's shortcut links (v6; laid over one begun before)
   if (isPentagonId(id) && map?.building?.pentagon && map.building.vault) pentagonFinaleIn(save, id, map); // the finale: the vault's opened wall, once the Regent has fallen
+  if (isPentagonFinaleId(id) && map) pentagonWalkBackIn(save, map); // a walkway reached through the arena leads back to it
   if (interior) addRoofExit(save, id, map, history); // release 746: the vault's roof exit, laid over the floor (never into its tiles)
   return map;
 }
@@ -368,7 +372,34 @@ function pentagonFinaleIn(save, id, map, force = false) {
   if ((!force && !dungeonHistory(save, `${map.building.base}:f1`).pentFinale) || map.objects.some((o) => o.kind === "pentFinaleWall")) return null;
   const raw = generatePentagonChamber(save.seed, id), keep = map.objects.filter((o) => o.kind === "pentShortcut");
   const spot = pentagonFinaleSpot({ ...map, id, objects: [...(raw?.objects || []), ...keep], enemySpawns: [...(raw?.enemySpawns || [])] });
-  if (!spot) return null; const o = pentagonFinaleWall(map.building.base, spot); map.objects.push(o); return o;
+  if (!spot) return null; const o = pentagonFinaleWall(map.building.base, spot);
+  if (dungeonHistory(save, `${map.building.base}:f1`).pentArena) Object.assign(o, { toId: pentagonArenaId(map.building.base), name: PENTAGON_ARENA.names.gateIn }); // the way leads through the arena first
+  map.objects.push(o); return o;
+}
+// The Pentagon's finale arena (pentagon-arena.ts), from release 751: a Pentagon whose wall opens from now on records `pentArena` on
+// its base floor's history and its wall leads here first; the beast is picked once and pinned (`pentArenaBeast`), and once it has
+// fallen (`pentArenaWon`) it is not laid again and the seam stands open. A Pentagon whose walkway opened before keeps its way.
+export function pentagonArenaBeast(save, base) {
+  const H = dungeonHistory(save, `${base}:f1`), kept = pentagonArenaRow(H.pentArenaBeast);
+  if (kept && pentagonArenaRoster(isPackKind).includes(kept)) return kept;
+  const row = pentagonArenaPick(save.seed, base, isPackKind); if (row) H.pentArenaBeast = row.id; return row;
+}
+// The finale beast's vitals (pentagon-arena.ts pentagonArenaVitals): the world beast's, measured against the Wayfarer as they stand,
+// times its row; `regional` is the beast ramp (ring 100 to 150), which takes over only where it is higher. No hunt, tries, retreat or
+// pursuit: it is not the roaming beast (`worldBeast` is never set), only its kin, and it keeps to the Stillworks.
+export function tunePentagonArenaBeast(c, id, save, stats, regional) {
+  const row = pentagonArenaRow(id), v = row && pentagonArenaVitals(row, save, stats, regional); if (!v) return c;
+  Object.assign(c, { pentFinaleBeast: id, boss: true, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: v.staggerResistance, speedMultiplier: v.speed, attackGap: v.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true,
+    threatRing: regional?.ring ?? 0, xpMultiplier: Math.max(1, Number(regional?.xpMultiplier) || 1), packName: row.name || (row.beast && WORLD_BEASTS[row.beast]?.name) || MONSTER_PACK[c.kind]?.name || c.packName, pentArenaTuning: PENTAGON_ARENA.version });
+  delete c.worldBeast; delete c.minimumAttackWindup; return c;
+}
+function pentagonArenaIn(save, id) {
+  const P = parsePentagonArenaId(id); if (!P) return null; const H = dungeonHistory(save, `${P.base}:f1`), map = generatePentagonArena(save.seed, id, pentagonArenaBeast(save, P.base));
+  if (H.pentArenaWon) map.enemySpawns = []; return map;
+}
+function pentagonWalkBackIn(save, map) {
+  const base = map.building?.base; if (!base || !dungeonHistory(save, `${base}:f1`).pentArena) return;
+  const back = map.objects.find((o) => o.kind === "pentFinaleWall" && o.back); if (back) Object.assign(back, { toId: pentagonArenaId(base), name: PENTAGON_ARENA.names.walkBack, lore: PENTAGON_ARENA.messages.walkBack, toArena: true });
 }
 // Release 746 (Tim, 2026-11-04: "there should always be an exit to the roof"): which roof exit a vault floor has, if any.
 // { part, rx, ry, roof } or null. Whether the building has a roof to come out on is recorded by the door you came in by
@@ -655,6 +686,7 @@ export function ordinaryThreat(ring) {
 export function wayfarerTuned(e) { return !!(e.worldBeast || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast); }
 // The one regional scaling of a fresh foe (scaleFresh, and foes made later in the same ground). A beast keeps its share of health.
 export function regionalScale(e, q) {
+  if (e.pentFinaleBeast) { e.threatRing = q.ring; e.xpMultiplier = q.xpMultiplier; return e; } // the Stillworks' beast took its regional ramp when it was made (tunePentagonArenaBeast)
   const beast = !!(e.worldBeast || e.questingBeast), m = beast ? beastRegionalThreat(q) : q, o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
   const share = beast && e.maxHp > 0 ? Math.max(0, Math.min(1, (Number(e.hp) || 0) / e.maxHp)) : 1;
   e.threatRing = q.ring;
@@ -2814,7 +2846,7 @@ export class Game {
           ai: { ...ensureAI(e), ...restored.ai },
         };
         if (restored.dungeonThreatTuningVersion === undefined) delete merged.dungeonThreatTuningVersion;
-        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.astralCompanionOf) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
+        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.astralCompanionOf && !merged.pentFinaleBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
         ensureAI(merged);
         resetPackRuntime(merged);
         if ((merged.worldBeast || merged.questingBeast) && restored.beastTuningVersion == null) {
@@ -2859,7 +2891,8 @@ export class Game {
       // floating treasure marker when the dungeon is loaded again.
       this.map.wallGlints = (this.map.wallGlints || []).filter(q => this.map.tiles[q.y * mapWidth(this.map, area) + q.x]?.blocked);
       if (this.map.objects?.some((o) => o.dir === "roofExit") && !this.roofExitGuarded()) this.openRoofExit(); // release 746: the vault reached with no guardian standing
-      if (this.map.building?.pentagon && this.map.building.vault && (!this.roofExitGuarded() || dungeonHistory(this.save, `${this.map.building.base}:f1`).regentGrade)) this.openPentagonFinale(); // the Pentagon's finale: the Regent fell (now, or in a journey before it: none stands, or v3+ recorded his fall), the wall stands open
+      if (this.map.building?.pentagon && this.map.building.vault && (!this.roofExitGuarded() || dungeonHistory(this.save, `${this.map.building.base}:f1`).regentGrade)) this.openPentagonFinale();
+      if (this.map.pentArena) this.pentagonArenaSync(); // the Stillworks: the seam as the history says // the Pentagon's finale: the Regent fell (now, or in a journey before it: none stands, or v3+ recorded his fall), the wall stands open
     }
     const ar=this.save.worldBeasts?.astralWorm?.active?.astralRetreat;
     if(ar&&astralRetreatSceneMatches(ar.scenes?.[ar.sceneKey],this)){const carried=astralRetreatSpawn(this.save.worldBeasts.astralWorm.active);if(carried){const existing=this.enemies.find(e=>e.worldBeast==='astralWorm');if(existing)Object.assign(existing,carried);else this.enemies.push(carried);ensureAI(existing||carried);}}
@@ -3731,6 +3764,7 @@ export class Game {
     if (o.kind === "pentShortcut") return this.pentagonShortcut(o); // the Pentagon's shortcut links (v6)
     if (o.kind === "pentFinaleWall") return this.pentagonFinaleWalk(o); // the finale's opened wall, either side
     if (o.kind === "pentDais") return this.pentagonTransit(o); // and its dais
+    if (o.kind === "pentArenaGate") return this.pentagonArenaGate(o); // the Stillworks' gates (pentagon-arena.ts)
     if (o.kind === "labKey") return this.takeLabKey(o); // a labyrinth's key
     if (o.kind === "pentRubble") { const m = (this.save.materials ||= {}); m.stone = Math.max(Number(m.stone) || 0, 10); setBuildKind(this.save, "stone"); this.message = `${PENTAGON.messages.rubble}: you have ${m.stone} stone, and a block is ready to build.`; this.sync(); return { ok: true, message: this.message }; } // enough for a block on the plate
     if (o.kind === "pentRelic") { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`); H.pentRelics = [...new Set([...(H.pentRelics || []), o.relic])]; o.state = "read"; this.message = `${o.lore} (${PENTAGON.messages.relic}: ${H.pentRelics.length} of ${PENTAGON.relics.length + (this.map.building.V >= 5 ? PENTAGON.sealedRelics.length : 0)})`; journalOnce(this.save, `pentagon-relic:${this.map.building.base}:${o.relic}`, o.lore, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; }
@@ -4085,6 +4119,7 @@ export class Game {
     if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
     // Gate predators have no rematches: a player death ends their hunt, without rewards.
     for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
+    if (this.area === "dungeon" && this.map?.pentArena) this.resetPentagonArena(); // the Stillworks: a death resets the fight (pentagon-arena.ts)
     // A failed attempt calms the beast and starts a fresh per-fight clock. Release 427 (Tim: "his health reset when I died...
     // make sure that the health doesn't reset when you die for the world bosses"): it keeps every wound you gave it (the
     // release-353 rule that a death heals it is retired); only its own death resets it. Tries and rewards are unchanged.
@@ -4736,6 +4771,7 @@ export class Game {
       walkerPatrol: (e, s) => game.walkWalkerRoute(e, s, dt),
       walkerRetreat: (e, s) => game.walkWalkerRoute(e, s, dt, true),
       consumeVoidTerrain(e, center, radius) {
+        if (map.pentArena) return { ok: false, reason: "arena", changed: 0, visualChanged: false, cells: [], protected: [], rejected: [] }; // the Stillworks' stone is never scarred: the Supernova burns, the floor stays
         // Match the native Supernova's continuous world-space disk, not rounded tile centers.
         const result = consumeVoidTerrain(game.save, map, game.areaStateId(), { x: center.x + .5, y: center.y + .62, visualLift: liftAt(map, width, center.x, center.y) }, radius, [p, ...game.enemies.filter(q => !q.dead)]);
         if (result.changed) { game._walkerLandingGraph = null; game._walkerRoutes = new WeakMap(); map.wallGlints = (map.wallGlints || []).filter(q => map.tiles[q.y * width + q.x]?.blocked); }
@@ -4780,7 +4816,7 @@ export class Game {
       held(source) { return now < (p.heldUntil || 0) && p.heldBy === source.id; },
       release(source) { if (p.heldBy === source.id) p.heldUntil = 0; },
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * step, ddy / dd * step); return true; }, // release 235: the Blob's jet
-      dragonDue: () => game.dragonDue(), dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
+      dragonDue: () => !map.pentArena && game.dragonDue(), // the Stillworks is never claimed dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
       frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
       confuse(seconds) { if (!(seconds > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return; if (!(now < (p.confusedUntil || 0))) game.message = HAUNT.text.confused; p.confusedUntil = Math.max(p.confusedUntil || 0, now + seconds * 1000); }, // release 731: the haunts turn you about
       curse: (source, n) => game.layHauntCurses(source, n, now), // release 737: a landed puff or howl lays haunt curses
@@ -5254,7 +5290,7 @@ export class Game {
         c.damage = Math.max(1, Math.round(c.damage * multiplier));
         c.xpMultiplier = multiplier;
       }
-      if(area==="dungeon"&&!c.passiveBehavior&&!c.gatePredator){
+      if(area==="dungeon"&&!c.passiveBehavior&&!c.gatePredator&&!e.pentFinaleBeast){ // the Stillworks' beast is tuned as a finale below
         let hp=1.08,damage=1.04,speed=1,attackCooldownScale=.94,telegraphScale=1;
         if(c.dungeonRole==="hunter"){speed=1.16;attackCooldownScale=.88}
         else if(c.dungeonRole==="ranged"){speed=1.05;attackCooldownScale=.84}
@@ -5265,7 +5301,7 @@ export class Game {
         if(c.kind==="gateRevenant"){c.maxHp=360;c.hp=360;c.damage=22;c.range=5.5}
         c.maxHp=Math.round(c.maxHp*hp);c.hp=c.maxHp;c.damage=Math.max(1,Math.round(c.damage*damage));c.speedMultiplier*=speed;c.attackCooldownScale=attackCooldownScale;c.telegraphScale=telegraphScale;
       }
-      if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.astralCompanionOf && !c.worldBeast) tuneDungeonThreat(c);
+      if(area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.astralCompanionOf && !e.pentFinaleBeast && !c.worldBeast) tuneDungeonThreat(c);
       if(area === "dungeon" && !c.ambient && !c.astralCompanionOf && !c.worldBeast){const t=this.tasteThreat();if(t<1){c.maxHp=c.hp=Math.max(1,Math.round(c.maxHp*t));c.damage=Math.max(1,Math.round(c.damage*t));c.tasteScaled=t}} // release 325
       if (area === "dungeon" && !c.passiveBehavior && !c.ambient && !c.astralCompanionOf && !c.worldBeast && !c.questingBeast && !c.farArrayBoss && !e.gatePredator) { c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * DUNGEON_BOOST.hp)); c.damage = Math.max(1, Math.round(c.damage * DUNGEON_BOOST.damage)); } // release 463
       // Every monster hits harder (Tim, 2026-10-16). Foes tuned to the Wayfarer (the Questing Beast, Far Array bosses) are exempt.
@@ -5295,6 +5331,7 @@ export class Game {
         if (GUARDIAN_ROLES.includes(c.dungeonRole)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, guardianAffixes(f)); else if (!c.affixes && !c.ambient && (hashSeed(`${this.save.seed}:deep-affix:${f}:${c.id}`) % 1000) / 1000 < floorAffixShare(f)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, 1); }
       if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
       if (area === "dungeon" && this.map?.building && e.buildingGuard && !c.buildingScaled) { const k = buildingScale(this.map.building.floor), G = BUILDINGS.creatures.guardian; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp * (e.buildingGuardian ? G.hp : 1))); c.damage = Math.max(1, Math.round(c.damage * k.damage * (e.buildingGuardian ? G.damage : 1))); if (c.baseDamage) c.baseDamage = c.damage; if (e.buildingGuardian) { c.packName = `${this.map.building.style === "keep" ? "Keep" : "Arcology"} Guardian`; c.affixes = rollAffixes(`${this.save.seed}:building-guardian:${c.id}`, G.affixes); } if (e.pentBoss) { const B = e.pentBoss, g = e.buildingGuardian ? G : { hp: 1, damage: 1 }; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp / g.hp * B.hp)); c.damage = Math.max(1, Math.round(c.damage / g.damage * B.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.packName = B.name; c.pentBoss = true; c.affixes = rollAffixes(`${this.save.seed}:pentagon-boss:${c.id}`, B.affixes); } c.buildingScaled = true; c.buildingGuard = true; } // great buildings: each floor up is harder; the top floor's guardian most of all
+      if (e.pentFinaleBeast) tunePentagonArenaBeast(c, e.pentFinaleBeast, this.save, characterStats(this.save), beastRegionalThreat(regionalThreat(this.rx, this.ry))); // the Stillworks' finale beast (pentagon-arena.ts)
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -5549,6 +5586,7 @@ export class Game {
     if (e.pentBoss && this.area === "dungeon" && this.map?.building?.pentagon && this.map.building.V >= 3) this.pentagonChampionDown(e); // the Pentagon's champions and the Regent (v3)
     if (this.area === "dungeon" && String(e.id).endsWith(":guardian") && this.map?.objects?.some((o) => o.dir === "roofExit")) this.openRoofExit(true); // release 746: the vault's guardian falls, its roof exit opens
     if (this.area === "dungeon" && String(e.id).endsWith(":guardian") && !e.illusion && !e.summonedBy && this.map?.building?.pentagon && this.map.building.vault) this.openPentagonFinale(); // the Regent falls: the vault's wall opens (PENTAGON.finale)
+    if (e.pentFinaleBeast && this.area === "dungeon" && this.map?.pentArena && !e.summonedBy && !e.illusion && !e.noRewards) this.pentagonArenaWon(e); // the Stillworks' beast falls: the seam opens (pentagon-arena.ts)
     if(e.noRewards){e.rewarded=true;return}
     if(e.arenaId&&this.map?.arena){const history=dungeonHistory(this.save,this.areaId());history.resolved=true;history.guardianDefeated=true;history.visitOpen=false;this.defeatNotice={title:'WORLD THREAT BROKEN',detail:`${this.map.name} · the persistent arena falls quiet`,kind:'danger'}}
     if(e.foundryId){
@@ -5575,7 +5613,7 @@ export class Game {
       return;
     }
     if(this.area==='dungeon') recordDungeonBossDefeat(dungeonHistory(this.save,this.areaId()),e);
-    if (!((e.worldBeast && WORLD_BEASTS[e.worldBeast]) || e.questingBeast)) this.defeatNotice = enemyDefeatNotice(e, this.area); // a world boss keeps its own notice (Tim: "it should say archfiend slain")
+    if (!((e.worldBeast && WORLD_BEASTS[e.worldBeast]) || e.questingBeast || (e.pentFinaleBeast && this.map?.pentArena))) this.defeatNotice = enemyDefeatNotice(e, this.area); // a world boss keeps its own notice (Tim: "it should say archfiend slain")
     if (e.stalker && this._stalkerWon) { const won = this._stalkerWon; this._stalkerWon = null; this.defeatNotice = { title: "THE STALKER FALLS", detail: `+${won.marks} marks · a ${won.sphere === "weaponSphere" ? "weapon" : "armor"} sphere · it will hunt again after ${won.quiet} new sections${won.echo ? ` · an Echo: ${ECHOES[won.echo].name}` : ""}`, kind: "danger" }; } // release 678
     if (tidemantleTrial(this.area, this.map, e) && grantTidemantle(this.save, `${this.areaId()}:${e.id}`)) {
       this.defeatNotice = { ...this.defeatNotice, detail: `${this.defeatNotice?.detail || ""} · the Tidemantle is yours` };
@@ -6226,6 +6264,7 @@ export class Game {
     const B = this.map?.building; if (!B?.pentagon || !B.vault) return null;
     const F = PENTAGON.finale, H = dungeonHistory(this.save, `${B.base}:f1`), was = !!H.pentFinale; let o = this.map.objects.find((q) => q.kind === "pentFinaleWall");
     if (was && o) return o;
+    if (!was && H.pentArena === undefined) H.pentArena = PENTAGON_ARENA.version; // from release 751 the opened wall leads to the Stillworks first (pentagon-arena.ts); a walkway opened before keeps its way
     if (!o) o = pentagonFinaleIn(this.save, this.areaId(), this.map, true); if (!o) return null;
     H.pentFinale = F.version; journalOnce(this.save, `pentagon-finale:${B.base}`, F.messages.opens, PENTAGON.name);
     this.shortcutBurst = { x: o.x, y: o.y, t0: null, life: F.burst }; (this.questNotices ||= []).push({ title: F.notice, detail: F.detail, kind: "discovery" });
@@ -6234,6 +6273,7 @@ export class Game {
   // Through the opened wall onto the walkway, or back from it into the vault, beside the wall.
   pentagonFinaleWalk(o) {
     const F = PENTAGON.finale;
+    if (isPentagonArenaId(o.toId)) return o.back ? this.pentagonArenaBack(o) : this.pentagonArenaEnter(o); // the way runs through the Stillworks (pentagon-arena.ts)
     if (o.back) { this.goBuildingFloor(o.toId, o.x, o.y); const w = this.map.objects.find((q) => q.kind === "pentFinaleWall");
       if (w) { this.player.x = w.inner.x; this.player.y = w.inner.y; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); }
       this.message = F.messages.back; this.sync(); return { ok: true, message: this.message }; }
@@ -6241,6 +6281,65 @@ export class Game {
     journalOnce(this.save, `pentagon-finale-walk:${this.map.building?.base}`, F.messages.walk, PENTAGON.name);
     this.message = F.messages.walk; this.defeatNotice = { title: F.names.floor.toUpperCase(), detail: "a walkway among the stars · a dais at its end", kind: "discovery" };
     this.sync(); return { ok: true, message: this.message };
+  }
+  // The Pentagon's finale arena, the Stillworks (pentagon-arena.ts). In through the vault's opened wall, at its back gate.
+  pentagonArenaEnter(o) {
+    const A = PENTAGON_ARENA; this.goBuildingFloor(o.toId, 1, 1); const back = this.map.objects.find((q) => q.kind === "pentArenaGate" && q.to === "vault");
+    if (back) { this.player.x = back.inner.x; this.player.y = back.inner.y; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); }
+    const H = dungeonHistory(this.save, `${this.map.building?.base}:f1`); journalOnce(this.save, `pentagon-arena:${this.map.building?.base}`, A.messages.enter, PENTAGON.name);
+    const beast = this.enemies.find((e) => e.pentFinaleBeast && !e.dead);
+    this.message = H.pentArenaWon || !beast ? A.messages.opens : A.messages.enter;
+    this.defeatNotice = { title: A.notice, detail: beast ? `${beast.packName || "something"} waits at its heart` : "the seam stands open", kind: "danger" };
+    this.sync(); return { ok: true, message: this.message };
+  }
+  // Back from the walkway into the Stillworks, by its seam.
+  pentagonArenaBack(o) {
+    this.goBuildingFloor(o.toId, 1, 1); const on = this.map.objects.find((q) => q.kind === "pentArenaGate" && q.to === "walk");
+    if (on) { this.player.x = on.inner.x; this.player.y = on.inner.y; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); }
+    this.message = PENTAGON_ARENA.messages.walkBack; this.sync(); return { ok: true, message: this.message };
+  }
+  // Its two gates: back to the vault (always open), and the seam on to the walkway (sealed until the beast falls).
+  pentagonArenaGate(o) {
+    const A = PENTAGON_ARENA, base = this.map.building?.base, H = dungeonHistory(this.save, `${base}:f1`);
+    if (o.to === "vault") { this.goBuildingFloor(o.toId, 1, 1); const w = this.map.objects.find((q) => q.kind === "pentFinaleWall");
+      if (w) { this.player.x = w.inner.x; this.player.y = w.inner.y; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); }
+      this.message = A.messages.back; this.sync(); return { ok: true, message: this.message }; }
+    if (!H.pentArenaWon) { this.message = A.messages.sealed; return { ok: false, message: this.message }; }
+    return this.pentagonFinaleWalk({ toId: o.toId }); // on to the walkway among the stars, as before
+  }
+  // The seam's state follows the history (a snapshot taken before the beast fell must not shut it again); a fallen beast stays down.
+  pentagonArenaSync() {
+    const H = dungeonHistory(this.save, `${this.map.building?.base}:f1`), A = PENTAGON_ARENA;
+    for (const o of this.map.objects) if (o.kind === "pentArenaGate" && o.to === "walk") Object.assign(o, H.pentArenaWon ? { state: "open", name: A.names.onOpen, lore: A.messages.opens } : { state: "sealed", name: A.names.on, lore: A.messages.sealed });
+    if (H.pentArenaWon) for (const e of this.enemies) if (e.pentFinaleBeast && !e.dead) { e.dead = true; e.noRewards = true; e.rewarded = true; } // it pays once
+  }
+  // Each frame in the Stillworks: the beast sleeps at the heart until the Wayfarer comes near (PENTAGON_ARENA.wake) or strikes it.
+  tickPentagonArena() {
+    const p = this.player, A = PENTAGON_ARENA;
+    for (const e of this.enemies) { if (e.dead || !e.pentFinaleBeast) continue;
+      if (!e.pentArenaAwake && (e.hp < e.maxHp || Math.hypot(e.x - p.x, e.y - p.y) <= A.wake)) { e.pentArenaAwake = true; e.aggro = true; this.message = A.messages.wake; (this.questNotices ||= []).push({ title: String(e.packName || "the finale").toUpperCase(), detail: "the Pentagon's finale", kind: "danger" }); }
+      else if (!e.pentArenaAwake) e.aggro = false; }
+  }
+  // A death in the Stillworks (resolveDeath, before the area is kept): the beast is whole again, asleep at the heart, its summons gone,
+  // as a boss is after a death; nothing it did to the floor lasts (its pools and fires are runtime only).
+  resetPentagonArena() {
+    const spawn = (this.map.enemySpawns || []).find((q) => q.pentFinaleBeast), ids = new Set();
+    for (const e of this.enemies) if (e.pentFinaleBeast && !e.dead) { ids.add(e.id);
+      e.hp = e.maxHp; resetPackRuntime(e); e.aggro = false; e.pentArenaAwake = false; e.hitStun = 0; e.recoil = 0; e.hitFlash = 0; e.voidTeleport = 0; e.untargetable = false;
+      if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed; delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow; delete e.astral;
+      if (spawn) { e.x = spawn.x; e.y = spawn.y; } }
+    for (const e of this.enemies) if (!e.dead && (ids.has(e.summonedBy) || ids.has(e.astralOwner) || ids.has(e.kitAddOf))) { e.dead = true; e.noRewards = true; e.rewarded = true; }
+  }
+  // The finale beast falls: once, the seam opens and the bounty is paid (its usual drops follow in defeatEnemy).
+  pentagonArenaWon(e) {
+    const A = PENTAGON_ARENA, base = this.map.building?.base, H = dungeonHistory(this.save, `${base}:f1`); if (H.pentArenaWon) return false;
+    H.pentArenaWon = true; const marks = A.bounty.marks + A.bounty.perLevel * (Number(this.save.level) || 1); this.save.currency = (Number(this.save.currency) || 0) + marks;
+    this.pentagonArenaSync(); const on = this.map.objects.find((q) => q.kind === "pentArenaGate" && q.to === "walk");
+    if (on) this.shortcutBurst = { x: on.x, y: on.y, t0: null, life: PENTAGON.finale.burst };
+    const name = e.packName || "The finale beast";
+    journalOnce(this.save, `pentagon-arena-won:${base}`, `${name} fell in the Stillworks. ${A.messages.opens}`, PENTAGON.name);
+    (this.questNotices ||= []).push({ title: A.openNotice, detail: "beyond it, a walkway among the stars", kind: "discovery" });
+    this.defeatNotice = { title: A.wonNotice, detail: `${name} · +${marks} marks`, kind: "danger" }; this.message = A.messages.opens; return true;
   }
   // The dais: Transit, to the Pentagon's front door (its first gate, outside) and nowhere else.
   pentagonTransit(o) {
@@ -7320,6 +7419,7 @@ export class Game {
     // Actor death decisions wait for the existing end-of-frame hull mitigation.
     this._astralDamagePending=true;
     if (this.area === "overworld" || this.area === "dungeon") this.tickWorldBeasts(dt); // release 239 (release 249: in dungeons too)
+    if (this.area === "dungeon" && this.map?.pentArena) this.tickPentagonArena(dt); // the Stillworks' beast wakes
     this.tickStalker(dt, now); // release 678
     if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && !this.wayglassNear(false) && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     // Release 283: dungeon water is deadly. Entered (or still swum) without stamina it drowns; otherwise it wounds quickly.
@@ -7352,6 +7452,7 @@ export class Game {
       // A retreating Walker is harmless and must traverse settlements normally. Sanctuary combat
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
       if(e.playing&&!e.dead){this.performanceStats.activeEnemies++;continue} // release 714: the Stag and the Stalker at play
+      if(e.pentFinaleBeast&&!e.pentArenaAwake&&!e.dead){this.performanceStats.dormantEnemies++;continue} // the Stillworks' beast sleeps at the heart until it wakes (tickPentagonArena)
       if(e.stalker||e.stalkerKin||e.stalkerDecoy){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateStalker(e,this.stalkerWorld(dt,now));continue} // release 678
       if(e.gatePredator){this.performanceStats.activeEnemies++;const ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);if(this.area==="dungeon"&&!this.roamerInBounds(e)){e.x=ox;e.y=oy;e.gateWalkFor=GATE_REVENANT.walkAround}continue} // release 271: through walls, never into the black beyond (and, held at the edge, it walks around for a while)
       if(e.packKind&&e.astralMount?.status==="mounted"&&e.astralMount.ridingAway){this.performanceStats.activeEnemies++;continue} // rides the retreating Worm home
