@@ -82,7 +82,7 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 // moment (t = 0), and every frame only that picture is stamped, bobbing gently. Its gradients, smoke and motes cost nothing after
 // the first frame. `box` is the canvas in body units (width, height, and where the feet sit); the cache is bounded (`max`).
 // Without a DOM canvas (tests) the haunt is painted directly.
-export const HAUNT_SPRITE = { wisp: { w: 2.2, h: 1.7, foot: 1.5 }, gorge: { w: 4.2, h: 2.8, foot: 2.45 }, max: 48, bob: [1.6, .035] };
+export const HAUNT_SPRITE = { wisp: { w: 2.2, h: 1.7, foot: 1.5 }, gorge: { w: 4.2, h: 3.2, foot: 2.45 } /* release 737: tall enough for its whole halo (radius 1.3 body units round a centre .62 above the feet), so no straight edge shows */, max: 48, bob: [1.6, .035] };
 const hauntSprites = new Map();
 export const hauntSpriteCount = () => hauntSprites.size;
 function cachedHaunt(ctx, q, draw, box) {
