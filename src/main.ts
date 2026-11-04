@@ -16,6 +16,7 @@ import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.ts";
+import { IMBUE, imbueAmount } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS } from "./landscape.ts"; // release 573
 import { skylandLabel } from "./skylands.ts";
@@ -2743,7 +2744,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const sockets=(save.spellGlyphs?.[show.id]||[]).filter(Boolean).map(g=>`${GLYPHS[g].sigil} ${GLYPHS[g].name}`);
   {const tags=el('div','arc-tags');tags.append(elemBadge(CASTABLES[`spell:${show.id}`]?.attr||'fire'),kindTag('Active spell',true));detail.append(el('strong','',show.name),tags)}
   if(show.text)detail.append(el('p','',show.text)); // release 365
-  detail.append(el('p','',show.brawler?`${show.cooldown}s cooldown · a brawler spell: its damage follows your melee damage, and it aims like a swing. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.id==='shadow-clone'?`${show.cooldown}s cooldown · lasts ${show.lifetime}s · hold to send it up to ${show.maxRange} tiles away · copies your blows at half damage.`:`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
+  detail.append(el('p','',show.imbue?`${show.cooldown}s cooldown · lasts ${IMBUE.seconds}s · adds magic damage to every melee hit from your Focus alone: now +${Math.round(imbueAmount(save.stats?.Focus,characterStats(save).magicBonus))} a hit (before glyphs and spell-damage bonuses). Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.brawler?`${show.cooldown}s cooldown · a brawler spell: its damage follows your melee damage, and it aims like a swing. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.id==='shadow-clone'?`${show.cooldown}s cooldown · lasts ${show.lifetime}s · hold to send it up to ${show.maxRange} tiles away · copies your blows at half damage.`:`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
   // What changes your spells: Focus, the Pairing, and the few constellation nodes that reach them (NODE_EFFECTS.spells).
   {const boosts=[`Focus ${save.stats?.Focus||1}: +${characterStats(save).magicBonus} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
    for(const bid of BRANCH_IDS){const b=BRANCHES[bid];for(const node of[b.mod,...b.caps]){const fx=NODE_EFFECTS[node.id];if(fx?.spells)boosts.push(`${node.name} (${b.name}, ${hasNode(save,node.id)?'learned':'not learned'}): ${fx.spells} Only while ${APERTURE_SKILLS[b.active].name} is active.`)}}

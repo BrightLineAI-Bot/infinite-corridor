@@ -32,9 +32,41 @@ export const BRAWLER = {
   // reaches `stick` tiles farther, the sweep carries you to the foe first; each deals `damage` more and heals `heal`).
   "shadow-boxing": { seconds: 8, stick: 4, damage: .1, heal: .06, guard: .15 },
 };
-// Aegis and Shadow Boxing, as the Wayfarer wears them (drawn round the player).
+// Imbue Weapon (Tim, 2026-11-04: "While Imbue Weapon is running, it gives you an aura and adds a magic-damage buff to your
+// melee attacks... It scales only off your Focus: with zero Focus or magic it adds nothing, so on a Might build it adds very
+// little. On a Focus build it's a way to use melee if you feel like it, but it will never be as strong as a pure Might build.
+// Your primary damage as a caster stays spells, skills and synergies"). A spell (items.ts `imbue-weapon`, cast through
+// castBrawler like Shadow Boxing) that lasts `seconds`. While it lasts every melee hit adds magic damage: each swing (and its
+// glyph echo strike, at the echo's share), each Iron Fists punch, and each Hammerfall and Great Sweep blow (the strikes
+// Spellblade calls melee). Not the Awakened crescent, the Shadow Clone's copies, tool shots, Mirage of Blades or the golem.
+// The amount per hit, before the Imbue spell's own glyph damage mod and the spell-damage multipliers of armor glyphs, meals
+// and pages (not Pairings, not melee multipliers): `focus` × (Focus − 1), plus `magic` × the magic bonus once Focus has had
+// `gate` points put in (scaled in linearly below that). Focus 1, the starting value, adds exactly nothing. Recasting while it
+// runs sets it back to the full `seconds` (it never stacks). It does not count as "a spell running" (Spellblade, Charged Air),
+// so a Might build gains nothing through those passives either. `sparks` bounds the hit flashes drawn (a fixed ring).
+export const IMBUE = { seconds: 20, focus: .3, magic: .18, gate: 100, sparks: 8, sparkLife: .3 };
+export function imbueAmount(focus, magicBonus) {
+  const f = Math.max(0, (Number(focus) || 1) - 1); if (!(f > 0)) return 0;
+  return IMBUE.focus * f + IMBUE.magic * Math.max(0, Number(magicBonus) || 0) * Math.min(1, f / IMBUE.gate);
+}
+// A hit flash where an imbued blow landed: a fixed ring of IMBUE.sparks slots, reused (no growth, no per-frame allocation).
+export function imbueSpark(game, x, y, now) {
+  const r = (game.imbueSparks ||= Array.from({ length: IMBUE.sparks }, () => ({ x: 0, y: 0, at: -1e9 }))), i = (game.imbueSparkAt = ((game.imbueSparkAt || 0) + 1) % r.length);
+  r[i].x = x; r[i].y = y; r[i].at = now;
+}
+// Aegis, Shadow Boxing and Imbue Weapon, as the Wayfarer wears them (drawn round the player).
 export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
   const now = game.lastUpdateNow || 0, [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 });
+  if (now < (game.imbueUntil || 0)) { // a violet-blue glow round the Wayfarer and motes circling the weapon hand
+    const k = Math.min(1, (game.imbueUntil - now) / 1500); // fades over its last 1.5 s
+    ctx.globalAlpha = .35 + .5 * k; ctx.fillStyle = "#9a8cff2e"; ctx.beginPath(); ctx.arc(x, y, s * .75, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#b7adff"; ctx.lineWidth = 1.5; ctx.globalAlpha = (.35 + .5 * k) * (.7 + .3 * Math.sin(t * 5)); ctx.beginPath(); ctx.arc(x, y, s * .75, 0, 7); ctx.stroke();
+    ctx.fillStyle = "#d8d0ff"; for (let i = 0; i < 3; i++) { const a = t * 3 + i * 2.09; ctx.beginPath(); ctx.arc(x + Math.cos(a) * s * .55, y + Math.sin(a) * s * .3, s * .06, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+  for (const q of game.imbueSparks || []) { const age = (now - q.at) / 1000; if (age < 0 || age >= IMBUE.sparkLife) continue; const k = 1 - age / IMBUE.sparkLife, [hx, hy] = toScreen(q);
+    ctx.globalAlpha = k; ctx.strokeStyle = "#c9c0ff"; ctx.lineWidth = 2; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + .4, r0 = s * .12, r1 = s * (.3 + .25 * (1 - k)); ctx.beginPath(); ctx.moveTo(hx + Math.cos(a) * r0, hy + Math.sin(a) * r0); ctx.lineTo(hx + Math.cos(a) * r1, hy + Math.sin(a) * r1); ctx.stroke(); }
+    ctx.globalAlpha = 1; }
   if (now < (game.aegisUntil || 0)) { const k = (game.aegisUntil - now) / BRAWLER.aegis.ms; ctx.fillStyle = "#9fd0ff22"; ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5; ctx.globalAlpha = .4 + .6 * k; ctx.beginPath(); ctx.arc(x, y, s * .85, 0, 7); ctx.fill(); ctx.stroke();
     ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }
   if (now < (game.boxingUntil || 0)) { ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 2; ctx.globalAlpha = .55 + .2 * Math.sin(t * 8); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.ellipse(x, y + s * .35, s * .55, s * .2, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
