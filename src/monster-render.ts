@@ -77,6 +77,95 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 
 // ---------------------------------------------------------------- creatures
 
+// Release 731: the haunts (haunts.ts). A Gloomwisp: a floating orb of dark gas, wreathed in drifting violet smoke, with two bright
+// slanted eyes and a wide jagged grin; it swells and brightens as it winds up a puff.
+function drawGloomwisp(ctx, q) {
+  const { k, b, u, t, flip } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, bob = Math.sin(t * 2.4) * u * .05, cx = k, cy = b - u * .62 + bob, r = u * (.33 + wind * .04);
+  ctx.save();
+  ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(k, b - u * .02, u * .26, u * .07, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 12; i++) { const a = t * .9 + i * Math.PI * 2 / 12, rr = r * (1.15 + .22 * Math.sin(t * 3 + i * 1.7)), x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * .85, z = r * (.55 + .14 * Math.sin(t * 2.2 + i));
+    const g = ctx.createRadialGradient(x, y, 0, x, y, z); g.addColorStop(0, glow + (wind ? "cc" : "88")); g.addColorStop(1, glow + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, z, 0, Math.PI * 2); ctx.fill(); }
+  const body = ctx.createRadialGradient(cx - r * .3, cy - r * .35, r * .1, cx, cy, r); body.addColorStop(0, dark); body.addColorStop(1, deep); ctx.fillStyle = body; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffffff18"; ctx.beginPath(); ctx.ellipse(cx - r * .35, cy - r * .45, r * .3, r * .16, -.5, 0, Math.PI * 2); ctx.fill();
+  const ex = (side) => cx + side * r * .36 + flip * r * .05, ey = cy - r * .16;
+  for (const side of [-1, 1]) { ctx.fillStyle = eye; ctx.beginPath(); ctx.moveTo(ex(side) - r * .2, ey - side * flip * r * .02 - r * .1); ctx.lineTo(ex(side) + r * .2, ey + side * flip * r * .02 - r * .14); ctx.lineTo(ex(side) + r * .12, ey + r * .1); ctx.lineTo(ex(side) - r * .14, ey + r * .08); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#1a0a10"; ctx.beginPath(); ctx.arc(ex(side) + flip * r * .03, ey - r * .01, r * .055, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = "#1a0712"; ctx.beginPath(); ctx.moveTo(cx - r * .6, cy + r * .14); ctx.quadraticCurveTo(cx, cy + r * (.72 + wind * .15), cx + r * .6, cy + r * .14); ctx.quadraticCurveTo(cx, cy + r * .4, cx - r * .6, cy + r * .14); ctx.fill(); // the grin
+  ctx.fillStyle = "#f4ecff"; for (let i = 0; i < 7; i++) { const tx = cx - r * .46 + i * r * .153, ty = cy + r * (.2 + .16 * Math.sin((i / 6) * Math.PI)); ctx.beginPath(); ctx.moveTo(tx - r * .05, ty); ctx.lineTo(tx + r * .05, ty); ctx.lineTo(tx, ty + r * .1); ctx.fill(); }
+  ctx.restore();
+}
+// The Gloomgorge (release 731; drawn again at Tim's word: "not of this world... coming into our existence... isn't fully here...
+// features... more subtle... well merged"): a body that is only half here. Its outline breathes and wavers, its back rises into
+// soft spines that are part of the same skin, and below the waist it thins into smoke. A faint rim of light runs round it, a
+// second outline drifts out of step with the first, gas currents turn slowly inside it and motes rise off it. The eyes are two
+// slits of light with a haze round them, the mouth a dark gash across its front, the teeth pale and few, the arms and legs
+// tapering out of the body into long hooked claws that fade at their roots.
+function drawGloomgorge(ctx, q) {
+  const { k, b, u, t, flip } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, act = q.state === "attack" ? 1 : 0;
+  const bob = Math.sin(t * 1.6) * u * .035, cx = k, cy = b - u * .62 + bob, W = u * .68, H = u * .52, TAU = Math.PI * 2; // fat
+  const rgba = (hex, a) => { const n = parseInt(hex.slice(1, 7), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`; };
+  const spikes = [1.18, 1.34, 1.5, 1.66, 1.82].map((f) => f * Math.PI);
+  // the outline: an ellipse that breathes and wavers, spines rising off its back, a ragged fringe of smoke below
+  const outline = (ox, oy, sc, phase) => { ctx.beginPath(); for (let i = 0; i <= 72; i++) { const a = i / 72 * TAU; let r = 1 + .035 * Math.sin(3 * a + t * 1.9 + phase) + .02 * Math.sin(7 * a - t * 2.7 + phase);
+      for (const s0 of spikes) { const d = Math.abs(a - s0); if (d < .13) r += .34 * Math.pow(1 - d / .13, 1.8) * (1 + .1 * Math.sin(t * 2 + s0 * 3)); }
+      const below = Math.max(0, Math.sin(a)); r += below * below * (.28 + .16 * Math.sin(9 * a + t * 3.2 + phase));
+      const x = cx + ox + Math.cos(a) * W * sc * r, y = cy + oy + Math.sin(a) * H * sc * r * (a > Math.PI ? 1.08 : 1); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); };
+  const fade = (top, a0) => { const g = ctx.createLinearGradient(0, cy - H * 1.4, 0, cy + H * 1.6); g.addColorStop(0, rgba(top, a0)); g.addColorStop(.55, rgba(top, a0 * .9)); g.addColorStop(.8, rgba(top, a0 * .35)); g.addColorStop(1, rgba(top, 0)); return g; };
+  ctx.save(); ctx.globalAlpha *= .86 + .14 * Math.sin(t * 2.3) * Math.sin(t * .7 + 1); // it flickers, never quite settled in this world
+  // its presence: a haze of light round it, and a faint shadow that does not quite touch it
+  { const g = ctx.createRadialGradient(cx, cy, W * .2, cx, cy, W * 1.9); g.addColorStop(0, rgba(glow, .2 + wind * .12)); g.addColorStop(1, rgba(glow, 0)); ctx.fillStyle = g; ctx.fillRect(cx - W * 2, cy - W * 2, W * 4, W * 4); }
+  ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(k, b, u * .55, u * .12, 0, 0, TAU); ctx.fill();
+  // the second outline, out of step with the first
+  outline(Math.sin(t * .9) * u * .05, Math.cos(t * 1.3) * u * .03, 1.1, 2.1); ctx.fillStyle = fade(glow, .06); ctx.fill(); outline(-Math.sin(t * .7) * u * .04, Math.sin(t * 1.1) * u * .03, 1.2, 4.2); ctx.fillStyle = fade(glow, .04); ctx.fill();
+  // limbs, behind the body: tapering out of it, fading at the root, ending in long hooked claws
+  const limb = (x0, y0, x1, y1, w0, side, reach) => { const nx = -(y1 - y0), ny = x1 - x0, L = Math.hypot(nx, ny) || 1, px = nx / L, py = ny / L;
+    const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, rgba(deep, 0)); g.addColorStop(.35, rgba(deep, .85)); g.addColorStop(1, rgba(dark, .95)); ctx.fillStyle = g;
+    const mx = (x0 + x1) / 2, my2 = (y0 + y1) / 2 + Math.hypot(x1 - x0, y1 - y0) * .18; // a slack elbow, hanging
+    ctx.beginPath(); ctx.moveTo(x0 + px * w0, y0 + py * w0); ctx.quadraticCurveTo(mx + px * w0 * .9, my2 + py * w0 * .9, x1 + px * w0 * .35, y1 + py * w0 * .35); ctx.lineTo(x1 - px * w0 * .35, y1 - py * w0 * .35); ctx.quadraticCurveTo(mx - px * w0 * .9, my2 - py * w0 * .9, x0 - px * w0, y0 - py * w0); ctx.closePath(); ctx.fill();
+    const L1 = Math.hypot(x1 - x0, y1 - y0) || 1, dx = (x1 - x0) / L1, dy = (y1 - y0) / L1;
+    // claws: three short hooked talons, thick at the root and dark there, curving to a hard pale point
+    for (let i = -1; i <= 1; i++) { const spread = i * .42, cdx = dx * Math.cos(spread) - dy * Math.sin(spread), cdy = dx * Math.sin(spread) + dy * Math.cos(spread), len = reach * (i ? .78 : 1);
+      const bx = x1 + px * w0 * .42 * i, by = y1 + py * w0 * .42 * i, bw = w0 * .34, nx2 = -cdy, ny2 = cdx, hook = side * (dx >= 0 ? 1 : -1);
+      const tx = bx + cdx * len + nx2 * len * .35 * hook, ty = by + cdy * len + ny2 * len * .35 * hook + len * .2; // the point turns down and in
+      const g = ctx.createLinearGradient(bx, by, tx, ty); g.addColorStop(0, rgba(deep, .95)); g.addColorStop(.45, rgba("#cbb8f0", .95)); g.addColorStop(1, rgba("#fbf8ff", 1)); ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(bx + nx2 * bw, by + ny2 * bw); ctx.quadraticCurveTo(bx + cdx * len * .7 + nx2 * bw * .9, by + cdy * len * .7 + ny2 * bw * .9, tx, ty); ctx.quadraticCurveTo(bx + cdx * len * .45 - nx2 * bw * .2, by + cdy * len * .45 - ny2 * bw * .2, bx - nx2 * bw, by - ny2 * bw); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = rgba("#ffffff", .35); ctx.lineWidth = Math.max(.6, u * .008); ctx.beginPath(); ctx.moveTo(bx + cdx * len * .3 + nx2 * bw * .5, by + cdy * len * .3 + ny2 * bw * .5); ctx.quadraticCurveTo(bx + cdx * len * .7 + nx2 * bw * .6, by + cdy * len * .7 + ny2 * bw * .6, tx, ty); ctx.stroke(); } };
+  for (const side of [-1, 1]) { const lx = cx + side * W * .45; limb(lx, cy + H * .95, lx + side * u * .1, b - u * .08, u * .085, side, u * .09); } // legs, coming out of the smoke
+  const swing = act ? Math.sin(t * 16) * .5 : wind ? -.6 : Math.sin(t * 1.7) * .15;
+  for (const side of [-1, 1]) { const lead = side === flip, sx = cx + side * W * .92, sy = cy - H * .02, ax = sx + side * u * (.42 + (lead ? swing * .12 : 0)), ay = sy + u * (.16 - (lead ? swing * .3 : 0)); limb(sx, sy, ax, ay, u * .095, side, u * .11); } // arms
+  // the body: dark at its heart, a rim of light where it meets this world, thinning to smoke below the waist
+  outline(0, 0, 1, 0); ctx.fillStyle = fade(deep, .92); ctx.fill();
+  ctx.save(); outline(0, 0, 1, 0); ctx.clip();
+  { const g = ctx.createRadialGradient(cx - W * .25, cy - H * .35, W * .05, cx, cy, W * 1.15); g.addColorStop(0, rgba(dark, .9)); g.addColorStop(.6, rgba(deep, .2)); g.addColorStop(.86, rgba(glow, .08)); g.addColorStop(1, rgba(glow, .45)); ctx.fillStyle = g; ctx.fillRect(cx - W * 1.6, cy - H * 2, W * 3.2, H * 4); } // the rim light
+  for (let i = 0; i < 5; i++) { const a = t * .3 + i * 1.3, x = cx + Math.cos(a) * W * .45, y = cy + H * .1 + Math.sin(a * 1.3) * H * .35, z = W * (.35 + .1 * Math.sin(t + i)); // slow swells of gas inside it
+    const g = ctx.createRadialGradient(x, y, 0, x, y, z); g.addColorStop(0, rgba(glow, .1)); g.addColorStop(1, rgba(glow, 0)); ctx.fillStyle = g; ctx.fillRect(x - z, y - z, z * 2, z * 2); }
+  { const g = ctx.createLinearGradient(0, cy + H * .2, 0, cy + H * 1.6); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, rgba(glow, .18)); ctx.fillStyle = g; ctx.fillRect(cx - W * 1.6, cy + H * .2, W * 3.2, H * 1.5); } // the smoke catches a little light
+  // the face, set into the dark rather than on it
+  // a brow of deeper dark over the eyes, so they glare out of a hollow
+  { const g = ctx.createLinearGradient(0, cy - H * .62, 0, cy - H * .12); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(.6, "rgba(6,2,12,.45)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy - H * .32, W * .72, H * .3, 0, 0, TAU); ctx.fill(); }
+  const ey = cy - H * .34, lit = .85 + .15 * Math.sin(t * 5.3) * Math.sin(t * 1.3);
+  for (const side of [-1, 1]) { const ex = cx + side * W * .3 + flip * W * .05;
+    const halo = ctx.createRadialGradient(ex, ey, 0, ex, ey, W * .3); halo.addColorStop(0, rgba(eye, .45 * lit + wind * .2)); halo.addColorStop(1, rgba(eye, 0)); ctx.fillStyle = halo; ctx.fillRect(ex - W * .32, ey - W * .32, W * .64, W * .64);
+    const ox = ex + side * W * .22, ix = ex - side * W * .17; ctx.fillStyle = rgba(eye, .95 * lit); ctx.beginPath(); ctx.moveTo(ox, ey - H * .17); ctx.lineTo(ix, ey + H * .02); ctx.quadraticCurveTo(ex - side * W * .02, ey + H * .15, ox, ey - H * .03); ctx.closePath(); ctx.fill(); // slanted down to the middle: it means you harm
+    ctx.fillStyle = "rgba(40,8,24,.85)"; ctx.beginPath(); ctx.ellipse(ex + flip * W * .02 + side * W * .02, ey - H * .03, W * .02, H * .065, 0, 0, TAU); ctx.fill(); }
+  // the grin: wide, curling up toward the cheeks, deep when it opens, lit from somewhere far down the throat
+  const open = act ? .75 : wind ? .55 : .2 + .05 * Math.sin(t * 2.1), my = cy + H * .12, mw = W * .86, mh = H * (.16 + open * .45), lift = H * .2;
+  const gash = () => { ctx.beginPath(); ctx.moveTo(cx - mw, my - lift); ctx.bezierCurveTo(cx - mw * .55, my + mh * .05, cx + mw * .55, my + mh * .05, cx + mw, my - lift); ctx.bezierCurveTo(cx + mw * .55, my + mh * 1.35, cx - mw * .55, my + mh * 1.35, cx - mw, my - lift); ctx.closePath(); };
+  gash(); { const g = ctx.createRadialGradient(cx, my + mh * .7, 0, cx, my + mh * .55, mw * .9); g.addColorStop(0, rgba(glow, .45 + open * .3)); g.addColorStop(.4, "rgba(22,4,18,.97)"); g.addColorStop(1, "rgba(6,1,8,.98)"); ctx.fillStyle = g; ctx.fill(); }
+  const upper = (f) => my - lift + (1 - Math.pow(2 * f - 1, 2)) * (lift + mh * .05) * .98, lower = (f) => my - lift + (1 - Math.pow(2 * f - 1, 2)) * (lift + mh * 1.02);
+  ctx.save(); gash(); ctx.clip();
+  for (let i = 0; i < 13; i++) { const f = (i + .5) / 13, tx = cx - mw + f * mw * 2, ty = upper(f), mid = 1 - Math.abs(f - .5) * 1.4, tw = W * .045 * mid, th = H * (.09 + .1 * mid) * (i % 2 ? .75 : 1); // jagged teeth from above
+    const g = ctx.createLinearGradient(tx, ty, tx, ty + th); g.addColorStop(0, "rgba(200,190,220,.9)"); g.addColorStop(1, "rgba(250,246,255,.95)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(tx - tw, ty - 2); ctx.lineTo(tx + tw, ty - 2); ctx.lineTo(tx + tw * .15, ty + th); ctx.closePath(); ctx.fill(); }
+  for (let i = 0; i < 10; i++) { const f = (i + .5) / 10 * .84 + .08, tx = cx - mw + f * mw * 2, ty = lower(f), mid = 1 - Math.abs(f - .5) * 1.4, tw = W * .04 * mid, th = H * (.08 + .08 * mid) * (i % 2 ? .8 : 1); // and from below
+    const g = ctx.createLinearGradient(tx, ty, tx, ty - th); g.addColorStop(0, "rgba(190,180,215,.85)"); g.addColorStop(1, "rgba(250,246,255,.95)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(tx - tw, ty + 2); ctx.lineTo(tx + tw, ty + 2); ctx.lineTo(tx - tw * .15, ty - th); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  ctx.strokeStyle = rgba(glow, .22); ctx.lineWidth = Math.max(1, u * .012); gash(); ctx.stroke(); // its lips catch the rim light
+  ctx.restore(); // the body's clip
+  ctx.strokeStyle = rgba(glow, .16); ctx.lineWidth = Math.max(1, u * .012); outline(0, 0, 1, 0); ctx.stroke(); // the edge where it is not quite here
+  for (let i = 0; i < 10; i++) { const life = (t * .35 + i / 10) % 1, x = cx + Math.sin(i * 7.3 + t * .8) * W * .9, y = cy - H * .2 - life * u * .9; ctx.fillStyle = rgba(glow, .5 * (1 - life) * Math.min(1, life * 4)); ctx.beginPath(); ctx.arc(x, y, u * (.012 + .012 * (1 - life)), 0, TAU); ctx.fill(); } // motes rising off it
+  ctx.restore();
+}
+
 const BODY = {
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
@@ -84,6 +173,8 @@ const BODY = {
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
   doomChaser(ctx, q) { drawDoomChaser(ctx, q, q.t * 1000); }, // release 710
+  gloomwisp(ctx, q) { drawGloomwisp(ctx, q); }, // release 731
+  gloomgorge(ctx, q) { drawGloomgorge(ctx, q); },
   inkKin(ctx, q) { const d = MONSTER_PACK[q.e.kind]; drawAstralWorm(ctx, { x: q.k, y: q.b - q.u * .2, scale: q.u * (d?.inkScale || .4), time: q.t, form: d?.inkForm || "worm", facing: q.flip, reducedMotion: !!q.e.reduceMotion }); }, // release 719
   astralWorm(ctx,q) { const a=q.e.astral;
     // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.
