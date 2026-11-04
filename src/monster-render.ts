@@ -94,29 +94,64 @@ function drawGloomwisp(ctx, q) {
   ctx.fillStyle = "#f4ecff"; for (let i = 0; i < 7; i++) { const tx = cx - r * .46 + i * r * .153, ty = cy + r * (.2 + .16 * Math.sin((i / 6) * Math.PI)); ctx.beginPath(); ctx.moveTo(tx - r * .05, ty); ctx.lineTo(tx + r * .05, ty); ctx.lineTo(tx, ty + r * .1); ctx.fill(); }
   ctx.restore();
 }
-// The Gloomgorge: many wisps poured into one squat, fat ghost: a hunched round body spined along its back, a mouth from ear to
-// ear full of teeth, burning slanted eyes, and stubby arms and legs ending in hooked claws; gas smokes off its edges.
+// The Gloomgorge (release 730; drawn again at Tim's word: "not of this world... coming into our existence... isn't fully here...
+// features... more subtle... well merged"): a body that is only half here. Its outline breathes and wavers, its back rises into
+// soft spines that are part of the same skin, and below the waist it thins into smoke. A faint rim of light runs round it, a
+// second outline drifts out of step with the first, gas currents turn slowly inside it and motes rise off it. The eyes are two
+// slits of light with a haze round them, the mouth a dark gash across its front, the teeth pale and few, the arms and legs
+// tapering out of the body into long hooked claws that fade at their roots.
 function drawGloomgorge(ctx, q) {
-  const { k, b, u, t, flip } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, act = q.state === "attack" ? 1 : 0, bob = Math.sin(t * 1.8) * u * .03, cx = k, cy = b - u * .55 + bob, W = u * .62, H = u * .52;
-  ctx.save();
-  ctx.fillStyle = "#00000050"; ctx.beginPath(); ctx.ellipse(k, b, u * .6, u * .14, 0, 0, Math.PI * 2); ctx.fill();
-  for (let i = 0; i < 10; i++) { const a = t * .6 + i * Math.PI * 2 / 10, x = cx + Math.cos(a) * W * 1.02, y = cy + Math.sin(a) * H * .95, z = u * (.16 + .05 * Math.sin(t * 2 + i)); const g = ctx.createRadialGradient(x, y, 0, x, y, z); g.addColorStop(0, glow + "55"); g.addColorStop(1, glow + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, z, 0, Math.PI * 2); ctx.fill(); }
-  const claw = (x0, y0, dx, dy, n, len) => { ctx.fillStyle = "#f2e8ff"; for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * u * .06, bx = x0 + o * (dy ? 1 : 0), by = y0 + o * (dx ? 1 : 0); ctx.beginPath(); ctx.moveTo(bx - u * .025, by); ctx.lineTo(bx + u * .025, by); ctx.lineTo(bx + dx * len, by + dy * len); ctx.closePath(); ctx.fill(); } };
-  const limb = (x0, y0, x1, y1, w0) => { ctx.strokeStyle = deep; ctx.lineCap = "round"; ctx.lineWidth = w0; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.strokeStyle = dark; ctx.lineWidth = w0 * .6; ctx.stroke(); ctx.lineCap = "butt"; };
-  for (const side of [-1, 1]) { const lx = cx + side * W * .45, ly = cy + H * .75; limb(lx, ly - u * .05, lx + side * u * .06, b - u * .06, u * .18); claw(lx + side * u * .06, b - u * .05, side * .4, .6, 3, u * .12); } // stubby legs
-  const swing = act ? Math.sin(t * 18) * .4 : wind ? -.5 : Math.sin(t * 2) * .12;
-  for (const side of [-1, 1]) { const sx = cx + side * W * .88, sy = cy - H * .05, ax = sx + side * u * (.28 + (side === flip ? swing * .2 : 0)), ay = sy + u * (.12 - (side === flip ? swing * .25 : 0)); limb(sx, sy, ax, ay, u * .17); claw(ax, ay, side * .8, .45, 3, u * .16); } // stubby clawed arms
-  ctx.fillStyle = deep; for (let i = 0; i < 6; i++) { const a = Math.PI * (1.08 + i * .17), x = cx + Math.cos(a) * W * .92, y = cy + Math.sin(a) * H * .95; ctx.beginPath(); ctx.moveTo(x - u * .06, y + u * .02); ctx.lineTo(x + Math.cos(a) * u * .2, y + Math.sin(a) * u * .22); ctx.lineTo(x + u * .06, y + u * .02); ctx.closePath(); ctx.fill(); } // spines along its back
-  const body = ctx.createRadialGradient(cx - W * .3, cy - H * .4, u * .05, cx, cy, W * 1.05); body.addColorStop(0, dark); body.addColorStop(.75, deep); body.addColorStop(1, "#0a0612"); ctx.fillStyle = body;
-  ctx.beginPath(); ctx.moveTo(cx - W, cy + H * .1); ctx.bezierCurveTo(cx - W * 1.05, cy - H * 1.1, cx + W * 1.05, cy - H * 1.1, cx + W, cy + H * .1); ctx.bezierCurveTo(cx + W * .95, cy + H * .95, cx - W * .95, cy + H * .95, cx - W, cy + H * .1); ctx.fill(); // the fat round body
-  ctx.fillStyle = "#ffffff14"; ctx.beginPath(); ctx.ellipse(cx - W * .35, cy - H * .55, W * .32, H * .14, -.3, 0, Math.PI * 2); ctx.fill();
-  const ey = cy - H * .32; for (const side of [-1, 1]) { const ex = cx + side * W * .32 + flip * W * .05; ctx.fillStyle = eye; ctx.beginPath(); ctx.moveTo(ex - side * W * .2, ey - H * .2); ctx.lineTo(ex + side * W * .18, ey - H * .02); ctx.lineTo(ex - side * W * .12, ey + H * .1); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#3a0a14"; ctx.beginPath(); ctx.arc(ex, ey - H * .03, W * .045, 0, Math.PI * 2); ctx.fill(); }
-  const mo = wind ? .5 : act ? .7 : .25, my = cy + H * .08, mw = W * .78; // the mouth, ear to ear, gaping when it howls or drinks the air
-  ctx.fillStyle = "#2a0614"; ctx.beginPath(); ctx.moveTo(cx - mw, my - H * .06); ctx.quadraticCurveTo(cx, my + H * (.35 + mo), cx + mw, my - H * .06); ctx.quadraticCurveTo(cx, my + H * .18, cx - mw, my - H * .06); ctx.fill();
-  ctx.fillStyle = "#b02a4a"; ctx.beginPath(); ctx.ellipse(cx, my + H * (.18 + mo * .45), mw * .4, H * (.05 + mo * .12), 0, 0, Math.PI * 2); ctx.fill(); // its tongue
-  ctx.fillStyle = "#f4ecff"; for (let i = 0; i < 11; i++) { const f = i / 10, tx = cx - mw * .92 + f * mw * 1.84, ty = my - H * .02 + Math.sin(f * Math.PI) * H * .14; ctx.beginPath(); ctx.moveTo(tx - W * .04, ty); ctx.lineTo(tx + W * .04, ty); ctx.lineTo(tx, ty + H * .13); ctx.fill(); } // upper teeth
-  for (let i = 0; i < 9; i++) { const f = i / 8, tx = cx - mw * .75 + f * mw * 1.5, ty = my + H * (.2 + mo * .9) * Math.sin(f * Math.PI) * .9 + H * .08; ctx.beginPath(); ctx.moveTo(tx - W * .035, ty); ctx.lineTo(tx + W * .035, ty); ctx.lineTo(tx, ty - H * .1); ctx.fill(); } // lower teeth
+  const { k, b, u, t, flip } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, act = q.state === "attack" ? 1 : 0;
+  const bob = Math.sin(t * 1.6) * u * .035, cx = k, cy = b - u * .62 + bob, W = u * .6, H = u * .5, TAU = Math.PI * 2;
+  const rgba = (hex, a) => { const n = parseInt(hex.slice(1, 7), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`; };
+  const spikes = [1.18, 1.34, 1.5, 1.66, 1.82].map((f) => f * Math.PI);
+  // the outline: an ellipse that breathes and wavers, spines rising off its back, a ragged fringe of smoke below
+  const outline = (ox, oy, sc, phase) => { ctx.beginPath(); for (let i = 0; i <= 72; i++) { const a = i / 72 * TAU; let r = 1 + .035 * Math.sin(3 * a + t * 1.9 + phase) + .02 * Math.sin(7 * a - t * 2.7 + phase);
+      for (const s0 of spikes) { const d = Math.abs(a - s0); if (d < .13) r += .34 * Math.pow(1 - d / .13, 1.8) * (1 + .1 * Math.sin(t * 2 + s0 * 3)); }
+      const below = Math.max(0, Math.sin(a)); r += below * below * (.28 + .16 * Math.sin(9 * a + t * 3.2 + phase));
+      const x = cx + ox + Math.cos(a) * W * sc * r, y = cy + oy + Math.sin(a) * H * sc * r * (a > Math.PI ? 1.08 : 1); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); };
+  const fade = (top, a0) => { const g = ctx.createLinearGradient(0, cy - H * 1.4, 0, cy + H * 1.6); g.addColorStop(0, rgba(top, a0)); g.addColorStop(.55, rgba(top, a0 * .9)); g.addColorStop(.8, rgba(top, a0 * .35)); g.addColorStop(1, rgba(top, 0)); return g; };
+  ctx.save(); ctx.globalAlpha *= .86 + .14 * Math.sin(t * 2.3) * Math.sin(t * .7 + 1); // it flickers, never quite settled in this world
+  // its presence: a haze of light round it, and a faint shadow that does not quite touch it
+  { const g = ctx.createRadialGradient(cx, cy, W * .2, cx, cy, W * 1.9); g.addColorStop(0, rgba(glow, .2 + wind * .12)); g.addColorStop(1, rgba(glow, 0)); ctx.fillStyle = g; ctx.fillRect(cx - W * 2, cy - W * 2, W * 4, W * 4); }
+  ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(k, b, u * .55, u * .12, 0, 0, TAU); ctx.fill();
+  // the second outline, out of step with the first
+  outline(Math.sin(t * .9) * u * .05, Math.cos(t * 1.3) * u * .03, 1.1, 2.1); ctx.fillStyle = fade(glow, .06); ctx.fill(); outline(-Math.sin(t * .7) * u * .04, Math.sin(t * 1.1) * u * .03, 1.2, 4.2); ctx.fillStyle = fade(glow, .04); ctx.fill();
+  // limbs, behind the body: tapering out of it, fading at the root, ending in long hooked claws
+  const limb = (x0, y0, x1, y1, w0, side, reach) => { const nx = -(y1 - y0), ny = x1 - x0, L = Math.hypot(nx, ny) || 1, px = nx / L, py = ny / L;
+    const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, rgba(deep, 0)); g.addColorStop(.35, rgba(deep, .85)); g.addColorStop(1, rgba(dark, .95)); ctx.fillStyle = g;
+    const mx = (x0 + x1) / 2, my2 = (y0 + y1) / 2 + Math.hypot(x1 - x0, y1 - y0) * .18; // a slack elbow, hanging
+    ctx.beginPath(); ctx.moveTo(x0 + px * w0, y0 + py * w0); ctx.quadraticCurveTo(mx + px * w0 * .9, my2 + py * w0 * .9, x1 + px * w0 * .35, y1 + py * w0 * .35); ctx.lineTo(x1 - px * w0 * .35, y1 - py * w0 * .35); ctx.quadraticCurveTo(mx - px * w0 * .9, my2 - py * w0 * .9, x0 - px * w0, y0 - py * w0); ctx.closePath(); ctx.fill();
+    const dx = (x1 - x0) / (Math.hypot(x1 - x0, y1 - y0) || 1), dy = (y1 - y0) / (Math.hypot(x1 - x0, y1 - y0) || 1); ctx.lineCap = "round";
+    for (let i = -1; i <= 1; i++) { const bx = x1 + px * w0 * .3 * i, by = y1 + py * w0 * .3 * i, ex = bx + (dx + px * i * .25) * reach, ey = by + (dy + py * i * .25) * reach, hx = ex + side * reach * .25, hy = ey + reach * .3;
+      const cg = ctx.createLinearGradient(bx, by, hx, hy); cg.addColorStop(0, rgba("#d8c8ff", .15)); cg.addColorStop(1, rgba("#f6f0ff", .9)); ctx.strokeStyle = cg; ctx.lineWidth = Math.max(1, u * .035 * (1 - Math.abs(i) * .25));
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(ex, ey, hx, hy); ctx.stroke(); } ctx.lineCap = "butt"; };
+  for (const side of [-1, 1]) { const lx = cx + side * W * .45; limb(lx, cy + H * .95, lx + side * u * .1, b - u * .08, u * .08, side, u * .14); } // legs, coming out of the smoke
+  const swing = act ? Math.sin(t * 16) * .5 : wind ? -.6 : Math.sin(t * 1.7) * .15;
+  for (const side of [-1, 1]) { const lead = side === flip, sx = cx + side * W * .92, sy = cy - H * .02, ax = sx + side * u * (.42 + (lead ? swing * .12 : 0)), ay = sy + u * (.16 - (lead ? swing * .3 : 0)); limb(sx, sy, ax, ay, u * .09, side, u * .2); } // arms
+  // the body: dark at its heart, a rim of light where it meets this world, thinning to smoke below the waist
+  outline(0, 0, 1, 0); ctx.fillStyle = fade(deep, .92); ctx.fill();
+  ctx.save(); outline(0, 0, 1, 0); ctx.clip();
+  { const g = ctx.createRadialGradient(cx - W * .25, cy - H * .35, W * .05, cx, cy, W * 1.15); g.addColorStop(0, rgba(dark, .9)); g.addColorStop(.6, rgba(deep, .2)); g.addColorStop(.86, rgba(glow, .08)); g.addColorStop(1, rgba(glow, .45)); ctx.fillStyle = g; ctx.fillRect(cx - W * 1.6, cy - H * 2, W * 3.2, H * 4); } // the rim light
+  for (let i = 0; i < 5; i++) { const a = t * .3 + i * 1.3, x = cx + Math.cos(a) * W * .45, y = cy + H * .1 + Math.sin(a * 1.3) * H * .35, z = W * (.35 + .1 * Math.sin(t + i)); // slow swells of gas inside it
+    const g = ctx.createRadialGradient(x, y, 0, x, y, z); g.addColorStop(0, rgba(glow, .1)); g.addColorStop(1, rgba(glow, 0)); ctx.fillStyle = g; ctx.fillRect(x - z, y - z, z * 2, z * 2); }
+  { const g = ctx.createLinearGradient(0, cy + H * .2, 0, cy + H * 1.6); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, rgba(glow, .18)); ctx.fillStyle = g; ctx.fillRect(cx - W * 1.6, cy + H * .2, W * 3.2, H * 1.5); } // the smoke catches a little light
+  // the face, set into the dark rather than on it
+  const ey = cy - H * .3, lit = .85 + .15 * Math.sin(t * 5.3) * Math.sin(t * 1.3);
+  for (const side of [-1, 1]) { const ex = cx + side * W * .3 + flip * W * .05;
+    const halo = ctx.createRadialGradient(ex, ey, 0, ex, ey, W * .3); halo.addColorStop(0, rgba(eye, .45 * lit + wind * .2)); halo.addColorStop(1, rgba(eye, 0)); ctx.fillStyle = halo; ctx.fillRect(ex - W * .32, ey - W * .32, W * .64, W * .64);
+    const ox = ex + side * W * .2, ix = ex - side * W * .17; ctx.fillStyle = rgba(eye, .95 * lit); ctx.beginPath(); ctx.moveTo(ox, ey - H * .15); ctx.lineTo(ix, ey + H * .01); ctx.quadraticCurveTo(ex - side * W * .02, ey + H * .13, ox, ey - H * .03); ctx.closePath(); ctx.fill(); // slanted down to the middle: it means you harm
+    ctx.fillStyle = "rgba(40,8,24,.85)"; ctx.beginPath(); ctx.ellipse(ex + flip * W * .02 + side * W * .02, ey - H * .03, W * .02, H * .065, 0, 0, TAU); ctx.fill(); }
+  const open = act ? .75 : wind ? .55 : .18 + .05 * Math.sin(t * 2.1), my = cy + H * .1, mw = W * .7, mh = H * (.12 + open * .42);
+  const gash = () => { ctx.beginPath(); ctx.moveTo(cx - mw, my - H * .04); ctx.bezierCurveTo(cx - mw * .5, my + mh * .2, cx + mw * .5, my + mh * .2, cx + mw, my - H * .04); ctx.bezierCurveTo(cx + mw * .45, my + mh * 1.25, cx - mw * .45, my + mh * 1.25, cx - mw, my - H * .04); ctx.closePath(); };
+  gash(); { const g = ctx.createRadialGradient(cx, my + mh * .6, 0, cx, my + mh * .5, mw); g.addColorStop(0, rgba(glow, .35 + open * .3)); g.addColorStop(.45, "rgba(18,4,16,.95)"); g.addColorStop(1, "rgba(8,2,10,.95)"); ctx.fillStyle = g; ctx.fill(); }
+  ctx.save(); gash(); ctx.clip(); ctx.fillStyle = "rgba(240,232,255,.8)";
+  for (let i = 0; i < 9; i++) { const f = (i + .5) / 9, tx = cx - mw + f * mw * 2, ty = my - H * .04 + Math.sin(f * Math.PI) * mh * .2, tw = W * .03 * (1 - Math.abs(f - .5)); ctx.beginPath(); ctx.moveTo(tx - tw, ty - 1); ctx.lineTo(tx + tw, ty - 1); ctx.lineTo(tx, ty + H * (.08 + .05 * Math.sin(f * Math.PI))); ctx.fill(); } // teeth from above
+  for (let i = 0; i < 7; i++) { const f = (i + .5) / 7, tx = cx - mw * .8 + f * mw * 1.6, ty = my - H * .04 + Math.sin(f * Math.PI) * mh * 1.05, tw = W * .025 * (1 - Math.abs(f - .5)); ctx.beginPath(); ctx.moveTo(tx - tw, ty + 1); ctx.lineTo(tx + tw, ty + 1); ctx.lineTo(tx, ty - H * .07); ctx.fill(); } // and below
+  ctx.restore();
+  ctx.restore(); // the body's clip
+  ctx.strokeStyle = rgba(glow, .16); ctx.lineWidth = Math.max(1, u * .012); outline(0, 0, 1, 0); ctx.stroke(); // the edge where it is not quite here
+  for (let i = 0; i < 10; i++) { const life = (t * .35 + i / 10) % 1, x = cx + Math.sin(i * 7.3 + t * .8) * W * .9, y = cy - H * .2 - life * u * .9; ctx.fillStyle = rgba(glow, .5 * (1 - life) * Math.min(1, life * 4)); ctx.beginPath(); ctx.arc(x, y, u * (.012 + .012 * (1 - life)), 0, TAU); ctx.fill(); } // motes rising off it
   ctx.restore();
 }
 
