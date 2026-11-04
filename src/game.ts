@@ -55,7 +55,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
+import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST } from "./tool-forms.ts";
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -1274,6 +1274,7 @@ export function updateProjectiles(
   onHit = () => {},
   mirrorWalls = [],
   onBuildHit = null,
+  onRicochet = null,
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
@@ -1299,6 +1300,16 @@ export function updateProjectiles(
       if (!projectileTileOpen(map, width, nx, ny) && p.mirage) { if (!p.returning) { p.returning = true; p.backAt = p.age; p.hits = {}; } } // release 649: a mirage blade turns home at a wall and passes walls on its way back
       else if (!projectileTileOpen(map, width, nx, ny)) {
         if(p.path==="grenade"){p.dead=true;onDetonate(p);break}
+        // Sunburst Ricochet (tool-forms.ts SUNBURST): a shot with ricochets left reflects off a wall inside the map (the map's
+        // edge is a section seam, not a wall) and stays where it is this substep; `onRicochet` throws the shards.
+        if (p.ricochet > 0 && !p.hostile && nx >= 0 && ny >= 0 && nx < width && ny < map.tiles.length / width) {
+          const odx = p.dx, ody = p.dy, bx = !projectileTileOpen(map, width, nx, p.y), by = !projectileTileOpen(map, width, p.x, ny), both = !bx && !by;
+          if (bx || both) p.dx = -p.dx;
+          if (by || both) p.dy = -p.dy;
+          p.ricochet -= 1; p.returning = true; // the ricochet is the shot's turn: it does not turn again later
+          if (onRicochet) onRicochet(p, bx || both ? -Math.sign(odx) : 0, by || both ? -Math.sign(ody) : 0);
+          continue;
+        }
         if (p.path === "boomerang" && !p.returning) {
           p.returning = true;
           p.dx *= -1;
@@ -1319,7 +1330,7 @@ export function updateProjectiles(
       // Release 643 (Tim: "if it passes through their body, and then it arcs back on its homing track, and it passes through their
       // body again... that should be three separate instances of damage"): a projectile that survives a hit forgets a body once it
       // has left it, so every separate pass through it is a new hit.
-      if (p.hits) for (const id in p.hits) { const q = enemies.find((e) => e.id === id); if (!q || q.dead || Math.hypot(q.x + .5 - p.x, q.y + .45 - p.y) >= 0.1 + (p.grow || 0) + enemyBodyRadius(q) + PASS_CLEAR) delete p.hits[id]; }
+      if (p.hits && !p.shard) for (const id in p.hits) { const q = enemies.find((e) => e.id === id); if (!q || q.dead || Math.hypot(q.x + .5 - p.x, q.y + .45 - p.y) >= 0.1 + (p.grow || 0) + enemyBodyRadius(q) + PASS_CLEAR) delete p.hits[id]; }
       let mountedPeerId = null;
       for (const e of enemies)
         if (
@@ -1327,6 +1338,7 @@ export function updateProjectiles(
           (!mountedPeerId || e.id === mountedPeerId) &&
           !e.untargetable &&
           !p.hits?.[e.id] &&
+          !(p.burst && (p.burst.hits[e.id] || 0) >= p.burst.cap) &&
           Math.hypot(e.x + 0.5 - p.x, e.y + 0.45 - p.y) <
             0.1 + (p.grow || 0) + enemyBodyRadius(e)
         ) {
@@ -1353,6 +1365,7 @@ export function updateProjectiles(
             (p.hits ||= {})[e.id] = true;
             if (p.path !== "boomerang" && !p.knife) p.pierce -= 1;
           } else p.dead = true;
+          if (p.burst) p.burst.hits[e.id] = (p.burst.hits[e.id] || 0) + 1; // Sunburst Ricochet: one burst's shards share a per-foe limit
           p.impact = { x: p.x, y: p.y };
           if (e.hp <= 0 && !e.dead) {
             e.dead = true;
@@ -5738,7 +5751,7 @@ export class Game {
     if (this.penned(now)) return false;
     { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
-    if (this.projectiles.filter(p=>!p.dead).length >= (this.area==='dungeon'?32:64)) return false;
+    if (this.projectiles.filter(p=>!p.dead&&!p.shard/* Sunburst shards have their own cap (SUNBURST.maxLive) */).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
     let d, aimedDistance = null;
@@ -5790,6 +5803,7 @@ export class Game {
     });
     const shot = this.projectiles[this.projectiles.length - 1];
     shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
+    if (weapon.path === "boomerang" && weapon.name === "Lumen Spindle" && fieldOn(this.save, "lumen-sunburst")) { shot.ricochet = SUNBURST.ricochets; shot.sunburst = true; } // Sunburst Ricochet: copies below (fan, Echo, clone) ricochet too
     if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const C = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + C.damage))); shot.scale = C.scale; shot.grow = C.grow; if (shot.blastRadius) shot.blastRadius *= C.blast; } // release 515: Charged Air
     if (weapon.pellets) { // release 533 (tool-forms.ts): the Blunderbuss's three-pellet cone, or with Arc Wave one wide wave
       if (fieldOn(this.save, "arc-wave")) { shot.arcWave = true; shot.damage = Math.max(1, Math.round(shot.damage * ARC_WAVE.share)); shot.grow = (shot.grow || 0) + ARC_WAVE.grow; shot.pierce = (shot.pierce || 0) + ARC_WAVE.pierce; shot.speed = ARC_WAVE.speed; } // release 549: every pellet becomes a wave, along the same cone
@@ -5801,6 +5815,19 @@ export class Game {
     if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-shot fan
     if (plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true } })); // release 507: a third shot with two Echo glyphs
     return true;
+  }
+  // Sunburst Ricochet (tool-forms.ts SUNBURST): a Spindle shot that has just reflected off a wall whose outward face is
+  // (nx, ny) breaks into a fan of shards. Bounded by SUNBURST.maxLive shards alive at once; returns how many were thrown.
+  sunburst(shot, nx, ny) {
+    if (!shot?.sunburst || shot.hostile) return 0;
+    let live = 0; for (const p of this.projectiles) if (p.shard && !p.dead) live++;
+    const S = SUNBURST, n = Math.min(S.shards, S.maxLive - live); if (n <= 0) return 0;
+    const m = Math.hypot(nx, ny) || 1, base = Math.atan2(ny / m, nx / m), damage = Math.max(1, Math.round((Number(shot.damage) || 0) * S.share)), burst = { hits: {}, cap: S.perEnemy };
+    for (let i = 0; i < n; i++) {
+      const a = base + S.spread * ((i + .5) / n - .5);
+      this.projectiles.push({ id: `${shot.id}-shard${shot.ricochet}-${i}`, x: shot.x + (nx / m) * S.lift, y: shot.y + (ny / m) * S.lift, dx: Math.cos(a), dy: Math.sin(a), speed: S.speed, life: S.life, damage, damageType: shot.damageType || "magic", path: "straight", age: 0, hits: {}, pierce: S.pierce, shard: true, burst, glyphHost: null });
+    }
+    return n;
   }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
   castSlot(slot, now = this.lastUpdateNow || 0) {
@@ -7206,9 +7233,10 @@ export class Game {
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
-      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (!shot.hostile && !shot.echo) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow */ if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
+      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (!shot.hostile && !shot.echo && !shot.shard) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); },
       (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
       (bx, by) => { const b = buildOn(this, bx, by); if (b) strikeBuild(this, b); }, // release 265: a build absorbs the shot
+      (shot, nx, ny) => this.sunburst(shot, nx, ny), // Sunburst Ricochet
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
     for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))));p.invulnerableUntil=now+700}}

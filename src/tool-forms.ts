@@ -29,7 +29,7 @@
 //   exploded"; then "random positions around the center... opposite poles of the circle"): they fly out at opposite ends
 //   of a line through the burst whose angle changes from shell to shell, each exactly its own blast radius, so its blast's
 //   edge meets the first burst's centre. Bomblets do not split again.
-// Pure numbers and drawing; game.ts runs them (fireSecondary, mirageThrow, tickMirage, raiseGolem, tickGolem,
+// Pure numbers and drawing; game.ts runs them (fireSecondary, mirageThrow, tickMirage, raiseGolem, tickGolem, sunburst,
 // clusterShell).
 export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, range: 4, radius: .9, stun: .25, cooldown: 6, reach: .7 };
 // Fire Burst (release 547; Tim: "a spell... fire burst... launches out a series of fireballs that fly a short distance and
@@ -43,6 +43,19 @@ export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // releas
 // axe... a huge shuriken... they should Pierce through... home towards me... for like 3 seconds... I only have 3 maximum at a
 // time... hit on the way out and... on the way in... spinning... like the blades of a helicopter... grow with... charged air").
 export const MIRAGE = { share: .7, speed: 11, backSpeed: 13, out: 5, back: 2.5, seekTurn: 14, catch: .55, max: 3, cooldown: .55, range: 9, spread: .35, grow: .38, size: 2.1, spin: 15 };
+
+// Sunburst Ricochet (Tim, 2026-11-04: "the passive for the Lumen Spindle: when the shots hit a wall they bounce — they ricochet
+// — and break off into a bunch of little pieces, like a sunburst, and those little pieces do damage... the ricocheting shots do
+// damage as well"). A Lattice tool form (lattice-fields.ts TOOL_FORMS["lumen-sunburst"]). A Spindle shot that meets a wall (a
+// blocked tile or a structure's wall; never the map's edge, which is a section seam, not a wall) reflects off it and flies on,
+// still cutting what it passes, up to `ricochets` times; past that it turns back or ends as before. Each ricochet throws
+// `shards` small shards in a fan `spread` radians wide about the wall's outward face, each flying `speed` tiles/s for `life` s
+// and dealing `share` of the shot that broke (so they grow with Focus like the shot), passing through up to `pierce` foes and
+// striking each foe once; at most `perEnemy` shards of one burst strike the same foe. At most `maxLive` shards fly at once (a
+// burst past that throws only the room left). Shards carry no glyph host (no Volatile or Echo procs) and do not ricochet.
+// Because a reflection retraces under the Spindle's own turn, a shot that ricocheted on its way out comes back the way it went
+// and ricochets again at the same wall.
+export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed: 8, life: .32, pierce: 3, perEnemy: 2, maxLive: 24, lift: .06 };
 
 // Release 643 (Tim: "I like the great sword, the shuriken and the great axe better"): the blades, by `blade`; 649: in Tim's order.
 export const SWEEP_BLADES = ["greatsword", "greataxe", "shuriken"];
@@ -74,6 +87,14 @@ function drawGolem(ctx, game, toScreen, s) {
 export function drawToolForms(ctx, game, toScreen, s, t) {
   drawGolem(ctx, game, toScreen, s);
   for (const fx of game.effects) if (fx.fireBurst && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / .32, R = fx.radius * s * (.5 + .6 * k); const g = ctx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, `rgba(255,236,160,${.9 * (1 - k)})`); g.addColorStop(.5, `rgba(255,128,40,${.7 * (1 - k)})`); g.addColorStop(1, "rgba(160,40,10,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); } // release 547: Fire Burst's flame
+  { // Sunburst Ricochet's shards: one path for all of them (they are many and small); streaks only at full motion and quality
+    const pr = game.presentation || {}, still = pr.reduceMotion || pr.safeMode || pr.effectiveQuality === "low"; let any = false;
+    ctx.strokeStyle = "#ffe39a"; ctx.fillStyle = "#ffe39a"; ctx.lineWidth = Math.max(1.5, s * .06); ctx.beginPath();
+    for (const p of game.projectiles) if (p.shard && !p.dead) { const [x, y] = toScreen(p); any = true;
+      if (still) { const r = Math.max(1.5, s * .07); ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 7); }
+      else { const k = s * .22 * Math.min(1, (p.age || 0) * 12 + .4); ctx.moveTo(x, y); ctx.lineTo(x - p.dx * k, y - p.dy * k); } }
+    if (any) { if (still) ctx.fill(); else ctx.stroke(); }
+  }
   for (const fx of game.effects) if (fx.kind === "golem-punch" && fx.life > 0) { const [x, y] = toScreen(fx); ctx.strokeStyle = "#e8d3a2"; ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, fx.life * 5); ctx.beginPath(); ctx.arc(x, y, fx.radius * s * (1.1 - fx.life * 2), 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
   for (const p of game.projectiles) {
     if (p.dead) continue;
