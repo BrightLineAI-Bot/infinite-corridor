@@ -1,8 +1,15 @@
-import { hashSeed, rng } from "./random.js?v=r735-7051faeb03e6";
-import { populateDungeonEncounters } from "./arenas.js?v=r735-7051faeb03e6";
-import { annotateDungeon } from "./dungeon-framework.js?v=r735-7051faeb03e6";
+import { hashSeed, rng } from "./random.js?v=r739-0b5b1c12e64a";
+import { populateDungeonEncounters } from "./arenas.js?v=r739-0b5b1c12e64a";
+import { annotateDungeon } from "./dungeon-framework.js?v=r739-0b5b1c12e64a";
 
 export const DEEP_DUNGEON_SCHEMA_VERSION = 3;
+// Release 735: placement version of deep-v2 dungeons, pinned per history (`deepPlacement`, game.ts generatePinnedDungeon) for
+// dungeons first generated from now on; a dungeon generated before keeps version 1 exactly as it was. Version 2:
+// - a story object (the Resonant Dead's three tones, a shade, a relic, an echo) whose fixed spot by the hub is rock or cut off
+//   moves to the nearest floor the hub reaches (within `storyReach`);
+// - an Oath Door's shortcut object stands on the first of its sealed cells that touches reachable floor, where it can be used;
+// - the terrain-hazard pass protects what lies behind the sealed final gate too (arenas.ts populateDungeonTerrainHazards).
+export const DEEP_PLACEMENT = { version: 2, storyReach: 12 };
 export const DEEP_ARCHETYPE_IDS = ["threefold", "descent", "loop", "flooded", "fortress"];
 export const DEEP_MATERIALS = Object.fromEntries(DEEP_ARCHETYPE_IDS.map((id)=>[id,{floor:`${id}DeepFloor`,wall:`${id}DeepWall`} ]));
 
@@ -176,7 +183,7 @@ function levelShell(seed,id,archetype,levelId,name){
   const m=baseMap(seed,id,archetype,44,44,{x:22,y:39},{x:22,y:34});m.levelId=levelId;m.levelStableId=deepV2LevelStateId(id,levelId);m.levelName=name;m.levels=deepV2Levels(id);m.multiLevel=true;m.objects=m.objects.filter(o=>o.kind!=="exit");m.rect(5,29,38,40);m.rect(7,8,37,23);m.hall(22,39,22,10);m.zones=[{id:`${levelId}-landing`,name:`${name} Landing`,levelId},{id:`${levelId}-works`,name:`${name} Interior`,levelId}];return m;
 }
 function levelTransition(m,q){m.objects.push({kind:"deepTransition",state:"open",actions:["travel"],...q});m.transitions||=[];m.transitions.push({id:q.id,fromLevelId:m.levelId,toLevelId:q.toLevelId,from:{x:q.x,y:q.y},to:{x:q.toX,y:q.toY}})}
-function buildMultiLevel(seed,id,archetype,levelId){
+function buildMultiLevel(seed,id,archetype,levelId,placement=1){
   const levels=deepV2Levels(id),chosen=levels.find(q=>q.id===levelId)||levels[0],m=levelShell(seed,id,archetype,chosen.id,chosen.name),all=archetype==="descent"?[{id:"survey-warden",type:"guardian",name:"Survey Warden"},{id:"depth-engine",type:"mechanism",name:"Depth Engine"}]:[{id:"barracks-captain",type:"guardian",name:"Buried Captain"},{id:"ward-engine",type:"mechanism",name:"Ward Engine"},{id:"occupied-square",type:"guardian",name:"Occupation Beast"}];m.allObjectives=all.map(q=>({...q,required:true}));m.storyPackage=storyFor(seed,id,archetype);
   const index=chosen.index;if(index===0)m.objects.push({id:`deep-v2-${archetype}-exit`,kind:"exit",...m.entry,state:"open",actions:["exit"]});
   if(index>0)levelTransition(m,{id:`${m.levelStableId}:up`,name:"Return Passage",x:10,y:34,toLevelId:levels[index-1].id,toX:32,toY:34,direction:"up"});
@@ -185,7 +192,7 @@ function buildMultiLevel(seed,id,archetype,levelId){
   if(index===0){m.hall(12,34,12,22);m.hall(12,22,22,22);const cells=[21,22,23].map(x=>({x,y:27}));m.objects.push({id:`deep-v2-${archetype}-level-shortcut`,kind:"deepShortcut",name:archetype==="descent"?"Survey Fold Door":"Ward Sally Door",x:22,y:27,state:"hidden",actions:["inspect"],unlockObjectiveId:all[0].id,cells,toX:22,toY:34,routeType:"physical"});for(const p of cells)m.tiles[p.y*m.width+p.x]={x:p.x,y:p.y,kind:m.wallKind,blocked:true,detail:1};m.routes.push({id:`deep-v2-${archetype}-level-shortcut`,type:"physical",unlockObjectiveId:all[0].id});}
   if(index===levels.length-1){const boss={id:`deep-v2-${archetype}-final`,kind:archetype==="descent"?"gravitantBell":"gateRevenant",x:22,y:13,boss:true,deepDungeon:true,dungeonRole:"finalBoss",arenaId:`${archetype}-final`},gate={id:`deep-v2-${archetype}-level-final-gate`,kind:"sealedGate",x:22,y:25,state:"sealed",actions:["inspect"],requires:all.map(q=>q.id)};m.objectives=[];m.objects.push(gate);sealTiles(m,gate,[20,21,22,23,24].map(x=>({x,y:25})));m.enemySpawns.push(boss);m.finalGate=gate;m.finalGateId=gate.id;m.finalArena={id:boss.arenaId,sealedBy:gate.id,bossId:boss.id};m.finalEnemyIds=[boss.id];m.objects.push({id:`deep-v2-${archetype}-final-return`,kind:"deepPortal",name:"Final Return Lattice",x:25,y:13,state:"dormant",actions:["inspect"],unlockOnCompletion:true,targetLevelId:levels[0].id,toX:m.hub.x,toY:m.hub.y,routeType:"postBoss"});m.routes.push({id:`deep-v2-${archetype}-final-return`,type:"postBoss",targetLevelId:levels[0].id});}
   if(index===0)addStoryObjects(m);
-  delete m.floor;delete m.rect;delete m.hall;return populateDungeonEncounters(m,{deep:true});
+  delete m.floor;delete m.rect;delete m.hall;if(placement>=2)repairDeepPlacements(m,placement);return populateDungeonEncounters(m,{deep:true});
 }
 
 // Threefold layout 2 (release 146): an 80×76 undercroft generated per dungeon. A winding processional climbs from the
@@ -243,10 +250,26 @@ function threefold2(seed, id) {
   return finalize(m, { id: "deep-v2-threefold-final-gate", kind: "sealedGate", x: 40, y: 23, state: "sealed", actions: ["inspect"] }, { id: "deep-v2-threefold-final", kind: "gateRevenant", x: 40, y: 9, boss: true, deepDungeon: true, dungeonRole: "finalBoss", arenaId: "threefold-final" }, [38, 39, 40, 41, 42].map((x) => ({ x, y: 23 })));
 }
 
+// Placement version 2 (DEEP_PLACEMENT): move story objects and shortcut objects that cannot be used onto floor that can. Tiles
+// are not touched; only object positions, before the encounter passes run.
+const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+function floodOpen(map, from) { const W = map.width, H = map.height, seen = new Uint8Array(W * H), q = []; if (!from) return seen; const s = Math.round(from.y) * W + Math.round(from.x); if (!map.tiles[s] || map.tiles[s].blocked) return seen; seen[s] = 1; q.push(s);
+  for (let i = 0; i < q.length; i++) { const k = q[i], x = k % W, y = (k / W) | 0; for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, n = ny * W + nx; if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[n] || map.tiles[n]?.blocked) continue; seen[n] = 1; q.push(n); } } return seen; }
+function repairDeepPlacements(map, placement) {
+  if (placement < 2) return map; map.deepPlacement = placement; const W = map.width, H = map.height, P = DEEP_PLACEMENT;
+  const fromHub = floodOpen(map, map.hub), fromEntry = floodOpen(map, map.entry), taken = (x, y, self) => (map.objects || []).some((o) => o !== self && Math.round(o.x) === x && Math.round(o.y) === y);
+  for (const o of map.objects || []) { if (!o.storyId) continue; const x = Math.round(o.x), y = Math.round(o.y); if (x >= 0 && y >= 0 && x < W && y < H && fromHub[y * W + x]) continue;
+    let best = null, bd = Infinity; for (let k = 0; k < W * H; k++) { if (!fromHub[k]) continue; const tx = k % W, ty = (k / W) | 0, d = Math.hypot(tx - o.x, ty - o.y); if (d < bd && d <= P.storyReach && !taken(tx, ty, o)) { bd = d; best = { x: tx, y: ty }; } }
+    if (best) Object.assign(o, best); }
+  const usable = (x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const tx = x + dx, ty = y + dy; if ((dx || dy) && tx >= 0 && ty >= 0 && tx < W && ty < H && fromEntry[ty * W + tx]) return true; } return false; };
+  for (const o of map.objects || []) { if (o.kind !== "deepShortcut" || !o.cells?.length || usable(Math.round(o.x), Math.round(o.y))) continue; const c = o.cells.find((p) => usable(p.x, p.y)); if (c) Object.assign(o, { x: c.x, y: c.y }); }
+  return map;
+}
+
 export function generateDeepV2Dungeon(seed, id, options={}) {
-  const archetype = deepV2ArchetypeFromId(id), fn = archetype === "threefold" && options.threefoldLayout >= 2 ? threefold2 : { threefold, descent, loop, flooded, fortress }[archetype] || threefold;
-  if(options.levelId&&MULTI_LEVELS[archetype])return annotateDungeon(buildMultiLevel(seed,id,archetype,options.levelId),{generatorVersion:2,sizeProfile:archetype==="threefold"?"threefold":"deep"});
-  const map=fn(seed,id);map.levels=deepV2Levels(id);map.levelId=map.levels[0].id;map.levelStableId=map.levels[0].stableId;map.multiLevel=!!MULTI_LEVELS[archetype];map.allObjectives=(map.objectives||[]).map(q=>({...q}));return annotateDungeon(populateDungeonEncounters(map,{deep:true}),{generatorVersion:2,sizeProfile:archetype==="threefold"?"threefold":"deep"});
+  const archetype = deepV2ArchetypeFromId(id), fn = archetype === "threefold" && options.threefoldLayout >= 2 ? threefold2 : { threefold, descent, loop, flooded, fortress }[archetype] || threefold, placement = Number(options.deepPlacement) || 1;
+  if(options.levelId&&MULTI_LEVELS[archetype])return annotateDungeon(buildMultiLevel(seed,id,archetype,options.levelId,placement),{generatorVersion:2,sizeProfile:archetype==="threefold"?"threefold":"deep"});
+  const map=fn(seed,id);if(placement>=2)repairDeepPlacements(map,placement);map.levels=deepV2Levels(id);map.levelId=map.levels[0].id;map.levelStableId=map.levels[0].stableId;map.multiLevel=!!MULTI_LEVELS[archetype];map.allObjectives=(map.objectives||[]).map(q=>({...q}));return annotateDungeon(populateDungeonEncounters(map,{deep:true}),{generatorVersion:2,sizeProfile:archetype==="threefold"?"threefold":"deep"});
 }
 
 export function deepV2Descriptor(id) {

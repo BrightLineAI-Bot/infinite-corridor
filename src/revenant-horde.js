@@ -10,9 +10,9 @@
 // (the Gate Revenant's own pursuit); a kill anywhere counts down the dungeon's number. Those still alive when the
 // Wayfarer dies (or loses them) simply go back: the count only falls by kills. The last kill grants a Far Gate piece.
 // State: save.consequences.dungeons[id].horde = { total, left } (additive; decided once, on the first visit).
-import { hashSeed } from "./random.js?v=r735-7051faeb03e6";
-import { isDeepDungeonId } from "./world.js?v=r735-7051faeb03e6";
-import { ensureFarArray, piecesNeeded, gateOpen } from "./far-array.js?v=r735-7051faeb03e6";
+import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
+import { isDeepDungeonId } from "./world.js?v=r739-0b5b1c12e64a";
+import { ensureFarArray, piecesNeeded, gateOpen } from "./far-array.js?v=r739-0b5b1c12e64a";
 
 // Release 273 (Tim: "in the swarm dungeon... maybe you'll get like four crossing sigils throughout... you can break it into
 // waves"): the count is cut into `sigils` waves, and the kill that ends each wave leaves a Crossing Sigil.

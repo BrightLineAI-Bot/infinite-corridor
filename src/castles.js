@@ -12,8 +12,8 @@
 // into the keep's courtyard, up the keep to its lord and its treasure, and its gate lets you out at the front. The fourth quarter
 // is a feint: its wing leads to its own sealed courtyard and back round. Everything is a hash of the seed and the corner, and a
 // castle stands only where all four sections are new ground (`atlas.castleVersion`) and none of their lanes reaches the corner.
-import { hashSeed } from "./random.js?v=r735-7051faeb03e6";
-import { BUILDINGS, layFloor, farthest, addHoles } from "./great-buildings.js?v=r735-7051faeb03e6";
+import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
+import { BUILDINGS, layFloor, farthest, addHoles, guardianBeside } from "./great-buildings.js?v=r739-0b5b1c12e64a";
 
 export const CASTLES = {
   version: 1,
@@ -115,8 +115,8 @@ export function placeCastleQuarter(map, seed, X, Y, q) {
 
 // ------------------------------------------------------------------------------------------------ inside a wing or the keep
 const memo = new Map();
-export function castlePartPlan(base) {
-  if (memo.has(base)) return memo.get(base);
+export function castlePartPlan(base, V = 1) {
+  const key = V >= 2 ? `${base}|v${V}` : base; if (memo.has(key)) return memo.get(key);
   const P = parseCastleId(`${base}:f1`); if (!P) return null;
   const L = castleLayout(P.seed, P.X, P.Y), T = L.T, keep = P.part === "k", part = keep ? T.keep : T.wings[Number(P.part.slice(1))], S = BUILDINGS.styles.keep;
   const [W, H] = keep ? CASTLES.interior.keep : CASTLES.interior.wing, h = (k) => hashSeed(`${base}:plan:${k}`), q = part.q, R = L.quarters[q], sec = quarterSection(P.X, P.Y, q);
@@ -131,13 +131,13 @@ export function castlePartPlan(base) {
   for (let f = 1; f <= part.floors; f++) { const here = doors.filter((d) => d.floor === f), keepOpen = here.flatMap((d) => [{ x: d.x, y: d.y, v: 2 }, { ...d.inner, v: 2 }]);
     const F = layFloor(base, f, W, H, S, arrive, keepOpen), top = f === part.floors, far = farthest(F, arrive, () => true), up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
     floors.push({ ...F, floor: f, arrive, up, top, far }); if (up) arrive = up; }
-  for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H);
+  for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H, V);
   const plan = { base, ...P, part, keep, W, H, doors, floors, sec, gate: { ...quarterSection(P.X, P.Y, T.a), ...L.quarters[T.a].outer.out }, name: keep ? CASTLES.names.keep : CASTLES.names.wings[q] };
-  if (memo.size > 40) memo.clear(); memo.set(base, plan); return plan;
+  if (memo.size > 40) memo.clear(); memo.set(key, plan); return plan;
 }
 
-export function generateCastleFloor(seed, id) {
-  const P = parseCastleId(id), plan = P && castlePartPlan(P.base); if (!plan) return null;
+export function generateCastleFloor(seed, id, V = 1) { // `V`: the interior version pinned for the castle part (great-buildings.ts BUILDINGS.interior)
+  const P = parseCastleId(id), plan = P && castlePartPlan(P.base, V); if (!plan) return null;
   const S = BUILDINGS.styles.keep, F = plan.floors[P.floor - 1], { W, H } = plan, tiles = [], holes = new Set((F.holes || []).map(([x, y]) => y * W + x));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, g = F.grid[k], rm = F.room[k];
     const nb = rm >= 0 ? rm : [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => F.room[(y + dy) * W + x + dx]).find((v) => v >= 0);
@@ -156,10 +156,10 @@ export function generateCastleFloor(seed, id) {
   for (const p of spots) { if (enemySpawns.length >= n) break; const rm = F.room[p.y * W + p.x]; if (used.has(rm)) continue; used.add(rm); taken.add(p.y * W + p.x); enemySpawns.push({ id: `${id}:g${enemySpawns.length}`, kind: S.guards[h(`k${enemySpawns.length}`) % S.guards.length], x: p.x, y: p.y, buildingGuard: true }); }
   if (plan.keep && top) { const c = spots.find((p) => !taken.has(p.y * W + p.x)) || F.far[0];
     if (c) { objects.push({ id: "building-cache", kind: "chest", name: "Treasure of the Keep", x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); taken.add(c.y * W + c.x);
-      const g = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => ({ x: c.x + dx, y: c.y + dy })).find((q) => free(q.x, q.y)); if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true }); }
+      const g = guardianBeside(tiles, W, c, free, V, F.arrive); if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true }); }
     const way = F.far.find((p) => free(p.x, p.y) && Math.hypot(p.x - (c?.x ?? 0), p.y - (c?.y ?? 0)) > 4) || F.far[F.far.length - 1];
     objects.push({ id: "building-exit-gate", kind: "exit", name: "Way out · the castle gate", x: way.x, y: way.y, state: "open", actions: ["exit"] }); exitsTo["building-exit-gate"] = plan.gate; }
   const entry = P.floor === 1 ? { ...(plan.doors.find((d) => d.floor === 1)?.inner || F.arrive) } : { ...F.arrive };
   return { seed, id, recipe: "greatBuilding", name, identity: `${N.castle}: the ${plan.name}`, danger: "a castle's halls", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
-    building: { base: P.base, style: "keep", floor: P.floor, floors: P.floors, castle: true, part: P.part, entries, exitsTo, breachEntry: null, roofLadder: null }, layoutVersion: 1, themePool: 0 };
+    building: { base: P.base, style: "keep", floor: P.floor, floors: P.floors, castle: true, ...(V >= 2 ? { interiorVersion: V } : {}), part: P.part, entries, exitsTo, breachEntry: null, roofLadder: null }, layoutVersion: 1, themePool: 0 };
 }

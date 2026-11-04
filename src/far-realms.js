@@ -7,7 +7,7 @@
 // borders wavered by noise. Each cell rolls one number u in [0, 1) on its own hash; each version of this table gives a realm to a
 // further band of u (`bands`), always carved out of what was still `ordinary`, so a cell keeps its realm in every later version.
 // Only sections first seen with a version hold a realm (the atlas pins `farVersion`); ground seen before keeps none. Pure.
-import { hashSeed } from "./random.js?v=r735-7051faeb03e6";
+import { hashSeed, byHash } from "./random.js?v=r739-0b5b1c12e64a";
 
 export const FAR_REALMS = {
   version: 6, start: 1000, cell: 40, warp: 9, // 5 (719): the Ink Wastes; 6 (720): the folk realms; // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
@@ -80,7 +80,7 @@ export function populatePocket(map, seed, rx, ry, pocket) {
   spawns.forEach((e, i) => { if (e.packOverworld || !(e.ambient || e.passiveBehavior || e.shelterAmbush || e.districtResident || e.boss || e.elite || e.gatePredator || e.foundryId || e.viewportHuntId || e.domainId || e.huntInstanceId || e.worldBeast || e.questingBeast || e.skirmishId)) e.kind = pick(`c${i}`); }); // every ordinary creature (hunt, domain, ambient and named foes keep theirs)
   const width = Number(map.width) || 32, height = Math.floor((map.tiles?.length || 1024) / width), taken = [...spawns, ...(map.objects || [])].filter((q) => Number.isFinite(q?.x));
   const open = (map.tiles || []).filter((t) => !t.blocked && !t.environment && !t.structure && !t.buildingId && t.x > 2 && t.y > 2 && t.x < width - 3 && t.y < height - 3 && taken.every((q) => Math.hypot(q.x - t.x, q.y - t.y) >= FAR_POCKETS.spacing))
-    .sort((a, b) => hashSeed(`${seed}:far-pocket:spot:${rx}:${ry}:${a.x}:${a.y}`) - hashSeed(`${seed}:far-pocket:spot:${rx}:${ry}:${b.x}:${b.y}`));
+    .sort(byHash((a) => `${seed}:far-pocket:spot:${rx}:${ry}:${a.x}:${a.y}`));
   let n = 0; const want = FAR_POCKETS.extra[pocket.type] ?? FAR_CIVS[pocket.type]?.extra ?? 0;
   for (const t of open) { if (n >= want) break; if (taken.some((q) => Math.hypot(q.x - t.x, q.y - t.y) < FAR_POCKETS.spacing)) continue;
     const e = { id: `far-pocket:${rx}:${ry}:${n}`, kind: pick(`x${n}`), x: t.x, y: t.y, packOverworld: true, farPocket: pocket.type }; spawns.push(e); taken.push(e); n++; }

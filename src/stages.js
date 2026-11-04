@@ -10,7 +10,7 @@
 // the Wayfarer until they reach tier `freezeTier`; their strength is then held at that moment's measure until the Wayfarer
 // has felled the Listener `thawKills` times, when it catches up; from then on it catches up once per Listener kill (331).
 // State: save.farArray.listeners (the Listener kills, far-array.ts) and save.beastCeiling (additive; set once, when frozen).
-import { apertureTier, APERTURE_THRESHOLDS } from "./world.js?v=r735-7051faeb03e6";
+import { apertureTier, APERTURE_THRESHOLDS } from "./world.js?v=r739-0b5b1c12e64a";
 
 export const STAGES = { tiersPerStage: 12, firstKills: 1, killsPerStage: 2, freezeTier: 13, thawKills: 3 };
 
@@ -49,11 +49,18 @@ export function ensureBeastCeiling(save) {
   return c;
 }
 const measure = (ref, kills) => ({ ...Object.fromEntries(FIELDS.map((k) => [k, ref[k]])), kills });
+// Balance pack (Tim, 2026-11-04): damage reduction now climbs past its old 0.45 cap (game.ts DAMAGE_REDUCTION), and nothing
+// tuned to hurt the Wayfarer may get easier for it. A held measure whose guard sat at the old cap therefore follows the
+// Wayfarer's live reduction above it (beasts, the Questing Beast, the Stalker, the Gate Revenant and the Wardens made from
+// it all read this), so what they deal after reduction is unchanged; below the old cap the hold is as before.
+export const BEAST_GUARD_HOLD = { oldCap: .45 };
 export function stageOneBeastReference(save, ref) {
   if (apertureTier(save?.perception?.aperture || 0) < STAGES.freezeTier) return ref;
   const k = listenerKills(save); let c = ensureBeastCeiling(save);
   if (!c || (k >= STAGES.thawKills && (c.kills ?? -1) < k)) c = save.beastCeiling = measure(ref, k);
-  return { ...ref, ...Object.fromEntries(FIELDS.map((f) => [f, Math.min(ref[f], c[f])])) };
+  const held = { ...ref, ...Object.fromEntries(FIELDS.map((f) => [f, Math.min(ref[f], c[f])])) }, live = Number(ref.guard) || 0;
+  if (c.guard >= BEAST_GUARD_HOLD.oldCap && live > held.guard) held.guard = live;
+  return held;
 }
 // A Listener just fell (game.ts): from the `thawKills`-th kill, the beasts catch up to the Wayfarer as they stand now.
 // `ref` is the unheld reference (world-beasts.ts liveBeastReference).

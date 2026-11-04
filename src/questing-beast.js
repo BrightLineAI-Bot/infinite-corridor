@@ -2,9 +2,9 @@
 // Wayfarer's level and power. Now and then it claims a wild section. It stays there until it is killed or it has
 // killed the Wayfarer QUESTING_BEAST.tries times; then it is gone, and after a cooldown (counted in sections entered)
 // a new hunt can begin somewhere else.
-import { hashSeed } from "./random.js?v=r735-7051faeb03e6";
-import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterChance, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.js?v=r735-7051faeb03e6";
-import { LETHAL_KINDS } from "./landscape.js?v=r735-7051faeb03e6";
+import { hashSeed, byHash } from "./random.js?v=r739-0b5b1c12e64a";
+import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterChance, encounterMet, isMarineTile, beastUnlocked } from "./world-beasts.js?v=r739-0b5b1c12e64a";
+import { LETHAL_KINDS } from "./landscape.js?v=r739-0b5b1c12e64a";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.
@@ -35,7 +35,7 @@ export function questingBeastFor(save, map, rx, ry) {
   }
   if (q.active.rx !== rx || q.active.ry !== ry) return null;
   const open = map.tiles.filter((t) => !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24);
-  const at = open.sort((a, b) => hashSeed(`qb:${q.cycle}:${a.x},${a.y}`) - hashSeed(`qb:${q.cycle}:${b.x},${b.y}`))[0];
+  const at = open.sort(byHash((a) => `qb:${q.cycle}:${a.x},${a.y}`))[0];
   if (!at) return null;
   return { id: `questing-beast:${q.cycle}`, kind: "questingBeast", x: at.x, y: at.y, boss: true, questingBeast: true, traits: [] };
 }

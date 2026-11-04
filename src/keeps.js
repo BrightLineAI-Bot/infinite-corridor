@@ -10,8 +10,8 @@
 //   → the corner towers (4); the far wall's gatehouse tower (4) → a bridge over the courtyard (4) → the keep's wall walk (4)
 //   → jump up to the keep's upper floor (5) → jump up to its crown (6), where a Keep Rest and the keep's cache wait.
 // Creatures hold the courtyard, the wall walk and the towers (they cannot change level). Bounded: one keep a section, built once.
-import { hashSeed } from "./random.js?v=r735-7051faeb03e6";
-import { canStep } from "./landscape.js?v=r735-7051faeb03e6";
+import { hashSeed, byHash } from "./random.js?v=r739-0b5b1c12e64a";
+import { canStep } from "./landscape.js?v=r739-0b5b1c12e64a";
 
 export const KEEPS = {
   version: 1,
@@ -45,7 +45,7 @@ export function buildKeep(map, seed, rx, ry) {
   let undone = 0;
   for (const [W, H] of KEEPS.sizes) {
     const spots = []; for (let oy = 1; oy <= 31 - H; oy++) for (let ox = 1; ox <= 31 - W; ox++) spots.push([ox, oy]);
-    spots.sort((a, b) => hashSeed(`${seed}:great-keep-spot:${rx}:${ry}:${a}`) - hashSeed(`${seed}:great-keep-spot:${rx}:${ry}:${b}`));
+    spots.sort(byHash((a) => `${seed}:great-keep-spot:${rx}:${ry}:${a}`));
     for (const [ox, oy] of spots.slice(0, 300)) {
       let fits = true; for (let y = oy; y < oy + H && fits; y++) for (let x = ox; x < ox + W && fits; x++) { const q = map.tiles[I(x, y)]; fits = ok(x, y) && (!ground(x, y) || (!q.blocked && !q.slope && !(q.elev > 0))); } // a way through stays level ground
       if (!fits) continue;
@@ -161,7 +161,7 @@ export function buildArcology(map, seed, rx, ry) {
   let undone = 0;
   for (const S of ARCOLOGY.sizes) {
     const spots = []; for (let oy = 1; oy <= 31 - S; oy++) for (let ox = 1; ox <= 31 - S; ox++) spots.push([ox, oy]);
-    spots.sort((a, b) => hashSeed(`${seed}:arcology-spot:${rx}:${ry}:${a}`) - hashSeed(`${seed}:arcology-spot:${rx}:${ry}:${b}`));
+    spots.sort(byHash((a) => `${seed}:arcology-spot:${rx}:${ry}:${a}`));
     for (const [ox, oy] of spots.slice(0, 300)) {
       let fits = true; for (let y = oy; y < oy + S && fits; y++) for (let x = ox; x < ox + S && fits; x++) fits = ok(x, y);
       if (!fits) continue;

@@ -21,7 +21,7 @@
 // the section. The first stands one level up, so a jump reaches it; from a platform a jump keeps its height over the gap
 // (game.ts, skyAir) and lands on the next. Creatures walk the ground beneath and cannot climb. A jump that ends over a gap
 // falls (from four levels, fatally). The skyway door stands on the top platform and opens only from there.
-import { hashSeed } from "./random.js?v=r735-7051faeb03e6";
+import { hashSeed, byHash } from "./random.js?v=r739-0b5b1c12e64a";
 
 export const SKYLANDS = {
   version: 3, /* release 585: 2 = the stone skyway ascent; 587: 3 = floating discs */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,
@@ -283,7 +283,7 @@ export function skylandScale(tier) { return { hp: 1 + SKYLANDS.hpPerTier * tier,
 // Release 589: from a plan (skylandPlan); `plan` left out is a 571 run's waves. Echoes stand apart from one another.
 export function skylandWave(id, wave, open, centre, bossKind, plan = null) {
   const W = (plan || skylandPlan(id, null, bossKind))[wave]; if (!W || !open.length) return [];
-  const near = open.filter((q) => Math.hypot(q.x - centre.x, q.y - centre.y) <= 6).sort((a, b) => hashSeed(`${id}:w${wave}:${a.x},${a.y}`) - hashSeed(`${id}:w${wave}:${b.x},${b.y}`));
+  const near = open.filter((q) => Math.hypot(q.x - centre.x, q.y - centre.y) <= 6).sort(byHash((a) => `${id}:w${wave}:${a.x},${a.y}`));
   const pool = near.length >= W.count ? near : open, echoes = W.echoes || [];
   const spots = echoes.length > 1 ? (() => { const out = []; for (const q of [...pool, ...open]) if (out.length < W.count && out.every((o) => Math.hypot(o.x - q.x, o.y - q.y) >= 4)) out.push(q); while (out.length < W.count) out.push(pool[out.length % pool.length]); return out; })() : null;
   return Array.from({ length: W.count }, (_, i) => { const at = spots ? spots[i] : pool[i % pool.length], h = hashSeed(`${id}:w${wave}:kind:${i}`), echo = echoes[i];

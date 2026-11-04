@@ -1,4 +1,4 @@
-import { HAUNT } from "./haunts.js?v=r735-7051faeb03e6";
+import { HAUNT } from "./haunts.js?v=r739-0b5b1c12e64a";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,9 +8,9 @@ import { HAUNT } from "./haunts.js?v=r735-7051faeb03e6";
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r735-7051faeb03e6";
-import { hashSeed } from "./random.js?v=r735-7051faeb03e6";
-import { updateAstralActor } from "./astral-worm.js?v=r735-7051faeb03e6";
+import { stageOneBeastReference } from "./stages.js?v=r739-0b5b1c12e64a";
+import { hashSeed, byHash } from "./random.js?v=r739-0b5b1c12e64a";
+import { updateAstralActor } from "./astral-worm.js?v=r739-0b5b1c12e64a";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -3806,7 +3806,9 @@ const LETHAL = new Set(["canyon", "river", "dungeonWater", "water", "bridge"]);
 // Mix pack creatures into a generated overworld section: convert a share of ordinary hostile spawns and add a few
 // extra pack residents (more far from the origin). The starting section, settlements' safe circle, ambient wildlife,
 // shelter/district residents and story creatures are left alone. Deterministic per seed and section.
-export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
+// `fits(tile)` (world coherence 1, new ground only): an extra stands only on open ground it can move about in, outside castle
+// courts, buildings, caps and trees (landscape.ts creatureSpot, WG-08). Without it the extras go where they always did.
+export function populateOverworldPack(map, seed, rx, ry, { safe = null, fits = null } = {}) {
   if (!map || map.monsterPack || (rx === 0 && ry === 0)) return map;
   const depth = Math.abs(rx) + Math.abs(ry), width = Number(map.width) || 32, height = Math.floor((map.tiles?.length || 1024) / width);
   const pool = OVERWORLD_PACK_POOLS[map.dominant] || PACK_KINDS.filter((id) => !MONSTER_PACK[id].unique), key = `${seed}:overworld-pack:v${MONSTER_PACK_VERSION}:${rx}:${ry}`, D = OVERWORLD_PACK_DENSITY;
@@ -3820,8 +3822,8 @@ export function populateOverworldPack(map, seed, rx, ry, { safe = null } = {}) {
   });
   const occupied = [...spawns, ...(map.objects || [])].filter((q) => Number.isFinite(q?.x) && Number.isFinite(q?.y));
   const open = (map.tiles || []).filter((t) => !t.blocked && !LETHAL.has(t.kind) && !t.environment && t.x > 2 && t.y > 2 && t.x < width - 3 && t.y < height - 3
-    && !inSafe(t) && occupied.every((q) => Math.hypot(q.x - t.x, q.y - t.y) >= 3))
-    .sort((a, b) => hashSeed(`${key}:spot:${a.x}:${a.y}`) - hashSeed(`${key}:spot:${b.x}:${b.y}`));
+    && !inSafe(t) && (!fits || fits(t)) && occupied.every((q) => Math.hypot(q.x - t.x, q.y - t.y) >= 3))
+    .sort(byHash((a) => `${key}:spot:${a.x}:${a.y}`));
   const extra = depth >= D.farDepth ? D.extraFar : D.extraNear, placed = [];
   for (const t of open) {
     if (placed.length >= extra || packCount >= D.maxPack) break;

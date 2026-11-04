@@ -2,9 +2,9 @@
 // The world is split into HAMLET.cell × HAMLET.cell blocks of sections; each block nominates one section, and most
 // nominated sections that have a flat, dry patch of ground grow a hamlet there. A section explored before release 109
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.
-import { hashSeed, rng, pick } from "./random.js?v=r735-7051faeb03e6";
-import { LETHAL_KINDS } from "./landscape.js?v=r735-7051faeb03e6";
-import { relayCoordinate } from "./relay-network.js?v=r735-7051faeb03e6";
+import { hashSeed, rng, pick, byHash } from "./random.js?v=r739-0b5b1c12e64a";
+import { LETHAL_KINDS } from "./landscape.js?v=r739-0b5b1c12e64a";
+import { relayCoordinate } from "./relay-network.js?v=r739-0b5b1c12e64a";
 
 // Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
 // ruin-district styles. A section keeps the version its atlas entry was pinned to; placement and names are shared.
@@ -163,7 +163,7 @@ export function applyHamlet(map, seed, rx, ry, version = HAMLET_VERSION, force =
   map.objects.push({ id: `beacon-${ident.id}`, kind: "checkpoint", name: `${ident.name} Wayglass`, x: cx, y: cy + 2, state: "quiet", actions: ["activate"], landmark: true, settlement: ident.id });
   const spots = [[cx - 4, cy + 1], [cx + 4, cy + 1], [cx - 2, cy + 4], [cx + 2, cy + 4], [cx - 5, cy + 3], [cx + 5, cy + 3]], used = new Set();
   const take = () => { for (const s of spots) { const k = s.join(","); if (!used.has(k)) { used.add(k); return s; } } return [cx, cy + 4]; };
-  const folk = [...FOLK_NAMES].sort((a, b) => hashSeed(`${ident.id}:${a}`) - hashSeed(`${ident.id}:${b}`));
+  const folk = [...FOLK_NAMES].sort(byHash((a) => `${ident.id}:${a}`));
   if (def.merchant) { const [x, y] = take(); map.objects.push({ id: `${ident.id}-merchant`, kind: "shelterMerchant", name: `${folk.pop()} the Trader`, role: `${def.label} trader`, x, y, state: "calm", actions: ["speak", "trade"], settlement: ident.id }); }
   for (let i = 0; i < def.villagers; i++) { const [x, y] = take(); map.objects.push({ id: `${ident.id}-folk-${i}`, kind: "villager", name: folk.pop(), role: pick(r, FOLK_ROLES), line: pick(r, FOLK_LINES), x, y, state: "calm", actions: ["speak"], settlement: ident.id }); }
   for (let i = 0; i < def.guards; i++) { const x = i % 2 ? cx + HAMLET.halfW : cx - HAMLET.halfW, y = cy + 1 + Math.floor(i / 2) * 3; map.objects.push({ id: `${ident.id}-warden-${i}`, kind: "villager", guard: true, name: `Warden ${folk.pop()}`, role: "Warden", line: pick(r, GUARD_LINES), x, y, state: "calm", actions: ["speak"], settlement: ident.id }); }

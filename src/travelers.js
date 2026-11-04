@@ -4,12 +4,12 @@
 // Travellers: groups of people (some mounted) walk the trails or wander a section, stop when the Wayfarer comes near,
 // and talk. Peddlers trade. Old Quillon, a wandering cartographer, gives one errand at a time; finish it and the next
 // time you meet him he pays and hands you the next.
-import { hashSeed, rng, pick } from "./random.js?v=r735-7051faeb03e6";
-import { LETHAL_KINDS } from "./landscape.js?v=r735-7051faeb03e6";
-import { hamletRoll } from "./settlements.js?v=r735-7051faeb03e6";
-import { RECITERS, RECITATIONS } from "./recitations.js?v=r735-7051faeb03e6";
-import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r735-7051faeb03e6";
-import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r735-7051faeb03e6";
+import { hashSeed, rng, pick, byHash } from "./random.js?v=r739-0b5b1c12e64a";
+import { LETHAL_KINDS } from "./landscape.js?v=r739-0b5b1c12e64a";
+import { hamletRoll } from "./settlements.js?v=r739-0b5b1c12e64a";
+import { RECITERS, RECITATIONS } from "./recitations.js?v=r739-0b5b1c12e64a";
+import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r739-0b5b1c12e64a";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r739-0b5b1c12e64a";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
@@ -179,7 +179,7 @@ export function travelerPlan(seed, rx, ry, onTrail) {
   const r = rng(`${seed}:travelers:v${TRAVEL_VERSION}:${rx}:${ry}`);
   if (r() >= (onTrail ? TRAVEL.groupChanceOnTrail : TRAVEL.groupChance)) return null;
   const group = pick(r, TRAVELER_GROUPS), n = group.size[0] + Math.floor(r() * (group.size[1] - group.size[0] + 1));
-  const names = [...NAMES].sort((a, b) => hashSeed(`${rx},${ry}:${a}`) - hashSeed(`${rx},${ry}:${b}`));
+  const names = [...NAMES].sort(byHash((a) => `${rx},${ry}:${a}`));
   const members = [];
   for (let i = 0; i < n; i++) {
     const pool = group.pools.flatMap((k) => TRAVELER_LINES[k]), lines = [pick(r, pool), pick(r, pool), pick(r, pool)].filter((l, j, a) => a.indexOf(l) === j);
@@ -316,7 +316,7 @@ export function wandererHere(save, rx, ry) {
 }
 export function addWanderer(map, save, rx, ry) {
   if (!map || map.tiles?.length !== 1024 || map.skirmish || !wandererHere(save, rx, ry)) return null;
-  const open = map.tiles.filter((t) => t.x > 6 && t.y > 6 && t.x < 25 && t.y < 25 && walkable(t)).sort((a, b) => hashSeed(`${rx},${ry}:${a.x},${a.y}`) - hashSeed(`${rx},${ry}:${b.x},${b.y}`));
+  const open = map.tiles.filter((t) => t.x > 6 && t.y > 6 && t.x < 25 && t.y < 25 && walkable(t)).sort(byHash((a) => `${rx},${ry}:${a.x},${a.y}`));
   const at = open[0]; if (!at) return null;
   const o = { id: `wanderer:${rx},${ry}`, kind: "traveler", wanderer: true, name: WANDERER.name, role: WANDERER.role, look: "cartographer", mount: "mossGrazer", x: at.x, y: at.y, state: "listening", actions: ["speak"], facing: "down" };
   map.objects.push(o);
