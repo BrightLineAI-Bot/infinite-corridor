@@ -16,7 +16,10 @@ import { hashSeed } from "./random.ts";
 import { BUILDINGS, layFloor, farthest, addHoles, guardianBeside } from "./great-buildings.ts";
 
 export const CASTLES = {
-  version: 1,
+  version: 2, // 2 (release 740, Tim: "there should always be an exit to the roof"): the keep's top is a roof to stand on, `roof.elev`
+  // up (a fatal drop; the glider or the drone's booster lets you down), reached by the roof exit from the Throne of the Keep once
+  // its lord has fallen. A castle any of whose sections was first seen under version 1 keeps version 1 (`castleVersionOf`).
+  roof: { elev: 5 },
   every: 3, chance: .45, minRing: 7, // anchor corners on a grid of `every` sections; this share of the eligible ones
   Q: 10, // a quarter's side, in tiles, at the corner of its section
   wingFloors: [2, 3], keepFloors: [3, 4],
@@ -83,14 +86,17 @@ export function castleLayout(seed, X, Y) {
 
 // ------------------------------------------------------------------------------------------------ a quarter, on the overworld
 const I = (x, y) => y * 32 + x;
-export function placeCastleQuarter(map, seed, X, Y, q) {
+// The version a castle stands at: the lowest pinned by any of its four sections already seen (all share one), else the current.
+export function castleVersionOf(atlas, X, Y) { let v = CASTLES.version; for (let q = 0; q < 4; q++) { const s = quarterSection(X, Y, q), a = atlas?.[`${s.rx},${s.ry}`]; if (a?.castleVersion) v = Math.min(v, a.castleVersion); } return v; }
+const LIFT = .34; // landscape.ts LIFT_PER_LEVEL
+export function placeCastleQuarter(map, seed, X, Y, q, V = 1) {
   if (!map?.tiles?.length || map.greatBuilding) return null;
   const C = CASTLES, Q = C.Q, L = castleLayout(seed, X, Y), R = L.quarters[q], T = L.T, set = (x, y, p) => { const i = I(x, y); map.tiles[i] = { ...map.tiles[i], x, y, slope: false, elev: 0, environment: undefined, canopy: undefined, structure: undefined, ...p }; };
   const wing = [], wall = [], court = [], keepSet = new Set((R.keep?.cells || []).map((c) => I(c.x, c.y)));
   for (let v = 0; v < Q; v++) for (let u = 0; u < Q; u++) { const p = R.P(u, v);
     if (u === Q - 1 || v === Q - 1) { wall.push(p); set(p.x, p.y, { kind: "castleWall", landscape: "castle", blocked: true, greatBuilding: true }); }
     else if (u < 3 || v < 3) { wing.push(p); set(p.x, p.y, { kind: "castleWall", landscape: "castle", blocked: true, greatBuilding: true }); }
-    else if (keepSet.has(I(p.x, p.y))) set(p.x, p.y, { kind: "castleWall", landscape: "castle", blocked: true, greatBuilding: true });
+    else if (keepSet.has(I(p.x, p.y))) set(p.x, p.y, V >= 2 && map.landscape ? { kind: "castleCourt", landscape: "castle", blocked: false, elev: C.roof.elev, roofLift: (1 + T.keep.floors * .55) / (C.roof.elev * LIFT), structure: "buildingRoof", greatBuilding: true } : { kind: "castleWall", landscape: "castle", blocked: true, greatBuilding: true }); // version 2: the keep's roof
     else { court.push(p); set(p.x, p.y, { kind: "castleCourt", landscape: "castle", blocked: false, courtyard: true, greatBuilding: true }); } }
   // a causeway from the outer gate to the middle of the section (so the gate can always be walked to)
   if (R.outer) { let { x, y } = R.outer.out; for (let n = 0; n < 64 && !(Math.abs(x - 16) <= 2 && Math.abs(y - 16) <= 2); n++) { const t = map.tiles[I(x, y)]; if (!t?.greatBuilding) set(x, y, { kind: "castleCourt", landscape: "castle", blocked: false, causeway: true }); if (x !== 16) x += Math.sign(16 - x); else y += Math.sign(16 - y); } }
@@ -102,14 +108,14 @@ export function placeCastleQuarter(map, seed, X, Y, q) {
   map.objects.push({ id: `${id}-court`, kind: "dungeon", buildingDoor: true, castleDoor: true, dungeonId: `${wingBase}:f1`, dungeonType: "castle", name: `${N.wings[q]} (courtyard door)`, ...R.court.inner, state: "open", actions: ["enter"], enterAt: "court" }); doors.push({ ...R.court.door, face: faceOf(R.court.door, q, R.court.inner) });
   for (const [from, g] of Object.entries(R.gates)) { const Wf = T.wings[Number(from)], sd = Wf.sides.find((s) => s.to === q);
     map.objects.push({ id: `${id}-gate-${from}`, kind: "dungeon", buildingDoor: true, castleDoor: true, dungeonId: `${partBase(seed, X, Y, Wf)}:f${sd.floor}`, dungeonType: "castle", name: `Door · ${N.wings[from]}`, ...g.inner, state: "open", actions: ["enter"], enterAt: `side${q}` }); doors.push({ ...g.wall, face: faceOf(g.wall, q, g.inner) }); }
-  if (R.keep) { map.objects.push({ id: `${id}-keep`, kind: "dungeon", buildingDoor: true, castleDoor: true, dungeonId: `${partBase(seed, X, Y, T.keep)}:f1`, dungeonType: "castle", name: N.keep, identity: "its lord and its treasure at the top", ...R.keep.inner, state: "open", actions: ["enter"], enterAt: "court", landmark: true }); doors.push({ ...R.keep.door, face: faceOf(R.keep.door, q, R.keep.inner) }); }
+  if (R.keep) { map.objects.push({ id: `${id}-keep`, kind: "dungeon", buildingDoor: true, castleDoor: true, dungeonId: `${partBase(seed, X, Y, T.keep)}:f1`, dungeonType: "castle", name: N.keep, identity: "its lord and its treasure at the top", ...R.keep.inner, state: "open", actions: ["enter"], enterAt: "court", landmark: true, ...(V >= 2 && map.landscape ? { buildingDoors: { ...quarterSection(X, Y, q), roofTop: true } } : {}) }); /* version 2: the keep's roof, for its roof exit */ doors.push({ ...R.keep.door, face: faceOf(R.keep.door, q, R.keep.inner) }); }
   const kinds = BUILDINGS.styles.keep.guards, hh = (k) => hashSeed(`${seed}:castle-guard:${X}:${Y}:${q}:${k}`), open = court.filter((c) => !map.objects.some((o) => Math.round(o.x) === c.x && Math.round(o.y) === c.y));
   for (let i = 0; i < C.courtyardGuards && open.length; i++) { const c = open[hh(`g${i}`) % open.length]; if (!map.enemySpawns.some((e) => e.x === c.x && e.y === c.y)) map.enemySpawns.push({ id: `${id}-court-${i}`, kind: kinds[hh(`k${i}`) % kinds.length], x: c.x, y: c.y, courtyardGuard: true }); }
   const faceW = 1 + W.floors * .5, blocks = [{ part: "wing", cells: wing, faceH: faceW, floors: W.floors }, { part: "wall", cells: wall, faceH: .9, floors: 1, wall: true }];
   if (R.keep) blocks.push({ part: "t", cells: R.keep.cells, faceH: 1 + T.keep.floors * .55, floors: T.keep.floors });
   const xs = [...wing, ...wall].map((c) => c.x), ys = [...wing, ...wall].map((c) => c.y), bx = Math.min(...xs), by = Math.min(...ys);
   map.objects.push({ id, kind: "greatBuilding", v: 2, castle: true, name: N.castle, style: "keep", x: bx + (Q >> 1), y: by + Q - 1, bounds: { x: bx, y: by, w: Q, h: Q }, footprint: [...wing, ...wall, ...(R.keep?.cells || [])], blocks, doors, hatches: [], crumbled: [], grain: hh("grain") % 97, state: "closed", actions: [] });
-  map.greatBuilding = { id, castle: true, X, Y, q, version: C.version };
+  map.greatBuilding = { id, castle: true, X, Y, q, version: V };
   return map.objects[map.objects.length - 1];
 }
 

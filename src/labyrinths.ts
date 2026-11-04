@@ -18,7 +18,9 @@ import { hashSeed, rng, byHash } from "./random.ts";
 import { BUILDINGS, layFloor, farthest, guardianBeside } from "./great-buildings.ts";
 
 export const LABYRINTHS = {
-  version: 1,
+  version: 2, // 2 (release 740, Tim: "there should always be an exit to the roof"): the block's top is a roof to stand on, `roof.elev`
+  // up (a fatal drop), reached only by the vault's roof exit once its guardian has fallen; sections pinned to 1 keep a closed block
+  roof: { elev: 5 },
   chance: .06, minRing: 6,
   chambers: [14, 20], minPath: 9, // the way from the door to the vault passes through at least `minPath` chambers
   size: [27, 19], // odd, so the mazes have walls between cells
@@ -221,7 +223,7 @@ const I = (x, y) => y * 32 + x, WET = /ocean|Ocean|lake|Lake|swamp|Swamp|toxic|T
 const CLEARS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
 // `doorOk(map, at)` (world coherence 1, new ground only): the door must join the land the exits join (landscape.ts joinsCore);
 // a spot whose door stands in a closed pocket is passed over (WG-05). Without it, placement is as it always was.
-export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
+export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null, V = 1) {
   if (!map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const L = LABYRINTHS, ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -236,8 +238,8 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null
     for (const [ox, oy] of spots.slice(0, 240)) {
       let fits = true; for (let y = oy; y < oy + H && fits; y++) for (let x = ox; x < ox + W && fits; x++) fits = ground(x, y); if (!fits) continue;
       const south = oy + H / 2 < 16, dx = ox + (W >> 1), dy = south ? oy + H - 1 : oy, out = { x: dx, y: dy + (south ? 1 : -1) }; if (!open(out.x, out.y)) continue;
-      const tiles = map.tiles.slice(), before = exitsOpen(map), cells = [];
-      for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) { cells.push({ x, y }); const i = I(x, y); map.tiles[i] = { ...map.tiles[i], x, y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; }
+      const tiles = map.tiles.slice(), before = exitsOpen(map), cells = [], roof = V >= 2 && !!map.landscape, floors0 = 3 + h("floors") % 2, lift = (1 + floors0 * .5) / (L.roof.elev * .34); // landscape.ts LIFT_PER_LEVEL
+      for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) { cells.push({ x, y }); const i = I(x, y); map.tiles[i] = roof ? { ...map.tiles[i], x, y, kind: plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology", blocked: false, slope: false, elev: L.roof.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, environment: undefined, canopy: undefined } : { ...map.tiles[i], x, y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; } // version 2: a roof to stand on
       const after = exitsOpen(map); if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
       if (doorOk && !doorOk(map, out)) { map.tiles = tiles; if (++doorMiss >= doorOk.tries) return null; continue; }
       const set = new Set(cells.map((c) => I(c.x, c.y))), id = `labyrinth-${rx}-${ry}`, floors = 3 + h("floors") % 2, faceH = 1 + floors * .5;
@@ -245,8 +247,8 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));
       const rec = { id, kind: "greatBuilding", v: 2, labyrinth: true, name: S.name, style: plan.style, x: dx, y: oy + H - 1, bounds: { x: ox, y: oy, w: W, h: H }, footprint: cells, blocks: [{ part: "b", cells, faceH, floors }], doors: [{ x: dx, y: dy, face: south ? "south" : "north" }], hatches: [], crumbled: [], grain: h("grain") % 97, state: "closed", actions: [] };
       map.objects.push(rec);
-      map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, labyrinthDoor: true, buildingDoors: { rx, ry, front: out, exits: {}, hatch: null }, dungeonId: `${base}:f1`, dungeonType: "labyrinth", name: S.name, identity: "one door in, one real end", x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: `${S.name}: a maze of halls, courts, cellars and galleries. One way through; the vault at its heart lets you out at the front.` });
-      map.greatBuilding = { id, base, labyrinth: true, style: plan.style, version: L.version };
+      map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, labyrinthDoor: true, buildingDoors: { rx, ry, front: out, exits: {}, hatch: null, ...(roof ? { roofTop: true } : {}) }, dungeonId: `${base}:f1`, dungeonType: "labyrinth", name: S.name, identity: "one door in, one real end", x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: `${S.name}: a maze of halls, courts, cellars and galleries. One way through; the vault at its heart lets you out at the front.` });
+      map.greatBuilding = { id, base, labyrinth: true, style: plan.style, version: V >= 2 ? V : 1, ...(roof ? { roofTop: true } : {}) };
       return rec;
     }
   }

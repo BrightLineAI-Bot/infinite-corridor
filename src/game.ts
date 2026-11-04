@@ -90,11 +90,11 @@ import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-n
 import { ASCENDANCY, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
-import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale } from "./great-buildings.ts";
-import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor } from "./compounds.ts";
-import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber } from "./labyrinths.ts";
+import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding } from "./great-buildings.ts";
+import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId } from "./compounds.ts";
+import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
-import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection } from "./castles.ts";
+import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { TESSERACTS, grantTesseract } from "./tesseracts.ts";
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey } from "./pentagon.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
@@ -343,6 +343,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (history.chasm && !map.arena) carveChasm(map, save.seed, `${id}:${options.levelId || "root"}`); // release 593
   if (history.deepAnnex) { const f = history.deepAnnex.floor; map.annexFloor = { floor: f, of: DEEP_ANNEX.floors }; map.annexName = `${DEEP_ANNEX.name} · Floor ${f}`; } // release 675
   if (isPentagonId(id) && map?.building?.pentagon) pentagonLinksIn(save, id, map); // the Pentagon's shortcut links (v6; laid over one begun before)
+  if (interior) addRoofExit(save, id, map, history); // release 740: the vault's roof exit, laid over the floor (never into its tiles)
   return map;
 }
 // The Pentagon's shortcut links in a chamber (pentagon.ts pentagonLinkEnds): laid in from version 6; over a Pentagon begun
@@ -355,6 +356,27 @@ function pentagonLinksIn(save, id, map) {
   const raw = generatePentagonChamber(save.seed, id), opened = L.labOpen || [];
   for (const o of pentagonLinkEnds(plan, { ...map, objects: [...(raw?.objects || []), ...(map.objects || [])], enemySpawns: [...(raw?.enemySpawns || []), ...(map.enemySpawns || [])] })) {
     if (opened.includes(pentagonLinkKey(o.link))) o.state = "open"; map.objects.push(o); }
+}
+// Release 740 (Tim, 2026-11-04: "there should always be an exit to the roof"): which roof exit a vault floor has, if any.
+// { part, rx, ry, roof } or null. Whether the building has a roof to come out on is recorded by the door you came in by
+// (`buildingDoors.roofTop`, kept on the first floor's history as you enter; great buildings from version 3, castles and
+// labyrinths from version 2, where the section has a landscape). A great building without one (ground explored before roofs)
+// gets a back stair out by its front door (`roof` false). A roof hatch's ladder already is the roof exit (great buildings and
+// towers with an `r`); a castle keep and a labyrinth vault without a roof keep their own way out and get nothing more.
+export function roofExitPlan(save, id, map) {
+  const B = map?.building; if (!B || B.pentagon || B.roof) return null;
+  const top = !!save.consequences?.dungeons?.[`${B.base}:f1`]?.buildingDoors?.roofTop;
+  if (B.labyrinth) { const P = parseLabyrinthId(id); return B.vault && P && top ? { part: "labyrinth", rx: P.rx, ry: P.ry, roof: true } : null; }
+  if (B.floor < B.floors) return null;
+  if (B.castle) { const P = parseCastleId(id); if (!P || P.part !== "k" || !top) return null; const s = quarterSection(P.X, P.Y, castleTopology(P.seed, P.X, P.Y).k); return { part: "keep", rx: s.rx, ry: s.ry, roof: true }; }
+  if (B.compound) { const P = parseCompoundId(id); return P && P.part === "t" ? { part: "tower", rx: P.rx, ry: P.ry, roof: true } : null; } // a tower's top is always roof on the land
+  const P = parseBuildingId(id); return P ? { part: "building", rx: P.rx, ry: P.ry, roof: top } : null;
+}
+function addRoofExit(save, id, map, history) {
+  const R = roofExitPlan(save, id, map); if (!R || map.objects.some((o) => o.dir === "roofExit")) return;
+  const at = roofExitSpot(map); if (!at) return;
+  const guarded = (map.enemySpawns || []).some((e) => e.buildingGuardian || String(e.id).endsWith(":guardian"));
+  map.objects.push({ id: "roof-exit", kind: "buildingStair", dir: "roofExit", roofExit: R, name: R.roof ? ROOF_EXIT.names[R.part === "tower" ? "tower" : R.part === "keep" ? "keep" : "roof"] : ROOF_EXIT.names.door, x: at.x, y: at.y, state: "open", actions: ["climb"], ...(guarded && !history.roofExit ? { sealed: true } : {}) });
 }
 // Release 363: a fallen Listener pays its Gate in Transit Coordinates (its pieces + 1).
 // Release 371: a fallen Listener raises a town near its Mouth.
@@ -2597,11 +2619,11 @@ export class Game {
       if ((prior ? prior.arcVersion : 0) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; if (v >= 5 && arcologyHere(this.save.seed, this.rx, this.ry, sectionRegion(this.save.seed, this.rx, this.ry, v)) && buildArcology(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = ARCOLOGY.messages.arrive; } // ruined arcologies: only in sections first seen from now on
       if ((prior ? prior.keepVersion : 0) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && keepHere(this.save.seed, this.rx, this.ry) && buildKeep(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = KEEPS.messages.arrive; // great keeps: only in sections first seen from now on
       if ((prior ? prior.pentVersion : PENTAGON.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const c = pentagonCentre(this.rx, this.ry); if (c && this.pentagonHere(c.cx, c.cy) && placePentagonSection(this.map, this.save.seed, c.cx, c.cy, this.rx, this.ry, this.pentagonVersion(c.cx, c.cy))) { const H = dungeonHistory(this.save, `${this.map.pentagon.base}:f1`); for (const o of this.map.objects) { if (o.kind === "pentLever" && (H.pentLevers || []).includes(o.lever)) Object.assign(o, { state: "pulled", actions: [] }); if (o.sigil && (o.sigilKey ? (H.pentOpened || []).includes(o.sigilKey) : H.pentSigil)) o.unsealed = true; if (o.barred && o.pentagonDoor && (H.labOpen || []).includes(o.shortcutKey)) o.opened = true; } if (!this.message) this.message = PENTAGON.messages.arrive; } } // the Pentagon: nine sections, all new ground
-      if ((prior ? prior.castleVersion : CASTLES.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const c = castleCorner(this.rx, this.ry); if (c && this.castleHere(c.X, c.Y) && placeCastleQuarter(this.map, this.save.seed, c.X, c.Y, c.q) && !this.message) this.message = CASTLES.messages.arrive; } // Great Castles: a quarter in each of the four sections round a corner, all of them new ground
+      if ((prior ? prior.castleVersion : CASTLES.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const c = castleCorner(this.rx, this.ry); if (c && this.castleHere(c.X, c.Y) && placeCastleQuarter(this.map, this.save.seed, c.X, c.Y, c.q, castleVersionOf(this.save.atlas, c.X, c.Y)) && !this.message) this.message = CASTLES.messages.arrive; } // Great Castles: a quarter in each of the four sections round a corner, all of them new ground
       if (this._coherence && (this.map.pentagon || this.map.greatBuilding?.castle)) dropOverwritten(this.map); // WG-10: a tree or a stand of caps a castle or a Pentagon built over goes whole
-      if ((prior ? prior.labVersion : LABYRINTHS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = labyrinthHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeLabyrinth(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, this.coherentDoor()) && !this.message) this.message = LABYRINTHS.messages.arrive; } // labyrinths: only in sections first seen from now on
+      if ((prior ? prior.labVersion : LABYRINTHS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = labyrinthHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeLabyrinth(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, this.coherentDoor(), prior ? prior.labVersion : LABYRINTHS.version) && !this.message) this.message = LABYRINTHS.messages.arrive; } // labyrinths: only in sections first seen from now on
       if ((prior ? prior.compoundVersion : COMPOUNDS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = compoundHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeCompound(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, this.coherentDoor()) && !this.message) this.message = COMPOUNDS.messages.arrive; } // compounds: only in sections first seen from now on
-      if ((prior ? prior.buildingVersion : BUILDINGS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, bv = prior ? prior.buildingVersion : BUILDINGS.version, region = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null, plan = bv >= 2 ? buildingHereV2(this.save.seed, this.rx, this.ry, region) : buildingHere(this.save.seed, this.rx, this.ry, region); if (plan && (bv >= 2 ? placeBuildingV2 : placeBuilding)(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, bv >= 2 ? this.coherentDoor() : null) && !this.message) this.message = BUILDINGS.messages.arrive; } // version 1 (711) as it was; 2: shapes and hives // great buildings: only in sections first seen from now on (in place of the keeps and arcologies)
+      if ((prior ? prior.buildingVersion : BUILDINGS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, bv = prior ? prior.buildingVersion : BUILDINGS.version, region = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null, plan = bv >= 2 ? buildingHereV2(this.save.seed, this.rx, this.ry, region) : buildingHere(this.save.seed, this.rx, this.ry, region); if (plan && (bv >= 2 ? placeBuildingV2 : placeBuilding)(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, bv >= 2 ? this.coherentDoor() : null, bv) && !this.message) this.message = BUILDINGS.messages.arrive; } // version 1 (711) as it was; 2: shapes and hives // great buildings: only in sections first seen from now on (in place of the keeps and arcologies)
       if (this.map.mushrooms && this._coherence && !this.save.narrative.journal.some((j) => j.recordId === "great-mushrooms")) { journalOnce(this.save, "great-mushrooms", `${GREAT_MUSHROOMS.text} (${this.rx},${this.ry})`, "The great mushrooms"); if (!this.message) this.message = GREAT_MUSHROOMS.text; } // release 721; on new ground, after a castle or Pentagon may have taken the caps (WG-10)
       if (this._coherence && !this.map.farDomain) cohereSection(this.map, { spots: coherenceSpots(this.map) }); // WG-02/05/06/07: the exits, the plaza, the great doors and the cairns join; no pits
       if (this._coherence && this.map.pentagon) for (const o of this.map.objects) if (o.pentLand) o.joined = joinToLand(this.map, o); // the Pentagon v6: each side entrance stands on land joined to the section's exits
@@ -2770,6 +2792,7 @@ export class Game {
       // Wall glints were generated before the persistent overlay. A consumed wall must not regain a
       // floating treasure marker when the dungeon is loaded again.
       this.map.wallGlints = (this.map.wallGlints || []).filter(q => this.map.tiles[q.y * mapWidth(this.map, area) + q.x]?.blocked);
+      if (this.map.objects?.some((o) => o.dir === "roofExit") && !this.roofExitGuarded()) this.openRoofExit(); // release 740: the vault reached with no guardian standing
     }
     const ar=this.save.worldBeasts?.astralWorm?.active?.astralRetreat;
     if(ar&&astralRetreatSceneMatches(ar.scenes?.[ar.sceneKey],this)){const carried=astralRetreatSpawn(this.save.worldBeasts.astralWorm.active);if(carried){const existing=this.enemies.find(e=>e.worldBeast==='astralWorm');if(existing)Object.assign(existing,carried);else this.enemies.push(carried);ensureAI(existing||carried);}}
@@ -5348,6 +5371,7 @@ export class Game {
     if (e.rewarded) return;
     if (!e.summonedBy && !e.illusion && !e.astralCompanionOf) { const kh = armorGlyphBonus(this.save).killHeal; if (kh > 0) this.player.hp = Math.min(this.save.maxHp || this.player.hp, this.player.hp + Math.max(1, Math.round((this.save.maxHp || 60) * kh))); } // a Tesseract glyph: health back on a kill
     if (e.pentBoss && this.area === "dungeon" && this.map?.building?.pentagon && this.map.building.V >= 3) this.pentagonChampionDown(e); // the Pentagon's champions and the Regent (v3)
+    if (this.area === "dungeon" && String(e.id).endsWith(":guardian") && this.map?.objects?.some((o) => o.dir === "roofExit")) this.openRoofExit(true); // release 740: the vault's guardian falls, its roof exit opens
     if(e.noRewards){e.rewarded=true;return}
     if(e.arenaId&&this.map?.arena){const history=dungeonHistory(this.save,this.areaId());history.resolved=true;history.guardianDefeated=true;history.visitOpen=false;this.defeatNotice={title:'WORLD THREAT BROKEN',detail:`${this.map.name} · the persistent arena falls quiet`,kind:'danger'}}
     if(e.foundryId){
@@ -6022,6 +6046,7 @@ export class Game {
     for (const q of this.map.objects) if (q.lock === o.keyId) q.unlocked = true;
     this.message = `You take the ${o.name}. Somewhere along the way, a sealed door will open for it. (${this.labyrinthProgress()})`; this.sync(); return { ok: true, message: this.message }; }
   takeBuildingStair(o) {
+    if (o.dir === "roofExit") return this.takeRoofExit(o); // release 740
     if (o.dir === "roof") { // up through the hatch, onto the roof: high ground on the section itself
       const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors; if (!D?.hatch) { this.message = "The hatch is rubbled shut."; return { ok: false, message: this.message }; }
       this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: D.hatch.x, y: D.hatch.y }; this.leaveDungeon(BUILDINGS.messages.roof); this.sync(); return { ok: true, message: this.message };
@@ -6039,6 +6064,27 @@ export class Game {
     this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, top = B.floor >= B.floors;
     this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };
     this.message = `${o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${this.map.name.split(" · ")[1] || `floor ${B.floor}`}.`; this.sync(); return { ok: true, message: this.message };
+  }
+  // Release 740: the vault's roof exit. Open once the vault's guardian has fallen (or where none stands), for good: kept on the
+  // vault floor's history (`roofExit`). It lets you out onto the building's roof on its own section (`roofLanding`), or, where
+  // the building has no roof to stand on, by its front door.
+  roofExitGuarded() { return (this.enemies || []).some((e) => String(e.id).endsWith(":guardian") && !e.dead && e.hp > 0); }
+  openRoofExit(tell = false) {
+    const h = dungeonHistory(this.save, this.areaId()), o = this.map?.objects?.find((q) => q.dir === "roofExit"); if (!o) return false;
+    const was = !!h.roofExit; h.roofExit = true; o.sealed = false; if (tell && !was) this.message = `${this.message ? this.message + " " : ""}${ROOF_EXIT.messages.opens}`; return true;
+  }
+  takeRoofExit(o) {
+    const h = dungeonHistory(this.save, this.areaId());
+    if (!h.roofExit && this.roofExitGuarded()) { this.message = ROOF_EXIT.messages.sealed; return { ok: false, message: this.message }; }
+    this.openRoofExit(false);
+    const R = o.roofExit, B = this.map.building, D = dungeonHistory(this.save, `${B.base}:f1`).buildingDoors;
+    const door = D && D.rx === R.rx && D.ry === R.ry && D.front ? D.front : null;
+    this.save.session.dungeonReturn = { rx: R.rx, ry: R.ry, x: door ? door.x : 16, y: door ? door.y : 16 };
+    if (!this.leaveDungeon(ROOF_EXIT.messages.door)) return { ok: false, message: this.message };
+    const land = R.roof ? roofLanding(this.map, R.part) : null;
+    if (land) { this.player.x = land.x; this.player.y = land.y; this.message = ROOF_EXIT.messages.roof; }
+    else if (!door) { const d = this.map.objects.find((q) => q.kind === "dungeon" && q.buildingDoor && !q.roofHatch && !q.breachDoor && String(q.dungeonId || "").startsWith(`${B.base}:`)); if (d) { this.player.x = d.x; this.player.y = d.y; } }
+    this.sync(); return { ok: true, message: this.message };
   }
   // Standing in a hole (not mid-jump) drops you to the floor below, onto the same spot, hurt.
   buildingFall() {
