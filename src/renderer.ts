@@ -1763,6 +1763,25 @@ function drawPentLever(ctx, o, s, now) {
   ctx.strokeStyle = "#7a6a4e"; ctx.lineWidth = Math.max(3, s * .1); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x + s * .5, y + s * .66); ctx.lineTo(x + s * (.5 + Math.sin(a) * .42), y + s * (.66 - Math.cos(a) * .42)); ctx.stroke(); // its arm
   ctx.fillStyle = down ? "#8a7a5a" : `rgba(232,196,90,${.7 + .3 * Math.sin(now / 400)})`; ctx.beginPath(); ctx.arc(x + s * (.5 + Math.sin(a) * .44), y + s * (.66 - Math.cos(a) * .44), s * .09, 0, 7); ctx.fill(); ctx.restore();
 }
+// Version 6: the shortcut links. A lift cage, a ladder, a door or a portcullis; shut, it shows its bars (the near side) or its
+// winch, bolt or lever (the deep side, lit gold: use it); open, it stands clear. A short dust ring when one opens.
+function drawBars(ctx, o, s) { const x = o.x * s, y = o.y * s; ctx.save(); ctx.strokeStyle = "#8a8172"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); for (const q of [.28, .5, .72]) { ctx.moveTo(x + s * q, y + s * .08); ctx.lineTo(x + s * q, y + s * .95); } ctx.moveTo(x + s * .16, y + s * .5); ctx.lineTo(x + s * .84, y + s * .5); ctx.stroke(); ctx.restore(); }
+function drawPentShortcut(ctx, o, s, now) {
+  const x = o.x * s, y = o.y * s, open = o.state === "open", deep = o.end === "deep", pulse = .5 + .5 * Math.sin(now / 420), k = o.linkKind; ctx.save();
+  ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .9, s * .42, s * .11, 0, 0, 7); ctx.fill();
+  if (k === "lift") { ctx.fillStyle = "#2a2620"; ctx.fillRect(x + s * .1, y + s * .2, s * .8, s * .72); ctx.strokeStyle = "#9a8458"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.strokeRect(x + s * .1, y + s * .2, s * .8, s * .72);
+    ctx.beginPath(); ctx.moveTo(x + s * .3, y + s * .2); ctx.lineTo(x + s * .3, y - s * .4); ctx.moveTo(x + s * .7, y + s * .2); ctx.lineTo(x + s * .7, y - s * .4); ctx.stroke(); } // a cage on its chains
+  else if (k === "ladder") { ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); const top = open ? .1 : -.5, bot = open ? .92 : .3; ctx.moveTo(x + s * .3, y + s * top); ctx.lineTo(x + s * .3, y + s * bot); ctx.moveTo(x + s * .7, y + s * top); ctx.lineTo(x + s * .7, y + s * bot); for (let q = top + .12; q < bot; q += .2) { ctx.moveTo(x + s * .3, y + s * q); ctx.lineTo(x + s * .7, y + s * q); } ctx.stroke(); } // hooked up out of reach until kicked down
+  else { ctx.fillStyle = "#3a2f24"; ctx.fillRect(x + s * .08, y + s * .06, s * .84, s * .9); ctx.fillStyle = open ? "#0b0b0d" : "#4a3d2e"; ctx.fillRect(x + s * .2, y + s * .2, s * .6, s * .76); } // a door, or a portcullis's arch
+  if (!open && !deep) drawBars(ctx, o, s);
+  if (!open && deep) { ctx.fillStyle = `rgba(232,196,90,${.55 + .4 * pulse})`; ctx.beginPath(); ctx.arc(x + s * .5, y + s * .52, s * .11, 0, 7); ctx.fill(); } // the winch, the bolt, the hook or the lever: use it
+  if (open) { ctx.strokeStyle = `rgba(242,230,168,${.35 + .35 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .06, y + s * .04, s * .88, s * .92); }
+  ctx.restore();
+}
+function drawShortcutBurst(ctx, g, s, now) {
+  const b = g.shortcutBurst; if (b.t0 == null) b.t0 = now; const k = (now - b.t0) / (1000 * (b.life || 1.2)); if (k >= 1 || k < 0) { g.shortcutBurst = null; return; }
+  ctx.save(); ctx.strokeStyle = `rgba(232,214,170,${.7 * (1 - k)})`; ctx.lineWidth = Math.max(2, s * .12 * (1 - k)); ctx.beginPath(); ctx.arc((b.x + .5) * s, (b.y + .5) * s, s * (.4 + 1.6 * k), 0, 7); ctx.stroke(); ctx.restore();
+}
 function drawPentSeal(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .4) * s + Math.sin(now / 420) * s * .04, a0 = now / 1800, glow = .5 + .5 * Math.sin(now / 300); ctx.save();
   const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .6); g.addColorStop(0, `rgba(176,140,255,${.35 + .25 * glow})`); g.addColorStop(1, "rgba(176,140,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .6, 0, 7); ctx.fill();
@@ -2162,6 +2181,7 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
           else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
+          else if (o.kind === "pentShortcut") drawPentShortcut(ctx, o, s, now); // and its shortcut links (v6)
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
@@ -2444,6 +2464,8 @@ export function render(ctx, g, w, h, now) {
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
   for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && discoveredInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
+  for (const o of g.map.objects) if (o.pentagonDoor && o.barred && !o.opened && visibleInCamera(o, l, t, r, b)) drawBars(ctx, o, s); // v6: an exterior shortcut door, bolted from within
+  if (g.shortcutBurst) drawShortcutBurst(ctx, g, s, now); // a shortcut just opened
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk
     const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();

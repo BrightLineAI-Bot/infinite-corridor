@@ -968,12 +968,13 @@ export function bridgeLanes(map) {
 }
 // What it costs to make tile t walkable (Infinity: never touched). Design tiles (buildings, castles, trees, caps, bridges) are
 // walked where they are open, at their own height, and never changed; the open sea and lava are never changed.
-function repairCost(t, i) {
+function repairCost(t, i, sea = false) {
   const C = COHERENCE.cost;
   if (!t) return Infinity;
   if (footing(t)) return C.step;
   if (designTile(t) || edgeTile(i)) return Infinity; // the section's border stays (only lanes cross it)
   if (t.environment && COHERENCE.crossing[t.environment]) return C.band;
+  if (sea && (t.kind === "ocean" || t.kind === "deepOcean") && !t.pit && !t.voidScar) return C.water; // the Pentagon v6: a side entrance's causeway of shallows
   if (COHERENCE.fixedKinds.includes(t.kind) || t.pit || t.voidScar) return Infinity;
   if (DEEP_WATER.includes(t.kind)) return C.water;
   if (t.blocked && (t.ruin !== undefined || t.kind === "blocked") && !t.structure && !t.buildingId) return C.ruin;
@@ -999,19 +1000,19 @@ function repairTile(map, i, e, from) {
 }
 // The cheapest repaired path from tile s to the core (Dijkstra over tile and height): every step joins two tiles at most one
 // level apart with no wall between, so it walks both ways; a height changes at `level` a level. Applied in place.
-function carveToCore(map, s, core) {
+function carveToCore(map, s, core, sea = false) {
   const C = COHERENCE.cost, M = MAX_LEVEL + 1, dist = new Float64Array(1024 * M).fill(Infinity), prev = new Int32Array(1024 * M).fill(-1), heap = [];
   const push = (k, d) => { heap.push([d, k]); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p][0] < heap[c][0] || (heap[p][0] === heap[c][0] && heap[p][1] <= heap[c][1])) break; [heap[p], heap[c]] = [heap[c], heap[p]]; c = p; } };
   const less = (a, b) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
   const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = l + 1; let m = c; if (l < heap.length && less(heap[l], heap[m])) m = l; if (r < heap.length && less(heap[r], heap[m])) m = r; if (m === c) break; [heap[m], heap[c]] = [heap[c], heap[m]]; c = m; } } return top; };
   const heights = (t, i) => reshapes(t, i) ? Array.from({ length: M }, (_, e) => e) : [t.elev || 0];
-  const st = map.tiles[s], c0 = repairCost(st, s); if (c0 === Infinity) return false;
+  const st = map.tiles[s], c0 = repairCost(st, s, sea); if (c0 === Infinity) return false;
   for (const e of footing(st) ? [st.elev || 0] : heights(st, s)) { const k = s * M + e, d = c0 + C.level * Math.abs(e - (st.elev || 0)); if (d < dist[k]) { dist[k] = d; push(k, d); } }
   let goal = -1;
   while (heap.length) { const [d, k] = pop(); if (d > dist[k]) continue; const i = (k / M) | 0, e = k % M, a = map.tiles[i];
     if (core[i] && e === (a.elev || 0) && footing(a)) { goal = k; break; }
     const x = i % 32, y = (i - x) / 32;
-    for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const j = idx(nx, ny), b = map.tiles[j], cb = repairCost(b, j); if (cb === Infinity) continue;
+    for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const j = idx(nx, ny), b = map.tiles[j], cb = repairCost(b, j, sea); if (cb === Infinity) continue;
       const wall = sideWalled(a, b, dx, dy); if (wall && (designTile(a) || designTile(b))) continue;
       for (const f of heights(b, j)) { if (Math.abs(f - e) > 1) continue;
         const nd = d + cb + C.level * Math.abs(f - (b.elev || 0)) + (wall ? C.wall : 0), nk = j * M + f; if (nd < dist[nk]) { dist[nk] = nd; prev[nk] = k; push(nk, nd); } } } }
@@ -1057,6 +1058,16 @@ export function cohereSection(map, { spots = [] } = {}) {
     carved++; core = coherenceCore(map, hub);
   }
   return carved;
+}
+// The Pentagon v6 (pentagon.ts): a side entrance out on the land must join the section's own land exits (walked to and back),
+// not the plaza, which inside the Pentagon's nine sections may be one of its courts. Carves the cheapest way if it does not
+// (where only the sea lies between, the way is a causeway of shallows).
+// Returns whether it joins.
+export function joinToLand(map, p) {
+  if (!map?.tiles || map.tiles.length !== 1024) return false;
+  const starts = landExits(map).filter((i) => footing(map.tiles[i]) && !map.tiles[i].greatBuilding), core = () => { const c = new Uint8Array(1024); for (const s of starts) { const k = coherenceCore(map, s); for (let i = 0; i < 1024; i++) c[i] |= k[i]; } return c; };
+  if (!starts.length) return false; let c = core(); if (joinsCore(map, p, c)) return true;
+  const i = idx(Math.round(p.x), Math.round(p.y)); if (i < 0 || i >= 1024 || !(carveToCore(map, i, c) || carveToCore(map, i, c, true))) return false; c = core(); return joinsCore(map, p, c); // over the land if it can, else by a causeway of shallows over the sea
 }
 // WG-08: each tile's creature ground (where a ground creature can walk from it) and its size.
 export function creatureRegions(map) {
