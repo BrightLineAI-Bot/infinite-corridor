@@ -15,7 +15,7 @@
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
 import { hashSeed, rng } from "./random.ts";
-import { BUILDINGS, layFloor, farthest } from "./great-buildings.ts";
+import { BUILDINGS, layFloor, farthest, guardianBeside } from "./great-buildings.ts";
 
 export const LABYRINTHS = {
   version: 1,
@@ -128,11 +128,14 @@ export function carveMaze(base, q, W, H, open) {
   for (const p of open) { g[at(p.x, p.y)] = p.wall ? 2 : 0; g[at(p.inner.x, p.inner.y)] = 0; }
   return g;
 }
-export function carveGaps(base, q, W, H, open) {
+export function carveGaps(base, q, W, H, open, V = 1) {
   const L = LABYRINTHS, g = new Array(W * H).fill(5), r = rng(`${base}:gaps:${q.n}`), at = (x, y) => y * W + x, I = L.island + L.gap;
   for (let x = 0; x < W; x++) { g[at(x, 0)] = 1; g[at(x, H - 1)] = 1; } for (let y = 0; y < H; y++) { g[at(0, y)] = 1; g[at(W - 1, y)] = 1; }
   const cols = Math.floor((W - 2) / I), rows = Math.floor((H - 2) / I), keep = new Set();
-  for (const p of open) keep.add(`${Math.floor((p.inner.x - 1) / I)},${Math.floor((p.inner.y - 1) / I)}`);
+  // Interior v2: a door on the bottom or right wall comes in past the last row or column of platforms; it keeps the platform
+  // beside it (one gap's jump away) instead of a platform that does not exist (version 1 left it a one-tile island).
+  const slot = (v, n) => V >= 2 ? Math.min(n - 1, v) : v;
+  for (const p of open) keep.add(`${slot(Math.floor((p.inner.x - 1) / I), cols)},${slot(Math.floor((p.inner.y - 1) / I), rows)}`);
   const isl = []; for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) isl.push({ i, j, on: keep.has(`${i},${j}`) || r() >= L.missing });
   const on = (i, j) => isl.find((o) => o.i === i && o.j === j)?.on;
   // every platform with a passage on it must be reachable by jumps from every other: restore missing platforms until so
@@ -148,14 +151,15 @@ export function carveGaps(base, q, W, H, open) {
   return g;
 }
 
-export function generateLabyrinthChamber(seed, id) {
+// `V`: the interior version pinned for the labyrinth (great-buildings.ts BUILDINGS.interior; 1 by default, as first released).
+export function generateLabyrinthChamber(seed, id, V = 1) {
   const P = parseLabyrinthId(id), plan = P && labyrinthPlan(P.base); if (!plan) return null;
   const q = plan.nodes[P.node]; if (!q) return null;
   const L = LABYRINTHS, S = BUILDINGS.styles[P.style], { W, H } = plan, open = [...q.slots.values()]; if (q.n === 0 || q.vault) open.push({ ...plan.front, wall: true });
   let grid, room = null, mat = null, far = null;
   const arrive = open[0]?.inner || { x: W >> 1, y: H >> 1 };
   if (q.kind === "court" || q.kind === "cellar") grid = carveMaze(P.base, q, W, H, open);
-  else if (q.kind === "gaps") grid = carveGaps(P.base, q, W, H, open);
+  else if (q.kind === "gaps") grid = carveGaps(P.base, q, W, H, open, V);
   else { const F = layFloor(P.base, 100 + q.n, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; far = farthest(F, arrive, () => true); }
   const [courtFloor, courtWall] = L.floors.court, [cellFloor, cellWall] = L.floors.cellar, tiles = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, v = grid[k];
@@ -181,20 +185,24 @@ export function generateLabyrinthChamber(seed, id) {
   for (const c of cells.slice(0, q.n === 0 ? 1 : ng)) { taken.add(c.y * W + c.x); enemySpawns.push({ id: `${id}:g${enemySpawns.length}`, kind: S.guards[h(`k${enemySpawns.length}`) % S.guards.length], x: c.x, y: c.y, buildingGuard: true }); }
   if (q.vault) { const spot = (far && far[0]) || cells.find((c) => !taken.has(c.y * W + c.x)) || { x: W >> 1, y: 2 };
     objects.push({ id: "building-cache", kind: "chest", name: `${plan.S.vault} Treasure`, x: spot.x, y: spot.y, state: "closed", actions: ["open"], rewardSource: S.cache }); taken.add(spot.y * W + spot.x);
-    const g = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => ({ x: spot.x + dx, y: spot.y + dy })).find((p) => { const t = tiles[p.y * W + p.x]; return t && !t.blocked && !t.hole && !taken.has(p.y * W + p.x); });
+    const g = guardianBeside(tiles, W, spot, (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.hole && !taken.has(y * W + x); }, V, arrive);
     if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true });
     objects.push({ id: "building-exit", kind: "exit", name: "Way out · the front", x: plan.front.x, y: plan.front.y, state: "open", actions: ["exit"] }); }
   else if (q.cache) { const c = cells.find((p) => !taken.has(p.y * W + p.x)); if (c) objects.push({ id: "building-cache", kind: "chest", name: "Forgotten Cache", x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); }
-  if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0]; if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
+  // interior v2: a key is never lost; with no free cell far enough from the way in, it lies on the nearest reachable floor
+  const nearKey = () => { const k = [...reach].filter((i) => { const t = tiles[i]; return t && !t.blocked && !t.hole && !t.doorway && !taken.has(i) && i !== arrive.y * W + arrive.x; }).sort((a, b) => hashSeed(`${id}:k:${a}`) - hashSeed(`${id}:k:${b}`))[0]; return k === undefined ? { ...arrive } : { x: k % W, y: (k / W) | 0 }; };
+  if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0] || (V >= 2 ? nearKey() : null); if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
   const fall = q.kind === "gaps" ? plan.nodes[q.fallTo] : null, fallAt = fall ? (fall.slots.values().next().value?.inner || { x: W >> 1, y: H >> 1 }) : null;
   return { seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,
-    building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
+    building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
 }
 
 // ------------------------------------------------------------------------------------------------ outside, on the overworld
 const I = (x, y) => y * 32 + x, WET = /ocean|Ocean|lake|Lake|swamp|Swamp|toxic|Toxic|water|Water|lava|abyss|river|canyon|mire|Mire|shallows|pool|Pool/;
 const CLEARS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
-export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen) {
+// `doorOk(map, at)` (world coherence 1, new ground only): the door must join the land the exits join (landscape.ts joinsCore);
+// a spot whose door stands in a closed pocket is passed over (WG-05). Without it, placement is as it always was.
+export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
   if (!map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const L = LABYRINTHS, ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -203,7 +211,7 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen) {
   const natural = (t) => !!t && !t.structure && !t.buildingId && !t.canopy && !t.keep && !t.greatBuilding && !WET.test(t.kind || "") && !(t.environment && t.environment !== "tree") && (t.elev || 0) <= 2;
   const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y), open = (x, y) => { const t = map.tiles[I(x, y)]; return natural(t) && !t.blocked && !t.slope && !(t.elev > 0) && !objAt(x, y); };
   const h = (k) => hashSeed(`${seed}:labyrinth-spot:${rx}:${ry}:${k}`), base = `labyrinth:${seed}:${rx}:${ry}:${plan.style}`, S = L.styles[plan.style];
-  let tries = 0;
+  let tries = 0, doorMiss = 0;
   for (const [W, H] of L.footprint) {
     const spots = []; for (let oy = 2; oy <= 30 - H; oy++) for (let ox = 2; ox <= 30 - W; ox++) spots.push([ox, oy]); spots.sort((a, b) => h(a) - h(b));
     for (const [ox, oy] of spots.slice(0, 240)) {
@@ -212,6 +220,7 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen) {
       const tiles = map.tiles.slice(), before = exitsOpen(map), cells = [];
       for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) { cells.push({ x, y }); const i = I(x, y); map.tiles[i] = { ...map.tiles[i], x, y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; }
       const after = exitsOpen(map); if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
+      if (doorOk && !doorOk(map, out)) { map.tiles = tiles; if (++doorMiss >= doorOk.tries) return null; continue; }
       const set = new Set(cells.map((c) => I(c.x, c.y))), id = `labyrinth-${rx}-${ry}`, floors = 3 + h("floors") % 2, faceH = 1 + floors * .5;
       map.objects = (map.objects || []).filter((o) => !set.has(I(Math.round(o.x), Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));

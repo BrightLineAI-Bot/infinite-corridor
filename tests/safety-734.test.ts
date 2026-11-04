@@ -81,8 +81,8 @@ test('S2: a journey over the mirror budget is not mirrored, its stale mirror is 
   const Q = await freshPersistence(); Q.setActiveSlot(3); ctl.quota = 10; ctl.failWrite = true;
   const small = plain('SMALL'), before = ctl.setItemCalls;
   for (let i = 0; i < 3; i++) { await Q.saveGame(small); await Q.flushSaves().catch(() => {}); }
-  assert.equal(ctl.setItemCalls - before, 1, 'one refused mirror write, then none');
-  assert.equal(Q.mirrorSkippedFor(3), 'quota');
+  assert.equal(ctl.setItemCalls - before, 1, 'one refused mirror write, then none (at most once a minute while the database fails)');
+  assert.equal(Q.mirrorSkippedFor(3), null, 'release 735: a database failure never marks the mirror skipped or removes it');
 });
 
 test('S2: when IndexedDB cannot be read at load, the first write keeps the database record as a recovery snapshot', async () => {

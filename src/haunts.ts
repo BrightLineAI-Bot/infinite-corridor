@@ -18,6 +18,7 @@ export const HAUNT = {
   confuse: { wisp: 3.2, gorge: 5 }, // seconds the Wayfarer's movement is reversed
   split: { every: [11, 18], cap: 10, range: 1.2, max: 2 }, // seconds between a hunting wisp's splits (hashed), area cap, spawn offset; only a wisp that was placed splits, `max` times (so a haunt is bounded)
   merge: { count: 5, radius: 4.2, check: .5 }, // wisps this close together pour into a Gloomgorge
+  clear: { entry: 5 }, // release 735: inside, wisps keep this far from where you come in (and off holes, doorways and objects)
   places: { keep: { chance: .7, count: [3, 5] }, interior: { chance: .3, count: [2, 4] }, wild: { chance: .035, count: [2, 3], minDepth: 8 } },
   text: { confused: "Your head swims: left is right, forward is back.", merge: "The wisps pour into one another and something huge grins out of the dark: a Gloomgorge.", split: "A wisp tears in two." },
 };
@@ -35,7 +36,12 @@ export function hauntSpawns(map, width, seed, areaKey, plan, box = null, where =
   if (!plan || !map?.tiles?.length) return [];
   const h = (k) => hashSeed(`${seed}:haunt-at:v1:${areaKey}:${k}`), height = Math.floor(map.tiles.length / width);
   const ok = (t, x, y) => t && !t.blocked && !LETHAL_KINDS.has(t.kind) && !t.pit && x > 1 && y > 1 && x < width - 2 && y < height - 2 && (!box || (x >= box.x && y >= box.y && x < box.x + box.w && y < box.y + box.h)) && (!where || where(t));
-  const open = []; for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (ok(map.tiles[y * width + x], x, y)) open.push([x, y]);
+  // release 735: never on a hole, a doorway or an object's tile (a stair, a chest, a door); inside, clear of the way in
+  const objAt = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`)), ins = plan.place === "interior";
+  const arrivals = ins ? [map.entry, ...Object.values(map.building?.entries || {})].filter((p) => Number.isFinite(p?.x) && Number.isFinite(p?.y)) : [];
+  const clear = (t, x, y) => !t.hole && !t.doorway && !objAt.has(`${x},${y}`), far = (x, y) => arrivals.every((p) => Math.hypot(x - p.x, y - p.y) >= HAUNT.clear.entry);
+  const cand = []; for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) { const t = map.tiles[y * width + x]; if (ok(t, x, y) && clear(t, x, y)) cand.push([x, y]); }
+  const strict = cand.filter(([x, y]) => far(x, y)), open = strict.length >= plan.count ? strict : cand;
   if (!open.length) return [];
   const [ax, ay] = open[h("anchor") % open.length], near = open.filter(([x, y]) => Math.hypot(x - ax, y - ay) <= 5);
   const pool = near.length >= plan.count ? near : open, out = [], used = new Set();
