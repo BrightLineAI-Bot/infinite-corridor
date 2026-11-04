@@ -13,7 +13,7 @@ const game = (seed = SEED, save = null) => { const s = save || freshSave(); s.se
 const findIn = (g) => { for (let cx = -64; cx <= 64; cx += PENTAGON.every) for (let cy = -64; cy <= 64; cy += PENTAGON.every) if (g.pentagonHere(cx, cy)) return { cx, cy }; return null; };
 // release 728 made version 2 the Pentagon of new ground; these tests pin a section to version 1, the 727 Pentagon, which stays as it was
 const pinned = (seed, cx, cy, V) => { const s = freshSave(); s.seed = seed; s.atlas = { [`${cx + 1},${cy + 1}`]: { landscapeVersion: LANDSCAPE_VERSION, pentVersion: V } }; return new Game(s, 0); };
-const v1 = (seed, cx, cy) => pinned(seed, cx, cy, 1), v2 = (seed, cx, cy) => pinned(seed, cx, cy, 2), v3 = (seed, cx, cy) => pinned(seed, cx, cy, 3); // release 730 made version 4 the Pentagon of new ground
+const v1 = (seed, cx, cy) => pinned(seed, cx, cy, 1), v2 = (seed, cx, cy) => pinned(seed, cx, cy, 2), v3 = (seed, cx, cy) => pinned(seed, cx, cy, 3), v4 = (seed, cx, cy) => pinned(seed, cx, cy, 4); // release 732 made version 5 the Pentagon of new ground
 let found = null; const find = () => (found ||= findIn(game()));
 const visit = (g, rx, ry) => { g.rx = rx; g.ry = ry; g.loadArea('overworld', false); return g; };
 // the nine sections as one 96×96 ground, and where each world door stands on it
@@ -270,8 +270,8 @@ test('v4 plan: no Seal to find in the rings; the fallen ring doors and doors int
 });
 
 test('v4 the way through: every keeper holds its ladder until it falls; the Regent gives the Seal; each sigil door opens only when you use it', () => {
-  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V4), { doors } = ground(g, cx, cy), base = P.base, H = () => g.save.consequences.dungeons[`${base}:f1`] || {};
-  visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v4:')), 'new ground: v4');
+  const { cx, cy } = find(), g = v4(SEED, cx, cy), P = pentagonPlan(SEED, cx, cy, V4), { doors } = ground(g, cx, cy), base = P.base, H = () => g.save.consequences.dungeons[`${base}:f1`] || {};
+  visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v4:')), 'pinned 4: v4');
   let T = 1e6, place = 'land'; const tick = () => g.update(.05, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, (T += 50));
   const act = (o, a) => { assert.ok(o, a); g.player.x = o.x; g.player.y = o.y; return g.interact(a, o.id); };
   const idOf = (to) => `${base}:f${P.nodes.find((n) => n.id === to).n + 1}`, node = () => P.nodes[g.map.building.node].id, seen = new Set();
@@ -306,4 +306,29 @@ test('v4 the way through: every keeper holds its ladder until it falls; the Rege
   assert.ok(door.sigil && !door.unsealed); const r1 = act(door, door.actions[0]); assert.ok(r1.ok && /grinds open/.test(r1.message)); assert.equal(node(), from, 'the first use only opens it'); assert.deepEqual(H().pentOpened, [key]);
   const others = g.map.objects.filter((o) => o.sigil && o !== door); assert.ok(others.every((o) => !o.unsealed), 'the others stay shut');
   const r2 = act(door, door.actions[0]); assert.ok(r2.ok, r2.message); if (e) assert.equal(node(), to); else assert.equal(g.area, 'overworld');
+});
+
+// ------------------------------------------------------------------------------------------------ version 5 (release 732)
+// Tim: "there might be secrets and things that you hadn't seen... that you can access with the key".
+const V5 = 5;
+test('v5 plan: three sealed chambers, each off its own ring chamber behind a sigil door, each with a warden of its own kind', () => {
+  for (let i = 0; i < 300; i++) { const seed = 'Z' + i, P = pentagonPlan(seed, i * 8, -i * 8, V5), sealed = P.nodes.filter((n) => n.kind === 'sealed');
+    assert.equal(sealed.length, PENTAGON.sealed); const hosts = new Set();
+    for (const q of sealed) { const into = P.edges.filter((e) => e.a === q.id || e.b === q.id); assert.equal(into.length, 1, `${seed}: one way into ${q.id}`); assert.ok(into[0].sigil, `${seed}: behind a sigil door`); hosts.add(into[0].a); assert.ok(/^[oi]\d/.test(into[0].a));
+      assert.ok(q.warden && !P.nodes.some((n) => n !== q && [n.lord?.kind, n.boss?.kind, n.warden?.kind].includes(q.warden.kind)), `${seed}: a warden like no other`); assert.equal(q.relic, undefined); }
+    assert.equal(hosts.size, PENTAGON.sealed); assert.ok(!P.edges.some((e) => e.a.startsWith('h') && e.sigil)); }
+});
+
+test('v5: a sealed chamber is shut until the Regent gives the Seal; then its door opens on use; its warden, a Sealed Tesseract glyph and a relic found nowhere else', () => {
+  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V5), base = P.base, H = () => g.save.consequences.dungeons[`${base}:f1`] || {}, idOf = (q) => `${base}:f${q.n + 1}`;
+  visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v5:')), 'new ground: v5');
+  const act = (o, a) => { assert.ok(o, a); g.player.x = o.x; g.player.y = o.y; return g.interact(a, o.id); }, load = (q) => { g.save.session.activeDungeonId = idOf(q); g.loadArea('dungeon', false); };
+  const k0 = P.nodes.find((n) => n.id === 'k0'), host = P.nodes.find((n) => n.id === P.edges.find((e) => e.b === 'k0').a), door = () => g.map.objects.find((o) => o.kind === 'buildingStair' && o.toId === idOf(k0));
+  load(host); assert.ok(door().sigil && !door().unsealed); assert.ok(!act(door(), door().actions[0]).ok, 'shut without the Seal');
+  load(P.nodes.find((n) => n.id === `h${P.nh - 1}`)); const regent = g.enemies.find((e) => e.id.endsWith(':guardian')); regent.hp = 0; regent.dead = true; g.defeatEnemy(regent); assert.ok(H().pentSigil, 'the Regent gives the Seal');
+  load(host); assert.ok(!door().unsealed, 'not open by itself'); const r1 = act(door(), door().actions[0]); assert.ok(r1.ok && /grinds open/.test(r1.message));
+  const r2 = act(door(), door().actions[0]); assert.ok(r2.ok, r2.message); assert.equal(P.nodes[g.map.building.node].id, 'k0', 'into the sealed chamber');
+  const warden = g.enemies.find((e) => e.pentBoss); assert.equal(warden.packName, k0.warden.name); assert.ok(warden.affixes?.length >= 2);
+  const n = g.save.tesseracts.owned.length; act(g.map.objects.find((o) => o.sealedVault), 'open'); assert.equal(g.save.tesseracts.owned.length, n + 1); assert.equal(g.save.tesseracts.owned.at(-1).grade, 'sealed');
+  const relic = g.map.objects.find((o) => o.kind === 'pentRelic'); assert.equal(relic.lore, PENTAGON.sealedRelics[0]); assert.ok(act(relic, 'read').ok); assert.match(g.message, /of 10\)/);
 });

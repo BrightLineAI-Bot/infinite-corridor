@@ -48,6 +48,7 @@ export const TESSERACTS = {
     deep: { name: "Deep", q: .45, bad: .6, perFloor: .07, kinds: ["edge", "ward", "gale", "star"] },
     reliquary: { name: "Reliquary", q: .65, bad: .5, kinds: ["edge", "ward", "gale", "star"] },
     regent: { name: "Regent's", q: .75, bad: .45, kinds: ["edge", "ward", "gale", "star"] },
+    sealed: { name: "Sealed", q: .85, bad: .3, kinds: ["edge", "ward", "gale", "star"] }, // release 732: the Pentagon's sealed chambers, opened with the Regent's Seal
     sovereign: { name: "Sovereign", q: .95, bad: .2, kinds: ["sovereign"] },
   },
   names: ["of the Fivefold Court", "of the Eyeless Face", "of the Fallen Gate", "of the Under-Heart", "of the Lightless Nave", "of the Drowned Choir", "of the Bone Stair", "of the Long Corridor", "of the Five Faces", "of the Regent's Wake"],
