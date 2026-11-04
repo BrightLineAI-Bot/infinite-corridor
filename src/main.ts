@@ -21,6 +21,7 @@ import { skylandLabel } from "./skylands.ts";
 import { CREATURE_TRAITS } from "./combat.ts";
 import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY } from "./monster-pack.ts";
+import { curseDef } from "./haunts.ts"; // release 737: the haunt curses on the HUD
 import { activeFarQuest } from "./far-realms.ts"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
 import { drawPackPortrait } from "./monster-render.ts";
 import { landscapeAtlasColor } from "./landscape-render.ts";
@@ -2417,7 +2418,7 @@ function frame(now) {
       buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
     if(save.meal)buffs.push(`MEAL ${mealLeft(save.meal)}`); // release 447
     {const run=game.area==="dungeon"&&marginRun(save,game.areaId());if(run?.perks?.length)buffs.push(`MARGINALIA ${run.perks.map(id=>MARGINALIA[id]?.name||id).join(", ")}`)} // release 459
-    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);{const cu=(game.player?.confusedUntil||0)-(game.lastUpdateNow||0);if(cu>0)buffs.push(`CONFUSED ${Math.ceil(cu/1000)}s`);}/* release 731 *//* release 708 */if(game.frenzy?.active)buffs.push(`FRENZY ${Math.ceil(game.frenzy.left)}s · ${game.frenzy.cure}/${FRENZY.cure}`);else if(game.frenzy?.build>0)buffs.push(`FRENZY ${game.frenzy.build}/${FRENZY.build}`);/* release 710 */
+    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);{const nw=game.lastUpdateNow||0,cu=(game.player?.confusedUntil||0)-nw;if(cu>0)buffs.push(`CONFUSED ${Math.ceil(cu/1000)}s`);for(const c of game.player?.curses||[]){const l=c.until-nw;if(l>0)buffs.push(`${game.curseFlash?.id===c.id&&nw-game.curseFlash.at<600?'✕ ':''}${curseDef(c.id)?.label||c.id} ${Math.ceil(l/1000)}s`);}}/* release 731; 737: each haunt curse, flashing ✕ when it refuses a press *//* release 708 */if(game.frenzy?.active)buffs.push(`FRENZY ${Math.ceil(game.frenzy.left)}s · ${game.frenzy.cure}/${FRENZY.cure}`);else if(game.frenzy?.build>0)buffs.push(`FRENZY ${game.frenzy.build}/${FRENZY.build}`);/* release 710 */
     if(probe.running){const left=Math.ceil(probe.remaining);buffs.push(`PROBE ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`)}
     $("#buff").textContent = buffs.join(" · ");
   }

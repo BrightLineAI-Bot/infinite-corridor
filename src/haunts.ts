@@ -20,6 +20,24 @@ export const HAUNT = {
   merge: { count: 5, radius: 4.2, check: .5 }, // wisps this close together pour into a Gloomgorge
   clear: { entry: 5 }, // release 735: inside, wisps keep this far from where you come in (and off holes, doorways and objects)
   places: { keep: { chance: .7, count: [3, 5] }, interior: { chance: .3, count: [2, 4] }, wild: { chance: .035, count: [2, 3], minDepth: 8 } },
+  // Release 737 (Tim, 2026-11-04: "ability debilitations... one that you can't shoot, one that you can't attack, one that you
+  // can't jump, another one you can't dodge... can't use tools... can't use spells... can't use items/potions", and one that
+  // chunks maximum health for a while, like the Stalker's mist). Besides turning you about, every landed puff lays `lay.wisp`
+  // curse and the howl `lay.gorge`, picked by `weight` (hashed per wisp and per hit). Each wears off after `duration` seconds;
+  // `cap` at once (a new one past the cap replaces the oldest); laying one already on you adds its duration again, up to
+  // `extendCap` durations left. `blocks` is the action it forbids (Game.cursed); `maxHp` the share of maximum health held back
+  // (save.rot, the Stalker's mechanism) until it wears off. Walking always works.
+  curse: { cap: 4, lay: { wisp: 1, gorge: 2 }, extendCap: 2, nag: .7 /* seconds between repeated "you can't" messages */ },
+  curses: [
+    { id: "noShoot", label: "NO SHOOT", duration: 7, weight: 3, blocks: "shoot", text: "The gloom is in your aim: you cannot shoot." },
+    { id: "noAttack", label: "NO ATTACK", duration: 5, weight: 2, blocks: "attack", text: "Your arms will not strike: you cannot attack." },
+    { id: "noJump", label: "NO JUMP", duration: 7, weight: 3, blocks: "jump", text: "Your legs are lead: you cannot jump." },
+    { id: "noDodge", label: "NO DODGE", duration: 5, weight: 2, blocks: "dodge", text: "The gloom holds you fast: you cannot dodge." },
+    { id: "noTools", label: "NO TOOLS", duration: 7, weight: 3, blocks: "tools", text: "Your hands forget their tools." },
+    { id: "noSpells", label: "NO SPELLS", duration: 6, weight: 3, blocks: "spells", text: "The words slip away: you cannot cast." },
+    { id: "noItems", label: "NO ITEMS", duration: 6, weight: 3, blocks: "items", text: "Your fingers fumble: you cannot use items." },
+    { id: "frail", label: "FRAIL", duration: 9, weight: 2, maxHp: .2, text: "The gloom hollows you: maximum health falls for a while." },
+  ],
   text: { confused: "Your head swims: left is right, forward is back.", merge: "The wisps pour into one another and something huge grins out of the dark: a Gloomgorge.", split: "A wisp tears in two." },
 };
 export const isHaunt = (e) => e?.kind === "gloomwisp" || e?.kind === "gloomgorge";
@@ -56,3 +74,40 @@ export function hauntKnot(wisps) {
   return { wisps: knot, x: knot.reduce((s, e) => s + e.x, 0) / knot.length, y: knot.reduce((s, e) => s + e.y, 0) / knot.length };
 }
 export const splitDelay = (id, n) => { const S = HAUNT.split.every; return S[0] + (hashSeed(`split:${id}:${n}`) % 1000) / 1000 * (S[1] - S[0]); };
+
+// Release 737: the haunt curses. A curse on the Wayfarer is { id, at, until, rot } (`at`/`until` on the game clock, ms; `rot`
+// the maximum health it holds back). These helpers are pure; Game lays, enforces, expires and saves them.
+export const curseDef = (id) => HAUNT.curses.find((c) => c.id === id) || null;
+// `n` distinct curse ids for one landed hit, hashed from `key` (the haunt and its hit count), by weight.
+export function rollCurses(key, n) {
+  const pool = [...HAUNT.curses], out = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    const total = pool.reduce((s, c) => s + c.weight, 0); let r = (hashSeed(`curse:v1:${key}:${i}`) % 10000) / 10000 * total, k = 0;
+    while (k < pool.length - 1 && r >= pool[k].weight) { r -= pool[k].weight; k++; }
+    out.push(pool[k].id); pool.splice(k, 1);
+  }
+  return out;
+}
+// Lays curse `id` on `list` at `now`: an active one is extended; past the cap the oldest is replaced. Returns
+// { curse, fresh, dropped } (dropped: the curse that made room, so its held-back health can be given back), or null.
+export function layCurse(list, id, now) {
+  const def = curseDef(id); if (!def) return null; const ms = def.duration * 1000, C = HAUNT.curse;
+  const had = list.find((c) => c.id === id && c.until > now);
+  if (had) { had.until = Math.min(had.until + ms, now + ms * C.extendCap); return { curse: had, fresh: false, dropped: null }; }
+  let dropped = null; const live = list.filter((c) => c.until > now);
+  if (live.length >= C.cap) { dropped = live.reduce((a, b) => (b.at < a.at ? b : a)); list.splice(list.indexOf(dropped), 1); }
+  const curse = { id, at: now, until: now + ms, rot: 0 }; list.push(curse);
+  return { curse, fresh: true, dropped };
+}
+// The active curse that forbids `action` ("shoot", "attack", "jump", "dodge", "tools", "spells", "items"), or null.
+export const curseBlocking = (list, action, now) => (list || []).find((c) => c.until > now && curseDef(c.id)?.blocks === action) || null;
+// Removes and returns the curses that have worn off.
+export function expireCurses(list, now) { const gone = []; for (let i = list.length - 1; i >= 0; i--) if (!(list[i].until > now)) gone.push(...list.splice(i, 1)); return gone; }
+// For the save (remaining ms) and back.
+export const cursesOut = (list, clock) => (list || []).filter((c) => c.until > clock).map((c) => ({ id: c.id, left: Math.round(c.until - clock), ago: Math.round(clock - c.at), rot: c.rot || 0 }));
+export function cursesIn(raw, now) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  return raw.filter((c) => c && curseDef(c.id) && Number(c.left) > 0 && !seen.has(c.id) && seen.add(c.id)).slice(-HAUNT.curse.cap)
+    .map((c) => ({ id: c.id, at: now - Math.max(0, Number(c.ago) || 0), until: now + Math.min(Number(c.left), curseDef(c.id).duration * 1000 * HAUNT.curse.extendCap), rot: Math.max(0, Number(c.rot) || 0) }));
+}

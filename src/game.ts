@@ -112,7 +112,7 @@ import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonRecite
 import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.ts";
 import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farDomainCentre, farQuestInfo } from "./far-realms.ts";
 import { buildDomain, domainWait, domainArrival } from "./far-domains.ts";
-import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay } from "./haunts.ts";
+import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn } from "./haunts.ts";
 import { beastUnlocked as beastOpenFor, ensureWorldBeasts as ensureBeastsFor, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
@@ -144,6 +144,8 @@ export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReady
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
+// Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
+export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
 export const RESUME_PLAYER_CLOCKS = ["slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
 export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "aegisUntil", "boxingUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt"];
@@ -154,6 +156,7 @@ export function shiftClocks(game, d) {
   for (const k of GAME_CLOCKS) if (game[k]) game[k] += d;
   for (const [o, ks] of Object.entries(GAME_NESTED_CLOCKS)) { const q = game[o]; if (q && typeof q === "object") for (const k of ks) if (typeof q[k] === "number" && q[k]) q[k] += d; }
   for (const [o, ks] of Object.entries(PLAYER_NESTED_CLOCKS)) { const q = p[o]; if (q && typeof q === "object") for (const k of ks) if (typeof q[k] === "number" && q[k]) q[k] += d; }
+  for (const [o, ks] of Object.entries(PLAYER_LIST_CLOCKS)) for (const q of Array.isArray(p[o]) ? p[o] : []) if (q && typeof q === "object") for (const k of ks) if (typeof q[k] === "number" && q[k]) q[k] += d;
   for (const patch of game.echoPatches || []) if (patch.until) patch.until += d;
 }
 // Release 736 (review F3): stacked dodge-cost reductions (glyphs past the cap, Tesseracts, meals, a Fleet Hand margin) could
@@ -2986,6 +2989,7 @@ export class Game {
       swimming: this.swimming === true,
       swimKind: this.swimming === true ? this.swimKind ?? null : null,
       fatalFallPending: this._fatalFallPending === true,
+      curses: cursesOut(p.curses, clock), // release 737: the haunt curses, with what each has left (and the health FRAIL holds back)
     };
   }
   // Release 736 (review F8): lethal ground is judged where the Wayfarer ends up, not where the stick pointed. A step whose end
@@ -3003,12 +3007,14 @@ export class Game {
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
     this.glide = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.ledgeHint = null; this.poisonSoak = 0;
+    this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
   }
   restoreRuntime(r, now) {
     if (!r || typeof r !== "object") return;
     const p = this.player, c = r.clocks && typeof r.clocks === "object" ? r.clocks : {}, ms = (v) => Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(Number(v), 864e5) : 0;
     for (const k of RESUME_PLAYER_CLOCKS) if (ms(c[k])) p[k] = now + ms(c[k]);
     for (const k of RESUME_GAME_CLOCKS) if (ms(c[`game.${k}`])) this[k] = now + ms(c[`game.${k}`]);
+    p.curses = cursesIn(r.curses, now); // release 737
     if (p.slowUntil && Number(r.slowFactor) > 0) p.slowFactor = Math.min(1, Number(r.slowFactor));
     if (p.heldUntil && r.heldBy != null) p.heldBy = r.heldBy;
     if (p.stunnedUntil) p.stunnedAt = now - (Number.isFinite(Number(r.stunnedFor)) ? Math.max(0, Number(r.stunnedFor)) : 0);
@@ -3180,7 +3186,7 @@ export class Game {
     this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
     this.save.session.displacementJourney = null;
     if (before < 2) this.save.consumables.restorativeDraught = 2;
-    clearRot(this.save);
+    clearRot(this.save); this.clearCarriedStates(); // release 737: this death clears what was carried too (the haunt curses, the turning-about)
     p.hp = this.save.maxHp; // release 345 (Tim: "When you die, you don't lose anything"): carried wood is kept
     p.stamina = this.save.maxStamina;
     p.attackReadyAt =
@@ -3757,7 +3763,7 @@ export class Game {
       if(this.save.session.activeDisplacement){if(!this.thresholdOpen()){this.message="The Mislaid Threshold remains sealed while its guardian lives. Its guardian is marked on the dungeon map.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).annexNext){this.climbAnnex(dungeonHistory(this.save,this.areaId()).annexNext)}/* release 678: up to the annex's next island */else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).skyHop){const id=this.areaId();this.leaveDungeon("");this.skyHop(id,skyAnnexFloor(id)===3?SKY_ANNEX.messages.top:"The cloud gate lets go of you. You fall a long way, and land far off.")}/* release 589 */else this.leaveDungeon("You emerge at the dungeon entrance.");
     } else if (r.transition === "checkpoint") {
       this.save.session.displacementJourney=null;
-      if (clearRot(this.save)) this.message += " Resting here clears the blight rot.";
+      if (clearRot(this.save)) this.message += " Resting here clears the blight rot."; this.curseRested(); // release 737
       this.save.activeCheckpoint = {
         rx: this.rx,
         ry: this.ry,
@@ -4096,6 +4102,7 @@ export class Game {
   // Release 267: build mode. A tap at world point (wx, wy) builds there (or BUILD.reach tiles out along the same line), a
   // fence turned across the line from the Wayfarer to the tap.
   buildAt(wx, wy) {
+    if (this.cursed("tools")) return { ok: false, message: this.message }; // release 737: NO TOOLS
     const t = tapTarget(this.player, wx, wy), r = placeBuild(this, t.x, t.y, undefined, true, t.run);
     this.message = r.message; return r;
   }
@@ -4635,6 +4642,7 @@ export class Game {
       dragonDue: () => game.dragonDue(), dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
       frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
       confuse(seconds) { if (!(seconds > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return; if (!(now < (p.confusedUntil || 0))) game.message = HAUNT.text.confused; p.confusedUntil = Math.max(p.confusedUntil || 0, now + seconds * 1000); }, // release 731: the haunts turn you about
+      curse: (source, n) => game.layHauntCurses(source, n, now), // release 737: a landed puff or howl lays haunt curses
       ignite(seconds, dps) { if (now < (p.dodgeUntil || 0)) return; const f = game.playerFire, on = f && f.left > 0; if (on && f.dps > dps) return; game.playerFire = { left: on && f.dps === dps ? Math.max(f.left, seconds) : seconds, dps, tick: f?.tick ?? 1 }; }, // balance pack (C11): the stronger burn keeps its own time // release 708: set alight (the Briar Stag's burning trees)
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(eliteStateInPlace(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
@@ -5188,6 +5196,33 @@ export class Game {
   // Release 720: the folk realms (FAR_FOLK). The Hollow Kin turn and come in waves; the Tall Country's folk throw spears at monsters.
   // Release 731: the haunts (haunts.ts). A placed Gloomwisp that is hunting splits now and then, `split.max` times (children
   // neither split nor give a reward), up to the area's cap; and once a visit, enough wisps close together pour into a Gloomgorge.
+  // Release 737: the haunt curses (HAUNT.curses). Laid by a landed puff or howl (not through a dodge); which ones is hashed from
+  // the haunt and how many times it has landed. FRAIL holds back a share of maximum health the way the Stalker's mist does
+  // (save.rot) and gives it back when it wears off, is replaced, or the Wayfarer dies.
+  layHauntCurses(source, n, now = this.lastUpdateNow || 0) {
+    const p = this.player; if (!(n > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return [];
+    const list = (p.curses ||= []), hit = source ? (source.hauntHits = (source.hauntHits || 0) + 1) : 0, laid = [];
+    for (const id of rollCurses(`${source?.id || "haunt"}:${hit}`, n)) {
+      const r = layCurse(list, id, now); if (!r) continue; laid.push(r.curse);
+      if (r.dropped) this.curseRelease(r.dropped);
+      const def = curseDef(id);
+      if (r.fresh && def.maxHp > 0) { ensureRot(this.save); const max = Number(this.save.maxHp) || 1, room = Math.max(0, max - 1 - Math.floor(this.save.rot)), take = Math.min(room, Math.max(1, Math.round(max * def.maxHp)));
+        r.curse.rot = take; this.save.rot += take; p.hp = Math.min(p.hp, healthCeiling(this.save)); }
+    }
+    if (laid.length) this.message = (this.message === HAUNT.text.confused ? `${this.message} ` : "") + laid.map((c) => curseDef(c.id).text).join(" ");
+    return laid;
+  }
+  curseRelease(c) { if (c?.rot > 0) { ensureRot(this.save); this.save.rot = Math.max(0, this.save.rot - c.rot); c.rot = 0; } }
+  curseTick(now) { const list = this.player.curses; if (!list?.length) return; for (const c of expireCurses(list, now)) this.curseRelease(c); }
+  // Resting (clearRot) already gave the health back. Death and Wayglass travel clear the curses (clearCarriedStates).
+  curseRested() { for (const c of this.player.curses || []) c.rot = 0; }
+  clearCurses() { for (const c of this.player.curses || []) this.curseRelease(c); this.player.curses = []; }
+  // True (with a brief message) when a haunt curse forbids `action` now: "shoot", "attack", "jump", "dodge", "tools", "spells", "items".
+  cursed(action, now = this.lastUpdateNow || 0) {
+    const c = curseBlocking(this.player.curses, action, now); if (!c) return false;
+    const n = this._curseNag; if (!n || n.id !== c.id || now - n.at >= HAUNT.curse.nag * 1000 || now < n.at) { this._curseNag = { id: c.id, at: now }; this.message = curseDef(c.id).text; }
+    this.curseFlash = { id: c.id, at: now }; return true;
+  }
   hauntTick(dt, now) {
     const wisps = this.enemies.filter((e) => e.kind === "gloomwisp" && !e.dead && e.hp > 0); if (!wisps.length) return;
     this._hauntCheck = (this._hauntCheck || 0) - dt;
@@ -5438,6 +5473,7 @@ export class Game {
   penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side (items still work)."; } return true; }
   primaryAttack(now = 0, _direction = null, echo = null) {
     if (this.penned(now)) return [];
+    if (!echo && this.cursed("attack", now)) return []; // release 737: NO ATTACK (the Iron Fists too)
     if (this.fistsEquipped()) { if (!echo) this.fistPress(now, _direction, this.attackAction || null); return []; } // release 493: the Iron Fists punch instead of swinging
     const glyphs = this.glyphLoadout("melee");
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
@@ -5504,6 +5540,7 @@ export class Game {
   fireSecondary(now = 0, direction = null) {
     if (this.penned(now)) return false;
     { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
+    if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
     if (this.projectiles.filter(p=>!p.dead).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
@@ -5585,6 +5622,7 @@ export class Game {
   // The Build action, from whichever button holds it (release 269 mend, 267 build mode, 265 walls and blocks).
   pressBuild(moving = false) {
     const p = this.player;
+    if (this.cursed("tools")) return false; // release 737: NO TOOLS (Build)
     if (this.mendTarget()) { this.message = mendSkiff(this.save).message; return true; }
     if (this.area === "overworld" && aboard(this.save)) { this.message = "Hold Build to raise a hull shield."; return false; }
     const at = buildSpot(p), r = placeBuild(this, at.x, at.y, undefined, moving); this.message = r.message; this.save.aimMode = "build"; this.save.toolMode = false; return r.ok; // the button also turns on build mode: taps build
@@ -5598,6 +5636,7 @@ export class Game {
     return this.useConsumable(item, now);
   }
   castSpell(spellId = null) {
+    if (this.cursed("spells")) return false; // release 737: NO SPELLS
     if(!spellId&&this.save.magicSkills?.selected&&skillRank(this.save,this.save.magicSkills.selected)>0)return this.activateApertureSkill(this.save.magicSkills.selected);
     if (spellId && SPELLS[spellId]) this.save.equippedSpell = spellId; // the readied spell is the glyph host
     const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"], cds = (this.save.magicSkills ||= {}).cooldowns ||= {}, key = `spell:${spell.id}`, remaining = spellId ? cds[key] || 0 : this.spellCooldownRemaining; // slots use per-spell cooldowns; the legacy call keeps its single one
@@ -5747,6 +5786,7 @@ export class Game {
   // × perPower + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
   toolPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   brawlerTool(kind, now = this.lastUpdateNow || 0, direction = null) {
+    if (this.cursed("tools", now)) return false; // release 737: NO TOOLS (Hammerfall, Great Sweep, Mirage of Blades)
     if (kind === "great-sweep" && fieldOn(this.save, "nanoknives")) return this.mirageThrow(now); // release 533; 649: Mirage of Blades
     const B = BRAWLER[kind], p = this.player, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null; if (!B || now < (this.toolReadyAt || 0)) return false;
     if (boxing && kind === "great-sweep") this.shadowBoxStep(B.radius * .6, now); // release 495: Shadow Boxing carries the sweep to the foe
@@ -6347,6 +6387,7 @@ export class Game {
     return this.fistPunch(1, 0, now, direction);
   }
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null) {
+    if (this.cursed("attack", now)) { this.fistCombo = null; return false; } // release 737: a charged punch let go under NO ATTACK
     const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
     let d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : null, dist = P.dash;
     if (P.rush) { // release 491: the dash punch rushes to the targeted foe in range, else lands in place
@@ -6513,7 +6554,7 @@ export class Game {
   }
   useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere',armor=kind==='armor'?this.save.equipment.armor:null,cap=armor?8:12,now=armor?(armor.power||0):(this.save.weaponLevel||0);if(!(this.save.materials[key]>0)||(kind==='armor'&&!armor))return false;if(now>=cap){this.message=`The ${armor?'armor':'weapon'} is already past what a sphere can add.`;return false}/* release 736 (review F12): a sphere never lowers gear (it capped a +12 weapon at +8) and is kept when it cannot help */this.save.materials[key]--;if(armor)armor.power=now+1;else{this.save.weaponLevel=now+1;this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
   upgradeEquipmentSlot(slot){const result=upgradeEquipment(this.save,slot);this.message=result.message;if(result.ok){syncCharacterStats(this.save);this.player.maxStamina=this.save.maxStamina;this.sync()}return result}
-  activateApertureSkill(id=this.save.magicSkills?.selected){if(id==='rift-step'){const ok=riftStep(this,this.lastUpdateNow||0);if(ok)this.riftFlashAt=this.lastUpdateNow||0;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
+  activateApertureSkill(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const ok=riftStep(this,this.lastUpdateNow||0);if(ok)this.riftFlashAt=this.lastUpdateNow||0;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))
       return false;
@@ -6543,6 +6584,7 @@ export class Game {
     return this.useConsumable(id, now);
   }
   useConsumable(type, now = 0) {
+    if (this.cursed("items", now || this.lastUpdateNow || 0)) return false; // release 737: NO ITEMS (potions too)
     const c =
       this.save.consumables ||
       (this.save.consumables = {
@@ -6667,6 +6709,7 @@ export class Game {
     this.folkTick(dt, now); // release 720: the folk realms
     this.domainTick(dt); // release 723: a domain's beast comes home
     this.hauntTick(dt, now); // release 731: the haunts split and pour together
+    this.curseTick(now); // release 737: haunt curses wear off
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = eliteStateInPlace(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
@@ -6675,7 +6718,7 @@ export class Game {
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) this.castSlot("a");
     if (input.consume("spell2")) this.castSlot("b");
-    if (input.consume("dodge")) {
+    if (input.consume("dodge") && !this.cursed("dodge", now)) { // release 737: NO DODGE
       const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) p.dodgeMired = mired; // release 708: the Briar Stag's mire
       if (!r.ok && mired) { if (now >= (p.invulnerableUntil || 0)) { p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * STAG.mire.exhaustedShare))); p.invulnerableUntil = now + 200; } this.message = "The mire drags at you, and you have nothing left to pull free with."; } // release 708 (Tim: "if you dodge while you have zero stamina in the mire, then you take damage")
       else if (!r.ok) this.message = "Not enough stamina to dodge.";
@@ -6689,6 +6732,7 @@ export class Game {
       else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.skyAir = null; this.message = GLIDE.open; }
       else if (now < this.jumpUntil && this.area === "overworld" && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
+      else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
       else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
