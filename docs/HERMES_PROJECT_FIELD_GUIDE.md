@@ -2854,6 +2854,18 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 735: the Beekeeper's Jars (wave 4) — 2026-11-04
+
+Daily narrative pass (Tim's routine): one more later thread, in the near band, which had none.
+
+**CODE:** `src/threads.ts` adds `THREADS.beekeeper` (`band: "near"`, `relic: "jar"`, `wave: 4`, six pieces and an ending) and `THREAD_RULES.fourth` (.04; the near band is small and mostly covered, so .025 would give only 10–15 crossings a world). `thirdThreadIn` now falls through to a new `fourthThreadIn` wherever it used to return null (its roll fails, or no wave 3 thread is in band); `fourthThreadIn` makes its own roll (`threads:fourth:v1`) and pick (`threads:fourth:which:v1`). `src/renderer.ts` `drawThreadRelic` gains `case "jar"`. Progress lives in `save.lore.threads.beekeeper` (normalised by `ensureThreadState`; no schema change). Tests: `tests/threads-735.test.ts`.
+
+**BOUNDARY:** The fourth roll is made only where the first three placed nothing, so every crossing that offered a thread (or none) under wave 3 offers the same now (checked against a copy of the wave 3 rules over 70,000+ crossings, six seeds); only crossings that held nothing can gain the jars, only in the near band (distance 3–18). The deep band and the first ten threads' rate are unchanged. The next later thread gets a new wave or layer, never a second wave 4 thread in a band its crossings already cover.
+
+**CODE (save fix from the pre-publish review of 734):** `src/persistence.ts` `mirrorWrite(slot, snapshot, stored)`: on the database-failure path (`stored` false) the mirror is refreshed if it fits, ignoring `MIRROR_BUDGET`, and otherwise left exactly as it is; the stale mirror is removed only after a successful database write. The failure-path mirror write runs at most once per `MIRROR_EVERY_MS`. `loadSave`: when the database read fails and there is no healthy mirror, the slot is blocked ("could not be read... reload") instead of a fresh Wayfarer being saved over it. Tests: `tests/safety-735.test.ts`; the 734 quota test now expects no skip mark on a database failure.
+
+**BOUNDARY (save fix):** In 734 a journey over the mirror budget, played from its mirror while IndexedDB was unreadable, lost that mirror on the first autosave and a reload then started a fresh journey. Healthy journeys with a readable database behave as in 734.
+
 ## Release 734: safer journeys (full-game review fixes) — 2026-11-04
 
 Tim, 2026-11-04: "Publish and start your review." The full-game review (saves, world generation, dungeons, combat, player systems, performance, and five runs on Tim's own 26.5 MB save) found no crash in normal play; this release fixes the save-risk, crash and stuck-player findings that need no design decision. Balance, performance and generator findings wait for Tim's approval.
