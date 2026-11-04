@@ -4336,6 +4336,7 @@ export class Game {
     };
     return {
       player: p, map, width, height, area: this.area, dt, now, enemies: this.enemies, sanctuary,
+      feet: () => ({ x: p.x, y: p.y + (p.riderShift || 0) }), // release 737: on a mount, ground pools meet the mount's feet (monster-pack GROUND_EFFECTS)
       playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - (p.riderShift || 0) - last.y) / dt } : { x: 0, y: 0 }, /* release 737: not the rider lift */
       playerShots: this.projectiles, playerSwinging: now < (p.meleeUntil || 0), playerBlasts: this.effects.filter((fx) => !fx.hostile && fx.damage > 0), // release 187: the Questing Beast reads these to dodge (release 245: the Nanobot Knight reads spells too)
       playerFacing: ({ left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } })[p.facing] || { x: 0, y: 1 },

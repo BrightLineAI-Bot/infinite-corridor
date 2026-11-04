@@ -209,3 +209,18 @@ test('mounted, hits land on the rider where drawn; the ground under the mount st
   for (let x = 0; x < 32; x++) Object.assign(k.map.tiles[17 * W + x], { blocked: true }); k.riderUp(); assert.ok(k.player.y < 16);
   k.stalkerWorld(.05, 5000).displace(0, 1.5); k.riderDown(); assert.ok(k.player.y < 16.2, `the wall under the feet stops the knock (y ${k.player.y.toFixed(2)})`);
 });
+
+test('mounted, ground pools meet the mount\'s feet; blasts meet the rider where drawn', () => {
+  const lift = MOUNT_BEASTS.mountainTurtle.seat;
+  const hit = (fx, at) => { const g = game('POOLS'); stableMount(g.save, 'mountainTurtle'); g.summonMount(); g.player.x = 16; g.player.y = 16; g.player.invulnerableUntil = 0;
+    g.packEffects = [{ ...fx, x: 16, y: 16 + at }]; const hp = g.player.hp; g.update(.05, idle, 2000); assert.equal(g.player.y, 16); return hp - g.player.hp; };
+  const lava = { kind: 'lava', owner: 'none', vx: 0, vy: 0, radius: .6, grow: .6, arming: 0, life: 5, total: 5, damage: 20 };
+  const tar = { kind: 'darkPool', owner: 'none', radius: .6, arming: 0, life: 5, total: 5, damage: 20 };
+  const meteor = { kind: 'dragonMeteor', owner: 'none', radius: .6, arming: 0, life: .4, total: .4, damage: 20, pool: 0 };
+  assert.ok(hit(lava, 0) > 0, 'lava under the mount\'s feet burns'); assert.equal(hit(lava, -lift), 0, 'lava where the rider is drawn is only ground below them');
+  assert.ok(hit(tar, 0) > 0, 'a dark pool at the feet burns'); assert.equal(hit(tar, -lift), 0);
+  assert.ok(hit(meteor, -lift) > 0, 'a fireball bursting on the rider strikes'); assert.equal(hit(meteor, 0), 0, 'one bursting at the feet misses the rider');
+  // On foot, both meet the Wayfarer where they stand.
+  const foot = (fx) => { const g = game('POOLS'); g.player.x = 16; g.player.y = 16; g.packEffects = [{ ...fx, x: 16, y: 16 }]; const hp = g.player.hp; g.update(.05, idle, 2000); return hp - g.player.hp; };
+  assert.ok(foot(lava) > 0 && foot(meteor) > 0);
+});
