@@ -597,6 +597,13 @@ export function worldBeastSlain(save, id) {
   q.slain++; q.cycle++; q.active = null; q.cooldown = B.cooldownSlain;
   return { marks, message: `${B.slain} +${marks} marks.` };
 }
+// Release 737 (Tim, 2026-11-04): caught in a pen. Its hunt ends as a fall does (a new cycle, the slain cooldown), but nothing is
+// paid and nothing is recorded as a kill: "the only reward is being able to ride it" (beast-mounts.ts keeps the count).
+export function worldBeastCaught(save, id) {
+  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id]; if (!B || !q) return null;
+  q.cycle++; q.active = null; q.cooldown = B.cooldownSlain;
+  return { cooldown: q.cooldown };
+}
 // The Wayfarer fell in a beast's section while it lived. Returns a message, or null.
 export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null, triesOff = false) {
   ensureWorldBeasts(save, false);

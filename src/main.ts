@@ -8,7 +8,8 @@ import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } f
 import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.ts"; // release 447
 import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.ts"; // release 459 // release 395 // release 315; 321: the drone
 import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.ts"; // release 339; 341
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.ts";
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.ts";
+import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText } from "./beast-mounts.ts"; // release 737: the stable
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
@@ -1811,7 +1812,7 @@ function openPack(tab) {
   const status = document.createElement("small"); status.className = "build-status"; status.textContent = now ? `Build raises: ${BUILD.kinds[now].name}.` : "Nothing to build with: not enough materials for any build.";
   const rt = document.createElement("strong"); rt.className = "recipe-title"; rt.textContent = "Recipes";
   const recipes = document.createElement("ul"); recipes.className = "recipe-list";
-  for (const line of [`Wood wall: ${BUILD.kinds.wood.cost.wood} wood. Blocks the way and one blow.`, `Stone block: ${BUILD.kinds.stone.cost.stone} stone. Takes two blows; jump onto it, and stack two (two high stops fliers).`, `Enclosure: 2 wood, 2 stone, 2 cinder iron. A 2×2 pen open toward you: inside, blows from the three walled sides don't land for 3 s (again after 3 s out); items still work, but you can't fight from it. Lure the Stalker into one, then build a second across its opening to close it: that is the try to trap it (likelier the more it is hurt), and caught it stays a while. Stands ${BUILD.kinds.enclosure.life} s.`, `Builds crumble after ${BUILD.life} s; ${BUILD.maxOut} stand at most (a sixth replaces the oldest).`, `Shovel: ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall).`, "Skiff: 3 wood (Act at deep water)."]) { const li = document.createElement("li"); li.textContent = line; recipes.append(li); }
+  for (const line of [`Wood wall: ${BUILD.kinds.wood.cost.wood} wood. Blocks the way and one blow.`, `Stone block: ${BUILD.kinds.stone.cost.stone} stone. Takes two blows; jump onto it, and stack two (two high stops fliers).`, `Enclosure: 2 wood, 2 stone, 2 cinder iron. A 2×2 pen open toward you: inside, blows from the three walled sides don't land for 3 s (again after 3 s out); items still work, but you can't fight from it. Lure the Stalker or a world beast into one, then build a second across its opening to close it: that is the try to catch it (likelier the more it is hurt). Caught, it goes to your stable to ride. Near a big beast the pen is built to its size, and costs more (each of the two pieces): ${Object.entries(PEN_COST).map(([n, c]) => `${n}×${n} ${costText(c)}`).join("; ")}. If it slips out, the pen breaks and the materials of both pieces are lost.${game.area === "overworld" && game.penSize?.() > 2 ? ` A pen built here now would be ${game.penSize()}×${game.penSize()}.` : ""} Stands ${BUILD.kinds.enclosure.life} s.`, `Builds crumble after ${BUILD.life} s; ${BUILD.maxOut} stand at most (a sixth replaces the oldest).`, `Shovel: ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall).`, "Skiff: 3 wood (Act at deep water)."]) { const li = document.createElement("li"); li.textContent = line; recipes.append(li); }
   buildRow.append(bt, pick, cont, status, rt, recipes);
   body.append(buildRow);
   }catch(error){packSectionFailed("Resources",error)}
@@ -1910,6 +1911,15 @@ function openPack(tab) {
     const use = uiButton(game.area === "dungeon" ? "Use" : "Use (inside a dungeon)", () => { if (game.area !== "dungeon") return; panel.close(); openSigilAtlas(); });
     use.disabled = game.area !== "dungeon" || !(save.consumables.crossingSigil > 0);
     row.append(title, text, use); body.append(row);
+    { // Release 737 (Tim, 2026-11-04): the stable, up to MOUNT_RIDE.cap caught beasts. Ride calls one beside you (as Act with nothing near does).
+      const q = ensureMounts(save), sr = document.createElement("div"), stt = document.createElement("strong"), sp = document.createElement("p"); sr.className = "item consumable stable";
+      stt.textContent = `Stable · ${q.stable.length} of ${MOUNT_RIDE.cap}`;
+      sp.textContent = q.stable.length ? `Ride one in the open world: faster, longer jumps that carry over chasms, and your own attacks, spells and tools from its back. Each gives about ${Math.round(MOUNT_RIDE.seconds / 60)} minutes of riding or ${MOUNT_RIDE.sections} sections ridden, then it is gone. A ${MOUNT_RIDE.cap + 1}th catch lets the oldest go.` : "Empty. Close a pen on a hurt beast to catch it (the Questing Beast, the Psychic Crystal, the Void Walker, the Lightning Giant and the Nanobot Knight cannot be penned).";
+      sr.append(stt, sp);
+      for (const m of q.stable) { const line = document.createElement("div"), riding = q.riding === m.id; line.className = "stable-mount"; line.append(el("small", "", `${mountName(m)} · ${SADDLE_NAMES[MOUNT_BEASTS[m.beast]?.saddle] || "Saddled"} · ${mountLifeText(m)} left${riding ? " · riding" : ""}`));
+        const ride = uiButton(riding ? "Dismount" : "Ride", () => { const r = riding ? game.dismount() : game.summonMount(m.id); game.message = r.message; persist(); panel.close(); }); if (!riding && game.mountBlock()) { ride.disabled = true; ride.title = game.mountBlock(); }
+        const let_ = uiButton("Release", () => { game.releaseStabled(m.id); persist(); openPack("supplies"); }); line.append(ride, let_); sr.append(line); }
+      body.append(sr); }
     { const found = ensureMarginalia(save).found, sb = document.createElement("div"), st = document.createElement("strong"), sp = document.createElement("p"); sb.className = "item consumable"; st.textContent = `Scrapbook · ${found.length} of ${Object.keys(MARGINALIA).length} marginalia`; sp.textContent = found.length ? found.map((id) => `${MARGINALIA[id].name}: ${MARGINALIA[id].text}`).join(" · ") : `From Infinite IV, Margin Wardens in the crossings offer marginalia: rules that hold for one crossing. Each one you take is kept here, to paste in as you enter.`; sb.append(st, sp); body.append(sb); } // release 459
   }
   }catch(error){packSectionFailed("Consumables",error)}

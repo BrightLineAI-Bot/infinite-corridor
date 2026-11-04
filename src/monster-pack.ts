@@ -3567,11 +3567,15 @@ function tickGateEffect(f, w) {
 }
 
 // Ground effects: arming, detonation (once, if the player is inside), webs that slow, and rings.
+// Release 737 (Tim, 2026-11-04): what lies on the ground (pools, trails, webs, tar, brambles) is met at the Wayfarer's feet; on a
+// mount that is the mount's feet (`w.feet`), while blows, shots, blasts and beams meet the rider where drawn (`w.player`).
+export const GROUND_EFFECTS = new Set(["web", "ooze", "lava", "flameTrail", "frostTrail", "flesh", "briar", "darkPool", "doomTar", "mire"]);
 export function tickPackEffects(effects, w) {
   if (!(w.dt > 0)) return effects;
-  const p = center(w.player);
+  const body = center(w.player), feet = w.feet ? center(w.feet()) : body, p = body;
   // New effects wait until the next tick: an emitter cannot recursively simulate its own new outputs this frame.
   for (const f of [...effects]) {
+    const p = GROUND_EFFECTS.has(f.kind) ? feet : body; // release 737: a ground pool at the feet, everything else at the body
     if (tickGateEffect(f, w)) continue;
     if (tickVoidEffect(f, w, w.dt)) continue;
     f.age = (f.age || 0) + w.dt;
@@ -3594,7 +3598,7 @@ export function tickPackEffects(effects, w) {
       if (distance(p, f) <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + TURTLE.fireTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "flameTrail", beam: true }); }
     } else if (f.kind === "frostTrail") { // ice left behind: it stings and slows, then bursts (a comet's frost does not burst)
       if (distance(p, f) <= f.radius + .1) { w.slow(TURTLE.iceSlow, .3); if (!(f.nextBite > f.age)) { f.nextBite = f.age + TURTLE.iceTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "frostTrail", beam: true }); } }
-      if (f.burst && !f.burstDone && f.life - w.dt <= 0) { f.burstDone = true; if (distance(p, f) <= TURTLE.iceBurstRadius + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.burst, { jumpable: false, source: "iceBurst" }); w.addEffect({ kind: "iceBurst", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.iceBurstRadius, arming: 0, life: .45, total: .45, damage: 0 }); }
+      if (f.burst && !f.burstDone && f.life - w.dt <= 0) { f.burstDone = true; if (distance(body, f) <= TURTLE.iceBurstRadius + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.burst, { jumpable: false, source: "iceBurst" }); w.addEffect({ kind: "iceBurst", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.iceBurstRadius, arming: 0, life: .45, total: .45, damage: 0 }); }
     } else if (f.kind === "twister") { // a small tornado flung off the spin: it wanders, stings and slows until it blows out
       f.wander = (f.wander || 0) + Math.sin(f.age * 1.7 + f.x) * w.dt * 1.2;
       const sp = Math.hypot(f.vx || 0, f.vy || 0) || TURTLE.twisterSpeed, nx = f.x + Math.cos(f.wander) * sp * w.dt, ny = f.y + Math.sin(f.wander) * sp * w.dt;
@@ -3695,7 +3699,7 @@ export function tickPackEffects(effects, w) {
       const D = DRAGON.wave, front = Math.min(f.reach, f.age * D.speed), d = distance(p, f), a = Math.atan2(p.y - f.y, p.x - f.x), off = Math.abs(((a - f.angle) % TAU + TAU * 1.5) % TAU - Math.PI) * 180 / Math.PI, inside = (f.arc >= 360 || off <= f.arc / 2) && d <= front;
       f.front = front; const owner = w.enemies.find((q) => q.id === f.owner) || null;
       if (!f.hit && inside && d >= front - 1.2) { f.hit = true; w.hurt(owner, f.damage, { jumpable: false, source: "dragonFlameWave" }); }
-      else if (inside && !(f.nextBite > f.age)) { f.nextBite = f.age + D.tick; w.hurt(owner, f.bite, { jumpable: true, source: "dragonScorch", beam: true }); }
+      else if (!(f.nextBite > f.age) && (() => { const dg = distance(feet, f), ag = Math.atan2(feet.y - f.y, feet.x - f.x), og = Math.abs(((ag - f.angle) % TAU + TAU * 1.5) % TAU - Math.PI) * 180 / Math.PI; return (f.arc >= 360 || og <= f.arc / 2) && dg <= front; })()) { f.nextBite = f.age + D.tick; w.hurt(owner, f.bite, { jumpable: true, source: "dragonScorch", beam: true }); } // release 737: the burning ground behind the front, at the feet
     } else if (f.kind === "dragonMeteor") { // a fireball landing: it strikes once, and some leave a pool of lava
       if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "dragonMeteor" }); if (f.pool) dragonPool(f.owner, w, f.x, f.y, f.pool, f.bite || 1); }
     } else if (f.kind === "doomErupt" || f.kind === "doomScale") { // release 710: black fire bursting from the ground (or a shed scale bursting), once; some leave a pool
@@ -3708,7 +3712,7 @@ export function tickPackEffects(effects, w) {
       if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = Math.min(f.life, .15);
     } else if (f.kind === "doomTar") { // tar where it landed: it slows, then catches and burns
       const owner = w.enemies.find((q) => q.id === f.owner) || null, inside = distance(p, f) <= f.radius, burning = f.age - (f.armTotal || 0) >= DOOM.tar.ignite; f.lit = burning;
-      if (!f.splashed) { f.splashed = true; if (inside) w.hurt(owner, f.splash || f.damage, { jumpable: false, source: "doomTar" }); }
+      if (!f.splashed) { f.splashed = true; if (distance(body, f) <= f.radius) w.hurt(owner, f.splash || f.damage, { jumpable: false, source: "doomTar" }); } // the splash strikes the body; the tar lies at the feet
       if (inside) { w.slow(DOOM.tar.slow, .25); if (burning && !(f.nextBite > f.age)) { f.nextBite = f.age + DOOM.tar.tick; w.hurt(owner, f.damage, { jumpable: true, source: "doomTarFire", beam: true }); } }
     } else if (f.kind === "doomOrb") { // hunting dark: homes for `home` s, then flies straight; bursts on whatever it meets
       if (f.age <= f.home) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-f.turn * w.dt, Math.min(f.turn * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; }

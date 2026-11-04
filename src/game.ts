@@ -58,7 +58,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST } from "./tool-forms.ts";
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
-import { stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
+import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
@@ -73,6 +73,7 @@ import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
+import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 737: penning catches, the stable and riding
 import { setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.ts";
@@ -114,7 +115,7 @@ import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-
 import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farDomainCentre, farQuestInfo } from "./far-realms.ts";
 import { buildDomain, domainWait, domainArrival } from "./far-domains.ts";
 import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn } from "./haunts.ts";
-import { beastUnlocked as beastOpenFor, ensureWorldBeasts as ensureBeastsFor, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
+import { beastUnlocked as beastOpenFor, ensureWorldBeasts as ensureBeastsFor, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
@@ -882,6 +883,7 @@ export function footprintVoid(map, width, x, y) {
   return false;
 }
 export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null, allowMarineTerrain=false) {
+  if (entity?.riderShift) { const sh = entity.riderShift; entity.riderShift = 0; entity.y += sh; try { return moveAxis(entity, dx, dy, map, width, allowLethalTerrain, onStep, allowMarineTerrain); } finally { entity.y -= sh; entity.riderShift = sh; } } // release 737: a knock on a rider moves the mount's feet
   let moved = false,
     steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.16)),
     sx = dx / steps,
@@ -2561,6 +2563,7 @@ export class Game {
     this.shadowClone = null; this.cloneAim = false; // release 365: a shadow stays in the place it was cast
     this.builds = []; // release 265: builds belong to the map they stand on
     this.area = area;
+    this.mountArea(); // release 737
     const lostBeasts = worldBeastsLost(this.save, area, this.rx, this.ry, area === "dungeon" ? this.areaId() : null); // release 239: a retreating beast not followed is gone
     for (const id of lostBeasts) journalOnce(this.save, `world-beast-away:${id}:${this.save.worldBeasts[id].cycle}`, `${WORLD_BEASTS[id].name} got away to ${BEAST_HOMES[WORLD_BEASTS[id].home].name}.`, "World beasts");
     if (area === "overworld") for (const r of retreatsUnderWay(this.save)) { const dx = r.rx - this.rx, dy = r.ry - this.ry; if (!dx && !dy) continue; const dir = `${dy < 0 ? "north" : dy > 0 ? "south" : ""}${dx && dy ? "-" : ""}${dx > 0 ? "east" : dx < 0 ? "west" : ""}`, far = Math.max(Math.abs(dx), Math.abs(dy)); (this.questNotices ||= []).push({ title: "FRESH TRACKS", detail: `${WORLD_BEASTS[r.id].name} · ${far} section${far > 1 ? "s" : ""} ${dir} · bound for ${BEAST_HOMES[WORLD_BEASTS[r.id].home].name}`, kind: "discovery" }); } // release 605: the trail of a retreat
@@ -3274,6 +3277,7 @@ export class Game {
     const p = this.player,
       before = this.save.consumables.restorativeDraught || 0;
     if (this.area !== "dungeon") stalkerPlayerFell(this.save); // release 678: it lets the fallen go
+    stopRide(this.save); // release 737: death gets you down; the mount stays stabled with its time
     this.captureLastDeath();
     this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
     this.save.session.displacementJourney = null;
@@ -3655,6 +3659,7 @@ export class Game {
     // Release 263 (Tim: "if I go to the edge of the water and hit action, I should be building a boat and getting on that
     // boat and moving"): at the water's edge a tree or rock beside you no longer takes the press when a skiff can be built.
     if (o && !objectId && SHORE_PASSIVE.includes(o.kind) && this.shoreWater() && canBuildSkiff(this.save)) return this.buildSkiffHere();
+    if (!o && !objectId && !action) { const r = this.actMount(); if (r) return r; } // release 737: call the mount, or get down
     if (!o)
       return {
         ok: false,
@@ -4083,6 +4088,7 @@ export class Game {
     }
     for(const e of this.enemies)if(e.astralOwner){e.dead=true;e.noRewards=true;}
     reconcileAstralCompanions(this);this.syncAstralRiders();
+    stopRide(this.save); // release 737: death gets you down; the mount stays stabled with its time
     this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
     if (this.area === "dungeon") {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
     const c = this.safeCheckpoint(); // release 734 (F2): a null active checkpoint threw here on every frame
@@ -4688,7 +4694,8 @@ export class Game {
     };
     return {
       player: p, map, width, height, area: this.area, dt, now, enemies: this.enemies, sanctuary,
-      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
+      feet: () => ({ x: p.x, y: p.y + (p.riderShift || 0) }), // release 737: on a mount, ground pools meet the mount's feet (monster-pack GROUND_EFFECTS)
+      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - (p.riderShift || 0) - last.y) / dt } : { x: 0, y: 0 }, /* release 737: not the rider lift */
       playerShots: this.projectiles, playerSwinging: now < (p.meleeUntil || 0), playerBlasts: this.effects.filter((fx) => !fx.hostile && fx.damage > 0), // release 187: the Questing Beast reads these to dodge (release 245: the Nanobot Knight reads spells too)
       playerFacing: ({ left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } })[p.facing] || { x: 0, y: 1 },
       pull(source, step, radius) { const ddx = source.x - p.x, ddy = source.y - p.y, dd = Math.hypot(ddx, ddy); if (!dd || dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * Math.min(step, Math.max(0, dd - 1)), ddy / dd * Math.min(step, Math.max(0, dd - 1))); return true; },
@@ -4910,10 +4917,88 @@ export class Game {
     this.message = "Part of the Blob tears away and flees. The rest of the mass slumps where it stood.";
   }
   // Release 697: a second enclosure built across a pen's opening closes it; if the Stalker is inside, that is the try (stalker.ts).
+  // Release 737 (Tim, 2026-11-04): a trap that holds now catches: the beast goes to the stable (catchBeast). The world beasts are
+  // tried too (beast-mounts.ts: a pen big enough for them, the same odds of their health); four of them never can be.
   penClosed(pen, by) {
-    const e = this.enemies.find((q) => q.stalker && !q.dead && enclosureAt(this, q.x + .5, q.y + .75) === pen); if (!e) return "The pen is closed. Nothing is inside it.";
-    if (stalkerTrapAttempt(e, pen, by.id)) return "The pen closes on the Stalker! It will be a while breaking out.";
-    return "The Stalker slips out before the pen can close on it.";
+    const inside = this.enemies.filter((q) => !q.dead && !q.stalkerKin && !q.stalkerDecoy && (q.stalker || q.worldBeast || q.questingBeast) && enclosureAt(this, q.x + .5, q.y + .75) === pen);
+    if (!inside.length) return "The pen is closed. Nothing is inside it.";
+    // The answer says why a try failed. No try made (never penned, too small, out of reach): the closing pen comes down and its
+    // materials come back (a too-small pen with it). A try that failed (Tim, 2026-11-04): the beast slips out, the pen breaks
+    // and the materials of both pieces are lost; to try again both are built anew (building.ts placeEnclosure acts on `undo`).
+    const e = inside.find(catchableActor) || inside[0], again = " The pen breaks, and the materials in both pieces are lost: build the enclosure and its closing piece again to try again.";
+    if (e.stalker && catchableActor(e)) return stalkerTrapAttempt(e, pen, by.id) ? this.catchBeast(e, "stalker", pen) : { message: `The Stalker slips out before the pen can close on it.${again}`, undo: "crumble", also: [pen] };
+    const why = catchRefusal(e, pen), id = mountIdFor(e);
+    if (why && neverCaught(e)) return { message: `${why} The closing pen comes down, its materials returned.`, undo: "refund" };
+    if (why && id && (Number(pen.size) || ENCLOSURE.size) < MOUNT_BEASTS[id].pen) return { message: `Too small: ${why} Both pens come down, their materials returned; build again near it and the pen is sized for it.`, undo: "refund", also: [pen] };
+    if (why) return { message: `${why} No try was made: the closing pen comes down, its materials returned.`, undo: "refund" };
+    if (!catchRoll(e, pen, by.id)) return { message: `${MOUNT_BEASTS[id].name} slips out before the pen can close on it.${again}`, undo: "crumble", also: [pen] };
+    return this.catchBeast(e, id, pen);
+  }
+  // Caught: its hunt ends as a fall does, with nothing paid (Tim: "the only reward is being able to ride it"), and it goes to the
+  // stable (the oldest let go past MOUNT_RIDE.cap). Returns the message.
+  catchBeast(e, id, pen = null) {
+    for (const q of this.enemies) if ((q.stalkerOf === e.id || q.summonedBy === e.id || q.astralOwner === e.id) && !q.dead) { q.dead = true; q.noRewards = true; }
+    Object.assign(e, { dead: true, noRewards: true, rewarded: true, caught: true, stalkTrapped: 0 });
+    if (id === "stalker") { stalkerCaught(this.save); if (this.stalkFog) this.stalkFog.until = 0; } else worldBeastCaught(this.save, id);
+    this.enemies = this.enemies.filter((q) => q !== e); if (pen) pen.trapped = null;
+    reconcileAstralCompanions(this); this.syncAstralRiders();
+    const B = MOUNT_BEASTS[id], { released } = stableMount(this.save, id), n = this.save.mounts.stable.length, who = B.name.replace(/^The /, "the ");
+    journalOnce(this.save, `beast-caught:${id}:${this.save.mounts.caught[id]}`, `You caught ${who} in a pen at ${this.rx},${this.ry}. It waits in your stable to be ridden.`, B.name);
+    this.defeatNotice = { title: "CAUGHT", detail: `${B.name} · in your stable (${n}/${MOUNT_RIDE.cap})${released ? ` · ${mountName(released)} let go` : ""}`, kind: "discovery" };
+    return `The pen closes on ${who}, and it is caught! It goes to your stable: press Act with nothing near, or Pack → Supplies → Stable, to ride it.${released ? ` Your stable holds ${MOUNT_RIDE.cap}: ${mountName(released).replace(/^The /, "the ")}, the oldest, is let go.` : ""}`;
+  }
+  // Release 737: a pen is built for the biggest catchable beast within MOUNT_RIDE.sense tiles (building.ts placeEnclosure).
+  penSize() { const p = this.player; let n = ENCLOSURE.size; for (const e of this.enemies || []) if (catchableActor(e) && Math.hypot(e.x - p.x, e.y - p.y) <= MOUNT_RIDE.sense) n = Math.max(n, MOUNT_BEASTS[mountIdFor(e)].pen); return n; }
+  // ---- Riding (release 737) ----
+  mountRide() { return this.area === "overworld" && this.player?.hp > 0 ? ridingMount(this.save) : null; }
+  // Release 737: while mounted, the hostile part of the frame sees the Wayfarer where the rider is drawn (`seat` tiles up); moveAxis
+  // takes the lift off again, so a knock still moves the mount's feet. Terrain, water, mire and lethal ground stay at the feet.
+  riderUp() { const p = this.player, m = this.mountRide(); if (!m || p.riderShift) return; const h = riderLiftOf(m); if (h > 0) { p.y -= h; p.riderShift = h; } }
+  riderDown() { const p = this.player; if (p.riderShift) { p.y += p.riderShift; p.riderShift = 0; } }
+  mountLeap(now) { return !!this.mountRide() && now < (this.jumpUntil || 0); } // airborne on a mount: chasms and water pass under
+  mountBlock() {
+    const p = this.player;
+    if (this.area !== "overworld") return "Mounts cannot be ridden in here: call one in the open world.";
+    if (!(p.hp > 0)) return "You cannot ride now.";
+    if (aboard(this.save)) return "Step ashore first: a mount cannot ride in a skiff.";
+    if (this.swimming) return "Get out of the water first.";
+    if (this.mechUp() || this.droneUp()) return "Stow the robot or the drone first.";
+    if (this.glide) return "Land first.";
+    if (footprintInsideStructure(this.map, mapWidth(this.map, this.area), p.x, p.y)) return "There is no room for a mount indoors.";
+    return null;
+  }
+  summonMount(id = null) {
+    const m = id ? mountById(this.save, id) : defaultMount(this.save);
+    if (!m) return { ok: false, message: (this.message = "Your stable is empty. Close a pen on a beast to catch one.") };
+    const why = this.mountBlock(); if (why) return { ok: false, message: (this.message = why) };
+    if (ridingMount(this.save)?.id === m.id) return { ok: true, message: (this.message = `You are already riding ${mountName(m).replace(/^The /, "the ")}.`) };
+    startRide(this.save, m.id, null); this._mountHp = this.player.hp;
+    const spent = noteRideSection(this.save, `${this.rx},${this.ry}`); if (spent) return { ok: false, message: (this.message = spent) };
+    return { ok: true, message: (this.message = `${mountName(m)} answers your call, and you climb onto its back. ${mountLifeText(m)} left.`) };
+  }
+  dismount(message = null) {
+    const m = stopRide(this.save); this._mountHp = null; if (!m) return { ok: false, message: this.message };
+    return { ok: true, message: (this.message = message || `You climb down from ${mountName(m).replace(/^The /, "the ")}, and it is gone back to your stable. ${mountLifeText(m)} left.`) };
+  }
+  // Act with nothing near in the open world: get down, or call the mount ridden last.
+  actMount() { if (this.area !== "overworld" || !ensureMounts(this.save).stable.length) return null; return ridingMount(this.save) ? this.dismount() : this.summonMount(); }
+  releaseStabled(id) { const m = releaseMount(this.save, id); if (m) { if (!ridingMount(this.save)) this._mountHp = null; this.message = `You let ${mountName(m).replace(/^The /, "the ")} go. It is gone from your stable.`; } return m; }
+  // Each frame: the ride runs down; a death, an indoor step, water, a skiff, the robot, the drone or the glider gets you down
+  // first, and a heavy blow (MOUNT_RIDE.knockoff of maximum health in one frame) throws you off.
+  tickMount(dt) {
+    const m = ridingMount(this.save); if (!m) { this._mountHp = null; return; }
+    const p = this.player, who = mountName(m).replace(/^The /, "the ");
+    if (!(p.hp > 0)) { this.dismount(`You fall from ${who}. It waits in your stable.`); return; }
+    const why = this.mountBlock(); if (why) { this.dismount(`You get down from ${who} first; it waits in your stable.`); return; }
+    if (this._mountHp != null && this._mountHp - p.hp >= MOUNT_RIDE.knockoff * (this.save.maxHp || p.maxHp || 100)) { this.dismount(`The blow throws you from ${who}! It is gone back to your stable.`); return; }
+    this._mountHp = p.hp;
+    const spent = tickRide(this.save, dt); if (spent) { this._mountHp = null; this.message = spent; }
+  }
+  // On every area load: indoors it waits in the stable; each different overworld section ridden counts.
+  mountArea() {
+    const m = ridingMount(this.save); if (!m) return;
+    if (this.area !== "overworld") { this.dismount(`${mountName(m)} cannot follow you in there: it waits in your stable.`); return; }
+    const spent = noteRideSection(this.save, `${this.rx},${this.ry}`); if (spent) { this._mountHp = null; this.message = spent; }
   }
   // Release 678: the Stalker (stalker.ts). Ground it may stand on: open, not lethal, never inside a building, shelter or town.
   stalkerBarred(x, y) {
@@ -4941,7 +5026,7 @@ export class Game {
     const game = this, p = this.player, map = this.map, width = mapWidth(map, this.area), last = this._packLastPlayer || p;
     return (this._stalkW = {
       now, dt, player: p, sheltered: this.stalkerBarred(p.x, p.y), door: this._stalkOver?.rx === this.rx && this._stalkOver?.ry === this.ry ? this._stalkOver : null,
-      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
+      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - (p.riderShift || 0) - last.y) / dt } : { x: 0, y: 0 }, /* release 737: not the rider lift */
       open: (x, y) => game.stalkerOpen(x, y),
       free: (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= mapHeight(map, game.area) - 1.5 && !game.stalkerBarred(x, y), // the cat climbs over walls and up trees, never into a building, shelter or town
       shotBlocked: (x, y) => !projectileTileOpen(map, width, x, y),
@@ -6842,6 +6927,7 @@ export class Game {
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
+    this.riderDown(); this.tickMount(dt); // release 737 (riderDown: never carry a rider lift over a frame)
     this._astralDrainCredits=[];
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
@@ -6912,7 +6998,7 @@ export class Game {
       else if (now < this.jumpUntil && this.area === "overworld" && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
-      else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
+      else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; if (this.mountRide()) this.jumpDur *= MOUNT_BEASTS[this.mountRide().beast].jump; /* release 737: a mount jumps farther */ this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
@@ -6939,7 +7025,7 @@ export class Game {
     }
     const swimming = this.swimsHere(footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y)), underfoot = this.map.landscape ? tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind : null;
     const sailing = this.area === "overworld" && aboard(this.save);
-    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (this.map.underwater ? DIVE.speed : 1) * (sailing ? BOAT.speed : swimming ? (this.mechUp() ? MECH_WATER.speed : TIDEMANTLE.speed) : dodging ? (p.dodgeMired ? STAG.mire.dodgeSpeed : 1) : mireSpeed(underfoot)),
+    let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (this.map.underwater ? DIVE.speed : 1) * (sailing ? BOAT.speed : swimming ? (this.mechUp() ? MECH_WATER.speed : TIDEMANTLE.speed) : dodging ? (p.dodgeMired ? STAG.mire.dodgeSpeed : 1) : mireSpeed(underfoot)) * (!dodging && !sailing && !swimming && this.mountRide() ? MOUNT_BEASTS[this.mountRide().beast].speed : 1), // release 737: riding (dodges unchanged)
       dx = x * speed * dt,
       dy = y * speed * dt;
     // Sailing has momentum: velocity eases toward the stick; a dodge is an oar burst.
@@ -6993,7 +7079,7 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    let terrainHazard=gliding?null:this.hazardWhereMoved(p,dx,dy,nx,ny,width,now);const raftNow=this.map?.movers?.length?platformUnder(this.map,nx,ny,ps):null,raftWasZ=raft?platformPos(raft,ps-dt).z:0;this.raftZ=raftNow?platformPos(raftNow,ps).z:0;if(terrainHazard&&raftNow)terrainHazard=null;/* release 613: on a raft over the drop */
+    let terrainHazard=gliding||this.mountLeap(now)?null:this.hazardWhereMoved(p,dx,dy,nx,ny,width,now);/* release 737: a mount's leap carries over the chasm; where it lands is checked */const raftNow=this.map?.movers?.length?platformUnder(this.map,nx,ny,ps):null,raftWasZ=raft?platformPos(raft,ps-dt).z:0;this.raftZ=raftNow?platformPos(raftNow,ps).z:0;if(terrainHazard&&raftNow)terrainHazard=null;/* release 613: on a raft over the drop */
     // Release 615: stepping off a raft below the level is a step into nothing; off one above it, a fall by its height.
     if(raft&&!raftNow&&raftWasZ< -.5){terrainHazard=terrainHazard||"abyss";this.message="Below the level there is nothing to step onto.";}
     else if(raft&&!raftNow&&raftWasZ>.5&&!terrainHazard){const hurt=fallDamage(Math.round(raftWasZ),this.save.maxHp);if(hurt===Infinity){p.hp=0;this._fatalFallPending=true;}else if(hurt>0){p.hp=Math.max(0,p.hp-hurt);this.message=`You drop ${Math.round(raftWasZ)} level${Math.round(raftWasZ)>1?"s":""} off the raft.`;}}const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
@@ -7097,6 +7183,7 @@ export class Game {
       for(const e of escaped)e.dead=true;
       if(escaped.length)this.message="Walls close around you. The Gate Revenant loses the trail beyond the threshold.";
     }
+    this.riderUp(); // release 737: hostile shots, blasts and auras meet the rider where drawn
     const combatNpcTargets=(this.projectiles.length||this.effects.length)?this.npcTargets():[];
     if(!fellIntoHazard&&this.projectiles.length)this.projectiles = advanceEnemyProjectileBehaviors(this.projectiles,p,dt,{cap:this.area==="dungeon"?32:64});
     if(!fellIntoHazard&&this.projectiles.length)this.projectiles = updateProjectiles(
@@ -7146,6 +7233,7 @@ export class Game {
     const eliteStatus=eliteStateInPlace(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
     for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>moveAxis(p,dx,dy,this.map,mapWidth(this.map,this.area)))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
+    this.riderDown(); // the ground under the mount from here
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
     const underKind = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind;
@@ -7193,6 +7281,7 @@ export class Game {
       ink:(seconds)=>{this.inkUntil=now+seconds*1000;if(now>(this.inkMessageAt||0)){this.inkMessageAt=now+8000;this.message="Ink clouds the water — the Stormkraken hides in the dark."}}};
     tickTravelers(this.map,p,dt);
     const seaSummons=[];
+    this.riderUp(); // release 737: creatures aim at, strike and blast the rider where drawn
     const skirmishHooks={settled:(side,survivors)=>{const war=this.map.skirmish;if(!war)return;this.save.worldFlags[war.id]=side;const winner=war[side],loser=war[side==="a"?"b":"a"];this.message=`The fighting ends: the ${winner.label} hold the field against the ${loser.label}.`;journalOnce(this.save,war.id,`At ${this.rx},${this.ry}, ${war.a.label} and ${war.b.label} fought; the ${winner.label} held the field.`,"Skirmishes")}};
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
@@ -7252,7 +7341,7 @@ export class Game {
     this.performanceStats.peakActiveEnemies=Math.max(this.performanceStats.peakActiveEnemies,this.performanceStats.activeEnemies);
     const volcano=this.area==="overworld"&&this.map.volcano;
     if(volcano&&Math.hypot(p.x-volcano.x,p.y-volcano.y)<12){this.volcanoClock=(this.volcanoClock||0)+dt;if(this.volcanoClock>=volcano.period){this.volcanoClock=0;this.volcanoSeq=(this.volcanoSeq||0)+1;const n=hashSeed(`${this.save.seed}:eruption:${this.rx}:${this.ry}:${this.volcanoSeq}`);for(let i=0;i<4;i++){const a=((n>>(i*5))%360)*Math.PI/180,r=i===0?0:1.2+((n>>(i*3))%30)/10;addPackEffect(this.packEffects||=[],{kind:"lavaBomb",owner:"volcano",x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r,radius:1.05,arming:1.3+i*.2,damage:Math.ceil(this.save.maxHp*.18),jumpable:false,from:{x:volcano.x,y:volcano.y-1}},now)}this.message="The caldera erupts. Watch the burning circles."}}
-    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};this.syncAstralRiders();for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);reconcileAstralCompanions(this);
+    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.riderDown();/* release 737 */this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};this.syncAstralRiders();for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);reconcileAstralCompanions(this);
     // A Lighthouse Buoy (release 156) keeps a line for the Wayfarer's skiff: whoever wakes or lands there without it
     // finds it tied alongside, so a rest point at sea is never a prison.
     if (this.area === "overworld" && this.map.openSea && ((this._buoyCheck = (this._buoyCheck || 0) - dt) <= 0)) {
