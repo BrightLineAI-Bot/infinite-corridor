@@ -488,12 +488,12 @@ export const MONSTER_PACK = {
   gloomwisp: { id: "gloomwisp", prototypeOnly: true, farKin: true, noEcho: true, name: "Gloomwisp", epithet: "A Grin in the Dark",
     stats: [34, 6, 0], form: { scale: .95 }, sizeClass: "small", movement: "hover", brain: "orbit",
     attacks: ["wispBewilder", "bite"], bossAttacks: [],
-    palette: ["#2a1d3e", "#120b1e", "#b07aff", "#ffe36a"], render: "gloomwisp", tags: ["spirit", "gas", "flying"],
+    palette: ["#1d2340", "#0b0e1f", "#5aa6ff", "#a8e4ff"], render: "gloomwisp" /* release 737 (Tim): blue light, not violet */, tags: ["spirit", "gas", "flying"],
     lore: "A ball of dark gas no bigger than a head, with two bright eyes and a wide grin, that drifts through old keeps. Its breath turns you about. Left alone, it splits; enough of them together pour into something much worse." },
   gloomgorge: { id: "gloomgorge", prototypeOnly: true, farKin: true, noEcho: true, name: "Gloomgorge", epithet: "Many Wisps, One Mouth",
     stats: [260, 16, 2], form: { scale: 1.55 }, sizeClass: "large", movement: "hover", brain: "duelist",
     attacks: ["clawSweep", "devourPull", "leapSlam", "gorgeHowl"], bossAttacks: [],
-    palette: ["#3a2556", "#150c24", "#c58cff", "#fff07a"], render: "gloomgorge", tags: ["spirit", "gas"],
+    palette: ["#232c52", "#0c1024", "#6ab4ff", "#bdeeff"], render: "gloomgorge" /* release 737 */, tags: ["spirit", "gas"],
     lore: "Five or more Gloomwisps poured into one: a squat, fat ghost with a mouth from ear to ear, stubby arms and legs that end in hooked claws, and a howl that turns the world about. It drinks the air to pull you in." },
   shardling: { id: "shardling", prototypeOnly: true, farKin: true, noEcho: true, name: "Shardling", epithet: "Half a Crystal",
     stats: [45, 8, 0], form: { scale: .6 }, sizeClass: "small", movement: "hover", brain: "orbit",
@@ -1536,10 +1536,11 @@ function resolveMelee(e, s, w, attackId, test) {
 }
 
 // Release 731: a ring of gloom from a haunt: on the windup's end, the Wayfarer inside it is hurt a little and confused.
-function hauntConfuse(e, s, w, id, seconds) {
+// Release 737: and cursed (`n` haunt curses, HAUNT.curse.lay; w.curse hashes which from the haunt and its hit count).
+function hauntConfuse(e, s, w, id, seconds, n = 0) {
   const A = ATTACK_MODULES[id], r = A.range[1];
-  if (s.phase === "windup" && s.t <= 0) { if (distance(center(w.player), e) <= r + .2) { w.hurt(e, damageOf(e, id), { jumpable: false, source: id }); w.confuse?.(seconds); }
-    w.addEffect({ kind: "psyRing", owner: e.id, x: e.x, y: e.y, radius: r, arming: 0, life: .5, total: .5, damage: 0 }); s.tele = null; toPhase(s, "recover", A.recover); }
+  if (s.phase === "windup" && s.t <= 0) { if (distance(center(w.player), e) <= r + .2) { w.hurt(e, damageOf(e, id), { jumpable: false, source: id }); w.confuse?.(seconds); if (n > 0) w.curse?.(e, n); }
+    w.addEffect({ kind: "psyRing", owner: e.id, haunt: true, x: e.x, y: e.y, radius: r, arming: 0, life: .5, total: .5, damage: 0 }); s.tele = null; toPhase(s, "recover", A.recover); }
 }
 const RUN = {
   dragonStrafe(e, s, w) {
@@ -2323,8 +2324,8 @@ const RUN = {
     }
     if (s.phase === "strike" && s.t <= 0) { resolveMelee(e, s, w, "knightMist", (q) => inArc(e, q, s.data.aim, bodyRadius(e) + KNIGHT.slideReach, KNIGHT.slideArc)); s.data.cutAt = w.now; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightMist.recover); }
   },
-  wispBewilder(e, s, w) { hauntConfuse(e, s, w, "wispBewilder", HAUNT.confuse.wisp); }, // release 731
-  gorgeHowl(e, s, w) { hauntConfuse(e, s, w, "gorgeHowl", HAUNT.confuse.gorge); },
+  wispBewilder(e, s, w) { hauntConfuse(e, s, w, "wispBewilder", HAUNT.confuse.wisp, HAUNT.curse.lay.wisp); }, // release 731; 737: curses
+  gorgeHowl(e, s, w) { hauntConfuse(e, s, w, "gorgeHowl", HAUNT.confuse.gorge, HAUNT.curse.lay.gorge); },
   psyPush(e, s, w) {
     const attack = ATTACK_MODULES.psyPush, p = center(w.player);
     if (s.phase === "windup") { if (s.t <= 0) { if (distance(p, e) <= CRYSTAL.pushRadius) w.hurt(e, damageOf(e, "psyPush"), { jumpable: false, source: "psyPush" }); w.addEffect({ kind: "psyRing", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.pushRadius, arming: 0, life: .4, total: .4, damage: 0 }); toPhase(s, "active", attack.active); s.tele = null; } return; }
