@@ -97,7 +97,8 @@ import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyr
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { TESSERACTS, grantTesseract } from "./tesseracts.ts";
-import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor } from "./pentagon.ts";
+import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots } from "./pentagon.ts";
+useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
@@ -114,6 +115,7 @@ import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonRecite
 import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.ts";
 import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farDomainCentre, farQuestInfo } from "./far-realms.ts";
 import { buildDomain, domainWait, domainArrival } from "./far-domains.ts";
+import { ROOF_DWELLERS, roofSpawns, roofTick, tuneDweller, useRoof } from "./roof-dwellers.ts"; // the Pentagon roofs' dwellers
 import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn } from "./haunts.ts";
 import { beastUnlocked as beastOpenFor, ensureWorldBeasts as ensureBeastsFor, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
@@ -2535,7 +2537,7 @@ export class Game {
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
       leftAt: Number(this.save.playSeconds) || 0, // release 651: when it was last held, for Fractured mode's return
-      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast && !e.fracReinforcement).map((e) => { const dead = deadFoeRecord(e); if (dead !== e) return dead; /* perf pack: a dead, rewarded foe is kept as a tombstone */ return ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } }); }), // release 259: the Blob's remnant is never saved
+      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast && !e.fracReinforcement && !e.roofDweller /* roof-dwellers.ts: made again from the plan; the slain are on the Pentagon's history */).map((e) => { const dead = deadFoeRecord(e); if (dead !== e) return dead; /* perf pack: a dead, rewarded foe is kept as a tombstone */ return ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } }); }), // release 259: the Blob's remnant is never saved
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
@@ -2693,6 +2695,7 @@ export class Game {
       if (this.map.mushrooms && this._coherence && !this.save.narrative.journal.some((j) => j.recordId === "great-mushrooms")) { journalOnce(this.save, "great-mushrooms", `${GREAT_MUSHROOMS.text} (${this.rx},${this.ry})`, "The great mushrooms"); if (!this.message) this.message = GREAT_MUSHROOMS.text; } // release 721; on new ground, after a castle or Pentagon may have taken the caps (WG-10)
       if (this._coherence && !this.map.farDomain) cohereSection(this.map, { spots: coherenceSpots(this.map) }); // WG-02/05/06/07: the exits, the plaza, the great doors and the cairns join; no pits
       if (this._coherence && this.map.pentagon) for (const o of this.map.objects) if (o.pentLand) o.joined = joinToLand(this.map, o); // the Pentagon v6: each side entrance stands on land joined to the section's exits
+      if (this._coherence && this.map.pentagon?.stairFoot) this.map.pentagon.stairFoot.joined = joinToLand(this.map, this.map.pentagon.stairFoot); // the Pentagon v7: the outer stair's foot likewise
       { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, r = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null; if (!prior) noteSeasonDiscovery(this.save, r?.id); this.season = trackSeason(this.save, r); } // release 679: the woods' season
       if (!prior) { atlas[key] = atlas[key] || {}; if (noteDiscovery(this.save)) this.message = "Word comes on the wind: around Ember Refuge, the groves and the quarry have grown back."; } // release 265: regrowth every 20 new sections
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
@@ -2754,6 +2757,7 @@ export class Game {
       if (plan && !this.map.hauntPlaced) { this.map.hauntPlaced = true; const k = area === "overworld" && this.map.keep ? this.map.keep : null; this.map.enemySpawns.push(...hauntSpawns(this.map, mapWidth(this.map, area), this.save.seed, hid, plan, k && { x: k.x, y: k.y, w: k.w, h: k.h }, !k && this.map.greatBuilding?.castle ? (t) => !!(t.courtyard && t.greatBuilding) : null)); } } // release 735: a castle's courts, not the causeway outside its walls
     if (area === "overworld" && this.map.farDomain) { this.map.enemySpawns = this.map.enemySpawns.filter((e) => this.map.farDomain === "questingBeast" ? e.questingBeast : e.worldBeast === this.map.farDomain && !e.retreating); this.map.objects = (this.map.objects || []).filter((o) => o.domain); if (this.domainMessage) this.message = this.domainMessage; } this.domainMessage = null; // release 723: nothing lives in a domain but its beast
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
+    this.roofDwell = null; // roof-dwellers.ts: made below, once the section's objects are all laid
     if (area === "overworld" && this.map?.canopy?.top && !this.map.objects.some((o) => o.kind === "crownRest")) { // release 669: a rest point on every great tree's crown
       const top = this.map.canopy.top, gate = this.map.objects.find((o) => o.kind === "canopyGate"), crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top && !(gate && t.x === gate.x && t.y === gate.y));
       const t = crown.sort((a, b) => (a.y - b.y) || (a.x - b.x))[0]; if (t) this.map.objects.push({ id: `crown-rest-${this.rx}-${this.ry}`, kind: "crownRest", name: "Crown Rest", x: t.x, y: t.y, state: "open", actions: [] });
@@ -2933,6 +2937,7 @@ export class Game {
         ),
       );
       { const w = this.wonderCue(); if (w) this.map.objects.push(w); } // release 729: a cue toward the nearest unexplored Pentagon or labyrinth
+      if (this.map.pentagon) this.roofDwell = { sleepers: this.roofSleepers(), told: false }; // roof-dwellers.ts: asleep, outside the enemy list, until the Wayfarer is on the roof
       for (const o of this.map.objects)
         if (o.kind === "dungeon")
           dungeonHistory(
@@ -5454,6 +5459,19 @@ export class Game {
     const n = this._curseNag; if (!n || n.id !== c.id || now - n.at >= HAUNT.curse.nag * 1000 || now < n.at) { this._curseNag = { id: c.id, at: now }; this.message = curseDef(c.id).text; }
     this.curseFlash = { id: c.id, at: now }; return true;
   }
+  // The Pentagon roofs' dwellers (roof-dwellers.ts): made for this section of the Pentagon from its id, regionally scaled (the one
+  // helper) and tuned to the Wayfarer, and kept asleep outside the enemy list.
+  roofSleepers() {
+    const P = this.map?.pentagon; if (!P?.base) return [];
+    const slain = this.save.consequences?.dungeons?.[`${P.base}:f1`]?.roofSlain || [], ref = liveBeastReference(this.save, characterStats(this.save));
+    return roofSpawns(this.map, P, this.rx, this.ry, slain).map((q) => { const c = tuneDweller(this.scaleToRegion(this.createEnemyFromSpawn(q, "overworld")), ref); return Object.assign(c, { roofDweller: true, roofBase: q.roofBase, roofHome: { ...q.roofHome }, aggro: false }); });
+  }
+  roofStep(dt) {
+    if (!this.roofDwell || this.area !== "overworld" || !(dt > 0)) return null;
+    const r = roofTick({ map: this.map, player: this.player, enemies: this.enemies, roof: this.roofDwell }, dt); if (!r) return null;
+    if (r.woke.length) { const codex = (this.save.codex ||= { creatures: {}, places: {}, features: {} }); codex.creatures ||= {}; for (const e of r.woke) codex.creatures[e.kind] = true; if (!this.roofDwell.told) { this.roofDwell.told = true; this.message = ROOF_DWELLERS.text.wake; } }
+    return r;
+  }
   hauntTick(dt, now) {
     const wisps = this.enemies.filter((e) => e.kind === "gloomwisp" && !e.dead && e.hp > 0); if (!wisps.length) return;
     this._hauntCheck = (this._hauntCheck || 0) - dt;
@@ -5561,6 +5579,7 @@ export class Game {
     if (e.pentBoss && this.area === "dungeon" && this.map?.building?.pentagon && this.map.building.V >= 3) this.pentagonChampionDown(e); // the Pentagon's champions and the Regent (v3)
     if (this.area === "dungeon" && String(e.id).endsWith(":guardian") && this.map?.objects?.some((o) => o.dir === "roofExit")) this.openRoofExit(true); // release 746: the vault's guardian falls, its roof exit opens
     if (this.area === "dungeon" && String(e.id).endsWith(":guardian") && !e.illusion && !e.summonedBy && this.map?.building?.pentagon && this.map.building.vault) this.openPentagonFinale(); // the Regent falls: the vault's wall opens (PENTAGON.finale)
+    if (e.roofDweller && e.roofBase) { const H = dungeonHistory(this.save, `${e.roofBase}:f1`); H.roofSlain = [...new Set([...(H.roofSlain || []), e.id])]; } // a roof dweller slain stays slain
     if(e.noRewards){e.rewarded=true;return}
     if(e.arenaId&&this.map?.arena){const history=dungeonHistory(this.save,this.areaId());history.resolved=true;history.guardianDefeated=true;history.visitOpen=false;this.defeatNotice={title:'WORLD THREAT BROKEN',detail:`${this.map.name} · the persistent arena falls quiet`,kind:'danger'}}
     if(e.foundryId){
@@ -6202,7 +6221,7 @@ export class Game {
     const P = this.map?.pentagon; if (!P || this.area !== "overworld") return false; const nrx = this.rx + dx, nry = this.ry + dy;
     if (this.domainCentreAt(nrx, nry)) return false;
     const [a, b] = dx ? [Math.floor(p.y + .5), Math.floor(p.y + .88 - 1e-6)] : [Math.floor(p.x + .24), Math.floor(p.x + .76 - 1e-6)];
-    return pentagonSeamOpen(P.cx, P.cy, this.rx, this.ry, dx, dy, a, b);
+    return pentagonSeamOpen(P.cx, P.cy, this.rx, this.ry, dx, dy, a, b, !!P.roof); // v7: and along its roof
   }
   // WG-05: on new ground (world coherence) a great building's door must join the section's exits, or the spot is passed over.
   coherentDoor() { return this._coherence ? Object.assign((map, at) => joinsCore(map, at), { tries: COHERENCE.doorTries }) : null; }
@@ -7046,6 +7065,7 @@ export class Game {
     this.folkTick(dt, now); // release 720: the folk realms
     this.domainTick(dt); // release 723: a domain's beast comes home
     this.hauntTick(dt, now); // release 731: the haunts split and pour together
+    this.roofStep(dt); // the Pentagon roofs' dwellers wake, pursue and go back to sleep
     this.curseTick(now); // release 737: haunt curses wear off
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = eliteStateInPlace(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
