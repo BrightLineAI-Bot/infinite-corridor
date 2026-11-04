@@ -2854,6 +2854,73 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 727: the Pentagon — 2026-11-04
+
+Tim (2026-11-04): "so large that you don't know where it's gonna go... when you're walking by, you're like, what is that... as
+large as the Houses of Parliament... the Pentagon... so many different corridors... a central Courtyard... intimidating and
+imposing... explore the abandoned building... inhabited by ghouls". His choices: roads go round or through it; ghouls, its story
+told in relics; keys, trial rooms and pressure plates.
+
+**CODE:** `src/pentagon.ts` (new; in the build and both sw.js lists):
+- `PENTAGON`: centres on a grid (`every` 8), `chance` .5, `minRing` 10. The bands (the distance along each face's normal): out
+  36, outer 29, court 23, inner 18, the Heart's square 3. Also the corner walls, floors, chamber size, guards (ghouls), trial
+  guards, the regent, trials 3, ring doors fallen shut 3, the gate `approach`, seven relic texts, names and messages.
+- `pentagonCentre(rx, ry)` gives the centre whose 3×3 block holds a section. `pentagonAt(seed, cx, cy, ok)` makes the chance roll
+  and checks the ring and that all nine sections are ok.
+- `regionAt(gx, gy)` (pure geometry on the 96×96 block) returns outside / outer / wall / court / inner / heart / central. It takes
+  the largest of the five face normals.
+- `pentagonPlan` (pure, memoised) builds the plan:
+  - Chambers o0–o9 (outer ring, two a face), i0–i4 (inner ring) and h0–h2 (the Heart, the Under-Heart, the Regent's Vault).
+  - Ring doors, three of them fallen shut. If that would leave a chamber cut off, it reopens doors or joins the inner ring.
+  - World doors: two gates, court doors, inner doors, central doors, the Heart (`sealed: "trials"`) and the vault's way out to the
+    first gate.
+  - The Regent's Key lies on a central door, in a chamber you can reach without that door. The plate sits on an outer ring door.
+  - Three trial chambers, seven relics, each chamber's ports, and each world door's position.
+- `placePentagonSection` builds one section:
+  - Built tiles are blocked `castleWall`; the courts are `castleCourt` with `courtyard`.
+  - A paved approach, three wide and painted section by section, runs out from each gate over canyon and rock.
+  - It places the door objects (`pentagonDoor`, `enterAt` = the world door key) and court ghouls.
+  - The `greatBuilding` v2 record is marked `big`.
+  - It sets `map.pentagon`.
+- `generatePentagonChamber` (ids `pentagon:<seed>:<cx>:<cy>:f<n+1>`) builds a chamber:
+  - The floor is laid with `layFloor` (a hall) or, in cellars, `carveMaze` (now exported from labyrinths.ts).
+  - Ring doors are `buildingStair` (`labyrinth: true`); one carries `plateLock`, with the `plate` tile and `pentRubble` beside it.
+  - The Heart's ladders, exits with `exitsTo`, the key's door with `lock`, the key (`labKey`), relics (`pentRelic`), ghouls
+    (`buildingGuard`), and five in a trial chamber.
+  - The vault holds the Regent (`hollowMarshal`, the guardian) and the hoard.
+
+`src/game.ts`:
+- `pentagonHere` places the section in sections first seen from now on (`atlas.pentVersion`), before castles. `castleHere`
+  skips Pentagon sections.
+- Inside the nine sections a section crossing keeps your place along the edge. Coming in from outside onto a wall moves you to
+  the nearest open tile on that edge.
+- Interactions:
+  - Rubble sets stone to at least 10 and selects the stone block.
+  - A relic records `pentRelics` and writes the journal.
+  - The Heart door refuses until `pentTrials` holds three.
+  - A `lock` exit refuses without the key.
+  - A `plateLock` door holds only while a stone block stands on the plate, then stays wedged open (`labOpen`: `plate:<node>`).
+- Each frame, a trial chamber whose ghouls are all dead is recorded in `pentTrials`.
+- State lives in the `<base>:f1` dungeon history (`labKeys`, `labOpen`, `pentRelics`, `pentTrials`). `labyrinthState` marks
+  relics already read.
+
+`src/renderer.ts`:
+- `greatBlocks` draws only the cells in view. A Pentagon section holds hundreds of cells, and other buildings are unchanged.
+- New drawers: pressure plates (with the floor tiles), rubble and relic sprites.
+
+**BOUNDARY:**
+- New ground only, all nine sections at once.
+- No save change beyond the atlas pin and the dungeon history fields above (additive, schema 14).
+- Tests: `tests/pentagon.test.ts`. It covers:
+  - the grid and the regions;
+  - courts sealed from the land and from each other, on three seeds;
+  - a plan sweep of 300 seeds (every chamber reachable, the key before its door);
+  - a full run with the game: the Heart refused, the plate refused and then held by a built block, the key, three trials, the
+    vault's regent and hoard, and out at the gate;
+  - chambers reachable;
+  - crossing sections, new ground only, and no castles;
+  - a render smoke test.
+
 ## Release 726: Great Castles — 2026-11-03
 
 Tim (2026-11-03): "a large castle structure... as large as some of those chasms... that extends between a couple different
