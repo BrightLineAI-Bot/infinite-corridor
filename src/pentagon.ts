@@ -12,7 +12,7 @@
 // is built onto its pressure plate, and the Heart itself stays sealed until three trial chambers have been cleared of their
 // ghouls. Relics in the chambers tell what happened to the Fivefold Court. Everything is a hash of the seed and the centre;
 // a Pentagon stands only where all nine sections are new ground (`atlas.pentVersion`).
-import { hashSeed, rng } from "./random.ts";
+import { hashSeed, rng, byHash } from "./random.ts";
 import { BUILDINGS, layFloor, farthest } from "./great-buildings.ts";
 import { carveMaze } from "./labyrinths.ts";
 
@@ -238,13 +238,13 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
     const pick = (id) => { for (let j = 0; ; j++) { const k = kinds[hashSeed(`${key}:boss:${id}:${j}`) % kinds.length]; if (!used.has(k) || j > 20) { used.add(k); return { kind: k, name: P.bosses[k] }; } } };
     for (const t of trials) node(t).lord = pick(t); for (let i = 0; i < nh - 1; i++) node(`h${i}`).boss = pick(`h${i}`); }
   // v3: the hidden reliquaries, each off a chamber of the rings by a door that wants its shard
-  if (V >= 3) { const hosts = nodes.filter((n) => /^[oi]\d/.test(n.id) && n.id !== sealNode).sort((a, b) => hashSeed(`${key}:host:${a.id}`) - hashSeed(`${key}:host:${b.id}`));
+  if (V >= 3) { const hosts = nodes.filter((n) => /^[oi]\d/.test(n.id) && n.id !== sealNode).sort(byHash((a) => `${key}:host:${a.id}`));
     for (let k = 0; k < P.secrets; k++) { const host = hosts[k], sq = add(`s${k}`, "secret", P.secretNames[k], "cellar"); sq.reliquary = true; pass(host.id, sq.id, { secret: `shard${k}`, shardName: P.shardNames[k] });
       const keep = k === 1 ? node(`h${Math.min(P.shardDeep, nh - 2)}`) : hosts.slice(P.secrets).find((n) => !n.trial && n.id !== host.id && !n.key); if (keep) keep.shard = { id: `shard${k}`, name: P.shardNames[k] }; }
     const adj = graph(), dist = new Map([["land", 0]]), q = ["land"]; while (q.length) { const v = q.shift(); for (const u of adj.get(v) || []) if (!dist.has(u)) { dist.set(u, dist.get(v) + 1); q.push(u); } }
     for (const e of edges) if (e.shortcut) e.far = (dist.get(e.a) ?? 99) >= (dist.get(e.b) ?? 99) ? e.a : e.b;
     if (V >= 5) { const used = new Set(edges.filter((e) => e.secret).map((e) => e.a)), kinds = Object.keys(P.bosses), taken = new Set(nodes.flatMap((n) => [n.lord?.kind, n.boss?.kind]).filter(Boolean)); // v5: the sealed chambers
-      const hostsK = nodes.filter((n) => /^[oi]\d/.test(n.id) && !used.has(n.id)).sort((a, b) => hashSeed(`${key}:sealed-host:${a.id}`) - hashSeed(`${key}:sealed-host:${b.id}`));
+      const hostsK = nodes.filter((n) => /^[oi]\d/.test(n.id) && !used.has(n.id)).sort(byHash((a) => `${key}:sealed-host:${a.id}`));
       for (let k = 0; k < P.sealed; k++) { const host = hostsK[k], kq = add(`k${k}`, "sealed", P.sealedNames[k], k === 1 ? "cellar" : "hall"); kq.sealedVault = k; pass(host.id, kq.id, { sigil: true });
         let wk = kinds[hashSeed(`${key}:warden:${k}`) % kinds.length]; for (let j = 0; taken.has(wk) && j < kinds.length; j++) wk = kinds[(kinds.indexOf(wk) + 1) % kinds.length]; taken.add(wk); kq.warden = { kind: wk, name: P.bosses[wk] }; } } } // a shortcut opens from its far side
   // v6: side entrances round the outer wall, in outer chambers that hold no gate; the farthest of them from the gates are
@@ -358,7 +358,7 @@ export function generatePentagonChamber(seed, id) {
   const h = (k) => hashSeed(`${id}:${k}`), taken = new Set(objects.map((o) => o.y * W + o.x)), ok = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.doorway && !taken.has(y * W + x); };
   const reach = new Set([arrive.y * W + arrive.x]), st = [arrive]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, k = y * W + x, t = tiles[k]; if (!t || t.blocked || reach.has(k)) continue; reach.add(k); st.push({ x, y }); } }
   const cells = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (ok(x, y) && reach.has(y * W + x) && Math.abs(x - arrive.x) + Math.abs(y - arrive.y) >= 5) cells.push({ x, y });
-  cells.sort((a, b) => hashSeed(`${id}:c:${a.x},${a.y}`) - hashSeed(`${id}:c:${b.x},${b.y}`)); const take = () => { const c = cells.find((p) => !taken.has(p.y * W + p.x)); if (c) taken.add(c.y * W + c.x); return c; };
+  cells.sort(byHash((a) => `${id}:c:${a.x},${a.y}`)); const take = () => { const c = cells.find((p) => !taken.has(p.y * W + p.x)); if (c) taken.add(c.y * W + c.x); return c; };
   // the pressure plate beside its door, and rubble to build with
   if (plateSpot) { const near = [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1]].map(([dx, dy]) => ({ x: plateSpot.inner.x + dx, y: plateSpot.inner.y + dy })).find((c) => ok(c.x, c.y) && reach.has(c.y * W + c.x));
     if (near) { tiles[near.y * W + near.x] = { ...tiles[near.y * W + near.x], plate: true }; taken.add(near.y * W + near.x); }

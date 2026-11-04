@@ -122,7 +122,7 @@ export function ensureConstellation(save) {
   const caps = Object.fromEntries(Object.entries(c.caps || {}).filter(([b, id]) => BRANCHES[b]?.caps.some((q) => q.id === id)));
   const caps2 = Object.fromEntries(Object.entries(c.caps2 || {}).filter(([b, id]) => caps[b] && caps[b] !== id && BRANCHES[b]?.caps.some((q) => q.id === id)));
   const alt = Object.fromEntries(Object.keys(c.alt || {}).filter((id) => c.alt[id] === true && ALT_PASSIVES[id]).map((id) => [id, true])); // release 359
-  save.constellation = { version: CONSTELLATION_VERSION, mods: { ...c.mods }, caps, caps2, bonus: Math.max(0, Math.floor(Number(c.bonus) || 0)), ...(Object.keys(alt).length ? { alt } : {}) };
+  save.constellation = { ...c, version: CONSTELLATION_VERSION, mods: { ...c.mods }, caps, caps2, bonus: Math.max(0, Math.floor(Number(c.bonus) || 0)), ...(Object.keys(alt).length ? { alt } : {}) }; if (!Object.keys(alt).length) delete save.constellation.alt; // release 736 (review S7): unknown fields kept
   // Reconciled on every load, so saves from before this release (or merged with fresh defaults) keep what they learned:
   // a learned Aerial Step claims the Motion capstone, and any overspend becomes grandfathered bonus points.
   if (skillRank(save, "aerial-step") > 0 && !hasNode(save, "aerial-step")) { if (!save.constellation.caps.motion) save.constellation.caps.motion = "aerial-step"; else save.constellation.caps2.motion = "aerial-step"; }

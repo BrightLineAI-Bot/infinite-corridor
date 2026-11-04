@@ -4,7 +4,7 @@
 // Travellers: groups of people (some mounted) walk the trails or wander a section, stop when the Wayfarer comes near,
 // and talk. Peddlers trade. Old Quillon, a wandering cartographer, gives one errand at a time; finish it and the next
 // time you meet him he pays and hands you the next.
-import { hashSeed, rng, pick } from "./random.ts";
+import { hashSeed, rng, pick, byHash } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 import { hamletRoll } from "./settlements.ts";
 import { RECITERS, RECITATIONS } from "./recitations.ts";
@@ -179,7 +179,7 @@ export function travelerPlan(seed, rx, ry, onTrail) {
   const r = rng(`${seed}:travelers:v${TRAVEL_VERSION}:${rx}:${ry}`);
   if (r() >= (onTrail ? TRAVEL.groupChanceOnTrail : TRAVEL.groupChance)) return null;
   const group = pick(r, TRAVELER_GROUPS), n = group.size[0] + Math.floor(r() * (group.size[1] - group.size[0] + 1));
-  const names = [...NAMES].sort((a, b) => hashSeed(`${rx},${ry}:${a}`) - hashSeed(`${rx},${ry}:${b}`));
+  const names = [...NAMES].sort(byHash((a) => `${rx},${ry}:${a}`));
   const members = [];
   for (let i = 0; i < n; i++) {
     const pool = group.pools.flatMap((k) => TRAVELER_LINES[k]), lines = [pick(r, pool), pick(r, pool), pick(r, pool)].filter((l, j, a) => a.indexOf(l) === j);
@@ -305,7 +305,7 @@ export const WANDERER_QUESTS = [
 export const WANDERER = { name: "Old Quillon", role: "Wandering cartographer" };
 export function ensureWanderer(s) {
   const w = s.wanderer && typeof s.wanderer === "object" ? s.wanderer : {};
-  s.wanderer = { v: 1, stage: Math.max(0, Number(w.stage) || 0), completed: Math.max(0, Number(w.completed) || 0), met: !!w.met, quest: w.quest && typeof w.quest === "object" ? w.quest : null };
+  s.wanderer = { ...w, v: 1, stage: Math.max(0, Number(w.stage) || 0), completed: Math.max(0, Number(w.completed) || 0), met: !!w.met, quest: w.quest && typeof w.quest === "object" ? w.quest : null };
   return s;
 }
 // Does the cartographer stand in this section for the current stage? Likelier once an errand is done and owed.
@@ -316,7 +316,7 @@ export function wandererHere(save, rx, ry) {
 }
 export function addWanderer(map, save, rx, ry) {
   if (!map || map.tiles?.length !== 1024 || map.skirmish || !wandererHere(save, rx, ry)) return null;
-  const open = map.tiles.filter((t) => t.x > 6 && t.y > 6 && t.x < 25 && t.y < 25 && walkable(t)).sort((a, b) => hashSeed(`${rx},${ry}:${a.x},${a.y}`) - hashSeed(`${rx},${ry}:${b.x},${b.y}`));
+  const open = map.tiles.filter((t) => t.x > 6 && t.y > 6 && t.x < 25 && t.y < 25 && walkable(t)).sort(byHash((a) => `${rx},${ry}:${a.x},${a.y}`));
   const at = open[0]; if (!at) return null;
   const o = { id: `wanderer:${rx},${ry}`, kind: "traveler", wanderer: true, name: WANDERER.name, role: WANDERER.role, look: "cartographer", mount: "mossGrazer", x: at.x, y: at.y, state: "listening", actions: ["speak"], facing: "down" };
   map.objects.push(o);
@@ -384,7 +384,7 @@ export function ensureReciters(s) {
   for (const id of Object.keys(progress)) met[id] = true; // anyone whose place was kept before release 122 was met
   // Release 128: random is the default (missing = random); only an explicit "linear" choice is stored.
   for (const [id, m] of Object.entries(r.modes || {})) if (known.has(id) && m === "linear" && r.v >= 4) modes[id] = "linear";
-  s.reciters = { v: 4, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) };
+  s.reciters = { ...r, v: 4, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) }; if (!(Array.isArray(r.custom) && r.custom.length)) delete s.reciters.custom; // release 736 (review S7): unknown fields kept
   return s;
 }
 export function storyCatalog() { return RECITERS.map((r) => ({ ...r, count: RECITATIONS[r.id].length })); }

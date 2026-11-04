@@ -11,7 +11,7 @@
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
 import { farCivAt } from "./far-realms.ts";
-import { hashSeed } from "./random.ts";
+import { hashSeed, byHash } from "./random.ts";
 import { placeDock } from "./boats.ts";
 import { growTrees, TREES_V14 } from "./trees.ts";
 import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.ts";
@@ -61,18 +61,33 @@ const WALKABLE_LANDSCAPE = new Set(["craterFloor", /* Canyon craters */ "arcFloo
   "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool", "canopyBranch", "canopyCrown", "canopyLeaf", ...MUSHROOM_KINDS, "thornBasalt", "thornFloor", "thornShards", ...DOMAIN_WALKABLE]); // 721: great mushroom caps; 723: the Thornglass Caldera (far-domains.ts) // 631: canopy trees (canopyTrunk is blocked) // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
 
 // ---------------------------------------------------------------- noise
-function lattice(key, ix, iy) { return (hashSeed(`${key}:${ix}:${iy}`) % 10007) / 10007; }
+// Perf pack (worldgen WG-09): a lattice value is hashSeed(`${key}:${ix}:${iy}`), and a section needs about 70k of them, each
+// building and hashing a new string. hashSeed is FNV-1a, which reads its input in order, so the state after `${key}:` is
+// worked out once per key (the same code-point loop hashSeed runs) and only the digits are fed per sample: the same values.
+const FNV_PRIME = 16777619, latticeStates = new Map(), octaveKeys = new Map();
+function latticeState(key) {
+  let h = latticeStates.get(key);
+  if (h === undefined) { h = 2166136261; for (const c of `${key}:`) { h ^= c.charCodeAt(0); h = Math.imul(h, FNV_PRIME); } if (latticeStates.size >= 4096) latticeStates.clear(); latticeStates.set(key, h); }
+  return h;
+}
+function feed(h, n) { const s = `${n}`; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, FNV_PRIME); } return h; }
+const latticeAt = (state, ix, iy) => ((feed(Math.imul(feed(state, ix) ^ 58 /* ":" */, FNV_PRIME), iy) >>> 0) % 10007) / 10007;
+function lattice(key, ix, iy) { return latticeAt(latticeState(key), ix, iy); }
 const smooth = (t) => t * t * (3 - 2 * t);
-export function valueNoise(key, x, y) {
+function valueNoiseAt(state, x, y) {
   const ix = Math.floor(x), iy = Math.floor(y), fx = smooth(x - ix), fy = smooth(y - iy);
-  const a = lattice(key, ix, iy), b = lattice(key, ix + 1, iy), c = lattice(key, ix, iy + 1), d = lattice(key, ix + 1, iy + 1);
+  const a = latticeAt(state, ix, iy), b = latticeAt(state, ix + 1, iy), c = latticeAt(state, ix, iy + 1), d = latticeAt(state, ix + 1, iy + 1);
   return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
 }
+export function valueNoise(key, x, y) { return valueNoiseAt(latticeState(key), x, y); }
+// The lattice states of `${key}:${o}` for each octave o, kept per key.
+function octaveStates(key) { let s = octaveKeys.get(key); if (!s) { s = []; if (octaveKeys.size >= 1024) octaveKeys.clear(); octaveKeys.set(key, s); } return s; }
 export function fbm(key, x, y, octaves = 3) {
-  let sum = 0, amp = 1, norm = 0;
-  for (let o = 0; o < octaves; o++) { sum += valueNoise(`${key}:${o}`, x * 2 ** o, y * 2 ** o) * amp; norm += amp; amp *= .5; }
+  let sum = 0, amp = 1, norm = 0; const states = octaveStates(key);
+  for (let o = 0; o < octaves; o++) { const st = states[o] ??= latticeState(`${key}:${o}`); sum += valueNoiseAt(st, x * 2 ** o, y * 2 ** o) * amp; norm += amp; amp *= .5; }
   return sum / norm;
 }
+export { lattice as latticeValue }; // for the perf-pack test, which checks it against hashSeed
 
 // ---------------------------------------------------------------- fields (global tile coordinates)
 const field = {
@@ -307,9 +322,14 @@ function addSeaFeatures(map, seed, rx, ry, buoy = true, version = 2) {
 }
 // True when a section would be generated as full open sea (the same test applyLandscape uses).
 export function openSeaSection(seed, rx, ry, version = LANDSCAPE_VERSION) { return version >= 2 && Math.abs(rx) + Math.abs(ry) >= OPEN_SEA.minDepth && openSeaShare(seed, rx, ry, version) >= OPEN_SEA.minWater; }
+// Perf pack (WG-09): 256 sea-level samples, asked again for each neighbour a castle, Pentagon or wonder check looks at, so
+// the answer is kept per section (it depends on nothing else).
+const seaShares = new Map();
 export function openSeaShare(seed, rx, ry, version = LANDSCAPE_VERSION) {
+  const key = `${seed}\u0001${rx}\u0001${ry}\u0001${version}`, known = seaShares.get(key); if (known !== undefined) return known;
   let n = 0; for (let y = 0; y < 32; y += 2) for (let x = 0; x < 32; x += 2) if (seaLevel(seed, rx * 32 + x, ry * 32 + y, version).o > T.ocean) n++;
-  return n / 256;
+  if (seaShares.size >= 4096) seaShares.clear();
+  seaShares.set(key, n / 256); return n / 256;
 }
 export function applyLandscape(map, seed, rx, ry, { explored = false, version = LANDSCAPE_VERSION, openSea = false, hamlet = false, buoy = true, coherence = 0 } = {}) {
   if (!map || map.landscape || explored || map.settlement || Math.abs(rx) + Math.abs(ry) <= 1 || map.tiles?.length !== 1024) return map;
@@ -1224,7 +1244,7 @@ function placeSummit(map, seed, rx, ry, biome, coherence = 0) {
 function buildCastle(map, seed, rx, ry, mask) {
   const W = 11, H = 9, spots = [];
   for (let oy = 2; oy <= 32 - H - 2; oy++) for (let ox = 2; ox <= 32 - W - 2; ox++) spots.push([ox, oy]);
-  spots.sort((a, b) => hashSeed(`${seed}:land:castle-spot:${rx}:${ry}:${a}`) - hashSeed(`${seed}:land:castle-spot:${rx}:${ry}:${b}`));
+  spots.sort(byHash((a) => `${seed}:land:castle-spot:${rx}:${ry}:${a}`));
   for (const [ox, oy] of spots) {
     let clear = true;
     for (let y = oy; y < oy + H && clear; y++) for (let x = ox; x < ox + W; x++) if (mask[idx(x, y)] || (map.tiles[idx(x, y)].blocked && !Number.isInteger(map.tiles[idx(x, y)].ruin))) { clear = false; break; }

@@ -75,7 +75,7 @@ export function ensureEchoState(save) {
   const owned = Object.fromEntries(Object.entries(e.owned || {}).filter(([id, v]) => ECHOES[id] && v));
   let equipped = (Array.isArray(e.equipped) ? e.equipped : []).filter((id, i, a) => owned[id] && a.indexOf(id) === i);
   while (notchesUsed(equipped) > NOTCHES) equipped = equipped.slice(0, -1);
-  save.echoes = { version: ECHO_VERSION, owned, equipped };
+  save.echoes = { ...e, version: ECHO_VERSION, owned, equipped }; // release 736 (review S7): fields a newer release added are kept
   return save;
 }
 export const notchesUsed = (equipped) => equipped.reduce((n, id) => n + (ECHOES[id]?.cost || 0), 0);
