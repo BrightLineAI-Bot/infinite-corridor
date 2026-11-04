@@ -215,3 +215,11 @@ test('headless render: the Gloomvast, its Dark and its lights draw safely on eve
   assert.ok(hauntSpriteCount() <= HAUNT_SPRITE.max); assert.ok(gloomMaskCount() <= 4); assert.equal(gloomDarkLevel(b), 1);
   b.gloomDark.left = .01; t = play(g, 1, t); frame({ effectiveQuality: 'balanced' });
 });
+
+test('an arena that tunes the Gloomvast itself (a plain spawn of its kind): its vitals kept, its own kit and its Dark ready', () => {
+  const g = arena(strong()), c = g.createEnemyFromSpawn({ id: 'stillworks:finale', kind: 'gloomvast', x: 19, y: 16, boss: true, traits: [], packGuardian: true });
+  assert.ok(c.gloomSeed != null && !c.gloomDark && c.gloomDarks === 0, 'its Dark made ready'); assert.deepEqual(c.packAttacks, MONSTER_PACK.gloomvast.attacks); assert.ok(!c.kitRole && !c.hybridAttack && !c.evasive);
+  c.maxHp = c.hp = 9000; c.damage = 200; c.aggro = true; g.enemies.push(c); const t = callDark(g, c, 1000);
+  assert.ok(c.gloomDark && decoys(g).length === D.orbs, 'it calls the Dark'); assert.equal(c.maxHp, 9000, 'the arena\'s vitals are kept'); assert.equal(decoys(g)[0].damage, Math.round(200 * D.decoyDamage));
+  play(g, 20, t, { until: () => !c.gloomDark }); assert.equal(decoys(g).length, 0);
+});

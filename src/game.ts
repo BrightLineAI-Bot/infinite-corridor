@@ -5302,6 +5302,7 @@ export class Game {
       if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
       if (area === "dungeon" && this.map?.building && e.buildingGuard && !c.buildingScaled) { const k = buildingScale(this.map.building.floor), G = BUILDINGS.creatures.guardian; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp * (e.buildingGuardian ? G.hp : 1))); c.damage = Math.max(1, Math.round(c.damage * k.damage * (e.buildingGuardian ? G.damage : 1))); if (c.baseDamage) c.baseDamage = c.damage; if (e.buildingGuardian) { c.packName = `${this.map.building.style === "keep" ? "Keep" : "Arcology"} Guardian`; c.affixes = rollAffixes(`${this.save.seed}:building-guardian:${c.id}`, G.affixes); } if (e.pentBoss) { const B = e.pentBoss, g = e.buildingGuardian ? G : { hp: 1, damage: 1 }; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp / g.hp * B.hp)); c.damage = Math.max(1, Math.round(c.damage / g.damage * B.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.packName = B.name; c.pentBoss = true; c.affixes = rollAffixes(`${this.save.seed}:pentagon-boss:${c.id}`, B.affixes); } c.buildingScaled = true; c.buildingGuard = true; } // great buildings: each floor up is harder; the top floor's guardian most of all
       if (e.gloomFinale) this.tuneGloomFinale(c, e.gloomFinale); // the Gloomvast: last, so nothing above changes its tuning
+      else if (e.kind === GLOOM_FINALE.kind) this.gloomInit(c); // a Gloomvast an arena tuned itself (the Stillworks' roster): its vitals kept, its kit and Dark made ready
       ensureAI(c);
       refreshMarineBeast(c, this.map, mapWidth(this.map, area), area);
       return c;
@@ -5469,9 +5470,16 @@ export class Game {
   tuneGloomFinale(c, o = {}) {
     const V = GLOOM_FINALE.vitals, def = MONSTER_PACK[GLOOM_FINALE.kind], stats = characterStats(this.save), live = liveBeastReference(this.save, stats);
     const v = gloomVitals({ ...live, level: Math.max(1, Number(this.save.level) || 1), maxHp: Math.max(1, Number(this.save.maxHp) || stats.maxHp || 60) }, o); // the Wayfarer as they are: their own level and health, not the beasts' starter floors
-    Object.assign(c, { gloomFinale: { v: GLOOM_FINALE.version, name: o.name || null, hpScale: o.hpScale || 1, damageScale: o.damageScale || 1 }, boss: true, hp: v.hp, maxHp: v.hp, damage: v.damage, baseDamage: v.damage,
-      scale: V.scale, baseScale: V.scale, bodyRadius: .38 + (V.scale - 1) * .3, staggerResistance: V.staggerResistance, attackGap: V.attackGap, attackCooldownScale: V.cooldown, speedMultiplier: V.speed, telegraphScale: 1,
-      hybridAttack: null, hybridDonor: null, packAttacks: [...def.attacks], packBossAttacks: [], kitMoves: [], packName: o.name || def.name,
+    Object.assign(c, { gloomFinale: { v: GLOOM_FINALE.version, name: o.name || null, hpScale: o.hpScale || 1, damageScale: o.damageScale || 1 }, hp: v.hp, maxHp: v.hp, damage: v.damage, baseDamage: v.damage,
+      staggerResistance: V.staggerResistance, attackGap: V.attackGap, attackCooldownScale: V.cooldown, speedMultiplier: V.speed, packName: o.name || def.name });
+    return this.gloomInit(c);
+  }
+  // Its body, kit and Dark state, for any Gloomvast however its vitals were set (tuneGloomFinale, or an arena's own tuning such as
+  // the Stillworks' tunePentagonArenaBeast, whose health, damage and ring are kept). It never springs aside (`evasive`): the Dark is its evasion.
+  gloomInit(c) {
+    const V = GLOOM_FINALE.vitals, def = MONSTER_PACK[GLOOM_FINALE.kind];
+    Object.assign(c, { boss: true, scale: V.scale, baseScale: V.scale, bodyRadius: .38 + (V.scale - 1) * .3, telegraphScale: 1, evasive: false,
+      hybridAttack: null, hybridDonor: null, packAttacks: [...def.attacks], packBossAttacks: [], kitMoves: [],
       gloomSeed: hashSeed(`${this.save.seed}:${c.id}:gloom-v1`), gloomDarks: 0, gloomDark: null, gloomVeil: false, gloomGap: 0, gloomFade: 0, gloomReel: 0 });
     delete c.kitRole; delete c.affixes; delete c.eliteId; return c;
   }
