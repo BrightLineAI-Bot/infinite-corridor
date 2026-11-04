@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 738, the next is **739**.
+Taken at merge time: `main`'s release + 1 (see above). After 739, the next is **740**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 738 | Claude | `claude/dreamy-rubin-yn6q2p` | Smaller saves and faster loads (full-game review P2–P8, S3, D7, WG-09): dead-foe tombstones, delta autosave, cheap journey list, section terrain cache, edge hold, dungeon level cache, Supernova warm-up, idle sprite rate | In flight. |
+| 739 | Claude | `claude/dreamy-rubin-yn6q2p` | Combat balance (Tim's direction, 2026-11-04): beasts unscaled below ring 100 and ramped to full by 150; tougher ordinary foes past ring 15; damage reduction past 45% with diminishing returns to 75%; spells match Might; Fractured, haunt and Gloomgorge scaling; Questing Beast keeps wounds; frenzy and status fixes; Aperture relic stat points ×0.8 | In flight. |
+| 738 | Claude | `claude/dreamy-rubin-yn6q2p` | Smaller saves and faster loads (full-game review P2–P8, S3, D7, WG-09): dead-foe tombstones, delta autosave, cheap journey list, section terrain cache, edge hold, dungeon level cache, Supernova warm-up, idle sprite rate | Merged (#386). |
 | 737 | Claude | `claude/dreamy-rubin-yn6q2p` | World coherence on new ground (full-game review WG-01–WG-08, WG-10, WG-11; `atlas.coherenceVersion` 1): bridged exit lanes, joined exits and doors, no pits, movable creatures; Pentagon seams; no Pentagon or castle on a domain | Merged (#385). |
 | 736 | Claude | `claude/dreamy-rubin-yn6q2p` | Dungeons that can always be finished (full-game review D1–D6, D8–D12): interior v2, deep placement 2, canyon generator 2; runtime hoard, fall, crater-spawn and haunt rules | Merged (#384). |
 | 735 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: the Beekeeper's Jars, a wave 4 thread of six honey jars in the near band; plus the mirror fix from the pre-publish review of 734 | Merged (#383). Published in r735. |
