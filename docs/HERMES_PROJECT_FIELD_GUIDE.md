@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 742: the haunts' curses — 2026-11-04
+
+Tim, 2026-11-04: the ghosts' outlines and accents blue instead of purple; "confusion with a few different things that can stack... one that you can't shoot, one that you can't attack, one you can't jump, another one you can't dodge... can't use tools... spells... items... 3 maybe 4 of them... another variant that chunks your maximum health, similar to the Stalker's mist form."
+
+**CODE:** `src/haunts.ts`: `HAUNT.curse` (`cap` 4, `lay.wisp` 1 / `lay.gorge` 2, `extendCap`, `nag`) and `HAUNT.curses` (`id`, `label`, `duration`, `weight`, `blocks`, `maxHp`, `text`: NO SHOOT, NO ATTACK, NO JUMP, NO DODGE, NO TOOLS, NO SPELLS, NO ITEMS, FRAIL at .2 of max HP), with pure helpers `rollCurses` (hashed from the haunt id and hit count), `layCurse`, `curseBlocking`, `expireCurses`, `cursesOut`, `cursesIn`. `src/monster-pack.ts` `hauntConfuse` calls the pack world's `curse(e, n)`; blue palettes. `src/monster-render.ts`: blue/cool tints; `HAUNT_SPRITE.gorge.h` 3.2 so the halo is not clipped; haunt `psyRing` drawn blue. `src/game.ts`: `layHauntCurses` (none during a dodge), `cursed(action)` at every action entry point (primary/Iron Fist, secondary shots, brawler tools and Build, spells and Aperture skills, `useConsumable`, dodge, a new jump from the ground), `curseTick`, `curseRelease`, `curseRested`, `clearCurses`. They ride release 740's machinery: `PLAYER_LIST_CLOCKS.curses` (`until`, `at`) shifted by `shiftClocks`; `resumeRuntime` / `restoreRuntime` save `playerRuntime.curses`; `clearCarriedStates` calls `clearCurses` (FRAIL's `save.rot` given back); `recoverFromDeath` now also calls `clearCarriedStates`, as `resolveDeath` does. `src/main.ts`: each curse on the buff line after CONFUSED. Tests: `tests/haunt-curses.test.ts`.
+
+**BOUNDARY:** Schema 14 (`playerRuntime.curses` additive, normalised). Haunt placement, splitting and merging are unchanged. The movement reversal still comes with every puff and does not count toward the cap. In the air the glider, drone lift and robot boost are never blocked, so NO JUMP cannot turn a fall into a death. FRAIL never kills by itself.
+
 ## Release 741: Viewport Closed — 2026-11-04
 
 Tim, 2026-11-04: "When you die... it should say VIEWPORT CLOSED, then the screen gets some static... and slowly fades out to nothingness, into black. Then your character wakes up again at the last rest point." Then: keep the cursor; "the world bosses should still be wandering a little... over your corpse as the world fades out."
