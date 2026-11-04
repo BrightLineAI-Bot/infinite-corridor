@@ -408,7 +408,7 @@ function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=nu
     py = y * s;
   ctx.fillStyle = p[d & 1];
   ctx.fillRect(px, py, s + 1, s + 1);
-  if (BUILDING_TILES.has(t.kind)) { paintBuildingTile(ctx, t, x, y, s, d, map, w); return; } // great buildings
+  if (BUILDING_TILES.has(t.kind)) { paintBuildingTile(ctx, t, x, y, s, d, map, w); if (t.plate) drawPressurePlate(ctx, x, y, s); return; } // great buildings (and the Pentagon's pressure plate)
   if (t.kind === "river" || t.kind === "dungeonWater") {
     ctx.strokeStyle = (d & 1) ? "#8fc2c477" : "#659ca166"; ctx.lineWidth = 2;
     for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(px + ((d + q * 11) % 13), py + 7 + q * s * .26); ctx.quadraticCurveTo(px + s * .5, py + 2 + q * s * .26, px + s - 3, py + 7 + q * s * .26); ctx.stroke(); }
@@ -1626,9 +1626,10 @@ function greatBuilding(ctx,o,s,p){
 // (where the Wayfarer stands on it), a facade under every cell whose south side is open, a window a floor in each; drawn north
 // to south so nearer walls stand in front. Doors on a south face are drawn in the facade; on other faces, as a dark arch at the
 // roof's edge. Faded while you stand behind it.
-function greatBlocks(ctx,o,s,p,map){
+function greatBlocks(ctx,o,s,p,map,view){
   const st=o.style,grain=o.grain||0,C=st==="keep"?{roof:"#3a3631",line:"#5b544a",wall:"#5d564b",dark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860",court:null}:st==="hive"?{roof:"#2e2238",line:"#4b3858",wall:"#4a3550",dark:"#2a1d31",mortar:"#1f1524",trim:"#b07ad0",glass:"#120b18",lit:"#d58cff"}:{roof:"#3b3f44",line:"#575d63",wall:"#6a6e72",dark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
-  const all=[];for(const b of o.blocks){const set=new Set(b.cells.map(c=>c.y*32+c.x));for(const c of b.cells)all.push({c,b,set})}
+  const vis=(c,b)=>!view||(c.x>=view.l-1&&c.x<=view.r+1&&c.y>=view.t-1&&c.y-b.faceH<=view.b+1); // the Pentagon's sections hold hundreds of cells: draw the ones in view
+  const all=[];for(const b of o.blocks){const set=new Set(b.cells.map(c=>c.y*32+c.x));for(const c of b.cells)if(vis(c,b))all.push({c,b,set})}
   all.sort((a,q)=>a.c.y-q.c.y||a.c.x-q.c.x);
   const onRoof=map?.[Math.round(p.y)*32+Math.round(p.x)]?.structure==="buildingRoof",px=Math.round(p.x),py=p.y+.5;
   const covers=(c,b,set)=>!onRoof&&Math.abs(c.x-px)<=1&&py>=c.y-b.faceH-.5&&py<c.y+(set.has((c.y+1)*32+c.x)?0:1); // what stands between you and the camera fades, nothing else
@@ -1726,6 +1727,25 @@ function drawLabKey(ctx, o, s, now) {
   ctx.fillStyle = "#4a443b"; ctx.fillRect(cx - s * .2, cy + s * .14, s * .4, s * .2);
   const g = ctx.createRadialGradient(cx, cy - s * .1 + bob, 0, cx, cy - s * .1 + bob, s * .5); g.addColorStop(0, `rgba(255,220,130,${.35 + .3 * glow})`); g.addColorStop(1, "rgba(255,220,130,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy - s * .1 + bob, s * .5, 0, 7); ctx.fill();
   ctx.strokeStyle = "#e8c45a"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.arc(cx - s * .12, cy - s * .1 + bob, s * .1, 0, 7); ctx.moveTo(cx - s * .02, cy - s * .1 + bob); ctx.lineTo(cx + s * .22, cy - s * .1 + bob); ctx.moveTo(cx + s * .14, cy - s * .1 + bob); ctx.lineTo(cx + s * .14, cy - s * .02 + bob); ctx.moveTo(cx + s * .2, cy - s * .1 + bob); ctx.lineTo(cx + s * .2, cy - s * .03 + bob); ctx.stroke();
+  ctx.restore();
+}
+// The Pentagon (pentagon.ts): a pressure plate let into the floor, its rim worn bright; loose rubble to build a block with; a
+// relic of the Fivefold Court, a cracked tablet on a low plinth with a faint glow until it is read.
+function drawPressurePlate(ctx, x, y, s) {
+  ctx.save(); ctx.fillStyle = "#00000066"; ctx.fillRect(x + s * .1, y + s * .12, s * .8, s * .8); ctx.fillStyle = "#6e6452"; ctx.fillRect(x + s * .14, y + s * .14, s * .72, s * .72);
+  ctx.strokeStyle = "#c9b27a"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.strokeRect(x + s * .14, y + s * .14, s * .72, s * .72); ctx.strokeStyle = "#3a342b"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + s * .3, y + s * .5); ctx.lineTo(x + s * .7, y + s * .5); ctx.moveTo(x + s * .5, y + s * .3); ctx.lineTo(x + s * .5, y + s * .7); ctx.stroke(); ctx.restore();
+}
+function drawPentRubble(ctx, o, s) {
+  const x = o.x * s, y = o.y * s; ctx.save(); ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .82, s * .4, s * .12, 0, 0, 7); ctx.fill();
+  for (const [dx, dy, r, c] of [[.3, .66, .17, "#6b6152"], [.62, .7, .2, "#5a5144"], [.46, .5, .15, "#7d7262"], [.72, .52, .1, "#4c453a"], [.22, .48, .09, "#82776a"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x + s * (dx - r), y + s * (dy + r * .6)); ctx.lineTo(x + s * (dx - r * .5), y + s * (dy - r)); ctx.lineTo(x + s * (dx + r * .7), y + s * (dy - r * .7)); ctx.lineTo(x + s * (dx + r), y + s * (dy + r * .6)); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+}
+function drawPentRelic(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, y = o.y * s, lit = o.state !== "read", glow = .5 + .5 * Math.sin(now / 520); ctx.save();
+  ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, y + s * .86, s * .32, s * .1, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#3f3a33"; ctx.fillRect(cx - s * .26, y + s * .66, s * .52, s * .18); // the plinth
+  if (lit) { const g = ctx.createRadialGradient(cx, y + s * .42, 0, cx, y + s * .42, s * .5); g.addColorStop(0, `rgba(190,215,255,${.25 + .2 * glow})`); g.addColorStop(1, "rgba(190,215,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, y + s * .42, s * .5, 0, 7); ctx.fill(); }
+  ctx.fillStyle = lit ? "#8d8574" : "#6a6457"; ctx.beginPath(); ctx.moveTo(cx - s * .18, y + s * .68); ctx.lineTo(cx - s * .18, y + s * .28); ctx.arc(cx, y + s * .28, s * .18, Math.PI, 0); ctx.lineTo(cx + s * .18, y + s * .68); ctx.closePath(); ctx.fill(); // the tablet
+  ctx.strokeStyle = "#2b2823"; ctx.lineWidth = 1; ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(cx - s * .1, y + s * (.34 + i * .1)); ctx.lineTo(cx + s * .1, y + s * (.34 + i * .1)); } ctx.moveTo(cx + s * .06, y + s * .14); ctx.lineTo(cx - s * .02, y + s * .4); ctx.lineTo(cx + s * .08, y + s * .6); ctx.stroke(); // its letters, and the crack through them
   ctx.restore();
 }
 // A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
@@ -2109,6 +2129,8 @@ export function render(ctx, g, w, h, now) {
           else if (g.area === "dungeon" && wayKind(o, g.map) || (o.kind === "deepTransition")) drawWayMarker(ctx, o, s, now, o.kind === "deepTransition" ? (o.direction === "down" ? "down" : "up") : wayKind(o, g.map) === "down" ? "down" : "up", o.kind === "emberDoor"); // a way: a marker stone with a chevron
           else if (o.kind === "buildingStair") drawBuildingStair(ctx, o, s, now); // great buildings
           else if (o.kind === "labKey") drawLabKey(ctx, o, s, now); // a labyrinth's key
+          else if (o.kind === "pentRubble") drawPentRubble(ctx, o, s); // the Pentagon's rubble
+          else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
@@ -2461,7 +2483,7 @@ export function render(ctx, g, w, h, now) {
       for(const c of cells)if(g.map.tiles[c.y*mw+c.x]?.kind!=="voidScar"&&discoveredInDungeon(g,c))ctx.rect(c.x*s,c.y*s,s,s);
       ctx.clip();
     }
-    drawStructure(ctx,o,s,p,g.map.tiles);
+    drawStructure(ctx,o,s,p,g.map.tiles,{l,t,r,b});
     ctx.restore();
   }
   if(skyA>0)ctx.restore()}

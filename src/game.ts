@@ -71,7 +71,7 @@ import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
-import { placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
+import { setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.ts";
 import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.ts";
@@ -92,6 +92,7 @@ import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor } from "./compounds.ts";
 import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber } from "./labyrinths.ts";
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor } from "./castles.ts";
+import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan } from "./pentagon.ts";
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
@@ -254,7 +255,7 @@ function dressDeepFloor(map, floor) {
 function labyrinthState(save, map) {
   if (!map?.building?.labyrinth) return map; const L = dungeonHistory(save, `${map.building.base}:f1`), keys = L.labKeys || [], opened = L.labOpen || [];
   map.objects = map.objects.filter((o) => !(o.kind === "labKey" && keys.includes(o.keyId)));
-  for (const o of map.objects) { if (o.lock && keys.includes(o.lock)) o.unlocked = true; if (o.barred && opened.includes(o.shortcutKey)) o.opened = true; }
+  for (const o of map.objects) { if (o.lock && keys.includes(o.lock)) o.unlocked = true; if (o.barred && opened.includes(o.shortcutKey)) o.opened = true; if (o.kind === "pentRelic" && (L.pentRelics || []).includes(o.relic)) o.state = "read"; }
   return map;
 }
 export function generatePinnedDungeon(save, id, options = {}) {
@@ -284,7 +285,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
   else if (id.startsWith('dive:')) map = (history.diveGenerator ?? 1) >= 2 ? generateGrotto(save.seed, id) : generateDiveSite(save.seed, id);
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
-  else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id)) { map = isCastleId(id) ? generateCastleFloor(save.seed, id) : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id)) : isCompoundId(id) ? generateCompoundFloor(save.seed, id) : generateBuildingFloor(save.seed, id); history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
+  else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id) || isPentagonId(id)) { map = isPentagonId(id) ? labyrinthState(save, generatePentagonChamber(save.seed, id)) : isCastleId(id) ? generateCastleFloor(save.seed, id) : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id)) : isCompoundId(id) ? generateCompoundFloor(save.seed, id) : generateBuildingFloor(save.seed, id); history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
   else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); map = generateCanyon(save.seed, id, c.drilled, c.strained); } // Canyon craters
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
@@ -2409,6 +2410,7 @@ export class Game {
       if ((prior ? prior.ascendVersion : ASCENDANCY.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && !this.map.canopy && saplingHere(this.save.seed, this.rx, this.ry)) this.placeSapling(); // the Rite of Ascendancy
       if ((prior ? prior.arcVersion : 0) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; if (v >= 5 && arcologyHere(this.save.seed, this.rx, this.ry, sectionRegion(this.save.seed, this.rx, this.ry, v)) && buildArcology(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = ARCOLOGY.messages.arrive; } // ruined arcologies: only in sections first seen from now on
       if ((prior ? prior.keepVersion : 0) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && keepHere(this.save.seed, this.rx, this.ry) && buildKeep(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = KEEPS.messages.arrive; // great keeps: only in sections first seen from now on
+      if ((prior ? prior.pentVersion : PENTAGON.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const c = pentagonCentre(this.rx, this.ry); if (c && this.pentagonHere(c.cx, c.cy) && placePentagonSection(this.map, this.save.seed, c.cx, c.cy, this.rx, this.ry) && !this.message) this.message = PENTAGON.messages.arrive; } // the Pentagon: nine sections, all new ground
       if ((prior ? prior.castleVersion : CASTLES.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const c = castleCorner(this.rx, this.ry); if (c && this.castleHere(c.X, c.Y) && placeCastleQuarter(this.map, this.save.seed, c.X, c.Y, c.q) && !this.message) this.message = CASTLES.messages.arrive; } // Great Castles: a quarter in each of the four sections round a corner, all of them new ground
       if ((prior ? prior.labVersion : LABYRINTHS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = labyrinthHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeLabyrinth(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen) && !this.message) this.message = LABYRINTHS.messages.arrive; } // labyrinths: only in sections first seen from now on
       if ((prior ? prior.compoundVersion : COMPOUNDS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = compoundHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeCompound(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen) && !this.message) this.message = COMPOUNDS.messages.arrive; } // compounds: only in sections first seen from now on
@@ -2437,6 +2439,7 @@ export class Game {
         ...(prior ? (prior.compoundVersion ? { compoundVersion: prior.compoundVersion } : {}) : { compoundVersion: COMPOUNDS.version }), // and the compounds
         ...(prior ? (prior.labVersion ? { labVersion: prior.labVersion } : {}) : { labVersion: LABYRINTHS.version }), // and the labyrinths
         ...(prior ? (prior.castleVersion ? { castleVersion: prior.castleVersion } : {}) : { castleVersion: CASTLES.version }), // and the Great Castles
+        ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : { pentVersion: PENTAGON.version }), // and the Pentagons
         ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
         ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
         ...(indoor ? { indoorDungeonVersion: indoor } : {}), // release 499: the dungeon entrance may stand inside a building
@@ -3040,7 +3043,7 @@ export class Game {
   }
   transitionSection(dx, dy) {
     if (this.rite && this.area === "overworld") { const p = this.player; p.x = Math.max(1.2, Math.min(SECTION_SIZE - 2.2, p.x)); p.y = Math.max(1.2, Math.min(SECTION_SIZE - 2.2, p.y)); this.message = ASCENDANCY.messages.noLeave; return false; } // the rite's fire bars every edge
-    const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }, wade = this.wading();
+    const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }, wade = this.wading(), fromPent = !!this.map?.pentagon;
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
     // Release 259: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
     const fromArea = this.areaStateId(), hunters = this.enemies.filter(e => e.worldBeast && e.aggro && !e.dead && !e.retreating && !e.astralCompanionOf && canPursue(this.save, e.worldBeast, this.rx, this.ry, dx, dy)).map(e => ({ id: e.worldBeast, actorId: e.id, hp: e.hp, maxHp: e.maxHp, damage: e.damage }));
@@ -3067,6 +3070,10 @@ export class Game {
       this.player.y = 0.25;
       this.player.x = exits.north;
     }
+    // The Pentagon (pentagon.ts): within its nine sections the Wayfarer crosses an edge where they stand, as one ground; and coming
+    // to it from outside, a lane that would land inside its walls lands on the nearest open ground along that edge instead.
+    if (this.map?.pentagon || fromPent) { const p = this.player, along = dx ? Math.max(.25, Math.min(30.75, from.y)) : Math.max(.25, Math.min(30.75, from.x)), at = (v) => dx ? { x: p.x, y: v } : { x: v, y: p.y }, okAt = (q) => footprintOpen(this.map, 32, q.x, q.y);
+      if (okAt(at(along))) Object.assign(p, at(along)); else if (!okAt(p)) for (let k = 1; k < 31; k++) { const a = at(along - k), b = at(along + k); if (along - k >= .25 && okAt(a)) { Object.assign(p, a); break; } if (along + k <= 30.75 && okAt(b)) { Object.assign(p, b); break; } } }
     // Release 507: the robot wading keeps its place along the edge when water or open ground meets it there.
     if (wade) { const p = this.player, at = dx ? { x: p.x, y: Math.max(.25, Math.min(30.75, from.y)) } : { x: Math.max(.25, Math.min(30.75, from.x)), y: p.y }, h = footprintHazard(this.map, 32, at.x, at.y); if (h ? this.swimsHere(h) : footprintOpen(this.map, 32, at.x, at.y)) { p.x = at.x; p.y = at.y; } }
     // Open seas (release 152): a skiff crosses wherever the water runs on; a walker cannot step out into open sea.
@@ -3340,6 +3347,10 @@ export class Game {
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "buildingStair") return this.takeBuildingStair(o); // great buildings
     if (o.kind === "labKey") return this.takeLabKey(o); // a labyrinth's key
+    if (o.kind === "pentRubble") { const m = (this.save.materials ||= {}); m.stone = Math.max(Number(m.stone) || 0, 10); setBuildKind(this.save, "stone"); this.message = `${PENTAGON.messages.rubble}: you have ${m.stone} stone, and a block is ready to build.`; this.sync(); return { ok: true, message: this.message }; } // enough for a block on the plate
+    if (o.kind === "pentRelic") { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`); H.pentRelics = [...new Set([...(H.pentRelics || []), o.relic])]; o.state = "read"; this.message = `${o.lore} (${PENTAGON.messages.relic}: ${H.pentRelics.length} of ${PENTAGON.relics.length})`; journalOnce(this.save, `pentagon-relic:${this.map.building.base}:${o.relic}`, o.lore, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; }
+    if (o.pentSeal === "trials") { const base = o.dungeonId.replace(/:f\d+$/, ""), H = dungeonHistory(this.save, `${base}:f1`), done = (H.pentTrials || []).length, need = PENTAGON.trials; if (done < need) { this.message = `${PENTAGON.messages.sealed}: ${need - done} of ${need}.`; return { ok: false, message: this.message }; } } // the Heart opens when three trials are done
+    if (o.kind === "exit" && o.lock && this.map?.building && !(dungeonHistory(this.save, `${this.map.building.base}:f1`).labKeys || []).includes(o.lock)) { this.message = `Sealed. It wants the ${o.lockName}.`; return { ok: false, message: this.message }; } // a key-sealed door out
     if (o.kind === "exit" && this.map?.building?.compound && !dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors?.exits?.[o.id] && dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors) { this.message = "This door is rubbled shut from outside."; return { ok: false, message: this.message }; } // a wing whose door could not open onto the land
     if (o.kind === "exit" && this.map?.building?.exitsTo?.[o.id]) { this.save.session.dungeonReturn = { ...this.map.building.exitsTo[o.id] }; } // a castle's doors let you out in their own section
     else if (o.kind === "exit" && this.map?.building) { const D = dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors, at = D && (D.exits?.[o.id] || (o.id === "building-breach" ? D.breach || D.front : D.front)); if (at) this.save.session.dungeonReturn = { rx: D.rx, ry: D.ry, x: at.x, y: at.y }; } // out by the door you take
@@ -5513,7 +5524,13 @@ export class Game {
   castleHere(X, Y) {
     const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = (this._castleSettle ||= new Map());
     const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, !!generateRegion(seed, rx, ry, gen).settlement || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); }; // no castle where a town, a hamlet or the open sea stands
-    return castleAt(seed, X, Y, sectionExits, settled, (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !!a && !a.castleVersion; });
+    const inPent = (rx, ry) => { const c = pentagonCentre(rx, ry); return !!c && this.pentagonHere(c.cx, c.cy); }; // a Pentagon's sections hold no castle
+    return castleAt(seed, X, Y, sectionExits, (rx, ry) => settled(rx, ry) || inPent(rx, ry), (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !!a && !a.castleVersion; });
+  }
+  pentagonHere(cx, cy) {
+    const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = (this._castleSettle ||= new Map());
+    const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, !!generateRegion(seed, rx, ry, gen).settlement || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
+    return pentagonAt(seed, cx, cy, (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !settled(rx, ry) && !(a && !a.pentVersion); });
   }
   // A labyrinth's progress: chambers found (of all), keys held (of all).
   labyrinthProgress() { const B = this.map?.building; if (!B?.labyrinth) return ""; const H = dungeonHistory(this.save, `${B.base}:f1`); const seen = (H.labSeen ||= []); if (!seen.includes(B.node)) seen.push(B.node);
@@ -5529,6 +5546,7 @@ export class Game {
     if (o.labyrinth) { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`);
       if (o.lock && !(H.labKeys || []).includes(o.lock)) { this.message = `Sealed. It wants the ${o.lockName}.`; return { ok: false, message: this.message }; }
       if (o.barred && !(H.labOpen || []).includes(o.shortcutKey)) { this.message = "Barred from the other side."; return { ok: false, message: this.message }; }
+      if (o.plateLock && !(H.labOpen || []).includes(`plate:${this.map.building.node}`)) { if (!this.map.tiles.some((t) => t.plate && t.build === "stone")) { this.message = PENTAGON.messages.plate; return { ok: false, message: this.message }; } H.labOpen = [...new Set([...(H.labOpen || []), `plate:${this.map.building.node}`])]; } // the Pentagon's pressure plate: a block on it holds the door, and once through it stays wedged open
       if (o.shortcutOpens) { H.labOpen = [...new Set([...(H.labOpen || []), o.shortcutOpens])]; } // opened from the far side: open from the hall now too
       this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, where = this.map.name.split(" · ")[1] || "the next chamber";
       this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? "jump the gaps · a fall lands you far below" : B.kind === "court" ? "out under the sky, still inside" : "find the way on"} · ${this.labyrinthProgress()}`, kind: "danger" };
@@ -6259,6 +6277,7 @@ export class Game {
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.area === "dungeon" && this.map?.building && now >= this.jumpUntil) this.buildingFall(); // great buildings: a step into a hole drops you a floor
+    if (this.area === "dungeon" && this.map?.building?.trial && this.enemies.some((e) => e.buildingGuard) && this.enemies.every((e) => !e.buildingGuard || e.dead)) { const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`); if (!(H.pentTrials || []).includes(B.node)) { H.pentTrials = [...(H.pentTrials || []), B.node]; const n = H.pentTrials.length; this.message = `${PENTAGON.messages.trial} (${n} of ${B.trials}).${n >= B.trials ? " Somewhere at the centre, the Heart unseals." : ""}`; this.defeatNotice = { title: "A TRIAL CLEARED", detail: `${n} of ${B.trials}`, kind: "discovery" }; } } // the Pentagon's trials
     if (this.rite) this.riteTick(dt, now); // the Rite of Ascendancy
     if (this.treeRise) { if (this.area === "overworld") this.tickTreeRise(now); else this.treeRise = null; }
     this.tickFractured(now); // release 651: Fractured mode

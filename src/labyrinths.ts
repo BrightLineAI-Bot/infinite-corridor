@@ -118,7 +118,7 @@ export function labyrinthPlan(base) {
 
 // ------------------------------------------------------------------------------------------------ a chamber
 // Open cells (0), walls (1), holes (5), doorways (2). Mazes are carved on the odd cells; galleries are platforms over holes.
-function carveMaze(base, q, W, H, open) {
+export function carveMaze(base, q, W, H, open) {
   const g = new Array(W * H).fill(1), r = rng(`${base}:maze:${q.n}`), at = (x, y) => y * W + x, stack = [[1, 1]]; g[at(1, 1)] = 0;
   while (stack.length) { const [x, y] = stack[stack.length - 1], nb = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([dx, dy]) => [x + dx, y + dy, dx, dy]).filter(([nx, ny]) => nx > 0 && ny > 0 && nx < W - 1 && ny < H - 1 && g[at(nx, ny)] === 1);
     if (!nb.length) { stack.pop(); continue; } const [nx, ny, dx, dy] = nb[Math.floor(r() * nb.length)]; g[at(x + dx / 2, y + dy / 2)] = 0; g[at(nx, ny)] = 0; stack.push([nx, ny]); }
@@ -128,7 +128,7 @@ function carveMaze(base, q, W, H, open) {
   for (const p of open) { g[at(p.x, p.y)] = p.wall ? 2 : 0; g[at(p.inner.x, p.inner.y)] = 0; }
   return g;
 }
-function carveGaps(base, q, W, H, open) {
+export function carveGaps(base, q, W, H, open) {
   const L = LABYRINTHS, g = new Array(W * H).fill(5), r = rng(`${base}:gaps:${q.n}`), at = (x, y) => y * W + x, I = L.island + L.gap;
   for (let x = 0; x < W; x++) { g[at(x, 0)] = 1; g[at(x, H - 1)] = 1; } for (let y = 0; y < H; y++) { g[at(0, y)] = 1; g[at(W - 1, y)] = 1; }
   const cols = Math.floor((W - 2) / I), rows = Math.floor((H - 2) / I), keep = new Set();
