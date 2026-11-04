@@ -31,7 +31,7 @@ test('full, a Fracture Warden steps through: half a Gate Revenant, huge, a mixed
   let now = 1000; g.update(.05, idle, now); now += 3000; g.update(.05, idle, now);
   const warden = g.enemies.find((q) => q.fracWarden && !q.dead); assert.ok(warden, 'it steps through');
   const rev = tuneGatePredator(Object.assign(createCombatant('gateRevenant', 0, 0, false, []), { gatePredator: true }), s, characterStats(s));
-  assert.equal(warden.maxHp, Math.round(rev.maxHp * FRACTURE_WARDEN.revenantShare)); assert.equal(warden.damage, Math.round(rev.damage * FRACTURE_WARDEN.revenantShare));
+  assert.equal(warden.maxHp, Math.round(rev.maxHp * FRACTURE_WARDEN.revenantShare)); assert.equal(warden.damage, Math.round(rev.damage * FRACTURE_WARDEN.damageShare)); /* release 739: damage doubled (Tim) */ assert.equal(FRACTURE_WARDEN.damageShare, 2 * FRACTURE_WARDEN.revenantShare);
   assert.ok(warden.packAttacks.length >= 6 && warden.affixes.length === FRACTURE_WARDEN.affixes && warden.attackGap === FRACTURE_WARDEN.attackGap && warden.aggro);
   assert.equal(staggerClass(warden), 'boss', 'poise like a boss'); assert.equal(g.fractureMeter().warden, warden);
   assert.ok(warden.maxHp < rev.maxHp && !warden.boss && !warden.worldBeast, 'below a world boss: half a Revenant');

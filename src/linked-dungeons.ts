@@ -19,7 +19,7 @@ export function ensureLinks(save) {
   for (const [id, l] of Object.entries(save.linkedDungeons || {})) {
     const a = l?.a, b = l?.b;
     if (!isLinkable(id) || num(a?.rx) === null || num(a?.ry) === null || num(b?.rx) === null || num(b?.ry) === null) continue;
-    out[id] = { a: { rx: num(a.rx), ry: num(a.ry), x: num(a.x) ?? 16, y: num(a.y) ?? 16 }, b: { rx: num(b.rx), ry: num(b.ry) } };
+    out[id] = { ...l, a: { ...a, rx: num(a.rx), ry: num(a.ry), x: num(a.x) ?? 16, y: num(a.y) ?? 16 }, b: { ...b, rx: num(b.rx), ry: num(b.ry) } }; // release 736 (review S7): unknown fields kept
   }
   save.linkedDungeons = out;
   return save;

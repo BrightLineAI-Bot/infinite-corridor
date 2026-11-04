@@ -135,6 +135,30 @@ import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSu
 import { READINGS, readingKnown, bookProgress } from "./lore.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
+// Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
+// Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
+// paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
+// Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
+export const PLAYER_CLOCKS = ["attackReadyAt", "attackUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
+export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "aegisUntil", "boxingUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt"];
+// Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
+export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */ };
+export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
+// Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
+export const RESUME_PLAYER_CLOCKS = ["slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
+export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "aegisUntil", "boxingUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt"];
+export function shiftClocks(game, d) {
+  if (!(d > 0)) return;
+  const p = game.player || {};
+  for (const k of PLAYER_CLOCKS) if (p[k]) p[k] += d;
+  for (const k of GAME_CLOCKS) if (game[k]) game[k] += d;
+  for (const [o, ks] of Object.entries(GAME_NESTED_CLOCKS)) { const q = game[o]; if (q && typeof q === "object") for (const k of ks) if (typeof q[k] === "number" && q[k]) q[k] += d; }
+  for (const [o, ks] of Object.entries(PLAYER_NESTED_CLOCKS)) { const q = p[o]; if (q && typeof q === "object") for (const k of ks) if (typeof q[k] === "number" && q[k]) q[k] += d; }
+  for (const patch of game.echoPatches || []) if (patch.until) patch.until += d;
+}
+// Release 736 (review F3): stacked dodge-cost reductions (glyphs past the cap, Tesseracts, meals, a Fleet Hand margin) could
+// take the cost below zero, so a dodge gave stamina back. It never costs less than DODGE_COST.min (at the glyph cap it is 6).
+export const DODGE_COST = { base: 15, min: 1.5 };
 export const RIFT_FLASH = .6; // release 519: seconds an instant Rift Step lights its button
 export const EQUIPMENT_CAPACITY = 60;
 // Release 571 (skylands.ts): the arena becomes a Skyland: its own boss waits for the last wave, the first wave is placed.
@@ -603,7 +627,7 @@ export const SKY_TREE = { search: 6, loads: 4, chance: .55, annexSearch: 10, ann
 // world beast or any one-time foe).
 function fracturedOrdinary(q) { return !!q && !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.eliteId && !q.objectiveId && !q.foundryId && !q.domainBoss && !q.domainManifestation && !q.wingId && !q.marginWarden && !q.gatePredator && !q.viewportHuntId && !q.huntInstanceId && !q.ambient && !q.passiveBehavior && !q.astralCompanionOf && !q.retreating && !q.passingBeast && !q.skirmishId && !q.farArrayBoss && !q.farArraySummon && !q.packGuardian && !q.apertureEncounter && !q.hordeOf && !q.skyEcho && !q.arenaId && q.kind !== "npc" && !q.mireHeart && !q.mireSeep; }
 const MEAL_STAT_FIELDS = ["attackDamage", "spellDamage", "hp", "staminaRegen", "move", "attackSpeed", "spellCooldown", "defense", "dodgeCost", "reach"];
-export const dodgeCost = (save) => Math.round(15 * (1 - armorGlyphBonus(save).dodgeCost) * 10) / 10;
+export const dodgeCost = (save) => Math.max(DODGE_COST.min, Math.round(DODGE_COST.base * (1 - armorGlyphBonus(save).dodgeCost) * 10) / 10);
 export function characterStats(save) {
   const level = Math.max(1, Number(save.level) || 1),
     stats = save.stats || {},
@@ -1952,7 +1976,11 @@ export class Game {
     this.eliteHazards=[];
     this.packEffects=[];
     this.reticle = null;
+    this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     this.loadArea(this.area, false);
+    { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
+      if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
+
     { const q = s.playerRuntime.droneLift; this.droneLift = q && s.area === "overworld" && ["base", "z", "vz"].every((k) => Number.isFinite(Number(q[k]))) ? { base: Number(q.base), z: Number(q.z), vz: Number(q.vz) } : null; } // release 647: after loading the area, which clears a lift
   }
   installSystems() {
@@ -2558,7 +2586,7 @@ export class Game {
       { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, r = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null; if (!prior) noteSeasonDiscovery(this.save, r?.id); this.season = trackSeason(this.save, r); } // release 679: the woods' season
       if (!prior) { atlas[key] = atlas[key] || {}; if (noteDiscovery(this.save)) this.message = "Word comes on the wind: around Ember Refuge, the groves and the quarry have grown back."; } // release 265: regrowth every 20 new sections
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
-      atlas[key] = { terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
+      atlas[key] = { ...prior, /* release 736 (review S7): fields a newer release wrote are kept; the ones below are rebuilt */ terrain: this.map.dominant, ...(prior ? (prior.landscapeVersion ? { landscapeVersion: prior.landscapeVersion } : {}) : { landscapeVersion: LANDSCAPE_VERSION }),
         // Hamlets (release 111; version 2 at 112) follow the same rule: only sections first seen from now on can hold one.
         ...(prior ? (prior.hamletVersion ? { hamletVersion: prior.hamletVersion } : {}) : { hamletVersion: HAMLET_VERSION }),
         // Trails (release 115) likewise only appear in sections first seen from then on.
@@ -2687,10 +2715,16 @@ export class Game {
         if (merged.gatePredator) { tuneGatePredator(merged, this.save, characterStats(this.save)); resetGateAttack(merged, true); }
         return merged;
       });
-      for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId||saved.astralMountFixture)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);if(restored.gatePredator){tuneGatePredator(restored,this.save,characterStats(this.save));resetGateAttack(restored, true)}this.enemies.push(restored)}
+      for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId||saved.astralMountFixture||saved.riteFoe&&area==="overworld"&&this.rite?.key===riteKey(this.rx,this.ry)/* release 736 (F7): a Rite resumed keeps its foes */)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);if(restored.gatePredator){tuneGatePredator(restored,this.save,characterStats(this.save));resetGateAttack(restored, true)}this.enemies.push(restored)}
       for(const saved of s.enemies||[])if(saved.astralOwner&&!saved.dead&&this.enemies.length<32&&!this.enemies.some(e=>e.id===saved.id)){const owner=this.enemies.find(e=>e.id===saved.astralOwner&&!e.dead),clone=owner?.astral?.clones?.find(c=>c.id===saved.id&&c.hp>0);if(clone){const restored={...saved,hp:Math.min(saved.hp,clone.hp),noRewards:true,summonedBy:owner.id,ai:{...saved.ai}};delete restored.worldBeast;delete restored.questingBeast;ensureAI(restored);this.enemies.push(restored);}}
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
+      if (area === "overworld" && this.rite?.key !== riteKey(this.rx, this.ry)) for (const o of this.map.objects) if (o.kind === "saplingDais" && o.state === "burning") { // release 736 (review F7): no rite burns here now
+        o.state = "open"; delete o.burn; const rec = riteRecord(this.save, this.rx, this.ry);
+        // A rite lost without being broken (a journey saved mid-rite before rites were kept) gives its attempt back; one broken
+        // by leaving the section or dying has its failure in the journal and stays spent.
+        if (rec.tries > 0 && !this.save.narrative?.journal?.some((j) => j.recordId === `rite-failed:${riteKey(this.rx, this.ry)}:${rec.tries}`)) { rec.tries--; this.message = ASCENDANCY.messages.resumeRefund; (this.questNotices ||= []).push({ title: "THE RITE IS LOST", detail: "the journey closed mid-rite · the attempt is given back", kind: "discovery" }); journalOnce(this.save, `rite-refund:${riteKey(this.rx, this.ry)}:${rec.tries + 1}`, ASCENDANCY.messages.resumeRefund, "The Rite of Ascendancy"); }
+      }
       applyFallenTreeCrossings(this.map);
       if (area === "overworld" && regrowSection(this.save, this.map, this.rx, this.ry, this.refugeLandsWhere())) this.message = "The felled trees and worked stone here have grown back."; // release 265
       this.projectiles = (s.projectiles || []).map((p) => ({ ...p }));
@@ -2875,25 +2909,7 @@ export class Game {
       this.recoverPosition();
     }
     if (!v && this.paused && this.pauseStarted !== null) {
-      const d = Math.max(0, now - this.pauseStarted);
-      for (const k of [
-        "attackReadyAt",
-        "attackUntil",
-        "meleeUntil",
-        "dodgeReadyAt",
-        "invulnerableUntil",
-        "dodgeUntil",
-        "heldUntil",
-        "stunnedUntil",
-        "stunnedAt",
-        "shockAt",
-        "echoVoidReadyAt",
-      ])
-        if (this.player[k]) this.player[k] += d;
-      if (this.jumpUntil) this.jumpUntil += d;
-      if (this.jumpStart) this.jumpStart += d;
-      for (const patch of this.echoPatches || [])
-        if (patch.voidEcho && patch.until) patch.until += d;
+      shiftClocks(this, Math.max(0, now - this.pauseStarted)); // release 736 (F5/C12): every timer, from the one list
     }
     this.paused = v;
     this.pauseStarted = v ? this.pauseStarted : null;
@@ -2914,6 +2930,8 @@ export class Game {
       paused: this.paused,
       savedAt: Date.now(),
       playerRuntime: {
+        ...this.save.session.playerRuntime, // release 736 (S7): fields from a newer release are kept
+        ...this.resumeRuntime(clock), // release 736 (F6/F7/S8, C13): statuses, timers, the rite and the skiff's way
         droneLift: this.droneLift && this.area === "overworld" ? { base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz } : null, // release 647: a lift resumes in the air
         glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null } : null, // release 635: a glide resumes in the air
         hp: this.player.hp,
@@ -2940,6 +2958,64 @@ export class Game {
       },
     });
     return this.save;
+  }
+  // Release 736 (review F6/F7/S8, C13): what exact resume needs beyond the timers above. Absolute times are stored as ms
+  // remaining (from `clock`), burning and the frenzy as they stand (they count down by dt), a Rite in progress as its
+  // elapsed and remaining time. Every key is written each save, so a status that has ended is cleared.
+  resumeRuntime(clock) {
+    const p = this.player, clocks = {}, R = this.rite, copy = (o) => o && typeof o === "object" ? JSON.parse(JSON.stringify(o)) : null;
+    for (const k of RESUME_PLAYER_CLOCKS) { const v = remaining(p[k], clock); if (v > 0) clocks[k] = v; }
+    for (const k of RESUME_GAME_CLOCKS) { const v = remaining(this[k], clock); if (v > 0) clocks[`game.${k}`] = v; }
+    return {
+      clocks,
+      slowFactor: clocks.slowUntil ? p.slowFactor ?? null : null,
+      heldBy: clocks.heldUntil ? p.heldBy ?? null : null,
+      stunnedFor: clocks.stunnedUntil && Number.isFinite(p.stunnedAt) ? Math.max(0, clock - p.stunnedAt) : null,
+      fire: copy(this.playerFire),
+      frenzy: copy(this.frenzy),
+      rite: R ? { key: R.key, at: { ...R.at }, elapsed: Math.max(0, clock - R.started), left: remaining(R.until, clock), next: remaining(R.nextAt, clock), n: R.n } : null,
+      sailVx: Number(p.sailVx) || 0,
+      sailVy: Number(p.sailVy) || 0,
+      poisonSoak: Number(this.poisonSoak) || 0,
+      raftZ: Number(this.raftZ) || 0,
+      swimming: this.swimming === true,
+      swimKind: this.swimming === true ? this.swimKind ?? null : null,
+      fatalFallPending: this._fatalFallPending === true,
+    };
+  }
+  // Release 736 (review F8): lethal ground is judged where the Wayfarer ends up, not where the stick pointed. A step whose end
+  // the Wayfarer cannot stand on (a blocked lava or abyss tile: walls stop them first) is tried out on a copy, and the
+  // hazard is read where that copy stopped; ground the Wayfarer can enter (open lava, deep water, canyon) is unchanged.
+  hazardWhereMoved(p, dx, dy, nx, ny, width, now) {
+    const h = footprintHazard(this.map, width, nx, ny); if (!h || footprintOpen(this.map, width, nx, ny, true)) return h;
+    const probe = { ...p, isPlayer: true, jumping: now < (this.jumpUntil || 0), voidSuit: this.mechUp() && this.area !== "dungeon" };
+    moveAxis(probe, dx, dy, this.map, width, true);
+    return footprintHazard(this.map, width, probe.x, probe.y);
+  }
+  // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
+  clearCarriedStates() {
+    const p = this.player;
+    p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
+    p.sailVx = p.sailVy = 0;
+    this.glide = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.ledgeHint = null; this.poisonSoak = 0;
+  }
+  restoreRuntime(r, now) {
+    if (!r || typeof r !== "object") return;
+    const p = this.player, c = r.clocks && typeof r.clocks === "object" ? r.clocks : {}, ms = (v) => Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(Number(v), 864e5) : 0;
+    for (const k of RESUME_PLAYER_CLOCKS) if (ms(c[k])) p[k] = now + ms(c[k]);
+    for (const k of RESUME_GAME_CLOCKS) if (ms(c[`game.${k}`])) this[k] = now + ms(c[`game.${k}`]);
+    if (p.slowUntil && Number(r.slowFactor) > 0) p.slowFactor = Math.min(1, Number(r.slowFactor));
+    if (p.heldUntil && r.heldBy != null) p.heldBy = r.heldBy;
+    if (p.stunnedUntil) p.stunnedAt = now - (Number.isFinite(Number(r.stunnedFor)) ? Math.max(0, Number(r.stunnedFor)) : 0);
+    const f = r.fire; if (f && typeof f === "object" && [f.left, f.dps, f.tick].every((v) => Number.isFinite(Number(v))) && Number(f.left) > 0) this.playerFire = { ...f, left: Number(f.left), dps: Math.max(0, Number(f.dps)), tick: Number(f.tick) };
+    if (r.frenzy && typeof r.frenzy === "object") this.frenzy = { ...r.frenzy };
+    const q = r.rite; if (q && typeof q === "object" && typeof q.key === "string" && /^-?\d+,-?\d+$/.test(q.key) && [q.elapsed, q.left, q.next].every((v) => Number.isFinite(Number(v))) && Number(q.left) > 0 && q.at && [q.at.x, q.at.y].every(Number.isFinite))
+      this.rite = { key: q.key, at: { x: q.at.x, y: q.at.y }, started: now - Math.max(0, Number(q.elapsed)), until: now + Number(q.left), nextAt: now + Math.max(0, Number(q.next)), n: Math.max(0, Math.floor(Number(q.n) || 0)) };
+    for (const k of ["sailVx", "sailVy"]) if (Number.isFinite(Number(r[k]))) p[k] = Number(r[k]);
+    if (Number.isFinite(Number(r.poisonSoak))) this.poisonSoak = Math.max(0, Number(r.poisonSoak));
+    if (Number.isFinite(Number(r.raftZ))) this.raftZ = Number(r.raftZ);
+    if (r.swimming === true) { this.swimming = true; if (typeof r.swimKind === "string") this.swimKind = r.swimKind; }
+    if (r.fatalFallPending === true) this._fatalFallPending = true;
   }
   // Release 734 (S6/F2): where a death or Wayglass travel lands. A checkpoint with a null or NaN coordinate (a damaged save)
   // threw on every death or stranded the Wayfarer at x=null; the active one is repaired to the Ember Refuge instead.
@@ -2968,6 +3044,7 @@ export class Game {
     this.projectiles = [];
     this.effects = [];
     this.traversal = null;
+    this.clearCarriedStates(); // release 736 (review F8): you arrive on your feet, not gliding, swimming or held
     this.message = `Returned to ${c.name || "the active checkpoint"}. Nothing carried was lost.`;
     this.sync();
     return true;
@@ -3908,7 +3985,7 @@ export class Game {
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
-    this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */
+    this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
     input.reset?.();
     this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
     this.rx = c.rx;
@@ -4972,7 +5049,7 @@ export class Game {
       if (e.fracWarden) { // release 666: half a Gate Revenant for this Wayfarer, grown huge, a mixed moveset, two affixes, aggressive
         const W = FRACTURE_WARDEN, rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, characterStats(this.save));
         Object.assign(c, { fracWarden: true, fracKey: e.fracKey, fractured: true, packName: "Fracture Warden", aggro: true, attackGap: W.attackGap, attackCooldownScale: W.cooldownScale, staggerResistance: W.staggerResistance, brain: "duelist", evasive: true });
-        c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * W.revenantShare)); c.baseDamage = c.damage;
+        c.maxHp = c.hp = Math.max(1, Math.round(rev.maxHp * W.revenantShare)); c.damage = Math.max(1, Math.round(rev.damage * (W.damageShare ?? W.revenantShare))); c.baseDamage = c.damage;
         c.scale = (c.scale || 1) * W.scale; c.baseScale = c.scale; c.bodyRadius = (c.bodyRadius || .38) * W.scale; c.speedMultiplier = (c.speedMultiplier || 1) * W.speed;
         if (c.packKind) { c.packAttacks = wardenAttacks(this.save.seed, e.fracKey || c.id); c.packBossAttacks = []; }
         c.affixes = rollAffixes(`${this.save.seed}:fracture-warden:${c.id}`, W.affixes);
@@ -6426,7 +6503,7 @@ export class Game {
     this.sync();
     return true;
   }
-  useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere';if(!(this.save.materials[key]>0))return false;this.save.materials[key]--;if(kind==='armor')this.save.equipment.armor.power=Math.min(8,(this.save.equipment.armor.power||0)+1);else{this.save.weaponLevel=Math.min(8,(this.save.weaponLevel||0)+1);this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
+  useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere',armor=kind==='armor'?this.save.equipment.armor:null,cap=armor?8:12,now=armor?(armor.power||0):(this.save.weaponLevel||0);if(!(this.save.materials[key]>0)||(kind==='armor'&&!armor))return false;if(now>=cap){this.message=`The ${armor?'armor':'weapon'} is already past what a sphere can add.`;return false}/* release 736 (review F12): a sphere never lowers gear (it capped a +12 weapon at +8) and is kept when it cannot help */this.save.materials[key]--;if(armor)armor.power=now+1;else{this.save.weaponLevel=now+1;this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
   upgradeEquipmentSlot(slot){const result=upgradeEquipment(this.save,slot);this.message=result.message;if(result.ok){syncCharacterStats(this.save);this.player.maxStamina=this.save.maxStamina;this.sync()}return result}
   activateApertureSkill(id=this.save.magicSkills?.selected){if(id==='rift-step'){const ok=riftStep(this,this.lastUpdateNow||0);if(ok)this.riftFlashAt=this.lastUpdateNow||0;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   allocate(s) {
@@ -6685,7 +6762,7 @@ export class Game {
       return;
     }
     const width = mapWidth(this.map, this.area);
-    let terrainHazard=gliding?null:footprintHazard(this.map,width,nx,ny);const raftNow=this.map?.movers?.length?platformUnder(this.map,nx,ny,ps):null,raftWasZ=raft?platformPos(raft,ps-dt).z:0;this.raftZ=raftNow?platformPos(raftNow,ps).z:0;if(terrainHazard&&raftNow)terrainHazard=null;/* release 613: on a raft over the drop */
+    let terrainHazard=gliding?null:this.hazardWhereMoved(p,dx,dy,nx,ny,width,now);const raftNow=this.map?.movers?.length?platformUnder(this.map,nx,ny,ps):null,raftWasZ=raft?platformPos(raft,ps-dt).z:0;this.raftZ=raftNow?platformPos(raftNow,ps).z:0;if(terrainHazard&&raftNow)terrainHazard=null;/* release 613: on a raft over the drop */
     // Release 615: stepping off a raft below the level is a step into nothing; off one above it, a fall by its height.
     if(raft&&!raftNow&&raftWasZ< -.5){terrainHazard=terrainHazard||"abyss";this.message="Below the level there is nothing to step onto.";}
     else if(raft&&!raftNow&&raftWasZ>.5&&!terrainHazard){const hurt=fallDamage(Math.round(raftWasZ),this.save.maxHp);if(hurt===Infinity){p.hp=0;this._fatalFallPending=true;}else if(hurt>0){p.hp=Math.max(0,p.hp-hurt);this.message=`You drop ${Math.round(raftWasZ)} level${Math.round(raftWasZ)>1?"s":""} off the raft.`;}}const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
@@ -6868,7 +6945,7 @@ export class Game {
     if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && !this.wayglassNear(false) && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     // Release 283: dungeon water is deadly. Entered (or still swum) without stamina it drowns; otherwise it wounds quickly.
     if (this.swimming && !this.mechUp() && this.area === "dungeon" && !this.map.underwater) { /* release 507: not in the robot */ const toll = dungeonWaterToll(p, dt, this.save.maxHp); if (toll === Infinity) { p.hp = 0; this.message = "Out of stamina in the dark water: it drags you under."; } else if (toll > 0) { p.hp = Math.max(0, p.hp - toll); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "The dungeon water bites: get out before your stamina gives."; } } }
-    if (this.swimming && !this.mechUp() && p.hp > 0) { /* release 507: the robot costs no stamina in water */ const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); if (hurt > 0) { p.hp = Math.max(0, p.hp - hurt); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
+    if (this.swimming && !this.mechUp() && p.hp > 0) { /* release 507: the robot costs no stamina in water */ const hurt = swimUpkeep(p, dt, this.swimKind, this.area === "overworld" && !!this.map.openSea); this.swimHurtDue = hurt > 0 ? (this.swimHurtDue || 0) + hurt : 0; /* release 736 (review F14): whole points, like burning */ if (hurt > 0) { const whole = Math.floor(this.swimHurtDue); this.swimHurtDue -= whole; p.hp = Math.max(0, p.hp - whole); if (now > (this.swimMessageAt || 0)) { this.swimMessageAt = now + 4000; this.message = "Exhausted in the water — reach the shore."; } } }
     else if (this.stagMireMoving && stagMireAt(this.packEffects, p.x, p.y)) p.stamina = Math.max(0, p.stamina - (p.maxStamina || this.save.maxStamina) * STAG.mire.drain * dt); // release 708: moving on the mire drains stamina; standing still it comes back
     else p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * (1 + armorGlyphBonus(this.save).staminaRegen) * dt);
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
