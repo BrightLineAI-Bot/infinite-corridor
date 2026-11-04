@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 744: the Pentagon's shortcuts — 2026-11-04
+
+Tim asked for Nioh/Dark Souls-style shortcuts in the Pentagons, plus multiple entrances and exterior doors.
+
+**CODE:** `src/pentagon.ts` `PENTAGON.version` 6 and `PENTAGON.shortcuts` / `PENTAGON.entrances` (data). `pentagonPlan` adds `plan.links`: a `lift` from the entrance ring to every Heart floor below the first, and 2–4 ring links (`door`, `ladder`, `gate`) from a chamber at least `minHops` doors deep back to an entrance chamber. `pentagonLinkEnds(plan, map)` places each link end on open floor reachable from the way in (by it, or by a side wall), clear of exits, stairs and every object, so the dressings laid later never meet one. A link is barred from its near end and opened from its deep end, kept as `history.labOpen["link:<id>"]` (`pentagonLinkKey`). Version 6 sections get 3–5 side entrances round the outer wall, 1–2 of them exterior doors bolted from within; each joins the section's land exits with a paved approach. Opening an exterior door from inside sets it open on the land and shows the "A SHORTCUT OPENS" notice and burst. Pentagons begun under version 5 or earlier keep their tiles; their links are laid over as objects only (`history.pentLinks`). Release 743's wall marks are placed after the links and avoid them.
+
+**BOUNDARY:** Generation is version-pinned: only Pentagons first generated at version 6 get side entrances and exterior doors; earlier ones regenerate byte for byte, and the 738 terrain cache keeps v5 and v6 apart (tested). Save stays at schema 14 (history keys only). The lift hall, the 3–5 entrance mix and doors on every face are defaults pending Tim's answers. Tests: `tests/pentagon-shortcuts.test.ts`; the v5 game test is pinned to `pentVersion` 5. Not tested on a device.
+
 ## Release 743: the Pentagons' walls — 2026-11-04
 
 Tim, 2026-11-04 (lore: docs/narrative-bible.md section 1, "The Pentagons, the keeps and the Tesseracts" and "Why the game exists"): "let's put all those things in... Nobody is certain what the Pentagons are... It shouldn't be overdone." He approved the Tesseract lines and asked that the marks stay in Pentagons only.
