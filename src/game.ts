@@ -2681,6 +2681,7 @@ export class Game {
       if (this.map.mushrooms && this._coherence && !this.save.narrative.journal.some((j) => j.recordId === "great-mushrooms")) { journalOnce(this.save, "great-mushrooms", `${GREAT_MUSHROOMS.text} (${this.rx},${this.ry})`, "The great mushrooms"); if (!this.message) this.message = GREAT_MUSHROOMS.text; } // release 721; on new ground, after a castle or Pentagon may have taken the caps (WG-10)
       if (this._coherence && !this.map.farDomain) cohereSection(this.map, { spots: coherenceSpots(this.map) }); // WG-02/05/06/07: the exits, the plaza, the great doors and the cairns join; no pits
       if (this._coherence && this.map.pentagon) for (const o of this.map.objects) if (o.pentLand) o.joined = joinToLand(this.map, o); // the Pentagon v6: each side entrance stands on land joined to the section's exits
+      if (this._coherence && this.map.pentagon?.stairFoot) this.map.pentagon.stairFoot.joined = joinToLand(this.map, this.map.pentagon.stairFoot); // the Pentagon v7: the outer stair's foot likewise
       { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, r = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null; if (!prior) noteSeasonDiscovery(this.save, r?.id); this.season = trackSeason(this.save, r); } // release 679: the woods' season
       if (!prior) { atlas[key] = atlas[key] || {}; if (noteDiscovery(this.save)) this.message = "Word comes on the wind: around Ember Refuge, the groves and the quarry have grown back."; } // release 265: regrowth every 20 new sections
       // A section first seen now is pinned to the current landscape version; one explored earlier keeps none.
@@ -6165,7 +6166,7 @@ export class Game {
     const P = this.map?.pentagon; if (!P || this.area !== "overworld") return false; const nrx = this.rx + dx, nry = this.ry + dy;
     if (this.domainCentreAt(nrx, nry)) return false;
     const [a, b] = dx ? [Math.floor(p.y + .5), Math.floor(p.y + .88 - 1e-6)] : [Math.floor(p.x + .24), Math.floor(p.x + .76 - 1e-6)];
-    return pentagonSeamOpen(P.cx, P.cy, this.rx, this.ry, dx, dy, a, b);
+    return pentagonSeamOpen(P.cx, P.cy, this.rx, this.ry, dx, dy, a, b, !!P.roof); // v7: and along its roof
   }
   // WG-05: on new ground (world coherence) a great building's door must join the section's exits, or the spot is passed over.
   coherentDoor() { return this._coherence ? Object.assign((map, at) => joinsCore(map, at), { tries: COHERENCE.doorTries }) : null; }

@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, clearSectionTerrainCache, sectionTerrainCacheStats } from '../src/game.ts';
 import { render } from '../src/renderer.ts';
-import { LANDSCAPE_VERSION } from '../src/landscape.ts';
+import { LANDSCAPE_VERSION, COHERENCE } from '../src/landscape.ts';
 import { PENTAGON, pentagonPlan, generatePentagonChamber, placePentagonSection, pentagonLinkEnds, pentagonLinkKey } from '../src/pentagon.ts';
 
 const SEED = 'TIM1', V6 = 6, S = PENTAGON.shortcuts;
@@ -133,7 +133,7 @@ test('old Pentagons in the game: the floors you explored keep every tile and eve
 
 // ------------------------------------------------------------------------------------------------ in the game
 test('v6 in the game: a lift is barred from the gate side; from its Heart floor it opens and carries you up; it stays open through a reload and a death, and carries you down', () => {
-  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V6); visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(':v6:')), 'new ground: v6');
+  const { cx, cy } = find(), g = pinned(SEED, cx, cy, V6), P = pentagonPlan(SEED, cx, cy, V6); visit(g, cx, cy); assert.ok(g.map.objects.some((o) => o.pentagonDoor && o.dungeonId.includes(":v6:")), "pinned to v6 (new ground is v7 now)");
   const L = P.links.find((l) => l.deep === 'h3'), hub = L.near;
   load(g, P, hub); const near = end(g, L.id, 'near'); assert.ok(near && near.state === 'shut'); const r0 = act(g, near, 'use'); assert.ok(!r0.ok); assert.match(r0.message, /other side/); assert.equal(P.nodes[g.map.building.node].id, hub, 'refused: you stay');
   const ring = P.links.find((l) => !l.heart); load(g, P, ring.near); const rn = end(g, ring.near === hub ? ring.id : ring.id, 'near'); assert.ok(!act(g, rn, 'use').ok, 'a ring link, refused from its near side too');
@@ -155,7 +155,7 @@ test('an old Pentagon (v5) gets its lifts too: barred from the gate side, opened
 });
 
 test('v6 side entrances: open ones let you in on joined land; an exterior door is barred from the land until drawn from inside, then lets you in', () => {
-  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V6), sides = P.world.filter((w) => w.side), doors = new Map();
+  const { cx, cy } = find(), g = pinned(SEED, cx, cy, V6), P = pentagonPlan(SEED, cx, cy, V6), sides = P.world.filter((w) => w.side), doors = new Map();
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { visit(g, cx + dx, cy + dy); for (const o of g.map.objects.filter((o) => o.pentLand)) { doors.set(o.enterAt, { rx: g.rx, ry: g.ry }); assert.ok(o.joined, `${o.enterAt} stands on land joined to the section's exits`);
     const t = g.map.tiles[o.y * 32 + o.x]; assert.ok(!t.blocked && t.x > 0 && t.x < 31 && t.y > 0 && t.y < 31); } }
   for (const w of sides) assert.ok(doors.has(w.key), `${w.key} placed`);
@@ -171,7 +171,7 @@ test('v6 side entrances: open ones let you in on joined land; an exterior door i
 });
 
 test('v6 side entrances stand on joined land across Pentagons and seeds; the gates and seams are as they were', () => {
-  let n = 0, fails = []; for (const seed of ['S17', 'S21', 'Q7', 'B1', 'B2', 'B3']) { const g = game(seed), at = findIn(g); if (!at) continue; const P = pentagonPlan(seed, at.cx, at.cy, V6);
+  let n = 0, fails = []; for (const seed of ['S17', 'S21', 'Q7', 'B1', 'B2', 'B3']) { const at = findIn(game(seed)); if (!at) continue; const g = pinned(seed, at.cx, at.cy, V6); g.save.atlas[`${at.cx + 1},${at.cy + 1}`].coherenceVersion = COHERENCE.version; /* pinned to v6 as new ground (new ground is v7 now) */ const P = pentagonPlan(seed, at.cx, at.cy, V6);
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { visit(g, at.cx + dx, at.cy + dy); for (const o of g.map.objects.filter((o) => o.pentLand)) { n++; if (!o.joined) fails.push(`${seed} ${o.enterAt}`); }
       for (const o of g.map.objects.filter((o) => o.pentagonDoor)) { const w = P.world.find((x) => x.key === o.enterAt); assert.ok(w, o.enterAt); assert.equal(!!o.landmark, w.place === 'land' && !w.side, `${seed} ${o.enterAt}: only the two gates are landmarks`); } } }
   assert.ok(n >= 6, `${n} side doors seen`); assert.deepEqual(fails, []);
@@ -179,7 +179,7 @@ test('v6 side entrances stand on joined land across Pentagons and seeds; the gat
 
 test('the shortcuts draw without throwing, shut, open and opening', () => {
   const ctx = new Proxy({ createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), measureText: () => ({ width: 10 }), getTransform: () => ({}), ellipse(x, y, rx, ry) { if (rx < 0 || ry < 0) throw new RangeError('negative'); }, arc(x, y, r) { if (r < 0) throw new RangeError('negative'); } }, { get: (o, k) => k in o ? o[k] : () => {}, set: () => true });
-  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, V6); load(g, P, P.gate.node);
+  const { cx, cy } = find(), g = pinned(SEED, cx, cy, V6), P = pentagonPlan(SEED, cx, cy, V6); load(g, P, P.gate.node);
   for (const o of g.map.objects.filter((o) => o.kind === 'pentShortcut')) { g.player.x = o.x; g.player.y = o.y; assert.doesNotThrow(() => render(ctx, g, 360, 640, 5000)); o.state = 'open'; g.shortcutBurst = { x: o.x, y: o.y, t0: null, life: 1.2 }; assert.doesNotThrow(() => render(ctx, g, 360, 640, 5100)); assert.doesNotThrow(() => render(ctx, g, 360, 640, 9000)); }
   assert.equal(g.shortcutBurst, null, 'the burst ends');
   const ext = P.world.find((w) => w.exterior); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { visit(g, cx + dx, cy + dy); const o = g.map.objects.find((q) => q.enterAt === ext.key); if (o) { g.player.x = o.x; g.player.y = o.y; assert.doesNotThrow(() => render(ctx, g, 360, 640, 5000)); } }
@@ -190,7 +190,7 @@ test('the shortcuts draw without throwing, shut, open and opening', () => {
 test('the terrain cache: a v6 section never gets a v5 Pentagon, nor a v5 one a v6, whichever loads first', () => {
   const { cx, cy } = find(), rx = cx - 1, ry = cy - 1, snap = (g) => JSON.stringify([g.map.tiles, g.map.objects.filter((o) => o.kind !== 'traveler'), g.map.pentagon]);
   const fresh = (mk) => { clearSectionTerrainCache(); const g = visit(mk(), rx, ry); return snap(g); };
-  const v5 = () => pinned(SEED, cx, cy, 5), v6 = () => game(), want5 = fresh(v5), want6 = fresh(v6);
+  const v5 = () => pinned(SEED, cx, cy, 5), v6 = () => pinned(SEED, cx, cy, V6), want5 = fresh(v5), want6 = fresh(v6);
   assert.ok(want5.includes(':v5:') && !want5.includes(':v6:')); assert.ok(want6.includes(':v6:') && !want6.includes(':v5:'));
   for (const order of [[v5, v6], [v6, v5]]) { clearSectionTerrainCache(); const [a, b] = order.map((mk) => visit(mk(), rx, ry)); assert.ok(sectionTerrainCacheStats().hits >= 1, 'the second load is served from the cache');
     for (const [g, mk] of [[a, order[0]], [b, order[1]]]) assert.equal(snap(g), mk === v5 ? want5 : want6); }
