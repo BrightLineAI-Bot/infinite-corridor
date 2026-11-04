@@ -97,6 +97,7 @@ export const PENTAGON = {
     sealV4: "In her hand, the Fivefold Seal: every sigil door in the rings will open to it, one by one, as you come to them.",
     seal: "The Fivefold Seal: five faces round an eyeless one. Every sigil door in the rings will open to it now.",
     bossGate: "The way down is held shut while its keeper lives",
+    hoardHeld: "The Regent's hand is still on her hoard. It will not open while she lives.",
     bossDown: "falls. The way down opens",
     arrive: "A wall of building runs on as far as you can see, its face turning at a great angle: the Pentagon.",
     sealed: "The Heart is sealed. Three trials remain to be cleared within the rings",
