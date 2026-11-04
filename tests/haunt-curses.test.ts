@@ -8,7 +8,7 @@ import { ATTACK_MODULES, updatePackMonster, tickPackEffects, addPackEffect } fro
 import { createCombatant } from '../src/combat.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { healthCeiling } from '../src/water-traversal.ts';
-import { Game } from '../src/game.ts';
+import { Game, shiftClocks } from '../src/game.ts';
 
 const ACTIONS = ['shoot', 'attack', 'jump', 'dodge', 'tools', 'spells', 'items'];
 const game = (now = 0) => { const s = freshSave(); s.seed = 'CURSE737'; return new Game(s, now); };
@@ -96,7 +96,7 @@ test('death clears every curse (and the health comes back); a reload keeps them;
   // reload: what each has left survives the save, and the held-back health with it
   const a = game(); a.layHauntCurses(frailSource(), 1, 1000); curse(a, 'noSpells', 1000, 6); a.player.confusedUntil = 3000; const rot = a.save.rot;
   const saved = migrateSave(JSON.parse(JSON.stringify(a.exportSnapshot(2000))));
-  assert.equal(saved.session.playerRuntime.curses.length, 2); assert.equal(saved.session.playerRuntime.confused, 1000);
+  assert.equal(saved.session.playerRuntime.curses.length, 2); assert.equal(saved.session.playerRuntime.clocks.confusedUntil, 1000, 'the turning-about rides with the release-736 clocks');
   const b = new Game(saved, 50000); assert.equal(b.save.rot, rot); assert.deepEqual(b.player.curses.map((c) => [c.id, c.until - 50000]), [['frail', curseDef('frail').duration * 1000 - 1000], ['noSpells', 5000]]);
   assert.equal(b.player.confusedUntil, 51000); assert.ok(curseBlocking(b.player.curses, 'spells', 54000)); assert.ok(!curseBlocking(b.player.curses, 'spells', 55001));
   b.curseTick(50000 + curseDef('frail').duration * 1000); assert.equal(b.save.rot, 0, 'and given back after the reload');
@@ -106,8 +106,12 @@ test('death clears every curse (and the health comes back); a reload keeps them;
   // saved while paused: measured from the pause
   const s = game(); curse(s, 'noJump', 1000, 5); s.setPaused(true, 2000); assert.equal(s.exportSnapshot(30000).session.playerRuntime.curses[0].left, 4000);
   // a damaged save: dropped quietly
-  const bad = freshSave(); bad.session.playerRuntime.curses = 'junk'; bad.session.playerRuntime.confused = 'x'; const m = migrateSave(JSON.parse(JSON.stringify(bad)));
-  assert.deepEqual(m.session.playerRuntime.curses, []); assert.equal(m.session.playerRuntime.confused, 0);
+  const bad = freshSave(); bad.session.playerRuntime.curses = 'junk'; const m = migrateSave(JSON.parse(JSON.stringify(bad)));
+  assert.deepEqual(m.session.playerRuntime.curses, []);
+  // Wayglass travel (clearCarriedStates) lifts them too, and FRAIL gives its health back
+  const t = game(); t.layHauntCurses(frailSource(), 1, 1000); curse(t, 'noJump', 1000); assert.ok(t.save.rot > 0); t.clearCarriedStates(); assert.equal(t.player.curses.length, 0); assert.equal(t.save.rot, 0);
+  // shiftClocks is the one place a pause moves them
+  const sc = game(); curse(sc, 'noDodge', 1000, 5); shiftClocks(sc, 7000); assert.equal(sc.player.curses[0].until, 13000); assert.equal(sc.player.curses[0].at, 8000);
   const odd = freshSave(); odd.session.playerRuntime.curses = [{ id: 'nope', left: 5 }, { id: 'noJump', left: -1 }, { id: 'noJump', left: 900, future: 1 }, null];
   const o = migrateSave(JSON.parse(JSON.stringify(odd))); assert.equal(o.session.playerRuntime.curses.length, 2); assert.equal(o.session.playerRuntime.curses[1].future, 1, 'unknown fields kept');
   assert.deepEqual(cursesIn(o.session.playerRuntime.curses, 0).map((c) => c.id), ['noJump']); assert.deepEqual(cursesOut([{ id: 'noJump', at: 0, until: 10, rot: 0 }], 20), []);
