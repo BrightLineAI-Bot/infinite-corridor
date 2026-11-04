@@ -396,7 +396,7 @@ function watchQuests(now){
   if(questQueue.length&&now>=questBannerFreeAt){const q=questQueue.shift();showEventBanner(q.title,q.detail,q.kind);questBannerFreeAt=now+QUEST_BANNER.gap}
 }
 function updateWorldNotices() {
-  if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);questBannerFreeAt=performance.now()+QUEST_BANNER.gap;}
+  if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);if(notice.sound)playNoticeSound(notice.sound);questBannerFreeAt=performance.now()+QUEST_BANNER.gap;}
   watchQuests(performance.now());
   {const done=takeCompletedReading();if(done)showEventBanner("RECITATION COMPLETE",`${done==="elders"?"The Elder Wanderers":READINGS[done].name} · Mastered`,"discovery");} // release 191 (Tim)
   if(game.glimpseCue){const cue=game.glimpseCue;game.glimpseCue=null;const id=glimpseRun?null:glimpseFor(save,cue,game.rx,game.ry,Math.random,{family:settings.familySafe});if(id)playGlimpse(id)} // release 193
@@ -686,6 +686,12 @@ function voice(
   o.connect(g).connect(destination);
   o.start(when);
   o.stop(when + duration + 0.05);
+}
+// A short cue for a notice that carries one (the Pentagon's shortcuts): a clank and a low settle, through the music bus.
+const NOTICE_SOUNDS = { shortcut: [[196, 0, 0.18, "square"], [146.83, 0.12, 0.3, "triangle"], [98, 0.3, 0.55, "triangle"]] };
+function playNoticeSound(kind) {
+  const notes = NOTICE_SOUNDS[kind]; if (!audio || !notes || muted) return;
+  try { const t = audio.currentTime; for (const [f, at, d, type] of notes) voice(f, t + at, d, 0.12, type); } catch { /* sound is a nicety */ }
 }
 function startAmbience() {
   if (audio) {
