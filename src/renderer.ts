@@ -364,6 +364,25 @@ function drawStarChasm(ctx, t, x, y, s) {
   ctx.fillStyle = CHASM_STARS.sky; ctx.fillRect(px, py, s + 1, s + 1);
   for (let i = 0; i < CHASM_STARS.stars; i++) { const q = h(x * 13 + i * 31, y * 17 + i * 7); if (q % 3 === 0) continue; ctx.fillStyle = CHASM_STARS.star[q % 5 ? 0 : 1]; const r = q % 11 === 0 ? 1.4 : 1; ctx.fillRect(px + (q % 97) / 97 * s, py + ((q >> 8) % 97) / 97 * s, r, r); }
 }
+// The Pentagon's finale (pentagon.ts PENTAGON.finale): the walkway among the stars is pale stone, like the Starfield's rafts,
+// edged with faint light where it meets the dark and thick-edged on its underside; the dais's landing is warmer stone, its
+// stepped rings painted across its tiles (each tile knows the dais's centre). Painted with the ground (cached), not per frame.
+export const STAR_WALK = { stone: ["#cfc6b4", "#c8bfac"], dais: ["#ddd0ad", "#d6c9a5"], under: "#7d7566", rim: "rgba(170,200,255,.55)", ring: ["#b9ab86", "#efe3c2", "#c8b98f"], rings: [2.2, 1.6, 1.05], shard: ["#5d5a63", "#77737e", "#3c3a42"] };
+function drawStarWalk(ctx, t, x, y, s, tiles, w) {
+  const P = STAR_WALK, d = Number.isFinite(t.detail) ? t.detail : 0, px = x * s, py = y * s, dais = t.kind === "starDais", at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], gap = (dx, dy) => { const q = at(dx, dy); return !q || q.chasm; };
+  ctx.fillStyle = (dais ? P.dais : P.stone)[d & 1]; ctx.fillRect(px, py, s + 1, s + 1);
+  if (dais && Number.isFinite(t.daisX)) { ctx.save(); ctx.beginPath(); ctx.rect(px, py, s + 1, s + 1); ctx.clip(); const cx = (t.daisX + .5) * s, cy = (t.daisY + .5) * s;
+    P.rings.forEach((r, i) => { ctx.strokeStyle = P.ring[i % P.ring.length]; ctx.lineWidth = Math.max(1.5, s * .08); ctx.beginPath(); ctx.arc(cx, cy, s * r, 0, 7); ctx.stroke(); }); ctx.restore(); }
+  else if (d === 2) { ctx.fillStyle = "#00000014"; ctx.fillRect(px + s * .5, py, 1, s); } // a joint between slabs
+  ctx.fillStyle = P.rim; const k = Math.max(1, s * .06);
+  if (gap(0, -1)) ctx.fillRect(px, py, s + 1, k); if (gap(-1, 0)) ctx.fillRect(px, py, k, s + 1); if (gap(1, 0)) ctx.fillRect(px + s - k, py, k + 1, s + 1);
+  if (gap(0, 1)) { ctx.fillStyle = P.under; ctx.fillRect(px, py + s * .8, s + 1, s * .2 + 1); ctx.fillStyle = P.rim; ctx.fillRect(px, py + s * .8 - k, s + 1, k); } // its edge, seen from above: the walkway floats
+}
+function drawStarShard(ctx, t, x, y, s) {
+  const P = STAR_WALK.shard, q = h(x * 29 + 3, y * 23 + 5), cx = (x + .3 + (q % 40) / 100) * s, cy = (y + .3 + ((q >> 6) % 40) / 100) * s, r = s * (.16 + (q % 7) / 40);
+  ctx.fillStyle = P[2]; ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx - r * .3, cy + r * 1.1); ctx.lineTo(cx + r * .8, cy + r * .4); ctx.closePath(); ctx.fill(); // its broken underside
+  ctx.fillStyle = P[q & 1]; ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx - r * .2, cy - r * .7); ctx.lineTo(cx + r, cy - r * .2); ctx.lineTo(cx + r * .8, cy + r * .4); ctx.closePath(); ctx.fill();
+}
 // Per frame: the glittering stars over the chasm tiles in view (`list` is tile, x, y triples).
 function glitterChasm(ctx, list, s, now) {
   for (let i = 0; i < list.length; i += 3) {
@@ -404,7 +423,8 @@ function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=nu
   if (t?.kind === "voidScar") { drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,scarSurface); return; }
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
   if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
-  if (t?.chasm) { drawStarChasm(ctx, t, x, y, s); return; } // release 593
+  if (t?.chasm) { drawStarChasm(ctx, t, x, y, s); if (t.kind === "starShard") drawStarShard(ctx, t, x, y, s); return; } // release 593; the Pentagon's finale: a stone adrift
+  if (t?.kind === "starWalk" || t?.kind === "starDais") { drawStarWalk(ctx, t, x, y, s, map, w); return; } // the Pentagon's finale: the walkway among the stars
   const p = PAL[t.kind] || PAL.ash,
     d = Number.isFinite(t.detail) ? t.detail : h(x, y),
     px = x * s,
@@ -1795,6 +1815,29 @@ function drawPentShortcut(ctx, o, s, now) {
   if (open) { ctx.strokeStyle = `rgba(242,230,168,${.35 + .35 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .06, y + s * .04, s * .88, s * .92); }
   ctx.restore();
 }
+// The Pentagon's finale: the vault's opened wall (stars beyond it), and from the walkway the doorway back (lamplight beyond);
+// the dais's pedestal, its five-sided inlay lit, and the word cut in it. No gradients: arcs and fills only.
+function drawPentFinaleWall(ctx, o, s, now) {
+  const x = o.x * s, y = o.y * s, pulse = .5 + .5 * Math.sin(now / 520); ctx.save();
+  ctx.fillStyle = o.back ? "#6c6457" : "#3a2f24"; ctx.fillRect(x + s * .02, y - s * .1, s * .96, s * 1.08); // the frame
+  ctx.fillStyle = o.back ? "#2a1e12" : CHASM_STARS.sky; ctx.beginPath(); ctx.moveTo(x + s * .16, y + s * .98); ctx.lineTo(x + s * .16, y + s * .36); ctx.arc(x + s * .5, y + s * .36, s * .34, Math.PI, 0); ctx.lineTo(x + s * .84, y + s * .98); ctx.closePath(); ctx.fill();
+  if (o.back) { ctx.fillStyle = `rgba(232,180,96,${.35 + .25 * pulse})`; ctx.fillRect(x + s * .3, y + s * .5, s * .4, s * .48); } // the vault's lamps beyond
+  else { ctx.fillStyle = "#fff6dc"; for (const [u, v, r] of [[.32, .3, 1.2], [.6, .5, 1], [.45, .72, 1.4], [.7, .26, 1], [.28, .84, 1]]) ctx.fillRect(x + s * u, y + s * v, r, r);
+    ctx.fillStyle = `rgba(150,180,255,${.12 + .12 * pulse})`; ctx.beginPath(); ctx.arc(x + s * .5, y + s * .6, s * .3, 0, 7); ctx.fill(); } // stars beyond, and their light
+  ctx.strokeStyle = `rgba(200,220,255,${.35 + .35 * pulse})`; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.moveTo(x + s * .16, y + s * .98); ctx.lineTo(x + s * .16, y + s * .36); ctx.arc(x + s * .5, y + s * .36, s * .34, Math.PI, 0); ctx.lineTo(x + s * .84, y + s * .98); ctx.stroke();
+  ctx.restore();
+}
+function drawPentDais(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .5) * s, pulse = .5 + .5 * Math.sin(now / 640), a0 = -Math.PI / 2 + now / 9000; ctx.save();
+  ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .14, s * .82, s * .32, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#b9ab86"; ctx.beginPath(); ctx.arc(cx, cy, s * .78, 0, 7); ctx.fill(); ctx.fillStyle = "#efe3c2"; ctx.beginPath(); ctx.arc(cx, cy - s * .05, s * .62, 0, 7); ctx.fill(); // two steps up
+  ctx.fillStyle = `rgba(176,196,255,${.22 + .2 * pulse})`; ctx.beginPath(); ctx.arc(cx, cy - s * .05, s * (.54 + .06 * pulse), 0, 7); ctx.fill();
+  ctx.fillStyle = "#3d3560"; pentPath(ctx, cx, cy - s * .05, s * .34, a0); ctx.fill(); ctx.strokeStyle = `rgba(236,226,255,${.55 + .4 * pulse})`; ctx.lineWidth = Math.max(1.5, s * .045); ctx.stroke(); // the five-sided inlay, lit
+  ctx.fillStyle = `rgba(250,244,220,${.7 + .3 * pulse})`; ctx.beginPath(); ctx.arc(cx, cy - s * .05, s * .07, 0, 7); ctx.fill();
+  for (let i = 0; i < 3; i++) { const k = ((now / 2600 + i / 3) % 1), mx = cx + Math.sin(i * 2.1 + now / 1300) * s * .25; ctx.fillStyle = `rgba(236,230,255,${.6 * (1 - k)})`; ctx.fillRect(mx, cy - s * (.1 + k * .9), 2, 2); } // motes rising
+  ctx.fillStyle = "#5b4f3a"; ctx.font = `bold ${Math.max(7, Math.round(s * .2))}px serif`; ctx.textAlign = "center"; ctx.fillText("TRANSIT", cx, cy + s * .58); // the word cut in its face
+  ctx.restore();
+}
 function drawShortcutBurst(ctx, g, s, now) {
   const b = g.shortcutBurst; if (b.t0 == null) b.t0 = now; const k = (now - b.t0) / (1000 * (b.life || 1.2)); if (k >= 1 || k < 0) { g.shortcutBurst = null; return; }
   ctx.save(); ctx.strokeStyle = `rgba(232,214,170,${.7 * (1 - k)})`; ctx.lineWidth = Math.max(2, s * .12 * (1 - k)); ctx.beginPath(); ctx.arc((b.x + .5) * s, (b.y + .5) * s, s * (.4 + 1.6 * k), 0, 7); ctx.stroke(); ctx.restore();
@@ -2201,6 +2244,8 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
           else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
           else if (o.kind === "pentShortcut") drawPentShortcut(ctx, o, s, now); // and its shortcut links (v6)
+          else if (o.kind === "pentFinaleWall") drawPentFinaleWall(ctx, o, s, now); // the finale's opened wall
+          else if (o.kind === "pentDais") drawPentDais(ctx, o, s, now); // and its dais
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
