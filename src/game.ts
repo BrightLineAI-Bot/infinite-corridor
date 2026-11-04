@@ -107,7 +107,7 @@ import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, R
 import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
-import { DIG, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot, addStone } from "./digging.ts";
+import { DIG, isInteriorArea, markWalked, planDig, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot, addStone } from "./digging.ts";
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
@@ -4176,18 +4176,27 @@ export class Game {
     return null;
   }
   // The nearest deep-water tile within reach where a skiff fits, while ashore in the overworld; null otherwise.
+  // DIG_GATES (digging.ts): the floor walked in the interior you are in (a labyrinth, the Pentagon, a castle, a great
+  // building or a compound), for its dig rules. One byte a tile, made when the map changes, so it lasts while you are there;
+  // null anywhere else. Marked each frame (markWalked: nine writes, no allocation).
+  walkedHere() {
+    if (this._walkedMap !== this.map) { this._walkedMap = this.map; this._walked = this.area === "dungeon" && this.map?.tiles && isInteriorArea(this.areaStateId()) ? new Uint8Array(this.map.tiles.length) : null; }
+    return this._walked;
+  }
+  markWalked() { const w = this.walkedHere(); if (w) { const p = this.player; markWalked(w, this.map, Math.floor(p.x + .5), Math.floor(p.y + .75)); } }
   // Release 225: the shovel. Facing a dungeon wall, Act digs one block (crafting a shovel first from wood and stone if
   // you carry none). Returns null when you are not facing diggable rock, so Act falls through to its other uses.
   digAhead() {
     const overworld = this.area === "overworld" && !aboard(this.save); // release 423: the shovel works in the open world too
     if ((this.area !== "dungeon" && !overworld) || !this.map?.tiles) return null;
-    const p = this.player, w = mapWidth(this.map, this.area), px = Math.floor(p.x + .5), py = Math.floor(p.y + .75), key = overworld ? overworldDigKey(this.rx, this.ry) : this.areaStateId(), o = { overworld };
+    this.markWalked(); // DIG_GATES: where you stand counts as walked
+    const p = this.player, w = mapWidth(this.map, this.area), px = Math.floor(p.x + .5), py = Math.floor(p.y + .75), key = overworld ? overworldDigKey(this.rx, this.ry) : this.areaStateId(), walked = overworld ? null : this.walkedHere(), o = { overworld, walked };
     // Release 411: forgiving aim: the tile ahead of the feet, else of the body's middle (a stone just above or below the
     // feet row was missed, and Act said "Nothing nearby responds").
     let plan = planDig(this.map, px, py, p.facing || "down", key, o);
     for (const ty of [Math.round(p.y + .4), Math.floor(p.y + .4)]) if (!plan.ok && !plan.reason && ty !== py) { const alt = planDig(this.map, px, ty, p.facing || "down", key, o); if (alt.ok || alt.reason) plan = alt; }
     if (overworld && plan.ok && saveTier(this.save) < OVERWORLD_DIG.tier) { this.message = "The open world will not yield to a shovel yet. It gives way from Infinite II."; return { ok: false, message: this.message }; } // release 425
-    if (!plan.ok && plan.resists) { const hard = planDig(this.map, px, py, p.facing || "down", key, { iron: true }); for (const ty of [py, Math.round(p.y + .4), Math.floor(p.y + .4)]) { const h2 = planDig(this.map, px, ty, p.facing || "down", key, { iron: true }); if (h2.ok) { plan = { ...h2, hard: true }; break; } } if (!plan.ok && hard.ok) plan = { ...hard, hard: true }; } // release 379: the iron shovel; 411: a hard wall costs it 2
+    if (!plan.ok && plan.resists) { const hard = planDig(this.map, px, py, p.facing || "down", key, { iron: true, walked }); for (const ty of [py, Math.round(p.y + .4), Math.floor(p.y + .4)]) { const h2 = planDig(this.map, px, ty, p.facing || "down", key, { iron: true, walked }); if (h2.ok) { plan = { ...h2, hard: true }; break; } } if (!plan.ok && hard.ok) plan = { ...hard, hard: true }; } // release 379: the iron shovel; 411: a hard wall costs it 2
     if (plan.ok && !plan.iron && !(this.save.digging?.shovel > 0) && (this.save.digging?.iron > 0) && ((this.save.materials?.wood || 0) < DIG.recipe.wood || (this.save.materials?.stone || 0) < DIG.recipe.stone)) plan = { ...plan, iron: true }; // release 411: no standard shovel to hand, the iron one digs
     if (!plan.ok) { if (!plan.reason) return null; this.message = plan.reason; return { ok: false, message: this.message }; }
     const c = plan.iron ? ensureIronShovel(this.save) : ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; }
@@ -6927,6 +6936,7 @@ export class Game {
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
+    this.markWalked(); // DIG_GATES: the floor walked in an interior
     this.riderDown(); this.tickMount(dt); // release 748 (riderDown: never carry a rider lift over a frame)
     this._astralDrainCredits=[];
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
