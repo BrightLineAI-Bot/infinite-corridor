@@ -2311,6 +2311,18 @@ function warmCompassSignals() {
     } catch (error) { compassWarmFor = key; compassWarming = false; console.warn("Compass warm-up failed", error); }
   });
 }
+// Perf pack (perf P7): while a Void Walker is in the section, its neighbours' terrain is laid in idle time (Game.warmSpillTerrain).
+let spillWarmFor = null, spillWarming = false;
+function warmSpillTerrain() {
+  const key = compassWarmKey();
+  if (!key || key === spillWarmFor || spillWarming) return;
+  if (game.warmSpillTerrain(false)) return; // nothing to warm here (no Void Walker); asked again next frame
+  spillWarming = true;
+  whenIdle(function step() {
+    try { if (compassWarmKey() !== key) { spillWarming = false; return; } if (game.warmSpillTerrain()) { spillWarmFor = key; spillWarming = false; } else whenIdle(step); }
+    catch (error) { spillWarmFor = key; spillWarming = false; console.warn("Supernova warm-up failed", error); }
+  });
+}
 function frame(now) {
   try {
   probeInterval = now - last;
@@ -2331,6 +2343,7 @@ function frame(now) {
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   if (game.paused) return;
   warmCompassSignals();
+  warmSpillTerrain();
   measured("render", () => {
     renderTimings.on = probe.running;
     render(ctx, game, innerWidth, innerHeight, now);

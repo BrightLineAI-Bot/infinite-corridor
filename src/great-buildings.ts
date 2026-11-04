@@ -12,7 +12,7 @@
 // somewhere across the floor from where you came in, and above the ground floor, holes where the floor has fallen through
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
-import { hashSeed, rng } from "./random.ts";
+import { hashSeed, rng, byHash } from "./random.ts";
 
 export const BUILDINGS = {
   version: 2, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
@@ -268,7 +268,7 @@ export function layFloor(base, f, W, H, S, arrive, keepOpen) {
   // rubble: a few blocked heaps in the rooms, never cutting the floor in two
   const seen0 = reach(), count = (s) => s.reduce((n, v) => n + v, 0), total = count(seen0), cells = [];
   for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) if (grid[at(x, y)] === 0 && Math.abs(x - arrive.x) + Math.abs(y - arrive.y) > 2) cells.push([x, y]);
-  cells.sort((a, b) => hashSeed(`${base}:rub:${f}:${a}`) - hashSeed(`${base}:rub:${f}:${b}`));
+  cells.sort(byHash((a) => `${base}:rub:${f}:${a}`));
   for (const [x, y] of cells.slice(0, Math.round(cells.length * BUILDINGS.rubble))) { grid[at(x, y)] = 4; if (count(reach()) !== total - 1) grid[at(x, y)] = 0; }
   return { W, H, grid, room, leaves, mat, walls };
 }
@@ -285,7 +285,7 @@ export function addHoles(base, F, below, W, H) {
   const B = BUILDINGS.holes, at = (x, y) => y * W + x, near = (p, x, y) => p && Math.abs(p.x - x) + Math.abs(p.y - y) <= B.clear;
   const ok = (x, y) => F.grid[at(x, y)] === 0 && below.grid[at(x, y)] === 0 && !near(F.arrive, x, y) && !near(F.up, x, y) && !near(below.up, x, y) && !near(below.arrive, x, y);
   const cand = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (ok(x, y)) cand.push([x, y]);
-  cand.sort((a, b) => hashSeed(`${base}:hole:${F.floor}:${a}`) - hashSeed(`${base}:hole:${F.floor}:${b}`));
+  cand.sort(byHash((a) => `${base}:hole:${F.floor}:${a}`));
   const want = Math.round(cand.length * B.share), holes = [];
   for (const [x, y] of cand) { if (holes.length >= want) break; for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]].slice(0, B.cluster)) { const hx = x + dx, hy = y + dy; if (ok(hx, hy) && !holes.some((q) => q[0] === hx && q[1] === hy)) holes.push([hx, hy]); } }
   // every open cell must still be reachable from the arrival without stepping in a hole: drop holes (newest first) until so

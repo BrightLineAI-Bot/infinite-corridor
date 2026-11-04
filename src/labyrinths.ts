@@ -14,7 +14,7 @@
 // The chambers form a tree, so there is one way through. The vault is the chamber farthest from the door, the one real end,
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
-import { hashSeed, rng } from "./random.ts";
+import { hashSeed, rng, byHash } from "./random.ts";
 import { BUILDINGS, layFloor, farthest } from "./great-buildings.ts";
 
 export const LABYRINTHS = {
@@ -176,7 +176,7 @@ export function generateLabyrinthChamber(seed, id) {
   // what can be reached from where you come in (a gallery's gaps jumped): creatures and caches stand only there
   const reach = new Set([arrive.y * W + arrive.x]), st = [arrive], ok = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.hole; };
   while (st.length) { const p = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { let x = p.x + dx, y = p.y + dy; const t = tiles[y * W + x]; if (!t || t.blocked) continue; if (t.hole) { x += dx; y += dy; if (!ok(x, y)) continue; } const k = y * W + x; if (!reach.has(k)) { reach.add(k); st.push({ x, y }); } } }
-  const cells = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (free(x, y) && reach.has(y * W + x)) cells.push({ x, y }); cells.sort((a, b) => hashSeed(`${id}:c:${a.x},${a.y}`) - hashSeed(`${id}:c:${b.x},${b.y}`));
+  const cells = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (free(x, y) && reach.has(y * W + x)) cells.push({ x, y }); cells.sort(byHash((a) => `${id}:c:${a.x},${a.y}`));
   const enemySpawns = [], ng = L.guards[0] + h("n") % (L.guards[1] - L.guards[0] + 1);
   for (const c of cells.slice(0, q.n === 0 ? 1 : ng)) { taken.add(c.y * W + c.x); enemySpawns.push({ id: `${id}:g${enemySpawns.length}`, kind: S.guards[h(`k${enemySpawns.length}`) % S.guards.length], x: c.x, y: c.y, buildingGuard: true }); }
   if (q.vault) { const spot = (far && far[0]) || cells.find((c) => !taken.has(c.y * W + c.x)) || { x: W >> 1, y: 2 };
