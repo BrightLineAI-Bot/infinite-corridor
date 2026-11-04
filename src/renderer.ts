@@ -1748,6 +1748,33 @@ function drawPentRelic(ctx, o, s, now) {
   ctx.strokeStyle = "#2b2823"; ctx.lineWidth = 1; ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(cx - s * .1, y + s * (.34 + i * .1)); ctx.lineTo(cx + s * .1, y + s * (.34 + i * .1)); } ctx.moveTo(cx + s * .06, y + s * .14); ctx.lineTo(cx - s * .02, y + s * .4); ctx.lineTo(cx + s * .08, y + s * .6); ctx.stroke(); // its letters, and the crack through them
   ctx.restore();
 }
+// Version 2 (release 728): the Fivefold Seal's sigil, cut into a door it has not yet opened; the great levers in the courts;
+// the Seal itself, a five-sided disc with an eyeless face, turning; the dread that closes in the deeper you go.
+const pentPath = (ctx, cx, cy, r, a0 = -Math.PI / 2) => { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = a0 + i * Math.PI * 2 / 5; ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } ctx.closePath(); };
+function drawSigilMark(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .45) * s, pulse = .5 + .5 * Math.sin(now / 500); ctx.save(); ctx.strokeStyle = `rgba(176,140,255,${.55 + .35 * pulse})`; ctx.lineWidth = Math.max(1.5, s * .06);
+  pentPath(ctx, cx, cy, s * .26); ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy, s * .08, 0, 7); ctx.stroke(); ctx.restore();
+}
+function drawPentLever(ctx, o, s, now) {
+  const x = o.x * s, y = o.y * s, down = o.state === "pulled", a = down ? .75 : -.75; ctx.save(); ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .88, s * .4, s * .12, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#3e3a33"; ctx.fillRect(x + s * .2, y + s * .6, s * .6, s * .3); ctx.fillStyle = "#57524a"; ctx.fillRect(x + s * .2, y + s * .6, s * .6, s * .07); // its block
+  ctx.strokeStyle = "#7a6a4e"; ctx.lineWidth = Math.max(3, s * .1); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x + s * .5, y + s * .66); ctx.lineTo(x + s * (.5 + Math.sin(a) * .42), y + s * (.66 - Math.cos(a) * .42)); ctx.stroke(); // its arm
+  ctx.fillStyle = down ? "#8a7a5a" : `rgba(232,196,90,${.7 + .3 * Math.sin(now / 400)})`; ctx.beginPath(); ctx.arc(x + s * (.5 + Math.sin(a) * .44), y + s * (.66 - Math.cos(a) * .44), s * .09, 0, 7); ctx.fill(); ctx.restore();
+}
+function drawPentSeal(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .4) * s + Math.sin(now / 420) * s * .04, a0 = now / 1800, glow = .5 + .5 * Math.sin(now / 300); ctx.save();
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .6); g.addColorStop(0, `rgba(176,140,255,${.35 + .25 * glow})`); g.addColorStop(1, "rgba(176,140,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .6, 0, 7); ctx.fill();
+  ctx.fillStyle = "#cfc6e8"; pentPath(ctx, cx, cy, s * .24, a0); ctx.fill(); ctx.strokeStyle = "#5b4a8a"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = "#5b4a8a"; for (let i = 0; i < 5; i++) { const a = a0 + i * Math.PI * 2 / 5 - Math.PI / 2; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * s * .15, cy + Math.sin(a) * s * .15, s * .03, 0, 7); ctx.fill(); }
+  ctx.beginPath(); ctx.arc(cx, cy, s * .06, 0, 7); ctx.fill(); ctx.restore();
+}
+// The dread (a cached screen image like the vignette): the dark closes in from the edges, leaving `share` of the view lit.
+function drawDread(ctx, w, h, share) {
+  if (!(share > 0)) return; let o = render.dread; const key = `${w}x${h}:${share.toFixed(2)}`;
+  if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
+    const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${.5 + share * .35})`); v.addColorStop(1, `rgba(2,2,6,${.8 + share * .18})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
+  ctx.drawImage(o.canvas, 0, 0, w, h);
+}
 // A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
 // the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
 function drawBuildingStair(ctx, o, s, now) {
@@ -2131,6 +2158,8 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "labKey") drawLabKey(ctx, o, s, now); // a labyrinth's key
           else if (o.kind === "pentRubble") drawPentRubble(ctx, o, s); // the Pentagon's rubble
           else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
+          else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
+          else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)
           else if (o.kind === "traveler" && o.elder) drawElder(ctx, o, s, now);
           else if (o.kind === "traveler") {
@@ -2412,6 +2441,7 @@ export function render(ctx, g, w, h, now) {
     if (skyA > 0 && d !== playerDraw && !d.inSky && !(Number.isFinite(d.x) && tileUnder(g.map, mw, d.x, d.y)?.canopy)) { if (skyA >= .98) continue; ctx.save(); if (raise) ctx.translate(0, -raise * s); ctx.globalAlpha = (d.alpha ?? 1) * (1 - skyA); d.fn(); ctx.restore(); continue; }
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
+  for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && discoveredInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk
     const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
@@ -2568,6 +2598,7 @@ export function render(ctx, g, w, h, now) {
       y = ((i * 73 + Math.sin(phase * 0.07) * 45) % (h + 60)) - 30;
     ctx.fillRect(x, y, i % 3 === 0 ? 3 : 2, 1);
   }
+  if (g.area === "dungeon" && g.map?.building?.dread) drawDread(ctx, w, h, g.map.building.dread); // the Pentagon's dread (v2)
   if (!drawScreenOverlay(ctx, w, h)) {
     ctx.fillStyle = "#5c4a3b0c";
     ctx.fillRect(0, 0, w, h);

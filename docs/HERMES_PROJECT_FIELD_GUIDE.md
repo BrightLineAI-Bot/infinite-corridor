@@ -2854,6 +2854,65 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 728: the Pentagon, version 2 — 2026-11-04
+
+Tim (2026-11-04): "the sense I get to be like of exploring it... like Bloodborne... you're going so far... and then you finally
+get like a puzzle piece... on lots of doors... it actually gets kind of scary... actual bosses... the Chalice Dungeons... you
+can get deeper and deeper... there should be levers... pull three levers... at different portions within the courtyard... and
+then the gate opens... I don't want it to be too tedious".
+
+**CODE:** `src/pentagon.ts` (`PENTAGON.version` 2):
+- Plans and placement:
+  - `pentagonPlan(seed, cx, cy, V)`, `placePentagonSection(..., V)` and the chamber ids carry the version.
+  - Version 1 ids stay `pentagon:<seed>:<cx>:<cy>:f<n>`; version 2 ids are `pentagon:<seed>:<cx>:<cy>:v2:f<n>`.
+    `parsePentagonId` returns `V`, and its `base` includes `:v2`, so a version-2 Pentagon keeps its own histories.
+  - Version 1 output is byte-identical to release 727 (checked on 60 plans and all their chambers).
+- Version 2 adds:
+  - **Levers.** Three, in three different ring courts (`plan.levers`: f, gx, gy). Each stands on the side of its court that the
+    ring roofs leave in view. Every inner-ring door into the central court is `gate: "levers"`.
+  - **The Fivefold Seal.** It lies in the chamber farthest from the land on the graph without sigil doors (`plan.sealNode`,
+    object `pentSigil`). The doors that version 1 had fallen shut are `sigil` passes instead. Outer and inner chambers with no
+    door into their court get a `sigil` court door. The ladder from the Under-Heart (h1) down to h2 is `sigil` as well.
+  - **Reachability.** The plan reopens fallen doors until the outer ring (and so every court) can be reached without the
+    central court.
+  - **Lords.** Each trial chamber holds a lord (`node.lord`: a named kind from `PENTAGON.bosses`, spawned `boss`,
+    `packGuardian` and `pentBoss` with hp, damage and affixes) and two ghouls.
+  - **The deep Heart.** Six floors (`PENTAGON.deep`). Each of h0–h4 has a keeper (`node.boss`) near its ladder down, and that
+    ladder is a `bossGate`. A keeper grows by `deepBoss.perFloor` with each floor. The Regent in the vault is a `pentBoss` with
+    `regentBoss` stats.
+  - **Dread.** `building.dread` (`PENTAGON.dread`) is the share of the screen the dark closes over: outer .3, inner .45, Heart
+    floors from .58 rising by .06 a floor, to .86.
+  - **Fixes.** A Heart ladder that falls on a room wall is dug free and joined to the floor.
+
+`src/game.ts`:
+- `pentagonVersion(cx, cy)` is the lowest `pentVersion` pinned by any of the nine sections already seen, or else the current
+  version. A Pentagon begun under 727 stays version 1.
+- Interactions:
+  - `pentLever` records `pentLevers`; with all three pulled, the inner ring's great doors open.
+  - `pentSigil` records `pentSigil` and journals it.
+  - `sigil` doors (overworld, exit and pass) refuse without the Seal.
+  - `gate: "levers"` exits refuse with a count.
+  - A `bossGate` ladder refuses while its keeper lives.
+- Each frame, a chamber whose `pentBoss` is down records its node in `pentBosses`.
+- `pentBoss` spawns take their name, hp, damage and affixes.
+- `labyrinthState` marks sigil doors `unsealed` and removes the Seal once it is taken. Levers show as pulled.
+
+`src/renderer.ts`:
+- Sprites: the sigil mark (a violet pentagon on a sealed door), the lever (up and gold, or down), and the Seal.
+- `drawDread` is a cached screen gradient sized by `building.dread`.
+
+**BOUNDARY:**
+- Additive at schema 14: new history fields `pentLevers`, `pentSigil` and `pentBosses`. The atlas `pentVersion` is now 2.
+- Version 1 Pentagons are untouched.
+- Tests: `tests/pentagon.test.ts`. The version 1 tests are pinned to `pentVersion: 1`. The version 2 tests cover:
+  - version selection;
+  - a 300-seed plan sweep;
+  - levers in their own sealed courts;
+  - a full run with the game: the great doors, sigil doors and boss ladders refused first; the Seal, three levers, three lords;
+    six floors down past their keepers, darker each floor; the Regent; out at the gate;
+  - chamber reachability;
+  - a render smoke test.
+
 ## Release 727: the Pentagon — 2026-11-04
 
 Tim (2026-11-04): "so large that you don't know where it's gonna go... when you're walking by, you're like, what is that... as
