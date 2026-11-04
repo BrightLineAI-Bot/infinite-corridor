@@ -1750,6 +1750,14 @@ function drawPentRelic(ctx, o, s, now) {
   ctx.strokeStyle = "#2b2823"; ctx.lineWidth = 1; ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(cx - s * .1, y + s * (.34 + i * .1)); ctx.lineTo(cx + s * .1, y + s * (.34 + i * .1)); } ctx.moveTo(cx + s * .06, y + s * .14); ctx.lineTo(cx - s * .02, y + s * .4); ctx.lineTo(cx + s * .08, y + s * .6); ctx.stroke(); // its letters, and the crack through them
   ctx.restore();
 }
+// Marks in a Pentagon's wall (PENTAGON_LORE): a few uneven scratches on a worn slab against the wall, faintly warm until read.
+function drawPentInscription(ctx, o, s, now) {
+  const x = o.x * s, y = o.y * s, lit = o.state !== "read", warm = .5 + .5 * Math.sin(now / 900 + o.x); ctx.save();
+  ctx.fillStyle = "#2c2a2e"; ctx.fillRect(x + s * .18, y + s * .2, s * .64, s * .62); ctx.strokeStyle = "#18171a"; ctx.lineWidth = 1; ctx.strokeRect(x + s * .18, y + s * .2, s * .64, s * .62);
+  ctx.strokeStyle = lit ? `rgba(240,190,140,${.45 + .3 * warm})` : "#4a4648"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath();
+  for (let i = 0; i < 4; i++) { const ly = y + s * (.32 + i * .12), a = x + s * (.28 + (i % 2) * .05); ctx.moveTo(a, ly); ctx.lineTo(a + s * (.3 + ((i * 7) % 3) * .05), ly + s * .02 * (i % 2 ? 1 : -1)); }
+  ctx.stroke(); ctx.restore();
+}
 // Version 2 (release 728): the Fivefold Seal's sigil, cut into a door it has not yet opened; the great levers in the courts;
 // the Seal itself, a five-sided disc with an eyeless face, turning; the dread that closes in the deeper you go.
 const pentPath = (ctx, cx, cy, r, a0 = -Math.PI / 2) => { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = a0 + i * Math.PI * 2 / 5; ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } ctx.closePath(); };
@@ -2160,6 +2168,7 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "labKey") drawLabKey(ctx, o, s, now); // a labyrinth's key
           else if (o.kind === "pentRubble") drawPentRubble(ctx, o, s); // the Pentagon's rubble
           else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
+          else if (o.kind === "pentInscription") drawPentInscription(ctx, o, s, now); // the marks in its walls
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
           else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
           else if (o.kind === "watcherTomb") { const L = groundLift(o.x, o.y + .5) * s; ctx.save(); ctx.translate(0, -L); drawWatcherTomb(ctx, o, s, now); ctx.restore(); } // release 289 (lifted onto a shrine's eye)

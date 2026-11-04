@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 742, the next is **743**.
+Taken at merge time: `main`'s release + 1 (see above). After 743, the next is **744**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 742 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts glow blue; stacking curses (no shoot, attack, jump, dodge, tools, spells, items; FRAIL), up to four, on the 740 clock/runtime/clear mechanisms; Gloomgorge halo no longer clipped | In flight. |
+| 743 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagons' walls: sparse contradictory marks in Pentagon chambers, vent-life Codex lines, Tesseract lines that grow quieter, one Glimpse from inside a wall (Tim's lore, kept sparse) | In flight. |
+| 742 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts glow blue; stacking curses (no shoot, attack, jump, dodge, tools, spells, items; FRAIL), up to four, on the 740 clock/runtime/clear mechanisms; Gloomgorge halo no longer clipped | Merged (#390). |
 | 741 | Claude | `claude/dreamy-rubin-yn6q2p` | Viewport Closed: a short fall, VIEWPORT CLOSED, light static and a fade to black, then waking at the rest point; a great beast looms over the corpse until black | Merged (#389). |
 | 740 | Claude | `claude/dreamy-rubin-yn6q2p` | Player and resume fixes (full-game review F3–F8, F9–F14, S7–S9, C12–C13): one pause clock list, reload keeps statuses/cooldowns/rite/boat momentum, death and Wayglass clear carried states, lethal ground read where a move ends, dodge cost floor, unknown fields kept in nested systems, session repairs | Merged (#388). |
 | 739 | Claude | `claude/dreamy-rubin-yn6q2p` | Combat balance (Tim's direction, 2026-11-04): beasts unscaled below ring 100 and ramped to full by 150; tougher ordinary foes past ring 15; damage reduction past 45% with diminishing returns to 75%; spells match Might; Fractured, haunt and Gloomgorge scaling; Questing Beast keeps wounds; frenzy and status fixes; Aperture relic stat points ×0.8 | Merged (#387). |
