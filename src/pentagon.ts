@@ -17,7 +17,7 @@ import { BUILDINGS, layFloor, farthest } from "./great-buildings.ts";
 import { carveMaze } from "./labyrinths.ts";
 
 export const PENTAGON = {
-  version: 4, // 4: release 730 (below); 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
+  version: 5, // 5: release 732 (below); 4: release 730; 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
   every: 8, chance: .5, minRing: 10, // centre sections on a grid of `every`; this share of the eligible ones
   bands: { out: 36, outer: 29, court: 23, inner: 18, heart: 3 }, // pentagon "apothem" bands (tiles from the centre, along each face's normal)
   approach: 12, // tiles of paved way out from each gate
@@ -65,6 +65,16 @@ export const PENTAGON = {
   // - the sigil doors (the fallen ring doors, and doors into the courts where none stood) stay shut until, Seal in hand, you
   //   open each one by using it (`sigilKey`, recorded in pentOpened); none open by themselves;
   // - the reliquaries and their shards as in version 3.
+  // Version 5 (Tim, 2026-11-04: "there might be secrets and things that you hadn't seen... that you can access with the key"):
+  // three sealed chambers, each off a chamber of the rings behind a sigil door of its own, so reached only with the Regent's
+  // Seal: in each a warden (a named boss), a Sealed Tesseract glyph (tesseracts.ts) and a relic found nowhere else.
+  sealed: 3, sealedNames: ["Sealed Chamber of the Five Faces", "Sealed Chamber of the Eyeless One", "Sealed Chamber of the Last Court"],
+  sealedRelics: [
+    "Under the dust, a throne of five seats with one seat taken: “She sits here still, in the Heart. We sealed the door on her and on ourselves.”",
+    "A mirror with no glass, and behind it a name scratched out five times: the Regent's own, before she took the Heart.",
+    "A will, unsigned: “To whoever holds the Seal: the Court is yours now. Keep the doors shut, or open them all and let the Pentagon breathe.”",
+  ],
+  warden: { hp: 3.4, damage: 1.4, affixes: 2, ghouls: 2 },
   secrets: 2, shardDeep: 3, deepGlyphFrom: 2, // reliquaries; the Heart floor that holds the second shard; keepers from this floor give glyphs
   secretNames: ["Hidden Reliquary of the Faces", "Hidden Reliquary of the Heart"], shardNames: ["Shard of the Faces", "Shard of the Heart"],
   levers: 3,
@@ -192,15 +202,19 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
     for (let k = 0; k < P.secrets; k++) { const host = hosts[k], sq = add(`s${k}`, "secret", P.secretNames[k], "cellar"); sq.reliquary = true; pass(host.id, sq.id, { secret: `shard${k}`, shardName: P.shardNames[k] });
       const keep = k === 1 ? node(`h${Math.min(P.shardDeep, nh - 2)}`) : hosts.slice(P.secrets).find((n) => !n.trial && n.id !== host.id && !n.key); if (keep) keep.shard = { id: `shard${k}`, name: P.shardNames[k] }; }
     const adj = graph(), dist = new Map([["land", 0]]), q = ["land"]; while (q.length) { const v = q.shift(); for (const u of adj.get(v) || []) if (!dist.has(u)) { dist.set(u, dist.get(v) + 1); q.push(u); } }
-    for (const e of edges) if (e.shortcut) e.far = (dist.get(e.a) ?? 99) >= (dist.get(e.b) ?? 99) ? e.a : e.b; } // a shortcut opens from its far side
+    for (const e of edges) if (e.shortcut) e.far = (dist.get(e.a) ?? 99) >= (dist.get(e.b) ?? 99) ? e.a : e.b;
+    if (V >= 5) { const used = new Set(edges.filter((e) => e.secret).map((e) => e.a)), kinds = Object.keys(P.bosses), taken = new Set(nodes.flatMap((n) => [n.lord?.kind, n.boss?.kind]).filter(Boolean)); // v5: the sealed chambers
+      const hostsK = nodes.filter((n) => /^[oi]\d/.test(n.id) && !used.has(n.id)).sort((a, b) => hashSeed(`${key}:sealed-host:${a.id}`) - hashSeed(`${key}:sealed-host:${b.id}`));
+      for (let k = 0; k < P.sealed; k++) { const host = hostsK[k], kq = add(`k${k}`, "sealed", P.sealedNames[k], k === 1 ? "cellar" : "hall"); kq.sealedVault = k; pass(host.id, kq.id, { sigil: true });
+        let wk = kinds[hashSeed(`${key}:warden:${k}`) % kinds.length]; for (let j = 0; taken.has(wk) && j < kinds.length; j++) wk = kinds[(kinds.indexOf(wk) + 1) % kinds.length]; taken.add(wk); kq.warden = { kind: wk, name: P.bosses[wk] }; } } } // a shortcut opens from its far side
   // relics, one a chamber in seven of them
-  const relicRooms = nodes.filter((q) => q.kind !== "heart").sort(() => r() - .5).slice(0, P.relics.length); relicRooms.forEach((q, i) => (q.relic = i));
+  const relicRooms = nodes.filter((q) => q.kind !== "heart" && q.kind !== "sealed").sort(() => r() - .5).slice(0, P.relics.length); relicRooms.forEach((q, i) => (q.relic = i));
   // ports: each chamber's doors on its walls (world doors top and bottom, ring doors left and right, the Heart's ladders inside)
   const [W, H] = P.size;
   for (const q of nodes) { const used = new Set(), slot = (side, k) => { for (let j = 0; j < 30; j++) { const h = hashSeed(`${key}:port:${q.id}:${k}:${j}`), along = side === "top" || side === "bottom" ? W : H, p = 3 + 2 * (h % Math.floor((along - 6) / 2)), x = side === "left" ? 0 : side === "right" ? W - 1 : p, y = side === "top" ? 0 : side === "bottom" ? H - 1 : p, id = `${x},${y}`;
         if (!used.has(id)) { used.add(id); return { x, y, inner: { x: x === 0 ? 1 : x === W - 1 ? W - 2 : x, y: y === 0 ? 1 : y === H - 1 ? H - 2 : y } }; } } return null; };
     for (const e of edges) if (e.a === q.id || e.b === q.id) { const other = e.a === q.id ? e.b : e.a, heart = q.kind === "heart";
-      const side = heart ? null : other.startsWith("s") ? "top" : q.kind === "secret" ? "bottom" : (other === `${q.id[0]}${(Number(q.id.slice(1)) + 1) % (q.kind === "outer" ? 10 : 5)}` ? "right" : "left");
+      const side = heart ? null : other.startsWith("s") || other.startsWith("k") ? "top" : q.kind === "secret" || q.kind === "sealed" ? "bottom" : (other === `${q.id[0]}${(Number(q.id.slice(1)) + 1) % (q.kind === "outer" ? 10 : 5)}` ? "right" : "left");
       q.ports.push({ kind: "pass", to: other, edge: e, ...(heart ? (() => { const h = hashSeed(`${key}:ladder:${q.id}:${other}`); const x = 3 + 2 * (h % 10), y = 3 + 2 * ((h >>> 5) % 6); return { x, y, inner: { x, y } }; })() : slot(side, other)) }); }
     for (const w of world) if (w.node === q.id) q.ports.push({ kind: "world", world: w, ...slot(w.place === "land" || w.place.startsWith("c") && q.kind === "inner" ? "bottom" : "top", w.key) }); }
   // world positions of every world door (pure: from the geometry)
@@ -295,19 +309,21 @@ export function generatePentagonChamber(seed, id) {
   if (q.key) { const c = take(); if (c) objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: "The Regent's key, heavy and cold. A sealed door into the central court waits for it." }); }
   if (q.relic !== undefined) { const c = take(); if (c) objects.push({ id: `pent-relic-${q.relic}`, kind: "pentRelic", relic: q.relic, name: "A relic of the Fivefold Court", x: c.x, y: c.y, state: "waiting", actions: ["read"], lore: P.relics[q.relic] }); }
   if (q.shard) { const c = take(); if (c) objects.push({ id: `lab-${q.shard.id}`, kind: "labKey", keyId: q.shard.id, name: q.shard.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: "A shard of carved stone, warm to the touch. Somewhere a hidden door has a hollow it would fit." }); }
+  if (q.sealedVault !== undefined) { const c = take(); if (c) objects.push({ id: "pent-sealed", kind: "chest", sealedVault: true, name: `${q.name}: its hoard`, x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache });
+    const r = take(); if (r) objects.push({ id: `pent-relic-${P.relics.length + q.sealedVault}`, kind: "pentRelic", relic: P.relics.length + q.sealedVault, name: "A relic of the Fivefold Court", x: r.x, y: r.y, state: "waiting", actions: ["read"], lore: P.sealedRelics[q.sealedVault] }); }
   if (q.reliquary) { const c = take(); if (c) objects.push({ id: "pent-reliquary", kind: "chest", reliquary: true, name: q.name, x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); }
   if (q.seal) { const c = take(); if (c) objects.push({ id: "pent-seal", kind: "pentSigil", name: "The Fivefold Seal", x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: P.messages.seal }); }
   const V2 = plan.V >= 2, vault = q.id === `h${plan.nh - 1}`, enemySpawns = [], hi = q.kind === "heart" ? Number(q.id.slice(1)) : 0;
-  const ng = V2 && q.lord ? P.lord.ghouls : V2 && q.boss ? P.deepBoss.ghouls[0] + h("n") % (P.deepBoss.ghouls[1] - P.deepBoss.ghouls[0] + 1) : q.trial ? P.trialGuards : P.ghouls[0] + h("n") % (P.ghouls[1] - P.ghouls[0] + 1);
+  const ng = V2 && q.warden ? P.warden.ghouls : V2 && q.lord ? P.lord.ghouls : V2 && q.boss ? P.deepBoss.ghouls[0] + h("n") % (P.deepBoss.ghouls[1] - P.deepBoss.ghouls[0] + 1) : q.trial ? P.trialGuards : P.ghouls[0] + h("n") % (P.ghouls[1] - P.ghouls[0] + 1);
   // v2: a lord or a floor's keeper, a named boss: a lord at the far end of its hall, a keeper by the way down it holds
-  const boss = V2 && (q.lord || q.boss); if (boss) { const down = q.ports.find((p) => p.kind === "pass" && plan.nodes.find((n) => n.id === p.to).n > q.n), toward = down ? down.inner : null, d = (c) => toward ? Math.abs(c.x - toward.x) + Math.abs(c.y - toward.y) : -(Math.abs(c.x - arrive.x) + Math.abs(c.y - arrive.y));
-    const c = cells.filter((p) => !taken.has(p.y * W + p.x)).sort((a, b) => d(a) - d(b))[0]; if (c) { taken.add(c.y * W + c.x); const B = q.lord ? P.lord : P.deepBoss, grow = q.lord ? 1 : 1 + B.perFloor * hi;
+  const boss = V2 && (q.lord || q.boss || q.warden); if (boss) { const down = q.ports.find((p) => p.kind === "pass" && plan.nodes.find((n) => n.id === p.to).n > q.n), toward = down ? down.inner : null, d = (c) => toward ? Math.abs(c.x - toward.x) + Math.abs(c.y - toward.y) : -(Math.abs(c.x - arrive.x) + Math.abs(c.y - arrive.y));
+    const c = cells.filter((p) => !taken.has(p.y * W + p.x)).sort((a, b) => d(a) - d(b))[0]; if (c) { taken.add(c.y * W + c.x); const B = q.lord ? P.lord : q.warden ? P.warden : P.deepBoss, grow = q.lord || q.warden ? 1 : 1 + B.perFloor * hi;
       enemySpawns.push({ id: `${id}:lord`, kind: boss.kind, x: c.x, y: c.y, buildingGuard: true, boss: true, packGuardian: true, pentBoss: { name: boss.name, hp: B.hp * grow, damage: B.damage * grow, affixes: B.affixes } }); } }
   for (let i = 0; i < ng; i++) { const c = take(); if (!c) break; enemySpawns.push({ id: `${id}:g${i}`, kind: P.guards[h(`k${i}`) % P.guards.length], x: c.x, y: c.y, buildingGuard: true }); }
   if (V2 ? vault : q.id === "h2") { const c = take(); if (c) objects.push({ id: "building-cache", kind: "chest", name: "The Regent's Hoard", x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache });
     const g = take(); if (g) enemySpawns.push({ id: `${id}:guardian`, kind: P.regent, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true, ...(V2 ? { boss: true, packGuardian: true, pentBoss: { name: "The Regent", ...P.regentBoss } } : {}) }); }
-  const D = P.dread, dread = V2 ? Math.min(D.max, q.kind === "outer" ? D.outer : q.kind === "inner" || q.kind === "secret" ? D.inner : D.heart + D.perFloor * hi) : 0;
-  const depth = q.kind === "outer" ? 1 : q.kind === "inner" || q.kind === "secret" ? 2 : 3 + Number(q.id.slice(1));
+  const D = P.dread, dread = V2 ? Math.min(D.max, q.kind === "outer" ? D.outer : q.kind === "inner" || q.kind === "secret" || q.kind === "sealed" ? D.inner : D.heart + D.perFloor * hi) : 0;
+  const depth = q.kind === "outer" ? 1 : q.kind === "inner" || q.kind === "secret" || q.kind === "sealed" ? 2 : 3 + Number(q.id.slice(1));
   return { seed, id, recipe: "greatBuilding", name: `${P.name} · ${q.name}${q.trial ? " · a trial" : ""}`, identity: `${P.name}: ${q.name}`, danger: "ghouls", width: W, height: H, tiles, entry: { ...arrive }, exit: null, objects, enemySpawns,
     building: { base: Pp.base, style: "keep", floor: depth, floors: V2 ? 3 + plan.nh - 1 : 5, labyrinth: true, pentagon: true, node: q.n, kind: q.floorKind, of: plan.nodes.length, keys: plan.keyNode ? [{ id: "key0", name: "Regent's Key" }] : plan.V >= 3 ? P.shardNames.slice(0, P.secrets).map((name, k) => ({ id: `shard${k}`, name })) : [], trial: !!q.trial, trials: plan.trials.length, entries, exitsTo, vault: V2 ? vault : q.id === "h2", ...(V2 ? { V: plan.V, dread, boss: !!boss, levers: plan.levers.length, champions: plan.trials.length + plan.nh - 1, heartFloor: q.kind === "heart" ? hi : -1 } : {}), breachEntry: null, roofLadder: null, fallTo: null }, layoutVersion: 1, themePool: 0 };
 }
