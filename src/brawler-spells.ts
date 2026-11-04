@@ -45,6 +45,9 @@ export const BRAWLER = {
 // runs sets it back to the full `seconds` (it never stacks). It does not count as "a spell running" (Spellblade, Charged Air),
 // so a Might build gains nothing through those passives either. `sparks` bounds the hit flashes drawn (a fixed ring).
 export const IMBUE = { seconds: 20, focus: .3, magic: .18, gate: 100, sparks: 8, sparkLife: .3 };
+// The aura, motes and hit flashes (drawBrawlerAuras): crimson with a dark edge.
+export const IMBUE_COLORS = { glow: "#d4143a38", rim: "#ff2e4d", edge: "#2a0610", mote: "#ff5a6e", spark: "#ff3a55" };
+const IMBUE_RIM = [[IMBUE_COLORS.edge, 3.5], [IMBUE_COLORS.rim, 1.5]], IMBUE_RAYS = [[IMBUE_COLORS.edge, 4], [IMBUE_COLORS.spark, 2]]; // dark under, red over
 export function imbueAmount(focus, magicBonus) {
   const f = Math.max(0, (Number(focus) || 1) - 1); if (!(f > 0)) return 0;
   return IMBUE.focus * f + IMBUE.magic * Math.max(0, Number(magicBonus) || 0) * Math.min(1, f / IMBUE.gate);
@@ -57,15 +60,19 @@ export function imbueSpark(game, x, y, now) {
 // Aegis, Shadow Boxing and Imbue Weapon, as the Wayfarer wears them (drawn round the player).
 export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
   const now = game.lastUpdateNow || 0, [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 });
-  if (now < (game.imbueUntil || 0)) { // a violet-blue glow round the Wayfarer and motes circling the weapon hand
+  // Imbue Weapon's palette (Tim, 2026-11-04: "red, not violet"): crimson, not the orange of fire and lava, with a dark edge
+  // under each line so it still reads on lava and fire tiles; Aegis is blue, Shadow Boxing violet.
+  const IR = IMBUE_COLORS;
+  if (now < (game.imbueUntil || 0)) { // a crimson glow round the Wayfarer and motes circling the weapon hand
     const k = Math.min(1, (game.imbueUntil - now) / 1500); // fades over its last 1.5 s
-    ctx.globalAlpha = .35 + .5 * k; ctx.fillStyle = "#9a8cff2e"; ctx.beginPath(); ctx.arc(x, y, s * .75, 0, 7); ctx.fill();
-    ctx.strokeStyle = "#b7adff"; ctx.lineWidth = 1.5; ctx.globalAlpha = (.35 + .5 * k) * (.7 + .3 * Math.sin(t * 5)); ctx.beginPath(); ctx.arc(x, y, s * .75, 0, 7); ctx.stroke();
-    ctx.fillStyle = "#d8d0ff"; for (let i = 0; i < 3; i++) { const a = t * 3 + i * 2.09; ctx.beginPath(); ctx.arc(x + Math.cos(a) * s * .55, y + Math.sin(a) * s * .3, s * .06, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = .35 + .5 * k; ctx.fillStyle = IR.glow; ctx.beginPath(); ctx.arc(x, y, s * .75, 0, 7); ctx.fill();
+    ctx.globalAlpha = (.35 + .5 * k) * (.7 + .3 * Math.sin(t * 5));
+    for (const [c, w] of IMBUE_RIM) { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(x, y, s * .75, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = IR.mote; ctx.strokeStyle = IR.edge; ctx.lineWidth = 1; for (let i = 0; i < 3; i++) { const a = t * 3 + i * 2.09; ctx.beginPath(); ctx.arc(x + Math.cos(a) * s * .55, y + Math.sin(a) * s * .3, s * .07, 0, 7); ctx.fill(); ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
   for (const q of game.imbueSparks || []) { const age = (now - q.at) / 1000; if (age < 0 || age >= IMBUE.sparkLife) continue; const k = 1 - age / IMBUE.sparkLife, [hx, hy] = toScreen(q);
-    ctx.globalAlpha = k; ctx.strokeStyle = "#c9c0ff"; ctx.lineWidth = 2; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + .4, r0 = s * .12, r1 = s * (.3 + .25 * (1 - k)); ctx.beginPath(); ctx.moveTo(hx + Math.cos(a) * r0, hy + Math.sin(a) * r0); ctx.lineTo(hx + Math.cos(a) * r1, hy + Math.sin(a) * r1); ctx.stroke(); }
+    ctx.globalAlpha = k; for (const [c, w] of IMBUE_RAYS) { ctx.strokeStyle = c; ctx.lineWidth = w; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + .4, r0 = s * .12, r1 = s * (.3 + .25 * (1 - k)); ctx.beginPath(); ctx.moveTo(hx + Math.cos(a) * r0, hy + Math.sin(a) * r0); ctx.lineTo(hx + Math.cos(a) * r1, hy + Math.sin(a) * r1); ctx.stroke(); } }
     ctx.globalAlpha = 1; }
   if (now < (game.aegisUntil || 0)) { const k = (game.aegisUntil - now) / BRAWLER.aegis.ms; ctx.fillStyle = "#9fd0ff22"; ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5; ctx.globalAlpha = .4 + .6 * k; ctx.beginPath(); ctx.arc(x, y, s * .85, 0, 7); ctx.fill(); ctx.stroke();
     ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }

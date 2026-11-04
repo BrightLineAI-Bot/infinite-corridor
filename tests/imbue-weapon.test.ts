@@ -9,7 +9,7 @@ import { snapshotSave, splitSnapshot, assembleSave, validateJourney } from '../s
 import { createCombatant } from '../src/combat.ts';
 import { SPELLS, spellOpen } from '../src/items.ts';
 import { CASTABLES, availableCastables, setSlot } from '../src/spell-slots.ts';
-import { IMBUE, imbueAmount, BRAWLER } from '../src/brawler-spells.ts';
+import { IMBUE, IMBUE_COLORS, imbueAmount, imbueSpark, drawBrawlerAuras, BRAWLER } from '../src/brawler-spells.ts';
 
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
 const HP = 5e9;
@@ -133,4 +133,14 @@ test('every spell cast each frame for 60 s with cooldowns wiped: no NaN, bounded
   assert.ok(maxFx < 400 && maxShots <= 64, `effects ${maxFx}, shots ${maxShots}`);
   assert.ok(g.enemies.every((e) => e.hp < HP), 'they were hit');
   assert.ok(BRAWLER['shadow-boxing'], 'the other brawler spells are untouched');
+});
+
+test('the aura, motes and hit flashes are red (Tim: "red, not violet"), with a dark edge to read on lava and fire', () => {
+  const used = new Set(), ctx = new Proxy({}, { get: (o, k) => k in o ? o[k] : () => {}, set: (o, k, v) => { if (k === 'fillStyle' || k === 'strokeStyle') used.add(v); o[k] = v; return true; } });
+  const game = { lastUpdateNow: 5000, imbueUntil: 9000, player: { x: 3, y: 3 } }; imbueSpark(game, 4, 3, 4950);
+  drawBrawlerAuras(ctx, game, (p) => [p.x * 32, p.y * 32], 32, 5);
+  for (const c of Object.values(IMBUE_COLORS)) assert.ok(used.has(c), `${c} drawn`);
+  const red = (hex) => { const n = parseInt(hex.slice(1, 7), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return r > g * 2 && r > b * 1.5; };
+  for (const k of ['glow', 'rim', 'mote', 'spark']) assert.ok(red(IMBUE_COLORS[k]), `${k} ${IMBUE_COLORS[k]} is red`);
+  assert.ok(![...used].some((c) => /9a8cff|b7adff|d8d0ff|c9c0ff/i.test(c)), 'no violet left');
 });
