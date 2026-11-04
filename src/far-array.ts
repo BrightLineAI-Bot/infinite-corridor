@@ -50,7 +50,7 @@ export function ensureFarArray(save) {
   const f = save.farArray && typeof save.farArray === "object" ? save.farArray : {};
   // Journeys that felled a Listener before 357 go quiet now, counting from the relays they had then.
   const quiet = f.quiet === undefined ? (Number(f.listeners) || 0) > 0 : !!f.quiet, relaysAt = f.relaysAt != null && Number.isFinite(Number(f.relaysAt)) ? Math.max(0, Number(f.relaysAt)) : answeredRelays(save);
-  save.farArray = {
+  save.farArray = { ...f, // release 736 (review S7): unknown fields kept
     v: 1, gate: Math.max(1, Number(f.gate) || 1), pieces: Math.max(0, Number(f.pieces) || 0), runs: Math.max(0, Number(f.runs) || 0),
     listeners: Math.max(0, Number(f.listeners) || 0), boons: (Array.isArray(f.boons) ? f.boons : []).filter((id) => BOONS[id]),
     offer: (Array.isArray(f.offer) ? f.offer : []).filter((id) => BOONS[id]), ending: ["close", "open"].includes(f.ending) ? f.ending : null,

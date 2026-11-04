@@ -305,7 +305,7 @@ export const WANDERER_QUESTS = [
 export const WANDERER = { name: "Old Quillon", role: "Wandering cartographer" };
 export function ensureWanderer(s) {
   const w = s.wanderer && typeof s.wanderer === "object" ? s.wanderer : {};
-  s.wanderer = { v: 1, stage: Math.max(0, Number(w.stage) || 0), completed: Math.max(0, Number(w.completed) || 0), met: !!w.met, quest: w.quest && typeof w.quest === "object" ? w.quest : null };
+  s.wanderer = { ...w, v: 1, stage: Math.max(0, Number(w.stage) || 0), completed: Math.max(0, Number(w.completed) || 0), met: !!w.met, quest: w.quest && typeof w.quest === "object" ? w.quest : null };
   return s;
 }
 // Does the cartographer stand in this section for the current stage? Likelier once an errand is done and owed.
@@ -384,7 +384,7 @@ export function ensureReciters(s) {
   for (const id of Object.keys(progress)) met[id] = true; // anyone whose place was kept before release 122 was met
   // Release 128: random is the default (missing = random); only an explicit "linear" choice is stored.
   for (const [id, m] of Object.entries(r.modes || {})) if (known.has(id) && m === "linear" && r.v >= 4) modes[id] = "linear";
-  s.reciters = { v: 4, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) };
+  s.reciters = { ...r, v: 4, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) }; if (!(Array.isArray(r.custom) && r.custom.length)) delete s.reciters.custom; // release 736 (review S7): unknown fields kept
   return s;
 }
 export function storyCatalog() { return RECITERS.map((r) => ({ ...r, count: RECITATIONS[r.id].length })); }
