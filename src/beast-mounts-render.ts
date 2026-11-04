@@ -8,19 +8,25 @@ import { drawStalker } from "./stalker-render.ts";
 
 // One reused actor per frame (no per-frame allocation beyond it).
 const actor = { id: "", kind: "", packKind: "", x: 0, y: 0, scale: 1, facingX: 1, boss: false, hopLift: 0, stalkForm: "cat", stalkAct: { kind: "prowl", t: 0, total: 0 }, pack: null, mountView: true };
-// Draws the mount of `m` under the Wayfarer at `p` (raised `liftPx` by a jump). Returns how far up the Wayfarer sits, in pixels.
+const seatOut = { up: 0, dx: 0 }, front = { style: null, x: 0, y: 0, u: 0, drop: 0, face: 1 };
+// Draws the mount of `m` under the Wayfarer at `p` (raised `liftPx` by a jump). Returns where the Wayfarer sits: { up, dx } in pixels
+// (up from their feet; along the screen, + right). drawMountFront, after the rider, adds anything that goes in front of them.
 export function drawMount(ctx, m, p, s, now, liftPx = 0, reduceMotion = false) {
-  const B = MOUNT_BEASTS[m?.beast]; if (!B) return 0;
+  const B = MOUNT_BEASTS[m?.beast]; front.style = null; if (!B) { seatOut.up = 0; seatOut.dx = 0; return seatOut; }
   const moving = (p.walkPhase || 0) % 2, face = p.facing === "left" ? -1 : p.facing === "right" ? 1 : (p.mountFace || 1); p.mountFace = face;
   Object.assign(actor, { id: `mount:${m.id}`, kind: m.beast, packKind: m.beast, x: p.x, y: p.y - liftPx / s, scale: B.scale, facingX: face, hopLift: reduceMotion ? 0 : Math.abs(Math.sin(moving * Math.PI)) * .5 });
   try {
     if (m.beast === "stalker") drawStalker(ctx, actor, s, now, reduceMotion);
     else drawPackMonster(ctx, actor, s, now, p.facing);
   } catch { /* a renderer that needs fight state it does not have draws nothing; the rider still shows */ }
-  const seat = B.seat * s;
-  drawSaddle(ctx, B.saddle, (p.x + .5) * s, (p.y + .8) * s - liftPx - seat, s * Math.max(.8, Math.min(1.6, B.scale * .5)), seat, face);
-  return seat;
+  const bob = reduceMotion ? 0 : (Number(B.bob) || 0) * Math.sin(now / 420) * s, seat = B.seat * s + bob, dx = (Number(B.seatX) || 0) * face * s;
+  const u = s * Math.max(.8, Math.min(1.6, B.scale * .5)), sx = (p.x + .5) * s + dx, sy = (p.y + .8) * s - liftPx - seat;
+  if (B.saddle === "girth") { drawSaddle(ctx, "girth", sx + (Number(B.bandX) || 0) * face * s, sy, (Number(B.band) || 1.4) * s / 1.6, B.seat * s, face); drawSaddle(ctx, "girthSeat", sx, sy, u, B.seat * s, face); } // the band round the body's axis; the seat on its back
+  else drawSaddle(ctx, B.saddle, sx, sy, B.saddle === "bowl" ? u * 1.35 : u, B.seat * s, face); // the drop without the bob: one cached image
+  if (B.saddle === "bowl") Object.assign(front, { style: "bowlFront", x: sx, y: sy, u: u * 1.35, drop: B.seat * s, face });
+  seatOut.up = seat; seatOut.dx = dx; return seatOut;
 }
+export function drawMountFront(ctx) { if (front.style) drawSaddle(ctx, front.style, front.x, front.y, front.u, front.drop, front.face); front.style = null; }
 
 // ---- Saddles (original designs; visual only) ----
 const SADDLE_CACHE = new Map(), SADDLE_CACHE_MAX = 24;
@@ -49,6 +55,28 @@ function paintSaddle(g, style, x, y, u, drop, face) {
     g.fillStyle = leather; g.beginPath(); g.moveTo(x - u * .42, y + u * .06); g.quadraticCurveTo(x, y + u * .22, x + u * .42, y + u * .06); g.lineTo(x + u * .36 * face, y - u * .12); g.quadraticCurveTo(x, y, x - u * .36 * face, y - u * .2); g.closePath(); g.fill();
     g.strokeStyle = dark; g.lineWidth = u * .03; g.stroke();
     g.fillStyle = brass; g.beginPath(); g.arc(x + u * .38 * face, y - u * .1, u * .05, 0, Math.PI * 2); g.fill(); // the pommel knob
+    return;
+  }
+  if (style === "bowl" || style === "bowlFront") { // a shallow cup of riveted copper the rider sits in; its near rim is drawn over them
+    const rim = (a0, a1) => { g.beginPath(); g.ellipse(x, y + u * .02, u * .5, u * .16, 0, a0, a1); g.stroke(); };
+    if (style === "bowl") { g.fillStyle = "#8a5a2e"; g.beginPath(); g.ellipse(x, y + u * .02, u * .5, u * .16, 0, Math.PI, Math.PI * 2); g.fill(); g.strokeStyle = "#e0a868"; g.lineWidth = u * .05; rim(Math.PI, Math.PI * 2); return; }
+    g.fillStyle = "#a8683a"; g.beginPath(); g.moveTo(x - u * .5, y + u * .02); g.quadraticCurveTo(x, y + u * .5, x + u * .5, y + u * .02); g.ellipse(x, y + u * .02, u * .5, u * .16, 0, 0, Math.PI); g.closePath(); g.fill();
+    g.strokeStyle = "#5a3418"; g.lineWidth = u * .03; g.beginPath(); g.moveTo(x - u * .5, y + u * .02); g.quadraticCurveTo(x, y + u * .5, x + u * .5, y + u * .02); g.stroke();
+    g.strokeStyle = "#e0a868"; g.lineWidth = u * .06; rim(0, Math.PI);
+    g.fillStyle = "#f1d39a"; for (let i = 1; i < 6; i++) { const a = i / 6 * Math.PI; g.beginPath(); g.arc(x + Math.cos(a) * u * .5, y + u * .02 + Math.sin(a) * u * .16, u * .025, 0, Math.PI * 2); g.fill(); } // rivets
+    return;
+  }
+  if (style === "girth") { // a broad band right round the body (its far side faint behind it); "girthSeat", the padded seat above it
+    const r = u * .8; g.lineWidth = u * .16;
+    g.strokeStyle = "rgba(58,33,18,.55)"; g.beginPath(); g.ellipse(x, y + u * .3, r, r * .28, 0, Math.PI, Math.PI * 2); g.stroke(); // the far side
+    g.strokeStyle = "#5a361c"; g.beginPath(); g.ellipse(x, y + u * .3, r, r * .28, 0, 0, Math.PI); g.stroke(); // the near side
+    g.strokeStyle = "#c9a05a"; g.lineWidth = u * .04; g.beginPath(); g.ellipse(x, y + u * .3, r, r * .28, 0, .15, Math.PI - .15); g.stroke(); // a brass stitch line
+    g.fillStyle = "#c9a05a"; g.fillRect(x - u * .06, y + u * .3 + r * .22, u * .12, u * .14); // the buckle
+    return;
+  }
+  if (style === "girthSeat") {
+    g.fillStyle = leather; g.beginPath(); g.ellipse(x, y + u * .06, u * .36, u * .13, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = dark; g.lineWidth = u * .03; g.stroke();
+    strap(g, x - u * .25 * face, y + u * .04, x - u * .32 * face, y - u * .2, u * .05, iron); // a cantle bar
     return;
   }
   if (style === "harness") { // a seat frame on a padded board, lashed round the body with broad bands and brass rings

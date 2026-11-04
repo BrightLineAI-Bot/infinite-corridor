@@ -12,26 +12,31 @@ import { trapChance } from "./building.ts";
 // mount, its real size as met in the world (Tim, 2026-11-04: "so you can be riding a pretty huge beast"; the pack form's scale x the
 // world-beast boss scale, the Stalker's STALKER.size); `seat`: how high on its back the Wayfarer sits, in tiles; `saddle`: what is
 // strapped on under the rider ("strap", a saddle with girth and stirrups; "harness", a seat frame lashed round a body; "frame", a
-// riding frame braced between wings); `speed`: walking speed multiplier while riding; `jump`: jump time multiplier (dodges unchanged).
+// riding frame braced between the wings and the neck; "bowl", a shallow cup the rider sits in, bobbing on the Blob; "girth", a band
+// right round the worm's body, the seat on its back behind the head); `seatX`: tiles along its facing from the middle of its feet
+// (+ toward the head); `band` / `bandX`: the body's width where a girth goes round it, and its axis from the seat (tiles along facing); `bob`: how far a seat bobs with the body, in tiles; `speed`: walking speed multiplier while riding; `jump`: jump time multiplier (dodges unchanged).
 export const MOUNT_BEASTS = {
   stalker: { name: "The Stalker", pen: 2, scale: 1.4, seat: .62, saddle: "strap", speed: 1.75, jump: 1.6 },
-  morphingBlob: { name: "The Morphing Blob", pen: 2, scale: 1.96, seat: 1.2, saddle: "harness", speed: 1.45, jump: 1.5 },
-  tremorWorm: { name: "The Tremor Worm", pen: 3, scale: 2.3, seat: 1.9, saddle: "harness", speed: 1.6, jump: 1.5 },
+  morphingBlob: { name: "The Morphing Blob", pen: 2, scale: 1.96, seat: 1.05, saddle: "bowl", bob: .08, speed: 1.45, jump: 1.5 },
+  tremorWorm: { name: "The Tremor Worm", pen: 3, scale: 2.3, seat: 3, seatX: -.45, band: 2.1, bandX: .85, saddle: "girth", speed: 1.6, jump: 1.5 },
   mountainTurtle: { name: "The Mountain Turtle", pen: 4, scale: 3.92, seat: 2.3, saddle: "harness", speed: 1.4, jump: 1.45 },
   astralWorm: { name: "The Astral Worm", pen: 3, scale: 1.35, seat: .2, saddle: "harness", speed: 1.7, jump: 1.6 },
   briarStag: { name: "The Briar Stag", pen: 3, scale: 2.36, seat: 1.75, saddle: "strap", speed: 1.85, jump: 1.7 },
   ashenMoth: { name: "The Ashen Moth", pen: 3, scale: 2.16, seat: 1.2, saddle: "frame", speed: 1.7, jump: 1.75 },
-  crimsonTyrant: { name: "The Crimson Tyrant", pen: 4, scale: 3.51, seat: 1.9, saddle: "frame", speed: 1.7, jump: 1.75 },
-  doomChaser: { name: "The Doom Chaser", pen: 4, scale: 3.38, seat: 1.85, saddle: "frame", speed: 1.75, jump: 1.75 },
+  crimsonTyrant: { name: "The Crimson Tyrant", pen: 4, scale: 3.51, seat: 2.75, seatX: .8, saddle: "frame", speed: 1.7, jump: 1.75 },
+  doomChaser: { name: "The Doom Chaser", pen: 4, scale: 3.38, seat: 2.65, seatX: .78, saddle: "frame", speed: 1.75, jump: 1.75 },
 };
 export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
-export const SADDLE_NAMES = { strap: "Saddled", harness: "Harnessed", frame: "Riding frame" };
+export const SADDLE_NAMES = { strap: "Saddled", harness: "Harnessed", frame: "Riding frame", bowl: "Riding bowl", girth: "Girth-strapped" };
 // Never penned or caught (Tim, 2026-11-04; the Nanobot Knight the same day: "not rideable").
 export const MOUNT_NEVER = ["questingBeast", "psychicCrystal", "voidWalker", "lightningGiant", "nanobotKnight"];
 // `cap` mounts in the stable; a catch beyond it lets the oldest go. `seconds` / `sections`: a mount's riding life (Tim: "10–15
 // minutes... or 30–40 unique sections"). `knockoff`: one frame's loss of this share of maximum health throws the Wayfarer off.
 // `sense`: a pen is sized for the biggest catchable beast within this many tiles (building.ts PEN_COST prices each size).
 export const MOUNT_RIDE = { cap: 3, seconds: 720, sections: 35, knockoff: .35, sense: 14 };
+// Release 737 (Tim, 2026-11-04: "hits should land on the rider where drawn"): how far above its feet the rider sits, in tiles. While
+// mounted, the hostile phase of each frame sees the Wayfarer there (game.ts riderUp / riderDown); terrain stays at the feet.
+export const riderLiftOf = (m) => Number(MOUNT_BEASTS[m?.beast]?.seat) || 0;
 
 // Which mount a live actor would be, or null. `never` names an excluded beast.
 export function mountIdFor(e) {

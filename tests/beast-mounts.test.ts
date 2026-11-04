@@ -88,8 +88,8 @@ test('a pen too small for the beast does not hold it; big pens cost more', () =>
   assert.ok(PEN_COST[3].wood > PEN_COST[2].wood && PEN_COST[4].wood > PEN_COST[3].wood && PEN_COST[2].wood === BUILD.kinds.enclosure.cost.wood, 'cost grows with the pen');
   const before = { ...g.save.materials }; g.player.x = 20; g.player.y = 6; assert.ok(placeBuild(g, 20, 7, 'enclosure').ok);
   assert.equal(g.builds[g.builds.length - 1].size, 4); for (const [k, n] of Object.entries(PEN_COST[4])) assert.equal(before[k] - g.save.materials[k], n, k);
-  const poor = game('POOR'); poor.enemies = [e]; poor.save.materials = { ...poor.save.materials, wood: 7, stone: 99, cinderIron: 99 }; e.x = 12; e.y = 12;
-  assert.match(placeBuild(poor, 10, 7, 'enclosure').message, /A 4×4 enclosure \(sized for the beast near\) takes 8 wood, 8 stone, 6 cinder iron/, 'the cost is shown');
+  const poor = game('POOR'); poor.enemies = [e]; poor.save.materials = { ...poor.save.materials, wood: 4, stone: 99, cinderIron: 99 }; e.x = 12; e.y = 12;
+  assert.match(placeBuild(poor, 10, 7, 'enclosure').message, /A 4×4 enclosure \(sized for the beast near\) takes 5 wood, 5 stone, 4 cinder iron/, 'the cost is shown');
 });
 
 test('the stable keeps three: a fourth catch lets the oldest go, with a clear message', () => {
@@ -184,3 +184,28 @@ test('death gets you down; the mount stays stabled with its time; a heavy blow t
   h.player.hp = Math.round(h.save.maxHp * .5); h.update(.05, idle, 1050); assert.equal(h.save.mounts.riding, null, 'half its health in one blow throws you off'); assert.match(h.message, /throws you from/); assert.equal(h.save.mounts.stable.length, 1);
 });
 const mountLeft = (g) => g.save.mounts.stable[0].left;
+
+test('a whole 4×4 try (both pieces) costs 10 wood, 10 stone, 8 cinder iron; a 3×3 lies between; the 2×2 is unchanged', () => {
+  const both = (n) => Object.fromEntries(Object.entries(PEN_COST[n]).map(([k, v]) => [k, v * 2]));
+  assert.deepEqual(both(4), { wood: 10, stone: 10, cinderIron: 8 }); assert.deepEqual(PEN_COST[3], { wood: 4, stone: 4, cinderIron: 3 }); assert.deepEqual(PEN_COST[2], BUILD.kinds.enclosure.cost);
+});
+
+test('mounted, hits land on the rider where drawn; the ground under the mount still counts at its feet', () => {
+  const blast = (g, dy) => { const p = g.player; g.effects = [{ id: 'fx', hostile: true, x: p.x + .5, y: p.y + .52 + dy, radius: .4, damage: 20, life: 1 }]; const hp = p.hp; g.update(.05, idle, 2000 + Math.random()); return hp - p.hp; };
+  const lift = MOUNT_BEASTS.mountainTurtle.seat;
+  const on = game('RIDER'); stableMount(on.save, 'mountainTurtle'); on.summonMount(); on.player.x = 16; on.player.y = 16;
+  assert.ok(blast(on, -lift) > 0, 'a blast where the rider is drawn hits'); on.player.invulnerableUntil = 0;
+  assert.equal(on.player.y, 16, 'the Wayfarer is back at the feet after the frame'); assert.equal(on.player.riderShift || 0, 0);
+  const on2 = game('RIDER'); stableMount(on2.save, 'mountainTurtle'); on2.summonMount(); on2.player.x = 16; on2.player.y = 16;
+  assert.equal(blast(on2, 0), 0, 'a blast at the mount\'s feet misses the rider');
+  const off = game('RIDER'); off.player.x = 16; off.player.y = 16; assert.ok(blast(off, 0) > 0, 'on foot, the feet are where you are'); assert.equal(blast(game('RIDER'), -lift), 0);
+  // Ground: lethal ground under the rider's drawn place is nothing; under the mount's feet it is a fall.
+  const g = game('RIDER-GROUND'); stableMount(g.save, 'mountainTurtle'); g.summonMount(); g.player.x = 16; g.player.y = 16;
+  for (let x = 0; x < 32; x++) for (const y of [13, 14]) Object.assign(g.map.tiles[y * W + x], { kind: 'canyon' });
+  for (let i = 0; i < 10; i++) g.update(.05, idle, 3000 + i * 50); assert.ok(!g.save.worldFlags.deaths, 'canyon under the drawn rider is not underfoot');
+  for (let x = 0; x < 32; x++) Object.assign(g.map.tiles[16 * W + x], { kind: 'canyon' }); g.update(.05, idle, 4000); assert.equal(g.save.worldFlags.deaths, 1, 'canyon under the feet is');
+  // A knock while mounted moves the mount's feet through the collision mover, against the ground they stand on.
+  const k = game('RIDER-KNOCK'); stableMount(k.save, 'mountainTurtle'); k.summonMount(); k.player.x = 16; k.player.y = 16;
+  for (let x = 0; x < 32; x++) Object.assign(k.map.tiles[17 * W + x], { blocked: true }); k.riderUp(); assert.ok(k.player.y < 16);
+  k.stalkerWorld(.05, 5000).displace(0, 1.5); k.riderDown(); assert.ok(k.player.y < 16.2, `the wall under the feet stops the knock (y ${k.player.y.toFixed(2)})`);
+});

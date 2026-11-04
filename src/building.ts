@@ -34,7 +34,7 @@ export const BUILD_KINDS = Object.keys(BUILD.kinds);
 export const ENCLOSURE = { size: 2, guard: 3, recharge: 3, need: 2, trap: { full: .15, low: .6, lowAt: .25, time: 45 } };
 // Release 737 (Tim, 2026-11-04: "bigger beasts need more materials"): what a pen of each side costs, growing with its area (the 2x2
 // is BUILD.kinds.enclosure's own cost). A side past the table costs its largest row.
-export const PEN_COST = { 2: { wood: 2, stone: 2, cinderIron: 2 }, 3: { wood: 5, stone: 5, cinderIron: 4 }, 4: { wood: 8, stone: 8, cinderIron: 6 } };
+export const PEN_COST = { 2: { wood: 2, stone: 2, cinderIron: 2 }, 3: { wood: 4, stone: 4, cinderIron: 3 }, 4: { wood: 5, stone: 5, cinderIron: 4 } }; // per piece (Tim: a whole 4x4 try, both pieces, is 10 wood, 10 stone, 8 cinder iron)
 export function penCost(n) { const sides = Object.keys(PEN_COST).map(Number).sort((a, b) => a - b), k = sides.filter((v) => v <= n).pop() ?? sides[0]; return PEN_COST[k]; }
 export const costText = (cost) => Object.entries(cost).map(([k, n]) => `${n} ${k === "cinderIron" ? "cinder iron" : k}`).join(", ");
 const affords = (save, cost) => Object.entries(cost).every(([mat, need]) => (Number(save?.materials?.[mat]) || 0) >= need);

@@ -21,7 +21,7 @@ import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects } from "./monster-render.ts";
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
 import { penSide } from "./building.ts"; // release 737: pens sized for the beast
-import { drawMount } from "./beast-mounts-render.ts"; // release 737: the Wayfarer riding
+import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 737: the Wayfarer riding
 import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
@@ -2369,7 +2369,7 @@ export function render(ctx, g, w, h, now) {
         if (g.save.boat.sub) { const sw = bw * BOAT.sub.hull / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.subHull) || 0) / BOAT.sub.hull); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - sw - 3, by - 1, sw + 2, bh + 2); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx - 2 - sw * left, by, sw * left, bh); } // release 311: the submersible's plating, silver, to the left
         if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
-      const ride = g.area === "overworld" ? g.mountRide?.() : null, seat = ride ? drawMount(ctx, ride, p, s, now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : 0; // release 737: riding
+      const ride = g.area === "overworld" ? g.mountRide?.() : null, seatInfo = ride ? drawMount(ctx, ride, p, s, now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null, seat = seatInfo ? seatInfo.up : 0; // release 737: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
@@ -2381,7 +2381,7 @@ export function render(ctx, g, w, h, now) {
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
       if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift + hover) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting || seaSuit); else actor(
         ctx,
-        p.x,
+        p.x + (seatInfo ? seatInfo.dx / s : 0), // release 737: on the mount's back
         p.y - (lift + (mech ? mechLift : 0) + seat) / s, // release 543: in the robot, the Wayfarer rises with it (a boost left their legs below it)
         s,
         "player",
@@ -2389,6 +2389,7 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
+      if (seatInfo) drawMountFront(ctx); // release 737: a riding bowl's near rim over the rider
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);

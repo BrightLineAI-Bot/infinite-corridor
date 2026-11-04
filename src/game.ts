@@ -72,7 +72,7 @@ import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng } from "./random.ts";
-import { MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 737: penning catches, the stable and riding
+import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 737: penning catches, the stable and riding
 import { setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.ts";
@@ -771,6 +771,7 @@ export function footprintVoid(map, width, x, y) {
   return false;
 }
 export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null, allowMarineTerrain=false) {
+  if (entity?.riderShift) { const sh = entity.riderShift; entity.riderShift = 0; entity.y += sh; try { return moveAxis(entity, dx, dy, map, width, allowLethalTerrain, onStep, allowMarineTerrain); } finally { entity.y -= sh; entity.riderShift = sh; } } // release 737: a knock on a rider moves the mount's feet
   let moved = false,
     steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.16)),
     sx = dx / steps,
@@ -4335,7 +4336,7 @@ export class Game {
     };
     return {
       player: p, map, width, height, area: this.area, dt, now, enemies: this.enemies, sanctuary,
-      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
+      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - (p.riderShift || 0) - last.y) / dt } : { x: 0, y: 0 }, /* release 737: not the rider lift */
       playerShots: this.projectiles, playerSwinging: now < (p.meleeUntil || 0), playerBlasts: this.effects.filter((fx) => !fx.hostile && fx.damage > 0), // release 187: the Questing Beast reads these to dodge (release 245: the Nanobot Knight reads spells too)
       playerFacing: ({ left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } })[p.facing] || { x: 0, y: 1 },
       pull(source, step, radius) { const ddx = source.x - p.x, ddy = source.y - p.y, dd = Math.hypot(ddx, ddy); if (!dd || dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * Math.min(step, Math.max(0, dd - 1)), ddy / dd * Math.min(step, Math.max(0, dd - 1))); return true; },
@@ -4590,6 +4591,10 @@ export class Game {
   penSize() { const p = this.player; let n = ENCLOSURE.size; for (const e of this.enemies || []) if (catchableActor(e) && Math.hypot(e.x - p.x, e.y - p.y) <= MOUNT_RIDE.sense) n = Math.max(n, MOUNT_BEASTS[mountIdFor(e)].pen); return n; }
   // ---- Riding (release 737) ----
   mountRide() { return this.area === "overworld" && this.player?.hp > 0 ? ridingMount(this.save) : null; }
+  // Release 737: while mounted, the hostile part of the frame sees the Wayfarer where the rider is drawn (`seat` tiles up); moveAxis
+  // takes the lift off again, so a knock still moves the mount's feet. Terrain, water, mire and lethal ground stay at the feet.
+  riderUp() { const p = this.player, m = this.mountRide(); if (!m || p.riderShift) return; const h = riderLiftOf(m); if (h > 0) { p.y -= h; p.riderShift = h; } }
+  riderDown() { const p = this.player; if (p.riderShift) { p.y += p.riderShift; p.riderShift = 0; } }
   mountLeap(now) { return !!this.mountRide() && now < (this.jumpUntil || 0); } // airborne on a mount: chasms and water pass under
   mountBlock() {
     const p = this.player;
@@ -4661,7 +4666,7 @@ export class Game {
     const game = this, p = this.player, map = this.map, width = mapWidth(map, this.area), last = this._packLastPlayer || p;
     return (this._stalkW = {
       now, dt, player: p, sheltered: this.stalkerBarred(p.x, p.y), door: this._stalkOver?.rx === this.rx && this._stalkOver?.ry === this.ry ? this._stalkOver : null,
-      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - last.y) / dt } : { x: 0, y: 0 },
+      playerVelocity: dt > 0 ? { x: (p.x - last.x) / dt, y: (p.y - (p.riderShift || 0) - last.y) / dt } : { x: 0, y: 0 }, /* release 737: not the rider lift */
       open: (x, y) => game.stalkerOpen(x, y),
       free: (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= mapHeight(map, game.area) - 1.5 && !game.stalkerBarred(x, y), // the cat climbs over walls and up trees, never into a building, shelter or town
       shotBlocked: (x, y) => !projectileTileOpen(map, width, x, y),
@@ -6431,7 +6436,7 @@ export class Game {
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
-    this.tickMount(dt); // release 737
+    this.riderDown(); this.tickMount(dt); // release 737 (riderDown: never carry a rider lift over a frame)
     this._astralDrainCredits=[];
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
@@ -6683,6 +6688,7 @@ export class Game {
       for(const e of escaped)e.dead=true;
       if(escaped.length)this.message="Walls close around you. The Gate Revenant loses the trail beyond the threshold.";
     }
+    this.riderUp(); // release 737: hostile shots, blasts and auras meet the rider where drawn
     const combatNpcTargets=(this.projectiles.length||this.effects.length)?this.npcTargets():[];
     if(!fellIntoHazard&&this.projectiles.length)this.projectiles = advanceEnemyProjectileBehaviors(this.projectiles,p,dt,{cap:this.area==="dungeon"?32:64});
     if(!fellIntoHazard&&this.projectiles.length)this.projectiles = updateProjectiles(
@@ -6732,6 +6738,7 @@ export class Game {
     const eliteStatus=ensureEliteState(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
     for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>moveAxis(p,dx,dy,this.map,mapWidth(this.map,this.area)))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
+    this.riderDown(); // the ground under the mount from here
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
     const underKind = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind;
@@ -6779,6 +6786,7 @@ export class Game {
       ink:(seconds)=>{this.inkUntil=now+seconds*1000;if(now>(this.inkMessageAt||0)){this.inkMessageAt=now+8000;this.message="Ink clouds the water — the Stormkraken hides in the dark."}}};
     tickTravelers(this.map,p,dt);
     const seaSummons=[];
+    this.riderUp(); // release 737: creatures aim at, strike and blast the rider where drawn
     const skirmishHooks={settled:(side,survivors)=>{const war=this.map.skirmish;if(!war)return;this.save.worldFlags[war.id]=side;const winner=war[side],loser=war[side==="a"?"b":"a"];this.message=`The fighting ends: the ${winner.label} hold the field against the ${loser.label}.`;journalOnce(this.save,war.id,`At ${this.rx},${this.ry}, ${war.a.label} and ${war.b.label} fought; the ${winner.label} held the field.`,"Skirmishes")}};
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
@@ -6837,7 +6845,7 @@ export class Game {
     this.performanceStats.peakActiveEnemies=Math.max(this.performanceStats.peakActiveEnemies,this.performanceStats.activeEnemies);
     const volcano=this.area==="overworld"&&this.map.volcano;
     if(volcano&&Math.hypot(p.x-volcano.x,p.y-volcano.y)<12){this.volcanoClock=(this.volcanoClock||0)+dt;if(this.volcanoClock>=volcano.period){this.volcanoClock=0;this.volcanoSeq=(this.volcanoSeq||0)+1;const n=hashSeed(`${this.save.seed}:eruption:${this.rx}:${this.ry}:${this.volcanoSeq}`);for(let i=0;i<4;i++){const a=((n>>(i*5))%360)*Math.PI/180,r=i===0?0:1.2+((n>>(i*3))%30)/10;addPackEffect(this.packEffects||=[],{kind:"lavaBomb",owner:"volcano",x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r,radius:1.05,arming:1.3+i*.2,damage:Math.ceil(this.save.maxHp*.18),jumpable:false,from:{x:volcano.x,y:volcano.y-1}},now)}this.message="The caldera erupts. Watch the burning circles."}}
-    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};this.syncAstralRiders();for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);reconcileAstralCompanions(this);
+    this.packEffects=tickPackEffects(this.packEffects||[],packWorld);this.riderDown();/* release 737 */this.performanceStats.activeHazardsAndEffects+=this.packEffects.length;this._packLastPlayer={x:p.x,y:p.y};this.syncAstralRiders();for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);reconcileAstralCompanions(this);
     // A Lighthouse Buoy (release 156) keeps a line for the Wayfarer's skiff: whoever wakes or lands there without it
     // finds it tied alongside, so a rest point at sea is never a prison.
     if (this.area === "overworld" && this.map.openSea && ((this._buoyCheck = (this._buoyCheck || 0) - dt) <= 0)) {
