@@ -6,7 +6,7 @@ import { enemyMeleeGeometry } from "./combat.ts";
 import { ruleRows } from "./elders.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
-import { MECH, DRONE } from "./vehicle-gates.ts";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
 import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.ts"; // 613: Starfield rafts
 import { SEASONS, treeSeason } from "./seasons.ts";
@@ -719,6 +719,23 @@ function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
   ctx.fillStyle = "#14202a"; ctx.beginPath(); ctx.ellipse(cx + dir * u * .38, cy, u * .36, u * .3, 0, 0, 7); ctx.fill();
   ctx.fillStyle = "#5fd6f0"; ctx.beginPath(); ctx.arc(cx + dir * u * .45, cy, u * .15, 0, 7); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(cx + dir * u * .5, cy - u * .06, u * .05, 0, 7); ctx.fill();
   if (heal > 0) { ctx.globalAlpha = Math.min(1, heal) * .7; ctx.strokeStyle = "#7dff9a"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.ellipse(cx, cy, u * 1.35, u * 1.1, 0, 0, 7); ctx.stroke(); }
+  ctx.restore();
+}
+// The drone fizzle (Tim, 2026-11-04: "your drone will explode or fizzle out, noticeably"; vehicle-gates.ts DRONE_FIZZLE): where the
+// lift failed, a white-hot flash, a ring bursting outward, DRONE_FIZZLE.sparks sparks flying off and falling, and a dark puff. With
+// reduced motion a short still flash and ring. Fixed angles per spark (no allocation, nothing random).
+function drawDroneFizzle(ctx, fz, s, now, reduce = false) {
+  const span = Math.max(1, fz.until - fz.at), k = Math.max(0, Math.min(1, (now - fz.at) / span)); if (k >= 1) return;
+  const cx = (fz.x + .5) * s, cy = (fz.y - .52) * s, u = s * .34, fade = 1 - k; // where the carrying drone was drawn
+  ctx.save();
+  if (k < .25) { const f = 1 - k / .25, glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, u * 2.4); glow.addColorStop(0, `rgba(255,250,220,${.95 * f})`); glow.addColorStop(.4, `rgba(140,220,255,${.6 * f})`); glow.addColorStop(1, "rgba(140,220,255,0)"); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, u * 2.4, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = fade; ctx.strokeStyle = "#9fe6ff"; ctx.lineWidth = Math.max(1.5, s * .06 * fade); ctx.beginPath(); ctx.arc(cx, cy, u * (reduce ? 1.4 : .6 + 2.6 * Math.sqrt(k)), 0, 7); ctx.stroke();
+  if (!reduce) {
+    ctx.strokeStyle = "#fff2b0"; ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, s * .04);
+    for (let i = 0; i < DRONE_FIZZLE.sparks; i++) { const a = i * 2.39996 + .4, sp = .9 + (i * 37 % 10) / 10, r = u * (.4 + 3.2 * k * sp), x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r + s * 1.6 * k * k, tail = u * .35 * fade;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - Math.cos(a) * tail, y - Math.sin(a) * tail - s * .3 * k); ctx.stroke(); }
+    ctx.globalAlpha = .45 * fade; ctx.fillStyle = "#2a2f36"; ctx.beginPath(); ctx.arc(cx, cy - s * .5 * k, u * (.5 + 1.2 * k), 0, 7); ctx.fill();
+  }
   ctx.restore();
 }
 // The empowered robot (release 389; redrawn in release 391, Tim: "less... more understated... more like a spacesuit...
@@ -2481,6 +2498,7 @@ export function render(ctx, g, w, h, now) {
   // lifted to the roof's drawn height; never in this pass, where the roof drawn later covered it.
   const roofUnder = standingOnRoof(g, mw);
   if (!roofUnder) draws.push(playerDraw);
+  { const fz = g.area === "overworld" ? g.droneFizzleFx : null; if (fz && now < fz.until && visibleInCamera(fz, l, t, r, b, 4)) { const under = tileUnder(g.map, mw, fz.x, fz.y); draws.push({ y: fz.y + .01, x: fz.x, lift: (fz.levels || 0) * LIFT_PER_LEVEL * tileLiftScale(under), inSky: true, fn: () => drawDroneFizzle(ctx, fz, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) }); } } // the drone fizzle
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
     const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);
