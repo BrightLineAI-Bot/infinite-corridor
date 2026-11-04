@@ -90,7 +90,10 @@ function mirrorRead(slot){try{const text=localStorage.getItem(mirrorKey(slot));r
 // not mirrored again by this page, and its stale mirror is removed. A new, imported or recovered journey is retried.
 export const MIRROR_BUDGET=Object.freeze({chars:2e6,areas:120});
 const mirrorSkipped=new Map();
-function mirrorWrite(slot,snapshot){if(mirrorSkipped.has(slot))return false;const areas=snapshot?.session?.areas,count=areas&&typeof areas==="object"?Object.keys(areas).length:0;let why="size";if(count<=MIRROR_BUDGET.areas){let text=null;try{text=JSON.stringify(snapshot)}catch{}if(text&&text.length<=MIRROR_BUDGET.chars)try{localStorage.setItem(mirrorKey(slot),text);return true}catch(error){why="quota";console.warn("Save mirror failed",error)}}mirrorSkipped.set(slot,why);try{localStorage.removeItem(mirrorKey(slot))}catch{}return false}
+// Release 735 (pre-publish review of 734): the stale mirror is removed only after IndexedDB has the journey (`stored`).
+// When the database write failed the mirror may be the only readable copy, so it is then refreshed if it fits, ignoring
+// the budget, and otherwise left exactly as it is.
+function mirrorWrite(slot,snapshot,stored=true){if(!stored){try{localStorage.setItem(mirrorKey(slot),JSON.stringify(snapshot));return true}catch(error){console.warn("Save mirror failed",error)}return false}if(mirrorSkipped.has(slot))return false;const areas=snapshot?.session?.areas,count=areas&&typeof areas==="object"?Object.keys(areas).length:0;let why="size";if(count<=MIRROR_BUDGET.areas){let text=null;try{text=JSON.stringify(snapshot)}catch{}if(text&&text.length<=MIRROR_BUDGET.chars)try{localStorage.setItem(mirrorKey(slot),text);return true}catch(error){why="quota";console.warn("Save mirror failed",error)}}mirrorSkipped.set(slot,why);try{localStorage.removeItem(mirrorKey(slot))}catch{}return false}
 export const mirrorSkippedFor=(slot)=>mirrorSkipped.get(slot)||null;
 // Release 734 (S1, S2, S4): slots this page must not write its in-memory journey to. A slot whose stored record is damaged
 // (or a newer version), or whose journey threw in new Game, is blocked for the page's life: saveGame skips it, so the
@@ -112,7 +115,11 @@ export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLeg
   if(dbFailed)unconfirmed.add(activeSlot);
   if(fromDb.health==="damaged"){let kept=false;if(fromMirror.health==="healthy")try{await write(`damaged:${activeSlot}:${Date.now()}`,stored);kept=true}catch(error){console.warn("Keeping the damaged journey failed",error)}if(!kept){writeBlocked.set(activeSlot,fromDb.error||"This journey is damaged.");return freshSave()}}
   else if(fromDb.health!=="healthy"&&fromMirror.health==="damaged"){writeBlocked.set(activeSlot,fromMirror.error||"This journey is damaged.");return freshSave()}
-  const choices=[fromDb,fromMirror].filter(q=>q.health==="healthy").map(q=>q.save),chosen=choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||freshSave();
+  const choices=[fromDb,fromMirror].filter(q=>q.health==="healthy").map(q=>q.save);
+  // Release 735: when the database could not be read and there is no healthy mirror, the journey may still be there: the
+  // slot is blocked (nothing is written) instead of a fresh Wayfarer being saved over it; a reload tries again.
+  if(dbFailed&&!choices.length){writeBlocked.set(activeSlot,"This journey could not be read from storage just now. Nothing has been changed: reload the game to try again.");return freshSave()}
+  const chosen=choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||freshSave();
   // Release 555: a journey read from the database already has its areas stored there, so the first autosave need not write
   // them all again: each loaded area is its own stored copy until the game replaces it.
   if(chosen===fromDb.save&&assembled.has(stored))primeStoredAreas(slotKey(activeSlot),chosen);
@@ -124,7 +131,7 @@ export function createSlotWriteCoordinator(writer){let chain=Promise.resolve(),q
 // MIRROR_EVERY_MS per slot, and always when the IndexedDB write fails.
 export const MIRROR_EVERY_MS=60000;const mirroredAt=new Map();
 async function confirmSlot(slot){if(!unconfirmed.has(slot))return;const current=await readJourney(slotKey(slot));unconfirmed.delete(slot);if(!current)return;const checked=validateJourney(current);if(checked.health!=="healthy"){writeBlocked.set(slot,checked.error||"This journey is damaged.");console.warn(`Journey ${slot} is not saved: ${writeBlocked.get(slot)}`);return}await snapshotRecovery(slot,current,true)}
-const coordinator=createSlotWriteCoordinator(async(slot,snapshot)=>{if(writeBlocked.has(slot))return;try{await confirmSlot(slot);if(writeBlocked.has(slot))return;await writeJourney(slotKey(slot),snapshot)}catch(error){mirrorWrite(slot,snapshot);mirroredAt.set(slot,Date.now());throw error}const now=Date.now();if(!(now-(mirroredAt.get(slot)??-Infinity)<MIRROR_EVERY_MS)){mirrorWrite(slot,snapshot);mirroredAt.set(slot,now)}});
+const coordinator=createSlotWriteCoordinator(async(slot,snapshot)=>{if(writeBlocked.has(slot))return;try{await confirmSlot(slot);if(writeBlocked.has(slot))return;await writeJourney(slotKey(slot),snapshot)}catch(error){if(!(Date.now()-(mirroredAt.get(slot)??-Infinity)<MIRROR_EVERY_MS)){mirrorWrite(slot,snapshot,false);mirroredAt.set(slot,Date.now())}/* release 735: at most once a minute while the database is failing */throw error}const now=Date.now();if(!(now-(mirroredAt.get(slot)??-Infinity)<MIRROR_EVERY_MS)){mirrorWrite(slot,snapshot);mirroredAt.set(slot,now)}});
 let lastWriteError=null;
 // Release 167: the autosave (every 8 s) deep-copied every area the journey had ever visited, so it grew into a 30-70 ms
 // stall on a phone. An area's stored state is replaced, never edited, when the Wayfarer leaves or saves in it, so the copy
