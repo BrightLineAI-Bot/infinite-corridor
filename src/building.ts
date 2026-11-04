@@ -46,7 +46,7 @@ export function setBuildKind(save, kind) { ensureBuild(save); if (BUILD_KINDS.in
 // out and then it'll just automatically build with the next resource... when you're out of resources... an X"):
 // save.build.continuous (additive, boolean). The chosen kind is always tried first, so new stock of it is used again.
 export function setContinuousBuild(save, on) { ensureBuild(save); save.build.continuous = !!on; return save.build.continuous; }
-export function canAffordBuild(save, kind) { return Object.entries(BUILD.kinds[kind].cost).every(([mat, need]) => (Number(save?.materials?.[mat]) || 0) >= need); }
+export function canAffordBuild(save, kind, scale = 1) { return Object.entries(BUILD.kinds[kind].cost).every(([mat, need]) => (Number(save?.materials?.[mat]) || 0) >= need * scale); } // release 737: `scale`, a bigger pen's cost
 // The kind the Build button raises now, or null when nothing can be afforded (the button shows an X).
 export function activeBuildKind(save) {
   const { kind, continuous } = ensureBuild(save).build;
@@ -177,34 +177,38 @@ export function tapTarget(p, wx, wy) {
 
 // ---- The Enclosure (release 696) ----
 // Raises a 2x2 pen beginning at (x, y), extending away from the Wayfarer, open on the side facing them.
+// Release 737 (beast mounts): `game.penSize()` (when it has one) sizes the pen for the biggest catchable beast near: a pen of side
+// n spans n×n tiles, centred across the way, and costs `game.penCost(n)` times the base materials.
 export function placeEnclosure(game, x, y) {
+  const N = Math.max(ENCLOSURE.size, Math.floor(Number(game.penSize?.()) || ENCLOSURE.size)), mult = Math.max(1, Number(game.penCost?.(N)) || 1);
   const K = BUILD.kinds.enclosure, m = (game.save.materials ||= {}), builds = (game.builds ||= []), p = game.player, w = W(game.map);
-  if (!canAffordBuild(game.save, "enclosure")) return { ok: false, message: `An enclosure takes ${Object.entries(K.cost).map(([k, n]) => `${n} ${k === "cinderIron" ? "cinder iron" : k}`).join(", ")}.` };
+  if (!canAffordBuild(game.save, "enclosure", mult)) return { ok: false, message: `${N > ENCLOSURE.size ? `A ${N}×${N} enclosure` : "An enclosure"} takes ${Object.entries(K.cost).map(([k, n]) => `${n * mult} ${k === "cinderIron" ? "cinder iron" : k}`).join(", ")}.` };
   const fx = Math.floor(p.x + .5), fy = Math.floor(p.y + .75), dx = x - fx, dy = y - fy, horiz = Math.abs(dx) > Math.abs(dy);
-  const open = horiz ? (dx > 0 ? "west" : "east") : (dy > 0 ? "north" : "south");
-  const x0 = horiz ? (dx > 0 ? x : x - 1) : x, y0 = horiz ? y : (dy > 0 ? y : y - 1);
+  const open = horiz ? (dx > 0 ? "west" : "east") : (dy > 0 ? "north" : "south"), across = Math.floor((N - 1) / 2); // centred across the way (0 for the 2x2, as before)
+  const x0 = horiz ? (dx > 0 ? x : x - (N - 1)) : x - across, y0 = horiz ? y - across : (dy > 0 ? y : y - (N - 1));
   const tiles = [];
-  for (let oy = 0; oy < 2; oy++) for (let ox = 0; ox < 2; ox++) {
+  for (let oy = 0; oy < N; oy++) for (let ox = 0; ox < N; ox++) {
     const tx = x0 + ox, ty = y0 + oy, why = buildRefusal(game.map, tx, ty, "enclosure", false); if (why) return { ok: false, message: why };
     if (game.map.tiles[ty * w + tx]?.enclosure) return { ok: false, message: "Something is already built there." };
     if (p.x + .76 > tx && p.x + .24 < tx + 1 && p.y + .88 > ty && p.y + .5 < ty + 1) return { ok: false, message: "Step back a little to build there." };
-    tiles.push({ tx, ty, sides: [ox ? "east" : "west", oy ? "south" : "north"].filter((sd) => sd !== open) });
+    tiles.push({ tx, ty, sides: [ox === 0 && "west", ox === N - 1 && "east", oy === 0 && "north", oy === N - 1 && "south"].filter((sd) => sd && sd !== open) });
   }
   if (builds.length >= BUILD.maxOut) breakBuild(game, builds[0]);
-  for (const [mat, need] of Object.entries(K.cost)) m[mat] = (Number(m[mat]) || 0) - need;
+  for (const [mat, need] of Object.entries(K.cost)) m[mat] = (Number(m[mat]) || 0) - need * mult;
   const id = `enclosure-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, orig = {};
   for (const q of tiles) { const i = q.ty * w + q.tx; orig[i] = game.map.tiles[i]; game.map.tiles[i] = { ...game.map.tiles[i], enclosure: id, encSides: q.sides }; }
-  const pen = { id, kind: "enclosure", x: x0, y: y0, open, hits: K.hits, life: K.life, orig, trapped: null }; builds.push(pen);
+  const pen = { id, kind: "enclosure", x: x0, y: y0, size: N, open, hits: K.hits, life: K.life, orig, trapped: null }; builds.push(pen);
   // Release 697: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
   let said = null;
   for (const other of builds) if (other !== pen && other.kind === "enclosure" && !other.trapped && overlapsOpening(other, pen)) said = game.penClosed?.(other, pen) || said;
-  return { ok: true, message: said || `Enclosure raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
+  return { ok: true, message: said || `${N > ENCLOSURE.size ? `A ${N}×${N} enclosure` : "Enclosure"} raised, open to the ${open}. ${m.wood} wood, ${m.stone} stone, ${m.cinderIron} cinder iron left.` };
 }
 // The two tiles just outside a pen's opening, and whether another pen's 2x2 covers either.
-export function openingTiles(b) { return { north: [[b.x, b.y - 1], [b.x + 1, b.y - 1]], south: [[b.x, b.y + 2], [b.x + 1, b.y + 2]], west: [[b.x - 1, b.y], [b.x - 1, b.y + 1]], east: [[b.x + 2, b.y], [b.x + 2, b.y + 1]] }[b.open] || []; }
-export function overlapsOpening(b, other) { return openingTiles(b).some(([x, y]) => x >= other.x && x < other.x + 2 && y >= other.y && y < other.y + 2); }
-// The pen whose 2x2 holds the point (tile space), if any.
-export function enclosureAt(game, px, py) { return (game.builds || []).find((b) => b.kind === "enclosure" && px >= b.x && px < b.x + 2 && py >= b.y && py < b.y + 2) || null; }
+export const penSide = (b) => Math.max(ENCLOSURE.size, Math.floor(Number(b?.size) || ENCLOSURE.size)); // release 737: pens bigger than 2x2
+export function openingTiles(b) { const n = penSide(b), run = Array.from({ length: n }, (_, i) => i); return { north: run.map((i) => [b.x + i, b.y - 1]), south: run.map((i) => [b.x + i, b.y + n]), west: run.map((i) => [b.x - 1, b.y + i]), east: run.map((i) => [b.x + n, b.y + i]) }[b.open] || []; }
+export function overlapsOpening(b, other) { const n = penSide(other); return openingTiles(b).some(([x, y]) => x >= other.x && x < other.x + n && y >= other.y && y < other.y + n); }
+// The pen whose square holds the point (tile space), if any.
+export function enclosureAt(game, px, py) { return (game.builds || []).find((b) => { const n = b.kind === "enclosure" && penSide(b); return n && px >= b.x && px < b.x + n && py >= b.y && py < b.y + n; }) || null; }
 export const enclosuresStanding = (game) => (game.builds || []).filter((b) => b.kind === "enclosure").length;
 // The Wayfarer's pen, by the middle of their feet.
 export function playerEnclosure(game) { const p = game.player; return enclosureAt(game, p.x + .5, p.y + .75); }
@@ -216,7 +220,7 @@ export function tickEnclosureGuard(game, dt) {
 // Does the pen turn a blow from `from` (a point in tile space)? Only while the guard lasts, and never from the open side.
 export function enclosureShields(game, from) {
   const b = playerEnclosure(game); if (!b || !from || !((game.encGuard?.left ?? ENCLOSURE.guard) > 0)) return false;
-  const cx = b.x + 1, cy = b.y + 1, open = { north: from.y < b.y, south: from.y > b.y + 2, west: from.x < b.x, east: from.x > b.x + 2 }[b.open];
-  const within = from.x >= b.x && from.x < b.x + 2 && from.y >= b.y && from.y < b.y + 2; void cx; void cy;
+  const n = penSide(b), open = { north: from.y < b.y, south: from.y > b.y + n, west: from.x < b.x, east: from.x > b.x + n }[b.open];
+  const within = from.x >= b.x && from.x < b.x + n && from.y >= b.y && from.y < b.y + n;
   return !open && !within; // a blow from the open side, or from inside the pen itself, is not turned
 }

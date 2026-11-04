@@ -1,0 +1,119 @@
+// Beast mounts (release 737; Tim, 2026-11-04): a pen closed on a world beast (or the Stalker) that holds catches it, and the
+// Wayfarer keeps it in a stable of three and rides it. Riding is faster, jumps go farther and carry over chasms while in the
+// air, and the Wayfarer's own attacks, spells and tools work from its back; the mount itself never fights. Each mount gives
+// `MOUNT_RIDE.seconds` of riding or `MOUNT_RIDE.sections` different sections ridden, whichever comes first, and is then gone.
+// Tim's decisions (2026-11-04): a catch pays nothing (no marks, materials, spoils, XP or reward flags; its hunt still ends as a
+// fall does); the Questing Beast, the Psychic Crystal, the Void Walker and the Lightning Giant can never be penned or caught.
+// Data and save rules only; game.ts calls in, renderer.ts draws.
+import { hashSeed } from "./random.ts";
+import { trapChance } from "./building.ts";
+
+// One row per catchable beast. `pen`: the pen's side in tiles it takes (scaled to its footprint); `scale`: its renderer's scale
+// as a mount (so the big ones do not fill the screen); `seat`: how high the Wayfarer sits, in tiles; `speed`: walking speed
+// multiplier while riding; `jump`: jump time multiplier while riding (dodges are unchanged).
+export const MOUNT_BEASTS = {
+  stalker: { name: "The Stalker", pen: 2, scale: 1, seat: .42, speed: 1.75, jump: 1.6 },
+  morphingBlob: { name: "The Morphing Blob", pen: 2, scale: .8, seat: .5, speed: 1.45, jump: 1.5 },
+  tremorWorm: { name: "The Tremor Worm", pen: 3, scale: .9, seat: .8, speed: 1.6, jump: 1.5 },
+  mountainTurtle: { name: "The Mountain Turtle", pen: 4, scale: 1.5, seat: .95, speed: 1.4, jump: 1.45 },
+  nanobotKnight: { name: "The Nanobot Knight", pen: 2, scale: 1, seat: 1.15, speed: 1.6, jump: 1.55 },
+  astralWorm: { name: "The Astral Worm", pen: 3, scale: .8, seat: .12, speed: 1.7, jump: 1.6 },
+  briarStag: { name: "The Briar Stag", pen: 3, scale: .85, seat: .7, speed: 1.85, jump: 1.7 },
+  ashenMoth: { name: "The Ashen Moth", pen: 3, scale: .95, seat: .55, speed: 1.7, jump: 1.75 },
+  crimsonTyrant: { name: "The Crimson Tyrant", pen: 4, scale: .5, seat: .62, speed: 1.7, jump: 1.75 },
+  doomChaser: { name: "The Doom Chaser", pen: 4, scale: .5, seat: .62, speed: 1.75, jump: 1.75 },
+};
+export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
+// Never penned or caught (Tim, 2026-11-04).
+export const MOUNT_NEVER = ["questingBeast", "psychicCrystal", "voidWalker", "lightningGiant"];
+// `cap` mounts in the stable; a catch beyond it lets the oldest go. `seconds` / `sections`: a mount's riding life (Tim: "10–15
+// minutes... or 30–40 unique sections"). `knockoff`: one frame's loss of this share of maximum health throws the Wayfarer off.
+// `sense`: a pen is sized for the biggest catchable beast within this many tiles. `cost`: a pen of side n costs its base
+// materials times ceil(n / 2).
+export const MOUNT_RIDE = { cap: 3, seconds: 720, sections: 35, knockoff: .35, sense: 14 };
+export const penCostScale = (size) => Math.max(1, Math.ceil((Number(size) || 2) / 2));
+
+// Which mount a live actor would be, or null. `never` names an excluded beast.
+export function mountIdFor(e) {
+  if (!e) return null;
+  if (e.stalker && !e.stalkerKin && !e.stalkerDecoy) return "stalker";
+  if (e.worldBeast && MOUNT_BEASTS[e.worldBeast]) return e.worldBeast;
+  return null;
+}
+export function neverCaught(e) { return !!e && (e.questingBeast || MOUNT_NEVER.includes(e.worldBeast)); }
+// A real hunt actor (never a copy, decoy, mirage, summon, passing beast or one already leaving).
+export const catchableActor = (e) => !!e && !e.dead && !e.summonedBy && !e.illusion && !e.astralCompanionOf && !e.astralOwner && !e.passingBeast && !e.noRewards && !!mountIdFor(e);
+// Why a beast in a closed pen gets away, or null when the roll may be tried.
+export function catchRefusal(e, pen) {
+  if (neverCaught(e)) return `${e.questingBeast ? "The Questing Beast" : nameOf(e.worldBeast)} cannot be penned: it is through the walls before they close.`;
+  const id = mountIdFor(e); if (!id || !catchableActor(e)) return "Nothing that can be caught is inside it.";
+  const need = MOUNT_BEASTS[id].pen;
+  if ((Number(pen?.size) || 2) < need) return `${MOUNT_BEASTS[id].name} is too big for this pen: it takes one ${need}×${need}.`;
+  if (e.retreating || e.fleeTo || e.untargetable || e.aloft || e.hidden) return `${MOUNT_BEASTS[id].name} slips out before the pen can close on it.`;
+  return null;
+}
+const nameOf = (id) => ({ psychicCrystal: "The Psychic Crystal", voidWalker: "The Void Walker", lightningGiant: "The Lightning Giant" })[id] || "It";
+// One roll per closing (hashed by beast, pen and closer), at the Stalker's trap odds of its health.
+export function catchRoll(e, pen, salt = "") {
+  return (hashSeed(`${e.id}:catch:${pen?.id}:${salt}`) % 1000) / 1000 < trapChance(e.hp / Math.max(1, e.maxHp));
+}
+
+// save.mounts = { stable: [{ id, beast, caughtAt, left, seen: ["rx,ry"] }], riding: id | null, seq, caught: { beast: n } }
+// (additive at schema 14). `left` riding seconds; `seen` the different sections ridden (at most MOUNT_RIDE.sections).
+function cleanMount(m) {
+  if (!m || typeof m !== "object" || typeof m.id !== "string" || !MOUNT_BEASTS[m.beast]) return null;
+  const left = Math.max(0, Math.min(MOUNT_RIDE.seconds, Number.isFinite(Number(m.left)) ? Number(m.left) : MOUNT_RIDE.seconds));
+  const seen = (Array.isArray(m.seen) ? m.seen : []).filter((k, i, a) => typeof k === "string" && /^-?\d+,-?\d+$/.test(k) && a.indexOf(k) === i).slice(0, MOUNT_RIDE.sections);
+  if (left <= 0 || seen.length >= MOUNT_RIDE.sections) return null;
+  return Object.assign(m, { left, seen, caughtAt: Math.max(0, Number(m.caughtAt) || 0) }); // in place: callers keep their record
+}
+export function ensureMounts(save) {
+  const q = save.mounts && typeof save.mounts === "object" && !Array.isArray(save.mounts) ? save.mounts : {};
+  const stable = (Array.isArray(q.stable) ? q.stable : []).map(cleanMount).filter(Boolean).filter((m, i, a) => a.findIndex((o) => o.id === m.id) === i).slice(-MOUNT_RIDE.cap);
+  const caught = q.caught && typeof q.caught === "object" ? Object.fromEntries(Object.entries(q.caught).map(([k, v]) => [k, Math.max(0, Math.floor(Number(v) || 0))])) : {};
+  save.mounts = Object.assign(q, { stable, riding: stable.some((m) => m.id === q.riding) ? q.riding : null, seq: Math.max(0, Math.floor(Number(q.seq) || 0)), caught });
+  return save.mounts;
+}
+export const mountById = (save, id) => ensureMounts(save).stable.find((m) => m.id === id) || null;
+export const ridingMount = (save) => { const q = save.mounts; return q?.riding ? q.stable?.find((m) => m.id === q.riding) || null : null; };
+export const mountName = (m) => MOUNT_BEASTS[m?.beast]?.name || "Your mount";
+export const mountSectionsLeft = (m) => MOUNT_RIDE.sections - (m?.seen?.length || 0);
+// "12:00 · 35 sections" style remaining-life text.
+export function mountLifeText(m) { const s = Math.ceil(m.left), mm = Math.floor(s / 60), ss = String(s % 60).padStart(2, "0"); const n = mountSectionsLeft(m); return `${mm}:${ss} of riding · ${n} section${n === 1 ? "" : "s"}`; }
+
+// A catch goes into the stable. Full, the oldest is let go. Returns { mount, released }.
+export function stableMount(save, beast) {
+  const q = ensureMounts(save); if (!MOUNT_BEASTS[beast]) return { mount: null, released: null };
+  q.caught[beast] = (q.caught[beast] || 0) + 1;
+  let released = null;
+  while (q.stable.length >= MOUNT_RIDE.cap) { const i = q.stable.findIndex((m) => m.id !== q.riding); released = q.stable.splice(i < 0 ? 0 : i, 1)[0]; if (released.id === q.riding) q.riding = null; }
+  const mount = { id: `mount-${(q.seq += 1)}`, beast, caughtAt: Number(save.playSeconds) || 0, left: MOUNT_RIDE.seconds, seen: [] };
+  q.stable.push(mount);
+  return { mount, released };
+}
+export function releaseMount(save, id) {
+  const q = ensureMounts(save), i = q.stable.findIndex((m) => m.id === id); if (i < 0) return null;
+  const [m] = q.stable.splice(i, 1); if (q.riding === id) q.riding = null; return m;
+}
+// Mounting in section `key`: it counts as ridden. Returns the mount, or null.
+export function startRide(save, id, key = null) {
+  const q = ensureMounts(save), m = q.stable.find((o) => o.id === id); if (!m) return null;
+  q.riding = m.id; q.last = m.id; if (key) noteRideSection(save, key); return ridingMount(save);
+}
+export function stopRide(save) { const q = ensureMounts(save), m = ridingMount(save); q.riding = null; return m; }
+// Spent: gone from the stable. Returns the message.
+function spend(save, m, why) { releaseMount(save, m.id); return `${mountName(m)} has carried you as far as it will ${why}: it leaves you, and is gone from your stable.`; }
+// Riding time runs while mounted (never while paused). Returns a message when the mount is spent, else null.
+export function tickRide(save, dt) {
+  const m = ridingMount(save); if (!m || !(dt > 0)) return null;
+  m.left = Math.max(0, m.left - dt);
+  return m.left <= 0 ? spend(save, m, "in time") : null;
+}
+// A section ridden into. Returns a message when that spends the mount, else null.
+export function noteRideSection(save, key) {
+  const m = ridingMount(save); if (!m || typeof key !== "string") return null;
+  if (!m.seen.includes(key)) m.seen.push(key);
+  return m.seen.length >= MOUNT_RIDE.sections ? spend(save, m, "across the land") : null;
+}
+// The mount to call when none is named: the one ridden last, else the newest.
+export function defaultMount(save) { const q = ensureMounts(save); return q.stable.find((m) => m.id === q.last) || q.stable[q.stable.length - 1] || null; }
