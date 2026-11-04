@@ -2011,6 +2011,7 @@ const CODEX = {
 };
 // Dungeon Monster Pack bestiary records, generated from the shared attribute tables.
 for(const id of PACK_KINDS){const d=MONSTER_PACK[id],attacks=[...d.attacks,...d.bossAttacks].map(a=>ATTACK_MODULES[a]?.name).filter(Boolean);CODEX.creatures[id]=[`${d.name} — ${d.epithet}`,`${d.lore} ${MOVEMENT_MODES[d.movement].name}; ${BRAINS[d.brain].name.toLowerCase()}. Abilities: ${attacks.join(', ')}. ${d.attacks.map(a=>ATTACK_MODULES[a]?.text).filter(Boolean).join(' ')}`]}
+{const d=MONSTER_PACK.gloomvast;CODEX.creatures.gloomvast=[`${d.name} — ${d.epithet}`,d.lore]} // the Pentagon finale's haunt (haunts.ts GLOOM_FINALE): its lore only, sparse and uncertain
 const STAT_GLOSSARY=[
   ["Power","An item's base strength. Primary-weapon Power contributes to melee damage; secondary-weapon Power contributes to projectile and spell damage; armor Power grants 2.5% resistance per point; charm Power grants 1% resistance per point."],
   ["Attack","A flat damage bonus supplied by an item affix. On a primary weapon it improves melee attacks; on a secondary weapon it improves projectiles and spells."],

@@ -82,7 +82,7 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 // moment (t = 0), and every frame only that picture is stamped, bobbing gently. Its gradients, smoke and motes cost nothing after
 // the first frame. `box` is the canvas in body units (width, height, and where the feet sit); the cache is bounded (`max`).
 // Without a DOM canvas (tests) the haunt is painted directly.
-export const HAUNT_SPRITE = { wisp: { w: 2.2, h: 1.7, foot: 1.5 }, gorge: { w: 4.2, h: 3.2, foot: 2.45 } /* release 737: tall enough for its whole halo (radius 1.3 body units round a centre .62 above the feet), so no straight edge shows */, max: 48, bob: [1.6, .035] };
+export const HAUNT_SPRITE = { wisp: { w: 2.2, h: 1.7, foot: 1.5 }, gorge: { w: 4.2, h: 3.2, foot: 2.45 } /* release 737: tall enough for its whole halo (radius 1.3 body units round a centre .62 above the feet), so no straight edge shows */, vast: { w: 4.6, h: 3.5, foot: 2.65 } /* the Gloomvast's mantle and corona */, shade: { w: 1.8, h: 1.6, foot: 1.35 }, shadeSize: 1.05 /* a cold light's drawn size, in tiles, whatever its body (the Gloomvast veiled is drawn the same) */, max: 48, bob: [1.6, .035] };
 const hauntSprites = new Map();
 export const hauntSpriteCount = () => hauntSprites.size;
 function cachedHaunt(ctx, q, draw, box) {
@@ -207,6 +207,95 @@ function drawGloomgorge(ctx, q) {
   ctx.restore();
 }
 
+// The Gloomvast (haunts.ts GLOOM_FINALE): the Gloomgorge grown grand, luminous and not of this world. Behind it a great mantle
+// of gas sweeps up off its shoulders in two veils ribbed with filaments of cold light, and a corona of small lights hangs over
+// its head on a faint arc; through its translucent body a heart of light shows where the haunts go down; below the smoke long
+// tendrils trail. The body, face and talons are the Gloomgorge's, in its own paler, brighter colours. Painted once per pose,
+// facing and size (cachedHaunt), so its many gradients cost nothing after the first frame.
+function drawGloomvast(ctx, q) {
+  const { k, b, u } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, act = q.state === "attack" ? 1 : 0;
+  const cx = k, cy = b - u * .62, W = u * .68, H = u * .52;
+  const rgba = (hex, a) => { const n = parseInt(hex.slice(1, 7), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`; };
+  ctx.save();
+  // its light on everything round it
+  { const g = ctx.createRadialGradient(cx, cy - H * .4, W * .3, cx, cy - H * .4, u * 1.75); g.addColorStop(0, rgba(glow, .3 + wind * .12)); g.addColorStop(.55, rgba(glow, .1)); g.addColorStop(1, rgba(glow, 0)); ctx.fillStyle = g; ctx.fillRect(cx - u * 2.3, cy - u * 2, u * 4.6, u * 3.8); }
+  // the mantle: two great veils off the shoulders, sweeping up and out, ribbed with filaments of light, frayed at the edge
+  for (const side of [-1, 1]) {
+    const sx = cx + side * W * .5, sy = cy - H * .6, tipX = cx + side * u * (1.42 + wind * .1), tipY = cy - u * (1.6 + act * .08), lowX = cx + side * u * .95, lowY = cy + H * .85;
+    const g = ctx.createLinearGradient(sx, sy, tipX, tipY); g.addColorStop(0, rgba(deep, .62)); g.addColorStop(.55, rgba(dark, .34)); g.addColorStop(1, rgba(glow, .3)); ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(cx + side * u * .8, cy - u * .95, tipX, tipY);
+    let px = tipX, py = tipY; for (let i = 1; i <= 6; i++) { const f = i / 6, bulge = Math.sin(f * Math.PI) * u * .42, ex = tipX + (lowX - tipX) * f + side * bulge, ey = tipY + (lowY - tipY) * f; ctx.quadraticCurveTo((px + ex) / 2 + side * u * .13, (py + ey) / 2, ex, ey); px = ex; py = ey; } // the scalloped outer edge, like smoke
+    ctx.quadraticCurveTo(cx + side * u * .62, cy + H * .35, sx, cy + H * .1); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = rgba(glow, .22); ctx.lineWidth = Math.max(1, u * .012); ctx.stroke();
+    for (let r = 0; r < 5; r++) { const f = (r + .6) / 5.6, ex = tipX + (lowX - tipX) * f, ey = tipY + (lowY - tipY) * f; // the ribs
+      const g2 = ctx.createLinearGradient(sx, sy, ex, ey); g2.addColorStop(0, rgba(glow, 0)); g2.addColorStop(.5, rgba(glow, .38)); g2.addColorStop(1, rgba(eye, .55)); ctx.strokeStyle = g2; ctx.lineWidth = Math.max(1, u * (.018 - r * .002));
+      ctx.beginPath(); ctx.moveTo(sx, sy + r * u * .03); ctx.quadraticCurveTo(cx + side * u * (.85 + r * .1), cy - u * (.85 - r * .26), ex + side * Math.sin(f * Math.PI) * u * .3, ey); ctx.stroke();
+      ctx.fillStyle = rgba(eye, .7); ctx.beginPath(); ctx.arc(ex + side * Math.sin(f * Math.PI) * u * .3, ey, u * .022, 0, TAU); ctx.fill(); }
+  }
+  // tendrils trailing out of the smoke below
+  for (let i = 0; i < 5; i++) { const x0 = cx + (i - 2) * W * .36, len = u * (.55 + (i % 2) * .25), sway = (i - 2) * u * .08;
+    const g = ctx.createLinearGradient(x0, cy + H * .6, x0, cy + H * .6 + len); g.addColorStop(0, rgba(deep, .45)); g.addColorStop(1, rgba(glow, 0)); ctx.strokeStyle = g; ctx.lineWidth = u * (.06 - Math.abs(i - 2) * .01); ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x0, cy + H * .6); ctx.quadraticCurveTo(x0 + sway, cy + H * .6 + len * .5, x0 + sway * 2.2, cy + H * .6 + len); ctx.stroke(); }
+  ctx.lineCap = "butt";
+  // the body, face and talons: the Gloomgorge's
+  drawGloomgorge(ctx, q);
+  // the heart of light showing through it
+  { const hx = cx, hy = cy + H * .05, g = ctx.createRadialGradient(hx, hy, 0, hx, hy, W * .55); g.addColorStop(0, rgba(eye, .55 + wind * .25)); g.addColorStop(.35, rgba(glow, .22)); g.addColorStop(1, rgba(glow, 0)); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(hx - W * .6, hy - W * .6, W * 1.2, W * 1.2); ctx.globalCompositeOperation = "source-over"; }
+  // the corona: small cold lights on a faint arc over its head
+  { const ay = cy - H * 1.75, rx = W * 1.05, ry = H * .42; ctx.strokeStyle = rgba(glow, .3); ctx.lineWidth = Math.max(1, u * .01); ctx.beginPath(); ctx.ellipse(cx, ay, rx, ry, 0, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+    for (let i = 0; i < 9; i++) { const a = Math.PI * (1.1 + i * .1), x = cx + Math.cos(a) * rx, y = ay + Math.sin(a) * ry, r = u * (i === 4 ? .07 : .04 + (i % 2) * .012);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3); g.addColorStop(0, rgba(eye, .95)); g.addColorStop(.3, rgba(glow, .5)); g.addColorStop(1, rgba(glow, 0)); ctx.fillStyle = g; ctx.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
+      ctx.fillStyle = "#f4fbff"; ctx.beginPath(); ctx.arc(x, y, r * .55, 0, TAU); ctx.fill(); } }
+  ctx.restore();
+}
+// One of the Gloomvast's cold lights in its Dark (and the Gloomvast itself, veiled among them): a shadowy blue orb, dark at the
+// heart, with a rim of cold light and a faint inner glow; it swells and brightens as it winds up. No face: they are all alike.
+function drawGloomShade(ctx, q) {
+  const { k, b, u } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : q.state === "attack" ? .6 : 0, cx = k, cy = b - u * .62, r = u * (.3 + wind * .05);
+  ctx.save();
+  { const g = ctx.createRadialGradient(cx, cy, r * .5, cx, cy, r * 2.3); g.addColorStop(0, glow + (wind ? "70" : "48")); g.addColorStop(1, glow + "00"); ctx.fillStyle = g; ctx.fillRect(cx - r * 2.4, cy - r * 2.4, r * 4.8, r * 4.8); } // its cold halo
+  for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + .4, x = cx + Math.cos(a) * r * 1.05, y = cy + Math.sin(a) * r * .9, z = r * .5; const g = ctx.createRadialGradient(x, y, 0, x, y, z); g.addColorStop(0, deep + "aa"); g.addColorStop(1, deep + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, z, 0, TAU); ctx.fill(); } // gas round it
+  const body = ctx.createRadialGradient(cx - r * .25, cy - r * .3, r * .1, cx, cy, r); body.addColorStop(0, dark); body.addColorStop(.75, deep); body.addColorStop(1, glow + "cc"); ctx.fillStyle = body; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+  { const g = ctx.createRadialGradient(cx, cy + r * .1, 0, cx, cy + r * .1, r * .55); g.addColorStop(0, eye + (wind ? "cc" : "77")); g.addColorStop(1, eye + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy + r * .1, r * .55, 0, TAU); ctx.fill(); } // a light deep inside
+  ctx.strokeStyle = glow + "aa"; ctx.lineWidth = Math.max(1, u * .03); ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+  ctx.fillStyle = "#ffffff22"; ctx.beginPath(); ctx.ellipse(cx - r * .35, cy - r * .45, r * .28, r * .14, -.5, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+// Every cold light of a Dark (decoys and the veiled Gloomvast), drawn alike over the darkness: the same sprite, the same size,
+// the same windup swell, the same hit flash. `opts.low` (the low quality tier) draws each as a plain orb, no halo sprite.
+export function drawGloomVeiled(ctx, enemies, s, now, opts = {}) {
+  const def = MONSTER_PACK.gloomShade, u = s * HAUNT_SPRITE.shadeSize;
+  for (const e of enemies || []) {
+    if (e.dead || !e.gloomVeil) continue;
+    const s0 = e.pack, state = s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle", k = (e.x + .5) * s, b = (e.y + .82) * s, t = opts.reduceMotion ? 0 : now / 1000 + e.x * .37 + e.y * .21;
+    if (opts.low) { const r = u * (.3 + (state === "windup" ? .05 : 0)), cy = b - u * .62 + Math.sin(t * 1.6) * u * .035; ctx.fillStyle = def.palette[1]; ctx.beginPath(); ctx.arc(k, cy, r, 0, TAU); ctx.fill(); ctx.strokeStyle = def.palette[2]; ctx.lineWidth = Math.max(1, u * .04); ctx.stroke(); ctx.fillStyle = def.palette[3] + (state === "windup" ? "cc" : "66"); ctx.beginPath(); ctx.arc(k, cy + r * .1, r * .35, 0, TAU); ctx.fill(); }
+    else cachedHaunt(ctx, { k, b, u, s, t, p: def.palette, flip: 1, e: { kind: "gloomShade" }, state }, drawGloomShade, HAUNT_SPRITE.shade);
+    if (e.hitFlash > 0) { ctx.save(); ctx.globalAlpha = Math.min(1, e.hitFlash * 3) * .5; ctx.fillStyle = "#e8f6ff"; ctx.beginPath(); ctx.arc(k, b - u * .62, u * .36, 0, TAU); ctx.fill(); ctx.restore(); }
+  }
+}
+// The Dark (haunts.ts GLOOM_FINALE.darkness.light): the view darkened to a small light round the Wayfarer. One radial mask,
+// painted once per size and quality into a small canvas and stamped each frame at the Wayfarer, the rest of the view filled
+// flat in the same colour; `dark.level` fades it in and out. Never fully black: its darkest is `light.alpha` (< 1) of a deep
+// blue. Low quality paints the mask at `lowRes` and scales it up; reduced motion holds its edge still (else it breathes a
+// little). `view` is the visible rectangle in the same (world-pixel) space as (x, y).
+const gloomMasks = new Map();
+export const gloomMaskCount = () => gloomMasks.size;
+export function drawGloomDark(ctx, x, y, s, view, dark, opts = {}) {
+  const L = dark?.light, k = Math.max(0, Math.min(1, Number(dark?.level) || 0)); if (!L || !(k > 0)) return;
+  const R0 = (L.inner + L.edge) * s, R = R0 * (opts.reduceMotion ? 1 : 1 + .03 * Math.sin((Number(opts.now) || 0) / 900)), res = opts.low ? L.lowRes : 1, alpha = Math.min(.95, L.alpha), flat = `rgba(${L.color},${alpha})`;
+  const paint = (g, cx, cy, scale) => { const gr = g.createRadialGradient(cx, cy, L.inner * s * scale, cx, cy, R0 * scale); gr.addColorStop(0, `rgba(${L.color},0)`); gr.addColorStop(.45, `rgba(${L.color},${(alpha * .55).toFixed(3)})`); gr.addColorStop(1, flat); return gr; };
+  const key = `${Math.round(R0)}:${res}:${L.inner}:${alpha}:${L.color}`, canMake = typeof document !== "undefined" && typeof document.createElement === "function";
+  let m = gloomMasks.get(key);
+  if (!m && canMake) { const c = document.createElement("canvas"), D = Math.max(2, Math.ceil(R0 * 2 * res)); c.width = c.height = D; const g = c.getContext("2d"); if (g) { g.fillStyle = paint(g, D / 2, D / 2, res); g.fillRect(0, 0, D, D); m = c; gloomMasks.set(key, m); if (gloomMasks.size > 4) gloomMasks.delete(gloomMasks.keys().next().value); } }
+  const x0 = Math.floor(x - R), y0 = Math.floor(y - R), x1 = Math.ceil(x + R), y1 = Math.ceil(y + R), V = view || { x0: x0 - 4000, y0: y0 - 4000, x1: x1 + 4000, y1: y1 + 4000 };
+  ctx.save(); ctx.globalAlpha *= k;
+  if (m) ctx.drawImage(m, x0, y0, x1 - x0, y1 - y0); else { ctx.fillStyle = paint(ctx, x, y, 1); ctx.fillRect(x0, y0, x1 - x0, y1 - y0); } // no DOM canvas (tests): painted directly
+  ctx.fillStyle = flat;
+  if (y0 > V.y0) ctx.fillRect(V.x0, V.y0, V.x1 - V.x0, y0 - V.y0); if (y1 < V.y1) ctx.fillRect(V.x0, y1, V.x1 - V.x0, V.y1 - y1);
+  if (x0 > V.x0) ctx.fillRect(V.x0, y0, x0 - V.x0, y1 - y0); if (x1 < V.x1) ctx.fillRect(x1, y0, V.x1 - x1, y1 - y0);
+  ctx.restore();
+}
+
 const BODY = {
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
@@ -216,6 +305,8 @@ const BODY = {
   doomChaser(ctx, q) { drawDoomChaser(ctx, q, q.t * 1000); }, // release 710
   gloomwisp(ctx, q) { cachedHaunt(ctx, q, drawGloomwisp, HAUNT_SPRITE.wisp); }, // release 731 (733: drawn once, then stamped)
   gloomgorge(ctx, q) { cachedHaunt(ctx, q, drawGloomgorge, HAUNT_SPRITE.gorge); },
+  gloomvast(ctx, q) { cachedHaunt(ctx, q, drawGloomvast, HAUNT_SPRITE.vast); }, // the Pentagon finale's haunt (drawn once, then stamped)
+  gloomShade(ctx, q) { cachedHaunt(ctx, q, drawGloomShade, HAUNT_SPRITE.shade); },
   inkKin(ctx, q) { const d = MONSTER_PACK[q.e.kind]; drawAstralWorm(ctx, { x: q.k, y: q.b - q.u * .2, scale: q.u * (d?.inkScale || .4), time: q.t, form: d?.inkForm || "worm", facing: q.flip, reducedMotion: !!q.e.reduceMotion }); }, // release 719
   astralWorm(ctx,q) { const a=q.e.astral;
     // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.
@@ -1389,6 +1480,15 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, h
   }
 }
 
+// The Gloomvast's Gloomfall (a pool of gloom gathering, then falling in) and Grave Lights (a pale mote). Cheap shapes only.
+function drawGloomEffect(ctx, f, s, now) {
+  const x = (f.x + .5) * s, y = (f.y + .62) * s, r = (f.radius || 1) * s; ctx.save();
+  if (f.kind === "gloomfall") {
+    if (f.arming > 0) { const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1); ctx.fillStyle = `rgba(20,40,90,${(.25 + .35 * k).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(x, y, r * (.4 + .6 * k), r * .6 * (.4 + .6 * k), 0, 0, TAU); ctx.fill(); ctx.strokeStyle = "rgba(140,200,255,.8)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU * k); ctx.stroke(); }
+    else { const k = Math.max(0, Math.min(1, (f.life ?? 0) / (f.total || .35))); ctx.globalAlpha = k; ctx.fillStyle = "rgba(150,210,255,.45)"; ctx.beginPath(); ctx.ellipse(x, y - s * .3 * (1 - k), r * (1.1 - .3 * k), r * .65, 0, 0, TAU); ctx.fill(); }
+  } else { const k = Math.max(0, Math.min(1, (f.life ?? 0) / .3)); ctx.globalAlpha = Math.min(1, k); ctx.fillStyle = "rgba(143,208,255,.3)"; ctx.beginPath(); ctx.arc(x, y - s * .35, r * 1.9, 0, TAU); ctx.fill(); ctx.fillStyle = "#e6f8ff"; ctx.beginPath(); ctx.arc(x, y - s * .35, r * .75, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
 function drawWarningCircle(ctx, x, y, r, color, pulse, progress = 0) {
   ctx.fillStyle = color + "22"; ctx.strokeStyle = color + "99"; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); ctx.stroke();
@@ -1570,6 +1670,7 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
     if (DOOM_EFFECT_KINDS.has(f.kind)) { drawDoomEffect(ctx, f, s, now, presentation); continue; }
     if (MOTH_EFFECT_KINDS.has(f.kind) || f.kind === "orb" && f.moth) { drawMothEffect(ctx, f, s, now, presentation); continue; }
     if (f.kind === "debris" && f.medium === "water") { drawCrystalWater(ctx, f, s, now, lift, presentation); continue; }
+    if (f.kind === "gloomfall" || f.kind === "gloomMote") { drawGloomEffect(ctx, f, s, now); continue; } // the Gloomvast's
     const x = (f.x + .5) * s, y = (f.y + .62 - (ON_GROUND.has(f.kind) ? Number(lift(f)) || 0 : 0)) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
     ctx.save();
     if (f.kind === "gateBreath") {

@@ -111,3 +111,93 @@ export function cursesIn(raw, now) {
   return raw.filter((c) => c && curseDef(c.id) && Number(c.left) > 0 && !seen.has(c.id) && seen.add(c.id)).slice(-HAUNT.curse.cap)
     .map((c) => ({ id: c.id, at: now - Math.max(0, Number(c.ago) || 0), until: now + Math.min(Number(c.left), curseDef(c.id).duration * 1000 * HAUNT.curse.extendCap), rot: Math.max(0, Number(c.rot) || 0) }));
 }
+
+// The Gloomvast (Tim, 2026-11-04: "We can make the ghost a finale creature, even more than the Gloomgorge: it gives you the
+// curses, but its health and damage output are beefed up. It's blue and gorgeous... It has a move where it makes everything
+// darkness: not completely dark, but much darker than usual, with just a small area of light around the Wayfarer. In the
+// darkness you see lots of shadowy blue orbs moving around, and all of them can attack you. You can attack them but they don't
+// really take damage. You don't know which one is him; you have to dodge... It could go on for a while."). A boss for the
+// Pentagon's finale (monster-pack.ts `gloomvast`; its orbs `gloomShade`): the Gloomgorge grown grand and luminous, tuned to the
+// Wayfarer like a world beast (`vitals`, from the live reference: health = `hitsToKill` of their blows plus `hpPerLevel` a
+// level; a blow of 1x is `damageShare` of their maximum health after their damage reduction). Its haunt curses stack through
+// HAUNT.curse. As its health falls past each `darkness.at` it calls the Dark: the light drains while it winds up, then for a
+// hashed `duration` the view darkens to a small light round the Wayfarer (`light`; never fully black) and it comes apart into
+// `orbs` shadowy decoys and itself, all alike. Every orb attacks (cold touches and curse puffs); a decoy keeps only `decoyTake`
+// of what lands on it; the real one takes everything. Then the reveal: the decoys burst and it reels for `revealStagger` s.
+// Everything here is data or pure; Game and the pack runtime read it.
+export const GLOOM_FINALE = {
+  kind: "gloomvast", orbKind: "gloomShade", version: 1,
+  vitals: { hitsToKill: 58, hpPerLevel: 30, damageShare: .22, hpFloor: 1200, damageFloor: 8, scale: 2.1, staggerResistance: .7, attackGap: .55, cooldown: .9, speed: 1 },
+  curse: { wail: 2, gloomfall: 1, lights: 1, touch: 1, puff: 1 }, // haunt curses laid by each landed move (HAUNT.curse caps and stacks them)
+  confuse: { wail: 5 }, // seconds turned about by its Hollow Wail
+  lights: { count: 6, speed: 3.2, home: 1.4, turn: 2.2, life: 3.6, radius: .32 }, // Grave Lights: slow homing motes
+  gloomfall: { count: 5, radius: 1.3, arm: 1.15, spread: 2.2 }, // Gloomfall: one mark on you, one ahead of you, the rest round you
+  darkness: {
+    at: [.75, .45, .2], // shares of maximum health that call the Dark, each once
+    gap: 10, // seconds after a reveal before the next Dark can be called
+    windup: 1.6, // seconds the light drains before the Dark
+    duration: [14, 18], // seconds of darkness (hashed per creature and per Dark)
+    orbs: 9, cap: 10, // decoys laid with it (it is one more); never more than `cap` of its decoys alive
+    spread: [2.6, 6.5], apart: 1.2, // decoys and it are laid this far from the Wayfarer, this far apart, on open safe floor
+    decoyTake: .03, // a decoy keeps this share of each blow (a 560 blow leaves 17)
+    decoyHp: 1, // a decoy's health, as a share of the Gloomvast's maximum (so no single blow can burst one)
+    decoyDamage: .45, // a decoy's blows, as a share of the Gloomvast's damage
+    brains: ["orbit", "flank", "orbit", "duelist", "orbit", "flank"], // how the orbs move round the Wayfarer (hashed per orb)
+    fadeOut: .7, // seconds the dark takes to lift after the reveal
+    revealStagger: 1.6, // seconds it reels once the dark lifts
+    light: { inner: 1.45, edge: 1.7, alpha: .9, color: "4,8,22", lowRes: .5 }, // clear to `inner` tiles round the Wayfarer, dark by `inner + edge`; `alpha` < 1, so never fully black
+  },
+  text: {
+    calling: "The Gloomvast draws the light into itself.",
+    dark: "The light drains out of the world. Among the cold lights, one of them is it.",
+    reveal: "The dark tears open, and there it is, reeling.",
+  },
+};
+export const isGloomFinale = (e) => e?.kind === GLOOM_FINALE.kind;
+export const isGloomOrb = (e) => e?.kind === GLOOM_FINALE.orbKind;
+// The spawn record the finale arena lays (map.enemySpawns), or that Game.spawnGloomFinale makes and pushes at once. `id` must be
+// stable for the arena (with the seed it keys every hashed choice of the fight); `opts.name` renames it; `opts.hpScale` and
+// `opts.damageScale` (default 1) scale its tuned vitals, for an arena that wants it stronger or weaker.
+export function gloomFinaleSpawn(id, x, y, opts = {}) {
+  const k = (v) => Number(v) > 0 ? Number(v) : 1;
+  return { id: String(id), kind: GLOOM_FINALE.kind, x, y, boss: true, gloomFinale: { v: GLOOM_FINALE.version, name: opts.name ? String(opts.name) : null, hpScale: k(opts.hpScale), damageScale: k(opts.damageScale) }, traits: [] };
+}
+// Its vitals for a tuning reference { level, perHit, maxHp, guard } (world-beasts.ts liveBeastReference).
+export function gloomVitals(ref, opts = {}) {
+  const V = GLOOM_FINALE.vitals, guard = Math.max(0, Math.min(.75, Number(ref?.guard) || 0));
+  return {
+    hp: Math.max(V.hpFloor, Math.round(((Number(ref?.perHit) || 0) * V.hitsToKill + V.hpPerLevel * (Number(ref?.level) || 1)) * (opts.hpScale || 1))),
+    damage: Math.max(V.damageFloor, Math.round((Number(ref?.maxHp) || 60) * V.damageShare / (1 - guard) * (opts.damageScale || 1))),
+  };
+}
+// The Dark it is due to call now (an index into darkness.at), or -1.
+export function darkDue(e) {
+  const D = GLOOM_FINALE.darkness, n = Math.max(0, Number(e?.gloomDarks) || 0);
+  if (!e || n >= D.at.length || !(e.maxHp > 0) || (e.gloomGap || 0) > 0 || e.gloomDark) return -1;
+  return e.hp / e.maxHp <= D.at[n] ? n : -1;
+}
+export const darkDuration = (key, n) => { const [lo, hi] = GLOOM_FINALE.darkness.duration; return lo + (hashSeed(`gloom:dark:v1:${key}:${n}`) % 1000) / 1000 * (hi - lo); };
+// Where the orbs (and it) are laid for one Dark (`key`): up to `n` spots on open, safe floor round `center` (the Wayfarer),
+// within darkness.spread and at least darkness.apart from one another; never on lethal ground, a pit, a hole, a doorway or an
+// object's tile (stairs, chests, doors). Hashed from `key`, so a resumed Dark lays them the same. Bounded: one pass over the
+// tiles within the outer spread.
+export function gloomOrbSpots(map, width, center, n, key) {
+  const D = GLOOM_FINALE.darkness, tiles = map?.tiles || [], W = Math.max(1, Number(width) || 1), height = Math.floor(tiles.length / W), cx = Number(center?.x) || 0, cy = Number(center?.y) || 0, far = D.spread[1];
+  const objAt = new Set((map?.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`)), cand = [], out = [];
+  for (let y = Math.max(1, Math.floor(cy - far)); y <= Math.min(height - 2, Math.ceil(cy + far)); y++) for (let x = Math.max(1, Math.floor(cx - far)); x <= Math.min(W - 2, Math.ceil(cx + far)); x++) {
+    const t = tiles[y * W + x], d = Math.hypot(x - cx, y - cy);
+    if (!t || t.blocked || LETHAL_KINDS.has(t.kind) || t.pit || t.hole || t.doorway || objAt.has(`${x},${y}`) || d < D.spread[0] || d > far) continue;
+    cand.push({ x, y, k: hashSeed(`gloom:spot:v1:${key}:${x},${y}`) });
+  }
+  cand.sort((a, b) => a.k - b.k || a.y - b.y || a.x - b.x);
+  for (const c of cand) { if (out.length >= n) break; if (out.every((q) => Math.hypot(q.x - c.x, q.y - c.y) >= D.apart)) out.push({ x: c.x, y: c.y }); }
+  return out;
+}
+// How dark the view is for one Gloomvast, 0 (none) to 1 (its full Dark): rising while it calls the Dark, held through it,
+// lifting after the reveal (`gloomFade` seconds left).
+export function gloomDarkLevel(e) {
+  if (!e || e.dead) return 0; const D = GLOOM_FINALE.darkness;
+  if (e.gloomDark?.left > 0) return 1;
+  const s = e.pack; if (s?.attack === "vastDark" && s.phase === "windup") { const total = Math.max(.01, Number(s.data?.total) || D.windup); return Math.max(0, Math.min(1, 1 - Math.max(0, s.t) / total)); }
+  return e.gloomFade > 0 ? Math.max(0, Math.min(1, e.gloomFade / D.fadeOut)) : 0;
+}
