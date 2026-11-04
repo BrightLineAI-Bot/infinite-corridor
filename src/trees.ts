@@ -14,7 +14,7 @@
 //   levels under the branch above, so a fall off the higher branch lands on one (it hurts) and the climb goes on from there;
 // - leaves on its branches (the tips always), and decorative boughs drawn off its trunk, which nothing walks on.
 // Bounded: at most two trees, a few thousand tile checks, once per section; nothing spawns up there.
-import { hashSeed } from "./random.ts";
+import { hashSeed, byHash } from "./random.ts";
 
 export const TREE_VERSION = 13;
 // Release 672 (landscape version 14; Tim, 2026-11-01: "I haven't seen any tall trees"): a survey found the version 13 search
@@ -111,7 +111,7 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
   if (!force && !v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
   if (!force && v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null; // force: the Rite of Ascendancy's tree (ascendancy.ts) always grows where it fits
   // Version 14: every spot, in a hashed order (the same each time); version 13: `tries` hashed spots.
-  const spots = v14 ? Array.from({ length: 26 * 26 }, (_, i) => [2 + i % 26, 2 + Math.floor(i / 26)]).sort((p, q) => hashSeed(`${seed}:tree-spot:v14:${rx}:${ry}:${p}`) - hashSeed(`${seed}:tree-spot:v14:${rx}:${ry}:${q}`)) : null;
+  const spots = v14 ? Array.from({ length: 26 * 26 }, (_, i) => [2 + i % 26, 2 + Math.floor(i / 26)]).sort(byHash((p) => `${seed}:tree-spot:v14:${rx}:${ry}:${p}`)) : null;
   let layouts = 0;
   const before = reachable(map), stuck = new Set(trapped(map).map((t) => idx(t.x, t.y))); // wood never walls ground off, nor makes a pit you can drop into and not climb out of
   const cutsOff = (laid) => { const r = reachable(map); for (let i = 0; i < 1024; i++) if (before[i] && !r[i] && !laid.has(i)) return true; return trapped(map).some((t) => !stuck.has(idx(t.x, t.y))); };

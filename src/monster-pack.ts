@@ -9,7 +9,7 @@ import { HAUNT } from "./haunts.ts";
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
 import { stageOneBeastReference } from "./stages.ts";
-import { hashSeed } from "./random.ts";
+import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
 
 export const MONSTER_PACK_VERSION = 1;
@@ -3823,7 +3823,7 @@ export function populateOverworldPack(map, seed, rx, ry, { safe = null, fits = n
   const occupied = [...spawns, ...(map.objects || [])].filter((q) => Number.isFinite(q?.x) && Number.isFinite(q?.y));
   const open = (map.tiles || []).filter((t) => !t.blocked && !LETHAL.has(t.kind) && !t.environment && t.x > 2 && t.y > 2 && t.x < width - 3 && t.y < height - 3
     && !inSafe(t) && (!fits || fits(t)) && occupied.every((q) => Math.hypot(q.x - t.x, q.y - t.y) >= 3))
-    .sort((a, b) => hashSeed(`${key}:spot:${a.x}:${a.y}`) - hashSeed(`${key}:spot:${b.x}:${b.y}`));
+    .sort(byHash((a) => `${key}:spot:${a.x}:${a.y}`));
   const extra = depth >= D.farDepth ? D.extraFar : D.extraNear, placed = [];
   for (const t of open) {
     if (placed.length >= extra || packCount >= D.maxPack) break;

@@ -14,7 +14,7 @@
 // The chambers form a tree, so there is one way through. The vault is the chamber farthest from the door, the one real end,
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
-import { hashSeed, rng } from "./random.ts";
+import { hashSeed, rng, byHash } from "./random.ts";
 import { BUILDINGS, layFloor, farthest, guardianBeside } from "./great-buildings.ts";
 
 export const LABYRINTHS = {
@@ -199,7 +199,7 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
   // what can be reached from where you come in (a gallery's gaps jumped): creatures and caches stand only there
   const reach = new Set([arrive.y * W + arrive.x]), st = [arrive], ok = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.hole; };
   while (st.length) { const p = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { let x = p.x + dx, y = p.y + dy; const t = tiles[y * W + x]; if (!t || t.blocked) continue; if (t.hole) { x += dx; y += dy; if (!ok(x, y)) continue; } const k = y * W + x; if (!reach.has(k)) { reach.add(k); st.push({ x, y }); } } }
-  const cells = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (free(x, y) && reach.has(y * W + x)) cells.push({ x, y }); cells.sort((a, b) => hashSeed(`${id}:c:${a.x},${a.y}`) - hashSeed(`${id}:c:${b.x},${b.y}`));
+  const cells = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (free(x, y) && reach.has(y * W + x)) cells.push({ x, y }); cells.sort(byHash((a) => `${id}:c:${a.x},${a.y}`));
   const enemySpawns = [], ng = L.guards[0] + h("n") % (L.guards[1] - L.guards[0] + 1);
   for (const c of cells.slice(0, q.n === 0 ? 1 : ng)) { taken.add(c.y * W + c.x); enemySpawns.push({ id: `${id}:g${enemySpawns.length}`, kind: S.guards[h(`k${enemySpawns.length}`) % S.guards.length], x: c.x, y: c.y, buildingGuard: true }); }
   if (q.vault) { const spot = (far && far[0]) || cells.find((c) => !taken.has(c.y * W + c.x)) || { x: W >> 1, y: 2 };
@@ -209,7 +209,7 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
     objects.push({ id: "building-exit", kind: "exit", name: "Way out · the front", x: plan.front.x, y: plan.front.y, state: "open", actions: ["exit"] }); }
   else if (q.cache) { const c = cells.find((p) => !taken.has(p.y * W + p.x)); if (c) objects.push({ id: "building-cache", kind: "chest", name: "Forgotten Cache", x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); }
   // interior v2: a key is never lost; with no free cell far enough from the way in, it lies on the nearest reachable floor
-  const nearKey = () => { const k = [...reach].filter((i) => { const t = tiles[i]; return t && !t.blocked && !t.hole && !t.doorway && !taken.has(i) && i !== arrive.y * W + arrive.x; }).sort((a, b) => hashSeed(`${id}:k:${a}`) - hashSeed(`${id}:k:${b}`))[0]; return k === undefined ? { ...arrive } : { x: k % W, y: (k / W) | 0 }; };
+  const nearKey = () => { const k = [...reach].filter((i) => { const t = tiles[i]; return t && !t.blocked && !t.hole && !t.doorway && !taken.has(i) && i !== arrive.y * W + arrive.x; }).sort(byHash((a) => `${id}:k:${a}`))[0]; return k === undefined ? { ...arrive } : { x: k % W, y: (k / W) | 0 }; };
   if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0] || (V >= 2 ? nearKey() : null); if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
   const fall = q.kind === "gaps" ? plan.nodes[q.fallTo] : null, fallAt = fall ? (fall.slots.values().next().value?.inner || { x: W >> 1, y: H >> 1 }) : null;
   return { seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,

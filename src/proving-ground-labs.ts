@@ -196,7 +196,7 @@ function landscapeFixture(scenario, seed, now) {
     if (biome === "castle" && !map.castle) continue;
     if (feature === "volcano" && !map.volcano) continue;
     if (feature === "skybridge" && !map.skyBridges?.length) continue;
-    if (!feature && biome !== "castle" && map.tiles.filter((t) => t.landscape === biome).length < (biome === "alien" ? 220 : 400)) continue; // the heart of the biome, not its fringe
+    if (biome === "isles" ? map.landscape?.biome !== "isles" /* release 736 (review F11): an isles section's tiles are coast and sea, never "isles" */ : !feature && biome !== "castle" && map.tiles.filter((t) => t.landscape === biome).length < (biome === "alien" ? 220 : 400)) continue; // the heart of the biome, not its fringe
     const summit = map.objects.find((o) => o.landscapeSummit), counts = {};
     for (const t of map.tiles) if (t.landscape) counts[t.kind] = (counts[t.kind] || 0) + 1;
     if (feature === "volcano") Object.assign(base.game.player, { x: map.volcano.x + 4, y: map.volcano.y + 4 });

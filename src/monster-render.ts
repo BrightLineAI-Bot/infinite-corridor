@@ -1060,7 +1060,11 @@ function drawLynxBody(ctx, k, b, u, t, p, flip, run) {
 // boss glow and flight lift (measured for each kind, release 167); a hit flash, which lightens what lies beneath, is
 // drawn directly over the copy.
 export const INK_TINT = { body: "rgba(7,6,14,.88)", sheen: "rgba(150,170,215,.22)" }; // release 719
-export const PACK_SPRITE = { fps: 24, left: 1.5, right: 1.5, up: 3.1, down: .75, keep: 48, staleMs: 4000 };
+// Perf pack (perf P8): at 24 sprite frames a second a phone drawing 30 frames repainted a cached creature on 4 frames of 5,
+// so the cache saved little (the Questing Beast: 0.98 ms cached, 1.10 painted every frame). An idle (or moving) creature now
+// steps its limbs at `idleFps`; a windup or attack keeps `fps`. Each creature's steps are offset by a fixed share of a step
+// (from its id), so a screen of them does not repaint all on the same frame.
+export const PACK_SPRITE = { fps: 24, idleFps: 10, left: 1.5, right: 1.5, up: 3.1, down: .75, keep: 48, staleMs: 4000 };
 const sprites = new Map();
 function makeSpriteCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
 function spriteState(e) { const s0 = e.pack; return s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle"; }
@@ -1071,10 +1075,11 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
-  const flip = ["astralWorm","astralMirage"].includes(e.kind)&&e.astral?.facingX ? (e.astral.facingX<0?-1:1) : e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * PACK_SPRITE.fps / 1000);
-  const key = `${e.kind}|${step}|${flip}|${spriteState(e)}|${scale}|${s}|${m.a}|${m.d}|${!!e.boss}|${!!e.aloft}|${!!e.farInk}`;
   let sp = sprites.get(e.id);
-  if (!sp) { const canvas = makeSpriteCanvas(); if (!canvas) return false; sp = { canvas, key: null, used: now }; sprites.set(e.id, sp); }
+  if (!sp) { const canvas = makeSpriteCanvas(); if (!canvas) return false; let h = 0; for (let i = 0; i < e.id.length; i++) h = (h * 31 + e.id.charCodeAt(i)) >>> 0; sp = { canvas, key: null, used: now, off: (h % 997) / 997 }; sprites.set(e.id, sp); }
+  const pose = spriteState(e), fps = pose === "idle" ? PACK_SPRITE.idleFps : PACK_SPRITE.fps;
+  const flip = ["astralWorm","astralMirage"].includes(e.kind)&&e.astral?.facingX ? (e.astral.facingX<0?-1:1) : e.facingX ? (e.facingX < 0 ? -1 : 1) : facing === "left" ? -1 : 1, step = Math.floor(now * fps / 1000 + sp.off);
+  const key = `${e.kind}|${fps}:${step}|${flip}|${pose}|${scale}|${s}|${m.a}|${m.d}|${!!e.boss}|${!!e.aloft}|${!!e.farInk}`;
   if (sp.key !== key) {
     const c = sp.canvas, w = Math.ceil((L + R) * m.a) + 2, h = Math.ceil((U + D) * m.d) + 2;
     if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
@@ -1083,7 +1088,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
     // The creature's feet land at (L, U) in the sprite; paint it as if it stood at the origin of that frame.
     g.setTransform(m.a, 0, 0, m.d, (L - k) * m.a + 1, (U - b) * m.d + 1);
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
-    paintPackMonster(g, { ...e, hitFlash: 0, phasing: false, phases: false, illusion: false }, s, step * 1000 / PACK_SPRITE.fps, facing, def, true);
+    paintPackMonster(g, { ...e, hitFlash: 0, phasing: false, phases: false, illusion: false }, s, (step - sp.off) * 1000 / fps, facing, def, true);
     if (e.farInk) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-atop"; g.fillStyle = INK_TINT.body; g.fillRect(0, 0, w, h); const sh = g.createLinearGradient(0, 0, 0, h); sh.addColorStop(0, INK_TINT.sheen); sh.addColorStop(.5, "rgba(0,0,0,0)"); g.fillStyle = sh; g.fillRect(0, 0, w, h); g.globalCompositeOperation = "source-over"; } // release 719: the Ink Wastes' creatures are ink-black (once per sprite frame, not per draw)
     sp.key = key;
   }
