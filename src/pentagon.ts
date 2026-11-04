@@ -97,6 +97,7 @@ export const PENTAGON = {
     sealV4: "In her hand, the Fivefold Seal: every sigil door in the rings will open to it, one by one, as you come to them.",
     seal: "The Fivefold Seal: five faces round an eyeless one. Every sigil door in the rings will open to it now.",
     bossGate: "The way down is held shut while its keeper lives",
+    hoardHeld: "The Regent's hand is still on her hoard. It will not open while she lives.",
     bossDown: "falls. The way down opens",
     arrive: "A wall of building runs on as far as you can see, its face turning at a great angle: the Pentagon.",
     sealed: "The Heart is sealed. Three trials remain to be cleared within the rings",
@@ -127,6 +128,18 @@ export function regionAt(gx, gy) {
   if (m > B.inner) return { kind: "inner", face, m };
   if (Math.abs(dx) <= B.heart && Math.abs(dy) <= B.heart) return { kind: "heart", face, m };
   return { kind: "central", face, m };
+}
+// WG-03: within one Pentagon its courts run on over section edges, so the Wayfarer crosses a seam where they stand. Is the
+// stretch of edge at `along` (tiles a..b along it) open court on both sides of the seam from section (rx, ry) by (dx, dy)?
+// Only the court and the central court count: anywhere else (building, the walls between the courts, outside) the seam is
+// crossed at the lane, as every other edge is.
+export function pentagonSeamOpen(cx, cy, rx, ry, dx, dy, a, b) {
+  const nx = rx + dx, ny = ry + dy; if (Math.abs(nx - cx) > 1 || Math.abs(ny - cy) > 1 || Math.abs(rx - cx) > 1 || Math.abs(ry - cy) > 1) return false;
+  const open = (sx, sy, x, y) => { const g = toGlobal(cx, cy, sx, sy, x, y), k = regionAt(g.gx, g.gy).kind; return k === "court" || k === "central"; };
+  for (let v = a; v <= b; v++) { if (v < 0 || v > 31) return false;
+    const here = dx ? [dx > 0 ? 31 : 0, v] : [v, dy > 0 ? 31 : 0], there = dx ? [dx > 0 ? 0 : 31, v] : [v, dy > 0 ? 0 : 31];
+    if (!open(rx, ry, ...here) || !open(nx, ny, ...there)) return false; }
+  return true;
 }
 // A point a distance `m` out along face i's normal, `t` along the face.
 const facePoint = (i, m, t) => { const [nx, ny] = NORM[i]; return { gx: Math.floor(C0 + nx * m - ny * t), gy: Math.floor(C0 + ny * m + nx * t) }; };

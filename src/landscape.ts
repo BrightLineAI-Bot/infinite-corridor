@@ -331,9 +331,10 @@ export function openSeaShare(seed, rx, ry, version = LANDSCAPE_VERSION) {
   if (seaShares.size >= 4096) seaShares.clear();
   seaShares.set(key, n / 256); return n / 256;
 }
-export function applyLandscape(map, seed, rx, ry, { explored = false, version = LANDSCAPE_VERSION, openSea = false, hamlet = false, buoy = true } = {}) {
+export function applyLandscape(map, seed, rx, ry, { explored = false, version = LANDSCAPE_VERSION, openSea = false, hamlet = false, buoy = true, coherence = 0 } = {}) {
   if (!map || map.landscape || explored || map.settlement || Math.abs(rx) + Math.abs(ry) <= 1 || map.tiles?.length !== 1024) return map;
   const full = openSea && version >= 2 && Math.abs(rx) + Math.abs(ry) >= OPEN_SEA.minDepth && openSeaShare(seed, rx, ry, version) >= OPEN_SEA.minWater;
+  const walls = coherence >= 1, plazaReach = walls ? (m, start) => reachableFromPlaza(m, start, true) : reachableFromPlaza; // WG-06: thin walls count, new ground only
   const mask = full ? protectedMask(map, { spawns: false, decor: false, ruins: false, plaza: false, exits: false, border: false, reach: OPEN_SEA.landmarkReach }) : protectedMask(map, { border: !openSea }), biome = biomeFor(seed, rx, ry, version), v2 = version >= 2, W = WATERBODIES;
   // A hamlet in open sea keeps an island to stand on.
   // Shelters and districts in open sea stand on their own islands, with a strand around them.
@@ -432,21 +433,21 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
     map.enemySpawns = (map.enemySpawns || []).filter((q) => !wet(q));
     map.openSea = true;
     if (openSea >= 2) addSeaFeatures(map, seed, rx, ry, buoy, openSea);
-  } else connectStranded(map);
-  if (biome === "mountains" || biome === "desert" || biome === "alien") placeSummit(map, seed, rx, ry, biome);
-  for (const t of ensureReturnable(map, 32, 32, { x: 16, y: 16 })) if (t.landscape === "mountains" && !t.volcanic && !t.slope && t.kind !== "skyBridge") t.kind = mountainKind(t.elev || 0);
+  } else connectStranded(map, walls);
+  if (biome === "mountains" || biome === "desert" || biome === "alien") placeSummit(map, seed, rx, ry, biome, coherence);
+  for (const t of ensureReturnable(map, 32, 32, { x: 16, y: 16 }, walls)) if (t.landscape === "mountains" && !t.volcanic && !t.slope && t.kind !== "skyBridge") t.kind = mountainKind(t.elev || 0);
   addRamps(map, 32, 32, `${seed}:${rx}:${ry}`);
   if (v2) placeIslandLandmark(map, seed, rx, ry);
-  if (version >= 3) placeDock(map, seed, rx, ry, reachableFromPlaza(map));
+  if (version >= 3) placeDock(map, seed, rx, ry, reachableFromPlaza(map, undefined, walls));
   if (biome === "mountains") map.weather = "snow";
   else if (map.firelands) map.weather = "embers"; // release 583
   else if (map.fogMoor) map.weather = "fog"; // release 617
   if (version >= 5) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 5).type === "frost") t.kind = "snowRock"; // release 573: frost mountains are snowbound
   if (map.pillarlands) buildMesas(map, seed, rx, ry); // release 591: last, so nothing after it ramps or lowers them
-  if (version >= 14 && !full) { const region = treeRegion(map); if (region) growTrees(map, seed, rx, ry, { ground: canopyGround(map, region), reachable: reachableFromPlaza, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }), version, region }); } // release 672
-  else if (version >= 13 && !full && map.paletteRegion) growTrees(map, seed, rx, ry, { ground: canopyGround(map), reachable: reachableFromPlaza, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }) }); // release 645: the tree package
+  if (version >= 14 && !full) { const region = treeRegion(map); if (region) growTrees(map, seed, rx, ry, { ground: canopyGround(map, region), reachable: plazaReach, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }, walls), version, region }); } // release 672
+  else if (version >= 13 && !full && map.paletteRegion) growTrees(map, seed, rx, ry, { ground: canopyGround(map), reachable: plazaReach, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }, walls) }); // release 645: the tree package
   else if (version >= 12 && !full && map.paletteRegion) buildCanopyTree(map, seed, rx, ry); // release 631: likewise last
-  if (version >= 17 && !full) growMushrooms(map, seed, rx, ry, { reachable: reachableFromPlaza, version }); // release 721: the great mushrooms, after the trees
+  if (version >= 17 && !full) growMushrooms(map, seed, rx, ry, { reachable: plazaReach, version }); // release 721: the great mushrooms, after the trees
   map.landscape = { version, biome: biome || dominantLandscape(map), name: (BIOMES[biome || dominantLandscape(map)] || REGION_GROUNDS[biome || dominantLandscape(map)])?.name || null, ...(openSea ? { openSea: full ? "open" : "coast" } : {}) };
   return map;
 }
@@ -801,14 +802,16 @@ function mountainKind(elev) { return elev >= 4 ? "snowPeak" : elev === 3 ? "snow
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 // What the player can reach from the plaza: climb at most one level (or along a slope), drop any height.
-export function reachableFromPlaza(map, start = { x: 16, y: 16 }) {
+// `walls` (world coherence, COHERENCE version 1 and on): a shack's or a district's thin wall between two tiles stops the step,
+// as it does in play (game.ts footprintOpen). Without it (sections pinned before) the helpers read as they always did.
+export function reachableFromPlaza(map, start = { x: 16, y: 16 }, walls = false) {
   const seen = new Uint8Array(1024), q = [idx(start.x, start.y)];
   seen[q[0]] = 1;
   for (let h = 0; h < q.length; h++) {
     const i = q[h], a = map.tiles[i], x = i % 32, y = Math.floor(i / 32);
     for (const [dx, dy] of N4) {
       const nx = x + dx, ny = y + dy, j = idx(nx, ny), b = map.tiles[j];
-      if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || seen[j] || !b || b.blocked) continue;
+      if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || seen[j] || !b || b.blocked || (walls && sideWalled(a, b, dx, dy))) continue;
       const up = (b.elev || 0) - (a.elev || 0);
       if (up > 1 && !safeVoidScarTransition(a, b)) continue;
       seen[j] = 1; q.push(j);
@@ -829,7 +832,14 @@ export const safeVoidScarTransition = (a, b) => !!(a?.voidScar || b?.voidScar) &
   walkable(a) && walkable(b) && !a.pit && !b.pit &&
   ![a.kind, b.kind].some(kind => kind === "void" || kind === "sealedGate");
 const step = (a, b) => safeVoidScarTransition(a, b) || (b.elev || 0) - (a.elev || 0) <= 1;
-function sweep(map, width, height, start, reverse) {
+// The thin walls on a tile's sides (a shack's or a district building's, or an enclosure's), and whether one stands between a
+// tile and its neighbour at (dx, dy). The same boxes as game.ts tileOpen/footprintOpen, read per tile side.
+const SIDE_OF = { "1,0": ["east", "west"], "-1,0": ["west", "east"], "0,1": ["south", "north"], "0,-1": ["north", "south"] };
+export const wallSidesOf = (t) => t?.encSides?.length ? t.encSides : (t?.structure === "shackWall" || t?.structure === "districtWall") ? t.wallSides || [] : [];
+// A south wall also stands in the way of a step east or west along its row: the Wayfarer's footprint (game.ts footprintOpen,
+// y+.5 to y+.88 of the tile it stands on) reaches into the wall's strip along the tile's south side.
+export function sideWalled(a, b, dx, dy) { const s = SIDE_OF[`${dx},${dy}`]; return !!s && (wallSidesOf(a).includes(s[0]) || wallSidesOf(b).includes(s[1]) || (!!dx && (wallSidesOf(a).includes("south") || wallSidesOf(b).includes("south")))); }
+function sweep(map, width, height, start, reverse, walls = false) {
   const T = map.tiles, seen = new Uint8Array(width * height), s0 = start.y * width + start.x;
   if (!walkable(T[s0])) return seen;
   const q = [s0]; seen[s0] = 1;
@@ -839,29 +849,30 @@ function sweep(map, width, height, start, reverse) {
       const nx = x + dx, ny = y + dy, j = ny * width + nx;
       if (nx < 0 || ny < 0 || nx >= width || ny >= height || seen[j] || !walkable(T[j])) continue;
       if (reverse ? !step(T[j], T[i]) : !step(T[i], T[j])) continue;
+      if (walls && sideWalled(T[i], T[j], dx, dy)) continue;
       seen[j] = 1; q.push(j);
     }
   }
   return seen;
 }
-export const reachableFrom = (map, width, height, start) => sweep(map, width, height, start, false);
-export const canReturnTo = (map, width, height, start) => sweep(map, width, height, start, true);
-export function trappedTiles(map, width, height, start) {
-  const go = reachableFrom(map, width, height, start), back = canReturnTo(map, width, height, start), out = [];
+export const reachableFrom = (map, width, height, start, walls = false) => sweep(map, width, height, start, false, walls);
+export const canReturnTo = (map, width, height, start, walls = false) => sweep(map, width, height, start, true, walls);
+export function trappedTiles(map, width, height, start, walls = false) {
+  const go = reachableFrom(map, width, height, start, walls), back = canReturnTo(map, width, height, start, walls), out = [];
   for (let i = 0; i < go.length; i++) if (go[i] && !back[i]) out.push(map.tiles[i]);
   return out;
 }
 // Raise each trap floor to one level below the lowest way out, until every reachable tile leads back to start.
-export function ensureReturnable(map, width, height, start) {
+export function ensureReturnable(map, width, height, start, walls = false) {
   const raised = [];
   for (let pass = 0; pass < 80; pass++) {
-    const go = reachableFrom(map, width, height, start), back = canReturnTo(map, width, height, start);
+    const go = reachableFrom(map, width, height, start, walls), back = canReturnTo(map, width, height, start, walls);
     let changed = false;
     for (let i = 0; i < go.length; i++) {
       if (!go[i] || back[i]) continue;
       const t = map.tiles[i], x = i % width, y = (i - x) / width;
       let target = Infinity;
-      for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = ny * width + nx; if (nx >= 0 && ny >= 0 && nx < width && ny < height && back[j] && walkable(map.tiles[j])) target = Math.min(target, (map.tiles[j].elev || 0) - 1); }
+      for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = ny * width + nx; if (nx >= 0 && ny >= 0 && nx < width && ny < height && back[j] && walkable(map.tiles[j]) && !(walls && sideWalled(t, map.tiles[j], dx, dy))) target = Math.min(target, (map.tiles[j].elev || 0) - 1); }
       if (target !== Infinity && target > (t.elev || 0)) { t.elev = target; raised.push(t); changed = true; }
     }
     if (!changed) break;
@@ -892,6 +903,208 @@ export function nearestReturnable(map, width, height, start, from) {
   let best = null;
   for (let i = 0; i < back.length; i++) if (back[i]) { const x = i % width, y = (i - x) / width, d = Math.hypot(x - from.x, y - from.y); if (!best || d < best.d) best = { x, y, d }; }
   return best;
+}
+
+// ---------------------------------------------------------------- world coherence (version 1)
+// Ground first seen from this version on (`atlas.coherenceVersion`) keeps its ways through: a river or canyon band never
+// cuts an exit lane (the lane is bridged, the same on both sides of every edge, since where a lane runs is the edge's own
+// hash, sectionExits), every land exit, the plaza and the doors of the great buildings join as one walkable ground (where
+// nothing joins them a short path is carved, a step of at most one level at a time, so it walks both ways), no pit holds the
+// Wayfarer, and no creature stands on a pad it cannot leave. Sections pinned before keep their exact ground: none of this
+// runs for them (Game.loadArea reads the version from the atlas).
+export const COHERENCE = {
+  version: 1,
+  lane: { half: 1, depth: 16 }, // an exit lane: the exit tile and `half` either side, from the edge in to the plaza
+  crossing: { river: "bridge", canyon: "bridge" }, // what a band becomes where a lane (or a carved path) crosses it
+  lethalDrop: 4, // a drop of this many levels or more kills (fallDamage), so no way through may need one
+  cost: { step: 1, level: 3, band: 4, ruin: 5, rock: 6, wall: 6, water: 12 }, // the price of each repair, for the cheapest path
+  carves: 24, // repaired paths per section at most
+  creatureRegion: 12, nudge: 8, // a creature's own ground holds at least this many tiles, or it moves (up to `nudge` tiles)
+  memo: 256, // Game's settled-section memo is cleared past this many keys
+  doorTries: 12, // spots a great building may pass over because its door would not join the land
+  altCores: 6, // grounds tried for an exit cut off from the plaza (by open sea): it joins the largest of them
+  fixedKinds: ["ocean", "deepOcean", "lava", "abyss", "void", "sealedGate", "dungeonWater"], // never repaired
+  rockGround: { alien: "alienMoss", desert: "sand", coast: "beach", lake: "shallows" }, // what a cleared rock becomes (mountains: by height)
+  messages: { noCrossing: "No crossing here: the river or the canyon runs on over the edge, and this lane was never bridged." },
+};
+const designTile = (t) => !!t && !!(t.greatBuilding || t.courtyard || t.keep || t.keepPart || t.canopy || t.mushroom || t.causeway || t.structure === "buildingRoof" || t.landscape === "castle" || t.skyPlatform || t.kind === "skyBridge" || t.kind === "bridge" || t.kind === "logBridge" || t.volcanic);
+const footing = (t) => !!t && !t.blocked && !LETHAL_KINDS.has(t.kind);
+const edgeTile = (i) => { const x = i % 32, y = (i - x) / 32; return x === 0 || y === 0 || x === 31 || y === 31; };
+// The Wayfarer's step from a to b (dx, dy): climb one level (a jump), walk a slope, drop less than a lethal fall; thin walls stop it.
+export function playerStepOk(a, b, dx, dy) {
+  if (!footing(a) || !footing(b) || sideWalled(a, b, dx, dy)) return false;
+  if (safeVoidScarTransition(a, b)) return true;
+  const d = (b.elev || 0) - (a.elev || 0);
+  return d <= 1 && (d > -COHERENCE.lethalDrop || !!(a.slope || b.slope));
+}
+// A ground creature's step: the same level, or along a slope; never onto a perch.
+export function creatureStepOk(a, b, dx, dy) {
+  if (!footing(a) || !footing(b) || b.perch || sideWalled(a, b, dx, dy)) return false;
+  const d = (b.elev || 0) - (a.elev || 0);
+  return d === 0 || safeVoidScarTransition(a, b) || (!!(a.slope || b.slope) && Math.abs(d) <= 1);
+}
+function flood(map, starts, ok, reverse = false) {
+  const seen = new Uint8Array(1024), q = [];
+  for (const s of starts) if (s >= 0 && s < 1024 && !seen[s] && footing(map.tiles[s])) { seen[s] = 1; q.push(s); }
+  for (let h = 0; h < q.length; h++) { const i = q[h], x = i % 32, y = (i - x) / 32;
+    for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = idx(nx, ny); if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || seen[j]) continue;
+      if (reverse ? !ok(map.tiles[j], map.tiles[i], -dx, -dy) : !ok(map.tiles[i], map.tiles[j], dx, dy)) continue; seen[j] = 1; q.push(j); } }
+  return seen;
+}
+// The plaza's tile (or the open tile nearest it), and the section's core: every tile walked to from there and back.
+export function coherenceHub(map) { let best = -1, bd = Infinity; for (let y = 12; y <= 20; y++) for (let x = 12; x <= 20; x++) { const d = Math.abs(x - 16) + Math.abs(y - 16) + (x + y * 32) / 1e5; if (footing(map.tiles[idx(x, y)]) && d < bd) { bd = d; best = idx(x, y); } } return best; }
+export function coherenceCore(map, hub = coherenceHub(map)) {
+  const core = new Uint8Array(1024); if (hub < 0) return core;
+  const go = flood(map, [hub], playerStepOk), back = flood(map, [hub], playerStepOk, true);
+  for (let i = 0; i < 1024; i++) core[i] = go[i] & back[i];
+  return core;
+}
+// A door (or any spot) joins the core: the tile itself, or one beside it, is walked to from the plaza and back.
+export function joinsCore(map, p, core = coherenceCore(map)) { const x = Math.round(p.x), y = Math.round(p.y); return [[0, 0], ...N4].some(([dx, dy]) => x + dx >= 0 && y + dy >= 0 && x + dx < 32 && y + dy < 32 && !!core[idx(x + dx, y + dy)]); }
+// WG-07: the tops a summit cairn may stand on (from the plaza and back; for mountains, the trail of single steps it lays).
+function summitReach(map, biome) {
+  const hub = coherenceHub(map); if (hub < 0) return new Uint8Array(1024);
+  if (biome !== "mountains") return coherenceCore(map, hub);
+  const trail = flood(map, [hub], (a, b, dx, dy) => !!b && !b.blocked && b.x >= 1 && b.y >= 1 && b.x <= 30 && b.y <= 30 && Math.abs((b.elev || 0) - (a.elev || 0)) <= 1 && !sideWalled(a, b, dx, dy));
+  return trail;
+}
+// The section's exit lanes, as tile indices from each edge in to the plaza.
+function laneTiles(map) {
+  const ex = map.exits || {}, H = COHERENCE.lane.half, D = COHERENCE.lane.depth, out = [];
+  for (const [d, c] of Object.entries(ex)) { if (!Number.isFinite(c) || !["north", "south", "west", "east"].includes(d)) continue;
+    for (let k = 0; k <= D; k++) for (let o = -H; o <= H; o++) { const v = c + o; if (v < 0 || v > 31) continue;
+      const [x, y] = d === "north" ? [v, k] : d === "south" ? [v, 31 - k] : d === "west" ? [k, v] : [31 - k, v]; out.push(idx(x, y)); } }
+  return out;
+}
+// WG-01: a river or canyon band never cuts a lane. Where a band's tile lies on a lane (walled or deadly), the lane bridges it.
+// Where a lane runs is the edge's own (sectionExits hashes the edge), so the two sections of an edge bridge the same tiles.
+export function bridgeLanes(map) {
+  let made = 0;
+  if (!map?.tiles || map.tiles.length !== 1024) return made;
+  for (const i of laneTiles(map)) { const t = map.tiles[i], band = t?.environment;
+    if (!band || !COHERENCE.crossing[band] || designTile(t) || (!t.blocked && !LETHAL_KINDS.has(t.kind))) continue;
+    map.tiles[i] = { ...t, kind: COHERENCE.crossing[band], blocked: false, slope: false, bridgeOver: band, laneBridge: true }; made++; }
+  return made;
+}
+// What it costs to make tile t walkable (Infinity: never touched). Design tiles (buildings, castles, trees, caps, bridges) are
+// walked where they are open, at their own height, and never changed; the open sea and lava are never changed.
+function repairCost(t, i) {
+  const C = COHERENCE.cost;
+  if (!t) return Infinity;
+  if (footing(t)) return C.step;
+  if (designTile(t) || edgeTile(i)) return Infinity; // the section's border stays (only lanes cross it)
+  if (t.environment && COHERENCE.crossing[t.environment]) return C.band;
+  if (COHERENCE.fixedKinds.includes(t.kind) || t.pit || t.voidScar) return Infinity;
+  if (DEEP_WATER.includes(t.kind)) return C.water;
+  if (t.blocked && (t.ruin !== undefined || t.kind === "blocked") && !t.structure && !t.buildingId) return C.ruin;
+  if (t.blocked && t.landscape && !t.structure && !t.buildingId) return C.rock;
+  return Infinity;
+}
+// Which heights a repaired path may give a tile: natural landscape ground may be cut or built up; anything else keeps its own.
+const reshapes = (t, i) => !designTile(t) && !edgeTile(i) && !t.environment && !t.structure && !t.buildingId && !!t.landscape && !t.slope && !DEEP_WATER.includes(t.kind);
+// Make tile i walkable at height e (the path's own height there), keeping what it was where it can.
+function repairTile(map, i, e, from) {
+  const t = map.tiles[i], prev = from >= 0 ? map.tiles[from] : null;
+  if (footing(t) && (t.elev || 0) === e) return;
+  let next = { ...t, carved: true };
+  if (!footing(t)) {
+    if (t.environment && COHERENCE.crossing[t.environment]) next = { ...next, kind: COHERENCE.crossing[t.environment], blocked: false, bridgeOver: t.environment, laneBridge: true };
+    else if (DEEP_WATER.includes(t.kind)) next = { ...next, kind: t.kind === "swampWater" ? "mireWater" : t.kind === "toxicWater" ? "toxicMire" : "shallows", blocked: false };
+    else { const near = prev && footing(prev) && !designTile(prev) && !prev.structure && !prev.buildingId && prev.landscape === t.landscape ? prev.kind : null;
+      next = { ...next, kind: COHERENCE.rockGround[t.landscape] || near || (t.landscape ? null : map.dominant) || map.dominant || "ash", blocked: false, ruin: undefined }; }
+  }
+  next.elev = e;
+  if (next.landscape === "mountains" && !next.volcanic && !next.slope && next.kind !== "bridge") next.kind = mountainKind(e);
+  map.tiles[i] = next;
+}
+// The cheapest repaired path from tile s to the core (Dijkstra over tile and height): every step joins two tiles at most one
+// level apart with no wall between, so it walks both ways; a height changes at `level` a level. Applied in place.
+function carveToCore(map, s, core) {
+  const C = COHERENCE.cost, M = MAX_LEVEL + 1, dist = new Float64Array(1024 * M).fill(Infinity), prev = new Int32Array(1024 * M).fill(-1), heap = [];
+  const push = (k, d) => { heap.push([d, k]); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p][0] < heap[c][0] || (heap[p][0] === heap[c][0] && heap[p][1] <= heap[c][1])) break; [heap[p], heap[c]] = [heap[c], heap[p]]; c = p; } };
+  const less = (a, b) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = l + 1; let m = c; if (l < heap.length && less(heap[l], heap[m])) m = l; if (r < heap.length && less(heap[r], heap[m])) m = r; if (m === c) break; [heap[m], heap[c]] = [heap[c], heap[m]]; c = m; } } return top; };
+  const heights = (t, i) => reshapes(t, i) ? Array.from({ length: M }, (_, e) => e) : [t.elev || 0];
+  const st = map.tiles[s], c0 = repairCost(st, s); if (c0 === Infinity) return false;
+  for (const e of footing(st) ? [st.elev || 0] : heights(st, s)) { const k = s * M + e, d = c0 + C.level * Math.abs(e - (st.elev || 0)); if (d < dist[k]) { dist[k] = d; push(k, d); } }
+  let goal = -1;
+  while (heap.length) { const [d, k] = pop(); if (d > dist[k]) continue; const i = (k / M) | 0, e = k % M, a = map.tiles[i];
+    if (core[i] && e === (a.elev || 0) && footing(a)) { goal = k; break; }
+    const x = i % 32, y = (i - x) / 32;
+    for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const j = idx(nx, ny), b = map.tiles[j], cb = repairCost(b, j); if (cb === Infinity) continue;
+      const wall = sideWalled(a, b, dx, dy); if (wall && (designTile(a) || designTile(b))) continue;
+      for (const f of heights(b, j)) { if (Math.abs(f - e) > 1) continue;
+        const nd = d + cb + C.level * Math.abs(f - (b.elev || 0)) + (wall ? C.wall : 0), nk = j * M + f; if (nd < dist[nk]) { dist[nk] = nd; prev[nk] = k; push(nk, nd); } } } }
+  if (goal < 0) return false;
+  const path = []; for (let k = goal; k !== -1; k = prev[k]) path.push(k); path.reverse();
+  for (let n = 0; n < path.length; n++) { const i = (path[n] / M) | 0, e = path[n] % M, from = n ? (path[n - 1] / M) | 0 : -1; repairTile(map, i, e, from);
+    if (from < 0) continue;
+    const a = map.tiles[from], b = map.tiles[i], dx = (i % 32) - (from % 32), dy = Math.floor(i / 32) - Math.floor(from / 32), side = SIDE_OF[`${dx},${dy}`];
+    if (!sideWalled(a, b, dx, dy)) continue;
+    for (const [t, k, s0] of [[a, from, side[0]], [b, i, side[1]]]) { if (!wallSidesOf(t).length) continue; const gone = (w) => w === s0 || (!!dx && w === "south"), q = { ...t, wallGap: true };
+      if (q.encSides?.length) q.encSides = q.encSides.filter((w) => !gone(w)); if (q.wallSides?.length) q.wallSides = q.wallSides.filter((w) => !gone(w)); map.tiles[k] = q; } }
+  return true;
+}
+// The section's land exits (open water is a boat's crossing) as tile indices.
+function landExits(map) {
+  const ex = map.exits || {}, out = [];
+  for (const [x, y] of [[ex.north, 0], [ex.south, 31], [0, ex.west], [31, ex.east]]) { if (!Number.isFinite(x) || !Number.isFinite(y)) continue; const t = map.tiles[idx(x, y)]; if (t && !DEEP_WATER.includes(t.kind)) out.push(idx(x, y)); }
+  return out;
+}
+// WG-02, WG-05, WG-06, WG-07: every land exit, each given door or spot, and every pit (ground walked into but never out of)
+// joins the core; as little ground changes as will do it. Returns how many paths were carved.
+export function cohereSection(map, { spots = [] } = {}) {
+  if (!map?.tiles || map.tiles.length !== 1024) return 0;
+  const hub = coherenceHub(map); if (hub < 0) return 0;
+  let carved = 0, core = coherenceCore(map, hub);
+  const inner = (i) => { const x = i % 32, y = (i - x) / 32; return idx(x === 0 ? 1 : x === 31 ? 30 : x, y === 0 ? 1 : y === 31 ? 30 : y); }; // the tile an arrival also stands on
+  const targets = [...landExits(map).flatMap((i) => [i, inner(i)]), ...spots.filter((p) => Number.isFinite(p?.x) && Number.isFinite(p?.y)).map((p) => idx(Math.round(p.x), Math.round(p.y))).filter((i) => i >= 0 && i < 1024)];
+  const lost = [];
+  for (const i of targets) { if (carved >= COHERENCE.carves) break; if (core[i]) continue; if (carveToCore(map, i, core)) { carved++; core = coherenceCore(map, hub); } else lost.push(i); }
+  // Exits that cannot reach the plaza at all (it stands on an island, past open sea) join the largest ground near them, and
+  // each other.
+  const cut = lost.filter((i) => edgeTile(i) && footing(map.tiles[i]));
+  for (const i of cut) { if (carved >= COHERENCE.carves) break; const own = coherenceCore(map, i), seen = new Uint8Array(1024), x0 = i % 32, y0 = (i - x0) / 32; let best = null, tried = 0;
+    const near = []; for (let j = 0; j < 1024; j++) if (!own[j] && footing(map.tiles[j])) near.push([Math.abs(j % 32 - x0) + Math.abs(((j - (j % 32)) / 32) - y0), j]);
+    near.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    for (const [d, j] of near) { if (d > COHERENCE.lane.depth || tried >= COHERENCE.altCores) break; if (seen[j]) continue; const c = coherenceCore(map, j); let n = 0; for (let k = 0; k < 1024; k++) if (c[k]) { seen[k] = 1; n++; } tried++; if (!best || n > best.n) best = { c, n }; }
+    if (best && best.n > COHERENCE.creatureRegion && carveToCore(map, i, best.c)) carved++; }
+  if (cut.length > 1) { let alt = coherenceCore(map, cut[0]); for (const i of cut.slice(1)) { if (carved >= COHERENCE.carves) break; if (alt[i]) continue; if (carveToCore(map, i, alt)) { carved++; alt = coherenceCore(map, cut[0]); } } core = coherenceCore(map, hub); }
+  for (let pass = 0; carved < COHERENCE.carves && pass < COHERENCE.carves; pass++) {
+    const go = flood(map, [hub, ...landExits(map)], playerStepOk); let pit = -1;
+    for (let i = 0; i < 1024 && pit < 0; i++) if (go[i] && !core[i]) pit = i;
+    if (pit < 0 || !carveToCore(map, pit, core)) break;
+    carved++; core = coherenceCore(map, hub);
+  }
+  return carved;
+}
+// WG-08: each tile's creature ground (where a ground creature can walk from it) and its size.
+export function creatureRegions(map) {
+  const label = new Int32Array(1024).fill(-1), size = [];
+  for (let s = 0; s < 1024; s++) { if (label[s] >= 0 || !footing(map.tiles[s]) || map.tiles[s].perch) continue; const id = size.length, q = [s]; label[s] = id;
+    for (let h = 0; h < q.length; h++) { const i = q[h], x = i % 32, y = (i - x) / 32; for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = idx(nx, ny); if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || label[j] >= 0 || !creatureStepOk(map.tiles[i], map.tiles[j], dx, dy)) continue; label[j] = id; q.push(j); } }
+    size.push(q.length); }
+  return { label, size, at: (x, y) => { const tx = Math.round(x), ty = Math.round(y); if (tx < 0 || ty < 0 || tx > 31 || ty > 31) return 0; const i = idx(tx, ty); return label[i] >= 0 ? size[label[i]] : 0; } };
+}
+// Ground a creature may be put on: open, outside every building, castle court, cap and tree, and big enough to move about in.
+export function creatureSpot(map, regions = creatureRegions(map)) { return (t) => !!t && footing(t) && !t.perch && !designTile(t) && !t.structure && !t.buildingId && regions.at(t.x, t.y) >= COHERENCE.creatureRegion; }
+// Creatures standing where they cannot move (a raised pad, a pocket) go to the nearest good ground within `nudge` tiles that
+// the Wayfarer can also reach. `skip(spawn)` leaves one where it is (sea creatures, guards, bosses, anything flagged).
+export function settleSpawns(map, skip = () => false) {
+  const R = creatureRegions(map), ok = creatureSpot(map, R), core = coherenceCore(map), N = COHERENCE.nudge;
+  const taken = new Set((map.enemySpawns || []).map((q) => idx(Math.round(q.x), Math.round(q.y)))), held = new Set((map.objects || []).map((o) => idx(Math.round(o.x), Math.round(o.y))));
+  let moved = 0;
+  for (const e of map.enemySpawns || []) {
+    if (!Number.isFinite(e?.x) || !Number.isFinite(e?.y) || skip(e)) continue;
+    const ex = Math.round(e.x), ey = Math.round(e.y), t = map.tiles[idx(ex, ey)];
+    if (!t || designTile(t) || R.at(ex, ey) >= COHERENCE.creatureRegion) continue;
+    let best = null;
+    for (let dy = -N; dy <= N; dy++) for (let dx = -N; dx <= N; dx++) { const x = ex + dx, y = ey + dy, d = Math.hypot(dx, dy); if (x < 2 || y < 2 || x > 29 || y > 29 || d > N) continue; const i = idx(x, y);
+      if (taken.has(i) || held.has(i) || !core[i] || !ok(map.tiles[i])) continue; if (!best || d < best.d || (d === best.d && i < best.i)) best = { i, d, x, y }; }
+    if (!best) continue;
+    taken.delete(idx(ex, ey)); taken.add(best.i); e.x = best.x; e.y = best.y; e.settled = true; moved++;
+  }
+  return moved;
 }
 
 // Protected tiles sit at ground level; any walkable tile that cannot be climbed to is lowered until it can.
@@ -956,10 +1169,10 @@ function buildSkyBridges(map, seed, rx, ry, mask) {
 }
 
 // Objects and creature spawns on islands (shallows ringed by ocean, spires, pools) get a walkable causeway.
-function connectStranded(map) {
+function connectStranded(map, walls = false) {
   const convertible = (tt) => tt.landscape && tt.blocked && [...DEEP_WATER, "alienPool", "crystalSpire", "crag", "starVoid", "sleeperStone"].includes(tt.kind);
   for (const o of [...map.objects.filter((q) => q.actions?.length), ...(map.enemySpawns || [])]) {
-    const seen = reachableFromPlaza(map), ox = Math.round(o.x), oy = Math.round(o.y);
+    const seen = reachableFromPlaza(map, undefined, walls), ox = Math.round(o.x), oy = Math.round(o.y);
     if (seen[idx(ox, oy)] || N4.some(([dx, dy]) => seen[idx(ox + dx, oy + dy)])) continue;
     let best = null;
     for (let i = 0; i < 1024; i++) if (seen[i]) { const d = Math.abs(i % 32 - ox) + Math.abs(Math.floor(i / 32) - oy); if (!best || d < best.d) best = { i, d }; }
@@ -984,7 +1197,7 @@ function markSlopes(map, seed, rx, ry) {
   }
 }
 
-function bfsPath(map, from, isGoal) {
+function bfsPath(map, from, isGoal, walls = false) {
   const prev = new Int16Array(1024).fill(-1), seen = new Uint8Array(1024), q = [idx(from.x, from.y)];
   seen[q[0]] = 1;
   for (let h = 0; h < q.length; h++) {
@@ -994,19 +1207,21 @@ function bfsPath(map, from, isGoal) {
     const order = y % 4 < 2 ? [[1, 0], [0, -1], [-1, 0], [0, 1]] : [[-1, 0], [0, -1], [1, 0], [0, 1]];
     for (const [dx, dy] of order) {
       const nx = x + dx, ny = y + dy, n = map.tiles[idx(nx, ny)];
-      if (nx < 1 || ny < 1 || nx > 30 || ny > 30 || seen[idx(nx, ny)] || n.blocked || Math.abs((n.elev || 0) - (t.elev || 0)) > 1) continue;
+      if (nx < 1 || ny < 1 || nx > 30 || ny > 30 || seen[idx(nx, ny)] || n.blocked || Math.abs((n.elev || 0) - (t.elev || 0)) > 1 || (walls && sideWalled(t, n, dx, dy))) continue;
       seen[idx(nx, ny)] = 1; prev[idx(nx, ny)] = i; q.push(idx(nx, ny));
     }
   }
   return null;
 }
 
-function placeSummit(map, seed, rx, ry, biome) {
+function placeSummit(map, seed, rx, ry, biome, coherence = 0) {
   let best = null;
-  for (const t of map.tiles) if (!t.blocked && t.landscape === biome && (t.elev || 0) >= 1 && (!best || t.elev > best.elev || (t.elev === best.elev && hashSeed(`${seed}:land:summit:${t.x}:${t.y}`) > hashSeed(`${seed}:land:summit:${best.x}:${best.y}`)))) best = t;
+  // World coherence 1 (WG-07): only a top that can be walked to (and back from) holds the cairn; with none, no cairn.
+  const can = coherence >= 1 ? summitReach(map, biome) : null;
+  for (const t of map.tiles) if (!t.blocked && t.landscape === biome && (t.elev || 0) >= 1 && (!can || can[idx(t.x, t.y)]) && (!best || t.elev > best.elev || (t.elev === best.elev && hashSeed(`${seed}:land:summit:${t.x}:${t.y}`) > hashSeed(`${seed}:land:summit:${best.x}:${best.y}`)))) best = t;
   if (!best || map.objects.some((o) => Math.abs(o.x - best.x) + Math.abs(o.y - best.y) < 2)) return;
   if (biome === "mountains") {
-    const path = bfsPath(map, { x: 16, y: 16 }, (t) => t === best);
+    const path = bfsPath(map, { x: 16, y: 16 }, (t) => t === best, coherence >= 1);
     for (const i of path || []) { const t = map.tiles[i]; if ((t.elev || 0) > 0) { t.slope = true; t.kind = "mountainTrail"; } }
   }
   const names = { mountains: ["Summit Cairn", "A stone cairn on the roof of the range. The whole section lies below."], desert: ["Mesa Watchstone", "A weathered marker on the mesa, scoured by sand."], alien: ["Floating Lens", "A slow-turning lens hovering above the glowing moss."] }[biome];
