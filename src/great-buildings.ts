@@ -15,7 +15,9 @@
 import { hashSeed, rng, byHash } from "./random.ts";
 
 export const BUILDINGS = {
-  version: 2, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
+  version: 3, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
+  // 3 (Tim, 2026-11-04: "there should always be an exit to the roof"): as 2, and a building that rolls no roof hatch still has a
+  // roof to stand on (`roofTop`), reached only by the roof exit from its top floor (ROOF_EXIT); sections pinned to 2 keep theirs
   hiveRegions: ["alien", "biomech"], shapes: ["rect", "L", "T", "U", "L"],
   chance: .09, minRing: 4,
   machine: ["glasslands", "biomech", "emberlands", "ashfields", "crystal", "obsidian", "alien"], // apartments stand here
@@ -141,7 +143,7 @@ export function placeBuilding(map, seed, rx, ry, plan, exitsOpen) {
       map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, buildingDoors: doors, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: S.name, identity: `${plan.floors} floors, shut and dark`, x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: `${S.name}: ${plan.floors} floors. The door is the way in; somewhere above, its guardian and its cache.` });
       if (roof) map.objects.push({ id: `${id}-hatch`, kind: "dungeon", buildingDoor: true, roofHatch: true, buildingDoors: doors, dungeonId: buildingFloorId(base, plan.floors), dungeonType: "greatBuilding", name: `${S.name} (roof hatch)`, x: hatch.x, y: hatch.y, elev: R.elev, state: "open", actions: ["enter"], enterAt: "roof" });
       if (back) map.objects.push({ id: `${id}-breach`, kind: "dungeon", buildingDoor: true, breachDoor: true, buildingDoors: doors, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: `${S.name} (broken wall)`, x: bout.x, y: bout.y, state: "open", actions: ["enter"], enterAt: "breach" });
-      map.greatBuilding = { id, base, style: plan.style, floors: plan.floors, roof, version: BUILDINGS.version };
+      map.greatBuilding = { id, base, style: plan.style, floors: plan.floors, roof, version: 2 }; // version 1's record as it always read
       return rec;
     }
   }
@@ -160,7 +162,7 @@ export function buildingHereV2(seed, rx, ry, region) {
 }
 const CLEAR_OBJECTS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
 // `doorOk(map, at)` (world coherence 1, new ground only): the front door must join the land the exits join (WG-05).
-export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
+export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen, doorOk = null, version = 2) {
   if (!map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const S = BUILDINGS.styles[plan.style], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -184,6 +186,7 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen, doorOk = nul
       if (!has(dx, dy) || !open(out.x, out.y)) continue;
       const inner = cells.filter((c) => [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => has(c.x + a, c.y + b)));
       const roof = !!map.landscape && inner.length > 0 && (hashSeed(`${seed}:great-building:v1:${rx}:${ry}:roof`) % 1000) / 1000 < R.share;
+      const top = roof || (version >= 3 && !!map.landscape); // version 3: a roof to stand on even without a hatch (reached by the roof exit)
       const faceH = facadeHeight(H, plan.floors), lift = faceH / (R.elev * LIFT);
       const hatch = roof && inner.length ? inner[h("hatch") % inner.length] : null;
       const breachWanted = (hashSeed(`${seed}:great-building:v1:${rx}:${ry}:breach`) % 1000) / 1000 < BUILDINGS.breach;
@@ -191,7 +194,7 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen, doorOk = nul
       const bc = breachWanted && backFace.length ? backFace[h("bx") % backFace.length] : null;
       const tiles = map.tiles.slice(), before = exitsOpen(map), crumbled = [];
       for (const c of cells) { const i = I(c.x, c.y);
-        if (!roof) { map.tiles[i] = { ...map.tiles[i], x: c.x, y: c.y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; continue; }
+        if (!top) { map.tiles[i] = { ...map.tiles[i], x: c.x, y: c.y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; continue; }
         const fallen = inner.includes(c) && !(hatch && Math.abs(c.x - hatch.x) + Math.abs(c.y - hatch.y) <= 1) && (hashSeed(`${seed}:great-building-roof:${rx}:${ry}:${c.x}:${c.y}`) % 1000) / 1000 < R.crumbled;
         if (fallen) crumbled.push({ x: c.x, y: c.y });
         map.tiles[i] = { ...map.tiles[i], x: c.x, y: c.y, kind: plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology", blocked: fallen, slope: false, elev: R.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, roofHole: fallen || undefined, environment: undefined, canopy: undefined }; }
@@ -202,14 +205,14 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen, doorOk = nul
       map.objects = (map.objects || []).filter((o) => !set.has(I(Math.round(o.x), Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));
       // the interior's broken back is on its far wall; outside, it opens where the building's back face lets it
-      const doors = { rx, ry, front: out, breach: bc ? bc.out : null, hatch };
-      const rec = { id, kind: "greatBuilding", v: 2, name: S.name, style: plan.style, shape, floors: plan.floors, x: dx, y: oy + H - 1, bounds: { x: ox, y: oy, w: W, h: H }, footprint: cells, door: { x: dx, y: dy, side: south ? "south" : "north" }, breach: bc ? { x: bc.x, y: bc.y } : null, roof: roof ? { elev: R.elev, hatch, crumbled } : null, faceH,
+      const doors = { rx, ry, front: out, breach: bc ? bc.out : null, hatch, ...(version >= 3 && top ? { roofTop: true } : {}) }; // `roofTop`: the roof exit has a roof to come out on
+      const rec = { id, kind: "greatBuilding", v: 2, name: S.name, style: plan.style, shape, floors: plan.floors, x: dx, y: oy + H - 1, bounds: { x: ox, y: oy, w: W, h: H }, footprint: cells, door: { x: dx, y: dy, side: south ? "south" : "north" }, breach: bc ? { x: bc.x, y: bc.y } : null, roof: roof ? { elev: R.elev, hatch, crumbled } : top ? { elev: R.elev, hatch: null, crumbled, top: true } : null, faceH,
         blocks: [{ part: "b", cells, faceH, floors: plan.floors }], doors: [{ x: dx, y: dy, face: south ? "south" : "north" }, ...(bc ? [{ x: bc.x, y: bc.y, face: south ? "north" : "south", breach: true }] : [])], hatches: hatch ? [hatch] : [], crumbled, grain: h("grain") % 97, state: "closed", actions: [] };
       map.objects.push(rec);
       map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, buildingDoors: doors, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: S.name, identity: `${plan.floors} floors, shut and dark`, x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: `${S.name}: ${plan.floors} floors. The door is the way in; somewhere above, its guardian and its cache.` });
       if (hatch) map.objects.push({ id: `${id}-hatch`, kind: "dungeon", buildingDoor: true, roofHatch: true, buildingDoors: doors, dungeonId: buildingFloorId(base, plan.floors), dungeonType: "greatBuilding", name: `${S.name} (roof hatch)`, x: hatch.x, y: hatch.y, elev: R.elev, state: "open", actions: ["enter"], enterAt: "roof" });
       if (bc) map.objects.push({ id: `${id}-breach`, kind: "dungeon", buildingDoor: true, breachDoor: true, buildingDoors: doors, dungeonId: buildingFloorId(base, 1), dungeonType: "greatBuilding", name: `${S.name} (broken wall)`, x: bc.out.x, y: bc.out.y, state: "open", actions: ["enter"], enterAt: "breach" });
-      map.greatBuilding = { id, base, style: plan.style, floors: plan.floors, roof, shape, version: 2 };
+      map.greatBuilding = { id, base, style: plan.style, floors: plan.floors, roof, shape, version: 2, ...(version >= 3 ? { version, roofTop: top } : {}) }; // `roof`: a hatch roof (the id's `r`)
       return rec;
     }
   }
@@ -362,3 +365,61 @@ function stepOff(tiles, W, p) {
 }
 export const buildingArrival = (map, x, y) => stepOff(map.tiles, map.width, { x, y });
 export const buildingScale = (floor) => ({ hp: 1 + BUILDINGS.creatures.scale.hp * (floor - 1), damage: 1 + BUILDINGS.creatures.scale.damage * (floor - 1) });
+
+// ------------------------------------------------------------------------------------------------ the roof exit
+// Tim (2026-11-04): "when you get to the final room where the caches are, the vault, at the central tower — there should also be
+// an exit, so you don't have to walk all the way out. Something to the roof, so you can jump off (and die if you really want),
+// or use the robot to jump from the central tower to the roof of the next building and jump down. There should always be an
+// exit to the roof or something like that."
+// The vault floor of a great building without a roof hatch, a compound's tower without one, a castle keep (castle version 2)
+// and a labyrinth vault (labyrinth version 2) gets a stair up (`buildingStair`, `dir: "roofExit"`). It is laid over the
+// generated floor when the floor loads (game.ts `addRoofExit`), never into its tiles. It is sealed while the vault's guardian
+// stands; once the guardian has fallen (or where none stands) it opens for good (`roofExit` on the vault floor's history). It
+// lets you out onto the building's roof on its own section, on the walkable roof cell nearest the middle of its highest block
+// (`roofLanding`); where the building has no roof to stand on (ground explored before roofs), out by the front door instead.
+export const ROOF_EXIT = {
+  fromCache: 3, // it stands about this far from the vault's cache, on floor you can reach from the way in
+  minFromEntry: 2,
+  landing: { minElev: 4 },
+  names: { roof: "Stair up · the roof", tower: "Stair up · the tower roof", keep: "Stair up · the keep's roof", door: "Back stair · out by the front door" },
+  messages: {
+    sealed: "The stair up is barred while the vault's guardian stands.",
+    opens: "With the guardian fallen, the stair up to the roof stands open.",
+    roof: "You climb the stair and come out on the roof, high over the land. Mind the edge: it is a long way down.",
+    door: "The back stair winds down and lets you out by the front door.",
+  },
+};
+
+// Where the roof exit stands on a vault floor (a dungeon map): a free floor cell reachable from the way in (a one-tile gap
+// jumped, as in a gallery), off every object, creature and doorway, about `fromCache` from the cache. Null when none.
+export function roofExitSpot(map) {
+  const W = map.width, H = map.height, T = map.tiles, at = (x, y) => y * W + x, R = ROOF_EXIT;
+  const taken = new Set([...(map.objects || []), ...(map.enemySpawns || [])].map((o) => at(Math.round(o.x), Math.round(o.y))));
+  const near = (x, y) => (map.objects || []).some((o) => o.kind !== "chest" && Math.abs(Math.round(o.x) - x) + Math.abs(Math.round(o.y) - y) <= 1);
+  const ok = (x, y) => { const t = x >= 0 && y >= 0 && x < W && y < H ? T[at(x, y)] : null; return !!t && !t.blocked && !t.hole; };
+  const e = map.entry || { x: W >> 1, y: H >> 1 }, start = at(Math.round(e.x), Math.round(e.y)), dist = new Int32Array(W * H).fill(-1), q = [start]; dist[start] = 0;
+  for (let i = 0; i < q.length; i++) { const k = q[i], x = k % W, y = (k / W) | 0;
+    for (const [dx, dy] of N4) { let nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const t = T[at(nx, ny)]; if (!t || t.blocked) continue; if (t.hole) { nx += dx; ny += dy; if (!ok(nx, ny)) continue; }
+      const n = at(nx, ny); if (dist[n] >= 0) continue; dist[n] = dist[k] + 1; q.push(n); } }
+  const cache = (map.objects || []).find((o) => o.kind === "chest"), cand = [];
+  for (let k = 0; k < W * H; k++) { const x = k % W, y = (k / W) | 0, t = T[k]; if (dist[k] < R.minFromEntry || !ok(x, y) || t.doorway || taken.has(k) || near(x, y) || x < 1 || y < 1 || x >= W - 1 || y >= H - 1) continue;
+    cand.push({ x, y, s: cache ? Math.abs(Math.hypot(x - cache.x, y - cache.y) - R.fromCache) : -dist[k] }); }
+  cand.sort((a, b) => a.s - b.s || a.y - b.y || a.x - b.x);
+  return cand[0] ? { x: cand[0].x, y: cand[0].y } : null;
+}
+
+// Where the roof exit lets you out on the overworld section `map`: the walkable roof cell nearest the middle of the highest
+// roof `part` ("tower": a compound's tower; "keep": a castle's keep; "building" / "labyrinth": the whole block). Null when the
+// building has no roof to stand on there.
+export function roofLanding(map, part) {
+  const rec = (map.objects || []).find((o) => o.kind === "greatBuilding" && (part === "tower" ? o.compound : part === "keep" ? o.castle && (o.blocks || []).some((b) => b.part === "t") : part === "labyrinth" ? o.labyrinth : !o.compound && !o.castle && !o.labyrinth && !o.pentagon));
+  if (!rec) return null;
+  const cells = part === "tower" || part === "keep" ? (rec.blocks || []).find((b) => b.part === "t")?.cells || [] : rec.footprint || [];
+  const objAt = new Set((map.objects || []).filter((o) => o.kind !== "greatBuilding").map((o) => Math.round(o.y) * 32 + Math.round(o.x)));
+  const walk = cells.filter((c) => { const t = map.tiles[c.y * 32 + c.x]; return t && t.structure === "buildingRoof" && !t.blocked && (t.elev || 0) >= ROOF_EXIT.landing.minElev && !objAt.has(c.y * 32 + c.x); });
+  if (!walk.length) return null;
+  const top = Math.max(...walk.map((c) => map.tiles[c.y * 32 + c.x].elev || 0)), high = walk.filter((c) => (map.tiles[c.y * 32 + c.x].elev || 0) === top);
+  const mx = high.reduce((a, c) => a + c.x, 0) / high.length, my = high.reduce((a, c) => a + c.y, 0) / high.length;
+  const best = [...high].sort((a, b) => Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my) || a.y - b.y || a.x - b.x)[0];
+  return { x: best.x, y: best.y };
+}

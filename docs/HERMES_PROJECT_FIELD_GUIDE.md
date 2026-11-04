@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 746: a way out from the top — 2026-11-04
+
+Tim: "there should always be an exit to the roof" from a vault; "People probably won't like having to die... I think that's okay."
+
+**CODE:** `ROOF_EXIT`, `roofExitSpot` and `roofLanding` in `src/great-buildings.ts`. In `src/game.ts`, `roofExitPlan` and `addRoofExit` run at the end of `generatePinnedDungeon` for interiors and lay a `buildingStair` with `dir: "roofExit"` over the vault floor (a great building's top floor without a hatch, a compound tower's top, a castle keep's top, a labyrinth vault). `takeRoofExit` refuses while the vault's guardian lives; `openRoofExit` sets `history.roofExit` from `defeatEnemy` or on load when no guardian stands. The stair calls `leaveDungeon` to the building's section and puts the Wayfarer on the `roofLanding` tile, or at the front door when the building has no roof. Whether a roof exists is read from `buildingDoors.roofTop`, written by the door you came in by. New placement versions: `BUILDINGS.version` 3 (every footprint is roof where the section has a landscape; `greatBuilding.roof` still means "has a hatch"), `CASTLES.version` 2 (the keep's 3×3 is roof; `castleVersionOf` takes the lowest version pinned across the castle's four sections), `LABYRINTHS.version` 2 (the whole block is roof). Placement runs after `sectionTerrain`'s cached terrain, so the 738 cache key is unchanged (tested). Small edits: `renderer.ts` (padlock and daylight on the stair), `main.ts` (dungeon-map labels), `haunts.ts` (haunts ignore the stair, so old vaults keep their haunts).
+
+**BOUNDARY:** Tiles change only on new ground, through the version pins; the stair is an object laid over an interior floor, never regenerated. Sections and interiors generated under 739 regenerate byte for byte (fingerprint test). On existing journeys old buildings without a roof get a back stair to the front door; old compound towers get a stair onto their already-walkable roof; old castles and labyrinths are unchanged. Schema 14, with the added `roofExit` history field and `roofTop` on door records. Fall, glide and drone rules unchanged. Defaults kept on Tim's open questions: castle wings stay closed blocks; the Pentagon vault (underground) keeps its gate way out. Tests: `tests/vault-roof-exit.test.ts` (12). Not tested on a device.
+
 ## Release 745: the Mountain Turtle's shell — 2026-11-04
 
 Tim: walk into the shell's gateway to a labyrinth dungeon; clockwork and mosaic themes; the vault gives a Tesseract glyph or Divine Viscera; one shell at a time; every labyrinth unique and deterministic; turtles aren't allowed in dungeons.

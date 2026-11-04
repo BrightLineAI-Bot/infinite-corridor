@@ -1822,8 +1822,8 @@ function drawBuildingStair(ctx, o, s, now) {
     ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); for (let q = -.3; q < .85; q += .22) { ctx.moveTo(x + s * .32, y + s * q); ctx.lineTo(x + s * .68, y + s * q); } ctx.stroke(); }
   else { ctx.fillStyle = "#050506"; ctx.fillRect(x + s * .12, y + s * .12, s * .76, s * .76); ctx.strokeStyle = `rgba(242,230,168,${.4 + .4 * pulse})`; ctx.lineWidth = 2; ctx.strokeRect(x + s * .12, y + s * .12, s * .76, s * .76);
     ctx.strokeStyle = "#8a6a3e"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.moveTo(x + s * .34, y + s * .16); ctx.lineTo(x + s * .34, y + s * .7); ctx.moveTo(x + s * .66, y + s * .16); ctx.lineTo(x + s * .66, y + s * .7); ctx.moveTo(x + s * .34, y + s * .3); ctx.lineTo(x + s * .66, y + s * .3); ctx.moveTo(x + s * .34, y + s * .5); ctx.lineTo(x + s * .66, y + s * .5); ctx.stroke(); }
-  if (o.dir === "roof") { ctx.fillStyle = `rgba(160,200,255,${.25 + .25 * pulse})`; ctx.fillRect(x + s * .18, y - s * .51, s * .64, s * .24); } // daylight through the roof hatch
-  if (o.lock && !o.unlocked) { ctx.fillStyle = "#c9a24a"; ctx.fillRect(x + s * .38, y + s * .4, s * .24, s * .2); ctx.strokeStyle = "#c9a24a"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc(x + s * .5, y + s * .4, s * .09, Math.PI, 0); ctx.stroke(); } // a sealed ladder
+  if (o.dir === "roof" || (o.dir === "roofExit" && o.roofExit?.roof)) { ctx.fillStyle = `rgba(160,200,255,${.25 + .25 * pulse})`; ctx.fillRect(x + s * .18, y - s * .51, s * .64, s * .24); } // daylight through the roof hatch (release 746: and the vault's roof exit)
+  if ((o.lock && !o.unlocked) || o.sealed) { ctx.fillStyle = "#c9a24a"; ctx.fillRect(x + s * .38, y + s * .4, s * .24, s * .2); ctx.strokeStyle = "#c9a24a"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc(x + s * .5, y + s * .4, s * .09, Math.PI, 0); ctx.stroke(); } // a sealed ladder
   ctx.restore();
 }
 // Inside a great building: dressed or concrete walls with a face where they stand over open floor, and each room's floor.
