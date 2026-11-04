@@ -75,9 +75,10 @@ test('in the game: a second pen built across the first one\'s opening closes it,
   g.player.x = 20; g.player.y = 10; placeBuild(g, 20, 11, 'enclosure'); assert.ok(!st.stalkTrapped && !first.trapped);
   // Built across the opening (standing north of it, facing down): the try.
   g.player.x = 10; g.player.y = 8; g.player.facing = 'down'; const r = placeBuild(g, 10, 9, 'enclosure'); assert.ok(r.ok, r.message);
-  const closer = g.builds[g.builds.length - 1]; assert.ok(overlapsOpening(first, closer), 'it covers the opening');
   assert.match(r.message, /closes on the Stalker|slips out/, 'the try happened as the pen closed');
-  if (st.stalkTrapped > 0) { assert.equal(first.trapped, st.id); tickBuilds(g, BUILD.kinds.enclosure.life + 5); assert.ok(g.builds.includes(first), 'held, it stands'); }
+  // Release 748 (Tim, 2026-11-04): a pen that holds catches it (beast-mounts.test.ts); one it slips out of breaks, both pieces lost.
+  if (/slips out/.test(r.message)) { assert.ok(!g.builds.includes(first), 'it slipped out: the pen broke'); return; }
+  const closer = g.builds[g.builds.length - 1]; assert.ok(overlapsOpening(first, closer), 'it covers the opening');
   // A pen lets go if what it held is gone.
   first.trapped = 'stalker-gone'; tickBuilds(g, .05); assert.equal(first.trapped, null);
 });

@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 747, the next is **748**.
+Taken at merge time: `main`'s release + 1 (see above). After 748, the next is **749**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 747 | Claude | `claude/dreamy-rubin-yn6q2p` | Roofs and height: the Wayfarer drawn once at the roof's height, one-press hatch, bounded way-round searches; the elevation rule (ground melee can't reach two levels up; shots and fliers can) | In flight. |
+| 748 | Claude | `claude/dreamy-rubin-yn6q2p` | Beast mounts: pen-caught world beasts and the Stalker ridden at real size in fitted saddles; stable of 3; 12 min / 35 sections; pens priced by size, a slip breaks the pen | In flight. |
+| 747 | Claude | `claude/dreamy-rubin-yn6q2p` | Roofs and height: the Wayfarer drawn once at the roof's height, one-press hatch, bounded way-round searches; the elevation rule (ground melee can't reach two levels up; shots and fliers can) | Merged (#395). |
 | 746 | Claude | `claude/dreamy-rubin-yn6q2p` | A way out from the top: a stair from every cleared vault onto the roof (great buildings v3, castles v2, labyrinths v2; back stair on old ground) | Merged (#394). |
 | 745 | Claude | `claude/dreamy-rubin-yn6q2p` | The Mountain Turtle's shell: a slain Turtle's shell stays, its gateway opens a unique deterministic clockwork/mosaic Shell-Labyrinth; vault pays a Tesseract or Divine Viscera; one shell at a time | Merged (#393). |
 | 744 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's shortcuts: v6 shortcut links opened from the deep side, 3–5 side entrances with exterior doors bolted from within | Merged (#392). |
