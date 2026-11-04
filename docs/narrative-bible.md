@@ -67,6 +67,12 @@ What this settles, for us:
 - **The Tesseracts cost a piece of you.** A Tesseract glyph's bad aspects are not a balance tax: they are the part of the Wayfarer given over. Setting one is being read a little more by the Corridor and remembering a little less of yourself. This ties to section 1: the Wayfarer is unread, and every Tesseract is the Corridor starting to read them, at a price.
 - **How the game says it:** never directly. Seams for it: Pentagon chamber inscriptions that contradict each other (one a builder's dedication, one a geologist's note on "the fold", one in no hand at all); vent-life creature entries in the Codex that describe them feeding on "the warmth where two pages meet"; Tesseract flavour lines in the second person that grow quieter and less specific the more are set ("You set it. Something you knew is not there now. You do not miss it."); a Glimpse from inside a Pentagon wall, for which the Wayfarer is the intrusion.
 
+### Why the game exists (Tim, 2026-11-04)
+
+"The whole goal of this experiment, of this game, is to help me have a non-traditional thought. I'm putting all of my thoughts into this game so that through exploration and interactions and discovery I can arrive at a non-traditional thought." And on the Pentagon lore: "It shouldn't be overdone... it's not going to lead to a full story... these are just interesting thoughts and experiments."
+
+What this settles, for us: lore is offered as material to think with, not as a plot to solve. Keep it sparse, uncertain and unforced: a line here, a contradiction there, never a reveal, never an explanation, never a quest that "answers" it. Several readings should stay open at once. When in doubt, cut.
+
 ---
 
 ## 2. Regions ("Readings") and their books
