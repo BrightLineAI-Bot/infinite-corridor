@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 730: the haunts — 2026-11-04
+
+Tim, 2026-11-04: "cool creatures that... floated around... put them in the keeps... in various places... they can confuse you. So that instead of moving forward, you move backwards for a time. And... they can multiply if enough... get together, then they form one big... ghost creature... a fatter body. The big, scary mouth and face and arms and legs... sharp pointy... at the ends of its arms and legs." Taken as original creatures in that spirit, not copies of any existing ones.
+
+**CODE:** `src/haunts.ts` (`HAUNT` data; `hauntPlan`, `hauntSpawns`, `hauntKnot`, `splitDelay`). `MONSTER_PACK.gloomwisp` (attacks `wispBewilder`, `bite`) and `MONSTER_PACK.gloomgorge` (`clawSweep`, `devourPull`, `leapSlam`, `gorgeHowl`), both `prototypeOnly` and `farKin` (painted directly: `drawGloomwisp`, `drawGloomgorge` in `src/monster-render.ts`). `wispBewilder`/`gorgeHowl` run through `hauntConfuse` (`src/monster-pack.ts`): at the windup's end the Wayfarer within range is hurt a little and `w.confuse(seconds)` is called (`HAUNT.confuse.wisp`/`.gorge`). The pack world's `confuse` sets `player.confusedUntil` (not during a dodge) and says so once; while it lasts the movement input is reversed in `Game.update` (the dodge's own direction is untouched); the HUD shows CONFUSED. `Game.hauntTick` (every frame): a placed, hunting wisp splits `split.max` times at hashed intervals, up to `split.cap` wisps (children are `hauntChild`, `noRewards`, and never split); every `merge.check` seconds, if no Gloomgorge has formed this visit (`hauntGorged`, reset on load), `merge.count` wisps within `merge.radius` pour into one at their centre (the wisps die without reward). Placement in `loadArea`, before the enemies are made: `hauntPlan(seed, areaKey, …)` for an overworld section with a keep or a castle quarter (`keep`), a great building, castle or Pentagon floor (`interior`), or a fog moor or Far Sleep section at depth `minDepth`+ (`wild`); `hauntSpawns` puts the wisps on open, safe floor (inside a keep's rectangle, or on a castle's own tiles).
+
+**BOUNDARY:** No save change: haunts are hashed from the seed and the area; the area's usual enemy state keeps the ones you killed. Domains keep only their own beast, so no haunt appears in one. Only spawned wisps give rewards, and a Gloomgorge forms at most once a visit, so a haunt cannot be farmed.
+
 ## Release 729: Tesseract glyphs; the Pentagon, version 3 — 2026-11-04
 
 Tim (2026-11-04): "when you get the Fivefold Seal, I don't want it to unlock all the doors... if you get to the end without beating

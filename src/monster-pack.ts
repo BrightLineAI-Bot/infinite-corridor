@@ -1,3 +1,4 @@
+import { HAUNT } from "./haunts.ts";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -201,6 +202,9 @@ export const ATTACK_MODULES = {
   // red and larger when it attacks; blue or purple before a grab); force push; force pull; a command grab that holds you
   // a few seconds while it winds up a powerful attack; debris it levitates and throws; a psychic wall that reflects
   // ranged attacks while blades pass through).
+  // Release 730: the haunts (haunts.ts). A puff or a howl of gloom that confuses: the Wayfarer's movement runs backwards a while.
+  wispBewilder: { id: "wispBewilder", name: "Bewildering Puff", range: [0, 2.6], cooldown: 5.5, windup: .6, recover: .5, damage: .4, tags: ["control"], text: "A puff of gloom. Breathe it and left is right, forward is back, for a few heartbeats." },
+  gorgeHowl: { id: "gorgeHowl", name: "Gloom Howl", range: [0, 5.5], cooldown: 9, windup: 1, recover: .8, damage: .8, tags: ["control"], text: "The Gloomgorge throws back its head and howls; everything near it is turned about for longer." },
   psyPush: { id: "psyPush", name: "Force Push", range: [0, 4.5], cooldown: 4, windup: .55, active: .35, recover: .45, damage: .7, tags: ["control"], text: "A ring of force throws you back. Hit a wall and it hurts more." },
   psyPull: { id: "psyPull", name: "Force Pull", range: [2.5, 9], cooldown: 6, windup: .6, active: 1.2, recover: .45, damage: .9, tags: ["control"], text: "It drags you toward it, then lashes out as you arrive. Dodge or run against it." },
   psyGrab: { id: "psyGrab", name: "Command Grab", range: [0, 7.5], cooldown: 10, windup: .75, active: 2.4, recover: .6, damage: 2.2, tags: ["control", "grab"], text: "Its aura turns violet: then it seizes you where you stand and crushes you. Dodge as it reaches, or struggle (dodge, again and again) to break free." },
@@ -480,6 +484,17 @@ export const MONSTER_PACK = {
     lore: "A blob of living ooze the colour of brine, kin of the Morphing Blob and much smaller, one of many that crowd a pocket of the far reaches. It whips tendrils and breathes poison." },
   // Release 716 (Tim: "the crystal civilization... all the monsters... are psychic crystals or variations... some of them can be
   // smaller, like half crystals... crystal walkers, like the crystal crabs"): the Crystal Civilisation's kin (far-realms.ts FAR_CIVS).
+  // Release 730: the haunts (haunts.ts): Gloomwisps that multiply and pour together into a Gloomgorge.
+  gloomwisp: { id: "gloomwisp", prototypeOnly: true, farKin: true, noEcho: true, name: "Gloomwisp", epithet: "A Grin in the Dark",
+    stats: [34, 6, 0], form: { scale: .95 }, sizeClass: "small", movement: "hover", brain: "orbit",
+    attacks: ["wispBewilder", "bite"], bossAttacks: [],
+    palette: ["#2a1d3e", "#120b1e", "#b07aff", "#ffe36a"], render: "gloomwisp", tags: ["spirit", "gas", "flying"],
+    lore: "A ball of dark gas no bigger than a head, with two bright eyes and a wide grin, that drifts through old keeps. Its breath turns you about. Left alone, it splits; enough of them together pour into something much worse." },
+  gloomgorge: { id: "gloomgorge", prototypeOnly: true, farKin: true, noEcho: true, name: "Gloomgorge", epithet: "Many Wisps, One Mouth",
+    stats: [260, 16, 2], form: { scale: 1.55 }, sizeClass: "large", movement: "hover", brain: "duelist",
+    attacks: ["clawSweep", "devourPull", "leapSlam", "gorgeHowl"], bossAttacks: [],
+    palette: ["#3a2556", "#150c24", "#c58cff", "#fff07a"], render: "gloomgorge", tags: ["spirit", "gas"],
+    lore: "Five or more Gloomwisps poured into one: a squat, fat ghost with a mouth from ear to ear, stubby arms and legs that end in hooked claws, and a howl that turns the world about. It drinks the air to pull you in." },
   shardling: { id: "shardling", prototypeOnly: true, farKin: true, noEcho: true, name: "Shardling", epithet: "Half a Crystal",
     stats: [45, 8, 0], form: { scale: .6 }, sizeClass: "small", movement: "hover", brain: "orbit",
     attacks: ["psyPush", "psyDebris"], bossAttacks: [],
@@ -1401,6 +1416,8 @@ const START = {
   },
   knightBackslash(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach + KNIGHT.arcReach, arc: KNIGHT.comboArc }; s.data.cut = false; }, // release 427: its reach shown (it had none)
   psyPush(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pushRadius }; },
+  wispBewilder(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.wispBewilder.range[1] }; }, // release 730
+  gorgeHowl(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.gorgeHowl.range[1] }; },
   psyPull(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pullRadius, inhale: true }; },
   psyGrab(e, s, w) { s.tele = { type: "tether", x: w.player.x, y: w.player.y }; },
   psyDebris(e, s) { s.tele = { type: "brace" }; s.data.next = 0; },
@@ -1518,6 +1535,12 @@ function resolveMelee(e, s, w, attackId, test) {
   if (test(p) && w.los(e, w.player) && w.hurt(e, damageOf(e, attackId), { jumpable: false, source: attackId }) && e.kind === "lightningGiant" && e.giantCharged > 0) w.shockHit?.();
 }
 
+// Release 730: a ring of gloom from a haunt: on the windup's end, the Wayfarer inside it is hurt a little and confused.
+function hauntConfuse(e, s, w, id, seconds) {
+  const A = ATTACK_MODULES[id], r = A.range[1];
+  if (s.phase === "windup" && s.t <= 0) { if (distance(center(w.player), e) <= r + .2) { w.hurt(e, damageOf(e, id), { jumpable: false, source: id }); w.confuse?.(seconds); }
+    w.addEffect({ kind: "psyRing", owner: e.id, x: e.x, y: e.y, radius: r, arming: 0, life: .5, total: .5, damage: 0 }); s.tele = null; toPhase(s, "recover", A.recover); }
+}
 const RUN = {
   dragonStrafe(e, s, w) {
     const A = ATTACK_MODULES.dragonStrafe, d = s.data, D = DRAGON.strafe;
@@ -2300,6 +2323,8 @@ const RUN = {
     }
     if (s.phase === "strike" && s.t <= 0) { resolveMelee(e, s, w, "knightMist", (q) => inArc(e, q, s.data.aim, bodyRadius(e) + KNIGHT.slideReach, KNIGHT.slideArc)); s.data.cutAt = w.now; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightMist.recover); }
   },
+  wispBewilder(e, s, w) { hauntConfuse(e, s, w, "wispBewilder", HAUNT.confuse.wisp); }, // release 730
+  gorgeHowl(e, s, w) { hauntConfuse(e, s, w, "gorgeHowl", HAUNT.confuse.gorge); },
   psyPush(e, s, w) {
     const attack = ATTACK_MODULES.psyPush, p = center(w.player);
     if (s.phase === "windup") { if (s.t <= 0) { if (distance(p, e) <= CRYSTAL.pushRadius) w.hurt(e, damageOf(e, "psyPush"), { jumpable: false, source: "psyPush" }); w.addEffect({ kind: "psyRing", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.pushRadius, arming: 0, life: .4, total: .4, damage: 0 }); toPhase(s, "active", attack.active); s.tele = null; } return; }

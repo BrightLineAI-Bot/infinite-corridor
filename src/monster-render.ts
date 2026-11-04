@@ -77,6 +77,49 @@ function drawWalkerSkiff(ctx, q, foreground = false) {
 
 // ---------------------------------------------------------------- creatures
 
+// Release 730: the haunts (haunts.ts). A Gloomwisp: a floating orb of dark gas, wreathed in drifting violet smoke, with two bright
+// slanted eyes and a wide jagged grin; it swells and brightens as it winds up a puff.
+function drawGloomwisp(ctx, q) {
+  const { k, b, u, t, flip } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, bob = Math.sin(t * 2.4) * u * .05, cx = k, cy = b - u * .62 + bob, r = u * (.33 + wind * .04);
+  ctx.save();
+  ctx.fillStyle = "#00000040"; ctx.beginPath(); ctx.ellipse(k, b - u * .02, u * .26, u * .07, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 12; i++) { const a = t * .9 + i * Math.PI * 2 / 12, rr = r * (1.15 + .22 * Math.sin(t * 3 + i * 1.7)), x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * .85, z = r * (.55 + .14 * Math.sin(t * 2.2 + i));
+    const g = ctx.createRadialGradient(x, y, 0, x, y, z); g.addColorStop(0, glow + (wind ? "cc" : "88")); g.addColorStop(1, glow + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, z, 0, Math.PI * 2); ctx.fill(); }
+  const body = ctx.createRadialGradient(cx - r * .3, cy - r * .35, r * .1, cx, cy, r); body.addColorStop(0, dark); body.addColorStop(1, deep); ctx.fillStyle = body; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffffff18"; ctx.beginPath(); ctx.ellipse(cx - r * .35, cy - r * .45, r * .3, r * .16, -.5, 0, Math.PI * 2); ctx.fill();
+  const ex = (side) => cx + side * r * .36 + flip * r * .05, ey = cy - r * .16;
+  for (const side of [-1, 1]) { ctx.fillStyle = eye; ctx.beginPath(); ctx.moveTo(ex(side) - r * .2, ey - side * flip * r * .02 - r * .1); ctx.lineTo(ex(side) + r * .2, ey + side * flip * r * .02 - r * .14); ctx.lineTo(ex(side) + r * .12, ey + r * .1); ctx.lineTo(ex(side) - r * .14, ey + r * .08); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#1a0a10"; ctx.beginPath(); ctx.arc(ex(side) + flip * r * .03, ey - r * .01, r * .055, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = "#1a0712"; ctx.beginPath(); ctx.moveTo(cx - r * .6, cy + r * .14); ctx.quadraticCurveTo(cx, cy + r * (.72 + wind * .15), cx + r * .6, cy + r * .14); ctx.quadraticCurveTo(cx, cy + r * .4, cx - r * .6, cy + r * .14); ctx.fill(); // the grin
+  ctx.fillStyle = "#f4ecff"; for (let i = 0; i < 7; i++) { const tx = cx - r * .46 + i * r * .153, ty = cy + r * (.2 + .16 * Math.sin((i / 6) * Math.PI)); ctx.beginPath(); ctx.moveTo(tx - r * .05, ty); ctx.lineTo(tx + r * .05, ty); ctx.lineTo(tx, ty + r * .1); ctx.fill(); }
+  ctx.restore();
+}
+// The Gloomgorge: many wisps poured into one squat, fat ghost: a hunched round body spined along its back, a mouth from ear to
+// ear full of teeth, burning slanted eyes, and stubby arms and legs ending in hooked claws; gas smokes off its edges.
+function drawGloomgorge(ctx, q) {
+  const { k, b, u, t, flip } = q, [dark, deep, glow, eye] = q.p, wind = q.state === "windup" ? 1 : 0, act = q.state === "attack" ? 1 : 0, bob = Math.sin(t * 1.8) * u * .03, cx = k, cy = b - u * .55 + bob, W = u * .62, H = u * .52;
+  ctx.save();
+  ctx.fillStyle = "#00000050"; ctx.beginPath(); ctx.ellipse(k, b, u * .6, u * .14, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 10; i++) { const a = t * .6 + i * Math.PI * 2 / 10, x = cx + Math.cos(a) * W * 1.02, y = cy + Math.sin(a) * H * .95, z = u * (.16 + .05 * Math.sin(t * 2 + i)); const g = ctx.createRadialGradient(x, y, 0, x, y, z); g.addColorStop(0, glow + "55"); g.addColorStop(1, glow + "00"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, z, 0, Math.PI * 2); ctx.fill(); }
+  const claw = (x0, y0, dx, dy, n, len) => { ctx.fillStyle = "#f2e8ff"; for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * u * .06, bx = x0 + o * (dy ? 1 : 0), by = y0 + o * (dx ? 1 : 0); ctx.beginPath(); ctx.moveTo(bx - u * .025, by); ctx.lineTo(bx + u * .025, by); ctx.lineTo(bx + dx * len, by + dy * len); ctx.closePath(); ctx.fill(); } };
+  const limb = (x0, y0, x1, y1, w0) => { ctx.strokeStyle = deep; ctx.lineCap = "round"; ctx.lineWidth = w0; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.strokeStyle = dark; ctx.lineWidth = w0 * .6; ctx.stroke(); ctx.lineCap = "butt"; };
+  for (const side of [-1, 1]) { const lx = cx + side * W * .45, ly = cy + H * .75; limb(lx, ly - u * .05, lx + side * u * .06, b - u * .06, u * .18); claw(lx + side * u * .06, b - u * .05, side * .4, .6, 3, u * .12); } // stubby legs
+  const swing = act ? Math.sin(t * 18) * .4 : wind ? -.5 : Math.sin(t * 2) * .12;
+  for (const side of [-1, 1]) { const sx = cx + side * W * .88, sy = cy - H * .05, ax = sx + side * u * (.28 + (side === flip ? swing * .2 : 0)), ay = sy + u * (.12 - (side === flip ? swing * .25 : 0)); limb(sx, sy, ax, ay, u * .17); claw(ax, ay, side * .8, .45, 3, u * .16); } // stubby clawed arms
+  ctx.fillStyle = deep; for (let i = 0; i < 6; i++) { const a = Math.PI * (1.08 + i * .17), x = cx + Math.cos(a) * W * .92, y = cy + Math.sin(a) * H * .95; ctx.beginPath(); ctx.moveTo(x - u * .06, y + u * .02); ctx.lineTo(x + Math.cos(a) * u * .2, y + Math.sin(a) * u * .22); ctx.lineTo(x + u * .06, y + u * .02); ctx.closePath(); ctx.fill(); } // spines along its back
+  const body = ctx.createRadialGradient(cx - W * .3, cy - H * .4, u * .05, cx, cy, W * 1.05); body.addColorStop(0, dark); body.addColorStop(.75, deep); body.addColorStop(1, "#0a0612"); ctx.fillStyle = body;
+  ctx.beginPath(); ctx.moveTo(cx - W, cy + H * .1); ctx.bezierCurveTo(cx - W * 1.05, cy - H * 1.1, cx + W * 1.05, cy - H * 1.1, cx + W, cy + H * .1); ctx.bezierCurveTo(cx + W * .95, cy + H * .95, cx - W * .95, cy + H * .95, cx - W, cy + H * .1); ctx.fill(); // the fat round body
+  ctx.fillStyle = "#ffffff14"; ctx.beginPath(); ctx.ellipse(cx - W * .35, cy - H * .55, W * .32, H * .14, -.3, 0, Math.PI * 2); ctx.fill();
+  const ey = cy - H * .32; for (const side of [-1, 1]) { const ex = cx + side * W * .32 + flip * W * .05; ctx.fillStyle = eye; ctx.beginPath(); ctx.moveTo(ex - side * W * .2, ey - H * .2); ctx.lineTo(ex + side * W * .18, ey - H * .02); ctx.lineTo(ex - side * W * .12, ey + H * .1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#3a0a14"; ctx.beginPath(); ctx.arc(ex, ey - H * .03, W * .045, 0, Math.PI * 2); ctx.fill(); }
+  const mo = wind ? .5 : act ? .7 : .25, my = cy + H * .08, mw = W * .78; // the mouth, ear to ear, gaping when it howls or drinks the air
+  ctx.fillStyle = "#2a0614"; ctx.beginPath(); ctx.moveTo(cx - mw, my - H * .06); ctx.quadraticCurveTo(cx, my + H * (.35 + mo), cx + mw, my - H * .06); ctx.quadraticCurveTo(cx, my + H * .18, cx - mw, my - H * .06); ctx.fill();
+  ctx.fillStyle = "#b02a4a"; ctx.beginPath(); ctx.ellipse(cx, my + H * (.18 + mo * .45), mw * .4, H * (.05 + mo * .12), 0, 0, Math.PI * 2); ctx.fill(); // its tongue
+  ctx.fillStyle = "#f4ecff"; for (let i = 0; i < 11; i++) { const f = i / 10, tx = cx - mw * .92 + f * mw * 1.84, ty = my - H * .02 + Math.sin(f * Math.PI) * H * .14; ctx.beginPath(); ctx.moveTo(tx - W * .04, ty); ctx.lineTo(tx + W * .04, ty); ctx.lineTo(tx, ty + H * .13); ctx.fill(); } // upper teeth
+  for (let i = 0; i < 9; i++) { const f = i / 8, tx = cx - mw * .75 + f * mw * 1.5, ty = my + H * (.2 + mo * .9) * Math.sin(f * Math.PI) * .9 + H * .08; ctx.beginPath(); ctx.moveTo(tx - W * .035, ty); ctx.lineTo(tx + W * .035, ty); ctx.lineTo(tx, ty - H * .1); ctx.fill(); } // lower teeth
+  ctx.restore();
+}
+
 const BODY = {
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
@@ -84,6 +127,8 @@ const BODY = {
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
   doomChaser(ctx, q) { drawDoomChaser(ctx, q, q.t * 1000); }, // release 710
+  gloomwisp(ctx, q) { drawGloomwisp(ctx, q); }, // release 730
+  gloomgorge(ctx, q) { drawGloomgorge(ctx, q); },
   inkKin(ctx, q) { const d = MONSTER_PACK[q.e.kind]; drawAstralWorm(ctx, { x: q.k, y: q.b - q.u * .2, scale: q.u * (d?.inkScale || .4), time: q.t, form: d?.inkForm || "worm", facing: q.flip, reducedMotion: !!q.e.reduceMotion }); }, // release 719
   astralWorm(ctx,q) { const a=q.e.astral;
     // The downward beam is painted first, behind the mandibles, so it reads as leaving the mouth.

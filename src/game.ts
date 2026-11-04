@@ -110,6 +110,7 @@ import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonRecite
 import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.ts";
 import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farQuestInfo } from "./far-realms.ts";
 import { buildDomain, domainWait, domainArrival } from "./far-domains.ts";
+import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay } from "./haunts.ts";
 import { beastUnlocked as beastOpenFor, ensureWorldBeasts as ensureBeastsFor, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
@@ -2472,6 +2473,9 @@ export class Game {
     { const here = this.fracturedHere(area); if (here && !this.map.enemySpawns.some((q) => q.fractured)) { const w = mapWidth(this.map, area), open = (x, y) => this.fracturedOpen(x, y, w); /* release 651: Fractured mode's packs */
       const base = this.map.enemySpawns.filter((q) => fracturedOrdinary(q)), tiles = base.length ? [] : this.map.tiles.filter((t, i) => i % 7 === 0 && open(t.x, t.y));
       this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && q.kind !== 'npc').length)); } }
+    this.hauntGorged = false; { const hid = area === "dungeon" ? this.areaId() : `${this.rx},${this.ry}`, inside = area === "dungeon" && (isBuildingId(hid) || isCastleId(hid) || isPentagonId(hid)); // release 730: the haunts
+      const plan = hauntPlan(this.save.seed, hid, { keep: area === "overworld" && !!(this.map.keep || this.map.greatBuilding?.castle), interior: inside, wild: area === "overworld" && !!(this.map.fogMoor || this.map.dream), depth: Math.abs(this.rx) + Math.abs(this.ry) });
+      if (plan && !this.map.hauntPlaced) { this.map.hauntPlaced = true; const k = area === "overworld" && this.map.keep ? this.map.keep : null; this.map.enemySpawns.push(...hauntSpawns(this.map, mapWidth(this.map, area), this.save.seed, hid, plan, k && { x: k.x, y: k.y, w: k.w, h: k.h }, !k && this.map.greatBuilding?.castle ? (t) => t.landscape === "castle" : null)); } }
     if (area === "overworld" && this.map.farDomain) { this.map.enemySpawns = this.map.enemySpawns.filter((e) => this.map.farDomain === "questingBeast" ? e.questingBeast : e.worldBeast === this.map.farDomain && !e.retreating); this.map.objects = (this.map.objects || []).filter((o) => o.domain); if (this.domainMessage) this.message = this.domainMessage; } this.domainMessage = null; // release 723: nothing lives in a domain but its beast
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     if (area === "overworld" && this.map?.canopy?.top && !this.map.objects.some((o) => o.kind === "crownRest")) { // release 669: a rest point on every great tree's crown
@@ -4364,6 +4368,7 @@ export class Game {
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * step, ddy / dd * step); return true; }, // release 235: the Blob's jet
       dragonDue: () => game.dragonDue(), dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
       frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
+      confuse(seconds) { if (!(seconds > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return; if (!(now < (p.confusedUntil || 0))) game.message = HAUNT.text.confused; p.confusedUntil = Math.max(p.confusedUntil || 0, now + seconds * 1000); }, // release 730: the haunts turn you about
       ignite(seconds, dps) { if (now < (p.dodgeUntil || 0)) return; const f = game.playerFire; game.playerFire = { left: Math.max(f?.left || 0, seconds), dps: Math.max(f?.dps || 0, dps), tick: f?.tick ?? 1 }; }, // release 708: set alight (the Briar Stag's burning trees)
       poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(ensureEliteState(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
@@ -4912,6 +4917,21 @@ export class Game {
   dragonLavaNow() { const r = this.dragonClock(), tiles = dragonCast(this.save, this.map, this.save.seed, this.rx, this.ry); r.nextAt = (Number(this.save.playSeconds) || 0) + DRAGON.colonize.every;
     this.message = r.casts >= DRAGON.colonize.casts ? "The last of the floor turns to lava. The Crimson Tyrant has claimed this ground." : `The ground breaks into lava. The Crimson Tyrant has claimed ${r.casts} of ${DRAGON.colonize.casts} parts of it.`; return tiles; }
   // Release 720: the folk realms (FAR_FOLK). The Hollow Kin turn and come in waves; the Tall Country's folk throw spears at monsters.
+  // Release 730: the haunts (haunts.ts). A placed Gloomwisp that is hunting splits now and then, `split.max` times (children
+  // neither split nor give a reward), up to the area's cap; and once a visit, enough wisps close together pour into a Gloomgorge.
+  hauntTick(dt, now) {
+    const wisps = this.enemies.filter((e) => e.kind === "gloomwisp" && !e.dead && e.hp > 0); if (!wisps.length) return;
+    this._hauntCheck = (this._hauntCheck || 0) - dt;
+    for (const w of wisps) { if (!w.aggro || w.hauntChild || (w.splits || 0) >= HAUNT.split.max) continue; w.splitIn = (w.splitIn ?? splitDelay(w.id, w.splits || 0)) - dt;
+      if (w.splitIn <= 0 && wisps.length < HAUNT.split.cap) { w.splits = (w.splits || 0) + 1; w.splitIn = splitDelay(w.id, w.splits); const a = ((hashSeed(`${w.id}:${w.splits}`) % 628) / 100), R = HAUNT.split.range;
+        const c = this.createEnemyFromSpawn({ id: `${w.id}:s${w.splits}`, kind: "gloomwisp", x: w.x + Math.cos(a) * R, y: w.y + Math.sin(a) * R, traits: [] }); Object.assign(c, { aggro: true, noRewards: true, hauntChild: true }); this.enemies.push(c); wisps.push(c); } }
+    if (this._hauntCheck > 0) return; this._hauntCheck = HAUNT.merge.check;
+    if (this.hauntGorged || this.enemies.some((e) => e.kind === "gloomgorge" && !e.dead)) return; // one per visit
+    const knot = hauntKnot(wisps); if (!knot) return;
+    for (const w of knot.wisps) { w.dead = true; w.hp = 0; w.noRewards = true; w.merged = true; }
+    const g = this.createEnemyFromSpawn({ id: `${knot.wisps[0].id}:gorge:${Math.round(now)}`, kind: "gloomgorge", x: knot.x, y: knot.y, traits: [] }); g.aggro = true; this.enemies.push(g); this.hauntGorged = true;
+    this.message = HAUNT.text.merge; return g;
+  }
   // Release 723: in a domain, its beast comes once the Wayfarer has waited there long enough this visit (at once on the visit that
   // completes the quest). A Questing Beast hunting elsewhere leaves that section for its own; one already here is just fought.
   domainTick(dt) {
@@ -6336,6 +6356,7 @@ export class Game {
     this.beastPlay(dt, now); // release 714
     this.folkTick(dt, now); // release 720: the folk realms
     this.domainTick(dt); // release 723: a domain's beast comes home
+    this.hauntTick(dt, now); // release 730: the haunts split and pour together
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = ensureEliteState(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction))))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
@@ -6377,6 +6398,7 @@ export class Game {
     if (this.area === "overworld" && aboard(this.save) && (input.held?.("build") && activeButton(this.save).mode === "build" || ["spell", "spell2"].some((k, i) => input.held?.(k) && slotTool(this.save, i ? "b" : "a")?.tool === "build"))) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
     else { this.buildHold = 0; this.buildHoldDone = false; } // release 265: raise a wood wall or stone block in front
     const dodging = now < (p.dodgeUntil || 0);
+    if (!dodging && now < (p.confusedUntil || 0)) { x = -x; y = -y; } // release 730: confused by a haunt, forward is back
     this.stagMireMoving = dodging || Math.hypot(x, y) > .15; // release 708
     if (dodging) {
       x = p.dodgeX;
