@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 743: the Pentagons' walls — 2026-11-04
+
+Tim, 2026-11-04 (lore: docs/narrative-bible.md section 1, "The Pentagons, the keeps and the Tesseracts" and "Why the game exists"): "let's put all those things in... Nobody is certain what the Pentagons are... It shouldn't be overdone." He approved the Tesseract lines and asked that the marks stay in Pentagons only.
+
+**CODE:** `src/pentagon.ts` `PENTAGON_LORE` (`chance` .22, `minFromEntry` 4, ten marks leaning `outcrop` / `people` / `seam` / `none`, three `vent` lines); `inscriptionIn(save, chamberId)` (a chamber where a mark was read keeps it; otherwise a hashed 22% of chambers hold an unread mark; none once all are read), `addPentagonInscription` (a runtime overlay at load after `addMargin`: reachable floor against a wall, clear of doorways, plates, objects and spawns), `readPentagonInscription`, `inscriptionsRead`; `save.lore.inscriptions` / `inscribedAt` normalised in `ensureLore` when present. `src/tesseracts.ts` `TESSERACTS.echoes` (eight lines, then silence) and `tesseractEcho(n)`, counted in `save.tesseracts.echo` on a new set only. `src/glimpses.ts` `insideTheWall` (`place: "pentagon"`, `GLIMPSE_PLACED`, `GLIMPSE_CHANCE.pentagon` .25, once; the general pool `GLIMPSE_ORDER` unchanged), drawn by `drawWall` in `src/glimpse-scenes.ts`. `src/game.ts` reads a mark into the Journal ("In the Pentagon's walls") and cues the Glimpse on a first reading; `src/renderer.ts` `drawPentInscription`; `src/main.ts` a Tome section and the Codex vent lines. Tests: `tests/pentagon-lore.test.ts`.
+
+**BOUNDARY:** No generation change: every Pentagon version's chambers regenerate byte for byte; marks are an overlay. Schema 14 (additive fields, normalised once present). Flavour only: no counts, rewards or stat changes; random Glimpse picks unchanged. Pentagons only (not castles or keeps).
+
 ## Release 742: the haunts' curses — 2026-11-04
 
 Tim, 2026-11-04: the ghosts' outlines and accents blue instead of purple; "confusion with a few different things that can stack... one that you can't shoot, one that you can't attack, one you can't jump, another one you can't dodge... can't use tools... spells... items... 3 maybe 4 of them... another variant that chunks your maximum health, similar to the Stalker's mist form."
