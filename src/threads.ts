@@ -10,7 +10,7 @@
 import { hashSeed } from "./random.ts";
 import { READING_BANDS } from "./lore.ts";
 
-export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing
+export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for)
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
 // ten, so no crossing changes the thread it already offered.
 // band: which stretch of the map holds the thread, as a distance from the Refuge (THREAD_BANDS; they overlap, so a crossing may
@@ -168,6 +168,20 @@ export const THREADS = {
     ],
     ending: "The mirror is whole now, and it shows no one who has gone, only someone still on the way: you, tired, nearly there. Whoever made it understood the deep crossings better than anyone: here nothing seen is ever quite lost, and to be remembered is not the same as to be found. Somewhere at the end of a corridor there is a chair kept for you.",
   },
+  // The daily narrative pass of 2026-11-04 (docs/narrative-bible.md section 1: the Corridor is made of what is remembered, and it has
+  // density, not matter; here a jar weighs as much as its flower is remembered). Wave 4, the near band (which no later thread held
+  // before): rolled only where none of the first three rolls placed a thread, so no crossing changes what it offered.
+  beekeeper: { title: "The Beekeeper's Jars", band: "near", relic: "jar", colour: "#e8b84a", wave: 4,
+    pieces: [
+      "A small jar of honey sealed with wax, heavier than a jar that size should be. The label, in a round hand: \"Clover, from the field behind the school. My bees found it out here. I did not know that field was still anywhere.\"",
+      "A second jar, the honey dark. The label: \"Lilac, from the bush by my mother's door. She has been gone forty years. The bees go out into the Corridor and come home with her doorstep on their feet.\"",
+      "A third jar, the honey pale and thin, and it weighs almost nothing. The label: \"Heather, from a hill I saw once from the back of a cart. The bees had to fly a long way for something I hardly looked at.\"",
+      "A jar with a crack mended in string. The label: \"I could not remember the name of the yellow flower by the river, and in the morning the jar was lighter. I sat and said all I knew of it, the smell, the dust it left on my fingers. By evening it was heavy again.\"",
+      "A fifth jar, nearly empty, a bee asleep on the lid. The label: \"I forget more than I used to. So I give the jars away, to travellers, to the children at the Refuge. Eat it slowly, I tell them, and think of a field. The bees can find any field that somebody is thinking of.\"",
+      "The last jar is full to the brim and as light as an empty one, the honey almost clear. The label, in a shakier hand: \"I do not know what flower this is. Nobody I ask knows. The bees came home with it all the same, so somewhere someone still remembers it. I hope they know they are keeping a field.\"",
+    ],
+    ending: "The beekeeper is old now and cannot name half her flowers, but her bees still go out into the Corridor every morning and come home heavy, and they only ever come home from somewhere that someone remembers. The jars she gave away are a little heavier each time somebody opens one and thinks of a field. You taste the last one. It tastes of a place you cannot name, and for a moment you are sure you have stood in it.",
+  },
 };
 export const THREAD_ORDER = Object.keys(THREADS);
 const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave); // the first ten (release 627): what a crossing offered then, it still offers
@@ -191,10 +205,17 @@ function laterThreadIn(seed, dungeonId, rx, ry) {
 // Never add another wave 2 thread to a band: crossings that hold a wave 3 thread because no wave 2 thread was in band would move.
 // A later thread is always a new wave with its own roll.
 function thirdThreadIn(seed, dungeonId, rx, ry) {
-  if ((hashSeed(`${seed}:threads:third:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.third) return null;
-  const all = THREAD_ORDER.filter((id) => THREADS[id].wave === 3 && inBand(THREADS[id].band, rx, ry)); if (!all.length) return null;
+  if ((hashSeed(`${seed}:threads:third:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.third) return fourthThreadIn(seed, dungeonId, rx, ry);
+  const all = THREAD_ORDER.filter((id) => THREADS[id].wave === 3 && inBand(THREADS[id].band, rx, ry)); if (!all.length) return fourthThreadIn(seed, dungeonId, rx, ry);
   const first = Math.min(...all.map((id) => THREADS[id].layer || 0)), here = all.filter((id) => (THREADS[id].layer || 0) === first); // release 712: an earlier layer keeps its crossings
   return here[hashSeed(`${seed}:threads:third:which:v1:${dungeonId}`) % here.length];
+}
+// 2026-11-04: wave 4 threads, rolled only where none of the first three rolls placed a thread (THREAD_RULES.fourth), so none moves.
+// As with wave 3: never add another wave 4 thread to a band its crossings already cover; the next thread is a new wave (or a layer).
+function fourthThreadIn(seed, dungeonId, rx, ry) {
+  if ((hashSeed(`${seed}:threads:fourth:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.fourth) return null;
+  const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 4 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  return here[hashSeed(`${seed}:threads:fourth:which:v1:${dungeonId}`) % here.length];
 }
 export function ensureThreadState(save) {
   const lore = (save.lore ||= {});
