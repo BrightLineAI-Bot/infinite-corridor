@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 740, the next is **741**.
+Taken at merge time: `main`'s release + 1 (see above). After 741, the next is **742**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 740 | Claude | `claude/dreamy-rubin-yn6q2p` | Player and resume fixes (full-game review F3–F8, F9–F14, S7–S9, C12–C13): one pause clock list, reload keeps statuses/cooldowns/rite/boat momentum, death and Wayglass clear carried states, lethal ground read where a move ends, dodge cost floor, unknown fields kept in nested systems, session repairs | In flight. |
+| 741 | Claude | `claude/dreamy-rubin-yn6q2p` | Viewport Closed: a short fall, VIEWPORT CLOSED, light static and a fade to black, then waking at the rest point; a great beast looms over the corpse until black | In flight. |
+| 740 | Claude | `claude/dreamy-rubin-yn6q2p` | Player and resume fixes (full-game review F3–F8, F9–F14, S7–S9, C12–C13): one pause clock list, reload keeps statuses/cooldowns/rite/boat momentum, death and Wayglass clear carried states, lethal ground read where a move ends, dodge cost floor, unknown fields kept in nested systems, session repairs | Merged (#388). |
 | 739 | Claude | `claude/dreamy-rubin-yn6q2p` | Combat balance (Tim's direction, 2026-11-04): beasts unscaled below ring 100 and ramped to full by 150; tougher ordinary foes past ring 15; damage reduction past 45% with diminishing returns to 75%; spells match Might; Fractured, haunt and Gloomgorge scaling; Questing Beast keeps wounds; frenzy and status fixes; Aperture relic stat points ×0.8 | Merged (#387). |
 | 738 | Claude | `claude/dreamy-rubin-yn6q2p` | Smaller saves and faster loads (full-game review P2–P8, S3, D7, WG-09): dead-foe tombstones, delta autosave, cheap journey list, section terrain cache, edge hold, dungeon level cache, Supernova warm-up, idle sprite rate | Merged (#386). |
 | 737 | Claude | `claude/dreamy-rubin-yn6q2p` | World coherence on new ground (full-game review WG-01–WG-08, WG-10, WG-11; `atlas.coherenceVersion` 1): bridged exit lanes, joined exits and doors, no pits, movable creatures; Pentagon seams; no Pentagon or castle on a domain | Merged (#385). |
@@ -126,6 +127,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 740, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 739 | `r739-0b5b1c12e64a` | 2026-11-04 | Fable review (735→739): no blockers. 736 dungeon coherence (#384, with the agent team), 737 world coherence (#385), 738 smaller saves/faster loads (#386), 739 combat balance and doubled Fracture Warden damage (#387). |
 | 735 | `r735-7051faeb03e6` | 2026-11-04 | Fable review (733→735): no blockers. 734 safety fixes (#382), the mirror fix for the 734 review's blocker and the Beekeeper's Jars (#383). r734 was reviewed but not published (one blocker, fixed in 735). |
 | 733 | `r733-cb40b95e99a7` | 2026-11-04 | Fable review (732→733): no blockers. 733, the haunts drawn cheaply (#381); 731/732 already live in r732. |
 | 724 | `r724-477fbde1400a` | 2026-11-03 | Fable review: no blockers. 718, labyrinths (second session); 719, the Ink Wastes (#366); 720, the folk realms (#367); 721, the great mushrooms (#368); 722, the mushrooms made mushroomy (#369); 723, the Thornglass Caldera (#370); 724, the world beasts' domains (#371). |

@@ -347,6 +347,11 @@ function latticeNote(save) { const before = save.lattice ? save.lattice.coordina
 // Release 357: what the quiet Mouth tells the Wayfarer.
 export function quietMouthNote(save) { const n = relaysUntilReturn(save); return n > 0 ? `Answer ${n} more relay${n === 1 ? "" : "s"} (restore or sever) and the line will say where it went.` : "The line has already said where it went: see the Journal's Far Gate."; }
 export const DEATH_PAUSE = { seconds: 4, millSpeed: 1.1, millRadius: 3 }; // release 329: the pause after a world beast fells you
+// Viewport Closed (Tim, 2026-11-04: "you should see them just kind of over your corpse as the world fades out"): with a great
+// beast present, the beat of the fall lasts until black (Game.deathBeastBeat) and the beasts close in over the corpse,
+// stopping `reach` tiles from it, at `approach` tiles a second, then pace there as in release 329.
+export const DEATH_LOOM = { reach: 2.2, approach: 2.6 };
+const deathBeast = (e) => !e.dead && !!(e.worldBeast || e.questingBeast || e.stalker);
 export const DIVE_ONWARD = { radius: 8, tries: 6 }; // release 311: how far the deep current looks for the next buoy
 export const TOWN_AMENITY = { clear: 3, spacing: 2 }; // release 441: how far town services stand from the Wayglass and from each other
 export const TARGET_LOCK = { range: 16, pick: 1.35, meleeSlack: 1.2, meleeReach: 5 }; // release 471: meleeReach, how far past the weapon a tapped lock still takes a swing (as before release 469) // release 347: a wider tap (was .75); 419: wider again (was 1.05)
@@ -4003,7 +4008,10 @@ export class Game {
     for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact", "build", "preset"]) input.consume?.(action);
     const width = mapWidth(this.map, this.area);
     for (const e of this.enemies) {
-      if (e.dead || !(e.worldBeast || e.questingBeast)) continue;
+      if (e.dead || !(e.worldBeast || e.questingBeast || (this.fallen.live && e.stalker))) continue;
+      if (e.loomTo) { const dx = e.loomTo.x - e.x, dy = e.loomTo.y - e.y, d = Math.hypot(dx, dy), sp = DEATH_LOOM.approach * dt; // Viewport Closed: closing in over the corpse
+        if (d > .05) { const nx = d <= sp ? e.loomTo.x : e.x + dx / d * sp, ny = d <= sp ? e.loomTo.y : e.y + dy / d * sp; if (this.map.tiles[Math.floor(ny) * width + Math.floor(nx)]?.blocked) e.loomTo = null; else { e.x = nx; e.y = ny; e.facing = dx >= 0 ? "right" : "left"; e.walkPhase = (e.walkPhase || 0) + dt * 6; e.aggro = false; continue; } }
+        e.millHome = { x: e.x, y: e.y }; e.loomTo = null; }
       e.aggro = false; e.millTurn = (e.millTurn || 0) - dt;
       if (e.millTurn <= 0) { e.millAngle = Math.random() * Math.PI * 2; e.millTurn = 1.1 + Math.random() * 1.2; }
       const home = e.millHome || (e.millHome = { x: e.x, y: e.y }), sp = DEATH_PAUSE.millSpeed * dt;
@@ -4012,7 +4020,7 @@ export class Game {
       e.x = nx; e.y = ny; e.facing = Math.cos(e.millAngle) >= 0 ? "right" : "left"; e.walkPhase = (e.walkPhase || 0) + dt * 6;
     }
     this.projectiles = this.projectiles.filter((q) => !q.hostile);
-    if (now >= this.fallen.until) { this.fallen = null; for (const e of this.enemies) { delete e.millHome; delete e.millAngle; delete e.millTurn; } this.player.stunnedUntil = 0; this.resolveDeath(now, input); this.save.hp = this.player.hp; this.save.stamina = this.player.stamina; Object.assign(this.save.position, { area: this.area, rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }); }
+    if (now >= this.fallen.until) { const f = this.fallen; this.fallen = null; for (const e of this.enemies) { delete e.millHome; delete e.millAngle; delete e.millTurn; delete e.loomTo; } this.player.stunnedUntil = 0; this.resolveDeath(now, input, !!f.hazard, f.terrain ?? null); /* the Viewport Closed beat keeps a hazard death's cause */ this.save.hp = this.player.hp; this.save.stamina = this.player.stamina; Object.assign(this.save.position, { area: this.area, rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }); }
   }
   mechUp() { return this.save.mech?.active === true && this.save.mech.mode !== "drone" && !aboard(this.save); }
   // Release 507: surface water carries the Wayfarer with the Tidemantle, or inside the robot (MECH_WATER).
@@ -7096,7 +7104,18 @@ export class Game {
       // yourself"): felled in a fight with a world beast or the Questing Beast, the Wayfarer lies fallen for DEATH_PAUSE
       // seconds while the beast calms and paces (tickFallen); then the usual recovery at the checkpoint (resolveDeath).
       // The played game turns it on (main.ts sets deathPause); headless simulations recover at once, as before.
-      if (this.deathPause && !fellIntoHazard && !this.fallen && this.enemies.some((e) => !e.dead && (e.worldBeast || e.questingBeast))) {
+      // Viewport Closed (Tim, 2026-11-04): the played game sets deathBeat (combat-visuals.ts VIEWPORT_CLOSED.fall). Every death,
+      // of any kind, then holds for that short live beat of the fall (no control, nothing more can hurt) before the same
+      // recovery runs once; what the player sees after it is presentation (main.ts). The world-beast pause above is unused then.
+      if (this.deathBeat > 0 && !this.fallen) {
+        // With a world beast, the Questing Beast or the Stalker present the world stays live, the beast looming over the corpse,
+        // until black (deathBeastBeat); the recovery then runs once, there. Other deaths hold only the short beat.
+        const live = this.deathBeastBeat > 0 && this.enemies.some(deathBeast), until = now + (live ? this.deathBeastBeat : this.deathBeat) * 1000;
+        this.fallen = { until, beat: true, live, hazard: !!fellIntoHazard, terrain: terrainHazard ?? null }; p.hp = 0;
+        if (live) for (const e of this.enemies) if (deathBeast(e)) { e.aggro = false; e.millTurn = 0; const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy);
+          if (d > DEATH_LOOM.reach) e.loomTo = { x: e.x + dx / d * (d - DEATH_LOOM.reach), y: e.y + dy / d * (d - DEATH_LOOM.reach) }; else e.millHome = { x: e.x, y: e.y }; } p.stunnedAt = now; p.stunnedUntil = until + 1000; this.jumpUntil = 0; // stunnedUntil past the beat: the pose stays down
+        this.projectiles = this.projectiles.filter((q) => !q.hostile);
+      } else if (this.deathPause && !fellIntoHazard && !this.fallen && this.enemies.some((e) => !e.dead && (e.worldBeast || e.questingBeast))) {
         const until = now + DEATH_PAUSE.seconds * 1000, beast = this.enemies.find((e) => !e.dead && (e.worldBeast || e.questingBeast));
         this.fallen = { until }; p.hp = 0; p.stunnedAt = now; p.stunnedUntil = until; this.jumpUntil = 0;
         this.projectiles = this.projectiles.filter((q) => !q.hostile);

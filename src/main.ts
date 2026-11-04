@@ -10,11 +10,11 @@ import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "
 import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.ts"; // release 339; 341
 import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.ts";
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.ts";
+import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
-import { vendorShop, buyFromVendor, walkerCrossingMap } from "./game.ts";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS } from "./landscape.ts"; // release 573
 import { skylandLabel } from "./skylands.ts";
@@ -143,7 +143,7 @@ function openShop(vendorId = "vendor-vela") {
 }
 setTimeout(() => {
   canvas.addEventListener("worldtap", (e) => {
-    if (game.paused) return;
+    if (game.paused || viewportSeq) return; // Viewport Closed: taps are ignored too
     const r = canvas.getBoundingClientRect(),
       q = screenToWorld(
         game,
@@ -267,7 +267,7 @@ const $ = (s) => document.querySelector(s),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
   settings = loadSettings(),
   input = createInput(document, globalThis, settings),
-  [save, game] = startGame(await loadSave()), // release 740
+  [save, game] = startGame(await loadSave()), // release 741
   panel = $("#panel"),
   body = $("#panelBody"),
   pausePanel = $("#pausePanel"),
@@ -287,6 +287,8 @@ const perfEnabled = new URLSearchParams(location.search).has("perf") || settings
   navigationStats = { lookups: 0, rebuilds: 0 };
 function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
 game.deathPause = true; // release 329: the played game pauses after a world beast fells the Wayfarer (Game.tickFallen)
+game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every death holds a short beat of the fall, then the sequence (viewportFrame)
+game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
 function applyPresentationSettings(){game.beastTries=settings.beastTries!==false;/* release 345 */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
 const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
@@ -1310,7 +1312,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:740,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 740\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:741,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 741\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1322,7 +1324,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:740,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:741,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2323,6 +2325,42 @@ function warmSpillTerrain() {
     catch (error) { spillWarmFor = key; spillWarming = false; console.warn("Supernova warm-up failed", error); }
   });
 }
+// Viewport Closed (Tim, 2026-11-04). The Game holds a dead Wayfarer for a short beat of the fall (deathBeat), then recovers
+// at the rest point exactly as before. viewportFrame tracks it: at the recovery it keeps a snapshot of the last frame
+// (the fall), shows VIEWPORT CLOSED, light static and the fade to black over it with the world frozen, then re-opens on the
+// rest point, shifting the world's clocks by the frozen time (so the recovery's protection is still there). Nothing of it
+// is saved: a reload at any point lands at the rest point, or, inside the beat, dies and recovers once.
+let viewportSeq = null, viewportKnownDeaths = Number(save.worldFlags?.deaths) || 0, viewportNoiseKey = "";
+const viewportArt = { snapshot: null, sw: 0, sh: 0, noise: [], scan: null }, viewportLiveArt = { snapshot: null, sw: 0, sh: 0, noise: null, scan: null };
+function viewportReduced() { return !!(settings.reduceMotion || settings.safeMode); }
+function viewportCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+function viewportPrepare() {
+  const quality = currentQuality(), q = VIEWPORT_CLOSED.quality[quality] || VIEWPORT_CLOSED.quality.balanced, aspect = Math.round(innerHeight / Math.max(1, innerWidth) * 10) / 10, key = `${quality}:${aspect}`;
+  if (key !== viewportNoiseKey) { viewportNoiseKey = key; viewportArt.noise = viewportNoiseFrames(viewportCanvas, quality, aspect); }
+  if (!viewportArt.scan) { const c = viewportCanvas(1, 3), x = c.getContext("2d"); x.fillStyle = "rgba(0,0,0,.55)"; x.fillRect(0, 2, 1, 1); viewportArt.scan = ctx.createPattern(c, "repeat"); }
+  const sw = Math.max(1, Math.round(canvas.width * q.snapshot)), sh = Math.max(1, Math.round(canvas.height * q.snapshot));
+  if (!viewportArt.snapshot) viewportArt.snapshot = viewportCanvas(sw, sh);
+  else if (viewportArt.snapshot.width < sw || viewportArt.snapshot.height < sh) { viewportArt.snapshot.width = Math.max(sw, viewportArt.snapshot.width); viewportArt.snapshot.height = Math.max(sh, viewportArt.snapshot.height); }
+  viewportArt.sw = sw; viewportArt.sh = sh;
+}
+function viewportEnd() {
+  viewportSeq = null; viewportKnownDeaths = Number(save.worldFlags?.deaths) || 0;
+  document.body.classList.remove("viewport-closed");
+  input.reset(); last = performance.now();
+  updateMessage(game.message, true);
+}
+function viewportFrame(dt, now) {
+  try {
+    const deaths = Number(save.worldFlags?.deaths) || 0;
+    const ev = viewportClosedTick(viewportSeq, { dt, fallen: !!game.fallen, live: !!game.fallen?.live, deaths, known: viewportKnownDeaths, reduceMotion: viewportReduced() });
+    viewportSeq = ev.seq;
+    if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
+    if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 741's one clock list: the respawn's protection outlasts the black
+    if (ev.end) { viewportEnd(); return null; }
+    return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
+  } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
+}
 function frame(now) {
   try {
   probeInterval = now - last;
@@ -2333,24 +2371,30 @@ function frame(now) {
   // Release 199: while a Glimpse plays nothing else runs: no keys, no update, whatever has tried to resume the game.
   if (glimpseRun) { game.setPaused(true, now); return; }
   if (input.consume("pause")) game.paused ? resume() : pause();
+  if (viewportSeq) input.reset(); // Viewport Closed: everything but pause is ignored until the Wayfarer wakes
   if (input.consume("map")) openMap();
   if (input.consume("journal")) openJournal();
   if (input.consume("menu")) openPack();
   if(tickScene(now))return;
+  const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
-  measured("update", () => game.update(dt, input, now));
+  if (!viewportBefore || viewportBefore.world) measured("update", () => game.update(dt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, now));
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   if (game.paused) return;
+  const viewportStage = viewportFrame(probeInterval / 1000, now);
   warmCompassSignals();
   warmSpillTerrain();
   measured("render", () => {
     renderTimings.on = probe.running;
-    render(ctx, game, innerWidth, innerHeight, now);
-    drawDungeonSystems();
-    drawRangedEffects();
+    if (!viewportStage || viewportStage.world) {
+      render(ctx, game, innerWidth, innerHeight, now);
+      drawDungeonSystems();
+      drawRangedEffects();
+    }
+    if (viewportStage) drawViewportClosed(ctx, viewportStage, innerWidth, innerHeight, viewportSeq?.t || 0, viewportStage.live ? Object.assign(viewportLiveArt, { snapshot: canvas, sw: canvas.width, sh: canvas.height, noise: viewportArt.noise, scan: viewportArt.scan }) : viewportArt, currentQuality());
   });
-  updateMessage(game.message);
+  if (!viewportSeq) updateMessage(game.message); // the recovery's message waits until the Wayfarer wakes
   measured("hud", () => {
     updateHud(now);
     updateNavigationCompass();
