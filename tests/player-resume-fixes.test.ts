@@ -49,7 +49,7 @@ test('F5/C12: unpausing shifts every wall-clock timer by the paused time, so non
   for (const k of PLAYER_CLOCKS) p[k] = set[`p.${k}`] = t + 5000;
   for (const k of GAME_CLOCKS) g[k] = set[`g.${k}`] = t + 5000;
   g.golem = { x: 1, y: 1, start: t, nextAt: t + 700, sinkAt: null }; g.rite = { key: '0,0', at: { x: 1, y: 1 }, started: t, until: t + 300000, nextAt: t + 4000, n: 0 };
-  g.shadowClone = { ox: 0, oy: 0, until: t + 3000 }; p.echoMist = { until: t + 900, hit: {} }; g.echoPatches = [{ kind: 'web', until: t + 3000 }];
+  g.shadowClone = { ox: 0, oy: 0, until: t + 3000 }; g.edgeHold = { dx: 1, dy: 0, at: t }; p.echoMist = { until: t + 900, hit: {} }; g.echoPatches = [{ kind: 'web', until: t + 3000 }];
   g.setPaused(true, t); g.setPaused(false, t + gap);
   for (const k of PLAYER_CLOCKS) assert.equal(p[k], set[`p.${k}`] + gap, `player.${k}`);
   for (const k of GAME_CLOCKS) assert.equal(g[k], set[`g.${k}`] + gap, k);
@@ -57,7 +57,7 @@ test('F5/C12: unpausing shifts every wall-clock timer by the paused time, so non
   for (const k of ['slowUntil', 'confusedUntil', 'echoPounceUntil', 'echoWardReadyAt', 'echoMirrorReadyAt']) assert.ok(PLAYER_CLOCKS.includes(k), `${k} is in the list`);
   assert.deepEqual([g.golem.start, g.golem.nextAt, g.golem.sinkAt], [t + gap, t + 700 + gap, null]);
   assert.deepEqual([g.rite.started, g.rite.until, g.rite.nextAt], [t + gap, t + 300000 + gap, t + 4000 + gap]);
-  assert.equal(g.shadowClone.until, t + 3000 + gap); assert.equal(p.echoMist.until, t + 900 + gap); assert.equal(g.echoPatches[0].until, t + 3000 + gap);
+  assert.equal(g.shadowClone.until, t + 3000 + gap); assert.equal(g.edgeHold.at, t + gap, 'the edge hold'); assert.equal(p.echoMist.until, t + 900 + gap); assert.equal(g.echoPatches[0].until, t + 3000 + gap);
   // and a confusion of 3 s still reverses the stick after an 18 s pause (combat review C12)
   const h = new Game(fresh(), 0); h.player.confusedUntil = t + 3000; h.setPaused(true, t + 100); h.setPaused(false, t + 18500);
   const x0 = h.player.x; h.update(.05, move(1, 0), t + 18550); assert.ok(h.player.x < x0, 'still confused: right goes left');

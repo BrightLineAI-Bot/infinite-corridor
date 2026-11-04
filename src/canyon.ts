@@ -18,9 +18,15 @@
 //   deepest cavern, creatures in the caverns. The outer rock cannot be drilled.
 // Save: additive at schema 14 (the crater's dungeon history: `canyon` { caveIns, sealed, drilled: [tile indexes] }).
 import { hashSeed, rng } from "./random.ts";
+import { LETHAL_KINDS } from "./landscape.ts";
 
 export const CANYON = {
   version: 1,
+  // Release 735: the crater's generator, pinned per crater history (`canyonGenerator`, game.ts) for craters first entered from
+  // now on; a crater entered before keeps generator 1 as it was. Generator 2 draws the lava stream and the pool only in caverns
+  // that keep `wreckClear` tiles clear of the deepest one, so the Wreck of the Fallen never lies in water or lava.
+  generator: 2, wreckClear: 2,
+  spawnReach: 3, // a creature (or the warden) whose spot is lava, water or the ravine stands on the nearest safe floor this close, else not at all
   chance: .025, minRing: 6, // of sections first seen from this release
   size: 44,
   tempers: { plain: .52, green: .3, yellow: .12 }, // the rest start red
@@ -68,7 +74,7 @@ export function ensureCanyonHistory(h) { const c = h.canyon && typeof h.canyon =
   const list = (v) => Array.isArray(v) ? v.filter(Number.isInteger).slice(-CANYON.maxDrilled) : []; h.canyon = { caveIns: Math.max(0, Math.floor(Number(c.caveIns) || 0)), sealed: c.sealed === true, pulled: c.pulled === true, drilled: list(c.drilled), strained: list(c.strained) }; return h.canyon; }
 
 // The crater, generated from the seed and its id (the same each time); `drilled` tiles are opened again over it.
-export function generateCanyon(seed, id, drilled = [], strained = []) {
+export function generateCanyon(seed, id, drilled = [], strained = [], V = 1) {
   const C = CANYON, W = C.size, H = C.size, r = rng(`${seed}:canyon:v1:${id}`), K = C.kinds, tiles = [];
   const T = C.tempers, stab = (x, y) => { const v = (hashSeed(`${seed}:${id}:clod:${x}:${y}`) % 1000) / 1000; return v < T.plain ? "plain" : v < T.plain + T.green ? "green" : v < T.plain + T.green + T.yellow ? "yellow" : "red"; };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const edge = x < 2 || y < 2 || x >= W - 2 || y >= H - 2;
@@ -87,7 +93,7 @@ export function generateCanyon(seed, id, drilled = [], strained = []) {
   for (const y of [ry0, ry0 + 1]) open(bx, y, "skyBridge", { bridgeAxis: "y", environment: undefined, chasm: false });
   for (const y of [ry0 - 1, ry0 + 2]) for (const x of [bx - 1, bx, bx + 1]) open(x, y); // landings at both ends of the bridge
   // a lava stream and an underground pool in two caverns clear of the ravine (not the deepest), each with dry ground round it
-  const others = caverns.filter((c) => c !== deep && Math.abs(c.y - (ry0 + .5)) > c.rad + 1.5);
+  const others = caverns.filter((c) => c !== deep && Math.abs(c.y - (ry0 + .5)) > c.rad + 1.5 && (V < 2 || Math.hypot(c.x - deep.x, c.y - deep.y) > c.rad + deep.rad + C.wreckClear));
   const lavaC = others[0], poolC = others[1];
   if (lavaC) for (let x = -lavaC.rad + 1; x <= lavaC.rad - 1; x++) open(lavaC.x + x, lavaC.y, "lava", { environment: "lava", volcanic: true });
   if (poolC) blob(poolC.x, poolC.y, Math.max(1, poolC.rad - 2), "lakeWater", { environment: "water" });
@@ -96,10 +102,14 @@ export function generateCanyon(seed, id, drilled = [], strained = []) {
   for (const i of drilled) { const t = tiles[i]; if (t && isClod(t)) Object.assign(t, { kind: K.floor, blocked: false, clod: false, drilledOut: true }); }
   const objects = [{ id: "dungeon-exit", kind: "exit", x: entry.x, y: entry.y - 1, state: "open", actions: ["exit"] },
     { id: "canyon-wreck", kind: "divineWreck", name: "Wreck of the Fallen", x: deep.x, y: deep.y, state: "intact", actions: ["pull"], lore: C.messages.wreck }];
+  // release 735 (every crater: creature spawns are not part of the ground): a spawn on lava, water or the ravine moves to safe floor
+  const lethal = (t) => !t || LETHAL_KINDS.has(t.kind) || !!t.chasm, safeNear = (x, y, wanted) => { if (!lethal(at(x, y))) return { x, y }; let best = null, bd = Infinity;
+    for (let dy = -C.spawnReach; dy <= C.spawnReach; dy++) for (let dx = -C.spawnReach; dx <= C.spawnReach; dx++) { const tx = x + dx, ty = y + dy, t = tx >= 0 && ty >= 0 && tx < W && ty < H ? at(tx, ty) : null, d = Math.hypot(dx, dy); if (!t || t.blocked || lethal(t) || d > C.spawnReach || d >= bd || enemySpawns.some((e) => e.x === tx && e.y === ty) || !wanted(t)) continue; bd = d; best = { x: tx, y: ty }; }
+    return best; };
   const enemySpawns = [], M = C.creatures; caverns.forEach((c, i) => { if (c === lavaC || c === poolC || c === deep) return; const h = hashSeed(`${seed}:${id}:cav${i}`), n = M.perCavern[0] + (h >>> 9) % (M.perCavern[1] - M.perCavern[0] + 1);
-    for (let j = 0; j < n; j++) { const x = c.x + (j ? -1 : 1), y = c.y + (j ? 1 : 0); if (at(x, y)?.blocked) continue; enemySpawns.push({ id: `${id}:cav${i}:${j}`, kind: M.cavern[(h >>> (j * 3)) % M.cavern.length], x, y }); } });
-  { const x = deep.x + (deep.x + 2 < W - 2 ? 2 : -2), y = deep.y; if (!at(x, y).blocked) enemySpawns.push({ id: `${id}:warden`, kind: M.warden, x, y, boss: true, dungeonRole: "canyonWarden" }); else enemySpawns.push({ id: `${id}:warden`, kind: M.warden, x: deep.x, y: deep.y + 1, boss: true, dungeonRole: "canyonWarden" }); }
-  return { seed, id, recipe: "canyon", name: C.name, identity: "a crater where something divine fell", danger: "cave-ins", width: W, height: H, tiles, entry, exit: { x: entry.x, y: entry.y - 1 }, objects, enemySpawns, canyon: { version: C.version, deep: { x: deep.x, y: deep.y } }, landscape: { biome: "underlands" }, theme: "canyon", generatorVersion: 1, sizeProfile: "canyon" };
+    for (let j = 0; j < n; j++) { const x0 = c.x + (j ? -1 : 1), y0 = c.y + (j ? 1 : 0); if (at(x0, y0)?.blocked) continue; const p = safeNear(x0, y0, () => true); if (!p) continue; enemySpawns.push({ id: `${id}:cav${i}:${j}`, kind: M.cavern[(h >>> (j * 3)) % M.cavern.length], x: p.x, y: p.y }); } });
+  { const x = deep.x + (deep.x + 2 < W - 2 ? 2 : -2), y = deep.y, p = !at(x, y).blocked ? { x, y } : { x: deep.x, y: deep.y + 1 }, s = safeNear(p.x, p.y, () => true) || p; enemySpawns.push({ id: `${id}:warden`, kind: M.warden, x: s.x, y: s.y, boss: true, dungeonRole: "canyonWarden" }); }
+  return { seed, id, recipe: "canyon", name: C.name, identity: "a crater where something divine fell", danger: "cave-ins", width: W, height: H, tiles, entry, exit: { x: entry.x, y: entry.y - 1 }, objects, enemySpawns, canyon: { version: C.version, deep: { x: deep.x, y: deep.y }, ...(V >= 2 ? { generator: V } : {}) }, landscape: { biome: "underlands" }, theme: "canyon", generatorVersion: 1, sizeProfile: "canyon" };
 }
 
 // One frame of the robot's auger on clod `t` (held into it for `dt` s). `state` is the game's runtime drill state (strain and

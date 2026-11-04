@@ -12,7 +12,7 @@
 // somewhere across the floor from where you came in, and above the ground floor, holes where the floor has fallen through
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
-import { hashSeed, rng } from "./random.ts";
+import { hashSeed, rng, byHash } from "./random.ts";
 
 export const BUILDINGS = {
   version: 2, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
@@ -55,6 +55,13 @@ export const BUILDINGS = {
   rubble: .015, // blocked rubble a floor, never where it would cut the floor in two
   creatures: { perFloor: [3, 5], far: 5, scale: { hp: .14, damage: .08 }, guardian: { hp: 2.2, damage: 1.3, affixes: 1 } },
   fall: .1, // share of max health a fall through the floor costs
+  // Interior generator versions (release 735), pinned per building in its floors' dungeon histories (`interiorVersion`, game.ts
+  // `interiorVersion`): an interior any floor of which was generated before keeps version 1 exactly as it was. Version 2:
+  // - a floor's holes never stand over a hole in the floor below (a fall lands on floor, not straight through a second floor);
+  // - a top-floor guardian (great buildings, compound towers, castle keeps, labyrinth vaults) that finds no free tile beside its
+  //   cache stands on the nearest free tile it can be walked to within `guardianReach` instead of not appearing at all;
+  // - labyrinth galleries of gaps keep the platform beside every door (labyrinths.ts), and a key always lies somewhere.
+  interior: { version: 2, guardianReach: 3 },
   messages: {
     arrive: "A great building stands here, shut and dark. Its door is the way in.",
     enter: "inside",
@@ -152,7 +159,8 @@ export function buildingHereV2(seed, rx, ry, region) {
   p.shape = BUILDINGS.shapes[h("shape") % BUILDINGS.shapes.length]; return p;
 }
 const CLEAR_OBJECTS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
-export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
+// `doorOk(map, at)` (world coherence 1, new ground only): the front door must join the land the exits join (WG-05).
+export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
   if (!map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const S = BUILDINGS.styles[plan.style], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -162,7 +170,7 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
   const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y);
   const open = (x, y) => { const t = map.tiles[I(x, y)]; return natural(t) && !t.blocked && !t.slope && !(t.elev > 0) && !objAt(x, y); };
   const h = (k) => hashSeed(`${seed}:great-building-spot:v2:${rx}:${ry}:${k}`), R = BUILDINGS.roof, shape = plan.shape || "rect";
-  let tries = 0;
+  let tries = 0, doorMiss = 0;
   for (const [W, H] of [...S.footprints, ...(plan.style === "hive" ? [[7, 7], [7, 6]] : [])]) {
     const spots = []; for (let oy = 2; oy <= 30 - H; oy++) for (let ox = 2; ox <= 30 - W; ox++) spots.push([ox, oy]);
     spots.sort((a, b) => h(a) - h(b));
@@ -189,6 +197,7 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
         map.tiles[i] = { ...map.tiles[i], x: c.x, y: c.y, kind: plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology", blocked: fallen, slope: false, elev: R.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, roofHole: fallen || undefined, environment: undefined, canopy: undefined }; }
       const after = exitsOpen(map);
       if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
+      if (doorOk && !doorOk(map, out)) { map.tiles = tiles; if (++doorMiss >= doorOk.tries) return null; continue; }
       const base = `building:${seed}:${rx}:${ry}:${plan.style}:${plan.floors}${roof ? "r" : ""}`, id = `great-building-${rx}-${ry}`;
       map.objects = (map.objects || []).filter((o) => !set.has(I(Math.round(o.x), Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));
@@ -211,8 +220,8 @@ export function placeBuildingV2(map, seed, rx, ry, plan, exitsOpen) {
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const memo = new Map();
 // Every floor of a building, laid in order (each floor's stair up stands where the next floor's stair down is).
-export function buildingPlan(base) {
-  if (memo.has(base)) return memo.get(base);
+export function buildingPlan(base, V = 1) {
+  const key = V >= 2 ? `${base}|v${V}` : base; if (memo.has(key)) return memo.get(key);
   const P = parseBuildingId(`${base}:f1`); if (!P) return null;
   const S = BUILDINGS.styles[P.style], [W, H] = S.size, floors = [];
   const h = (k) => hashSeed(`${base}:plan:${k}`);
@@ -227,9 +236,9 @@ export function buildingPlan(base) {
     if (up) arrive = up;
   }
   // holes above the ground floor, over open ground on the floor below, clear of the stairs and never cutting the way up
-  for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H);
+  for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H, V);
   const plan = { base, ...P, W, H, door, entry, breach, floors };
-  if (memo.size > 24) memo.clear(); memo.set(base, plan); return plan;
+  if (memo.size > 24) memo.clear(); memo.set(key, plan); return plan;
 }
 
 export function layFloor(base, f, W, H, S, arrive, keepOpen) {
@@ -268,7 +277,7 @@ export function layFloor(base, f, W, H, S, arrive, keepOpen) {
   // rubble: a few blocked heaps in the rooms, never cutting the floor in two
   const seen0 = reach(), count = (s) => s.reduce((n, v) => n + v, 0), total = count(seen0), cells = [];
   for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) if (grid[at(x, y)] === 0 && Math.abs(x - arrive.x) + Math.abs(y - arrive.y) > 2) cells.push([x, y]);
-  cells.sort((a, b) => hashSeed(`${base}:rub:${f}:${a}`) - hashSeed(`${base}:rub:${f}:${b}`));
+  cells.sort(byHash((a) => `${base}:rub:${f}:${a}`));
   for (const [x, y] of cells.slice(0, Math.round(cells.length * BUILDINGS.rubble))) { grid[at(x, y)] = 4; if (count(reach()) !== total - 1) grid[at(x, y)] = 0; }
   return { W, H, grid, room, leaves, mat, walls };
 }
@@ -281,11 +290,12 @@ export function farthest(L, from, ok) {
   return out.sort((a, b) => b.d - a.d || a.y - b.y || a.x - b.x);
 }
 
-export function addHoles(base, F, below, W, H) {
+export function addHoles(base, F, below, W, H, V = 1) {
   const B = BUILDINGS.holes, at = (x, y) => y * W + x, near = (p, x, y) => p && Math.abs(p.x - x) + Math.abs(p.y - y) <= B.clear;
-  const ok = (x, y) => F.grid[at(x, y)] === 0 && below.grid[at(x, y)] === 0 && !near(F.arrive, x, y) && !near(F.up, x, y) && !near(below.up, x, y) && !near(below.arrive, x, y);
+  const belowHole = V >= 2 ? new Set((below.holes || []).map(([x, y]) => at(x, y))) : null; // interior v2: never over a hole below
+  const ok = (x, y) => F.grid[at(x, y)] === 0 && below.grid[at(x, y)] === 0 && !near(F.arrive, x, y) && !near(F.up, x, y) && !near(below.up, x, y) && !near(below.arrive, x, y) && !(belowHole && belowHole.has(at(x, y)));
   const cand = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (ok(x, y)) cand.push([x, y]);
-  cand.sort((a, b) => hashSeed(`${base}:hole:${F.floor}:${a}`) - hashSeed(`${base}:hole:${F.floor}:${b}`));
+  cand.sort(byHash((a) => `${base}:hole:${F.floor}:${a}`));
   const want = Math.round(cand.length * B.share), holes = [];
   for (const [x, y] of cand) { if (holes.length >= want) break; for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]].slice(0, B.cluster)) { const hx = x + dx, hy = y + dy; if (ok(hx, hy) && !holes.some((q) => q[0] === hx && q[1] === hy)) holes.push([hx, hy]); } }
   // every open cell must still be reachable from the arrival without stepping in a hole: drop holes (newest first) until so
@@ -296,9 +306,23 @@ export function addHoles(base, F, below, W, H) {
   F.holes = holes;
 }
 
-// The dungeon map for one floor (`id` as `buildingFloorId`).
-export function generateBuildingFloor(seed, id) {
-  const P = parseBuildingId(id), plan = P && buildingPlan(P.base); if (!plan) return null;
+// Where a top-floor guardian stands by its cache `c`: one of the six tiles beside it (as in version 1); from interior v2, when
+// none is free, the nearest free tile within `guardianReach` that can be walked to from `from` (null when there is none).
+export function guardianBeside(tiles, W, c, free, V = 1, from = null) {
+  const g = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => ({ x: c.x + dx, y: c.y + dy })).find((q) => free(q.x, q.y));
+  if (g || V < 2) return g || null;
+  const R = BUILDINGS.interior.guardianReach, H = Math.floor(tiles.length / W), walk = (t) => t && !t.blocked && !t.hole, seen = new Uint8Array(W * H), q = [];
+  const s = from && walk(tiles[from.y * W + from.x]) ? from.y * W + from.x : c.y * W + c.x; seen[s] = 1; q.push(s);
+  for (let i = 0; i < q.length; i++) { const k = q[i], x = k % W, y = (k / W) | 0; for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, n = ny * W + nx; if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[n] || !walk(tiles[n])) continue; seen[n] = 1; q.push(n); } }
+  let best = null, bd = Infinity;
+  for (let y = c.y - R; y <= c.y + R; y++) for (let x = c.x - R; x <= c.x + R; x++) { if (x < 0 || y < 0 || x >= W || y >= H || (x === c.x && y === c.y) || !seen[y * W + x] || !free(x, y)) continue;
+    const d = Math.hypot(x - c.x, y - c.y); if (d <= R && d < bd) { bd = d; best = { x, y }; } }
+  return best;
+}
+
+// The dungeon map for one floor (`id` as `buildingFloorId`). `V` is the interior version pinned for the building (1 by default).
+export function generateBuildingFloor(seed, id, V = 1) {
+  const P = parseBuildingId(id), plan = P && buildingPlan(P.base, V); if (!plan) return null;
   const S = BUILDINGS.styles[P.style], F = plan.floors[P.floor - 1], { W, H } = plan, tiles = [], holes = new Set((F.holes || []).map(([x, y]) => y * W + x));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, g = F.grid[k], rm = F.room[k];
     const nb = rm >= 0 ? rm : [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => F.room[(y + dy) * W + x + dx]).find((v) => v >= 0);
@@ -322,13 +346,13 @@ export function generateBuildingFloor(seed, id) {
     enemySpawns.push({ id: `${id}:g${enemySpawns.length}`, kind: S.guards[h(`k${enemySpawns.length}`) % S.guards.length], x: p.x, y: p.y, buildingGuard: true }); }
   if (F.top) { const c = spots.find((p) => !taken.has(p.y * W + p.x)) || F.far[0];
     if (c) { objects.push({ id: "building-cache", kind: "chest", name: `${S.name} Cache`, x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); taken.add(c.y * W + c.x);
-      const g = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => ({ x: c.x + dx, y: c.y + dy })).find((q) => free(q.x, q.y));
+      const g = guardianBeside(tiles, W, c, free, V, entry);
       if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true }); }
     if (P.roof) { const gd = enemySpawns.find((e) => e.buildingGuardian), clear = (p) => !gd || Math.hypot(gd.x - p.x, gd.y - p.y) >= BUILDINGS.roofLadderClear; // arriving from the roof, never on the guardian's doorstep
       const q = F.far.find((p) => free(p.x, p.y) && clear(p) && Math.abs(p.x - F.arrive.x) + Math.abs(p.y - F.arrive.y) > 3 && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => taken.has((p.y + dy) * W + p.x + dx))) || [...F.far].reverse().find((p) => free(p.x, p.y) && clear(p)) || F.far.find((p) => free(p.x, p.y));
       if (q) { objects.push({ id: "building-roof-ladder", kind: "buildingStair", name: "Ladder up · the roof", x: q.x, y: q.y, state: "open", actions: ["climb"], dir: "roof" }); taken.add(q.y * W + q.x); } } }
   return { seed, id, recipe: "greatBuilding", name, identity: `${S.name}, ${P.floor === 1 ? "the ground floor" : `floor ${P.floor}`} of ${P.floors}`, danger: "falling floors", width: W, height: H, tiles, entry, exit: P.floor === 1 ? { ...plan.door } : null, objects, enemySpawns,
-    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }; // layoutVersion 1: dungeon-variation leaves it as laid
+    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, ...(V >= 2 ? { interiorVersion: V } : {}), breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }; // layoutVersion 1: dungeon-variation leaves it as laid
 }
 
 // The nearest open floor beside `p` (not on a stair or a hole), to stand on when you arrive by it.

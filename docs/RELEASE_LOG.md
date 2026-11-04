@@ -15,14 +15,17 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 735, the next is **736**.
+Taken at merge time: `main`'s release + 1 (see above). After 738, the next is **739**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 735 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: the Beekeeper's Jars, a wave 4 thread of six honey jars in the near band | In flight. |
-| 734 | Claude | `claude/dreamy-rubin-yn6q2p` | Safety fixes from the full-game review: unknown/future save versions kept as damaged, the localStorage mirror kept within budget, null entries no longer stop start-up, broken checkpoints repaired, the Gravitant Bell's pull collides | Merged (#382), preview r734-b548ba1a6cfb. |
+| 738 | Claude | `claude/dreamy-rubin-yn6q2p` | Smaller saves and faster loads (full-game review P2–P8, S3, D7, WG-09): dead-foe tombstones, delta autosave, cheap journey list, section terrain cache, edge hold, dungeon level cache, Supernova warm-up, idle sprite rate | In flight. |
+| 737 | Claude | `claude/dreamy-rubin-yn6q2p` | World coherence on new ground (full-game review WG-01–WG-08, WG-10, WG-11; `atlas.coherenceVersion` 1): bridged exit lanes, joined exits and doors, no pits, movable creatures; Pentagon seams; no Pentagon or castle on a domain | Merged (#385). |
+| 736 | Claude | `claude/dreamy-rubin-yn6q2p` | Dungeons that can always be finished (full-game review D1–D6, D8–D12): interior v2, deep placement 2, canyon generator 2; runtime hoard, fall, crater-spawn and haunt rules | Merged (#384). |
+| 735 | Claude | `claude/dreamy-rubin-yn6q2p` | Daily narrative pass: the Beekeeper's Jars, a wave 4 thread of six honey jars in the near band; plus the mirror fix from the pre-publish review of 734 | Merged (#383). Published in r735. |
+| 734 | Claude | `claude/dreamy-rubin-yn6q2p` | Safety fixes from the full-game review: unknown/future save versions kept as damaged, the localStorage mirror kept within budget, null entries no longer stop start-up, broken checkpoints repaired, the Gravitant Bell's pull collides | Merged (#382), preview r734-b548ba1a6cfb. Not published alone (review blocker); published in r735. |
 | 733 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts drawn cheaply: each ghost painted once per pose, facing and size, then stamped (about 50x cheaper) | Merged (#381). Published in r733. |
 | 732 | Claude (second session) | `claude/tremor-worm-rework-dqd8an` | The Pentagon v5 (Tim asked this session, "secrets... that you can access with the key"): three sealed chambers behind sigil doors, opened with the Regent's Seal, each with a warden, a Sealed Tesseract glyph and a relic of its own | Merging (baton taken). |
 | 731 | Claude | `claude/dreamy-rubin-yn6q2p` | The haunts: Gloomwisps (confusing puffs that reverse movement; they split) pouring together into a Gloomgorge; in keeps, castle courts, building/castle/Pentagon floors and the rare wild | In flight. |
@@ -121,6 +124,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 735, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 735 | `r735-7051faeb03e6` | 2026-11-04 | Fable review (733→735): no blockers. 734 safety fixes (#382), the mirror fix for the 734 review's blocker and the Beekeeper's Jars (#383). r734 was reviewed but not published (one blocker, fixed in 735). |
 | 733 | `r733-cb40b95e99a7` | 2026-11-04 | Fable review (732→733): no blockers. 733, the haunts drawn cheaply (#381); 731/732 already live in r732. |
 | 724 | `r724-477fbde1400a` | 2026-11-03 | Fable review: no blockers. 718, labyrinths (second session); 719, the Ink Wastes (#366); 720, the folk realms (#367); 721, the great mushrooms (#368); 722, the mushrooms made mushroomy (#369); 723, the Thornglass Caldera (#370); 724, the world beasts' domains (#371). |
 | 717 | `r717-28789eeae12c` | 2026-11-03 | Fable review: no blockers. The far realms: 714, the Giants' Reach and the Stag and Stalker at play (#361); 715, stag groves and blob pockets (#362); 716, the Crystal Civilisation (#363); 717, the Storm Halls (#364). |

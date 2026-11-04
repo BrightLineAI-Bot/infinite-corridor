@@ -79,6 +79,7 @@ export function varyDungeonLayout(map, seed, id) {
     const choices = bossTiles.filter(t => {
       if (!domain.has(key(t.x, t.y)) || (!ordinary && boss.dungeonRole !== "finalBoss" && Math.hypot(t.x - boss.x, t.y - boss.y) > radius) || Math.hypot(t.x - boss.x, t.y - boss.y) < 1.5) return false;
       if (Math.hypot(t.x - entry.x, t.y - entry.y) < 6 || (!ordinary && protectedCells.has(key(t.x, t.y)))) return false;
+      if (map.canyon?.generator >= 2 && t.environment) return false; // release 735: a crater of generator 2 never moves its warden into lava, water or the ravine
       if (DIRECTIONS.some(([dx, dy]) => bossTiles[(t.y + dy) * map.width + t.x + dx]?.blocked !== false)) return false;
       return ![...(map.objects || []), ...(map.enemySpawns || []).filter(e => e !== boss)].some(o => Math.hypot(t.x - o.x, t.y - o.y) < 2);
     });

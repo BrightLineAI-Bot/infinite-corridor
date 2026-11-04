@@ -13,7 +13,7 @@
 // through another wing's hatch and floors to reach the courtyard, and from the courtyard the tower climbs to the boss and the
 // treasure room (and, sometimes, the tower's own roof). Everything is pinned per section (`atlas.compoundVersion`).
 import { hashSeed } from "./random.ts";
-import { BUILDINGS, layFloor, farthest, addHoles } from "./great-buildings.ts";
+import { BUILDINGS, layFloor, farthest, addHoles, guardianBeside } from "./great-buildings.ts";
 import { canStep } from "./landscape.ts";
 
 export const COMPOUNDS = {
@@ -71,7 +71,8 @@ const partBase = (seed, rx, ry, style, p) => `compound:${seed}:${rx}:${ry}:${sty
 
 // ------------------------------------------------------------------------------------------------ outside
 const I = (x, y) => y * 32 + x, WET = /ocean|Ocean|lake|Lake|swamp|Swamp|toxic|Toxic|water|Water|lava|abyss|river|canyon|mire|Mire|shallows|pool|Pool/;
-export function placeCompound(map, seed, rx, ry, plan, exitsOpen) {
+// `doorOk(map, at)` (world coherence 1, new ground only): each outer door must join the land the exits join (WG-05).
+export function placeCompound(map, seed, rx, ry, plan, exitsOpen, doorOk = null) {
   if (!map?.landscape || !map?.tiles?.length || map.keep || map.castle || map.canopy || map.greatBuilding) return null;
   const C = COMPOUNDS, T = compoundTopology(seed, rx, ry, plan.style), ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const between = (v, c) => Number.isFinite(c) && v >= Math.min(c, 16) - 1 && v <= Math.max(c, 16) + 1;
@@ -84,7 +85,7 @@ export function placeCompound(map, seed, rx, ry, plan, exitsOpen) {
   const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y), open = (x, y) => x >= 0 && y >= 0 && x < 32 && y < 32 && plain(map.tiles[I(x, y)]) && !objAt(x, y);
   const h = (k) => hashSeed(`${seed}:compound-spot:${rx}:${ry}:${k}`), R = C.ring;
   const wingFace = compoundFaceH(T.wings[0].floors), towerFace = compoundFaceH(T.tower.floors);
-  let tries = 0;
+  let tries = 0, doorMiss = 0;
   for (const [W, H] of C.sizes) {
     const [tw, th] = C.tower(W, H);
     const spots = []; for (let oy = 1; oy <= 31 - H; oy++) for (let ox = 1; ox <= 31 - W; ox++) spots.push([ox, oy]);
@@ -123,6 +124,7 @@ export function placeCompound(map, seed, rx, ry, plan, exitsOpen) {
       for (const c of court) { const i = I(c.x, c.y), t = map.tiles[i]; map.tiles[i] = { ...t, ...(plan.style !== "hive" || t.blocked ? { kind: plan.style === "hive" ? "arcFloor" : plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology" } : {}), blocked: false, slope: false, elev: 0, courtyard: true, environment: undefined }; } // levelled and paved
       const after = exitsOpen(map), outsideOk = T.wings.filter((q) => doors[q.part].exits["building-exit-outer"]).every((q) => walkable(map, doors[q.part].exits["building-exit-outer"]));
       if (!before.every((o, i) => !o || after[i]) || !outsideOk) { map.tiles = tiles; map.objects = objects; map.enemySpawns = spawns; if (++tries >= 8) return null; continue; }
+      if (doorOk && !T.wings.filter((q) => doors[q.part].exits["building-exit-outer"]).every((q) => doorOk(map, doors[q.part].exits["building-exit-outer"]))) { map.tiles = tiles; map.objects = objects; map.enemySpawns = spawns; if (++doorMiss >= doorOk.tries) return null; continue; }
       const inside = (o) => o.x >= ox - .5 && o.x < ox + W - .5 && o.y >= oy - .5 && o.y < oy + H - .5, id = `compound-${rx}-${ry}`, S = C.styles[plan.style];
       map.objects = (map.objects || []).filter((o) => !inside(o) || (plan.style === "hive" && (o.decor || o.environmental) && !CLEARS.has(o.kind) && court.some((q) => q.x === Math.round(o.x) && q.y === Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !inside(e));
@@ -170,8 +172,8 @@ function walkable(map, p) {
 
 // ------------------------------------------------------------------------------------------------ inside
 const memo = new Map();
-export function compoundPartPlan(base) {
-  if (memo.has(base)) return memo.get(base);
+export function compoundPartPlan(base, V = 1) {
+  const key = V >= 2 ? `${base}|v${V}` : base; if (memo.has(key)) return memo.get(key);
   const P = parseCompoundId(`${base}:f1`); if (!P) return null;
   const T = compoundTopology(P.seed, P.rx, P.ry, P.style), part = T.parts.find((q) => q.part === P.part), S = BUILDINGS.styles[P.style];
   const [W, H] = P.part === "t" ? COMPOUNDS.interior.tower : COMPOUNDS.interior.wing, h = (k) => hashSeed(`${base}:plan:${k}`);
@@ -186,13 +188,13 @@ export function compoundPartPlan(base) {
     const up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
     floors.push({ ...L, floor: f, arrive, up, top, far }); if (up) arrive = up;
   }
-  for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H);
+  for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H, V);
   const plan = { base, ...P, part, W, H, doors, entry: first, floors, partName: P.part === "t" ? COMPOUNDS.styles[P.style].tower : COMPOUNDS.styles[P.style].wings[part.w] };
-  if (memo.size > 40) memo.clear(); memo.set(base, plan); return plan;
+  if (memo.size > 40) memo.clear(); memo.set(key, plan); return plan;
 }
 
-export function generateCompoundFloor(seed, id) {
-  const P = parseCompoundId(id), plan = P && compoundPartPlan(P.base); if (!plan) return null;
+export function generateCompoundFloor(seed, id, V = 1) { // `V`: the interior version pinned for the compound (great-buildings.ts BUILDINGS.interior)
+  const P = parseCompoundId(id), plan = P && compoundPartPlan(P.base, V); if (!plan) return null;
   const S = BUILDINGS.styles[P.style], CS = COMPOUNDS.styles[P.style], F = plan.floors[P.floor - 1], { W, H } = plan, tiles = [], holes = new Set((F.holes || []).map(([x, y]) => y * W + x));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, g = F.grid[k], rm = F.room[k];
     const nb = rm >= 0 ? rm : [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => F.room[(y + dy) * W + x + dx]).find((v) => v >= 0);
@@ -214,13 +216,13 @@ export function generateCompoundFloor(seed, id) {
     enemySpawns.push({ id: `${id}:g${enemySpawns.length}`, kind: S.guards[h(`k${enemySpawns.length}`) % S.guards.length], x: p.x, y: p.y, buildingGuard: true }); }
   if (top && (tower || plan.part.cache)) { const c = spots.find((p) => !taken.has(p.y * W + p.x)) || F.far[0];
     if (c) { objects.push({ id: "building-cache", kind: "chest", name: tower ? `${CS.top} Cache` : `${plan.partName} Cache`, x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); taken.add(c.y * W + c.x);
-      if (tower) { const g = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => ({ x: c.x + dx, y: c.y + dy })).find((q) => free(q.x, q.y)); if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true }); } } }
+      if (tower) { const g = guardianBeside(tiles, W, c, free, V, entry); if (g) enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true }); } } }
   if (top && P.roof) { const gd = enemySpawns.find((e) => e.buildingGuardian), clear = (p) => !gd || Math.hypot(gd.x - p.x, gd.y - p.y) >= BUILDINGS.roofLadderClear;
     const q = F.far.find((p) => free(p.x, p.y) && clear(p) && Math.abs(p.x - F.arrive.x) + Math.abs(p.y - F.arrive.y) > 3) || [...F.far].reverse().find((p) => free(p.x, p.y) && clear(p)) || F.far.find((p) => free(p.x, p.y));
     if (q) objects.push({ id: "building-roof-ladder", kind: "buildingStair", name: tower ? "Ladder up · the tower roof" : "Ladder up · the wall walk", x: q.x, y: q.y, state: "open", actions: ["climb"], dir: "roof" }); }
   const roofLadder = objects.find((o) => o.dir === "roof");
   return { seed, id, recipe: "greatBuilding", name, identity: `${COMPOUNDS.styles[P.style].name}: the ${plan.partName}, ${floorName.toLowerCase()} of ${P.floors}`, danger: "falling floors", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
-    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, compound: true, part: P.part, entries, breachEntry: null, roofLadder: roofLadder ? { x: roofLadder.x, y: roofLadder.y } : null }, layoutVersion: 1, themePool: 0 };
+    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, compound: true, ...(V >= 2 ? { interiorVersion: V } : {}), part: P.part, entries, breachEntry: null, roofLadder: roofLadder ? { x: roofLadder.x, y: roofLadder.y } : null }, layoutVersion: 1, themePool: 0 };
 }
 function stepOff(tiles, W, p) {
   for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) { const t = tiles[(p.y + dy) * W + p.x + dx]; if (t && !t.blocked && !t.hole && t.x === p.x + dx) return { x: p.x + dx, y: p.y + dy }; }
