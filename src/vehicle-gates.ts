@@ -158,8 +158,14 @@ export function gliderForbiddenAt(map, width, x, y) {
 // `home`: "if you jump from the top of the tree and haven't touched the ground yet, and you die — going over a Pentagon, or going
 // over deep water — you just spawn back at the top of the tree, and you think about your decisions." A glide (open or folded) that
 // began at the crown's height (the launch at least `home.crownWithin` levels under `map.canopy.top`) remembers that tree
-// (game.ts `glideHome`: section and crown spot); any death before the Wayfarer first stands on something wakes them on that crown,
-// not at the active rest point (which is left as it was). A glide begun lower on the tree (off a branch) is an ordinary glide.
+// (game.ts `glideHome`: section and crown spot); any death before the Wayfarer first stands on something wakes them on that crown.
+// A glide begun lower on the tree (off a branch) is an ordinary glide.
+// Decision 13 (Tim, 2026-11-05: "you wake on the crown only if you actually reached it"): with `reached`, the height is not enough:
+// the last ground the Wayfarer stood on before the glide must be that crown itself (game.ts `crownFoot`). Standing there counts
+// however you came (climbing, a sky gate's drop, a drone that set you down on it); a drone lift that only rises past the crown never
+// does (and it cannot open the glider in any case: its end is a fall). A grove's lesser crown is not the great crown (no Crown Rest).
+// Decision 14 (Tim, 2026-11-05): with `setsRest`, waking on the crown makes that crown's Crown Rest the active rest point, as if it
+// had been touched (game.ts `takeCrownRest`, the path touchCrownRest uses); `rest` is added to the wake message.
 // `window`: "when you're by the great tree, north takes you up to different levels [on screen]... you can technically glide up to
 // the top of the tree by holding north... there's a window around the tree where you can't travel north while gliding." While a
 // glide's middle is inside the tree's window (the laid tree's `canopy.box`, `margin` tiles wider on every side, and reaching north
@@ -167,7 +173,7 @@ export function gliderForbiddenAt(map, width, x, y) {
 // north; east, west and south are untouched. Not while the glide is held skimming over something it cannot land on (`skimFree`),
 // so it can never be pinned in the air. Walking, climbing, hops and the drone's booster never read it.
 export const TREE_GLIDE = {
-  home: { crownWithin: 0, wake: "you wake on the crown of the great tree you leapt from, to think about your decisions" },
+  home: { crownWithin: 0, reached: true, setsRest: true, wake: "you wake on the crown of the great tree you leapt from, to think about your decisions", rest: " The Crown Rest holds you now: you will wake here if you fall again." },
   window: { on: true, margin: 2, drawn: .68 /* landscape.ts LIFT_PER_LEVEL × CANOPY_LIFT (a test keeps them equal) */, skimFree: true },
 };
 // The tallest top a section's great tree (or grove) reaches. Pure.

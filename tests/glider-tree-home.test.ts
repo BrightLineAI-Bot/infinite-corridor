@@ -64,7 +64,7 @@ test('the tables: the window is drawn at the tree\'s own scale, and the crown sp
     assert.equal(g.touchCrownRest(), false, 'the Crown Rest is not touched'); assert.ok(rest); assert.ok(canopyTop(g.map.canopy) >= g.map.canopy.top); }
 });
 
-test('a glide from the crown that dies over a Pentagon (in another section) wakes on the crown it left; the rest point is kept', () => {
+test('a glide from the crown that dies over a Pentagon (in another section) wakes on the crown it left, and its Crown Rest becomes the rest point', () => {
   const g = atTree(0), tree = [g.rx, g.ry], before = deaths(g), draughts = g.save.consumables.restorativeDraught;
   g.save.materials = { ...(g.save.materials || {}), wood: 7 }; const marks = g.save.marks, xp = g.save.xp;
   let { t } = launch(g); refuge(g); const cp0 = cpKey(g.save.activeCheckpoint); assert.ok(g.glide?.open, 'gliding'); assert.deepEqual([g.glideHome.rx, g.glideHome.ry], tree, 'the tree is remembered');
@@ -74,7 +74,7 @@ test('a glide from the crown that dies over a Pentagon (in another section) wake
   t = fly(g, 200, () => ({ x: 1, until: () => { said ||= g.message === GLIDER_FORBIDDEN.message; return g.player.hp <= 0 || !g.glide; } }), t);
   assert.ok(said, 'the Pentagon kills the glide'); assert.equal(g.player.hp, 0); t = fly(g, 80, () => ({}), t);
   assert.equal(deaths(g) - before, 1, 'still a death'); assert.deepEqual([g.rx, g.ry], tree, 'back at the tree\'s section'); assert.ok(onCrown(g), 'standing on its crown');
-  assert.match(g.message, new RegExp(TREE_GLIDE.home.wake.slice(0, 30))); assert.equal(cpKey(g.save.activeCheckpoint), cp0, 'the active rest point is unchanged');
+  assert.match(g.message, new RegExp(TREE_GLIDE.home.wake.slice(0, 30))); const rest = g.map.objects.find((o) => o.kind === 'crownRest'); assert.notEqual(cpKey(g.save.activeCheckpoint), cp0); assert.equal(cpKey(g.save.activeCheckpoint), cpKey({ rx: tree[0], ry: tree[1], x: rest.x, y: rest.y }), 'Decision 14 (2026-11-05): the crown\'s Crown Rest is now the rest point (was: unchanged)');
   assert.equal(g.glide, null); assert.equal(g.glideHome, null); assert.equal(g.save.glider, true, 'the glider is kept'); assert.equal(g.player.hp, g.save.maxHp);
   assert.equal(g.save.materials.wood, 7, 'carried wood is kept (release 345)'); assert.equal(g.save.marks, marks); assert.equal(g.save.xp, xp); assert.ok(g.save.consumables.restorativeDraught >= Math.min(2, draughts ?? 2));
   t = fly(g, 20, () => ({}), t); assert.ok(g.player.hp > 0 && onCrown(g), 'and stays there, alive');
