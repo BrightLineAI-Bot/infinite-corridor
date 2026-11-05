@@ -14,8 +14,8 @@
 // their own: `killHeal` (health back on a kill) and `selfHarm` (health lost with each swing).
 //
 // Save (additive, schema 14): save.tesseracts = { owned: [{ uid, kind, grade, name, lines: [{ k, v, bad }], from }], slots:
-// [uid|null ×3], seq, got: { <source>: true } }. Rolls are hashes of the seed and the source, so a source gives its glyph once.
-import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
+// [uid|null ×3], seq, got: { <source>: true }, echo: glyphs ever set (once any is) }. Rolls are hashes of the seed and the source, so a source gives its glyph once.
+import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
 
 export const TESSERACTS = {
   version: 1, slots: 3, keep: 60, dust: 3, // owned at most `keep`; shattering one gives `dust` glyph dust
@@ -51,6 +51,19 @@ export const TESSERACTS = {
     sealed: { name: "Sealed", q: .85, bad: .3, kinds: ["edge", "ward", "gale", "star"] }, // release 732: the Pentagon's sealed chambers, opened with the Regent's Seal
     sovereign: { name: "Sovereign", q: .95, bad: .2, kinds: ["sovereign"] },
   },
+  // What setting one costs, said once per set and never counted (docs/narrative-bible.md section 1, Tim 2026-11-04: "you're
+  // giving part of yourself... You are less you, and you are fading, like the memories, to become more Corridor"). The n-th
+  // glyph the Wayfarer ever sets gives echoes[n-1]; past the last, nothing. Flavour only: no line changes a number.
+  echoes: [
+    "You set it. For a breath you remember a kitchen, a window, someone humming at the sink. Then the humming stops.",
+    "You set it. The name of the street you grew up on is on the tip of your tongue, and stays there.",
+    "You set it. For a moment your own hand looks like a hand in a drawing.",
+    "You set it. There was a song. You are sure there was a song.",
+    "You set it. Something is quieter than it was.",
+    "You set it. Something you knew is not there now. You do not miss it.",
+    "You set it.",
+    "…",
+  ],
   names: ["of the Fivefold Court", "of the Eyeless Face", "of the Fallen Gate", "of the Under-Heart", "of the Lightless Nave", "of the Drowned Choir", "of the Bone Stair", "of the Long Corridor", "of the Five Faces", "of the Regent's Wake"],
 };
 const EFFECT_IDS = Object.keys(TESSERACTS.effects);
@@ -60,6 +73,7 @@ export function ensureTesseracts(save) {
   const owned = (Array.isArray(T.owned) ? T.owned : []).filter(ok).map((g) => ({ ...g, lines: g.lines.filter((l) => TESSERACTS.effects[l?.k] && Number.isFinite(l.v)) }));
   const have = new Set(owned.map((g) => g.uid)), slots = Array.from({ length: TESSERACTS.slots }, (_, i) => (have.has(T.slots?.[i]) ? T.slots[i] : null));
   save.tesseracts = { ...T, owned, slots: slots.map((u, i) => (slots.indexOf(u) === i ? u : null)), seq: Math.max(0, Math.floor(Number(T.seq) || 0)), got: T.got && typeof T.got === "object" ? { ...T.got } : {} };
+  if (T.echo !== undefined) save.tesseracts.echo = Math.max(0, Math.floor(Number(T.echo) || 0)); // glyphs ever set (TESSERACTS.echoes)
   return save;
 }
 
@@ -75,6 +89,21 @@ export function rollTesseract(seed, source, gradeId, floor = 0) {
   for (const i of [2, 3]) { const cost = u(`b${i}`) < G.bad; lines.push(cost ? bad(pick(EFFECT_IDS.filter((id) => E[id].bad), `l${i}`), `v${i}`) : good(pick(EFFECT_IDS.filter((id) => E[id].good), `l${i}`), `v${i}`)); }
   return { kind, grade: gradeId, name: `${G.name === K.name ? G.name : `${G.name} ${K.name}`} Tesseract ${TESSERACTS.names[h("name") % TESSERACTS.names.length]}`, lines };
 }
+// Cut line `i` of glyph `g` again (the Pentagon's dais, pentagon.ts PENTAGON.finale.reroll), by the rules that rolled it: its
+// grade's strength (`q`, a Deep glyph's floor unknown, so taken at the grade's own) and cost chance; the first line from its
+// kind's favoured effects, the second a bonus, the last two a cost by the grade's `bad` chance; never an effect another line of
+// it holds, nor (where another is left) the one it had. Pure: `source` (the Pentagon, the reroll's index, the glyph) decides it.
+export function rerollTesseractLine(seed, source, g, i) {
+  const G = TESSERACTS.grades[g?.grade] || TESSERACTS.grades.labyrinth, E = TESSERACTS.effects, K = TESSERACTS.kinds[g?.kind] || TESSERACTS.kinds.edge, h = (k) => hashSeed(`${seed}:tesseract-reroll:v1:${source}:${k}`), u = (k) => (h(k) % 10000) / 10000;
+  if (!g?.lines?.[i]) return null; const q = G.q, others = new Set(g.lines.filter((_, j) => j !== i).map((l) => l.k)), was = g.lines[i].k;
+  const pick = (from) => { const pool = from.filter((id) => !others.has(id)), fresh = pool.filter((id) => id !== was), use = fresh.length ? fresh : pool; return use.length ? use[h("l") % use.length] : null; };
+  const good = (id) => { const [a, b] = E[id].good; return { k: id, v: Math.round((a + (b - a) * q * (.6 + .4 * u("v"))) * 1000) / 1000, bad: false }; };
+  const bad = (id) => { const [a, b] = E[id].bad; return { k: id, v: Math.round((a + (b - a) * ((1 - q) * .6 + .4 * u("v"))) * 1000) / 1000, bad: true }; };
+  const goods = EFFECT_IDS.filter((id) => E[id].good), costs = EFFECT_IDS.filter((id) => E[id].bad);
+  if (i === 0) { const id = pick(K.favour.filter((x) => E[x].good)) || pick(goods); return id ? good(id) : null; }
+  if (i === 1 || u("b") >= G.bad) { const id = pick(goods); return id ? good(id) : null; }
+  const id = pick(costs); return id ? bad(id) : null;
+}
 // Give the glyph a source holds, once ever. Returns it, or null if that source already gave its glyph.
 export function grantTesseract(save, source, gradeId, floor = 0, from = "") {
   ensureTesseracts(save); const T = save.tesseracts; if (T.got[source]) return null; T.got[source] = true;
@@ -82,12 +111,16 @@ export function grantTesseract(save, source, gradeId, floor = 0, from = "") {
   T.owned.push(g); while (T.owned.length > TESSERACTS.keep) { const i = T.owned.findIndex((q) => !T.slots.includes(q.uid)); if (i < 0) break; T.owned.splice(i, 1); }
   return g;
 }
+// The line for the n-th glyph ever set (1-based), or null past the last.
+export const tesseractEcho = (n) => TESSERACTS.echoes[Math.floor(n) - 1] || null;
 export function setTesseract(save, slot, uid) {
   ensureTesseracts(save); const T = save.tesseracts; if (slot < 0 || slot >= TESSERACTS.slots) return { ok: false, message: "No such slot." };
   if (uid && !T.owned.some((g) => g.uid === uid)) return { ok: false, message: "You do not have that glyph." };
+  const fresh = !!uid && !T.slots.includes(uid); // set now, not moved from another slot
   for (let i = 0; i < T.slots.length; i++) if (uid && T.slots[i] === uid) T.slots[i] = null; // one glyph, one slot
   T.slots[slot] = uid || null; const g = T.owned.find((q) => q.uid === uid);
-  return { ok: true, message: g ? `${g.name} set.` : "Slot cleared." };
+  const echo = fresh ? tesseractEcho((T.echo = (Number(T.echo) || 0) + 1)) : null;
+  return { ok: true, echo, message: g ? (echo ? `${g.name}. ${echo}` : `${g.name} set.`) : "Slot cleared." };
 }
 export function shatterTesseract(save, uid) {
   ensureTesseracts(save); const T = save.tesseracts, i = T.owned.findIndex((g) => g.uid === uid); if (i < 0) return { ok: false, message: "You do not have that glyph." };

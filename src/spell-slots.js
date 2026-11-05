@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r739-0b5b1c12e64a";
+import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r755-c3a9aa62bf91";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -26,6 +26,7 @@ export const CASTABLES = {
   "spell:shadow-boxing": { kind: "spell", id: "shadow-boxing", symbol: "⚔", attr: "dusk" },
   "spell:orbit-volley": { kind: "spell", id: "orbit-volley", symbol: "❂", attr: "rift" }, // release 487
   "spell:fire-burst": { kind: "spell", id: "fire-burst", symbol: "✺", attr: "fire" }, // release 547
+  "spell:imbue-weapon": { kind: "spell", id: "imbue-weapon", symbol: "✧", attr: "force" }, // Imbue Weapon (2026-11-04)
   "skill:ember-form": { kind: "skill", id: "ember-form", symbol: "✶", attr: "fire" },
   "skill:quickening": { kind: "skill", id: "quickening", symbol: "≫", attr: "wind" },
   "skill:aerial-step": { kind: "skill", id: "aerial-step", symbol: "⇡", attr: "wind" },

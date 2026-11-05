@@ -8,8 +8,8 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r739-0b5b1c12e64a";
-import { daisDue } from "./listener-arena.js?v=r739-0b5b1c12e64a";
+import { hashSeed, rng } from "./random.js?v=r755-c3a9aa62bf91";
+import { daisDue } from "./listener-arena.js?v=r755-c3a9aa62bf91";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -50,7 +50,7 @@ export function ensureFarArray(save) {
   const f = save.farArray && typeof save.farArray === "object" ? save.farArray : {};
   // Journeys that felled a Listener before 357 go quiet now, counting from the relays they had then.
   const quiet = f.quiet === undefined ? (Number(f.listeners) || 0) > 0 : !!f.quiet, relaysAt = f.relaysAt != null && Number.isFinite(Number(f.relaysAt)) ? Math.max(0, Number(f.relaysAt)) : answeredRelays(save);
-  save.farArray = {
+  save.farArray = { ...f, // release 736 (review S7): unknown fields kept
     v: 1, gate: Math.max(1, Number(f.gate) || 1), pieces: Math.max(0, Number(f.pieces) || 0), runs: Math.max(0, Number(f.runs) || 0),
     listeners: Math.max(0, Number(f.listeners) || 0), boons: (Array.isArray(f.boons) ? f.boons : []).filter((id) => BOONS[id]),
     offer: (Array.isArray(f.offer) ? f.offer : []).filter((id) => BOONS[id]), ending: ["close", "open"].includes(f.ending) ? f.ending : null,

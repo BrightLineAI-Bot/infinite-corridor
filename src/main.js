@@ -1,43 +1,47 @@
-import { BOAT, forgeSubmersible } from "./boats.js?v=r739-0b5b1c12e64a"; // release 311
-import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r739-0b5b1c12e64a";
-import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r739-0b5b1c12e64a"; // release 393; 541: preset gear
-import { FRACTURED } from "./fractured.js?v=r739-0b5b1c12e64a"; // release 651: Fractured mode
-import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r739-0b5b1c12e64a"; // release 543
-import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.js?v=r739-0b5b1c12e64a"; // release 551; 559
-import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.js?v=r739-0b5b1c12e64a";
-import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r739-0b5b1c12e64a"; // release 447
-import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r739-0b5b1c12e64a"; // release 459 // release 395 // release 315; 321: the drone
-import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r739-0b5b1c12e64a"; // release 339; 341
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind } from "./building.js?v=r739-0b5b1c12e64a";
-import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r739-0b5b1c12e64a";
-import { drawRangedEffects as drawCombatEffects } from "./combat-visuals.js?v=r739-0b5b1c12e64a";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r739-0b5b1c12e64a";
-import { renderTimings } from "./renderer.js?v=r739-0b5b1c12e64a";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r739-0b5b1c12e64a";
-import { vendorShop, buyFromVendor, walkerCrossingMap } from "./game.js?v=r739-0b5b1c12e64a";
-import { sectionAtlasColor } from "./atlas-colors.js?v=r739-0b5b1c12e64a";
-import { sectionRegion, regionName, REGIONS } from "./landscape.js?v=r739-0b5b1c12e64a"; // release 573
-import { skylandLabel } from "./skylands.js?v=r739-0b5b1c12e64a";
-import { CREATURE_TRAITS } from "./combat.js?v=r739-0b5b1c12e64a";
-import { nearestWonders, WONDERS } from "./wonders.js?v=r739-0b5b1c12e64a"; // release 674
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY } from "./monster-pack.js?v=r739-0b5b1c12e64a";
-import { activeFarQuest } from "./far-realms.js?v=r739-0b5b1c12e64a"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
-import { drawPackPortrait } from "./monster-render.js?v=r739-0b5b1c12e64a";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r739-0b5b1c12e64a";
-import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r739-0b5b1c12e64a";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r739-0b5b1c12e64a";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r739-0b5b1c12e64a";
-import { linksKnown } from "./linked-dungeons.js?v=r739-0b5b1c12e64a";
-import { DIG } from "./digging.js?v=r739-0b5b1c12e64a";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark } from "./atlas-view.js?v=r739-0b5b1c12e64a";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r739-0b5b1c12e64a";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r739-0b5b1c12e64a";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r739-0b5b1c12e64a";
-import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r739-0b5b1c12e64a";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r739-0b5b1c12e64a";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb } from "./far-array.js?v=r739-0b5b1c12e64a";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r739-0b5b1c12e64a";
+import { BOAT, forgeSubmersible } from "./boats.js?v=r755-c3a9aa62bf91"; // release 311
+import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r755-c3a9aa62bf91";
+import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r755-c3a9aa62bf91"; // release 393; 541: preset gear
+import { FRACTURED } from "./fractured.js?v=r755-c3a9aa62bf91"; // release 651: Fractured mode
+import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r755-c3a9aa62bf91"; // release 543
+import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.js?v=r755-c3a9aa62bf91"; // release 551; 559
+import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.js?v=r755-c3a9aa62bf91";
+import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r755-c3a9aa62bf91"; // release 447
+import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r755-c3a9aa62bf91"; // release 459 // release 395 // release 315; 321: the drone
+import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r755-c3a9aa62bf91"; // release 339; 341
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.js?v=r755-c3a9aa62bf91";
+import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText } from "./beast-mounts.js?v=r755-c3a9aa62bf91"; // release 748: the stable
+import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r755-c3a9aa62bf91";
+import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.js?v=r755-c3a9aa62bf91";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r755-c3a9aa62bf91";
+import { renderTimings } from "./renderer.js?v=r755-c3a9aa62bf91";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r755-c3a9aa62bf91";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.js?v=r755-c3a9aa62bf91";
+import { IMBUE, imbueAmount } from "./brawler-spells.js?v=r755-c3a9aa62bf91"; // Imbue Weapon: the Arcanum shows what it adds now
+import { sectionAtlasColor } from "./atlas-colors.js?v=r755-c3a9aa62bf91";
+import { sectionRegion, regionName, REGIONS } from "./landscape.js?v=r755-c3a9aa62bf91"; // release 573
+import { skylandLabel } from "./skylands.js?v=r755-c3a9aa62bf91";
+import { CREATURE_TRAITS } from "./combat.js?v=r755-c3a9aa62bf91";
+import { nearestWonders, WONDERS } from "./wonders.js?v=r755-c3a9aa62bf91"; // release 674
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY } from "./monster-pack.js?v=r755-c3a9aa62bf91";
+import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.js?v=r755-c3a9aa62bf91";
+import { curseDef } from "./haunts.js?v=r755-c3a9aa62bf91"; // release 737: the haunt curses on the HUD
+import { activeFarQuest } from "./far-realms.js?v=r755-c3a9aa62bf91"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
+import { drawPackPortrait } from "./monster-render.js?v=r755-c3a9aa62bf91";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r755-c3a9aa62bf91";
+import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r755-c3a9aa62bf91";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r755-c3a9aa62bf91";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r755-c3a9aa62bf91";
+import { linksKnown } from "./linked-dungeons.js?v=r755-c3a9aa62bf91";
+import { DIG } from "./digging.js?v=r755-c3a9aa62bf91";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark } from "./atlas-view.js?v=r755-c3a9aa62bf91";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r755-c3a9aa62bf91";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r755-c3a9aa62bf91";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r755-c3a9aa62bf91";
+import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r755-c3a9aa62bf91";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r755-c3a9aa62bf91";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb } from "./far-array.js?v=r755-c3a9aa62bf91";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r755-c3a9aa62bf91";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -143,7 +147,7 @@ function openShop(vendorId = "vendor-vela") {
 }
 setTimeout(() => {
   canvas.addEventListener("worldtap", (e) => {
-    if (game.paused) return;
+    if (game.paused || viewportSeq) return; // Viewport Closed: taps are ignored too
     const r = canvas.getBoundingClientRect(),
       q = screenToWorld(
         game,
@@ -190,14 +194,14 @@ setTimeout(() => {
     $("#spellInfo").textContent =
       `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
     $("#toolInfo").textContent =
-      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}`;
+      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
     act?.classList.toggle("selected", save.aimMode === "act");
     document.querySelector('[data-action="build"]')?.classList.toggle("selected", save.aimMode === "build");
   }, 100);
 }, 0);
-import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r739-0b5b1c12e64a";
+import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r755-c3a9aa62bf91";
 import {
   Game,
   actionReadiness,
@@ -207,14 +211,15 @@ import {
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
   salvageInventoryItems,
-} from "./game.js?v=r739-0b5b1c12e64a";
-import { createInput } from "./input.js?v=r739-0b5b1c12e64a";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r739-0b5b1c12e64a";
-import { STATS, freshSave } from "./types.js?v=r739-0b5b1c12e64a";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.js?v=r739-0b5b1c12e64a";
-import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine } from "./tesseracts.js?v=r739-0b5b1c12e64a";
-import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r739-0b5b1c12e64a";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r739-0b5b1c12e64a";
+} from "./game.js?v=r755-c3a9aa62bf91";
+import { createInput } from "./input.js?v=r755-c3a9aa62bf91";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r755-c3a9aa62bf91";
+import { STATS, freshSave } from "./types.js?v=r755-c3a9aa62bf91";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.js?v=r755-c3a9aa62bf91";
+import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine } from "./tesseracts.js?v=r755-c3a9aa62bf91";
+import { PENTAGON_LORE, inscriptionsRead } from "./pentagon.js?v=r755-c3a9aa62bf91";
+import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r755-c3a9aa62bf91";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r755-c3a9aa62bf91";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
 // Release 293 (Tim: "convincing symbols... relevant and easy to discern"): solid, filled item icons (spells stay line drawings).
 const ITEM_NAMES = { restorativeDraught: "Restorative Draught", highPotion: "High Potion", maxPotion: "Max Potion", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield", submersible: "Submersible Frame" };
@@ -234,16 +239,16 @@ const ITEM_ICONS = {
   submersible: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><rect x="16.4" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><circle cx="12" cy="10" r="7" fill="#c9cfd6" stroke="#3a4048" stroke-width="1"/><circle cx="12" cy="9.4" r="4.2" fill="#2a6f86" stroke="#3a4048" stroke-width="1"/><path d="M10 7.8a2.6 2.6 0 0 1 3-1" stroke="#ffffff" stroke-width="1" fill="none"/><path d="M5.6 11.6 2.8 14.4l.6 2.6M18.4 11.6l2.8 2.8-.6 2.6" stroke="#7d858e" stroke-width="1.6" fill="none" stroke-linecap="round"/><rect x="8.4" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><rect x="13.2" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><path d="M7.8 20.4h3.6M12.6 20.4h3.6" stroke="#4b525a" stroke-width="1.6" stroke-linecap="round"/></svg>',  // release 315: the robot
   hullShield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 14.4h18.8l-2.8 5.6H5.4z" fill="#8a5a32" stroke="#3e2614" stroke-width="1"/><path d="M12 2.4 17.4 4.4v4.3c0 3.3-2.3 5.4-5.4 6.6-3.1-1.2-5.4-3.3-5.4-6.6V4.4z" fill="#3fb6c8" stroke="#d8f6fb" stroke-width="1.2"/><path d="M12 5.4v6.4M9.4 7.8h5.2" stroke="#0f3a42" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 21.4c2-1 4-1 6 0s4 1 6 0 4-1 6 0 2.6.5 3 .3" stroke="#7fc6e6" stroke-width="1.2" fill="none"/></svg>',
 };
-import { buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r739-0b5b1c12e64a";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.js?v=r739-0b5b1c12e64a";
-import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r739-0b5b1c12e64a";
-import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r739-0b5b1c12e64a";
-import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r739-0b5b1c12e64a";
-import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r739-0b5b1c12e64a";
-import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r739-0b5b1c12e64a";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r739-0b5b1c12e64a";
-import { worldStewardReport } from "./story.js?v=r739-0b5b1c12e64a";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r739-0b5b1c12e64a";
+import { buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r755-c3a9aa62bf91";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.js?v=r755-c3a9aa62bf91";
+import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r755-c3a9aa62bf91";
+import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r755-c3a9aa62bf91";
+import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r755-c3a9aa62bf91";
+import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r755-c3a9aa62bf91";
+import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r755-c3a9aa62bf91";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r755-c3a9aa62bf91";
+import { worldStewardReport } from "./story.js?v=r755-c3a9aa62bf91";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r755-c3a9aa62bf91";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -255,19 +260,19 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r739-0b5b1c12e64a";
-import { warmWayfindingSignals } from "./world.js?v=r739-0b5b1c12e64a";
-import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.js?v=r739-0b5b1c12e64a"; // release 431
-import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.js?v=r739-0b5b1c12e64a"; // release 595
-import { THREADS, THREAD_ORDER, threadsStarted, threadFound } from "./threads.js?v=r739-0b5b1c12e64a"; // release 627
-import { ILSE_MEETINGS, ilseMet } from "./ilse.js?v=r739-0b5b1c12e64a"; // the Journal's Arcana tab
-import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.js?v=r739-0b5b1c12e64a"; // release 605
+} from "./world.js?v=r755-c3a9aa62bf91";
+import { warmWayfindingSignals } from "./world.js?v=r755-c3a9aa62bf91";
+import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.js?v=r755-c3a9aa62bf91"; // release 431
+import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.js?v=r755-c3a9aa62bf91"; // release 595
+import { THREADS, THREAD_ORDER, threadsStarted, threadFound } from "./threads.js?v=r755-c3a9aa62bf91"; // release 627
+import { ILSE_MEETINGS, ilseMet } from "./ilse.js?v=r755-c3a9aa62bf91"; // the Journal's Arcana tab
+import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.js?v=r755-c3a9aa62bf91"; // release 605
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
   settings = loadSettings(),
   input = createInput(document, globalThis, settings),
-  [save, game] = startGame(await loadSave()), // release 739
+  [save, game] = startGame(await loadSave()), // release 755
   panel = $("#panel"),
   body = $("#panelBody"),
   pausePanel = $("#pausePanel"),
@@ -287,6 +292,8 @@ const perfEnabled = new URLSearchParams(location.search).has("perf") || settings
   navigationStats = { lookups: 0, rebuilds: 0 };
 function currentQuality(){return effectiveQuality(settings,{width:innerWidth,height:innerHeight,deviceMemory:navigator.deviceMemory,hardwareConcurrency:navigator.hardwareConcurrency})}
 game.deathPause = true; // release 329: the played game pauses after a world beast fells the Wayfarer (Game.tickFallen)
+game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every death holds a short beat of the fall, then the sequence (viewportFrame)
+game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
 function applyPresentationSettings(){game.beastTries=settings.beastTries!==false;/* release 345 */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
 const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
@@ -392,7 +399,7 @@ function watchQuests(now){
   if(questQueue.length&&now>=questBannerFreeAt){const q=questQueue.shift();showEventBanner(q.title,q.detail,q.kind);questBannerFreeAt=now+QUEST_BANNER.gap}
 }
 function updateWorldNotices() {
-  if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);questBannerFreeAt=performance.now()+QUEST_BANNER.gap;}
+  if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);if(notice.sound)playNoticeSound(notice.sound);questBannerFreeAt=performance.now()+QUEST_BANNER.gap;}
   watchQuests(performance.now());
   {const done=takeCompletedReading();if(done)showEventBanner("RECITATION COMPLETE",`${done==="elders"?"The Elder Wanderers":READINGS[done].name} · Mastered`,"discovery");} // release 191 (Tim)
   if(game.glimpseCue){const cue=game.glimpseCue;game.glimpseCue=null;const id=glimpseRun?null:glimpseFor(save,cue,game.rx,game.ry,Math.random,{family:settings.familySafe});if(id)playGlimpse(id)} // release 193
@@ -682,6 +689,12 @@ function voice(
   o.connect(g).connect(destination);
   o.start(when);
   o.stop(when + duration + 0.05);
+}
+// A short cue for a notice that carries one (the Pentagon's shortcuts): a clank and a low settle, through the music bus.
+const NOTICE_SOUNDS = { shortcut: [[196, 0, 0.18, "square"], [146.83, 0.12, 0.3, "triangle"], [98, 0.3, 0.55, "triangle"]] };
+function playNoticeSound(kind) {
+  const notes = NOTICE_SOUNDS[kind]; if (!audio || !notes || muted) return;
+  try { const t = audio.currentTime; for (const [f, at, d, type] of notes) voice(f, t + at, d, 0.12, type); } catch { /* sound is a nicety */ }
 }
 function startAmbience() {
   if (audio) {
@@ -1273,6 +1286,8 @@ function renderTome(out){
     for(const id of found){const p=document.createElement("p");p.className="options-note";p.textContent=`"${PAGE_TEXT[id]}…"`;ps.append(p)}
     if(found.length>=READING_ORDER.length){const last=document.createElement("p"),fill=document.createElement("p");last.className="lore-book mastered";last.textContent=PAGES_FINAL;fill.className="options-note";const lines=(save.narrative?.journal||[]).slice(-6).map((j)=>j.text||j.title).filter(Boolean);fill.textContent=lines.length?lines.join(" · "):"…";ps.append(last,fill)}
     out.append(ps)}}
+  // The marks read in the Pentagons' walls, once any is: their words only, never a count (Tim, 2026-11-04: "it shouldn't be overdone").
+  {const marks=inscriptionsRead(save);if(marks.length){const ms=document.createElement("section"),mh=document.createElement("h3");ms.className="library-book";mh.textContent=PENTAGON_LORE.title;ms.append(mh);for(const q of marks){const p=document.createElement("p");p.className="options-note";p.textContent=q.text;ms.append(p)}out.append(ms)}}
   for(const id of threadsStarted(save)){const T=THREADS[id],found=threadFound(save,id),ts=document.createElement("section"),th=document.createElement("h3");ts.className="library-book";th.textContent=`${T.title} (${Math.min(found.length,T.pieces.length)} of ${T.pieces.length})`;ts.append(th); /* release 627: the threads */
     for(let i=0;i<Math.min(found.length,T.pieces.length);i++){const p=document.createElement("p");p.className="options-note";p.textContent=T.pieces[i];ts.append(p)}
     if(found.length>=T.pieces.length){const e=document.createElement("p");e.className="lore-book mastered";e.textContent=T.ending;ts.append(e)}
@@ -1310,7 +1325,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r739-0b5b1c12e64a",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r739-0b5b1c12e64a\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r755-c3a9aa62bf91",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r755-c3a9aa62bf91\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1322,7 +1337,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r739-0b5b1c12e64a",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r755-c3a9aa62bf91",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1331,7 +1346,7 @@ async function renderOptions(category=optionCategory){optionCategory=category;op
 async function openOptions(){pauseForOverlay();if(pausePanel.open)pausePanel.close();setHudExpanded(false);await renderOptions();if(!optionsPanel.open)optionsPanel.showModal()}
 // Release 453 (Tim, on a crossing whose exit showed only as a cyan block: "there's no exit... now I'm kind of just trapped"):
 // ways out and daises carry a word on the dungeon map.
-function dungeonMapTag(o){if(o.kind==="exit")return String(game.areaId()).endsWith(":aperture-annex")?"WAY BACK":o.completionExit||o.id==="threshold-door"?"DOOR OUT":"EXIT";if(o.kind==="warpDais")return"DAIS";if(o.kind==="annexStair")return"STAIR DOWN";/* release 675 */if(o.kind==="labKey")return"KEY";if(o.kind==="buildingStair")return o.lock&&!o.unlocked?"SEALED":o.barred&&!o.opened?"BARRED":o.dir==="door"?"DOOR":o.dir==="roof"?"LADDER · ROOF":o.dir==="up"?"LADDER UP":"LADDER DOWN";/* great buildings */if(o.kind==="deepStair")return"DEEP STAIR";if(o.kind==="emberDoor")return"EMBER DOOR";/* release 677 */if(o.kind==="deepReturn")return"EXIT";return""}
+function dungeonMapTag(o){if(o.kind==="exit")return String(game.areaId()).endsWith(":aperture-annex")?"WAY BACK":o.completionExit||o.id==="threshold-door"?"DOOR OUT":"EXIT";if(o.kind==="warpDais")return"DAIS";if(o.kind==="annexStair")return"STAIR DOWN";/* release 675 */if(o.kind==="labKey")return"KEY";if(o.kind==="buildingStair")return o.lock&&!o.unlocked?"SEALED":o.barred&&!o.opened?"BARRED":o.dir==="door"?"DOOR":o.dir==="roof"?"LADDER · ROOF":o.dir==="roofExit"?(o.sealed?"SEALED":o.roofExit?.roof?"STAIR · ROOF":"STAIR · OUT"):o.dir==="up"?"LADDER UP":"LADDER DOWN";/* great buildings */if(o.kind==="deepStair")return"DEEP STAIR";if(o.kind==="emberDoor")return"EMBER DOOR";/* release 677 */if(o.kind==="deepReturn")return"EXIT";return""}
 function drawDungeonMap() {
   const selectedLevel=$("#dungeonLevelSelect")?.value,currentLevel=game.map.levelId||"root",map=selectedLevel&&selectedLevel!==currentLevel?generateDungeon(save.seed,game.areaId(),{levelId:selectedLevel,deepPlacement:save.consequences?.dungeons?.[game.areaId()]?.deepPlacement}):game.map,d=Math.min(devicePixelRatio,2),w=Math.min(innerWidth*.9,680),h=atlasMapHeight(),cols=map.width||24,rows=map.height||Math.floor(map.tiles.length/cols),pad=18,cell=Math.max(2,Math.min((w-pad*2)/cols,(h-pad*2)/rows)),ox=(w-cell*cols)/2,oy=(h-cell*rows)/2;
   if(map!==game.map&&map.dungeonContract?.discoveryEnabled){const history=dungeonHistory(save,game.areaId()),level=map.levelStableId||map.levelId||"root";applyDungeonDiscovery(map,history.discovery?.levels?.[level]||[])}
@@ -1799,7 +1814,7 @@ function openPack(tab) {
   const status = document.createElement("small"); status.className = "build-status"; status.textContent = now ? `Build raises: ${BUILD.kinds[now].name}.` : "Nothing to build with: not enough materials for any build.";
   const rt = document.createElement("strong"); rt.className = "recipe-title"; rt.textContent = "Recipes";
   const recipes = document.createElement("ul"); recipes.className = "recipe-list";
-  for (const line of [`Wood wall: ${BUILD.kinds.wood.cost.wood} wood. Blocks the way and one blow.`, `Stone block: ${BUILD.kinds.stone.cost.stone} stone. Takes two blows; jump onto it, and stack two (two high stops fliers).`, `Enclosure: 2 wood, 2 stone, 2 cinder iron. A 2×2 pen open toward you: inside, blows from the three walled sides don't land for 3 s (again after 3 s out); items still work, but you can't fight from it. Lure the Stalker into one, then build a second across its opening to close it: that is the try to trap it (likelier the more it is hurt), and caught it stays a while. Stands ${BUILD.kinds.enclosure.life} s.`, `Builds crumble after ${BUILD.life} s; ${BUILD.maxOut} stand at most (a sixth replaces the oldest).`, `Shovel: ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall).`, "Skiff: 3 wood (Act at deep water)."]) { const li = document.createElement("li"); li.textContent = line; recipes.append(li); }
+  for (const line of [`Wood wall: ${BUILD.kinds.wood.cost.wood} wood. Blocks the way and one blow.`, `Stone block: ${BUILD.kinds.stone.cost.stone} stone. Takes two blows; jump onto it, and stack two (two high stops fliers).`, `Enclosure: 2 wood, 2 stone, 2 cinder iron. A 2×2 pen open toward you: inside, blows from the three walled sides don't land for 3 s (again after 3 s out); items still work, but you can't fight from it. Lure the Stalker or a world beast into one, then build a second across its opening to close it: that is the try to catch it (likelier the more it is hurt). Caught, it goes to your stable to ride. Near a big beast the pen is built to its size, and costs more (each of the two pieces): ${Object.entries(PEN_COST).map(([n, c]) => `${n}×${n} ${costText(c)}`).join("; ")}. If it slips out, the pen breaks and the materials of both pieces are lost.${game.area === "overworld" && game.penSize?.() > 2 ? ` A pen built here now would be ${game.penSize()}×${game.penSize()}.` : ""} Stands ${BUILD.kinds.enclosure.life} s.`, `Builds crumble after ${BUILD.life} s; ${BUILD.maxOut} stand at most (a sixth replaces the oldest).`, `Shovel: ${DIG.recipe.wood} wood and ${DIG.recipe.stone} stone (Act facing a dungeon wall).`, "Skiff: 3 wood (Act at deep water)."]) { const li = document.createElement("li"); li.textContent = line; recipes.append(li); }
   buildRow.append(bt, pick, cont, status, rt, recipes);
   body.append(buildRow);
   }catch(error){packSectionFailed("Resources",error)}
@@ -1898,6 +1913,15 @@ function openPack(tab) {
     const use = uiButton(game.area === "dungeon" ? "Use" : "Use (inside a dungeon)", () => { if (game.area !== "dungeon") return; panel.close(); openSigilAtlas(); });
     use.disabled = game.area !== "dungeon" || !(save.consumables.crossingSigil > 0);
     row.append(title, text, use); body.append(row);
+    { // Release 748 (Tim, 2026-11-04): the stable, up to MOUNT_RIDE.cap caught beasts. Ride calls one beside you (as Act with nothing near does).
+      const q = ensureMounts(save), sr = document.createElement("div"), stt = document.createElement("strong"), sp = document.createElement("p"); sr.className = "item consumable stable";
+      stt.textContent = `Stable · ${q.stable.length} of ${MOUNT_RIDE.cap}`;
+      sp.textContent = q.stable.length ? `Ride one in the open world: faster, longer jumps that carry over chasms, and your own attacks, spells and tools from its back. Each gives about ${Math.round(MOUNT_RIDE.seconds / 60)} minutes of riding or ${MOUNT_RIDE.sections} sections ridden, then it is gone. A ${MOUNT_RIDE.cap + 1}th catch lets the oldest go.` : "Empty. Close a pen on a hurt beast to catch it (the Questing Beast, the Psychic Crystal, the Void Walker, the Lightning Giant and the Nanobot Knight cannot be penned).";
+      sr.append(stt, sp);
+      for (const m of q.stable) { const line = document.createElement("div"), riding = q.riding === m.id; line.className = "stable-mount"; line.append(el("small", "", `${mountName(m)} · ${SADDLE_NAMES[MOUNT_BEASTS[m.beast]?.saddle] || "Saddled"} · ${mountLifeText(m)} left${riding ? " · riding" : ""}`));
+        const ride = uiButton(riding ? "Dismount" : "Ride", () => { const r = riding ? game.dismount() : game.summonMount(m.id); game.message = r.message; persist(); panel.close(); }); if (!riding && game.mountBlock()) { ride.disabled = true; ride.title = game.mountBlock(); }
+        const let_ = uiButton("Release", () => { game.releaseStabled(m.id); persist(); openPack("supplies"); }); line.append(ride, let_); sr.append(line); }
+      body.append(sr); }
     { const found = ensureMarginalia(save).found, sb = document.createElement("div"), st = document.createElement("strong"), sp = document.createElement("p"); sb.className = "item consumable"; st.textContent = `Scrapbook · ${found.length} of ${Object.keys(MARGINALIA).length} marginalia`; sp.textContent = found.length ? found.map((id) => `${MARGINALIA[id].name}: ${MARGINALIA[id].text}`).join(" · ") : `From Infinite IV, Margin Wardens in the crossings offer marginalia: rules that hold for one crossing. Each one you take is kept here, to paste in as you enter.`; sb.append(st, sp); body.append(sb); } // release 459
   }
   }catch(error){packSectionFailed("Consumables",error)}
@@ -1989,6 +2013,7 @@ const CODEX = {
 };
 // Dungeon Monster Pack bestiary records, generated from the shared attribute tables.
 for(const id of PACK_KINDS){const d=MONSTER_PACK[id],attacks=[...d.attacks,...d.bossAttacks].map(a=>ATTACK_MODULES[a]?.name).filter(Boolean);CODEX.creatures[id]=[`${d.name} — ${d.epithet}`,`${d.lore} ${MOVEMENT_MODES[d.movement].name}; ${BRAINS[d.brain].name.toLowerCase()}. Abilities: ${attacks.join(', ')}. ${d.attacks.map(a=>ATTACK_MODULES[a]?.text).filter(Boolean).join(' ')}`]}
+{const d=MONSTER_PACK.gloomvast;CODEX.creatures.gloomvast=[`${d.name} — ${d.epithet}`,d.lore]} // the Pentagon finale's haunt (haunts.ts GLOOM_FINALE): its lore only, sparse and uncertain
 const STAT_GLOSSARY=[
   ["Power","An item's base strength. Primary-weapon Power contributes to melee damage; secondary-weapon Power contributes to projectile and spell damage; armor Power grants 2.5% resistance per point; charm Power grants 1% resistance per point."],
   ["Attack","A flat damage bonus supplied by an item affix. On a primary weapon it improves melee attacks; on a secondary weapon it improves projectiles and spells."],
@@ -2059,6 +2084,8 @@ Object.assign(CODEX.creatures,{grottoEel:['Grotto Eel — the cave lance','Hides
 // Leviathans (water world W4).
 Object.assign(CODEX.creatures,{greywhale:['Greywhale — the calm giant','Drifts through deep water and harms no one — until struck. Then it sounds beneath you, its vast shadow spreads, and it breaches.'],tyrantMosasaur:['Tyrant Mosasaur — the shadow that hunts','A sea-lizard as long as a boat: a pointed snout, jaws full of teeth, a heavy body rowed by four flippers and driven by a shark-like tail. It stalks below with only its shadow showing, locks on and lunges across the surface with its jaws open. After a lunge it lies exposed.'],undertowLeviathan:['Undertow Leviathan — the long pull of the deep','A long, segmented thing of the open ocean. Like the Mosasaur it hunts from below, locks on and lunges across the surface, then lies exposed for a moment.'],reefKraken:['Reef Kraken — the rising limbs','Marks rings in the water around its prey, and tentacles burst up through them. Each limb can be cut down.'],abyssalKraken:['Abyssal Kraken — the drowning grip','Marks its prey, then seizes and drags it toward its maw. Heavy blows break the grip.'],stormkraken:['Stormkraken — the ink in the dark','Raises a tentacle at a time and clouds the sea with ink, hiding everything beyond arm\'s reach.']});
 Object.assign(CODEX.creatures,{vesperwing:['Vesperwing — The Ashen Meridian','A winged elite that dives and casts from range. Its additional aspects are fixed by the encounter seed.'],gravitantBell:['Gravitant Bell — The Weight Below','A hovering elite whose readable gravity field pulls loose bodies inward before a radial strike.'],mireApostle:['Mire Apostle — Saint of the Low Water','A plated ooze beast that leaves bounded venom pools and carries Clearroot in its drowned shell.'],knifeChoir:['Choir of Knives — The Divided Cantor','A segmented summoner whose orbiting shard-creatures are capped and yield no rewards.']});
+for(const id of ROOF_KINDS){const d=MONSTER_PACK[id];CODEX.creatures[id]=[`${d.name} — ${d.epithet}`,`${d.lore} ${d.attacks.map(a=>ATTACK_MODULES[a]?.text).filter(Boolean).join(' ')} ${ROOF_DWELLERS.codex}`]} // the Pentagon roofs' dwellers (roof-dwellers.ts)
+for(const[id,line]of Object.entries(PENTAGON_LORE.vent))if(CODEX.creatures[id])CODEX.creatures[id]=[CODEX.creatures[id][0],`${CODEX.creatures[id][1]} ${line}`]; // vent-life of the keeps and Pentagons (narrative bible, section 1)
 const ELITE_PORTRAITS={vesperwing:[0,0],gravitantBell:[1,0],mireApostle:[2,0],knifeChoir:[3,0]};
 function trailMark(kind){const canvas=document.createElement("canvas"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event"}[kind];canvas.width=canvas.height=96;const ctx=canvas.getContext("2d");canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("role","img");canvas.setAttribute("aria-label",`${signal} floor mark pointing right`);if(ctx){ctx.translate(48,48);drawWaymarkIcon(ctx,signal,82)}return canvas}
 const TRAIT_MARKS={plated:["◆","armor"],feral:["▲","damage"],swift:["»","speed"],vital:["●","vitality"],keen:["✦","precision"],farcasting:["⌁","range"],orbital:["◎","orbit"]};
@@ -2323,34 +2350,76 @@ function warmSpillTerrain() {
     catch (error) { spillWarmFor = key; spillWarming = false; console.warn("Supernova warm-up failed", error); }
   });
 }
+// Viewport Closed (Tim, 2026-11-04). The Game holds a dead Wayfarer for a short beat of the fall (deathBeat), then recovers
+// at the rest point exactly as before. viewportFrame tracks it: at the recovery it keeps a snapshot of the last frame
+// (the fall), shows VIEWPORT CLOSED, light static and the fade to black over it with the world frozen, then re-opens on the
+// rest point, shifting the world's clocks by the frozen time (so the recovery's protection is still there). Nothing of it
+// is saved: a reload at any point lands at the rest point, or, inside the beat, dies and recovers once.
+let viewportSeq = null, viewportKnownDeaths = Number(save.worldFlags?.deaths) || 0, viewportNoiseKey = "";
+const viewportArt = { snapshot: null, sw: 0, sh: 0, noise: [], scan: null }, viewportLiveArt = { snapshot: null, sw: 0, sh: 0, noise: null, scan: null };
+function viewportReduced() { return !!(settings.reduceMotion || settings.safeMode); }
+function viewportCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+function viewportPrepare() {
+  const quality = currentQuality(), q = VIEWPORT_CLOSED.quality[quality] || VIEWPORT_CLOSED.quality.balanced, aspect = Math.round(innerHeight / Math.max(1, innerWidth) * 10) / 10, key = `${quality}:${aspect}`;
+  if (key !== viewportNoiseKey) { viewportNoiseKey = key; viewportArt.noise = viewportNoiseFrames(viewportCanvas, quality, aspect); }
+  if (!viewportArt.scan) { const c = viewportCanvas(1, 3), x = c.getContext("2d"); x.fillStyle = "rgba(0,0,0,.55)"; x.fillRect(0, 2, 1, 1); viewportArt.scan = ctx.createPattern(c, "repeat"); }
+  const sw = Math.max(1, Math.round(canvas.width * q.snapshot)), sh = Math.max(1, Math.round(canvas.height * q.snapshot));
+  if (!viewportArt.snapshot) viewportArt.snapshot = viewportCanvas(sw, sh);
+  else if (viewportArt.snapshot.width < sw || viewportArt.snapshot.height < sh) { viewportArt.snapshot.width = Math.max(sw, viewportArt.snapshot.width); viewportArt.snapshot.height = Math.max(sh, viewportArt.snapshot.height); }
+  viewportArt.sw = sw; viewportArt.sh = sh;
+}
+function viewportEnd() {
+  viewportSeq = null; viewportKnownDeaths = Number(save.worldFlags?.deaths) || 0;
+  document.body.classList.remove("viewport-closed");
+  input.reset(); last = performance.now();
+  updateMessage(game.message, true);
+}
+function viewportFrame(dt, now) {
+  try {
+    const deaths = Number(save.worldFlags?.deaths) || 0;
+    const ev = viewportClosedTick(viewportSeq, { dt, fallen: !!game.fallen, live: !!game.fallen?.live, deaths, known: viewportKnownDeaths, reduceMotion: viewportReduced() });
+    viewportSeq = ev.seq;
+    if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
+    if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 755's one clock list: the respawn's protection outlasts the black
+    if (ev.end) { viewportEnd(); return null; }
+    return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
+  } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
+}
 function frame(now) {
   try {
   probeInterval = now - last;
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); // release 736 (review F9): a frame stamped before resume() set `last` gave a negative step
   recordPerf("frame", now - last);
   last = now;
   measured("input",()=>input.update(dt));
   // Release 199: while a Glimpse plays nothing else runs: no keys, no update, whatever has tried to resume the game.
   if (glimpseRun) { game.setPaused(true, now); return; }
   if (input.consume("pause")) game.paused ? resume() : pause();
+  if (viewportSeq) input.reset(); // Viewport Closed: everything but pause is ignored until the Wayfarer wakes
   if (input.consume("map")) openMap();
   if (input.consume("journal")) openJournal();
   if (input.consume("menu")) openPack();
   if(tickScene(now))return;
+  const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
-  measured("update", () => game.update(dt, input, now));
+  if (!viewportBefore || viewportBefore.world) measured("update", () => game.update(dt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, now));
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   if (game.paused) return;
+  const viewportStage = viewportFrame(probeInterval / 1000, now);
   warmCompassSignals();
   warmSpillTerrain();
   measured("render", () => {
     renderTimings.on = probe.running;
-    render(ctx, game, innerWidth, innerHeight, now);
-    drawDungeonSystems();
-    drawRangedEffects();
+    if (!viewportStage || viewportStage.world) {
+      render(ctx, game, innerWidth, innerHeight, now);
+      drawDungeonSystems();
+      drawRangedEffects();
+    }
+    if (viewportStage) drawViewportClosed(ctx, viewportStage, innerWidth, innerHeight, viewportSeq?.t || 0, viewportStage.live ? Object.assign(viewportLiveArt, { snapshot: canvas, sw: canvas.width, sh: canvas.height, noise: viewportArt.noise, scan: viewportArt.scan }) : viewportArt, currentQuality());
   });
-  updateMessage(game.message);
+  if (!viewportSeq) updateMessage(game.message); // the recovery's message waits until the Wayfarer wakes
   measured("hud", () => {
     updateHud(now);
     updateNavigationCompass();
@@ -2373,7 +2442,7 @@ function frame(now) {
       buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
     if(save.meal)buffs.push(`MEAL ${mealLeft(save.meal)}`); // release 447
     {const run=game.area==="dungeon"&&marginRun(save,game.areaId());if(run?.perks?.length)buffs.push(`MARGINALIA ${run.perks.map(id=>MARGINALIA[id]?.name||id).join(", ")}`)} // release 459
-    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);{const cu=(game.player?.confusedUntil||0)-(game.lastUpdateNow||0);if(cu>0)buffs.push(`CONFUSED ${Math.ceil(cu/1000)}s`);}/* release 731 *//* release 708 */if(game.frenzy?.active)buffs.push(`FRENZY ${Math.ceil(game.frenzy.left)}s · ${game.frenzy.cure}/${FRENZY.cure}`);else if(game.frenzy?.build>0)buffs.push(`FRENZY ${game.frenzy.build}/${FRENZY.build}`);/* release 710 */
+    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);{const nw=game.lastUpdateNow||0,cu=(game.player?.confusedUntil||0)-nw;if(cu>0)buffs.push(`CONFUSED ${Math.ceil(cu/1000)}s`);for(const c of game.player?.curses||[]){const l=c.until-nw;if(l>0)buffs.push(`${game.curseFlash?.id===c.id&&nw-game.curseFlash.at<600?'✕ ':''}${curseDef(c.id)?.label||c.id} ${Math.ceil(l/1000)}s`);}}/* release 731; 737: each haunt curse, flashing ✕ when it refuses a press *//* release 708 */if(game.frenzy?.active)buffs.push(`FRENZY ${Math.ceil(game.frenzy.left)}s · ${game.frenzy.cure}/${FRENZY.cure}`);else if(game.frenzy?.build>0)buffs.push(`FRENZY ${game.frenzy.build}/${FRENZY.build}`);/* release 710 */
     if(probe.running){const left=Math.ceil(probe.remaining);buffs.push(`PROBE ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`)}
     $("#buff").textContent = buffs.join(" · ");
   }
@@ -2678,7 +2747,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const sockets=(save.spellGlyphs?.[show.id]||[]).filter(Boolean).map(g=>`${GLYPHS[g].sigil} ${GLYPHS[g].name}`);
   {const tags=el('div','arc-tags');tags.append(elemBadge(CASTABLES[`spell:${show.id}`]?.attr||'fire'),kindTag('Active spell',true));detail.append(el('strong','',show.name),tags)}
   if(show.text)detail.append(el('p','',show.text)); // release 365
-  detail.append(el('p','',show.brawler?`${show.cooldown}s cooldown · a brawler spell: its damage follows your melee damage, and it aims like a swing. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.id==='shadow-clone'?`${show.cooldown}s cooldown · lasts ${show.lifetime}s · hold to send it up to ${show.maxRange} tiles away · copies your blows at half damage.`:`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
+  detail.append(el('p','',show.imbue?`${show.cooldown}s cooldown · lasts ${IMBUE.seconds}s · adds magic damage to every melee hit from your Focus alone: now +${Math.round(imbueAmount(save.stats?.Focus,characterStats(save).magicBonus))} a hit (before glyphs and spell-damage bonuses). Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.brawler?`${show.cooldown}s cooldown · a brawler spell: its damage follows your melee damage, and it aims like a swing. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.id==='shadow-clone'?`${show.cooldown}s cooldown · lasts ${show.lifetime}s · hold to send it up to ${show.maxRange} tiles away · copies your blows at half damage.`:`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
   // What changes your spells: Focus, the Pairing, and the few constellation nodes that reach them (NODE_EFFECTS.spells).
   {const boosts=[`Focus ${save.stats?.Focus||1}: +${characterStats(save).magicBonus} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
    for(const bid of BRANCH_IDS){const b=BRANCHES[bid];for(const node of[b.mod,...b.caps]){const fx=NODE_EFFECTS[node.id];if(fx?.spells)boosts.push(`${node.name} (${b.name}, ${hasNode(save,node.id)?'learned':'not learned'}): ${fx.spells} Only while ${APERTURE_SKILLS[b.active].name} is active.`)}}
@@ -2914,6 +2983,7 @@ function openInteraction(id, confirmAttack = false) {
         standDown: "Stand down / Spare",
         retrain: `Retrain stats (${STAT_RESPEC.marks} marks)`, // release 347
         enter: "Enter",
+        transit: "Transit", // the Pentagon's finale: its dais
         bypass: "Leave unexplored",
         restore: "Restore the Relay",
         sever: "Sever the Relay",
@@ -2929,7 +2999,7 @@ function openInteraction(id, confirmAttack = false) {
         repair:"Repair the hull",
       };
       body.append(
-        uiButton(labels[action] || skylandLabel(action, save) || (/^descend:\d+$/.test(action) ? (action === 'descend:1' ? 'Descend · floor 1' : `Descend · checkpoint, floor ${action.slice(8)}`) : null) || action, () =>
+        uiButton(labels[action] || o.actionLabels?.[action] || skylandLabel(action, save) || (/^descend:\d+$/.test(action) ? (action === 'descend:1' ? 'Descend · floor 1' : `Descend · checkpoint, floor ${action.slice(8)}`) : null) || action, () =>
           action === "attack"
             ? openInteraction(id, true)
             : performInteraction(id, action),
@@ -2944,7 +3014,7 @@ function performInteraction(id, action) {
   persist();
   if (
     result?.ok &&
-    ["enter", "exit", "bypass", "restore", "sever"].includes(action)
+    ["enter", "exit", "bypass", "restore", "sever", "transit"].includes(action)
   ) {
     resume();
     return;

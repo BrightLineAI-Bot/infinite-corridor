@@ -2,8 +2,8 @@
 // expedition's exit) does not lead back to where you came in: it opens a second mouth in an unexplored section far
 // away. The link is remembered, so either mouth enters the same dungeon and its guardian's door then leads to the
 // other. The Atlas draws linked mouths joined. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
-import { LETHAL_KINDS } from "./landscape.js?v=r739-0b5b1c12e64a";
+import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
+import { LETHAL_KINDS } from "./landscape.js?v=r755-c3a9aa62bf91";
 
 // Balance: the share of dungeons that are linked, and how far the second mouth lies (sections, Chebyshev-ish).
 export const LINKED = { version: 1, share: .3, distance: [7, 14] };
@@ -19,7 +19,7 @@ export function ensureLinks(save) {
   for (const [id, l] of Object.entries(save.linkedDungeons || {})) {
     const a = l?.a, b = l?.b;
     if (!isLinkable(id) || num(a?.rx) === null || num(a?.ry) === null || num(b?.rx) === null || num(b?.ry) === null) continue;
-    out[id] = { a: { rx: num(a.rx), ry: num(a.ry), x: num(a.x) ?? 16, y: num(a.y) ?? 16 }, b: { rx: num(b.rx), ry: num(b.ry) } };
+    out[id] = { ...l, a: { ...a, rx: num(a.rx), ry: num(a.ry), x: num(a.x) ?? 16, y: num(a.y) ?? 16 }, b: { ...b, rx: num(b.rx), ry: num(b.ry) } }; // release 736 (review S7): unknown fields kept
   }
   save.linkedDungeons = out;
   return save;

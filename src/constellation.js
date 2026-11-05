@@ -8,11 +8,11 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r739-0b5b1c12e64a";
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r739-0b5b1c12e64a";
-import { pairingMods } from "./spell-slots.js?v=r739-0b5b1c12e64a";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r739-0b5b1c12e64a";
-import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r739-0b5b1c12e64a";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r755-c3a9aa62bf91";
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r755-c3a9aa62bf91";
+import { pairingMods } from "./spell-slots.js?v=r755-c3a9aa62bf91";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r755-c3a9aa62bf91";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r755-c3a9aa62bf91";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -122,7 +122,7 @@ export function ensureConstellation(save) {
   const caps = Object.fromEntries(Object.entries(c.caps || {}).filter(([b, id]) => BRANCHES[b]?.caps.some((q) => q.id === id)));
   const caps2 = Object.fromEntries(Object.entries(c.caps2 || {}).filter(([b, id]) => caps[b] && caps[b] !== id && BRANCHES[b]?.caps.some((q) => q.id === id)));
   const alt = Object.fromEntries(Object.keys(c.alt || {}).filter((id) => c.alt[id] === true && ALT_PASSIVES[id]).map((id) => [id, true])); // release 359
-  save.constellation = { version: CONSTELLATION_VERSION, mods: { ...c.mods }, caps, caps2, bonus: Math.max(0, Math.floor(Number(c.bonus) || 0)), ...(Object.keys(alt).length ? { alt } : {}) };
+  save.constellation = { ...c, version: CONSTELLATION_VERSION, mods: { ...c.mods }, caps, caps2, bonus: Math.max(0, Math.floor(Number(c.bonus) || 0)), ...(Object.keys(alt).length ? { alt } : {}) }; if (!Object.keys(alt).length) delete save.constellation.alt; // release 736 (review S7): unknown fields kept
   // Reconciled on every load, so saves from before this release (or merged with fresh defaults) keep what they learned:
   // a learned Aerial Step claims the Motion capstone, and any overspend becomes grandfathered bonus points.
   if (skillRank(save, "aerial-step") > 0 && !hasNode(save, "aerial-step")) { if (!save.constellation.caps.motion) save.constellation.caps.motion = "aerial-step"; else save.constellation.caps2.motion = "aerial-step"; }

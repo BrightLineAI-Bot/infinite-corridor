@@ -2,7 +2,7 @@
 // for a few seconds through someone's, or something's, eyes. This module holds the catalogue and the rules (where a
 // Glimpse may surface, how rarely it repeats, which fragment it gives); the drawing lives in glimpse-render.ts.
 // Pure data and rules: no DOM.
-import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r739-0b5b1c12e64a";
+import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r755-c3a9aa62bf91";
 
 // `human` places a Glimpse on the drift from human residue (1) to the wholly unhuman (0). Near Ember Refuge the
 // Corridor offers mostly human Glimpses, far out mostly unhuman ones, but every region keeps some of the other end.
@@ -26,11 +26,18 @@ export const GLIMPSES = {
   burningPlain: { name: "The Burning Plain", human: .3, seconds: 15, eyes: "two", reduced: [.2, .5, .8], mature: true },
   // Release 219: the legends. Gilgamesh (Tim: "the legend of Gilgamesh, this is what I meant"): the plant of life lost to a snake.
   thePlant: { name: "The Plant at the Bottom", human: .85, seconds: 16, eyes: "two", reduced: [.08, .38, .76] },
+  // Tim, 2026-11-04 (narrative bible, section 1): "a Glimpse from inside a Pentagon wall, for which the Wayfarer is the
+  // intrusion". `place` keeps a Glimpse out of the general pool: it surfaces only at its own kind of moment (GLIMPSE_PLACED).
+  insideTheWall: { name: "Inside the Wall", human: 0, seconds: 13, eyes: "none", reduced: [.2, .58, .9], place: "pentagon" },
 };
-export const GLIMPSE_ORDER = Object.keys(GLIMPSES);
+// The general pool (every Glimpse without a `place`), in catalogue order; GLIMPSE_ALL also holds the placed ones.
+export const GLIMPSE_ALL = Object.keys(GLIMPSES);
+export const GLIMPSE_ORDER = GLIMPSE_ALL.filter((id) => !GLIMPSES[id].place);
+// Placed Glimpses by the moment that may surface them ("pentagon": reading marks in a Pentagon's wall for the first time).
+export const GLIMPSE_PLACED = Object.fromEntries([...new Set(GLIMPSE_ALL.map((id) => GLIMPSES[id].place).filter(Boolean))].map((k) => [k, GLIMPSE_ALL.filter((id) => GLIMPSES[id].place === k)]));
 // How often each kind of moment surfaces a Glimpse, and how many times one Glimpse may ever be seen in a journey.
 // Release 215 (Tim): story beats come from strange things (always), not from felling trees; ruins and crossings rarely.
-export const GLIMPSE_CHANCE = { strange: 1, touch: .15, crossing: .2 };
+export const GLIMPSE_CHANCE = { strange: 1, touch: .15, crossing: .2, pentagon: .25 };
 export const GLIMPSE_MAX_SEEN = 1; // release 481 (Tim: "I shouldn't be [seeing] the same glimpses multiple times... just see them once, and then if I wanna see them again... look in the book"): was 3
 // Depth (sections from the Refuge) at which the Corridor has wholly forgotten it was human.
 export const GLIMPSE_DRIFT_DEPTH = 40;
@@ -59,6 +66,7 @@ export function pickGlimpse(save, rx, ry, rand, { family = false } = {}) {
 // Should this moment surface a Glimpse? Returns its id or null.
 export function glimpseFor(save, kind, rx, ry, rand, options = {}) {
   if (!(rand() < (GLIMPSE_CHANCE[kind] || 0))) return null;
+  if (GLIMPSE_PLACED[kind]) return GLIMPSE_PLACED[kind].find((id) => glimpseAllowed(id, options.family) && glimpseSeen(save, id) < GLIMPSE_MAX_SEEN) || null; // a placed Glimpse, once
   return pickGlimpse(save, rx, ry, rand, options);
 }
 
@@ -73,4 +81,4 @@ export function witnessGlimpse(save, id, rx, ry) {
   const readingId = readingAt(rx, ry), have = save.lore.pieces[readingId] || [];
   return creditPiece(save, readingId, bookPieces(readingId).find((p) => p.kind === "glimpse" && !have.includes(p.id)));
 }
-export function witnessedGlimpses(save) { return GLIMPSE_ORDER.filter((id) => glimpseSeen(save, id)); }
+export function witnessedGlimpses(save) { return GLIMPSE_ALL.filter((id) => glimpseSeen(save, id)); }

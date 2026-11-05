@@ -4,7 +4,7 @@
 // fragments (about 20, differing by Reading) listed in the Reciter's Tome; a Reading whose fragments are all found is
 // mastered. Lines a player has heard are remembered (one bitset per voice), so nobody repeats a line until
 // that voice is exhausted. Pure data and rules: no DOM, no randomness beyond the seeded `pick` passed in.
-import { RECITATIONS } from "./recitations.js?v=r739-0b5b1c12e64a";
+import { RECITATIONS } from "./recitations.js?v=r755-c3a9aa62bf91";
 
 export const LORE_VERSION = 1;
 // Distance bands, in sections from the origin (|rx| + |ry|).
@@ -84,6 +84,10 @@ export function ensureLore(s) {
   for (const [id, n] of Object.entries(l.glimpses || {})) if (Number(n) > 0) glimpses[id] = Math.floor(Number(n));
   const elders = typeof l.elders === "string" && /^[0-9a-f]{0,64}$/.test(l.elders) ? l.elders : "";
   s.lore = { ...l, v: LORE_VERSION, heard, pieces, entered, glimpses, elders };
+  // The Pentagon's marks (pentagon.ts PENTAGON_LORE), once any is read: the ids read, and which chamber holds which.
+  // Unknown ids are kept, as unknown fields are.
+  if (l.inscriptions !== undefined) s.lore.inscriptions = [...new Set((Array.isArray(l.inscriptions) ? l.inscriptions : []).filter((id) => typeof id === "string"))];
+  if (l.inscribedAt !== undefined) s.lore.inscribedAt = Object.fromEntries(Object.entries(l.inscribedAt && typeof l.inscribedAt === "object" ? l.inscribedAt : {}).filter(([, id]) => typeof id === "string"));
   return s;
 }
 function bitGet(hex, i) { const c = parseInt(hex[i >> 2] || "0", 16); return (c >> (i & 3)) & 1; }

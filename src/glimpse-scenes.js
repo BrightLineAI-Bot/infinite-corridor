@@ -1,8 +1,8 @@
 // More Glimpses (release 199 onward; docs/narrative-bible.md section 5). Each scene is a draw function
 // (ctx, t, w, h, state) painting frame t ∈ [0, 1] of a first-person view; `state` holds what a scene builds once.
 // Canvas 2D only, no assets. The catalogue entries are in glimpses.ts.
-import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.js?v=r739-0b5b1c12e64a";
-import { paintHand } from "./glimpse-hand.js?v=r739-0b5b1c12e64a";
+import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.js?v=r755-c3a9aa62bf91";
+import { paintHand } from "./glimpse-hand.js?v=r755-c3a9aa62bf91";
 
 // Soft cloud built from many shaded puffs: lit from above, shadowed beneath.
 function cloudSprite(seed, light, shade) {
@@ -302,4 +302,49 @@ function drawGlyphs(ctx, t, w, h, state) {
   vignette(ctx, w, h, .8);
 }
 
-export const SCENES = { theSky: drawSky, rainAtWindow: drawRain, underTheIce: drawIce, theSpheres: drawSpheres, edgeLight: drawEdge, glyphRain: drawGlyphs };
+// ------------------------------------------------------------------ Inside the Wall (Tim, 2026-11-04: narrative bible, section 1)
+// No eyes: only pressure and warmth. You are the stone of a Pentagon's wall: beds of rock that were never meant to touch,
+// one grain from the left and another from the right, pressed together at a buckled seam that is faintly warm, where small
+// pale things cling and feed. Something warm and heavy comes along the outside of you, one step at a time, each step a ring
+// of pressure; the pale things scatter; the warmth of the seam leans toward it; the beds begin, very slowly, to bend round
+// it. Then everything is still. The strata are painted once, at half size; each frame lays them down and adds a few rings,
+// strokes and motes.
+const wallSeam = (y) => .5 + .06 * Math.sin(y * 3.1 + 1) + .03 * Math.sin(y * 7.3); // the seam, as x across the width, at y ∈ [0, 1]
+function drawWall(ctx, t, w, h, state) {
+  const T = t * 13, u = Math.min(w, h);
+  if (!state.wall || state.wall.w !== w || state.wall.h !== h) {
+    const r = seeded(5150), W = Math.max(2, w >> 1), H = Math.max(2, h >> 1), c = makeCanvas(W, H), g = c.getContext("2d");
+    g.fillStyle = "#0b0a0d"; g.fillRect(0, 0, W, H);
+    for (const side of [0, 1]) { // the left bed lies level, the right bed dips; neither crosses the seam
+      g.save(); g.beginPath(); g.moveTo(side ? W : 0, 0); for (let k = 0; k <= 40; k++) g.lineTo(wallSeam(k / 40) * W, k / 40 * H); g.lineTo(side ? W : 0, H); g.closePath(); g.clip();
+      const tilt = side ? -.32 : .04, base = side ? ["#26232a", "#3a3036"] : ["#1f2328", "#2f3438"];
+      for (let y = -H * .2 - W * .1, k = 0; y < H * 1.2 + W * .4; k++) { const th = H * (.012 + r() * .03); g.fillStyle = mix(base[0], base[1], r());
+        g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= W; x += W / 12) g.lineTo(x, y + x * tilt + Math.sin(x * .02 + k) * H * .006); g.lineTo(W, y + W * tilt + th); g.lineTo(0, y + th); g.closePath(); g.fill(); y += th; }
+      g.restore(); }
+    state.wall = { w, h, c, motes: Array.from({ length: 48 }, () => ({ y: r(), off: (r() - .5) * .03, ph: r() * TAU, s: .5 + r() })) };
+  }
+  const S = state.wall, walk = smooth(.22, .78, t), still = smooth(.86, 1, t);
+  ctx.fillStyle = "#0b0a0d"; ctx.fillRect(0, 0, w, h); ctx.drawImage(S.c, 0, 0, w, h);
+  // The intruder: a warm weight on the outside of the wall, coming up from the lower right, a step about every second.
+  const bx = lerp(w * 1.02, w * .66, walk), by = lerp(h * 1.08, h * .7, walk), here = smooth(.18, .3, t) * (1 - still * .7);
+  // The seam: a warm hairline that breathes, and late on, leans toward the weight.
+  const lean = smooth(.55, .85, t) * (1 - still * .5), seamA = .35 + .15 * Math.sin(T * .9);
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+  for (const [lw, a] of [[u * .02, .08], [u * .006, .28]]) { ctx.strokeStyle = rgba("#ff9a4a", a * (seamA + lean * .4)); ctx.lineWidth = lw; ctx.beginPath();
+    for (let k = 0; k <= 40; k++) { const y = k / 40, py = y * h, px = wallSeam(y) * w, near = Math.exp(-((py - by) ** 2) / (h * h * .02)); ctx[k ? "lineTo" : "moveTo"](lerp(px, bx, near * lean * .35), py); } ctx.stroke(); }
+  // Pressure: a ring from each step, spreading through the stone.
+  if (here > 0) { for (let i = 0; i < 3; i++) { const p = (T * .95 + i / 3) % 1, rad = u * (.04 + p * .5); ctx.strokeStyle = rgba("#ffd0a0", .22 * (1 - p) * here); ctx.lineWidth = Math.max(1, u * .004 * (1 - p)); ctx.beginPath(); ctx.arc(bx, by, rad, 0, TAU); ctx.stroke(); }
+    glow(ctx, bx, by, u * .22, "#ffb070", .35 * here); }
+  // The beds bending round it, late and very slowly.
+  const bend = smooth(.6, .95, t);
+  if (bend > 0) { ctx.strokeStyle = rgba("#c8b8b0", .16 * bend); ctx.lineWidth = Math.max(1, u * .003);
+    for (let i = 1; i <= 6; i++) { const rad = u * (.08 + i * .045); ctx.beginPath(); ctx.arc(bx, by, rad, Math.PI * (1.05 - bend * .25 * (i / 6)), Math.PI * (1.6 + bend * .2)); ctx.stroke(); } }
+  // The vent-life: pale motes along the seam, fed by it; they drift off from the weight as it nears, and creep back once it is still.
+  for (const m of S.motes) { const py = m.y * h, px = (wallSeam(m.y) + m.off) * w, dx = px - bx, dy = py - by, d = Math.hypot(dx, dy) || 1, push = here * clamp(1 - d / (u * .6)) * u * .12;
+    const x = px + dx / d * push + Math.sin(T * .7 * m.s + m.ph) * u * .004, y = py + dy / d * push + Math.cos(T * .5 * m.s + m.ph) * u * .006;
+    ctx.fillStyle = rgba("#efe6d8", .35 + .25 * Math.sin(T * m.s + m.ph)); ctx.beginPath(); ctx.arc(x, y, u * .0035 * m.s, 0, TAU); ctx.fill(); }
+  ctx.restore();
+  vignette(ctx, w, h, .85, "#050406");
+}
+
+export const SCENES = { theSky: drawSky, rainAtWindow: drawRain, underTheIce: drawIce, theSpheres: drawSpheres, edgeLight: drawEdge, glyphRain: drawGlyphs, insideTheWall: drawWall };

@@ -1,4 +1,4 @@
-import { HAUNT } from "./haunts.js?v=r739-0b5b1c12e64a";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r755-c3a9aa62bf91";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,9 +8,9 @@ import { HAUNT } from "./haunts.js?v=r739-0b5b1c12e64a";
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r739-0b5b1c12e64a";
-import { hashSeed, byHash } from "./random.js?v=r739-0b5b1c12e64a";
-import { updateAstralActor } from "./astral-worm.js?v=r739-0b5b1c12e64a";
+import { stageOneBeastReference } from "./stages.js?v=r755-c3a9aa62bf91";
+import { hashSeed, byHash } from "./random.js?v=r755-c3a9aa62bf91";
+import { updateAstralActor } from "./astral-worm.js?v=r755-c3a9aa62bf91";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -205,6 +205,16 @@ export const ATTACK_MODULES = {
   // Release 731: the haunts (haunts.ts). A puff or a howl of gloom that confuses: the Wayfarer's movement runs backwards a while.
   wispBewilder: { id: "wispBewilder", name: "Bewildering Puff", range: [0, 2.6], cooldown: 5.5, windup: .6, recover: .5, damage: .4, tags: ["control"], text: "A puff of gloom. Breathe it and left is right, forward is back, for a few heartbeats." },
   gorgeHowl: { id: "gorgeHowl", name: "Gloom Howl", range: [0, 5.5], cooldown: 9, windup: 1, recover: .8, damage: .8, tags: ["control"], text: "The Gloomgorge throws back its head and howls; everything near it is turned about for longer." },
+  // The Gloomvast (haunts.ts GLOOM_FINALE): the Pentagon finale's haunt. Its big blows are the talons and the plunge (2 to 3 of
+  // them fell a Wayfarer it is tuned to); the rest lay curses. Every one is telegraphed and can be dodged.
+  vastRake: { id: "vastRake", name: "Rending Talons", range: [0, 3], cooldown: 3.4, windup: .75, recover: .7, damage: 2, los: true, tags: ["melee"], text: "Both arms sweep out in a wide arc of long hooked talons. Get out of the arc, or dodge through it." },
+  vastWail: { id: "vastWail", name: "Hollow Wail", range: [0, 6], cooldown: 11, windup: 1.15, recover: .8, damage: .9, tags: ["control"], text: "It throws back its head and wails: everything near it is turned about and cursed twice over." },
+  vastGloomfall: { id: "vastGloomfall", name: "Gloomfall", range: [0, 9], cooldown: 7, windup: .6, recover: .7, damage: 1.2, tags: ["ground"], text: "Pools of gloom gather under you, ahead of you and round you, then fall in. Each one that takes you lays a curse." },
+  vastLights: { id: "vastLights", name: "Grave Lights", range: [2, 10], cooldown: 8, windup: .7, recover: .6, damage: .7, tags: ["ranged"], text: "Pale lights leave its mouth and drift after you for a moment before flying straight. Each one that reaches you lays a curse." },
+  vastPlunge: { id: "vastPlunge", name: "Drowning Plunge", range: [2.5, 9], cooldown: 7.5, windup: 1.05, active: .7, recover: 1, damage: 2.5, tags: ["charge", "phase"], text: "It gathers itself, then plunges straight through you along the lane it showed, and through walls." },
+  vastDark: { id: "vastDark", name: "The Dark", range: [0, 99], cooldown: 1, windup: 1.6, recover: .3, damage: 0, scheduled: true, tags: ["illusion"], text: "It draws the light into itself. Then there is only a little light round you, and many cold lights in the dark, and one of them is it." },
+  shadeTouch: { id: "shadeTouch", name: "Cold Touch", range: [0, 1.6], cooldown: 2.8, windup: .6, recover: .6, damage: .5, tags: ["melee"], text: "An orb in the dark swells and brushes you: cold, and a curse." },
+  shadePuff: { id: "shadePuff", name: "Gloom Puff", range: [0, 2.4], cooldown: 6.5, windup: .75, recover: .6, damage: .35, tags: ["control"], text: "An orb in the dark breathes out a ring of gloom that lays a curse." },
   psyPush: { id: "psyPush", name: "Force Push", range: [0, 4.5], cooldown: 4, windup: .55, active: .35, recover: .45, damage: .7, tags: ["control"], text: "A ring of force throws you back. Hit a wall and it hurts more." },
   psyPull: { id: "psyPull", name: "Force Pull", range: [2.5, 9], cooldown: 6, windup: .6, active: 1.2, recover: .45, damage: .9, tags: ["control"], text: "It drags you toward it, then lashes out as you arrive. Dodge or run against it." },
   psyGrab: { id: "psyGrab", name: "Command Grab", range: [0, 7.5], cooldown: 10, windup: .75, active: 2.4, recover: .6, damage: 2.2, tags: ["control", "grab"], text: "Its aura turns violet: then it seizes you where you stand and crushes you. Dodge as it reaches, or struggle (dodge, again and again) to break free." },
@@ -225,6 +235,12 @@ export const ATTACK_MODULES = {
   voidSupernova: { id: "voidSupernova", name: "Supernova", range: [0, 14], cooldown: 30, windup: 1.1, active: 7.8, recover: .6, damage: 1.2, los: true, tags: ["void", "ground", "charge"], text: "A great void consumes dungeon terrain, draws you through local eruptions and two or three radial particle waves. The Walker teleports and dashes straight through sampled positions, leaving one-second damaging trails." },
   golemPunch: { id: "golemPunch", name: "Golem Fist", range: [0, 1.9], cooldown: 2.1, windup: .62, recover: .75, damage: 1.45, los: true, tags: ["melee"], text: "Rears back a fist of packed earth and drives it forward. Slow to throw; step aside." }, // Canyon craters
   firefall: { id: "firefall", name: "Firefall", range: [1.5, 9], cooldown: 6.5, windup: .7, recover: .8, damage: .85, jumpable: true, tags: ["ground"], text: "Embers rain across the floor around you." },
+  // The Pentagon roofs' dwellers (roof-dwellers.ts; Tim, 2026-11-04): the demon's heavy cleave, the colossus's ground slam and its
+  // chest laser. The slam is a body blow (tagged melee: under ELEVATION_REACH it does not carry between heights); the laser is a beam
+  // and does. The laser's timings, reach and width are COLOSSUS.laser; its damage multiplier is here.
+  demonCleave: { id: "demonCleave", name: "Horned Cleave", range: [0, 2.6], cooldown: 2.6, windup: .62, recover: .75, damage: 1.45, los: true, tags: ["melee"], text: "Both arms come down together in a wide, heavy arc." },
+  stoneSlam: { id: "stoneSlam", name: "Ground Slam", range: [0, 2.4], cooldown: 3.6, windup: .85, recover: 1, damage: 1.5, jumpable: true, tags: ["melee", "ground"], text: "Raises both fists and pounds the roof round its feet. Jump it, or do not be close." },
+  chestLaser: { id: "chestLaser", name: "Heart Lamp", range: [3, 11], cooldown: 8.5, windup: 2, active: .3, recover: 1.5, damage: 6, los: true, tags: ["ranged", "beam"], text: "The lamp in its chest fills with light while a red line follows you; the line stops, flashes, and the lamp fires along it. Be off the line, or dodge through it." },
 };
 
 // The ten creatures. `stats` uses the same [hp, damage, range] shape as the base combatant table.
@@ -488,13 +504,24 @@ export const MONSTER_PACK = {
   gloomwisp: { id: "gloomwisp", prototypeOnly: true, farKin: true, noEcho: true, name: "Gloomwisp", epithet: "A Grin in the Dark",
     stats: [34, 6, 0], form: { scale: .95 }, sizeClass: "small", movement: "hover", brain: "orbit",
     attacks: ["wispBewilder", "bite"], bossAttacks: [],
-    palette: ["#2a1d3e", "#120b1e", "#b07aff", "#ffe36a"], render: "gloomwisp", tags: ["spirit", "gas", "flying"],
+    palette: ["#1d2340", "#0b0e1f", "#5aa6ff", "#a8e4ff"], render: "gloomwisp" /* release 737 (Tim): blue light, not violet */, tags: ["spirit", "gas", "flying"],
     lore: "A ball of dark gas no bigger than a head, with two bright eyes and a wide grin, that drifts through old keeps. Its breath turns you about. Left alone, it splits; enough of them together pour into something much worse." },
   gloomgorge: { id: "gloomgorge", prototypeOnly: true, farKin: true, noEcho: true, name: "Gloomgorge", epithet: "Many Wisps, One Mouth",
     stats: [260, 16, 2], form: { scale: 1.55 }, sizeClass: "large", movement: "hover", brain: "duelist",
     attacks: ["clawSweep", "devourPull", "leapSlam", "gorgeHowl"], bossAttacks: [],
-    palette: ["#3a2556", "#150c24", "#c58cff", "#fff07a"], render: "gloomgorge", tags: ["spirit", "gas"],
+    palette: ["#232c52", "#0c1024", "#6ab4ff", "#bdeeff"], render: "gloomgorge" /* release 737 */, tags: ["spirit", "gas"],
     lore: "Five or more Gloomwisps poured into one: a squat, fat ghost with a mouth from ear to ear, stubby arms and legs that end in hooked claws, and a howl that turns the world about. It drinks the air to pull you in." },
+  // The Pentagon finale's haunt (haunts.ts GLOOM_FINALE). Its stats are placeholders: Game tunes it to the Wayfarer (tuneGloomFinale).
+  gloomvast: { id: "gloomvast", prototypeOnly: true, farKin: true, noEcho: true, unique: true, name: "The Gloomvast", epithet: "Where the Haunts Go Down",
+    stats: [1200, 30, 0], form: { scale: 2.1 }, sizeClass: "huge", movement: "hover", brain: "duelist",
+    attacks: ["vastRake", "devourPull", "vastWail", "vastGloomfall", "vastLights", "vastPlunge"], bossAttacks: [],
+    palette: ["#5a8ad8", "#1c3a7c", "#9fdcff", "#f2fbff"], render: "gloomvast", tags: ["spirit", "gas", "elder"],
+    lore: "Some say the haunts do not end; they go down, and this is where. It is larger than the room it fills, and not wholly in it. When it closes its hands the light goes out of the world and the dark fills with cold lights, and one of them is looking at you. No one who has said so was sure which." },
+  gloomShade: { id: "gloomShade", prototypeOnly: true, farKin: true, noEcho: true, minion: true, name: "Cold Light", epithet: "One of Many in the Dark",
+    stats: [100, 6, 0], form: { scale: .9 }, sizeClass: "small", movement: "hover", brain: "orbit",
+    attacks: ["shadeTouch", "shadePuff"], bossAttacks: [],
+    palette: ["#1a2a52", "#050a1c", "#7cc4ff", "#d8f2ff"], render: "gloomShade", tags: ["spirit", "gas", "flying"],
+    lore: "A shadowy blue light in the Gloomvast's dark. Strike it and it hardly notices." },
   shardling: { id: "shardling", prototypeOnly: true, farKin: true, noEcho: true, name: "Shardling", epithet: "Half a Crystal",
     stats: [45, 8, 0], form: { scale: .6 }, sizeClass: "small", movement: "hover", brain: "orbit",
     attacks: ["psyPush", "psyDebris"], bossAttacks: [],
@@ -556,6 +583,30 @@ export const MONSTER_PACK = {
     attacks: ["bite", "leapSlam"], bossAttacks: [],
     palette: ["#07090e", "#030508", "#697785", "#c4d0dc"], render: "inkKin", tags: ["ink"],
     lore: "Mostly mouth: the Astral Worm's biting shape in small, a black maw on legs of ink." },
+  // The Pentagon roofs (roof-dwellers.ts; Tim, 2026-11-04: "gargoyles and angels and demons up there... some bird creatures"; then
+  // "a big stone lumbering creature... a laser from its chest"). Original designs. `roofKin`: they live only on a Pentagon's roof,
+  // hidden and still until the Wayfarer stands up there; drawn once into cached pictures (monster-render.ts cachedRoof). The angel
+  // of the roster is the existing Cinder Seraph (ROOF_DWELLERS.kinds), not a new creature.
+  roofGargoyle: { id: "roofGargoyle", prototypeOnly: true, roofKin: true, noEcho: true, name: "Eave Gargoyle", epithet: "Stone Until It Is Not",
+    stats: [58, 10, 0], form: { scale: 1.05 }, sizeClass: "medium", movement: "walk", brain: "duelist",
+    attacks: ["clawSweep", "leapSlam"], bossAttacks: ["shockwave"],
+    palette: ["#77746d", "#34322e", "#ff9a3c", "#d9d3c5"], render: "roofGargoyle", tags: ["construct", "stone", "roof"],
+    lore: "A crouched shape on the eaves, horned, its wings folded like a cloak. From the ground it is carving. Up there it is not always carving." },
+  ridgeDemon: { id: "ridgeDemon", prototypeOnly: true, roofKin: true, noEcho: true, name: "Ridge Demon", epithet: "Horned on the Heights",
+    stats: [96, 13, 0], form: { scale: 1.3 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: ["demonCleave", "firefall", "clawSweep"], bossAttacks: ["ramCharge"],
+    palette: ["#5c1c18", "#1d0907", "#ff6a1f", "#ffd59a"], render: "ridgeDemon", tags: ["fiend", "fire", "roof"],
+    lore: "Tall, horned, hoofed, its hide cracked through with a slow fire. It walks the ridges of the roof as if it has always walked them. Perhaps it has." },
+  slateRook: { id: "slateRook", prototypeOnly: true, roofKin: true, noEcho: true, name: "Slate Rook", epithet: "The Flock on the Parapet",
+    stats: [16, 5, 0], form: { scale: .78 }, sizeClass: "small", movement: "fly", brain: "flank",
+    attacks: ["bite", "diveBomb"], bossAttacks: [],
+    palette: ["#3b414e", "#14161c", "#e9c35a", "#f1eee4"], render: "slateRook", tags: ["beast", "flying", "roof"],
+    lore: "Grey birds that sit so still on the parapet they look cut from it. They rise all at once, and they do not settle for long." },
+  roofColossus: { id: "roofColossus", prototypeOnly: true, roofKin: true, noEcho: true, name: "Battlement Colossus", epithet: "A Lamp Where the Heart Would Be",
+    stats: [210, 14, 0], form: { scale: 1.9 }, sizeClass: "huge", movement: "lurch", brain: "duelist",
+    attacks: ["stoneSlam", "chestLaser"], bossAttacks: ["shockwave"],
+    palette: ["#8a8478", "#3a362f", "#ff4a2a", "#ffe2c4"], render: "roofColossus", tags: ["construct", "stone", "roof", "light"],
+    lore: "Fitted blocks the size of a cart, stacked into a body that walks very slowly. In its chest, a round lamp. Whatever the lamp looks at long enough is not there afterwards." },
   mothChrysalis: { // release 708: the Ashen Moth's chrysalis on a great tree (world-beasts.ts CHRYSALIS); it does nothing but hang
     id: "mothChrysalis", prototypeOnly: true, name: "Ash Chrysalis", epithet: "Something Waiting", unique: true, noEcho: true, // not a creature of the roster: only the great trees hang it
     stats: [120, 0, 0], form: { scale: 1.5 }, sizeClass: "medium", movement: "lurch", brain: "duelist",
@@ -670,7 +721,7 @@ export function validateMonster(def) {
 // monster (only modules their movement can perform), so encounters keep surprising.
 export function packVariant(kind, identity) {
   const def = MONSTER_PACK[kind];
-  if (!def || kind === "voidWalker") return { hybridAttack: null, donor: null };
+  if (!def || kind === "voidWalker" || def.roofKin) return { hybridAttack: null, donor: null }; // the roof dwellers keep their own kits
   const n = hashSeed(`pack-variant:v${MONSTER_PACK_VERSION}:${kind}:${identity}`);
   if (n % 100 >= 22) return { hybridAttack: null, donor: null };
   const move = MOVEMENT_MODES[def.movement], own = new Set([...def.attacks, ...(def.bossAttacks || [])]);
@@ -714,6 +765,7 @@ export function resetPackRuntime(enemy) {
   const cd = enemy.pack?.cd || {};
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
   if (enemy.kind === "psychicCrystal") enemy.crystalFall = 0; // release 259: a poise break does not survive a reload
+  if (enemy.kind === "gloomvast") { enemy.gloomReel = 0; enemy.gloomFade = 0; enemy.poiseBreak = 0; if (!(enemy.gloomDark?.left > 0)) { enemy.gloomDark = null; enemy.gloomVeil = false; enemy.brain = MONSTER_PACK.gloomvast.brain; enemy.packAttacks = [...MONSTER_PACK.gloomvast.attacks, ...(enemy.hybridAttack ? [enemy.hybridAttack] : [])]; } else enemy.gloomDark.laid = false; } // the Gloomvast's Dark carries over a reload (Game.gloomResume lays its decoys again); nothing else of it does
   // Snapshots retain attack lists. Move the sky attack for existing journeys too, without retuning their beasts.
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
@@ -743,13 +795,13 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
 // damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
-export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
+export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, gloomfall: .1, gloomMote: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
 export function effectFootprint(f) {
   if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
 }
 // Attacks that hurt with the body itself, and what their hit test adds to the body's radius.
-export const BODY_HIT = { blobEngulf: .5, turtleDash: .5, turtleSpin: "spin", turtleCyclone: .5, turtleStomp: "stomp", wormSuction: .8, devourPull: .9, phaseCharge: .55, ramCharge: .55, qbPounce: .6, qbBarrage: .6 };
+export const BODY_HIT = { blobEngulf: .5, turtleDash: .5, turtleSpin: "spin", turtleCyclone: .5, turtleStomp: "stomp", wormSuction: .8, devourPull: .9, phaseCharge: .55, ramCharge: .55, qbPounce: .6, qbBarrage: .6, vastPlunge: .6 };
 export function bodyHitFootprint(e) {
   const s = e?.pack, pad = s?.attack && BODY_HIT[s.attack]; if (pad == null || e.dead || e.hidden) return null;
   const extra = pad === "spin" ? TURTLE.spinRadius : pad === "stomp" ? TURTLE.stompRadius : pad;
@@ -839,6 +891,11 @@ export const WORM = {
 // should be... pale hot pink... understated and not very bright... translucent... the uniform color for damage all across
 // the game"): every warning of where a blow will land uses these.
 export const DANGER = { fill: "rgba(255,80,190,.18)", fillStrong: "rgba(255,80,190,.32)", edge: "rgba(255,130,210,.72)", hex: "#ff7ccf" };
+// The Battlement Colossus (roof-dwellers.ts; Tim, 2026-11-04: its chest laser "telegraphed clearly... a charge-up glow and a visible aim
+// line with time to dodge... incredibly powerful"). The windup (ATTACK_MODULES.chestLaser.windup) is `track` seconds of the aim line
+// following the Wayfarer at no more than `turn` radians a second, then `lock` seconds with the line held still and flashing; then the
+// lamp fires once along it, `reach` tiles (walls stop it), hitting within `width` of the line. `slam` is the ground slam's radius.
+export const COLOSSUS = { laser: { track: 1.3, lock: .7, turn: 2.2, reach: 11, width: .6, chest: .88 }, slam: { radius: 2.4 } };
 export const TURTLE = {
   // Release 261 (Tim: "the turtle can appear in the water... he'll make like a temporary ice floor... walkable tiles... your
   // boat can slide across it... they'll persist for... 5, maybe 10 seconds, and then... unfreeze"): open sea within
@@ -1417,7 +1474,21 @@ const START = {
   knightBackslash(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + KNIGHT.slideReach + KNIGHT.arcReach, arc: KNIGHT.comboArc }; s.data.cut = false; }, // release 427: its reach shown (it had none)
   psyPush(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pushRadius }; },
   wispBewilder(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.wispBewilder.range[1] }; }, // release 731
+  demonCleave(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.8, arc: 170 }; }, // the roof dwellers (roof-dwellers.ts)
+  stoneSlam(e, s) { s.tele = { type: "ring", radius: COLOSSUS.slam.radius }; },
+  chestLaser(e, s, w) { const L = COLOSSUS.laser, angle = Math.atan2(s.data.aim.y, s.data.aim.x); Object.assign(s.data, { angle, fired: false }); s.tele = { type: "laser", angle, length: rayLength(w, e, s.data.aim, L.reach), charge: 0, locked: false, chest: L.chest }; },
   gorgeHowl(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.gorgeHowl.range[1] }; },
+  // The Gloomvast (haunts.ts GLOOM_FINALE): every move shows where it will land before it does.
+  vastRake(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.7, arc: 160 }; },
+  vastWail(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.vastWail.range[1] }; },
+  vastGloomfall(e, s, w) { const G = GLOOM_FINALE.gloomfall, p = s.data.target, v = playerVelocity(w), a0 = (hashSeed(`${e.id}:gloomfall:${s.seq}`) % 628) / 100, dmg = damageOf(e, "vastGloomfall"), spots = [{ x: p.x, y: p.y }, { x: p.x + Math.max(-2, Math.min(2, v.x * .8)), y: p.y + Math.max(-2, Math.min(2, v.y * .8)) }];
+    for (let i = 2; i < G.count; i++) { const a = a0 + i * TAU / (G.count - 2); spots.push({ x: p.x + Math.cos(a) * G.spread, y: p.y + Math.sin(a) * G.spread }); }
+    for (const q of spots) w.addEffect({ kind: "gloomfall", owner: e.id, x: q.x, y: q.y, radius: G.radius, arming: G.arm, armTotal: G.arm, life: .35, total: .35, damage: dmg, curse: GLOOM_FINALE.curse.gloomfall }); },
+  vastLights(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + .8 }; },
+  vastPlunge(e, s) { const len = 9; s.data.end = { x: e.x + s.data.aim.x * len, y: e.y + s.data.aim.y * len }; s.tele = { type: "lane", aim: s.data.aim, length: len, width: .8, phase: true }; },
+  vastDark(e, s, w) { s.data.total = s.t; s.tele = { type: "ring", radius: bodyRadius(e) + 1.2 }; w.say?.(GLOOM_FINALE.text.calling); },
+  shadeTouch(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.1, arc: 120 }; },
+  shadePuff(e, s) { s.tele = { type: "ring", radius: ATTACK_MODULES.shadePuff.range[1] }; },
   psyPull(e, s) { s.tele = { type: "ring", radius: CRYSTAL.pullRadius, inhale: true }; },
   psyGrab(e, s, w) { s.tele = { type: "tether", x: w.player.x, y: w.player.y }; },
   psyDebris(e, s) { s.tele = { type: "brace" }; s.data.next = 0; },
@@ -1536,10 +1607,79 @@ function resolveMelee(e, s, w, attackId, test) {
 }
 
 // Release 731: a ring of gloom from a haunt: on the windup's end, the Wayfarer inside it is hurt a little and confused.
-function hauntConfuse(e, s, w, id, seconds) {
+// Release 737: and cursed (`n` haunt curses, HAUNT.curse.lay; w.curse hashes which from the haunt and its hit count).
+function hauntConfuse(e, s, w, id, seconds, n = 0) {
   const A = ATTACK_MODULES[id], r = A.range[1];
-  if (s.phase === "windup" && s.t <= 0) { if (distance(center(w.player), e) <= r + .2) { w.hurt(e, damageOf(e, id), { jumpable: false, source: id }); w.confuse?.(seconds); }
-    w.addEffect({ kind: "psyRing", owner: e.id, x: e.x, y: e.y, radius: r, arming: 0, life: .5, total: .5, damage: 0 }); s.tele = null; toPhase(s, "recover", A.recover); }
+  if (s.phase === "windup" && s.t <= 0) { if (distance(center(w.player), e) <= r + .2) { w.hurt(e, damageOf(e, id), { jumpable: false, source: id }); w.confuse?.(seconds); if (n > 0) w.curse?.(e, n); }
+    w.addEffect({ kind: "psyRing", owner: e.id, haunt: true, x: e.x, y: e.y, radius: r, arming: 0, life: .5, total: .5, damage: 0 }); s.tele = null; toPhase(s, "recover", A.recover); }
+}
+// A charge straight through along the lane it showed (phaseCharge's shape, for any charge module `id`).
+function chargeThrough(e, s, w, id) {
+  const attack = ATTACK_MODULES[id];
+  if (s.phase === "windup") { if (s.t <= 0) { s.data.from = { x: e.x, y: e.y }; toPhase(s, "active", attack.active); e.phasing = true; } return; }
+  if (s.phase === "active") {
+    const k = 1 - Math.max(0, s.t) / attack.active;
+    e.x = Math.max(0, Math.min(w.width - 1, s.data.from.x + (s.data.end.x - s.data.from.x) * k)); e.y = Math.max(0, Math.min(w.height - 1, s.data.from.y + (s.data.end.y - s.data.from.y) * k));
+    e.untargetable = !w.open(e.x, e.y);
+    if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .55) { s.hitOnce = true; w.hurt(e, damageOf(e, id), { jumpable: false, source: id }); }
+    if (s.t <= 0) { const land = nearestOpen(w, e.x, e.y, 4) || s.data.from; e.x = land.x; e.y = land.y; e.phasing = false; e.untargetable = false; s.tele = null; toPhase(s, "recover", attack.recover); }
+  }
+}
+
+// The Gloomvast's Dark (haunts.ts GLOOM_FINALE.darkness). `e.gloomDark` = { n, left, total } while it lasts (seconds, counted
+// down by the pack clock, so a pause stops it and a save carries it); `e.gloomDarks` how many it has called; `e.gloomGap` the
+// seconds before the next may be called; `e.gloomFade` the seconds the lifting dark still shows. Every orb and the Gloomvast
+// itself carry `gloomVeil` while it lasts (drawn alike, as cold lights over the dark; no health bar). Decoys are `gloomOrbOf`
+// it, never saved as foes of the area (Game.gloomResume lays them again from the same hash after a reload).
+const gloomDecoys = (e, w) => w.enemies.filter((q) => !q.dead && q.gloomOrbOf === e.id);
+export function gloomDarkKey(e) { return `${e.gloomSeed ?? 0}:${e.id}`; }
+// Lays (or, after a reload, lays again) the decoys of Dark `d.n` round the Wayfarer, and moves it to its own place among them.
+export function gloomLayOrbs(e, w, move = false) {
+  const D = GLOOM_FINALE.darkness, d = e.gloomDark; if (!d) return 0;
+  const have = gloomDecoys(e, w).length, want = Math.max(0, Math.min(D.cap, D.orbs) - have); if (!want || !w.gloomSpots || !w.spawnGloomOrb) return 0;
+  const key = `${gloomDarkKey(e)}:${d.n}`, spots = w.gloomSpots(center(w.player), D.orbs + 1, key); if (!spots.length) return 0;
+  const mine = hashSeed(`gloom:self:v1:${key}`) % spots.length; let laid = 0;
+  if (move) { e.x = spots[mine].x; e.y = spots[mine].y; } // a fresh Dark: it slips to its own place among them (a resumed one stays where it was)
+  spots.forEach((q, i) => { if (i === mine || laid >= want) return; const c = w.spawnGloomOrb(e, q.x, q.y, `${d.n}:${i}`, D.brains[hashSeed(`gloom:brain:v1:${key}:${i}`) % D.brains.length]); if (c) laid++; });
+  return laid;
+}
+export function gloomDarkBegin(e, w) {
+  const D = GLOOM_FINALE.darkness, n = Math.max(0, Number(e.gloomDarks) || 0), left = darkDurationOf(e, n);
+  e.gloomDark = { n, left, total: left }; e.gloomDarks = n + 1; e.gloomVeil = true; e.gloomFade = 0;
+  e.packAttacks = [...MONSTER_PACK.gloomShade.attacks]; e.brain = "orbit"; // it fights as one of its lights
+  w.addEffect({ kind: "psyRing", owner: e.id, haunt: true, x: e.x, y: e.y, radius: 3, arming: 0, life: .6, total: .6, damage: 0 });
+  e.gloomDark.laid = true; gloomLayOrbs(e, w, true); w.say?.(GLOOM_FINALE.text.dark);
+  if (e.pack?.cd) for (const id of e.packAttacks) e.pack.cd[id] = Math.max(e.pack.cd[id] || 0, .8 + (hashSeed(`${e.id}:dark-cd:${n}:${id}`) % 100) / 100);
+}
+const darkDurationOf = (e, n) => darkDuration(gloomDarkKey(e), n);
+// Ends its Dark. `reveal` (the Dark ran its course): the decoys burst, it reels, the dark lifts over `fadeOut`. Otherwise (it
+// fell, the Wayfarer died or left) everything ends at once.
+export function gloomDarkEnd(e, w, reveal = true) {
+  const D = GLOOM_FINALE.darkness, def = MONSTER_PACK.gloomvast;
+  for (const q of w.enemies) if (q.gloomOrbOf === e.id && !q.dead) { q.dead = true; q.noRewards = true; q.rewarded = true; if (reveal && w.addEffect) w.addEffect({ kind: "psyRing", owner: e.id, haunt: true, x: q.x, y: q.y, radius: 1.1, arming: 0, life: .45, total: .45, damage: 0 }); }
+  const was = !!e.gloomDark; e.gloomDark = null; e.gloomVeil = false; e.brain = def.brain;
+  e.packAttacks = [...def.attacks, ...(e.hybridAttack ? [e.hybridAttack] : [])];
+  if (e.pack?.attack && ["shadeTouch", "shadePuff"].includes(e.pack.attack)) endAttack(e, e.pack);
+  if (!was) return;
+  e.gloomGap = D.gap; e.gloomFade = reveal ? D.fadeOut : 0;
+  if (!reveal && !e.dead) e.gloomDarks = Math.max(0, (Number(e.gloomDarks) || 1) - 1); // a Dark cut short (you died or left) is called again when you are back
+  if (reveal && !e.dead) { e.gloomReel = D.revealStagger; e.poiseBreak = 1; w.addEffect?.({ kind: "psyRing", owner: e.id, haunt: true, x: e.x, y: e.y, radius: 3.5, arming: 0, life: .7, total: .7, damage: 0 }); w.say?.(GLOOM_FINALE.text.reveal); }
+}
+// Every frame, before it moves or attacks: its Dark counts down (and ends in the reveal), the reveal's reeling and the lifting
+// dark run out, and the next Dark is called when its health has fallen far enough. True when it should do nothing else now.
+function gloomVastTick(e, s, w) {
+  const dt = w.dt; e.gloomGap = Math.max(0, (Number(e.gloomGap) || 0) - dt); e.gloomFade = Math.max(0, (Number(e.gloomFade) || 0) - dt);
+  if (e.gloomReel > 0) { e.gloomReel = Math.max(0, e.gloomReel - dt); e.poiseBreak = e.gloomReel / GLOOM_FINALE.darkness.revealStagger; if (s.attack) endAttack(e, s); return true; } // reeling after the reveal (drawn dazed)
+  const d = e.gloomDark;
+  if (d) { d.left -= dt; if (!d.laid && gloomDecoys(e, w).length < Math.min(GLOOM_FINALE.darkness.cap, GLOOM_FINALE.darkness.orbs)) { d.laid = true; gloomLayOrbs(e, w); } if (d.left <= 0) { gloomDarkEnd(e, w, true); return true; } return false; }
+  if (darkDue(e) >= 0 && !s.attack && e.aggro) { s.state = "attack"; s.last = "vastDark"; beginAttack(e, s, "vastDark", w); return true; }
+  return false;
+}
+// A decoy goes when its Gloomvast is gone or its Dark has ended.
+function gloomShadeTick(e, w) {
+  const owner = w.enemies.find((q) => q.id === e.gloomOrbOf && !q.dead);
+  if (!owner || !owner.gloomDark) { e.dead = true; e.noRewards = true; e.rewarded = true; return true; }
+  return false;
 }
 const RUN = {
   dragonStrafe(e, s, w) {
@@ -2323,8 +2463,43 @@ const RUN = {
     }
     if (s.phase === "strike" && s.t <= 0) { resolveMelee(e, s, w, "knightMist", (q) => inArc(e, q, s.data.aim, bodyRadius(e) + KNIGHT.slideReach, KNIGHT.slideArc)); s.data.cutAt = w.now; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.knightMist.recover); }
   },
-  wispBewilder(e, s, w) { hauntConfuse(e, s, w, "wispBewilder", HAUNT.confuse.wisp); }, // release 731
-  gorgeHowl(e, s, w) { hauntConfuse(e, s, w, "gorgeHowl", HAUNT.confuse.gorge); },
+  demonCleave(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "demonCleave", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.8 + .3, 170)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.demonCleave.recover); } },
+  stoneSlam(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) { const R = COLOSSUS.slam.radius; if (distance(center(w.player), e) <= R + .3) w.hurt(e, damageOf(e, "stoneSlam"), { jumpable: true, source: "stoneSlam" });
+      w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: R, arming: 0, life: .55, damage: 0 }); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.stoneSlam.recover); }
+  },
+  // The Heart Lamp: the aim line follows (turning at most COLOSSUS.laser.turn a second), then holds and flashes for `lock`, then fires once.
+  chestLaser(e, s, w) {
+    const A = ATTACK_MODULES.chestLaser, L = COLOSSUS.laser, p = center(w.player);
+    if (s.phase === "windup") {
+      s.data.total ??= Math.max(s.t + w.dt, L.lock);
+      if (s.t > L.lock) { const want = Math.atan2(p.y - e.y, p.x - e.x); let d = want - s.data.angle; d = Math.atan2(Math.sin(d), Math.cos(d)); const m = L.turn * w.dt; s.data.angle += Math.max(-m, Math.min(m, d)); }
+      const dir = { x: Math.cos(s.data.angle), y: Math.sin(s.data.angle) };
+      s.tele = { type: "laser", angle: s.data.angle, length: rayLength(w, e, dir, L.reach), charge: Math.max(0, Math.min(1, 1 - s.t / s.data.total)), locked: s.t <= L.lock, chest: L.chest };
+      if (s.t <= 0) toPhase(s, "active", A.active);
+      return;
+    }
+    if (s.phase === "active") {
+      const dir = { x: Math.cos(s.data.angle), y: Math.sin(s.data.angle) }, len = rayLength(w, e, dir, L.reach);
+      if (!s.data.fired) { s.data.fired = true; if (segmentDistance(p, e, { x: e.x + dir.x * len, y: e.y + dir.y * len }) <= L.width) w.hurt(e, damageOf(e, "chestLaser"), { jumpable: false, source: "chestLaser", beam: true }); }
+      s.tele = { type: "beam", angle: s.data.angle, length: len, charging: false, laser: true, chest: L.chest };
+      if (s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+    }
+  },
+  wispBewilder(e, s, w) { hauntConfuse(e, s, w, "wispBewilder", HAUNT.confuse.wisp, HAUNT.curse.lay.wisp); }, // release 731; 737: curses
+  gorgeHowl(e, s, w) { hauntConfuse(e, s, w, "gorgeHowl", HAUNT.confuse.gorge, HAUNT.curse.lay.gorge); },
+  vastRake(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "vastRake", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.7 + .3, 160)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.vastRake.recover); } },
+  vastWail(e, s, w) { hauntConfuse(e, s, w, "vastWail", GLOOM_FINALE.confuse.wail, GLOOM_FINALE.curse.wail); },
+  vastGloomfall(e, s) { if (s.phase === "windup" && s.t <= 0) toPhase(s, "recover", ATTACK_MODULES.vastGloomfall.recover); },
+  vastLights(e, s, w) {
+    if (s.phase === "windup" && s.t <= 0) { const L = GLOOM_FINALE.lights, a0 = Math.atan2(s.data.aim.y, s.data.aim.x), dmg = damageOf(e, "vastLights");
+      for (let i = 0; i < L.count; i++) { const a = a0 + (i - (L.count - 1) / 2) * .5; w.addEffect({ kind: "gloomMote", owner: e.id, x: e.x, y: e.y, vx: Math.cos(a) * L.speed, vy: Math.sin(a) * L.speed, radius: L.radius, home: L.home, turn: L.turn, arming: 0, life: L.life, total: L.life, damage: dmg, curse: GLOOM_FINALE.curse.lights }); }
+      s.tele = null; toPhase(s, "recover", ATTACK_MODULES.vastLights.recover); }
+  },
+  vastPlunge(e, s, w) { chargeThrough(e, s, w, "vastPlunge"); },
+  vastDark(e, s, w) { if (s.phase === "windup" && s.t <= 0) { s.tele = null; if (!e.gloomDark) gloomDarkBegin(e, w); toPhase(s, "recover", ATTACK_MODULES.vastDark.recover); } },
+  shadeTouch(e, s, w) { if (s.phase === "windup" && s.t <= 0) { const p = center(w.player); if (inArc(e, p, s.data.aim, bodyRadius(e) + 1.1 + .3, 120) && w.hurt(e, damageOf(e, "shadeTouch"), { jumpable: false, source: "shadeTouch" })) w.curse?.(e, GLOOM_FINALE.curse.touch); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.shadeTouch.recover); } },
+  shadePuff(e, s, w) { hauntConfuse(e, s, w, "shadePuff", 0, GLOOM_FINALE.curse.puff); },
   psyPush(e, s, w) {
     const attack = ATTACK_MODULES.psyPush, p = center(w.player);
     if (s.phase === "windup") { if (s.t <= 0) { if (distance(p, e) <= CRYSTAL.pushRadius) w.hurt(e, damageOf(e, "psyPush"), { jumpable: false, source: "psyPush" }); w.addEffect({ kind: "psyRing", owner: e.id, x: e.x, y: e.y, radius: CRYSTAL.pushRadius, arming: 0, life: .4, total: .4, damage: 0 }); toPhase(s, "active", attack.active); s.tele = null; } return; }
@@ -3152,7 +3327,7 @@ export function updatePackMonster(e, w) {
   if (e.pack && w.dt > 0) { if (w.bossPace && bossPaced(e)) e.pack.paced = true; else delete e.pack.paced; } // release 421 (a paused frame changes nothing)
   if (e.kind === "astralWorm" || e.kind === "astralMirage") { if (w.dt > 0) updateAstralActor(e, w); return; }
   if (e.kind === "voidWalker" && !(w.dt > 0)) return;
-  if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } return; }
+  if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } if (e.gloomDark) gloomDarkEnd(e, w, false); return; }
   const s = e.pack && e.pack.v === MONSTER_PACK_VERSION ? e.pack : (e.pack = freshPackState()), dt = w.dt;
   if (!s.orbitDir) s.orbitDir = hashSeed(`${e.id}:orbit`) % 2 ? 1 : -1;
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.scattered = Math.max(0, (Number(e.scattered) || 0) - dt); // release 249: a scatter is brief
@@ -3168,7 +3343,10 @@ export function updatePackMonster(e, w) {
     }
   }
   if (e.fleeTo) { fleeStep(e, s, w); return; }
+  if (e.roofDweller && (e.roofWake > 0 || e.roofReturning)) { if (e.roofWake > 0) e.facingX = (w.player.x - e.x) >= 0 ? 1 : -1; return; } // roof-dwellers.ts: waking, or flying home to its perch
   if (e.illusion && (w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
+  if (e.gloomOrbOf && gloomShadeTick(e, w)) return; // the Gloomvast's decoys go with its Dark
+  if (e.kind === "gloomvast" && gloomVastTick(e, s, w)) return; // its Dark, the reveal, and calling the next
   const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain], roaming = isDungeonRoamer(e, w.area), hunting = isDungeonHunter(e, w.area);
   // Release 287 (Tim: "the crystal doesn't have to aggro to you, he can just be wandering around... if you touch him, or if
   // you attack him, he'll aggro"): a roaming dungeon Crystal ignores the Wayfarer until touched or hurt (hits alert it).
@@ -3566,11 +3744,15 @@ function tickGateEffect(f, w) {
 }
 
 // Ground effects: arming, detonation (once, if the player is inside), webs that slow, and rings.
+// Release 748 (Tim, 2026-11-04): what lies on the ground (pools, trails, webs, tar, brambles) is met at the Wayfarer's feet; on a
+// mount that is the mount's feet (`w.feet`), while blows, shots, blasts and beams meet the rider where drawn (`w.player`).
+export const GROUND_EFFECTS = new Set(["web", "ooze", "lava", "flameTrail", "frostTrail", "flesh", "briar", "darkPool", "doomTar", "mire"]);
 export function tickPackEffects(effects, w) {
   if (!(w.dt > 0)) return effects;
-  const p = center(w.player);
+  const body = center(w.player), feet = w.feet ? center(w.feet()) : body, p = body;
   // New effects wait until the next tick: an emitter cannot recursively simulate its own new outputs this frame.
   for (const f of [...effects]) {
+    const p = GROUND_EFFECTS.has(f.kind) ? feet : body; // release 748: a ground pool at the feet, everything else at the body
     if (tickGateEffect(f, w)) continue;
     if (tickVoidEffect(f, w, w.dt)) continue;
     f.age = (f.age || 0) + w.dt;
@@ -3593,7 +3775,7 @@ export function tickPackEffects(effects, w) {
       if (distance(p, f) <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + TURTLE.fireTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "flameTrail", beam: true }); }
     } else if (f.kind === "frostTrail") { // ice left behind: it stings and slows, then bursts (a comet's frost does not burst)
       if (distance(p, f) <= f.radius + .1) { w.slow(TURTLE.iceSlow, .3); if (!(f.nextBite > f.age)) { f.nextBite = f.age + TURTLE.iceTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "frostTrail", beam: true }); } }
-      if (f.burst && !f.burstDone && f.life - w.dt <= 0) { f.burstDone = true; if (distance(p, f) <= TURTLE.iceBurstRadius + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.burst, { jumpable: false, source: "iceBurst" }); w.addEffect({ kind: "iceBurst", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.iceBurstRadius, arming: 0, life: .45, total: .45, damage: 0 }); }
+      if (f.burst && !f.burstDone && f.life - w.dt <= 0) { f.burstDone = true; if (distance(body, f) <= TURTLE.iceBurstRadius + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.burst, { jumpable: false, source: "iceBurst" }); w.addEffect({ kind: "iceBurst", owner: f.owner, x: f.x, y: f.y, radius: TURTLE.iceBurstRadius, arming: 0, life: .45, total: .45, damage: 0 }); }
     } else if (f.kind === "twister") { // a small tornado flung off the spin: it wanders, stings and slows until it blows out
       f.wander = (f.wander || 0) + Math.sin(f.age * 1.7 + f.x) * w.dt * 1.2;
       const sp = Math.hypot(f.vx || 0, f.vy || 0) || TURTLE.twisterSpeed, nx = f.x + Math.cos(f.wander) * sp * w.dt, ny = f.y + Math.sin(f.wander) * sp * w.dt;
@@ -3694,7 +3876,7 @@ export function tickPackEffects(effects, w) {
       const D = DRAGON.wave, front = Math.min(f.reach, f.age * D.speed), d = distance(p, f), a = Math.atan2(p.y - f.y, p.x - f.x), off = Math.abs(((a - f.angle) % TAU + TAU * 1.5) % TAU - Math.PI) * 180 / Math.PI, inside = (f.arc >= 360 || off <= f.arc / 2) && d <= front;
       f.front = front; const owner = w.enemies.find((q) => q.id === f.owner) || null;
       if (!f.hit && inside && d >= front - 1.2) { f.hit = true; w.hurt(owner, f.damage, { jumpable: false, source: "dragonFlameWave" }); }
-      else if (inside && !(f.nextBite > f.age)) { f.nextBite = f.age + D.tick; w.hurt(owner, f.bite, { jumpable: true, source: "dragonScorch", beam: true }); }
+      else if (!(f.nextBite > f.age) && (() => { const dg = distance(feet, f), ag = Math.atan2(feet.y - f.y, feet.x - f.x), og = Math.abs(((ag - f.angle) % TAU + TAU * 1.5) % TAU - Math.PI) * 180 / Math.PI; return (f.arc >= 360 || og <= f.arc / 2) && dg <= front; })()) { f.nextBite = f.age + D.tick; w.hurt(owner, f.bite, { jumpable: true, source: "dragonScorch", beam: true }); } // release 748: the burning ground behind the front, at the feet
     } else if (f.kind === "dragonMeteor") { // a fireball landing: it strikes once, and some leave a pool of lava
       if (!f.detonated) { f.detonated = true; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "dragonMeteor" }); if (f.pool) dragonPool(f.owner, w, f.x, f.y, f.pool, f.bite || 1); }
     } else if (f.kind === "doomErupt" || f.kind === "doomScale") { // release 710: black fire bursting from the ground (or a shed scale bursting), once; some leave a pool
@@ -3707,7 +3889,7 @@ export function tickPackEffects(effects, w) {
       if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = Math.min(f.life, .15);
     } else if (f.kind === "doomTar") { // tar where it landed: it slows, then catches and burns
       const owner = w.enemies.find((q) => q.id === f.owner) || null, inside = distance(p, f) <= f.radius, burning = f.age - (f.armTotal || 0) >= DOOM.tar.ignite; f.lit = burning;
-      if (!f.splashed) { f.splashed = true; if (inside) w.hurt(owner, f.splash || f.damage, { jumpable: false, source: "doomTar" }); }
+      if (!f.splashed) { f.splashed = true; if (distance(body, f) <= f.radius) w.hurt(owner, f.splash || f.damage, { jumpable: false, source: "doomTar" }); } // the splash strikes the body; the tar lies at the feet
       if (inside) { w.slow(DOOM.tar.slow, .25); if (burning && !(f.nextBite > f.age)) { f.nextBite = f.age + DOOM.tar.tick; w.hurt(owner, f.damage, { jumpable: true, source: "doomTarFire", beam: true }); } }
     } else if (f.kind === "doomOrb") { // hunting dark: homes for `home` s, then flies straight; bursts on whatever it meets
       if (f.age <= f.home) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-f.turn * w.dt, Math.min(f.turn * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; }
@@ -3715,6 +3897,14 @@ export function tickPackEffects(effects, w) {
       if ((w.shotBlocked ? w.shotBlocked(f.x + .5, f.y + .5) : w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) || distance(p, f) <= f.radius + .3 || f.life - w.dt <= 0) {
         f.life = 0; if (distance(p, f) <= f.blast + .2) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "doomOrbs" });
         w.addEffect({ kind: "doomBurst", owner: f.owner, x: f.x, y: f.y, radius: f.blast, arming: 0, life: .4, total: .4, damage: 0 }); continue; }
+    } else if (f.kind === "gloomfall") { // the Gloomvast's pools of gloom falling in, once each; one that takes you lays a curse
+      if (!f.detonated) { f.detonated = true; const owner = w.enemies.find((q) => q.id === f.owner) || null; if (distance(p, f) <= f.radius + .3 && w.hurt(owner, f.damage, { jumpable: false, source: "vastGloomfall" }) && f.curse) w.curse?.(owner, f.curse); }
+    } else if (f.kind === "gloomMote") { // its Grave Lights: home for `home` s, then fly straight; one that reaches you lays a curse
+      if (f.age <= f.home) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-f.turn * w.dt, Math.min(f.turn * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; }
+      const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
+      if (w.shotBlocked ? w.shotBlocked(f.x + .5, f.y + .5) : w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) { f.life = 0; continue; }
+      if (segmentDistance(p, before, f) <= f.radius + .3) { f.life = 0; const owner = w.enemies.find((q) => q.id === f.owner) || null; if (w.hurt(owner, f.damage, { jumpable: false, source: "vastLights" }) && f.curse) w.curse?.(owner, f.curse); continue; }
+      if (!w.enemies.some((q) => q.id === f.owner && !q.dead) && f.life > .3) f.life = .3; // they go out with it
     } else if (f.kind === "dragonNova" || f.kind === "dragonBurst" || f.kind === "colonize" || f.kind === "doomBurst") { /* drawn only */
     } else if (f.kind === "gale") { // release 708: a giant whirlwind rolling about, rebounding off walls and the section's edges
       const G = MOTH.gale, turn = Math.sin(f.age * .8 + (f.seed % 100)) * .6 * w.dt, c = Math.cos(turn), sn = Math.sin(turn); [f.vx, f.vy] = [f.vx * c - f.vy * sn, f.vx * sn + f.vy * c];

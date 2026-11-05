@@ -1,20 +1,20 @@
-import { Game } from "./game.js?v=r739-0b5b1c12e64a";
-import { freshSave, migrateSave } from "./types.js?v=r739-0b5b1c12e64a";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r739-0b5b1c12e64a";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r739-0b5b1c12e64a";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r739-0b5b1c12e64a";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r739-0b5b1c12e64a";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r739-0b5b1c12e64a";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r739-0b5b1c12e64a";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r739-0b5b1c12e64a";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r739-0b5b1c12e64a";
-import { BIOMES, biomeFor } from "./landscape.js?v=r739-0b5b1c12e64a";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r739-0b5b1c12e64a";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r739-0b5b1c12e64a";
-import { ensureConstellation } from "./constellation.js?v=r739-0b5b1c12e64a";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r739-0b5b1c12e64a";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r739-0b5b1c12e64a";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r739-0b5b1c12e64a";
+import { Game } from "./game.js?v=r755-c3a9aa62bf91";
+import { freshSave, migrateSave } from "./types.js?v=r755-c3a9aa62bf91";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r755-c3a9aa62bf91";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r755-c3a9aa62bf91";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r755-c3a9aa62bf91";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r755-c3a9aa62bf91";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r755-c3a9aa62bf91";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r755-c3a9aa62bf91";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r755-c3a9aa62bf91";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r755-c3a9aa62bf91";
+import { BIOMES, biomeFor } from "./landscape.js?v=r755-c3a9aa62bf91";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r755-c3a9aa62bf91";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r755-c3a9aa62bf91";
+import { ensureConstellation } from "./constellation.js?v=r755-c3a9aa62bf91";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r755-c3a9aa62bf91";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r755-c3a9aa62bf91";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r755-c3a9aa62bf91";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -196,7 +196,7 @@ function landscapeFixture(scenario, seed, now) {
     if (biome === "castle" && !map.castle) continue;
     if (feature === "volcano" && !map.volcano) continue;
     if (feature === "skybridge" && !map.skyBridges?.length) continue;
-    if (!feature && biome !== "castle" && map.tiles.filter((t) => t.landscape === biome).length < (biome === "alien" ? 220 : 400)) continue; // the heart of the biome, not its fringe
+    if (biome === "isles" ? map.landscape?.biome !== "isles" /* release 736 (review F11): an isles section's tiles are coast and sea, never "isles" */ : !feature && biome !== "castle" && map.tiles.filter((t) => t.landscape === biome).length < (biome === "alien" ? 220 : 400)) continue; // the heart of the biome, not its fringe
     const summit = map.objects.find((o) => o.landscapeSummit), counts = {};
     for (const t of map.tiles) if (t.landscape) counts[t.kind] = (counts[t.kind] || 0) + 1;
     if (feature === "volcano") Object.assign(base.game.player, { x: map.volcano.x + 4, y: map.volcano.y + 4 });

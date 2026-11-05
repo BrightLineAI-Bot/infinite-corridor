@@ -16,8 +16,8 @@
 //   At `swarm.at` health it calls small silver copies of itself (capped). It carries 1–2 elite affixes and scales with
 //   regionalThreat.
 // Runtime fields on the creatures (`stalkForm`, `stalkAct`, …) are never saved; only `save.stalker` is.
-import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
-import { ENCLOSURE, trapChance } from "./building.js?v=r739-0b5b1c12e64a"; // release 696: the Enclosure trap
+import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
+import { ENCLOSURE, trapChance } from "./building.js?v=r755-c3a9aa62bf91"; // release 696: the Enclosure trap
 
 export const STALKER = {
   version: 1,
@@ -212,6 +212,13 @@ export function stalkerSlain(save) {
   save.currency = (Number(save.currency) || 0) + marks;
   const sphere = q.kills % 2 ? "weaponSphere" : "armorSphere"; save.materials ||= {}; save.materials[sphere] = (save.materials[sphere] || 0) + 1;
   return { marks, sphere, quiet: q.quiet };
+}
+// Release 748 (Tim, 2026-11-04: penning catches; "the only reward is being able to ride it"): caught in a pen, its hunt ends as a
+// kill's does (it rests `reset` new sections, then hunts again), but nothing is paid: no marks, sphere, drops, Echo or kill counted.
+export function stalkerCaught(save) {
+  const q = ensureStalker(save); q.active = null; q.ground = 0; q.warned = 0; q.lair = null;
+  q.quiet = between(`${save.seed}:stalker:caught:${q.seq}`, STALKER.reset);
+  return { quiet: q.quiet };
 }
 // Its health and damage: about a Gate Revenant's health, a little under a world beast's damage, both scaled by regional threat.
 // `revenantHp` is a tuned Gate Revenant's maxHp; `beastDamage` the world-beast damage for STALKER.vitals.damageShare.

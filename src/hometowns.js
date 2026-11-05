@@ -8,9 +8,9 @@
 // chosen home ("rx,ry"; Ember Refuge, "0,0", when unset). Home is where the Atlas's Return button goes, and where the farm,
 // the quarry and the regrowth ring sit (refuge-lands.ts, by `homeCenter`). A town becomes home from the Atlas once its
 // Wayglass is lit.
-import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
-import { hamletIdentity, hamletSection } from "./settlements.js?v=r739-0b5b1c12e64a";
-import { openSeaSection } from "./landscape.js?v=r739-0b5b1c12e64a";
+import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
+import { hamletIdentity, hamletSection } from "./settlements.js?v=r755-c3a9aa62bf91";
+import { openSeaSection } from "./landscape.js?v=r755-c3a9aa62bf91";
 
 export const HOMETOWNS = { search: 4 };
 const REFUGE = "0,0";
@@ -18,8 +18,8 @@ const key = (q) => `${q.rx},${q.ry}`;
 
 export function ensureHometowns(save) {
   const h = save.hometowns && typeof save.hometowns === "object" ? save.hometowns : {};
-  const towns = (Array.isArray(h.towns) ? h.towns : []).filter((t) => Number.isInteger(t?.rx) && Number.isInteger(t?.ry)).map((t, i) => ({ rx: t.rx, ry: t.ry, name: String(t.name || hamletIdentity(save.seed, t.rx, t.ry).name).slice(0, 40), listener: Math.max(1, Math.floor(Number(t.listener) || i + 1)), ...(t.mouth === true ? { mouth: true } : {}) }));
-  save.hometowns = { towns, home: typeof h.home === "string" && (h.home === REFUGE || towns.some((t) => key(t) === h.home)) ? h.home : null };
+  const towns = (Array.isArray(h.towns) ? h.towns : []).filter((t) => Number.isInteger(t?.rx) && Number.isInteger(t?.ry)).map((t, i) => ({ ...t, rx: t.rx, ry: t.ry, name: String(t.name || hamletIdentity(save.seed, t.rx, t.ry).name).slice(0, 40), listener: Math.max(1, Math.floor(Number(t.listener) || i + 1)), ...(t.mouth === true ? { mouth: true } : {}) })).map((t) => { if (t.mouth !== true) delete t.mouth; return t; });
+  save.hometowns = { ...h, /* release 736 (review S7): unknown fields kept */ towns, home: typeof h.home === "string" && (h.home === REFUGE || towns.some((t) => key(t) === h.home)) ? h.home : null };
   grantTowns(save);
   return save.hometowns;
 }

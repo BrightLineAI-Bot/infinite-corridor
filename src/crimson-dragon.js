@@ -9,8 +9,8 @@
 // A cast turns the next share of the section's open floor to lava (cast k of `casts`: k/casts of it), in patches that grow from a few
 // seeded centres. Never raised ground, slopes, water, structures or buildings, and never within `border` tiles of the edge, so there is
 // always ground to arrive on and leave by. The tiles are applied to the section every time it is loaded: they stay lava.
-import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
-import { DRAGON } from "./monster-pack.js?v=r739-0b5b1c12e64a";
+import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
+import { DRAGON } from "./monster-pack.js?v=r755-c3a9aa62bf91";
 
 export const DRAGON_LAVA = { maxSections: 24, centres: 4 };
 const KEEP = new Set(["lava", "abyss", "canyon", "river", "dungeonWater", "water", "ocean", "deepOcean", "lakeWater", "shallows", "swampWater", "mireWater", "toxicWater"]);
@@ -20,7 +20,7 @@ export function ensureDragonLava(save) {
   const raw = save?.dragonLava, out = {};
   if (raw && typeof raw === "object" && !Array.isArray(raw)) for (const [k, r] of Object.entries(raw).slice(-DRAGON_LAVA.maxSections)) {
     if (!/^-?\d+,-?\d+$/.test(k) || !r || typeof r !== "object") continue;
-    out[k] = { casts: Math.max(0, Math.min(DRAGON.colonize.casts, Math.floor(Number(r.casts) || 0))), nextAt: Number.isFinite(Number(r.nextAt)) ? Number(r.nextAt) : null,
+    out[k] = { ...r, casts: Math.max(0, Math.min(DRAGON.colonize.casts, Math.floor(Number(r.casts) || 0))), nextAt: Number.isFinite(Number(r.nextAt)) ? Number(r.nextAt) : null,
       tiles: (Array.isArray(r.tiles) ? r.tiles : []).filter((i) => Number.isInteger(i) && i >= 0 && i < 1024).slice(0, 1024) };
   }
   if (save) save.dragonLava = out;

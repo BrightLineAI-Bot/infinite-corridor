@@ -6,8 +6,8 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { rng } from "./random.js?v=r739-0b5b1c12e64a";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r739-0b5b1c12e64a";
+import { rng } from "./random.js?v=r755-c3a9aa62bf91";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r755-c3a9aa62bf91";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -75,7 +75,7 @@ export function ensureEchoState(save) {
   const owned = Object.fromEntries(Object.entries(e.owned || {}).filter(([id, v]) => ECHOES[id] && v));
   let equipped = (Array.isArray(e.equipped) ? e.equipped : []).filter((id, i, a) => owned[id] && a.indexOf(id) === i);
   while (notchesUsed(equipped) > NOTCHES) equipped = equipped.slice(0, -1);
-  save.echoes = { version: ECHO_VERSION, owned, equipped };
+  save.echoes = { ...e, version: ECHO_VERSION, owned, equipped }; // release 736 (review S7): fields a newer release added are kept
   return save;
 }
 export const notchesUsed = (equipped) => equipped.reduce((n, id) => n + (ECHOES[id]?.cost || 0), 0);

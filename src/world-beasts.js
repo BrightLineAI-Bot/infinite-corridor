@@ -1,17 +1,17 @@
-import { mealLure } from "./meals.js?v=r739-0b5b1c12e64a";
-import { ensureDragonLava } from "./crimson-dragon.js?v=r739-0b5b1c12e64a";
-import { ensureFarQuests } from "./far-realms.js?v=r739-0b5b1c12e64a";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r739-0b5b1c12e64a";
+import { mealLure } from "./meals.js?v=r755-c3a9aa62bf91";
+import { ensureDragonLava } from "./crimson-dragon.js?v=r755-c3a9aa62bf91";
+import { ensureFarQuests } from "./far-realms.js?v=r755-c3a9aa62bf91";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r755-c3a9aa62bf91";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed, byHash } from "./random.js?v=r739-0b5b1c12e64a";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r739-0b5b1c12e64a";
-import { sectionExits, apertureTier } from "./world.js?v=r739-0b5b1c12e64a";
-import { stageOneBeastReference } from "./stages.js?v=r739-0b5b1c12e64a";
+import { hashSeed, byHash } from "./random.js?v=r755-c3a9aa62bf91";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r755-c3a9aa62bf91";
+import { sectionExits, apertureTier } from "./world.js?v=r755-c3a9aa62bf91";
+import { stageOneBeastReference } from "./stages.js?v=r755-c3a9aa62bf91";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -459,7 +459,8 @@ export function ensureWorldBeasts(save, normalizeScarHistory = true) {
     if (a && !a.patience) delete a.patience; // both are added only once there is something to keep
     if (a && !(Number(a.wounds) > 0 && Number(a.wounds) < 1)) delete a.wounds; else if (a) a.wounds = Number(a.wounds); // release 353: the share of health a hurt beast has left
     if (a) { const chase = Math.max(0, Math.floor(Number(q.active.chase) || 0)); if (chase) a.chase = chase; else delete a.chase; } // release 259: sections it has followed this encounter
-    all[id] = { cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils (release 263): its first-kill Sigil and Echo were given
+    all[id] = { ...q, cycle: Math.max(0, Math.floor(Number(q.cycle) || 0)), cooldown: Math.max(0, Math.floor(Number(q.cooldown) || 0)), active: a, slain: Math.max(0, Math.floor(Number(q.slain) || 0)), escaped: Math.max(0, Math.floor(Number(q.escaped) || 0)), ...(q.spoils === true ? { spoils: true } : {}) }; // spoils (release 263): its first-kill Sigil and Echo were given
+    if (all[id].spoils !== true) delete all[id].spoils; // release 736 (review S7): the entry keeps fields from a newer release
   }
   save.worldBeasts = all; ensureBeastGap(save);
   // Only save creation/migration normalizes all permanent history; gameplay stays independent of other areas.
@@ -563,7 +564,7 @@ export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - 
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
 export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
-export { BEAST_GUARD_HOLD } from "./stages.js?v=r739-0b5b1c12e64a"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
+export { BEAST_GUARD_HOLD } from "./stages.js?v=r755-c3a9aa62bf91"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
 export function beastTuningReference(save, stats = {}) { return stageOneBeastReference(save, liveBeastReference(save, stats)); }
 // The Wayfarer as they stand, before any Stage 1 hold (release 331: also what a Listener kill catches the beasts up to).
 export function liveBeastReference(save, stats = {}) {
@@ -595,6 +596,13 @@ export function worldBeastSlain(save, id) {
   save.currency = (Number(save.currency) || 0) + marks;
   q.slain++; q.cycle++; q.active = null; q.cooldown = B.cooldownSlain;
   return { marks, message: `${B.slain} +${marks} marks.` };
+}
+// Release 748 (Tim, 2026-11-04): caught in a pen. Its hunt ends as a fall does (a new cycle, the slain cooldown), but nothing is
+// paid and nothing is recorded as a kill: "the only reward is being able to ride it" (beast-mounts.ts keeps the count).
+export function worldBeastCaught(save, id) {
+  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id]; if (!B || !q) return null;
+  q.cycle++; q.active = null; q.cooldown = B.cooldownSlain;
+  return { cooldown: q.cooldown };
 }
 // The Wayfarer fell in a beast's section while it lived. Returns a message, or null.
 export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null, triesOff = false) {

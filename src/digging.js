@@ -8,9 +8,9 @@
 // floor; and it may break through only into floor you could already walk to, so no sealed or guarded part is ever
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
-import { LETHAL_KINDS } from "./landscape.js?v=r739-0b5b1c12e64a";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r739-0b5b1c12e64a";
+import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
+import { LETHAL_KINDS } from "./landscape.js?v=r755-c3a9aa62bf91";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r755-c3a9aa62bf91";
 
 // Balance (data, not literals in the logic).
 export const DIG = {
@@ -57,6 +57,31 @@ export const DIG_FINDS = [
   { id: "weaponSphere", weight: 6, min: 1, max: 1, label: "a Weapon Sphere" },
   { id: "armorSphere", weight: 6, min: 1, max: 1, label: "an Armor Sphere" },
 ];
+// Dig gates (Tim, 2026-11-04: "we shouldn't be able to dig through the secrets or break the actual labyrinth path... the path
+// should be enforced by natural consequences and natural laws that don't need invisible walls"). Inside a labyrinth, the
+// Pentagon, a castle, a great building or a compound (`interiors`, by area id; the Shell-Labyrinth is a labyrinth) the shovel
+// keeps three natural rules, checked when you dig (no tile of any interior is regenerated or changed by them):
+//   - you dig only toward ground you know: a tunnel breaks through only into floor you have walked on (or beside, within
+//     `walked.radius` of where you stood) since you came in, so digging makes a shortcut back across ground you have been,
+//     never a way into the part of the maze you have not found yet;
+//   - nothing opens what a gate keeps, not even the iron shovel: rock that rings hollow stays shut in an interior;
+//   - every chamber, hall and floor ends at its outer wall: beyond it is the building's own footings, and the shovel says so.
+// On the open land a great building, castle or Pentagon is dressed stone (`greatBuilding` tiles): the shovel will not bite
+// it, and says so. Tunnels dug before these rules are kept (applyTunnels), so nothing already dug is taken away.
+export const DIG_GATES = {
+  version: 1,
+  interiors: /^(labyrinth|pentagon|castle|building|compound):/,
+  // marked round the Wayfarer each step. 1, not more: a maze's corridors lie two tiles apart, so a wider mark would count the
+  // corridor beyond a hedge as walked and let a tunnel skip the maze.
+  walked: { radius: 1 },
+  messages: {
+    unwalked: "You have not been beyond this wall: the rock gives no sound of where it leads. Find the way round first; then you can dig back through to make a shortcut.",
+    sealed: "The rock beyond rings hollow and sealed, bound into the building's own masonry. No shovel opens what a gate keeps.",
+    outerWall: "This is the outer wall: the building's footings go down past where any shovel reaches.",
+    building: "Dressed stone, set deep: the walls of a great building will not yield to a shovel.",
+  },
+};
+export const isInteriorArea = (areaKey) => typeof areaKey === "string" && DIG_GATES.interiors.test(areaKey);
 const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:|skyland:)/;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
@@ -119,6 +144,20 @@ export function reachable(map, x, y) {
   while (q.length) { const [cx, cy] = q.pop(); for (const [dx, dy] of Object.values(DIRS)) { const nx = cx + dx, ny = cy + dy, k = ny * w + nx; if (seen.has(k) || !walkable(at(map, nx, ny)) || blockers.has(`${nx},${ny}`)) continue; seen.add(k); q.push([nx, ny]); } }
   return seen;
 }
+// DIG_GATES: the walked-floor record of one interior map, a byte a tile, set round the Wayfarer as they move. It is written
+// in place (no allocation a step); game.ts keeps one for the interior you are in, for as long as you are there. Round the
+// tile you stand on, floor within `walked.radius` counts as walked only where it opens onto yours (a diagonal only past an
+// open side): you never "see" round a corner of rock, so standing in a pocket you dug never counts the corridor beyond.
+export function markWalked(walked, map, x, y) {
+  if (!walked || !map?.tiles) return; const w = W(map), h = H(map), r = DIG_GATES.walked.radius, cx = Math.round(x), cy = Math.round(y);
+  const open = (xx, yy) => xx >= 0 && yy >= 0 && xx < w && yy < h && !map.tiles[yy * w + xx]?.blocked;
+  if (!open(cx, cy)) return; walked[cy * w + cx] = 1;
+  for (let yy = cy - r; yy <= cy + r; yy++) for (let xx = cx - r; xx <= cx + r; xx++) {
+    if ((xx === cx && yy === cy) || !open(xx, yy)) continue;
+    const sx = Math.sign(xx - cx), sy = Math.sign(yy - cy);
+    if (Math.abs(xx - cx) + Math.abs(yy - cy) === 1 ? true : sx && sy ? open(cx + sx, cy) || open(cx, cy + sy) : open(cx + sx, cy + sy)) walked[yy * w + xx] = 1;
+  }
+}
 // How deep a dug tile lies from untouched open floor (1 = the first block into the wall).
 function tunnelDepth(map, x, y) {
   const w = W(map), seen = new Set([y * w + x]); let frontier = [[x, y]];
@@ -139,7 +178,7 @@ export const OVERWORLD_DIG = { tier: 12, refuse: /water|Water|river|lake|ocean|O
 export const overworldDigKey = (rx, ry) => `overworld:${rx},${ry}`;
 export function overworldDiggable(map, x, y) {
   if (map?.settlement || !diggable(map, x, y)) return false;
-  const t = at(map, x, y); return !t.environment && !t.buildingId && !t.build && !OVERWORLD_DIG.refuse.test(String(t.kind || ""));
+  const t = at(map, x, y); return !t.environment && !t.buildingId && !t.build && !t.greatBuilding && !OVERWORLD_DIG.refuse.test(String(t.kind || "")); // DIG_GATES: a great building's stone
 }
 const settleElev = (map, x, y) => { let low = null; for (const [dx, dy] of Object.values(DIRS)) { const n = at(map, x + dx, y + dy); if (walkable(n)) low = low == null ? (n.elev || 0) : Math.min(low, n.elev || 0); } return low ?? 0; };
 // Release 411: what a blocked tile is, for the iron shovel's cost: a wall of the dungeon, or something standing in a hall
@@ -147,22 +186,27 @@ const settleElev = (map, x, y) => { let low = null; for (const [dx, dy] of Objec
 export const isObstacle = (t) => !!t && t.blocked && !/wall|rim|Wall|Rim/.test(String(t.kind || "")) && t.kind !== "deepWall";
 // Plans one dig from where you stand, facing `facing`. Returns { ok, x, y, through, reason, resists }; `resists` marks rock
 // that only the iron shovel digs (`iron`: plan for it).
-export function planDig(map, px, py, facing, areaKey, { iron = false, overworld = false } = {}) {
+// `walked` (DIG_GATES): in an interior, the walked-floor record (markWalked); without one only the older rules hold there.
+export function planDig(map, px, py, facing, areaKey, { iron = false, overworld = false, walked = null } = {}) {
   if (!canDigHere(areaKey)) return { ok: false, reason: "The walls here are not stone a shovel can bite." };
   const [dx, dy] = DIRS[facing] || DIRS.down, x = px + dx, y = py + dy;
   if (overworld) { // release 423: no sealed halls out here; walls of rock are one dig, a standing stone or crag a whole shovel
-    if (!overworldDiggable(map, x, y)) return { ok: false, reason: null };
+    if (!overworldDiggable(map, x, y)) { const t = at(map, x, y); return { ok: false, reason: t?.blocked && t.greatBuilding && !map?.settlement ? DIG_GATES.messages.building : null }; }
     const from = at(map, px, py), depth = (from?.tunnel ? tunnelDepth(map, px, py) : 0) + 1;
     if (depth > DIG.reach) return { ok: false, reason: `The rock is too deep here: a tunnel reaches ${DIG.reach} blocks from open ground.` };
     const through = Object.values(DIRS).some(([ex, ey]) => { const n = at(map, x + ex, y + ey); return (x + ex !== px || y + ey !== py) && walkable(n) && !n.tunnel; });
     return { ok: true, x, y, through, depth, overworld: true, cut: OVERWORLD_DIG.obstacle.test(String(at(map, x, y).kind)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}) };
   }
-  if (!diggable(map, x, y)) return { ok: false, reason: null };
+  const interior = isInteriorArea(areaKey);
+  if (!diggable(map, x, y)) { const t = at(map, x, y); return { ok: false, reason: interior && t?.blocked && (x <= 0 || y <= 0 || x >= W(map) - 1 || y >= H(map) - 1) ? DIG_GATES.messages.outerWall : null }; }
   const from = at(map, px, py), depth = (from?.tunnel ? tunnelDepth(map, px, py) : 0) + 1;
   if (depth > DIG.reach) return { ok: false, reason: `The rock is too deep here: a tunnel reaches ${DIG.reach} blocks from open floor.` };
-  // Breaking through: any untouched floor next to the new block must be floor you can already reach.
+  // Breaking through: any untouched floor next to the new block must be floor you can already reach (in an interior even
+  // with the iron shovel), and in an interior floor you have walked (DIG_GATES).
   const mine = reachable(map, px, py), w = W(map);
-  if (!iron) for (const [ex, ey] of Object.values(DIRS)) { const nx = x + ex, ny = y + ey, n = at(map, nx, ny); if (walkable(n) && !n.tunnel && !mine.has(ny * w + nx)) return { ok: false, resists: true, reason: "The rock beyond rings hollow and sealed. Something keeps that side; the shovel will not open it." }; }
+  for (const [ex, ey] of Object.values(DIRS)) { const nx = x + ex, ny = y + ey, n = at(map, nx, ny); if (!walkable(n) || n.tunnel) continue;
+    if (!mine.has(ny * w + nx)) { if (interior) return { ok: false, sealed: true, reason: DIG_GATES.messages.sealed }; if (!iron) return { ok: false, resists: true, reason: "The rock beyond rings hollow and sealed. Something keeps that side; the shovel will not open it." }; }
+    else if (interior && walked && !walked[ny * w + nx]) return { ok: false, unwalked: true, reason: DIG_GATES.messages.unwalked }; }
   const through = Object.values(DIRS).some(([ex, ey]) => { const n = at(map, x + ex, y + ey); return (x + ex !== px || y + ey !== py) && walkable(n) && !n.tunnel; });
   return { ok: true, x, y, through, depth, cut: isObstacle(at(map, x, y)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}) };
 }

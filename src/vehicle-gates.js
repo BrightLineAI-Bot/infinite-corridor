@@ -6,8 +6,8 @@
 // "infinite tier 3 and beyond... after you've unlocked the second gate with the listener... take the submersible on land";
 // "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Gate's climbs (far-array.ts; release 704:
 // the Gate at tier g climbs after g more Listener kills, so the second Gate opens on the third kill). Pure rules; boats.ts, diving.ts and game.ts ask these.
-import { apertureTier } from "./world.js?v=r739-0b5b1c12e64a";
-import { listenerKills } from "./stages.js?v=r739-0b5b1c12e64a";
+import { apertureTier } from "./world.js?v=r755-c3a9aa62bf91";
+import { listenerKills } from "./stages.js?v=r755-c3a9aa62bf91";
 
 export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechGates: 2, droneGates: 4 }; // Gates opened (far-array.ts: the Gate at tier g climbs after g more Listener kills)
 const TIER_NAMES = { 12: "Infinite II", 13: "Infinite III" };
@@ -117,6 +117,41 @@ export const DRONE = { range: 8, rocketEvery: 1.6, rocketDamage: 10, rocketSpeed
 // fall from the height that speed is worth (v²/2g): feathered down it is gentle; dropped from the top, or by a booster run dry,
 // it is a fall of four levels or more, and death.
 export const DRONE_LIFT = { thrust: 30, rise: 4, max: 5, gravity: 14, burn: 1, engage: "The drone grips your shoulders and its booster roars. Hold Jump to climb, feather it to hold, let go to fall.", empty: "The booster sputters out of lift!", none: "The drone has no lift left: land and let it recharge." };
+// The drone fizzle (Tim, 2026-11-04: "If you try to fly the drone across some area of the Pentagon that would break the whole map, the
+// drone just isn't able to fly there. You can start flying there, but your drone will explode or fizzle out, noticeably, so you
+// know: something is wrong with the Corridor here; the rules are different here. Then you fall and die. The drone works wherever
+// else you want."): the airspace of the closed blocks a structure's route runs through. A booster lift whose footprint crosses into
+// one of these tiles fizzles (game.ts droneFizzle): sparks and a burst on the drone, the zone's message, the drone stowed and the
+// lift ended, so the ordinary fall rule settles the landing (landscape.ts fallDamage: 1 level 0, 2 levels 15%, 3 levels 40% of
+// maximum health, 4 or more fatal). `zones` are tried in order, each matching on tile fields (true: the field is set; a string:
+// equal to it). A tile with an `allow` flag set is never a zone (for ledges, balconies and the like that a later layout makes
+// flyable); a tile whose `optIn` field names a zone id is in that zone whatever else it is (for roofs a later layout makes walkable
+// but that must not be flown over). Ordinary great-building, compound and labyrinth roofs and the castle keep's roof are open
+// ground, not blocked, and are never zones; courts are open air too (the drone may lift you down into one from the keep's roof).
+export const DRONE_FIZZLE = {
+  allow: ["droneOk"], optIn: "droneZone",
+  zones: [
+    { id: "pentagon", match: { pentagon: true, blocked: true }, message: "The drone's lift fizzles out over the Pentagon's walls. The Corridor's rules are different here." },
+    { id: "castle", match: { kind: "castleWall", landscape: "castle", greatBuilding: true, blocked: true }, message: "The drone's lift fizzles out over the Great Castle. The Corridor's rules are different here." },
+  ],
+  burst: 1.2, // seconds the sparks and the burst show
+  sparks: 14,
+};
+const zoneById = (id) => DRONE_FIZZLE.zones.find((z) => z.id === id) || null;
+// The zone a single tile belongs to, or null.
+export function droneZoneOf(tile) {
+  if (!tile) return null;
+  if (DRONE_FIZZLE.allow.some((k) => tile[k])) return null;
+  const opt = tile[DRONE_FIZZLE.optIn]; if (typeof opt === "string" && zoneById(opt)) return zoneById(opt);
+  return DRONE_FIZZLE.zones.find((z) => Object.entries(z.match).every(([k, v]) => v === true ? !!tile[k] : tile[k] === v)) || null;
+}
+// The zone the Wayfarer's footprint at (x, y) reaches into (the same box footprintOpen tests), or null. Pure; no allocation.
+export function droneForbiddenAt(map, width, x, y) {
+  const tiles = map?.tiles; if (!tiles || !(width > 0)) return null;
+  const height = tiles.length / width, x0 = Math.floor(x + .24), x1 = Math.floor(x + .76 - 1e-6), y0 = Math.floor(y + .5), y1 = Math.floor(y + .88 - 1e-6);
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) { if (tx < 0 || ty < 0 || tx >= width || ty >= height) continue; const z = droneZoneOf(tiles[ty * width + tx]); if (z) return z; }
+  return null;
+}
 export function fuelMax(mode, empowered = false) { return mode === "drone" ? DRONE.carry : MECH.boost * (empowered ? MECH_POWER.boost : 1); }
 export function setMechMode(save, mode) {
   const m = ensureMech(save), next = mode === "drone" ? "drone" : "robot";

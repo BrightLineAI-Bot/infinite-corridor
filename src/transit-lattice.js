@@ -10,8 +10,8 @@
 // per kind, and what is set: `passives` (a constellation node id for its primary form, `id:alt` for its secondary) and
 // `echoes` (Echo ids). What a passive or Echo set here does is read by constellation.ts (nodeOn/altOn) and echoes.ts
 // (activeEchoes); setting one is done there, so this module stays free of both. Balance as data.
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r739-0b5b1c12e64a";
-import { piecesNeeded } from "./far-array.js?v=r739-0b5b1c12e64a";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r755-c3a9aa62bf91";
+import { piecesNeeded } from "./far-array.js?v=r755-c3a9aa62bf91";
 
 export const TRANSIT_LATTICE = { openTier: 13, openListeners: 1, base: { passive: 2, echo: 1 }, extra: { passive: 3, echo: 3 }, costs: [4, 4, 5, 5, 6, 6] };
 export const LATTICE_LORE = "The Transit Lattice bends the air between eventualities. Each Transit Coordinate is the place of another Lattice somewhere in the Corridor, in a history where a different passive was learned; drawn in, it merges with yours, though it was always the same Lattice. So passives from other possibilities can hold in you at once.";
@@ -24,8 +24,8 @@ export const coordinatesFor = (kill) => piecesNeeded(kill) + 1;
 export function ensureLattice(save) {
   const l = save.lattice && typeof save.lattice === "object" ? save.lattice : {}, int = (v, max = Infinity) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
   const list = (v) => (Array.isArray(v) ? v : []).filter((q, i, a) => typeof q === "string" && q && a.indexOf(q) === i);
-  const extra = { passive: int(l.extra?.passive, TRANSIT_LATTICE.extra.passive), echo: int(l.extra?.echo, TRANSIT_LATTICE.extra.echo) };
-  save.lattice = { coordinates: int(l.coordinates), paidFor: int(l.paidFor), extra, passives: list(l.passives).slice(0, TRANSIT_LATTICE.base.passive + extra.passive), echoes: list(l.echoes).slice(0, TRANSIT_LATTICE.base.echo + extra.echo) };
+  const extra = { ...(l.extra && typeof l.extra === "object" ? l.extra : {}), passive: int(l.extra?.passive, TRANSIT_LATTICE.extra.passive), echo: int(l.extra?.echo, TRANSIT_LATTICE.extra.echo) };
+  save.lattice = { ...l, coordinates: int(l.coordinates), paidFor: int(l.paidFor), extra, passives: list(l.passives).slice(0, TRANSIT_LATTICE.base.passive + extra.passive), echoes: list(l.echoes).slice(0, TRANSIT_LATTICE.base.echo + extra.echo) };
   grantCoordinates(save);
   return save.lattice;
 }

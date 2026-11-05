@@ -4,12 +4,12 @@
 // Travellers: groups of people (some mounted) walk the trails or wander a section, stop when the Wayfarer comes near,
 // and talk. Peddlers trade. Old Quillon, a wandering cartographer, gives one errand at a time; finish it and the next
 // time you meet him he pays and hands you the next.
-import { hashSeed, rng, pick, byHash } from "./random.js?v=r739-0b5b1c12e64a";
-import { LETHAL_KINDS } from "./landscape.js?v=r739-0b5b1c12e64a";
-import { hamletRoll } from "./settlements.js?v=r739-0b5b1c12e64a";
-import { RECITERS, RECITATIONS } from "./recitations.js?v=r739-0b5b1c12e64a";
-import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r739-0b5b1c12e64a";
-import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r739-0b5b1c12e64a";
+import { hashSeed, rng, pick, byHash } from "./random.js?v=r755-c3a9aa62bf91";
+import { LETHAL_KINDS } from "./landscape.js?v=r755-c3a9aa62bf91";
+import { hamletRoll } from "./settlements.js?v=r755-c3a9aa62bf91";
+import { RECITERS, RECITATIONS } from "./recitations.js?v=r755-c3a9aa62bf91";
+import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r755-c3a9aa62bf91";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r755-c3a9aa62bf91";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
@@ -305,7 +305,7 @@ export const WANDERER_QUESTS = [
 export const WANDERER = { name: "Old Quillon", role: "Wandering cartographer" };
 export function ensureWanderer(s) {
   const w = s.wanderer && typeof s.wanderer === "object" ? s.wanderer : {};
-  s.wanderer = { v: 1, stage: Math.max(0, Number(w.stage) || 0), completed: Math.max(0, Number(w.completed) || 0), met: !!w.met, quest: w.quest && typeof w.quest === "object" ? w.quest : null };
+  s.wanderer = { ...w, v: 1, stage: Math.max(0, Number(w.stage) || 0), completed: Math.max(0, Number(w.completed) || 0), met: !!w.met, quest: w.quest && typeof w.quest === "object" ? w.quest : null };
   return s;
 }
 // Does the cartographer stand in this section for the current stage? Likelier once an errand is done and owed.
@@ -384,7 +384,7 @@ export function ensureReciters(s) {
   for (const id of Object.keys(progress)) met[id] = true; // anyone whose place was kept before release 122 was met
   // Release 128: random is the default (missing = random); only an explicit "linear" choice is stored.
   for (const [id, m] of Object.entries(r.modes || {})) if (known.has(id) && m === "linear" && r.v >= 4) modes[id] = "linear";
-  s.reciters = { v: 4, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) };
+  s.reciters = { ...r, v: 4, progress, met, modes, disabled: [...new Set((Array.isArray(r.disabled) ? r.disabled : []).filter((id) => known.has(id)))], ...(Array.isArray(r.custom) && r.custom.length ? { custom: r.custom } : {}) }; if (!(Array.isArray(r.custom) && r.custom.length)) delete s.reciters.custom; // release 736 (review S7): unknown fields kept
   return s;
 }
 export function storyCatalog() { return RECITERS.map((r) => ({ ...r, count: RECITATIONS[r.id].length })); }

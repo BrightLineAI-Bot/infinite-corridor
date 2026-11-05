@@ -12,12 +12,13 @@
 // is built onto its pressure plate, and the Heart itself stays sealed until three trial chambers have been cleared of their
 // ghouls. Relics in the chambers tell what happened to the Fivefold Court. Everything is a hash of the seed and the centre;
 // a Pentagon stands only where all nine sections are new ground (`atlas.pentVersion`).
-import { hashSeed, rng, byHash } from "./random.js?v=r739-0b5b1c12e64a";
-import { BUILDINGS, layFloor, farthest } from "./great-buildings.js?v=r739-0b5b1c12e64a";
-import { carveMaze } from "./labyrinths.js?v=r739-0b5b1c12e64a";
+import { hashSeed, rng, byHash } from "./random.js?v=r755-c3a9aa62bf91";
+import { BUILDINGS, layFloor, farthest } from "./great-buildings.js?v=r755-c3a9aa62bf91";
+import { carveMaze } from "./labyrinths.js?v=r755-c3a9aa62bf91";
+import { LIFT_PER_LEVEL as LIFT } from "./landscape.js?v=r755-c3a9aa62bf91";
 
 export const PENTAGON = {
-  version: 5, // 5: release 732 (below); 4: release 730; 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
+  version: 7, // 7: the roof, its balconies and the outer stair (below); 6: shortcuts and side entrances (below); 5: release 732 (below); 4: release 730; 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
   every: 8, chance: .5, minRing: 10, // centre sections on a grid of `every`; this share of the eligible ones
   bands: { out: 36, outer: 29, court: 23, inner: 18, heart: 3 }, // pentagon "apothem" bands (tiles from the centre, along each face's normal)
   approach: 12, // tiles of paved way out from each gate
@@ -74,6 +75,86 @@ export const PENTAGON = {
     "A mirror with no glass, and behind it a name scratched out five times: the Regent's own, before she took the Heart.",
     "A will, unsigned: “To whoever holds the Seal: the Court is yours now. Keep the doors shut, or open them all and let the Pentagon breathe.”",
   ],
+  // Version 6 (Tim, 2026-11-04: "In the Pentagon there should be shortcuts... you have to traverse until you get to open doors
+  // with keys and open shortcuts. The first time you go through you might be forced to take a long path; the second time you
+  // can just go through the shortcut to a deeper level"; and "exterior doors in the Pentagon's outer walls that are locked from
+  // outside and only open from the inside... multiple entrances... different starting places along the journey"):
+  // - shortcut links, opened only from their deep side and open for good after (history `labOpen`, `link:<id>`): a lift from
+  //   the first gate's chamber down to every Heart floor below the first, and `ring` links from deep in the rings (the first
+  //   always an inner chamber with a door onto the central court) back to a chamber you come in by;
+  // - side entrances round the outer wall (`entrances`): some open from the start, into outer chambers the gates already lead
+  //   to (so they never pass a key, a lever, a trial, a keeper or a sigil), the rest exterior shortcut doors, bolted from
+  //   within until you reach them inside and draw the bolts (`x:<key>`).
+  // A Pentagon begun before version 6 keeps its tiles; its lifts and ring links are laid over it as objects on open floor
+  // (history `pentLinks`, the `overlay` version), in spots the later dungeon dressings never take.
+  shortcuts: {
+    overlay: 1, ring: [2, 4], minHops: 3, // ring links a Pentagon; how many doors the long way from a link's near end to its deep end at least
+    ringKinds: ["door", "ladder", "gate"], heartKind: "lift", spacing: 2, nearEntry: 5, // where a link end stands: within `nearEntry` of where you come in, or by the side walls
+    kinds: {
+      lift: { name: "A lift cage", deepName: "A lift cage and its winch", barred: "The cage hangs somewhere far below. Barred from the other side: only its winch down there can send it up.", opens: "You throw the winch. Chains scream, and the cage rides up toward the gates: this way back stays open.", ride: "The cage carries you" },
+      ladder: { name: "A ladder's foot", deepName: "A ladder, hooked up out of reach", barred: "A ladder hangs hooked up out of reach. Barred from the other side.", opens: "You kick the ladder loose. It crashes down to the floor below and stays there: a short way back.", ride: "You take the ladder" },
+      door: { name: "A bolted door", deepName: "A door bolted on this side", barred: "Barred from the other side.", opens: "You draw the bolt. The door swings wide onto a hall you know, and it stays open.", ride: "You go through the door" },
+      gate: { name: "A portcullis", deepName: "A portcullis and its lever", barred: "The portcullis will not lift from here. Its lever is on the other side.", opens: "You heave the lever. The portcullis grinds up and locks: the way back is open.", ride: "You duck under the portcullis" },
+    },
+    exterior: { barred: "Barred from within. Only from inside the Pentagon can its bolts be drawn.", opens: "You draw the great bolts. The door swings out onto the land, and it stays open: you can come in this way now." },
+    notice: "A SHORTCUT OPENS", burst: 1.2,
+  },
+  entrances: { count: [3, 5], exterior: [1, 2], approach: 5 }, // side entrances round the outer wall (open ones and exterior shortcut doors); tiles of paved way out from each
+  // The finale (Tim, 2026-11-04: "If you finish the Pentagon, you've done a lot, so you should be rewarded with something
+  // beautiful. After you beat the boss, a wall opens and a Starfield annex opens up: a short Starfield walkway that winds a
+  // little. At its end there's a nice little ceremonial dais you can touch; it says 'Transit' and takes you back to the
+  // Pentagon's front door — only there, because you don't have the coordinates to transit anywhere else"). Every version:
+  // when the Regent falls, a wall of the vault opens (history `pentFinale` on the base floor, `version`), laid over the vault
+  // as an object on its outer wall, never into its tiles. Beyond it, a floor of its own (`${base}:finale`): open stars, a
+  // pale walkway winding over them, a dais at its far end. The stars are not walkable (no fall, no foes: a quiet place).
+  finale: {
+    version: 1, size: [29, 15], // `version`: the opening's history value; size: the walkway floor (W, H)
+    // the walkway floor's generator, pinned on its history (`finaleFloor`): 1 (release 750) stars you cannot step onto; 2 (Tim,
+    // 2026-11-04: "Falling off the pathway will kill you, but it'll just take you to the front of the pathway of the Starfield
+    // passage") stars you can step off into and fall: a death that wakes you at the walkway's start, beside the doorway back
+    floor: 2,
+    // the dais's rerolls (Tim, 2026-11-04: "one reroll on a Tesseract passive; and if you have Divine Viscera you can pay 10
+    // Divine Viscera to reroll one more Tesseract passive. Only those two times"), per Pentagon, counted on its base floor's
+    // history (`pentRerolls`); `list`: how many Tesseracts the dais offers at once (set ones first, then the newest)
+    reroll: { free: 1, paid: 1, viscera: 10, list: 12 },
+    walk: { half: 1, waves: 1.25, amp: [2, 3.2] }, // the walkway's half-width; how many bends it makes; how far it swings (tiles)
+    dais: { r: 2.3, inset: 4 }, // the dais's round landing (radius) and how far in from the far end it stands
+    shards: 7, shardClear: 2, // floating stones in the void (looks only, never walkable), and how far from the walkway
+    burst: 1.6, arriveOut: 1.5, // the notice's burst (seconds); how far out along the gate's paved way the dais sets you down (tiles)
+    names: { floor: "The Starfield Walk", wall: "The opened wall · a walkway among the stars", back: "The opened wall · back to the Regent's Vault", dais: "Transit · a ceremonial dais" },
+    notice: "THE WALL OPENS", detail: "beyond it, a walkway among the stars",
+    messages: {
+      opens: "With a sound like a held breath let go, the vault's far wall splits along its seams and swings outward. Beyond it there is no stone at all: only stars, and a pale way across them.",
+      walk: "The Pentagon falls away behind you. A pale path winds out over the dark, and the stars go down for ever on either side.",
+      back: "You step back through the wall, into the Regent's Vault.",
+      dais: "A low round dais of five steps, ringed in pale light. One word is cut into its face: Transit. It holds a single set of coordinates, and they are the Pentagon's own front door.",
+      fell: "You step off the path and fall, and fall, through the stars. Then stone underfoot again: you wake at the start of the walkway, the vault's doorway behind you.",
+      reroll: "Choose a Tesseract glyph, then the line on it the dais should cut again.",
+      rerolled: "The dais's light runs through the glyph. One line of it fades and is cut again",
+      rerollsDone: "The dais has cut what it will cut. Only Transit remains.",
+      needViscera: "The dais wants Divine Viscera for another cutting",
+      noTesseract: "The dais would cut a Tesseract glyph again, but you carry none.",
+      arrive: "The dais takes you. Stars, a cold wind, then stone underfoot: you stand outside the Pentagon's gate. The dais knew no other place to send you.",
+    },
+  },
+  // Version 7 (Tim, 2026-11-04: "There could be interesting puzzles using drone traversal. There could be ledges on the outside of
+  // the Pentagon where you can jump down from the roof and not go all the way to death — jump down to a balcony a story or two
+  // down — and then use that to enter the Pentagon"; and "We should be able to use the roof — the roof is just another path"):
+  // - the outer ring's roof is ground you walk, at `roof.elev`, all the way round its five faces and over its section seams; its
+  //   inner edge is a parapet (blocked, as high as the roof), so no step, drop, glide or drone lift reaches a court from it;
+  // - an outer stair (`stair`) climbs the south face from the land to the roof, a level a step (slopes), for anyone; the drone's
+  //   booster (vehicle-gates.ts DRONE_LIFT: 5 levels over the jump's start) also lifts you from the land onto the roof or a
+  //   balcony;
+  // - balconies (`balconies`) stand out from the outer faces (the south-looking first), `below` 1 or 2 levels under the roof (a drop of 1 is safe,
+  //   of 2 costs .15 of max HP: landscape.ts FALL_DAMAGE). Each has a door into an outer chamber you otherwise reach the long way
+  //   (at least `minHops` doors from the land with every lock, plate, lever, trial and sigil shut), so it never lets you past any
+  //   of them: the roof and its balconies count as the land (`balcony` world doors; their tiles `pentBalcony`).
+  // A section the landscape left flat is given heights for the roof (placePentagonSection), so the roof runs on whole.
+  roof: { elev: 5, perch: { spacing: 4, max: 8, margin: 2 } }, // perches: roof tiles a roof creature may hold (pentagonRoofSpots)
+  balconies: { count: [2, 3], minHops: 3, fallbackHops: 2, south: [1, 2, 3], // on any face, the south-looking ones (whose facades show) first; a chamber barred from the land by an exterior door last
+    t: [4, 15, 19], halfWidth: 1.5, depth: 1.6, below: [1, 2], clear: 1, maxT: 22,
+    name: "The Pentagon: a balcony door", identity: "a door onto a balcony high in the five-sided wall", exit: "Door out · the balcony" },
+  stair: { face: 2, steps: 4, clear: 1, t: 20 }, // `steps` slopes from the land (level 0) up to the roof (level 5), on face `face`, within `t` of its middle
   warden: { hp: 3.4, damage: 1.4, affixes: 2, ghouls: 2 },
   secrets: 2, shardDeep: 3, deepGlyphFrom: 2, // reliquaries; the Heart floor that holds the second shard; keepers from this floor give glyphs
   secretNames: ["Hidden Reliquary of the Faces", "Hidden Reliquary of the Heart"], shardNames: ["Shard of the Faces", "Shard of the Heart"],
@@ -133,21 +214,80 @@ export function regionAt(gx, gy) {
 // stretch of edge at `along` (tiles a..b along it) open court on both sides of the seam from section (rx, ry) by (dx, dy)?
 // Only the court and the central court count: anywhere else (building, the walls between the courts, outside) the seam is
 // crossed at the lane, as every other edge is.
-export function pentagonSeamOpen(cx, cy, rx, ry, dx, dy, a, b) {
+// v7 (`roof` true: the Pentagon is version 7 or later and has its roof): its roof runs on over the seams too, and is crossed
+// anywhere along it (the parapet is not roof).
+export function pentagonSeamOpen(cx, cy, rx, ry, dx, dy, a, b, roof = false) {
   const nx = rx + dx, ny = ry + dy; if (Math.abs(nx - cx) > 1 || Math.abs(ny - cy) > 1 || Math.abs(rx - cx) > 1 || Math.abs(ry - cy) > 1) return false;
-  const open = (sx, sy, x, y) => { const g = toGlobal(cx, cy, sx, sy, x, y), k = regionAt(g.gx, g.gy).kind; return k === "court" || k === "central"; };
+  const open = (sx, sy, x, y) => { const g = toGlobal(cx, cy, sx, sy, x, y), k = regionAt(g.gx, g.gy).kind; return k === "court" || k === "central" || (roof && k === "outer" && !pentagonParapet(g.gx, g.gy)); };
   for (let v = a; v <= b; v++) { if (v < 0 || v > 31) return false;
     const here = dx ? [dx > 0 ? 31 : 0, v] : [v, dy > 0 ? 31 : 0], there = dx ? [dx > 0 ? 0 : 31, v] : [v, dy > 0 ? 0 : 31];
     if (!open(rx, ry, ...here) || !open(nx, ny, ...there)) return false; }
   return true;
 }
 // A point a distance `m` out along face i's normal, `t` along the face.
+const FACE_T = 9; // how far along a face from its middle a half's door stands
 const facePoint = (i, m, t) => { const [nx, ny] = NORM[i]; return { gx: Math.floor(C0 + nx * m - ny * t), gy: Math.floor(C0 + ny * m + nx * t) }; };
+const faceT = (i, gx, gy) => (gx + .5 - C0) * -NORM[i][1] + (gy + .5 - C0) * NORM[i][0]; // how far along face i a cell's middle lies
+
+// ------------------------------------------------------------------------------------------------ v7: the roof and its ledges
+const N4 = [[0, -1], [-1, 0], [1, 0], [0, 1]];
+// Is this cell of the outer ring the roof's parapet: beside (8 ways) anything of the rings within? The parapet stays blocked, as
+// high as the roof, so the roof never runs into a court. Pure, from the geometry, so the sections of a seam agree.
+export function pentagonParapet(gx, gy) {
+  if (regionAt(gx, gy).kind !== "outer") return false;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const k = regionAt(gx + dx, gy + dy).kind; if (k !== "outer" && k !== "outside") return true; }
+  return false;
+}
+const roofCell = (gx, gy) => regionAt(gx, gy).kind === "outer" && !pentagonParapet(gx, gy);
+// The balconies and the outer stair of a version 7 Pentagon, in its own tiles (gx, gy over the 3×3 block). Pure: hashes of the
+// plan's key, and the geometry. A balcony goes to an outer chamber (south-looking faces first) holding no open land door, at least
+// `minHops` doors from the land with every lock, plate, lever, trial, sigil, shard and barred door shut (so its door is a way
+// in you would otherwise walk the long way to, and passes nothing); its cells stand just outside the face, apart from every
+// approach, door and other ledge, inside one section. The stair is a run of slopes along the south face from the land up to
+// the roof's edge.
+function planLedges(key, cx, cy, world, edges) {
+  const P = PENTAGON, B = P.bands, Bc = P.balconies, St = P.stair, R0 = P.roof.elev, gk = (gx, gy) => `${gx},${gy}`, occ = new Set();
+  const near = (c, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (occ.has(gk(c.gx + dx, c.gy + dy))) return true; return false; };
+  const oneSection = (cells) => { const L0 = toLocal(cx, cy, cells[0].gx, cells[0].gy); return cells.every((c) => { const L = toLocal(cx, cy, c.gx, c.gy); return L.rx === L0.rx && L.ry === L0.ry && L.x >= 2 && L.x <= 29 && L.y >= 2 && L.y <= 29; }); };
+  for (const w of world) if (w.place === "land" && !w.toGate) { const i = Number(w.node.slice(1)), f = i >> 1, o = facePoint(f, B.out + 1.2, i & 1 ? FACE_T : -FACE_T), [nx, ny] = NORM[f]; // the approaches, as placePentagonSection paints them
+    for (let k = 0; k < (w.side ? P.entrances.approach : P.approach); k += .5) for (const side of [-1, -.5, 0, .5, 1]) occ.add(gk(Math.floor(o.gx + .5 + nx * k - ny * side), Math.floor(o.gy + .5 + ny * k + nx * side))); }
+  // the long way: hops from the land with every gate shut
+  const adj = new Map(), link = (a, b) => { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); };
+  for (const e of edges) if (!e.cut && !e.sigil && !e.shortcut && !e.secret && !e.plate) link(e.a, e.b);
+  for (const w of world) if (!w.toGate && !w.sigil && !w.exterior && !w.lock && !w.gate && !w.sealed) link(w.node, w.place);
+  const free = hopsFrom(adj, "land"), landed = new Set(world.filter((w) => w.place === "land" && !w.exterior).map((w) => w.node)), barred = new Set(world.filter((w) => w.exterior).map((w) => w.node)), north = (i) => Bc.south.includes(i >> 1) ? 0 : 1;
+  const deep = (h) => [...Array(10).keys()].filter((i) => !landed.has(`o${i}`) && (free.get(`o${i}`) ?? 0) >= h), cand = (deep(Bc.minHops).length ? deep(Bc.minHops) : deep(Bc.fallbackHops)) // where no chamber lies `minHops` in, one `fallbackHops` in
+    .sort((a, b) => +barred.has(`o${a}`) - +barred.has(`o${b}`) || north(a) - north(b) || free.get(`o${b}`) - free.get(`o${a}`) || hashSeed(`${key}:balcony:${a}`) - hashSeed(`${key}:balcony:${b}`));
+  const want = Bc.count[0] + hashSeed(`${key}:balconies`) % (Bc.count[1] - Bc.count[0] + 1), balconies = [];
+  for (const i of cand) { if (balconies.length >= want) break; const f = i >> 1, sign = i & 1 ? 1 : -1;
+    const ts = [...Bc.t].sort((a, b) => hashSeed(`${key}:balcony-t:${i}:${a}`) - hashSeed(`${key}:balcony-t:${i}:${b}`));
+    for (const tv of ts) { const t0 = sign * tv; if (Math.abs(t0) > Bc.maxT) continue; const at = facePoint(f, B.out + 1, t0), cells = [];
+      for (let gy = at.gy - 4; gy <= at.gy + 4; gy++) for (let gx = at.gx - 4; gx <= at.gx + 4; gx++) { const R = regionAt(gx, gy); if (R.kind === "outside" && R.face === f && R.m <= B.out + Bc.depth && Math.abs(faceT(f, gx, gy) - t0) <= Bc.halfWidth) cells.push({ gx, gy }); }
+      if (cells.length < 3 || !oneSection(cells) || cells.some((c) => near(c, Bc.clear))) continue;
+      const set = new Set(cells.map((c) => gk(c.gx, c.gy))), seen = new Set([gk(cells[0].gx, cells[0].gy)]), st = [cells[0]]; // one piece
+      while (st.length) { const c = st.pop(); for (const [dx, dy] of N4) { const k = gk(c.gx + dx, c.gy + dy); if (set.has(k) && !seen.has(k)) { seen.add(k); st.push({ gx: c.gx + dx, gy: c.gy + dy }); } } }
+      if (seen.size !== cells.length) continue;
+      const edge = cells.filter((c) => N4.some(([dx, dy]) => roofCell(c.gx + dx, c.gy + dy))).sort((a, b) => Math.abs(faceT(f, a.gx, a.gy) - t0) - Math.abs(faceT(f, b.gx, b.gy) - t0) || a.gy - b.gy || a.gx - b.gx);
+      if (!edge.length) continue; const out = edge[0], [nx, ny] = NORM[f];
+      const back = N4.filter(([dx, dy]) => roofCell(out.gx + dx, out.gy + dy)).sort((a, b) => (a[0] * nx + a[1] * ny) - (b[0] * nx + b[1] * ny))[0], door = { gx: out.gx + back[0], gy: out.gy + back[1] };
+      const below = Bc.below[0] + hashSeed(`${key}:balcony-below:${i}`) % (Bc.below[1] - Bc.below[0] + 1);
+      for (const c of cells) occ.add(gk(c.gx, c.gy)); balconies.push({ key: `balc${i}`, node: `o${i}`, f, t: t0, elev: R0 - below, cells, out: { ...out }, door }); break; } }
+  // the outer stair: a slope a level, along the south face, its top step beside the roof
+  let stair = null; const f = St.face, ts = []; for (let t = -St.t; t <= St.t; t++) for (const dir of [-1, 1]) ts.push({ t, dir });
+  ts.sort((a, b) => hashSeed(`${key}:stair:${a.t}:${a.dir}`) - hashSeed(`${key}:stair:${b.t}:${b.dir}`));
+  for (const { t, dir } of ts) { const cells = []; for (let k = 0; k <= St.steps; k++) cells.push({ ...facePoint(f, B.out + .5, t + k * dir), elev: k });
+    if (!cells.every((c) => regionAt(c.gx, c.gy).kind === "outside") || !oneSection(cells) || cells.some((c) => near(c, St.clear))) continue;
+    if (!cells.every((c, k) => !k || Math.abs(c.gx - cells[k - 1].gx) + Math.abs(c.gy - cells[k - 1].gy) === 1)) continue;
+    const top = cells[cells.length - 1]; if (!N4.some(([dx, dy]) => roofCell(top.gx + dx, top.gy + dy))) continue;
+    stair = { cells, foot: { gx: cells[0].gx, gy: cells[0].gy } }; break; }
+  return { balconies, stair };
+}
 
 // ------------------------------------------------------------------------------------------------ the maze of chambers
 // Nodes: o0..o9 (outer ring, two a face), i0..i4 (inner ring), h0..h2 (the Heart down to the vault). World places: the land,
 // the ring courts c0..c4, the central court.
 const memo = new Map();
+const hopsFrom = (adj, from) => { const dist = new Map([[from, 0]]), q = [from]; for (let h = 0; h < q.length; h++) { const v = q[h]; for (const u of adj.get(v) || []) if (!dist.has(u)) { dist.set(u, dist.get(v) + 1); q.push(u); } } return dist; };
 export function pentagonPlan(seed, cx, cy, V = 1) {
   const key = `${seed}:${cx}:${cy}`, mkey = `${key}:v${V}`; if (memo.has(mkey)) return memo.get(mkey);
   const P = PENTAGON, r = rng(`pentagon:${key}:plan`), B = P.bands, N = P.names, nodes = [], edges = [];
@@ -172,7 +312,7 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
   world.push({ node: `h${nh - 1}`, place: "land", key: "vaultout", toGate: true }); // the vault's way out: to the first gate
   // solvability over places and chambers (ignoring locks), then the locks laid on the way
   const graph = () => { const adj = new Map(), link = (a, b) => { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); };
-    for (const e of edges) if (!e.cut && !e.sigil && !e.shortcut) link(e.a, e.b); for (const w of world) if (!w.toGate && !w.sigil) link(w.node, w.place); return adj; }; // sigil doors are shortcuts, never the only way
+    for (const e of edges) if (!e.cut && !e.sigil && !e.shortcut) link(e.a, e.b); for (const w of world) if (!w.toGate && !w.sigil && !w.exterior && !w.balcony) link(w.node, w.place); return adj; }; // sigil doors are shortcuts, never the only way
   const reach = (from, skip = () => false) => { const adj = graph(), seen = new Set([from]), st = [from]; while (st.length) { const v = st.pop(); for (const u of adj.get(v) || []) if (!seen.has(u) && !skip(v, u)) { seen.add(u); st.push(u); } } return seen; };
   // make sure every chamber (and so the central court) can be reached: reopen a fallen ring door, or join the inner ring, as need be
   const lost = () => nodes.some((q) => q.kind !== "heart" && !reach("land").has(q.id));
@@ -220,6 +360,17 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
       const hostsK = nodes.filter((n) => /^[oi]\d/.test(n.id) && !used.has(n.id)).sort(byHash((a) => `${key}:sealed-host:${a.id}`));
       for (let k = 0; k < P.sealed; k++) { const host = hostsK[k], kq = add(`k${k}`, "sealed", P.sealedNames[k], k === 1 ? "cellar" : "hall"); kq.sealedVault = k; pass(host.id, kq.id, { sigil: true });
         let wk = kinds[hashSeed(`${key}:warden:${k}`) % kinds.length]; for (let j = 0; taken.has(wk) && j < kinds.length; j++) wk = kinds[(kinds.indexOf(wk) + 1) % kinds.length]; taken.add(wk); kq.warden = { kind: wk, name: P.bosses[wk] }; } } } // a shortcut opens from its far side
+  // v6: side entrances round the outer wall, in outer chambers that hold no gate; the farthest of them from the gates are
+  // exterior shortcut doors, bolted from within
+  if (V >= 6) { const E = P.entrances, gn = new Set(gates.map((g) => `o${g}`)), dist = hopsFrom(graph(), "land");
+    const hid = (i) => NORM[i >> 1][1] < -.5 ? 1 : 0, site = (i) => { const f = i >> 1, t = i & 1 ? FACE_T : -FACE_T, d = facePoint(f, B.out - .5, t), o = facePoint(f, B.out + 1.2, t), L = toLocal(cx, cy, o.gx, o.gy), D = toLocal(cx, cy, d.gx, d.gy); return L.rx === D.rx && L.ry === D.ry && L.x >= 2 && L.x <= 29 && L.y >= 2 && L.y <= 29; };
+    const cand = [...Array(10).keys()].filter((i) => !gn.has(`o${i}`) && site(i)).sort((a, b) => hid(a) - hid(b) || hashSeed(`${key}:entrance:${a}`) - hashSeed(`${key}:entrance:${b}`)); // doors on the faces that look south first (a north face's own roofs hide a door from the land)
+    const n = Math.min(cand.length, E.count[0] + hashSeed(`${key}:entrances`) % (E.count[1] - E.count[0] + 1)), pick = cand.slice(0, n);
+    const nx = Math.max(0, Math.min(n - 1, E.exterior[0] + hashSeed(`${key}:exteriors`) % (E.exterior[1] - E.exterior[0] + 1)));
+    const ext = new Set([...pick].sort((a, b) => (dist.get(`o${b}`) ?? 0) - (dist.get(`o${a}`) ?? 0) || pick.indexOf(a) - pick.indexOf(b)).slice(0, nx));
+    for (const i of pick) world.push({ node: `o${i}`, place: "land", key: `side${i}`, side: true, ...(ext.has(i) ? { exterior: `x:side${i}` } : {}) }); }
+  // v7: the roof's balconies (planLedges), each a door from the land (the roof counts as the land) into an outer chamber far in
+  const ledges = V >= 7 ? planLedges(key, cx, cy, world, edges) : null; if (ledges) for (const b of ledges.balconies) world.push({ node: b.node, place: "land", key: b.key, balcony: true, door: b.door, out: b.out });
   // relics, one a chamber in seven of them
   const relicRooms = nodes.filter((q) => q.kind !== "heart" && q.kind !== "sealed").sort(() => r() - .5).slice(0, P.relics.length); relicRooms.forEach((q, i) => (q.relic = i));
   // ports: each chamber's doors on its walls (world doors top and bottom, ring doors left and right, the Heart's ladders inside)
@@ -231,17 +382,25 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
       q.ports.push({ kind: "pass", to: other, edge: e, ...(heart ? (() => { const h = hashSeed(`${key}:ladder:${q.id}:${other}`); const x = 3 + 2 * (h % 10), y = 3 + 2 * ((h >>> 5) % 6); return { x, y, inner: { x, y } }; })() : slot(side, other)) }); }
     for (const w of world) if (w.node === q.id) q.ports.push({ kind: "world", world: w, ...slot(w.place === "land" || w.place.startsWith("c") && q.kind === "inner" ? "bottom" : "top", w.key) }); }
   // world positions of every world door (pure: from the geometry)
-  const T = 9; // how far along a face from its middle a half's door stands
+  const T = FACE_T;
   for (const w of world) { const i = Number(w.node.slice(1)), f = w.node.startsWith("o") ? i >> 1 : w.node.startsWith("i") ? i : 0, t = w.node.startsWith("o") ? (i & 1 ? T : -T) : 0;
     if (w.key === "heart") { w.door = { gx: C0, gy: C0 + B.heart - 1 }; w.out = { gx: C0, gy: C0 + B.heart }; continue; }
-    if (w.toGate) continue;
+    if (w.toGate || w.balcony) continue;
     const [mDoor, mOut] = w.place === "land" ? [B.out - .5, B.out + 1.2] : w.place === "central" ? [B.inner + .5, B.inner - 1.2] : w.node.startsWith("o") ? [B.outer + .5, B.outer - 1.2] : [B.court - .5, B.court + 1.2];
     w.door = facePoint(f, mDoor, t); w.out = facePoint(f, mOut, t); }
   const first = world.find((w) => w.place === "land" && !w.toGate); world.find((w) => w.toGate).out = first.out;
   // a lever stands on the side of its court the ring's roofs do not hide from view (the near side of a south-facing court)
   const leverAt = levers.map((f) => { const t = hashSeed(`${key}:lever:${f}`) & 1 ? 4 : -4, m = NORM[f][1] > 0 ? B.court + 1.5 : B.outer - 1.5; let at = facePoint(f, m, t);
     for (let k = 0; k < 6 && regionAt(at.gx, at.gy).kind !== "court"; k++) at = facePoint(f, m, t * (1 - (k + 1) / 6)); return { f, ...at }; });
-  const plan = { key, seed, cx, cy, V, base: `pentagon:${seed}:${cx}:${cy}${V >= 2 ? `:v${V}` : ""}`, nodes, edges, world, W, H, trials, keyNode, plateE, lockW, gate: first, sealNode, levers: leverAt, nh };
+  // shortcut links (every version: v6 lays them in, a Pentagon begun before has them laid over it): pure, from the graph
+  const links = [], S = P.shortcuts; { const adj = graph(), fromLand = hopsFrom(adj, "land"), hub = first.node, entries = [...new Set(world.filter((w) => w.place === "land" && !w.toGate && !w.exterior && !w.balcony).map((w) => w.node))];
+    for (let i = 1; i < nh; i++) links.push({ id: `lift${i}`, kind: S.heartKind, near: hub, deep: `h${i}`, heart: i });
+    const deepC = nodes.filter((n) => (n.kind === "inner" || n.kind === "outer") && !entries.includes(n.id) && fromLand.has(n.id)).sort((a, b) => fromLand.get(b.id) - fromLand.get(a.id) || hashSeed(`${key}:link:${a.id}`) - hashSeed(`${key}:link:${b.id}`));
+    const onCentral = deepC.find((n) => n.kind === "inner" && world.some((w) => w.node === n.id && w.place === "central")), order = onCentral ? [onCentral, ...deepC.filter((n) => n !== onCentral)] : deepC;
+    const want = S.ring[0] + hashSeed(`${key}:links`) % (S.ring[1] - S.ring[0] + 1), far = new Map(entries.map((e) => [e, hopsFrom(adj, e)]));
+    for (const d of order) { const k = links.length - (nh - 1); if (k >= want) break; const near = [...entries.slice(k % entries.length), ...entries.slice(0, k % entries.length)].find((e) => (far.get(e).get(d.id) ?? 0) >= S.minHops); if (!near) continue;
+      links.push({ id: `link${k}`, kind: S.ringKinds[hashSeed(`${key}:link-kind:${d.id}`) % S.ringKinds.length], near, deep: d.id }); } }
+  const plan = { key, seed, cx, cy, V, base: `pentagon:${seed}:${cx}:${cy}${V >= 2 ? `:v${V}` : ""}`, nodes, edges, world, W, H, trials, keyNode, plateE, lockW, gate: first, sealNode, levers: leverAt, nh, links, ...(ledges ? { ledges } : {}) };
   if (memo.size > 8) memo.clear(); memo.set(mkey, plan); return plan;
 }
 const chamberId = (plan, q) => `${plan.base}:f${q.n + 1}`;
@@ -254,22 +413,37 @@ const I = (x, y) => y * 32 + x;
 export function placePentagonSection(map, seed, cx, cy, rx, ry, V = 1) {
   if (!map?.tiles?.length || map.greatBuilding) return null;
   const P = PENTAGON, plan = pentagonPlan(seed, cx, cy, V), cells = { outer: [], inner: [], wall: [], heart: [] };
+  const roofed = V >= 7 && !!plan.ledges, R0 = P.roof.elev, roofLift = (1 + P.floors.outer * .55) / (R0 * LIFT), parapet = []; // v7: the outer ring's roof
+  // A section the landscape left flat (nothing to raise there: landscape.ts applyLandscape) still carries the roof's heights, so
+  // the roof runs on whole over every seam: its ground is all level 0, and heights now count in it (no biome, version 0: no
+  // landscape-only sea creatures or dive sites come with it).
+  if (roofed && !map.landscape) map.landscape = { version: 0, biome: null, name: null, pentagon: true };
   for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) { const { gx, gy } = toGlobal(cx, cy, rx, ry, x, y), R = regionAt(gx, gy), i = I(x, y);
     if (R.kind === "outside") continue;
     const t = map.tiles[i], built = R.kind !== "court" && R.kind !== "central";
     map.tiles[i] = { ...t, x, y, kind: built ? "castleWall" : "castleCourt", landscape: "castle", blocked: built, elev: 0, slope: false, environment: undefined, canopy: undefined, structure: undefined, greatBuilding: true, pentagon: R.kind, courtyard: !built || undefined };
+    if (roofed && R.kind === "outer") { const edge = pentagonParapet(gx, gy); if (edge) parapet.push({ x, y }); // the parapet: blocked, as high as the roof
+      map.tiles[i] = edge ? { ...map.tiles[i], elev: R0, roofLift, pentParapet: true } : { ...map.tiles[i], kind: "castleCourt", blocked: false, elev: R0, roofLift, structure: "buildingRoof", pentRoof: true }; }
     if (built) cells[R.kind].push({ x, y }); }
+  // v7: the balconies and the outer stair, raised ground just outside the outer face (drawn with the roof, at its scale)
+  const ledges = [];
+  if (roofed) { const lay = (c, extra) => { const l = toLocal(cx, cy, c.gx, c.gy); if (l.rx !== rx || l.ry !== ry) return null; const i = I(l.x, l.y);
+      map.tiles[i] = { ...map.tiles[i], x: l.x, y: l.y, kind: "castleCourt", landscape: "castle", blocked: false, slope: false, environment: undefined, canopy: undefined, structure: undefined, greatBuilding: true, roofLift, ...extra }; return l; };
+    for (const b of plan.ledges.balconies) for (const c of b.cells) { const l = lay(c, { elev: b.elev, structure: "buildingRoof", pentagon: "balcony", pentBalcony: b.key }); if (l) ledges.push({ x: l.x, y: l.y, kind: "balcony", elev: b.elev, key: b.key, ...(c.gx === b.out.gx && c.gy === b.out.gy ? { door: (({ x, y }) => ({ x, y }))(toLocal(cx, cy, b.door.gx, b.door.gy)), face: b.f } : {}) }); }
+    const S = plan.ledges.stair; if (S) for (const [k, c] of S.cells.entries()) { const l = lay(c, k ? { elev: c.elev, slope: c.elev < R0, structure: "buildingRoof", pentagon: "stair", pentStair: k } : { elev: 0, greatBuilding: undefined, roofLift: undefined, causeway: true, pentStair: 0 }); if (l && k) ledges.push({ x: l.x, y: l.y, kind: "stair", elev: c.elev, step: k }); } }
   // approaches before the gates (a short paved way out from each)
   // (each section paints the stretch that falls in it, so an approach runs on over a section's edge; it bridges canyon and rock)
-  for (const w of plan.world) if (w.place === "land" && !w.toGate) { const [nx, ny] = NORM[Number(w.node.slice(1)) >> 1];
-    for (let k = 0; k < P.approach; k += .5) for (const side of [-1, -.5, 0, .5, 1]) { const gx = Math.floor(w.out.gx + .5 + nx * k - ny * side), gy = Math.floor(w.out.gy + .5 + ny * k + nx * side), l = toLocal(cx, cy, gx, gy); if (l.rx !== rx || l.ry !== ry) continue; const i = I(l.x, l.y); if (map.tiles[i].greatBuilding) continue; map.tiles[i] = { ...map.tiles[i], kind: "castleCourt", landscape: "castle", blocked: false, elev: 0, slope: false, environment: undefined, structure: undefined, canopy: undefined, causeway: true }; } }
+  for (const w of plan.world) if (w.place === "land" && !w.toGate && !w.balcony) { const [nx, ny] = NORM[Number(w.node.slice(1)) >> 1];
+    for (let k = 0; k < (w.side ? P.entrances.approach : P.approach); k += .5) for (const side of [-1, -.5, 0, .5, 1]) { const gx = Math.floor(w.out.gx + .5 + nx * k - ny * side), gy = Math.floor(w.out.gy + .5 + ny * k + nx * side), l = toLocal(cx, cy, gx, gy); if (l.rx !== rx || l.ry !== ry) continue; const i = I(l.x, l.y); if (map.tiles[i].greatBuilding) continue; map.tiles[i] = { ...map.tiles[i], kind: "castleCourt", landscape: "castle", blocked: false, elev: 0, slope: false, environment: undefined, structure: undefined, canopy: undefined, causeway: true }; } }
   const inP = (o) => { const t = map.tiles[I(Math.round(o.x), Math.round(o.y))]; return t?.greatBuilding || t?.causeway; };
   map.objects = (map.objects || []).filter((o) => !inP(o)); map.enemySpawns = (map.enemySpawns || []).filter((e) => !inP(e));
   // the doors that stand in this section
   const N = P.names, doors = [];
   for (const w of plan.world) { if (w.toGate) continue; const L = toLocal(cx, cy, w.out.gx, w.out.gy), D = toLocal(cx, cy, w.door.gx, w.door.gy); if (L.rx !== rx || L.ry !== ry) continue;
-    const q = plan.nodes.find((n) => n.id === w.node), name = w.key === "heart" ? N.heart[0] : w.place === "land" ? `${P.name}: a gate` : q.name;
-    map.objects.push({ id: `pent-${w.key}`, kind: "dungeon", buildingDoor: true, pentagonDoor: true, dungeonId: chamberId(plan, q), pentBase: plan.base, dungeonType: "pentagon", ...(w.sigil ? { sigil: true, ...(V >= 4 ? { sigilKey: `w:${w.key}` } : {}) } : {}), name, identity: w.place === "land" ? "one of the five-sided wall's two gates" : "a door into the rings", x: L.x, y: L.y, state: "open", actions: ["enter"], enterAt: w.key, ...(w.sealed ? { pentSeal: w.sealed } : {}), ...(w.place === "land" ? { landmark: true, lore: `${P.name}: a wall of building on five faces, round courts within courts. The Fivefold Court is long gone; something else keeps it now.` } : {}) });
+    if (w.balcony) { const q = plan.nodes.find((n) => n.id === w.node), B = P.balconies; // v7: a balcony's door, reached only from up on the roof or the balcony (as a roof hatch is: game.ts reachOf)
+      map.objects.push({ id: `pent-${w.key}`, kind: "dungeon", buildingDoor: true, pentagonDoor: true, pentBalcony: w.key, ...(roofed ? { roofHatch: true, elev: map.tiles[I(L.x, L.y)].elev } : {}), dungeonId: chamberId(plan, q), pentBase: plan.base, dungeonType: "pentagon", name: B.name, identity: B.identity, x: L.x, y: L.y, state: "open", actions: ["enter"], enterAt: w.key }); continue; }
+    const q = plan.nodes.find((n) => n.id === w.node), name = w.key === "heart" ? N.heart[0] : w.exterior ? `${P.name}: a door barred from within` : w.side ? `${P.name}: a side door` : w.place === "land" ? `${P.name}: a gate` : q.name;
+    map.objects.push({ id: `pent-${w.key}`, kind: "dungeon", buildingDoor: true, pentagonDoor: true, dungeonId: chamberId(plan, q), pentBase: plan.base, dungeonType: "pentagon", ...(w.sigil ? { sigil: true, ...(V >= 4 ? { sigilKey: `w:${w.key}` } : {}) } : {}), name, identity: w.side ? "a door in the five-sided wall" : w.place === "land" ? "one of the five-sided wall's two gates" : "a door into the rings", ...(w.side ? { pentLand: true } : {}), ...(w.exterior ? { barred: true, shortcutKey: w.exterior } : {}), x: L.x, y: L.y, state: "open", actions: ["enter"], enterAt: w.key, ...(w.sealed ? { pentSeal: w.sealed } : {}), ...(w.place === "land" && !w.side ? { landmark: true, lore: `${P.name}: a wall of building on five faces, round courts within courts. The Fivefold Court is long gone; something else keeps it now.` } : {}) });
     if (D.rx === rx && D.ry === ry) doors.push({ x: D.x, y: D.y, face: L.y > D.y ? "south" : L.y < D.y ? "north" : L.x > D.x ? "east" : "west" }); }
   // v2: the great levers, one in each of three courts
   for (const L of plan.levers) { const l = toLocal(cx, cy, L.gx, L.gy); if (l.rx !== rx || l.ry !== ry) continue;
@@ -281,7 +455,9 @@ export function placePentagonSection(map, seed, cx, cy, rx, ry, V = 1) {
   if (!blocks.length && !doors.length) return null;
   const all = blocks.flatMap((b) => b.cells), xs = all.map((c) => c.x), ys = all.map((c) => c.y), bx = xs.length ? Math.min(...xs) : 0, by = ys.length ? Math.min(...ys) : 0;
   const rec = { id: `pentagon-${cx}-${cy}-${rx}-${ry}`, kind: "greatBuilding", v: 2, pentagon: true, big: true, name: P.name, style: "keep", x: 16, y: 31, bounds: { x: bx, y: by, w: xs.length ? Math.max(...xs) - bx + 1 : 1, h: ys.length ? Math.max(...ys) - by + 1 : 1 }, footprint: all, blocks, doors, hatches: [], crumbled: [], grain: hh("grain") % 97, state: "closed", actions: [] };
+  if (roofed) Object.assign(rec, { pentRoof: R0, parapet, ledges }); // v7: the roof's parapet and its ledges, for drawing (renderer greatBlocks)
   map.objects.push(rec); map.greatBuilding = { id: rec.id, pentagon: true, cx, cy, version: V }; map.pentagon = { cx, cy, V, base: plan.base };
+  if (roofed) { map.pentagon.roof = true; const S = plan.ledges.stair, f = S && toLocal(cx, cy, S.foot.gx, S.foot.gy); if (f && f.rx === rx && f.ry === ry) map.pentagon.stairFoot = { x: f.x, y: f.y }; } // the stair's foot is joined to the land (game.ts loadArea)
   return rec;
 }
 
@@ -306,7 +482,7 @@ export function generatePentagonChamber(seed, id) {
   const objects = [], exitsTo = {}, entries = {}, N = P.names;
   for (const p of q.ports) { if (p.kind === "world") { const w = p.world, oid = `building-exit-${w.key}`; entries[w.key] = { ...p.inner };
       const to = w.toGate ? plan.gate.out : w.out, L = toLocal(plan.cx, plan.cy, to.gx, to.gy);
-      objects.push({ id: oid, kind: "exit", name: w.toGate ? "Way out · the outer gate" : w.place === "land" ? "Gate out" : w.place === "central" ? "Door · the central court" : `Door · ${N.faces[Number(w.place.slice(1))]} court`, x: p.x, y: p.y, state: "open", actions: ["exit"], ...(w.lock ? { lock: w.lock, lockName: "Regent's Key" } : {}), ...(w.gate ? { gate: w.gate } : {}), ...(w.sigil ? { sigil: true, ...(plan.V >= 4 ? { sigilKey: `w:${w.key}` } : {}) } : {}) });
+      objects.push({ id: oid, kind: "exit", name: w.toGate ? "Way out · the outer gate" : w.balcony ? P.balconies.exit : w.exterior ? "Door out · bolted on this side" : w.side ? "Side door out" : w.place === "land" ? "Gate out" : w.place === "central" ? "Door · the central court" : `Door · ${N.faces[Number(w.place.slice(1))]} court`, x: p.x, y: p.y, state: "open", actions: ["exit"], ...(w.lock ? { lock: w.lock, lockName: "Regent's Key" } : {}), ...(w.gate ? { gate: w.gate } : {}), ...(w.sigil ? { sigil: true, ...(plan.V >= 4 ? { sigilKey: `w:${w.key}` } : {}) } : {}), ...(w.exterior ? { shortcutOpens: w.exterior } : {}) });
       exitsTo[oid] = { rx: L.rx, ry: L.ry, x: L.x, y: L.y }; continue; }
     const o = plan.nodes.find((n) => n.id === p.to), there = o.ports.find((pp) => pp.kind === "pass" && pp.to === q.id), heart = q.kind === "heart", dir = heart ? (o.n > q.n ? "down" : "up") : "door";
     objects.push({ id: `lab-pass-${o.n}`, kind: "buildingStair", name: `${dir === "door" ? "Door" : dir === "down" ? "Ladder down" : "Ladder up"} · ${o.name}`, x: p.x, y: p.y, state: "open", actions: [dir === "down" ? "descend" : "climb"], toId: chamberId(plan, o), toX: there.inner.x, toY: there.inner.y, dir, labyrinth: true, ...(plateSpot && p === plateSpot ? { plateLock: true } : {}), ...(p.edge.sigil ? { sigil: true } : {}), ...(dir === "down" && q.boss && (plan.V === 2 || plan.V >= 4) ? { bossGate: true } : {}), ...(p.edge.sigil && plan.V >= 4 ? { sigilKey: `e:${p.edge.a}-${p.edge.b}` } : {}),
@@ -339,4 +515,180 @@ export function generatePentagonChamber(seed, id) {
   const depth = q.kind === "outer" ? 1 : q.kind === "inner" || q.kind === "secret" || q.kind === "sealed" ? 2 : 3 + Number(q.id.slice(1));
   return { seed, id, recipe: "greatBuilding", name: `${P.name} · ${q.name}${q.trial ? " · a trial" : ""}`, identity: `${P.name}: ${q.name}`, danger: "ghouls", width: W, height: H, tiles, entry: { ...arrive }, exit: null, objects, enemySpawns,
     building: { base: Pp.base, style: "keep", floor: depth, floors: V2 ? 3 + plan.nh - 1 : 5, labyrinth: true, pentagon: true, node: q.n, kind: q.floorKind, of: plan.nodes.length, keys: plan.keyNode ? [{ id: "key0", name: "Regent's Key" }] : plan.V >= 3 ? P.shardNames.slice(0, P.secrets).map((name, k) => ({ id: `shard${k}`, name })) : [], trial: !!q.trial, trials: plan.trials.length, entries, exitsTo, vault: V2 ? vault : q.id === "h2", ...(V2 ? { V: plan.V, dread, boss: !!boss, levers: plan.levers.length, champions: plan.trials.length + plan.nh - 1, heartFloor: q.kind === "heart" ? hi : -1 } : {}), breachEntry: null, roofLadder: null, fallTo: null }, layoutVersion: 1, themePool: 0 };
+}
+
+// ------------------------------------------------------------------------------------------------ what the walls say
+// Tim, 2026-11-04 (docs/narrative-bible.md, section 1, "The Pentagons, the keeps and the Tesseracts" and "Why the game
+// exists"): "Nobody is certain what the Pentagons are... It shouldn't be overdone... these are just interesting thoughts."
+// A few chambers, not many, have marks in a wall. Each leans one way: the Corridor outcropping (`outcrop`), a people of
+// the Corridor who built it (`people`), two realities pressed together at a fold (`seam`), or nothing anyone wrote
+// (`none`). They contradict each other on purpose; nothing settles it, nothing counts them, and no quest follows.
+//
+// Placement is laid over a chamber when it loads (as a crossing's margin is): the chamber's own generation is untouched,
+// so floors already explored regenerate byte for byte. Whether a chamber has marks is a hash of the seed and the chamber;
+// which marks, one of those not yet read (a chamber where marks were read keeps them). Save (additive, schema 14,
+// normalised in lore.ts ensureLore): save.lore.inscriptions = [ids read], save.lore.inscribedAt = { chamberId: id }.
+// `vent`: vent-life. A few creatures of the keeps and Pentagons live on the warmth of the seam; their Codex entries say so.
+export const PENTAGON_LORE = {
+  chance: .22, minFromEntry: 4, // the share of chambers with marks; never right at the way in
+  name: "Marks in the wall", title: "In the Pentagon's walls",
+  inscriptions: [
+    { id: "outcrop0", lean: "outcrop", text: "Scratched small beside a door: “We did not lay these stones. We found the rooms already square, and swept them.”" },
+    { id: "outcrop1", lean: "outcrop", text: "Chalked along a lintel in a careful hand: “North Face measured again. Longer than last year. No one has built anything.”" },
+    { id: "outcrop2", lean: "outcrop", text: "Cut low in the wall, the letters shallow: “It came up here the way frost comes up on a pane. All we did was name the rooms.”" },
+    { id: "people0", lean: "people", text: "A builder’s dedication, deep and square: “Raised by the silver-handed, who walked the Corridor before it had roads, for those who come after and do not stay.”" },
+    { id: "people1", lean: "people", text: "A mason’s tally of five marks, and beside it: “Our hands are longer than yours. Mind the high steps.”" },
+    { id: "people2", lean: "people", text: "Pressed into the mortar, the print of a hand with too many joints, and under it, neatly: “I made this wall. Remember that someone did.”" },
+    { id: "seam0", lean: "seam", text: "In a surveyor’s hand, beside a sketch of layered rock: “Not built. Folded. Two beds of stone that never lay together, pressed until they stood up.”" },
+    { id: "seam1", lean: "seam", text: "Scratched with a nail: “The fold is warm. Put your palm where the two kinds of stone meet. It is warm all year.”" },
+    { id: "seam2", lean: "seam", text: "Ruled lines, and a date in no calendar: “The grain of the outer wall runs one way and the grain of the inner another. Something came through here, and the stone set round it.”" },
+    { id: "none0", lean: "none", text: "Lines in the stone in no hand at all: not cut, not written, as if the wall had grown them. You read them, and afterwards cannot say what they said." },
+  ],
+  vent: {
+    pallidCrawler: "In the Pentagons they crowd into the angles where two walls meet wrongly, pressed flat to the stone, feeding on the warmth where two pages meet.",
+    graveLantern: "Its light is brightest near the seams of the great buildings, where the stone is faintly warm. It seems to drink there, slowly, the way a wick drinks oil.",
+    ashling: "The ashlings of the keeps are not the ashlings of the furnaces. They sleep in cracks where one kind of stone has grown into another, and those cracks are always warm.",
+  },
+};
+const inscription = (id) => PENTAGON_LORE.inscriptions.find((q) => q.id === id) || null;
+const readList = (save) => (Array.isArray(save?.lore?.inscriptions) ? save.lore.inscriptions : []);
+// Which marks a chamber holds (an inscription id), or null. A chamber where marks were read keeps them; otherwise a hashed
+// share of chambers hold one of the marks not yet read, and once every one is read, new chambers hold none.
+export function inscriptionIn(save, chamberId) {
+  if (!isPentagonId(chamberId)) return null;
+  const L = PENTAGON_LORE, kept = save?.lore?.inscribedAt?.[chamberId]; if (typeof kept === "string" && inscription(kept)) return kept;
+  const h = hashSeed(`${save?.seed}:pentagon-lore:v1:${chamberId}`); if ((h % 10000) / 10000 >= L.chance) return null;
+  const read = new Set(readList(save)), left = L.inscriptions.filter((q) => !read.has(q.id));
+  return left.length ? left[(h >>> 11) % left.length].id : null;
+}
+// Lays the chamber's marks on open floor against a wall, reachable from the way in, away from it, and clear of every other
+// object and creature. Returns the object or null.
+export function addPentagonInscription(map, save, chamberId) {
+  if (!map?.building?.pentagon || !map.tiles?.length || map.objects?.some((o) => o.kind === "pentInscription")) return null;
+  const id = inscriptionIn(save, chamberId); if (!id) return null;
+  const W = map.width, H = map.height, T = map.tiles, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? null : T[y * W + x]), e = map.entry || { x: W >> 1, y: H >> 1 };
+  const taken = new Set([...(map.objects || []), ...(map.enemySpawns || [])].map((o) => Math.round(o.y) * W + Math.round(o.x)));
+  const reach = new Set([e.y * W + e.x]), st = [e]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, t = at(x, y); if (!t || t.blocked || reach.has(y * W + x)) continue; reach.add(y * W + x); st.push({ x, y }); } }
+  const wallBy = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => at(x + dx, y + dy)?.blocked);
+  const spots = [...reach].map((k) => ({ x: k % W, y: (k / W) | 0 })).filter(({ x, y }) => { const t = at(x, y); return !t.doorway && !t.plate && !taken.has(y * W + x) && Math.abs(x - e.x) + Math.abs(y - e.y) >= PENTAGON_LORE.minFromEntry && wallBy(x, y); }).sort((a, b) => a.y - b.y || a.x - b.x);
+  if (!spots.length) return null;
+  const c = spots[hashSeed(`${save?.seed}:pentagon-lore-at:v1:${chamberId}`) % spots.length], read = readList(save).includes(id);
+  const o = { id: "pent-inscription", kind: "pentInscription", inscription: id, chamberId, name: PENTAGON_LORE.name, x: c.x, y: c.y, state: read ? "read" : "waiting", actions: ["read"] };
+  (map.objects ||= []).push(o); return o;
+}
+// Reading the marks: their words; the first time, remembered (save.lore). Returns { ok, first, text, message }.
+export function readPentagonInscription(save, o) {
+  const q = inscription(o?.inscription); if (!q) return { ok: false, message: "The marks are worn past reading." };
+  const lore = (save.lore ||= {}), list = Array.isArray(lore.inscriptions) ? lore.inscriptions : (lore.inscriptions = []), first = !list.includes(q.id);
+  if (first) list.push(q.id);
+  if (o.chamberId) { if (!lore.inscribedAt || typeof lore.inscribedAt !== "object") lore.inscribedAt = {}; lore.inscribedAt[o.chamberId] = q.id; }
+  o.state = "read";
+  return { ok: true, first, text: q.text, message: q.text };
+}
+// The marks read so far, in the order of the table.
+export function inscriptionsRead(save) { const read = new Set(readList(save)); return PENTAGON_LORE.inscriptions.filter((q) => read.has(q.id)); }
+// ------------------------------------------------------------------------------------------------ the shortcut links' ends
+// The link ends that stand in chamber `map` (as generated, before anything is taken from it): each on open floor reachable from
+// where you come in, by it (within `nearEntry`) or by a side wall (x 1 or W - 2), so the dungeon dressings laid later (bells,
+// pages, threads: x 2..W - 3, six or more from the entry; margins five or more) never see one; no tile changes. Pure.
+export function pentagonLinkEnds(plan, map) {
+  const S = PENTAGON.shortcuts, q = plan.nodes[map?.building?.node], ends = []; if (!q || !map?.tiles?.length) return ends;
+  for (const L of plan.links || []) for (const end of ["near", "deep"]) if (L[end] === q.id) ends.push({ L, end, other: plan.nodes.find((n) => n.id === L[end === "near" ? "deep" : "near"]) });
+  if (!ends.length) return [];
+  const W = map.width, H = map.height, e = map.entry, taken = new Set([...(map.objects || []), ...(map.enemySpawns || [])].map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
+  const ports = (map.objects || []).filter((o) => o.kind === "exit" || o.kind === "buildingStair");
+  const seen = new Set([e.y * W + e.x]), st = [e]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, k = y * W + x, t = map.tiles[k]; if (x < 0 || y < 0 || x >= W || y >= H || !t || t.blocked || seen.has(k)) continue; seen.add(k); st.push({ x, y }); } }
+  const cand = map.tiles.filter((t) => seen.has(t.y * W + t.x) && !t.doorway && !t.plate && !t.hole && !t.environment && !/water|lava|pit|chasm|void|Gate/i.test(String(t.kind)) && !taken.has(`${t.x},${t.y}`) && (t.x !== e.x || t.y !== e.y)
+    && (t.x <= 1 || t.x >= W - 2 || Math.hypot(t.x - e.x, t.y - e.y) < S.nearEntry) && !ports.some((o) => Math.abs(o.x - t.x) <= 1 && Math.abs(o.y - t.y) <= 1))
+    .map((t) => ({ t, d: Math.hypot(t.x - e.x, t.y - e.y), h: hashSeed(`${map.id}:link-spot:${t.x},${t.y}`) })).sort((a, b) => a.d - b.d || a.h - b.h);
+  const out = [], picked = [];
+  for (const { L, end, other } of ends) { const c = cand.find(({ t }) => picked.every((p) => Math.max(Math.abs(p.x - t.x), Math.abs(p.y - t.y)) >= S.spacing)); if (!c) continue; picked.push(c.t);
+    const K = S.kinds[L.kind]; out.push({ id: `pent-link-${L.id}-${end}`, kind: "pentShortcut", link: L.id, linkKind: L.kind, end, name: `${end === "deep" ? K.deepName : K.name} · ${other.name}`, x: c.t.x, y: c.t.y, toId: chamberId(plan, other), state: "shut", actions: ["use"], lore: end === "deep" ? K.opens : K.barred }); }
+  return out;
+}
+export const pentagonLinkKey = (id) => `link:${id}`;
+// ------------------------------------------------------------------------------------------------ the finale: a walk among the stars
+// PENTAGON.finale. The walkway is a floor of its own, `${base}:finale`, generated only once the Regent has fallen; every
+// Pentagon version has the same one (a new id, so no explored floor changes). The opening in the vault is an object laid on
+// the vault's outer wall, beside floor you can reach from the way in, clear of every door, link end and object (as generated,
+// so it never moves); the vault's tiles are never touched. All pure.
+export const pentagonFinaleId = (base) => `${base}:finale`;
+const FINALE_ID = /^(pentagon:(.+):(-?\d+):(-?\d+)(?::v(\d+))?):finale$/;
+export const isPentagonFinaleId = (id) => FINALE_ID.test(String(id || ""));
+export function parsePentagonFinaleId(id) { const m = String(id || "").match(FINALE_ID); return m ? { base: m[1], seed: m[2], cx: Number(m[3]), cy: Number(m[4]), V: Number(m[5] || 1) } : null; }
+// The vault chamber's id (the Regent's floor, the bottom of the Heart) and the Pentagon's front door on the land (its first gate,
+// just outside: the same spot the vault's own way out leads to), as { rx, ry, x, y }.
+export function pentagonVaultId(plan) { const q = plan.nodes.find((n) => n.id === `h${plan.nh - 1}`); return q ? chamberId(plan, q) : null; }
+export function pentagonFrontDoor(plan) {
+  const w = plan.gate, i = Number(w.node.slice(1)), o = w.out, L = toLocal(plan.cx, plan.cy, o.gx, o.gy), far = facePoint(i >> 1, PENTAGON.bands.out + 1.2 + PENTAGON.finale.arriveOut, i & 1 ? FACE_T : -FACE_T), A = toLocal(plan.cx, plan.cy, far.gx, far.gy);
+  return A.rx === L.rx && A.ry === L.ry ? { rx: A.rx, ry: A.ry, x: A.x, y: A.y } : { rx: L.rx, ry: L.ry, x: L.x, y: L.y }; // a step out from the gate, on its paved way (or at the gate, where that step would cross into the next section)
+}
+// Where the vault's wall opens: a tile of its outer wall (left, right or top), the floor before it reachable from the way in,
+// no door, stair, link end, object or creature within a tile of either (two of a way through); the farthest such from the way
+// in. { x, y, inner } or null.
+export function pentagonFinaleSpot(map) {
+  if (!map?.tiles?.length || !map.entry) return null; const W = map.width, H = map.height, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? null : map.tiles[y * W + x]), e = map.entry;
+  const seen = new Set([e.y * W + e.x]), st = [e]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, t = at(x, y); if (!t || t.blocked || seen.has(y * W + x)) continue; seen.add(y * W + x); st.push({ x, y }); } }
+  const things = [...(map.objects || []), ...(map.enemySpawns || [])].map((o) => ({ x: Math.round(o.x), y: Math.round(o.y), way: o.kind === "exit" || o.kind === "buildingStair" || o.kind === "pentShortcut" }));
+  const clear = (x, y) => things.every((o) => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) > (o.way ? 2 : 1));
+  const sides = []; for (let y = 2; y <= H - 3; y++) sides.push([0, y, 1, y], [W - 1, y, W - 2, y]); for (let x = 2; x <= W - 3; x++) sides.push([x, 0, x, 1]);
+  const cand = [];
+  for (const [x, y, ix, iy] of sides) { const t = at(x, y), n = at(ix, iy); if (!t?.blocked || t.doorway || !n || n.blocked || n.doorway || n.plate || n.hole || !seen.has(iy * W + ix)) continue;
+    if (!clear(x, y) || !clear(ix, iy)) continue;
+    cand.push({ x, y, inner: { x: ix, y: iy }, d: Math.hypot(ix - e.x, iy - e.y), h: hashSeed(`${map.id}:finale-wall:${x},${y}`) }); }
+  cand.sort((a, b) => b.d - a.d || a.h - b.h); const c = cand[0]; return c ? { x: c.x, y: c.y, inner: c.inner } : null;
+}
+export function pentagonFinaleWall(base, spot) {
+  const F = PENTAGON.finale; return { id: "pent-finale-wall", kind: "pentFinaleWall", name: F.names.wall, x: spot.x, y: spot.y, inner: { ...spot.inner }, toId: pentagonFinaleId(base), face: spot.x === 0 ? "west" : spot.y === 0 ? "north" : "east", state: "open", actions: ["use"], lore: F.messages.opens };
+}
+// The walkway floor: stars (blocked: nothing to fall into), a pale walkway `walk.half` tiles either side of a line that bends
+// gently from the opened wall (west) to the dais's round landing (east), and a few floating stones. The way back leads to the
+// vault, beside its opened wall.
+export function generatePentagonFinale(seed, id, floorV = PENTAGON.finale.floor) {
+  const Pp = parsePentagonFinaleId(id); if (!Pp) return null; const plan = pentagonPlan(Pp.seed, Pp.cx, Pp.cy, Pp.V), F = PENTAGON.finale, [W, H] = F.size, A = F.walk;
+  const h = (k) => hashSeed(`${id}:finale:v${F.version}:${k}`), u01 = (k) => (h(k) % 10000) / 10000;
+  const mid = Math.round((H - 1) / 2), amp = A.amp[0] + u01("amp") * (A.amp[1] - A.amp[0]), phase = u01("phase") * Math.PI * 2, sign = h("sign") & 1 ? 1 : -1;
+  const dx = W - 1 - F.dais.inset, R = Math.ceil(F.dais.r), lo = A.half + 1, hi = H - 2 - A.half;
+  const row = (x) => { const u = Math.max(0, Math.min(1, (x - 1) / Math.max(1, dx - 1))); return Math.max(lo, Math.min(hi, Math.round(mid + sign * amp * Math.sin(Math.PI * u) * Math.sin(phase + 2 * Math.PI * A.waves * u)))); };
+  const tiles = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) tiles.push(floorV >= 2 ? { x, y, kind: "canyon", environment: "canyon", chasm: true, blocked: false, detail: (x * 7 + y * 3) % 4 } : { x, y, kind: "void", chasm: true, blocked: true, detail: (x * 7 + y * 3) % 4 }); // v2: a drop you can step into
+  const floor = (x, y, kind = "starWalk") => { if (x < 1 || y < 1 || x > W - 2 || y > H - 2) return; const t = tiles[y * W + x]; if (kind === "starWalk" && (t.kind === "starWalk" || t.kind === "starDais")) return; tiles[y * W + x] = { x, y, kind, blocked: false, detail: t.detail, ...(kind === "starDais" ? { daisX: dx, daisY: dy } : {}) }; }; // a dais tile knows the dais's centre (its rings are painted across the landing)
+  const dy = Math.max(R + 1, Math.min(H - 2 - R, row(dx)));
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (Math.hypot(x - dx, y - dy) <= F.dais.r) floor(x, y, "starDais");
+  let prev = mid; for (let x = 1; x <= dx; x++) { const yc = row(x), a = Math.min(yc, prev), b = Math.max(yc, prev); for (let y = a - A.half; y <= b + A.half; y++) floor(x, y); prev = yc; }
+  for (let y = Math.min(dy, prev); y <= Math.max(dy, prev); y++) floor(dx, y); // the walkway meets the dais's landing
+  // floating stones in the void, well clear of the walkway (looks only)
+  const open = (x, y) => !!tiles[y * W + x] && !tiles[y * W + x].blocked && !tiles[y * W + x].chasm, far = [];
+  for (let y = 1; y < H - 1; y++) for (let x = 2; x < W - 1; x++) { let ok = true; for (let j = -F.shardClear; j <= F.shardClear && ok; j++) for (let i = -F.shardClear; i <= F.shardClear && ok; i++) if (x + i >= 0 && x + i < W && open(x + i, y + j)) ok = false; if (ok) far.push({ x, y }); }
+  far.sort(byHash((c) => `${id}:finale-shard:${c.x},${c.y}`)); const shards = [];
+  for (const c of far) { if (shards.length >= F.shards) break; if (shards.some((q) => Math.max(Math.abs(q.x - c.x), Math.abs(q.y - c.y)) < 3)) continue; shards.push(c); tiles[c.y * W + c.x] = { ...tiles[c.y * W + c.x], kind: "starShard", blocked: true, environment: undefined }; }
+  const entry = { x: 1, y: mid }, vault = pentagonVaultId(plan);
+  const objects = [
+    { id: "pent-finale-back", kind: "pentFinaleWall", back: true, name: F.names.back, x: 0, y: mid, toId: vault, face: "east", state: "open", actions: ["use"], lore: F.messages.back },
+    { id: "pent-finale-dais", kind: "pentDais", name: F.names.dais, x: dx, y: dy, state: "ready", actions: ["transit"], lore: F.messages.dais },
+  ];
+  return { seed, id, recipe: "greatBuilding", name: `${PENTAGON.name} · ${F.names.floor}`, identity: `${PENTAGON.name}: ${F.names.floor}`, danger: "none", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns: [],
+    building: { base: Pp.base, style: "keep", floor: 3 + plan.nh, floors: 3 + plan.nh, pentagon: true, finale: true, V: plan.V, node: -1, kind: "starfield", of: plan.nodes.length, keys: [], entries: {}, exitsTo: {}, vault: false, breachEntry: null, roofLadder: null, fallTo: null },
+    pentFinale: F.version, finaleFloor: floorV, chasm: 1, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
+}
+// ------------------------------------------------------------------------------------------------ v7: the roof, for others
+// Is tile (x, y) of the overworld section `map` part of a Pentagon's roof walk: the roof itself or one of its balconies (not
+// the parapet, the outer stair or the ground)? Pure; false everywhere on a Pentagon without a roof (version 6 and earlier).
+export function pentagonRoofAt(map, x, y) {
+  if (!map?.pentagon?.roof || x < 0 || y < 0 || x > 31 || y > 31) return false;
+  const t = map.tiles?.[I(Math.floor(x), Math.floor(y))]; return !!t && !t.blocked && !!(t.pentRoof || t.pentBalcony);
+}
+// Perches on this section's Pentagon roof: roof tiles (not balconies) at the roof's outer edge or by its parapet, `margin` or
+// more from the section's edges, clear of objects and of the balconies and the stair's top, at least `spacing` apart (Chebyshev),
+// at most `max`, in a hashed order of the Pentagon and the tile. Pure and deterministic; [] where there is no roof.
+export function pentagonRoofSpots(map) {
+  const K = PENTAGON.roof.perch; if (!map?.pentagon?.roof || !map.tiles?.length) return [];
+  const at = (x, y) => (x < 0 || y < 0 || x > 31 || y > 31 ? null : map.tiles[I(x, y)]), held = new Set((map.objects || []).filter((o) => o.kind !== "greatBuilding").map((o) => I(Math.round(o.x), Math.round(o.y))));
+  const busy = (x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const t = at(x + dx, y + dy); if (t?.pentBalcony || t?.pentStair || held.has(I(x + dx, y + dy))) return true; } return false; };
+  const spots = [];
+  for (let y = K.margin; y <= 31 - K.margin; y++) for (let x = K.margin; x <= 31 - K.margin; x++) { const t = at(x, y); if (!t?.pentRoof || t.blocked || busy(x, y)) continue;
+    if (!N4.some(([dx, dy]) => { const n = at(x + dx, y + dy); return n && (n.pentParapet || !n.greatBuilding); })) continue; // at an edge: by the parapet, or over the land
+    spots.push({ x, y, h: hashSeed(`${map.pentagon.base}:${map.greatBuilding?.id}:perch:${x},${y}`) }); }
+  spots.sort((a, b) => a.h - b.h || a.y - b.y || a.x - b.x); const out = [];
+  for (const s of spots) { if (out.length >= K.max) break; if (out.every((o) => Math.max(Math.abs(o.x - s.x), Math.abs(o.y - s.y)) >= K.spacing)) out.push({ x: s.x, y: s.y }); }
+  return out;
 }

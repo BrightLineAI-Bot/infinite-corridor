@@ -7,8 +7,8 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r739-0b5b1c12e64a";
-import { tesseractBonus } from "./tesseracts.js?v=r739-0b5b1c12e64a";
+import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
+import { tesseractBonus } from "./tesseracts.js?v=r755-c3a9aa62bf91";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -140,15 +140,15 @@ export function normalizeSockets(item) {
 // Idempotent; runs in migrateSave and freshSave. One-time starter grant so the system is visible from the start.
 export function ensureGlyphState(save) {
   const counts = save.glyphs && typeof save.glyphs === "object" ? save.glyphs : {};
-  save.glyphs = Object.fromEntries(GLYPH_IDS.map((id) => [id, Math.max(0, Math.floor(Number(counts[id]) || 0))]));
+  save.glyphs = { ...counts, ...Object.fromEntries(GLYPH_IDS.map((id) => [id, Math.max(0, Math.floor(Number(counts[id]) || 0))])) }; // release 736 (review S7): glyphs a newer release added are kept
   save.glyphDust = Math.max(0, Math.floor(Number(save.glyphDust) || 0));
   const spells = save.spellGlyphs && typeof save.spellGlyphs === "object" ? save.spellGlyphs : {};
   save.spellGlyphs = Object.fromEntries(Object.entries(spells).map(([id, list]) => [id, Array.from({ length: SPELL_SOCKETS }, (_, i) => (GLYPHS[list?.[i]] ? list[i] : null))]));
-  const gc = save.glyphCodex || {}; save.glyphCodex = { glyphs: { ...gc.glyphs }, resonances: { ...gc.resonances } };
+  const gc = save.glyphCodex && typeof save.glyphCodex === "object" ? save.glyphCodex : {}; save.glyphCodex = { ...gc, glyphs: { ...gc.glyphs }, resonances: { ...gc.resonances } };
   for (const item of [...Object.values(save.equipment || {}), ...(save.inventory || [])]) normalizeSockets(item);
   // Release 295: saved glyph layouts per gear host (additive): { melee: [id|null...], tool: [...], armor: [...] }.
   const lay = save.glyphLayouts && typeof save.glyphLayouts === "object" ? save.glyphLayouts : {};
-  save.glyphLayouts = Object.fromEntries(Object.entries(lay).filter(([h, v]) => LAYOUT_HOSTS.includes(h) && Array.isArray(v)).map(([h, v]) => [h, v.slice(0, 4).map((q) => (GLYPHS[q] ? q : null))])); // release 397: 4, for a relic with the smith's extra socket
+  save.glyphLayouts = Object.fromEntries(Object.entries(lay).filter(([h, v]) => !LAYOUT_HOSTS.includes(h) || Array.isArray(v)).map(([h, v]) => [h, LAYOUT_HOSTS.includes(h) ? v.slice(0, 4).map((q) => (GLYPHS[q] ? q : null)) : v])); // release 736 (review S7): a host a newer release added is kept as it is // release 397: 4, for a relic with the smith's extra socket
   if (!save.glyphGrant) { save.glyphGrant = GLYPH_VERSION; for (const id of ["ignite", "chain", "echo"]) { save.glyphs[id] += 1; save.glyphCodex.glyphs[id] = true; } }
   return save;
 }
