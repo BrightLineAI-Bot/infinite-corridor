@@ -1,5 +1,6 @@
-// Audit, 2026-11-05 (Tim approved): the Aether Orrery's circling orbs (Echoes + 1, capped), Hollow Tesseract lines rolling each
-// on its own (roll version 2; glyphs already granted never change), and old Pentagons' completion glyph paid once.
+// Audit, 2026-11-05 (Tim approved): the Aether Orrery's circling orbs (Echoes + 1, capped), Tesseract tiers (roll version 2: a
+// cost-count range and a cost strength per grade; glyphs already granted never change), and old Pentagons' completion glyph
+// paid once (those finished before release 750 on load).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
@@ -9,7 +10,7 @@ import { hashSeed } from '../src/random.ts';
 import { socketCount } from '../src/glyphs.ts';
 import { serializeSave, deserializeSave } from '../src/persistence.ts';
 import { ORRERY, orbTier } from '../src/tool-forms.ts';
-import { TESSERACTS, rollTesseract, rollsApart, grantTesseract, ensureTesseracts } from '../src/tesseracts.ts';
+import { TESSERACTS, rollTesseract, rerollTesseractLine, tesseractCut, grantTesseract, ensureTesseracts } from '../src/tesseracts.ts';
 import { PENTAGON, PENTAGON_COMPLETE, pentagonPlan, pentagonVaultId, pentagonsDue, pentagonCompleteSource } from '../src/pentagon.ts';
 import { pentagonArenaId } from '../src/pentagon-arena.ts';
 
@@ -37,42 +38,53 @@ test('Orrery: balls = Echo glyphs + 1 (one, two, three), capped at three; four E
   const r = orrery(['echo', 'echo'], 'rare', 0); r.fireSecondary(1000, { x: 1, y: 0 }); assert.equal(r.orrery.halo.n, 3);
 });
 
-// ------------------------------------------------------------------------------------------------ 2. Hollow lines, each on its own
+// ------------------------------------------------------------------------------------------------ 2. Tesseract tiers (roll 2)
+// Tim, 2026-11-05: lower tiers at least two costs, possibly three, with worse bonuses; higher tiers up to three bonuses and one cost.
 const GOLD = (f) => { const out = []; for (const grade of Object.keys(TESSERACTS.grades)) for (let i = 0; i < 60; i++) out.push(f('GOLD', `pentagon:GOLD:${i}:0:v${1 + (i % 7)}:complete`, grade, i % 4)); return JSON.stringify(out); };
-test('roll version 1 (every glyph cut through release 759) rolls byte for byte as before, every grade; at roll 2 only Hollow changes', () => {
-  const v1 = GOLD((s, src, gr, f) => rollTesseract(s, src, gr, f)); assert.equal(v1.length, 108064); assert.equal(hashSeed(v1), 2458559713, 'pinned from main ce2cc625');
+const GOLD_REROLL = () => { const out = []; for (const grade of Object.keys(TESSERACTS.grades)) for (let i = 0; i < 40; i++) { const g = { uid: 't1', ...rollTesseract('R', `s${i}`, grade, 0) }; for (let j = 0; j < 4; j++) out.push(rerollTesseractLine('R', `p:${i}:reroll0:t1:${j}`, g, j)); } return JSON.stringify(out); };
+const WANT = { hollow: [2, 3, 1], labyrinth: [2, 3, .95], deep: [1, 2, .8], reliquary: [1, 2, .7], regent: [1, 2, .65], sealed: [1, 1, .55], sovereign: [1, 1, .5] };
+const costsOf = (g) => g.lines.filter((l) => l.bad).length;
+test('roll version 1 (every glyph cut through release 759) rolls and rerolls byte for byte as before, every grade (pinned from main ce2cc625)', () => {
+  const v1 = GOLD((s, src, gr, f) => rollTesseract(s, src, gr, f)); assert.equal(v1.length, 108064); assert.equal(hashSeed(v1), 2458559713);
   assert.equal(GOLD((s, src, gr, f) => rollTesseract(s, src, gr, f, 1)), v1);
-  assert.equal(TESSERACTS.roll, 2); assert.equal(rollsApart('hollow', 1), false); assert.equal(rollsApart('hollow', 2), true);
-  for (const grade of Object.keys(TESSERACTS.grades)) { if (grade === 'hollow') continue; assert.equal(rollsApart(grade, 2), false, grade);
-    for (let i = 0; i < 80; i++) assert.deepEqual(rollTesseract('G', `s${i}`, grade, i % 3, 2), rollTesseract('G', `s${i}`, grade, i % 3), `${grade} ${i}`); }
+  const r1 = GOLD_REROLL(); assert.equal(r1.length, 44648); assert.equal(hashSeed(r1), 1608409093);
+  assert.equal(TESSERACTS.roll, 2);
 });
 
-test('Hollow at roll 2: lines 1–3 each a cost by its own .85 chance (independent), line 0 always a bonus, no repeated effect', () => {
-  const N = 20000, G = TESSERACTS.grades.hollow, p = G.bad, joint = new Map(), per = [0, 0, 0, 0], hist = [0, 0, 0, 0], old = [0, 0, 0, 0];
-  for (let i = 0; i < N; i++) { const seed = `S${i}`, src = `pentagon:S${i}:${(i % 40) * 8}:16:v${1 + (i & 1)}:complete`, g = rollTesseract(seed, src, 'hollow', 0, 2);
-    assert.equal(g.lines.length, 4); assert.equal(g.lines[0].bad, false); assert.equal(new Set(g.lines.map((l) => l.k)).size, 4);
-    for (const l of g.lines) { assert.ok(Number.isFinite(l.v) && l.v > 0 && l.v < .3); const E = TESSERACTS.effects[l.k]; assert.ok(l.bad ? E.bad : E.good); }
-    const key = g.lines.slice(1).map((l) => (l.bad ? 1 : 0)).join(''); joint.set(key, (joint.get(key) || 0) + 1);
-    g.lines.forEach((l, j) => { if (l.bad) per[j]++; }); hist[g.lines.filter((l) => l.bad).length]++;
-    old[rollTesseract(seed, src, 'hollow').lines.filter((l) => l.bad).length]++; }
-  for (const j of [1, 2, 3]) assert.ok(Math.abs(per[j] / N - p) < .012, `line ${j}: ${per[j] / N}`);
-  // every pattern of three independent .85 chances, within 3.5 standard errors
-  for (let m = 0; m < 8; m++) { const bits = [4, 2, 1].map((b) => ((m & b) ? 1 : 0)), key = bits.join(''), want = bits.reduce((a, b) => a * (b ? p : 1 - p), 1), got = (joint.get(key) || 0) / N;
-    assert.ok(Math.abs(got - want) < 3.5 * Math.sqrt(want * (1 - want) / N) + 1e-4, `${key}: ${got} vs ${want}`); }
-  // one cost (or none) now happens about one time in sixteen; before (roll 1) it almost never did
-  assert.ok(hist[0] + hist[1] > N * .045, `${hist}`); assert.ok(old[0] + old[1] < N * .002, `old ${old}`);
-  assert.ok(hist[3] > N * .58 && hist[3] < N * .65, `${hist}`);
-  // and each line's strength is its own: where each value sits in its effect's range (the draw behind it) does not move with
-  // its neighbour's (the effects themselves differ by line, as no effect repeats)
-  const draw = (l) => { const [a, b] = TESSERACTS.effects[l.k][l.bad ? 'bad' : 'good'], t = (l.v - a) / (b - a), q = G.q; return l.bad ? (t - (1 - q) * .6) / .4 : (t / q - .6) / .4; };
-  let sx = 0, sy = 0, sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < 4000; i++) { const g = rollTesseract(`C${i}`, `c${i}`, 'hollow', 0, 2), [x, y] = [draw(g.lines[2]), draw(g.lines[3])]; sx += x; sy += y; sxy += x * y; sxx += x * x; syy += y * y; }
-  const n = 4000, r = (sxy / n - sx / n * sy / n) / Math.sqrt((sxx / n - (sx / n) ** 2) * (syy / n - (sy / n) ** 2)); assert.ok(Math.abs(r) < .05, `r ${r}`);
+test('roll 2, the tier table: each grade\'s cost count in its range, picked evenly; every arrangement of costs over lines 1-3 reached; costs milder up the tiers', () => {
+  assert.deepEqual(Object.fromEntries(Object.keys(TESSERACTS.grades).map((g) => [g, [...tesseractCut(g).costs, tesseractCut(g).scale]])), WANT);
+  const N = 6000, meanCost = {}, meanBonus = {};
+  for (const [grade, [lo, hi]] of Object.entries(WANT)) { const hist = [0, 0, 0, 0], pattern = new Map(); let cs = 0, cn = 0, bs = 0, bn = 0;
+    for (let i = 0; i < N; i++) { const g = rollTesseract(`S${i}`, `pentagon:S${i}:${(i % 40) * 8}:16:complete`, grade, 0, 2), n = costsOf(g);
+      assert.equal(g.lines.length, 4); assert.equal(g.lines[0].bad, false, 'line 0 a bonus'); assert.equal(new Set(g.lines.map((l) => l.k)).size, 4, 'no effect twice');
+      assert.ok(n >= lo && n <= hi, `${grade}: ${n} costs`); hist[n]++;
+      for (const l of g.lines) { assert.ok(Number.isFinite(l.v) && l.v > 0 && l.v < .3); const E = TESSERACTS.effects[l.k]; assert.ok(l.bad ? E.bad : E.good); if (l.bad) { cs += l.v; cn++; } else { bs += l.v; bn++; } }
+      const key = g.lines.slice(1).map((l) => (l.bad ? 1 : 0)).join(''); pattern.set(key, (pattern.get(key) || 0) + 1); }
+    for (let n = lo; n <= hi; n++) assert.ok(Math.abs(hist[n] / N - 1 / (hi - lo + 1)) < .03, `${grade}: ${n} costs ${hist[n]}`);
+    // every arrangement of lo..hi costs over three lines, each about as often as the others of its count
+    const choose = (n) => [1, 3, 3, 1][n]; for (let m = 0; m < 8; m++) { const bits = [4, 2, 1].map((b) => ((m & b) ? 1 : 0)), n = bits.reduce((a, b) => a + b, 0), got = pattern.get(bits.join('')) || 0;
+      if (n < lo || n > hi) assert.equal(got, 0, `${grade}: ${bits.join('')}`); else { const want = N / (hi - lo + 1) / choose(n); assert.ok(Math.abs(got - want) < want * .15, `${grade}: ${bits.join('')} ${got} vs ${want}`); } }
+    meanCost[grade] = cs / cn; meanBonus[grade] = bs / bn; }
+  const up = Object.keys(WANT); for (let k = 1; k < up.length; k++) { assert.ok(meanCost[up[k]] < meanCost[up[k - 1]], `${up[k]} costs milder: ${JSON.stringify(meanCost)}`); assert.ok(meanBonus[up[k]] > meanBonus[up[k - 1]], `${up[k]} bonuses stronger`); }
+  assert.ok(meanCost.sovereign < meanCost.hollow * .45, 'a Sovereign\'s one cost about half a Hollow\'s');
 });
 
-test('grants: a new Hollow glyph is cut at roll 2 and records it; other grades record nothing; a stored glyph never changes', () => {
-  const s = freshSave(); s.seed = 'GR'; const h = grantTesseract(s, 'p:complete', 'hollow', 0, 'x'), r = grantTesseract(s, 'p:hoard', 'regent', 0, 'y');
-  assert.equal(h.roll, 2); assert.deepEqual(h.lines, rollTesseract('GR', 'p:complete', 'hollow', 0, 2).lines); assert.equal('roll' in r, false); assert.deepEqual(r.lines, rollTesseract('GR', 'p:hoard', 'regent').lines);
-  // a Hollow glyph granted by releases 756–759 (roll 1, no `roll` field) loads exactly as stored, through every normaliser
+test('the dais at roll 2 keeps a glyph inside its grade\'s cost range (never below, never above); either way where both stay inside; roll-1 glyphs reroll as before', () => {
+  for (const [grade, [lo, hi]] of Object.entries(WANT)) { const seen = new Set();
+    for (let i = 0; i < 300; i++) { const g = { uid: 't1', ...rollTesseract('D', `d${i}`, grade, 0, 2), roll: 2 };
+      for (let j = 0; j < 4; j++) { const l = rerollTesseractLine('D', `p:${i}:reroll0:t1:${j}`, g, j); assert.ok(l && TESSERACTS.effects[l.k]);
+        assert.deepEqual(rerollTesseractLine('D', `p:${i}:reroll0:t1:${j}`, g, j), l, 'pure'); assert.ok(!g.lines.some((q, k) => k !== j && q.k === l.k), 'no effect twice');
+        const after = g.lines.map((q, k) => (k === j ? l : q)), n = after.filter((q) => q.bad).length; assert.ok(n >= lo && n <= hi, `${grade}: ${n} after rerolling line ${j}`);
+        if (j === 0) assert.equal(l.bad, false); else seen.add(`${g.lines[j].bad ? 1 : 0}>${l.bad ? 1 : 0}`); } }
+    // a cost can turn a bonus (and back) wherever the range has room; a fixed count (sealed, sovereign) still lets the line change effect
+    if (hi > lo) for (const k of ['1>0', '0>1', '1>1', '0>0']) assert.ok(seen.has(k), `${grade}: ${k} (${[...seen]})`); else assert.deepEqual([...seen].sort(), ['0>0', '1>1']); }
+  // no `roll` on a stored glyph means roll 1: the old rules (a Sealed glyph may reroll to any count by its `bad` chance)
+  const g = { uid: 't1', ...rollTesseract('D', 'old', 'regent') }; for (let j = 0; j < 4; j++) assert.equal(JSON.stringify(rerollTesseractLine('D', `x:${j}`, g, j)), JSON.stringify(rerollTesseractLine('D', `x:${j}`, { ...g, roll: 1 }, j)));
+});
+
+test('grants: every new glyph is cut at roll 2 and records it; a glyph granted before (roll 1, no field) never changes', () => {
+  const s = freshSave(); s.seed = 'GR';
+  for (const grade of Object.keys(WANT)) { const g = grantTesseract(s, `p:${grade}`, grade, 0, 'x'); assert.equal(g.roll, 2, grade); assert.deepEqual(g.lines, rollTesseract('GR', `p:${grade}`, grade, 0, 2).lines); }
   const t = freshSave(); t.seed = 'OLD'; const was = { uid: 't1', ...rollTesseract('OLD', 'pentagon:OLD:16:0:v1:complete', 'hollow'), from: PENTAGON_COMPLETE.from };
   t.tesseracts = { owned: [structuredClone(was)], slots: ['t1', null, null], seq: 1, got: { 'pentagon:OLD:16:0:v1:complete': true } };
   const m = migrateSave(JSON.parse(JSON.stringify(t))); ensureTesseracts(m); assert.deepEqual(m.tesseracts.owned[0], was);
@@ -91,7 +103,7 @@ test('a completion due on load is paid once: repeated starts, reloads and migrat
   const { cx, cy } = find();
   for (const V of [1, 2, 3, 7]) { const P = pentagonPlan(SEED, cx, cy, V), s = freshSave(); s.seed = SEED; s.consequences.dungeons[`${P.base}:f1`] = { discovered: true, pentFinale: 1, regentGrade: 'regent' };
     const g = new Game(migrateSave(JSON.parse(JSON.stringify(s))), 0); assert.equal(fromCompletion(g).length, 1, `v${V}`); assert.deepEqual(pentagonsDue(g.save), []);
-    const glyph = structuredClone(fromCompletion(g)[0]); assert.equal(glyph.grade, V <= 2 ? 'hollow' : 'regent'); assert.equal(glyph.roll, V <= 2 ? 2 : undefined);
+    const glyph = structuredClone(fromCompletion(g)[0]); assert.equal(glyph.grade, V <= 2 ? 'hollow' : 'regent'); assert.equal(glyph.roll, 2);
     for (const base of [P.base, P.base]) g.payPentagonComplete(base); new Game(g.save, 10); new Game(g.save, 20);
     let r = g; for (let k = 0; k < 3; k++) r = reload(r); const q = new Game(migrateSave(JSON.parse(JSON.stringify(r.save))), 0);
     for (const x of [g, r, q]) { assert.equal(fromCompletion(x).length, 1, `v${V}: once`); assert.deepEqual(fromCompletion(x)[0], glyph, 'the same glyph, unchanged'); } }
