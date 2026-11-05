@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateListenerArena, daisDue, isArenaRun, LISTENER_ARENA } from '../src/listener-arena.ts';
-import { ensureFarArray, beginArrayRun, piecesNeeded } from '../src/far-array.ts';
+import { ensureFarArray, beginArrayRun, piecesNeeded, LISTENER_CYCLE } from '../src/far-array.ts';
 import { relayCoordinate } from '../src/relay-network.ts';
 import { reachableInMap } from '../src/underlands.ts';
 import { dungeonTileVisibility } from '../src/dungeon-framework.ts';
@@ -26,7 +26,8 @@ test('the dais is due only after a first Listener, with the Gate whole at the cu
   assert.equal(daisDue(ensureFarArray(due(0))), false, 'the first Listener is met as before');
   assert.equal(daisDue(ensureFarArray(due(1))), true);
   const quiet = due(1); quiet.farArray.quiet = true; assert.equal(daisDue(ensureFarArray(quiet)), false);
-  const short = due(1); short.farArray.pieces = 1; assert.equal(daisDue(ensureFarArray(short)), false);
+  const short = due(1); short.farArray.pieces = 1; assert.equal(daisDue(ensureFarArray(short)), true, '2026-11-05 (LISTENER_CYCLE v2): the relays call it, not the seals');
+  LISTENER_CYCLE.sealsCall = true; try { assert.equal(daisDue(ensureFarArray(short)), false, 'with the seals of releases 375-759'); } finally { LISTENER_CYCLE.sealsCall = false; }
   const s = due(1); assert.equal(beginArrayRun(s, { rx: 0, ry: 0, x: 1, y: 1 }).listener, false, 'the Mouth no longer holds it');
   const first = due(0); assert.equal(beginArrayRun(first, { rx: 0, ry: 0, x: 1, y: 1 }).listener, true, 'unchanged for the first');
 });

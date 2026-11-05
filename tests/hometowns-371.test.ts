@@ -8,13 +8,13 @@ import { relayCoordinate } from '../src/relay-network.ts';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 
-const felled = (n = 1) => { const s = freshSave(); s.seed = 'HOME'; s.relayNetwork = { version: 1, nodes: {}, fragments: 0, coordinate: relayCoordinate(s) }; s.farArray.listeners = n; s.farArray.quiet = true; /* 2026-11-05: a town rises once the Gate is unlocked and the Listener has left */ ensureHometowns(s); return s; };
+const felled = (n = 1) => { const s = freshSave(); s.seed = 'HOME'; s.relayNetwork = { version: 1, nodes: {}, fragments: 0, coordinate: relayCoordinate(s) }; s.farArray.listeners = n; s.farArray.quiet = true; delete s.farArray.moves; delete s.farArray.atMouth; /* 2026-11-05: a Mouth the Listener left (a journey from before LISTENER_CYCLE v2 kept moves/atMouth) */ ensureHometowns(s); return s; };
 
 test('each fallen Listener raises one town (since release 373, on its Mouth); journeys from before get theirs', () => {
   const s = felled(); const [t] = s.hometowns.towns, m = s.relayNetwork.coordinate;
   assert.equal(s.hometowns.towns.length, 1); assert.deepEqual([t.rx, t.ry, t.mouth], [m.rx, m.ry, true]); assert.ok(t.name.length > 2);
   assert.equal(grantTowns(s).length, 0, 'never twice');
-  const old = freshSave(); old.seed = 'HOME'; old.relayNetwork = { version: 1, nodes: {}, fragments: 0, coordinate: relayCoordinate(old) }; old.farArray.listeners = 1; delete old.farArray.quiet; delete old.hometowns;
+  const old = freshSave(); old.seed = 'HOME'; old.relayNetwork = { version: 1, nodes: {}, fragments: 0, coordinate: relayCoordinate(old) }; old.farArray.listeners = 1; delete old.farArray.quiet; delete old.farArray.moves; delete old.farArray.atMouth; delete old.hometowns;
   const back = migrateSave(JSON.parse(JSON.stringify(old))); assert.equal(back.hometowns.towns.length, 1); assert.equal(back.hometowns.towns[0].mouth, true);
   assert.deepEqual(freshSave().hometowns, { towns: [], home: null });
 });
