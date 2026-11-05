@@ -1250,7 +1250,7 @@ function playGlimpse(id,{replay=false,after=null}={}){
 // The Arcana (Tim, 2026-11-02: "an arcana panel in the journal which has all these like threads. And all these little like story
 // beats... I would like to see... where they're going"): every story told across crossings, how far you have followed it, what
 // you have read of it, and where to look for the rest. Pieces not yet found are never shown, only counted.
-const ARCANA_BANDS = { near: "crossings near the Refuge", middle: "crossings of the middle distance", far: "far crossings", deep: "the deep reaches" };
+const ARCANA_BANDS = { near: "crossings near the Refuge", middle: "crossings of the middle distance", far: "far crossings", deep: "the deep reaches", beyond: "the far realms, a thousand sections out and more" };
 function arcanaCard(out, title, count, total, where, read, ending, open = false) {
   const card = document.createElement("article"), h = document.createElement("h4"), meta = document.createElement("p"), dots = document.createElement("p");
   card.className = "item arcana-card"; h.textContent = title; meta.className = "options-note";
