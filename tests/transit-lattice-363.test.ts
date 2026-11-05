@@ -2,7 +2,7 @@
 // passives and 1 Echo beyond the usual rules; Transit Coordinates (a Gate's pieces + 1 per Listener) buy up to 3 more of each.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TRANSIT_LATTICE, ensureLattice, latticeOpen, latticeSlots, unlockSlot, coordinatesFor, grantCoordinates, nextSlotCost } from '../src/transit-lattice.ts';
+import { TRANSIT_LATTICE, ensureLattice, latticeOpen, latticeSlots, unlockSlot, coordinatesFor, coordinatesForGate, grantCoordinates, nextSlotCost } from '../src/transit-lattice.ts';
 import { toggleLatticePassive, toggleAlt, nodeOn, altOn, extraReduction, ALT_UNLOCK_TIER } from '../src/constellation.ts';
 import { toggleLatticeEcho, hasEcho, activeEchoes } from '../src/echoes.ts';
 import { listenerFelled } from '../src/far-array.ts';
@@ -14,9 +14,9 @@ const ready = (listeners = 1) => { const s = freshSave(); s.perception.aperture 
 
 test('coordinates: each Listener pays the pieces its Gate needed plus one, kills from before included, never twice', () => {
   assert.equal(coordinatesFor(1), 4); assert.equal(coordinatesFor(2), 5, 'a four-piece Gate pays five');
-  const s = ready(2); assert.equal(s.lattice.coordinates, 9); assert.equal(grantCoordinates(s), 0);
-  const old = freshSave(); old.farArray.listeners = 1; delete old.lattice; const m = migrateSave(JSON.parse(JSON.stringify(old))); assert.equal(m.lattice.coordinates, 4);
-  const fresh = freshSave(); assert.deepEqual(fresh.lattice, { coordinates: 0, paidFor: 0, extra: { passive: 0, echo: 0 }, passives: [], echoes: [] });
+  const s = freshSave(); s.perception.aperture = III; s.farArray.listeners = 2; delete s.farArray.v2At; /* 2026-11-05: kills from before LISTENER_CYCLE v2 */ ensureLattice(s); assert.equal(s.lattice.coordinates, 9); assert.equal(grantCoordinates(s), 0);
+  const old = freshSave(); old.farArray.listeners = 1; delete old.farArray.v2At; delete old.lattice; const m = migrateSave(JSON.parse(JSON.stringify(old))); assert.equal(m.lattice.coordinates, 4);
+  const fresh = freshSave(); assert.deepEqual(fresh.lattice, { coordinates: 0, paidFor: 0, extra: { passive: 0, echo: 0 }, passives: [], echoes: [], gatesPaid: 0 });
 });
 
 test('it opens at Infinite III once a Listener has fallen', () => {
@@ -55,7 +55,8 @@ test('an Echo in the Lattice works without notches; one in the notches cannot be
 
 test('felling a Listener pays its Gate in coordinates', async () => {
   const { Game } = await import('../src/game.ts');
-  const s = ready(); const before = s.lattice.coordinates; s.farArray.gate = 2;
-  listenerFelled(s); grantCoordinates(s); assert.equal(s.lattice.coordinates, before + coordinatesFor(2));
+  const s = ready(); const before = s.lattice.coordinates; s.farArray.toNext = 4; /* 2026-11-05: paid once, by the kill that unlocks the Gate */
+  listenerFelled(s); grantCoordinates(s); assert.equal(s.farArray.gate, 2); assert.equal(s.lattice.coordinates, before + coordinatesForGate(1));
+  listenerFelled(s); grantCoordinates(s); assert.equal(s.lattice.coordinates, before + coordinatesForGate(1), 'a kill that leaves the Gate locked pays nothing');
   assert.ok(Game);
 });

@@ -14,6 +14,7 @@ const answer = (s, i) => commitRelayNode(s, { areaId: `dungeon:LIST:g1:${i}:9:ne
 test('the first Listener is where it always was; after it falls the Mouth goes quiet until five more relays answer', () => {
   const s = answered(6), first = { ...s.relayNetwork.coordinate };
   assert.equal(ensureFarArray(s).quiet, false);
+  s.farArray.toNext = 4; /* 2026-11-05 (LISTENER_CYCLE v2): the Mouth moves once its Gate is unlocked, five pieces */
   listenerFelled(s); assert.equal(s.farArray.quiet, true); assert.equal(relaysUntilReturn(s), LISTENER_RETURN.returnRelays);
   for (let i = 0; i < 4; i++) { const r = answer(s, i); assert.doesNotMatch(r.message, /new Mouth/); }
   assert.equal(relaysUntilReturn(s), 1); assert.deepEqual(s.relayNetwork.coordinate, first);
@@ -33,7 +34,7 @@ test('a journey that felled a Listener before this release goes quiet, counting 
 });
 
 test('the quiet Mouth still opens runs (release 361), never to the Listener; the compass stops pointing at it; the old Mouth stays open', () => {
-  const s = answered(6); listenerFelled(s); s.farArray.pieces = 9; const c = s.relayNetwork.coordinate;
+  const s = answered(6); s.farArray.toNext = 4; /* v2: the kill that unlocks the Gate */ listenerFelled(s); s.farArray.pieces = 9; const c = s.relayNetwork.coordinate;
   const g = new Game(s, 0); g.rx = c.rx; g.ry = c.ry; g.loadArea('overworld');
   const mouth = g.map.objects.find((o) => o.kind === 'arrayMouth'); assert.equal(mouth.state, 'quiet');
   g.player.x = mouth.x; g.player.y = mouth.y; const r = g.interact('enter', mouth.id); assert.equal(r.ok, true); assert.equal(g.area, 'dungeon'); assert.equal(s.farArray.activeRun.listener, false, 'the Gate is whole, but the Listener is gone');
