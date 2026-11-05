@@ -7,8 +7,9 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r775-9678a017d60c";
-import { READING_BANDS } from "./lore.js?v=r775-9678a017d60c";
+import { hashSeed } from "./random.js?v=r780-e230fbd94ccd";
+import { READING_BANDS } from "./lore.js?v=r780-e230fbd94ccd";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r780-e230fbd94ccd";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -22,14 +23,24 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // crossing holds a thread piece with chance `perCrossing` at every distance from `minDepth` out, with no end: the first ten's roll
 // as before, then, where it placed nothing, one shared roll whose chance is the budget left over (sharedRate), choosing evenly
 // among every later thread listed for that stretch (`shared`). The waves' own rolls (later, third, fourth, fifth) belong to
-// version 0, the crossings first entered before the budget, which keep exactly what they offered. `perCrossing` is the density of
-// the near-and-middle stretch (7 to 18 sections out) as it stood before wave 5: the most a stretch held while Tim played.
+// version 0, the crossings first entered before the budget, which keep exactly what they offered. Version 1's budget (`byVersion[1]`, 0.13) is the density
+// of the near-and-middle stretch (7 to 18 sections out) as it stood before wave 5: the most a stretch held while Tim played.
 // shared: { storyVersion: [bands] }: the stretches a later thread shares slots in, from that story version on. A crossing pinned
 // to a version (its dungeon history's `storyVersion`, set once by game.ts pinDungeonLayout) picks among the threads listed at or
 // before it, so a new thread written from now on adds a new version key (and bumps STORY_BUDGET.version) and never a wave: it
 // splits the slots of crossings not yet entered, and adds none. Never edit an existing key.
-export const STORY_BUDGET = { version: 1, perCrossing: .13 };
-export const THREAD_BANDS ={ near: [3, READING_BANDS.middle], middle: [READING_BANDS.campaign + 1, READING_BANDS.far], far: [READING_BANDS.middle + 1, 70], deep: [READING_BANDS.far + 1, Infinity] };
+// Story version 2 (Tim, 2026-11-05: "trim the shared story rate to about 12%"; "Yes, you should write them for out past 1000"): the
+// budget of crossings first entered from then on is 0.12 (`byVersion`; version 1 keeps 0.13, version 0 the waves), and the far
+// threads (band `beyond`) join the shared roll out past FAR_REALMS.start. There they take a larger share than the threads that
+// share the whole deep band (`weight`, from version 2 only), so the stories written for the far realms are the ones met there,
+// in place of the generic draws, not on top of them. Never edit a `byVersion` entry; a new version adds one.
+export const STORY_BUDGET = { version: 2, perCrossing: .12, byVersion: { 1: .13, 2: .12 } };
+// The budget of a crossing pinned to story version `version`: the latest entry at or before it (0 below version 1).
+export const budgetFor = (version) => { let p = 0; for (const [v, b] of Object.entries(STORY_BUDGET.byVersion)) if (Number(v) <= version) p = b; return p; };
+// beyond (story version 2): the far realms, measured straight-line from the Refuge as the realms are (far-realms.ts farDistance),
+// from FAR_REALMS.start out. Every other band is measured in sections walked (|rx| + |ry|).
+export const THREAD_BANDS ={ near: [3, READING_BANDS.middle], middle: [READING_BANDS.campaign + 1, READING_BANDS.far], far: [READING_BANDS.middle + 1, 70], deep: [READING_BANDS.far + 1, Infinity], beyond: [FAR_REALMS.start, Infinity] };
+const STRAIGHT_BANDS = new Set(["beyond"]);
 export const THREADS = {
   lamplighter: { title: "The Lamplighter's Round", band: "near", relic: "lamp", colour: "#ffcf7a",
     pieces: [
@@ -210,11 +221,46 @@ export const THREADS = {
     ],
     ending: "In a year the iron did not come, the toolmaker of the middle country went on making handles, and the handles went on working: a spade with no blade that dug, a hammer with no head that hooped a barrel sound, a scythe that mowed for ten years after its blade was gone. You close your hand on the last stave. It is already worn to your grip, as if you had carried it for years, and for a moment you know exactly what it is for. Then you do not, and it is still in your hand.",
   },
+  // The far threads (story version 2, 2026-11-05; Tim: "Yes, you should write them for out past 1000"). Written for the far realms
+  // (far-realms.ts): the Giants' Reach and the Tall Country, the great mushrooms, the Ink Wastes. Never a wave: they share the
+  // budget's slots past FAR_REALMS.start (band `beyond`, straight-line), at `weight` 2 against the deep band's shared threads, so
+  // out there the stories met are mostly these. docs/narrative-bible.md section 1: what is read is firmer ground; things let go of
+  // are seen once on their way out; ink holds only while it is read.
+  tallSlates: { title: "The Tall Child's Slates", band: "beyond", relic: "slate", colour: "#8a9aa6", shared: { 2: ["beyond"] }, weight: 2,
+    pieces: [
+      "A slate the size of a door, leaning on the wall. Chalked across it, each as tall as you, the first three letters of an alphabet you know, copied over and over, the strokes going wrong and starting again.",
+      "A second great slate. In one corner a small book has been drawn with enormous care, far larger than itself: a primer, open at a picture of a cup. Under it, copied huge: CUP. Under that, pressed too hard, a cup the size of a cart.",
+      "A third slate, cracked across from being leaned on. The letters are steadier now. A mistake has been rubbed out with the side of a hand as broad as a table, and the smudge has dried in the shape of the palm, with a pale line where it was cut once and healed.",
+      "A fourth slate, and on the floor before it the chalk: a stick as long as your arm, worn to a stub at one end. The slate says HOUSE, and DOOR, and BREAD. The ground under it is harder than the ground around. Your boots ring on it, as on a step.",
+      "A fifth slate. The primer is drawn again, shut, and beside it, small and careful, the name from inside its cover: Hanna Brisk, her book. The tall child has copied the name out huge, then crossed it out, then written it once more, small, as if she understood it was not hers to make large.",
+      "The last slate is clean but for one word, low down, at the height where a tall child kneels to write. It is not a word from the primer. It is a name, in letters taller than you, and the floor beneath it is as hard as the floor of a house.",
+    ],
+    ending: "Out where the doors are twice the height of a man, a girl of the Tall Country found a primer no bigger than her thumbnail, blown a thousand sections from wherever Hanna Brisk lost it, and taught herself to read from it, a letter a slate. Nobody out there had ever written anything down. Now one thing is: her own name, at the height a child kneels, on ground that has gone hard under it. And somewhere far behind you a small book is a little less lost, because someone a long way off has read every page of it, slowly, more times than its owner ever did." },
+  sporePrints: { title: "The Spore Prints", band: "beyond", relic: "print", colour: "#b0906e", shared: { 2: ["beyond"] }, weight: 2,
+    pieces: [
+      "A square of stiff paper with a spore print on it in brown dust: not the fan of gills a mushroom leaves, but the plain shape of a staircase, seven steps and a landing. Pencilled in the corner: \"North stand, the tallest cap. Print 1. A staircase. Whose?\"",
+      "A second print, rust-coloured: a cart wheel with one spoke missing. The pencil: \"Print 2. They grow on what has fallen, like mushrooms anywhere. Out here nothing falls, exactly. Things are only let go of.\"",
+      "A third print, pale violet, very fine: a dog lying with its head on its paws. \"Print 3. I took it down to the hamlet by the stream. Nobody knew the dog. An old man said he had one like it once, and then said no, he had not.\"",
+      "A fourth print, the dust smudged where it was carried: a table laid for four, one chair pushed back. \"Print 4. The cap it came from went soft in the night and sank into the ground, as they all do once a print is taken. I think I am the last to see a thing, and then it can rest.\"",
+      "A fifth print: a pair of shoes by a door. The pencil has pressed hard. \"Print 5. Nearly two hundred now, and I know none of them. That is right. I am not here to know them. I am here so that each one is seen once, on its way out.\"",
+      "The last print is a long, low building with a bell on the roof and a yard in front, and the pencil shakes. \"I know this one. The school at Pell's Ford. I taught in it forty years. I had not thought it was let go of already. I will keep this print.\"",
+    ],
+    ending: "Among the great mushrooms an old schoolmistress went from cap to cap with a ledger, taking spore prints, because out there the caps grow on what has been let go of and a print is the last shape a thing takes. She knew none of them and did not need to; she only saw each one once, so that nothing went out unseen. The last was her own school. She kept that print, and now you have it: the school at Pell's Ford, bell and yard and the step worn hollow at the door, seen one more time." },
+  inkBlotters: { title: "The Ink-Clerk's Blotters", band: "beyond", relic: "blotter", colour: "#5a6478", shared: { 2: ["beyond"] }, weight: 2,
+    pieces: [
+      "A sheet of blotting paper pressed flat under a stone. It keeps one line, backwards, as blotters do; held to the light it reads: \"Received of the black ground, one well of ink, for copying. It is warm. It is the first ink in years that my hand does not shake out of.\"",
+      "A second blotter. \"Copied today: the deed to a farm, two fields and a pond. The ink would not dry until I read the page back aloud. Then it dried all at once, the whole page, like a held breath let go.\"",
+      "A third. \"I left a page unread overnight. By morning the ink had run off it, down the desk leg and under the door and across the yard toward the black ground, and the paper was white. The farm is not in the deed now. I do not know if it is anywhere.\"",
+      "A fourth, the backwards hand unsteady again. \"I read every page twice now. My voice is going. The black things that walk out there come to the door at night and stand there, listening, dark as the ground. They have not once come in.\"",
+      "A fifth. Hardly any words, only a long blot where the pen rested. Then: \"I cannot read aloud any more. I read to them with my finger, along the lines, and they lean close. It holds. It holds if anyone reads it, I think. It need not be me.\"",
+      "The last blotter keeps no words at all: only the print of an old hand laid flat, fingers spread, as if to keep something from running off a page.",
+    ],
+    ending: "At the edge of the Ink Wastes a clerk copied deeds and letters in the warm black ink of that country, because it was the only ink his hand did not shake out of; and it held only while someone read what it said. When his voice went, the black things of the Wastes learned to listen in his place. They are still at his door. They are not only what they seem to be when they come at you across the soft ground. They are the last readers of a few hundred pages that would otherwise run home into the dark, and they lean in close to every line." },
 };
 export const THREAD_ORDER = Object.keys(THREADS);
 const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave && !THREADS[id].shared); // the first ten (release 627): what a crossing offered then, it still offers
 const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
-export const inBand = (band, rx, ry) => { const d = Math.abs(rx) + Math.abs(ry), [lo, hi] = THREAD_BANDS[band]; return d >= lo && d <= hi; };
+export const inBand = (band, rx, ry) => { const d = STRAIGHT_BANDS.has(band) ? farDistance(rx, ry) : Math.abs(rx) + Math.abs(ry), [lo, hi] = THREAD_BANDS[band]; return d >= lo && d <= hi; };
 const roll = (key) => (hashSeed(key) % 10000) / 10000;
 // Which thread this crossing holds, or null: one roll for whether it holds any, one for which of its band's threads. `version` is
 // the crossing's story version (storyVersionOf); 0, the default, is the rule every crossing entered before the budget keeps.
@@ -227,15 +273,21 @@ export function threadIn(seed, dungeonId, version = 0) {
 }
 // The story budget (STORY_BUDGET): the later threads sharing slots in a section at story version `version`, in THREAD_ORDER.
 export const sharedThreads = (version, rx, ry) => THREAD_ORDER.filter((id) => Object.entries(THREADS[id].shared || {}).some(([v, bands]) => Number(v) <= version && bands.some((b) => inBand(b, rx, ry))));
-// The chance of the shared roll, made only where the first ten's roll placed nothing: what the budget leaves there.
-export function sharedRate(rx, ry) {
+// The chance of the shared roll, made only where the first ten's roll placed nothing: what the budget of `version` leaves there.
+export function sharedRate(rx, ry, version = STORY_BUDGET.version) {
   const base = FIRST_THREADS.some((id) => inBand(THREADS[id].band, rx, ry)) ? THREAD_RULES.chance : 0;
-  return Math.max(0, (STORY_BUDGET.perCrossing - base) / (1 - base));
+  return Math.max(0, (budgetFor(version) - base) / (1 - base));
 }
+// The share a thread takes of the shared slots where it is listed, from story version 2 (`weight`, default 1).
+export const threadWeight = (id) => Math.max(1, Math.floor(Number(THREADS[id]?.weight) || 1));
 function sharedThreadIn(seed, dungeonId, rx, ry, version) {
-  if (roll(`${seed}:threads:shared:v1:${dungeonId}`) >= sharedRate(rx, ry)) return null;
+  if (roll(`${seed}:threads:shared:v1:${dungeonId}`) >= sharedRate(rx, ry, version)) return null;
   const here = sharedThreads(version, rx, ry); if (!here.length) return null;
-  return here[hashSeed(`${seed}:threads:shared:which:v1:${dungeonId}`) % here.length];
+  const h = hashSeed(`${seed}:threads:shared:which:v1:${dungeonId}`);
+  if (version < 2) return here[h % here.length]; // version 1: an even share, exactly as release 773 chose
+  let k = h % here.reduce((n, id) => n + threadWeight(id), 0);
+  for (const id of here) { k -= threadWeight(id); if (k < 0) return id; }
+  return null;
 }
 // A crossing's story version: what its dungeon history was pinned to when it was first generated (0, the waves, when missing).
 export const storyVersionOf = (save, dungeonId) => { const v = Number(save?.consequences?.dungeons?.[dungeonId]?.storyVersion); return Number.isInteger(v) && v > 0 ? v : 0; };

@@ -14,7 +14,7 @@
 //   levels under the branch above, so a fall off the higher branch lands on one (it hurts) and the climb goes on from there;
 // - leaves on its branches (the tips always), and decorative boughs drawn off its trunk, which nothing walks on.
 // Bounded: at most two trees, a few thousand tile checks, once per section; nothing spawns up there.
-import { hashSeed, byHash } from "./random.js?v=r775-9678a017d60c";
+import { hashSeed, byHash } from "./random.js?v=r780-e230fbd94ccd";
 
 export const TREE_VERSION = 13;
 // Release 672 (landscape version 14; Tim, 2026-11-01: "I haven't seen any tall trees"): a survey found the version 13 search
@@ -83,6 +83,53 @@ export const TREES_V20 = {
   specs: { tall: TREES_V19.specs.tall, spire: { trunk: 3, sides: [4], reach: [3, 7] }, compact: TREES_V19.specs.compact, lesser: TREES_V19.specs.lesser, greater: { trunk: 3, sides: [3, 4], reach: [3, 5] } },
   readable: { perTree: 1 }, // walkable tiles a laid tree may leave hidden, per tree (the tile its twin tip sits exactly over)
 };
+// The canopy grove (Tim, 2026-11-05: "a grove where there's multiple great trees and they make like a canopy area up above the
+// floor, where the floor is kind of invisible. But you can walk around and jump between great trees; it's like a platform up
+// there... If they fall off they'll die, or their glider will get deployed... Maybe there's only one tree to access the whole
+// larger area above there. It doesn't have to be offered in every grove, but it should be a possibility"). Tree generator
+// version 21, on ground first seen at landscape version 22 (`since`); landscape 21 and older keep their trees exactly.
+// - The two-tile hop fixed. A grove's canopy walk took a hop on any straight run, so its gap could fall on a buttress root
+//   (tree ground, but blocked: no hop crosses it) and the greater tree could not be reached at all (GROVE3 447,17 at landscape
+//   21); and two walk platforms could face each other across two open tiles, a hop a sky jump makes from the tile's middle but
+//   not from its far edge (2.64 tiles against 3: −.36), which the shortest route took (CANOPY631 290,15). From version 21 a walk
+//   hops only over open ground (`walkGapOpen`, as the climbs have since version 18), and no tree is laid where two of its
+//   platforms face each other across `longGap` open tiles a hop would try (`longGapAt`); the spot is passed over.
+// - The canopy grove (form "canopy"): a hashed `share` of the tree sections try it before the grove. One access tree is climbed
+//   round its trunk (a lesser tree's climb); from its crown, bridges of branch wood (`bridge`) run out level, at crown height, to
+//   the crowns of `crowns` more great trees, whose trunks nothing climbs: each bridge leaves a crown already laid for the nearest
+//   spot a new crown fits, hops a one-tile gap of open ground on its straight runs (a level hop, so it lands either way), and some
+//   ramp a level up or down on a slope tile (`ramp`). The last crown laid carries the door and the Crown Rest. Every bridge tile is
+//   a sky platform at fall height: off its side is the fall the rules give (death, or the glider's freefall once it is found on
+//   the access crown). Laid only where the climb, every bridge and every crown read as drawn (`readableTree`), nothing walls the
+//   ground off, and no two-tile gap tempts a hop. Bounded: at most 1 + crowns[1] trees and `layouts` reachability checks a section.
+export const TREES_V21 = {
+  ...TREES_V20, version: 21, since: 22, // since: the landscape version this generator starts at
+  walkGapOpen: true, longGap: 2, // gap tiles a sky jump makes only from the launching tile's middle (JUMP.sky: 2.64 tiles; a test keeps it so)
+  canopy: {
+    share: .12, // of the tree sections (hashed per section) that try a canopy grove first; the rest begin with the grove as before
+    access: { trunk: [2, 3], sides: [3], reach: [3, 4] }, // the one tree climbed to the canopy (a grove's lesser tree)
+    minTop: 18, // the access crown at least this high (the ground has faded to sky by then: renderer.ts SKY)
+    crowns: [2, 4], // great trees whose crowns the bridges join, besides the access tree; fewer than crowns[0] fit: no canopy grove
+    trunk: [2, 3], // a crown tree's trunk square
+    bridge: { min: 2, max: 9, gapEvery: 3, ramp: .35, rampMin: 5 }, // tiles; a gap at most every gapEvery platforms; ramp: the share of bridges of rampMin tiles or more that ramp a level
+    tries: 160, crownTries: 120, layouts: 24, // access spots; spots tried for each crown; reachability checks a section
+  },
+};
+// Version 21: a pair of a tree's platforms in a straight line across exactly `longGap` open tiles, the far one at a height a sky
+// hop from the near one would land on (the solver's rule: no blocked tile, nothing more than a level above the hop on the way, a
+// canopy tile no lower than a level under it to land on). Returns the first such [from, to] or null. Pure.
+export function longGapAt(tiles, w, laid) {
+  const h = Math.floor(tiles.length / w), G = TREES_V21.longGap;
+  for (const i of laid) {
+    const a = tiles[i]; if (!a || a.blocked || !a.canopy) continue; const ax = i % w, ay = Math.floor(i / w), L = a.elev || 0;
+    for (const [dx, dy] of N4) for (let k = 1; k <= G + 1; k++) {
+      const x = ax + dx * k, y = ay + dy * k; if (x < 0 || y < 0 || x >= w || y >= h) break; const g = tiles[y * w + x];
+      if (!g || g.blocked || (g.elev || 0) > L + 1) break;
+      if (g.canopy && (g.elev || 0) >= L - 1) { if (k === G + 1) return [[ax, ay], [x, y]]; break; }
+    }
+  }
+  return null;
+}
 // What the renderer draws where (landscape-render.ts, renderer.ts), as rectangles in tile units, so the generator and the
 // renderer agree on which platforms show. A canopy tile's top face sits `drawnLevel` tiles a level higher (half a level lower for
 // a slope); under it, the trunk's face runs down to its foot, a branch's underside .26 deep, a leaf's .14. The ground pass paints
@@ -247,7 +294,7 @@ function walkPath(from, to, free) {
 // Grow this section's great tree(s). `ground` says whether a tile can take wood, `reachable` recomputes what can be walked
 // to from the plaza, `trapped` lists the tiles that can be dropped into but not climbed out of. Returns the tree record for map.canopy, or null (the tiles are left as they were).
 export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, version = 13, region = "jungle", force = false }) {
-  const T = TREES, h0 = fnvFrom(2166136261, `${seed}:trees:v13:${rx}:${ry}:`), h = (k) => fnvFrom(h0, k) >>> 0, at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version, v18 = version >= TREES_V18.version, v19 = version >= TREES_V19.version, v20 = version >= TREES_V20.version;
+  const T = TREES, h0 = fnvFrom(2166136261, `${seed}:trees:v13:${rx}:${ry}:`), h = (k) => fnvFrom(h0, k) >>> 0, at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version, v18 = version >= TREES_V18.version, v19 = version >= TREES_V19.version, v20 = version >= TREES_V20.version, v21 = version >= TREES_V21.since;
   const S = v20 ? TREES_V20.specs : v19 ? TREES_V19.specs : v18 ? TREES_V18.specs : { spire: T.spire, compact: TREES_V14.compact, lesser: T.lesser, greater: T.greater }, gapOk = v18 ? (x, y) => ground(x, y) && !at(x, y).blocked : null, turns = v18 ? TREES_V18.turns : null; // version 18: longer climbs, open hop gaps (a buttress root is tree ground, but blocked as a gap), readable turns
   if (!force && !v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
   if (!force && v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null; // force: the Rite of Ascendancy's tree (ascendancy.ts) always grows where it fits
@@ -260,10 +307,13 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
   const before = reachable(map), stuck = new Set(trapped(map).map((t) => idx(t.x, t.y))); // wood never walls ground off, nor makes a pit you can drop into and not climb out of
   const cutsOff = (laid) => { const r = reachable(map); for (let i = 0; i < 1024; i++) if (before[i] && !r[i] && !laid.has(i)) return true; return trapped(map).some((t) => !stuck.has(idx(t.x, t.y))); };
   const first = weighted(h("form"), v19 ? TREES_V19.forms : T.forms), spire = v19 ? ["tall", "spire"] : ["spire"], forms = [...(first === "grove" ? ["grove", ...spire] : spire), ...(v14 ? ["compact"] : [])]; // version 19: a spire first where every side takes its tall reach, then anywhere one fits
-  for (const pass of forms) for (let t = 0; t < (v14 && pass !== "grove" ? spots.length : tries[pass]); t++) {
+  const CG = TREES_V21.canopy; if (v21 && (h("canopy-form") % 1000) / 1000 < CG.share) forms.unshift("canopy"); // version 21: a share of the sections try a canopy grove first
+  let canopyChecks = 0;
+  for (const pass of forms) for (let t = 0; t < (pass === "canopy" ? CG.tries : v14 && pass !== "grove" ? spots.length : tries[pass]); t++) {
     if (v14 && layouts >= maxLayouts) break;
+    if (pass === "canopy" && canopyChecks >= CG.layouts) break;
     const form = pass === "tall" ? "spire" : pass, shape = form === "compact" ? "spire" : form, spec = pass === "tall" ? S.tall : form === "compact" ? S.compact : S.spire;
-    const [tx, ty] = v14 && form !== "grove" ? spots[t] : [2 + h(`${form}:x${t}`) % 26, 2 + h(`${form}:y${t}`) % 26];
+    const [tx, ty] = v14 && form !== "grove" && form !== "canopy" ? spots[t] : [2 + h(`${form}:x${t}`) % 26, 2 + h(`${form}:y${t}`) % 26];
     if (!ground(tx, ty)) continue; // every trunk square covers its spot, so no plan fits here (a quick skip: the same trees)
     const saved = new Map(), laid = new Set(), keep = (x, y) => { if (!saved.has(idx(x, y))) saved.set(idx(x, y), { ...at(x, y) }); };
     const put = (x, y, props) => { keep(x, y); Object.assign(at(x, y), { blocked: false, canopy: true, skyPlatform: true, ...props }); laid.add(idx(x, y)); };
@@ -277,9 +327,58 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
     };
     const fits = (plan) => plan && plan.sides.every((sd) => [sd.a, sd.b].every(([x, y]) => { for (let r = 0; r < sd.L; r++) if (!free(x + sd.d[0] * r, y + sd.d[1] * r)) return false; return true; }) && (!sd.knot || free(...sd.knot)));
     const trees = [], walk = [], hops = []; let laidB = false; // laidB: version 19 laid the grove's walk and greater tree, and tested them for walling ground off, while choosing it
+    // Version 21: the canopy grove's crowns and bridges, out from the access tree `a` (laid, and first in `trees`). For each crown
+    // in turn, the first of `crownTries` hashed spots whose square stands on free ground a tile off any wood and that a bridge
+    // reaches from a crown already laid (the shortest), kept only when the wood so far, so drawn, hides nothing but the twin-tip
+    // tiles (`readableTree`, with the new crown as the door), no two platforms face each other across a two-tile gap, the climb's
+    // foot is reached and no ground is walled off; otherwise it is taken up again and the next spot tried.
+    const layCanopy = (a, t) => {
+      const B = CG.bridge, crowns = [a], want = pick(h(`canopy:crowns:${t}`), CG.crowns);
+      const trunkOf = (tr) => { const s = new Set(); for (let j = 0; j < tr.N; j++) for (let i = 0; i < tr.N; i++) s.add(idx(...turn(tr.op, tr.N, tr.tx, tr.ty)(i, j))); return s; };
+      for (let c = 0; c < want; c++) {
+        // Every crown's reach: a bridge walks open ground, never beside other wood than its own crown's trunk, at most B.max tiles.
+        const fields = crowns.map((cr) => {
+          const own = trunkOf(cr), open = (x, y) => x >= 1 && y >= 1 && x <= 30 && y <= 30 && free(x, y) && !N4.some(([dx, dy]) => laid.has(idx(x + dx, y + dy)) && !own.has(idx(x + dx, y + dy)));
+          const d = new Int16Array(1024), prev = new Int16Array(1024).fill(-1), q = [];
+          for (const i of own) for (const [dx, dy] of N4) { const x = i % 32 + dx, y = Math.floor(i / 32) + dy; if (open(x, y) && !d[idx(x, y)]) { d[idx(x, y)] = 1; q.push(idx(x, y)); } }
+          for (let k = 0; k < q.length; k++) { const i = q[k], x = i % 32, y = Math.floor(i / 32); if (d[i] >= B.max) continue; for (const [dx, dy] of N4) { const j = idx(x + dx, y + dy); if (open(x + dx, y + dy) && !d[j]) { d[j] = d[i] + 1; prev[j] = i; q.push(j); } } }
+          return { cr, d, prev };
+        });
+        let done = false;
+        for (let k = 0; k < CG.crownTries && !done && canopyChecks < CG.layouts; k++) {
+          const N = pick(h(`crown:n:${t}:${c}:${k}`), CG.trunk), gx = 2 + h(`crown:x${t}:${c}:${k}`) % 26, gy = 2 + h(`crown:y${t}:${c}:${k}`) % 26, sq = new Set();
+          let fit = true; for (let j = -1; j <= N && fit; j++) for (let i = -1; i <= N && fit; i++) { const x = gx + i, y = gy + j, inner = i >= 0 && j >= 0 && i < N && j < N; if (inner) { if (!free(x, y)) fit = false; else sq.add(idx(x, y)); } else if (laid.has(idx(x, y))) fit = false; }
+          if (!fit) continue;
+          let best = null; for (const f of fields) for (const i of sq) for (const [dx, dy] of N4) { const x = i % 32 + dx, y = Math.floor(i / 32) + dy, j = idx(x, y); if (x < 0 || y < 0 || x >= 32 || y >= 32 || sq.has(j) || !f.d[j]) continue; if (!best || f.d[j] < best.n) best = { f, end: j, n: f.d[j] }; }
+          if (!best || best.n < B.min) continue;
+          const path = []; for (let j = best.end; j >= 0; j = best.f.prev[j]) path.unshift([j % 32, Math.floor(j / 32)]);
+          if (path.some(([x, y]) => sq.has(idx(x, y)))) continue;
+          // The bridge: level with the crown it leaves; a level hop over one tile of open ground on a straight run, at most every
+          // gapEvery platforms and never at either end; on a long bridge, perhaps one slope tile a level up or down.
+          const deck = []; let since = 0;
+          for (let i = 0; i < path.length; i++) { const [x, y] = path[i], p0 = path[i - 1], p1 = path[i + 1], straight = p0 && p1 && p1[0] - x === x - p0[0] && p1[1] - y === y - p0[1]; if (straight && since >= B.gapEvery && i >= 2 && i < path.length - 2 && gapOk(x, y)) { deck.push(null); since = 0; continue; } deck.push([x, y]); since++; }
+          const ramps = []; if (path.length >= B.rampMin && (h(`bridge:ramp:${t}:${c}:${k}`) % 1000) / 1000 < B.ramp) for (let i = 2; i < deck.length - 2; i++) if (deck[i - 1] && deck[i] && deck[i + 1]) ramps.push(i);
+          const r = ramps.length ? ramps[h(`bridge:at:${t}:${c}:${k}`) % ramps.length] : -1, up = h(`bridge:up:${t}:${c}:${k}`) % 2 === 0, base = best.f.cr.top;
+          const levelAt = (i) => r < 0 || i < r ? base : up ? base + 1 : i === r ? base : base - 1, look = h(`crown:look:${t}:${c}:${k}`) % TREES.looks.length;
+          const mark = saved.size, walkMark = walk.length, hopMark = hops.length, top = levelAt(deck.length - 1);
+          for (let i = 0; i < deck.length; i++) { if (!deck[i]) { hops.push([deck[i - 1], deck[i + 1]]); continue; } const [x, y] = deck[i]; put(x, y, { kind: "canopyBranch", elev: levelAt(i), slope: i === r, look, walk: true, bridge: true, ...(h(`bridge:leaf:${x},${y}`) % 1000 < T.leaves.branch * 1000 ? { leaves: 1 } : {}) }); walk.push([x, y]); }
+          for (const i of sq) put(i % 32, Math.floor(i / 32), { kind: "canopyTrunk", elev: top, slope: false, look });
+          const crown = { N, op: 0, tx: gx, ty: gy, sides: [], climb: [], hops: [], top, look, crown: true }; canopyChecks++;
+          if (!longGapAt(map.tiles, 32, laid) && reachable(map)[idx(...a.step)] && !cutsOff(laid) && readableTree(map, laid, [...trees, crown])) { crowns.push(crown); trees.push(crown); done = true; }
+          else { for (const i of [...saved.keys()].slice(mark)) { const tile = map.tiles[i]; for (const k2 of Object.keys(tile)) delete tile[k2]; Object.assign(tile, saved.get(i)); saved.delete(i); laid.delete(i); } walk.length = walkMark; hops.length = hopMark; }
+        }
+        if (!done) break;
+      }
+      return crowns.length - 1 >= CG.crowns[0];
+    };
     if (shape === "spire") {
       const p = plan(`${form}:${t}`, spec, ground, tx, ty, gapOk, (q) => q && free(...q.step)); if (!p) continue;
       layTree(p, 1, `${form}:${t}`); trees.push(p);
+    } else if (shape === "canopy") { // version 21: the canopy grove (TREES_V21.canopy)
+      const a = plan(`access:${t}`, CG.access, ground, tx, ty, gapOk, (q) => q && free(...q.step)); if (!a) continue;
+      layTree(a, 1, `access:${t}`); if (a.top < CG.minTop) { undo(); continue; }
+      trees.push(a); if (!layCanopy(a, t)) { undo(); continue; }
+      laidB = true; // every crown was tested for walling ground off as it was laid
     } else {
       const a = plan(`lesser:${t}`, S.lesser, ground, tx, ty, gapOk, (q) => q && free(...q.step)); if (!a) continue;
       layTree(a, 1, `lesser:${t}`);
@@ -292,7 +391,7 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
         walk.length = 0; hops.length = 0; let e = a.top, since = 0;
         for (let i = 0; i < w.length; i++) {
           const [x, y] = w[i], p0 = w[i - 1], p1 = w[i + 1], straight = p0 && p1 && p1[0] - x === x - p0[0] && p1[1] - y === y - p0[1];
-          if (straight && since >= T.walk.gapEvery && i >= 2 && i < w.length - 2) { hops.push([p0, p1]); e++; since = 0; continue; }
+          if (straight && since >= T.walk.gapEvery && i >= 2 && i < w.length - 2 && (!(v21 && TREES_V21.walkGapOpen) || gapOk(x, y))) { hops.push([p0, p1]); e++; since = 0; continue; } // version 21: only over open ground (a buttress root under the gap stopped the hop)
           put(x, y, { kind: "canopyLeaf", elev: e, slope: false, look: a.look, walk: true }); walk.push([x, y]); since++;
         }
         layTree(q, e + 1, `greater:${t}`);
@@ -352,6 +451,7 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
       const nb = pick(h(`boughs:${tr.tx}:${tr.ty}`), T.boughs.count); tr.boughs = [];
       for (let k = 0; k < nb; k++) { const r = h(`bough:${tr.tx}:${tr.ty}:${k}`); tr.boughs.push({ at: .12 + .8 * ((r % 1000) / 1000), side: (r >>> 10) % 2 ? 1 : -1, len: T.boughs.len[0] + (T.boughs.len[1] - T.boughs.len[0]) * (((r >>> 11) % 100) / 100), lift: ((r >>> 18) % 5) / 10, leaves: 2 + (r >>> 21) % 3 }); }
     }
+    if (v21 && longGapAt(map.tiles, 32, laid)) { undo(); continue; } // version 21: no two platforms face each other across a two-tile gap
     if (v20 && !readableTree(map, laid, trees)) { undo(); continue; } // version 20: so drawn (canopyRepaint), every climb tile shows but the one twin-covered tile a tree has
     const cleared = new Set(laid), strip = new Set();
     if (v18) { // version 18: the wood's trees also leave the hop gaps and the strip the trunk is drawn up, so nothing stands in front of it
@@ -368,7 +468,8 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
     map.objects.push({ id: `canopy-gate-${rx}-${ry}`, kind: "canopyGate", name: dest === "starfield" ? "A door in the great tree, full of stars" : "A door in the great tree, full of cloud", x: gate[0], y: gate[1], dest, actions: ["enter"], state: "open" });
     const xs = [...laid].map((i) => i % 32), ys = [...laid].map((i) => Math.floor(i / 32)), bx = Math.min(...xs) - 1, by = Math.min(...ys) - 1, n = Math.max(Math.max(...xs) - bx, Math.max(...ys) - by) + 2;
     const rec = (tr, low) => ({ x0: tr.tx, y0: tr.ty, size: tr.N, top: tr.top, look: tr.look, boughs: tr.boughs, ...(low ? { low: true } : {}) });
-    map.canopy = { version: v20 ? TREES_V20.version : v19 ? TREES_V19.version : v18 ? TREES_V18.version : v14 ? TREES_V14.version : TREE_VERSION, ...(v14 ? { region } : {}), form, x0: door.tx, y0: door.ty, size: door.N, height: door.top, top: door.top, branches: door.sides.length * 2, reach: door.sides.map((q) => q.L), dest, pads, walk: walk.length, trees: trees.map((tr, i) => rec(tr, i < trees.length - 1)), box: { x: bx, y: by, n } };
+    const access = form === "canopy" ? trees[0] : door; // a canopy grove's door crown has no branches of its own: the record keeps the climb's
+    map.canopy = { version: v21 ? TREES_V21.version : v20 ? TREES_V20.version : v19 ? TREES_V19.version : v18 ? TREES_V18.version : v14 ? TREES_V14.version : TREE_VERSION, ...(v14 ? { region } : {}), form, x0: door.tx, y0: door.ty, size: door.N, height: door.top, top: door.top, branches: access.sides.length * 2, reach: access.sides.map((q) => q.L), dest, pads, walk: walk.length, ...(form === "canopy" ? { crowns: trees.length - 1, hops: hops.length } : {}), trees: trees.map((tr, i) => rec(tr, i < trees.length - 1)), box: { x: bx, y: by, n } };
     return map.canopy;
   }
   return null;

@@ -10,17 +10,17 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { farCivAt } from "./far-realms.js?v=r775-9678a017d60c";
-import { hashSeed, byHash } from "./random.js?v=r775-9678a017d60c";
-import { placeDock } from "./boats.js?v=r775-9678a017d60c";
-import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r775-9678a017d60c";
-import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r775-9678a017d60c";
-import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r775-9678a017d60c";
+import { farCivAt } from "./far-realms.js?v=r780-e230fbd94ccd";
+import { hashSeed, byHash } from "./random.js?v=r780-e230fbd94ccd";
+import { placeDock } from "./boats.js?v=r780-e230fbd94ccd";
+import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r780-e230fbd94ccd";
+import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r780-e230fbd94ccd";
+import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r780-e230fbd94ccd";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 21; // Terrace Springs (REGIONS_V21, applyTerraces: stepped sinter terraces, spring pools, hot springs); 768: the last spires back (trees.ts TREES_V20: every side may be three tiles again; a tree is laid only where every climb tile is drawn, with canopyRepaint); 764: tall spires again (trees.ts TREES_V19: groves tried first and harder, tall spires, then the earlier spire reach, every readable turn); 758: great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 22; // the canopy grove (trees.ts TREES_V21: several great trees joined at crown height by branch bridges, one climbed; walk hops only over open ground, no two-tile gaps); 772: Terrace Springs (REGIONS_V21, applyTerraces: stepped sinter terraces, spring pools, hot springs); 768: the last spires back (trees.ts TREES_V20: every side may be three tiles again; a tree is laid only where every climb tile is drawn, with canopyRepaint); 764: tall spires again (trees.ts TREES_V19: groves tried first and harder, tall spires, then the earlier spire reach, every readable turn); 758: great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
 export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : t?.roofLift || 1); // a great building's roof is drawn at the top of its facade (great-buildings.ts)
@@ -578,6 +578,22 @@ export const TERRACES = {
   vents: [1, 3], ventRadius: [.8, 1.5], mat: 1.3, fringe: 2.5,
   cache: { chance: .4, minLevel: 3, name: "A cache at the springs' head" },
 };
+// The healing hot springs (Tim, 2026-11-05: "Sure, yeah, whatever we can do. So healing hot springs."). Play behaviour, not
+// generation (no version: every Terrace Springs section from landscape 21 on already has the pools). Standing or wading in a
+// turquoise `springPool` mends `share` of maximum health a second, never past the health ceiling (blight rot still holds it
+// down); the mats round a vent (`springMat`) are scalding crust, not water, and do not heal. Only out of combat: no living foe
+// within `foeNear` tiles (an aroused one within `aggroNear`), and not hurt for `calm` seconds. Counted in play seconds only, each
+// frame's share at most `step` seconds, so a pause, backgrounding or a long frame never grants heal for time away. One message a
+// visit (a visit ends `visitGap` seconds off the pools); a wisp of steam every `wisp` seconds while it mends.
+export const HOT_SPRINGS = {
+  kinds: ["springPool"], share: .015, step: .1, calm: 4, foeNear: 7, aggroNear: 14, scan: .25, visitGap: 3, wisp: .9, wispLife: 1.2,
+  message: "The spring's warmth seeps into your wounds.",
+};
+// The health after `dt` seconds of soaking: up `share` of `maxHp` a second (dt counted to `step` at most), never above `ceiling`.
+export function springMend(hp, maxHp, ceiling, dt) {
+  const H = HOT_SPRINGS, t = Math.max(0, Math.min(H.step, Number(dt) || 0)), top = Math.min(Number(maxHp) || 0, Number(ceiling) || 0);
+  return hp >= top ? hp : Math.min(top, hp + (Number(maxHp) || 0) * H.share * t);
+}
 const terraceDetail = (gx, gy) => ((Math.imul(gx, 73856093) ^ Math.imul(gy, 19349663)) >>> 0) % 997;
 function applyTerraces(map, seed, rx, ry, mask, hamlet) {
   const T = TERRACES, H = T.height, mine = [], nat = new Int8Array(1024), lv = new Int8Array(1024).fill(-1); let touched = 0; // lv: each terrace tile's level (-1: not one)

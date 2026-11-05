@@ -12,11 +12,11 @@
 // is built onto its pressure plate, and the Heart itself stays sealed until three trial chambers have been cleared of their
 // ghouls. Relics in the chambers tell what happened to the Fivefold Court. Everything is a hash of the seed and the centre;
 // a Pentagon stands only where all nine sections are new ground (`atlas.pentVersion`).
-import { hashSeed, rng, byHash } from "./random.js?v=r775-9678a017d60c";
-import { BUILDINGS, layFloor, farthest } from "./great-buildings.js?v=r775-9678a017d60c";
-import { carveMaze } from "./labyrinths.js?v=r775-9678a017d60c";
-import { LIFT_PER_LEVEL as LIFT } from "./landscape.js?v=r775-9678a017d60c";
-import { grantTesseract } from "./tesseracts.js?v=r775-9678a017d60c";
+import { hashSeed, rng, byHash } from "./random.js?v=r780-e230fbd94ccd";
+import { BUILDINGS, layFloor, farthest } from "./great-buildings.js?v=r780-e230fbd94ccd";
+import { carveMaze } from "./labyrinths.js?v=r780-e230fbd94ccd";
+import { LIFT_PER_LEVEL as LIFT } from "./landscape.js?v=r780-e230fbd94ccd";
+import { grantTesseract } from "./tesseracts.js?v=r780-e230fbd94ccd";
 
 export const PENTAGON = {
   version: 7, // 7: the roof, its balconies and the outer stair (below); 6: shortcuts and side entrances (below); 5: release 732 (below); 4: release 730; 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
@@ -754,13 +754,16 @@ export const PENTAGON_FINDING = {
   hunts: { offer: 2, near: 18, far: 44, spread: 1.9, tries: 6, keep: 8, settle: 3 }, // hunts open at once; how far out (sections) one is looked for; how far apart in bearing (radians) two open ones must lie; bearings tried per search; finished hunts kept; seconds in a section before the one search there
   far: [[6, "close by"], [14, "a few crossings off"], [26, "many crossings off"], [48, "far off"], [Infinity, "very far off: a long journey"]], // distance words, by sections
   name: "A Pentagon sigil",
+  retiredPin: "The Pentagon (the sigil's)", // the compass pin a sigil read set in release 775; main.ts lets it go on load
   messages: {
     read: "A five-sided sigil is cut into the ground, one of its points drawn out long. It points",
-    follow: "Your compass takes up the sigil's line.",
+    // Tim, 2026-11-05: "it's gonna be on you to find them... I don't want to interrupt the game". A sigil read and a hunt laid
+    // out touch neither the compass nor the Atlas, and a hunt opens with no banner: a Journal line in words (heading and how far,
+    // never the section), and the ground's sigils, are all there is to go on.
+    sigilJournal: (heading, far) => `A Pentagon sigil points ${heading}: a five-sided wall stands that way, ${far}.`,
+    huntJournal: (heading, far) => `A Pentagon hunt opens: a five-sided wall stands to the ${heading}, ${far}. Nothing marks it on the map; it is yours to find.`,
     arrived: "THE SIGIL'S PENTAGON",
     arrivedDetail: "the five-sided wall the sigils pointed to",
-    huntOffer: "PENTAGON HUNT",
-    huntOfferDetail: "a five-sided wall far out · see the Journal",
     huntFound: "PENTAGON HUNT · FOUND",
     huntDone: "PENTAGON HUNT COMPLETE",
     huntDoneDetail: "another lies far out · see the Journal",

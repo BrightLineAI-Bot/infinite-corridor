@@ -1,34 +1,34 @@
-import { FAR_FOLK } from "./far-realms.js?v=r775-9678a017d60c";
-import { astralBeamAnchors } from "./astral-worm.js?v=r775-9678a017d60c";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r775-9678a017d60c";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r775-9678a017d60c";
-import { enemyMeleeGeometry } from "./combat.js?v=r775-9678a017d60c";
-import { ruleRows } from "./elders.js?v=r775-9678a017d60c";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r775-9678a017d60c";
-import { BOAT } from "./boats.js?v=r775-9678a017d60c";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r775-9678a017d60c";
-import { isMarineTile } from "./world-beasts.js?v=r775-9678a017d60c";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r775-9678a017d60c"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r775-9678a017d60c";
-import { setTreeSeason } from "./landscape-render.js?v=r775-9678a017d60c";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r775-9678a017d60c";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r775-9678a017d60c";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r775-9678a017d60c";
-import { TREES } from "./trees.js?v=r775-9678a017d60c";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r775-9678a017d60c";
-import { KIT_MOVES } from "./boss-kit.js?v=r775-9678a017d60c";
-import { SKY_DISCS } from "./skylands.js?v=r775-9678a017d60c"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r775-9678a017d60c";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r775-9678a017d60c"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r775-9678a017d60c"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r775-9678a017d60c"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r775-9678a017d60c"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r775-9678a017d60c"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r775-9678a017d60c";
-import { drawRelayNode } from "./relay-network.js?v=r775-9678a017d60c";
-import { structureOccupancy } from "./world.js?v=r775-9678a017d60c";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r775-9678a017d60c";
-import { HOLE_DROPS, holeDrops } from "./labyrinths.js?v=r775-9678a017d60c";
+import { FAR_FOLK } from "./far-realms.js?v=r780-e230fbd94ccd";
+import { astralBeamAnchors } from "./astral-worm.js?v=r780-e230fbd94ccd";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r780-e230fbd94ccd";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r780-e230fbd94ccd";
+import { enemyMeleeGeometry } from "./combat.js?v=r780-e230fbd94ccd";
+import { ruleRows } from "./elders.js?v=r780-e230fbd94ccd";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r780-e230fbd94ccd";
+import { BOAT } from "./boats.js?v=r780-e230fbd94ccd";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r780-e230fbd94ccd";
+import { isMarineTile } from "./world-beasts.js?v=r780-e230fbd94ccd";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r780-e230fbd94ccd"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r780-e230fbd94ccd";
+import { setTreeSeason } from "./landscape-render.js?v=r780-e230fbd94ccd";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r780-e230fbd94ccd";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r780-e230fbd94ccd";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r780-e230fbd94ccd";
+import { TREES } from "./trees.js?v=r780-e230fbd94ccd";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r780-e230fbd94ccd";
+import { KIT_MOVES } from "./boss-kit.js?v=r780-e230fbd94ccd";
+import { SKY_DISCS } from "./skylands.js?v=r780-e230fbd94ccd"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r780-e230fbd94ccd";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r780-e230fbd94ccd"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r780-e230fbd94ccd"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r780-e230fbd94ccd"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r780-e230fbd94ccd"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r780-e230fbd94ccd"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r780-e230fbd94ccd";
+import { drawRelayNode } from "./relay-network.js?v=r780-e230fbd94ccd";
+import { structureOccupancy } from "./world.js?v=r780-e230fbd94ccd";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r780-e230fbd94ccd";
+import { HOLE_DROPS, holeDrops } from "./labyrinths.js?v=r780-e230fbd94ccd";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1094,6 +1094,22 @@ function drawTreeBoughs(ctx, c, C, s, sway, tiles, w, box) {
 export const CROWN_VEIL = { from: .5, below: 2, leaves: 12, pad: .5, rise: 1.3, leaf: .62, grow: .18 }; // pad: tiles past the crown's sides; rise: tiles above its top; leaf: a leaf mass's radius in tiles, every third one `grow` larger
 // Does this object stand in the strip a great tree's trunk is drawn up (its columns, from its foot to its drawn crown)?
 export function behindGreatTrunk(cn, o) { for (const tr of cn.trees || [cn]) { if (o.x + .5 >= tr.x0 - .3 && o.x + .5 <= tr.x0 + tr.size + .3 && o.y < tr.y0 + tr.size && o.y >= tr.y0 - discLift(tr.top) * CANOPY_LIFT - 1) return true; } return false; }
+// The canopy grove (trees.ts TREES_V21.canopy; Tim, 2026-11-05: "a canopy area up above the floor, where the floor is kind of
+// invisible"): up among its crowns the ground is gone. From `below` levels under the access crown the sky shows whole whatever
+// the height (SKY alone would still show some ground under a low canopy), and `leaves` leaf masses hang `under` levels beneath the
+// bridges, so the crowns read as a roof of leaves over a floor you cannot see. Rendering only; a fixed handful of arcs, worked
+// out from the record each frame (no state), drawn only on a canopy grove's section while the Wayfarer is up there.
+export const CANOPY_FLOOR = { below: 3, ramp: 4, leaves: 16, under: 4, leaf: 1.1, alpha: .55 };
+export function canopyFloorReveal(canopy, height) {
+  if (canopy?.form !== "canopy" || !Number.isFinite(height)) return 0; const base = Number(canopy.trees?.[0]?.top) || Number(canopy.top) || 0, full = base - CANOPY_FLOOR.below;
+  return Math.max(0, Math.min(1, (height - (full - CANOPY_FLOOR.ramp)) / CANOPY_FLOOR.ramp));
+}
+function drawCanopyFloor(ctx, c, s, alpha) {
+  const F = CANOPY_FLOOR, b = c.box, base = Number(c.trees?.[0]?.top) || c.top, look = c.trees?.[0]?.look != null ? TREES.looks[c.trees[0].look] : null, leaf = (SEASON && SEASONS.canopy[SEASON]) || (look ? look.leaf : CANOPY_LOOK.leaf), lift = discLift(Math.max(0, base - F.under)) * CANOPY_LIFT * s;
+  ctx.save(); ctx.globalAlpha = alpha * F.alpha;
+  for (let k = 0; k < F.leaves; k++) { const u = ((k * 7) % F.leaves + .5) / F.leaves, v = ((k * 5) % F.leaves + .5) / F.leaves; ctx.fillStyle = leaf[k % leaf.length]; ctx.beginPath(); ctx.arc((b.x + u * b.n) * s, (b.y + v * b.n) * s - lift, s * F.leaf * (1 + (k % 3) * .25), 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
 export function crownReveal(height, top) { const from = Math.max(SKY.from, top * CROWN_VEIL.from), full = Math.max(from + 1, top - CROWN_VEIL.below); return Math.max(0, Math.min(1, (height - from) / (full - from))); }
 function drawCrownVeil(ctx, c, s, now, alpha, still) {
   const look = c.look != null ? TREES.looks[c.look] : null, leaf = (SEASON && SEASONS.canopy[SEASON]) || (look ? look.leaf : CANOPY_LOOK.leaf), V = CROWN_VEIL;
@@ -1136,6 +1152,9 @@ export function drawThreadRelic(ctx, o, s, now) {
     case "key": ctx.lineWidth = Math.max(1.5, s * .035); ctx.strokeStyle = "#2a241c"; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(-s * .1, 0, s * .07, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#2a241c"; ctx.beginPath(); ctx.arc(-s * .1, 0, s * .025, 0, 7); ctx.fill(); ctx.fillStyle = c; ctx.fillRect(-s * .04, -s * .018, s * .2, s * .036); ctx.strokeRect(-s * .04, -s * .018, s * .2, s * .036); ctx.fillRect(s * .1, s * .018, s * .03, s * .05); ctx.fillRect(s * .05, s * .018, s * .03, s * .035); break; // release 707: the Tollkeeper's Keys
     case "spool": R(-.12, -.18, .24, .05); R(-.12, .13, .24, .05); ctx.fillStyle = "#c8a0b8"; ctx.fillRect(-s * .08, -s * .13, s * .16, s * .26); ctx.strokeStyle = "#7a5070"; for (let y2 = -.11; y2 < .12; y2 += .045) { ctx.beginPath(); ctx.moveTo(-s * .08, y2 * s); ctx.lineTo(s * .08, (y2 + .02) * s); ctx.stroke(); } break; // release 712
     case "mirror": ctx.beginPath(); ctx.moveTo(-s * .16, -s * .12); ctx.lineTo(s * .02, -s * .2); ctx.lineTo(s * .17, -s * .02); ctx.lineTo(s * .06, s * .18); ctx.lineTo(-s * .14, s * .1); ctx.closePath(); ctx.fillStyle = "#b8d0e0"; ctx.fill(); ctx.stroke(); ctx.strokeStyle = "#ffffffaa"; ctx.beginPath(); ctx.moveTo(-s * .08, -s * .08); ctx.lineTo(s * .04, -s * .13); ctx.stroke(); break; // release 712
+    case "slate": ctx.rotate(-.08); ctx.fillStyle = "#6a5440"; R(-.2, -.24, .4, .46); ctx.fillStyle = c; R(-.16, -.2, .32, .38); ctx.strokeStyle = "#f2efe6"; ctx.lineWidth = Math.max(1, s * .025); ctx.beginPath(); ctx.moveTo(-s * .1, s * .08); ctx.lineTo(-s * .05, -s * .1); ctx.lineTo(0, s * .08); ctx.moveTo(s * .04, -s * .1); ctx.lineTo(s * .04, s * .08); ctx.stroke(); break; // the Tall Child's Slates (story version 2): a framed slate with chalk letters on it
+    case "print": ctx.rotate(.12); R(-.19, -.19, .38, .38); ctx.strokeStyle = "#5a402a99"; ctx.lineWidth = Math.max(1, s * .018); for (let a = 0; a < 6.28; a += .52) { ctx.beginPath(); ctx.moveTo(Math.cos(a) * s * .025, Math.sin(a) * s * .025); ctx.lineTo(Math.cos(a) * s * .14, Math.sin(a) * s * .14); ctx.stroke(); } break; // the Spore Prints (story version 2): a square of paper, a spore print fanned on it
+    case "blotter": ctx.fillStyle = "#e8e2d4"; R(-.2, -.14, .4, .26); ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(-s * .04, -s * .01, s * .09, s * .05, .3, 0, 7); ctx.fill(); ctx.fillRect(s * .03, s * .03, s * .12, s * .02); ctx.fillStyle = "#3a2e22"; ctx.beginPath(); ctx.ellipse(0, s * .17, s * .14, s * .05, 0, Math.PI, 0); ctx.fill(); break; // the Ink-Clerk's Blotters (story version 2): a sheet of blotting paper with an ink blot, on a rocker blotter
     case "jar": R(-.13, -.12, .26, .3); ctx.fillStyle = "#f4e2b0"; R(-.15, -.19, .3, .07); ctx.fillStyle = "#fff4d0aa"; ctx.fillRect(-s * .08, -s * .07, s * .04, s * .18); break; // the Beekeeper's Jars (2026-11-04): a honey jar under a wax lid
     case "handle": ctx.rotate(-.5); ctx.beginPath(); ctx.moveTo(-s * .03, -s * .22); ctx.quadraticCurveTo(s * .045, 0, -s * .025, s * .22); ctx.lineTo(s * .035, s * .22); ctx.quadraticCurveTo(s * .085, 0, s * .03, -s * .22); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeStyle = "#2a241c88"; for (const y2 of [.1, .14, .18]) { ctx.beginPath(); ctx.moveTo(-s * .02, y2 * s); ctx.lineTo(s * .045, (y2 - .015) * s); ctx.stroke(); } break; // the Toolmaker's Handles (2026-11-05): a worn wooden handle with no tool on it, a grip worn into its foot
     case "compass": ctx.beginPath(); ctx.arc(0, 0, s * .16, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#b03a2e"; ctx.beginPath(); ctx.moveTo(0, -s * .12); ctx.lineTo(s * .04, 0); ctx.lineTo(-s * .04, 0); ctx.fill(); break;
@@ -2235,8 +2254,8 @@ export function render(ctx, g, w, h, now) {
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0, heightNow = 0; // the Wayfarer's height in levels on a great tree's section (the crown veil reads it)
-  if (g.area === "overworld") { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, a = Math.max(0, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height
-    if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); const c = g.map?.canopy?.box; if (c) { for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, c, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw)); } } }
+  if (g.area === "overworld") { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
+    if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); if (floor > 0) drawCanopyFloor(ctx, g.map.canopy, s, floor); const c = g.map?.canopy?.box; if (c) { for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, c, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw)); } } }
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
   if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
@@ -2891,6 +2910,7 @@ function drawGlyphStatus(ctx,g,s,now,visible){
     if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}
     else if(v.kind==="heal"){const rise=(1-a)*s*.6;ctx.font=`bold ${Math.max(10,Math.round(s*.32))}px system-ui,sans-serif`;ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle=`rgba(0,0,0,${a*.8})`;ctx.fillStyle=`rgba(120,240,140,${a})`;ctx.strokeText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.fillText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.textAlign="start"}
     else if(v.kind==="mist"){const r=s*(.35+(1-a)*.5),gr=ctx.createRadialGradient(v.x*s,v.y*s,0,v.x*s,v.y*s,r);gr.addColorStop(0,`rgba(214,226,240,${.55*a})`);gr.addColorStop(1,"rgba(150,172,200,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(v.x*s,v.y*s,r,0,7);ctx.fill()}/* release 699: Stalker's Mist rots a foe */
+    else if(v.kind==="steam"){const f=1-a;ctx.fillStyle=`rgba(236,248,250,${.42*a})`;for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(v.x*s+(k-1)*s*.2+Math.sin(f*5+k*2)*s*.06,v.y*s-f*s*(.5+k*.12),s*(.06+.07*f),0,7);ctx.fill()}}/* the healing hot springs (HOT_SPRINGS): a wisp of steam */
     else if(v.kind==="burst"){ctx.strokeStyle=`rgba(255,210,92,${a})`;ctx.lineWidth=Math.max(2,s*.08);ctx.beginPath();ctx.arc(v.x*s,v.y*s,v.radius*s*(1.1-a*.6),0,7);ctx.stroke();ctx.fillStyle=`rgba(255,180,70,${a*.25})`;ctx.fill()}}
 }
 
