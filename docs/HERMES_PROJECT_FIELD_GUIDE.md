@@ -2854,6 +2854,29 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 776: healing hot springs — 2026-11-05
+
+Tim (2026-11-05): the hot springs heal you.
+
+**CODE:** `HOT_SPRINGS` in `src/landscape.ts` holds the tuning. It is play behaviour, not generation, so it has no version and works on every Terrace Springs section from landscape 21 on:
+- `kinds` is springPool; `share` is .015 of max HP per second; `step` is .1 s, the most of one frame that counts.
+- `calm` is 4 s unhurt; `foeNear` is 7 tiles and `aggroNear` 14 tiles; `scan` is .25 s between foe checks.
+- `visitGap` (3 s), `wisp` (.9 s) and `wispLife` (1.2 s) time the cue, and the table holds the message.
+
+`springMend(hp, maxHp, ceiling, dt)` is the pure heal step, capped at `min(maxHp, healthCeiling)`. `Game.tickHotSprings(dt, hurt, now)` runs once per frame near the end of `update`: after the frame's damage is settled, before the lava, void and fatal-fall checks.
+- It keeps one state object, `game.springSoak`, changed in place.
+- It heals only on a `springPool` tile with `landscape === "terraces"`, on foot and on the ground: not jumping, gliding, drone-lifting, swimming, in the robot, mounted or aboard.
+- `Game.springFoeNear()` skips ambient, passive, NPC, retreating, passing, playing, astral-ally, remnant and unprovoked skirmish actors.
+- The cue is one message per visit and a `glyphVisuals` `"steam"` entry, drawn in `renderer.ts` `drawGlyphStatus`.
+
+**BOUNDARY:**
+- Generation is unchanged: tiles, Atlas colours and landscape pins are the same as before.
+- `springMat`, rims, terraces, fringes and vents don't heal.
+- Nothing heals during a fight, and there is no reduced in-combat rate.
+- Health never goes above max HP or the rot ceiling, and the springs don't clear rot or poison. The game has no cold status, and slows are untouched.
+- Nothing is saved. The timers run on frame `dt` only, so pause, backgrounding, death and long frames grant nothing, and a reload starts the calm timer again.
+- At most two steam wisps exist at once.
+
 ## Release 775: Pentagon sigils and Pentagon hunts — 2026-11-05
 
 Tim, 2026-11-05: "the sigils on the ground — we need to make sure that they actually point to a Pentagon... They can be really far away. Pentagons should be pretty rare — if you go on a Pentagon hunt you're going to be hunting for a while... You don't need to increase the frequency, we just need a good, reliable way to find them"; "a Pentagon hunt feature which lines out one to two Pentagons at a time in different locations on the map"; "the map should be pretty well divided between Pentagon sigil regions... whenever you're within that region, the Pentagon sigils start pointing in that direction"; "some regions you don't have Pentagon sigils, so you're just wandering... when you get into a region that has a Pentagon sigil, you can follow it for a long time." Audit at r772: Pentagons on 4.3–5.5% of 8-section grid centres (about one per 1,250 sections; hamlets remove 76% of the hashed candidates, open sea 13%); median distance to the nearest 16 sections (90th percentile 29). The release 729 gold cue showed on 94% of sections but pointed at a labyrinth 98% of the time, reached only 14 sections, had 8 sign-based directions (up to 45° off), changed target on 14% of walks, stopped once a Pentagon's centre was explored, and gave nothing to read or follow.
