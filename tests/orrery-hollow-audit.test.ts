@@ -12,7 +12,7 @@ import { serializeSave, deserializeSave } from '../src/persistence.ts';
 import { ORRERY, orbTier } from '../src/tool-forms.ts';
 import { TESSERACTS, rollTesseract, rerollTesseractLine, tesseractCut, grantTesseract, ensureTesseracts } from '../src/tesseracts.ts';
 import { PENTAGON, PENTAGON_COMPLETE, pentagonPlan, pentagonVaultId, pentagonsDue, pentagonCompleteSource } from '../src/pentagon.ts';
-import { pentagonArenaId } from '../src/pentagon-arena.ts';
+import { pentagonArenaId, PENTAGON_ARENA } from '../src/pentagon-arena.ts';
 
 // ------------------------------------------------------------------------------------------------ 1. the Orrery's orbs
 function orrery(glyphs, tier = 'relic', extraSockets = 1) {
@@ -123,7 +123,7 @@ test('a Pentagon whose Regent fell before release 750 (no walkway record) is pai
     // where the vault stands its Regent up again (as it did before this change), felling him once more pays nothing either
     const regent = g.enemies.find((e) => String(e.id).endsWith(':guardian') && !e.dead); if (!base.regentGrade) assert.ok(regent, `${label}: without regentGrade a Regent stands, the wall shut`);
     if (regent) { regent.hp = 0; regent.dead = true; g.defeatEnemy(regent); }
-    assert.equal(H.pentArena, 1, `${label}: the opened wall still leads to the Stillworks`); assert.equal(fromCompletion(g).length, 1, `${label}: the vault pays nothing more`);
+    assert.equal(H.pentArena, PENTAGON_ARENA.version, `${label}: the opened wall still leads to the Stillworks`); assert.equal(fromCompletion(g).length, 1, `${label}: the vault pays nothing more`);
     const o = g.map.objects.find((q) => q.kind === 'pentFinaleWall'); g.player.x = o.inner ? o.inner.x : o.x; g.player.y = o.inner ? o.inner.y : o.y + 1; g.interact('use', o.id); assert.equal(g.areaId(), pentagonArenaId(P.base));
     const b = g.enemies.find((e) => e.pentFinaleBeast && !e.dead); b.hp = 0; b.dead = true; g.defeatEnemy(b); assert.ok(H.pentArenaWon);
     assert.equal(fromCompletion(g).length, 1, `${label}: the Stillworks win pays no second`); assert.deepEqual(fromCompletion(g)[0], glyph);
