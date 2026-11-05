@@ -127,7 +127,7 @@ import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./lis
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
-import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, IMBUE, imbueAmount, imbueSpark } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceCost, essenceExempt } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -145,7 +145,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
 export const PLAYER_CLOCKS = ["attackReadyAt", "attackUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
-export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "boxingUntil", "imbueUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt"];
+export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt"];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
@@ -153,7 +153,7 @@ export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"]
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
 export const RESUME_PLAYER_CLOCKS = ["slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
-export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "boxingUntil", "imbueUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt"];
+export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
   const p = game.player || {};
@@ -1804,8 +1804,8 @@ export function actionReadiness(game, now = 0) {
       cost: Math.round(dodgeCost(game.save)),
     },
     jump: { remaining: jump / 1000, duration: 0.52 },
-    spell: slotReadiness(game.save, "a", spell),
-    spell2: slotReadiness(game.save, "b", spell),
+    spell: essenceReadiness(game, "a", slotReadiness(game.save, "a", spell)),
+    spell2: essenceReadiness(game, "b", slotReadiness(game.save, "b", spell)),
     potion: {
       remaining: 0,
       duration: 0,
@@ -1815,6 +1815,13 @@ export function actionReadiness(game, now = 0) {
         game.player.hp < game.save.maxHp,
     },
   };
+}
+// Essence Walk (brawler-spells.ts ESSENCE_WALK): while it runs, a slot whose spell is recovering reads as castable for its
+// stamina cost (`essence`), unavailable when stamina is short, instead of counting its cooldown down.
+export function essenceReadiness(game, slot, state) {
+  if (!(state?.remaining > 0)) return state;
+  const c = slotted(game.save, slot), cost = c?.kind === "spell" ? game.essenceCostFor?.(c.id) : null;
+  return cost == null ? state : { ...state, remaining: 0, essence: cost, available: (game.player?.stamina || 0) >= cost };
 }
 export function enemyDangerRadius(enemy) {
   return Math.max(1.7, Math.max(0, Number(enemy?.threatRange??enemy?.range) || 0) + 0.5) +
@@ -6083,6 +6090,7 @@ export class Game {
     if(!spellId&&this.save.magicSkills?.selected&&skillRank(this.save,this.save.magicSkills.selected)>0)return this.activateApertureSkill(this.save.magicSkills.selected);
     if (spellId && SPELLS[spellId]) this.save.equippedSpell = spellId; // the readied spell is the glyph host
     const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"], cds = (this.save.magicSkills ||= {}).cooldowns ||= {}, key = `spell:${spell.id}`, remaining = spellId ? cds[key] || 0 : this.spellCooldownRemaining; // slots use per-spell cooldowns; the legacy call keeps its single one
+    if (remaining > 0 && this.essenceCostFor(spell.id) != null && !this.followUpPress(spell)) return this.essenceCast(spell, cds, key, spellId, remaining); // Essence Walk (2026-11-05)
     if (spell.id === "shadow-clone") return this.castShadowClone(spell, cds, key); // release 365
     if (spell.brawler) return this.castBrawler(spell, cds, key); // release 483
     if (spell.id === "orbit-volley") return this.castOrbitVolley(spell, cds, key); // release 487
@@ -6172,7 +6180,7 @@ export class Game {
     const at = foe ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * ORBIT.reach, y: cy + d.y * ORBIT.reach };
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     o.flight = { x: cx, y: cy, tx: at.x, ty: at.y, radius: L.radius, perfect: L.perfect, damage: Math.max(1, Math.round(power * L.share)) };
-    cds["spell:orbit-volley"] = spell.cooldown * glyphs.mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    if (!o.essence) cds["spell:orbit-volley"] = spell.cooldown * glyphs.mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown); // Essence Walk: orbs gathered for stamina leave the cooldown running as it was
     this.message = timedOut ? "The orbs go on their own." : L.perfect ? "A perfect volley!" : "The volley flies.";
     return true;
   }
@@ -6226,9 +6234,11 @@ export class Game {
     this.effects.push(fx); return fx;
   }
   castBrawler(spell, cds, key, now = this.lastUpdateNow || 0) {
+    if (spell.essence && now < (this.essenceUntil || 0)) { this.message = `Essence Walk is already flowing (${Math.ceil((this.essenceUntil - now) / 1000)}s left).`; return false; } // it never recasts itself
     if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
     const B = BRAWLER[spell.id], p = this.player, cx = p.x + .5, cy = p.y + .45;
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    if (spell.essence) { const E = ESSENCE_WALK; cds[key] = Math.max(cds[key], E.seconds + E.minGap); this.essenceUntil = now + E.seconds * 1000; echoEvent(this, "spell", now); this.message = "Essence Walk: your spells need not wait; recovering ones cost stamina."; return true; } // Essence Walk (2026-11-05)
     if (spell.id === "imbue-weapon") { this.imbueUntil = now + IMBUE.seconds * 1000; echoEvent(this, "spell", now); const n = Math.round(this.imbueBonus(now)); this.message = n > 0 ? `Imbue Weapon: your melee hits carry ${n} magic damage.` : "Imbue Weapon: with no Focus put in, your weapon carries no magic."; return true; } // Imbue Weapon (2026-11-04)
     if (spell.id === "aegis") { this.aegisUntil = now + B.ms; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485
     if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; if (echoPlan(this.glyphLoadout("spell", spell.id)) && !this.shadowCloneActive(now)) { const o = cloneOffset(null, this.save.lastAim, SHADOW_CLONE.near); this.shadowClone = { ox: o.x, oy: o.y, until: now + BRAWLER_ECHO.echoClone * 1000, boxing: true }; this.message += " An echo of you boxes beside you."; } return true; } // release 485; 503: Echo spawns a short melee clone
@@ -7089,6 +7099,7 @@ export class Game {
     if (id === "shadow-boxing") return left(this.boxingUntil || 0, BRAWLER["shadow-boxing"].seconds * 1000);
     if (id === "aegis") return left(this.aegisUntil || 0, BRAWLER.aegis.ms);
     if (id === "imbue-weapon") return left(this.imbueUntil || 0, IMBUE.seconds * 1000);
+    if (id === "essence-walk") return left(this.essenceUntil || 0, ESSENCE_WALK.seconds * 1000);
     if (id === "shadow-clone") return this.shadowCloneActive(now) && !this.shadowClone.marginalia && !this.shadowClone.boxing ? left(this.shadowClone.until, S.lifetime * 1000) : 0;
     if (id === "orbit-volley" && this.orbit) return this.orbit.flight ? 1 : Math.max(0, 1 - (now - this.orbit.start) / 1000 / ORBIT.window); // release 519: the gathering window, then the flight
     const fx = this.ownSpellFx().filter((e) => e.glyphSpell === id && !e.echo && !String(e.id).endsWith("-vortex")); // release 519: every spell, quick ones too
@@ -7097,6 +7108,29 @@ export class Game {
   // Release 519: an instant Rift Step (no glyphs riding after it) still lights its button for `RIFT_FLASH` s.
   riftFlashLeft(now = this.lastUpdateNow || 0) { const t = (now - (this.riftFlashAt ?? -Infinity)) / 1000; return t >= 0 && t < RIFT_FLASH ? 1 - t / RIFT_FLASH : 0; }
   spellbladeOn(now = this.lastUpdateNow || 0) { return fieldOn(this.save, "spellblade") && this.spellRunning(now); }
+  // A spell's cooldown in seconds as it would start now: its glyphs, the Pairing and the armor/meal/page reductions (each capped).
+  spellCooldownFor(spell) { const n = (Number(spell?.cooldown) || 0) * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown); return Number.isFinite(n) ? Math.max(0, n) : 0; }
+  // Essence Walk (brawler-spells.ts ESSENCE_WALK): the stamina spell `id` costs while it recovers, or null when Essence Walk is
+  // not running or does not apply to it (ESSENCE_WALK.exempt).
+  essenceCostFor(id, now = this.lastUpdateNow || 0) { const sp = SPELLS[id]; return sp && now < (this.essenceUntil || 0) && !essenceExempt(id) ? essenceCost(this.spellCooldownFor(sp)) : null; }
+  // A press that does not need the spell to have recovered (stepping into your Shadow Clone; launching gathered orbs, or
+  // pressing while they fly): Essence Walk leaves it alone and it costs nothing.
+  followUpPress(spell, now = this.lastUpdateNow || 0) { return (spell.id === "shadow-clone" && this.shadowCloneActive(now) && !this.shadowClone.boxing) || (spell.id === "orbit-volley" && !!this.orbit); }
+  // Casts a recovering spell for stamina under Essence Walk: the spell's own cast runs as if it were ready, then its cooldown
+  // goes back to what was left of it (the cast neither starts nor shortens it), and the stamina is spent only if it cast.
+  essenceCast(spell, cds, key, spellId, remaining, now = this.lastUpdateNow || 0) {
+    const cost = essenceCost(this.spellCooldownFor(spell)), p = this.player;
+    if (!((p.stamina || 0) >= cost)) { this.message = `Essence Walk: ${spell.name} needs ${cost} stamina (you have ${Math.floor(p.stamina || 0)}).`; return false; }
+    const legacy = this.spellCooldownRemaining; cds[key] = 0; if (!spellId) this.spellCooldownRemaining = 0;
+    let ok = false;
+    try { ok = !!this.castSpell(spellId ? spell.id : null); }
+    finally { cds[key] = remaining; this.spellCooldownRemaining = legacy; }
+    if (!ok) return false;
+    if (spell.id === "orbit-volley" && this.orbit && !this.orbit.flight) this.orbit.essence = true; // its launch leaves the cooldown alone
+    p.stamina = Math.max(0, p.stamina - cost);
+    this.message = `${this.message} (Essence Walk: ${cost} stamina.)`;
+    return true;
+  }
   castShadowClone(spell, cds, key, now = this.lastUpdateNow || 0) {
     if (this.shadowCloneActive(now) && !this.shadowClone.boxing) { // release 503: a Shadow Boxing echo is replaced, not stepped into
       if (this.shadowClone.charging) this.tickCloneCharge(false, now); // release 417

@@ -77,6 +77,54 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
   if (now < (game.aegisUntil || 0)) { const k = (game.aegisUntil - now) / BRAWLER.aegis.ms; ctx.fillStyle = "#9fd0ff22"; ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5; ctx.globalAlpha = .4 + .6 * k; ctx.beginPath(); ctx.arc(x, y, s * .85, 0, 7); ctx.fill(); ctx.stroke();
     ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }
   if (now < (game.boxingUntil || 0)) { ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 2; ctx.globalAlpha = .55 + .2 * Math.sin(t * 8); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.ellipse(x, y + s * .35, s * .55, s * .2, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+  drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y);
+}
+// Essence Walk (Tim, 2026-11-05: "a spell similar to Shadow Boxing, called Essence Walk... lets you cast your spells without
+// waiting for the cooldown, but it costs stamina... Spells that have a longer cooldown cost more stamina to cast... spell-
+// slinger builds: Essence Walk, then Gravity Well or whatever spell you want and spam it"). A spell (items.ts `essence-walk`,
+// cast through castBrawler like Shadow Boxing) that opens a window of `seconds`. While it is open, casting any other spell
+// that is still recovering casts it anyway for stamina (essenceCost) instead of refusing; that cast leaves the spell's
+// cooldown exactly as it was, still running, so when the window closes you wait no longer than you would have without it.
+// A spell that is ready casts as usual (free; its cooldown starts). With too little stamina the cast is refused. Spells in
+// `exempt` keep their cooldowns (Essence Walk itself, which cannot be recast while it runs, and Aegis, which would otherwise
+// buy an unbroken shield). Aperture disciplines (Rift Step, Ember Form...) are not spells and keep their cooldowns.
+//   cost: stamina = `base` + `perSecond` × the spell's cooldown in seconds as it would recover now (after its glyphs, the
+//     Pairing and armor/meal/page reductions, each already capped), rounded, then held between `min` and `max`.
+//   minGap: Essence Walk's own cooldown, after every reduction, is never shorter than `seconds` + `minGap`, so stacked
+//     reductions cannot keep it up all the time.
+//   trail: the drawn after-images, a fixed ring of `trail` slots sampled every `trailEvery` ms (none at reduced motion, in
+//     safe mode or at low quality; the ring under the Wayfarer still shows).
+export const ESSENCE_WALK = {
+  seconds: 8,
+  minGap: 6,
+  cost: { base: 5, perSecond: 4, min: 8, max: 60 },
+  exempt: ["essence-walk", "aegis"],
+  trail: 6, trailEvery: 90, trailLife: .5,
+};
+export const ESSENCE_COLORS = { glow: "#7fe6d62a", rim: "#c8fff4", edge: "#0b2624", mote: "#9ff0e2" };
+// The stamina a recovering spell costs under Essence Walk, from its cooldown in seconds. Never negative, never NaN.
+export function essenceCost(cooldownSeconds) {
+  const C = ESSENCE_WALK.cost, cd = Math.max(0, Number(cooldownSeconds) || 0);
+  return Math.round(Math.min(C.max, Math.max(C.min, C.base + C.perSecond * cd)));
+}
+export const essenceExempt = (id) => ESSENCE_WALK.exempt.includes(id);
+// The ring under the Wayfarer and the fading after-images behind them. The after-images reuse a fixed ring of slots (no
+// growth, no per-frame allocation once made).
+function drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y) {
+  const until = game.essenceUntil || 0; if (!(now < until)) return;
+  const E = ESSENCE_WALK, C = ESSENCE_COLORS, pr = game.presentation || {}, still = !!(pr.reduceMotion || pr.safeMode || pr.effectiveQuality === "low");
+  const k = Math.min(1, (until - now) / 1500); // fades over its last 1.5 s
+  if (!still) {
+    const ring = (game.essenceTrail ||= Array.from({ length: E.trail }, () => ({ x: 0, y: 0, at: -1e9 })));
+    if (now - (game.essenceTrailAt || -1e9) >= E.trailEvery) { game.essenceTrailAt = now; const q = ring[(game.essenceTrailI = ((game.essenceTrailI || 0) + 1) % ring.length)]; q.x = game.player.x + .5; q.y = game.player.y + .45; q.at = now; }
+    ctx.fillStyle = C.mote;
+    for (const q of ring) { const age = (now - q.at) / 1000; if (age < 0 || age >= E.trailLife) continue; const [hx, hy] = toScreen(q), f = 1 - age / E.trailLife; ctx.globalAlpha = .35 * f * (.4 + .6 * k); ctx.beginPath(); ctx.ellipse(hx, hy, s * .28 * f + s * .08, s * .4 * f + s * .1, 0, 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = .4 + .4 * k; ctx.fillStyle = C.glow; ctx.beginPath(); ctx.ellipse(x, y + s * .3, s * .6, s * .24, 0, 0, 7); ctx.fill();
+  ctx.globalAlpha = (.45 + .45 * k) * (still ? 1 : .75 + .25 * Math.sin(t * 6));
+  ctx.strokeStyle = C.edge; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.ellipse(x, y + s * .3, s * .6, s * .24, 0, 0, 7); ctx.stroke();
+  ctx.strokeStyle = C.rim; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y + s * .3, s * .6, s * .24, 0, 0, 7); ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 // Iron Fists (release 489; Tim: "let's make the iron fist a tool that you can use instead of a spell... a three button combo...
 // the first punch is... your standard dash. You can charge it and then dash... you can hold it and dash farther... Second
