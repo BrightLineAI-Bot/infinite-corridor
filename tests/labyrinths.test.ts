@@ -71,17 +71,17 @@ test('the shortcut: deep along the way, a door back to the first hall; barred fr
   const now = g.map.objects.find((o) => o.id === `lab-pass-${e.a}`); assert.ok(now.opened, 'open from the hall now'); g.player.x = now.x; g.player.y = now.y; assert.ok(g.interact('climb', now.id).ok); assert.equal(g.map.building.node, e.a);
 });
 
-test('a gallery: a running jump clears a gap; jump too early and you fall, far down, into another chamber', () => {
+test('a gallery: a running jump clears a gap; jump too early and the gap is a death that wakes you where you came into the gallery (HOLE_DROPS)', () => {
   const base = 'labyrinth:LB5:5:5:keep', P = labyrinthPlan(base), gq = P.nodes.find((q) => q.kind === 'gaps'); assert.ok(gq);
   const run = (lead) => { const s = freshSave(); s.seed = 'LB5'; const g = new Game(s, 0); s.session.activeDungeonId = `${base}:f${gq.n + 1}`; s.session.dungeonReturn = { rx: 5, ry: 5, x: 16, y: 16 }; g.loadArea('dungeon', false); g.enemies = [];
     const m = g.map, W = m.width, T = (x, y) => m.tiles[y * W + x], solid = (x, y) => T(x, y) && !T(x, y).blocked && !T(x, y).hole; let spot = null;
     for (let y = 1; y < m.height - 1 && !spot; y++) for (let x = 3; x < W - 3 && !spot; x++) if (solid(x - 2, y) && solid(x - 1, y) && solid(x, y) && T(x + 1, y)?.hole && solid(x + 2, y)) spot = { x, y };
     g.player.x = spot.x - 2; g.player.y = spot.y; let jumped = false, now = 1000; const id = g.areaId(), hp = g.player.hp;
     const input = { state: { x: 1, y: 0 }, held: () => false, consume: (a) => { if (a === 'jump' && !jumped && g.player.x >= spot.x + lead) { jumped = true; return true; } return false; } };
-    for (let i = 0; i < 120; i++) { now += 16; g.update(.016, input, now); if (g.areaId() !== id || g.player.x > spot.x + 2.2) break; }
-    return { crossed: g.areaId() === id, g, hp, to: P.nodes[gq.fallTo] }; };
+    const entry = { ...g.save.session.floorEntry || {} }; for (let i = 0; i < 120; i++) { now += 16; g.update(.016, input, now); if (!entry.id && g.save.session.floorEntry) Object.assign(entry, g.save.session.floorEntry); if (g.areaId() !== id || g.player.x > spot.x + 2.2 || g.save.worldFlags.deaths) break; }
+    return { crossed: g.areaId() === id && !g.save.worldFlags.deaths, g, hp, id, entry, to: P.nodes[gq.fallTo] }; };
   assert.ok(run(.1).crossed && run(.5).crossed, 'a timed running jump clears it');
-  const fell = run(-1); assert.ok(!fell.crossed, 'too early'); assert.equal(fell.g.map.building.node, fell.to.n, 'into the chamber below'); assert.ok(fell.g.player.hp < fell.hp); assert.match(fell.g.message, /fall through the gap/);
+  const fell = run(-1); assert.ok(!fell.crossed, 'too early'); assert.equal(fell.g.areaId(), fell.id, 'woken in the same gallery, not dropped into the chamber below'); assert.equal(fell.g.save.worldFlags.deaths, 1); assert.deepEqual([fell.g.player.x, fell.g.player.y], [fell.entry.x, fell.entry.y], 'where you came onto it'); assert.equal(fell.g.player.hp, fell.g.save.maxHp); assert.match(fell.g.message, /wake where you came onto this floor/);
 });
 
 test('only on new ground; a save inside resumes in the same chamber; chambers are the same each time', async () => {

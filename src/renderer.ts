@@ -28,6 +28,7 @@ import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
+import { HOLE_DROPS, holeDrops } from "./labyrinths.ts";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -977,6 +978,30 @@ export function drawElder(ctx, o, s, now) {
 // step out of place and back, it flickers now and then, and slow motes rise from it. No label: you notice it or not.
 // Release 225: something in the rock. A faint glint on the face of a wall block that hides treasure: a few points of
 // light that brighten and fade in turn, so it reads as catching the light, not as a marker.
+// HOLE_DROPS (labyrinths.ts): the green rim round a hole you can drop through safely. Only the tiles within `rim.near` of the
+// Wayfarer are looked at (a small box, no allocation; the safe mask is cached per floor), each edge drawn where the safe hole
+// meets anything else, fading in from `near` to `full`. Reduced motion: no breath. Low quality: a thinner line.
+export function drawSafeDropRims(ctx, map, mw, p, s, now, quality, quiet, seen = () => true) {
+  const mask = holeDrops(map); if (!mask) return;
+  const R = HOLE_DROPS.rim, mh = map.height || Math.floor(map.tiles.length / mw), cx = p.x + .5, cy = p.y + .5, n = Math.ceil(R.near);
+  const x0 = Math.max(0, Math.floor(cx) - n), x1 = Math.min(mw - 1, Math.floor(cx) + n), y0 = Math.max(0, Math.floor(cy) - n), y1 = Math.min(mh - 1, Math.floor(cy) + n);
+  const breath = quiet ? 1 : 1 - R.pulseDepth * (.5 + .5 * Math.sin(now / R.pulse * Math.PI * 2)), lw = Math.max(1, s * (quality === "low" ? R.lowWidth : R.width)), safe = (x, y) => x >= 0 && y >= 0 && x < mw && y < mh && mask[y * mw + x] === 1;
+  let begun = false;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (mask[y * mw + x] !== 1 || !seen(x, y)) continue;
+    const d = Math.hypot(x + .5 - cx, y + .5 - cy); if (d > R.near) continue;
+    const a = Math.min(1, (R.near - d) / Math.max(.01, R.near - R.full)) * R.alpha * breath; if (a < .03) continue;
+    if (!begun) { ctx.save(); ctx.lineWidth = lw; ctx.lineCap = "round"; begun = true; }
+    ctx.strokeStyle = `rgba(${R.rgb},${a.toFixed(3)})`; ctx.beginPath();
+    const px = x * s, py = y * s, i = lw / 2;
+    if (!safe(x, y - 1)) { ctx.moveTo(px, py + i); ctx.lineTo(px + s, py + i); }
+    if (!safe(x, y + 1)) { ctx.moveTo(px, py + s - i); ctx.lineTo(px + s, py + s - i); }
+    if (!safe(x - 1, y)) { ctx.moveTo(px + i, py); ctx.lineTo(px + i, py + s); }
+    if (!safe(x + 1, y)) { ctx.moveTo(px + s - i, py); ctx.lineTo(px + s - i, py + s); }
+    ctx.stroke();
+  }
+  if (begun) ctx.restore();
+}
 export function drawWallGlint(ctx, q, s, now) {
   const cx = (q.x + .5) * s, cy = (q.y + .55) * s;
   ctx.save(); ctx.globalCompositeOperation = "lighter";
@@ -2208,6 +2233,7 @@ export function render(ctx, g, w, h, now) {
   const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile); // per frame: brinks sit over animated water, as before
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
+  if (g.area === "dungeon" && g.map?.building) drawSafeDropRims(ctx, g.map, mw, p, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), seenTile); // HOLE_DROPS: a safe drop shows its green rim only close up
   if (g.area === "dungeon" && g.map?.canyon && g.drillTile) { const d = g.drillTile, x = d.x * s, y = d.y * s, k = Math.min(1, d.progress / (d.need || 1)); // Canyon craters: the auger's cracks, and a yellow clod's strain
     ctx.save(); ctx.strokeStyle = `rgba(20,12,6,${.4 + .5 * k})`; ctx.lineWidth = Math.max(1, s * .06); ctx.beginPath(); for (let i = 0; i < 2 + Math.floor(k * 5); i++) { const a = i * 2.1 + d.x, r = s * (.15 + .35 * k); ctx.moveTo(x + s / 2, y + s / 2); ctx.lineTo(x + s / 2 + Math.cos(a) * r, y + s / 2 + Math.sin(a) * r); } ctx.stroke();
     if (d.strain > 0) { const f = Math.min(1, d.strain / 1); ctx.fillStyle = "#0008"; ctx.fillRect(x + s * .1, y - s * .22, s * .8, s * .12); ctx.fillStyle = f > .75 ? "#ff4a3a" : f > .45 ? "#ffd24a" : "#7ddf6a"; ctx.fillRect(x + s * .1, y - s * .22, s * .8 * f, s * .12); }

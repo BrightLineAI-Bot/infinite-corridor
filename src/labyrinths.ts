@@ -254,3 +254,78 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null
   }
   return null;
 }
+
+// ------------------------------------------------------------------------------------------------ holes that kill, holes that drop
+// Tim (2026-11-05): "if you go through a hole in the floor, on most floors you should just die, and then respawn at the ladder,
+// or wherever you entered that floor, because it's too punishing to traverse too many things... the holes are like chasms,
+// which limit your movement... falling through every tile is too punishing. There should be some slight indication: the
+// border should be green if you can go through a floor and it won't kill you, and you won't know the border is green until
+// you get kind of close to it."
+// Every interior with fall-through holes (a great building's, a compound part's or a castle part's floors above the first, and
+// a labyrinth's galleries of gaps, the Shell-Labyrinth's included): a hole is a death that wakes you where you came onto that
+// floor (game.ts `holeDeath`), unless it is one of the floor's few safe drops, which fall to the floor below as before. Which
+// holes are safe is read from the floor as laid (no tile changes, so every interior keeps its layout): a floor's holes form
+// groups (4-joined hole tiles; in a gallery, each missing platform, its 3×3 pit, is a group and the one-tile gaps between
+// platforms are never safe), and `safeShare` of the groups, by hash, are safe drops; a floor of at least `minGroups` groups keeps
+// `minSafe` (so a floor with many holes always has a way down to find, and one with a hole or two is mostly deadly). No floor's way
+// through needs a hole: great-buildings.ts `addHoles` keeps every open cell reachable without one, and a gallery's platforms
+// with passages are joined by jumps (tests/hole-drops.test.ts walks thousands of floors to hold this).
+export const HOLE_DROPS = {
+  version: 1, // in the hash: a later rule takes a new version
+  safeShare: .2, minSafe: 1, minGroups: 3,
+  // The green rim round a safe drop, drawn only within `near` tiles of the Wayfarer (fully from `full`): `width` a share of a tile
+  // (`lowWidth` on the low quality tier); a slow breath of `pulseDepth` every `pulse` ms, none with reduced motion.
+  rim: { near: 3.2, full: 1.6, rgb: "110,232,120", alpha: .85, width: .09, lowWidth: .06, pulse: 1600, pulseDepth: .22 },
+  messages: {
+    death: "The floor gives way and the dark below takes the Wayfarer.",
+    woke: "You wake where you came onto this floor. Nothing was lost.",
+    gallery: "jump the gaps · a fall is deadly; a green-rimmed pit drops you far below",
+  },
+};
+// The safe drops of a building floor (a dungeon map with `building`): one byte a tile (1: a safe hole). Cached per map object
+// (a WeakMap, so it goes with the map); null when the floor has no holes it can fall through.
+const dropMemo = new WeakMap();
+export function holeDrops(map) {
+  if (!map?.building || !Array.isArray(map.tiles)) return null;
+  if (dropMemo.has(map)) return dropMemo.get(map);
+  const B = map.building, W = map.width, H = map.height || Math.floor(map.tiles.length / W), T = map.tiles, D = HOLE_DROPS;
+  let out = null;
+  if (B.floor > 1 || B.fallTo) {
+    const groups = [], hole = (k) => !!T[k]?.hole;
+    if (B.labyrinth && B.kind === "gaps") { const L = LABYRINTHS, I = L.island + L.gap, cols = Math.floor((W - 2) / I), rows = Math.floor((H - 2) / I);
+      for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const cells = []; for (let y = 0; y < L.island; y++) for (let x = 0; x < L.island; x++) cells.push((1 + j * I + y) * W + 1 + i * I + x); if (cells.every(hole)) groups.push(cells); } }
+    else { const seen = new Uint8Array(W * H);
+      for (let k = 0; k < W * H; k++) { if (seen[k] || !hole(k)) continue; const cells = [k]; seen[k] = 1;
+        for (let n = 0; n < cells.length; n++) { const c = cells[n], x = c % W, y = (c / W) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, q = ny * W + nx; if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[q] || !hole(q)) continue; seen[q] = 1; cells.push(q); } }
+        groups.push(cells); } }
+    if (groups.length) { out = new Uint8Array(W * H);
+      const ranked = groups.map((cells) => ({ cells, first: Math.min(...cells) })).map((g) => ({ ...g, h: hashSeed(`${map.id}:hole-drop:v${D.version}:${g.first}`) })).sort((a, b) => a.h - b.h || a.first - b.first);
+      ranked.forEach((g, i) => { if ((i < D.minSafe && ranked.length >= D.minGroups) || (g.h % 1000) / 1000 < D.safeShare) for (const c of g.cells) out[c] = 1; }); }
+  }
+  dropMemo.set(map, out); return out;
+}
+export const safeDropAt = (map, x, y) => { const m = holeDrops(map); return !!m && x >= 0 && y >= 0 && x < map.width && m[y * map.width + x] === 1; };
+// save.session.floorEntry ({ id, x, y }: where the Wayfarer came onto the building floor they are on) and
+// save.session.holeDeath (the same, set by a fatal hole until the death resolves): additive, kept only when whole.
+const entryOk = (q) => !!q && typeof q === "object" && typeof q.id === "string" && Number.isFinite(Number(q.x)) && Number.isFinite(Number(q.y));
+export function ensureHoleSession(save) {
+  const se = save?.session; if (!se || typeof se !== "object") return save;
+  for (const k of ["floorEntry", "holeDeath"]) if (k in se) se[k] = entryOk(se[k]) ? { ...se[k], x: Number(se[k].x), y: Number(se[k].y) } : null;
+  return save;
+}
+
+// ------------------------------------------------------------------------------------------------ burrowing a claimed room
+// Tim (2026-11-05): "once you've killed the Rift [Warden] for a room in the labyrinth, you should be able to come back and
+// burrow through the walls — probably wherever those shiny hidden-object walls or blocks are — to have some freedom of
+// traversal". In a labyrinth chamber whose warden has fallen (the Fracture Warden that Fractured mode raises there; with the
+// mode off, the chamber's own guards, every one), the walls that glint (digging.ts `wallGlints`: a block hiding something,
+// showing on an open face) dig through even toward floor not yet walked (DIG_GATES' one rule lifted, for those blocks only).
+// Everything else holds: the shovel is still needed and worn, the outer wall, doors and sealed rock still refuse, and what a
+// block hides is found once (the dug block is recorded, as always). The claim is kept on the chamber's own history
+// (`labQuelled`), so it lasts across reloads. Labyrinth chambers only (the Shell-Labyrinth's too); not the Pentagon's.
+export const LAB_BURROW = {
+  messages: {
+    quelled: "The room's warden has fallen. Its glinting walls sound hollow now: a shovel will burrow through them.",
+    burrow: "The glinting stone gives way to the shovel.",
+  },
+};
