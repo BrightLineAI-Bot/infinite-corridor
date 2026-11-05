@@ -93,7 +93,7 @@ import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistor
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding } from "./great-buildings.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId } from "./compounds.ts";
-import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId } from "./labyrinths.ts";
+import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
@@ -4267,9 +4267,11 @@ export class Game {
     for(const e of this.enemies)if(e.astralOwner){e.dead=true;e.noRewards=true;}
     reconcileAstralCompanions(this);this.syncAstralRiders();
     stopRide(this.save); // release 748: death gets you down; the mount stays stabled with its time
-    this.captureLastDeath(fellIntoHazard?terrainHazard:"combat");
+    this.captureLastDeath(fellIntoHazard?terrainHazard:this.save.session.holeDeath?"fall":"combat");
     const walk = this.area === "dungeon" && !!this.map?.pentFinale; // the Pentagon's finale: a fall from the walkway wakes you at its start (PENTAGON.finale)
-    if (this.area === "dungeon" && !walk) {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
+    const hd = this.save.session.holeDeath; this.save.session.holeDeath = null;
+    const hole = !walk && this.area === "dungeon" && this.map?.building && hd && hd.id === this.areaId() ? hd : null; // HOLE_DROPS: a fatal hole wakes you on that floor, where you came onto it
+    if (this.area === "dungeon" && !walk && !hole) {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
     const c = this.safeCheckpoint(); // release 734 (F2): a null active checkpoint threw here on every frame
     this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
     this.save.session.displacementJourney=null;
@@ -4291,6 +4293,7 @@ export class Game {
     this.effects = [];
     this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
     input.reset?.();
+    if (hole) { p.x = hole.x; p.y = hole.y; relocateIfStranded(p, this.map, mapWidth(this.map, "dungeon")); p.invulnerableUntil = now + 2000; this.fallen = null; for (const e of this.enemies) if (!e.dead) e.aggro = false; this.snapshotArea(); this.message = `${HOLE_DROPS.messages.woke}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; this.sync(); return; } // the same floor; nothing lost (release 345)
     if (walk) { const e = this.map.entry || { x: 1, y: 7 }; p.x = e.x; p.y = e.y; p.invulnerableUntil = now + 2000; this.fallen = null; this.snapshotArea(); this.message = `${PENTAGON.finale.messages.fell}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; return; } // the same floor, at the walkway's start, beside the doorway back
     this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
     const crown = !!home && this.wakeOnCrown(home, now); // TREE_GLIDE.home: a glide from a great tree's crown wakes you back on that crown
@@ -4373,7 +4376,7 @@ export class Game {
     const overworld = this.area === "overworld" && !aboard(this.save); // release 423: the shovel works in the open world too
     if ((this.area !== "dungeon" && !overworld) || !this.map?.tiles) return null;
     this.markWalked(); // DIG_GATES: where you stand counts as walked
-    const p = this.player, w = mapWidth(this.map, this.area), px = Math.floor(p.x + .5), py = Math.floor(p.y + .75), key = overworld ? overworldDigKey(this.rx, this.ry) : this.areaStateId(), walked = overworld ? null : this.walkedHere(), o = { overworld, walked };
+    const p = this.player, w = mapWidth(this.map, this.area), px = Math.floor(p.x + .5), py = Math.floor(p.y + .75), key = overworld ? overworldDigKey(this.rx, this.ry) : this.areaStateId(), walked = overworld ? null : this.walkedHere(), glints = !overworld && this.labQuelled() ? this.map.wallGlints || [] : null, burrow = glints?.length ? (x, y) => glints.some((g) => g.x === x && g.y === y) : null, o = { overworld, walked, burrow }; // LAB_BURROW: a claimed room's glinting walls
     // Release 411: forgiving aim: the tile ahead of the feet, else of the body's middle (a stone just above or below the
     // feet row was missed, and Act said "Nothing nearby responds").
     let plan = planDig(this.map, px, py, p.facing || "down", key, o);
@@ -4385,7 +4388,7 @@ export class Game {
     const c = plan.iron ? ensureIronShovel(this.save) : ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; }
     const r = dig(this.save, this.map, plan, key);
     if (r.ok) { this.map.wallGlints = (this.map.wallGlints || []).filter((g) => g.x !== plan.x || g.y !== plan.y); }
-    this.message = (c.crafted ? c.message + " " : "") + r.message; this.sync(); return r;
+    this.message = (c.crafted ? c.message + " " : "") + (r.ok && plan.burrow ? LAB_BURROW.messages.burrow + " " : "") + r.message; this.sync(); return r;
   }
   // Release 231: the Tyrant Mosasaur rises from the deep a few tiles away and hunts the Wayfarer. It is not saved: the
   // section's restore only merges saved state onto what the section spawns, so leaving the section ends the hunt.
@@ -5904,6 +5907,7 @@ export class Game {
     }
     e.rewarded = true;
     const fracture = this.fractureOnKill(e); // release 666
+    const quelled = this.area === "dungeon" && this.labQuellOnKill(e); // LAB_BURROW: a labyrinth room's warden falls
     const marks = e.boss ? ECONOMY.marks.boss : e.apertureEncounter ? ECONOMY.marks.aperture : ECONOMY.marks.common; // release 607: was 12 / 6 / 1-3
     this.save.currency += marks;
     const oldHp = this.save.maxHp,
@@ -5947,6 +5951,7 @@ export class Game {
         this.save.worldFlags.flaskPity =
           (this.save.worldFlags.flaskPity || 0) + 1;
     }
+    if (quelled) this.message = `${this.message ? this.message + " " : ""}${LAB_BURROW.messages.quelled}`;
   }
   // Release 696: nothing is swung, shot or cast from inside an enclosure (Tim: "you can't attack out of it").
   penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side (items still work)."; } return true; }
@@ -6681,7 +6686,7 @@ export class Game {
       if (o.plateLock && !(H.labOpen || []).includes(`plate:${this.map.building.node}`)) { if (!this.map.tiles.some((t) => t.plate && t.build === "stone")) { this.message = PENTAGON.messages.plate; return { ok: false, message: this.message }; } H.labOpen = [...new Set([...(H.labOpen || []), `plate:${this.map.building.node}`])]; } // the Pentagon's pressure plate: a block on it holds the door, and once through it stays wedged open
       if (o.shortcutOpens) { H.labOpen = [...new Set([...(H.labOpen || []), o.shortcutOpens])]; } // opened from the far side: open from the hall now too
       this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, where = this.map.name.split(" · ")[1] || "the next chamber";
-      this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? "jump the gaps · a fall lands you far below" : B.kind === "court" ? "out under the sky, still inside" : "find the way on"} · ${this.labyrinthProgress()}`, kind: "danger" };
+      this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? HOLE_DROPS.messages.gallery : B.kind === "court" ? "out under the sky, still inside" : "find the way on"} · ${this.labyrinthProgress()}`, kind: "danger" };
       this.message = `${o.dir === "door" ? LABYRINTHS.messages.door : o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${where}.`; this.sync(); return { ok: true, message: this.message }; }
     this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, top = B.floor >= B.floors;
     this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };
@@ -6712,11 +6717,41 @@ export class Game {
   buildingFall() {
     const B = this.map.building, w = this.map.width, px = Math.floor(this.player.x + .5), py = Math.floor(this.player.y + .5), t = this.map.tiles[py * w + px];
     if (!t?.hole || (B.floor <= 1 && !B.fallTo)) return false;
+    if (this.player.hp <= 0 || this.save.session.holeDeath || this.mechBoosting === true || (this.save.magicSkills?.active?.id === "aerial-step" && this.save.magicSkills.active.remaining > 0)) return false; // carried over it (the robot's boost, Aerial Step), as over any drop
     if (B.labyrinth) { const fx = this.player.x + .5 - px, fy = this.player.y + .5 - py, E = LABYRINTHS.edge, lip = (dx, dy) => { const n = this.map.tiles[(py + dy) * w + px + dx]; return n && !n.blocked && !n.hole; }; if ((fx < E && lip(-1, 0)) || (fx > 1 - E && lip(1, 0)) || (fy < E && lip(0, -1)) || (fy > 1 - E && lip(0, 1))) return false; } // a gallery's lip: a running jump has room
+    if (!safeDropAt(this.map, px, py)) return this.holeDeath(); // HOLE_DROPS: most holes are a death; only a floor's few safe drops (a green rim, close up) fall through
     const below = B.fallTo ? B.fallTo.id : this.areaId().replace(/:f\d+$/, `:f${B.floor - 1}`), hurt = Math.max(1, Math.round(this.save.maxHp * BUILDINGS.fall)), to = B.fallTo ? { x: B.fallTo.x, y: B.fallTo.y } : { x: px, y: py }; // a labyrinth's gallery drops you into a cellar somewhere else
     this.goBuildingFloor(below, to.x, to.y); { const t2 = this.map.tiles[to.y * this.map.width + to.x]; if (t2 && !t2.hole && !t2.blocked) { this.player.x = to.x; this.player.y = to.y; } } relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); // release 735: landing on a hole below, you land beside it (goBuildingFloor's step-off) rather than dropping straight through a second floor
     this.player.hp = Math.max(1, this.player.hp - hurt);
     this.message = B.fallTo ? `${LABYRINTHS.messages.fall} ${this.map.name.split(" · ")[1] || "the dark"} (−${hurt}).` : `${BUILDINGS.messages.fall} ${this.map.name.split(" · ")[1] || `floor ${B.floor - 1}`} (−${hurt}).`; this.sync(); return true;
+  }
+  // HOLE_DROPS (labyrinths.ts): where the Wayfarer came onto this building floor (`save.session.floorEntry`), noted on the first
+  // frame on a floor, however they came: a door, a ladder, a hatch, a safe drop or a reload.
+  noteFloorEntry() {
+    const se = this.save.session, id = this.areaId(); if (se.floorEntry?.id === id) return;
+    const p = this.player, w = this.map.width, x = Math.round(p.x), y = Math.round(p.y), t = this.map.tiles[y * w + x], e = this.map.entry || { x: w >> 1, y: (this.map.height || 2) >> 1 };
+    se.floorEntry = t && !t.blocked && !t.hole ? { id, x, y } : { id, x: e.x, y: e.y };
+  }
+  // A step into a hole that is not a safe drop: a death (ordinary bookkeeping in resolveDeath), waking on this same floor where
+  // the Wayfarer came onto it. `save.session.holeDeath` holds the place until the death resolves (it survives a reload).
+  holeDeath() {
+    this.noteFloorEntry(); const e = this.save.session.floorEntry;
+    this.save.session.holeDeath = { id: e.id, x: e.x, y: e.y };
+    this.player.hp = 0; this._fatalFallPending = true; this.message = HOLE_DROPS.messages.death; return true;
+  }
+  // Labyrinth chambers (LAB_BURROW): has this chamber's warden fallen? The Fracture Warden's seal, or (Fractured mode off) no
+  // living guard of the chamber's own. Kept on the chamber's history once true.
+  labQuelled() {
+    const id = this.areaId(); if (this.area !== "dungeon" || !isLabyrinthId(id) || !this.map?.building?.labyrinth) return false;
+    const h = dungeonHistory(this.save, id); if (h.labQuelled) return true;
+    const sealed = fractureSealed(this.save, fractureKey("dungeon", this.areaStateId())), guards = !fracturedMode(this.save) && !this.enemies.some((e) => e.buildingGuard && !e.dead && !e.rewarded);
+    if (sealed || guards) h.labQuelled = true; return !!h.labQuelled;
+  }
+  labQuellOnKill(e) {
+    const id = this.areaId(); if (!isLabyrinthId(id) || !this.map?.building?.labyrinth || dungeonHistory(this.save, id).labQuelled) return;
+    if (!(e.fracWarden || (e.buildingGuard && !fracturedMode(this.save)))) return;
+    if (!e.fracWarden && this.enemies.some((q) => q !== e && q.buildingGuard && !q.dead && !q.rewarded)) return;
+    dungeonHistory(this.save, id).labQuelled = true; return !!this.map.wallGlints?.length; // told at the end of defeatEnemy, after its other lines
   }
   descendAnnex(o) {
     const prev = dungeonHistory(this.save, this.areaId()); prev.visitOpen = false; this.snapshotArea();
@@ -7463,7 +7498,7 @@ export class Game {
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
-    if (this.area === "dungeon" && this.map?.building && now >= this.jumpUntil) this.buildingFall(); // great buildings: a step into a hole drops you a floor
+    if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)
     if (this.area === "dungeon" && this.map?.building?.boss && this.enemies.some((e) => e.buildingGuard) && !this.enemies.some((e) => e.pentBoss && !e.dead)) { const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`); if (!(H.pentBosses || []).includes(B.node)) { const name = this.enemies.find((e) => e.pentBoss)?.packName || "Its keeper"; H.pentBosses = [...(H.pentBosses || []), B.node]; this.message = `${name} ${PENTAGON.messages.bossDown}.`; this.defeatNotice = { title: String(name).toUpperCase(), detail: "falls", kind: "discovery" }; } } // the Pentagon's lords and keepers (v2)
     if (this.area === "dungeon" && this.map?.building?.trial && this.enemies.some((e) => e.buildingGuard) && this.enemies.every((e) => !e.buildingGuard || e.dead)) { const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`); if (!(H.pentTrials || []).includes(B.node)) { H.pentTrials = [...(H.pentTrials || []), B.node]; const n = H.pentTrials.length; this.message = `${PENTAGON.messages.trial} (${n} of ${B.trials}).${n >= B.trials ? " Somewhere at the centre, the Heart unseals." : ""}`; this.defeatNotice = { title: "A TRIAL CLEARED", detail: `${n} of ${B.trials}`, kind: "discovery" }; } } // the Pentagon's trials
     if (this.rite) this.riteTick(dt, now); // the Rite of Ascendancy
@@ -7942,7 +7977,7 @@ export class Game {
     if (fellIntoHazard || this._fatalFall) p.hp = 0;
     this.gloomMend(); // the Gloomvast's decoys keep only GLOOM_FINALE.darkness.decoyTake of each blow (before the damage numbers read health)
     if (this.damageNumbers) this.trackDamageNumbers(now); // release 461
-    if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
+    if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && !this.save.session.holeDeath && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
     if (p.hp <= 0 && this.rite) this.riteFailed(); // the Rite of Ascendancy: a death breaks it
     if (p.hp <= 0) {
       // Release 329 (Tim: "for world bosses... If they kill you, there should be like a... 4 second... pause... where you see
