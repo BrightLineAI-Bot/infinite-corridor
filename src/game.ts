@@ -98,7 +98,7 @@ import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addS
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
 import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
-import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots } from "./pentagon.ts";
+import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue } from "./pentagon.ts";
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -2147,6 +2147,7 @@ export class Game {
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
 
     { const q = s.playerRuntime.droneLift; this.droneLift = q && s.area === "overworld" && ["base", "z", "vz"].every((k) => Number.isFinite(Number(q[k]))) ? { base: Number(q.base), z: Number(q.z), vz: Number(q.vz) } : null; } // release 647: after loading the area, which clears a lift
+    for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
   }
   installSystems() {
     if (this._systemsInstalled) return;
@@ -2778,6 +2779,7 @@ export class Game {
         ...(prior ? (prior.labVersion ? { labVersion: prior.labVersion } : {}) : { labVersion: LABYRINTHS.version }), // and the labyrinths
         ...(prior ? (prior.castleVersion ? { castleVersion: prior.castleVersion } : {}) : { castleVersion: CASTLES.version }), // and the Great Castles
         ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : { pentVersion: PENTAGON.version }), // and the Pentagons
+        ...(prior ? (prior.pentPlace ? { pentPlace: prior.pentPlace } : {}) : { pentPlace: PENTAGON.place.version }), // and where they stand (PENTAGON.place: the rarer Pentagons, new ground only)
         ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
         ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
         ...(prior ? (prior.coherenceVersion ? { coherenceVersion: prior.coherenceVersion } : {}) : { coherenceVersion: COHERENCE.version }), // world coherence: lanes bridged, exits joined, no pits (landscape.ts COHERENCE)
@@ -6308,7 +6310,8 @@ export class Game {
   castleHere(X, Y) {
     const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = this.settleMemo();
     const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); }; // no castle where a town, a hamlet or the open sea stands
-    const inPent = (rx, ry) => { const c = pentagonCentre(rx, ry); return !!c && this.pentagonHere(c.cx, c.cy); }; // a Pentagon's sections hold no castle
+    const quarterPlace = Math.min(...[0, 1, 2, 3].map((q) => { const { rx, ry } = quarterSection(X, Y, q); return this.sectionPentPlace(rx, ry); })); // a castle with a quarter seen before the rarer Pentagons keeps out of the Pentagons of then, which it was laid round
+    const inPent = (rx, ry) => { const c = pentagonCentre(rx, ry); return !!c && this.pentagonHere(c.cx, c.cy, Math.min(quarterPlace, this.pentagonPlace(c.cx, c.cy))); }; // a Pentagon's sections hold no castle
     const fresh = this.coherentGround([0, 1, 2, 3].map((q) => quarterSection(X, Y, q))); // WG-04: on ground all new, a far domain's arena holds no castle
     return castleAt(seed, X, Y, sectionExits, (rx, ry) => settled(rx, ry) || inPent(rx, ry) || (fresh && this.domainCentreAt(rx, ry)), (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !!a && !a.castleVersion; });
   }
@@ -6406,12 +6409,22 @@ export class Game {
   // WG-05: on new ground (world coherence) a great building's door must join the section's exits, or the spot is passed over.
   coherentDoor() { return this._coherence ? Object.assign((map, at) => joinsCore(map, at), { tries: COHERENCE.doorTries }) : null; }
   pentagonVersion(cx, cy) { const atlas = this.save.atlas || {}; let v = PENTAGON.version; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const a = atlas[`${cx + dx},${cy + dy}`]; if (a?.pentVersion) v = Math.min(v, a.pentVersion); } return v; }
-  pentagonHere(cx, cy) {
+  // The Pentagons' placement version (pentagon.ts PENTAGON.place) a section was first seen under: none seen yet, the current one;
+  // seen before the rarer Pentagons (no `pentPlace`), 1.
+  sectionPentPlace(rx, ry) { const a = this.save.atlas?.[`${rx},${ry}`]; return a ? Math.max(1, Math.floor(Number(a.pentPlace)) || 1) : PENTAGON.place.version; }
+  // A Pentagon's: the lowest among its nine sections, and 1 if its base floor holds any history (a Pentagon a journey has known
+  // in any way stands as it did).
+  pentagonPlace(cx, cy) {
+    let v = PENTAGON.place.version; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) v = Math.min(v, this.sectionPentPlace(cx + dx, cy + dy));
+    if (v > 1) { const D = this.save.consequences?.dungeons || {}, b = `pentagon:${this.save.seed}:${cx}:${cy}`; if (D[`${b}:f1`]) return 1; for (let V = 2; V <= PENTAGON.version; V++) if (D[`${b}:v${V}:f1`]) return 1; }
+    return v;
+  }
+  pentagonHere(cx, cy, place = this.pentagonPlace(cx, cy)) {
     const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = this.settleMemo();
     const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
     const cells = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cells.push({ rx: cx + dx, ry: cy + dy });
     const fresh = this.coherentGround(cells); // WG-04: on ground all new, a far domain's arena holds no Pentagon (one begun before stays whole)
-    return pentagonAt(seed, cx, cy, (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !settled(rx, ry) && !(a && !a.pentVersion) && !(fresh && this.domainCentreAt(rx, ry)); });
+    return pentagonAt(seed, cx, cy, (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !settled(rx, ry) && !(a && !a.pentVersion) && !(fresh && this.domainCentreAt(rx, ry)); }, place);
   }
   // A labyrinth's progress: chambers found (of all), keys held (of all).
   labyrinthProgress() { const B = this.map?.building; if (!B?.labyrinth) return ""; const H = dungeonHistory(this.save, `${B.base}:f1`); const seen = (H.labSeen ||= []); if (!seen.includes(B.node)) seen.push(B.node);
@@ -6435,6 +6448,7 @@ export class Game {
   // for a Pentagon finished before), and laid over the vault from then on (pentagonFinaleIn). Returns the opening, or null.
   openPentagonFinale() {
     const B = this.map?.building; if (!B?.pentagon || !B.vault) return null;
+    this.payPentagonComplete(B.base); // a walkway Pentagon (its Regent fell before the Stillworks) is complete; paid once if not yet
     const F = PENTAGON.finale, H = dungeonHistory(this.save, `${B.base}:f1`), was = !!H.pentFinale; let o = this.map.objects.find((q) => q.kind === "pentFinaleWall");
     if (was && o) return o;
     if (!was && H.pentArena === undefined) H.pentArena = PENTAGON_ARENA.version; // from release 751 the opened wall leads to the Stillworks first (pentagon-arena.ts); a walkway opened before keeps its way
@@ -6512,7 +6526,15 @@ export class Game {
     const name = e.packName || "The finale beast";
     journalOnce(this.save, `pentagon-arena-won:${base}`, `${name} fell in the Stillworks. ${A.messages.opens}`, PENTAGON.name);
     (this.questNotices ||= []).push({ title: A.openNotice, detail: "beyond it, a walkway among the stars", kind: "discovery" });
-    this.defeatNotice = { title: A.wonNotice, detail: `${name} · +${marks} marks`, kind: "danger" }; this.message = A.messages.opens; return true;
+    this.defeatNotice = { title: A.wonNotice, detail: `${name} · +${marks} marks`, kind: "danger" }; this.message = A.messages.opens;
+    this.payPentagonComplete(base); return true; // the Pentagon is complete: its Tesseract (pentagon.ts PENTAGON_COMPLETE)
+  }
+  // The completion's Tesseract (pentagon.ts PENTAGON_COMPLETE), once a Pentagon: with the journal line, the message and a notice.
+  payPentagonComplete(base) {
+    const g = payPentagonCompletion(this.save, base); if (!g) return null; const C = PENTAGON_COMPLETE, K = TESSERACTS.kinds[g.kind];
+    journalOnce(this.save, `pentagon-complete:${base}`, `${C.journal} ${g.name}.`, PENTAGON.name); journalOnce(this.save, `tesseract:${base}:complete`, `${g.name}, from ${g.from}.`, "Tesseract glyphs");
+    this.message = `${this.message ? this.message + " " : ""}A Tesseract glyph for the Pentagon's completion: ${g.name}. Set it in Glyphs.`;
+    (this.questNotices ||= []).push({ title: C.notice, detail: `${K?.sigil || ""} ${g.name}`.trim(), kind: "discovery" }); return g;
   }
   // The dais (PENTAGON.finale.reroll): per Pentagon, one free reroll of a line on a Tesseract glyph you carry, then one more for
   // Divine Viscera; then only Transit. Act opens its choices while a reroll is left (a pick list: a glyph, then its line);

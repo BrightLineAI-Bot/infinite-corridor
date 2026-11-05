@@ -16,10 +16,17 @@ import { hashSeed, rng, byHash } from "./random.ts";
 import { BUILDINGS, layFloor, farthest } from "./great-buildings.ts";
 import { carveMaze } from "./labyrinths.ts";
 import { LIFT_PER_LEVEL as LIFT } from "./landscape.ts";
+import { grantTesseract } from "./tesseracts.ts";
 
 export const PENTAGON = {
   version: 7, // 7: the roof, its balconies and the outer stair (below); 6: shortcuts and side entrances (below); 5: release 732 (below); 4: release 730; 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
   every: 8, chance: .5, minRing: 10, // centre sections on a grid of `every`; this share of the eligible ones
+  // Placement versions (Tim, 2026-11-05: "the Pentagon should be pretty rare... I don't want the whole landscape to be dominated
+  // by Pentagons. They're so huge"), pinned per section as `atlas.pentPlace` (a section seen before has none: version 1).
+  // 1: the rule above. 2: of the centres rule 1 stands, a hashed `keep` share still stand: about 30% as many, each in the spot
+  // rule 1 gave it (never moved, never overlapping one an older journey holds). A Pentagon takes the lowest version among its
+  // nine sections (and 1 if its base floor holds any history), so one any of whose sections a journey knows stands as before.
+  place: { version: 2, keep: .3 },
   bands: { out: 36, outer: 29, court: 23, inner: 18, heart: 3 }, // pentagon "apothem" bands (tiles from the centre, along each face's normal)
   approach: 12, // tiles of paved way out from each gate
   wall: 1.3, // half-width of the walls between the ring courts, at the corners
@@ -192,7 +199,8 @@ export const PENTAGON = {
 const mod = (a, n) => ((a % n) + n) % n;
 // The centre section of a Pentagon this section could belong to.
 export function pentagonCentre(rx, ry) { const E = PENTAGON.every, cx = Math.round(rx / E) * E, cy = Math.round(ry / E) * E; return Math.abs(rx - cx) <= 1 && Math.abs(ry - cy) <= 1 ? { cx, cy } : null; }
-export function pentagonAt(seed, cx, cy, ok) { const P = PENTAGON; if ((hashSeed(`${seed}:pentagon:v1:${cx}:${cy}`) % 1000) / 1000 >= P.chance) return false;
+export function pentagonAt(seed, cx, cy, ok, place = 1) { const P = PENTAGON; if ((hashSeed(`${seed}:pentagon:v1:${cx}:${cy}`) % 1000) / 1000 >= P.chance) return false;
+  if (place >= 2 && (hashSeed(`${seed}:pentagon-place:v2:${cx}:${cy}`) % 1000) / 1000 >= P.place.keep) return false; // placement v2: the rarer Pentagons
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const rx = cx + dx, ry = cy + dy; if (Math.abs(rx) + Math.abs(ry) < P.minRing || !ok(rx, ry)) return false; } return true; }
 const toGlobal = (cx, cy, rx, ry, x, y) => ({ gx: (rx - cx + 1) * 32 + x, gy: (ry - cy + 1) * 32 + y });
 const toLocal = (cx, cy, gx, gy) => ({ rx: cx - 1 + Math.floor(gx / 32), ry: cy - 1 + Math.floor(gy / 32), x: mod(gx, 32), y: mod(gy, 32) });
@@ -608,6 +616,29 @@ export function pentagonLinkEnds(plan, map) {
 }
 export const pentagonLinkKey = (id) => `link:${id}`;
 // ------------------------------------------------------------------------------------------------ the finale: a walk among the stars
+// The completion's Tesseract (Tim, 2026-11-05: "There should be at least one Tesseract for completing the Pentagon; one Tesseract
+// per Pentagon"). Every version, whatever else it pays. A Pentagon is complete when its finale beast falls in the Stillworks
+// (`pentArenaWon`), or, for one whose wall opened onto the walkway before the Stillworks (`pentFinale` with no `pentArena`),
+// when its Regent fell. Paid once, on completion or (for one completed before) on the next start of the game; recorded on the
+// base floor's history (`pentComplete`, the source), and the source is in `tesseracts.got` as every glyph's is.
+export const PENTAGON_COMPLETE = {
+  grade: "regent", from: "the Pentagon's completion",
+  notice: "THE PENTAGON IS COMPLETE",
+  journal: "The Pentagon is complete. Something of it came away with you: a Tesseract glyph.",
+};
+export const pentagonCompleteSource = (base) => `${base}:complete`;
+export function pentagonCompleted(H) { return !!H && (!!H.pentArenaWon || (!!H.pentFinale && H.pentArena === undefined)); }
+// Pays the completion glyph if it is due (null otherwise, or if that source already gave one). Pure on the save.
+export function payPentagonCompletion(save, base) {
+  const H = save?.consequences?.dungeons?.[`${base}:f1`]; if (!H || H.pentComplete || !pentagonCompleted(H)) return null;
+  const source = pentagonCompleteSource(base); H.pentComplete = source; return grantTesseract(save, source, PENTAGON_COMPLETE.grade, 0, PENTAGON_COMPLETE.from);
+}
+// The Pentagons this journey holds whose completion glyph is still due (their bases), from the base floors' histories.
+export function pentagonsDue(save) {
+  const out = []; for (const [id, H] of Object.entries(save?.consequences?.dungeons || {})) { if (!H || H.pentComplete || !pentagonCompleted(H)) continue; const p = parsePentagonId(id); if (p && p.n === 0) out.push(p.base); }
+  return out;
+}
+
 // PENTAGON.finale. The walkway is a floor of its own, `${base}:finale`, generated only once the Regent has fallen; every
 // Pentagon version has the same one (a new id, so no explored floor changes). The opening in the vault is an object laid on
 // the vault's outer wall, beside floor you can reach from the way in, clear of every door, link end and object (as generated,
