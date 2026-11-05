@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 763, the next is **764**.
+Taken at merge time: `main`'s release + 1 (see above). After 764, the next is **765**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 763 | Claude | `claude/dreamy-rubin-yn6q2p` | A glide over a Pentagon kills; a glide never gains height; a mount's jump dodges nothing; the drone is stowed after a fizzle | In flight. |
+| 764 | Claude | `claude/dreamy-rubin-yn6q2p` | Tall spires and groves back (landscape 19), keeping every 758 climbing fix; the crown veil thins from halfway up | In flight. |
+| 763 | Claude | `claude/dreamy-rubin-yn6q2p` | A glide over a Pentagon kills; a glide never gains height; a mount's jump dodges nothing; the drone is stowed after a fizzle | Merged (#411). |
 | 762 | Claude | `claude/dreamy-rubin-yn6q2p` | Tesseract tiers: cost counts and cost strength per grade (low 2–3, middle 1–2, top 1 mild); dais rerolls stay in the tier; pre-750 Pentagons paid on load | Merged (#410). |
 | 761 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle v2: one Mouth per Gate; 5 pieces (kills or hordes) unlock it; the Listener returns every 5 relays; town on the first kill; coordinates once per Gate | Merged (#409). |
 | 760 | Claude | `claude/dreamy-rubin-yn6q2p` | Stillworks pillars to shelter from the Sunfall (arena version 2); the Doom Chaser lives only in the Stillworks | Merged (#408). |
