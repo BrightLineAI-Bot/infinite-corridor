@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 761, the next is **762**.
+Taken at merge time: `main`'s release + 1 (see above). After 762, the next is **763**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 761 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle v2: one Mouth per Gate; 5 pieces (kills or hordes) unlock it; the Listener returns every 5 relays; town on the first kill; coordinates once per Gate | In flight. |
+| 762 | Claude | `claude/dreamy-rubin-yn6q2p` | Tesseract tiers: cost counts and cost strength per grade (low 2–3, middle 1–2, top 1 mild); dais rerolls stay in the tier; pre-750 Pentagons paid on load | In flight. |
+| 761 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle v2: one Mouth per Gate; 5 pieces (kills or hordes) unlock it; the Listener returns every 5 relays; town on the first kill; coordinates once per Gate | Merged (#409). |
 | 760 | Claude | `claude/dreamy-rubin-yn6q2p` | Stillworks pillars to shelter from the Sunfall (arena version 2); the Doom Chaser lives only in the Stillworks | Merged (#408). |
 | 759 | Claude | `claude/dreamy-rubin-yn6q2p` | Sky hops land on the first footing past the gap; the drone booster is never steered by the tree footing (pre-publish review blockers in 758) | Merged (#407). Published as r759-ce2cc625b7cc on 2026-11-05. |
 | 758 | Claude | `claude/dreamy-rubin-yn6q2p` | Great trees you can climb: platforms drawn where walked, crown veiled until you climb, straighter hops; landscape 18 trees | Merged (#406). Preview r758-96c811de0fd7; published in r759. |
