@@ -42,8 +42,12 @@ export const TESSERACTS = {
     star: { name: "Star", sigil: "✧", color: "#c9a7ff", favour: ["spellDamage", "spellCooldown", "spellDuration", "burstRadius"] },
     sovereign: { name: "Sovereign", sigil: "⬟", color: "#ffd36a", favour: ["attackDamage", "spellDamage", "defense", "hp", "move", "attackSpeed", "spellCooldown"] },
   },
-  // q: how strong its bonuses run (0..1); bad: the chance each of the last two lines is a cost; perFloor: q gained a Heart floor down
+  // q: how strong its bonuses run (0..1); bad: the chance each of the last two lines is a cost; perFloor: q gained a Heart floor down;
+  // costs: the lines that may be a cost (by `bad`), when not the last two (the first line is always a bonus)
   grades: {
+    // Tim, 2026-11-05: the completion glyph of the early Pentagons (versions 1 and 2, which pay no other), "heavily skewed toward
+    // negative attributes": one bonus and up to three costs (pentagon.ts PENTAGON_COMPLETE)
+    hollow: { name: "Hollow", q: .2, bad: .85, costs: [1, 2, 3], kinds: ["edge", "ward", "gale", "star"] },
     labyrinth: { name: "Labyrinth", q: .3, bad: .8, kinds: ["edge", "ward", "gale", "star"] },
     deep: { name: "Deep", q: .45, bad: .6, perFloor: .07, kinds: ["edge", "ward", "gale", "star"] },
     reliquary: { name: "Reliquary", q: .65, bad: .5, kinds: ["edge", "ward", "gale", "star"] },
@@ -85,7 +89,8 @@ export function rollTesseract(seed, source, gradeId, floor = 0) {
   const good = (id, k) => { const [a, b] = E[id].good; return { k: id, v: Math.round((a + (b - a) * q * (.6 + .4 * u(k))) * 1000) / 1000, bad: false }; };
   const bad = (id, k) => { const [a, b] = E[id].bad; return { k: id, v: Math.round((a + (b - a) * ((1 - q) * .6 + .4 * u(k))) * 1000) / 1000, bad: true }; };
   lines.push(good(pick(K.favour.filter((id) => E[id].good), "l0"), "v0"));
-  lines.push(good(pick(EFFECT_IDS.filter((id) => E[id].good), "l1"), "v1"));
+  if ((G.costs || []).includes(1) && u("b1") < G.bad) lines.push(bad(pick(EFFECT_IDS.filter((id) => E[id].bad), "l1"), "v1")); // a grade whose second line may be a cost (hollow)
+  else lines.push(good(pick(EFFECT_IDS.filter((id) => E[id].good), "l1"), "v1"));
   for (const i of [2, 3]) { const cost = u(`b${i}`) < G.bad; lines.push(cost ? bad(pick(EFFECT_IDS.filter((id) => E[id].bad), `l${i}`), `v${i}`) : good(pick(EFFECT_IDS.filter((id) => E[id].good), `l${i}`), `v${i}`)); }
   return { kind, grade: gradeId, name: `${G.name === K.name ? G.name : `${G.name} ${K.name}`} Tesseract ${TESSERACTS.names[h("name") % TESSERACTS.names.length]}`, lines };
 }
@@ -101,7 +106,7 @@ export function rerollTesseractLine(seed, source, g, i) {
   const bad = (id) => { const [a, b] = E[id].bad; return { k: id, v: Math.round((a + (b - a) * ((1 - q) * .6 + .4 * u("v"))) * 1000) / 1000, bad: true }; };
   const goods = EFFECT_IDS.filter((id) => E[id].good), costs = EFFECT_IDS.filter((id) => E[id].bad);
   if (i === 0) { const id = pick(K.favour.filter((x) => E[x].good)) || pick(goods); return id ? good(id) : null; }
-  if (i === 1 || u("b") >= G.bad) { const id = pick(goods); return id ? good(id) : null; }
+  if ((i === 1 && !(G.costs || []).includes(1)) || u("b") >= G.bad) { const id = pick(goods); return id ? good(id) : null; }
   const id = pick(costs); return id ? bad(id) : null;
 }
 // Give the glyph a source holds, once ever. Returns it, or null if that source already gave its glyph.

@@ -616,15 +616,17 @@ export const pentagonLinkKey = (id) => `link:${id}`;
 // base floor's history (`pentComplete`, the source), and the source is in `tesseracts.got` as every glyph's is.
 export const PENTAGON_COMPLETE = {
   grade: "regent", from: "the Pentagon's completion",
+  early: { upTo: 2, grade: "hollow" }, // Tim, 2026-11-05: versions 1 and 2 pay no other glyph; theirs leans hard toward costs (tesseracts.ts)
   notice: "THE PENTAGON IS COMPLETE",
   journal: "The Pentagon is complete. Something of it came away with you: a Tesseract glyph.",
 };
 export const pentagonCompleteSource = (base) => `${base}:complete`;
+export function pentagonCompleteGrade(base) { const C = PENTAGON_COMPLETE, V = parsePentagonId(`${base}:f1`)?.V || 1; return V <= C.early.upTo ? C.early.grade : C.grade; }
 export function pentagonCompleted(H) { return !!H && (!!H.pentArenaWon || (!!H.pentFinale && H.pentArena === undefined)); }
 // Pays the completion glyph if it is due (null otherwise, or if that source already gave one). Pure on the save.
 export function payPentagonCompletion(save, base) {
   const H = save?.consequences?.dungeons?.[`${base}:f1`]; if (!H || H.pentComplete || !pentagonCompleted(H)) return null;
-  const source = pentagonCompleteSource(base); H.pentComplete = source; return grantTesseract(save, source, PENTAGON_COMPLETE.grade, 0, PENTAGON_COMPLETE.from);
+  const source = pentagonCompleteSource(base); H.pentComplete = source; return grantTesseract(save, source, pentagonCompleteGrade(base), 0, PENTAGON_COMPLETE.from);
 }
 // The Pentagons this journey holds whose completion glyph is still due (their bases), from the base floors' histories.
 export function pentagonsDue(save) {

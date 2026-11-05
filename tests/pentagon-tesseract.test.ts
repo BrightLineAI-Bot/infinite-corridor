@@ -7,9 +7,9 @@ import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { serializeSave, deserializeSave } from '../src/persistence.ts';
-import { PENTAGON, PENTAGON_COMPLETE, pentagonPlan, pentagonVaultId, pentagonCompleted, payPentagonCompletion, pentagonsDue, pentagonCompleteSource, generatePentagonChamber } from '../src/pentagon.ts';
+import { PENTAGON, PENTAGON_COMPLETE, pentagonPlan, pentagonVaultId, pentagonCompleted, payPentagonCompletion, pentagonsDue, pentagonCompleteSource, pentagonCompleteGrade, generatePentagonChamber } from '../src/pentagon.ts';
 import { pentagonArenaId } from '../src/pentagon-arena.ts';
-import { TESSERACTS } from '../src/tesseracts.ts';
+import { TESSERACTS, rollTesseract, rerollTesseractLine } from '../src/tesseracts.ts';
 
 const SEED = 'TIM1';
 const game = (seed = SEED, save = null) => { const s = save || freshSave(); s.seed = seed; return new Game(s, 0); };
@@ -61,7 +61,7 @@ test('every version: the Regent alone pays no completion glyph; the Stillworks b
     assert.equal(fromCompletion(g).length, 0, `v${V}: not before the Stillworks`); assert.equal(H(g, P).pentComplete, undefined);
     const fall = owned(g); act(g, wall(g)); assert.equal(g.areaId(), pentagonArenaId(P.base), `v${V}: the Stillworks`); killBeast(g);
     assert.equal(owned(g), fall + 1, `v${V}: one glyph for the completion`); assert.equal(fromCompletion(g).length, 1);
-    assert.equal(H(g, P).pentComplete, pentagonCompleteSource(P.base)); assert.ok(g.save.tesseracts.got[pentagonCompleteSource(P.base)]);
+    assert.equal(H(g, P).pentComplete, pentagonCompleteSource(P.base)); assert.equal(fromCompletion(g)[0].grade, V <= 2 ? 'hollow' : 'regent', `v${V}: its grade`); assert.ok(g.save.tesseracts.got[pentagonCompleteSource(P.base)]);
     assert.ok(g.questNotices.some((n) => n.title === PENTAGON_COMPLETE.notice)); assert.ok(g.save.narrative.journal.some((j) => j.recordId === `pentagon-complete:${P.base}`));
     g.pentagonArenaWon(g.enemies.find((e) => e.pentFinaleBeast)); g.payPentagonComplete(P.base); assert.equal(owned(g), fall + 1, `v${V}: once`);
     const r = reload(g); assert.equal(owned(r), fall + 1, `v${V}: a reload pays nothing more`); const m = new Game(migrateSave(JSON.parse(JSON.stringify(r.save))), 0); assert.equal(owned(m), fall + 1);
@@ -103,4 +103,25 @@ test('the other sources stay as they were: the hoard, the reliquaries, the seale
   const chest = g.map.objects.find((o) => o.id === 'building-cache'); g.player.x = chest.x; g.player.y = chest.y; g.interact('open', chest.id);
   assert.ok(g.save.tesseracts.got[`${P.base}:hoard`], 'the hoard pays as before'); act(g, wall(g)); killBeast(g);
   assert.deepEqual(Object.keys(g.save.tesseracts.got).filter((k) => k.startsWith(P.base)).sort(), [`${P.base}:complete`, `${P.base}:hoard`].sort());
+});
+
+// ------------------------------------------------------------------------------------------------ the early Pentagons' glyph
+// Tim, 2026-11-05: versions 1 and 2 pay no other Tesseract; their completion glyph leans hard toward costs (the hollow grade: one
+// bonus and up to three costs). From version 3 it is a Regent's glyph.
+test('v1 and v2 completion glyphs are hollow: at least one bonus, at most three costs, far more costs than a Regent\'s; v3+ regent', () => {
+  for (let V = 1; V <= PENTAGON.version; V++) assert.equal(pentagonCompleteGrade(pentagonPlan(SEED, 16, 0, V).base), V <= 2 ? 'hollow' : 'regent', `v${V}`);
+  const N = 2000, tally = (grade) => { const hist = [0, 0, 0, 0, 0]; let costs = 0;
+    for (let i = 0; i < N; i++) { const base = pentagonPlan(`H${i}`, (i % 40) * 8, Math.floor(i / 40) * 8 + 16, grade === 'hollow' ? 1 + (i & 1) : 7).base, g = rollTesseract(`H${i}`, pentagonCompleteSource(base), grade);
+      const n = g.lines.filter((l) => l.bad).length; assert.ok(!g.lines[0].bad, 'the first line is always a bonus'); assert.ok(n <= 3); assert.equal(g.lines.length, 4); assert.equal(new Set(g.lines.map((l) => l.k)).size, 4, 'no effect twice');
+      for (const l of g.lines) assert.ok(l.v > 0 && l.v < .3); hist[n]++; costs += n; }
+    return { mean: costs / N, hist }; };
+  const hollow = tally('hollow'), regent = tally('regent');
+  assert.ok(hollow.mean > 2.2 && hollow.mean > 2.5 * regent.mean, `hollow ${hollow.mean} (${hollow.hist}) vs regent ${regent.mean} (${regent.hist})`);
+  assert.ok(hollow.hist[3] > N * .5, 'three costs most often'); assert.equal(regent.hist[3], 0, 'a Regent\'s glyph never has three');
+  // the dais's reroll keeps a hollow glyph's rules: its first line a bonus, any other line may come back a cost
+  const g = rollTesseract('H0', 'x', 'hollow'); let line1Costs = 0; for (let k = 0; k < 400; k++) { const l = rerollTesseractLine('H0', `r${k}`, g, 1); if (l.bad) line1Costs++; assert.ok(!rerollTesseractLine('H0', `r${k}`, g, 0).bad); }
+  assert.ok(line1Costs > 200, `${line1Costs} of 400`);
+  // a v1 Pentagon completed in the game pays a hollow glyph
+  const s = freshSave(); s.seed = SEED; const P = pentagonPlan(SEED, 16, 0, 1); s.consequences.dungeons[`${P.base}:f1`] = { pentFinale: 1 }; const k = new Game(s, 0);
+  assert.equal(fromCompletion(k)[0].grade, 'hollow'); assert.ok(fromCompletion(k)[0].name.startsWith('Hollow'));
 });

@@ -12,7 +12,7 @@ const save = () => { const s = freshSave(); s.seed = 'TES1'; return s; };
 
 test('a Tesseract glyph: four lines, its first two bonuses, no effect twice; the same source rolls the same glyph', () => {
   for (const grade of Object.keys(TESSERACTS.grades)) for (let i = 0; i < 50; i++) { const g = rollTesseract('S', `${grade}:${i}`, grade, 2);
-    assert.equal(g.lines.length, 4); assert.ok(!g.lines[0].bad && !g.lines[1].bad); assert.equal(new Set(g.lines.map((l) => l.k)).size, 4);
+    assert.equal(g.lines.length, 4); assert.ok(!g.lines[0].bad && (!g.lines[1].bad || (TESSERACTS.grades[grade].costs || []).includes(1))); /* the hollow grade's second line may be a cost */ assert.equal(new Set(g.lines.map((l) => l.k)).size, 4);
     for (const l of g.lines) { assert.ok(l.v > 0 && l.v < .3, tesseractLine(l)); assert.equal(l.bad, !!(l.bad)); if (l.k === 'selfHarm') assert.ok(l.bad); if (l.k === 'killHeal') assert.ok(!l.bad); }
     assert.ok(TESSERACTS.grades[grade].kinds.includes(g.kind)); assert.deepEqual(g, rollTesseract('S', `${grade}:${i}`, grade, 2)); }
 });
