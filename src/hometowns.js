@@ -8,13 +8,15 @@
 // chosen home ("rx,ry"; Ember Refuge, "0,0", when unset). Home is where the Atlas's Return button goes, and where the farm,
 // the quarry and the regrowth ring sit (refuge-lands.ts, by `homeCenter`). A town becomes home from the Atlas once its
 // Wayglass is lit.
-import { hashSeed } from "./random.js?v=r759-ce2cc625b7cc";
-import { hamletIdentity, hamletSection } from "./settlements.js?v=r759-ce2cc625b7cc";
-import { openSeaSection } from "./landscape.js?v=r759-ce2cc625b7cc";
+import { hashSeed } from "./random.js?v=r764-0eb650c60230";
+import { hamletIdentity, hamletSection } from "./settlements.js?v=r764-0eb650c60230";
+import { openSeaSection } from "./landscape.js?v=r764-0eb650c60230";
+import { killsAtMouthFromJournal } from "./far-array.js?v=r764-0eb650c60230";
 
-// townWhen: "unlock" raises a Mouth's town when its Gate is unlocked and the Listener leaves (Tim, 2026-11-05); "kill" on the
-// first Listener kill there (releases 373-755).
-export const HOMETOWNS = { search: 4, townWhen: "unlock" };
+// townWhen: "kill" raises a Mouth's town on the first Listener kill there (releases 373-756, and again from Tim's 2026-11-05
+// cycle: "after you beat the listener [at a Mouth] for the first time there's a town that springs up"); "unlock" only when its
+// Gate is unlocked and the Listener leaves for good (releases 757-759). One town per Mouth either way.
+export const HOMETOWNS = { search: 4, townWhen: "kill" };
 const REFUGE = "0,0";
 const key = (q) => `${q.rx},${q.ry}`;
 
@@ -42,15 +44,18 @@ export function townSite(save, mouth) {
 // it becomes like a town now... [the Mouth] becomes a source of adventure and prosperity"): the town rises on the Mouth's
 // own section, around the Mouth (`mouth: true`), with the Listening Stone and a delver's exchange beside it (game.ts).
 // It replaces the 371 town on a nearby section; a journey that already has one keeps it as one more town.
-// One Mouth town per spent Mouth (Tim, 2026-11-05: "the old Mouth turns into an infinite dungeon and a town"): every Mouth the
-// Listener has left (relayNetwork.pastMouths, in order), and the current one once its Gate is unlocked and it has gone quiet.
-// Before, a town rose on the first kill at a Mouth (`HOMETOWNS.townWhen` "kill" keeps that rule); every Mouth a Listener
-// fell at was quiet or past under it, so no journey loses or gains a town by the change. Returns those added.
+// One Mouth town per Mouth: every Mouth the Listener has left (relayNetwork.pastMouths, in order), and the current one from the
+// first Listener kill there (`townWhen` "kill", Tim 2026-11-05) or once its Gate is unlocked. Kills are counted per Mouth
+// (`farArray.atMouth`), so a new Mouth never becomes a town before a Listener falls at it. Returns those added.
 export function grantTowns(save) {
   const h = save.hometowns; if (!h) return [];
   const kills = Math.max(0, Math.floor(Number(save.farArray?.listeners) || 0)), net = save.relayNetwork || {}, past = Array.isArray(net.pastMouths) ? net.pastMouths : [], added = [];
-  if (!kills) return added;
-  const current = net.coordinate && (HOMETOWNS.townWhen === "kill" || save.farArray?.quiet) ? [net.coordinate] : [];
+  if (!kills && !past.length && !save.farArray?.quiet) return added; // (a Gate unlocked by broken hordes alone still spends its Mouth)
+  // The current Mouth: once a Listener has fallen there ("kill"; `atMouth`, or the journal for a journey from before it was kept),
+  // or once its Gate is unlocked and the Listener has left it for good (`quiet` with `moves`; before v2, quiet with no piece held).
+  const f = save.farArray || {}, toNext = Math.max(0, Math.floor(Number(f.toNext) || 0)), spent = !!f.quiet && (typeof f.moves === "boolean" ? f.moves : toNext === 0);
+  const atMouth = f.atMouth != null && Number.isFinite(Number(f.atMouth)) ? Number(f.atMouth) : killsAtMouthFromJournal(save, Math.max(0, Math.floor(Number(f.mouth) || 0)));
+  const current = net.coordinate && (spent || (HOMETOWNS.townWhen === "kill" && atMouth > 0)) ? [net.coordinate] : [];
   for (const m of [...past, ...current]) {
     if (!Number.isInteger(m?.rx) || !Number.isInteger(m?.ry)) continue;
     const there = h.towns.find((q) => q.rx === m.rx && q.ry === m.ry); if (there) { there.mouth = true; continue; }

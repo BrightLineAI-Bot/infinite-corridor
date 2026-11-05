@@ -7,7 +7,7 @@
 // borders wavered by noise. Each cell rolls one number u in [0, 1) on its own hash; each version of this table gives a realm to a
 // further band of u (`bands`), always carved out of what was still `ordinary`, so a cell keeps its realm in every later version.
 // Only sections first seen with a version hold a realm (the atlas pins `farVersion`); ground seen before keeps none. Pure.
-import { hashSeed, byHash } from "./random.js?v=r759-ce2cc625b7cc";
+import { hashSeed, byHash } from "./random.js?v=r764-0eb650c60230";
 
 export const FAR_REALMS = {
   version: 6, start: 1000, cell: 40, warp: 9, // 5 (719): the Ink Wastes; 6 (720): the folk realms; // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
@@ -137,7 +137,10 @@ export const FAR_DOMAINS = {
   doomChaser: { beast: "doomChaser", min: 1174, span: 250, version: 1, name: "the Black Pyre", wait: [45, 110], // release 724
     arrive: "Ash lies deep over everything, and black fire burns in it without smoke. Charred pillars stand like the bones of a building. This is the Doom Chaser's pyre.",
     quest: "The Doom Chaser falls, and its black fire goes on burning, far out, where it was first lit. Your compass knows the way to the Black Pyre.",
-    found: "You have reached the Black Pyre.", comes: "The black fire leaps all at once. The Doom Chaser has come back to its pyre.", waiting: "The black fire burns low. Wait here, and the Doom Chaser may come back to feed it." },
+    found: "You have reached the Black Pyre.", comes: "The black fire leaps all at once. The Doom Chaser has come back to its pyre.", waiting: "The black fire burns low. Wait here, and the Doom Chaser may come back to feed it.",
+    // Tim, 2026-11-05: the Doom Chaser keeps to the Stillworks (world-beasts.ts BEAST_HOMELANDS), so its pyre stands empty: said on a
+    // visit in place of `waiting`, and nothing comes. The pyre itself is laid as before.
+    vacant: "The black fire burns on, untended. Nothing comes to feed it now: what lit it keeps to the ordered stone of the Stillworks." },
   morphingBlob: { beast: "morphingBlob", min: 1211, span: 250, version: 1, name: "the Rendering Pit", wait: [45, 110], // release 724
     arrive: "A sunken basin of sour mud, its pools green and steaming, its edges piled with old bones. This is where the Morphing Blob was rendered down.",
     quest: "The Morphing Blob falls, and what is left of it seeps away toward a pit far out, where it began. Your compass knows the way to the Rendering Pit.",

@@ -14,7 +14,7 @@
 //   levels under the branch above, so a fall off the higher branch lands on one (it hurts) and the climb goes on from there;
 // - leaves on its branches (the tips always), and decorative boughs drawn off its trunk, which nothing walks on.
 // Bounded: at most two trees, a few thousand tile checks, once per section; nothing spawns up there.
-import { hashSeed, byHash } from "./random.js?v=r759-ce2cc625b7cc";
+import { hashSeed, byHash } from "./random.js?v=r764-0eb650c60230";
 
 export const TREE_VERSION = 13;
 // Release 672 (landscape version 14; Tim, 2026-11-01: "I haven't seen any tall trees"): a survey found the version 13 search
@@ -51,6 +51,25 @@ export const TREES_V18 = {
   // east or west) and 6 and 7 (four sides: the hidden tile on the second side; the climb ends from the east or west).
   turns: { 3: [0, 1], 4: [6, 7] },
 };
+// Tall spires again (Tim, 2026-11-05: "For trees, let's keep it as it was before. I like having tall spires"). Version 18
+// raised a spire's shortest side to four tiles (`specs`), so few spots took a spire and compact trees grew in their place (39
+// spires, 121 compact and 1 grove in 150 trees, where versions 14 to 17 grew 62, 90 and 8), and a grove gave up its spot when
+// its first walk ran under the greater tree's branches or walled ground off. From landscape version 19 every version 18 rule
+// holds (readable turns, open and cleared hop gaps, perches in the open, the trunk's strip cleared, slope knots, nothing where the
+// Far Sleep dreams), and a section tries, in order: a grove (`forms`, `tries`, `greaterTries`; a greater tree whose walk lies
+// under its branches or walls ground off is passed over for the next spot), a tall spire (every side at least `specs.tall`
+// reach), a spire (the earlier three-tile reach, but the second side of a four-sided tree keeps four: `least`), then a compact
+// tree; each spot in every readable turn (`allTurns`, the hashed turn first). Measured over 850 trees on three seeds: 348
+// spires, 472 compact, 30 groves (versions 14 to 17: 418, 390, 42; version 18 about 1 spire in 4 and almost no groves), every
+// one climbed to its crown. Version 18 and older sections keep their trees exactly.
+export const TREES_V19 = {
+  version: 19, allTurns: true,
+  forms: [["grove", 1]], // every section tries a grove first (most spots cannot take one), then a spire, then a compact tree
+  specs: { tall: { trunk: 3, sides: [4], reach: [4, 7] }, spire: { trunk: 3, sides: [4], reach: [3, 7], least: { 4: [3, 4, 3, 3] } }, compact: { trunk: [2, 3], sides: [3], reach: [3, 5] }, lesser: { trunk: [2, 3], sides: [3], reach: [3, 4] }, greater: { trunk: 3, sides: [3, 4], reach: [3, 5], least: { 4: [3, 4, 3, 3] } } },
+  // `least`, by number of sides: the second side of a four-sided tree keeps four tiles (at three, the corner knot before it is
+  // drawn over as well as the one tile its twin nearer the camera always covers; the other sides may be three)
+  tries: { spire: 80, grove: 480 }, greaterTries: 240, // spots tried for a grove's first tree, and for its second (version 18: 240 and 120)
+};
 export const TREES = {
   chance: .55, // of the jungle sections the great trees are seen in at all
   forms: [["spire", 4], ["grove", 6]], // weights (a grove needs room for two trees, so it is tried more often than it grows)
@@ -73,6 +92,9 @@ export const TREES = {
 };
 
 const idx = (x, y) => y * 32 + x;
+// hashSeed (random.ts) carried on from a prefix's state: fnvFrom(fnvFrom(2166136261, a), b) >>> 0 === hashSeed(a + b). The tree
+// hashes share one long prefix, worked out once a section (the same hashes, sooner).
+const fnvFrom = (state, text) => { let h = state; for (const c of String(text)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h; };
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const pick = (n, [lo, hi]) => lo + n % (hi - lo + 1);
 const weighted = (n, list) => { const total = list.reduce((a, [, w]) => a + w, 0); let r = n % total; for (const [k, w] of list) { if (r < w) return k; r -= w; } return list[0][0]; };
@@ -88,24 +110,31 @@ const SIDES = (N) => [
 const turn = (op, N, tx, ty) => (lx, ly) => { let x = lx, y = ly; if (op & 4) [x, y] = [y, x]; if (op & 1) x = N - 1 - x; if (op & 2) y = N - 1 - y; return [tx + x, ty + y]; };
 const turnDir = (op) => ([dx, dy]) => { let x = dx, y = dy; if (op & 4) [x, y] = [y, x]; if (op & 1) x = -x; if (op & 2) y = -y; return [x, y]; };
 
-// Plan one tree's climb: where its branches go and how long each side's are, or null when the ground will not take it.
-function planTree(h, key, spec, ground, tx, ty, gapOk = null, turns = null) {
-  const N = Array.isArray(spec.trunk) ? pick(h(`${key}:n`), spec.trunk) : spec.trunk, count = spec.sides[h(`${key}:sides`) % spec.sides.length];
-  const op = turns ? turns[count][h(`${key}:op`) % turns[count].length] : h(`${key}:op`) % 8, W = turn(op, N, tx, ty), D = turnDir(op); // version 18: only the readable turns (TREES_V18.turns)
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (!ground(...W(i, j))) return null;
-  const sides = [];
-  for (let k = 0; k < count; k++) {
-    const sd = SIDES(N)[k], d = D(sd.d), a = W(...sd.a), b = W(...sd.b), knot = k < count - 1 ? W(...sd.knot) : null, want = pick(h(`${key}:r${k}`), spec.reach); let L = 0;
-    for (let r = 0; r < want; r++) { if (![a, b].every(([x, y]) => ground(x + d[0] * r, y + d[1] * r))) break; L = r + 1; }
-    if (L < spec.reach[0] || (knot && !ground(...knot))) return null;
-    // Version 18: the gap hopped between the twin tips is open ground (a blocked root or a pool there would stop the hop).
-    const gap = []; for (let g = 1; g < N - 1; g++) gap.push([a[0] + d[0] * (L - 1) + (b[0] - a[0]) * g / (N - 1), a[1] + d[1] * (L - 1) + (b[1] - a[1]) * g / (N - 1)]);
-    if (gapOk && !gap.every(([x, y]) => gapOk(x, y))) return null;
-    sides.push({ d, a, b, knot, L, gap });
+// Plan one tree's climb: where its branches go and how long each side's are, or null when the ground will not take it. Version
+// 19 passes `alts` (the readable turns, tried from the hashed one on) and `ok` (the first plan it accepts is returned); before,
+// one turn and any plan. The hashes do not depend on the turn, so they are taken once.
+function planTree(h, key, spec, ground, tx, ty, gapOk = null, turns = null, alts = 1, ok = (p) => !!p) {
+  const N = Array.isArray(spec.trunk) ? pick(h(`${key}:n`), spec.trunk) : spec.trunk;
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (!ground(tx + i, ty + j)) return null; // every turn maps the trunk square onto itself
+  const count = spec.sides[h(`${key}:sides`) % spec.sides.length], h0 = h(`${key}:op`), wants = [], look = h(`${key}:look`) % TREES.looks.length;
+  const least = (k) => spec.least?.[count]?.[k] ?? spec.reach[0]; // version 19: `least`, a side's own shortest reach (before, the spec's)
+  for (let alt = 0; alt < alts; alt++) {
+    const op = turns ? turns[count][(h0 + alt) % turns[count].length] : h0 % 8, W = turn(op, N, tx, ty), D = turnDir(op); // version 18: only the readable turns (TREES_V18.turns)
+    const sides = []; let fit = true;
+    for (let k = 0; k < count && fit; k++) {
+      const sd = SIDES(N)[k], d = D(sd.d), a = W(...sd.a), b = W(...sd.b), knot = k < count - 1 ? W(...sd.knot) : null, want = wants[k] ??= pick(h(`${key}:r${k}`), [least(k), spec.reach[1]]); let L = 0;
+      for (let r = 0; r < want; r++) { if (![a, b].every(([x, y]) => ground(x + d[0] * r, y + d[1] * r))) break; L = r + 1; }
+      if (L < least(k) || (knot && !ground(...knot))) { fit = false; break; }
+      // Version 18: the gap hopped between the twin tips is open ground (a blocked root or a pool there would stop the hop).
+      const gap = []; for (let g = 1; g < N - 1; g++) gap.push([a[0] + d[0] * (L - 1) + (b[0] - a[0]) * g / (N - 1), a[1] + d[1] * (L - 1) + (b[1] - a[1]) * g / (N - 1)]);
+      if (gapOk && !gap.every(([x, y]) => gapOk(x, y))) { fit = false; break; }
+      sides.push({ d, a, b, knot, L, gap });
+    }
+    if (!fit) continue;
+    const plan = { N, op, tx, ty, sides, step: W(SIDES(N)[0].a[0], -1), look, tiles: [] }; // step: the ground beside the first branch, where the climb starts
+    if (ok(plan)) return plan;
   }
-  const step = W(SIDES(N)[0].a[0], -1); // the ground beside the first branch, where the climb starts
-  const look = h(`${key}:look`) % TREES.looks.length;
-  return { N, op, tx, ty, sides, step, look, tiles: [] };
+  return null;
 }
 
 // The tiles of a planned climb from `start` (the first tile flat, then rising one level a tile; a hop between the twin tips).
@@ -134,19 +163,24 @@ function walkPath(from, to, free) {
 // Grow this section's great tree(s). `ground` says whether a tile can take wood, `reachable` recomputes what can be walked
 // to from the plaza, `trapped` lists the tiles that can be dropped into but not climbed out of. Returns the tree record for map.canopy, or null (the tiles are left as they were).
 export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, version = 13, region = "jungle", force = false }) {
-  const T = TREES, h = (k) => hashSeed(`${seed}:trees:v13:${rx}:${ry}:${k}`), at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version, v18 = version >= TREES_V18.version;
-  const S = v18 ? TREES_V18.specs : { spire: T.spire, compact: TREES_V14.compact, lesser: T.lesser, greater: T.greater }, gapOk = v18 ? (x, y) => ground(x, y) && !at(x, y).blocked : null, turns = v18 ? TREES_V18.turns : null; // version 18: longer climbs, open hop gaps (a buttress root is tree ground, but blocked as a gap), readable turns
+  const T = TREES, h0 = fnvFrom(2166136261, `${seed}:trees:v13:${rx}:${ry}:`), h = (k) => fnvFrom(h0, k) >>> 0, at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version, v18 = version >= TREES_V18.version, v19 = version >= TREES_V19.version;
+  const S = v19 ? TREES_V19.specs : v18 ? TREES_V18.specs : { spire: T.spire, compact: TREES_V14.compact, lesser: T.lesser, greater: T.greater }, gapOk = v18 ? (x, y) => ground(x, y) && !at(x, y).blocked : null, turns = v18 ? TREES_V18.turns : null; // version 18: longer climbs, open hop gaps (a buttress root is tree ground, but blocked as a gap), readable turns
   if (!force && !v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
   if (!force && v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null; // force: the Rite of Ascendancy's tree (ascendancy.ts) always grows where it fits
   // Version 14: every spot, in a hashed order (the same each time); version 13: `tries` hashed spots.
   const spots = v14 ? Array.from({ length: 26 * 26 }, (_, i) => [2 + i % 26, 2 + Math.floor(i / 26)]).sort(byHash((p) => `${seed}:tree-spot:v14:${rx}:${ry}:${p}`)) : null;
   let layouts = 0;
+  const maxLayouts = TREES_V14.layouts, tries = v19 ? TREES_V19.tries : T.tries, greaterTries = v19 ? TREES_V19.greaterTries : T.greaterTries; // version 19: more grove spots
+  const alts = v19 && TREES_V19.allTurns ? Math.max(...Object.values(turns).map((l) => l.length)) : 1; // version 19: a spot is tried in every readable turn, the hashed one first
+  const plan = (key, spec, gr, x, y, gap, ok) => planTree(h, key, spec, gr, x, y, gap, turns, alts, ok);
   const before = reachable(map), stuck = new Set(trapped(map).map((t) => idx(t.x, t.y))); // wood never walls ground off, nor makes a pit you can drop into and not climb out of
   const cutsOff = (laid) => { const r = reachable(map); for (let i = 0; i < 1024; i++) if (before[i] && !r[i] && !laid.has(i)) return true; return trapped(map).some((t) => !stuck.has(idx(t.x, t.y))); };
-  const first = weighted(h("form"), T.forms), forms = [...(first === "grove" ? ["grove", "spire"] : ["spire"]), ...(v14 ? ["compact"] : [])];
-  for (const form of forms) for (let t = 0; t < (v14 && form !== "grove" ? spots.length : T.tries[form]); t++) {
-    if (v14 && layouts >= TREES_V14.layouts) break;
-    const shape = form === "compact" ? "spire" : form, spec = form === "compact" ? S.compact : S.spire;
+  const first = weighted(h("form"), v19 ? TREES_V19.forms : T.forms), spire = v19 ? ["tall", "spire"] : ["spire"], forms = [...(first === "grove" ? ["grove", ...spire] : spire), ...(v14 ? ["compact"] : [])]; // version 19: a spire first where every side takes its tall reach, then anywhere one fits
+  for (const pass of forms) for (let t = 0; t < (v14 && pass !== "grove" ? spots.length : tries[pass]); t++) {
+    if (v14 && layouts >= maxLayouts) break;
+    const form = pass === "tall" ? "spire" : pass, shape = form === "compact" ? "spire" : form, spec = pass === "tall" ? S.tall : form === "compact" ? S.compact : S.spire;
+    const [tx, ty] = v14 && form !== "grove" ? spots[t] : [2 + h(`${form}:x${t}`) % 26, 2 + h(`${form}:y${t}`) % 26];
+    if (!ground(tx, ty)) continue; // every trunk square covers its spot, so no plan fits here (a quick skip: the same trees)
     const saved = new Map(), laid = new Set(), keep = (x, y) => { if (!saved.has(idx(x, y))) saved.set(idx(x, y), { ...at(x, y) }); };
     const put = (x, y, props) => { keep(x, y); Object.assign(at(x, y), { blocked: false, canopy: true, skyPlatform: true, ...props }); laid.add(idx(x, y)); };
     const undo = () => { for (const [i, t0] of saved) { const tile = map.tiles[i]; for (const k of Object.keys(tile)) delete tile[k]; Object.assign(tile, t0); } };
@@ -157,41 +191,56 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
       for (let j = 0; j < plan.N; j++) for (let i = 0; i < plan.N; i++) { const [x, y] = turn(plan.op, plan.N, plan.tx, plan.ty)(i, j); put(x, y, { kind: "canopyTrunk", elev: c.top, slope: false, look: plan.look }); }
       plan.top = c.top; plan.hops = c.hops; plan.climb = c.tiles; return c;
     };
-    const [tx, ty] = v14 && form !== "grove" ? spots[t] : [2 + h(`${form}:x${t}`) % 26, 2 + h(`${form}:y${t}`) % 26];
     const fits = (plan) => plan && plan.sides.every((sd) => [sd.a, sd.b].every(([x, y]) => { for (let r = 0; r < sd.L; r++) if (!free(x + sd.d[0] * r, y + sd.d[1] * r)) return false; return true; }) && (!sd.knot || free(...sd.knot)));
-    const trees = [], walk = [], hops = [];
+    const trees = [], walk = [], hops = []; let laidB = false; // laidB: version 19 laid the grove's walk and greater tree, and tested them for walling ground off, while choosing it
     if (shape === "spire") {
-      const p = planTree(h, `${form}:${t}`, spec, ground, tx, ty, gapOk, turns); if (!p || !free(...p.step)) continue;
+      const p = plan(`${form}:${t}`, spec, ground, tx, ty, gapOk, (q) => q && free(...q.step)); if (!p) continue;
       layTree(p, 1, `${form}:${t}`); trees.push(p);
     } else {
-      const a = planTree(h, `lesser:${t}`, S.lesser, ground, tx, ty, gapOk, turns); if (!a || !free(...a.step)) continue;
+      const a = plan(`lesser:${t}`, S.lesser, ground, tx, ty, gapOk, (q) => q && free(...q.step)); if (!a) continue;
       layTree(a, 1, `lesser:${t}`);
       // The greater tree: the first of a few dozen hashed spots its climb fits at, with a canopy walk to it from the lesser crown.
       const edge = []; for (let j = -1; j <= a.N; j++) for (let i = -1; i <= a.N; i++) if ((i < 0 || j < 0 || i >= a.N || j >= a.N) && !((i < 0 || i >= a.N) && (j < 0 || j >= a.N))) edge.push(turn(a.op, a.N, a.tx, a.ty)(i, j));
       const trunkA = new Set(); for (let j = 0; j < a.N; j++) for (let i = 0; i < a.N; i++) trunkA.add(idx(...turn(a.op, a.N, a.tx, a.ty)(i, j)));
       let b = null, path = null;
-      for (let k = 0; k < T.greaterTries && !path; k++) {
-        const q = planTree(h, `greater:${t}:${k}`, S.greater, free, 2 + h(`greater:x${t}:${k}`) % 26, 2 + h(`greater:y${t}:${k}`) % 26, v18 ? (x, y) => free(x, y) && !at(x, y).blocked : null, turns); if (!fits(q)) continue;
+      // The canopy walk: leaf platforms level with the lesser crown, a gap (hopped one level up) every few platforms; then the greater tree.
+      const layWalk = (q, w) => {
+        walk.length = 0; hops.length = 0; let e = a.top, since = 0;
+        for (let i = 0; i < w.length; i++) {
+          const [x, y] = w[i], p0 = w[i - 1], p1 = w[i + 1], straight = p0 && p1 && p1[0] - x === x - p0[0] && p1[1] - y === y - p0[1];
+          if (straight && since >= T.walk.gapEvery && i >= 2 && i < w.length - 2) { hops.push([p0, p1]); e++; since = 0; continue; }
+          put(x, y, { kind: "canopyLeaf", elev: e, slope: false, look: a.look, walk: true }); walk.push([x, y]); since++;
+        }
+        layTree(q, e + 1, `greater:${t}`);
+      };
+      // Version 18: no platform of the walk may lie where a higher branch of the greater tree, further south, is drawn over it
+      // (a tile k rows nearer the camera and d levels higher covers the one behind it when k - d × drawnLevel is within its face).
+      const underBranch = () => v18 && walk.some(([x, y]) => { const w = at(x, y); for (let k = 1; k <= 14 && y + k < 32; k++) { const p = at(x, y + k); if (!p?.canopy || !laid.has(idx(x, y + k))) continue; const off = k - ((p.elev - (p.slope ? .5 : 0)) - w.elev) * TREES_V18.drawnLevel; if (off > -1.26 && off < 1) return true; } return false; });
+      // A bound on every walk, so spots no walk can reach are not planned (the same trees, found sooner): its length over the ground
+      // open before a greater tree is planned (planning one only closes more), from the lesser crown to beside the spot's trunk.
+      const reach0 = new Int16Array(1024), q0 = [], open0 = (x, y) => x >= 0 && y >= 0 && x < 32 && y < 32 && free(x, y) && !N4.some(([dx, dy]) => laid.has(idx(x + dx, y + dy)) && !trunkA.has(idx(x + dx, y + dy)));
+      for (const p of edge) if (open0(...p) && !reach0[idx(...p)]) { reach0[idx(...p)] = 1; q0.push(p); }
+      for (let i = 0; i < q0.length; i++) { const [x, y] = q0[i], d = reach0[idx(x, y)]; if (d >= T.walk.max) continue; for (const [dx, dy] of N4) if (open0(x + dx, y + dy) && !reach0[idx(x + dx, y + dy)]) { reach0[idx(x + dx, y + dy)] = d + 1; q0.push([x + dx, y + dy]); } }
+      const near = (x, y) => { for (let j = Math.max(0, y - 2); j <= Math.min(31, y + 4); j++) for (let i = Math.max(0, x - 2); i <= Math.min(31, x + 4); i++) if (reach0[idx(i, j)]) return true; return false; }; // a trunk at most 3 square from (x, y), its first branch beside it, the walk's end beside that
+      for (let k = 0; k < greaterTries && !path && q0.length; k++) {
+        const gx = 2 + h(`greater:x${t}:${k}`) % 26, gy = 2 + h(`greater:y${t}:${k}`) % 26; if (!free(gx, gy) || !near(gx, gy)) continue;
+        const q = plan(`greater:${t}:${k}`, S.greater, free, gx, gy, v18 ? (x, y) => free(x, y) && !at(x, y).blocked : null, fits); if (!fits(q)) continue;
         const planned = new Set(), c = climbTiles(q, 1); for (const r of c.tiles) planned.add(idx(...r.p)); for (const [p, q2] of c.hops) planned.add(idx((p[0] + q2[0]) / 2, (p[1] + q2[1]) / 2)); for (let j = 0; j < q.N; j++) for (let i = 0; i < q.N; i++) planned.add(idx(...turn(q.op, q.N, q.tx, q.ty)(i, j)));
         const open = (x, y) => free(x, y) && !planned.has(idx(x, y)) && !N4.some(([dx, dy]) => laid.has(idx(x + dx, y + dy)) && !trunkA.has(idx(x + dx, y + dy)));
         const w = walkPath(edge.filter(([x, y]) => open(x, y)), q.sides[0].a, open);
-        if (w && w.length >= T.walk.min && w.length <= T.walk.max) { b = q; path = w; }
+        if (w && w.length >= T.walk.min && w.length <= T.walk.max) {
+          if (!v19) { b = q; path = w; continue; }
+          const mark = saved.size; layWalk(q, w); // version 19: a greater tree whose walk lies under its branches, or whose wood walls ground off, is passed over for the next spot, not the whole grove
+          if (!underBranch() && layouts < maxLayouts && (layouts++, reachable(map)[idx(...a.step)] && !cutsOff(laid))) { b = q; path = w; laidB = true; } else for (const i of [...saved.keys()].slice(mark)) { const tile = map.tiles[i]; for (const k2 of Object.keys(tile)) delete tile[k2]; Object.assign(tile, saved.get(i)); saved.delete(i); laid.delete(i); }
+        }
       }
       if (!path) { undo(); continue; }
-      // The canopy walk: leaf platforms level with the lesser crown, a gap (hopped one level up) every few platforms.
-      let e = a.top, since = 0;
-      for (let i = 0; i < path.length; i++) {
-        const [x, y] = path[i], p0 = path[i - 1], p1 = path[i + 1], straight = p0 && p1 && p1[0] - x === x - p0[0] && p1[1] - y === y - p0[1];
-        if (straight && since >= T.walk.gapEvery && i >= 2 && i < path.length - 2) { hops.push([p0, p1]); e++; since = 0; continue; }
-        put(x, y, { kind: "canopyLeaf", elev: e, slope: false, look: a.look, walk: true }); walk.push([x, y]); since++;
-      }
-      layTree(b, e + 1, `greater:${t}`); trees.push(a, b);
-      // Version 18: no platform of the walk may lie where a higher branch of the greater tree, further south, is drawn over it
-      // (a tile k rows nearer the camera and d levels higher covers the one behind it when k - d × drawnLevel is within its face).
-      if (v18 && walk.some(([x, y]) => { const w = at(x, y); for (let k = 1; k <= 14 && y + k < 32; k++) { const p = at(x, y + k); if (!p?.canopy || !laid.has(idx(x, y + k))) continue; const off = k - ((p.elev - (p.slope ? .5 : 0)) - w.elev) * TREES_V18.drawnLevel; if (off > -1.26 && off < 1) return true; } return false; })) { undo(); continue; }
+      if (!laidB) layWalk(b, path);
+      trees.push(a, b);
+      if (!v19 && underBranch()) { undo(); continue; }
     }
-    const foot = trees[0].step; layouts++;
-    if (!reachable(map)[idx(...foot)] || cutsOff(laid)) { undo(); continue; } // the wood cuts the foot, or any ground, off: try elsewhere
+    const foot = trees[0].step;
+    if (!laidB) { layouts++; if (!reachable(map)[idx(...foot)] || cutsOff(laid)) { undo(); continue; } } // the wood cuts the foot, or any ground, off: try elsewhere
     // Perches in the gaps: level with the branch below, two or three under the branch above, never on a hop.
     const hopGap = new Set(); for (const p of [...trees.flatMap((q) => q.hops), ...hops]) hopGap.add(idx((p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2));
     let pads = 0;
@@ -234,7 +283,7 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
     map.objects.push({ id: `canopy-gate-${rx}-${ry}`, kind: "canopyGate", name: dest === "starfield" ? "A door in the great tree, full of stars" : "A door in the great tree, full of cloud", x: gate[0], y: gate[1], dest, actions: ["enter"], state: "open" });
     const xs = [...laid].map((i) => i % 32), ys = [...laid].map((i) => Math.floor(i / 32)), bx = Math.min(...xs) - 1, by = Math.min(...ys) - 1, n = Math.max(Math.max(...xs) - bx, Math.max(...ys) - by) + 2;
     const rec = (tr, low) => ({ x0: tr.tx, y0: tr.ty, size: tr.N, top: tr.top, look: tr.look, boughs: tr.boughs, ...(low ? { low: true } : {}) });
-    map.canopy = { version: v18 ? TREES_V18.version : v14 ? TREES_V14.version : TREE_VERSION, ...(v14 ? { region } : {}), form, x0: door.tx, y0: door.ty, size: door.N, height: door.top, top: door.top, branches: door.sides.length * 2, reach: door.sides.map((q) => q.L), dest, pads, walk: walk.length, trees: trees.map((tr, i) => rec(tr, i < trees.length - 1)), box: { x: bx, y: by, n } };
+    map.canopy = { version: v19 ? TREES_V19.version : v18 ? TREES_V18.version : v14 ? TREES_V14.version : TREE_VERSION, ...(v14 ? { region } : {}), form, x0: door.tx, y0: door.ty, size: door.N, height: door.top, top: door.top, branches: door.sides.length * 2, reach: door.sides.map((q) => q.L), dest, pads, walk: walk.length, trees: trees.map((tr, i) => rec(tr, i < trees.length - 1)), box: { x: bx, y: by, n } };
     return map.canopy;
   }
   return null;

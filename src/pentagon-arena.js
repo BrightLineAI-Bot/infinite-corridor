@@ -14,22 +14,33 @@
 //
 // All pure: the floor, the pick and the vitals. game.ts lays the way in, spawns, tunes and rewards (pentagonArena*), and
 // pentagon-arena-render.ts draws it.
-import { hashSeed, byHash } from "./random.js?v=r759-ce2cc625b7cc";
-import { pentagonPlan, pentagonVaultId, pentagonFinaleId } from "./pentagon.js?v=r759-ce2cc625b7cc";
-import { WORLD_BEASTS, liveBeastReference, BEAST_BALANCE, BEAST_BASELINE } from "./world-beasts.js?v=r759-ce2cc625b7cc";
+import { hashSeed, byHash } from "./random.js?v=r764-0eb650c60230";
+import { pentagonPlan, pentagonVaultId, pentagonFinaleId } from "./pentagon.js?v=r764-0eb650c60230";
+import { WORLD_BEASTS, liveBeastReference, BEAST_BALANCE, BEAST_BASELINE } from "./world-beasts.js?v=r764-0eb650c60230";
 
 // The finale's own creature, the Gloomvast (haunts.ts GLOOM_FINALE: a haunt grown grand, with its Dark). While `kind` names no creature
 // the pick leaves it out.
 export const FINALE_GHOST = { kind: "gloomvast", name: "The Gloomvast", profile: { hitsToKill: 72.5, hpPerLevel: 37.5, damageShare: .1528, staggerResistance: .7, speed: 1, attackGap: .55 } }; // haunts.ts GLOOM_FINALE: its author's values, which cancel this row's factors and BEAST_BALANCE
 
 export const PENTAGON_ARENA = {
-  version: 1,
+  // The arena's version, pinned per Pentagon in its base floor's history (`pentArena`) when its wall opens: 1 is release 754's floor;
+  // 2 is the same floor with the pillars (`cover`). A Pentagon keeps the version it opened with, so no arena already laid changes.
+  version: 2,
+  pick: 1, // the beast pick's hash version: fixed, so a new floor version never changes which beast a Pentagon gets
+  grain: 1, // the floor's own hash version: every version lays release 754's floor, and later versions only add to it
   // The floor: a five-sided plain (point toward the far gate), `radius` its circumradius in tiles, centred at `centre`, inside a
   // map of `size`; everything else is the formations. `band`: how many density bands the floor's grain falls into toward its rim.
   size: [41, 39], centre: [20.5, 21], radius: 18, band: 4, dither: 1.1, // dither: how far a tile's band may stray (in bands), so the density grades rather than steps
   links: .58, // the share of joins between neighbouring formation tiles that a ridge crosses (the dendrite's branching)
   inlay: 3.6, // the five-fold figure at the heart of the floor (tiles)
   monoliths: { count: 5, ring: 10, turn: -90 }, // standing lattices round the heart, one toward each corner (turn: degrees of the first)
+  // Cover (Tim, 2026-11-05: "a few pillars... that the Wayfarer can hide behind from the Sunfall"), from version `from`: `count`
+  // pillars of `size`×`size` formation tiles, one between each pair of standing lattices on a ring of `ring` tiles round the heart
+  // (`turn`: degrees of the first, off the axis between the two ways so the walk from the door to the heart stays straight). None
+  // stands within `clear` tiles of a way's inner tile or of the beast's place. They are ordinary blocked stone, so movement, paths,
+  // beams and shots already stop at them; the Sunfall (monster-pack.ts dragonSupernova) spares a Wayfarer whose line to the beast
+  // a pillar or lattice cuts, in such an arena only (game.ts sunfallShaded).
+  cover: { from: 2, count: 5, ring: 6.5, turn: -36, size: 2, clear: 3 },
   wake: 12.5, // the beast wakes when the Wayfarer comes this near (tiles), or is struck
   // The finale beasts. `beast`: the WORLD_BEASTS profile whose moves, renderer and kin it is; `hp` and `damage` scale its vitals,
   // measured against the Wayfarer as world beasts are (pentagonArenaVitals). The damage factors put each one's biggest ordinary
@@ -61,6 +72,7 @@ export const PENTAGON_ARENA = {
     back: "You step back through the wall, into the Regent's Vault.",
     walkBack: "You step back through the seam, onto the ordered stone of the Stillworks.",
     monolith: "It reads as rock: a standing slab of it, weathered. Look closer and the weathering is a lattice, the lattice is made of lattices, and none of it has ever worn.",
+    shaded: "The Sunfall breaks over the stone and pours past on either side. In its shadow, you live.",
   },
 };
 
@@ -79,7 +91,7 @@ export const pentagonArenaRow = (id) => PENTAGON_ARENA.roster.find((r) => r.id =
 // chosen (game.ts), so a Pentagon keeps its beast whatever joins the roster.
 export function pentagonArenaPick(seed, base, isKind = () => true) {
   const rows = pentagonArenaRoster(isKind); if (!rows.length) return null;
-  return [...rows].sort(byHash((r) => `${seed}:${base}:pentagon-arena:v${PENTAGON_ARENA.version}:${r.id}`))[0];
+  return [...rows].sort(byHash((r) => `${seed}:${base}:pentagon-arena:v${PENTAGON_ARENA.pick}:${r.id}`))[0];
 }
 
 // ------------------------------------------------------------------------------------------------ the vitals
@@ -106,9 +118,20 @@ export function arenaDepth(x, y) { const A = PENTAGON_ARENA, [cx, cy] = A.centre
 // formation stands to its north: the stone there gives light rather than shade; `inlay` within `inlay` of the heart, which knows the
 // heart's centre); formations `stillRidge`, blocked (`rim`: which of its four sides meet floor, for its ridges and faces); five
 // standing lattices; the way back (south) and the sealed seam (north, at the floor's point); the beast at the heart.
-export function generatePentagonArena(seed, id, row = null) {
-  const Pp = parsePentagonArenaId(id); if (!Pp) return null; const plan = pentagonPlan(Pp.seed, Pp.cx, Pp.cy, Pp.V), A = PENTAGON_ARENA, [W, H] = A.size, [cx, cy] = A.centre;
-  const h = (k) => hashSeed(`${id}:stillworks:v${A.version}:${k}`), inside = (x, y) => arenaDepth(x + .5, y + .5) >= .35;
+// `version`: the arena's (game.ts passes the one pinned in history). Version 1 is release 754's arena byte for byte; version 2 adds
+// the pillars (`cover`) and lists them in `stillworks.pillars` for the renderer.
+export const pentagonArenaVersion = (v) => { const n = Math.floor(Number(v)); return n >= 1 ? Math.min(n, PENTAGON_ARENA.version) : 1; };
+// The pillars' places: [{ x, y, size, k }] (x, y: the top-left tile), each whole on open floor and clear of `keep`.
+function arenaPillars(at, keep) {
+  const A = PENTAGON_ARENA, C = A.cover, [cx, cy] = A.centre, out = [];
+  for (let k = 0; k < C.count; k++) { const a = (C.turn + 360 / C.count * k) * Math.PI / 180, x = Math.round(cx + Math.cos(a) * C.ring - C.size / 2), y = Math.round(cy + Math.sin(a) * C.ring - C.size / 2); let ok = true;
+    for (let j = 0; j < C.size && ok; j++) for (let i = 0; i < C.size && ok; i++) { const t = at(x + i, y + j); if (!t || t.blocked || keep.some((q) => Math.hypot(x + i - q.x, y + j - q.y) < C.clear)) ok = false; }
+    if (ok) out.push({ x, y, size: C.size, k }); }
+  return out;
+}
+export function generatePentagonArena(seed, id, row = null, version = PENTAGON_ARENA.version) {
+  const Pp = parsePentagonArenaId(id); if (!Pp) return null; const plan = pentagonPlan(Pp.seed, Pp.cx, Pp.cy, Pp.V), A = PENTAGON_ARENA, [W, H] = A.size, [cx, cy] = A.centre, V = pentagonArenaVersion(version);
+  const h = (k) => hashSeed(`${id}:stillworks:v${A.grain}:${k}`), inside = (x, y) => arenaDepth(x + .5, y + .5) >= .35;
   const tiles = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) tiles.push({ x, y, kind: "stillRidge", blocked: true, detail: h(`d${x},${y}`) % 8 });
   const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? null : tiles[y * W + x]);
   for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (inside(x, y)) { const d = arenaDepth(x + .5, y + .5), r = Math.hypot(x + .5 - cx, y + .5 - cy);
@@ -116,16 +139,21 @@ export function generatePentagonArena(seed, id, row = null) {
   // the five standing lattices (1 tile each, blocked), one toward each corner of the floor
   const objects = []; for (let k = 0; k < A.monoliths.count; k++) { const a = (A.monoliths.turn + 72 * k) * Math.PI / 180, x = Math.floor(cx + Math.cos(a) * A.monoliths.ring), y = Math.floor(cy + Math.sin(a) * A.monoliths.ring), t = at(x, y);
     if (!t || t.blocked) continue; tiles[y * W + x] = { x, y, kind: "stillRidge", blocked: true, detail: t.detail, monolith: true }; objects.push({ id: `still-monolith-${k}`, kind: "stillMonolith", name: A.names.monolith, x, y, h: h(`m${k}`) % 1000, state: "still", actions: [], lore: A.messages.monolith }); }
+  // the pillars (version 2): blocked formation, laid before the ridges are joined so their faces and the stone's light follow them
+  const col = Math.floor(cx); let pillars = null;
+  if (V >= A.cover.from) { const keep = [{ x: col, y: Math.round(cy) - 1 }]; // the beast's place, and the inner tile of each way (the first and last floor tile of the middle column)
+    for (let y = 0; y < H; y++) if (!at(col, y).blocked) { keep.push({ x: col, y }); break; } for (let y = H - 1; y >= 0; y--) if (!at(col, y).blocked) { keep.push({ x: col, y }); break; }
+    pillars = arenaPillars(at, keep); for (const q of pillars) for (let j = 0; j < q.size; j++) for (let i = 0; i < q.size; i++) { const x = q.x + i, y = q.y + j; tiles[y * W + x] = { x, y, kind: "stillRidge", blocked: true, detail: tiles[y * W + x].detail, pillar: q.k + 1 }; } }
   const edge = (x, y, i) => i === 0 ? `h${x},${y - 1}` : i === 1 ? `v${x},${y}` : i === 2 ? `h${x},${y}` : `v${x - 1},${y}`; // each join named once, the same from either side
   for (const t of tiles) { if (t.blocked) { let rim = 0, links = 0; [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy], i) => { const q = at(t.x + dx, t.y + dy); if (q && !q.blocked) rim |= 1 << i; else if ((h(edge(t.x, t.y, i)) % 1000) / 1000 < A.links) links |= 1 << i; }); t.rim = rim; t.links = links; }
     else { const n = at(t.x, t.y - 1); if (n?.blocked) t.lit = true; } }
   // the ways: the back gate in the middle of the south edge, the seam at the floor's northern point
-  const col = Math.floor(cx); let by = H - 2; while (by > 0 && at(col, by - 1)?.blocked) by--; let ty = 1; while (ty < H - 1 && at(col, ty + 1)?.blocked) ty++;
+  let by = H - 2; while (by > 0 && at(col, by - 1)?.blocked) by--; let ty = 1; while (ty < H - 1 && at(col, ty + 1)?.blocked) ty++;
   const entry = { x: col, y: by - 1 }, vault = pentagonVaultId(plan), walk = pentagonFinaleId(Pp.base);
   objects.push({ id: "pent-arena-back", kind: "pentArenaGate", to: "vault", name: A.names.back, x: col, y: by, inner: { x: col, y: by - 1 }, toId: vault, face: "south", state: "open", actions: ["use"], lore: A.messages.back },
     { id: "pent-arena-on", kind: "pentArenaGate", to: "walk", name: A.names.on, x: col, y: ty, inner: { x: col, y: ty + 1 }, toId: walk, face: "north", state: "sealed", actions: ["use"], lore: A.messages.sealed });
   const enemySpawns = row ? [{ id: `${id}:finale`, kind: row.kind, x: col, y: Math.round(cy) - 1, boss: true, traits: [], pentFinaleBeast: row.id }] : [];
   return { seed, id, recipe: "greatBuilding", name: `Pentagon · ${A.names.floor}`, identity: `Pentagon: ${A.names.floor}`, danger: "the finale", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
     building: { base: Pp.base, style: "keep", floor: 3 + plan.nh, floors: 3 + plan.nh, pentagon: true, finale: true, arena: true, V: plan.V, node: -1, kind: "stillworks", of: plan.nodes.length, keys: [], entries: {}, exitsTo: {}, vault: false, breachEntry: null, roofLadder: null, fallTo: null },
-    pentArena: A.version, arena: true, stillworks: { cx, cy, radius: A.radius }, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
+    pentArena: V, arena: true, stillworks: { cx, cy, radius: A.radius, ...(pillars ? { cover: true, pillars: pillars.map((q) => ({ x: q.x, y: q.y, size: q.size, v: h(`p${q.k}`) % 4 })) } : {}) }, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
 }

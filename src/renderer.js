@@ -1,33 +1,33 @@
-import { FAR_FOLK } from "./far-realms.js?v=r759-ce2cc625b7cc";
-import { astralBeamAnchors } from "./astral-worm.js?v=r759-ce2cc625b7cc";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r759-ce2cc625b7cc";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r759-ce2cc625b7cc";
-import { enemyMeleeGeometry } from "./combat.js?v=r759-ce2cc625b7cc";
-import { ruleRows } from "./elders.js?v=r759-ce2cc625b7cc";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r759-ce2cc625b7cc";
-import { BOAT } from "./boats.js?v=r759-ce2cc625b7cc";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r759-ce2cc625b7cc";
-import { isMarineTile } from "./world-beasts.js?v=r759-ce2cc625b7cc";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r759-ce2cc625b7cc"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r759-ce2cc625b7cc";
-import { setTreeSeason } from "./landscape-render.js?v=r759-ce2cc625b7cc";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r759-ce2cc625b7cc";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r759-ce2cc625b7cc";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r759-ce2cc625b7cc";
-import { TREES } from "./trees.js?v=r759-ce2cc625b7cc";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r759-ce2cc625b7cc";
-import { KIT_MOVES } from "./boss-kit.js?v=r759-ce2cc625b7cc";
-import { SKY_DISCS } from "./skylands.js?v=r759-ce2cc625b7cc"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r759-ce2cc625b7cc";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r759-ce2cc625b7cc"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r759-ce2cc625b7cc"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r759-ce2cc625b7cc"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r759-ce2cc625b7cc"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r759-ce2cc625b7cc"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r759-ce2cc625b7cc";
-import { drawRelayNode } from "./relay-network.js?v=r759-ce2cc625b7cc";
-import { structureOccupancy } from "./world.js?v=r759-ce2cc625b7cc";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r759-ce2cc625b7cc";
+import { FAR_FOLK } from "./far-realms.js?v=r764-0eb650c60230";
+import { astralBeamAnchors } from "./astral-worm.js?v=r764-0eb650c60230";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r764-0eb650c60230";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r764-0eb650c60230";
+import { enemyMeleeGeometry } from "./combat.js?v=r764-0eb650c60230";
+import { ruleRows } from "./elders.js?v=r764-0eb650c60230";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r764-0eb650c60230";
+import { BOAT } from "./boats.js?v=r764-0eb650c60230";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r764-0eb650c60230";
+import { isMarineTile } from "./world-beasts.js?v=r764-0eb650c60230";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r764-0eb650c60230"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r764-0eb650c60230";
+import { setTreeSeason } from "./landscape-render.js?v=r764-0eb650c60230";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r764-0eb650c60230";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r764-0eb650c60230";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r764-0eb650c60230";
+import { TREES } from "./trees.js?v=r764-0eb650c60230";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r764-0eb650c60230";
+import { KIT_MOVES } from "./boss-kit.js?v=r764-0eb650c60230";
+import { SKY_DISCS } from "./skylands.js?v=r764-0eb650c60230"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r764-0eb650c60230";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r764-0eb650c60230"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r764-0eb650c60230"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r764-0eb650c60230"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r764-0eb650c60230"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r764-0eb650c60230"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r764-0eb650c60230";
+import { drawRelayNode } from "./relay-network.js?v=r764-0eb650c60230";
+import { structureOccupancy } from "./world.js?v=r764-0eb650c60230";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r764-0eb650c60230";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1061,12 +1061,15 @@ function drawTreeBoughs(ctx, c, C, s, sway, tiles, w, box) {
 // The crown veil (Tim, 2026-11-05: "the skyway door at the top should not be visible from the ground... once you're high enough
 // that the ground beneath starts to become obscured, the gate starts to become visible"). From the ground the door tree's crown,
 // its door and its Crown Rest lie under a mass of leaves; the mass thins as the Wayfarer climbs, from the height the sky
-// begins to show (SKY.from, where the ground starts to fade) to `below` levels under the crown, where it is gone. Drawn after
+// begins to show to `below` levels under the crown, where it is gone. Since the tall spires came back (Tim accepted "about
+// halfway up") it starts thinning `from` of the way up the climb (never below SKY.from, where the ground starts to fade), not at
+// SKY.from itself, and is gone `below` levels under the crown whatever the tree's height (a 48-level spire's veil had gone by
+// level 20, under halfway). Rendering only. Drawn after
 // everything on the crown, only while it still has any alpha; a dozen arcs, no state, still under reduced motion.
-export const CROWN_VEIL = { below: 2, leaves: 12, pad: .5, rise: 1.3, leaf: .62, grow: .18 }; // pad: tiles past the crown's sides; rise: tiles above its top; leaf: a leaf mass's radius in tiles, every third one `grow` larger
+export const CROWN_VEIL = { from: .5, below: 2, leaves: 12, pad: .5, rise: 1.3, leaf: .62, grow: .18 }; // pad: tiles past the crown's sides; rise: tiles above its top; leaf: a leaf mass's radius in tiles, every third one `grow` larger
 // Does this object stand in the strip a great tree's trunk is drawn up (its columns, from its foot to its drawn crown)?
 export function behindGreatTrunk(cn, o) { for (const tr of cn.trees || [cn]) { if (o.x + .5 >= tr.x0 - .3 && o.x + .5 <= tr.x0 + tr.size + .3 && o.y < tr.y0 + tr.size && o.y >= tr.y0 - discLift(tr.top) * CANOPY_LIFT - 1) return true; } return false; }
-export function crownReveal(height, top) { const from = SKY.from, full = Math.max(from + 1, Math.min(SKY.full, top - CROWN_VEIL.below)); return Math.max(0, Math.min(1, (height - from) / (full - from))); }
+export function crownReveal(height, top) { const from = Math.max(SKY.from, top * CROWN_VEIL.from), full = Math.max(from + 1, top - CROWN_VEIL.below); return Math.max(0, Math.min(1, (height - from) / (full - from))); }
 function drawCrownVeil(ctx, c, s, now, alpha, still) {
   const look = c.look != null ? TREES.looks[c.look] : null, leaf = (SEASON && SEASONS.canopy[SEASON]) || (look ? look.leaf : CANOPY_LOOK.leaf), V = CROWN_VEIL;
   const x0 = (c.x0 - V.pad) * s, x1 = (c.x0 + c.size + V.pad) * s, topY = c.y0 * s - discLift(c.top) * CANOPY_LIFT * s, y0 = topY - V.rise * s, y1 = topY + (c.size + .4) * s, sway = still ? 0 : Math.sin(now / 1900) * s * .04;

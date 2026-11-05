@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r759-ce2cc625b7cc";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r764-0eb650c60230";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,9 +8,9 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r759-c
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r759-ce2cc625b7cc";
-import { hashSeed, byHash } from "./random.js?v=r759-ce2cc625b7cc";
-import { updateAstralActor } from "./astral-worm.js?v=r759-ce2cc625b7cc";
+import { stageOneBeastReference } from "./stages.js?v=r764-0eb650c60230";
+import { hashSeed, byHash } from "./random.js?v=r764-0eb650c60230";
+import { updateAstralActor } from "./astral-worm.js?v=r764-0eb650c60230";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -1786,7 +1786,7 @@ const RUN = {
     e.dragonAir = D.height; e.dragonCharge = Math.min(1, (A.active - s.t) / D.gather); s.tele = { type: "ring", radius: D.radius };
     if (!s.data.burst && A.active - s.t >= D.gather) { s.data.burst = true; const p = center(w.player);
       w.addEffect({ kind: "dragonNova", owner: e.id, x: e.x, y: e.y, radius: D.radius, arming: 0, life: .9, total: .9, damage: 0 });
-      if (distance(p, e) <= D.radius) w.hurt(e, Math.ceil((w.playerMaxHp?.() || 200) * D.lethal), { jumpable: false, source: "dragonSupernova", piercing: true }); }
+      if (distance(p, e) <= D.radius && !w.sunfallShaded?.(e)) w.hurt(e, Math.ceil((w.playerMaxHp?.() || 200) * D.lethal), { jumpable: false, source: "dragonSupernova", piercing: true }); } // sunfallShaded: the Stillworks' pillars (pentagon-arena.ts cover); elsewhere there is no such hook
     if (s.t <= 0) { e.aloft = false; e.untargetable = false; e.dragonAir = 0; e.dragonCharge = 0; s.tele = null; e.dragonPose = "land"; toPhase(s, "recover", A.recover); }
   },
   doomBeam(e, s, w) {

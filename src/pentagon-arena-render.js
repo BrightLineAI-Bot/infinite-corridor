@@ -12,7 +12,7 @@
 // Static layers are cached: each floor and formation tile is a sprite (a few variants per density band and edge), the heart's
 // figure and the standing lattices are sprites, and the land beyond the map is a pattern of the same formations; the per-frame
 // work is a handful of strokes, bounded by the quality tier, and still under reduced motion.
-import { PENTAGON_ARENA } from "./pentagon-arena.js?v=r759-ce2cc625b7cc";
+import { PENTAGON_ARENA } from "./pentagon-arena.js?v=r764-0eb650c60230";
 
 export const STILLWORKS_ART = {
   res: 3, // sprite pixels per screen pixel at most (devicePixelRatio, capped)
@@ -22,6 +22,9 @@ export const STILLWORKS_ART = {
   latticeRgb: "196,210,255", node: "#c4ecff", lit: "rgba(206,222,255,.24)",
   ridge: ["#1d1c25", "#211f2a", "#1a1922", "#23212c"], ridgeLine: "#4d4a63", ridgeDark: "#100f15", ridgeFace: "#2d2b38", strata: "rgba(150,160,210,.16)", rim: "rgba(170,190,255,.3)", pore: "rgba(150,215,255,.45)",
   monolith: { w: 1.05, h: 3, body: ["#423f52", "#2a2836", "#1b1a23"], seam: "rgba(150,215,255,.5)", glow: "rgba(190,215,255,.16)" },
+  // the pillars (arena version 2): a squat column standing on its 2×2 of formation, `h` tiles tall, strata crowding toward its foot,
+  // seams of light; it throws light, not shadow (the Sunfall's shade is a rule of the stone, not a drawn shadow)
+  pillar: { h: 2.4, inset: .12, body: ["#45425a", "#2c2a38", "#1c1b24"], cap: "#5a5672", seam: "rgba(150,215,255,.55)", glow: "rgba(190,215,255,.14)" },
   inlay: { stroke: "rgba(214,226,255,.5)", fill: "rgba(170,190,255,.07)", core: "rgba(232,240,255,.8)", depth: 2, turn: 90000 }, // turn: ms per revolution
   inward: { every: 7000, alpha: .16, rgb: "206,222,255" }, // a ring of light from the rim to the heart every `every` ms
   contours: [.25, .5, .75], // the floor's great order: faint five-sided terraces at these shares of its radius
@@ -90,6 +93,20 @@ function paintMonolith(c, s, v) {
   c.strokeStyle = M.seam; c.lineWidth = .8; c.beginPath(); c.moveTo(x0 + w * .5, base); c.lineTo(x0 + w * .46, top + H * .6); c.lineTo(x0 + w * .58, top + H * .38); c.moveTo(x0 + w * .47, top + H * .62); c.lineTo(x0 + w * .3, top + H * .5); c.moveTo(x0 + w * .57, top + H * .4); c.lineTo(x0 + w * .72, top + H * .3); c.stroke(); // its seams of light
   c.restore();
   c.strokeStyle = "rgba(190,205,255,.28)"; c.lineWidth = .6; c.beginPath(); c.moveTo(x0 + w * .12, top + s * .3); c.lineTo(x0 + w * .3, top + s * .1); c.lineTo(x0 + w * .55, top); c.stroke();
+}
+// A pillar, `n` tiles across, in a sprite `n` wide and `n + P.h` tall (its foot at the bottom).
+function paintPillar(c, s, n, v) {
+  const P = A.pillar, w = (n - P.inset * 2) * s, x0 = P.inset * s, H = (n + P.h) * s, top = s * .35, base = H - s * .2, capH = s * .55;
+  const g = c.createLinearGradient?.(x0, 0, x0 + w, 0); if (g) { g.addColorStop(0, P.body[0]); g.addColorStop(.5, P.body[1]); g.addColorStop(1, P.body[2]); c.fillStyle = g; } else c.fillStyle = P.body[1];
+  c.beginPath(); c.moveTo(x0, top + capH * .5); c.lineTo(x0 + w * .22, top); c.lineTo(x0 + w * .78, top); c.lineTo(x0 + w, top + capH * .5); c.lineTo(x0 + w, base); c.lineTo(x0, base); c.closePath(); c.fill(); // its body, the cap faceted
+  c.save(); c.clip();
+  for (let k = 1; k < 14; k++) { const y = top + capH + (base - top - capH) * (1 - Math.pow(.82, k)); c.strokeStyle = `rgba(${A.latticeRgb},${.05 + k * .012})`; c.lineWidth = .4; c.beginPath(); c.moveTo(x0, y); c.lineTo(x0 + w, y - s * .04); c.stroke(); } // strata crowding toward its foot: density
+  c.strokeStyle = `rgba(${A.latticeRgb},.08)`; c.lineWidth = .3; c.beginPath(); for (let i = 1; i < 12; i++) { c.moveTo(x0 + i * w / 12, top + capH); c.lineTo(x0 + i * w / 12, base); } c.stroke(); // ...and its lattice
+  for (let i = 0; i < 18; i++) { const q = hh(v * 11 + i, 23); c.fillStyle = q & 1 ? "rgba(0,0,0,.2)" : "rgba(230,232,255,.08)"; c.fillRect(x0 + ((q >> 10) % 100) / 100 * w, top + (q % 1000) / 1000 * capH * 1.6, 1.2, 1.2); } // weathered at the cap
+  c.strokeStyle = P.seam; c.lineWidth = .8; const sx = x0 + w * (.35 + (v % 3) * .12); c.beginPath(); c.moveTo(sx, base); c.lineTo(sx - s * .08, base - H * .3); c.lineTo(sx + s * .1, top + capH * 1.4); c.moveTo(sx - s * .06, base - H * .28); c.lineTo(sx - s * .4, base - H * .42); c.stroke(); // a seam of light
+  c.restore();
+  c.fillStyle = P.cap; c.beginPath(); c.moveTo(x0, top + capH * .5); c.lineTo(x0 + w * .22, top); c.lineTo(x0 + w * .78, top); c.lineTo(x0 + w, top + capH * .5); c.lineTo(x0 + w * .78, top + capH); c.lineTo(x0 + w * .22, top + capH); c.closePath(); c.fill(); // the cap's top face
+  c.strokeStyle = "rgba(190,205,255,.3)"; c.lineWidth = .6; c.stroke();
 }
 // The heart's figure: a pentagon of pentagons of pentagons (`depth`), radius `r` tiles, centred in a sprite of 2r+1 tiles.
 const PENT = new Float64Array(10);
@@ -179,4 +196,14 @@ export function drawStillworksLight(ctx, g, s, now, quality = "balanced", reduce
     const e = r + j, n = Math.ceil(2 * e / j) + 1, fy = ((oy % j) + j) % j, fd = (((oy - e - ox) % j) + j) % j; ctx.lineWidth = .6; ctx.strokeStyle = nearGrad || `rgba(${A.latticeRgb},${N.alpha * .5})`; ctx.beginPath(); // world-aligned lines, drawn in local space
     for (let y = -fy - n * j; y <= e; y += j) if (y >= -e) { ctx.moveTo(-e, y); ctx.lineTo(e, y); } for (let x = fd - n * j; x <= e; x += j) { ctx.moveTo(x, -e); ctx.lineTo(x + 2 * e, e); } ctx.stroke(); ctx.globalAlpha = 1; }
   ctx.restore();
+  drawStillworksPillars(ctx, W, s);
+}
+// The pillars (arena version 2; pentagon-arena.ts cover): one cached sprite per variant and size, drawn standing on their stone after the
+// ground and before the creatures, so a Wayfarer sheltering behind one is still seen. At most `PENTAGON_ARENA.cover.count` draws.
+function drawStillworksPillars(ctx, W, s) {
+  if (!W.pillars?.length) return; const P = A.pillar;
+  for (const q of W.pillars) { const n = Number(q.size) || 2, v = (Number(q.v) || 0) % A.variants, cx = (q.x + n / 2) * s, foot = (q.y + n) * s;
+    ctx.fillStyle = P.glow; ctx.beginPath(); ctx.ellipse(cx, foot - s * .1, s * n * .7, s * .45, 0, 0, 7); ctx.fill();
+    const sp = sprite(`p${n}:${v}`, s, n, n + P.h, (c) => paintPillar(c, s, n, v)), x0 = q.x * s, y0 = foot - (n + P.h) * s;
+    if (sp) ctx.drawImage(sp, x0, y0, n * s, (n + P.h) * s); else { ctx.save(); ctx.translate(x0, y0); paintPillar(ctx, s, n, v); ctx.restore(); } }
 }

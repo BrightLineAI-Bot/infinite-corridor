@@ -6,8 +6,8 @@
 // "infinite tier 3 and beyond... after you've unlocked the second gate with the listener... take the submersible on land";
 // "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Gate's climbs (far-array.ts; release 704:
 // the Gate at tier g climbs after g more Listener kills, so the second Gate opens on the third kill). Pure rules; boats.ts, diving.ts and game.ts ask these.
-import { apertureTier } from "./world.js?v=r759-ce2cc625b7cc";
-import { listenerKills } from "./stages.js?v=r759-ce2cc625b7cc";
+import { apertureTier } from "./world.js?v=r764-0eb650c60230";
+import { listenerKills } from "./stages.js?v=r764-0eb650c60230";
 
 export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechGates: 2, droneGates: 4 }; // Gates opened (far-array.ts: the Gate at tier g climbs after g more Listener kills)
 const TIER_NAMES = { 12: "Infinite II", 13: "Infinite III" };
@@ -128,15 +128,32 @@ export const DRONE_LIFT = { thrust: 30, rise: 4, max: 5, gravity: 14, burn: 1, e
 // flyable); a tile whose `optIn` field names a zone id is in that zone whatever else it is (for roofs a later layout makes walkable
 // but that must not be flown over). Ordinary great-building, compound and labyrinth roofs and the castle keep's roof are open
 // ground, not blocked, and are never zones; courts are open air too (the drone may lift you down into one from the keep's roof).
+// The glider and a Great Castle (Tim, 2026-11-05: the glider cannot fly over a castle's wings; it is blocked like the drone is): a
+// glide is held off the `castle` zone's airspace at any height, as it is held off a wall taller than it (game.ts glideStep), with
+// its `glide` message once a glide; it sinks on beside the wall and comes down short of it (off the keep's top, into its court).
+// The Pentagon is stricter for the glider: see GLIDER_FORBIDDEN.
 export const DRONE_FIZZLE = {
   allow: ["droneOk"], optIn: "droneZone",
   zones: [
     { id: "pentagon", match: { pentagon: true, blocked: true }, message: "The drone's lift fizzles out over the Pentagon's walls. The Corridor's rules are different here." },
-    { id: "castle", match: { kind: "castleWall", landscape: "castle", greatBuilding: true, blocked: true }, message: "The drone's lift fizzles out over the Great Castle. The Corridor's rules are different here." },
+    { id: "castle", match: { kind: "castleWall", landscape: "castle", greatBuilding: true, blocked: true }, message: "The drone's lift fizzles out over the Great Castle. The Corridor's rules are different here.", glide: "The air over the Great Castle's walls will not carry the glider; it turns you away. The Corridor's rules are different here." },
   ],
   burst: 1.2, // seconds the sparks and the burst show
   sparks: 14,
 };
+// The glider over a Pentagon (Tim, 2026-11-05: "You should die if you're on a glider and you try to go over the Pentagon. You can't
+// glide onto its roof or anything like that. You should just die, and then you'll just know not to do that."): a glide, open or
+// folded, whose footprint reaches any tile the Pentagon laid (`field`: its walls, roof, parapet, courts, balconies and outer stair;
+// placePentagonSection names the part in `tile.pentagon`) ends in death (game.ts glideForbidden): the message, a journal line
+// once, and the ordinary death. So the glider cannot be used over a Pentagon at all, a glide begun off its roof included.
+export const GLIDER_FORBIDDEN = { field: "pentagon", journal: "glider-pentagon", message: "Over the Pentagon the glider's leaves wither in the air, and you fall. The Corridor's rules are different here." };
+// Does the Wayfarer's footprint at (x, y) reach a tile the glider may not cross? Pure; no allocation.
+export function gliderForbiddenAt(map, width, x, y) {
+  const tiles = map?.tiles; if (!tiles || !(width > 0)) return false;
+  const height = tiles.length / width, x0 = Math.floor(x + .24), x1 = Math.floor(x + .76 - 1e-6), y0 = Math.floor(y + .5), y1 = Math.floor(y + .88 - 1e-6);
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) { if (tx < 0 || ty < 0 || tx >= width || ty >= height) continue; if (tiles[ty * width + tx]?.[GLIDER_FORBIDDEN.field]) return true; }
+  return false;
+}
 const zoneById = (id) => DRONE_FIZZLE.zones.find((z) => z.id === id) || null;
 // The zone a single tile belongs to, or null.
 export function droneZoneOf(tile) {

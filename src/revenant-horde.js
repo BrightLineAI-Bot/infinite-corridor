@@ -8,11 +8,12 @@
 // A horde dungeon holds only Gate Revenants. At most HORDE.active stand at once; when one falls, another comes after
 // HORDE.respawn seconds, until the dungeon's count is spent. Aggroed ones follow the Wayfarer out and across sections
 // (the Gate Revenant's own pursuit); a kill anywhere counts down the dungeon's number. Those still alive when the
-// Wayfarer dies (or loses them) simply go back: the count only falls by kills. The last kill grants a Far Gate piece.
+// Wayfarer dies (or loses them) simply go back: the count only falls by kills. The last kill locks a piece of the Far Gate
+// (far-array.ts lockGatePiece; a seal of the Listener's call while LISTENER_CYCLE.sealsCall).
 // State: save.consequences.dungeons[id].horde = { total, left } (additive; decided once, on the first visit).
-import { hashSeed } from "./random.js?v=r759-ce2cc625b7cc";
-import { isDeepDungeonId } from "./world.js?v=r759-ce2cc625b7cc";
-import { ensureFarArray, piecesNeeded, gateOpen } from "./far-array.js?v=r759-ce2cc625b7cc";
+import { hashSeed } from "./random.js?v=r764-0eb650c60230";
+import { isDeepDungeonId } from "./world.js?v=r764-0eb650c60230";
+import { ensureFarArray, piecesNeeded, gateOpen, lockGatePiece, LISTENER_CYCLE } from "./far-array.js?v=r764-0eb650c60230";
 
 // Release 273 (Tim: "in the swarm dungeon... maybe you'll get like four crossing sigils throughout... you can break it into
 // waves"): the count is cut into `sigils` waves, and the kill that ends each wave leaves a Crossing Sigil.
@@ -42,8 +43,15 @@ export function hordeKill(save, history) {
   const before = wave(q); q.left -= 1; const sigils = wave(q) > before ? 1 : 0;
   if (q.left > 0) return { message: `${sigils ? "A wave breaks; a Crossing Sigil falls. " : ""}${q.left} Gate Revenant${q.left === 1 ? "" : "s"} remain in that crossing.`, sigils };
   history.resolved = true;
-  const f = ensureFarArray(save); f.pieces = Math.min(piecesNeeded(f.gate), f.pieces + 1); f.history.push({ run: f.runs, gate: f.gate, won: "horde" });
-  return { sigils, message: `The horde is broken${sigils ? ", and its last Crossing Sigil falls" : ""}. ${gateOpen(f) ? `The last seal of the Listener's call breaks. The call is whole: the Listener waits.` : `A seal of the Listener's call breaks (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true };
+  const f = ensureFarArray(save); f.history.push({ run: f.runs, gate: f.gate, won: "horde" });
+  const broken = `The horde is broken${sigils ? ", and its last Crossing Sigil falls" : ""}.`;
+  if (LISTENER_CYCLE.sealsCall) { // releases 269-759: a seal of the Listener's call
+    f.pieces = Math.min(piecesNeeded(f.gate), f.pieces + 1);
+    return { sigils, message: `${broken} ${gateOpen(f) ? `The last seal of the Listener's call breaks. The call is whole: the Listener waits.` : `A seal of the Listener's call breaks (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true, unlocked: false };
+  }
+  // Tim, 2026-11-05: "if you complete a Revenant horde dungeon it locks other pieces of the gate".
+  const lock = lockGatePiece(save, "horde", f);
+  return { sigils, message: `${broken} ${lock.text}${lock.unlocked ? " The Listener leaves this Mouth for good: the next relays will give a new one." : ""}`, cleared: true, unlocked: lock.unlocked };
 }
 // The spawn points for a horde dungeon: open tiles far from the entrance, spread out.
 export function hordeSpawnPoints(map, entry, n = 6, reach = null) {
