@@ -2,8 +2,8 @@
 // no language: each one speaks a single elementary cellular automaton rule (Stephen Wolfram's 256 rules, which fall
 // into 88 essentially different ones under mirroring and colour inversion). Hearing an Elder records its rule; the
 // Reciter's Tome counts the 88, and hearing all of them completes the recitation. Pure data and rules: no DOM.
-import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
-import { ensureLore, noteCompletionOf } from "./lore.js?v=r755-c3a9aa62bf91";
+import { hashSeed } from "./random.js?v=r756-60d888795acd";
+import { ensureLore, noteCompletionOf } from "./lore.js?v=r756-60d888795acd";
 
 // Balance: how often an Elder walks a section or a crossing level, and how strongly a new Elder leans toward a rule
 // not yet heard (the rest are rules already known, so the last few are hard to find).

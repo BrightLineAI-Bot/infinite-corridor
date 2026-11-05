@@ -12,8 +12,8 @@
 // into the keep's courtyard, up the keep to its lord and its treasure, and its gate lets you out at the front. The fourth quarter
 // is a feint: its wing leads to its own sealed courtyard and back round. Everything is a hash of the seed and the corner, and a
 // castle stands only where all four sections are new ground (`atlas.castleVersion`) and none of their lanes reaches the corner.
-import { hashSeed } from "./random.js?v=r755-c3a9aa62bf91";
-import { BUILDINGS, layFloor, farthest, addHoles, guardianBeside } from "./great-buildings.js?v=r755-c3a9aa62bf91";
+import { hashSeed } from "./random.js?v=r756-60d888795acd";
+import { BUILDINGS, layFloor, farthest, addHoles, guardianBeside } from "./great-buildings.js?v=r756-60d888795acd";
 
 export const CASTLES = {
   version: 2, // 2 (release 746, Tim: "there should always be an exit to the roof"): the keep's top is a roof to stand on, `roof.elev`

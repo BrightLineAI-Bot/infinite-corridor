@@ -124,10 +124,12 @@ export function drawToolForms(ctx, game, toScreen, s, t) {
 //   and you may walk while charging. Let go: a great orb (`big`) flies out through every foe, stronger the longer it was
 //   held (full at `charge.full` s). There is no charge cooldown, but holding past `charge.max` s overloads it: the charge
 //   is lost and none can start for `charge.lockout` s (taps still fire). `orreryLockUntil` is a game clock (pause/resume).
-// - Echo glyphs in the tool (the tool's passive, one tier per Echo, `halo.max` at most): the first press deploys that many
-//   orbs circling the Wayfarer (`halo`); they burn what they touch. While they circle, each press also makes every orb fire a
-//   small laser at a foe (`drone`). Charging spreads them into a triangle of energy (two orbs: one beam) that burns foes
-//   inside or touching it (`beam`). Letting a charge go fires one laser per orb (`cube`, three at the full tier), each at a
+// - Circling orbs, the tool's passive (Tim, 2026-11-05: one orb with no Echo, two with one Echo, three with two; a third Echo
+//   adds nothing): `halo.base` + the Echo glyphs in the tool, `halo.max` at most. The first press deploys
+//   them round the Wayfarer (`halo`); they burn what they touch. While they circle, each press also makes every orb fire a
+//   small laser at a foe (`drone`). Charging spreads them out: three form a triangle of energy, two a single beam, burning
+//   foes inside or touching it (`beam`); one orb has no beam and only burns what it touches. Letting a charge go fires one
+//   laser per orb (`cube`, three at the full tier), each at a
 //   foe ahead (a different one where it can): it passes through the first foe, runs on `overshoot` tiles, then turns at right
 //   angles (a square, blocky path: `minSide`, `minLeg`, `onLine`, at most `turns` corners) back through a foe (the nearest its
 //   sibling lasers have not claimed, else the same one), the second hit of its combo, and ends. The orbs
@@ -152,7 +154,7 @@ export const ORRERY = {
   charge: { grace: .2, full: 1.6, max: 2.6, lockout: LOCKOUT, pulse: .2 },
   cone: { share: .41, range: 3.3, half: .6 },
   big: { min: 1.2, max: 3.1, speed: 7.5, life: 1.4, grow: .5 },
-  halo: { max: 3, radius: 1.2, chargeRadius: 1.9, spin: 2.4, idle: 8, contact: .42, contactShare: .3, pulse: .3 },
+  halo: { base: 1, max: 3, radius: 1.2, chargeRadius: 1.9, spin: 2.4, idle: 8, contact: .42, contactShare: .3, pulse: .3 },
   drone: { share: .43, speed: 18, life: .45, range: 7 },
   beam: { share: .36, touch: .3 },
   cube: { share: .72, speed: 12, out: 6, overshoot: 1, minSide: 1.1, minLeg: .4, onLine: .3, seek: 7, life: 2.4, turns: 5, grow: .16 },
@@ -160,11 +162,11 @@ export const ORRERY = {
   caps: { orbs: 6, pellets: 30, bigs: 2, lasers: 12 },
   sparks: { low: 6, balanced: 12, full: 20 },
   messages: { over: `The Orrery overloads: it cannot charge for ${LOCKOUT} s.`, locked: "The Orrery is still overloaded.", given: "In your pack: the Aether Orrery, a magic tool (Focus)." },
-  text: "A magic tool (Focus). Tap: an orb that sheds drifting pellets. Hold: a cone of sparks, then a great orb through every foe; holding too long overloads it for 6 s. Echo glyphs: up to three orbs circle you, fire lasers with each press, form a burning triangle while you charge and loose right-angle lasers on release. With a Shadow Clone: its own orb and a burning tether.",
+  text: "A magic tool (Focus). Tap: an orb that sheds drifting pellets. Hold: a cone of sparks, then a great orb through every foe; holding too long overloads it for 6 s. An orb circles you (two with one Echo glyph, three with two): orbs burn what they touch and fire lasers with each press; while you charge, two form a burning beam and three a burning triangle; on release each looses a right-angle laser. With a Shadow Clone: its own orb and a burning tether.",
 };
 
 // ---------------------------------------------------------------- pure rules
-export const orbTier = (echoes) => Math.max(0, Math.min(ORRERY.halo.max, Math.floor(Number(echoes) || 0)));
+export const orbTier = (echoes) => Math.min(ORRERY.halo.max, ORRERY.halo.base + Math.max(0, Math.floor(Number(echoes) || 0))); // 1, 2, 3 orbs for 0, 1, 2+ Echoes
 export const chargeShare = (held) => { const B = ORRERY.big, k = Math.max(0, Math.min(1, (held - ORRERY.charge.grace) / (ORRERY.charge.full - ORRERY.charge.grace))); return B.min + (B.max - B.min) * k; };
 export const overcharged = (held) => held > ORRERY.charge.max;
 export function segDist(px, py, ax, ay, bx, by) {
