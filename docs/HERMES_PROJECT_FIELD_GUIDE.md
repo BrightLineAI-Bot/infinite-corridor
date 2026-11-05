@@ -2854,6 +2854,34 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 779: story version 2 — 12%, and three stories past 1000 — 2026-11-05
+
+Tim, 2026-11-05: trim the shared story rate to about 12%, and write stories for the land out past 1000 without raising the density.
+
+**CODE:** `src/threads.ts`:
+- `STORY_BUDGET` is `{ version: 2, perCrossing: .12, byVersion: { 1: .13, 2: .12 } }`.
+- `budgetFor(version)` gives the budget for a crossing's pinned story version, and `sharedRate(rx, ry, version)` uses it.
+- New band `THREAD_BANDS.beyond`, from `FAR_REALMS.start` outward. It is measured in a straight line through `farDistance` (`STRAIGHT_BANDS`); every other band is still measured as |rx|+|ry|.
+- Three new threads join the shared roll, each with `shared: { 2: ["beyond"] }` and `weight: 2`:
+  - `tallSlates`: The Tall Child's Slates (Giants' Reach)
+  - `sporePrints`: The Spore Prints (the great mushrooms)
+  - `inkBlotters`: The Ink-Clerk's Blotters (the Ink Wastes)
+- From version 2, `sharedThreadIn` makes a weighted pick (`threadWeight`) on the same roll and hash keys. Version 1 keeps its exact even pick.
+- `pinDungeonLayout` pins new crossings to `storyVersion` 2.
+
+Elsewhere:
+- Relics `slate`, `print` and `blotter` in `renderer.ts`.
+- The Arcana label `beyond` in `main.ts`.
+- `docs/narrative-bible.md` item 7.
+- Tests: `tests/threads-far.test.ts` (new); `tests/story-budget.test.ts` and `tests/threads-627.test.ts` updated.
+
+**BOUNDARY:**
+- Only crossings first pinned from this release take version 2. Version 0 (the waves) and version 1 (.13) roll exactly as releases 772 and 773 laid them; this is checked against written-out reference rules.
+- These keep their own rolls and are not part of the budget: the Seven Bells, the Surveyor's Chain, the Torn Pages and the margins.
+- The far threads never appear inside 1000 sections (straight line), or at version 0 or 1.
+- Past 1000 they take about 60% of the shared slots, so far crossings hold about .12 pieces each, as near ones do.
+- No save change beyond new ids in `save.lore.threads`; the schema stays at 14.
+
 ## Release 778: the crown wake needs the crown; it takes the Crown Rest — 2026-11-05
 
 Tim, 2026-11-05: if you die after a glide, you wake on the crown only if you made it to the crown, never if you climbed only halfway; and waking there sets that crown's Crown Rest.
