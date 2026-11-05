@@ -2854,6 +2854,16 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 755: the Crimson Tyrant's lava returns — 2026-11-05
+
+Found by the pre-publish review of r739→r754.
+
+**CODE:** `src/game.ts` `packWorld()`: the `dragonDue` line's trailing `//` comment (added in 754 for the Stillworks) commented out `dragonLava`, `dragonLavaPreview` and `playerMaxHp` on the same line; the comment is now a block comment. `tests/pack-world-hooks-755.test.ts` checks the real `Game.packWorld()` offers all four (it fails without the fix; `tests/crimson-tyrant-709.test.ts` uses its own stub world, so it could not catch this).
+
+Restoring the hooks showed a Stillworks bug: a Wayfarer who fled a Sunfall past the dungeon's 18-tile simulation range froze the Tyrant aloft and untargetable. `shouldSimulateEnemy` (dungeon branch) now always simulates an awake finale beast (`pentFinaleBeast && pentArenaAwake`), as a hunting world beast is; asleep, it still isn't. The arena duel test's bot now runs from the Sunfall (standing in it was only ever survivable because `playerMaxHp` was missing), and a regression test covers: standing in reach kills and resets the fight; fleeing to the far side lets it land and be struck; no ground is claimed.
+
+**BOUNDARY:** No save or generator change. Restores 709's Colonize (lava claim, preview tiles, cast counting) on the land and the Sunfall's lethal share against the Wayfarer's real maximum health (lethal in its 11-tile reach, escapable by distance). In the Stillworks there is still no claim and no lava tiles.
+
 ## Release 754: the Stillworks and the Gloomvast — 2026-11-05
 
 Tim: "The red dragon, the black dragon, the Void Walker or the Astral Worm can be finales for the Pentagon... they should be pretty impactful... the arena of a civilization so advanced that their technology just appears to be rock formations... technology and nature aren't separate... a manipulation of reality and density." And the ghost finale: "it gives you the curses, but its health and damage are beefed up... a move where it makes everything darkness... lots of blue spots in the darkness, and they all can attack you... you don't know which one is him."

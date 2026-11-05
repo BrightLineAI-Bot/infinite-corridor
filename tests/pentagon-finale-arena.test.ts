@@ -135,10 +135,11 @@ test('tuning: below ring 100 the biggest ordinary blow takes about 40% of a refe
   }
 });
 
-test('a headless duel: a late build that stands and swings kills the finale in tens of seconds and is hit hard on the way', { timeout: 120000 }, () => {
+test('a headless duel: a late build that swings, and runs out of the Sunfall\'s reach while it gathers, kills the finale in tens of seconds and is hit hard on the way', { timeout: 120000 }, () => {
   const save = JSON.parse(JSON.stringify(BUILDS.late)), g = game(SEED, save), P = plan(); intoArena(g, P, 'crimsonTyrant'); const b = beastOf(g), p = g.player; let now = 1000, t = 0, worst = 0;
   for (; t < 180 && !b.dead; t += 1 / 30) { now += 1000 / 30; const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy); p.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-    const before = p.hp; g.update(1 / 30, { state: d > 1.6 ? { x: dx / d, y: dy / d } : { x: 0, y: 0 }, consume: (k) => k === 'attack', held: (k) => k === 'attack', reset() {} }, now); worst = Math.max(worst, before - p.hp); p.hp = g.save.maxHp; p.invulnerableUntil = 0; }
+    const flee = b.pack?.attack === 'dragonSupernova'; // the Sunfall kills through any dodge in its reach (DRAGON.nova): get out of it, as a player must
+    const before = p.hp; g.update(1 / 30, { state: flee ? { x: -dx / d, y: -dy / d } : d > 1.6 ? { x: dx / d, y: dy / d } : { x: 0, y: 0 }, consume: (k) => !flee && k === 'attack', held: (k) => !flee && k === 'attack', reset() {} }, now); worst = Math.max(worst, before - p.hp); p.hp = g.save.maxHp; p.invulnerableUntil = 0; }
   assert.ok(b.dead, `it falls (${Math.round(b.hp / b.maxHp * 100)}% left)`); assert.ok(t > 8 && t < 120, `${t.toFixed(1)} s`); assert.ok(worst >= g.save.maxHp * .2, `a blow of ${worst}`);
   assert.equal(H(g, P).pentArenaWon, true);
 });
@@ -178,4 +179,15 @@ test('the Gloomvast in the Stillworks: its Dark lays its decoys on the arena flo
     for (const e of d) { const t = g.map.tiles[Math.round(e.y) * g.map.width + Math.round(e.x)]; assert.ok(t && !t.blocked && t.kind === 'stillFloor', `a decoy on the floor (${e.x},${e.y})`); } });
   assert.ok(dark && decoys > 0, `the Dark (${dark}, ${decoys} decoys)`); assert.equal(g.areaId(), pentagonArenaId(P.base));
   act(g, gate(g, 'vault')); assert.equal(g.areaId(), pentagonVaultId(P)); act(g, wall(g)); const c = beastOf(g); assert.ok(c && !c.gloomDark, 'it ended when you left'); assert.ok(!g.enemies.some((e) => e.gloomOrbOf && !e.dead), 'no decoys waiting');
+});
+
+test('the Sunfall in the Stillworks: lethal in its reach as designed (and the fight resets), escapable on its floor, and fled to the far side it still lands: never frozen aloft and untargetable', () => {
+  const setup = () => { const g = game(SEED, JSON.parse(JSON.stringify(BUILDS.late))), P = plan(); intoArena(g, P, 'crimsonTyrant'); const b = beastOf(g); b.x = 20; b.y = 26; b.hp = Math.round(b.maxHp * .7); b.pentArenaAwake = true; b.aggro = true; b.packAttacks = ['dragonSupernova']; return { g, P, b }; };
+  { const { g, P, b } = setup(); g.player.x = b.x; g.player.y = b.y - 3; let landed = false, now = 1000; // standing in its reach
+    for (let t = 0; t < 12 && !landed; t += 1 / 30) { now += 1000 / 30; g.update(1 / 30, idle, now); if (beastOf(g).hp === beastOf(g).maxHp) landed = true; }
+    assert.ok(landed, 'it burns you where you stand; the fight begins again'); assert.equal(g.areaId(), pentagonArenaId(P.base)); assert.ok(!H(g, P).pentArenaWon); }
+  { const { g, b } = setup(); g.player.x = 20; g.player.y = 4; g.save.maxHp = g.player.hp = Math.max(g.save.maxHp, 2000); let now = 1000, started = false, done = false, far = 0; // fled to the far point of the floor
+    for (let t = 0; t < 14 && !done; t += 1 / 30) { now += 1000 / 30; g.update(1 / 30, idle, now); far = Math.max(far, Math.hypot(b.x - g.player.x, b.y - g.player.y)); if (b.pack?.attack === 'dragonSupernova') started = true; else if (started) done = true; }
+    assert.ok(started && done, 'the Sunfall runs its course while you are far away'); assert.ok(far > 18, `${far.toFixed(1)} tiles off`); assert.ok(!b.untargetable && !b.aloft && !(b.dragonAir > 0), 'it lands, and can be struck'); assert.ok(g.player.hp > 0, 'out of reach you live');
+    assert.ok(!Object.keys(g.save.dragonLava || {}).length && g.map.tiles.every((t) => t.kind !== 'lava'), 'no ground claimed'); }
 });
