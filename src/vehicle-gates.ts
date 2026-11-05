@@ -154,6 +154,33 @@ export function gliderForbiddenAt(map, width, x, y) {
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) { if (tx < 0 || ty < 0 || tx >= width || ty >= height) continue; if (tiles[ty * width + tx]?.[GLIDER_FORBIDDEN.field]) return true; }
   return false;
 }
+// The glider and the great trees (Tim, 2026-11-05).
+// `home`: "if you jump from the top of the tree and haven't touched the ground yet, and you die — going over a Pentagon, or going
+// over deep water — you just spawn back at the top of the tree, and you think about your decisions." A glide (open or folded) that
+// began at the crown's height (the launch at least `home.crownWithin` levels under `map.canopy.top`) remembers that tree
+// (game.ts `glideHome`: section and crown spot); any death before the Wayfarer first stands on something wakes them on that crown,
+// not at the active rest point (which is left as it was). A glide begun lower on the tree (off a branch) is an ordinary glide.
+// `window`: "when you're by the great tree, north takes you up to different levels [on screen]... you can technically glide up to
+// the top of the tree by holding north... there's a window around the tree where you can't travel north while gliding." While a
+// glide's middle is inside the tree's window (the laid tree's `canopy.box`, `margin` tiles wider on every side, and reaching north
+// over the rows the tree is drawn up: the tallest top × `drawn` tiles a level), the stick and the glide's own way cannot carry it
+// north; east, west and south are untouched. Not while the glide is held skimming over something it cannot land on (`skimFree`),
+// so it can never be pinned in the air. Walking, climbing, hops and the drone's booster never read it.
+export const TREE_GLIDE = {
+  home: { crownWithin: 0, wake: "you wake on the crown of the great tree you leapt from, to think about your decisions" },
+  window: { on: true, margin: 2, drawn: .68 /* landscape.ts LIFT_PER_LEVEL × CANOPY_LIFT (a test keeps them equal) */, skimFree: true },
+};
+// The tallest top a section's great tree (or grove) reaches. Pure.
+export function canopyTop(canopy) {
+  let top = Number(canopy?.top) || 0; const trees = canopy?.trees; if (Array.isArray(trees)) for (let i = 0; i < trees.length; i++) top = Math.max(top, Number(trees[i]?.top) || 0);
+  return top;
+}
+// Is a glide at (x, y) (the Wayfarer's position; its footprint's middle is tested) inside the section's great-tree window? Pure; no allocation.
+export function treeGlideWindowAt(map, x, y) {
+  const W = TREE_GLIDE.window, c = map?.canopy, b = c?.box; if (!W.on || !b || !Number.isFinite(b.x) || !Number.isFinite(b.y) || !(b.n > 0)) return false;
+  const cx = x + .5, cy = y + .69, north = Math.ceil(canopyTop(c) * W.drawn);
+  return cx >= b.x - W.margin && cx <= b.x + b.n + W.margin && cy >= b.y - north - W.margin && cy <= b.y + b.n + W.margin;
+}
 const zoneById = (id) => DRONE_FIZZLE.zones.find((z) => z.id === id) || null;
 // The zone a single tile belongs to, or null.
 export function droneZoneOf(tile) {
