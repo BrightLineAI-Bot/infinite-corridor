@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 771, the next is **772**.
+Taken at merge time: `main`'s release + 1 (see above). After 772, the next is **773**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 771 | Claude | `claude/dreamy-rubin-yn6q2p` | The Toolmaker's Handles: a wave-5 later thread in the middle band (six handles; ending in the Journal; a Tome book) | In flight. |
+| 772 | Claude | `claude/dreamy-rubin-yn6q2p` | Terrace Springs (landscape 21): stepped white sinter terraces, turquoise pools, hot springs, a cache at the head | In flight. |
+| 771 | Claude | `claude/dreamy-rubin-yn6q2p` | The Toolmaker's Handles: a wave-5 later thread in the middle band (six handles; ending in the Journal; a Tome book) | Merged (#419). |
 | 770 | Claude | `claude/dreamy-rubin-yn6q2p` | Interior holes are deadly (wake at the floor's entry, nothing lost); safe drops shown by a green rim up close; a claimed labyrinth room's glinting walls can be burrowed | Merged (#418). Published as r770-9899db3b2b7b on 2026-11-05. |
 | 769 | Claude | `claude/dreamy-rubin-yn6q2p` | Essence Walk: for 8 s recovering spells cast for stamina; Aegis 40 stamina with a lockout when spent; no cooldown floor | Merged (#417). Published in r770. |
 | 768 | Claude | `claude/dreamy-rubin-yn6q2p` | The last spires back (landscape 20): every side may be 3 tiles; covered corner steps repainted so they show (drawing applies to every tree) | Merged (#416). Published in r770. |

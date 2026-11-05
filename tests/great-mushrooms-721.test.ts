@@ -20,7 +20,7 @@ const stand = () => {
 };
 
 test('the great mushrooms grow only a thousand sections out, on new ground, the same each time', () => {
-  assert.equal(LANDSCAPE_VERSION, 20); assert.equal(GREAT_MUSHROOMS.start, 1000);
+  assert.equal(LANDSCAPE_VERSION, 21); assert.equal(GREAT_MUSHROOMS.start, 1000);
   for (const k of MUSHROOM_KINDS) { assert.ok(isLandscapeKind(k), k); assert.ok(ATLAS_TILE_COLORS[k], k); }
   const { rx, ry, g } = stand(); assert.ok(Math.hypot(rx, ry) >= 1000);
   assert.deepEqual(load(rx, ry).map.mushrooms, g.map.mushrooms, 'deterministic');
