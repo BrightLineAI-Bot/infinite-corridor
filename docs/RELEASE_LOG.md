@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 765, the next is **766**.
+Taken at merge time: `main`'s release + 1 (see above). After 766, the next is **767**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 765 | Claude | `claude/dreamy-rubin-yn6q2p` | The Doom Chaser beyond 1000: a world beast again past the far-realm line, with the Black Pyre as his domain; inside 1000 only the Stillworks | In flight. |
+| 766 | Claude | `claude/dreamy-rubin-yn6q2p` | A glide from a great tree's crown that ends in death wakes you on that crown; no gliding north by a great tree; skim and Crown Rest fixes | In flight. |
+| 765 | Claude | `claude/dreamy-rubin-yn6q2p` | The Doom Chaser beyond 1000: a world beast again past the far-realm line, with the Black Pyre as his domain; inside 1000 only the Stillworks | Merged (#413). |
 | 764 | Claude | `claude/dreamy-rubin-yn6q2p` | Tall spires and groves back (landscape 19), keeping every 758 climbing fix; the crown veil thins from halfway up | Merged (#412). Published as r764-0eb650c60230 on 2026-11-05. |
 | 763 | Claude | `claude/dreamy-rubin-yn6q2p` | A glide over a Pentagon kills; a glide never gains height; a mount's jump dodges nothing; the drone is stowed after a fizzle | Merged (#411). Published in r764. |
 | 762 | Claude | `claude/dreamy-rubin-yn6q2p` | Tesseract tiers: cost counts and cost strength per grade (low 2–3, middle 1–2, top 1 mild); dais rerolls stay in the tier; pre-750 Pentagons paid on load | Merged (#410). Published in r764. |
