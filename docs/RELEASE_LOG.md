@@ -15,17 +15,18 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 764, the next is **765**.
+Taken at merge time: `main`'s release + 1 (see above). After 765, the next is **766**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 764 | Claude | `claude/dreamy-rubin-yn6q2p` | Tall spires and groves back (landscape 19), keeping every 758 climbing fix; the crown veil thins from halfway up | In flight. |
-| 763 | Claude | `claude/dreamy-rubin-yn6q2p` | A glide over a Pentagon kills; a glide never gains height; a mount's jump dodges nothing; the drone is stowed after a fizzle | Merged (#411). |
-| 762 | Claude | `claude/dreamy-rubin-yn6q2p` | Tesseract tiers: cost counts and cost strength per grade (low 2–3, middle 1–2, top 1 mild); dais rerolls stay in the tier; pre-750 Pentagons paid on load | Merged (#410). |
-| 761 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle v2: one Mouth per Gate; 5 pieces (kills or hordes) unlock it; the Listener returns every 5 relays; town on the first kill; coordinates once per Gate | Merged (#409). |
-| 760 | Claude | `claude/dreamy-rubin-yn6q2p` | Stillworks pillars to shelter from the Sunfall (arena version 2); the Doom Chaser lives only in the Stillworks | Merged (#408). |
+| 765 | Claude | `claude/dreamy-rubin-yn6q2p` | The Doom Chaser beyond 1000: a world beast again past the far-realm line, with the Black Pyre as his domain; inside 1000 only the Stillworks | In flight. |
+| 764 | Claude | `claude/dreamy-rubin-yn6q2p` | Tall spires and groves back (landscape 19), keeping every 758 climbing fix; the crown veil thins from halfway up | Merged (#412). Published as r764-0eb650c60230 on 2026-11-05. |
+| 763 | Claude | `claude/dreamy-rubin-yn6q2p` | A glide over a Pentagon kills; a glide never gains height; a mount's jump dodges nothing; the drone is stowed after a fizzle | Merged (#411). Published in r764. |
+| 762 | Claude | `claude/dreamy-rubin-yn6q2p` | Tesseract tiers: cost counts and cost strength per grade (low 2–3, middle 1–2, top 1 mild); dais rerolls stay in the tier; pre-750 Pentagons paid on load | Merged (#410). Published in r764. |
+| 761 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle v2: one Mouth per Gate; 5 pieces (kills or hordes) unlock it; the Listener returns every 5 relays; town on the first kill; coordinates once per Gate | Merged (#409). Published in r764. |
+| 760 | Claude | `claude/dreamy-rubin-yn6q2p` | Stillworks pillars to shelter from the Sunfall (arena version 2); the Doom Chaser lives only in the Stillworks | Merged (#408). Published in r764. |
 | 759 | Claude | `claude/dreamy-rubin-yn6q2p` | Sky hops land on the first footing past the gap; the drone booster is never steered by the tree footing (pre-publish review blockers in 758) | Merged (#407). Published as r759-ce2cc625b7cc on 2026-11-05. |
 | 758 | Claude | `claude/dreamy-rubin-yn6q2p` | Great trees you can climb: platforms drawn where walked, crown veiled until you climb, straighter hops; landscape 18 trees | Merged (#406). Preview r758-96c811de0fd7; published in r759. |
 | 757 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle: the Mouth holds the Listener until the Gate unlocks; then 5 relays, new Mouth; old Mouth becomes a town and Descent | Merged (#405). Published as r757-4ff9a5914432 on 2026-11-05. |
@@ -150,6 +151,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 764, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 764 | `r764-0eb650c60230` | 2026-11-05 | Fable review (759→764): no blockers. Stillworks pillars and the Doom Chaser's one home (#408), the Listener's cycle v2 (#409), Tesseracts by tier (#410), the glider only goes down and never over a Pentagon (#411), tall spires again (#412). |
 | 759 | `r759-ce2cc625b7cc` | 2026-11-05 | Fable review (757→758): two blockers (held-stick hop overshoot; tree footing under the drone booster), fixed in 759; Fable review 757→759: no blockers. Great trees you can climb (#406) and hops that land where they reach (#407). |
 | 757 | `r757-4ff9a5914432` | 2026-11-05 | Fable review (756→757): no blockers. The Listener's cycle (#405). |
 | 756 | `r756-60d888795acd` | 2026-11-05 | Fable review (755→756): no blockers. A Tesseract for every Pentagon (Hollow for v1–v2); the Orrery's first orb (#404). |

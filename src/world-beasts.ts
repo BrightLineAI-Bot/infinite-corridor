@@ -1,6 +1,6 @@
 import { mealLure } from "./meals.ts";
 import { ensureDragonLava } from "./crimson-dragon.ts";
-import { ensureFarQuests } from "./far-realms.ts";
+import { ensureFarQuests, farDistance, FAR_REALMS } from "./far-realms.ts";
 import { ASTRAL_PROFILE } from "./astral-worm.ts";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
@@ -144,14 +144,19 @@ export const WORLD_BEASTS = {
   },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
-// Beasts that keep to a homeland (Tim, 2026-11-05: "The Doom Chaser should still just remain in the Stillworks. That's just his
-// place... the Stillworks is the only place where he exists"). A beast listed here begins no new hunt on the land (no section is
-// claimed for it), never passes through a section, and does not come home to its far domain (that domain stands empty). Its row stays
-// in WORLD_BEASTS: the Stillworks' finale is measured from it (pentagon-arena.ts), and a hunt already under way when this came in
-// (claimed, fought, pursuing, retreating, or brought to its domain) runs its course as before, so no save mid-hunt changes. Its Echo,
-// Sigil, mounts, journal and one-time rewards already earned are kept; it is never removed from a save.
-export const BEAST_HOMELANDS = { doomChaser: "stillworks" };
-export const beastRoams = (id) => !BEAST_HOMELANDS[id];
+// Beasts that keep to a homeland (release 760; Tim, 2026-11-05: "The Doom Chaser should still just remain in the Stillworks. That's
+// just his place"), refined the same day: "the Doom Chaser can appear only in the Pentagon [Stillworks] - but if you go out past one
+// thousand he can appear as a normal world boss, and then if you kill him past a thousand you'll get the quest for his home territory
+// ... Also, you can just stumble onto his territory, and it'll function like the other monsters". `home` is where he always is (the
+// Stillworks' finale is measured from his WORLD_BEASTS row, pentagon-arena.ts); `beyond` is the straight-line distance from Ember
+// Refuge (far-realms.ts farDistance; the far realms' own `start`) past which he is an ordinary world beast: he claims sections, passes
+// through, comes home to his far domain (all far domains lie beyond it) and a kill there opens its quest (openFarQuest). Inside it no
+// section is claimed for him, he never passes through, he does not follow the Wayfarer in across the line, and a retreat begun beyond it
+// heads for ground beyond it. A hunt already under way inside it (from before release 760) runs its course; nothing earned is touched.
+export const BEAST_HOMELANDS = { doomChaser: { home: "stillworks", beyond: FAR_REALMS.start } };
+export const beastRoams = (id) => !BEAST_HOMELANDS[id]; // roams everywhere (no homeland)
+// Whether beast `id` may be met on the land at section (rx, ry).
+export const beastRoamsAt = (id, rx, ry) => { const H = BEAST_HOMELANDS[id]; return !H || farDistance(Number(rx) || 0, Number(ry) || 0) >= H.beyond; };
 // Release 714 (Tim, 2026-11-03: "if you're fighting the stag, and the stalker comes in, or if you're fighting the stalker, and the
 // stag comes in, then [they] should get distracted... play together for a little bit... because their buddies"): when both are
 // within `range` of each other they forget the Wayfarer for `time` s and circle each other, butting and leaping (blows still land on
@@ -306,25 +311,36 @@ export function worldBeastPatience(save, id, dt, e = null, triesOff = false) {
 // Chooses its home: the nearest section (by steps across sections) that has its home ground, searched out to
 // RETREAT.search; `probe(rx, ry)` describes a section ({ biome, dominant, canyon, dungeon }). With none in reach it flees
 // RETREAT.fallback sections straight away and fades into the distance there.
+// A beast with a homeland line (BEAST_HOMELANDS) that begins its retreat beyond it looks for home only beyond it, and falls back away
+// from it: from the hashed side, the first side (in SIDES order) whose fallback lies beyond. Every other beast is as it was.
+function homeLine(id, rx, ry) { return BEAST_HOMELANDS[id] && beastRoamsAt(id, rx, ry) ? (c) => beastRoamsAt(id, c.rx, c.ry) : null; }
+function awayFrom(save, id, rx, ry, pick) {
+  const sides = Object.values(SIDES), keep = homeLine(id, rx, ry); if (!keep) return sides[pick];
+  for (let k = 0; k < 4; k++) { const a = sides[(pick + k) % 4]; if (keep({ rx: rx + a[0] * RETREAT.fallback, ry: ry + a[1] * RETREAT.fallback })) return a; }
+  return sides[pick];
+}
 export function beginRetreat(save, id, rx, ry, probe) {
-  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id], H = BEAST_HOMES[B.home];
+  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id], H = BEAST_HOMES[B.home], keepsOut = homeLine(id, rx, ry) || (() => true);
   let home = null;
   for (let d = 0; d <= RETREAT.search && !home; d++) {
     const ring = [];
     for (let dx = -d; dx <= d; dx++) for (const dy of new Set([d - Math.abs(dx), -(d - Math.abs(dx))])) ring.push({ rx: rx + dx, ry: ry + dy });
     ring.sort(byHash((a) => `${save.seed}:beast-home:${id}:${a.rx},${a.ry}`));
-    home = ring.find((c) => !(c.rx === 0 && c.ry === 0) && H.section(probe(c.rx, c.ry))) || null;
+    home = ring.find((c) => !(c.rx === 0 && c.ry === 0) && keepsOut(c) && H.section(probe(c.rx, c.ry))) || null;
   }
-  const away = Object.values(SIDES)[hashSeed(`${save.seed}:beast-away:${id}:${q.cycle}`) % 4];
+  const away = awayFrom(save, id, rx, ry, hashSeed(`${save.seed}:beast-away:${id}:${q.cycle}`) % 4);
   q.active.retreat = { home: home ? { ...home, found: true } : { rx: rx + away[0] * RETREAT.fallback, ry: ry + away[1] * RETREAT.fallback, found: false }, side: null, legs: 0, movedAt: Number(save.playSeconds) || 0 };
   return { message: home ? B.flee : B.flee.replace(/toward [^.]*\./, "into the distance."), home: q.active.retreat.home };
 }
 // The way out of a section toward its home: the side it leaves by, or null when this is the home section.
-export function retreatSide(r, rx, ry) {
+export function retreatSide(r, rx, ry, id = null) {
   if (r.home.dungeon) return null; // already in its home dungeon: water for the Crystal, entry for the Walker
   const dx = r.home.rx - rx, dy = r.home.ry - ry;
   if (!dx && !dy) return null;
-  return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "east" : "west") : (dy > 0 ? "south" : "north");
+  const across = dx > 0 ? "east" : "west", down = dy > 0 ? "south" : "north", side = Math.abs(dx) >= Math.abs(dy) ? across : down;
+  // BEAST_HOMELANDS: beyond its line, a beast with one takes the other way round rather than step in across it
+  const keep = id && dx && dy && homeLine(id, rx, ry), step = (k) => ({ rx: rx + SIDES[k][0], ry: ry + SIDES[k][1] });
+  return keep && !keep(step(side)) ? (side === across ? down : across) : side;
 }
 // Actual exits and physical inter-level passages, never room doors or teleport portals. A level landing is not an
 // exterior entrance. Legacy single-level maps may expose only `entry`; generated maps expose exit objects.
@@ -337,7 +353,7 @@ export function walkerRetreatDoors(map, area = "dungeon") {
 }
 // Where a retreating beast is heading in the loaded section: the gate it leaves by, or the home ground it goes into.
 export function retreatTarget(r, id, map, rx, ry, exits, from) {
-  const side = retreatSide(r, rx, ry);
+  const side = retreatSide(r, rx, ry, id);
   if (side) return { x: side === "east" ? 31.4 : side === "west" ? -.4 : exits[side], y: side === "south" ? 31.4 : side === "north" ? -.4 : exits[side], side };
   if (id === "voidWalker") {
     const doors = walkerRetreatDoors(map, r.home.dungeon ? "dungeon" : "overworld");
@@ -352,15 +368,15 @@ export function retreatTarget(r, id, map, rx, ry, exits, from) {
 // after that it heads off into the distance (home not found), and says so.
 export const RETREAT_REPLAN = { replans: 3 };
 export function replanRetreat(save, id, rx, ry, probe) {
-  const q = save.worldBeasts?.[id]?.active, r = q?.retreat, B = WORLD_BEASTS[id], H = BEAST_HOMES[B?.home]; if (!r || !H) return { message: "" };
+  const q = save.worldBeasts?.[id]?.active, r = q?.retreat, B = WORLD_BEASTS[id], H = BEAST_HOMES[B?.home]; if (!r || !H) return { message: "" }; const keepsOut = homeLine(id, rx, ry) || (() => true);
   r.tried = [...new Set([...(r.tried || []), `${rx},${ry}`])]; r.replans = (r.replans || 0) + 1;
   let home = null;
   if (r.replans <= RETREAT_REPLAN.replans) for (let d = 1; d <= RETREAT.search && !home; d++) {
     const ring = []; for (let dx = -d; dx <= d; dx++) for (const dy of new Set([d - Math.abs(dx), -(d - Math.abs(dx))])) ring.push({ rx: rx + dx, ry: ry + dy });
     ring.sort(byHash((a) => `${save.seed}:beast-home:${id}:${a.rx},${a.ry}`));
-    home = ring.find((c) => !(c.rx === 0 && c.ry === 0) && !r.tried.includes(`${c.rx},${c.ry}`) && H.section(probe(c.rx, c.ry))) || null;
+    home = ring.find((c) => !(c.rx === 0 && c.ry === 0) && !r.tried.includes(`${c.rx},${c.ry}`) && keepsOut(c) && H.section(probe(c.rx, c.ry))) || null;
   }
-  const away = Object.values(SIDES)[hashSeed(`${save.seed}:beast-away:${id}:${q.cycle}:${r.replans}`) % 4];
+  const away = awayFrom(save, id, rx, ry, hashSeed(`${save.seed}:beast-away:${id}:${q.cycle}:${r.replans}`) % 4);
   r.home = home ? { ...home, found: true } : { rx: rx + away[0] * RETREAT.fallback, ry: ry + away[1] * RETREAT.fallback, found: false };
   return { message: home ? `${B.name} finds no ${H.name} here, and turns to look further.` : `${B.name} finds no ${H.name} here, and heads off into the distance.`, home: r.home };
 }
@@ -403,7 +419,7 @@ export function advanceRetreat(save, id, rx, ry) {
   const now = Number(save.playSeconds) || 0; if (!Number.isFinite(r.movedAt)) r.movedAt = now;
   let moved = 0;
   for (let i = 0; i < 64; i++) {
-    const side = retreatSide(r, q.rx, q.ry);
+    const side = retreatSide(r, q.rx, q.ry, id);
     if (!side) { if (now - r.movedAt >= RETREAT.homeLinger && (q.rx !== rx || q.ry !== ry)) { retreatEnded(save, id); return { gone: true, moved }; } break; }
     if (now - r.movedAt < RETREAT.legSeconds) break;
     if (q.rx === rx && q.ry === ry) break; // release 653: nor out of the section the Wayfarer is just entering: arriving there shows it
@@ -421,6 +437,7 @@ export function canPursue(save, id, rx, ry, dx, dy) {
   const q = save.worldBeasts?.[id]?.active, tx = rx + dx, ty = ry + dy;
   if (!q || q.retreat || q.cornered || q.dungeon || q.astralJoined || PURSUIT.exclude.includes(id) || q.rx !== rx || q.ry !== ry) return false; // 653: a beast at bay at home stays there
   if ((q.chase || 0) >= (PURSUIT.limits[id] ?? PURSUIT.sections)) return false;
+  if (beastRoamsAt(id, rx, ry) && !beastRoamsAt(id, tx, ty)) return false; // BEAST_HOMELANDS: he does not follow the Wayfarer in across his line
   if (WORLD_BEAST_IDS.some((k) => k !== id && save.worldBeasts[k]?.active && !save.worldBeasts[k].active.dungeon && save.worldBeasts[k].active.rx === tx && save.worldBeasts[k].active.ry === ty)) return false; // one beast to a section
   const qb = save.questingBeast?.active; return !(qb && qb.rx === tx && qb.ry === ty);
 }
@@ -537,7 +554,7 @@ export function worldBeastFor(save, map, rx, ry) {
     if (q.active) continue;
     if (q.cooldown > 0) { q.cooldown--; continue; }
     if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !beastUnlocked(save, id) || !encounterReady(save)) continue; // release 261: the buffer between meetings (273: and the Aperture)
-    if (!beastRoams(id)) continue; // BEAST_HOMELANDS: the Doom Chaser claims no section (listed last, so no other beast's roll moves)
+    if (!beastRoamsAt(id, rx, ry)) continue; // BEAST_HOMELANDS: the Doom Chaser claims no section inside his `beyond` (listed last, so no other beast's roll moves); beyond it he rolls as before release 760
     if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance * encounterChance(save)) continue;
     q.active = { rx, ry, tries: 0 }; here = id; encounterMet(save); claimed = true;
   }
@@ -563,7 +580,7 @@ export function passingBeastFor(save, map, rx, ry, explored = 0) {
   const h = hashSeed(`${save.seed}:passing-beast:v1:${rx}:${ry}:${explored}`); if ((h % 1000) / 1000 >= PASSING.chance) return null;
   const ids = WORLD_BEAST_IDS.filter((id) => id !== "astralWorm" && id !== "voidWalker" && beastUnlocked(save, id) && !(save.worldBeasts?.[id]?.active?.rx === rx && save.worldBeasts?.[id]?.active?.ry === ry));
   if (!ids.length) return null;
-  const id = ids[(h >>> 10) % ids.length]; if (!beastRoams(id)) return null; // BEAST_HOMELANDS: where the Doom Chaser would have passed, nothing does (every other section's passer is as it was)
+  const id = ids[(h >>> 10) % ids.length]; if (!beastRoamsAt(id, rx, ry)) return null; // BEAST_HOMELANDS: inside his `beyond`, where the Doom Chaser would have passed nothing does (every other section's passer is as it was)
   const B = WORLD_BEASTS[id], ex = sectionExits(save.seed, rx, ry), across = (h >>> 4) & 1;
   const [from, to] = across ? [{ x: .6, y: ex.west, side: "west" }, { x: 30.4, y: ex.east, side: "east" }] : [{ x: ex.north, y: .6, side: "north" }, { x: ex.south, y: 30.4, side: "south" }];
   const [a, b] = (h >>> 6) & 1 ? [to, from] : [from, to], mode = B.retreatMoves === "walk" ? "walk" : "through";

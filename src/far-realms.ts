@@ -137,10 +137,7 @@ export const FAR_DOMAINS = {
   doomChaser: { beast: "doomChaser", min: 1174, span: 250, version: 1, name: "the Black Pyre", wait: [45, 110], // release 724
     arrive: "Ash lies deep over everything, and black fire burns in it without smoke. Charred pillars stand like the bones of a building. This is the Doom Chaser's pyre.",
     quest: "The Doom Chaser falls, and its black fire goes on burning, far out, where it was first lit. Your compass knows the way to the Black Pyre.",
-    found: "You have reached the Black Pyre.", comes: "The black fire leaps all at once. The Doom Chaser has come back to its pyre.", waiting: "The black fire burns low. Wait here, and the Doom Chaser may come back to feed it.",
-    // Tim, 2026-11-05: the Doom Chaser keeps to the Stillworks (world-beasts.ts BEAST_HOMELANDS), so its pyre stands empty: said on a
-    // visit in place of `waiting`, and nothing comes. The pyre itself is laid as before.
-    vacant: "The black fire burns on, untended. Nothing comes to feed it now: what lit it keeps to the ordered stone of the Stillworks." },
+    found: "You have reached the Black Pyre.", comes: "The black fire leaps all at once. The Doom Chaser has come back to its pyre.", waiting: "The black fire burns low. Wait here, and the Doom Chaser may come back to feed it." }, // release 760 left it empty; since the 2026-11-05 refinement he comes home here like the others (world-beasts.ts BEAST_HOMELANDS `beyond`)
   morphingBlob: { beast: "morphingBlob", min: 1211, span: 250, version: 1, name: "the Rendering Pit", wait: [45, 110], // release 724
     arrive: "A sunken basin of sour mud, its pools green and steaming, its edges piled with old bones. This is where the Morphing Blob was rendered down.",
     quest: "The Morphing Blob falls, and what is left of it seeps away toward a pit far out, where it began. Your compass knows the way to the Rendering Pit.",
