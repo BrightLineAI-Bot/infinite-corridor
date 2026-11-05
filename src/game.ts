@@ -98,7 +98,7 @@ import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addS
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
 import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
-import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue } from "./pentagon.ts";
+import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, pentagonClosedAt, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue } from "./pentagon.ts";
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -4075,6 +4075,14 @@ export class Game {
     const tall = (px, py) => { const t = tileUnder(this.map, width, px, py); return !!t && t.blocked && !DEEP_WATER.includes(t.kind) && (t.elev || 0) >= g.z - .5; }; // release 672: deep water never walls a glide in
     let nx = p.x + g.vx * dt, ny = p.y + g.vy * dt;
     if (tall(nx, p.y)) { nx = p.x; g.vx = 0; } if (tall(nx, ny)) { ny = p.y; g.vy = 0; }
+    // Tim (2026-11-05): the glider is held off the drone's fizzle zones (vehicle-gates.ts DRONE_FIZZLE) at any height, as off a
+    // wall taller than it, here and over a seam inside a Pentagon (glideSeamZone). Not where the glide already overlaps one (no
+    // hold that could pin it in the air).
+    if (!droneForbiddenAt(this.map, width, p.x, p.y)) {
+      let held = droneForbiddenAt(this.map, width, nx, p.y) || this.glideSeamZone(nx, p.y); if (held) { nx = p.x; g.vx = 0; }
+      const z2 = droneForbiddenAt(this.map, width, nx, ny) || this.glideSeamZone(nx, ny); if (z2) { ny = p.y; g.vy = 0; held ||= z2; }
+      if (held && g.held !== held.id) { g.held = held.id; this.message = held.glide; journalOnce(this.save, `glide-held:${held.id}`, held.glide, "The glider"); }
+    }
     g.z -= (g.open === false ? G.drop : G.sink) * dt; p.invulnerableUntil = g.z > G.safe ? Math.max(p.invulnerableUntil || 0, now + 120) : p.invulnerableUntil;
     const out = nx < -.2 ? [-1, 0] : nx > SECTION_SIZE - .8 ? [1, 0] : ny < -.2 ? [0, -1] : ny > SECTION_SIZE - .9 ? [0, 1] : null;
     if (out) { const keep = out[0] ? ny : nx, was = `${this.rx},${this.ry}`; this.transitionSection(out[0], out[1]); if (this.area === "overworld" && `${this.rx},${this.ry}` !== was) { if (out[0]) { p.y = Math.max(.3, Math.min(30.7, keep)); p.x = out[0] < 0 ? 30.6 : .3; } else { p.x = Math.max(.3, Math.min(30.7, keep)); p.y = out[1] < 0 ? 30.6 : .3; } } return "crossed"; }
@@ -4088,6 +4096,16 @@ export class Game {
     const fell = g.open === false ? Math.max(0, (g.fallFrom ?? g.z) - ground) : 0; this.glide = null; this.skyAir = null;
     if (fell > 1) { const hurt = fallDamage(Math.round(fell), this.save.maxHp); if (hurt === Infinity) { p.hp = 0; this._fatalFallPending = true; this.message = `The Wayfarer falls ${Math.round(fell)} levels.`; } else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); this.message = `A hard landing: ${Math.round(fell)} levels down.`; } }
     else this.message = G.land; return "landed";
+  }
+  // A glide at (x, y) past this section's edge, inside a Pentagon: would its footprint over there (where glideStep puts it on
+  // crossing) reach the Pentagon's walls? The zone, or null. Pure geometry (pentagon.ts pentagonClosedAt); no allocation.
+  glideSeamZone(x, y) {
+    const P = this.map?.pentagon; if (!P || this.area !== "overworld") return null;
+    const dx = x < -.2 ? -1 : x > SECTION_SIZE - .8 ? 1 : 0, dy = dx ? 0 : y < -.2 ? -1 : y > SECTION_SIZE - .9 ? 1 : 0; if (!dx && !dy) return null;
+    const ax = dx ? (dx < 0 ? 30.6 : .3) : Math.max(.3, Math.min(30.7, x)), ay = dy ? (dy < 0 ? 30.6 : .3) : Math.max(.3, Math.min(30.7, y));
+    const x0 = Math.floor(ax + .24), x1 = Math.floor(ax + .76 - 1e-6), y0 = Math.floor(ay + .5), y1 = Math.floor(ay + .88 - 1e-6);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (pentagonClosedAt(P.cx, P.cy, this.rx + dx, this.ry + dy, tx, ty, !!P.roof)) return DRONE_FIZZLE.zones.find((z) => z.id === "pentagon");
+    return null;
   }
   // Release 647: one frame of the drone's booster (DRONE_LIFT). `droneLift` is { base, z, vz } in levels. While it lasts the jump
   // lasts, and `skyAir` is its height, so the move rules carry the Wayfarer over lower ground and onto ground no more than a level
@@ -7723,7 +7741,7 @@ export class Game {
         !e.dead &&
         updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}) &&
         now > (p.invulnerableUntil || 0) &&
-        (!(now < this.jumpUntil) || e.kind === "sparkWarden") &&
+        (!(now < this.jumpUntil) || e.kind === "sparkWarden" || !!this.mountRide()) && // Tim (2026-11-05): a mount's leap dodges nothing (on foot a jump still clears these blows; jumpable ground attacks pass under either)
         this.bodyReach(e) && // Tim (2026-11-04): a ground creature's blow does not reach the Wayfarer on a roof (ELEVATION_REACH)
         !((b) => b && strikeBuild(this, b))(buildBetween(this, e)) && // release 265: a build between takes the blow
         !enclosureShields(this, { x: e.x + .5, y: e.y + .6 }) // release 696: the enclosure's walls turn it

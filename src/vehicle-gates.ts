@@ -128,11 +128,16 @@ export const DRONE_LIFT = { thrust: 30, rise: 4, max: 5, gravity: 14, burn: 1, e
 // flyable); a tile whose `optIn` field names a zone id is in that zone whatever else it is (for roofs a later layout makes walkable
 // but that must not be flown over). Ordinary great-building, compound and labyrinth roofs and the castle keep's roof are open
 // ground, not blocked, and are never zones; courts are open air too (the drone may lift you down into one from the keep's roof).
+// The glider and the same zones (Tim, 2026-11-05: the glider cannot fly over the Pentagon's walls or a castle's wings; it is
+// blocked like the drone is): a glide is held off a zone's airspace at any height, as it is held off a wall taller than it
+// (game.ts glideStep), with the zone's `glide` message once a glide. It does not fold there, so it is no death sentence: it sinks
+// on beside the wall and comes down short of it. A glide off the Pentagon's roof outward, or off a castle keep's top into its
+// court, is unchanged. A glide over a section seam inside a Pentagon is held the same way (pentagon.ts pentagonClosedAt).
 export const DRONE_FIZZLE = {
   allow: ["droneOk"], optIn: "droneZone",
   zones: [
-    { id: "pentagon", match: { pentagon: true, blocked: true }, message: "The drone's lift fizzles out over the Pentagon's walls. The Corridor's rules are different here." },
-    { id: "castle", match: { kind: "castleWall", landscape: "castle", greatBuilding: true, blocked: true }, message: "The drone's lift fizzles out over the Great Castle. The Corridor's rules are different here." },
+    { id: "pentagon", match: { pentagon: true, blocked: true }, message: "The drone's lift fizzles out over the Pentagon's walls. The Corridor's rules are different here.", glide: "The air over the Pentagon's walls will not carry the glider; it turns you away. The Corridor's rules are different here." },
+    { id: "castle", match: { kind: "castleWall", landscape: "castle", greatBuilding: true, blocked: true }, message: "The drone's lift fizzles out over the Great Castle. The Corridor's rules are different here.", glide: "The air over the Great Castle's walls will not carry the glider; it turns you away. The Corridor's rules are different here." },
   ],
   burst: 1.2, // seconds the sparks and the burst show
   sparks: 14,
