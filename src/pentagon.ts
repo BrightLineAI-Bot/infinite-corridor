@@ -728,3 +728,96 @@ export function pentagonRoofSpots(map) {
   for (const s of spots) { if (out.length >= K.max) break; if (out.every((o) => Math.max(Math.abs(o.x - s.x), Math.abs(o.y - s.y)) >= K.spacing)) out.push({ x: s.x, y: s.y }); }
   return out;
 }
+
+// ------------------------------------------------------------------------------------------------ finding a Pentagon
+// Tim, 2026-11-05: "The sigils on the ground — we need to make sure that they actually point to a Pentagon... They can be really
+// far away... if you go on a Pentagon hunt you're going to be hunting for a while... the markers on the floor need to be really
+// good"; "the map is divided into regions around each Pentagon... whenever you're within that region, the Pentagon sigils start
+// pointing in that direction"; "in some regions you have no Pentagon sigils and you're just wandering... when you get into a
+// region that has a Pentagon sigil, you can follow it for a long time before you find the Pentagon"; and a Pentagon hunt that
+// "lines out 1 to 2 Pentagons at a time in different locations on the map".
+//
+// Catchments: every Pentagon not yet completed holds the ground nearer to it than to any other such Pentagon (straight line,
+// section to centre section), out to `reach` sections; ground farther than `reach` from every one holds no sigils. A catchment
+// is convex (a Voronoi cell cut by a disc round its own Pentagon), so walking the way a sigil points never leaves it: every
+// sigil met on the way points at the same Pentagon. Sigils stand on `sigil.chance` of the sections in a catchment, by a hash of
+// the seed and the section. A sigil is an object laid on the section when it loads, never a tile, so no explored ground changes.
+//
+// The search is bounded: the centre sections within `reach` (at most (2·reach/every+1)² of them), nearest first, each first
+// passing a cheap test (the Pentagon's own hash, its ring, and the caller's cheap exclusions such as towns and hamlets over the
+// nine sections) before the caller's full test, which callers remember per centre. It stops at the first real Pentagon.
+export const PENTAGON_FINDING = {
+  version: 1, // the sigils' hash namespace and the hunts' (a change to where they stand or what they offer is a new version)
+  reach: 28, // a catchment's radius (sections, straight line from the Pentagon's centre section)
+  sigil: { chance: .2, spots: [[16, 15], [13, 16], [19, 17], [15, 19], [18, 12], [12, 12], [21, 20], [10, 19], [22, 11], [9, 9]] }, // share of a catchment's sections with a sigil; where on the section it is cut (the first clear one)
+  memo: 1024, // centre sections whose full test a game remembers (cleared when full)
+  hunts: { offer: 2, near: 18, far: 44, spread: 1.9, tries: 6, keep: 8, settle: 3 }, // hunts open at once; how far out (sections) one is looked for; how far apart in bearing (radians) two open ones must lie; bearings tried per search; finished hunts kept; seconds in a section before the one search there
+  far: [[6, "close by"], [14, "a few crossings off"], [26, "many crossings off"], [48, "far off"], [Infinity, "very far off: a long journey"]], // distance words, by sections
+  name: "A Pentagon sigil",
+  messages: {
+    read: "A five-sided sigil is cut into the ground, one of its points drawn out long. It points",
+    follow: "Your compass takes up the sigil's line.",
+    arrived: "THE SIGIL'S PENTAGON",
+    arrivedDetail: "the five-sided wall the sigils pointed to",
+    huntOffer: "PENTAGON HUNT",
+    huntOfferDetail: "a five-sided wall far out · see the Journal",
+    huntFound: "PENTAGON HUNT · FOUND",
+    huntDone: "PENTAGON HUNT COMPLETE",
+    huntDoneDetail: "another lies far out · see the Journal",
+  },
+};
+const OCTANTS = ["east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east"];
+// The heading from one section to another in eight compass words, by the true bearing (north is up, -y).
+export function pentagonHeading(dx, dy) { if (!dx && !dy) return "here"; return OCTANTS[mod(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)), 8)]; }
+export function pentagonFarWords(d) { for (const [upTo, w] of PENTAGON_FINDING.far) if (d <= upTo) return w; return PENTAGON_FINDING.far.at(-1)[1]; }
+// The cheap necessary test for a Pentagon centred at (cx, cy): its hash, its ring, and `cheap(rx, ry)` (true: no Pentagon may
+// cover that section) over its nine sections. A centre that fails it holds no Pentagon (pentagonAt refuses it too).
+export function pentagonCandidate(seed, cx, cy, cheap = null) {
+  const P = PENTAGON; if (mod(cx, P.every) || mod(cy, P.every)) return false;
+  if ((hashSeed(`${seed}:pentagon:v1:${cx}:${cy}`) % 1000) / 1000 >= P.chance) return false;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const rx = cx + dx, ry = cy + dy; if (Math.abs(rx) + Math.abs(ry) < P.minRing || (cheap && cheap(rx, ry))) return false; }
+  return true;
+}
+// The centre sections within `reach` of (rx, ry), nearest first (ties: north first, then west), as [cx, cy, d²].
+function centresNear(rx, ry, reach) {
+  const E = PENTAGON.every, r2 = reach * reach, out = [];
+  for (let cy = Math.ceil((ry - reach) / E) * E; cy <= ry + reach; cy += E) for (let cx = Math.ceil((rx - reach) / E) * E; cx <= rx + reach; cx += E) { const d2 = (cx - rx) ** 2 + (cy - ry) ** 2; if (d2 <= r2) out.push([cx, cy, d2]); }
+  return out.sort((a, b) => a[2] - b[2] || a[1] - b[1] || a[0] - b[0]);
+}
+// The Pentagon whose catchment holds section (rx, ry): the nearest real one (`real(cx, cy)`, the game's full test) that `skip`
+// does not set aside (completed ones), within `reach`; or null (sigil-less ground). Returns { cx, cy, d } (d in sections) and
+// `checked`, how many full tests it asked for.
+export function pentagonCatchment(seed, rx, ry, { real, skip = null, cheap = null, reach = PENTAGON_FINDING.reach } = {}) {
+  let checked = 0;
+  for (const [cx, cy, d2] of centresNear(rx, ry, reach)) { if (!pentagonCandidate(seed, cx, cy, cheap) || (skip && skip(cx, cy))) continue; checked++; if (real(cx, cy)) return { cx, cy, d: Math.sqrt(d2), checked }; }
+  return null;
+}
+// Is section (rx, ry) one a sigil may stand on? (Where a catchment holds it, outside a Pentagon's own nine sections: game.ts.)
+export function pentagonSigilRoll(seed, rx, ry) { return (hashSeed(`${seed}:pentagon-sigil:v${PENTAGON_FINDING.version}:${rx}:${ry}`) % 10000) / 10000 < PENTAGON_FINDING.sigil.chance; }
+// What a sigil read at section (rx, ry) says of the Pentagon centred at (cx, cy).
+export function pentagonSigilText(rx, ry, cx, cy) {
+  const d = Math.round(Math.hypot(cx - rx, cy - ry));
+  return `${PENTAGON_FINDING.messages.read} ${pentagonHeading(cx - rx, cy - ry)}: a Pentagon stands that way, ${pentagonFarWords(d)} (about ${d} section${d === 1 ? "" : "s"}).`;
+}
+// The save's Pentagon finding (additive at schema 14): `follow`, the Pentagon the last sigil read points at ({ cx, cy } and the
+// section it was read in, rx, ry), or null; `hunts`, the Pentagon hunts ({ id, n, cx, cy, status: open | found | done });
+// `n`, hunts offered so far; `read`, sigils read. Unknown fields are kept.
+export function ensurePentagonFinding(save) {
+  if (!save) return save; const raw = save.pentagonFinding && typeof save.pentagonFinding === "object" ? save.pentagonFinding : {};
+  const at = (q) => !!q && Number.isInteger(q.cx) && Number.isInteger(q.cy);
+  const hunts = (Array.isArray(raw.hunts) ? raw.hunts : []).filter(at); for (const q of hunts) if (!["open", "found", "done"].includes(q.status)) q.status = "open"; // kept as they are (callers may hold them)
+  const live = hunts.filter((q) => q.status !== "done"), done = hunts.filter((q) => q.status === "done").slice(-PENTAGON_FINDING.hunts.keep);
+  save.pentagonFinding = { ...raw, version: PENTAGON_FINDING.version, follow: at(raw.follow) ? { ...raw.follow } : null, hunts: [...done, ...live], n: Math.max(0, Math.floor(Number(raw.n) || 0)), read: Math.max(0, Math.floor(Number(raw.read) || 0)) };
+  return save;
+}
+export const pentagonHuntsOpen = (save) => (save?.pentagonFinding?.hunts || []).filter((q) => q.status !== "done");
+// Where to look for hunt number `n`, offered at section (rx, ry): points `near`..`far` sections out on bearings hashed from the
+// seed and `n`, each at least `spread` radians from the bearing of every hunt still open (so two open hunts lie in different
+// directions). One search round each, nearest Pentagon to it (game.ts offerPentagonHunt).
+export function pentagonHuntProbes(seed, n, rx, ry, open = []) {
+  const H = PENTAGON_FINDING.hunts, v = PENTAGON_FINDING.version, base = (hashSeed(`${seed}:pentagon-hunt:v${v}:${n}`) % 3600) / 3600 * Math.PI * 2, out = [];
+  const bearings = open.map((q) => Math.atan2(q.cy - ry, q.cx - rx)), clear = (a) => bearings.every((b) => Math.abs(mod(a - b + Math.PI, Math.PI * 2) - Math.PI) >= H.spread);
+  for (let k = 0; k < H.tries; k++) { const a = base + k * Math.PI * 2 / H.tries; if (!clear(a)) continue; const d = H.near + hashSeed(`${seed}:pentagon-hunt-far:v${v}:${n}:${k}`) % (H.far - H.near + 1);
+    out.push({ rx: Math.round(rx + Math.cos(a) * d), ry: Math.round(ry + Math.sin(a) * d), a }); }
+  return out;
+}

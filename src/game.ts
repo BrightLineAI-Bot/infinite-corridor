@@ -98,7 +98,7 @@ import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addS
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
 import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
-import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue } from "./pentagon.ts";
+import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.ts";
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -738,7 +738,7 @@ export const DAMAGE_NUMBERS = { life: 900, rise: .9, cap: 48 }; // release 461
 // creatures) gets `hp` and `damage`; and `count` more of the crossing's ordinary foes stand near the others, by seed, with
 // stable ids (never added to a cleared crossing, an arena, a Far Array run or a hunt instance).
 export const DUNGEON_BOOST = { hp: 1.2, damage: 1.2, count: .2, near: 3 };
-const WONDER_CUE = { pentagon: 14, labyrinth: 6 }; // release 729: how far (sections) the gold cue looks for a Pentagon, a labyrinth
+const WONDER_CUE = { pentagon: 14, labyrinth: 6 }; // release 729: how far (sections) the gold cue looked for a Pentagon (no longer: Pentagons have their own sigils, pentagon.ts PENTAGON_FINDING), a labyrinth
 const GUARDIAN_ROLES = ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"];
 export const SKY_TREE = { search: 6, loads: 4, chance: .55, annexSearch: 10, annexLoads: 8 }; // 678: the annex's last gate looks wider, unseen trees only // release 663: sky gates land on a great tree: rings searched round the drop, sections built at most, the trees' grow chance
 // Release 651: an ordinary creature, which Fractured mode copies into packs and brings back (never a guardian, boss, hunt,
@@ -2829,6 +2829,7 @@ export class Game {
         ...(prior ? (prior.labVersion ? { labVersion: prior.labVersion } : {}) : { labVersion: LABYRINTHS.version }), // and the labyrinths
         ...(prior ? (prior.castleVersion ? { castleVersion: prior.castleVersion } : {}) : { castleVersion: CASTLES.version }), // and the Great Castles
         ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : { pentVersion: PENTAGON.version }), // and the Pentagons
+        ...(prior ? (prior.sigilVersion ? { sigilVersion: prior.sigilVersion } : {}) : { sigilVersion: PENTAGON_FINDING.version }), // and the Pentagon sigils (objects only: ground seen before keeps its objects)
         ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
         ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
         ...(prior ? (prior.coherenceVersion ? { coherenceVersion: prior.coherenceVersion } : {}) : { coherenceVersion: COHERENCE.version }), // world coherence: lanes bridged, exits joined, no pits (landscape.ts COHERENCE)
@@ -3047,7 +3048,8 @@ export class Game {
           this.map,
         ),
       );
-      { const w = this.wonderCue(); if (w) this.map.objects.push(w); } // release 729: a cue toward the nearest unexplored Pentagon or labyrinth
+      { const w = this.wonderCue(); if (w) this.map.objects.push(w); } // release 729: a cue toward the nearest unexplored labyrinth (Pentagons: the sigil below)
+      { const p = this.pentagonSigil(); if (p) this.map.objects.push(p); this.pentagonFindingArrive(); this._pentOfferAt = null; this._pentOfferWait = 0; } // Pentagon finding: a sigil toward the Pentagon whose catchment holds this section; hunts reached or done
       if (this.map.pentagon) this.roofDwell = { sleepers: this.roofSleepers(), told: false }; // roof-dwellers.ts: asleep, outside the enemy list, until the Wayfarer is on the roof
       for (const o of this.map.objects)
         if (o.kind === "dungeon")
@@ -3860,6 +3862,7 @@ export class Game {
     if (o.kind === "labKey") return this.takeLabKey(o); // a labyrinth's key
     if (o.kind === "pentRubble") { const m = (this.save.materials ||= {}); m.stone = Math.max(Number(m.stone) || 0, 10); setBuildKind(this.save, "stone"); this.message = `${PENTAGON.messages.rubble}: you have ${m.stone} stone, and a block is ready to build.`; this.sync(); return { ok: true, message: this.message }; } // enough for a block on the plate
     if (o.kind === "pentRelic") { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`); H.pentRelics = [...new Set([...(H.pentRelics || []), o.relic])]; o.state = "read"; this.message = `${o.lore} (${PENTAGON.messages.relic}: ${H.pentRelics.length} of ${PENTAGON.relics.length + (this.map.building.V >= 5 ? PENTAGON.sealedRelics.length : 0)})`; journalOnce(this.save, `pentagon-relic:${this.map.building.base}:${o.relic}`, o.lore, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; }
+    if (o.kind === "pentWaysign") return this.readPentagonSigil(o); // a Pentagon sigil on the ground (PENTAGON_FINDING)
     if (o.kind === "pentInscription") { const r = readPentagonInscription(this.save, o); this.message = r.message; if (r.first) { journalOnce(this.save, `pentagon-inscription:${o.inscription}`, r.text, PENTAGON_LORE.title); this.glimpseCue = "pentagon"; } this.sync(); return r; } // the marks in a wall: read, remembered, never counted
     if (o.kind === "pentLever") { if (o.state === "pulled") return { ok: false, message: (this.message = "The lever is already down.") }; const H = dungeonHistory(this.save, `${o.pentBase}:f1`); H.pentLevers = [...new Set([...(H.pentLevers || []), o.lever])]; Object.assign(o, { state: "pulled", actions: [] }); const n = H.pentLevers.length; this.message = n >= PENTAGON.levers ? PENTAGON.messages.leversDone : `${PENTAGON.messages.lever} (${n} of ${PENTAGON.levers}).`; this.defeatNotice = { title: n >= PENTAGON.levers ? "THE GREAT DOORS OPEN" : "A LEVER PULLED", detail: `${n} of ${PENTAGON.levers}`, kind: "discovery" }; this.sync(); return { ok: true, message: this.message }; } // the Pentagon's levers (v2)
     if (o.kind === "pentSigil") { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`); H.pentSigil = true; this.map.objects = this.map.objects.filter((q) => q !== o); for (const q of this.map.objects) if (q.sigil) q.unsealed = true; this.message = PENTAGON.messages.seal; this.defeatNotice = { title: "THE FIVEFOLD SEAL", detail: "every sigil door opens to it", kind: "discovery" }; journalOnce(this.save, `pentagon-seal:${this.map.building.base}`, PENTAGON.messages.seal, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; }
@@ -6499,14 +6502,88 @@ export class Game {
     const spot = [[15, 16], [18, 14], [12, 17], [16, 12], [20, 17]].find(([x, y]) => !this.map.tiles[y * 32 + x]?.blocked && !this.map.objects.some((o) => Math.round(o.x) === x && Math.round(o.y) === y)); if (!spot) return null;
     return { id: "waymark-wonder", kind: "wayfindingCue", signalKind: "wonder", x: spot[0], y: spot[1], dirX: Math.sign(t.rx - this.rx), dirY: Math.sign(t.ry - this.ry), targetRx: t.rx, targetRy: t.ry, name: t.name, state: "quiet", actions: [] };
   }
+  // Pentagon finding (2026-11-05): on ground first seen from now on (atlas `sigilVersion`), the gold cue points only to labyrinths. Pentagons have their own sigils (pentagonSigil),
+  // which point at the Pentagon whose catchment holds the section (pentagon.ts PENTAGON_FINDING); before, the nearer labyrinth
+  // won nearly every section and a Pentagon farther than 14 sections (Manhattan) was never pointed to.
+  // A section first seen before the sigils (no `sigilVersion` atlas pin) keeps the release 729 cue exactly as it was, Pentagons
+  // and all, so the objects of explored ground do not change.
   wonderTarget() {
-    const atlas = this.save.atlas || {}, seed = this.save.seed, W = WONDER_CUE, d = (x, y) => Math.abs(x - this.rx) + Math.abs(y - this.ry), out = [];
-    const E = PENTAGON.every; for (let cy = Math.floor((this.ry - W.pentagon) / E) * E; cy <= this.ry + W.pentagon; cy += E) for (let cx = Math.floor((this.rx - W.pentagon) / E) * E; cx <= this.rx + W.pentagon; cx += E) {
-      if (atlas[`${cx},${cy}`] || d(cx, cy) > W.pentagon || d(cx, cy) <= 1) continue; if (this.pentagonHere(cx, cy)) out.push({ rx: cx, ry: cy, name: PENTAGON.name, d: d(cx, cy) }); }
+    const atlas = this.save.atlas || {}, seed = this.save.seed, W = WONDER_CUE, out = [];
+    if (!atlas[`${this.rx},${this.ry}`]?.sigilVersion) { const d = (x, y) => Math.abs(x - this.rx) + Math.abs(y - this.ry), E = PENTAGON.every;
+      for (let cy = Math.floor((this.ry - W.pentagon) / E) * E; cy <= this.ry + W.pentagon; cy += E) for (let cx = Math.floor((this.rx - W.pentagon) / E) * E; cx <= this.rx + W.pentagon; cx += E) {
+        if (atlas[`${cx},${cy}`] || d(cx, cy) > W.pentagon || d(cx, cy) <= 1) continue; if (this.pentagonHere(cx, cy)) out.push({ rx: cx, ry: cy, name: PENTAGON.name, d: d(cx, cy) }); } }
     const memo = this.settleMemo(), settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
     for (let r = 2; r <= W.labyrinth; r++) for (let oy = -r; oy <= r; oy++) for (const ox of [r - Math.abs(oy), Math.abs(oy) - r]) { const rx = this.rx + ox, ry = this.ry + oy; if (atlas[`${rx},${ry}`] || !labyrinthHere(seed, rx, ry, null)) continue;
       const c = pentagonCentre(rx, ry); if (c && this.pentagonHere(c.cx, c.cy)) continue; const k = castleCorner(rx, ry); if (k && this.castleHere(k.X, k.Y)) continue; if (settled(rx, ry)) continue; out.push({ rx, ry, name: "a labyrinth", d: r }); }
     return out.sort((a, b) => a.d - b.d)[0] || null;
+  }
+  // ---------------------------------------------------------------------------------------- finding a Pentagon (PENTAGON_FINDING)
+  // The full test (pentagonHere), remembered per centre section (bounded; a new game starts afresh). The cheap exclusions over a
+  // Pentagon's nine sections (a town, a hamlet) run first, in pentagonCandidate, so the costly open-sea test is asked rarely.
+  pentagonReal(cx, cy) { const memo = (this._pentReal ||= new Map()), k = `${cx},${cy}`; if (memo.has(k)) return memo.get(k); if (memo.size >= PENTAGON_FINDING.memo) memo.clear(); const v = this.pentagonHere(cx, cy); memo.set(k, v); return v; }
+  pentagonCheap() { const seed = this.save.seed; return (rx, ry) => regionSettled(rx, ry) || hamletSection(seed, rx, ry); }
+  pentagonBase(cx, cy) { const V = this.pentagonVersion(cx, cy); return `pentagon:${this.save.seed}:${cx}:${cy}${V >= 2 ? `:v${V}` : ""}`; }
+  // Is the Pentagon at (cx, cy) complete (its finale won, or its Regent fallen before the Stillworks)? Reads the history; never makes one.
+  pentagonDone(cx, cy) { const base = this.pentagonBase(cx, cy), H = this.save.consequences?.dungeons?.[`${base}:f1`]; return !!H && (!!H.pentComplete || pentagonCompleted(H) || pentagonFellEarly(this.save, base)); }
+  // The Pentagon whose catchment holds section (rx, ry): the nearest not yet complete within PENTAGON_FINDING.reach, or null.
+  pentagonCatchmentAt(rx = this.rx, ry = this.ry, opts = {}) {
+    return pentagonCatchment(this.save.seed, rx, ry, { real: (cx, cy) => this.pentagonReal(cx, cy), cheap: this.pentagonCheap(), skip: (cx, cy) => this.pentagonDone(cx, cy) || (opts.skip ? opts.skip(cx, cy) : false), reach: opts.reach });
+  }
+  inPentagonBlock(rx, ry, cx, cy) { return Math.abs(rx - cx) <= 1 && Math.abs(ry - cy) <= 1; }
+  // A Pentagon sigil on this section, or null: on ground first seen with the sigils (atlas `sigilVersion`), on `sigil.chance` of a
+  // catchment's sections (pentagonSigilRoll), never in a town, a hamlet, a far domain or
+  // in a Pentagon's own nine sections, cut on the first clear ground of `sigil.spots` (not blocked, lethal, deep water or a slope,
+  // nothing standing within a tile). Its arrow (dirX, dirY) runs from the sigil to the middle of the Pentagon's centre section.
+  pentagonSigil() {
+    const F = PENTAGON_FINDING, map = this.map; if (this.area !== "overworld" || !map?.tiles || map.settlement || map.hamlet || map.farDomain || map.pentagon || map.greatBuilding?.pentagon) return null;
+    if (!this.save.atlas?.[`${this.rx},${this.ry}`]?.sigilVersion) return null; // only on ground first seen with the sigils (explored ground keeps its objects)
+    if (!pentagonSigilRoll(this.save.seed, this.rx, this.ry)) return null;
+    const own = pentagonCentre(this.rx, this.ry); if (own && this.pentagonReal(own.cx, own.cy)) return null;
+    const t = this.pentagonCatchmentAt(); if (!t) return null;
+    const clear = (x, y) => { const q = map.tiles[y * 32 + x]; return !!q && !q.blocked && !q.slope && !q.perch && !LETHAL_KINDS.has(q.kind) && !q.pit && !q.voidScar && !map.objects.some((o) => Math.abs(o.x - x) < 1.5 && Math.abs(o.y - y) < 1.5); };
+    const spot = F.sigil.spots.find(([x, y]) => clear(x, y)); if (!spot) return null;
+    const [x, y] = spot, dx = (t.cx - this.rx) * 32 + 16 - (x + .5), dy = (t.cy - this.ry) * 32 + 16 - (y + .5);
+    return { id: "pentagon-sigil", kind: "pentWaysign", name: F.name, x, y, dirX: dx, dirY: dy, targetRx: t.cx, targetRy: t.cy, state: "quiet", actions: ["read"] };
+  }
+  // Once a section has settled: the catchments of the neighbouring sections a sigil may stand on, so the next crossing's sigil
+  // finds its Pentagon's full test already remembered (pentagonReal). At most eight bounded searches, nearly all remembered.
+  warmPentagonCatchments() {
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && pentagonSigilRoll(this.save.seed, this.rx + dx, this.ry + dy)) this.pentagonCatchmentAt(this.rx + dx, this.ry + dy);
+  }
+  // Reading a sigil: where it points and how far, in words; the compass takes up its line (main.ts reads compassRequest), and the
+  // save remembers it (pentagonFinding.follow) until you reach that Pentagon.
+  readPentagonSigil(o) {
+    const F = PENTAGON_FINDING, s = ensurePentagonFinding(this.save).pentagonFinding, cx = o.targetRx, cy = o.targetRy;
+    s.follow = { cx, cy, rx: this.rx, ry: this.ry }; s.read += 1; o.state = "read";
+    this.message = `${pentagonSigilText(this.rx, this.ry, cx, cy)} ${F.messages.follow}`;
+    journalOnce(this.save, `pentagon-sigil:${cx}:${cy}`, `A Pentagon sigil, read at ${this.rx}, ${this.ry}, points ${pentagonHeading(cx - this.rx, cy - this.ry)} to a Pentagon at ${cx}, ${cy}.`, PENTAGON.name);
+    this.compassRequest = { rx: cx, ry: cy, name: `${PENTAGON.name} (the sigil's)` }; this.sync();
+    return { ok: true, message: this.message };
+  }
+  // Each overworld arrival: a followed sigil's Pentagon reached (or completed) lets the compass go; a hunt's Pentagon reached is
+  // found, and complete is done (its notice, and the next hunt is looked for). Cheap: a few comparisons and history reads.
+  pentagonFindingArrive() {
+    const F = PENTAGON_FINDING, M = F.messages, s = ensurePentagonFinding(this.save).pentagonFinding, note = (title, detail) => (this.questNotices ||= []).push({ title, detail, kind: "discovery" });
+    if (s.follow && (this.inPentagonBlock(this.rx, this.ry, s.follow.cx, s.follow.cy) || this.pentagonDone(s.follow.cx, s.follow.cy))) { if (!this.pentagonDone(s.follow.cx, s.follow.cy)) note(M.arrived, M.arrivedDetail); s.follow = null; }
+    for (const h of s.hunts) { if (h.status === "done") continue;
+      if (this.pentagonDone(h.cx, h.cy)) { h.status = "done"; h.doneAt = Object.keys(this.save.explored || {}).length; note(M.huntDone, M.huntDoneDetail); journalOnce(this.save, `pentagon-hunt-done:${h.id}`, `The Pentagon hunt is complete: the Pentagon at ${h.cx}, ${h.cy}.`, PENTAGON.name); continue; }
+      if (h.status === "open" && this.inPentagonBlock(this.rx, this.ry, h.cx, h.cy)) { h.status = "found"; note(M.huntFound, `${PENTAGON.name} at ${h.cx}, ${h.cy}`); } }
+    ensurePentagonFinding(this.save);
+  }
+  // Lays out the next Pentagon hunt while fewer than `hunts.offer` are open: one search a call (game.update calls it once per
+  // section, after the arrival has settled), round the probes of pentagonHuntProbes, each the nearest Pentagon not yet complete
+  // and not already hunted, at least `spread`/2 in bearing from every open hunt. Returns the hunt, or null.
+  offerPentagonHunt() {
+    const F = PENTAGON_FINDING, H = F.hunts, s = ensurePentagonFinding(this.save).pentagonFinding, open = pentagonHuntsOpen(this.save); if (open.length >= H.offer || this.area !== "overworld") return null;
+    const taken = new Set(open.map((q) => `${q.cx},${q.cy}`)), bear = (cx, cy) => Math.atan2(cy - this.ry, cx - this.rx), apart = (a, b) => Math.abs(((a - b + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI);
+    for (const p of pentagonHuntProbes(this.save.seed, s.n, this.rx, this.ry, open)) {
+      const t = this.pentagonCatchmentAt(p.rx, p.ry, { skip: (cx, cy) => taken.has(`${cx},${cy}`) || this.inPentagonBlock(this.rx, this.ry, cx, cy) }); if (!t) continue;
+      if (open.some((q) => apart(bear(q.cx, q.cy), bear(t.cx, t.cy)) < H.spread / 2)) continue;
+      const hunt = { id: `pentagon-hunt-${s.n + 1}`, n: s.n + 1, cx: t.cx, cy: t.cy, status: "open", from: { rx: this.rx, ry: this.ry } }; s.n += 1; s.hunts.push(hunt);
+      (this.questNotices ||= []).push({ title: F.messages.huntOffer, detail: `${pentagonFarWords(Math.round(Math.hypot(t.cx - this.rx, t.cy - this.ry)))}, ${pentagonHeading(t.cx - this.rx, t.cy - this.ry)} · ${F.messages.huntOfferDetail}`, kind: "discovery" });
+      journalOnce(this.save, `pentagon-hunt:${hunt.id}`, `A Pentagon hunt: a five-sided wall stands at ${t.cx}, ${t.cy}, ${pentagonHeading(t.cx - this.rx, t.cy - this.ry)} of ${this.rx}, ${this.ry}.`, PENTAGON.name);
+      return hunt; }
+    s.n += 1; return null; // nothing there this time: the next call looks along other bearings
   }
   // The Pentagon v3: a deep keeper gives a Tesseract glyph; the Regent's fall decides his hoard's grade (Sovereign when every
   // champion fell first). Champions: the lords of the trial halls and the Heart's keepers, as recorded in pentBosses.
@@ -7521,6 +7598,7 @@ export class Game {
     if (this.area === "dungeon" && this.map?.skyland) this.tickSkyland(dt); // release 571
     this.lastUpdateNow = now;
     if (this.paused) return;
+    if (this.area === "overworld" && this._pentOfferAt !== `${this.rx},${this.ry}` && (this._pentOfferWait = (this._pentOfferWait || 0) + Math.max(0, Number(dt) || 0)) >= PENTAGON_FINDING.hunts.settle) { this._pentOfferAt = `${this.rx},${this.ry}`; this._pentOfferWait = 0; this.warmPentagonCatchments(); this.offerPentagonHunt(); } // Pentagon finding: once a section has settled (never per frame), warm the catchments the next crossing may ask about and look for a hunt
     this.save.playSeconds = (Number(this.save.playSeconds) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); // release 379: playtime (paused time is not counted)
     if (this.fallen) { this.tickFallen(dt, input, now); return; } // release 329
     reconcileAstralCompanions(this);
