@@ -2854,6 +2854,29 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 778: the crown wake needs the crown; it takes the Crown Rest — 2026-11-05
+
+Tim, 2026-11-05: if you die after a glide, you wake on the crown only if you made it to the crown, never if you climbed only halfway; and waking there sets that crown's Crown Rest.
+
+**CODE:**
+- `TREE_GLIDE.home` (`src/vehicle-gates.ts`) gains `reached`, `setsRest` and a `rest` wake line.
+- `Game.crownFoot` (`src/game.ts`) is whether the ground you stand on is this section's great crown: a `canopyTrunk` tile at `map.canopy.top`.
+  - It is set in the move step once the frame's fall is settled and you are on the ground, not jumping, gliding or in a drone lift.
+- `treeGlideHome` remembers the tree only when the launch is at crown height and `crownFoot` names this section.
+- `wakeOnCrown` sets `crownFoot` and calls `takeCrownRest`, the activation `touchCrownRest` now shares.
+- Both death paths add `TREE_GLIDE.home.rest` to the wake message.
+- `playerRuntime.crownFoot` and `playerRuntime.jumpAir` are saved and restored after `loadArea`.
+  - `jumpAir` holds `jumpFrom`, `skyAir`, `skyAirScale`, `jumpDur`, `liftDrop` and the hop gap.
+  - A jump saved in mid-air used to come back at ground height; it now resumes at the height it left from.
+- Tests: `tests/glider-crown-reached.test.ts` (new). `tests/glider-tree-home.test.ts` now expects the Crown Rest to be taken.
+
+**BOUNDARY:**
+- Height alone never earns the crown wake; standing on the great crown does, however you got there (climb, sky gate or a drone landing).
+- A drone lift past the crown cannot open the glider and never counts.
+- A glide from a branch, a grove's lesser crown or other high ground gives the ordinary recovery at the active rest point.
+- The save stays additive at schema 14; a save without the new fields reads as "not on a crown".
+- No generator changed.
+
 ## Release 777: Pentagon finding is hands-off; the Rite seals the Wayglass — 2026-11-05
 
 Tim, 2026-11-05: "No, it shouldn't set your compass to it. When a pentagon hunt opens, it's gonna be on you to find them. Sure, you can see the sigils, but it's gonna be on you to find them. I don't want to interrupt the game... it's completely on you to find it." The gold Atlas markers he had seen were the Pentagon hunt pins. He also decided that while a Rite of Ascendancy burns, free Wayglass travel is sealed and the Crossing Sigil is the only way out.

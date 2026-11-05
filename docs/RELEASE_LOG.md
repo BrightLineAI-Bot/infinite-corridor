@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 777, the next is **778**.
+Taken at merge time: `main`'s release + 1 (see above). After 778, the next is **779**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 777 | Claude | `claude/dreamy-rubin-yn6q2p` | Pentagon finding is hands-off (no compass, no Atlas pins, hunts open quietly in the Journal in words); the Rite seals Wayglass travel | In flight. |
+| 778 | Claude | `claude/dreamy-rubin-yn6q2p` | The crown wake needs the crown (standing on it, not height alone) and takes that crown's Crown Rest; a jump saved mid-air resumes at its height | In flight. |
+| 777 | Claude | `claude/dreamy-rubin-yn6q2p` | Pentagon finding is hands-off (no compass, no Atlas pins, hunts open quietly in the Journal in words); the Rite seals Wayglass travel | Merged (#425). |
 | 776 | Claude | `claude/dreamy-rubin-yn6q2p` | Healing hot springs: a Terrace Springs pool mends 1.5% of max health a second, out of combat, with a wisp of steam | Merged (#424). |
 | 775 | Claude | `claude/dreamy-rubin-yn6q2p` | Pentagon sigils that truly point (catchments around each unfinished Pentagon; bearing, distance, compass) and Pentagon hunts (two at a time in the Journal and on the Atlas) | Merged (#423). Published as r775-9678a017d60c on 2026-11-05. |
 | 774 | Claude | `claude/dreamy-rubin-yn6q2p` | Crossing Sigils work anywhere you're alive: every interior, boss fights, the Rite (that attempt is lost), displacements, the open world; safe landing | Merged (#422). Published in r775. |

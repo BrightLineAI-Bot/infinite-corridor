@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 778 — **The crown wake needs the crown.** After a fatal glide you wake on a great tree's crown only if you actually stood on it (a lower branch, a grove's lesser crown or ground as high as the crown gives the usual recovery), and waking there makes that crown's Crown Rest your rest point. A jump saved in mid-air now resumes at the height it left from.
 - Release 777 — **Pentagons are yours to find; the Rite seals the Wayglass.** Reading a Pentagon sigil no longer sets your compass, Pentagon hunts put no markers on the Atlas, and a new hunt opens quietly with a Journal line in words, not a banner. While a Rite of Ascendancy burns, Wayglass travel is sealed: the Crossing Sigil is the only way out.
 - Release 776 — **Healing hot springs.** Wade into a Terrace Springs pool, away from any fight, and it slowly mends your wounds (1.5% of max health a second), with a wisp of steam.
 - Release 775 — **Pentagon sigils and Pentagon hunts.** Sigils cut into the ground across each Pentagon's catchment (about 22 sections out) all point at that one real Pentagon, the whole way there; reading one tells you which way and roughly how far, and sets your compass. Two Pentagon hunts are laid out at a time, in different directions, in the Journal and on the Atlas; completing the Pentagon completes the hunt and lays out the next. Pentagons are as rare as before. New ground only; the gold ground cue now points to labyrinths.
