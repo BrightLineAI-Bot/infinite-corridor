@@ -53,10 +53,10 @@ test('a labyrinth\'s vault gives a Labyrinth Tesseract glyph, once', () => {
   assert.equal(s.tesseracts.owned.length, 1); assert.equal(s.tesseracts.owned[0].grade, 'labyrinth'); assert.equal(grantTesseract(s, `${base}:vault`, 'labyrinth'), null);
 });
 
-test('the hunt: a gold ground cue points toward the nearest unexplored Pentagon or labyrinth', () => {
+// Pentagon finding (2026-11-05): the gold cue points only to labyrinths now; Pentagons have their own sigils (pentagon-finding.test.ts).
+test('the hunt: a gold ground cue points toward the nearest unexplored labyrinth', () => {
   const s = save(); s.seed = 'TIM1'; const g = new Game(s, 0); let found = null; for (let cx = -64; cx <= 64 && !found; cx += 8) for (let cy = -64; cy <= 64 && !found; cy += 8) if (g.pentagonHere(cx, cy)) found = { cx, cy };
-  g.rx = found.cx; g.ry = found.cy + 4; g.loadArea('overworld', false); const cue = g.map.objects.find((o) => o.kind === 'wayfindingCue' && o.signalKind === 'wonder');
+  let cue = null; for (let k = 4; k <= 12 && !cue; k++) { g.rx = found.cx; g.ry = found.cy + k; g.loadArea('overworld', false); cue = g.map.objects.find((o) => o.kind === 'wayfindingCue' && o.signalKind === 'wonder'); }
   assert.ok(cue, 'a wonder cue'); assert.deepEqual([cue.dirX, cue.dirY], [Math.sign(cue.targetRx - g.rx), Math.sign(cue.targetRy - g.ry)]);
-  assert.ok(cue.name === 'The Pentagon' || cue.name === 'a labyrinth'); assert.ok(Math.abs(cue.targetRx - g.rx) + Math.abs(cue.targetRy - g.ry) <= 14);
-  if (cue.name === 'The Pentagon') assert.deepEqual([cue.targetRx, cue.targetRy], [found.cx, found.cy]); void pentagonPlan;
+  assert.equal(cue.name, 'a labyrinth'); assert.ok(Math.abs(cue.targetRx - g.rx) + Math.abs(cue.targetRy - g.ry) <= 6); void pentagonPlan;
 });
