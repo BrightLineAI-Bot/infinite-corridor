@@ -612,7 +612,7 @@ export const pentagonLinkKey = (id) => `link:${id}`;
 // The completion's Tesseract (Tim, 2026-11-05: "There should be at least one Tesseract for completing the Pentagon; one Tesseract
 // per Pentagon"). Every version, whatever else it pays. A Pentagon is complete when its finale beast falls in the Stillworks
 // (`pentArenaWon`), or, for one whose wall opened onto the walkway before the Stillworks (`pentFinale` with no `pentArena`),
-// when its Regent fell. Paid once, on completion or (for one completed before) on the next start of the game; recorded on the
+// when its Regent fell, or when its Regent fell before release 750 (pentagonFellEarly). Paid once, on completion or (for one completed before) on the next start of the game; recorded on the
 // base floor's history (`pentComplete`, the source), and the source is in `tesseracts.got` as every glyph's is.
 export const PENTAGON_COMPLETE = {
   grade: "regent", from: "the Pentagon's completion",
@@ -623,14 +623,24 @@ export const PENTAGON_COMPLETE = {
 export const pentagonCompleteSource = (base) => `${base}:complete`;
 export function pentagonCompleteGrade(base) { const C = PENTAGON_COMPLETE, V = parsePentagonId(`${base}:f1`)?.V || 1; return V <= C.early.upTo ? C.early.grade : C.grade; }
 export function pentagonCompleted(H) { return !!H && (!!H.pentArenaWon || (!!H.pentFinale && H.pentArena === undefined)); }
+// A Pentagon finished before release 750 (Tim accepted "on load", 2026-11-05): its Regent fell (the base floor's `regentGrade`,
+// or the vault's own `guardianDefeated`) before the wall ever opened, so neither `pentFinale` nor `pentArena` is recorded (from
+// release 750 the Regent's fall opens the wall at once, and from 751 records `pentArena` first). Complete as it stands: paid on
+// the next start. Its vault still opens onto the Stillworks as before; that win pays nothing more (the same source).
+export function pentagonFellEarly(save, base) {
+  const H = save?.consequences?.dungeons?.[`${base}:f1`]; if (!H || H.pentFinale || H.pentArena !== undefined || H.pentArenaWon) return false;
+  if (H.regentGrade) return true;
+  const p = parsePentagonId(`${base}:f1`), vault = p && pentagonVaultId(pentagonPlan(p.seed, p.cx, p.cy, p.V));
+  return !!(vault && save.consequences.dungeons[vault]?.guardianDefeated);
+}
 // Pays the completion glyph if it is due (null otherwise, or if that source already gave one). Pure on the save.
 export function payPentagonCompletion(save, base) {
-  const H = save?.consequences?.dungeons?.[`${base}:f1`]; if (!H || H.pentComplete || !pentagonCompleted(H)) return null;
+  const H = save?.consequences?.dungeons?.[`${base}:f1`]; if (!H || H.pentComplete || !(pentagonCompleted(H) || pentagonFellEarly(save, base))) return null;
   const source = pentagonCompleteSource(base); H.pentComplete = source; return grantTesseract(save, source, pentagonCompleteGrade(base), 0, PENTAGON_COMPLETE.from);
 }
 // The Pentagons this journey holds whose completion glyph is still due (their bases), from the base floors' histories.
 export function pentagonsDue(save) {
-  const out = []; for (const [id, H] of Object.entries(save?.consequences?.dungeons || {})) { if (!H || H.pentComplete || !pentagonCompleted(H)) continue; const p = parsePentagonId(id); if (p && p.n === 0) out.push(p.base); }
+  const out = []; for (const [id, H] of Object.entries(save?.consequences?.dungeons || {})) { if (!H || H.pentComplete) continue; const p = parsePentagonId(id); if (p && p.n === 0 && (pentagonCompleted(H) || pentagonFellEarly(save, p.base))) out.push(p.base); }
   return out;
 }
 

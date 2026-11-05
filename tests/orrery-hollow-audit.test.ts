@@ -97,12 +97,28 @@ test('a completion due on load is paid once: repeated starts, reloads and migrat
     for (const x of [g, r, q]) { assert.equal(fromCompletion(x).length, 1, `v${V}: once`); assert.deepEqual(fromCompletion(x)[0], glyph, 'the same glyph, unchanged'); } }
 });
 
-test('a Pentagon whose Regent fell before release 750 (no walkway record): nothing on load; its vault opens onto the Stillworks, and winning there pays once', () => {
-  const { cx, cy } = find(), P = pentagonPlan(SEED, cx, cy, 1), s = freshSave(); s.seed = SEED; s.consequences.dungeons[`${P.base}:f1`] = { discovered: true, visits: 4, regentGrade: 'regent' };
-  const g = new Game(migrateSave(JSON.parse(JSON.stringify(s))), 0); assert.deepEqual(pentagonsDue(g.save), []); assert.equal(fromCompletion(g).length, 0, 'not complete by the 756 rule: the Stillworks is still to win');
-  loadVault(g, P); const H = g.save.consequences.dungeons[`${P.base}:f1`]; assert.equal(H.pentArena, 1, 'the opened wall leads to the Stillworks'); assert.equal(fromCompletion(g).length, 0);
-  const o = g.map.objects.find((q) => q.kind === 'pentFinaleWall'); g.player.x = o.inner ? o.inner.x : o.x; g.player.y = o.inner ? o.inner.y : o.y + 1; g.interact('use', o.id); assert.equal(g.areaId(), pentagonArenaId(P.base));
-  const b = g.enemies.find((e) => e.pentFinaleBeast && !e.dead); b.hp = 0; b.dead = true; g.defeatEnemy(b);
-  assert.equal(fromCompletion(g).length, 1); assert.equal(H.pentComplete, pentagonCompleteSource(P.base)); assert.equal(fromCompletion(g)[0].roll, 2);
-  const r = reload(reload(g)); assert.equal(fromCompletion(r).length, 1);
+test('a Pentagon whose Regent fell before release 750 (no walkway record) is paid on load, once; its vault still opens onto the Stillworks, and that win pays nothing more', () => {
+  const { cx, cy } = find();
+  // the Regent's fall as recorded before 750: the base floor's regentGrade (729+), or only the vault's own guardianDefeated (older)
+  for (const [label, V, base, vault] of [['regentGrade', 1, { regentGrade: 'regent' }, null], ['regentGrade, v3', 3, { regentGrade: 'sovereign' }, null], ['the vault\'s guardianDefeated', 2, {}, { guardianDefeated: true, resolved: true }]]) {
+    const P = pentagonPlan(SEED, cx, cy, V), s = freshSave(); s.seed = SEED; s.consequences.dungeons[`${P.base}:f1`] = { discovered: true, visits: 4, ...base };
+    if (vault) s.consequences.dungeons[pentagonVaultId(P)] = { discovered: true, ...vault };
+    assert.deepEqual(pentagonsDue(s), [P.base], `${label}: due`);
+    const g = new Game(migrateSave(JSON.parse(JSON.stringify(s))), 0); assert.equal(fromCompletion(g).length, 1, `${label}: paid on load`); assert.deepEqual(pentagonsDue(g.save), []);
+    const H = g.save.consequences.dungeons[`${P.base}:f1`], glyph = structuredClone(fromCompletion(g)[0]); assert.equal(H.pentComplete, pentagonCompleteSource(P.base)); assert.equal(glyph.grade, V <= 2 ? 'hollow' : 'regent');
+    assert.ok(g.questNotices.some((n) => n.title === PENTAGON_COMPLETE.notice)); assert.equal(fromCompletion(reload(reload(g))).length, 1, `${label}: not again`);
+    loadVault(g, P);
+    // where the vault stands its Regent up again (as it did before this change), felling him once more pays nothing either
+    const regent = g.enemies.find((e) => String(e.id).endsWith(':guardian') && !e.dead); if (!base.regentGrade) assert.ok(regent, `${label}: without regentGrade a Regent stands, the wall shut`);
+    if (regent) { regent.hp = 0; regent.dead = true; g.defeatEnemy(regent); }
+    assert.equal(H.pentArena, 1, `${label}: the opened wall still leads to the Stillworks`); assert.equal(fromCompletion(g).length, 1, `${label}: the vault pays nothing more`);
+    const o = g.map.objects.find((q) => q.kind === 'pentFinaleWall'); g.player.x = o.inner ? o.inner.x : o.x; g.player.y = o.inner ? o.inner.y : o.y + 1; g.interact('use', o.id); assert.equal(g.areaId(), pentagonArenaId(P.base));
+    const b = g.enemies.find((e) => e.pentFinaleBeast && !e.dead); b.hp = 0; b.dead = true; g.defeatEnemy(b); assert.ok(H.pentArenaWon);
+    assert.equal(fromCompletion(g).length, 1, `${label}: the Stillworks win pays no second`); assert.deepEqual(fromCompletion(g)[0], glyph);
+    const r = new Game(migrateSave(JSON.parse(JSON.stringify(reload(g).save))), 0); assert.equal(fromCompletion(r).length, 1); }
+  // not early: a Regent still standing (nothing recorded), or a post-750 record (the wall opened: pentArena, the Stillworks to win)
+  const P = pentagonPlan(SEED, cx, cy, 1), s = freshSave(); s.seed = SEED; s.consequences.dungeons[`${P.base}:f1`] = { discovered: true, visits: 2 };
+  assert.deepEqual(pentagonsDue(s), []); assert.equal(fromCompletion(new Game(s, 0)).length, 0);
+  const t = freshSave(); t.seed = SEED; t.consequences.dungeons[`${P.base}:f1`] = { pentArena: 1, regentGrade: 'regent' }; t.consequences.dungeons[pentagonVaultId(P)] = { guardianDefeated: true };
+  assert.deepEqual(pentagonsDue(t), []); assert.equal(fromCompletion(new Game(t, 0)).length, 0);
 });

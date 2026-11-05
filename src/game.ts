@@ -6442,10 +6442,10 @@ export class Game {
   // for a Pentagon finished before), and laid over the vault from then on (pentagonFinaleIn). Returns the opening, or null.
   openPentagonFinale() {
     const B = this.map?.building; if (!B?.pentagon || !B.vault) return null;
-    this.payPentagonComplete(B.base); // a walkway Pentagon (its Regent fell before the Stillworks) is complete; paid once if not yet
     const F = PENTAGON.finale, H = dungeonHistory(this.save, `${B.base}:f1`), was = !!H.pentFinale; let o = this.map.objects.find((q) => q.kind === "pentFinaleWall");
-    if (was && o) return o;
     if (!was && H.pentArena === undefined) H.pentArena = PENTAGON_ARENA.version; // from release 751 the opened wall leads to the Stillworks first (pentagon-arena.ts); a walkway opened before keeps its way
+    this.payPentagonComplete(B.base); // a walkway Pentagon (its Regent fell before the Stillworks) is complete; paid once if not yet. After `pentArena`, so a Regent falling now is never taken for one fallen before release 750 (pentagon.ts pentagonFellEarly)
+    if (was && o) return o;
     if (!o) o = pentagonFinaleIn(this.save, this.areaId(), this.map, true); if (!o) return null;
     H.pentFinale = F.version; journalOnce(this.save, `pentagon-finale:${B.base}`, F.messages.opens, PENTAGON.name);
     this.shortcutBurst = { x: o.x, y: o.y, t0: null, life: F.burst }; (this.questNotices ||= []).push({ title: F.notice, detail: F.detail, kind: "discovery" });
