@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 774 — **The Crossing Sigil is a sure way out.** It works anywhere you're alive: out of labyrinths, the Pentagon and the Stillworks, boss fights, the Rite of Ascendancy (that attempt is lost; the tree stays), the Deep, the Listener's Hall, the Skylands, dives and displacements, and on across the corridor to a Wayglass you choose. Unfinished dungeon boss fights start again, Gate Revenants stay behind, nothing you carry is lost, and you always land on safe ground.
 - Release 773 — **The story budget.** Thread pieces now hold one steady density, about one crossing in eight, from the Refuge out past 1000 in crossings entered from now on; later stories share that roll instead of adding new ones, so the world never fills up with them. Crossings already entered keep what they offered.
 - Release 772 — **Terrace Springs.** A new region of white stone steps with turquoise pools, steaming hot springs ringed in orange and gold, and sometimes a cache at the top. Every step is one level to climb. Landscape 21; explored ground unchanged.
 - Release 771 — **The Toolmaker's Handles.** A new story of six wooden handles lies in crossings of the middle country: in a year when the iron did not come, a village toolmaker went on making handles, and the handles went on working. The last handle writes its ending in the Journal, and the Reciter's Tome keeps it as a book. Only crossings that held no story can hold a handle, so no crossing changes what it offered.
