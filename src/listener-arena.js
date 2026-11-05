@@ -13,7 +13,7 @@ export const LISTENER_ARENA = { size: 32, radius: 13, inner: 3.6, band: 8, pylon
 
 // The dais shows only while the Listener is due (at the current Mouth, after a first Listener; with the seals of releases
 // 375-759 only once they are broken). Defined in far-array.ts with the rest of the Listener's cycle (LISTENER_CYCLE).
-export { daisDue } from "./far-array.js?v=r770-9899db3b2b7b";
+export { daisDue } from "./far-array.js?v=r772-32d768cda137";
 export const isArenaRun = (id) => /^far-array:.*:arena\d+$/.test(String(id || ""));
 
 export function generateListenerArena(seed, id) {

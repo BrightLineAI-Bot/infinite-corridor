@@ -12,10 +12,10 @@
 // The Thornglass Caldera (the Questing Beast's): black basalt round a smooth fighting floor, ringed by crystals as tall as towers
 // that have burst out of the rock, with a river of lava beyond them crossed by four causeways, one to each gate, and lava pools
 // in the corners. Nothing lives there but its beast.
-import { hashSeed } from "./random.js?v=r770-9899db3b2b7b";
-import { FAR_DOMAINS } from "./far-realms.js?v=r770-9899db3b2b7b";
-import { valueNoise } from "./landscape.js?v=r770-9899db3b2b7b";
-import { DOMAIN_LOOKS, domainKinds } from "./domain-looks.js?v=r770-9899db3b2b7b";
+import { hashSeed } from "./random.js?v=r772-32d768cda137";
+import { FAR_DOMAINS } from "./far-realms.js?v=r772-32d768cda137";
+import { valueNoise } from "./landscape.js?v=r772-32d768cda137";
+import { DOMAIN_LOOKS, domainKinds } from "./domain-looks.js?v=r772-32d768cda137";
 
 export const THORNGLASS = {
   floor: 7, // radius of the smooth fighting floor

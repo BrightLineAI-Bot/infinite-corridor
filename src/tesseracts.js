@@ -26,7 +26,7 @@
 //
 // Save (additive, schema 14): save.tesseracts = { owned: [{ uid, kind, grade, name, lines: [{ k, v, bad }], from, roll? }], slots:
 // [uid|null ×3], seq, got: { <source>: true }, echo: glyphs ever set (once any is) }. Rolls are hashes of the seed and the source, so a source gives its glyph once.
-import { hashSeed } from "./random.js?v=r770-9899db3b2b7b";
+import { hashSeed } from "./random.js?v=r772-32d768cda137";
 
 export const TESSERACTS = {
   version: 1, slots: 3, keep: 60, dust: 3, // owned at most `keep`; shattering one gives `dust` glyph dust

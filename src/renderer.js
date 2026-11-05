@@ -1,34 +1,34 @@
-import { FAR_FOLK } from "./far-realms.js?v=r770-9899db3b2b7b";
-import { astralBeamAnchors } from "./astral-worm.js?v=r770-9899db3b2b7b";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r770-9899db3b2b7b";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r770-9899db3b2b7b";
-import { enemyMeleeGeometry } from "./combat.js?v=r770-9899db3b2b7b";
-import { ruleRows } from "./elders.js?v=r770-9899db3b2b7b";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r770-9899db3b2b7b";
-import { BOAT } from "./boats.js?v=r770-9899db3b2b7b";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r770-9899db3b2b7b";
-import { isMarineTile } from "./world-beasts.js?v=r770-9899db3b2b7b";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r770-9899db3b2b7b"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r770-9899db3b2b7b";
-import { setTreeSeason } from "./landscape-render.js?v=r770-9899db3b2b7b";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r770-9899db3b2b7b";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r770-9899db3b2b7b";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r770-9899db3b2b7b";
-import { TREES } from "./trees.js?v=r770-9899db3b2b7b";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r770-9899db3b2b7b";
-import { KIT_MOVES } from "./boss-kit.js?v=r770-9899db3b2b7b";
-import { SKY_DISCS } from "./skylands.js?v=r770-9899db3b2b7b"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r770-9899db3b2b7b";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r770-9899db3b2b7b"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r770-9899db3b2b7b"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r770-9899db3b2b7b"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r770-9899db3b2b7b"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r770-9899db3b2b7b"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r770-9899db3b2b7b";
-import { drawRelayNode } from "./relay-network.js?v=r770-9899db3b2b7b";
-import { structureOccupancy } from "./world.js?v=r770-9899db3b2b7b";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r770-9899db3b2b7b";
-import { HOLE_DROPS, holeDrops } from "./labyrinths.js?v=r770-9899db3b2b7b";
+import { FAR_FOLK } from "./far-realms.js?v=r772-32d768cda137";
+import { astralBeamAnchors } from "./astral-worm.js?v=r772-32d768cda137";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r772-32d768cda137";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r772-32d768cda137";
+import { enemyMeleeGeometry } from "./combat.js?v=r772-32d768cda137";
+import { ruleRows } from "./elders.js?v=r772-32d768cda137";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r772-32d768cda137";
+import { BOAT } from "./boats.js?v=r772-32d768cda137";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r772-32d768cda137";
+import { isMarineTile } from "./world-beasts.js?v=r772-32d768cda137";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r772-32d768cda137"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r772-32d768cda137";
+import { setTreeSeason } from "./landscape-render.js?v=r772-32d768cda137";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r772-32d768cda137";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r772-32d768cda137";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r772-32d768cda137";
+import { TREES } from "./trees.js?v=r772-32d768cda137";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r772-32d768cda137";
+import { KIT_MOVES } from "./boss-kit.js?v=r772-32d768cda137";
+import { SKY_DISCS } from "./skylands.js?v=r772-32d768cda137"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r772-32d768cda137";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r772-32d768cda137"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r772-32d768cda137"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r772-32d768cda137"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r772-32d768cda137"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r772-32d768cda137"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r772-32d768cda137";
+import { drawRelayNode } from "./relay-network.js?v=r772-32d768cda137";
+import { structureOccupancy } from "./world.js?v=r772-32d768cda137";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r772-32d768cda137";
+import { HOLE_DROPS, holeDrops } from "./labyrinths.js?v=r772-32d768cda137";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1137,6 +1137,7 @@ export function drawThreadRelic(ctx, o, s, now) {
     case "spool": R(-.12, -.18, .24, .05); R(-.12, .13, .24, .05); ctx.fillStyle = "#c8a0b8"; ctx.fillRect(-s * .08, -s * .13, s * .16, s * .26); ctx.strokeStyle = "#7a5070"; for (let y2 = -.11; y2 < .12; y2 += .045) { ctx.beginPath(); ctx.moveTo(-s * .08, y2 * s); ctx.lineTo(s * .08, (y2 + .02) * s); ctx.stroke(); } break; // release 712
     case "mirror": ctx.beginPath(); ctx.moveTo(-s * .16, -s * .12); ctx.lineTo(s * .02, -s * .2); ctx.lineTo(s * .17, -s * .02); ctx.lineTo(s * .06, s * .18); ctx.lineTo(-s * .14, s * .1); ctx.closePath(); ctx.fillStyle = "#b8d0e0"; ctx.fill(); ctx.stroke(); ctx.strokeStyle = "#ffffffaa"; ctx.beginPath(); ctx.moveTo(-s * .08, -s * .08); ctx.lineTo(s * .04, -s * .13); ctx.stroke(); break; // release 712
     case "jar": R(-.13, -.12, .26, .3); ctx.fillStyle = "#f4e2b0"; R(-.15, -.19, .3, .07); ctx.fillStyle = "#fff4d0aa"; ctx.fillRect(-s * .08, -s * .07, s * .04, s * .18); break; // the Beekeeper's Jars (2026-11-04): a honey jar under a wax lid
+    case "handle": ctx.rotate(-.5); ctx.beginPath(); ctx.moveTo(-s * .03, -s * .22); ctx.quadraticCurveTo(s * .045, 0, -s * .025, s * .22); ctx.lineTo(s * .035, s * .22); ctx.quadraticCurveTo(s * .085, 0, s * .03, -s * .22); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeStyle = "#2a241c88"; for (const y2 of [.1, .14, .18]) { ctx.beginPath(); ctx.moveTo(-s * .02, y2 * s); ctx.lineTo(s * .045, (y2 - .015) * s); ctx.stroke(); } break; // the Toolmaker's Handles (2026-11-05): a worn wooden handle with no tool on it, a grip worn into its foot
     case "compass": ctx.beginPath(); ctx.arc(0, 0, s * .16, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#b03a2e"; ctx.beginPath(); ctx.moveTo(0, -s * .12); ctx.lineTo(s * .04, 0); ctx.lineTo(-s * .04, 0); ctx.fill(); break;
     default: ctx.beginPath(); ctx.moveTo(-s * .18, s * .14); ctx.quadraticCurveTo(-s * .2, -s * .16, s * .02, -s * .18); ctx.quadraticCurveTo(s * .22, -s * .1, s * .12, s * .1); ctx.quadraticCurveTo(0, s * .2, -s * .18, s * .14); ctx.fill(); ctx.stroke(); // a shell
   }
