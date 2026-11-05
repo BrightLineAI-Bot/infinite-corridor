@@ -1786,7 +1786,7 @@ const RUN = {
     e.dragonAir = D.height; e.dragonCharge = Math.min(1, (A.active - s.t) / D.gather); s.tele = { type: "ring", radius: D.radius };
     if (!s.data.burst && A.active - s.t >= D.gather) { s.data.burst = true; const p = center(w.player);
       w.addEffect({ kind: "dragonNova", owner: e.id, x: e.x, y: e.y, radius: D.radius, arming: 0, life: .9, total: .9, damage: 0 });
-      if (distance(p, e) <= D.radius) w.hurt(e, Math.ceil((w.playerMaxHp?.() || 200) * D.lethal), { jumpable: false, source: "dragonSupernova", piercing: true }); }
+      if (distance(p, e) <= D.radius && !w.sunfallShaded?.(e)) w.hurt(e, Math.ceil((w.playerMaxHp?.() || 200) * D.lethal), { jumpable: false, source: "dragonSupernova", piercing: true }); } // sunfallShaded: the Stillworks' pillars (pentagon-arena.ts cover); elsewhere there is no such hook
     if (s.t <= 0) { e.aloft = false; e.untargetable = false; e.dragonAir = 0; e.dragonCharge = 0; s.tele = null; e.dragonPose = "land"; toPhase(s, "recover", A.recover); }
   },
   doomBeam(e, s, w) {
