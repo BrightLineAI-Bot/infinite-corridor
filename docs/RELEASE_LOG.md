@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 757, the next is **758**.
+Taken at merge time: `main`'s release + 1 (see above). After 758, the next is **759**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 757 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle: the Mouth holds the Listener until the Gate unlocks; then 5 relays, new Mouth; old Mouth becomes a town and Descent | In flight. |
+| 758 | Claude | `claude/dreamy-rubin-yn6q2p` | Great trees you can climb: platforms drawn where walked, crown veiled until you climb, straighter hops; landscape 18 trees | In flight. |
+| 757 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle: the Mouth holds the Listener until the Gate unlocks; then 5 relays, new Mouth; old Mouth becomes a town and Descent | Merged (#405). Published as r757-4ff9a5914432 on 2026-11-05. |
 | 756 | Claude | `claude/dreamy-rubin-yn6q2p` | A Tesseract for every Pentagon (Hollow grade for v1–v2); the Orrery's first orb | Merged (#404). Published as r756-60d888795acd on 2026-11-05. |
 | 755 | Claude | `claude/dreamy-rubin-yn6q2p` | Restores the Crimson Tyrant's lava hooks (pre-publish review blocker in 754) | Merged (#403). Published as r755-c3a9aa62bf91 on 2026-11-05. |
 | 754 | Claude | `claude/dreamy-rubin-yn6q2p` | The Stillworks (Pentagon finale arena; Tyrant, Doom Chaser, Void Walker, Astral Worm or the Gloomvast) and the Gloomvast ghost finale with the Dark | Merged (#402). |
@@ -143,6 +144,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 757, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 757 | `r757-4ff9a5914432` | 2026-11-05 | Fable review (756→757): no blockers. The Listener's cycle (#405). |
 | 756 | `r756-60d888795acd` | 2026-11-05 | Fable review (755→756): no blockers. A Tesseract for every Pentagon (Hollow for v1–v2); the Orrery's first orb (#404). |
 | 755 | `r755-c3a9aa62bf91` | 2026-11-05 | Fable review (739→754): one blocker (754 swallowed the Tyrant's lava hooks), fixed in 755; Fable review 754→755: no blockers. 740 player/resume fixes through 755 (Viewport Closed, haunt curses, Pentagon lore/shortcuts/finale/roof/Stillworks/Gloomvast, turtle shell, roof exits, roofs and height, mounts, dig gates, mounted lava and drone fizzle, Imbue Weapon, Sunburst Ricochet, the Aether Orrery). |
 | 739 | `r739-0b5b1c12e64a` | 2026-11-04 | Fable review (735→739): no blockers. 736 dungeon coherence (#384, with the agent team), 737 world coherence (#385), 738 smaller saves/faster loads (#386), 739 combat balance and doubled Fracture Warden damage (#387). |
