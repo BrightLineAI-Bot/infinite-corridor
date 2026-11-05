@@ -1061,12 +1061,15 @@ function drawTreeBoughs(ctx, c, C, s, sway, tiles, w, box) {
 // The crown veil (Tim, 2026-11-05: "the skyway door at the top should not be visible from the ground... once you're high enough
 // that the ground beneath starts to become obscured, the gate starts to become visible"). From the ground the door tree's crown,
 // its door and its Crown Rest lie under a mass of leaves; the mass thins as the Wayfarer climbs, from the height the sky
-// begins to show (SKY.from, where the ground starts to fade) to `below` levels under the crown, where it is gone. Drawn after
+// begins to show to `below` levels under the crown, where it is gone. Since the tall spires came back (Tim accepted "about
+// halfway up") it starts thinning `from` of the way up the climb (never below SKY.from, where the ground starts to fade), not at
+// SKY.from itself, and is gone `below` levels under the crown whatever the tree's height (a 48-level spire's veil had gone by
+// level 20, under halfway). Rendering only. Drawn after
 // everything on the crown, only while it still has any alpha; a dozen arcs, no state, still under reduced motion.
-export const CROWN_VEIL = { below: 2, leaves: 12, pad: .5, rise: 1.3, leaf: .62, grow: .18 }; // pad: tiles past the crown's sides; rise: tiles above its top; leaf: a leaf mass's radius in tiles, every third one `grow` larger
+export const CROWN_VEIL = { from: .5, below: 2, leaves: 12, pad: .5, rise: 1.3, leaf: .62, grow: .18 }; // pad: tiles past the crown's sides; rise: tiles above its top; leaf: a leaf mass's radius in tiles, every third one `grow` larger
 // Does this object stand in the strip a great tree's trunk is drawn up (its columns, from its foot to its drawn crown)?
 export function behindGreatTrunk(cn, o) { for (const tr of cn.trees || [cn]) { if (o.x + .5 >= tr.x0 - .3 && o.x + .5 <= tr.x0 + tr.size + .3 && o.y < tr.y0 + tr.size && o.y >= tr.y0 - discLift(tr.top) * CANOPY_LIFT - 1) return true; } return false; }
-export function crownReveal(height, top) { const from = SKY.from, full = Math.max(from + 1, Math.min(SKY.full, top - CROWN_VEIL.below)); return Math.max(0, Math.min(1, (height - from) / (full - from))); }
+export function crownReveal(height, top) { const from = Math.max(SKY.from, top * CROWN_VEIL.from), full = Math.max(from + 1, top - CROWN_VEIL.below); return Math.max(0, Math.min(1, (height - from) / (full - from))); }
 function drawCrownVeil(ctx, c, s, now, alpha, still) {
   const look = c.look != null ? TREES.looks[c.look] : null, leaf = (SEASON && SEASONS.canopy[SEASON]) || (look ? look.leaf : CANOPY_LOOK.leaf), V = CROWN_VEIL;
   const x0 = (c.x0 - V.pad) * s, x1 = (c.x0 + c.size + V.pad) * s, topY = c.y0 * s - discLift(c.top) * CANOPY_LIFT * s, y0 = topY - V.rise * s, y1 = topY + (c.size + .4) * s, sway = still ? 0 : Math.sin(now / 1900) * s * .04;
