@@ -30,7 +30,8 @@ test('leaving the crown opens the glider: no harm, a slow descent, steered freel
   for (let i = 0; i < 20; i++) { t += 50; g.update(.05, stick(dx, dy), t); }
   assert.ok(g.glide && g.glide.z < z0 && z0 - g.glide.z <= GLIDE.sink * 1.1 + .01, 'sinking slowly');
   let sections = 0, last = `${g.rx},${g.ry}`;
-  for (let i = 0; i < 200 && g.glide && !sections; i++) { t += 50; g.enemies = []; g.update(.05, stick(dx, dy), t); if (`${g.rx},${g.ry}` !== last) { sections++; last = `${g.rx},${g.ry}`; } } // 672: over the edge, then make for land
+  const [sx, sy] = dy < 0 ? [-1, 0] : [dx, dy]; // Tim (2026-11-05): no gliding north inside a great tree's window (vehicle-gates.ts TREE_GLIDE.window), so a glide off the crown's north side heads west to the edge
+  for (let i = 0; i < 200 && g.glide && !sections; i++) { t += 50; g.enemies = []; g.update(.05, stick(sx, sy), t); if (`${g.rx},${g.ry}` !== last) { sections++; last = `${g.rx},${g.ry}`; } } // 672: over the edge, then make for land
   // Then home to the nearest open ground (release 672: landscape version 14 grows more trees, so the tree found here may stand by the
   // sea; a glide that comes down over deep water now lands in it, as 641 intends, so the test steers for dry ground).
   const dry = () => g.map.tiles.filter((q) => !q.blocked && !q.canopy && !/water|ocean|shallows|lava|mire|pool|bog|river|void|abyss|chasm/i.test(q.kind)).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y))[0];

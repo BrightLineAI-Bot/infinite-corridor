@@ -35,7 +35,7 @@ import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY, isSeaKind } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
@@ -197,6 +197,17 @@ export const GLIDE = { minDrop: 4, sink: 1.5, speed: 4.6, steer: 3.2, skim: .35,
   found: "Caught in the crown's highest fork: a glider of leaf and vine, light as a held breath. Leave the crown of a great tree and it will carry you down.",
   open: "The leaf glider opens. Steer where you will; Jump folds it again.", shut: "You fold the glider and drop like a stone.", falling: "Falling! Jump to open the glider.", skimming: "Nothing to land on below: the glider holds above it.", land: "You come down out of the sky.",
   noClimb: "The ground ahead stands higher than you fly: a glider only ever carries you down." }; // noClimb (Tim, 2026-11-05: "you should not be able to take the glider up"): a glide never gains height
+// TREE_GLIDE.home: where a death after a glide from the crown wakes you: the crown tile nearest its middle that is neither the door nor the
+// Crown Rest (so waking there neither opens the door nor moves your rest point), as a player position. Null without a crown.
+export function crownSpot(map) {
+  const top = map?.canopy?.top, tiles = map?.tiles; if (!top || !tiles) return null;
+  const gate = (map.objects || []).find((o) => o.kind === "canopyGate"), rest = (map.objects || []).find((o) => o.kind === "crownRest");
+  const crown = tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top); if (!crown.length) return null;
+  const mx = crown.reduce((a, t) => a + t.x, 0) / crown.length, my = crown.reduce((a, t) => a + t.y, 0) / crown.length;
+  const free = crown.filter((t) => !(gate && t.x === gate.x && t.y === gate.y) && !(rest && Math.hypot(t.x - rest.x, t.y - .2 - rest.y) <= .9)), pool = free.length ? free : crown; // .9: touchCrownRest's reach
+  const t = pool.sort((a, b) => (Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my)) || (a.y - b.y) || (a.x - b.x))[0];
+  return { x: t.x, y: t.y - .2 };
+}
 export const PASS_CLEAR = .25; // release 643: how far past a body a projectile must be before its next pass counts as a new hit
 export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree's crown a fall still opens the glider (637)
 export const CHASM = { version: 1, chance: .2, /* release 672: was .12; rolled once, at a crossing's first entry, and kept */ keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
@@ -2153,6 +2164,7 @@ export class Game {
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
 
+    { const q = s.playerRuntime.glideHome; this.glideHome = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) && [q.x, q.y].every(Number.isFinite) ? { rx: q.rx, ry: q.ry, x: q.x, y: q.y } : null; } // TREE_GLIDE.home
     { const q = s.playerRuntime.droneLift; this.droneLift = q && s.area === "overworld" && ["base", "z", "vz"].every((k) => Number.isFinite(Number(q[k]))) ? { base: Number(q.base), z: Number(q.z), vz: Number(q.vz) } : null; } // release 647: after loading the area, which clears a lift
     for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
   }
@@ -2635,7 +2647,7 @@ export class Game {
     this.season = null; // release 679: set again below for a section of the woods
     this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (snapshotArea ends it too)
     if (capture) this.snapshotArea();
-    if (area !== "overworld") this.glide = null; // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
+    if (area !== "overworld") { this.glide = null; this.glideHome = null; } // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
     this.affixHazards = []; // release 657
 
     this.droneLift = null; // release 647: a booster lift never carries over a change of area or section
@@ -3121,6 +3133,7 @@ export class Game {
         ...this.resumeRuntime(clock), // release 736 (F6/F7/S8, C13): statuses, timers, the rite and the skiff's way
         droneLift: this.droneLift && this.area === "overworld" ? { base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz } : null, // release 647: a lift resumes in the air
         glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null } : null, // release 635: a glide resumes in the air
+        glideHome: this.glideHome && this.area === "overworld" ? { ...this.glideHome } : null, // TREE_GLIDE.home: the great tree a glide from its crown wakes you on
         hp: this.player.hp,
         stamina: this.player.stamina,
         facing: this.player.facing,
@@ -3185,7 +3198,7 @@ export class Game {
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
-    this.glide = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.ledgeHint = null; this.poisonSoak = 0;
+    this.glide = null; this.glideHome = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
     this.endGloomDarks(); // the Gloomvast's Dark ends with a death or a journey by Wayglass
@@ -3364,7 +3377,8 @@ export class Game {
   }
   recoverFromDeath(now = 0, input = null) {
     const p = this.player,
-      before = this.save.consumables.restorativeDraught || 0;
+      before = this.save.consumables.restorativeDraught || 0, home = this.area === "overworld" ? this.glideHome : null; // TREE_GLIDE.home
+    this.glideHome = null;
     if (this.area !== "dungeon") stalkerPlayerFell(this.save); // release 678: it lets the fallen go
     stopRide(this.save); // release 748: death gets you down; the mount stays stabled with its time
     this.captureLastDeath();
@@ -3410,13 +3424,16 @@ export class Game {
       this.message = stars + (deep ? `Felled — recovered at the central anchor of ${this.map.name}. Cleared wings, shortcuts, carried items, XP, and map progress remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}` : `Felled — returned to the entrance of ${this.map.name}. The run begins again; your map and everything carried remain.${before < 2 ? " Restorative draughts replenished to 2." : ""}`);
     } else {
       const c = this.safeCheckpoint(); // release 734
+      const crown = !!home && this.wakeOnCrown(home, now); // TREE_GLIDE.home
+      if (!crown) {
       this.rx = c.rx;
       this.ry = c.ry;
       this.loadArea("overworld");
       p.x = c.x;
       p.y = c.y;
+      }
       p.invulnerableUntil = now + 2000;
-      this.message = `Felled — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+      this.message = `Felled — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     }
     this.sync();
     return true;
@@ -4071,9 +4088,15 @@ export class Game {
   // Release 635: one frame of the glide. Returns "crossed" when it carried the Wayfarer into the next section.
   glideStep(x, y, dt, now) {
     const G = GLIDE, p = this.player, g = this.glide, width = mapWidth(this.map, this.area);
-    const sp = g.open === false ? G.dropSpeed : G.speed; g.vx += (x * sp - g.vx) * Math.min(1, G.steer * dt); g.vy += (y * sp - g.vy) * Math.min(1, G.steer * dt);
+    // Tim (2026-11-05): by a great tree north is up the tree on screen, so inside its window (vehicle-gates.ts TREE_GLIDE.window) a
+    // glide cannot go north: the stick's north and the glide's own northward way are dropped. Never while it is held skimming.
+    const lockN = !(g.pinned && TREE_GLIDE.window.skimFree) && treeGlideWindowAt(this.map, p.x, p.y); if (lockN && y < 0) y = 0;
+    const sp = g.open === false ? G.dropSpeed : G.speed; g.vx += (x * sp - g.vx) * Math.min(1, G.steer * dt); g.vy += (y * sp - g.vy) * Math.min(1, G.steer * dt); if (lockN && g.vy < 0) g.vy = 0;
     if (Math.abs(x) > .15 || Math.abs(y) > .15) p.facing = Math.abs(x) > Math.abs(y) ? (x < 0 ? "left" : "right") : (y < 0 ? "up" : "down");
-    const tall = (px, py) => { const t = tileUnder(this.map, width, px, py); return !!t && t.blocked && !DEEP_WATER.includes(t.kind) && (t.elev || 0) >= g.z - .5; }; // release 672: deep water never walls a glide in
+    // A blocked tile no higher than the blocked one the glide already holds over is no wall to it (it skims on across a roof or a field
+    // of rock to the edge, instead of hanging there for ever, which also keeps the tree window's skimFree escape open).
+    const over = tileUnder(this.map, width, p.x, p.y), base = over?.blocked && !DEEP_WATER.includes(over.kind) ? (over.elev || 0) : -Infinity;
+    const tall = (px, py) => { const t = tileUnder(this.map, width, px, py); return !!t && t.blocked && !DEEP_WATER.includes(t.kind) && (t.elev || 0) >= g.z - .5 && (t.elev || 0) > base; }; // release 672: deep water never walls a glide in
     const z0 = g.z, rises = (px, py) => elevationAt(this.map, width, px, py) > z0 + 1e-6; // Tim (2026-11-05): a glide never climbs: ground higher than it is a wall to it
     let nx = p.x + g.vx * dt, ny = p.y + g.vy * dt;
     // Tim (2026-11-05): "You should die if you're on a glider and you try to go over the Pentagon... You can't glide onto its roof or
@@ -4097,11 +4120,11 @@ export class Game {
       return "crossed"; }
     p.x = nx; p.y = ny; p.walkPhase = 0;
     const ground = elevationAt(this.map, width, p.x, p.y), here = tileUnder(this.map, width, p.x, p.y);
-    if (g.z > ground + .05) return "flying";
+    if (g.z > ground + .05) { if (g.pinned && g.z > ground + G.skim + .01) g.pinned = false; return "flying"; }
     // Release 641 (Tim: "if you glide out over open sea... if you don't have the Tidemantle, you're just going to die"): it comes down
     // on water, lava or ground alike (the ordinary hazards then apply); only a wall or anything blocked holds it up.
     const hazard = footprintHazard(this.map, width, p.x, p.y), sea = !!here && DEEP_WATER.includes(here.kind), fit = (sea || !here?.blocked) && (footprintOpen(this.map, width, p.x, p.y) || !!hazard || sea); // release 672: blocked deep water too (it held the glide over it for ever)
-    if (!fit) { g.z = Math.max(g.z, Math.min(z0, ground + G.skim)); if (!g.told) { g.told = true; this.message = G.skimming; } return "flying"; } // held above, never lifted (Tim, 2026-11-05)
+    if (!fit) { g.z = Math.max(g.z, Math.min(z0, ground + G.skim)); g.pinned = true; if (!g.told) { g.told = true; this.message = G.skimming; } return "flying"; } // held above, never lifted (Tim, 2026-11-05)
     const fell = g.open === false ? Math.max(0, (g.fallFrom ?? g.z) - ground) : 0; this.glide = null; this.skyAir = null;
     if (fell > 1) { const hurt = fallDamage(Math.round(fell), this.save.maxHp); if (hurt === Infinity) { p.hp = 0; this._fatalFallPending = true; this.message = `The Wayfarer falls ${Math.round(fell)} levels.`; } else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); this.message = `A hard landing: ${Math.round(fell)} levels down.`; } }
     else this.message = G.land; return "landed";
@@ -4113,6 +4136,20 @@ export class Game {
     if (nx >= -.2 && nx <= SECTION_SIZE - .8 && ny >= -.2 && ny <= SECTION_SIZE - .9) { p.x = nx; p.y = ny; }
     this.glide = null; this.skyAir = null; p.hp = 0; this._fatalFallPending = true; this.message = F.message;
     journalOnce(this.save, F.journal, F.message, "The glider"); return "landed";
+  }
+  // TREE_GLIDE.home (Tim, 2026-11-05): a glide launched at the height of this section's great-tree crown remembers the tree (its
+  // section and the crown spot a death wakes you on); a glide begun anywhere lower remembers nothing. Runtime, saved for exact resume.
+  treeGlideHome(launch) {
+    const c = this.area === "overworld" ? this.map?.canopy : null; if (!c?.top || !(Number(launch) >= c.top - TREE_GLIDE.home.crownWithin)) return null;
+    const s = crownSpot(this.map); return s ? { rx: this.rx, ry: this.ry, x: s.x, y: s.y } : null;
+  }
+  // The death after such a glide: the tree's section is loaded (wherever the glide had carried you) and the Wayfarer stands on its
+  // crown. False (nothing placed) when that section has no crown to stand on; the caller then uses the active rest point.
+  wakeOnCrown(home, now) {
+    this.rx = home.rx; this.ry = home.ry; this.loadArea("overworld", false);
+    const c = this.map?.canopy, w = mapWidth(this.map, this.area), t = c?.top ? this.map.tiles[Math.floor(home.y + .75) * w + Math.floor(home.x + .5)] : null;
+    const s = t && t.kind === "canopyTrunk" && t.elev === c.top ? { x: home.x, y: home.y } : crownSpot(this.map); if (!s) return false;
+    this.player.x = s.x; this.player.y = s.y; this.lastCrownAt = now; return true;
   }
   // Release 647: one frame of the drone's booster (DRONE_LIFT). `droneLift` is { base, z, vz } in levels. While it lasts the jump
   // lasts, and `skyAir` is its height, so the move rules carry the Wayfarer over lower ground and onto ground no more than a level
@@ -4187,7 +4224,7 @@ export class Game {
   // The recovery after a fall (moved here from update by release 329, unchanged): beasts reset for a fresh duel, the
   // Wayfarer wakes at the active checkpoint.
   resolveDeath(now, input, fellIntoHazard = false, terrainHazard = null) {
-    const p = this.player;
+    const p = this.player, home = this.area === "overworld" ? this.glideHome : null; this.glideHome = null; // TREE_GLIDE.home: read before the carried states clear
     // Release 423 (Tim: "the world bosses... keep their health when you die... it only resets after they die"): a living beast's
     // wounds are kept, as a share of its health, on its hunt record; it comes back that hurt (BEAST_KEEPS_WOUNDS).
     for (const e of this.enemies) if (!e.dead && e.maxHp > 0 && (e.worldBeast || e.questingBeast)) { const q = e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active; if (q) q.hpShare = Math.max(.01, Math.min(1, e.hp / e.maxHp)); }
@@ -4244,13 +4281,16 @@ export class Game {
     input.reset?.();
     if (walk) { const e = this.map.entry || { x: 1, y: 7 }; p.x = e.x; p.y = e.y; p.invulnerableUntil = now + 2000; this.fallen = null; this.snapshotArea(); this.message = `${PENTAGON.finale.messages.fell}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; return; } // the same floor, at the walkway's start, beside the doorway back
     this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
+    const crown = !!home && this.wakeOnCrown(home, now); // TREE_GLIDE.home: a glide from a great tree's crown wakes you back on that crown
+    if (!crown) {
     this.rx = c.rx;
     this.ry = c.ry;
     this.loadArea("overworld", false);
     p.x = c.x;
     p.y = c.y;
+    }
     p.invulnerableUntil = now + 2000;
-    this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — recovered at ${c.name || "checkpoint"}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+    this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     if (beastNote) this.message = `${beastNote} ${this.message}`;
 
   }
@@ -6283,6 +6323,7 @@ export class Game {
   // point you wake at, and keeps it among your rest points.
   touchCrownRest() {
     const o = this.map.objects.find((q) => q.kind === "crownRest"), p = this.player; if (!o || Math.hypot(p.x - o.x, p.y - o.y) > .9) return false;
+    { const w = mapWidth(this.map, this.area), at = this.map.tiles[o.y * w + o.x], under = tileUnder(this.map, w, p.x, p.y); if (at && under && (under.elev || 0) !== (at.elev || 0)) return false; } // only on the crown itself (TREE_GLIDE): not from the ground or a branch just beside it
     const c = this.save.activeCheckpoint; if (c && c.rx === this.rx && c.ry === this.ry && c.x === o.x && c.y === o.y) return false;
     this.save.activeCheckpoint = { rx: this.rx, ry: this.ry, x: o.x, y: o.y, name: o.keepRest ? "Keep Rest" : "Crown Rest", crown: true }; (this.save.checkpoints ||= {})[`${this.rx},${this.ry}`] = this.save.activeCheckpoint;
     this.message = o.keepRest ? "The keep's crown is yours: you will wake here if you fall." : "The crown hums under your feet: the great tree will hold you here if you fall."; return true;
@@ -7406,7 +7447,7 @@ export class Game {
       // falling or gliding, Jump opens or folds the glider; mid-jump, high enough over what is below, it opens one.
       const width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0);
       if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) g.fallFrom = g.z; this.message = g.open ? GLIDE.open : GLIDE.shut; }
-      else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.skyAir = null; this.message = GLIDE.open; }
+      else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.message = GLIDE.open; }
       else if (now < this.jumpUntil && this.area === "overworld" && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
@@ -7507,6 +7548,7 @@ export class Game {
     if(terrainHazard==="lava"&&this.mountRide())terrainHazard=null;/* mounted lava (Tim, 2026-11-04): "if you go into lava, it's not an instant kill, it's like a two-second kill"; the burn is settled at the frame's end (MOUNT_RIDE.lavaSeconds) */
     if(sailing){terrainHazard=null;this.swimming=false}else if(this.robotPutsToSea(nx,ny,width,terrainHazard))terrainHazard=null;else if(this.swimsHere(terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message=this.mechUp()?"The robot seals and wades on through the water.":"The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
     const fellIntoHazard=!!terrainHazard&&!aerial;this._fatalFall=!!this._fatalFallPending;this._fatalFallPending=false;/* release 609; 615: a raft drop */
+    if (this.glideHome && !gliding && !this.glide && p.hp > 0 && !fellIntoHazard && !this._fatalFall) this.glideHome = null; // TREE_GLIDE.home: the first frame stood on (or swum in) alive after a glide from the crown ends it
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?(tileUnder(this.map,width,nx,ny)?.chasm?(this.fellStars=true,"The Wayfarer steps off the edge and falls away into the stars."):"The ledge gives way beneath the Wayfarer."):"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {
@@ -7521,7 +7563,7 @@ export class Game {
       p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
       let fallStart = this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;
       const finishFall = (height) => {
-        const raw0 = fallStart - height; if (this.save.glider && !this.glide && raw0 >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && !this.liftDrop) { /* release 669: a long fall is a freefall with the drone out too (the drone has Jump in a jump; the glider in a freefall); a drop off your own booster is a fall */ this.glide = { z: fallStart, vx: 0, vy: 0, open: false, fallFrom: fallStart, told: false }; this.message = GLIDE.falling; return; } // release 641: a long fall is a freefall: Jump opens the glider // release 635: the glider opens
+        const raw0 = fallStart - height; if (this.save.glider && !this.glide && raw0 >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && !this.liftDrop) { /* release 669: a long fall is a freefall with the drone out too (the drone has Jump in a jump; the glider in a freefall); a drop off your own booster is a fall */ this.glide = { z: fallStart, vx: 0, vy: 0, open: false, fallFrom: fallStart, told: false }; this.glideHome = this.treeGlideHome(fallStart); this.message = GLIDE.falling; return; } // release 641: a long fall is a freefall: Jump opens the glider // release 635: the glider opens
         const distance = raw0, damage = fallDamage(distance, this.save.maxHp); // release 637: off the great tree a fall is a fall
         if (damage > 0) { hurt += damage; drop = Math.max(drop, distance); }
       };
