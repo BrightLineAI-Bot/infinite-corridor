@@ -14,7 +14,7 @@ const seed = 'FAR717';
 
 test('the Storm Halls: a far country of pillar lands, from landscape 16 only; the Crystal Civilisation keeps its own', () => {
   const S = FAR_CIVS.storm, c = farCivCentre(seed, 'storm'), d = Math.hypot(c.rx, c.ry); assert.ok(d >= S.min - 1 && d <= S.min + S.span + 1);
-  assert.equal(LANDSCAPE_VERSION, 18); assert.equal(farCivAt(seed, c.rx + .5, c.ry + .5)?.id, 'storm');
+  assert.equal(LANDSCAPE_VERSION, 19); assert.equal(farCivAt(seed, c.rx + .5, c.ry + .5)?.id, 'storm');
   assert.equal(sectionRegion(seed, c.rx, c.ry, 16).type, 'pillars'); assert.notEqual(sectionRegion(seed, c.rx, c.ry, 15).type === 'pillars' && sectionRegion(seed, c.rx + 9, c.ry, 15).type === 'pillars' && sectionRegion(seed, c.rx, c.ry + 9, 15).type === 'pillars', true, 'version 15 ground keeps its land');
   const k = farCivCentre(seed, 'crystal'); assert.equal(sectionRegion(seed, k.rx, k.ry, 15).type, 'crystal'); assert.equal(sectionRegion(seed, k.rx, k.ry, 16).type, 'crystal');
   assert.equal(farPocketAt(seed, c.rx, c.ry, 3, sectionRegion(seed, c.rx, c.ry, 16))?.type === 'storm', false, 'its people only from far-realm 4');

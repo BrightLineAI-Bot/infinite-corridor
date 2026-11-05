@@ -122,7 +122,7 @@ const recordingCtx = () => { // records fills, arcs and gradients by colour with
 };
 
 test('landscape 18: the tree tables, and the drawn scale the generator keeps the trunk strip clear by', () => {
-  assert.equal(LANDSCAPE_VERSION, 18); assert.equal(TREES_V18.version, 18);
+  assert.equal(LANDSCAPE_VERSION, 19); assert.equal(TREES_V18.version, 18);
   assert.equal(TREES_V18.drawnLevel, LIFT_PER_LEVEL * CANOPY_LIFT, 'trees.ts keeps the drawn height of a level without importing the renderer');
   assert.ok(TREES_V18.specs.spire.reach[0] > TREES_V14.compact.reach[0] && TREES_V18.specs.spire.reach[0] >= 4, 'taller spires');
   assert.ok(JUMP.sky / 1000 * SPEED - 2 >= .5, `a sky hop clears one gap tile from anywhere on the launching tile with ${(JUMP.sky / 1000 * SPEED - 2).toFixed(2)} tiles to spare`);
@@ -136,7 +136,7 @@ test('the solver: every sampled version-18 tree is climbed from the ground to it
     const r = solveClimb(g.map); assert.ok(r.ok, `${x},${y}: ${r.reason || 'hurts'}`);
     assert.equal(r.hurt, 0, `${x},${y}: a climb without a fall`); assert.ok(r.maxGap <= 1, `${x},${y}: hops cross one gap tile`);
     if (r.hops) assert.ok(r.minMarginWorst >= .5, `${x},${y}: worst-start margin ${r.minMarginWorst}`);
-    assert.equal(g.map.canopy.version, 18); tops.add(g.map.canopy.top);
+    assert.equal(g.map.canopy.version, 19); tops.add(g.map.canopy.top);
     const again = loadAt(SAMPLE, x, y).g.map.canopy; assert.deepEqual(again, g.map.canopy, 'the same tree each load');
     for (const t of g.map.tiles) if (t.pad) { const s = at(g.map, t.x, t.y + 1); assert.ok(!(s?.canopy && (s.elev || 0) > t.elev), `${x},${y}: a perch never hangs right behind a higher branch`); }
     for (const o of g.map.objects) if (o.kind === 'tree') assert.ok(!behindGreatTrunk(g.map.canopy, o), `${x},${y}: no wood's tree in the trunk's drawn strip`);
@@ -154,7 +154,7 @@ test('drawn is walkable: no platform hides behind the trunk once it is painted a
     // per tree, on the first side of a three-sided tree (at most four levels up) or the second side of a four-sided one (at most
     // three reaches up); older trees up to one per side.
     const R = TREES_V18.specs.spire.reach[1];
-    if (c.version === 18) { assert.ok(hidden.length <= trees.length, `${x},${y}: ${hidden.length} twin-covered tiles (${c.reach.length} sides)`); for (const q of hidden) assert.ok(q.t.elev <= (c.reach.length === 4 ? 3 * R : R - 1), `${x},${y}: the covered tile is low on the climb (${q.t.elev})`); assert.equal(cov.filter((q) => q.covered >= HIDDEN && q.t.pad).length, 0, `${x},${y}: perches in the open`); }
+    if (c.version >= 18) { assert.ok(hidden.length <= trees.length, `${x},${y}: ${hidden.length} twin-covered tiles (${c.reach.length} sides)`); for (const q of hidden) assert.ok(q.t.elev <= (c.reach.length === 4 ? 3 * R : R - 1), `${x},${y}: the covered tile is low on the climb (${q.t.elev})`); assert.equal(cov.filter((q) => q.covered >= HIDDEN && q.t.pad).length, 0, `${x},${y}: perches in the open`); }
     else assert.ok(hidden.length <= 4, `${x},${y}: ${hidden.length} twin-covered tiles`);
     assert.ok(!cov.some((q) => q.boughOver), `${x},${y}: a bough crosses a platform`);
     const behind = canopyBehindTrunk(g.map.tiles, W, c.box); for (const t of behind) assert.ok(t.canopy && t.kind !== 'canopyTrunk');
@@ -199,7 +199,7 @@ test('Tim\'s sections (landscape 17): the level-9 dead end was six climb tiles b
 
 test('the crown veil: from the ground the door and the Crown Rest lie under leaves; the leaves thin as you climb; gone near the crown', () => {
   assert.equal(crownReveal(0, 21), 0); assert.equal(crownReveal(SKY.from, 21), 0); assert.equal(crownReveal(21 - CROWN_VEIL.below, 21), 1); assert.equal(crownReveal(60, 38), 1);
-  const mid = crownReveal((SKY.from + Math.min(SKY.full, 38 - CROWN_VEIL.below)) / 2, 38); assert.ok(mid > .3 && mid < .7);
+  const mid = crownReveal((38 * CROWN_VEIL.from + 38 - CROWN_VEIL.below) / 2, 38); assert.ok(mid > .3 && mid < .7);
   const { g } = loadAt(TIM.seed, ...TIM.sections.dead, TIM.version), gate = g.map.objects.find((o) => o.kind === 'canopyGate'), look = TREES.looks[g.map.canopy.trees[0].look].leaf;
   const veilArcs = (ctx) => ctx.marks.filter((q) => q.op === 'arc' && look.includes(q.fill) && q.alpha < 1 && q.alpha > 0).length + ctx.marks.filter((q) => q.op === 'arc' && look.includes(q.fill) && q.alpha === 1).length, starsAt = (ctx) => ctx.marks.findIndex((q) => q.op === 'fill' && q.fill === '#0b0e11');
   const frame = (x, y) => { g.player.x = x; g.player.y = y; const ctx = recordingCtx(); render(ctx, g, 475, 661, 5000); return ctx; };
