@@ -87,17 +87,13 @@ export function armorGlyphBonus(save) {
   for (const k of Object.keys(out)) out[k] = Math.min(out[k], ARMOR_GLYPH_CAP[k]);
   for (const id of triadsOf(save?.equipment?.armor?.glyphs || [])) for (const [k, v] of Object.entries(TRIADS[id].armor)) out[k] = (out[k] || 0) + v; // release 529: armor triads, past the caps
   const tb = tesseractBonus(save); for (const k of Object.keys(ARMOR_GLYPH_CAP)) if (tb[k]) out[k] = (out[k] || 0) + tb[k]; for (const k of TESSERACT_LINES) out[k] = tb[k]; // release 729: Tesseract glyphs, past the caps, costs and all (and roll 3's own lines)
-  return limitGear(out);
+  return limitTesseractLines(out);
 }
-// Where a total may reach once every source is added (glyphs, triads, Tesseracts; game.ts adds meals and margins and limits
-// again): a reduction never reaches 100% (a cooldown or a dodge never free or negative), a cost never stops a stat outright,
-// and Tesseract harms and heals stay bounded (three cursed glyphs together). [lowest, highest]; a field not listed is not limited.
-export const GEAR_LIMITS = {
-  spellCooldown: [-1, .75], attackSpeed: [-.6, .75], dodgeCost: [-1, .9], move: [-.6, Infinity], staminaRegen: [-.9, Infinity], hp: [-.6, Infinity],
-  attackDamage: [-.6, Infinity], spellDamage: [-.6, Infinity], spellDuration: [-.6, Infinity], burstRadius: [-.6, Infinity],
-  selfHarm: [0, .05], castHarm: [0, .1], dodgeHarm: [0, .12], staminaDrain: [0, .25], damageTaken: [0, .5], meleeHeal: [0, .08], spellHeal: [0, .08], hitHeal: [0, .05],
-};
-export function limitGear(out) { for (const k in GEAR_LIMITS) if (out[k] !== undefined) { const L = GEAR_LIMITS[k]; out[k] = Math.min(L[1], Math.max(L[0], Number(out[k]) || 0)); } return out; }
+// Roll 3's own Tesseract lines, totalled over three glyphs, stay inside these [lowest, highest] (three cursed glyphs together).
+// Every stat that existed before roll 3 stacks without limit, as it always has (Tim, 2026-11-05: "I need infinite dodge"); where
+// a stacked value is used, game.ts keeps it sane (a dodge never costs less than DODGE_COST.min, 0: free, never a refund).
+export const TESSERACT_LINE_LIMITS = { castHarm: [0, .1], dodgeHarm: [0, .12], staminaDrain: [0, .25], damageTaken: [0, .5], meleeHeal: [0, .08], spellHeal: [0, .08], hitHeal: [0, .05] };
+export function limitTesseractLines(out) { for (const k in TESSERACT_LINE_LIMITS) if (out[k] !== undefined) { const L = TESSERACT_LINE_LIMITS[k]; out[k] = Math.min(L[1], Math.max(L[0], Number(out[k]) || 0)); } return out; }
 
 export const RESONANCES = {
   "ember-choir": { name: "Ember Choir", pair: ["ignite", "echo"], text: "Echoes deal double damage to burning foes." },

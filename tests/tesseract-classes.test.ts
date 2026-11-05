@@ -7,7 +7,7 @@ import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, characterStats, dodgeCost, tesseractHarm } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
 import { hashSeed } from '../src/random.ts';
-import { armorGlyphBonus, GEAR_LIMITS } from '../src/glyphs.ts';
+import { armorGlyphBonus, TESSERACT_LINE_LIMITS } from '../src/glyphs.ts';
 import { CASTABLES, availableCastables } from '../src/spell-slots.ts';
 import { APERTURE_SKILLS } from '../src/items.ts';
 import { TESSERACTS, rollTesseract, rerollTesseractLine, grantTesseract, tesseractBonus, tesseractLine, tesseractClassText, tesseractTier, ensureTesseracts } from '../src/tesseracts.ts';
@@ -145,14 +145,21 @@ test('health on hit: melee hits heal by meleeHeal, magic by spellHeal, both by h
   const c = arena([{ k: 'spellHeal', v: .02, bad: false }]); c.g.player.hp = 100; c.g.player.attackReadyAt = 0; c.g.primaryAttack(1000, { x: 1, y: 0 }); assert.equal(c.g.player.hp, 100, 'a melee hit does not use spellHeal');
 });
 
-test('stacked totals respect their limits: three cursed glyphs never make a cooldown or a dodge free, nor stop a stat outright', () => {
+test('old totals stack as before (no new caps): past 100% dodge-cost reduction a dodge is free, never a refund; only roll 3\'s own lines are bounded', () => {
   const s = freshSave(); s.seed = 'LIM'; ensureTesseracts(s);
   const big = (uid, lines) => ({ uid, kind: 'star', grade: 'sovereign', name: uid, roll: 3, lines });
-  s.tesseracts.owned = [big('a', [{ k: 'spellCooldown', v: .29, bad: false }, { k: 'attackSpeed', v: .29, bad: false }, { k: 'dodgeCost', v: .29, bad: false }, { k: 'damageTaken', v: .29, bad: true }]), big('b', [{ k: 'spellCooldown', v: .29, bad: false }, { k: 'attackSpeed', v: .29, bad: false }, { k: 'dodgeCost', v: .29, bad: false }, { k: 'damageTaken', v: .29, bad: true }]), big('c', [{ k: 'spellCooldown', v: .29, bad: false }, { k: 'attackSpeed', v: .29, bad: false }, { k: 'dodgeCost', v: .29, bad: false }, { k: 'staminaRegen', v: .5, bad: true }])];
+  s.tesseracts.owned = [big('a', [{ k: 'spellCooldown', v: .36, bad: false }, { k: 'attackSpeed', v: .29, bad: false }, { k: 'dodgeCost', v: .29, bad: false }, { k: 'damageTaken', v: .29, bad: true }]), big('b', [{ k: 'spellCooldown', v: .36, bad: false }, { k: 'attackSpeed', v: .29, bad: false }, { k: 'dodgeCost', v: .29, bad: false }, { k: 'damageTaken', v: .29, bad: true }]), big('c', [{ k: 'spellCooldown', v: .36, bad: false }, { k: 'attackSpeed', v: .29, bad: false }, { k: 'dodgeCost', v: .29, bad: false }, { k: 'staminaRegen', v: .5, bad: true }])];
   s.tesseracts.slots = ['a', 'b', 'c']; s.equipment.armor = { ...(s.equipment.armor || {}), glyphs: ['still', 'still', 'still'] };
-  const ag = armorGlyphBonus(s); assert.ok(tesseractBonus(s).spellCooldown > .8);
-  for (const [k, [lo, hi]] of Object.entries(GEAR_LIMITS)) if (ag[k] !== undefined) assert.ok(ag[k] >= lo && ag[k] <= hi, `${k} ${ag[k]}`);
-  assert.equal(ag.spellCooldown, .75); assert.equal(ag.damageTaken, .5); assert.ok(dodgeCost(s) > 0); assert.ok(1 - ag.attackSpeed >= .25);
+  const ag = armorGlyphBonus(s), tb = tesseractBonus(s);
+  // every stat that existed before roll 3 is the armor glyphs (capped as ever) plus the Tesseracts' sum, unbounded
+  assert.ok(Math.abs(ag.spellCooldown - tb.spellCooldown) < 1e-9 && ag.spellCooldown > 1, `${ag.spellCooldown}`); assert.ok(Math.abs(ag.attackSpeed - tb.attackSpeed) < 1e-9);
+  assert.ok(Math.abs(ag.dodgeCost - (.6 + tb.dodgeCost)) < 1e-9, `${ag.dodgeCost}`); assert.ok(Math.abs(ag.staminaRegen - tb.staminaRegen) < 1e-9);
+  assert.equal(TESSERACT_LINE_LIMITS.damageTaken[1], .5); assert.equal(ag.damageTaken, .5, 'a roll-3 line is bounded'); assert.equal(TESSERACT_LINE_LIMITS.selfHarm, undefined, 'selfHarm (older than roll 3) stacks as before');
+  // free dodges: cost 0, a dodge at 0 stamina still goes, stamina never rises from it beyond a frame's recovery
+  assert.equal(dodgeCost(s), 0); const { g } = arena(null); g.save.tesseracts = s.tesseracts; g.save.equipment.armor = s.equipment.armor; g.player.stamina = 0;
+  for (let k = 0; k < 5; k++) { const t = 1000 + k * 600, before = g.player.stamina; step(g, t, { press: 'dodge', x: 1 }); assert.ok(g.player.dodgeUntil > t, `dodge ${k}`); assert.ok(g.player.stamina - before < 1, 'no refund'); }
+  // a cooldown reduction past 100%: casting stays sane (no NaN), every press answers
+  const key = availableCastables(g.save).find((k) => CASTABLES[k].kind === 'spell'); for (let k = 0; k < 4; k++) { g.lastUpdateNow = 5000 + k * 100; assert.ok(g.castKey(key), `cast ${k}`); for (const v of Object.values(g.save.magicSkills.cooldowns)) assert.ok(Number.isFinite(v)); }
   assert.ok(Number.isFinite(characterStats(s).maxHp) && characterStats(s).maxHp > 0);
 });
 
