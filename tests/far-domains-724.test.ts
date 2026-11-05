@@ -47,7 +47,7 @@ test('each is built whole: floor, landmarks with towers, its hazard, every gate 
 });
 
 test('its beast comes home: at once on the finding visit, after a wait later, leaving another hunt; and is there when you come back', () => {
-  for (const id of IDS.filter((k) => k !== 'doomChaser')) { // Tim, 2026-11-05: the Doom Chaser keeps to the Stillworks; its pyre stands empty (tests/doom-chaser-homeland.test.ts)
+  for (const id of IDS) { // Tim, 2026-11-05 (refining 760): beyond 1000 the Doom Chaser is an ordinary world beast, so his Black Pyre is a domain like the others again (tests/doom-chaser-homeland.test.ts)
     const s = fresh(), c = farDomainCentre(seed, id); let g = load(s, c.rx, c.ry);
     for (let i = 0; i < 90; i++) g.domainTick(1 / 30); let b = g.enemies.filter((e) => e.worldBeast === id && !e.dead);
     assert.equal(b.length, 1, `${id} comes`); assert.equal(b[0].kind, WORLD_BEASTS[id].kind); assert.equal(g.message, FAR_DOMAINS[id].comes);
