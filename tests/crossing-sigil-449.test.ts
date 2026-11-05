@@ -18,15 +18,15 @@ test('a sigil carries you out of the dungeon and across the corridor to the chos
   assert.equal(g.area, 'overworld'); assert.deepEqual([g.rx, g.ry], [4, -2]); assert.equal(s.consumables.crossingSigil, 2); assert.match(g.message, /Far Glass/);
 });
 
-test('with no Wayglass chosen it still takes you to the entrance; outside a dungeon it keeps', () => {
+test('with no Wayglass chosen it still takes you to the entrance; outside a dungeon it now answers too (2026-11-05: anywhere)', () => {
   const { s, g } = inDungeon();
   assert.ok(g.useCrossingSigil(null)); assert.deepEqual([g.area, g.rx, g.ry], ['overworld', 7, 2]); assert.equal(s.consumables.crossingSigil, 2);
-  assert.equal(g.useCrossingSigil('4,-2'), false); assert.equal(s.consumables.crossingSigil, 2);
+  assert.equal(g.useCrossingSigil('4,-2'), true); assert.deepEqual([g.area, g.rx, g.ry], ['overworld', 4, -2]); assert.equal(s.consumables.crossingSigil, 1);
 });
 
 test('Supplies has a Use button for it, and the Atlas button names where it goes', () => {
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
-  assert.match(main, /openSigilAtlas\(\); \}\);\n    use\.disabled = game\.area !== "dungeon"/);
+  assert.match(main, /openSigilAtlas\(\); \}\); \/\/ CROSSING_SIGIL: anywhere\n    use\.disabled = !\(save\.consumables\.crossingSigil > 0\)/);
   assert.match(main, /game\.useCrossingSigil\(save\.checkpoints\?\.\[key\] \? key : null\)/);
   assert.match(main, /Use Crossing Sigil ×\$\{save\.consumables\.crossingSigil \|\| 0\} → /);
 });
