@@ -225,15 +225,6 @@ export function pentagonSeamOpen(cx, cy, rx, ry, dx, dy, a, b, roof = false) {
     if (!open(rx, ry, ...here) || !open(nx, ny, ...there)) return false; }
   return true;
 }
-// Is cell (x, y) of section (rx, ry) one of the Pentagon's closed blocks, as placePentagonSection lays it (a blocked wall tile,
-// the airspace vehicle-gates.ts DRONE_FIZZLE calls the `pentagon` zone)? Every built ring, except the v7 roof (`roof` true) off
-// its parapet. Pure, from the geometry, so a glide about to cross a seam can ask about the section beyond (game.ts glideStep).
-export function pentagonClosedAt(cx, cy, rx, ry, x, y, roof = false) {
-  if (Math.abs(rx - cx) > 1 || Math.abs(ry - cy) > 1 || x < 0 || y < 0 || x > 31 || y > 31) return false;
-  const g = toGlobal(cx, cy, rx, ry, x, y), k = regionAt(g.gx, g.gy).kind;
-  if (k === "outside" || k === "court" || k === "central") return false;
-  return !(roof && k === "outer" && !pentagonParapet(g.gx, g.gy));
-}
 // A point a distance `m` out along face i's normal, `t` along the face.
 const FACE_T = 9; // how far along a face from its middle a half's door stands
 const facePoint = (i, m, t) => { const [nx, ny] = NORM[i]; return { gx: Math.floor(C0 + nx * m - ny * t), gy: Math.floor(C0 + ny * m + nx * t) }; };
