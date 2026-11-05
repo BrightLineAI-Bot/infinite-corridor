@@ -2854,6 +2854,16 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 757: the Listener's cycle — 2026-11-05
+
+Tim: "Each time you kill the Listener you get a piece of the Gate, and the Listener's Mouth stays in place until you've killed it enough times to unlock the Gate. Then you connect 5 more relays and a new Mouth forms... the old Mouth turns into an infinite dungeon and a town."
+
+Before: the Listener went quiet and moved after every kill, so with release 704's g kills for Gate g, Gate 4 needed four Mouths and 20 relays; "pieces" were guardian kills and reset on every Listener kill; a town rose on a Mouth's first kill (and `grantTowns`, indexing by kill, would have raised one on a Mouth nobody fought at once kills per Mouth exceeded one); `pastMouths.slice(-8)` would have dropped the oldest town's Mouth after nine.
+
+**CODE:** `src/far-array.ts` `LISTENER_CYCLE.mouthStaysUntilUnlock`; `listenerFelled` sets `quiet` / `relaysAt` only when the kill unlocks the Gate (`toNext` reaches `killsToClimb(g)`), with "A piece of the Gate locks into place (k/g)"; `ensureFarArray` clears `quiet` when `toNext > 0` (a Mouth sent quiet by 704–756 on a kill that left the Gate locked); guardian kills are the seals of the Listener's call (`pieces`, `sealsNeeded = piecesNeeded = 2 + g`, unchanged); `silentMouthAt` also matches every Mouth town; `listenerCycle()` summarises. `src/hometowns.ts` `HOMETOWNS.townWhen` "unlock" ("kill" restores 373's timing); `grantTowns` raises one town per spent Mouth (`pastMouths`, plus the current one once quiet). `src/main.ts` the objective line and the Far Gate ring (segments are Listener kills; the centre reads the seals, "IT WAITS" or "UNLOCKED"); `src/game.ts` and `src/revenant-horde.ts` messages.
+
+**BOUNDARY:** No save-schema or generator change; existing Mouths, towns, Descents, boons, tiers and Transit Coordinates are kept, every existing town is still granted, none is added at a Mouth without a kill. Strength scaling, seal counts, relay counts and the dais/Hall rules unchanged. Tim's journey (Gate 4, three kills, Mouth at 62,-48) loads unchanged and now holds the Listener at that Mouth for four kills. Open questions to Tim: seals before every fight or only the first; town on unlock or first kill; Transit Coordinates per Gate rather than per kill. Tests: `tests/listener-cycle.test.ts` (5); hometown/Mouth-town fixtures set `quiet` explicitly. Not tested on a device.
+
 ## Release 756: a Tesseract for every Pentagon; the Orrery's first orb — 2026-11-05
 
 Tim: "There should be one Tesseract per Pentagon... they should all get Tesseracts, because it's so rare to find one" (every existing source kept; rarity unchanged — "it was actually pretty rare, so that's fine"); "the v1 and v2 one would be heavily skewed towards negative attributes — up to three"; and the Orrery: "one ball floating around you with no echoes, two with one echo, three with two."
