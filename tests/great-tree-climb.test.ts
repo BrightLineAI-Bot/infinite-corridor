@@ -122,7 +122,7 @@ const recordingCtx = () => { // records fills, arcs and gradients by colour with
 };
 
 test('landscape 18: the tree tables, and the drawn scale the generator keeps the trunk strip clear by', () => {
-  assert.equal(LANDSCAPE_VERSION, 21); assert.equal(TREES_V18.version, 18);
+  assert.equal(LANDSCAPE_VERSION, 22); assert.equal(TREES_V18.version, 18);
   assert.equal(TREES_V18.drawnLevel, LIFT_PER_LEVEL * CANOPY_LIFT, 'trees.ts keeps the drawn height of a level without importing the renderer');
   assert.ok(TREES_V18.specs.spire.reach[0] > TREES_V14.compact.reach[0] && TREES_V18.specs.spire.reach[0] >= 4, 'taller spires');
   assert.ok(JUMP.sky / 1000 * SPEED - 2 >= .5, `a sky hop clears one gap tile from anywhere on the launching tile with ${(JUMP.sky / 1000 * SPEED - 2).toFixed(2)} tiles to spare`);
@@ -136,7 +136,7 @@ test('the solver: every sampled version-18 tree is climbed from the ground to it
     const r = solveClimb(g.map); assert.ok(r.ok, `${x},${y}: ${r.reason || 'hurts'}`);
     assert.equal(r.hurt, 0, `${x},${y}: a climb without a fall`); assert.ok(r.maxGap <= 1, `${x},${y}: hops cross one gap tile`);
     if (r.hops) assert.ok(r.minMarginWorst >= .5, `${x},${y}: worst-start margin ${r.minMarginWorst}`);
-    assert.equal(g.map.canopy.version, 20); tops.add(g.map.canopy.top);
+    assert.equal(g.map.canopy.version, 21); tops.add(g.map.canopy.top);
     const again = loadAt(SAMPLE, x, y).g.map.canopy; assert.deepEqual(again, g.map.canopy, 'the same tree each load');
     for (const t of g.map.tiles) if (t.pad) { const s = at(g.map, t.x, t.y + 1); assert.ok(!(s?.canopy && (s.elev || 0) > t.elev), `${x},${y}: a perch never hangs right behind a higher branch`); }
     for (const o of g.map.objects) if (o.kind === 'tree') assert.ok(!behindGreatTrunk(g.map.canopy, o), `${x},${y}: no wood's tree in the trunk's drawn strip`);
@@ -164,7 +164,7 @@ test('drawn is walkable: no platform hides behind the trunk once it is painted a
 test('the trunk is solid: the crown is entered only from the climb\'s last tile, never from the ground; a step off it is a fall the glider catches', () => {
   for (const { x, y, g } of [...trees18(), ...older().map((o) => ({ x: o.x, y: o.y, g: o.g }))]) {
     const m = g.map, c = m.canopy;
-    for (const tr of c.trees || [c]) { const e = trunkEntries(m, tr); assert.ok(e.length >= 1, `${x},${y}: a way onto the trunk at ${tr.x0},${tr.y0}`); for (const q of e) assert.ok(q.from.canopy && (q.from.elev === tr.top - 1 || (q.from.walk && q.from.elev === tr.top)), `${x},${y}: onto the trunk only from the climb's last tile or the canopy walk (${q.from.x},${q.from.y}@${q.from.elev})`); assert.equal(e.filter((q) => q.from.elev === tr.top - 1).length, 1, `${x},${y}: one last step`); }
+    for (const [k, tr] of (c.trees || [c]).entries()) { const e = trunkEntries(m, tr), crownOnly = c.form === 'canopy' && k > 0; /* landscape 22: a canopy grove's other crowns are joined by bridges, not climbed */ assert.ok(e.length >= 1, `${x},${y}: a way onto the trunk at ${tr.x0},${tr.y0}`); for (const q of e) assert.ok(q.from.canopy && (q.from.elev === tr.top - 1 || (q.from.walk && q.from.elev === tr.top)), `${x},${y}: onto the trunk only from the climb's last tile or the canopy walk (${q.from.x},${q.from.y}@${q.from.elev})`); assert.equal(e.filter((q) => q.from.elev === tr.top - 1).length, crownOnly ? 0 : 1, `${x},${y}: one last step`); }
     for (const t of m.tiles) if (!t.canopy && footing(t)) for (const [dx, dy] of N4) { const n = at(m, t.x + dx, t.y + dy); if (n?.kind === 'canopyTrunk') { assert.ok(!step(m, t, n, true), `${x},${y}: the trunk cannot be stepped into from the ground`); } }
   }
   const { g } = loadAt(TIM.seed, ...TIM.sections.dead, TIM.version), rest = g.map.objects.find((o) => o.kind === 'crownRest');

@@ -1094,6 +1094,22 @@ function drawTreeBoughs(ctx, c, C, s, sway, tiles, w, box) {
 export const CROWN_VEIL = { from: .5, below: 2, leaves: 12, pad: .5, rise: 1.3, leaf: .62, grow: .18 }; // pad: tiles past the crown's sides; rise: tiles above its top; leaf: a leaf mass's radius in tiles, every third one `grow` larger
 // Does this object stand in the strip a great tree's trunk is drawn up (its columns, from its foot to its drawn crown)?
 export function behindGreatTrunk(cn, o) { for (const tr of cn.trees || [cn]) { if (o.x + .5 >= tr.x0 - .3 && o.x + .5 <= tr.x0 + tr.size + .3 && o.y < tr.y0 + tr.size && o.y >= tr.y0 - discLift(tr.top) * CANOPY_LIFT - 1) return true; } return false; }
+// The canopy grove (trees.ts TREES_V21.canopy; Tim, 2026-11-05: "a canopy area up above the floor, where the floor is kind of
+// invisible"): up among its crowns the ground is gone. From `below` levels under the access crown the sky shows whole whatever
+// the height (SKY alone would still show some ground under a low canopy), and `leaves` leaf masses hang `under` levels beneath the
+// bridges, so the crowns read as a roof of leaves over a floor you cannot see. Rendering only; a fixed handful of arcs, worked
+// out from the record each frame (no state), drawn only on a canopy grove's section while the Wayfarer is up there.
+export const CANOPY_FLOOR = { below: 3, ramp: 4, leaves: 16, under: 4, leaf: 1.1, alpha: .55 };
+export function canopyFloorReveal(canopy, height) {
+  if (canopy?.form !== "canopy" || !Number.isFinite(height)) return 0; const base = Number(canopy.trees?.[0]?.top) || Number(canopy.top) || 0, full = base - CANOPY_FLOOR.below;
+  return Math.max(0, Math.min(1, (height - (full - CANOPY_FLOOR.ramp)) / CANOPY_FLOOR.ramp));
+}
+function drawCanopyFloor(ctx, c, s, alpha) {
+  const F = CANOPY_FLOOR, b = c.box, base = Number(c.trees?.[0]?.top) || c.top, look = c.trees?.[0]?.look != null ? TREES.looks[c.trees[0].look] : null, leaf = (SEASON && SEASONS.canopy[SEASON]) || (look ? look.leaf : CANOPY_LOOK.leaf), lift = discLift(Math.max(0, base - F.under)) * CANOPY_LIFT * s;
+  ctx.save(); ctx.globalAlpha = alpha * F.alpha;
+  for (let k = 0; k < F.leaves; k++) { const u = ((k * 7) % F.leaves + .5) / F.leaves, v = ((k * 5) % F.leaves + .5) / F.leaves; ctx.fillStyle = leaf[k % leaf.length]; ctx.beginPath(); ctx.arc((b.x + u * b.n) * s, (b.y + v * b.n) * s - lift, s * F.leaf * (1 + (k % 3) * .25), 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
 export function crownReveal(height, top) { const from = Math.max(SKY.from, top * CROWN_VEIL.from), full = Math.max(from + 1, top - CROWN_VEIL.below); return Math.max(0, Math.min(1, (height - from) / (full - from))); }
 function drawCrownVeil(ctx, c, s, now, alpha, still) {
   const look = c.look != null ? TREES.looks[c.look] : null, leaf = (SEASON && SEASONS.canopy[SEASON]) || (look ? look.leaf : CANOPY_LOOK.leaf), V = CROWN_VEIL;
@@ -2238,8 +2254,8 @@ export function render(ctx, g, w, h, now) {
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0, heightNow = 0; // the Wayfarer's height in levels on a great tree's section (the crown veil reads it)
-  if (g.area === "overworld") { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, a = Math.max(0, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height
-    if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); const c = g.map?.canopy?.box; if (c) { for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, c, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw)); } } }
+  if (g.area === "overworld") { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
+    if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); if (floor > 0) drawCanopyFloor(ctx, g.map.canopy, s, floor); const c = g.map?.canopy?.box; if (c) { for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, c, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw)); } } }
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
   if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
