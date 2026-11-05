@@ -105,7 +105,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
-import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy } from "./landscape.ts";
+import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend } from "./landscape.ts";
 import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -6416,6 +6416,35 @@ export class Game {
     p.attackUntil = now + 240; this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
   }
+  // The healing hot springs (landscape.ts HOT_SPRINGS; Tim, 2026-11-05). Called once a frame from update, after every blow of the
+  // frame has landed and been guarded (`hurt`: health fell this frame). One state object for the journey's play, mutated in place
+  // (no per-frame allocation); its clocks run on the frame's dt only, so paused or backgrounded time never counts.
+  springFoeNear() {
+    const H = HOT_SPRINGS, p = this.player;
+    for (const e of this.enemies) {
+      if (e.dead || e.ambient || e.passiveBehavior || e.retreating || e.passingBeast || e.playing || e.astralCompanionOf || e.astralAllyOf || e.blobRemnant || e.kind === "npc" || (e.skirmishId && !e.skirmishProvoked)) continue;
+      if (Math.hypot(e.x - p.x, e.y - p.y) <= (e.aggro ? H.aggroNear : H.foeNear)) return true;
+    }
+    return false;
+  }
+  tickHotSprings(dt, hurt, now) {
+    const H = HOT_SPRINGS, p = this.player, step = Math.max(0, Math.min(H.step, Number(dt) || 0));
+    const S = this.springSoak || (this.springSoak = { calm: 0, away: H.visitGap, told: false, scanIn: 0, foes: false, wisp: 0 });
+    S.calm = hurt || !(p.hp > 0) ? 0 : S.calm + step;
+    if (this.area !== "overworld" || !this.map?.terraces || !(p.hp > 0)) { S.away = H.visitGap; S.told = false; return false; }
+    const t = tileUnder(this.map, 32, p.x, p.y);
+    const soaking = !!t && t.landscape === "terraces" && H.kinds.includes(t.kind) && !(now < (this.jumpUntil || 0)) && !this.glide && !this.droneLift && this.skyAir == null && !this.swimming && !this.mechUp() && !this.mountRide() && !aboard(this.save);
+    if (!soaking) { S.away += step; if (S.away >= H.visitGap) S.told = false; return false; }
+    S.away = 0;
+    const ceiling = healthCeiling(this.save), maxHp = Number(this.save.maxHp) || 0;
+    if (p.hp >= Math.min(maxHp, ceiling)) return false;
+    if ((S.scanIn -= step) <= 0) { S.scanIn = H.scan; S.foes = this.springFoeNear(); }
+    if (S.foes || S.calm < H.calm) return false;
+    p.hp = springMend(p.hp, maxHp, ceiling, step);
+    if (!S.told) { S.told = true; this.message = H.message; }
+    if ((S.wisp -= step) <= 0) { S.wisp = H.wisp; (this.glyphVisuals ||= []).push({ kind: "steam", x: p.x + .5, y: p.y + .35, life: H.wispLife, max: H.wispLife }); }
+    return true;
+  }
   // Release 669 (Tim, 2026-11-01: "there's rest points at the top of great trees... you have to reach the top platform... touch it
   // to activate it... if you die... you come back to the top of that great tree"): stepping on the Crown Rest makes it the rest
   // point you wake at, and keeps it among your rest points.
@@ -8103,6 +8132,7 @@ export class Game {
     if (p.hp < hpStart && !fellIntoHazard) { if (now < (this.aegisUntil || 0)) p.hp = hpStart; else if (now < (this.boxingUntil || 0)) p.hp = hpStart - (hpStart - p.hp) * (1 - BRAWLER["shadow-boxing"].guard); }
     // Release 515: Sanctum, inside your own lingering spell: less damage, and a steady mend.
     if (fieldOn(this.save, "sanctum") && p.hp > 0 && this.inOwnField()) { const S = FIELD_PASSIVES.sanctum; if (p.hp < hpStart && !fellIntoHazard) p.hp = hpStart - (hpStart - p.hp) * (1 - S.guard); p.hp = Math.min(this.save.maxHp, p.hp + this.save.maxHp * S.mend * dt); }
+    this.tickHotSprings(dt, p.hp < hpStart || !!fellIntoHazard, now); // the healing hot springs (HOT_SPRINGS): after every blow and guard of the frame
     // Release 475: wading through lava in the robot cooks the Wayfarer inside it, past the plating, every guard and Ink Shield.
     if (this.mechUp() && !this.mechBoosting && p.hp > 0 && footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y) === "lava") { p.hp = Math.max(0, p.hp - this.save.maxHp * MECH_LAVA.heat * dt); if (p.hp <= 0) this.message = "The lava's heat cooks the Wayfarer inside the robot."; else if (now > (this.lavaWadeMessageAt || 0)) { this.lavaWadeMessageAt = now + 6000; this.message = "The robot wades through the lava. The heat inside is unbearable: get out of it."; } }
     // Mounted lava (Tim, 2026-11-04: "The mounts shouldn't give you any extra defense... The only defense they give you: if you go
