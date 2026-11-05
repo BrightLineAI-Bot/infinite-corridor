@@ -48,7 +48,7 @@ test('roll version 1 (every glyph cut through release 759) rolls and rerolls byt
   const v1 = GOLD((s, src, gr, f) => rollTesseract(s, src, gr, f)); assert.equal(v1.length, 108064); assert.equal(hashSeed(v1), 2458559713);
   assert.equal(GOLD((s, src, gr, f) => rollTesseract(s, src, gr, f, 1)), v1);
   const r1 = GOLD_REROLL(); assert.equal(r1.length, 44648); assert.equal(hashSeed(r1), 1608409093);
-  assert.equal(TESSERACTS.roll, 2);
+  assert.equal(TESSERACTS.roll, 3); // roll 3 (classes) since; roll 2 is pinned in tests/tesseract-classes.test.ts
 });
 
 test('roll 2, the tier table: each grade\'s cost count in its range, picked evenly; every arrangement of costs over lines 1-3 reached; costs milder up the tiers', () => {
@@ -84,7 +84,7 @@ test('the dais at roll 2 keeps a glyph inside its grade\'s cost range (never bel
 
 test('grants: every new glyph is cut at roll 2 and records it; a glyph granted before (roll 1, no field) never changes', () => {
   const s = freshSave(); s.seed = 'GR';
-  for (const grade of Object.keys(WANT)) { const g = grantTesseract(s, `p:${grade}`, grade, 0, 'x'); assert.equal(g.roll, 2, grade); assert.deepEqual(g.lines, rollTesseract('GR', `p:${grade}`, grade, 0, 2).lines); }
+  for (const grade of Object.keys(WANT)) { const g = grantTesseract(s, `p:${grade}`, grade, 0, 'x'); assert.equal(g.roll, 3, grade); assert.deepEqual(g.lines, rollTesseract('GR', `p:${grade}`, grade, 0, 3).lines); }
   const t = freshSave(); t.seed = 'OLD'; const was = { uid: 't1', ...rollTesseract('OLD', 'pentagon:OLD:16:0:v1:complete', 'hollow'), from: PENTAGON_COMPLETE.from };
   t.tesseracts = { owned: [structuredClone(was)], slots: ['t1', null, null], seq: 1, got: { 'pentagon:OLD:16:0:v1:complete': true } };
   const m = migrateSave(JSON.parse(JSON.stringify(t))); ensureTesseracts(m); assert.deepEqual(m.tesseracts.owned[0], was);
@@ -103,7 +103,7 @@ test('a completion due on load is paid once: repeated starts, reloads and migrat
   const { cx, cy } = find();
   for (const V of [1, 2, 3, 7]) { const P = pentagonPlan(SEED, cx, cy, V), s = freshSave(); s.seed = SEED; s.consequences.dungeons[`${P.base}:f1`] = { discovered: true, pentFinale: 1, regentGrade: 'regent' };
     const g = new Game(migrateSave(JSON.parse(JSON.stringify(s))), 0); assert.equal(fromCompletion(g).length, 1, `v${V}`); assert.deepEqual(pentagonsDue(g.save), []);
-    const glyph = structuredClone(fromCompletion(g)[0]); assert.equal(glyph.grade, V <= 2 ? 'hollow' : 'regent'); assert.equal(glyph.roll, 2);
+    const glyph = structuredClone(fromCompletion(g)[0]); assert.equal(glyph.grade, V <= 2 ? 'hollow' : 'regent'); assert.equal(glyph.roll, 3);
     for (const base of [P.base, P.base]) g.payPentagonComplete(base); new Game(g.save, 10); new Game(g.save, 20);
     let r = g; for (let k = 0; k < 3; k++) r = reload(r); const q = new Game(migrateSave(JSON.parse(JSON.stringify(r.save))), 0);
     for (const x of [g, r, q]) { assert.equal(fromCompletion(x).length, 1, `v${V}: once`); assert.deepEqual(fromCompletion(x)[0], glyph, 'the same glyph, unchanged'); } }
