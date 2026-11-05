@@ -70,6 +70,7 @@ test('the last jar writes the ending in the Journal, raises QUEST COMPLETE, and 
   const seed = 'BEES1', c = near(seed), s = freshSave(); s.seed = seed;
   for (let i = 0; i < T.pieces.length - 1; i++) readThreadRelic(s, addThreadRelic(map(), s, c[i]));
   const id = c[T.pieces.length - 1], [, , , x, y] = id.split(':'); s.session.activeDungeonId = id; s.session.dungeonReturn = { rx: Number(x), ry: Number(y), x: 16, y: 16 };
+  s.consequences.dungeons[id] = { discovered: true, bypassed: false, visits: 0, abandoned: 0, guardianDefeated: false, resolved: false, visitOpen: false, storyVersion: 0 }; // the story budget (2026-11-05): a crossing pinned to the waves' rule, as one seen before the budget is
   const g = new Game(s, 0); g.loadArea('dungeon', false); const o = g.map.objects.find((q) => q.kind === 'threadRelic'); assert.ok(o, 'laid in the crossing'); assert.equal(o.thread, 'beekeeper'); assert.equal(o.index, T.pieces.length - 1);
   g.player.x = o.x; g.player.y = o.y; const r = g.interact('read', o.id); assert.ok(r.ok && r.done, g.message);
   assert.ok(threadsDone(s).includes('beekeeper')); assert.ok(s.narrative.journal.some((j) => j.text === T.ending)); assert.ok(s.narrative.journal.some((j) => j.text === T.pieces.at(-1)));

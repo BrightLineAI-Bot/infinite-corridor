@@ -16,7 +16,20 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // band: which stretch of the map holds the thread, as a distance from the Refuge (THREAD_BANDS; they overlap, so a crossing may
 // hold one of two bands' threads and even the nearest band has crossings enough). relic: how the piece is drawn (renderer.ts
 // drawThreadRelic). Pieces are found in order.
-export const THREAD_BANDS = { near: [3, READING_BANDS.middle], middle: [READING_BANDS.campaign + 1, READING_BANDS.far], far: [READING_BANDS.middle + 1, 70], deep: [READING_BANDS.far + 1, Infinity] };
+// The story budget (Tim, 2026-11-05: "I don't really want to increase story density, but my goal is to get out to 1000 and then
+// beyond, so we should have story density going out that far... The density it has now is pretty good... I don't want to increase
+// it. Find a way to merge these stories into the whole Corridor without making it too many stories"). From story version 1, a
+// crossing holds a thread piece with chance `perCrossing` at every distance from `minDepth` out, with no end: the first ten's roll
+// as before, then, where it placed nothing, one shared roll whose chance is the budget left over (sharedRate), choosing evenly
+// among every later thread listed for that stretch (`shared`). The waves' own rolls (later, third, fourth, fifth) belong to
+// version 0, the crossings first entered before the budget, which keep exactly what they offered. `perCrossing` is the density of
+// the near-and-middle stretch (7 to 18 sections out) as it stood before wave 5: the most a stretch held while Tim played.
+// shared: { storyVersion: [bands] }: the stretches a later thread shares slots in, from that story version on. A crossing pinned
+// to a version (its dungeon history's `storyVersion`, set once by game.ts pinDungeonLayout) picks among the threads listed at or
+// before it, so a new thread written from now on adds a new version key (and bumps STORY_BUDGET.version) and never a wave: it
+// splits the slots of crossings not yet entered, and adds none. Never edit an existing key.
+export const STORY_BUDGET = { version: 1, perCrossing: .13 };
+export const THREAD_BANDS ={ near: [3, READING_BANDS.middle], middle: [READING_BANDS.campaign + 1, READING_BANDS.far], far: [READING_BANDS.middle + 1, 70], deep: [READING_BANDS.far + 1, Infinity] };
 export const THREADS = {
   lamplighter: { title: "The Lamplighter's Round", band: "near", relic: "lamp", colour: "#ffcf7a",
     pieces: [
@@ -120,7 +133,7 @@ export const THREADS = {
     ending: "Something very large sleeps under the Far Sleep, and it dreams, and the Corridor is one of the things it dreams. The shells are where its breathing comes up. Lately it has been dreaming about a road, and someone walking it who no one ever read. It has not woken. If it does, the Corridor may end, or it may only be remembered properly, at last, by the one who dreamed it." },
   // The daily narrative pass (2026-11-02; docs/narrative-bible.md section 1, "What the Corridor is made of": the Corridor has
   // density, not matter; its water is where it runs thin).
-  wellDigger: { title: "The Well-Digger's Rope", band: "far", relic: "rope", colour: "#c8a878", wave: 2,
+  wellDigger: { title: "The Well-Digger's Rope", band: "far", relic: "rope", colour: "#c8a878", wave: 2, shared: { 1: ["far", "deep"] },
     pieces: [
       "A coil of rope, knotted every arm's length, the end frayed where it was cut. A tag on the first knot: \"Fourth day. The village has no water. I am digging until I find some. Knot one is how deep I was when I started counting.\"",
       "More of the same rope, and the knots further apart. The tag: \"The ground gets easier the deeper I go. The spade goes in like it is going into bread. My wife says that is not how ground works. My wife has never dug this deep.\"",
@@ -132,7 +145,7 @@ export const THREADS = {
     ending: "The rope runs down from the cup into nothing you can see, and when you put your hand to it, it pulls: once, slow, the way a man in deep water pulls to say he is still there. Somewhere a village is standing in thin ground holding a rope. The Corridor does not say what is at the other end. It only lets you feel that something is, and that it is still digging." },
   // The narrative pass of release 707 (docs/narrative-bible.md section 1: the Corridor keeps what is read and loses what is not;
   // doors in it open onto where things were read last). Wave 3: rolled apart from waves 1 and 2, so no crossing changes.
-  tollKeys: { title: "The Tollkeeper's Keys", band: "middle", relic: "key", colour: "#d8c070", wave: 3,
+  tollKeys: { title: "The Tollkeeper's Keys", band: "middle", relic: "key", colour: "#d8c070", wave: 3, shared: { 1: ["middle", "deep"] },
     pieces: [
       "An iron key as long as your forearm, on a ring with a paper tag: \"Gate of the North Road. Toll one copper. If the gate is gone, the key still knows where it stood.\"",
       "A brass key, smaller, its teeth worn smooth. The tag: \"The mill door. The mill burned in my grandfather's time, but people still knock, so I keep the key. Sometimes the knocking stops when I turn it in the air.\"",
@@ -145,8 +158,9 @@ export const THREADS = {
   // The narrative pass of release 712: two more wave 3 threads in a later layer (`layer: 1`). The bands overlap, so a wave 3 crossing
   // picks only among the earliest layer that has a thread in band there: the Tollkeeper's crossings (middle, 7 to 35) keep it, and these
   // two share the far band's wave 3 crossings that held nothing, from 36 to 70 out (the far band's outer half). Kept out of the deep
-  // band on purpose: the deep's thread density is the first ten's own rate (threads-627 checks it).
-  weaver: { title: "The Weaver's Cloth", band: "far", relic: "spool", colour: "#c8a0b8", wave: 3, layer: 1,
+  // band on purpose: the deep's thread density is the first ten's own rate (threads-627 checks it). That is story version 0; under the
+// story budget (STORY_BUDGET) both share the far and deep slots.
+  weaver: { title: "The Weaver's Cloth", band: "far", relic: "spool", colour: "#c8a0b8", wave: 3, layer: 1, shared: { 1: ["far", "deep"] },
     pieces: [
       "A spool of grey thread, wound tight, with a scrap of cloth pinned to it. The note: \"For the Refuge, a blanket big enough for everyone. I have the warp up. I will weave a row for every person who comes through the door.\"",
       "A spool of red thread, half used. The note: \"A boy came in today with his shoes in his hand, so the shoes would not wear out. I wove his row in red. It is the brightest row so far. He asked to see it every morning.\"",
@@ -157,7 +171,7 @@ export const THREADS = {
     ],
     ending: "Somewhere in the Refuge a blanket goes on being woven, a row for everyone who has ever come in from the Corridor, and it is longer than the place that holds it. The weaver never reached its end, because the end is still coming in at the door. Your row is in it, the colour of the road, with the needle left where you can find it.",
   },
-  mirror: { title: "The Mirror That Remembers", band: "far", relic: "mirror", colour: "#b8d0e0", wave: 3, layer: 1,
+  mirror: { title: "The Mirror That Remembers", band: "far", relic: "mirror", colour: "#b8d0e0", wave: 3, layer: 1, shared: { 1: ["far", "deep"] },
     pieces: [
       "A shard of mirror wrapped in cloth, with a label: \"Do not look into this unless you are ready to be remembered. It does not show you. It shows the last person who looked, and it is very polite about it.\"",
       "A second shard, larger, its back scratched with a name too worn to read. The label: \"Today it showed a woman I have never met, combing her hair. She looked up and nodded to me as if we had agreed something. I nodded back. I hope I have kept my side of it.\"",
@@ -171,7 +185,7 @@ export const THREADS = {
   // The daily narrative pass of 2026-11-04 (docs/narrative-bible.md section 1: the Corridor is made of what is remembered, and it has
   // density, not matter; here a jar weighs as much as its flower is remembered). Wave 4, the near band (which no later thread held
   // before): rolled only where none of the first three rolls placed a thread, so no crossing changes what it offered.
-  beekeeper: { title: "The Beekeeper's Jars", band: "near", relic: "jar", colour: "#e8b84a", wave: 4,
+  beekeeper: { title: "The Beekeeper's Jars", band: "near", relic: "jar", colour: "#e8b84a", wave: 4, shared: { 1: ["near"] },
     pieces: [
       "A small jar of honey sealed with wax, heavier than a jar that size should be. The label, in a round hand: \"Clover, from the field behind the school. My bees found it out here. I did not know that field was still anywhere.\"",
       "A second jar, the honey dark. The label: \"Lilac, from the bush by my mother's door. She has been gone forty years. The bees go out into the Corridor and come home with her doorstep on their feet.\"",
@@ -185,7 +199,7 @@ export const THREADS = {
   // The daily narrative pass of 2026-11-05 (docs/narrative-bible.md section 1, "What the Corridor is made of": tools are ideas given a
   // handle). Wave 5, the middle band (which held only the Tollkeeper among the later threads): rolled only where none of the first four
   // rolls placed a thread, so no crossing changes what it offered.
-  toolmaker: { title: "The Toolmaker's Handles", band: "middle", relic: "handle", colour: "#c89a62", wave: 5,
+  toolmaker: { title: "The Toolmaker's Handles", band: "middle", relic: "handle", colour: "#c89a62", wave: 5, shared: { 1: ["near", "middle"] },
     pieces: [
       "A spade handle of pale ash, worn smooth where a palm went, with no blade on it. The tag, in a square hand: \"For Orrin at the bottom farm. The iron did not come this year. I sent him the handle anyway, so he would have something to hold. He says he will make do.\"",
       "A hammer handle, hickory, shaped to a small hand, and no head. The tag: \"For the cooper's girl. She brought it back this morning to show me the barrel she hooped with it. I have knocked on the barrel. It is sound. I have stopped asking how.\"",
@@ -198,17 +212,36 @@ export const THREADS = {
   },
 };
 export const THREAD_ORDER = Object.keys(THREADS);
-const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave); // the first ten (release 627): what a crossing offered then, it still offers
+const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave && !THREADS[id].shared); // the first ten (release 627): what a crossing offered then, it still offers
 const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 export const inBand = (band, rx, ry) => { const d = Math.abs(rx) + Math.abs(ry), [lo, hi] = THREAD_BANDS[band]; return d >= lo && d <= hi; };
-// Which thread this crossing holds, or null: one roll for whether it holds any, one for which of its band's threads.
-export function threadIn(seed, dungeonId) {
+const roll = (key) => (hashSeed(key) % 10000) / 10000;
+// Which thread this crossing holds, or null: one roll for whether it holds any, one for which of its band's threads. `version` is
+// the crossing's story version (storyVersionOf); 0, the default, is the rule every crossing entered before the budget keeps.
+export function threadIn(seed, dungeonId, version = 0) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return null;
   const rx = Number(m[1]), ry = Number(m[2]); if (Math.abs(rx) + Math.abs(ry) < THREAD_RULES.minDepth) return null;
-  if ((hashSeed(`${seed}:threads:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.chance) return laterThreadIn(seed, dungeonId, rx, ry);
-  const here = FIRST_THREADS.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  if (roll(`${seed}:threads:v1:${dungeonId}`) >= THREAD_RULES.chance) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version) : laterThreadIn(seed, dungeonId, rx, ry);
+  const here = FIRST_THREADS.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version) : null;
   return here[hashSeed(`${seed}:threads:which:v1:${dungeonId}`) % here.length];
 }
+// The story budget (STORY_BUDGET): the later threads sharing slots in a section at story version `version`, in THREAD_ORDER.
+export const sharedThreads = (version, rx, ry) => THREAD_ORDER.filter((id) => Object.entries(THREADS[id].shared || {}).some(([v, bands]) => Number(v) <= version && bands.some((b) => inBand(b, rx, ry))));
+// The chance of the shared roll, made only where the first ten's roll placed nothing: what the budget leaves there.
+export function sharedRate(rx, ry) {
+  const base = FIRST_THREADS.some((id) => inBand(THREADS[id].band, rx, ry)) ? THREAD_RULES.chance : 0;
+  return Math.max(0, (STORY_BUDGET.perCrossing - base) / (1 - base));
+}
+function sharedThreadIn(seed, dungeonId, rx, ry, version) {
+  if (roll(`${seed}:threads:shared:v1:${dungeonId}`) >= sharedRate(rx, ry)) return null;
+  const here = sharedThreads(version, rx, ry); if (!here.length) return null;
+  return here[hashSeed(`${seed}:threads:shared:which:v1:${dungeonId}`) % here.length];
+}
+// A crossing's story version: what its dungeon history was pinned to when it was first generated (0, the waves, when missing).
+export const storyVersionOf = (save, dungeonId) => { const v = Number(save?.consequences?.dungeons?.[dungeonId]?.storyVersion); return Number.isInteger(v) && v > 0 ? v : 0; };
+// What pinDungeonLayout records the first time a crossing's history is pinned: 0 for one generated, visited or pinned before the
+// budget (its thread was already offered), else the current budget version. Never changes once set.
+export const storyVersionFor = (seenBefore) => seenBefore ? 0 : STORY_BUDGET.version;
 // A thread written after the first ten, in a crossing that holds none of them (THREAD_RULES.later, by seed).
 function laterThreadIn(seed, dungeonId, rx, ry) {
   if ((hashSeed(`${seed}:threads:later:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.later) return thirdThreadIn(seed, dungeonId, rx, ry);
@@ -233,6 +266,7 @@ function fourthThreadIn(seed, dungeonId, rx, ry) {
 }
 // 2026-11-05: wave 5 threads, rolled only where none of the first four rolls placed a thread (THREAD_RULES.fifth), so none moves.
 // The same rule again: the next thread is a new wave (or a layer), never a second wave 5 thread in a band its crossings already cover.
+// Superseded for new threads by the story budget (STORY_BUDGET): wave 5 is the last wave; the waves' rolls are story version 0 only.
 function fifthThreadIn(seed, dungeonId, rx, ry) {
   if ((hashSeed(`${seed}:threads:fifth:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.fifth) return null;
   const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 5 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
@@ -252,7 +286,7 @@ export const threadsStarted = (save) => THREAD_ORDER.filter((id) => threadFound(
 // (waiting); nothing when the thread is complete and none was found here.
 export function addThreadRelic(map, save, dungeonId) {
   if (!map?.tiles?.length || map.multiLevel || map.arena || map.underwater || map.objects?.some((o) => o.kind === "threadRelic")) return null;
-  const id = threadIn(save?.seed, dungeonId); if (!id) return null;
+  const id = threadIn(save?.seed, dungeonId, storyVersionOf(save, dungeonId)); if (!id) return null;
   const T = THREADS[id], found = threadFound(save, id), here = found.indexOf(dungeonId), index = here >= 0 ? here : found.length; if (index >= T.pieces.length) return null;
   const w = map.width || 24, entry = map.entry || { x: 4, y: 5 }, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
   const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.structure && !t.chasm && t.x > 1 && t.y > 1 && t.x < w - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= 6 && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|canyon|void|Gate/i.test(String(t.kind)));
