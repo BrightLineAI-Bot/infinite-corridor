@@ -2,7 +2,7 @@
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
 import { SEASONS } from "./seasons.ts";
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.ts";
+import { LIFT_PER_LEVEL, CANOPY_LIFT, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.ts";
 import { TREES } from "./trees.ts";
 import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.ts";
 
@@ -526,7 +526,10 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
     const K = domainKinds(t.look); if (t.kind === K.feature) { drawArenaFeature(ctx, t, x, y, s); return true; } if (t.kind === K.thicket) { drawArenaThicket(ctx, t, x, y, s, tiles, w); return true; }
     if (t.kind === DOMAIN_LOOKS[t.look].hazard.kind) { drawArenaHazard(ctx, t, x, y, s, tiles, w); return true; } }
   if (lift > 0 && t.canopy && t.kind !== "canopyTrunk") { // release 633: a branch of the great tree hangs in the air: its underside, and its shadow far below
-    ctx.fillStyle = "#00000030"; ctx.beginPath(); ctx.ellipse(px + s / 2, y * s + s * .6, s * .42, s * .16, 0, 0, TAU); ctx.fill();
+    if (!behindPass) { // the ground under it (a neighbour's floor, in the branch's shade: Tim, 2026-11-05, saw "dark (void/drop) between platforms"), and its shadow
+      const under = [[0, 1], [1, 0], [-1, 0], [0, -1]].map(([dx, dy]) => tiles?.[(y + dy) * w + x + dx]).find((n) => n && !n.canopy && !n.blocked && PAINT[n.kind] && !LETHAL_UNDER.has(n.kind)), tex = under && topTexture(under.kind, variant, s);
+      if (tex) { ctx.drawImage(tex, px, y * s, s + .5, s + .5); ctx.fillStyle = "#00000055"; ctx.fillRect(px, y * s, s + .5, s + .5); }
+      ctx.fillStyle = "#00000030"; ctx.beginPath(); ctx.ellipse(px + s / 2, y * s + s * .6, s * .42, s * .16, 0, 0, TAU); ctx.fill(); } // (drawn again over the trunk: no second shadow on its foot)
     const leaf = t.kind === "canopyLeaf", under = leaf ? s * .14 : s * .26; ctx.fillStyle = leaf ? "#2c5a24" : "#4a3220"; ctx.fillRect(px, py + s, s + 1, under);
     if (leaf) { ctx.fillStyle = "#3f8a35aa"; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(px + s * (.2 + k * .3), py + s + under, s * .1, 0, TAU); ctx.fill(); } }
   } else if (lift > 0) { // cliff face down to the tile's ground line, lit from the upper left
@@ -556,6 +559,45 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
   return true;
 }
 
+// Great-tree review (Tim, 2026-11-05: "When you get to the trunk, I just fell through... to the tops of the platforms and then
+// there was nothing"). The trunk's face is drawn from its crown down to its foot, in its own columns, after every row north of
+// it: a branch or perch climbing north of the trunk in those columns (one side of every spire) was painted over and the
+// Wayfarer walked on wood nobody could see. `canopyBehindTrunk` lists those tiles (drawn top within a trunk face drawn after
+// them) and `drawCanopyBehindTrunk` paints them again over the face, with a faint shade for "behind", after the ground pass
+// and after the sky's redraw. Bounded by the tree's box; nothing per frame beyond the sky pass that already redraws the box.
+let behindPass = false;
+const LETHAL_UNDER = new Set(["lava", "abyss", "canyon", "river", "dungeonWater", "ocean", "deepOcean", "lakeWater", "swampWater", "toxicWater"]); // never painted as the floor under a branch
+export function canopyBehindTrunk(tiles, w, box) {
+  const out = [], liftOf = (t) => Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t), h = Math.floor(tiles.length / w);
+  for (let x = Math.max(0, box.x); x < Math.min(w, box.x + box.n); x++) {
+    const trunks = []; for (let y = Math.max(0, box.y); y < Math.min(h, box.y + box.n); y++) { const u = tiles[y * w + x]; if (u?.kind === "canopyTrunk" && u.canopy) trunks.push({ y, top: y - liftOf(u) + 1, bottom: y + 1 }); } // the face: below the crown's own top face, which stays in front of what is behind it
+    if (!trunks.length) continue;
+    for (let y = Math.max(0, box.y); y < Math.min(h, box.y + box.n); y++) {
+      const t = tiles[y * w + x]; if (!t?.canopy || t.kind === "canopyTrunk" || t.blocked) continue;
+      const top = y - liftOf(t), bottom = top + 1.26; // its top face and underside
+      if (trunks.some((u) => u.y > y && bottom > u.top && top < u.bottom)) out.push(t);
+    }
+  }
+  return out.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+// The platforms a tree's rising trunk (drawn on above the crown with the actors, renderer.ts drawCanopyDressing) would cover:
+// canopy tiles north of the trunk in its columns whose drawn top lies above the crown's. Painted again right after the dressing.
+export function canopyAboveCrown(tiles, w, tr) {
+  const out = [], h = Math.floor(tiles.length / w), topY = tr.y0 - tr.top * LIFT_PER_LEVEL * CANOPY_LIFT;
+  for (let x = Math.max(0, tr.x0); x < Math.min(w, tr.x0 + tr.size); x++) for (let y = 0; y < Math.min(h, tr.y0); y++) {
+    const t = tiles[y * w + x]; if (!t?.canopy || t.kind === "canopyTrunk" || t.blocked) continue;
+    if (y - Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) < topY) out.push(t);
+  }
+  return out.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+function drawAgain(ctx, list, s, draw) {
+  behindPass = true;
+  try { for (const t of list) { draw(t, t.x, t.y); const lift = Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) * s; ctx.fillStyle = "#00000022"; ctx.fillRect(t.x * s, t.y * s - lift, s + .5, s + .5); } }
+  finally { behindPass = false; }
+  return list.length;
+}
+export function drawCanopyBehindTrunk(ctx, tiles, w, s, box, draw) { const list = canopyBehindTrunk(tiles, w, box); return list.length ? drawAgain(ctx, list, s, draw) : 0; }
+export function drawCanopyAboveCrown(ctx, tiles, w, s, tr, draw) { const list = canopyAboveCrown(tiles, w, tr); return list.length ? drawAgain(ctx, list, s, draw) : 0; }
 // Release 645: each great tree's own look over its tiles (a tint), and leaves on its branches: tufts along a leafy branch,
 // a full spray at a tip, hanging below the wood. A handful of ellipses per tile, no state.
 // Release 679 (seasons.ts): the season of the woods the section belongs to (renderer.ts sets it each frame).

@@ -7,7 +7,7 @@
 // one on first entry. Only sections with no Atlas entry are named, so all of this is new ground (placement 2, landscape 14).
 import { hashSeed, rng } from "./random.ts";
 import { dungeonId } from "./world.ts";
-import { sectionRegion, farSleepSection } from "./landscape.ts";
+import { sectionRegion, farSleepSection, dreamsHere, DREAM_VERSION } from "./landscape.ts";
 import { skylandSection, SKY_PLACE } from "./skylands.ts";
 import { TREES_V14 } from "./trees.ts";
 
@@ -25,7 +25,7 @@ export const WONDER_KINDS = Object.keys(WONDERS.kinds);
 export function wonderAt(seed, rx, ry, kind, generation = 1) {
   if (rx === 0 && ry === 0) return false;
   if (kind === "skyway") return skylandSection(seed, rx, ry, SKY_PLACE.version);
-  if (kind === "tree") { const type = sectionRegion(seed, rx, ry, 14).type, R = TREES_V14.regions[type]; return !!R && (hashSeed(`${seed}:canopy-grow:v2:${type}:${ry * 7919 + rx}`) % 1000) / 1000 < R.chance; }
+  if (kind === "tree") { const type = sectionRegion(seed, rx, ry, 14).type, R = TREES_V14.regions[type]; return !!R && !dreamsHere(seed, rx, ry, DREAM_VERSION, 18) && (hashSeed(`${seed}:canopy-grow:v2:${type}:${ry * 7919 + rx}`) % 1000) / 1000 < R.chance; } // landscape 18: no tree where the Far Sleep dreams
   if (kind === "starfield") {
     if (farSleepSection(rx, ry)) return false; // a Far Sleep crossing may be a Sleeper's Hall instead
     const r = rng(`${seed}:dungeon-entrance:v1:g${generation}:${rx}:${ry}`); if (r() >= .28) return false; r(); // world.ts addDungeonLandmark: the roll, the spot, the id

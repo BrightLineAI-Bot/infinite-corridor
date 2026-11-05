@@ -105,7 +105,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
-import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt } from "./landscape.ts";
+import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy } from "./landscape.ts";
 import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -1040,6 +1040,7 @@ export function sectionTerrain(seed, rx, ry, generation, steps) {
   const map = generateRegion(seed, rx, ry, generation);
   applyLandscape(map, seed, rx, ry, steps.landscape);
   if (steps.dream) applyDream(map, seed, rx, ry, steps.dream);
+  if (map.canopy) mendCanopy(map); // great-tree review: a tree the Far Sleep paved over (landscape versions 13 to 17) is no tree: its record and door go
   if (steps.hamlet) applyHamlet(map, seed, rx, ry, ...steps.hamlet);
   if (steps.trails) applyTrails(map, seed, rx, ry);
   if (steps.bridgeLanes) bridgeLanes(map); // world coherence (WG-01): the lanes' bridges
@@ -2082,7 +2083,12 @@ export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y
 // lasts JUMP.base ms plus JUMP.quickening per Quickening rank. The arc rises from the press itself, as fast as the
 // plain leap's rise; Quickening's extra time is hang time at the top, and the robot's boost holds it there too. jumpLift
 // gives the lift as a share of a tile (0..JUMP.arc).
-export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 900 }; // release 585: `sky`, a jump from a sky platform (one gap, easily)
+export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100 }; // release 585: `sky`, a jump from a sky platform (one gap, easily). Great-tree review (Tim, 2026-11-05: "hard to jump"): 900 → 1100 ms: at 2.4 tiles a second a sky hop covers 2.64 tiles, so one gap tile is cleared from anywhere on the launching tile (2 tiles at worst) with .64 tiles (about a quarter second) to spare; it was .16
+// Footing on a great tree's branches (Tim, 2026-11-05: "too hard to find your footing on the platforms"). On a canopy platform a
+// dodge goes along one of the four axes (a branch is one tile wide: a diagonal dodge drifted off it), and a sky hop flies
+// straight: while the Wayfarer is in the air over the gap only the stick's larger axis moves it, so a thumb's drift cannot carry
+// it off the line between the twin tips. Aim off an edge and you still go off it.
+export const TREE_FOOTING = { dodgeAxes: 4, straightHop: true, gapBelow: 1 }; // gapBelow: in the air this many levels or more under the launch height counts as over the gap
 export function jumpLift(g, now) {
   const until = g?.jumpUntil || 0; if (!(now < until)) return 0;
   if (g.mechBoosting) return JUMP.arc;
@@ -7360,6 +7366,9 @@ export class Game {
     if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge") && !this.cursed("dodge", now)) { // release 737: NO DODGE
       const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) p.dodgeMired = mired; // release 708: the Briar Stag's mire
+      if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
+        const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
+      }
       if (!r.ok && mired) { if (now >= (p.invulnerableUntil || 0)) { p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * STAG.mire.exhaustedShare))); p.invulnerableUntil = now + 200; } this.message = "The mire drags at you, and you have nothing left to pull free with."; } // release 708 (Tim: "if you dodge while you have zero stamina in the mire, then you take damage")
       else if (!r.ok) this.message = "Not enough stamina to dodge.";
       else { echoEvent(this, "dodge", now); onConstellationDodge(this); if (fieldOn(this.save, "drift-field")) { const q = this.player, cx = q.x + .5, cy = q.y + .45, f = this.ownSpellFx(true).filter((e) => Math.hypot(e.x - cx, e.y - cy) <= FIELD_PASSIVES["drift-field"].reach).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (f) this.driftField = { id: f.id, at: q.dodgeUntil || now }; } /* release 515: Drift Field */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "shadowStep") && !this.shadowCloneActive(now)) { const o = cloneOffset({ x: Number(x) || p.lastMoveVector?.x || 0, y: Number(y) || p.lastMoveVector?.y || 1 }, this.save.lastAim, SHADOW_STEP.behind); this.shadowClone = { ox: o.x, oy: o.y, until: now + SHADOW_STEP.seconds * 1000, marginalia: true }; } /* release 461: Shadow Step */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.dodgeBurst(p.x + .5, p.y + .45, EMBER_WAKE.radius, EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1), now); /* release 459; 481: dodgeBurst */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
@@ -7397,6 +7406,10 @@ export class Game {
     if (dodging) {
       x = p.dodgeX;
       y = p.dodgeY;
+    }
+    if (TREE_FOOTING.straightHop && this.area === "overworld" && this.map?.canopy && this.skyAir != null && now < (this.jumpUntil || 0)) { // great-tree footing: a sky hop flies straight over the gap
+      const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
+      if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
     }
     const swimming = this.swimsHere(footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y)), underfoot = this.map.landscape ? tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind : null;
     const sailing = this.area === "overworld" && aboard(this.save);
@@ -7476,7 +7489,7 @@ export class Game {
       const skyFrom = tileUnder(this.map, width, p.x, p.y);
       if (skyFrom?.kind === "canopyTrunk") this.lastCrownAt = now; // release 637: the glider opens only from the crown
       if (skyFrom?.kind === "canopyTrunk" && !this.save.glider) { this.save.glider = true; this.message = GLIDE.found; journalOnce(this.save, "glider:found", GLIDE.found, "The Great Trees"); } // release 635
-      if (p.jumping && skyFrom?.skyPlatform) this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0);
+      if (p.jumping && skyFrom?.skyPlatform) { this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0); this.skyAirScale = tileLiftScale(skyFrom); } // skyAirScale: the launching platform's drawn scale, so the hop is drawn at its height over the gap (renderer.ts)
       p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
       let fallStart = this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;
       const finishFall = (height) => {
