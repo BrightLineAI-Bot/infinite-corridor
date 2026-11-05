@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 766 — **A glide from the crown comes home.** Die on a glide from a great tree's crown (over a Pentagon, into deep water, a folded drop, anything) before you touch ground and you wake on that crown, having lost nothing. Near a great tree a glide can no longer fly north (up the tree on screen). A skimming glide no longer hangs for ever over flat blocked ground, and a Crown Rest wakes only from the crown itself.
 - Release 765 — **The Doom Chaser beyond 1000.** Inside 1000 sections he keeps to the Stillworks. Past 1000 he is a world beast again: met and seen passing, a kill out there opens the quest to the Black Pyre, and the Black Pyre is his domain once more (he comes home there, and stumbling onto it brings him, as with the other beasts).
 - Release 764 — **Tall spires again.** New ground grows about as many tall spires and groves as before release 758, at taller heights, keeping every 758 fix (open hop gaps, perches in view, readable turns, nothing in front of the trunk, every tree climbable). The crown veil now starts thinning halfway up the climb. New ground only (landscape version 19).
 - Release 763 — **The glider only goes down, and never over a Pentagon.** Glide over or onto any part of a Pentagon, roof included, and you fall and die. A Great Castle's walls still turn the glider away. A glide now only ever carries you down: it can't climb onto higher ground, over a section's edge or while skimming. Riding: a mount's jump no longer dodges a creature's blow. A drone that fizzles is stowed, ready to call again.
