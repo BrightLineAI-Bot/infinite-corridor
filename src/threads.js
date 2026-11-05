@@ -7,8 +7,8 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r764-0eb650c60230";
-import { READING_BANDS } from "./lore.js?v=r764-0eb650c60230";
+import { hashSeed } from "./random.js?v=r770-9899db3b2b7b";
+import { READING_BANDS } from "./lore.js?v=r770-9899db3b2b7b";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for)
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first

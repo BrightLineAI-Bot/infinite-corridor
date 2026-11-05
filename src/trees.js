@@ -14,7 +14,7 @@
 //   levels under the branch above, so a fall off the higher branch lands on one (it hurts) and the climb goes on from there;
 // - leaves on its branches (the tips always), and decorative boughs drawn off its trunk, which nothing walks on.
 // Bounded: at most two trees, a few thousand tile checks, once per section; nothing spawns up there.
-import { hashSeed, byHash } from "./random.js?v=r764-0eb650c60230";
+import { hashSeed, byHash } from "./random.js?v=r770-9899db3b2b7b";
 
 export const TREE_VERSION = 13;
 // Release 672 (landscape version 14; Tim, 2026-11-01: "I haven't seen any tall trees"): a survey found the version 13 search
@@ -70,6 +70,82 @@ export const TREES_V19 = {
   // drawn over as well as the one tile its twin nearer the camera always covers; the other sides may be three)
   tries: { spire: 80, grove: 480 }, greaterTries: 240, // spots tried for a grove's first tree, and for its second (version 18: 240 and 120)
 };
+// The last spires back (Tim, 2026-11-05: "sure, we can have those two hidden climb tiles... if it doesn't break the tree — it
+// doesn't make the user feel like they're going to die, or unsure how to traverse it concretely — then we can put them in").
+// Version 19's `least` kept the second side of a four-sided tree at four tiles, because at three the corner knot before it is
+// drawn over by the branch that returns two rows nearer the camera (and the next step south of it), and that cost about one
+// spire in six. From landscape version 20 every side may be three tiles again (no `least`), and the knot is drawn: a walkable
+// tile that later wood hides whole is painted again over the far wood, with the steps beside it painted back over it, when that
+// shows it without hiding anything else (`canopyRepaint`, every tree, rendering only). And a tree is laid only when, so drawn,
+// every climb tile shows but the one twin-covered tile a tree always has (`readable`); otherwise the spot is passed over.
+export const TREES_V20 = {
+  ...TREES_V19, version: 20,
+  specs: { tall: TREES_V19.specs.tall, spire: { trunk: 3, sides: [4], reach: [3, 7] }, compact: TREES_V19.specs.compact, lesser: TREES_V19.specs.lesser, greater: { trunk: 3, sides: [3, 4], reach: [3, 5] } },
+  readable: { perTree: 1 }, // walkable tiles a laid tree may leave hidden, per tree (the tile its twin tip sits exactly over)
+};
+// What the renderer draws where (landscape-render.ts, renderer.ts), as rectangles in tile units, so the generator and the
+// renderer agree on which platforms show. A canopy tile's top face sits `drawnLevel` tiles a level higher (half a level lower for
+// a slope); under it, the trunk's face runs down to its foot, a branch's underside .26 deep, a leaf's .14. The ground pass paints
+// row by row, so a tile further south (nearer the camera) is painted over the ones behind it.
+export const CANOPY_DRAWN = {
+  under: { canopyLeaf: .14, other: .26 }, samples: 8, // the top face is sampled samples × samples
+  hidden: .95, // a top face covered this much is hidden
+  keep: .25, // a repaint may not leave another platform less than this much of its face (a one-level stair shows .32)
+};
+const drawnLift = (t) => Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * TREES_V18.drawnLevel;
+const drawnRects = (t, x, y) => { const h = drawnLift(t), top = [x, y - h, x + 1, y - h + 1]; return [top, h <= 0 ? null : t.kind === "canopyTrunk" ? [x, y - h + 1, x + 1, y + 1] : [x, y - h + 1, x + 1, y - h + 1 + (CANOPY_DRAWN.under[t.kind] ?? CANOPY_DRAWN.under.other)]]; };
+const meets = (a, b) => !!b && a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+// Release 758's list (moved here from landscape-render.ts, unchanged): the platforms whose drawn top or underside lies within a
+// trunk face drawn after them, painted again over it.
+export function canopyBehindTrunk(tiles, w, box) {
+  const out = [], h = Math.floor(tiles.length / w);
+  for (let x = Math.max(0, box.x); x < Math.min(w, box.x + box.n); x++) {
+    const trunks = []; for (let y = Math.max(0, box.y); y < Math.min(h, box.y + box.n); y++) { const u = tiles[y * w + x]; if (u?.kind === "canopyTrunk" && u.canopy) trunks.push({ y, top: y - drawnLift(u) + 1, bottom: y + 1 }); } // the face: below the crown's own top face, which stays in front of what is behind it
+    if (!trunks.length) continue;
+    for (let y = Math.max(0, box.y); y < Math.min(h, box.y + box.n); y++) {
+      const t = tiles[y * w + x]; if (!t?.canopy || t.kind === "canopyTrunk" || t.blocked) continue;
+      const top = y - drawnLift(t), bottom = top + 1.26; // its top face and underside
+      if (trunks.some((u) => u.y > y && bottom > u.top && top < u.bottom)) out.push(t);
+    }
+  }
+  return out.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+// Release 758's other list (moved here from landscape-render.ts, unchanged): the platforms a tree's rising trunk (drawn on above
+// the crown with the actors, renderer.ts drawCanopyDressing) would cover, canopy tiles north of the trunk in its columns whose
+// drawn top lies above the crown's, painted again right after the dressing.
+export function canopyAboveCrown(tiles, w, tr) {
+  const out = [], h = Math.floor(tiles.length / w), topY = tr.y0 - tr.top * TREES_V18.drawnLevel;
+  for (let x = Math.max(0, tr.x0); x < Math.min(w, tr.x0 + tr.size); x++) for (let y = 0; y < Math.min(h, tr.y0); y++) {
+    const t = tiles[y * w + x]; if (!t?.canopy || t.kind === "canopyTrunk" || t.blocked) continue;
+    if (y - drawnLift(t) < topY) out.push(t);
+  }
+  return out.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+// The tree's repaint, in order: release 758's platforms behind the trunk (shaded), then each walkable tile that wood painted
+// after it still hides whole (`hidden`), painted again (shaded, "behind") with the steps beside it that it overlaps painted back
+// over it (unshaded), kept only when that shows the tile and leaves every other platform at least `keep` of its face (or what
+// it had). `hiddenAfter` lists the walkable tiles that stay hidden once `last` (the above-crown list, painted after the dressing)
+// is painted too; the plan does not depend on `last`. Pure; about a hundred tiles, worked out once a map.
+export function canopyRepaint(tiles, w, box, last = []) {
+  const D = CANOPY_DRAWN, h = Math.floor(tiles.length / w), wood = [], pos = new Map();
+  for (let y = Math.max(0, box.y); y < Math.min(h, box.y + box.n); y++) for (let x = Math.max(0, box.x); x < Math.min(w, box.x + box.n); x++) { const t = tiles[y * w + x]; if (t?.canopy) { wood.push(t); pos.set(t, [x, y]); } }
+  const rects = new Map(wood.map((t) => [t, drawnRects(t, ...pos.get(t))])), order = new Map(wood.map((t) => [t, pos.get(t)[1] * w + pos.get(t)[0]])), plan = [];
+  let next = 1e6; for (const t of canopyBehindTrunk(tiles, w, box)) { order.set(t, next++); plan.push({ t, shade: true }); }
+  const walk = wood.filter((t) => t.kind !== "canopyTrunk" && !t.blocked), S = D.samples;
+  const cover = (t) => { const top = rects.get(t)[0], over = []; for (const u of wood) { if (u === t || order.get(u) <= order.get(t)) continue; for (const r of rects.get(u)) if (meets(top, r)) over.push(r); } if (!over.length) return 0; let n = 0; for (let i = 0; i < S; i++) for (let j = 0; j < S; j++) { const px = top[0] + (i + .5) / S, py = top[1] + (j + .5) / S; if (over.some((r) => px >= r[0] && px < r[2] && py >= r[1] && py < r[3])) n++; } return n / (S * S); };
+  const was = new Map(walk.map((t) => [t, cover(t)]));
+  for (const t of walk.filter((q) => was.get(q) >= D.hidden).sort((a, b) => pos.get(a)[1] - pos.get(b)[1] || pos.get(a)[0] - pos.get(b)[0])) {
+    if (cover(t) < D.hidden) continue; // shown by an earlier repaint
+    const [x, y] = pos.get(t), top = rects.get(t)[0], old = order.get(t), back = [];
+    for (const [dx, dy] of N4) { const n = tiles[(y + dy) * w + x + dx]; if (x + dx < 0 || x + dx >= w || !n?.canopy || n.kind === "canopyTrunk" || !order.has(n) || Math.abs((n.elev || 0) - (t.elev || 0)) > 1 || order.get(n) <= old || !rects.get(n).some((r) => meets(top, r))) continue; back.push(n); }
+    const prior = new Map(back.map((n) => [n, order.get(n)])); order.set(t, next); back.sort((a, b) => order.get(a) - order.get(b)).forEach((n, i) => order.set(n, next + 1 + i));
+    const near = walk.filter((q) => q !== t && [t, ...back].some((u) => rects.get(u).some((r) => meets(rects.get(q)[0], r)))); // the faces this repaint can cover
+    if (cover(t) < D.hidden && near.every((q) => 1 - cover(q) >= Math.min(D.keep, 1 - was.get(q)))) { next += 1 + back.length; plan.push({ t, shade: true }, ...back.map((n) => ({ t: n, shade: false }))); for (const q of near) was.set(q, cover(q)); }
+    else { order.set(t, old); for (const [n, o] of prior) order.set(n, o); }
+  }
+  for (const t of last) if (order.has(t)) order.set(t, next++);
+  return { plan, hiddenAfter: walk.filter((t) => cover(t) >= D.hidden) };
+}
 export const TREES = {
   chance: .55, // of the jungle sections the great trees are seen in at all
   forms: [["spire", 4], ["grove", 6]], // weights (a grove needs room for two trees, so it is tried more often than it grows)
@@ -150,6 +226,14 @@ function climbTiles(plan, start) {
   return { tiles: out, hops, top: lv + 1 };
 }
 
+// Version 20: a laid tree's wood, drawn as the renderer draws it (the repaint, then the above-crown list), hides at most
+// `readable.perTree` walkable tiles a tree, each one its twin tip sits exactly over. The box is the one map.canopy will record.
+function readableTree(map, laid, trees) {
+  const door = trees[trees.length - 1], last = canopyAboveCrown(map.tiles, 32, { x0: door.tx, y0: door.ty, size: door.N, top: door.top }), xs = [...laid].map((i) => i % 32), ys = [...laid].map((i) => Math.floor(i / 32)), bx = Math.min(...xs) - 1, by = Math.min(...ys) - 1, n = Math.max(Math.max(...xs) - bx, Math.max(...ys) - by) + 2;
+  const hidden = canopyRepaint(map.tiles, 32, { x: bx, y: by, n }, last).hiddenAfter; // each the tile its twin tip sits exactly over (two rows nearer the camera, three levels up)
+  return hidden.length <= TREES_V20.readable.perTree * trees.length && hidden.every((t) => { const s = map.tiles[idx(t.x, t.y + 2)]; return t.y + 2 < 32 && !!s?.canopy && s.elev === t.elev + 3; });
+}
+
 // The shortest walk over free ground from any of `from` to a tile beside `to`, or null.
 function walkPath(from, to, free) {
   const prev = new Map(), q = []; for (const p of from) if (free(...p)) { prev.set(idx(...p), null); q.push(p); }
@@ -163,8 +247,8 @@ function walkPath(from, to, free) {
 // Grow this section's great tree(s). `ground` says whether a tile can take wood, `reachable` recomputes what can be walked
 // to from the plaza, `trapped` lists the tiles that can be dropped into but not climbed out of. Returns the tree record for map.canopy, or null (the tiles are left as they were).
 export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, version = 13, region = "jungle", force = false }) {
-  const T = TREES, h0 = fnvFrom(2166136261, `${seed}:trees:v13:${rx}:${ry}:`), h = (k) => fnvFrom(h0, k) >>> 0, at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version, v18 = version >= TREES_V18.version, v19 = version >= TREES_V19.version;
-  const S = v19 ? TREES_V19.specs : v18 ? TREES_V18.specs : { spire: T.spire, compact: TREES_V14.compact, lesser: T.lesser, greater: T.greater }, gapOk = v18 ? (x, y) => ground(x, y) && !at(x, y).blocked : null, turns = v18 ? TREES_V18.turns : null; // version 18: longer climbs, open hop gaps (a buttress root is tree ground, but blocked as a gap), readable turns
+  const T = TREES, h0 = fnvFrom(2166136261, `${seed}:trees:v13:${rx}:${ry}:`), h = (k) => fnvFrom(h0, k) >>> 0, at = (x, y) => map.tiles[idx(x, y)], v14 = version >= TREES_V14.version, v18 = version >= TREES_V18.version, v19 = version >= TREES_V19.version, v20 = version >= TREES_V20.version;
+  const S = v20 ? TREES_V20.specs : v19 ? TREES_V19.specs : v18 ? TREES_V18.specs : { spire: T.spire, compact: TREES_V14.compact, lesser: T.lesser, greater: T.greater }, gapOk = v18 ? (x, y) => ground(x, y) && !at(x, y).blocked : null, turns = v18 ? TREES_V18.turns : null; // version 18: longer climbs, open hop gaps (a buttress root is tree ground, but blocked as a gap), readable turns
   if (!force && !v14 && (hashSeed(`${seed}:canopy-grow:v1:${ry * 7919 + rx}`) % 1000) / 1000 >= T.chance) return null;
   if (!force && v14 && (hashSeed(`${seed}:canopy-grow:v2:${region}:${ry * 7919 + rx}`) % 1000) / 1000 >= (TREES_V14.regions[region]?.chance || 0)) return null; // force: the Rite of Ascendancy's tree (ascendancy.ts) always grows where it fits
   // Version 14: every spot, in a hashed order (the same each time); version 13: `tries` hashed spots.
@@ -268,6 +352,7 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
       const nb = pick(h(`boughs:${tr.tx}:${tr.ty}`), T.boughs.count); tr.boughs = [];
       for (let k = 0; k < nb; k++) { const r = h(`bough:${tr.tx}:${tr.ty}:${k}`); tr.boughs.push({ at: .12 + .8 * ((r % 1000) / 1000), side: (r >>> 10) % 2 ? 1 : -1, len: T.boughs.len[0] + (T.boughs.len[1] - T.boughs.len[0]) * (((r >>> 11) % 100) / 100), lift: ((r >>> 18) % 5) / 10, leaves: 2 + (r >>> 21) % 3 }); }
     }
+    if (v20 && !readableTree(map, laid, trees)) { undo(); continue; } // version 20: so drawn (canopyRepaint), every climb tile shows but the one twin-covered tile a tree has
     const cleared = new Set(laid), strip = new Set();
     if (v18) { // version 18: the wood's trees also leave the hop gaps and the strip the trunk is drawn up, so nothing stands in front of it
       for (const tr of trees) {
@@ -283,7 +368,7 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
     map.objects.push({ id: `canopy-gate-${rx}-${ry}`, kind: "canopyGate", name: dest === "starfield" ? "A door in the great tree, full of stars" : "A door in the great tree, full of cloud", x: gate[0], y: gate[1], dest, actions: ["enter"], state: "open" });
     const xs = [...laid].map((i) => i % 32), ys = [...laid].map((i) => Math.floor(i / 32)), bx = Math.min(...xs) - 1, by = Math.min(...ys) - 1, n = Math.max(Math.max(...xs) - bx, Math.max(...ys) - by) + 2;
     const rec = (tr, low) => ({ x0: tr.tx, y0: tr.ty, size: tr.N, top: tr.top, look: tr.look, boughs: tr.boughs, ...(low ? { low: true } : {}) });
-    map.canopy = { version: v19 ? TREES_V19.version : v18 ? TREES_V18.version : v14 ? TREES_V14.version : TREE_VERSION, ...(v14 ? { region } : {}), form, x0: door.tx, y0: door.ty, size: door.N, height: door.top, top: door.top, branches: door.sides.length * 2, reach: door.sides.map((q) => q.L), dest, pads, walk: walk.length, trees: trees.map((tr, i) => rec(tr, i < trees.length - 1)), box: { x: bx, y: by, n } };
+    map.canopy = { version: v20 ? TREES_V20.version : v19 ? TREES_V19.version : v18 ? TREES_V18.version : v14 ? TREES_V14.version : TREE_VERSION, ...(v14 ? { region } : {}), form, x0: door.tx, y0: door.ty, size: door.N, height: door.top, top: door.top, branches: door.sides.length * 2, reach: door.sides.map((q) => q.L), dest, pads, walk: walk.length, trees: trees.map((tr, i) => rec(tr, i < trees.length - 1)), box: { x: bx, y: by, n } };
     return map.canopy;
   }
   return null;

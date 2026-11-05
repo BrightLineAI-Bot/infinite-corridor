@@ -1,10 +1,10 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { SEASONS } from "./seasons.js?v=r764-0eb650c60230";
-import { LIFT_PER_LEVEL, CANOPY_LIFT, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r764-0eb650c60230";
-import { TREES } from "./trees.js?v=r764-0eb650c60230";
-import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.js?v=r764-0eb650c60230";
+import { SEASONS } from "./seasons.js?v=r770-9899db3b2b7b";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r770-9899db3b2b7b";
+import { TREES, canopyBehindTrunk, canopyAboveCrown, canopyRepaint } from "./trees.js?v=r770-9899db3b2b7b";
+import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.js?v=r770-9899db3b2b7b";
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -567,36 +567,19 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
 // and after the sky's redraw. Bounded by the tree's box; nothing per frame beyond the sky pass that already redraws the box.
 let behindPass = false;
 const LETHAL_UNDER = new Set(["lava", "abyss", "canyon", "river", "dungeonWater", "ocean", "deepOcean", "lakeWater", "swampWater", "toxicWater"]); // never painted as the floor under a branch
-export function canopyBehindTrunk(tiles, w, box) {
-  const out = [], liftOf = (t) => Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t), h = Math.floor(tiles.length / w);
-  for (let x = Math.max(0, box.x); x < Math.min(w, box.x + box.n); x++) {
-    const trunks = []; for (let y = Math.max(0, box.y); y < Math.min(h, box.y + box.n); y++) { const u = tiles[y * w + x]; if (u?.kind === "canopyTrunk" && u.canopy) trunks.push({ y, top: y - liftOf(u) + 1, bottom: y + 1 }); } // the face: below the crown's own top face, which stays in front of what is behind it
-    if (!trunks.length) continue;
-    for (let y = Math.max(0, box.y); y < Math.min(h, box.y + box.n); y++) {
-      const t = tiles[y * w + x]; if (!t?.canopy || t.kind === "canopyTrunk" || t.blocked) continue;
-      const top = y - liftOf(t), bottom = top + 1.26; // its top face and underside
-      if (trunks.some((u) => u.y > y && bottom > u.top && top < u.bottom)) out.push(t);
-    }
-  }
-  return out.sort((a, b) => a.y - b.y || a.x - b.x);
-}
-// The platforms a tree's rising trunk (drawn on above the crown with the actors, renderer.ts drawCanopyDressing) would cover:
-// canopy tiles north of the trunk in its columns whose drawn top lies above the crown's. Painted again right after the dressing.
-export function canopyAboveCrown(tiles, w, tr) {
-  const out = [], h = Math.floor(tiles.length / w), topY = tr.y0 - tr.top * LIFT_PER_LEVEL * CANOPY_LIFT;
-  for (let x = Math.max(0, tr.x0); x < Math.min(w, tr.x0 + tr.size); x++) for (let y = 0; y < Math.min(h, tr.y0); y++) {
-    const t = tiles[y * w + x]; if (!t?.canopy || t.kind === "canopyTrunk" || t.blocked) continue;
-    if (y - Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) < topY) out.push(t);
-  }
-  return out.sort((a, b) => a.y - b.y || a.x - b.x);
-}
+export { canopyBehindTrunk, canopyAboveCrown, canopyRepaint }; // trees.ts (release 758's lists, moved there unchanged so the generator can use them too)
+// Landscape 20's review: the repaint (trees.ts canopyRepaint: the platforms behind the trunk, then any walkable tile later wood
+// hides whole, with the steps beside it painted back over it), worked out once for a map's tiles and box (a WeakMap on the
+// tiles array: nothing kept once the section is left).
+const repaints = new WeakMap();
+export function canopyRepaintFor(tiles, w, box) { const c = repaints.get(tiles); if (c && c.box === box && c.w === w) return c.plan; const plan = canopyRepaint(tiles, w, box).plan; repaints.set(tiles, { box, w, plan }); return plan; }
 function drawAgain(ctx, list, s, draw) {
   behindPass = true;
-  try { for (const t of list) { draw(t, t.x, t.y); const lift = Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) * s; ctx.fillStyle = "#00000022"; ctx.fillRect(t.x * s, t.y * s - lift, s + .5, s + .5); } }
+  try { for (const q of list) { const t = q.t || q; draw(t, t.x, t.y); if (q.shade === false) continue; const lift = Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) * s; ctx.fillStyle = "#00000022"; ctx.fillRect(t.x * s, t.y * s - lift, s + .5, s + .5); } }
   finally { behindPass = false; }
   return list.length;
 }
-export function drawCanopyBehindTrunk(ctx, tiles, w, s, box, draw) { const list = canopyBehindTrunk(tiles, w, box); return list.length ? drawAgain(ctx, list, s, draw) : 0; }
+export function drawCanopyBehindTrunk(ctx, tiles, w, s, box, draw) { const list = canopyRepaintFor(tiles, w, box); return list.length ? drawAgain(ctx, list, s, draw) : 0; } // landscape 20's review: the whole repaint (every tree)
 export function drawCanopyAboveCrown(ctx, tiles, w, s, tr, draw) { const list = canopyAboveCrown(tiles, w, tr); return list.length ? drawAgain(ctx, list, s, draw) : 0; }
 // Release 645: each great tree's own look over its tiles (a tint), and leaves on its branches: tufts along a leafy branch,
 // a full spray at a tip, hanging below the wood. A handful of ellipses per tile, no state.

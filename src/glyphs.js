@@ -7,8 +7,8 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r764-0eb650c60230";
-import { tesseractBonus } from "./tesseracts.js?v=r764-0eb650c60230";
+import { hashSeed } from "./random.js?v=r770-9899db3b2b7b";
+import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r770-9899db3b2b7b";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -86,9 +86,14 @@ export function armorGlyphBonus(save) {
   for (const id of save?.equipment?.armor?.glyphs || []) { const a = ARMOR_GLYPHS[id]; if (a) for (const k of Object.keys(ARMOR_GLYPH_CAP)) if (a[k]) out[k] += a[k]; }
   for (const k of Object.keys(out)) out[k] = Math.min(out[k], ARMOR_GLYPH_CAP[k]);
   for (const id of triadsOf(save?.equipment?.armor?.glyphs || [])) for (const [k, v] of Object.entries(TRIADS[id].armor)) out[k] = (out[k] || 0) + v; // release 529: armor triads, past the caps
-  const tb = tesseractBonus(save); for (const k of Object.keys(ARMOR_GLYPH_CAP)) if (tb[k]) out[k] = (out[k] || 0) + tb[k]; out.killHeal = tb.killHeal; out.selfHarm = tb.selfHarm; // release 729: Tesseract glyphs, past the caps, costs and all
-  return out;
+  const tb = tesseractBonus(save); for (const k of Object.keys(ARMOR_GLYPH_CAP)) if (tb[k]) out[k] = (out[k] || 0) + tb[k]; for (const k of TESSERACT_LINES) out[k] = tb[k]; // release 729: Tesseract glyphs, past the caps, costs and all (and roll 3's own lines)
+  return limitTesseractLines(out);
 }
+// Roll 3's own Tesseract lines, totalled over three glyphs, stay inside these [lowest, highest] (three cursed glyphs together).
+// Every stat that existed before roll 3 stacks without limit, as it always has (Tim, 2026-11-05: "I need infinite dodge"); where
+// a stacked value is used, game.ts keeps it sane (a dodge never costs less than DODGE_COST.min, 0: free, never a refund).
+export const TESSERACT_LINE_LIMITS = { castHarm: [0, .1], dodgeHarm: [0, .12], staminaDrain: [0, .25], damageTaken: [0, .5], meleeHeal: [0, .08], spellHeal: [0, .08], hitHeal: [0, .05] };
+export function limitTesseractLines(out) { for (const k in TESSERACT_LINE_LIMITS) if (out[k] !== undefined) { const L = TESSERACT_LINE_LIMITS[k]; out[k] = Math.min(L[1], Math.max(L[0], Number(out[k]) || 0)); } return out; }
 
 export const RESONANCES = {
   "ember-choir": { name: "Ember Choir", pair: ["ignite", "echo"], text: "Echoes deal double damage to burning foes." },

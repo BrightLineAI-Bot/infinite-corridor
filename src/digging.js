@@ -8,9 +8,9 @@
 // floor; and it may break through only into floor you could already walk to, so no sealed or guarded part is ever
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r764-0eb650c60230";
-import { LETHAL_KINDS } from "./landscape.js?v=r764-0eb650c60230";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r764-0eb650c60230";
+import { hashSeed } from "./random.js?v=r770-9899db3b2b7b";
+import { LETHAL_KINDS } from "./landscape.js?v=r770-9899db3b2b7b";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r770-9899db3b2b7b";
 
 // Balance (data, not literals in the logic).
 export const DIG = {
@@ -187,7 +187,9 @@ export const isObstacle = (t) => !!t && t.blocked && !/wall|rim|Wall|Rim/.test(S
 // Plans one dig from where you stand, facing `facing`. Returns { ok, x, y, through, reason, resists }; `resists` marks rock
 // that only the iron shovel digs (`iron`: plan for it).
 // `walked` (DIG_GATES): in an interior, the walked-floor record (markWalked); without one only the older rules hold there.
-export function planDig(map, px, py, facing, areaKey, { iron = false, overworld = false, walked = null } = {}) {
+// `burrow(x, y)` (labyrinths.ts LAB_BURROW): true for a block that may break through toward floor not yet walked (a claimed
+// room's glinting walls); every other rule still holds for it.
+export function planDig(map, px, py, facing, areaKey, { iron = false, overworld = false, walked = null, burrow = null } = {}) {
   if (!canDigHere(areaKey)) return { ok: false, reason: "The walls here are not stone a shovel can bite." };
   const [dx, dy] = DIRS[facing] || DIRS.down, x = px + dx, y = py + dy;
   if (overworld) { // release 423: no sealed halls out here; walls of rock are one dig, a standing stone or crag a whole shovel
@@ -206,9 +208,9 @@ export function planDig(map, px, py, facing, areaKey, { iron = false, overworld 
   const mine = reachable(map, px, py), w = W(map);
   for (const [ex, ey] of Object.values(DIRS)) { const nx = x + ex, ny = y + ey, n = at(map, nx, ny); if (!walkable(n) || n.tunnel) continue;
     if (!mine.has(ny * w + nx)) { if (interior) return { ok: false, sealed: true, reason: DIG_GATES.messages.sealed }; if (!iron) return { ok: false, resists: true, reason: "The rock beyond rings hollow and sealed. Something keeps that side; the shovel will not open it." }; }
-    else if (interior && walked && !walked[ny * w + nx]) return { ok: false, unwalked: true, reason: DIG_GATES.messages.unwalked }; }
+    else if (interior && walked && !walked[ny * w + nx] && !(burrow && burrow(x, y))) return { ok: false, unwalked: true, reason: DIG_GATES.messages.unwalked }; }
   const through = Object.values(DIRS).some(([ex, ey]) => { const n = at(map, x + ex, y + ey); return (x + ex !== px || y + ey !== py) && walkable(n) && !n.tunnel; });
-  return { ok: true, x, y, through, depth, cut: isObstacle(at(map, x, y)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}) };
+  return { ok: true, x, y, through, depth, cut: isObstacle(at(map, x, y)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}), ...(burrow && burrow(x, y) ? { burrow: true } : {}) };
 }
 // Turns a wall block into tunnel floor on this map.
 export function openTunnel(map, x, y, overworld = false) { const i = y * W(map) + x, t = map.tiles[i], level = overworld ? { elev: settleElev(map, x, y), slope: false } : {}; map.tiles[i] = { ...t, kind: "tunnel", wallKind: t.kind, blocked: false, tunnel: true, ...level }; return map.tiles[i]; }

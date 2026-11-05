@@ -13,38 +13,89 @@
 // bonuses (glyphs.ts armorGlyphBonus, past its caps, as triads are), so they reach every place those already reach; two lines of
 // their own: `killHeal` (health back on a kill) and `selfHarm` (health lost with each swing).
 //
+// Roll 3 (Tim, 2026-11-05: "the best ones are cursed: they give you good buffs but also have some hard rule... different classes
+// of glyphs — some for magic, some for health/defense, some for character buffs (movement speed, stamina), some for melee — so
+// you can tune them into your build, and you know what type of cost you're going to have to deal with. The weaker Tesseract
+// glyphs should always roll with two negative effects; two versus three should just be random"; "The benefits shouldn't be
+// canceled out by the negatives"): every glyph is one of four classes (`classes`: Melee, Magic, Vitality, Motion, on the kinds
+// edge, star, ward, gale), its bonuses from its class's pools and its costs from its class's `costs` pool, never on the `axis`
+// of one of its own bonuses; a top tier's one cost is a curse from its class's `curse` pool at the effect's full `curse`
+// strength, and its three bonuses run past roll 2's by the tier's `lift` (`tiers`). New lines: health back on a melee, magic
+// or any hit (capped per second, `hitHealCap`), health lost per cast or per dodge, stamina drained while moving, and more damage
+// taken; a health cost never takes you below `harmFloor` of your maximum.
+//
 // Save (additive, schema 14): save.tesseracts = { owned: [{ uid, kind, grade, name, lines: [{ k, v, bad }], from, roll? }], slots:
 // [uid|null ×3], seq, got: { <source>: true }, echo: glyphs ever set (once any is) }. Rolls are hashes of the seed and the source, so a source gives its glyph once.
-import { hashSeed } from "./random.js?v=r764-0eb650c60230";
+import { hashSeed } from "./random.js?v=r770-9899db3b2b7b";
 
 export const TESSERACTS = {
   version: 1, slots: 3, keep: 60, dust: 3, // owned at most `keep`; shattering one gives `dust` glyph dust
   // The roll version new glyphs are cut with (grantTesseract). 1: every glyph granted through release 759 (each grade's `bad`
-  // chance and `costs`), kept byte for byte. 2: each grade's `cut` (below). Every glyph cut at 2 records it (`roll`); granted
-  // glyphs are kept as stored and never re-rolled; the dais rerolls a line by the rules of the version that cut its glyph.
-  roll: 2,
-  // each effect: the range of a bonus, the range of a cost (fractions), and how a line reads
+  // chance and `costs`), kept byte for byte. 2: each grade's `cut` (below; releases 762-764). 3: `classes` and `tiers`
+  // (below). Every glyph cut at 2 or later records it (`roll`); granted glyphs are kept as stored and never re-rolled; the dais
+  // rerolls a line by the rules of the version that cut its glyph.
+  roll: 3,
+  harmFloor: .15, // a health cost (selfHarm, castHarm, dodgeHarm) stops at this share of maximum health: it never kills
+  hitHealCap: .05, // health on hit gives at most this share of maximum health in any one second, however many hits land
+  // each effect: the range of a bonus, the range of a cost (fractions), and how a line reads. Roll 3 adds `axis` (a cost never
+  // shares one with a bonus on its glyph), `curse` (a top tier's cost, at full strength) and `bad3` (roll 3's cost range where
+  // roll 1's would not fit: a swing lands about three times a second on a fast weapon, so roll 3 takes far less health per swing)
   effects: {
-    attackDamage: { good: [.04, .15], bad: [.03, .1], text: "melee damage" },
-    spellDamage: { good: [.04, .15], bad: [.03, .1], text: "magic damage" },
-    defense: { good: [.02, .08], bad: [.02, .07], text: "damage reduction" },
-    hp: { good: [.04, .14], bad: [.03, .1], text: "maximum health" },
-    move: { good: [.03, .1], bad: [.03, .08], text: "move speed" },
-    attackSpeed: { good: [.03, .12], bad: [.03, .1], text: "attack speed" },
-    spellCooldown: { good: [.03, .12], bad: [.03, .1], text: "skill recharge" },
-    spellDuration: { good: [.05, .2], bad: [.04, .15], text: "skill duration" },
-    staminaRegen: { good: [.05, .25], bad: [.05, .2], text: "stamina recovery" },
-    dodgeCost: { good: [.04, .15], bad: [.04, .12], text: "dodge cost", invert: true }, // reads as a cost: −x% good, +x% bad
-    burstRadius: { good: [.06, .25], bad: [.05, .2], text: "dodge-burst size" },
-    killHeal: { good: [.01, .04], text: "of maximum health back on a kill" }, // a bonus only
-    selfHarm: { bad: [.01, .03], text: "of maximum health lost with each swing" }, // a cost only
+    attackDamage: { good: [.04, .15], bad: [.03, .1], axis: "melee", text: "melee damage" },
+    spellDamage: { good: [.04, .15], bad: [.03, .1], axis: "magic", text: "magic damage" },
+    defense: { good: [.02, .08], bad: [.02, .07], axis: "health", text: "damage reduction" },
+    hp: { good: [.04, .14], bad: [.03, .1], axis: "health", text: "maximum health" },
+    move: { good: [.03, .1], bad: [.03, .08], curse: [.08, .12], axis: "speed", text: "move speed" },
+    attackSpeed: { good: [.03, .12], bad: [.03, .1], curse: [.1, .15], axis: "melee", text: "attack speed" },
+    spellCooldown: { good: [.03, .12], bad: [.03, .1], curse: [.15, .25], axis: "magic", text: "skill recharge" },
+    spellDuration: { good: [.05, .2], bad: [.04, .15], axis: "magic", text: "skill duration" },
+    staminaRegen: { good: [.05, .25], bad: [.05, .2], axis: "stamina", text: "stamina recovery" },
+    dodgeCost: { good: [.04, .15], bad: [.04, .12], curse: [.2, .3], axis: "stamina", text: "dodge cost", invert: true }, // reads as a cost: −x% good, +x% bad
+    burstRadius: { good: [.06, .25], bad: [.05, .2], axis: "burst", text: "dodge-burst size" },
+    killHeal: { good: [.01, .04], plain: true, axis: "health", text: "of maximum health back on a kill" }, // a bonus only
+    selfHarm: { bad: [.01, .03], bad3: [.002, .004], curse: [.004, .006], plain: true, harm: true, axis: "health", text: "of maximum health lost with each swing" }, // a cost only
+    // Roll 3's own lines (appended; rolls 1 and 2 never draw them). Health on hit (Tim, 2026-11-05: "5% regen on magic hits, 5%
+    // regen on melee hits, and another one 2.5% regen on all hits"): a share of maximum health back per landed hit, at most
+    // `hitHealCap` of it in a second however many hits land (game.ts tesseractHitHeal); one such line per glyph (`group`).
+    meleeHeal: { good: [.01, .038], plain: true, axis: "health", group: "onHit", text: "of maximum health back with each melee hit" },
+    spellHeal: { good: [.01, .038], plain: true, axis: "health", group: "onHit", text: "of maximum health back with each magic hit" },
+    hitHeal: { good: [.005, .019], plain: true, axis: "health", group: "onHit", text: "of maximum health back with each hit, melee or magic" },
+    // Costs only (`harm`: tesseractBonus counts the harm itself, positive). game.ts applies each: castHarm in castSlot / castKey,
+    // dodgeHarm on a dodge, staminaDrain in the stamina step while the Wayfarer moves, damageTaken on every blow (hurtScale).
+    castHarm: { bad: [.01, .03], curse: [.04, .06], plain: true, harm: true, axis: "health", text: "of maximum health lost with each cast" },
+    dodgeHarm: { bad: [.02, .04], curse: [.04, .06], plain: true, harm: true, axis: "health", text: "of maximum health lost with each dodge" },
+    staminaDrain: { bad: [.03, .06], curse: [.08, .12], plain: true, harm: true, axis: "stamina", text: "of maximum stamina drained each second you move" },
+    damageTaken: { bad: [.05, .12], curse: [.15, .25], harm: true, invert: true, axis: "health", text: "damage taken" }, // reads +x%
+  },
+  // Roll 3's classes, one per kind (a Sovereign-kind glyph, cut at rolls 1-2, is the old mixed class): `lead` line 0's effects,
+  // `bonus` the other bonuses', `costs` its costs below the top tiers, `curse` a top tier's one cost; `boost` a bonus's strength
+  // times this (the main damage line higher, a Melee or Magic glyph's secondary health on hit lower); `text` what its costs will
+  // be. A cost is never on the `axis` of one of its glyph's own bonuses, so a Melee or Magic glyph holding health on hit takes
+  // its cost from the rest of its pool. `healChance`: the share of a class's glyphs whose bonus pool holds its health on hit
+  // (a Melee or Magic glyph's is a secondary line; the rest keep their pool's signature curses open).
+  classes: {
+    edge: { name: "Melee", lead: ["attackDamage", "attackSpeed"], bonus: ["attackDamage", "attackSpeed", "burstRadius", "meleeHeal"], costs: ["selfHarm", "damageTaken", "hp", "staminaDrain", "move"], curse: ["selfHarm", "damageTaken"], curseAlt: ["staminaDrain"], boost: { attackDamage: 1.3, meleeHeal: .3 }, healChance: .3, text: "costs health per swing or more damage taken (stamina or speed when it heals)" },
+    star: { name: "Magic", lead: ["spellDamage", "spellCooldown"], bonus: ["spellDamage", "spellCooldown", "spellDuration", "spellHeal"], costs: ["castHarm", "damageTaken", "hp", "attackSpeed", "move"], curse: ["castHarm", "damageTaken"], curseAlt: ["attackSpeed"], boost: { spellDamage: 1.3, spellHeal: .3 }, healChance: .3, text: "costs health per cast or more damage taken (attack or move speed when it heals)" },
+    ward: { name: "Vitality", lead: ["hp", "defense", "meleeHeal", "spellHeal", "hitHeal"], bonus: ["defense", "hp", "meleeHeal", "spellHeal", "hitHeal", "killHeal"], costs: ["move", "attackSpeed", "attackDamage", "spellDamage"], curse: ["move", "attackSpeed"], boost: {}, text: "costs move or attack speed, or damage dealt" },
+    gale: { name: "Motion", lead: ["move", "staminaRegen", "dodgeCost"], bonus: ["move", "staminaRegen", "dodgeCost", "burstRadius"], costs: ["dodgeHarm", "damageTaken", "hp", "attackDamage"], curse: ["dodgeHarm", "damageTaken"], boost: {}, text: "costs health per dodge or more damage taken" },
+  },
+  // Roll 3's tiers, by grade: `costs` [min, max] of lines 1-3 that are costs (the count even in the range, its lines even too);
+  // `lift` how far bonuses run past roll 2's (times); `curse` true: the one cost is a curse at full `curse` strength, unscaled.
+  tiers: {
+    hollow: { costs: [2, 3], lift: 1 },
+    labyrinth: { costs: [2, 3], lift: 1 },
+    deep: { costs: [1, 2], lift: 1 },
+    reliquary: { costs: [1, 2], lift: 1 },
+    regent: { costs: [1, 2], lift: 1.05 },
+    sealed: { costs: [1, 1], lift: 1.2, curse: true },
+    sovereign: { costs: [1, 1], lift: 1.35, curse: true },
   },
   kinds: {
-    edge: { name: "Edge", sigil: "⟁", color: "#ff7a6a", favour: ["attackDamage", "attackSpeed", "burstRadius", "killHeal"] },
-    ward: { name: "Ward", sigil: "⬡", color: "#9fb8d8", favour: ["defense", "hp", "dodgeCost", "killHeal"] },
-    gale: { name: "Gale", sigil: "◇", color: "#8fe0b0", favour: ["move", "staminaRegen", "dodgeCost", "attackSpeed"] },
-    star: { name: "Star", sigil: "✧", color: "#c9a7ff", favour: ["spellDamage", "spellCooldown", "spellDuration", "burstRadius"] },
-    sovereign: { name: "Sovereign", sigil: "⬟", color: "#ffd36a", favour: ["attackDamage", "spellDamage", "defense", "hp", "move", "attackSpeed", "spellCooldown"] },
+    edge: { cls: "Melee", name: "Edge", sigil: "⟁", color: "#ff7a6a", favour: ["attackDamage", "attackSpeed", "burstRadius", "killHeal"] },
+    ward: { cls: "Vitality", name: "Ward", sigil: "⬡", color: "#9fb8d8", favour: ["defense", "hp", "dodgeCost", "killHeal"] },
+    gale: { cls: "Motion", name: "Gale", sigil: "◇", color: "#8fe0b0", favour: ["move", "staminaRegen", "dodgeCost", "attackSpeed"] },
+    star: { cls: "Magic", name: "Star", sigil: "✧", color: "#c9a7ff", favour: ["spellDamage", "spellCooldown", "spellDuration", "burstRadius"] },
+    sovereign: { cls: "Sovereign", name: "Sovereign", sigil: "⬟", color: "#ffd36a", favour: ["attackDamage", "spellDamage", "defense", "hp", "move", "attackSpeed", "spellCooldown"] },
   },
   // q: how strong its bonuses run (0..1); bad: the chance each of the last two lines is a cost; perFloor: q gained a Heart floor down;
   // costs: the lines that may be a cost (by `bad`), when not the last two (the first line is always a bonus). `bad` and `costs`
@@ -80,7 +131,12 @@ export const TESSERACTS = {
   ],
   names: ["of the Fivefold Court", "of the Eyeless Face", "of the Fallen Gate", "of the Under-Heart", "of the Lightless Nave", "of the Drowned Choir", "of the Bone Stair", "of the Long Corridor", "of the Five Faces", "of the Regent's Wake"],
 };
-const EFFECT_IDS = Object.keys(TESSERACTS.effects);
+// The effects rolls 1 and 2 draw from, fixed (later effects, appended to the table, never join their pools).
+const EFFECT_IDS = ["attackDamage", "spellDamage", "defense", "hp", "move", "attackSpeed", "spellCooldown", "spellDuration", "staminaRegen", "dodgeCost", "burstRadius", "killHeal", "selfHarm"];
+const ALL_EFFECTS = Object.keys(TESSERACTS.effects);
+export const TESSERACT_LINES = ALL_EFFECTS.filter((k) => !EFFECT_IDS.includes(k) || k === "killHeal" || k === "selfHarm"); // lines outside the armor-glyph fields (glyphs.ts passes them through)
+export const tesseractClass = (g) => TESSERACTS.classes[g?.kind] || null; // a glyph's roll-3 class (null: the old Sovereign kind)
+export const tesseractClassName = (g) => TESSERACTS.kinds[g?.kind]?.cls || "";
 
 export function ensureTesseracts(save) {
   const T = save.tesseracts && typeof save.tesseracts === "object" ? save.tesseracts : {}, ok = (g) => g && typeof g.uid === "string" && TESSERACTS.kinds[g.kind] && Array.isArray(g.lines);
@@ -100,6 +156,7 @@ export const tesseractCut = (gradeId) => (TESSERACTS.grades[gradeId] || TESSERAC
 // Roll the glyph a source gives (pure: the seed and the source decide it). `floor` raises a Deep glyph's grade. `roll` is the
 // roll version (TESSERACTS.roll); 1 (the default) is every glyph cut through release 759, byte for byte.
 export function rollTesseract(seed, source, gradeId, floor = 0, roll = 1) {
+  if (roll >= 3) return rollTesseract3(seed, source, gradeId, floor);
   if (roll >= 2) return rollTesseract2(seed, source, gradeId, floor);
   const G = TESSERACTS.grades[gradeId] || TESSERACTS.grades.labyrinth, E = TESSERACTS.effects, h = (k) => hashSeed(`${seed}:tesseract:v1:${source}:${k}`), u = (k) => (h(k) % 10000) / 10000;
   const q = Math.min(1, G.q + (G.perFloor || 0) * floor), kind = G.kinds[h("kind") % G.kinds.length], K = TESSERACTS.kinds[kind], used = new Set(), lines = [];
@@ -125,14 +182,41 @@ function rollTesseract2(seed, source, gradeId, floor) {
   for (const i of [1, 2, 3]) { const bad = cost.has(i); lines.push(tierLine(E, q, C.scale, pick(EFFECT_IDS.filter((id) => (bad ? E[id].bad : E[id].good)), `l${i}`), bad, u(`v${i}`))); }
   return { kind, grade: gradeId, name: `${G.name === K.name ? G.name : `${G.name} ${K.name}`} Tesseract ${TESSERACTS.names[h("name") % TESSERACTS.names.length]}`, lines };
 }
+// Roll 3: a class picked evenly from the four (every grade, the Sovereign's too: its kind is its class), the cost count evenly in
+// its tier's `costs` and the lines carrying them as at roll 2. Bonuses first: line 0 from the class's `lead`, the rest from its
+// `bonus` pool (one health-on-hit line at most); then the costs from its `costs` pool, or at a top tier (`curse`) its `curse`
+// pool at the effect's `curse` strength, never on the axis of a bonus the glyph holds.
+const CLASS_IDS = Object.keys(TESSERACTS.classes);
+export const tesseractTier = (gradeId) => TESSERACTS.tiers[gradeId] || TESSERACTS.tiers.labyrinth;
+const classLine = (E, q, T, C, id, bad, u) => { const e = E[id];
+  if (bad && T.curse && e.curse) { const [a, b] = e.curse; return { k: id, v: Math.round((a + (b - a) * u) * 1000) / 1000, bad }; }
+  const [a, b] = bad ? e.bad3 || e.bad : e.good; return { k: id, v: Math.round((bad ? a + (b - a) * ((1 - q) * .6 + .4 * u) : (a + (b - a) * q * (.6 + .4 * u)) * T.lift * (C.boost[id] || 1)) * 1000) / 1000, bad }; };
+// The effects a line of glyph lines `held` may take (pure filter): not one held, not a second health-on-hit, and for a cost not
+// on a held bonus's axis (for a bonus, not on a held cost's).
+const fitsWith = (E, held, bad) => (id) => !held.some((l) => l.k === id || (E[id].group && E[l.k].group === E[id].group) || (l.bad !== bad && E[l.k].axis === E[id].axis));
+// A class's bonus pool for one glyph (or one reroll): with its health on hit only when `x` (a hash in 0..1) falls under `healChance`.
+const healless = (C, x) => (C.healChance === undefined || x < C.healChance ? C.bonus : C.bonus.filter((id) => !TESSERACTS.effects[id].group));
+// The costs a line may take beside `held`: its class's `costs`, or at a top tier its `curse` pool (`curseAlt` only where every
+// curse is on the axis of a bonus the glyph holds: a Melee or Magic glyph that heals on hit).
+const costPool = (E, C, T, held) => { const fits = fitsWith(E, held, true); if (!T.curse) return C.costs.filter(fits); const p = C.curse.filter(fits); return p.length ? p : (C.curseAlt || []).filter(fits); };
+function rollTesseract3(seed, source, gradeId, floor) {
+  const G = TESSERACTS.grades[gradeId] || TESSERACTS.grades.labyrinth, T = tesseractTier(gradeId), E = TESSERACTS.effects, h = (k) => mix32(hashSeed(`${seed}:tesseract:v3:${source}:${k}`)), u = (k) => (h(k) % 10000) / 10000;
+  const q = Math.min(1, G.q + (G.perFloor || 0) * floor), kind = CLASS_IDS[h("kind") % CLASS_IDS.length], C = TESSERACTS.classes[kind], lines = [null, null, null, null];
+  const [lo, hi] = T.costs, n = lo + (h("n") % (hi - lo + 1)), order = [1, 2, 3].sort((a, b) => h(`c${a}`) - h(`c${b}`) || a - b), cost = new Set(order.slice(0, n));
+  const held = () => lines.filter(Boolean), put = (i, pool, bad) => { lines[i] = classLine(E, q, T, C, pool[h(`l${i}`) % pool.length], bad, u(`v${i}`)); };
+  put(0, C.lead.filter(fitsWith(E, held(), false)), false); for (const i of [1, 2, 3]) if (!cost.has(i)) put(i, healless(C, u("heal")).filter(fitsWith(E, held(), false)), false);
+  for (const i of [1, 2, 3]) if (cost.has(i)) put(i, costPool(E, C, T, held()), true);
+  return { kind, grade: gradeId, name: `${G.name} ${C.name} Tesseract ${TESSERACTS.names[h("name") % TESSERACTS.names.length]}`, lines };
+}
 // Cut line `i` of glyph `g` again (the Pentagon's dais, pentagon.ts PENTAGON.finale.reroll), by the rules that rolled it: its
 // grade's strength (`q`, a Deep glyph's floor unknown, so taken at the grade's own) and cost chance; the first line from its
 // kind's favoured effects, the second a bonus, the last two a cost by the grade's `bad` chance; never an effect another line of
 // it holds, nor (where another is left) the one it had. Pure: `source` (the Pentagon, the reroll's index, the glyph) decides it.
 // A glyph cut at roll 2 rerolls by its grade's `cut`: the line comes back a cost or a bonus, evenly where either keeps the glyph's
-// cost count inside `cut.costs`, and otherwise whichever does (never below the minimum, never above the maximum).
+// cost count inside `cut.costs`, and otherwise whichever does (never below the minimum, never above the maximum). A glyph cut at
+// roll 3 does the same inside its tier's `costs`, from its class's pools, never against the axis of another of its lines.
 export function rerollTesseractLine(seed, source, g, i) {
-  if (!g?.lines?.[i]) return null; const two = (Number(g.roll) || 1) >= 2, E = TESSERACTS.effects, K = TESSERACTS.kinds[g?.kind] || TESSERACTS.kinds.edge;
+  if (!g?.lines?.[i]) return null; if ((Number(g.roll) || 1) >= 3 && TESSERACTS.classes[g.kind]) return rerollTesseractLine3(seed, source, g, i); const two = (Number(g.roll) || 1) >= 2, E = TESSERACTS.effects, K = TESSERACTS.kinds[g?.kind] || TESSERACTS.kinds.edge;
   const G = TESSERACTS.grades[g?.grade] || TESSERACTS.grades.labyrinth, h = two ? (k) => mix32(hashSeed(`${seed}:tesseract-reroll:v2:${source}:${k}`)) : (k) => hashSeed(`${seed}:tesseract-reroll:v1:${source}:${k}`), u = (k) => (h(k) % 10000) / 10000;
   const q = G.q, others = new Set(g.lines.filter((_, j) => j !== i).map((l) => l.k)), was = g.lines[i].k;
   const pick = (from) => { const pool = from.filter((id) => !others.has(id)), fresh = pool.filter((id) => id !== was), use = fresh.length ? fresh : pool; return use.length ? use[h("l") % use.length] : null; };
@@ -145,6 +229,15 @@ export function rerollTesseractLine(seed, source, g, i) {
   if (i === 0) { const id = pick(K.favour.filter((x) => E[x].good)) || pick(goods); return id ? good(id) : null; }
   if ((i === 1 && !(G.costs || []).includes(1)) || u("b") >= G.bad) { const id = pick(goods); return id ? good(id) : null; }
   const id = pick(costs); return id ? bad(id) : null;
+}
+function rerollTesseractLine3(seed, source, g, i) {
+  const E = TESSERACTS.effects, C = TESSERACTS.classes[g.kind], T = tesseractTier(g.grade), q = (TESSERACTS.grades[g.grade] || TESSERACTS.grades.labyrinth).q;
+  const h = (k) => mix32(hashSeed(`${seed}:tesseract-reroll:v3:${source}:${k}`)), u = (k) => (h(k) % 10000) / 10000;
+  const held = g.lines.filter((_, j) => j !== i && E[g.lines[j]?.k]), was = g.lines[i].k, [lo, hi] = T.costs, rest = held.filter((l) => l.bad).length;
+  const pool = (bad) => (bad ? costPool(E, C, T, held) : (i === 0 ? C.lead : healless(C, u("heal"))).filter(fitsWith(E, held, false)));
+  const mayCost = i > 0 && rest + 1 <= hi && pool(true).length > 0, mayBonus = (i === 0 || rest >= lo) && pool(false).length > 0, bad = mayCost && (!mayBonus || u("b") < .5);
+  if (!mayCost && !mayBonus) return null; const p = pool(bad), fresh = p.filter((id) => id !== was), use = fresh.length ? fresh : p;
+  return classLine(E, q, T, C, use[h("l") % use.length], bad, u("v"));
 }
 // Give the glyph a source holds, once ever. Returns it, or null if that source already gave its glyph.
 export function grantTesseract(save, source, gradeId, floor = 0, from = "") {
@@ -169,10 +262,14 @@ export function shatterTesseract(save, uid) {
   const [g] = T.owned.splice(i, 1); T.slots = T.slots.map((u) => (u === uid ? null : u)); save.glyphDust = (Number(save.glyphDust) || 0) + TESSERACTS.dust;
   return { ok: true, message: `${g.name} shatters into ${TESSERACTS.dust} glyph dust.` };
 }
-// What the set glyphs add, effect by effect (costs negative; selfHarm positive is the harm).
+// What the set glyphs add, effect by effect (costs negative; a `harm` cost, selfHarm, castHarm, dodgeHarm, staminaDrain,
+// damageTaken, positive: the harm).
 export function tesseractBonus(save) {
-  const out = Object.fromEntries(EFFECT_IDS.map((k) => [k, 0])), T = save?.tesseracts; if (!T?.owned?.length) return out;
-  for (const uid of T.slots || []) { const g = uid && T.owned.find((q) => q.uid === uid); if (!g) continue; for (const l of g.lines) out[l.k] += l.k === "selfHarm" ? l.v : l.bad ? -l.v : l.v; }
+  const out = Object.fromEntries(ALL_EFFECTS.map((k) => [k, 0])), T = save?.tesseracts; if (!T?.owned?.length) return out;
+  for (const uid of T.slots || []) { const g = uid && T.owned.find((q) => q.uid === uid); if (!g) continue; for (const l of g.lines) out[l.k] += TESSERACTS.effects[l.k].harm ? l.v : l.bad ? -l.v : l.v; }
   return out;
 }
-export const tesseractLine = (l) => { const E = TESSERACTS.effects[l.k], pct = `${Math.round(l.v * 1000) / 10}%`; return l.k === "selfHarm" ? `${pct} ${E.text}` : l.k === "killHeal" ? `${pct} ${E.text}` : `${l.bad !== !!E.invert ? "−" : "+"}${pct} ${E.text}`; };
+export const tesseractLine = (l) => { const E = TESSERACTS.effects[l.k], pct = `${Math.round(l.v * 1000) / 10}%`; return E.plain ? `${pct} ${E.text}` : `${l.bad !== !!E.invert ? "−" : "+"}${pct} ${E.text}`; };
+// What a glyph's class reads as (the Glyphs screen): "Melee · costs health per swing or more damage taken..."; a glyph cut before
+// roll 3 drew its costs from every effect, so only its class name shows.
+export const tesseractClassText = (g) => { const C = (Number(g?.roll) || 1) >= 3 ? tesseractClass(g) : null; return C ? `${C.name} · ${C.text}` : tesseractClassName(g); };
