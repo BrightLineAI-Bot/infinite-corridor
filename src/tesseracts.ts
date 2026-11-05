@@ -13,12 +13,16 @@
 // bonuses (glyphs.ts armorGlyphBonus, past its caps, as triads are), so they reach every place those already reach; two lines of
 // their own: `killHeal` (health back on a kill) and `selfHarm` (health lost with each swing).
 //
-// Save (additive, schema 14): save.tesseracts = { owned: [{ uid, kind, grade, name, lines: [{ k, v, bad }], from }], slots:
+// Save (additive, schema 14): save.tesseracts = { owned: [{ uid, kind, grade, name, lines: [{ k, v, bad }], from, roll? }], slots:
 // [uid|null ×3], seq, got: { <source>: true }, echo: glyphs ever set (once any is) }. Rolls are hashes of the seed and the source, so a source gives its glyph once.
 import { hashSeed } from "./random.ts";
 
 export const TESSERACTS = {
   version: 1, slots: 3, keep: 60, dust: 3, // owned at most `keep`; shattering one gives `dust` glyph dust
+  // The roll version new glyphs are cut with (grantTesseract). 1: every glyph granted through release 759. 2: a grade with
+  // `apart` <= 2 (hollow) rolls each line independently; every other grade rolls exactly as at 1. A glyph cut at 2 or later
+  // records it (`roll`); granted glyphs are kept as stored and never re-rolled.
+  roll: 2,
   // each effect: the range of a bonus, the range of a cost (fractions), and how a line reads
   effects: {
     attackDamage: { good: [.04, .15], bad: [.03, .1], text: "melee damage" },
@@ -47,7 +51,9 @@ export const TESSERACTS = {
   grades: {
     // Tim, 2026-11-05: the completion glyph of the early Pentagons (versions 1 and 2, which pay no other), "heavily skewed toward
     // negative attributes": one bonus and up to three costs (pentagon.ts PENTAGON_COMPLETE)
-    hollow: { name: "Hollow", q: .2, bad: .85, costs: [1, 2, 3], kinds: ["edge", "ward", "gale", "star"] },
+    // `apart`: from this roll version (TESSERACTS.roll) each line rolls on its own (a mixed hash per line). Before it, the
+    // three cost chances came from near-identical hashes and moved together (two or three costs, almost never fewer).
+    hollow: { name: "Hollow", q: .2, bad: .85, costs: [1, 2, 3], apart: 2, kinds: ["edge", "ward", "gale", "star"] },
     labyrinth: { name: "Labyrinth", q: .3, bad: .8, kinds: ["edge", "ward", "gale", "star"] },
     deep: { name: "Deep", q: .45, bad: .6, perFloor: .07, kinds: ["edge", "ward", "gale", "star"] },
     reliquary: { name: "Reliquary", q: .65, bad: .5, kinds: ["edge", "ward", "gale", "star"] },
@@ -81,9 +87,15 @@ export function ensureTesseracts(save) {
   return save;
 }
 
-// Roll the glyph a source gives (pure: the seed and the source decide it). `floor` raises a Deep glyph's grade.
-export function rollTesseract(seed, source, gradeId, floor = 0) {
-  const G = TESSERACTS.grades[gradeId] || TESSERACTS.grades.labyrinth, E = TESSERACTS.effects, h = (k) => hashSeed(`${seed}:tesseract:v1:${source}:${k}`), u = (k) => (h(k) % 10000) / 10000;
+// A 32-bit finaliser (avalanche): keys that differ only in their last character (`b1`, `b2`, `b3`) hash far apart.
+const mix32 = (x) => { x ^= x >>> 16; x = Math.imul(x, 0x85ebca6b); x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16; return x >>> 0; };
+// Does roll version `roll` cut grade `gradeId` line by line (TESSERACTS.roll)?
+export const rollsApart = (gradeId, roll = 1) => { const a = TESSERACTS.grades[gradeId]?.apart; return !!a && roll >= a; };
+// Roll the glyph a source gives (pure: the seed and the source decide it). `floor` raises a Deep glyph's grade. `roll` is the
+// roll version (TESSERACTS.roll); 1 (the default) is every glyph cut through release 759, byte for byte.
+export function rollTesseract(seed, source, gradeId, floor = 0, roll = 1) {
+  const apart = rollsApart(gradeId, roll), tag = apart ? "v2" : "v1";
+  const G = TESSERACTS.grades[gradeId] || TESSERACTS.grades.labyrinth, E = TESSERACTS.effects, h = (k) => { const x = hashSeed(`${seed}:tesseract:${tag}:${source}:${k}`); return apart ? mix32(x) : x; }, u = (k) => (h(k) % 10000) / 10000;
   const q = Math.min(1, G.q + (G.perFloor || 0) * floor), kind = G.kinds[h("kind") % G.kinds.length], K = TESSERACTS.kinds[kind], used = new Set(), lines = [];
   const pick = (from, k) => { const pool = from.filter((id) => !used.has(id)); const id = pool[h(k) % pool.length]; used.add(id); return id; };
   const good = (id, k) => { const [a, b] = E[id].good; return { k: id, v: Math.round((a + (b - a) * q * (.6 + .4 * u(k))) * 1000) / 1000, bad: false }; };
@@ -112,7 +124,7 @@ export function rerollTesseractLine(seed, source, g, i) {
 // Give the glyph a source holds, once ever. Returns it, or null if that source already gave its glyph.
 export function grantTesseract(save, source, gradeId, floor = 0, from = "") {
   ensureTesseracts(save); const T = save.tesseracts; if (T.got[source]) return null; T.got[source] = true;
-  const g = { uid: `t${++T.seq}`, ...rollTesseract(save.seed, source, gradeId, floor), from };
+  const roll = TESSERACTS.roll, g = { uid: `t${++T.seq}`, ...rollTesseract(save.seed, source, gradeId, floor, roll), from }; if (rollsApart(gradeId, roll)) g.roll = roll; // only where the version changed the cut
   T.owned.push(g); while (T.owned.length > TESSERACTS.keep) { const i = T.owned.findIndex((q) => !T.slots.includes(q.uid)); if (i < 0) break; T.owned.splice(i, 1); }
   return g;
 }
