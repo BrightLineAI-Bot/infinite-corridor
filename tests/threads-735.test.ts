@@ -44,7 +44,7 @@ test('every crossing that held a thread (or none) under wave 3 offers the same n
   let held = 0, gained = 0, checked = 0;
   for (const seed of SEEDS) for (let x = -80; x <= 80; x++) for (let y = -80; y <= 80; y += 2) {
     const id = `dungeon:${seed}:g1:${x}:${y}:room`, was = wave3(seed, id), now = threadIn(seed, id); checked++;
-    if (was) { held++; assert.equal(now, was, id); } else if (now !== null) { gained++; assert.equal(now, 'beekeeper', id); assert.ok(inBand('near', x, y), id); }
+    if (was) { held++; assert.equal(now, was, id); } else if (now !== null && !(THREADS[now].wave > 4)) { gained++; assert.equal(now, 'beekeeper', id); assert.ok(inBand('near', x, y), id); }
   }
   assert.ok(checked > 70000 && held > 3000 && gained > 20, `${checked} checked, ${held} held, ${gained} gained`);
 });

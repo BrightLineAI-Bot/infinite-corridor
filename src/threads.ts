@@ -10,7 +10,7 @@
 import { hashSeed } from "./random.ts";
 import { READING_BANDS } from "./lore.ts";
 
-export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for)
+export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
 // ten, so no crossing changes the thread it already offered.
 // band: which stretch of the map holds the thread, as a distance from the Refuge (THREAD_BANDS; they overlap, so a crossing may
@@ -182,6 +182,20 @@ export const THREADS = {
     ],
     ending: "The beekeeper is old now and cannot name half her flowers, but her bees still go out into the Corridor every morning and come home heavy, and they only ever come home from somewhere that someone remembers. The jars she gave away are a little heavier each time somebody opens one and thinks of a field. You taste the last one. It tastes of a place you cannot name, and for a moment you are sure you have stood in it.",
   },
+  // The daily narrative pass of 2026-11-05 (docs/narrative-bible.md section 1, "What the Corridor is made of": tools are ideas given a
+  // handle). Wave 5, the middle band (which held only the Tollkeeper among the later threads): rolled only where none of the first four
+  // rolls placed a thread, so no crossing changes what it offered.
+  toolmaker: { title: "The Toolmaker's Handles", band: "middle", relic: "handle", colour: "#c89a62", wave: 5,
+    pieces: [
+      "A spade handle of pale ash, worn smooth where a palm went, with no blade on it. The tag, in a square hand: \"For Orrin at the bottom farm. The iron did not come this year. I sent him the handle anyway, so he would have something to hold. He says he will make do.\"",
+      "A hammer handle, hickory, shaped to a small hand, and no head. The tag: \"For the cooper's girl. She brought it back this morning to show me the barrel she hooped with it. I have knocked on the barrel. It is sound. I have stopped asking how.\"",
+      "A knife handle of bone, bound in waxed cord, the tang hole empty. The tag: \"My father used to say the iron is the part that argues with the world, and the handle is the part that agrees with it. The ground out here does not seem to want arguing with. It only wants to be asked.\"",
+      "A scythe snath, the long crooked handle a scythe hangs on, worn grey and thin as a walking stick. The tag: \"Old Marit's. She mowed the far meadow with it sixty years. The blade wore away to nothing in the last ten and she never noticed, and the hay went on falling.\"",
+      "A short round handle with nothing at either end, no hole and no shoulder, only a groove where fingers close. The tag: \"A man came to the forge who did not know what he needed. I made him this. He held it a while, and his face went quiet, and he walked off toward the hills, and the hills let him through.\"",
+      "The last is hardly a handle yet: a stave of ash with the bark still on one side, a single cut where the grip will be. The tag, in a hand gone shaky: \"For the traveller who keeps finding these. I have not shaped it. Your hand will. Whatever you are carrying it for, hold it as if you meant it. That is all a tool ever was.\"",
+    ],
+    ending: "In a year the iron did not come, the toolmaker of the middle country went on making handles, and the handles went on working: a spade with no blade that dug, a hammer with no head that hooped a barrel sound, a scythe that mowed for ten years after its blade was gone. You close your hand on the last stave. It is already worn to your grip, as if you had carried it for years, and for a moment you know exactly what it is for. Then you do not, and it is still in your hand.",
+  },
 };
 export const THREAD_ORDER = Object.keys(THREADS);
 const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave); // the first ten (release 627): what a crossing offered then, it still offers
@@ -213,9 +227,16 @@ function thirdThreadIn(seed, dungeonId, rx, ry) {
 // 2026-11-04: wave 4 threads, rolled only where none of the first three rolls placed a thread (THREAD_RULES.fourth), so none moves.
 // As with wave 3: never add another wave 4 thread to a band its crossings already cover; the next thread is a new wave (or a layer).
 function fourthThreadIn(seed, dungeonId, rx, ry) {
-  if ((hashSeed(`${seed}:threads:fourth:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.fourth) return null;
-  const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 4 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  if ((hashSeed(`${seed}:threads:fourth:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.fourth) return fifthThreadIn(seed, dungeonId, rx, ry);
+  const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 4 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return fifthThreadIn(seed, dungeonId, rx, ry);
   return here[hashSeed(`${seed}:threads:fourth:which:v1:${dungeonId}`) % here.length];
+}
+// 2026-11-05: wave 5 threads, rolled only where none of the first four rolls placed a thread (THREAD_RULES.fifth), so none moves.
+// The same rule again: the next thread is a new wave (or a layer), never a second wave 5 thread in a band its crossings already cover.
+function fifthThreadIn(seed, dungeonId, rx, ry) {
+  if ((hashSeed(`${seed}:threads:fifth:v1:${dungeonId}`) % 10000) / 10000 >= THREAD_RULES.fifth) return null;
+  const here = THREAD_ORDER.filter((id) => THREADS[id].wave === 5 && inBand(THREADS[id].band, rx, ry)); if (!here.length) return null;
+  return here[hashSeed(`${seed}:threads:fifth:which:v1:${dungeonId}`) % here.length];
 }
 export function ensureThreadState(save) {
   const lore = (save.lore ||= {});

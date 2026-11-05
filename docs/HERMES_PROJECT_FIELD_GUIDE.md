@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 771: The Toolmaker's Handles (wave 5) — 2026-11-05
+
+Daily narrative pass (Tim's routine: "Keep weaving multi-crossing quests like the Seven Bells and the Surveyor's Chain through the world"). One more later thread, in the middle band, which held only the Tollkeeper among the later threads; it shows section 1's "tools are ideas given a handle" without stating it (the word "Corridor" never appears in its text). The deep band keeps no later threads, so its density stays the first ten's rate (`threads-627`).
+
+**CODE:** `src/threads.ts` `THREADS.toolmaker` (`band: "middle"`, `relic: "handle"`, `wave: 5`, colour #c89a62, six pieces and an ending) and `THREAD_RULES.fifth` (.025, about 50–66 crossings a world). `fourthThreadIn` passes on to a new `fifthThreadIn` wherever it used to return null; `fifthThreadIn` makes its own roll (`threads:fifth:v1`) and pick (`threads:fifth:which:v1`). `src/renderer.ts` `drawThreadRelic` `case "handle"` (a worn wooden handle with grip grooves). Progress in `save.lore.threads.toolmaker` (normalised by `ensureThreadState`). `docs/narrative-bible.md` section 6 lists it. Tests: `tests/threads-toolmaker.test.ts` (6); `tests/threads-735.test.ts` lets waves after 4 fill crossings wave 3 left empty.
+
+**BOUNDARY:** The fifth roll is made only where the first four placed nothing, so every crossing that offered a thread (or none) under wave 4 offers the same now (checked against a copy of the wave 4 rules over 72,000+ crossings and six seeds). Only empty middle-band crossings (distance 7–35) can gain a handle. No schema change. Not tested on a device.
+
 ## Release 770: deadly holes, safe drops; burrowing a claimed room — 2026-11-05
 
 Tim, 2026-11-05: "if you go through a hole in the floor, on most floors you should just die, and then respawn at the ladder, or wherever you entered that floor, because it's too punishing to traverse too many things... the border should be green if you can go through a floor and it won't kill you, and you won't know the border is green until you get kind of close to it"; "once you've killed the Rift [Warden] for a room in the labyrinth, you should be able to come back and burrow through the walls — probably wherever those shiny hidden-object walls or blocks are." Holes are found on great-building floors 2+, compound wing and tower floors 2+, castle wing and keep floors 2+, and labyrinth galleries; ground floors, labyrinth halls, courts and cellars, Pentagon chambers and the Stillworks have none. Labyrinths have no per-room boss, so "the Rift Warden" is read as the Fracture Warden Fractured mode raises in each chamber (with Fractured off, the room's own guards).
