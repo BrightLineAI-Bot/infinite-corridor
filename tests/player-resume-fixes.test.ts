@@ -21,15 +21,15 @@ function roundTrip(g, now) {
   assert.equal(v.health, 'healthy', v.error); return v.save;
 }
 
-test('F3: stacked dodge-cost reductions never make a dodge free or give stamina back; at the glyph cap it still costs 6', () => {
+test('F3: stacked dodge-cost reductions never give stamina back (they may make a dodge free: Tim, 2026-11-05); at the glyph cap it still costs 6', () => {
   const s = fresh();
   s.equipment.armor = { ...s.equipment.armor, tier: 'relic', glyphs: ['still', 'still', 'still'] };
   assert.equal(dodgeCost(s), 6, 'three still glyphs reach the cap of 60%: unchanged');
   const tess = (uid) => ({ uid, kind: 'gale', grade: 1, name: uid, lines: [{ k: 'dodgeCost', v: .15 }], from: 'test' });
   s.tesseracts = { ...(s.tesseracts || {}), owned: [tess('t1'), tess('t2'), tess('t3')], slots: ['t1', 't2', 't3'] };
-  assert.ok(dodgeCost(s) >= DODGE_COST.min && DODGE_COST.min > 0, `cost ${dodgeCost(s)}`);
+  assert.ok(dodgeCost(s) >= DODGE_COST.min && DODGE_COST.min >= 0, `cost ${dodgeCost(s)}`); // Tim, 2026-11-05: free allowed (min 0), never a refund
   const g = new Game(s, 0); g.player.stamina = 10; let t = 1000;
-  g.update(1 / 30, move(1, 0, ['dodge']), t); assert.ok(g.player.stamina < 10, 'a dodge takes stamina');
+  g.update(1 / 30, move(1, 0, ['dodge']), t); assert.ok(g.player.stamina <= 10 + 9 / 30 + 1e-9, 'a dodge never gives stamina back (one frame of recovery only)'); assert.equal(dodgeCost(s), 0, 'stacked past 100%: free'); assert.ok(g.player.dodgeUntil > t, 'and it dodges');
 });
 
 test('F4: a grip, slow, confusion, stun and a glide end at death; the Wayfarer respawns able to move', () => {
