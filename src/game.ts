@@ -98,7 +98,7 @@ import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addS
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
 import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
-import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots } from "./pentagon.ts";
+import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue } from "./pentagon.ts";
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -2147,6 +2147,7 @@ export class Game {
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
 
     { const q = s.playerRuntime.droneLift; this.droneLift = q && s.area === "overworld" && ["base", "z", "vz"].every((k) => Number.isFinite(Number(q[k]))) ? { base: Number(q.base), z: Number(q.z), vz: Number(q.vz) } : null; } // release 647: after loading the area, which clears a lift
+    for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
   }
   installSystems() {
     if (this._systemsInstalled) return;
@@ -6435,6 +6436,7 @@ export class Game {
   // for a Pentagon finished before), and laid over the vault from then on (pentagonFinaleIn). Returns the opening, or null.
   openPentagonFinale() {
     const B = this.map?.building; if (!B?.pentagon || !B.vault) return null;
+    this.payPentagonComplete(B.base); // a walkway Pentagon (its Regent fell before the Stillworks) is complete; paid once if not yet
     const F = PENTAGON.finale, H = dungeonHistory(this.save, `${B.base}:f1`), was = !!H.pentFinale; let o = this.map.objects.find((q) => q.kind === "pentFinaleWall");
     if (was && o) return o;
     if (!was && H.pentArena === undefined) H.pentArena = PENTAGON_ARENA.version; // from release 751 the opened wall leads to the Stillworks first (pentagon-arena.ts); a walkway opened before keeps its way
@@ -6512,7 +6514,15 @@ export class Game {
     const name = e.packName || "The finale beast";
     journalOnce(this.save, `pentagon-arena-won:${base}`, `${name} fell in the Stillworks. ${A.messages.opens}`, PENTAGON.name);
     (this.questNotices ||= []).push({ title: A.openNotice, detail: "beyond it, a walkway among the stars", kind: "discovery" });
-    this.defeatNotice = { title: A.wonNotice, detail: `${name} · +${marks} marks`, kind: "danger" }; this.message = A.messages.opens; return true;
+    this.defeatNotice = { title: A.wonNotice, detail: `${name} · +${marks} marks`, kind: "danger" }; this.message = A.messages.opens;
+    this.payPentagonComplete(base); return true; // the Pentagon is complete: its Tesseract (pentagon.ts PENTAGON_COMPLETE)
+  }
+  // The completion's Tesseract (pentagon.ts PENTAGON_COMPLETE), once a Pentagon: with the journal line, the message and a notice.
+  payPentagonComplete(base) {
+    const g = payPentagonCompletion(this.save, base); if (!g) return null; const C = PENTAGON_COMPLETE, K = TESSERACTS.kinds[g.kind];
+    journalOnce(this.save, `pentagon-complete:${base}`, `${C.journal} ${g.name}.`, PENTAGON.name); journalOnce(this.save, `tesseract:${base}:complete`, `${g.name}, from ${g.from}.`, "Tesseract glyphs");
+    this.message = `${this.message ? this.message + " " : ""}A Tesseract glyph for the Pentagon's completion: ${g.name}. Set it in Glyphs.`;
+    (this.questNotices ||= []).push({ title: C.notice, detail: `${K?.sigil || ""} ${g.name}`.trim(), kind: "discovery" }); return g;
   }
   // The dais (PENTAGON.finale.reroll): per Pentagon, one free reroll of a line on a Tesseract glyph you carry, then one more for
   // Divine Viscera; then only Transit. Act opens its choices while a reroll is left (a pick list: a glyph, then its line);

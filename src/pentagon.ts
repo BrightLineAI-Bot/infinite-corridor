@@ -16,6 +16,7 @@ import { hashSeed, rng, byHash } from "./random.ts";
 import { BUILDINGS, layFloor, farthest } from "./great-buildings.ts";
 import { carveMaze } from "./labyrinths.ts";
 import { LIFT_PER_LEVEL as LIFT } from "./landscape.ts";
+import { grantTesseract } from "./tesseracts.ts";
 
 export const PENTAGON = {
   version: 7, // 7: the roof, its balconies and the outer stair (below); 6: shortcuts and side entrances (below); 5: release 732 (below); 4: release 730; 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
@@ -608,6 +609,31 @@ export function pentagonLinkEnds(plan, map) {
 }
 export const pentagonLinkKey = (id) => `link:${id}`;
 // ------------------------------------------------------------------------------------------------ the finale: a walk among the stars
+// The completion's Tesseract (Tim, 2026-11-05: "There should be at least one Tesseract for completing the Pentagon; one Tesseract
+// per Pentagon"). Every version, whatever else it pays. A Pentagon is complete when its finale beast falls in the Stillworks
+// (`pentArenaWon`), or, for one whose wall opened onto the walkway before the Stillworks (`pentFinale` with no `pentArena`),
+// when its Regent fell. Paid once, on completion or (for one completed before) on the next start of the game; recorded on the
+// base floor's history (`pentComplete`, the source), and the source is in `tesseracts.got` as every glyph's is.
+export const PENTAGON_COMPLETE = {
+  grade: "regent", from: "the Pentagon's completion",
+  early: { upTo: 2, grade: "hollow" }, // Tim, 2026-11-05: versions 1 and 2 pay no other glyph; theirs leans hard toward costs (tesseracts.ts)
+  notice: "THE PENTAGON IS COMPLETE",
+  journal: "The Pentagon is complete. Something of it came away with you: a Tesseract glyph.",
+};
+export const pentagonCompleteSource = (base) => `${base}:complete`;
+export function pentagonCompleteGrade(base) { const C = PENTAGON_COMPLETE, V = parsePentagonId(`${base}:f1`)?.V || 1; return V <= C.early.upTo ? C.early.grade : C.grade; }
+export function pentagonCompleted(H) { return !!H && (!!H.pentArenaWon || (!!H.pentFinale && H.pentArena === undefined)); }
+// Pays the completion glyph if it is due (null otherwise, or if that source already gave one). Pure on the save.
+export function payPentagonCompletion(save, base) {
+  const H = save?.consequences?.dungeons?.[`${base}:f1`]; if (!H || H.pentComplete || !pentagonCompleted(H)) return null;
+  const source = pentagonCompleteSource(base); H.pentComplete = source; return grantTesseract(save, source, pentagonCompleteGrade(base), 0, PENTAGON_COMPLETE.from);
+}
+// The Pentagons this journey holds whose completion glyph is still due (their bases), from the base floors' histories.
+export function pentagonsDue(save) {
+  const out = []; for (const [id, H] of Object.entries(save?.consequences?.dungeons || {})) { if (!H || H.pentComplete || !pentagonCompleted(H)) continue; const p = parsePentagonId(id); if (p && p.n === 0) out.push(p.base); }
+  return out;
+}
+
 // PENTAGON.finale. The walkway is a floor of its own, `${base}:finale`, generated only once the Regent has fallen; every
 // Pentagon version has the same one (a new id, so no explored floor changes). The opening in the vault is an object laid on
 // the vault's outer wall, beside floor you can reach from the way in, clear of every door, link end and object (as generated,

@@ -93,7 +93,7 @@ test('through the wall: the walkway among the stars, quiet; the dais reads Trans
   assert.equal(r.message, F.messages.walk); assert.ok(g.map.chasm && g.map.pentFinale, 'the Starfield look');
   const t = g.map.tiles[Math.round(g.player.y) * g.map.width + Math.round(g.player.x)]; assert.ok(t && !t.blocked, 'on the walkway');
   assert.equal(g.enemies.filter((e) => !e.dead).length, 0, 'no foes'); assert.deepEqual(g.map.objects.map((o) => o.kind).sort(), ['pentDais', 'pentFinaleWall'], 'nothing else laid there');
-  const d = g.map.objects.find((o) => o.kind === 'pentDais'); assert.deepEqual(d.actions, ['transit']); assert.match(d.name, /^Transit/);
+  const d = g.map.objects.find((o) => o.kind === 'pentDais'); assert.deepEqual(d.actions, ['transit', ...g.save.tesseracts.owned.map((t) => `pick:${t.uid}`)]); /* the Pentagon's completion glyph (PENTAGON_COMPLETE) is carried, so the dais offers it too */ assert.match(d.name, /^Transit/);
   const door = pentagonFrontDoor(P), t1 = act(g, d, 'transit'); assert.ok(t1.ok, t1.message); assert.equal(g.area, 'overworld'); assert.equal(g.message, F.messages.arrive);
   assert.deepEqual([g.rx, g.ry], [door.rx, door.ry]); const at = g.map.tiles[Math.round(g.player.y) * 32 + Math.round(g.player.x)]; assert.ok(at && !at.blocked && !at.greatBuilding, 'outside, on open ground');
   const gate = g.map.objects.find((o) => o.pentagonDoor && o.enterAt === P.gate.key); assert.ok(gate, 'the front door stands here'); assert.ok(Math.hypot(gate.x - g.player.x, gate.y - g.player.y) <= 2.5, 'by the front door');

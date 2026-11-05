@@ -2854,6 +2854,18 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 756: a Tesseract for every Pentagon; the Orrery's first orb — 2026-11-05
+
+Tim: "There should be one Tesseract per Pentagon... they should all get Tesseracts, because it's so rare to find one" (every existing source kept; rarity unchanged — "it was actually pretty rare, so that's fine"); "the v1 and v2 one would be heavily skewed towards negative attributes — up to three"; and the Orrery: "one ball floating around you with no echoes, two with one echo, three with two."
+
+Audit of Tesseracts per full clear (before → with completion): v1–v2 0 → 1 (Hollow); v3–v4 6 (2 reliquaries, 3 deep keepers, the hoard) → 7; v5–v7 9 (adds 3 sealed vaults) → 10. The Stillworks pays marks only; the dais pays rerolls only.
+
+**CODE:** `src/pentagon.ts` `PENTAGON_COMPLETE` (grade `regent`; `early` {upTo 2, grade `hollow`}), `pentagonCompleteSource` (`${base}:complete`), `pentagonCompleteGrade`, `pentagonCompleted(H)` (`pentArenaWon`, or `pentFinale` without `pentArena`), `payPentagonCompletion`, `pentagonsDue`. `src/tesseracts.ts` `grades.hollow` {q .2, bad .85, costs [1, 2, 3]}; `rollTesseract` and `rerollTesseractLine` let line 2 be a cost when a grade's `costs` includes 1 (line 1 always a bonus; existing grades roll byte for byte as before). `src/game.ts` `payPentagonComplete(base)` from `pentagonArenaWon`, from `openPentagonFinale`, and once at start for completions already due. `src/tool-forms.ts` `ORRERY.halo.base` 1: `orbTier(echoes) = min(3, 1 + echoes)`; one orb burns by touch and fires one release laser (no beam), two make a single beam, three the triangle.
+
+**Measured:** Hollow glyphs over 5,000 seeds: 44% two costs, 56% three, never fewer than two, always one bonus; Regent's 0.89 costs on average. Orrery on Tim's save mirrored to Focus: best 9,200 DPS (charge, 2 Echoes, pack; 1.13× his Might melee's best), single target 5,855; on his Might build 1,614.
+
+**BOUNDARY:** Schema 14, one history key (`pentComplete`). No generator or placement change (the proposed rarity change was dropped). Every existing Tesseract source kept. The Orrery's orbs are still not saved. Tests: `tests/pentagon-tesseract.test.ts` (8), `tests/aether-orrery-tool.test.ts` (16); `tests/pentagon-finale.test.ts` and `tests/tesseracts.test.ts` each adjusted one line for the new glyph and grade. Not tested on a device.
+
 ## Release 755: the Crimson Tyrant's lava returns — 2026-11-05
 
 Found by the pre-publish review of r739→r754.

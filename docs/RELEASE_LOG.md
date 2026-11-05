@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 755, the next is **756**.
+Taken at merge time: `main`'s release + 1 (see above). After 756, the next is **757**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 755 | Claude | `claude/dreamy-rubin-yn6q2p` | Restores the Crimson Tyrant's lava hooks (pre-publish review blocker in 754) | In flight. |
+| 756 | Claude | `claude/dreamy-rubin-yn6q2p` | A Tesseract for every Pentagon (Hollow grade for v1–v2); the Orrery's first orb | In flight. |
+| 755 | Claude | `claude/dreamy-rubin-yn6q2p` | Restores the Crimson Tyrant's lava hooks (pre-publish review blocker in 754) | Merged (#403). Published as r755-c3a9aa62bf91 on 2026-11-05. |
 | 754 | Claude | `claude/dreamy-rubin-yn6q2p` | The Stillworks (Pentagon finale arena; Tyrant, Doom Chaser, Void Walker, Astral Worm or the Gloomvast) and the Gloomvast ghost finale with the Dark | Merged (#402). |
 | 753 | Claude | `claude/dreamy-rubin-yn6q2p` | Dais Tesseract rerolls and the walkway fall; Imbue Weapon; Sunburst Ricochet; the Aether Orrery | Merged (#401). |
 | 752 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's roof (v7): walkable roof, outer stair, balconies with doors; roof dwellers (gargoyles, demons, rooks, Seraph, colossi) seen only on the roof | Merged (#400). |
@@ -141,6 +142,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 755, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 755 | `r755-c3a9aa62bf91` | 2026-11-05 | Fable review (739→754): one blocker (754 swallowed the Tyrant's lava hooks), fixed in 755; Fable review 754→755: no blockers. 740 player/resume fixes through 755 (Viewport Closed, haunt curses, Pentagon lore/shortcuts/finale/roof/Stillworks/Gloomvast, turtle shell, roof exits, roofs and height, mounts, dig gates, mounted lava and drone fizzle, Imbue Weapon, Sunburst Ricochet, the Aether Orrery). |
 | 739 | `r739-0b5b1c12e64a` | 2026-11-04 | Fable review (735→739): no blockers. 736 dungeon coherence (#384, with the agent team), 737 world coherence (#385), 738 smaller saves/faster loads (#386), 739 combat balance and doubled Fracture Warden damage (#387). |
 | 735 | `r735-7051faeb03e6` | 2026-11-04 | Fable review (733→735): no blockers. 734 safety fixes (#382), the mirror fix for the 734 review's blocker and the Beekeeper's Jars (#383). r734 was reviewed but not published (one blocker, fixed in 735). |
 | 733 | `r733-cb40b95e99a7` | 2026-11-04 | Fable review (732→733): no blockers. 733, the haunts drawn cheaply (#381); 731/732 already live in r732. |
