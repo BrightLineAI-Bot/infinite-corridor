@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 777 — **Pentagons are yours to find; the Rite seals the Wayglass.** Reading a Pentagon sigil no longer sets your compass, Pentagon hunts put no markers on the Atlas, and a new hunt opens quietly with a Journal line in words, not a banner. While a Rite of Ascendancy burns, Wayglass travel is sealed: the Crossing Sigil is the only way out.
 - Release 776 — **Healing hot springs.** Wade into a Terrace Springs pool, away from any fight, and it slowly mends your wounds (1.5% of max health a second), with a wisp of steam.
 - Release 775 — **Pentagon sigils and Pentagon hunts.** Sigils cut into the ground across each Pentagon's catchment (about 22 sections out) all point at that one real Pentagon, the whole way there; reading one tells you which way and roughly how far, and sets your compass. Two Pentagon hunts are laid out at a time, in different directions, in the Journal and on the Atlas; completing the Pentagon completes the hunt and lays out the next. Pentagons are as rare as before. New ground only; the gold ground cue now points to labyrinths.
 - Release 774 — **The Crossing Sigil is a sure way out.** It works anywhere you're alive: out of labyrinths, the Pentagon and the Stillworks, boss fights, the Rite of Ascendancy (that attempt is lost; the tree stays), the Deep, the Listener's Hall, the Skylands, dives and displacements, and on across the corridor to a Wayglass you choose. Unfinished dungeon boss fights start again, Gate Revenants stay behind, nothing you carry is lost, and you always land on safe ground.

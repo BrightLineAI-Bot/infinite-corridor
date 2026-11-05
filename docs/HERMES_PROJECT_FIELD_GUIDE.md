@@ -2854,6 +2854,44 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 777: Pentagon finding is hands-off; the Rite seals the Wayglass — 2026-11-05
+
+Tim, 2026-11-05: "No, it shouldn't set your compass to it. When a pentagon hunt opens, it's gonna be on you to find them. Sure, you can see the sigils, but it's gonna be on you to find them. I don't want to interrupt the game... it's completely on you to find it." The gold Atlas markers he had seen were the Pentagon hunt pins. He also decided that while a Rite of Ascendancy burns, free Wayglass travel is sealed and the Crossing Sigil is the only way out.
+
+**CODE:**
+
+`src/pentagon.ts`:
+- `PENTAGON_FINDING.messages` loses `follow`, `huntOffer` and `huntOfferDetail`.
+- It gains `sigilJournal(heading, far)` and `huntJournal(heading, far)`, which give a heading and distance in words only.
+- `PENTAGON_FINDING.retiredPin` names the compass pin release 775 wrote; `main.ts` drops a saved pin with that name on load.
+
+`src/game.ts`:
+- `readPentagonSigil` no longer sets `compassRequest`. Its journal line has no coordinates. It still records `follow`, so the arrival notice fires.
+- `offerPentagonHunt` pushes no `questNotices`; its only trace is the `huntJournal` line.
+- `travelToCheckpoint` refuses while `this.rite` is set, with `ASCENDANCY.messages.sealed`. That covers Atlas travel, `returnToCheckpoint` and `returnHome`.
+- `useCrossingSigil` still breaks the Rite through `riteFailed()` before it travels.
+
+`src/main.ts`:
+- No `compassRequest` consumer.
+- No Pentagon hunt or sigil guidance entries.
+- No `#ffd36a` hunt pins.
+- During the Rite the Atlas travel button uses the sigil, and Home is disabled.
+
+Tests:
+- `tests/pentagon-hands-off.test.ts` (new)
+- `tests/rite-seals-wayglass.test.ts` (new)
+- `tests/pentagon-finding.test.ts` (updated to the new rule)
+
+**BOUNDARY:**
+- Unchanged:
+  - Pentagon, sigil and hunt placement, and their hashes.
+  - The arrowhead drawing.
+  - The arrived, found and complete notices.
+  - `save.pentagonFinding`: schema 14, no field change. Old `follow` and `hunts` data is kept and simply not shown.
+- Journal lines written by 775 keep their old text.
+- Act on a Wayglass still lights it during the Rite.
+- Entering a dungeon or sky gate on the Rite's section and death keep their own rules.
+
 ## Release 776: healing hot springs — 2026-11-05
 
 Tim (2026-11-05): the hot springs heal you.

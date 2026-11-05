@@ -183,7 +183,6 @@ setTimeout(() => {
       openShop();
     }
     if (game.smithyRequested) { game.smithyRequested = null; openSmithy(game.message); } // release 441: Act at the town smith opens the forge
-    if (game.compassRequest) { const q = game.compassRequest; game.compassRequest = null; compassPin = { rx: q.rx, ry: q.ry, name: q.name }; rememberGuidance(); } // Pentagon finding: a sigil read sets the compass on its Pentagon
     if (game.area === "dungeon" && !panel.open && !game.paused && marginRun(save, game.areaId())?.offer?.length) { game.marginOfferRequested = false; openMarginOffer(); } // release 459: a page left on offer by an older release (473 applies pages at once)
     if (game.marginPasteRequested) { game.marginPasteRequested = false; openScrapbookPaste(); } // release 459
     if (game.kitchenRequested) { const id = game.kitchenRequested; game.kitchenRequested = null; kitchenPick = []; openKitchen(id, game.message); } // release 447: Act at a cook opens the kitchen
@@ -218,7 +217,7 @@ import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
 import { STATS, freshSave } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.ts";
 import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.ts";
-import { PENTAGON_LORE, inscriptionsRead, pentagonHuntsOpen } from "./pentagon.ts";
+import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.ts";
 import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.ts";
 import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.ts";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
@@ -273,7 +272,7 @@ const $ = (s) => document.querySelector(s),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
   settings = loadSettings(),
   input = createInput(document, globalThis, settings),
-  [save, game] = startGame(await loadSave()), // release 776
+  [save, game] = startGame(await loadSave()), // release 777
   panel = $("#panel"),
   body = $("#panelBody"),
   pausePanel = $("#pausePanel"),
@@ -554,7 +553,7 @@ const OBJECTIVE_KINDS={hunt:{rank:0,label:"Hunt"},story:{rank:1,label:"Story"},c
 // Release 185 (Tim): a Major Danger (Colossus Trace) is evidence, not a task; nothing ever resolves it, so counting it
 // kept its section framed gold on the Atlas forever. It still shows as a danger sign; only crossings and arenas are open.
 const CHALLENGE_SITES={dungeon:"Crossing",arenaEntrance:"Arena"},COMPASS_OBJECTIVE_LIMIT=12;
-let objectiveCache={key:null,list:[],all:[]},compassPick=save.guidance?.pick??null,compassPin=save.guidance?.pin??null; // compassPin: a quest chosen in the Journal (release 155)
+let objectiveCache={key:null,list:[],all:[]},compassPick=save.guidance?.pick??null,compassPin=(q=>q?.name===PENTAGON_FINDING.retiredPin?null:q)(save.guidance?.pin??null); // compassPin: a quest chosen in the Journal (release 155); a pin a Pentagon sigil set before 2026-11-05 is let go
 // Release 279 (Tim: "when you close the map... it changes whatever way marker... or whatever active quest you have... it doesn't
 // maintain it"): the compass's choice and a Journal pin are kept in the save (save.guidance, additive), so nothing but the
 // Wayfarer's own choice changes them.
@@ -627,7 +626,8 @@ function activeQuests(){
   const w=save.wanderer?.quest;if(w)add("Old Quillon's errand",w.done?"Done. Find Quillon on the road to collect your pay.":w.type==="hunt"?`Defeat creatures: ${w.progress}/${w.goal}.`:w.type==="cache"?"Find his buried satchel.":"Stand in any town square.",w.type==="cache"&&!w.done?w.target:null);
   const beast=save.questingBeast?.active;if(beast)add("The Questing Beast",`It roams this section. ${questingBeastTriesLeft(save)} tries remain.`,beast);
   const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save),n=relaysUntilReturn(save),pieces=`Gate ${f.gate}: ${f.toNext||0}/${piecesToUnlock(f.gate)} pieces`;/* 2026-11-05: the Listener's cycle (LISTENER_CYCLE v2) */if(!f.quiet)add("The Far Array",`${pieces}${LISTENER_CYCLE.sealsCall?` · seals ${f.pieces}/${piecesNeeded(f.gate)}`:""}. A Listener waits at its Mouth: ${far.rx}, ${far.ry}.`,far);else if(!f.moves)add("The Far Array",`${pieces}. The Listener is away; answer ${n} more relay${n===1?"":"s"} and one returns to its Mouth at ${far.rx}, ${far.ry}.`,far);else add("The Far Array",`Gate unlocked (tier ${f.gate}). No coordinate for the next Mouth yet: answer ${n} more relay${n===1?"":"s"}.`,null)}
-  {const pf=save.pentagonFinding,hunts=pentagonHuntsOpen(save);for(const h of hunts)add("Pentagon hunt",h.status==="found"?"Found. Complete the Pentagon to end the hunt; another will be laid out.":"A five-sided wall stands far out. Find it, and complete it.",{rx:h.cx,ry:h.cy});if(pf?.follow&&!hunts.some(h=>h.cx===pf.follow.cx&&h.cy===pf.follow.cy))add("A Pentagon sigil's line",`Read at ${pf.follow.rx}, ${pf.follow.ry}: the sigils of that ground point to this Pentagon.`,{rx:pf.follow.cx,ry:pf.follow.cy})} // Pentagon finding (pentagon.ts PENTAGON_FINDING)
+  // Pentagon finding (Tim, 2026-11-05: "it's completely on you to find it"): neither a hunt nor a followed sigil is a quest entry,
+  // a compass target or an Atlas pin; the Journal's own lines say, in words, which way and how far.
   const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
   if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null);
   if(!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
@@ -942,7 +942,7 @@ function startPulse() {
       noise.start(t);
     }
     step++;
-  }, 776);
+  }, 777);
 }
 addEventListener("pointerdown", () => setTimeout(startPulse, 0), {
   once: true,
@@ -1331,7 +1331,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:776,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 776\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:777,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 777\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1343,7 +1343,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:776,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:777,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1561,7 +1561,6 @@ function drawAtlasPins(w,h,cell){
   { // Release 551 (surveyor.ts): with Corwin's twelve links, the crossings they lay in join into a brass chain on the Atlas, running on to his statue.
     const chain=surveyorChainPath(save); if(chain.length>1){mctx.save();mctx.strokeStyle="#c79a3e";mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.beginPath();chain.forEach((q,i)=>{const[x,y]=at(q.rx,q.ry);if(i)mctx.lineTo(x,y);else mctx.moveTo(x,y)});mctx.stroke();mctx.setLineDash([]);mctx.fillStyle="#e6c46a";for(const q of chain.slice(0,-1)){const[x,y]=at(q.rx,q.ry);mctx.beginPath();mctx.ellipse(x,y,3.5,2,0,0,7);mctx.fill()}mctx.restore();const st=chain.at(-1);pins.push({rx:st.rx,ry:st.ry,color:"#d9d4c6",label:"Abel Corwin's statue",mark:true})}}
   for(const m of save.mapMarks||[])pins.push({rx:m.rx,ry:m.ry,color:MAP_MARKS.colors[m.color],label:`${MAP_MARKS.names[m.color]} mark`,mark:true}); // release 355: drawn under the waypoint and the quest
-  for(const h of pentagonHuntsOpen(save))pins.push({rx:h.cx,ry:h.cy,color:"#ffd36a",label:"Pentagon hunt"}); // Pentagon finding: the hunts laid out
   for(const q of nearestWonders(save,game.rx,game.ry)){const K=WONDERS.kinds[q.kind];pins.push({rx:q.rx,ry:q.ry,color:K.color,label:K.atlas})} // release 674: the nearest unexplored skyway, great tree and Starfield crossing
   {const lair=game.stalkerLairPin?.();if(lair)pins.push({rx:lair.rx,ry:lair.ry,color:"#d8e2ee",label:"The Stalker"})} // release 699: where the Stalker is, while it hunts
   for(const r of retreatsUnderWay(save))pins.push({rx:r.rx,ry:r.ry,color:"#ff8f4a",label:`${WORLD_BEASTS[r.id].name}, retreating`}); // release 605: a retreat can be followed on the Atlas
@@ -1654,14 +1653,14 @@ function selectedWayglassKey(){const explicit=$("#mapWayglassSelect")?.value;if(
 function updateMapTravelButton() {
   const travel = $("#mapTravel"), selected = mapView.selected,
     checkpoint = save.checkpoints?.[selectedWayglassKey()] || (selected && save.checkpoints?.[`${selected.rx},${selected.ry}`]);
-  const sigil = game.area === "dungeon" || sigilAtlas; // CROSSING_SIGIL: out of anywhere, inside or out
+  const sigil = game.area === "dungeon" || sigilAtlas || !!game.rite; // CROSSING_SIGIL: out of anywhere, inside or out; the Rite of Ascendancy seals Wayglass travel, so its way out is the sigil
   travel.textContent = sigil
     ? `Use Crossing Sigil ×${save.consumables.crossingSigil || 0} → ${checkpoint ? checkpoint.name || "Wayglass" : game.area === "dungeon" ? "dungeon entrance" : save.activeCheckpoint?.name || "active Wayglass"}` // release 449
     : checkpoint
       ? `Travel to ${checkpoint.name || "Wayglass"}`
       : "Return to active checkpoint";
   travel.disabled = sigil && !(save.consumables.crossingSigil > 0);
-  $("#mapHome").disabled = game.area === "dungeon";
+  $("#mapHome").disabled = game.area === "dungeon" || !!game.rite; // ASCENDANCY.messages.sealed
   $("#mapHome").textContent = `Return to ${homeName(save)}`; // release 371
   // Release 541 (Tim: "I'm not seeing the option to set a listener town as my home... in the atlas"): the section you tapped,
   // the Wayglass picked in the list, or where you stand, whichever is a town that can be home; the Wayglass list used to win
@@ -2391,7 +2390,7 @@ function viewportFrame(dt, now) {
     viewportSeq = ev.seq;
     if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
     if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
-    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 776's one clock list: the respawn's protection outlasts the black
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 777's one clock list: the respawn's protection outlasts the black
     if (ev.end) { viewportEnd(); return null; }
     return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
@@ -2512,7 +2511,7 @@ $("#mapUnstick").onclick = () => {
 $("#mapTravel").onclick = () => {
   if (performance.now() - atlasOpenedAt < 500) return;
   const key = selectedWayglassKey();
-  const travelled=game.area === "dungeon" || sigilAtlas
+  const travelled=game.area === "dungeon" || sigilAtlas || game.rite
     ? game.useCrossingSigil(save.checkpoints?.[key] ? key : null) // release 449: on to the chosen Wayglass (CROSSING_SIGIL: from anywhere)
     : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
   persist();
@@ -2521,9 +2520,10 @@ $("#mapTravel").onclick = () => {
 };
 $("#mapHome").onclick = () => {
   if (performance.now() - atlasOpenedAt < 500) return;
-  game.returnHome();
+  const travelled = game.returnHome(); // refused in the Rite of Ascendancy (ASCENDANCY.messages.sealed)
   persist();
-  resume();
+  if (travelled) resume();
+  else { $("#mapDetail").textContent = game.message; drawMap(); }
 };
 $("#mapRelays").onclick=()=>{relayOverlay=!relayOverlay;$("#mapRelays").setAttribute("aria-pressed",String(relayOverlay));drawMap()};
 $("#mapWaypoint").onclick=()=>{const selected=mapView.selected;if(!selected||!mapView.chosen||!save.explored[`${selected.rx},${selected.ry}`])return;const same=save.manualWaypoint?.rx===selected.rx&&save.manualWaypoint?.ry===selected.ry;save.manualWaypoint=same?null:{kind:"section",area:"overworld",rx:selected.rx,ry:selected.ry,label:`Section ${selected.rx}, ${selected.ry}`};navigationCache.key=null;updateMapWaypointButton();showMapDetail(selected.rx,selected.ry);drawMap();persist()};
