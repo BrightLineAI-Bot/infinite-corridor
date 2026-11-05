@@ -6,33 +6,49 @@
 // infinite 3"). The lore is Tim's too: the Lattice bends reality to bridge different eventualities, drawing in the
 // coordinates of other Transit Lattices in the Corridor, where that passive also exists, and merging them into yours.
 //
-// State: save.lattice (additive): `coordinates` to spend, `paidFor` (Listener kills already paid out), `extra` slots bought
+// State: save.lattice (additive): `coordinates` to spend, `paidFor` (Listener kills already paid out, or counted), `gatesPaid`
+// (Gates unlocked already paid, 2026-11-05), `extra` slots bought
 // per kind, and what is set: `passives` (a constellation node id for its primary form, `id:alt` for its secondary) and
 // `echoes` (Echo ids). What a passive or Echo set here does is read by constellation.ts (nodeOn/altOn) and echoes.ts
 // (activeEchoes); setting one is done there, so this module stays free of both. Balance as data.
 import { APERTURE_BANDS, apertureBand } from "./items.ts";
-import { piecesNeeded } from "./far-array.ts";
+import { piecesNeeded, piecesToUnlock } from "./far-array.ts";
 
-export const TRANSIT_LATTICE = { openTier: 13, openListeners: 1, base: { passive: 2, echo: 1 }, extra: { passive: 3, echo: 3 }, costs: [4, 4, 5, 5, 6, 6] };
+// payPer: "gate" pays each Gate once, when it is unlocked (Tim, 2026-11-05: "the coordinates should come once per gate"), its
+// pieces + 1 for the Listener (363's "components + 1"); "kill" is releases 363-759's payment for every Listener kill.
+export const TRANSIT_LATTICE = { openTier: 13, openListeners: 1, base: { passive: 2, echo: 1 }, extra: { passive: 3, echo: 3 }, costs: [4, 4, 5, 5, 6, 6], payPer: "gate" };
 export const LATTICE_LORE = "The Transit Lattice bends the air between eventualities. Each Transit Coordinate is the place of another Lattice somewhere in the Corridor, in a history where a different passive was learned; drawn in, it merges with yours, though it was always the same Lattice. So passives from other possibilities can hold in you at once.";
 export const KINDS = ["passive", "echo"];
 
 const listenersOf = (save) => Math.max(0, Math.floor(Number(save?.farArray?.listeners) || 0));
 // Coordinates a Listener kill pays: the pieces its Gate needed, plus one for the Listener. Gate k was open for kill k.
 export const coordinatesFor = (kill) => piecesNeeded(kill) + 1;
+// Coordinates the Gate unlocked at tier `gate` pays (payPer "gate"): its pieces, plus one for the Listener.
+export const coordinatesForGate = (gate) => piecesToUnlock(gate) + 1;
+const gatesUnlocked = (save) => Math.max(1, Math.floor(Number(save?.farArray?.gate) || 1)) - 1;
 
 export function ensureLattice(save) {
   const l = save.lattice && typeof save.lattice === "object" ? save.lattice : {}, int = (v, max = Infinity) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
   const list = (v) => (Array.isArray(v) ? v : []).filter((q, i, a) => typeof q === "string" && q && a.indexOf(q) === i);
   const extra = { ...(l.extra && typeof l.extra === "object" ? l.extra : {}), passive: int(l.extra?.passive, TRANSIT_LATTICE.extra.passive), echo: int(l.extra?.echo, TRANSIT_LATTICE.extra.echo) };
   save.lattice = { ...l, coordinates: int(l.coordinates), paidFor: int(l.paidFor), extra, passives: list(l.passives).slice(0, TRANSIT_LATTICE.base.passive + extra.passive), echoes: list(l.echoes).slice(0, TRANSIT_LATTICE.base.echo + extra.echo) };
+  save.lattice.gatesPaid = int(l.gatesPaid); // 2026-11-05: Gates already paid for (grantCoordinates)
   grantCoordinates(save);
   return save.lattice;
 }
 // Pays every Listener kill not yet paid (kills from before this release included). Returns the coordinates added.
+function payKills(l, save) { let added = 0; while (l.paidFor < listenersOf(save)) { l.paidFor++; added += coordinatesFor(l.paidFor); } l.coordinates += added; return added; }
+// Pays what is owed: every Gate unlocked and not yet paid (payPer "gate"; kills are then only counted, never paid), or every
+// unpaid Listener kill (payPer "kill"). Returns the coordinates added.
 export function grantCoordinates(save) {
   const l = save.lattice; if (!l) return 0;
-  let added = 0; while (l.paidFor < listenersOf(save)) { l.paidFor++; added += coordinatesFor(l.paidFor); }
+  if (TRANSIT_LATTICE.payPer !== "gate") return payKills(l, save);
+  // The cut-over (far-array.ts farArray.v2At): kills before it are paid one by one, as they always were (a journey from before
+  // the Lattice is paid on load); every Gate unlocked by then counts as paid through those kills. After it, only Gates pay.
+  const cut = save.farArray?.v2At || { listeners: listenersOf(save), gate: gatesUnlocked(save) + 1 };
+  let added = 0; while (l.paidFor < Math.min(listenersOf(save), cut.listeners)) { l.paidFor++; added += coordinatesFor(l.paidFor); }
+  l.paidFor = Math.max(l.paidFor, listenersOf(save)); l.gatesPaid = Math.max(Math.floor(Number(l.gatesPaid) || 0), (Number(cut.gate) || 1) - 1);
+  while (l.gatesPaid < gatesUnlocked(save)) { l.gatesPaid++; added += coordinatesForGate(l.gatesPaid); }
   l.coordinates += added;
   return added;
 }

@@ -11,8 +11,9 @@
 // and rewarded exactly as in a Mouth run. A Return Dais at the entry leaves at any time.
 export const LISTENER_ARENA = { size: 32, radius: 13, inner: 3.6, band: 8, pylonRadius: 9, pylons: 8, entry: { x: 16, y: 27 }, boss: { x: 16, y: 8 } };
 
-// The dais shows only while the Listener is due (the Gate whole, at the current Mouth, after a first Listener).
-export const daisDue = (f) => !!f && (f.listeners || 0) >= 1 && !f.quiet && f.pieces >= 2 + f.gate;
+// The dais shows only while the Listener is due (at the current Mouth, after a first Listener; with the seals of releases
+// 375-759 only once they are broken). Defined in far-array.ts with the rest of the Listener's cycle (LISTENER_CYCLE).
+export { daisDue } from "./far-array.ts";
 export const isArenaRun = (id) => /^far-array:.*:arena\d+$/.test(String(id || ""));
 
 export function generateListenerArena(seed, id) {

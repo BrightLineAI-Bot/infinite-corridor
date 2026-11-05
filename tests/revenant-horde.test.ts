@@ -17,9 +17,9 @@ test('about one new dungeon in two hundred is a horde, of 28 to 44, decided on t
 });
 
 test('the last kill breaks the horde and locks a Far Gate piece', () => {
-  const s = freshSave(), h = { horde: { total: 2, left: 2 } }, before = ensureFarArray(s).pieces;
+  const s = freshSave(), h = { horde: { total: 2, left: 2 } }, before = ensureFarArray(s).toNext; /* 2026-11-05 (LISTENER_CYCLE v2): a Gate piece, not a seal */
   assert.match(hordeKill(s, h).message, /1 Gate Revenant remain/); const last = hordeKill(s, h);
-  assert.equal(last.cleared, true); assert.equal(s.farArray.pieces, before + 1); assert.equal(h.resolved, true); assert.equal(hordeKill(s, h), null);
+  assert.equal(last.cleared, true); assert.equal(s.farArray.toNext, before + 1); assert.match(last.message, /piece of the Gate locks into place \(1\/5\)/); assert.equal(h.resolved, true); assert.equal(hordeKill(s, h), null);
 });
 
 function hordeDungeon() {

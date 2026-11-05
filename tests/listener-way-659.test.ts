@@ -5,13 +5,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
-import { guardianFelled, ensureFarArray } from '../src/far-array.ts';
+import { guardianFelled, ensureFarArray, LISTENER_CYCLE } from '../src/far-array.ts';
 
 test('a Gate piece says how many more, and what then', () => {
+  LISTENER_CYCLE.sealsCall = true; try { // 2026-11-05: the seals of releases 138-759, kept behind the switch (v2 has none)
   const s = freshSave(); const f = ensureFarArray(s); f.gate = 4; f.pieces = 3; f.listeners = 3;
   assert.match(guardianFelled(s), /\(4\/6\)\. 2 more and the Listener's Dais rises beside the Mouth/);
   s.farArray.pieces = 5; assert.match(guardianFelled(s), /whole.*Listener's Dais rises beside the Mouth/);
   const t = freshSave(); const g = ensureFarArray(t); g.gate = 1; g.pieces = 0; g.listeners = 0; assert.match(guardianFelled(t), /the next run holds the Listener/);
+  } finally { LISTENER_CYCLE.sealsCall = false; }
+  const v = freshSave(); Object.assign(ensureFarArray(v), { gate: 4, listeners: 3 }); assert.match(guardianFelled(v), /guardian falls\. The Listener waits beyond the Listener's Dais/);
 });
 
 test('a deep floor names the way up (or out) and the way down', () => {

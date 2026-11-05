@@ -187,11 +187,14 @@ export function commitRelayNode(save, o, choice, history, now = Date.now()) {
     net.coordinate = coordinate;
     add("relay-network-answered", "The Network Answers", `${RELAY_TARGET} relays have answered. The buried network answers back with a coordinate that belongs to no charted section: ${coordinate.rx}, ${coordinate.ry}.`);
   }
-  // Release 357: enough relays since the last Listener fell, and the line says where it went.
-  const moved = networkAnswered ? null : listenerReturns(save);
+  // Release 357: enough relays since the last Listener fell, and the line says where it went. Tim, 2026-11-05: "Every time you
+  // complete 5 relays... you get a new Listener notification... return to the Listener's [Mouth]": while its Gate is locked a
+  // Listener returns to the same Mouth (`moved` false); once the Gate is unlocked, to a new one.
+  const back = networkAnswered ? null : listenerReturns(save), moved = back?.moved ? back : null, returned = back && !back.moved ? back : null;
   if (moved) add(`listener-moved-${save.farArray.mouth}`, "The Listener Moved", `The line speaks again. What listened at the old Mouth has gone deeper; its new Mouth stands at ${moved.rx}, ${moved.ry}.`);
-  const message = `${choice === "restore" ? "The relay wakes; its line opens toward the far Array. A restorative draught is left in its cradle." : "The relay goes dark for good. You salvage two lumen dust."} Network: ${answered}/${RELAY_TARGET}.${networkAnswered ? " The whole line answers at once — a coordinate burns into your journal." : ""}${moved ? ` The line speaks again: the Listener's new Mouth is at ${moved.rx}, ${moved.ry}.` : ""}`;
-  return { ok: true, message, answered, networkAnswered };
+  if (returned) add(`listener-returned-${save.farArray.returns}`, "A Listener Returns", `A Listener has entered the corridor. The line says where: return to the Listener's Mouth at ${returned.rx}, ${returned.ry}.`);
+  const message = `${choice === "restore" ? "The relay wakes; its line opens toward the far Array. A restorative draught is left in its cradle." : "The relay goes dark for good. You salvage two lumen dust."} Network: ${answered}/${RELAY_TARGET}.${networkAnswered ? " The whole line answers at once — a coordinate burns into your journal. A Listener has entered the corridor: its Mouth waits there." : ""}${moved ? ` A Listener has entered the corridor. The line speaks again: the Listener's new Mouth is at ${moved.rx}, ${moved.ry}.` : ""}${returned ? ` A Listener has entered the corridor: return to the Listener's Mouth at ${returned.rx}, ${returned.ry}.` : ""}`;
+  return { ok: true, message, answered, networkAnswered, listenerReturned: !!returned, listenerMoved: !!moved };
 }
 
 export function relayObjectiveSuffix(save) {

@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 760, the next is **761**.
+Taken at merge time: `main`'s release + 1 (see above). After 761, the next is **762**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 760 | Claude | `claude/dreamy-rubin-yn6q2p` | Stillworks pillars to shelter from the Sunfall (arena version 2); the Doom Chaser lives only in the Stillworks | In flight. |
+| 761 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle v2: one Mouth per Gate; 5 pieces (kills or hordes) unlock it; the Listener returns every 5 relays; town on the first kill; coordinates once per Gate | In flight. |
+| 760 | Claude | `claude/dreamy-rubin-yn6q2p` | Stillworks pillars to shelter from the Sunfall (arena version 2); the Doom Chaser lives only in the Stillworks | Merged (#408). |
 | 759 | Claude | `claude/dreamy-rubin-yn6q2p` | Sky hops land on the first footing past the gap; the drone booster is never steered by the tree footing (pre-publish review blockers in 758) | Merged (#407). Published as r759-ce2cc625b7cc on 2026-11-05. |
 | 758 | Claude | `claude/dreamy-rubin-yn6q2p` | Great trees you can climb: platforms drawn where walked, crown veiled until you climb, straighter hops; landscape 18 trees | Merged (#406). Preview r758-96c811de0fd7; published in r759. |
 | 757 | Claude | `claude/dreamy-rubin-yn6q2p` | The Listener's cycle: the Mouth holds the Listener until the Gate unlocks; then 5 relays, new Mouth; old Mouth becomes a town and Descent | Merged (#405). Published as r757-4ff9a5914432 on 2026-11-05. |
