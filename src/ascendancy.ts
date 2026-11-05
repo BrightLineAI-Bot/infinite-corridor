@@ -43,6 +43,9 @@ export const ASCENDANCY = {
     dais: "A strange tree, wrong at the edges, motes of violet light rising from it. Touch it to begin the Rite of Ascendancy: survive five minutes here, and something will rise.",
     begin: "The Rite of Ascendancy begins. The strange tree catches fire, and fire rises round the edges of the land: survive until it has burned down.",
     noLeave: "The fire bars the way. Survive the rite.",
+    // Tim, 2026-11-05: while a rite burns, free Wayglass travel is sealed (Act on a Wayglass still lights it; the Atlas's travel
+    // and home buttons refuse). The Crossing Sigil stays the one way out: it costs the attempt and leaves the tree its others.
+    sealed: "The rite's fire holds the Wayglass line shut. Survive the rite, or burn a Crossing Sigil to get out (the attempt is lost).",
     failed: (left) => `The rite is broken. The fire sinks away.${left > 0 ? ` The strange tree can bear ${left} more rite${left === 1 ? "" : "s"}.` : " The strange tree dies."}`,
     resumeRefund: "The rite you began here was lost when the journey closed. The fire has sunk away, and the attempt is given back: touch the strange tree to begin again.", // release 736 (review F7)
     withered: "A strange tree gone grey and dead. Its rite will not come again.",
