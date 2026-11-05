@@ -144,6 +144,14 @@ export const WORLD_BEASTS = {
   },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
+// Beasts that keep to a homeland (Tim, 2026-11-05: "The Doom Chaser should still just remain in the Stillworks. That's just his
+// place... the Stillworks is the only place where he exists"). A beast listed here begins no new hunt on the land (no section is
+// claimed for it), never passes through a section, and does not come home to its far domain (that domain stands empty). Its row stays
+// in WORLD_BEASTS: the Stillworks' finale is measured from it (pentagon-arena.ts), and a hunt already under way when this came in
+// (claimed, fought, pursuing, retreating, or brought to its domain) runs its course as before, so no save mid-hunt changes. Its Echo,
+// Sigil, mounts, journal and one-time rewards already earned are kept; it is never removed from a save.
+export const BEAST_HOMELANDS = { doomChaser: "stillworks" };
+export const beastRoams = (id) => !BEAST_HOMELANDS[id];
 // Release 714 (Tim, 2026-11-03: "if you're fighting the stag, and the stalker comes in, or if you're fighting the stalker, and the
 // stag comes in, then [they] should get distracted... play together for a little bit... because their buddies"): when both are
 // within `range` of each other they forget the Wayfarer for `time` s and circle each other, butting and leaping (blows still land on
@@ -529,6 +537,7 @@ export function worldBeastFor(save, map, rx, ry) {
     if (q.active) continue;
     if (q.cooldown > 0) { q.cooldown--; continue; }
     if (here || held || Math.abs(rx) + Math.abs(ry) < B.minDepth || !beastUnlocked(save, id) || !encounterReady(save)) continue; // release 261: the buffer between meetings (273: and the Aperture)
+    if (!beastRoams(id)) continue; // BEAST_HOMELANDS: the Doom Chaser claims no section (listed last, so no other beast's roll moves)
     if ((hashSeed(`${save.seed}:world-beast:${id}:v1:${q.cycle}:${rx}:${ry}`) % 1000) / 1000 >= B.chance * encounterChance(save)) continue;
     q.active = { rx, ry, tries: 0 }; here = id; encounterMet(save); claimed = true;
   }
@@ -554,7 +563,8 @@ export function passingBeastFor(save, map, rx, ry, explored = 0) {
   const h = hashSeed(`${save.seed}:passing-beast:v1:${rx}:${ry}:${explored}`); if ((h % 1000) / 1000 >= PASSING.chance) return null;
   const ids = WORLD_BEAST_IDS.filter((id) => id !== "astralWorm" && id !== "voidWalker" && beastUnlocked(save, id) && !(save.worldBeasts?.[id]?.active?.rx === rx && save.worldBeasts?.[id]?.active?.ry === ry));
   if (!ids.length) return null;
-  const id = ids[(h >>> 10) % ids.length], B = WORLD_BEASTS[id], ex = sectionExits(save.seed, rx, ry), across = (h >>> 4) & 1;
+  const id = ids[(h >>> 10) % ids.length]; if (!beastRoams(id)) return null; // BEAST_HOMELANDS: where the Doom Chaser would have passed, nothing does (every other section's passer is as it was)
+  const B = WORLD_BEASTS[id], ex = sectionExits(save.seed, rx, ry), across = (h >>> 4) & 1;
   const [from, to] = across ? [{ x: .6, y: ex.west, side: "west" }, { x: 30.4, y: ex.east, side: "east" }] : [{ x: ex.north, y: .6, side: "north" }, { x: ex.south, y: 30.4, side: "south" }];
   const [a, b] = (h >>> 6) & 1 ? [to, from] : [from, to], mode = B.retreatMoves === "walk" ? "walk" : "through";
   const path = retreatPath(map, a, b, mode) || [{ x: b.x, y: b.y }];

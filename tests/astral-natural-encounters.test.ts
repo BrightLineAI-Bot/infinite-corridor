@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { hashSeed } from '../src/random.ts';
-import { WORLD_BEASTS, WORLD_BEAST_IDS, ENCOUNTER } from '../src/world-beasts.ts';
+import { WORLD_BEASTS, WORLD_BEAST_IDS, ENCOUNTER, beastRoams } from '../src/world-beasts.ts';
 import { ASTRAL, startAstralMove } from '../src/astral-worm.ts';
 import { ASTRAL_PAIR } from '../src/astral-encounters.ts';
 import { ECHOES, echoEvent } from '../src/echoes.ts';
@@ -143,7 +143,7 @@ test('actual level-one Questing actor dominates naturally loaded beasts at the s
   }
   assert.ok(g,'bounded deterministic collision of natural Questing and Astral rolls');assert.equal(g.save.level,1);
   const q=g.enemies.find(e=>e.questingBeast);assert.equal(g.enemies.some(e=>e.worldBeast==='astralWorm'),false);assert.equal(g.save.worldBeasts.astralWorm.active,null);
-  for(const kind of WORLD_BEAST_IDS){const {g:other,actor:e}=naturalOverworld(kind);assert.equal(other.rx,g.rx);assert.equal(other.ry,g.ry);assert.equal(other.save.level,1);assert.ok(q.maxHp>e.maxHp,`${kind} HP: ${q.maxHp} > ${e.maxHp}`);assert.ok(q.damage>e.damage,`${kind} damage: ${q.damage} > ${e.damage}`);}
+  for(const kind of WORLD_BEAST_IDS.filter(beastRoams)){/* 2026-11-05: the Doom Chaser is no longer met on the land (world-beasts.ts BEAST_HOMELANDS) */const {g:other,actor:e}=naturalOverworld(kind);assert.equal(other.rx,g.rx);assert.equal(other.ry,g.ry);assert.equal(other.save.level,1);assert.ok(q.maxHp>e.maxHp,`${kind} HP: ${q.maxHp} > ${e.maxHp}`);assert.ok(q.damage>e.damage,`${kind} damage: ${q.damage} > ${e.damage}`);}
 });
 
 test('natural overworld Astral enrollment creates a real shared hunt without forced reservations or fixture actors',()=>{
