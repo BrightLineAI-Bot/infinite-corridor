@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 774, the next is **775**.
+Taken at merge time: `main`'s release + 1 (see above). After 775, the next is **776**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 774 | Claude | `claude/dreamy-rubin-yn6q2p` | Crossing Sigils work anywhere you're alive: every interior, boss fights, the Rite (that attempt is lost), displacements, the open world; safe landing | In flight. |
+| 775 | Claude | `claude/dreamy-rubin-yn6q2p` | Pentagon sigils that truly point (catchments around each unfinished Pentagon; bearing, distance, compass) and Pentagon hunts (two at a time in the Journal and on the Atlas) | In flight. |
+| 774 | Claude | `claude/dreamy-rubin-yn6q2p` | Crossing Sigils work anywhere you're alive: every interior, boss fights, the Rite (that attempt is lost), displacements, the open world; safe landing | Merged (#422). |
 | 773 | Claude | `claude/dreamy-rubin-yn6q2p` | The story budget: one steady thread density (0.13 per crossing) from the Refuge out past 1000 for crossings entered from now on; later stories share one roll | Merged (#421). |
 | 772 | Claude | `claude/dreamy-rubin-yn6q2p` | Terrace Springs (landscape 21): stepped white sinter terraces, turquoise pools, hot springs, a cache at the head | Merged (#420). Published as r772-32d768cda137 on 2026-11-05. |
 | 771 | Claude | `claude/dreamy-rubin-yn6q2p` | The Toolmaker's Handles: a wave-5 later thread in the middle band (six handles; ending in the Journal; a Tome book) | Merged (#419). Published in r772. |
