@@ -1,7 +1,7 @@
 // The Crimson Tyrant's body and effects (release 709). Drawing only: nothing here changes combat state.
 // q: the shared pack paint context { k, b, u, s, t, flip, e } (monster-render.ts paintPackMonster). An original red dragon: four
 // legs, two great membrane wings, a long horned head on an S-curved neck, a heavy tail that is never still.
-import { DRAGON, DANGER } from "./monster-pack.js?v=r756-60d888795acd";
+import { DRAGON, DANGER } from "./monster-pack.js?v=r757-4ff9a5914432";
 
 const TAU = Math.PI * 2;
 export const DRAGON_ART = {

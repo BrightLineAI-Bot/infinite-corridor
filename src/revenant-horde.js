@@ -10,9 +10,9 @@
 // (the Gate Revenant's own pursuit); a kill anywhere counts down the dungeon's number. Those still alive when the
 // Wayfarer dies (or loses them) simply go back: the count only falls by kills. The last kill grants a Far Gate piece.
 // State: save.consequences.dungeons[id].horde = { total, left } (additive; decided once, on the first visit).
-import { hashSeed } from "./random.js?v=r756-60d888795acd";
-import { isDeepDungeonId } from "./world.js?v=r756-60d888795acd";
-import { ensureFarArray, piecesNeeded, gateOpen } from "./far-array.js?v=r756-60d888795acd";
+import { hashSeed } from "./random.js?v=r757-4ff9a5914432";
+import { isDeepDungeonId } from "./world.js?v=r757-4ff9a5914432";
+import { ensureFarArray, piecesNeeded, gateOpen } from "./far-array.js?v=r757-4ff9a5914432";
 
 // Release 273 (Tim: "in the swarm dungeon... maybe you'll get like four crossing sigils throughout... you can break it into
 // waves"): the count is cut into `sigils` waves, and the kill that ends each wave leaves a Crossing Sigil.
@@ -43,7 +43,7 @@ export function hordeKill(save, history) {
   if (q.left > 0) return { message: `${sigils ? "A wave breaks; a Crossing Sigil falls. " : ""}${q.left} Gate Revenant${q.left === 1 ? "" : "s"} remain in that crossing.`, sigils };
   history.resolved = true;
   const f = ensureFarArray(save); f.pieces = Math.min(piecesNeeded(f.gate), f.pieces + 1); f.history.push({ run: f.runs, gate: f.gate, won: "horde" });
-  return { sigils, message: `The horde is broken${sigils ? ", and its last Crossing Sigil falls" : ""}. ${gateOpen(f) ? `The last piece locks into the Gate. It stands whole. Gate ${f.gate} is open.` : `A piece of the Gate locks into place (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true };
+  return { sigils, message: `The horde is broken${sigils ? ", and its last Crossing Sigil falls" : ""}. ${gateOpen(f) ? `The last seal of the Listener's call breaks. The call is whole: the Listener waits.` : `A seal of the Listener's call breaks (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true };
 }
 // The spawn points for a horde dungeon: open tiles far from the entrance, spread out.
 export function hordeSpawnPoints(map, entry, n = 6, reach = null) {

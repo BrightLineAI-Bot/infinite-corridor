@@ -8,11 +8,13 @@
 // chosen home ("rx,ry"; Ember Refuge, "0,0", when unset). Home is where the Atlas's Return button goes, and where the farm,
 // the quarry and the regrowth ring sit (refuge-lands.ts, by `homeCenter`). A town becomes home from the Atlas once its
 // Wayglass is lit.
-import { hashSeed } from "./random.js?v=r756-60d888795acd";
-import { hamletIdentity, hamletSection } from "./settlements.js?v=r756-60d888795acd";
-import { openSeaSection } from "./landscape.js?v=r756-60d888795acd";
+import { hashSeed } from "./random.js?v=r757-4ff9a5914432";
+import { hamletIdentity, hamletSection } from "./settlements.js?v=r757-4ff9a5914432";
+import { openSeaSection } from "./landscape.js?v=r757-4ff9a5914432";
 
-export const HOMETOWNS = { search: 4 };
+// townWhen: "unlock" raises a Mouth's town when its Gate is unlocked and the Listener leaves (Tim, 2026-11-05); "kill" on the
+// first Listener kill there (releases 373-755).
+export const HOMETOWNS = { search: 4, townWhen: "unlock" };
 const REFUGE = "0,0";
 const key = (q) => `${q.rx},${q.ry}`;
 
@@ -40,14 +42,19 @@ export function townSite(save, mouth) {
 // it becomes like a town now... [the Mouth] becomes a source of adventure and prosperity"): the town rises on the Mouth's
 // own section, around the Mouth (`mouth: true`), with the Listening Stone and a delver's exchange beside it (game.ts).
 // It replaces the 371 town on a nearby section; a journey that already has one keeps it as one more town.
-// One Mouth town per fallen Listener, at the Mouth it fell at (old Mouths in order, then the current one). Returns those added.
+// One Mouth town per spent Mouth (Tim, 2026-11-05: "the old Mouth turns into an infinite dungeon and a town"): every Mouth the
+// Listener has left (relayNetwork.pastMouths, in order), and the current one once its Gate is unlocked and it has gone quiet.
+// Before, a town rose on the first kill at a Mouth (`HOMETOWNS.townWhen` "kill" keeps that rule); every Mouth a Listener
+// fell at was quiet or past under it, so no journey loses or gains a town by the change. Returns those added.
 export function grantTowns(save) {
   const h = save.hometowns; if (!h) return [];
-  const kills = Math.max(0, Math.floor(Number(save.farArray?.listeners) || 0)), net = save.relayNetwork || {}, mouths = [...(Array.isArray(net.pastMouths) ? net.pastMouths : []), ...(net.coordinate ? [net.coordinate] : [])], added = [];
-  for (let n = h.towns.filter((t) => t.mouth).length + 1; n <= kills && mouths.length; n++) {
-    const m = mouths[Math.min(n - 1, mouths.length - 1)];
-    if (h.towns.some((t) => t.rx === m.rx && t.ry === m.ry)) { const t = h.towns.find((q) => q.rx === m.rx && q.ry === m.ry); t.mouth = true; continue; }
-    const t = { rx: m.rx, ry: m.ry, name: hamletIdentity(save.seed, m.rx, m.ry).name, listener: n, mouth: true }; h.towns.push(t); added.push(t);
+  const kills = Math.max(0, Math.floor(Number(save.farArray?.listeners) || 0)), net = save.relayNetwork || {}, past = Array.isArray(net.pastMouths) ? net.pastMouths : [], added = [];
+  if (!kills) return added;
+  const current = net.coordinate && (HOMETOWNS.townWhen === "kill" || save.farArray?.quiet) ? [net.coordinate] : [];
+  for (const m of [...past, ...current]) {
+    if (!Number.isInteger(m?.rx) || !Number.isInteger(m?.ry)) continue;
+    const there = h.towns.find((q) => q.rx === m.rx && q.ry === m.ry); if (there) { there.mouth = true; continue; }
+    const t = { rx: m.rx, ry: m.ry, name: hamletIdentity(save.seed, m.rx, m.ry).name, listener: h.towns.filter((q) => q.mouth).length + 1, mouth: true }; h.towns.push(t); added.push(t);
   }
   return added;
 }

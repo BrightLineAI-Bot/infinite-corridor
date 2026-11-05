@@ -2,14 +2,14 @@
 //
 // The Array Mouth stands at the coordinate. Each entry is a run: an expedition dungeon whose final guardian is a relay
 // guardian (an elite or pack boss) chosen by how the Wayfarer answered the relays: restoring leans to mirror, phase and
-// ranged things; severing to heavy brutes. Each guardian felled locks one piece into the Gate. Gate g needs
-// FAR.piecesBase + g pieces. When the Gate is whole, the next run ends instead with the Listener, the thing that learned
+// ranged things; severing to heavy brutes. Each guardian felled breaks one seal of the Listener's call (named Gate pieces
+// until 2026-11-05); a call at Gate g needs FAR.piecesBase + g seals. When the call is whole, the next run ends instead with the Listener, the thing that learned
 // the line: a mirror of the Wayfarer (restored), a starved, walled-in thing (severed), or both in turn. From gate 2 it
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r756-60d888795acd";
-import { daisDue } from "./listener-arena.js?v=r756-60d888795acd";
+import { hashSeed, rng } from "./random.js?v=r757-4ff9a5914432";
+import { daisDue } from "./listener-arena.js?v=r757-4ff9a5914432";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -45,22 +45,37 @@ export const BOONS = {
 // more relays have answered, the line gives a new coordinate (`listenerCoordinate`, by `mouth`) and the Array opens there:
 // the same Gate climb (pieces, then the Listener) at the new Mouth. The old Mouth stays, silent (relayNetwork.pastMouths).
 export const LISTENER_RETURN = { returnRelays: 5, near: 40, spread: 23 };
+// The Listener's cycle as Tim restated it (2026-11-05): "Each time you kill the Listener you get a piece of the Gate, and the
+// Listener's Mouth stays in place until you've killed the Listener enough times to unlock the Gate. Then you connect 5 more
+// relays, and a new Mouth forms, and you have to kill the Listener there however many times [the Gate needs]; the old Mouth
+// turns into an infinite dungeon and a town." So a Listener kill is one piece of the Gate (`toNext`); the Gate at tier g is
+// unlocked by killsToClimb(g) pieces; only then does the Mouth go quiet (`quiet`, from `relaysAt`), and returnRelays more
+// relays move it. Until the Gate unlocks the Listener stays at its Mouth, and the guardians of the Mouth's runs break the
+// seals that call it (`pieces`, sealsNeeded per call) as before. hometowns.ts raises the old Mouth's town (and with it the
+// Listener's Descent, game.ts raiseMouthTown) when the Gate unlocks there.
+export const LISTENER_CYCLE = { mouthStaysUntilUnlock: true };
 const answeredRelays = (save) => Object.keys(save?.relayNetwork?.nodes || {}).length;
 export function ensureFarArray(save) {
   const f = save.farArray && typeof save.farArray === "object" ? save.farArray : {};
   // Journeys that felled a Listener before 357 go quiet now, counting from the relays they had then.
-  const quiet = f.quiet === undefined ? (Number(f.listeners) || 0) > 0 : !!f.quiet, relaysAt = f.relaysAt != null && Number.isFinite(Number(f.relaysAt)) ? Math.max(0, Number(f.relaysAt)) : answeredRelays(save);
+  // Tim, 2026-11-05 (LISTENER_CYCLE): a Mouth that went quiet on a kill that left its Gate locked (releases 704-755 sent the
+  // Listener away after every kill) has its Listener back: kills since the last climb mean the Gate is not yet unlocked.
+  const toNext = Math.max(0, Math.floor(Number(f.toNext) || 0));
+  const quiet = f.quiet === undefined ? (Number(f.listeners) || 0) > 0 : !!f.quiet && !(LISTENER_CYCLE.mouthStaysUntilUnlock && toNext > 0), relaysAt = f.relaysAt != null && Number.isFinite(Number(f.relaysAt)) ? Math.max(0, Number(f.relaysAt)) : answeredRelays(save);
   save.farArray = { ...f, // release 736 (review S7): unknown fields kept
     v: 1, gate: Math.max(1, Number(f.gate) || 1), pieces: Math.max(0, Number(f.pieces) || 0), runs: Math.max(0, Number(f.runs) || 0),
     listeners: Math.max(0, Number(f.listeners) || 0), boons: (Array.isArray(f.boons) ? f.boons : []).filter((id) => BOONS[id]),
     offer: (Array.isArray(f.offer) ? f.offer : []).filter((id) => BOONS[id]), ending: ["close", "open"].includes(f.ending) ? f.ending : null,
     endingPending: !!f.endingPending, history: (Array.isArray(f.history) ? f.history : []).slice(-12), activeRun: f.activeRun && typeof f.activeRun === "object" ? f.activeRun : null,
     quiet, relaysAt, mouth: Math.max(0, Math.floor(Number(f.mouth) || 0)), // release 357
-    toNext: Math.max(0, Math.floor(Number(f.toNext) || 0)), // Listener kills since the Gate last climbed (a journey from before counts from its current tier)
+    toNext, // Listener kills since the Gate last climbed (a journey from before counts from its current tier)
   };
   return save.farArray;
 }
+// The seals that call the Listener (`pieces`): a guardian of the Mouth's runs breaks one; with all broken, the Listener waits
+// (the next run the first time, the Listener's Dais after). Named Gate pieces before 2026-11-05; the number is unchanged.
 export const piecesNeeded = (gate) => FAR.piecesBase + gate;
+export const sealsNeeded = piecesNeeded;
 // Tim (2026-11-02): "you beat the listener one time... you open the first gate, and then you beat the listener 2 additional times...
 // it opens the second gate, and then you have to beat the listener 3 additional times to unlock the third gate, and then... 4
 // additional times to [unlock] the fourth gate and so on." The Gate at tier `gate` climbs after `gate` more Listener kills.
@@ -156,17 +171,20 @@ export const listenerHides = (gate) => gate >= FAR.hideFromGate;
 export function guardianFelled(save) {
   const f = ensureFarArray(save); f.pieces = Math.min(piecesNeeded(f.gate), f.pieces + 1); f.history.push({ run: f.runs, gate: f.gate, won: "guardian" }); f.activeRun = null;
   const where = (f.listeners || 0) >= 1 ? "the Listener's Dais rises beside the Mouth" : "the next run holds the Listener"; // release 659: say what comes next
-  return gateOpen(f) ? `The last piece locks into the Gate. It stands whole: something behind it is listening. Gate ${f.gate} is open: ${where}.` : `A piece of the Gate locks into place (${f.pieces}/${piecesNeeded(f.gate)}). ${piecesNeeded(f.gate) - f.pieces} more and ${where}.`;
+  return gateOpen(f) ? `The last seal breaks. The call is whole: something behind the Gate is listening. ${f.quiet ? "The Listener has left this Mouth; at its new Mouth" : "Now"} ${where}.` : `A seal of the Listener's call breaks (${f.pieces}/${piecesNeeded(f.gate)}). ${piecesNeeded(f.gate) - f.pieces} more and ${where}.`;
 }
 // The Listener fell: the Gate ascends and three boons are offered; the first time, the ending choice too.
 export function listenerFelled(save) {
   const f = ensureFarArray(save), r = rng(`${save.seed}:far-array:boons:${f.gate}:${f.listeners}`), ids = Object.keys(BOONS).sort(() => r() - .5);
   f.listeners++; f.history.push({ run: f.runs, gate: f.gate, won: "listener" }); f.pieces = 0; f.activeRun = null;
-  f.toNext = (f.toNext || 0) + 1; const need = killsToClimb(f.gate), climbed = f.toNext >= need; if (climbed) { f.gate++; f.toNext = 0; }
+  f.toNext = (f.toNext || 0) + 1; const need = killsToClimb(f.gate), got = f.toNext, climbed = f.toNext >= need; if (climbed) { f.gate++; f.toNext = 0; }
   f.offer = ids.slice(0, 3); if (f.listeners === 1 && !f.ending) f.endingPending = true;
-  f.quiet = true; f.relaysAt = answeredRelays(save); // release 357: it moves on
-  const gateLine = climbed ? `The Gate climbs to tier ${f.gate}.` : `The Gate holds at tier ${f.gate}: fell the Listener ${need - f.toNext} more time${need - f.toNext === 1 ? "" : "s"} to climb to tier ${f.gate + 1}.`;
-  return `The Listener falls silent. ${gateLine} Choose a boon in the Journal's Far Gate. The Mouth goes quiet: answer ${LISTENER_RETURN.returnRelays} more relays and the line will say where it went.`;
+  const moves = climbed || !LISTENER_CYCLE.mouthStaysUntilUnlock; // release 357: it moves on; 2026-11-05: only once its Gate is unlocked
+  if (moves) { f.quiet = true; f.relaysAt = answeredRelays(save); }
+  const piece = `A piece of the Gate locks into place (${got}/${need}).`;
+  const gateLine = climbed ? `${piece} It is unlocked. The Gate climbs to tier ${f.gate}.` : `${piece} The Gate holds at tier ${f.gate}: fell the Listener ${need - f.toNext} more time${need - f.toNext === 1 ? "" : "s"} to climb to tier ${f.gate + 1}.`;
+  const after = moves ? `The Mouth goes quiet: answer ${LISTENER_RETURN.returnRelays} more relays and the line will say where it went. The old Mouth stays, a town and a way into the Deep.` : `The Listener stays at this Mouth: break its seals again in the Mouth's runs and the Listener's Dais rises.`;
+  return `The Listener falls silent. ${gateLine} Choose a boon in the Journal's Far Gate. ${after}`;
 }
 // How many more relays must answer before the Listener's line speaks again (0 when it is not quiet).
 export function relaysUntilReturn(save) { const f = ensureFarArray(save); return f.quiet ? Math.max(0, f.relaysAt + LISTENER_RETURN.returnRelays - answeredRelays(save)) : 0; }
@@ -188,7 +206,14 @@ export function listenerReturns(save) {
   net.coordinate = listenerCoordinate(save.seed, f.mouth, old);
   return net.coordinate;
 }
-export const silentMouthAt = (save, rx, ry) => (save?.relayNetwork?.pastMouths || []).some((c) => c.rx === rx && c.ry === ry) && !arrayMouthAt(save, rx, ry);
+// An old Mouth: one the Listener has left (pastMouths keeps the last 8), or (2026-11-05) any Mouth town, so the oldest towns keep
+// their Mouth, its runs and its Descent however many times the Listener has moved.
+export const silentMouthAt = (save, rx, ry) => ((save?.relayNetwork?.pastMouths || []).some((c) => c.rx === rx && c.ry === ry) || (save?.hometowns?.towns || []).some((t) => t.mouth && t.rx === rx && t.ry === ry)) && !arrayMouthAt(save, rx, ry);
+// Where the Listener's cycle stands, for the Journal and tests: the Gate's pieces (Listener kills) and the seals of the next call.
+export function listenerCycle(save) {
+  const f = ensureFarArray(save);
+  return { gate: f.gate, pieces: f.toNext, piecesToUnlock: killsToClimb(f.gate), seals: f.pieces, sealsNeeded: sealsNeeded(f.gate), quiet: f.quiet, relaysToMove: relaysUntilReturn(save), mouth: f.mouth };
+}
 export function chooseBoon(save, id) { const f = ensureFarArray(save); if (!f.offer.includes(id)) return false; f.boons.push(id); f.offer = []; return true; }
 export function chooseEnding(save, ending) { const f = ensureFarArray(save); if (!f.endingPending || !["close", "open"].includes(ending)) return false; f.ending = ending; f.endingPending = false; return true; }
 // Summed boon effects for characterStats.
