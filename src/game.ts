@@ -2063,7 +2063,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
   if(!e||e.dead)return false;
-  if(area==="dungeon"){if(e.gatePredator||e.mireSeep)return true;/* release 303: seeplings crawl home from anywhere *//* release 271: a Revenant stalks and hunts from anywhere in the dungeon */if(e.worldBeast&&(e.aggro||isDungeonHunter(e,area)))return true;/* release 249: hunters patrol and finish their retreat even out of sight */const d=Math.hypot(e.x-player.x,e.y-player.y);return d<=(e.aggro?18:e.boss||e.eliteId?14:10)||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0}
+  if(area==="dungeon"){if(e.gatePredator||e.mireSeep)return true;/* release 303: seeplings crawl home from anywhere *//* release 271: a Revenant stalks and hunts from anywhere in the dungeon */if(e.worldBeast&&(e.aggro||isDungeonHunter(e,area)))return true;if(e.pentFinaleBeast&&e.pentArenaAwake)return true;/* the Stillworks' finale beast, once awake, fights on wherever you run in its bounded arena: fleeing its Sunfall past the dungeon's sight range must not freeze it aloft and untargetable mid-attack *//* release 249: hunters patrol and finish their retreat even out of sight */const d=Math.hypot(e.x-player.x,e.y-player.y);return d<=(e.aggro?18:e.boss||e.eliteId?14:10)||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0}
   if(area!=="overworld")return true;
   if(e.aggro||e.boss||e.eliteId||e.worldBoss||e.gatePredator||e.telegraph>0||e.strike>0||e.eliteWindup>0||e.eliteActive>0||e.summonedBy)return true;
   return Math.hypot(e.x-player.x,e.y-player.y)<=10;
@@ -4865,7 +4865,7 @@ export class Game {
       held(source) { return now < (p.heldUntil || 0) && p.heldBy === source.id; },
       release(source) { if (p.heldBy === source.id) p.heldUntil = 0; },
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * step, ddy / dd * step); return true; }, // release 235: the Blob's jet
-      dragonDue: () => !map.pentArena && game.dragonDue(), // the Stillworks is never claimed dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
+      dragonDue: () => !map.pentArena && game.dragonDue(), /* the Stillworks is never claimed */ dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
       frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
       confuse(seconds) { if (!(seconds > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return; if (!(now < (p.confusedUntil || 0))) game.message = HAUNT.text.confused; p.confusedUntil = Math.max(p.confusedUntil || 0, now + seconds * 1000); }, // release 731: the haunts turn you about
       curse: (source, n) => game.layHauntCurses(source, n, now), // release 737: a landed puff or howl lays haunt curses

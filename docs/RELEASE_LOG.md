@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 754, the next is **755**.
+Taken at merge time: `main`'s release + 1 (see above). After 755, the next is **756**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 754 | Claude | `claude/dreamy-rubin-yn6q2p` | The Stillworks (Pentagon finale arena; Tyrant, Doom Chaser, Void Walker, Astral Worm or the Gloomvast) and the Gloomvast ghost finale with the Dark | In flight. |
+| 755 | Claude | `claude/dreamy-rubin-yn6q2p` | Restores the Crimson Tyrant's lava hooks (pre-publish review blocker in 754) | In flight. |
+| 754 | Claude | `claude/dreamy-rubin-yn6q2p` | The Stillworks (Pentagon finale arena; Tyrant, Doom Chaser, Void Walker, Astral Worm or the Gloomvast) and the Gloomvast ghost finale with the Dark | Merged (#402). |
 | 753 | Claude | `claude/dreamy-rubin-yn6q2p` | Dais Tesseract rerolls and the walkway fall; Imbue Weapon; Sunburst Ricochet; the Aether Orrery | Merged (#401). |
 | 752 | Claude | `claude/dreamy-rubin-yn6q2p` | The Pentagon's roof (v7): walkable roof, outer stair, balconies with doors; roof dwellers (gargoyles, demons, rooks, Seraph, colossi) seen only on the roof | Merged (#400). |
 | 751 | Claude | `claude/dreamy-rubin-yn6q2p` | Mounts give no defence (mounted lava a 2 s burn); the drone fizzles at Pentagon walls and castle wings | Merged (#399). |
