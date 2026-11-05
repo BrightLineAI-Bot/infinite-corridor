@@ -754,13 +754,16 @@ export const PENTAGON_FINDING = {
   hunts: { offer: 2, near: 18, far: 44, spread: 1.9, tries: 6, keep: 8, settle: 3 }, // hunts open at once; how far out (sections) one is looked for; how far apart in bearing (radians) two open ones must lie; bearings tried per search; finished hunts kept; seconds in a section before the one search there
   far: [[6, "close by"], [14, "a few crossings off"], [26, "many crossings off"], [48, "far off"], [Infinity, "very far off: a long journey"]], // distance words, by sections
   name: "A Pentagon sigil",
+  retiredPin: "The Pentagon (the sigil's)", // the compass pin a sigil read set in release 775; main.ts lets it go on load
   messages: {
     read: "A five-sided sigil is cut into the ground, one of its points drawn out long. It points",
-    follow: "Your compass takes up the sigil's line.",
+    // Tim, 2026-11-05: "it's gonna be on you to find them... I don't want to interrupt the game". A sigil read and a hunt laid
+    // out touch neither the compass nor the Atlas, and a hunt opens with no banner: a Journal line in words (heading and how far,
+    // never the section), and the ground's sigils, are all there is to go on.
+    sigilJournal: (heading, far) => `A Pentagon sigil points ${heading}: a five-sided wall stands that way, ${far}.`,
+    huntJournal: (heading, far) => `A Pentagon hunt opens: a five-sided wall stands to the ${heading}, ${far}. Nothing marks it on the map; it is yours to find.`,
     arrived: "THE SIGIL'S PENTAGON",
     arrivedDetail: "the five-sided wall the sigils pointed to",
-    huntOffer: "PENTAGON HUNT",
-    huntOfferDetail: "a five-sided wall far out · see the Journal",
     huntFound: "PENTAGON HUNT · FOUND",
     huntDone: "PENTAGON HUNT COMPLETE",
     huntDoneDetail: "another lies far out · see the Journal",

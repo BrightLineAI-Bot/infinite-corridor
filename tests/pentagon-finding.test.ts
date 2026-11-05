@@ -37,7 +37,7 @@ test('every sigil points at a real Pentagon (the centre loads it), along the tru
       assert.ok(!g.map.tiles[o.y * 32 + o.x].blocked);
       const r = g.interact('read', o.id); assert.ok(r.ok); assert.match(r.message, new RegExp(`points ${pentagonHeading(o.targetRx - x, o.targetRy - y)}: a Pentagon stands that way, .+ \\(about \\d+ sections?\\)`));
       assert.deepEqual([g.save.pentagonFinding.follow.cx, g.save.pentagonFinding.follow.cy], [o.targetRx, o.targetRy]);
-      assert.deepEqual(g.compassRequest, { rx: o.targetRx, ry: o.targetRy, name: 'The Pentagon (the sigil\'s)' }); } }
+      assert.equal(g.compassRequest, undefined, 'the compass is left alone (Tim, 2026-11-05)'); assert.doesNotMatch(r.message, /compass/i); } }
   assert.ok(n >= 6, `${n} sigils`);
 });
 
@@ -83,6 +83,7 @@ test('Pentagon hunts: two at a time, real, apart in bearing, far out; a found on
   const ba = Math.atan2(a.cy - 20, a.cx - 20), bb = Math.atan2(b.cy - 20, b.cx - 20), apart = Math.abs(((ba - bb + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI); assert.ok(apart >= F.hunts.spread / 2, `${apart}`);
   assert.equal(g.offerPentagonHunt(), null, 'no third while two are open');
   for (const h of [a, b]) assert.ok(realAt('TIM1', h.cx, h.cy));
+  assert.ok(!(g.questNotices || []).length, 'a hunt opens with no banner (Tim, 2026-11-05)');
   visit(g, a.cx + 1, a.cy); assert.equal(a.status, 'found'); assert.ok(g.questNotices.some((q) => q.title === F.messages.huntFound));
   s.consequences.dungeons[`${g.pentagonBase(a.cx, a.cy)}:f1`] = { pentArenaWon: true }; visit(g, a.cx + 3, a.cy + 3);
   assert.equal(s.pentagonFinding.hunts.find((h) => h.id === a.id).status, 'done'); assert.ok(g.questNotices.some((q) => q.title === F.messages.huntDone));

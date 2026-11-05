@@ -3267,6 +3267,7 @@ export class Game {
     const chosen = key ? this.save.checkpoints?.[key] : this.save.activeCheckpoint;
     if (!chosen || (key && !validCheckpoint(chosen))) return false;
     const c = this.safeCheckpoint(chosen); // release 734
+    if (this.rite) { this.message = ASCENDANCY.messages.sealed; return false; } // the Rite of Ascendancy seals Wayglass travel (and returnHome); a Crossing Sigil breaks the rite before it travels
     if(this.save.session.displacementJourney){this.message="Wayglass travel cannot find you after the displacement. Reach a physical Wayglass—or die—to restore the line, or use a Crossing Sigil.";return false}
     if (this.area === "dungeon") {
       this.message =
@@ -6550,14 +6551,15 @@ export class Game {
   warmPentagonCatchments() {
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && pentagonSigilRoll(this.save.seed, this.rx + dx, this.ry + dy)) this.pentagonCatchmentAt(this.rx + dx, this.ry + dy);
   }
-  // Reading a sigil: where it points and how far, in words; the compass takes up its line (main.ts reads compassRequest), and the
-  // save remembers it (pentagonFinding.follow) until you reach that Pentagon.
+  // Reading a sigil: where it points and how far, in words only (Tim, 2026-11-05: "it shouldn't set your compass to it"). The
+  // compass, the Atlas and the guidance are left alone; the save remembers the line (pentagonFinding.follow) only so that reaching
+  // that Pentagon can say so.
   readPentagonSigil(o) {
     const F = PENTAGON_FINDING, s = ensurePentagonFinding(this.save).pentagonFinding, cx = o.targetRx, cy = o.targetRy;
     s.follow = { cx, cy, rx: this.rx, ry: this.ry }; s.read += 1; o.state = "read";
-    this.message = `${pentagonSigilText(this.rx, this.ry, cx, cy)} ${F.messages.follow}`;
-    journalOnce(this.save, `pentagon-sigil:${cx}:${cy}`, `A Pentagon sigil, read at ${this.rx}, ${this.ry}, points ${pentagonHeading(cx - this.rx, cy - this.ry)} to a Pentagon at ${cx}, ${cy}.`, PENTAGON.name);
-    this.compassRequest = { rx: cx, ry: cy, name: `${PENTAGON.name} (the sigil's)` }; this.sync();
+    this.message = pentagonSigilText(this.rx, this.ry, cx, cy);
+    journalOnce(this.save, `pentagon-sigil:${cx}:${cy}`, F.messages.sigilJournal(pentagonHeading(cx - this.rx, cy - this.ry), pentagonFarWords(Math.round(Math.hypot(cx - this.rx, cy - this.ry)))), PENTAGON.name);
+    this.sync();
     return { ok: true, message: this.message };
   }
   // Each overworld arrival: a followed sigil's Pentagon reached (or completed) lets the compass go; a hunt's Pentagon reached is
@@ -6580,8 +6582,7 @@ export class Game {
       const t = this.pentagonCatchmentAt(p.rx, p.ry, { skip: (cx, cy) => taken.has(`${cx},${cy}`) || this.inPentagonBlock(this.rx, this.ry, cx, cy) }); if (!t) continue;
       if (open.some((q) => apart(bear(q.cx, q.cy), bear(t.cx, t.cy)) < H.spread / 2)) continue;
       const hunt = { id: `pentagon-hunt-${s.n + 1}`, n: s.n + 1, cx: t.cx, cy: t.cy, status: "open", from: { rx: this.rx, ry: this.ry } }; s.n += 1; s.hunts.push(hunt);
-      (this.questNotices ||= []).push({ title: F.messages.huntOffer, detail: `${pentagonFarWords(Math.round(Math.hypot(t.cx - this.rx, t.cy - this.ry)))}, ${pentagonHeading(t.cx - this.rx, t.cy - this.ry)} · ${F.messages.huntOfferDetail}`, kind: "discovery" });
-      journalOnce(this.save, `pentagon-hunt:${hunt.id}`, `A Pentagon hunt: a five-sided wall stands at ${t.cx}, ${t.cy}, ${pentagonHeading(t.cx - this.rx, t.cy - this.ry)} of ${this.rx}, ${this.ry}.`, PENTAGON.name);
+      journalOnce(this.save, `pentagon-hunt:${hunt.id}`, F.messages.huntJournal(pentagonHeading(t.cx - this.rx, t.cy - this.ry), pentagonFarWords(Math.round(Math.hypot(t.cx - this.rx, t.cy - this.ry)))), PENTAGON.name); // a quiet Journal line, no banner (Tim, 2026-11-05)
       return hunt; }
     s.n += 1; return null; // nothing there this time: the next call looks along other bearings
   }
