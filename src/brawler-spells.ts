@@ -86,19 +86,25 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
 // that is still recovering casts it anyway for stamina (essenceCost) instead of refusing; that cast leaves the spell's
 // cooldown exactly as it was, still running, so when the window closes you wait no longer than you would have without it.
 // A spell that is ready casts as usual (free; its cooldown starts). With too little stamina the cast is refused. Spells in
-// `exempt` keep their cooldowns (Essence Walk itself, which cannot be recast while it runs, and Aegis, which would otherwise
-// buy an unbroken shield). Aperture disciplines (Rift Step, Ember Form...) are not spells and keep their cooldowns.
+// `exempt` keep their cooldowns (Essence Walk itself). Aperture disciplines (Rift Step, Ember Form...) are not spells and keep
+// their cooldowns. Essence Walk's own cooldown is reduced like any spell's (Tim, 2026-11-05: "I should be able to get Essence
+// Walk's cooldown as low as I can based on the glyphs"): a recast once it is ready sets the window back to the full `seconds`
+// (it never stacks), so a cooldown cut below `seconds` keeps it up for good.
 //   cost: stamina = `base` + `perSecond` × the spell's cooldown in seconds as it would recover now (after its glyphs, the
-//     Pairing and armor/meal/page reductions, each already capped), rounded, then held between `min` and `max`.
-//   minGap: Essence Walk's own cooldown, after every reduction, is never shorter than `seconds` + `minGap`, so stacked
-//     reductions cannot keep it up all the time.
+//     Pairing and armor/meal/page reductions, each already capped), rounded, then held between `min` and `max`. A spell in
+//     `costs` pays that fixed amount instead.
+//   lockout (Tim, 2026-11-05: "if you spam the Aegis and your stamina runs out, you can't spam the Aegis for its total
+//     cooldown... you have to watch your stamina"): a stamina cast of a spell listed here that leaves too little stamina for
+//     another locks it for its full cooldown (glyphs and the other reductions apply), and Essence Walk cannot cast it again
+//     until that cooldown is over. Aegis: `costs.aegis` 40, about two casts from an 86-stamina pool.
 //   trail: the drawn after-images, a fixed ring of `trail` slots sampled every `trailEvery` ms (none at reduced motion, in
 //     safe mode or at low quality; the ring under the Wayfarer still shows).
 export const ESSENCE_WALK = {
   seconds: 8,
-  minGap: 6,
   cost: { base: 5, perSecond: 4, min: 8, max: 60 },
-  exempt: ["essence-walk", "aegis"],
+  costs: { aegis: 40 },
+  lockout: ["aegis"],
+  exempt: ["essence-walk"],
   trail: 6, trailEvery: 90, trailLife: .5,
 };
 export const ESSENCE_COLORS = { glow: "#7fe6d62a", rim: "#c8fff4", edge: "#0b2624", mote: "#9ff0e2" };
@@ -108,6 +114,9 @@ export function essenceCost(cooldownSeconds) {
   return Math.round(Math.min(C.max, Math.max(C.min, C.base + C.perSecond * cd)));
 }
 export const essenceExempt = (id) => ESSENCE_WALK.exempt.includes(id);
+// What spell `id` costs under Essence Walk, given its cooldown in seconds: its fixed `costs` entry, else essenceCost.
+export function essenceSpellCost(id, cooldownSeconds) { const c = Number(ESSENCE_WALK.costs[id]); return Number.isFinite(c) && c >= 0 ? Math.round(c) : essenceCost(cooldownSeconds); }
+export const essenceLockout = (id) => ESSENCE_WALK.lockout.includes(id);
 // The ring under the Wayfarer and the fading after-images behind them. The after-images reuse a fixed ring of slots (no
 // growth, no per-frame allocation once made).
 function drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y) {

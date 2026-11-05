@@ -9,7 +9,7 @@ import { snapshotSave, splitSnapshot, assembleSave, validateJourney } from '../s
 import { createCombatant } from '../src/combat.ts';
 import { SPELLS, spellOpen } from '../src/items.ts';
 import { CASTABLES, availableCastables, setSlot } from '../src/spell-slots.ts';
-import { ESSENCE_WALK, ESSENCE_COLORS, essenceCost, essenceExempt, drawBrawlerAuras, BRAWLER } from '../src/brawler-spells.ts';
+import { ESSENCE_WALK, ESSENCE_COLORS, essenceCost, essenceSpellCost, essenceExempt, essenceLockout, drawBrawlerAuras, BRAWLER } from '../src/brawler-spells.ts';
 
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
 const HP = 5e9, E = ESSENCE_WALK;
@@ -45,7 +45,8 @@ test('Essence Walk is a spell in the Shadow Boxing family: Infinite III, a casta
   const s = build(); assert.ok(availableCastables(s).includes('spell:essence-walk'));
   assert.equal(setSlot(s, 'b', 'spell:essence-walk').ok, true); assert.equal(setSlot(s, 'a', 'spell:gravity-well').ok, true);
   assert.ok(GAME_CLOCKS.includes('essenceUntil') && RESUME_GAME_CLOCKS.includes('essenceUntil'));
-  assert.ok(essenceExempt('essence-walk') && essenceExempt('aegis') && !essenceExempt('gravity-well'));
+  assert.ok(essenceExempt('essence-walk') && !essenceExempt('aegis') && !essenceExempt('gravity-well'));
+  assert.ok(GAME_CLOCKS.includes('aegisLockUntil') && RESUME_GAME_CLOCKS.includes('aegisLockUntil'));
 });
 
 test('the stamina cost grows with the cooldown, is clamped, and is never negative or NaN', () => {
@@ -54,6 +55,7 @@ test('the stamina cost grows with the cooldown, is clamped, and is never negativ
   for (const bad of [-50, NaN, undefined, null, 'x', -Infinity]) assert.equal(essenceCost(bad), E.cost.min, String(bad));
   assert.equal(essenceCost(Infinity), E.cost.max);
   assert.ok(essenceCost(14) > essenceCost(2.5), 'Gravity Well costs more than Cinder Dart');
+  assert.equal(essenceSpellCost('aegis', 0), E.costs.aegis); assert.equal(essenceSpellCost('ember-ring', 6), essenceCost(6));
 });
 
 test('while it runs a recovering spell casts for stamina, and its cooldown carries on exactly as it was', () => {
@@ -76,21 +78,50 @@ test('while it runs a recovering spell casts for stamina, and its cooldown carri
   if (cds(g)['spell:gravity-well'] > 0) { g.player.stamina = 999; assert.equal(g.castSpell('gravity-well'), false, 'the window is over'); }
 });
 
-test('it can never recast itself while it runs, and its cooldown never drops below its window plus the gap', () => {
-  const g = ready(1000, { glyphs: { 'essence-walk': ['swift', 'swift'] } }); g.save.equipment.armor.glyphs = ['chain', 'chain', 'chain', 'chain']; g.lastUpdateNow = 1000;
-  assert.equal(g.castSpell('essence-walk'), true);
-  assert.ok(cds(g)['spell:essence-walk'] >= E.seconds + E.minGap - 1e-9, `cooldown ${cds(g)['spell:essence-walk']}`);
-  cds(g)['spell:essence-walk'] = 0; g.lastUpdateNow = 3000; assert.equal(g.castSpell('essence-walk'), false, 'not even with its cooldown wiped');
-  assert.match(g.message, /already flowing/); assert.equal(g.essenceUntil, 1000 + E.seconds * 1000, 'the window is not extended');
-  assert.equal(g.essenceCostFor('essence-walk'), null);
+test('its cooldown is reduced like any spell\'s; a recast refreshes the window (never stacks), so a short cooldown keeps it up', () => {
+  const g = ready(1000, { glyphs: { 'essence-walk': ['swift', 'swift'] } }); g.save.equipment.armor.glyphs = ['chain', 'chain', 'chain', 'chain'];
+  const cd = g.spellCooldownFor(SPELLS['essence-walk']); assert.ok(cd < E.seconds, `glyphs and armor bring it under its window: ${cd.toFixed(2)}s`);
+  let t = 1000; g.lastUpdateNow = t; assert.equal(g.castSpell('essence-walk'), true);
+  assert.ok(Math.abs(cds(g)['spell:essence-walk'] - cd) < 1e-9, 'no floor: the cooldown is what the glyphs make it');
+  assert.equal(g.castSpell('essence-walk'), false, 'its own cooldown still applies'); assert.match(g.message, /recovers in/);
+  assert.equal(g.essenceCostFor('essence-walk'), null, 'it never casts itself for stamina');
+  let down = 0;
+  for (let i = 0; i < 60 * 20; i++) { t += 50; g.update(.05, idle, t); g.lastUpdateNow = t; if (!(cds(g)['spell:essence-walk'] > 0)) { const before = g.essenceUntil; assert.equal(g.castSpell('essence-walk'), true); assert.equal(g.essenceUntil, t + E.seconds * 1000, 'refreshed to the full window, not stacked'); assert.ok(before > t, 'recast before it ran out'); } if (!(t < g.essenceUntil)) down++; }
+  assert.equal(down, 0, 'up for the whole minute through the rotation');
+  // without the glyphs the window lapses between casts
+  const h = ready(); assert.ok(h.spellCooldownFor(SPELLS['essence-walk']) > E.seconds);
 });
 
-test('Aegis and the Aperture disciplines keep their cooldowns; tools and the Orrery lockout are untouched', () => {
-  const g = ready(); g.save.magicSkills.learned = { ...(g.save.magicSkills.learned || {}), 'rift-step': 1 }; g.lastUpdateNow = 1000;
-  assert.equal(g.castSpell('aegis'), true); g.castSpell('essence-walk');
-  g.lastUpdateNow = 2500; const sta = g.player.stamina;
-  assert.equal(g.castSpell('aegis'), false, 'Aegis still recovers'); assert.equal(g.player.stamina, sta);
+test('Aegis under Essence Walk: a big fixed cost, about two casts, then locked for its whole cooldown', () => {
+  const g = ready(); g.lastUpdateNow = 1000; const pool = g.player.stamina; assert.equal(pool, 86, 'the reference pool, as Tim\'s');
+  assert.equal(E.costs.aegis, 40); assert.ok(essenceLockout('aegis') && !essenceLockout('gravity-well'));
+  assert.equal(g.castSpell('aegis'), true, 'ready: free'); assert.equal(g.player.stamina, pool);
+  g.castSpell('essence-walk'); assert.equal(g.essenceCostFor('aegis'), 40);
+  g.lastUpdateNow = 1300; assert.equal(g.castSpell('aegis'), true); assert.equal(g.player.stamina, pool - 40); assert.equal(g.aegisUntil, 1300 + BRAWLER.aegis.ms);
+  assert.ok(!(g.aegisLockUntil > 0), 'still enough for another: no lock yet');
+  g.lastUpdateNow = 1600; assert.equal(g.castSpell('aegis'), true); assert.equal(g.player.stamina, pool - 80);
+  const full = g.spellCooldownFor(SPELLS.aegis);
+  assert.match(g.message, /locked for \d+s/); assert.ok(Math.abs(cds(g)['spell:aegis'] - full) < 1e-9, 'its whole cooldown'); assert.equal(g.aegisLockUntil, 1600 + full * 1000);
+  // Essence Walk cannot get round it, even with stamina back
+  g.player.stamina = pool; g.lastUpdateNow = 1700; assert.equal(g.castSpell('aegis'), false); assert.match(g.message, /locked/); assert.equal(g.player.stamina, pool);
   assert.equal(g.essenceCostFor('aegis'), null);
+  setSlot(g.save, 'a', 'spell:aegis'); const slot = actionReadiness(g, 1700).spell;
+  assert.ok(slot.remaining > full - .5 && slot.essence === undefined, `the slot counts its cooldown down: ${JSON.stringify(slot)}`);
+  // other spells still cast for stamina meanwhile
+  cds(g)['spell:ember-ring'] = 3; assert.equal(g.castSpell('ember-ring'), true);
+  // glyph reductions shorten the lock like the cooldown
+  const q = ready(1000, { glyphs: { aegis: ['swift', 'swift'] } }); assert.ok(q.spellCooldownFor(SPELLS.aegis) < full * .6);
+  // once the cooldown is over Aegis casts again
+  let t = 1700; g.player.stamina = pool; while (cds(g)['spell:aegis'] > 0) g.update(.05, idle, (t += 50)); g.lastUpdateNow = t;
+  assert.equal(g.castSpell('aegis'), true, 'recovered');
+  // short of 40 at the start: simply refused, no lock
+  const h = ready(); h.lastUpdateNow = 1000; h.castSpell('aegis'); h.castSpell('essence-walk'); h.player.stamina = 39; h.lastUpdateNow = 1200;
+  assert.equal(h.castSpell('aegis'), false); assert.match(h.message, /needs 40 stamina/); assert.ok(!(h.aegisLockUntil > 0));
+});
+
+test('the Aperture disciplines keep their cooldowns; tools and the Orrery lockout are untouched', () => {
+  const g = ready(); g.save.magicSkills.learned = { ...(g.save.magicSkills.learned || {}), 'rift-step': 1 }; g.lastUpdateNow = 1000;
+  g.castSpell('essence-walk'); g.lastUpdateNow = 2500; const sta = g.player.stamina;
   { // a discipline is not a spell: the same press does the same with and without Essence Walk
     const h = ready(); h.save.magicSkills.learned = { ...(h.save.magicSkills.learned || {}), 'rift-step': 1 }; h.lastUpdateNow = 2500;
     cds(g)['rift-step'] = 5; cds(h)['rift-step'] = 5; const a = g.activateApertureSkill('rift-step'), b = h.activateApertureSkill('rift-step');
@@ -152,6 +183,8 @@ test('it survives pause and exact resume', () => {
   const later = 400000, h = new Game(v.save, later);
   assert.equal(h.essenceUntil, later + (until + 60000 - 5000), 'time remaining restored');
   h.lastUpdateNow = later + 100; assert.ok(h.essenceCostFor('ember-ring') > 0);
+  const k = ready(); k.lastUpdateNow = 1000; k.aegisLockUntil = 7000; const snap = splitSnapshot(snapshotSave(k.exportSnapshot(2000)));
+  const w = validateJourney(assembleSave(structuredClone(snap.main), new Map(structuredClone(snap.puts)))); assert.equal(new Game(w.save, 90000).aegisLockUntil, 95000, 'the Aegis lock is restored too');
 });
 
 test('every spell pressed each frame for 60 s under Essence Walk with stamina refilled: no NaN, everything bounded', () => {
