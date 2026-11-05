@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 772 — **Terrace Springs.** A new region of white stone steps with turquoise pools, steaming hot springs ringed in orange and gold, and sometimes a cache at the top. Every step is one level to climb. Landscape 21; explored ground unchanged.
 - Release 771 — **The Toolmaker's Handles.** A new story of six wooden handles lies in crossings of the middle country: in a year when the iron did not come, a village toolmaker went on making handles, and the handles went on working. The last handle writes its ending in the Journal, and the Reciter's Tome keeps it as a book. Only crossings that held no story can hold a handle, so no crossing changes what it offered.
 - Release 770 — **Deadly holes, safe drops; burrowing a claimed room.** Interior holes are deadly now: step into one and you wake where you came onto that floor, losing nothing. A few holes on each floor are safe drops, shown by a green rim only when you're close. Once a labyrinth room's warden has fallen (its Fracture Warden, or all its guards with Fractured mode off), a shovel burrows through that room's glinting walls for shortcuts.
 - Release 769 — **Essence Walk** (Infinite III, Wind): for 8 s, spells still recovering cast anyway for stamina (more for a longer cooldown), and their cooldowns carry on as they were. A ready spell casts as usual, and recasting Essence Walk refreshes the window, so a short enough cooldown keeps it up. Aegis costs 40 stamina; spend your stamina down with it and it is locked for its whole cooldown. A pale aura with after-images.
