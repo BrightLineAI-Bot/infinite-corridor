@@ -134,7 +134,7 @@ import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
 import { addBell, ringBell, BELL_GLIMPSES } from "./bells.ts";
 import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.ts"; // release 595
-import { addThreadRelic, readThreadRelic } from "./threads.ts"; // release 627
+import { addThreadRelic, readThreadRelic, storyVersionFor } from "./threads.ts"; // release 627; the story budget (2026-11-05)
 import { addMargin, readMargin } from "./margins.ts";
 import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection } from "./surveyor.ts"; // release 505; 551: part two
 import { READINGS, readingKnown, bookProgress } from "./lore.ts";
@@ -281,6 +281,8 @@ function carveChasm(map, seed, id) {
 export function pinDungeonLayout(save, id) {
   const history = dungeonHistory(save, id);
   const visited = () => history.visits > 0 || Object.keys(save.session.areas || {}).some(key => key === id || key.startsWith(id + ':level:'));
+  // The story budget (threads.ts STORY_BUDGET): a crossing generated, visited or pinned before it keeps the waves' thread (version 0).
+  if (history.storyVersion === undefined) history.storyVersion = storyVersionFor(visited() || history.layoutVersion !== undefined || history.generatorVersion !== undefined);
   if (history.gatePredatorSpawnThreshold == null) history.gatePredatorSpawnThreshold = visited() || history.layoutVersion !== undefined ? GATE_REVENANT.legacySpawnPerThousand : GATE_REVENANT.spawnPerThousand;
   if (history.layoutVersion === undefined) history.layoutVersion = visited() ? 0 : 1;
   // Dungeon Monster Pack: only histories that have never been entered adopt the new population and guardians.

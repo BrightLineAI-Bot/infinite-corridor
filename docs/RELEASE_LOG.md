@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 772, the next is **773**.
+Taken at merge time: `main`'s release + 1 (see above). After 773, the next is **774**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 772 | Claude | `claude/dreamy-rubin-yn6q2p` | Terrace Springs (landscape 21): stepped white sinter terraces, turquoise pools, hot springs, a cache at the head | In flight. |
-| 771 | Claude | `claude/dreamy-rubin-yn6q2p` | The Toolmaker's Handles: a wave-5 later thread in the middle band (six handles; ending in the Journal; a Tome book) | Merged (#419). |
+| 773 | Claude | `claude/dreamy-rubin-yn6q2p` | The story budget: one steady thread density (0.13 per crossing) from the Refuge out past 1000 for crossings entered from now on; later stories share one roll | In flight. |
+| 772 | Claude | `claude/dreamy-rubin-yn6q2p` | Terrace Springs (landscape 21): stepped white sinter terraces, turquoise pools, hot springs, a cache at the head | Merged (#420). Published as r772-32d768cda137 on 2026-11-05. |
+| 771 | Claude | `claude/dreamy-rubin-yn6q2p` | The Toolmaker's Handles: a wave-5 later thread in the middle band (six handles; ending in the Journal; a Tome book) | Merged (#419). Published in r772. |
 | 770 | Claude | `claude/dreamy-rubin-yn6q2p` | Interior holes are deadly (wake at the floor's entry, nothing lost); safe drops shown by a green rim up close; a claimed labyrinth room's glinting walls can be burrowed | Merged (#418). Published as r770-9899db3b2b7b on 2026-11-05. |
 | 769 | Claude | `claude/dreamy-rubin-yn6q2p` | Essence Walk: for 8 s recovering spells cast for stamina; Aegis 40 stamina with a lockout when spent; no cooldown floor | Merged (#417). Published in r770. |
 | 768 | Claude | `claude/dreamy-rubin-yn6q2p` | The last spires back (landscape 20): every side may be 3 tiles; covered corner steps repainted so they show (drawing applies to every tree) | Merged (#416). Published in r770. |
@@ -158,6 +159,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 772, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 772 | `r772-32d768cda137` | 2026-11-05 | Fable review (770→772): no blockers. The Toolmaker's Handles (#419) and Terrace Springs (#420). |
 | 770 | `r770-9899db3b2b7b` | 2026-11-05 | Fable review (764→770): no blockers. The Doom Chaser beyond 1000 (#413), a glide from the crown comes home (#414), Tesseract classes and curses (#415), the last spires back (#416), Essence Walk (#417), deadly holes and burrowing (#418). |
 | 764 | `r764-0eb650c60230` | 2026-11-05 | Fable review (759→764): no blockers. Stillworks pillars and the Doom Chaser's one home (#408), the Listener's cycle v2 (#409), Tesseracts by tier (#410), the glider only goes down and never over a Pentagon (#411), tall spires again (#412). |
 | 759 | `r759-ce2cc625b7cc` | 2026-11-05 | Fable review (757→758): two blockers (held-stick hop overshoot; tree footing under the drone booster), fixed in 759; Fable review 757→759: no blockers. Great trees you can climb (#406) and hops that land where they reach (#407). |
