@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 759: hops that land where they reach — 2026-11-05
+
+Pre-publish review of 758 (blockers): with the stick held to the end of 758's longer sky hop (`JUMP.sky` 1100 ms, 2.64 tiles), the Wayfarer overshot a one-tile landing: skyway disc hops launched from the leading rim missed, and Tim's 41,62 branch-tip hop fell from 11.4 on, which live (900 ms) had landed. And the great-tree straight-hop and axis-dodge footing also took hold under the drone's booster (`droneLiftStep` keeps `skyAir` and `jumpUntil` set), so it would fly only along one axis and could hover against an obstacle until the fuel ran out.
+
+**CODE:** `src/game.ts` `JUMP.landOnArrival`: in the movement step, a sky hop that has crossed a gap (`skyHopGap`: foot over a non-platform tile at least `TREE_FOOTING.gapBelow` under `skyAir`) ends as soon as the foot is over a `skyPlatform` tile at `skyAir` or one level up (`jumpUntil = now`, landing that frame); disc hops do the same (`discHopGap`: no disc at or above `discAir` underfoot, then any such disc ends the jump). Neither applies under the drone's booster, the glider or the robot's boost. The straight-hop rule and the axis dodge now require `!this.droneLift`. Tests: `tests/sky-hop-landing-759.test.ts` (Tim's tip hop from four launch points, a disc hop from the rim, diagonal drone flight on his section).
+
+**BOUNDARY:** No save, schema or generation change; `skyHopGap` and `discHopGap` are runtime only (a resumed hop simply runs its full length). `JUMP.sky` stays 1100 ms, so soft thumbs still reach; a hop over a gap with no platform beyond it still falls at the end. A hop that never crosses a gap is unchanged.
+
 ## Release 758: great trees you can climb — 2026-11-05
 
 Tim (probe and two screenshots, sections 41,63 and 44,63): "hard to jump and dodge... the brown portions that look like platforms should be what you can walk on... I fell through... I couldn't get to the top"; "random ground trees are in front of it"; the skyway door "should be obscured" from the ground and revealed as you climb; trees can be taller and vary in height.

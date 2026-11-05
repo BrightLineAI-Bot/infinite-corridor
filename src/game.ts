@@ -2083,7 +2083,7 @@ export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y
 // lasts JUMP.base ms plus JUMP.quickening per Quickening rank. The arc rises from the press itself, as fast as the
 // plain leap's rise; Quickening's extra time is hang time at the top, and the robot's boost holds it there too. jumpLift
 // gives the lift as a share of a tile (0..JUMP.arc).
-export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100 }; // release 585: `sky`, a jump from a sky platform (one gap, easily). Great-tree review (Tim, 2026-11-05: "hard to jump"): 900 → 1100 ms: at 2.4 tiles a second a sky hop covers 2.64 tiles, so one gap tile is cleared from anywhere on the launching tile (2 tiles at worst) with .64 tiles (about a quarter second) to spare; it was .16
+export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100, landOnArrival: true }; // landOnArrival (release 759): a sky hop ends on the first platform past the gap. // release 585: `sky`, a jump from a sky platform (one gap, easily). Great-tree review (Tim, 2026-11-05: "hard to jump"): 900 → 1100 ms: at 2.4 tiles a second a sky hop covers 2.64 tiles, so one gap tile is cleared from anywhere on the launching tile (2 tiles at worst) with .64 tiles (about a quarter second) to spare; it was .16
 // Footing on a great tree's branches (Tim, 2026-11-05: "too hard to find your footing on the platforms"). On a canopy platform a
 // dodge goes along one of the four axes (a branch is one tile wide: a diagonal dodge drifted off it), and a sky hop flies
 // straight: while the Wayfarer is in the air over the gap only the stick's larger axis moves it, so a thumb's drift cannot carry
@@ -7366,7 +7366,7 @@ export class Game {
     if (input.consume("spell2")) this.castSlot("b");
     if (input.consume("dodge") && !this.cursed("dodge", now)) { // release 737: NO DODGE
       const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) p.dodgeMired = mired; // release 708: the Briar Stag's mire
-      if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
+      if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
       if (!r.ok && mired) { if (now >= (p.invulnerableUntil || 0)) { p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * STAG.mire.exhaustedShare))); p.invulnerableUntil = now + 200; } this.message = "The mire drags at you, and you have nothing left to pull free with."; } // release 708 (Tim: "if you dodge while you have zero stamina in the mire, then you take damage")
@@ -7407,7 +7407,7 @@ export class Game {
       x = p.dodgeX;
       y = p.dodgeY;
     }
-    if (TREE_FOOTING.straightHop && this.area === "overworld" && this.map?.canopy && this.skyAir != null && now < (this.jumpUntil || 0)) { // great-tree footing: a sky hop flies straight over the gap
+    if (TREE_FOOTING.straightHop && this.area === "overworld" && this.map?.canopy && !this.droneLift && this.skyAir != null && now < (this.jumpUntil || 0)) { // release 759: never under the drone's booster (it flies where the stick points) // great-tree footing: a sky hop flies straight over the gap
       const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
       if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
     }
@@ -7508,6 +7508,14 @@ export class Game {
       });
       if (this.area === "dungeon" && this.map.canyon) this.drillAhead(x, y, dt, now); // Canyon craters: push into a clod to drill it
       const landed = elevationAt(this.map, width, p.x, p.y);
+      // Release 759 (pre-publish review of 758): a sky hop lands on the first footing past the gap, at its height or one level up, so a stick
+      // held to the end of the hop no longer carries the Wayfarer past the platform it reached (the longer JUMP.sky stays for soft thumbs).
+      if (JUMP.landOnArrival && p.jumping && this.skyAir != null && this.area === "overworld" && !this.droneLift && !this.glide && !this.mechBoosting) {
+        const u = tileUnder(this.map, width, p.x, p.y);
+        if (u && !u.skyPlatform && landed <= this.skyAir - TREE_FOOTING.gapBelow) this.skyHopGap = true;
+        else if (this.skyHopGap && u?.skyPlatform && landed >= this.skyAir && landed <= this.skyAir + 1) { this.jumpUntil = now; p.jumping = false; }
+      }
+      if (!p.jumping) this.skyHopGap = false;
       if (p.jumping && this.skyAir != null && landed < this.skyAir) hurt = 0; // still in the air over a skyway gap
       else finishFall(landed);
       if (!p.jumping) { this.skyAir = null; this.liftDrop = false; } p.airElev = undefined;
@@ -7521,8 +7529,10 @@ export class Game {
       }
       if (this.map.skyDiscs) { // release 587: the floating discs of a skyway, a layer above the ground
         const fx = p.x + .5, fy = p.y + .75, from = this.skyLevel || 0;
-        if (p.jumping) this.discAir = Math.max(this.discAir ?? -1, from);
-        else {
+        if (p.jumping) { this.discAir = Math.max(this.discAir ?? -1, from); // release 759: a disc hop lands on the first disc past the gap (JUMP.landOnArrival)
+          if (JUMP.landOnArrival && !this.droneLift && !this.glide && !this.mechBoosting) { const at = discAt(this.map, fx, fy, { maxLevel: this.discAir + 1 }); if (!(at && at.level >= this.discAir)) this.discHopGap = true; else if (this.discHopGap) { this.jumpUntil = now; p.jumping = false; } }
+        }
+        if (!p.jumping) { this.discHopGap = false;
           const landed = this.discAir != null, launch = landed ? this.discAir : from; this.discAir = null;
           const d = landed ? discAt(this.map, fx, fy, { maxLevel: launch + 1 }) : from > 0 ? (discAt(this.map, fx, fy, { level: from }) || discAt(this.map, fx, fy, { below: from })) : null;
           const to = d ? d.level : 0, fell = launch - to; this.skyLevel = to;
