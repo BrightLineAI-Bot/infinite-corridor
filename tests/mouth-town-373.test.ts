@@ -22,7 +22,7 @@ test("the Mouth's section is open land until the Listener falls; afterwards it i
 });
 
 test('a journey that already has a 371 town nearby keeps it, and gains the Mouth town', () => {
-  const s = atMouth(); s.farArray.listeners = 1; const c = s.relayNetwork.coordinate; s.hometowns = { towns: [{ rx: c.rx + 1, ry: c.ry, name: 'Mossmoor', listener: 1 }], home: null };
+  const s = atMouth(); s.farArray.listeners = 1; s.farArray.quiet = true; /* 2026-11-05: its Gate unlocked */ const c = s.relayNetwork.coordinate; s.hometowns = { towns: [{ rx: c.rx + 1, ry: c.ry, name: 'Mossmoor', listener: 1 }], home: null };
   const m = migrateSave(JSON.parse(JSON.stringify(s))); assert.equal(m.hometowns.towns.length, 2); assert.ok(m.hometowns.towns.some((t) => t.name === 'Mossmoor' && !t.mouth)); assert.ok(m.hometowns.towns.some((t) => t.mouth && t.rx === c.rx && t.ry === c.ry));
 });
 
