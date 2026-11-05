@@ -1904,6 +1904,23 @@ export const WAYGLASS_ZONE = { kinds: ["checkpoint", "relayNode", "relayTerminal
 // `worldBeast` (Tim: "The first time you kill it, there's a hundred percent chance you'll get a sigil, and its echo. But
 // each time [after], there's a twenty percent chance") is the percent chance after a beast's first spoils.
 export const SIGIL_DROPS = { worldBeast: 20, gateRevenant: 1, deepGuardian: 3, threefold: 6 };
+// Using one (Tim, 2026-11-05: "a crossing sigil should still get you out of a labyrinth or the Pentagon. If you can't teleport
+// from where you are, a crossing sigil should still work, across all dungeons and realities... even if you're in a boss fight,
+// even if you're in the Rite. If you use it, you leave... a crossing sigil is a sure-fire 'I'm out of here'"). Game.useCrossingSigil:
+// anywhere the Wayfarer lives (not while felled or falling to a death), out of every interior to where its ordinary way out
+// leads (Game.leaveDungeon: the entrance; a Mislaid Threshold aborts back to its source; a dive surfaces at its buoy), then on
+// to a chosen Wayglass; in the open world, to the chosen or active Wayglass. A Rite burning here is broken (that attempt is
+// spent; the strange tree keeps its others); a dungeon boss fight left unfinished starts again (the Stillworks as after a death).
+// `guard`: ms of the arrival's invulnerability, as after a Return Ember.
+export const CROSSING_SIGIL = {
+  guard: 2000,
+  messages: {
+    none: "No Crossing Sigil remains.",
+    tooLate: "Too late: the Crossing Sigil needs a living hand.",
+    out: (where, left) => `The Crossing Sigil burns away and tears you out to ${where}. ${left} left.`,
+    boss: "The fight you left behind will begin again.",
+  },
+};
 // A world beast's or the Questing Beast's first kill since release 263 gives its Sigil and Echo for certain. The record is
 // save.worldBeasts[id].spoils / save.questingBeast.spoils (additive), so beasts slain before 263 count as new once.
 export function takeFirstSpoils(save, e) {
@@ -3248,7 +3265,7 @@ export class Game {
     const chosen = key ? this.save.checkpoints?.[key] : this.save.activeCheckpoint;
     if (!chosen || (key && !validCheckpoint(chosen))) return false;
     const c = this.safeCheckpoint(chosen); // release 734
-    if(this.save.session.displacementJourney){this.message="Wayglass travel cannot find you after the displacement. Reach a physical Wayglass—or die—to restore the line.";return false}
+    if(this.save.session.displacementJourney){this.message="Wayglass travel cannot find you after the displacement. Reach a physical Wayglass—or die—to restore the line, or use a Crossing Sigil.";return false}
     if (this.area === "dungeon") {
       this.message =
         "Wayglass travel is sealed inside a dungeon. Reach an exit, die and restart at the entrance, or use a Crossing Sigil.";
@@ -3358,9 +3375,10 @@ export class Game {
   returnHome() {
     return this.travelToCheckpoint(this.save.checkpoints?.[homeKey(this.save)] ? homeKey(this.save) : "0,0"); // release 371: the chosen home
   }
-  leaveDungeon(message = "You return to the dungeon entrance.") {
+  leaveDungeon(message = "You return to the dungeon entrance.", options = {}) {
     const q = this.save.session.dungeonReturn || this.save.activeCheckpoint;
     if (!q) return false;
+    if (options.sigil) for (const e of this.enemies) if (e.gatePredator && e.aggro && !e.dead) { e.aggro = false; resetGateAttack(e, true); } // CROSSING_SIGIL: nothing follows a sigil out; they stay where you left them
     const pursuers = this.enemies.filter((e) => e.gatePredator && e.aggro && !e.dead).slice(0, HORDE.active); // release 269: a horde's pursuers all follow
     for (const q of pursuers) q.dead = true;
     const leavingId=this.save.session.activeDungeonId,isHuntInstance=String(leavingId||'').startsWith('hunt-instance:');
@@ -4599,22 +4617,67 @@ export class Game {
   }
   // Release 449 (Tim: "Crossing sigil is still not something I can use"): it carries you out of the dungeon and, when a
   // Wayglass is chosen (`key`), on across the corridor to it, as its description always said; with none, to the entrance.
+  // CROSSING_SIGIL (Tim, 2026-11-05: "a sure-fire 'I'm out of here'"): it answers anywhere the Wayfarer is alive, inside or out.
+  sigilBlocked() {
+    const p = this.player;
+    return !(p.hp > 0) || this.fallen || this._fatalFall || this._fatalFallPending || this.save.session?.holeDeath ? CROSSING_SIGIL.messages.tooLate : null;
+  }
   useCrossingSigil(key = null) {
-    const c = this.save.consumables;
-    if (!(c?.crossingSigil > 0)) {
-      this.message = "No Crossing Sigil remains.";
-      return false;
-    }
-    if (this.area !== "dungeon") {
-      this.message = "The Crossing Sigil only answers inside a dungeon.";
-      return false;
-    }
+    const c = this.save.consumables, S = CROSSING_SIGIL;
+    if (!(c?.crossingSigil > 0)) { this.message = S.messages.none; return false; }
+    const blocked = this.sigilBlocked(); if (blocked) { this.message = blocked; return false; }
+    const chosen = key && validCheckpoint(this.save.checkpoints?.[key]) ? key : null, notes = [];
     c.crossingSigil--;
-    const left = this.leaveDungeon(
-      "The Crossing Sigil tears a narrow path back to the dungeon entrance.",
-    ), to = key && this.save.checkpoints?.[key];
-    if (left && to && this.travelToCheckpoint(key)) this.message = `The Crossing Sigil tears a path out of the dungeon and across the corridor to ${to.name || "the Wayglass"}. ${c.crossingSigil} left.`;
-    return left;
+    if (this.rite) { this.riteFailed(); notes.push(this.message); } // the Rite of Ascendancy: this attempt is lost, the strange tree stays
+    this.save.session.displacementJourney = null; // a sigil finds you even where the Wayglass line cannot
+    let where = null;
+    if (this.area === "dungeon") {
+      const name = this.map?.name, dive = String(this.areaId()).startsWith("dive:") || !!this.map?.underwater;
+      if (this.calmBossFights()) notes.push(S.messages.boss);
+      if (!validCheckpoint(this.save.session.dungeonReturn)) this.save.session.dungeonReturn = { ...this.safeCheckpoint() }; // a damaged way back: the active Wayglass
+      this.canyonDrill = {};
+      this.leaveDungeon("", { sigil: true });
+      if (dive) this.save.session.breath = DIVE.breath; // surfaced at the buoy, as by the line
+      else this.landSafely();
+      where = dive ? "the surface, beside the dive buoy" : `the way into ${name || "the dungeon"}`;
+    }
+    if (chosen || !where) {
+      const to = this.save.checkpoints?.[chosen] || this.safeCheckpoint();
+      if (this.travelToCheckpoint(chosen)) { this.landSafely(); where = to.name || "the Wayglass"; }
+      else if (!where) { c.crossingSigil++; return false; } // nothing moved (travelToCheckpoint said why): the sigil is kept
+    }
+    this.clearCarriedStates(); this.fallen = null; this.jumpUntil = 0; this.traversal = null;
+    const p = this.player; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, (this.lastUpdateNow || 0) + S.guard);
+    this.message = [S.messages.out(where || "safe ground", c.crossingSigil), ...notes].join(" ");
+    this.sync();
+    return true;
+  }
+  // A crossing sigil's arrival in the open world: never inside a wall, on lava, in deep water or a chasm.
+  landSafely() {
+    if (this.area !== "overworld" || !this.map) return false;
+    const p = this.player, w = mapWidth(this.map, "overworld"), h = Math.floor(this.map.tiles.length / w);
+    const moved = relocateIfStranded(p, this.map, w);
+    if (!footprintHazard(this.map, w, p.x, p.y) && footprintOpen(this.map, w, p.x, p.y)) return moved;
+    const near = nearestReturnable(this.map, w, h, { x: 16, y: 16 }, { x: Math.floor(p.x + .5), y: Math.floor(p.y + .72) });
+    if (near) { p.x = near.x; p.y = near.y; return true; }
+    return moved;
+  }
+  // A crossing sigil out of a dungeon boss fight: the guardian is whole again and calm at home, its summons gone (the Stillworks
+  // as after a death). Returns whether a fight was under way.
+  calmBossFights() {
+    if (this.area !== "dungeon") return false;
+    let fought = false;
+    if (this.map?.pentArena) { fought = this.enemies.some((e) => e.pentFinaleBeast && !e.dead && (e.pentArenaAwake || e.hp < e.maxHp)); this.resetPentagonArena(); }
+    const ids = new Set();
+    for (const e of this.enemies) {
+      if (e.dead || e.pentFinaleBeast || e.summonedBy || !isDungeonGuardian(e) || !(e.aggro || e.hp < e.maxHp)) continue;
+      ids.add(e.id); fought = true;
+      e.hp = e.maxHp; resetPackRuntime(e); e.aggro = false; e.hitStun = 0; e.recoil = 0; e.hitFlash = 0; e.untargetable = false;
+      if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed; delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
+      const ai = ensureAI(e); ai.mode = "patrol"; if (Number.isFinite(ai.homeX) && Number.isFinite(ai.homeY)) { e.x = ai.homeX; e.y = ai.homeY; }
+    }
+    for (const e of this.enemies) if (!e.dead && (ids.has(e.summonedBy) || ids.has(e.astralOwner) || ids.has(e.kitAddOf))) { e.dead = true; e.noRewards = true; e.rewarded = true; }
+    return fought;
   }
 
   packHurt(source, amount, options = {}, now = performance.now()) {

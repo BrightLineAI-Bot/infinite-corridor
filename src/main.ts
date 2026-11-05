@@ -365,7 +365,8 @@ let atlasDrag = null,
   suppressMapClick = false,
   bannerTimer = 0,
   nearbyNotice = "",
-  atlasOpenedAt = -Infinity;
+  atlasOpenedAt = -Infinity,
+  sigilAtlas = false; // CROSSING_SIGIL: the Atlas was opened to use a Crossing Sigil (its travel button burns one, anywhere)
 const atlasPointers = new Map();
 const announcedThreats = new Set();
 function showEventBanner(title, detail = "", kind = "discovery") {
@@ -1650,12 +1651,13 @@ function selectedWayglassKey(){const explicit=$("#mapWayglassSelect")?.value;if(
 function updateMapTravelButton() {
   const travel = $("#mapTravel"), selected = mapView.selected,
     checkpoint = save.checkpoints?.[selectedWayglassKey()] || (selected && save.checkpoints?.[`${selected.rx},${selected.ry}`]);
-  travel.textContent = game.area === "dungeon"
-    ? `Use Crossing Sigil ×${save.consumables.crossingSigil || 0} → ${checkpoint ? checkpoint.name || "Wayglass" : "dungeon entrance"}` // release 449
+  const sigil = game.area === "dungeon" || sigilAtlas; // CROSSING_SIGIL: out of anywhere, inside or out
+  travel.textContent = sigil
+    ? `Use Crossing Sigil ×${save.consumables.crossingSigil || 0} → ${checkpoint ? checkpoint.name || "Wayglass" : game.area === "dungeon" ? "dungeon entrance" : save.activeCheckpoint?.name || "active Wayglass"}` // release 449
     : checkpoint
       ? `Travel to ${checkpoint.name || "Wayglass"}`
       : "Return to active checkpoint";
-  travel.disabled = game.area === "dungeon" && !(save.consumables.crossingSigil > 0);
+  travel.disabled = sigil && !(save.consumables.crossingSigil > 0);
   $("#mapHome").disabled = game.area === "dungeon";
   $("#mapHome").textContent = `Return to ${homeName(save)}`; // release 371
   // Release 541 (Tim: "I'm not seeing the option to set a listener town as my home... in the atlas"): the section you tapped,
@@ -1703,9 +1705,9 @@ function showMapDetail(rx, ry) {
   return true;
 }
 // Release 449: the Atlas opened from the Crossing Sigil: the corridor view, the Wayglass list ready, the sigil on the button.
-function openSigilAtlas(){openMap();mapMode="atlas";updateMapModeUI();drawMap();$("#mapDetail").textContent="Choose a Wayglass (tap its section or pick it from the list), then press Use Crossing Sigil.";}
+function openSigilAtlas(){openMap();sigilAtlas=true;mapMode="atlas";updateMapModeUI();drawMap();updateMapTravelButton();$("#mapDetail").textContent="Choose a Wayglass (tap its section or pick it from the list), then press Use Crossing Sigil.";}
 function openMap() {
-  atlasOpenedAt = performance.now();
+  atlasOpenedAt = performance.now(); sigilAtlas = false;
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   mapView.x = game.rx;
@@ -1911,10 +1913,10 @@ function openPack(tab) {
   }
   { // Release 291 (Tim: "I don't see crossing sigils in the supplies menu anymore"): they are listed again.
     const row = document.createElement("div"), title = document.createElement("strong"), text = document.createElement("p");
-    row.className = "item consumable"; title.textContent = `Crossing Sigil ×${save.consumables.crossingSigil || 0}`; text.textContent = "Carries you out of a dungeon and across the corridor. Use it inside a dungeon: choose a Wayglass in the Atlas, then press Use Crossing Sigil (with none chosen, it takes you to the dungeon entrance).";
+    row.className = "item consumable"; title.textContent = `Crossing Sigil ×${save.consumables.crossingSigil || 0}`; text.textContent = "A sure way out of anywhere: a dungeon, a labyrinth, the Pentagon, a boss fight, the Rite (that attempt is lost), and across the corridor. Choose a Wayglass in the Atlas, then press Use Crossing Sigil (with none chosen: out at the way in, or in the open world to your active Wayglass).";
     // Release 449 (Tim: "Crossing sigil is still not something I can use"): Use opens the Atlas, ready to choose where it takes you.
-    const use = uiButton(game.area === "dungeon" ? "Use" : "Use (inside a dungeon)", () => { if (game.area !== "dungeon") return; panel.close(); openSigilAtlas(); });
-    use.disabled = game.area !== "dungeon" || !(save.consumables.crossingSigil > 0);
+    const use = uiButton("Use", () => { panel.close(); openSigilAtlas(); }); // CROSSING_SIGIL: anywhere
+    use.disabled = !(save.consumables.crossingSigil > 0);
     row.append(title, text, use); body.append(row);
     { // Release 748 (Tim, 2026-11-04): the stable, up to MOUNT_RIDE.cap caught beasts. Ride calls one beside you (as Act with nothing near does).
       const q = ensureMounts(save), sr = document.createElement("div"), stt = document.createElement("strong"), sp = document.createElement("p"); sr.className = "item consumable stable";
@@ -2507,8 +2509,8 @@ $("#mapUnstick").onclick = () => {
 $("#mapTravel").onclick = () => {
   if (performance.now() - atlasOpenedAt < 500) return;
   const key = selectedWayglassKey();
-  const travelled=game.area === "dungeon"
-    ? game.useCrossingSigil(save.checkpoints?.[key] ? key : null) // release 449: on to the chosen Wayglass
+  const travelled=game.area === "dungeon" || sigilAtlas
+    ? game.useCrossingSigil(save.checkpoints?.[key] ? key : null) // release 449: on to the chosen Wayglass (CROSSING_SIGIL: from anywhere)
     : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
   persist();
   if(travelled)resume();
