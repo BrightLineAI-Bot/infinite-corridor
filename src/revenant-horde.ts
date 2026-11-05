@@ -43,7 +43,7 @@ export function hordeKill(save, history) {
   if (q.left > 0) return { message: `${sigils ? "A wave breaks; a Crossing Sigil falls. " : ""}${q.left} Gate Revenant${q.left === 1 ? "" : "s"} remain in that crossing.`, sigils };
   history.resolved = true;
   const f = ensureFarArray(save); f.pieces = Math.min(piecesNeeded(f.gate), f.pieces + 1); f.history.push({ run: f.runs, gate: f.gate, won: "horde" });
-  return { sigils, message: `The horde is broken${sigils ? ", and its last Crossing Sigil falls" : ""}. ${gateOpen(f) ? `The last piece locks into the Gate. It stands whole. Gate ${f.gate} is open.` : `A piece of the Gate locks into place (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true };
+  return { sigils, message: `The horde is broken${sigils ? ", and its last Crossing Sigil falls" : ""}. ${gateOpen(f) ? `The last seal of the Listener's call breaks. The call is whole: the Listener waits.` : `A seal of the Listener's call breaks (${f.pieces}/${piecesNeeded(f.gate)}).`}`, cleared: true };
 }
 // The spawn points for a horde dungeon: open tiles far from the entrance, spread out.
 export function hordeSpawnPoints(map, entry, n = 6, reach = null) {
