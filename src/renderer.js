@@ -1,34 +1,34 @@
-import { FAR_FOLK } from "./far-realms.js?v=r772-32d768cda137";
-import { astralBeamAnchors } from "./astral-worm.js?v=r772-32d768cda137";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r772-32d768cda137";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r772-32d768cda137";
-import { enemyMeleeGeometry } from "./combat.js?v=r772-32d768cda137";
-import { ruleRows } from "./elders.js?v=r772-32d768cda137";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r772-32d768cda137";
-import { BOAT } from "./boats.js?v=r772-32d768cda137";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r772-32d768cda137";
-import { isMarineTile } from "./world-beasts.js?v=r772-32d768cda137";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r772-32d768cda137"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r772-32d768cda137";
-import { setTreeSeason } from "./landscape-render.js?v=r772-32d768cda137";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r772-32d768cda137";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r772-32d768cda137";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r772-32d768cda137";
-import { TREES } from "./trees.js?v=r772-32d768cda137";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r772-32d768cda137";
-import { KIT_MOVES } from "./boss-kit.js?v=r772-32d768cda137";
-import { SKY_DISCS } from "./skylands.js?v=r772-32d768cda137"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r772-32d768cda137";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r772-32d768cda137"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r772-32d768cda137"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r772-32d768cda137"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r772-32d768cda137"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r772-32d768cda137"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r772-32d768cda137";
-import { drawRelayNode } from "./relay-network.js?v=r772-32d768cda137";
-import { structureOccupancy } from "./world.js?v=r772-32d768cda137";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r772-32d768cda137";
-import { HOLE_DROPS, holeDrops } from "./labyrinths.js?v=r772-32d768cda137";
+import { FAR_FOLK } from "./far-realms.js?v=r775-9678a017d60c";
+import { astralBeamAnchors } from "./astral-worm.js?v=r775-9678a017d60c";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r775-9678a017d60c";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r775-9678a017d60c";
+import { enemyMeleeGeometry } from "./combat.js?v=r775-9678a017d60c";
+import { ruleRows } from "./elders.js?v=r775-9678a017d60c";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r775-9678a017d60c";
+import { BOAT } from "./boats.js?v=r775-9678a017d60c";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r775-9678a017d60c";
+import { isMarineTile } from "./world-beasts.js?v=r775-9678a017d60c";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r775-9678a017d60c"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r775-9678a017d60c";
+import { setTreeSeason } from "./landscape-render.js?v=r775-9678a017d60c";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r775-9678a017d60c";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r775-9678a017d60c";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r775-9678a017d60c";
+import { TREES } from "./trees.js?v=r775-9678a017d60c";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r775-9678a017d60c";
+import { KIT_MOVES } from "./boss-kit.js?v=r775-9678a017d60c";
+import { SKY_DISCS } from "./skylands.js?v=r775-9678a017d60c"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r775-9678a017d60c";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r775-9678a017d60c"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r775-9678a017d60c"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r775-9678a017d60c"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r775-9678a017d60c"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r775-9678a017d60c"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r775-9678a017d60c";
+import { drawRelayNode } from "./relay-network.js?v=r775-9678a017d60c";
+import { structureOccupancy } from "./world.js?v=r775-9678a017d60c";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r775-9678a017d60c";
+import { HOLE_DROPS, holeDrops } from "./labyrinths.js?v=r775-9678a017d60c";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1630,6 +1630,15 @@ export function drawWaymarkIcon(ctx,signalKind,s){
 function waymark(ctx,o,s){
   const cx=(o.x+.5)*s,cy=(o.y+.55)*s,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);drawWaymarkIcon(ctx,o.signalKind,s);ctx.restore();
 }
+// Pentagon finding (pentagon.ts PENTAGON_FINDING): a five-sided sigil cut into the ground, wider than a tile, one of its points
+// drawn out long into an arrowhead along the true bearing to its Pentagon (dirX, dirY); a dark cut under a gold line, so it reads on
+// any ground. Paths only, nothing allocated.
+function pentagonSigilMark(ctx,o,s){
+  const cx=(o.x+.5)*s,cy=(o.y+.5)*s,r=s*.62,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);ctx.lineJoin="round";
+  const path=()=>{ctx.beginPath();ctx.moveTo(r*2.3,0);for(let i=1;i<5;i++){const t=i*Math.PI*2/5;ctx.lineTo(Math.cos(t)*r,Math.sin(t)*r)}ctx.closePath();ctx.moveTo(r*2.3,0);ctx.lineTo(r*1.75,-r*.32);ctx.moveTo(r*2.3,0);ctx.lineTo(r*1.75,r*.32);ctx.moveTo(r*.42,0);ctx.arc(0,0,r*.42,0,Math.PI*2)};
+  path();ctx.fillStyle="rgba(20,14,4,.28)";ctx.fill();ctx.strokeStyle="rgba(16,10,2,.6)";ctx.lineWidth=Math.max(3,s*.16);ctx.stroke();
+  ctx.strokeStyle=o.state==="read"?"#e7c46a":"#ffd36a";ctx.lineWidth=Math.max(1.5,s*.07);ctx.stroke();ctx.restore();
+}
 function shelterSigil(ctx,cx,cy,r,glyph){
   const kind=Math.abs(glyph||0)%4;ctx.beginPath();
   if(kind===0){ctx.arc(cx,cy,r,Math.PI*.25,Math.PI*1.75);ctx.moveTo(cx+r*.2,cy-r*.7);ctx.lineTo(cx+r*.72,cy)}
@@ -2337,6 +2346,7 @@ export function render(ctx, g, w, h, now) {
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
+          else if (o.kind === "pentWaysign") pentagonSigilMark(ctx,o,s); // Pentagon finding: a sigil cut in the ground, its long point toward its Pentagon
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
           else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301
