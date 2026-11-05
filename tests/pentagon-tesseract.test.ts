@@ -13,7 +13,7 @@ import { TESSERACTS } from '../src/tesseracts.ts';
 
 const SEED = 'TIM1';
 const game = (seed = SEED, save = null) => { const s = save || freshSave(); s.seed = seed; return new Game(s, 0); };
-let found = null; const find = () => { if (found) return found; const g = game(); for (let cx = -64; cx <= 64 && !found; cx += PENTAGON.every) for (let cy = -64; cy <= 64 && !found; cy += PENTAGON.every) if (g.pentagonHere(cx, cy, 1)) found = { cx, cy }; return found; };
+let found = null; const find = () => { if (found) return found; const g = game(); for (let cx = -64; cx <= 64 && !found; cx += PENTAGON.every) for (let cy = -64; cy <= 64 && !found; cy += PENTAGON.every) if (g.pentagonHere(cx, cy)) found = { cx, cy }; return found; };
 const H = (g, P) => g.save.consequences.dungeons[`${P.base}:f1`] || {};
 const loadVault = (g, P) => { g.save.session.activeDungeonId = pentagonVaultId(P); g.save.session.dungeonReturn = { rx: P.cx, ry: P.cy, x: 16, y: 16 }; g.loadArea('dungeon', false); assert.ok(g.map.building.vault, 'the vault'); };
 const fellRegent = (g) => { const e = g.enemies.find((q) => String(q.id).endsWith(':guardian')); assert.ok(e && !e.dead, 'the Regent stands'); e.hp = 0; e.dead = true; g.defeatEnemy(e); };

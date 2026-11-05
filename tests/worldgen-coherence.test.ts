@@ -25,9 +25,6 @@ const landExits = (map) => { const ex = map.exits; return [[ex.north, 0], [ex.so
 const boxed = (map) => { const ex = landExits(map).filter(([x, y]) => walk(map.tiles[I(x, y)])), out = []; for (const a of ex) { const r = reach(map, ...a); for (const b of ex) if (a !== b && !r[I(...b)]) out.push(`${a}>${b}`); } return out; };
 const near8 = (seen, x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = Math.round(x) + dx, ny = Math.round(y) + dy; if (nx >= 0 && ny >= 0 && nx < 32 && ny < 32 && seen[I(nx, ny)]) return true; } return false; };
 const sha = (v) => crypto.createHash('sha1').update(JSON.stringify(v)).digest('hex').slice(0, 16);
-// The rarer Pentagons (pentagon.ts PENTAGON.place): a fixture Pentagon chosen under placement 1 stands on new ground only where a
-// journey already knows one of its sections; this pins its corner as seen before (no `pentPlace`), on coherent ground.
-const KNOWN = (cx, cy) => ({ [`${cx + 1},${cy + 1}`]: { landscapeVersion: 17, pentVersion: PENTAGON.version, coherenceVersion: COHERENCE.version } });
 const ground = (g) => sha([g.map.tiles.map((t) => [t.kind, t.blocked ? 1 : 0, t.elev || 0, t.slope ? 1 : 0, t.wallSides || null]), (g.map.objects || []).filter((o) => o.kind !== 'wayfindingCue').map((o) => [o.id, o.kind, o.x, o.y]).sort(), (g.map.enemySpawns || []).map((e) => [e.kind, e.x, e.y])]);
 
 test('world coherence is pinned per section in the atlas, like the landscape versions: new ground takes it, ground seen before never', () => {
@@ -95,7 +92,7 @@ test('WG-02: the exit pocket under a lethal cliff joins the land beyond it, even
 });
 
 test('WG-03: within a Pentagon the Wayfarer crosses a seam where the court runs on, not only at the lane', () => {
-  const g = game('T1', KNOWN(-8, -8)); assert.ok(g.pentagonHere(-8, -8)); let crossed = 0, tried = 0;
+  const g = game('T1'); assert.ok(g.pentagonHere(-8, -8)); let crossed = 0, tried = 0;
   for (const [rx, ry, dx, dy] of [[-9, -8, 1, 0], [-8, -8, -1, 0], [-8, -9, 0, 1], [-8, -8, 0, -1], [-7, -8, -1, 0], [-8, -7, 0, -1]]) {
     g.rx = rx; g.ry = ry; g.save.session.areas = {}; g.loadArea('overworld', false); const ex = g.map.exits, lane = dx ? (dx > 0 ? ex.east : ex.west) : (dy > 0 ? ex.south : ex.north);
     for (let k = 2; k < 30; k++) { if (Math.abs(k - lane) <= 2 || !pentagonSeamOpen(-8, -8, rx, ry, dx, dy, k, k)) continue;
@@ -153,7 +150,7 @@ test('WG-08: no creature on new ground stands on a pad it cannot leave, and no p
 });
 
 test('WG-10: a castle or Pentagon built over great mushrooms takes the whole stand, its cache and its note with it', () => {
-  const g = visit('T5', -1313, 96, KNOWN(-1312, 96)); assert.ok(g.map.pentagon || g.map.greatBuilding?.castle);
+  const g = visit('T5', -1313, 96); assert.ok(g.map.pentagon || g.map.greatBuilding?.castle);
   assert.equal(g.map.mushrooms, undefined); assert.ok(!g.map.tiles.some((t) => t.mushroom)); assert.ok(!g.map.objects.some((o) => /^mushroom-cache-/.test(o.id)));
   assert.ok(!g.save.narrative.journal.some((j) => j.recordId === 'great-mushrooms'));
 });

@@ -21,12 +21,6 @@ import { grantTesseract } from "./tesseracts.ts";
 export const PENTAGON = {
   version: 7, // 7: the roof, its balconies and the outer stair (below); 6: shortcuts and side entrances (below); 5: release 732 (below); 4: release 730; 3: release 729; 2: release 728; 1: release 727 (the key, the plate, three trials, a Heart of three floors); 2: release 728 (below)
   every: 8, chance: .5, minRing: 10, // centre sections on a grid of `every`; this share of the eligible ones
-  // Placement versions (Tim, 2026-11-05: "the Pentagon should be pretty rare... I don't want the whole landscape to be dominated
-  // by Pentagons. They're so huge"), pinned per section as `atlas.pentPlace` (a section seen before has none: version 1).
-  // 1: the rule above. 2: of the centres rule 1 stands, a hashed `keep` share still stand: about 30% as many, each in the spot
-  // rule 1 gave it (never moved, never overlapping one an older journey holds). A Pentagon takes the lowest version among its
-  // nine sections (and 1 if its base floor holds any history), so one any of whose sections a journey knows stands as before.
-  place: { version: 2, keep: .3 },
   bands: { out: 36, outer: 29, court: 23, inner: 18, heart: 3 }, // pentagon "apothem" bands (tiles from the centre, along each face's normal)
   approach: 12, // tiles of paved way out from each gate
   wall: 1.3, // half-width of the walls between the ring courts, at the corners
@@ -199,8 +193,7 @@ export const PENTAGON = {
 const mod = (a, n) => ((a % n) + n) % n;
 // The centre section of a Pentagon this section could belong to.
 export function pentagonCentre(rx, ry) { const E = PENTAGON.every, cx = Math.round(rx / E) * E, cy = Math.round(ry / E) * E; return Math.abs(rx - cx) <= 1 && Math.abs(ry - cy) <= 1 ? { cx, cy } : null; }
-export function pentagonAt(seed, cx, cy, ok, place = 1) { const P = PENTAGON; if ((hashSeed(`${seed}:pentagon:v1:${cx}:${cy}`) % 1000) / 1000 >= P.chance) return false;
-  if (place >= 2 && (hashSeed(`${seed}:pentagon-place:v2:${cx}:${cy}`) % 1000) / 1000 >= P.place.keep) return false; // placement v2: the rarer Pentagons
+export function pentagonAt(seed, cx, cy, ok) { const P = PENTAGON; if ((hashSeed(`${seed}:pentagon:v1:${cx}:${cy}`) % 1000) / 1000 >= P.chance) return false;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const rx = cx + dx, ry = cy + dy; if (Math.abs(rx) + Math.abs(ry) < P.minRing || !ok(rx, ry)) return false; } return true; }
 const toGlobal = (cx, cy, rx, ry, x, y) => ({ gx: (rx - cx + 1) * 32 + x, gy: (ry - cy + 1) * 32 + y });
 const toLocal = (cx, cy, gx, gy) => ({ rx: cx - 1 + Math.floor(gx / 32), ry: cy - 1 + Math.floor(gy / 32), x: mod(gx, 32), y: mod(gy, 32) });

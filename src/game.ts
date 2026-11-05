@@ -2779,7 +2779,6 @@ export class Game {
         ...(prior ? (prior.labVersion ? { labVersion: prior.labVersion } : {}) : { labVersion: LABYRINTHS.version }), // and the labyrinths
         ...(prior ? (prior.castleVersion ? { castleVersion: prior.castleVersion } : {}) : { castleVersion: CASTLES.version }), // and the Great Castles
         ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : { pentVersion: PENTAGON.version }), // and the Pentagons
-        ...(prior ? (prior.pentPlace ? { pentPlace: prior.pentPlace } : {}) : { pentPlace: PENTAGON.place.version }), // and where they stand (PENTAGON.place: the rarer Pentagons, new ground only)
         ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
         ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
         ...(prior ? (prior.coherenceVersion ? { coherenceVersion: prior.coherenceVersion } : {}) : { coherenceVersion: COHERENCE.version }), // world coherence: lanes bridged, exits joined, no pits (landscape.ts COHERENCE)
@@ -6310,8 +6309,7 @@ export class Game {
   castleHere(X, Y) {
     const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = this.settleMemo();
     const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); }; // no castle where a town, a hamlet or the open sea stands
-    const quarterPlace = Math.min(...[0, 1, 2, 3].map((q) => { const { rx, ry } = quarterSection(X, Y, q); return this.sectionPentPlace(rx, ry); })); // a castle with a quarter seen before the rarer Pentagons keeps out of the Pentagons of then, which it was laid round
-    const inPent = (rx, ry) => { const c = pentagonCentre(rx, ry); return !!c && this.pentagonHere(c.cx, c.cy, Math.min(quarterPlace, this.pentagonPlace(c.cx, c.cy))); }; // a Pentagon's sections hold no castle
+    const inPent = (rx, ry) => { const c = pentagonCentre(rx, ry); return !!c && this.pentagonHere(c.cx, c.cy); }; // a Pentagon's sections hold no castle
     const fresh = this.coherentGround([0, 1, 2, 3].map((q) => quarterSection(X, Y, q))); // WG-04: on ground all new, a far domain's arena holds no castle
     return castleAt(seed, X, Y, sectionExits, (rx, ry) => settled(rx, ry) || inPent(rx, ry) || (fresh && this.domainCentreAt(rx, ry)), (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !!a && !a.castleVersion; });
   }
@@ -6409,22 +6407,12 @@ export class Game {
   // WG-05: on new ground (world coherence) a great building's door must join the section's exits, or the spot is passed over.
   coherentDoor() { return this._coherence ? Object.assign((map, at) => joinsCore(map, at), { tries: COHERENCE.doorTries }) : null; }
   pentagonVersion(cx, cy) { const atlas = this.save.atlas || {}; let v = PENTAGON.version; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const a = atlas[`${cx + dx},${cy + dy}`]; if (a?.pentVersion) v = Math.min(v, a.pentVersion); } return v; }
-  // The Pentagons' placement version (pentagon.ts PENTAGON.place) a section was first seen under: none seen yet, the current one;
-  // seen before the rarer Pentagons (no `pentPlace`), 1.
-  sectionPentPlace(rx, ry) { const a = this.save.atlas?.[`${rx},${ry}`]; return a ? Math.max(1, Math.floor(Number(a.pentPlace)) || 1) : PENTAGON.place.version; }
-  // A Pentagon's: the lowest among its nine sections, and 1 if its base floor holds any history (a Pentagon a journey has known
-  // in any way stands as it did).
-  pentagonPlace(cx, cy) {
-    let v = PENTAGON.place.version; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) v = Math.min(v, this.sectionPentPlace(cx + dx, cy + dy));
-    if (v > 1) { const D = this.save.consequences?.dungeons || {}, b = `pentagon:${this.save.seed}:${cx}:${cy}`; if (D[`${b}:f1`]) return 1; for (let V = 2; V <= PENTAGON.version; V++) if (D[`${b}:v${V}:f1`]) return 1; }
-    return v;
-  }
-  pentagonHere(cx, cy, place = this.pentagonPlace(cx, cy)) {
+  pentagonHere(cx, cy) {
     const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = this.settleMemo();
     const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
     const cells = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cells.push({ rx: cx + dx, ry: cy + dy });
     const fresh = this.coherentGround(cells); // WG-04: on ground all new, a far domain's arena holds no Pentagon (one begun before stays whole)
-    return pentagonAt(seed, cx, cy, (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !settled(rx, ry) && !(a && !a.pentVersion) && !(fresh && this.domainCentreAt(rx, ry)); }, place);
+    return pentagonAt(seed, cx, cy, (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !settled(rx, ry) && !(a && !a.pentVersion) && !(fresh && this.domainCentreAt(rx, ry)); });
   }
   // A labyrinth's progress: chambers found (of all), keys held (of all).
   labyrinthProgress() { const B = this.map?.building; if (!B?.labyrinth) return ""; const H = dungeonHistory(this.save, `${B.base}:f1`); const seen = (H.labSeen ||= []); if (!seen.includes(B.node)) seen.push(B.node);
