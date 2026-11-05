@@ -203,7 +203,8 @@ export const GLIDE = { minDrop: 4, sink: 1.5, speed: 4.6, steer: 3.2, skim: .35,
 export function crownSpot(map) {
   const top = map?.canopy?.top, tiles = map?.tiles; if (!top || !tiles) return null;
   const gate = (map.objects || []).find((o) => o.kind === "canopyGate"), rest = (map.objects || []).find((o) => o.kind === "crownRest");
-  const crown = tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top); if (!crown.length) return null;
+  const c = map.canopy, own = (t) => !(c.size > 0) || (t.x >= c.x0 && t.x < c.x0 + c.size && t.y >= c.y0 && t.y < c.y0 + c.size); // the door tree's own crown (a canopy grove's other crowns may stand as high)
+  const crown = tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top && own(t)); if (!crown.length) return null;
   const mx = crown.reduce((a, t) => a + t.x, 0) / crown.length, my = crown.reduce((a, t) => a + t.y, 0) / crown.length;
   const free = crown.filter((t) => !(gate && t.x === gate.x && t.y === gate.y) && !(rest && Math.hypot(t.x - rest.x, t.y - .2 - rest.y) <= .9)), pool = free.length ? free : crown; // .9: touchCrownRest's reach
   const t = pool.sort((a, b) => (Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my)) || (a.y - b.y) || (a.x - b.x))[0];
@@ -2868,7 +2869,7 @@ export class Game {
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     this.roofDwell = null; // roof-dwellers.ts: made below, once the section's objects are all laid
     if (area === "overworld" && this.map?.canopy?.top && !this.map.objects.some((o) => o.kind === "crownRest")) { // release 669: a rest point on every great tree's crown
-      const top = this.map.canopy.top, gate = this.map.objects.find((o) => o.kind === "canopyGate"), crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top && !(gate && t.x === gate.x && t.y === gate.y));
+      const top = this.map.canopy.top, gate = this.map.objects.find((o) => o.kind === "canopyGate"), c = this.map.canopy, crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top && !(gate && t.x === gate.x && t.y === gate.y) && (!(c.size > 0) || (t.x >= c.x0 && t.x < c.x0 + c.size && t.y >= c.y0 && t.y < c.y0 + c.size))); // the door tree's own crown (a canopy grove's other crowns may stand as high)
       const t = crown.sort((a, b) => (a.y - b.y) || (a.x - b.x))[0]; if (t) this.map.objects.push({ id: `crown-rest-${this.rx}-${this.ry}`, kind: "crownRest", name: "Crown Rest", x: t.x, y: t.y, state: "open", actions: [] });
     }
     if (area === 'dungeon' && this.map.skyland) for (const e of this.enemies) this.scaleSkyFoe(e); // release 571
