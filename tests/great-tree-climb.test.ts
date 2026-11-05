@@ -11,7 +11,7 @@ import { generateRegion } from '../src/world.ts';
 import { LANDSCAPE_VERSION, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale, canStep, fallDamage, reachableFromPlaza, LETHAL_KINDS, applyLandscape, applyDream, DREAM_VERSION, dreamsHere, mendCanopy } from '../src/landscape.ts';
 import { TREES_V18, TREES_V14, TREES } from '../src/trees.ts';
 import { render, crownReveal, CROWN_VEIL, SKY, boughsClear, TREE_LIMBS, behindGreatTrunk } from '../src/renderer.ts';
-import { canopyBehindTrunk, canopyAboveCrown } from '../src/landscape-render.ts';
+import { canopyBehindTrunk, canopyAboveCrown, canopyRepaintFor } from '../src/landscape-render.ts';
 import { wonderAt } from '../src/wonders.ts';
 
 // ---------------------------------------------------------------- loading
@@ -83,7 +83,7 @@ export function solveClimb(m) {
 // trunk). The ground pass paints row by row; then the behind-the-trunk pass (canopyBehindTrunk); then the dressing's boughs
 // (boughsClear) are painted with the actors. The share of each platform's top face something later covers:
 function coverage(m) {
-  const tiles = m.tiles, canopy = tiles.filter((t) => t.canopy), trees = m.canopy.trees || [m.canopy], redraw = m.canopy.box ? canopyBehindTrunk(tiles, W, m.canopy.box) : [], late = new Map(redraw.map((t, i) => [t, 10000 + i]));
+  const tiles = m.tiles, canopy = tiles.filter((t) => t.canopy), trees = m.canopy.trees || [m.canopy], redraw = m.canopy.box ? canopyRepaintFor(tiles, W, m.canopy.box).map((q) => q.t) : [] /* landscape 20: the whole repaint the renderer paints */, late = new Map(redraw.map((t, i) => [t, 10000 + i]));
   const above = trees.filter((tr) => !tr.low).flatMap((tr) => canopyAboveCrown(tiles, W, tr)); above.forEach((t, i) => late.set(t, 20000 + i)); // painted again after the dressing
   const order = (t) => late.get(t) ?? idx(t.x, t.y), rects = (t) => { const h = lift(t), top = [t.x, t.y - h, t.x + 1, t.y - h + 1]; return { top, body: h <= 0 ? null : t.kind === 'canopyTrunk' ? [t.x, t.y - h + 1, t.x + 1, t.y + 1] : [t.x, t.y - h + 1, t.x + 1, t.y - h + 1 + (t.kind === 'canopyLeaf' ? .14 : .26)] }; };
   const inter = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1], boughs = [], rising = [];
@@ -122,7 +122,7 @@ const recordingCtx = () => { // records fills, arcs and gradients by colour with
 };
 
 test('landscape 18: the tree tables, and the drawn scale the generator keeps the trunk strip clear by', () => {
-  assert.equal(LANDSCAPE_VERSION, 19); assert.equal(TREES_V18.version, 18);
+  assert.equal(LANDSCAPE_VERSION, 20); assert.equal(TREES_V18.version, 18);
   assert.equal(TREES_V18.drawnLevel, LIFT_PER_LEVEL * CANOPY_LIFT, 'trees.ts keeps the drawn height of a level without importing the renderer');
   assert.ok(TREES_V18.specs.spire.reach[0] > TREES_V14.compact.reach[0] && TREES_V18.specs.spire.reach[0] >= 4, 'taller spires');
   assert.ok(JUMP.sky / 1000 * SPEED - 2 >= .5, `a sky hop clears one gap tile from anywhere on the launching tile with ${(JUMP.sky / 1000 * SPEED - 2).toFixed(2)} tiles to spare`);
@@ -136,7 +136,7 @@ test('the solver: every sampled version-18 tree is climbed from the ground to it
     const r = solveClimb(g.map); assert.ok(r.ok, `${x},${y}: ${r.reason || 'hurts'}`);
     assert.equal(r.hurt, 0, `${x},${y}: a climb without a fall`); assert.ok(r.maxGap <= 1, `${x},${y}: hops cross one gap tile`);
     if (r.hops) assert.ok(r.minMarginWorst >= .5, `${x},${y}: worst-start margin ${r.minMarginWorst}`);
-    assert.equal(g.map.canopy.version, 19); tops.add(g.map.canopy.top);
+    assert.equal(g.map.canopy.version, 20); tops.add(g.map.canopy.top);
     const again = loadAt(SAMPLE, x, y).g.map.canopy; assert.deepEqual(again, g.map.canopy, 'the same tree each load');
     for (const t of g.map.tiles) if (t.pad) { const s = at(g.map, t.x, t.y + 1); assert.ok(!(s?.canopy && (s.elev || 0) > t.elev), `${x},${y}: a perch never hangs right behind a higher branch`); }
     for (const o of g.map.objects) if (o.kind === 'tree') assert.ok(!behindGreatTrunk(g.map.canopy, o), `${x},${y}: no wood's tree in the trunk's drawn strip`);

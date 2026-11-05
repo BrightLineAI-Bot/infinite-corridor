@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 767, the next is **768**.
+Taken at merge time: `main`'s release + 1 (see above). After 768, the next is **769**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 767 | Claude | `claude/dreamy-rubin-yn6q2p` | Tesseract classes and curses (roll 3): Melee, Magic, Vitality, Motion; health on hit; costs never cancel their own bonus; free dodges allowed | In flight. |
+| 768 | Claude | `claude/dreamy-rubin-yn6q2p` | The last spires back (landscape 20): every side may be 3 tiles; covered corner steps repainted so they show (drawing applies to every tree) | In flight. |
+| 767 | Claude | `claude/dreamy-rubin-yn6q2p` | Tesseract classes and curses (roll 3): Melee, Magic, Vitality, Motion; health on hit; costs never cancel their own bonus; free dodges allowed | Merged (#415). |
 | 766 | Claude | `claude/dreamy-rubin-yn6q2p` | A glide from a great tree's crown that ends in death wakes you on that crown; no gliding north by a great tree; skim and Crown Rest fixes | Merged (#414). |
 | 765 | Claude | `claude/dreamy-rubin-yn6q2p` | The Doom Chaser beyond 1000: a world beast again past the far-realm line, with the Black Pyre as his domain; inside 1000 only the Stillworks | Merged (#413). |
 | 764 | Claude | `claude/dreamy-rubin-yn6q2p` | Tall spires and groves back (landscape 19), keeping every 758 climbing fix; the crown veil thins from halfway up | Merged (#412). Published as r764-0eb650c60230 on 2026-11-05. |
