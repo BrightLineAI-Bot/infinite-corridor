@@ -10,17 +10,17 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { farCivAt } from "./far-realms.js?v=r757-4ff9a5914432";
-import { hashSeed, byHash } from "./random.js?v=r757-4ff9a5914432";
-import { placeDock } from "./boats.js?v=r757-4ff9a5914432";
-import { growTrees, TREES_V14 } from "./trees.js?v=r757-4ff9a5914432";
-import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r757-4ff9a5914432";
-import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r757-4ff9a5914432";
+import { farCivAt } from "./far-realms.js?v=r759-ce2cc625b7cc";
+import { hashSeed, byHash } from "./random.js?v=r759-ce2cc625b7cc";
+import { placeDock } from "./boats.js?v=r759-ce2cc625b7cc";
+import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r759-ce2cc625b7cc";
+import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r759-ce2cc625b7cc";
+import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r759-ce2cc625b7cc";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 17; // 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 18; // great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
 export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : t?.roofLift || 1); // a great building's roof is drawn at the top of its facade (great-buildings.ts)
@@ -444,7 +444,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   else if (map.fogMoor) map.weather = "fog"; // release 617
   if (version >= 5) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 5).type === "frost") t.kind = "snowRock"; // release 573: frost mountains are snowbound
   if (map.pillarlands) buildMesas(map, seed, rx, ry); // release 591: last, so nothing after it ramps or lowers them
-  if (version >= 14 && !full) { const region = treeRegion(map); if (region) growTrees(map, seed, rx, ry, { ground: canopyGround(map, region), reachable: plazaReach, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }, walls), version, region }); } // release 672
+  if (version >= 14 && !full && !(version >= TREES_V18.version && dreamsHere(seed, rx, ry, DREAM_VERSION, version))) { const region = treeRegion(map); if (region) growTrees(map, seed, rx, ry, { ground: canopyGround(map, region), reachable: plazaReach, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }, walls), version, region }); } // release 672; version 18: not where the Far Sleep dreams, which paved the tree over (mendCanopy clears the older ones)
   else if (version >= 13 && !full && map.paletteRegion) growTrees(map, seed, rx, ry, { ground: canopyGround(map), reachable: plazaReach, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }, walls) }); // release 645: the tree package
   else if (version >= 12 && !full && map.paletteRegion) buildCanopyTree(map, seed, rx, ry); // release 631: likewise last
   if (version >= 17 && !full) growMushrooms(map, seed, rx, ry, { reachable: plazaReach, version }); // release 721: the great mushrooms, after the trees
@@ -636,6 +636,18 @@ function canopyGround(map, region = null) {
   const at = (x, y) => map.tiles[idx(x, y)], ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1, objAt = new Set((map.objects || []).filter((o) => !o.jungle && !(region && o.forest)).map((o) => idx(Math.round(o.x), Math.round(o.y))));
   const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
   return (x, y) => { const t = x >= 1 && y >= 1 && x <= 30 && y <= 30 && at(x, y); return !!t && (region ? t.landscape === region && TREES_V14.regions[region].ground.includes(t.kind) : t.landscape === "jungle") && !t.structure && !t.buildingId && !t.environment && !t.slope && !(t.elev > 0) && !exitLine(x, y) && !(x >= 12 && x <= 20 && y >= 12 && y <= 20) && !objAt.has(idx(x, y)) && (region ? true : t.kind === "jungleFloor" || t.kind === "jungleMire" || t.kind === "buttressRoot"); };
+}
+// Great-tree review (2026-11-05): the Far Sleep's dream pass (applyDream) flattened any great tree in its way, leaving the tree's
+// record, its door and `canopy` flags on marble. Version 18 grows no tree where the section dreams; for the sections pinned
+// before, a tree whose crown is no longer wood is struck from the record here (after the terrain passes, before anything reads
+// map.canopy), so no Crown Rest, door or sky hop points at a tree that is not there. Tiles keep their shapes: nothing regenerates.
+export function mendCanopy(map) {
+  const c = map?.canopy; if (!c) return false;
+  const crown = []; for (let j = 0; j < c.size; j++) for (let i = 0; i < c.size; i++) crown.push(map.tiles[idx(c.x0 + i, c.y0 + j)]);
+  if (crown.every((t) => t && t.kind === "canopyTrunk" && t.elev === c.top)) return false;
+  for (const t of map.tiles) if (t.canopy) for (const k of ["canopy", "skyPlatform", "leaves", "look", "pad", "walk"]) delete t[k];
+  map.objects = (map.objects || []).filter((o) => o.kind !== "canopyGate");
+  delete map.canopy; return true;
 }
 // Would the rite's tree fit here? Tried on a copy, so the section is left as it is.
 export function riteTreeFits(map, seed, rx, ry) {

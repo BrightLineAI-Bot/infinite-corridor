@@ -5,11 +5,11 @@
 // (placement 2); a great tree where the section's centre lies in a tree region and the version 14 roll grows one (a tree may
 // still find no room, so the Atlas says "said to stand"); a Starfield crossing where the section's ordinary crossing would roll
 // one on first entry. Only sections with no Atlas entry are named, so all of this is new ground (placement 2, landscape 14).
-import { hashSeed, rng } from "./random.js?v=r757-4ff9a5914432";
-import { dungeonId } from "./world.js?v=r757-4ff9a5914432";
-import { sectionRegion, farSleepSection } from "./landscape.js?v=r757-4ff9a5914432";
-import { skylandSection, SKY_PLACE } from "./skylands.js?v=r757-4ff9a5914432";
-import { TREES_V14 } from "./trees.js?v=r757-4ff9a5914432";
+import { hashSeed, rng } from "./random.js?v=r759-ce2cc625b7cc";
+import { dungeonId } from "./world.js?v=r759-ce2cc625b7cc";
+import { sectionRegion, farSleepSection, dreamsHere, DREAM_VERSION } from "./landscape.js?v=r759-ce2cc625b7cc";
+import { skylandSection, SKY_PLACE } from "./skylands.js?v=r759-ce2cc625b7cc";
+import { TREES_V14 } from "./trees.js?v=r759-ce2cc625b7cc";
 
 export const WONDERS = {
   radius: 24, // sections searched round the Wayfarer (Manhattan)
@@ -25,7 +25,7 @@ export const WONDER_KINDS = Object.keys(WONDERS.kinds);
 export function wonderAt(seed, rx, ry, kind, generation = 1) {
   if (rx === 0 && ry === 0) return false;
   if (kind === "skyway") return skylandSection(seed, rx, ry, SKY_PLACE.version);
-  if (kind === "tree") { const type = sectionRegion(seed, rx, ry, 14).type, R = TREES_V14.regions[type]; return !!R && (hashSeed(`${seed}:canopy-grow:v2:${type}:${ry * 7919 + rx}`) % 1000) / 1000 < R.chance; }
+  if (kind === "tree") { const type = sectionRegion(seed, rx, ry, 14).type, R = TREES_V14.regions[type]; return !!R && !dreamsHere(seed, rx, ry, DREAM_VERSION, 18) && (hashSeed(`${seed}:canopy-grow:v2:${type}:${ry * 7919 + rx}`) % 1000) / 1000 < R.chance; } // landscape 18: no tree where the Far Sleep dreams
   if (kind === "starfield") {
     if (farSleepSection(rx, ry)) return false; // a Far Sleep crossing may be a Sleeper's Hall instead
     const r = rng(`${seed}:dungeon-entrance:v1:g${generation}:${rx}:${ry}`); if (r() >= .28) return false; r(); // world.ts addDungeonLandmark: the roll, the spot, the id
