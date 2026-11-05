@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 768, the next is **769**.
+Taken at merge time: `main`'s release + 1 (see above). After 769, the next is **770**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 768 | Claude | `claude/dreamy-rubin-yn6q2p` | The last spires back (landscape 20): every side may be 3 tiles; covered corner steps repainted so they show (drawing applies to every tree) | In flight. |
+| 769 | Claude | `claude/dreamy-rubin-yn6q2p` | Essence Walk: for 8 s recovering spells cast for stamina; Aegis 40 stamina with a lockout when spent; no cooldown floor | In flight. |
+| 768 | Claude | `claude/dreamy-rubin-yn6q2p` | The last spires back (landscape 20): every side may be 3 tiles; covered corner steps repainted so they show (drawing applies to every tree) | Merged (#416). |
 | 767 | Claude | `claude/dreamy-rubin-yn6q2p` | Tesseract classes and curses (roll 3): Melee, Magic, Vitality, Motion; health on hit; costs never cancel their own bonus; free dodges allowed | Merged (#415). |
 | 766 | Claude | `claude/dreamy-rubin-yn6q2p` | A glide from a great tree's crown that ends in death wakes you on that crown; no gliding north by a great tree; skim and Crown Rest fixes | Merged (#414). |
 | 765 | Claude | `claude/dreamy-rubin-yn6q2p` | The Doom Chaser beyond 1000: a world beast again past the far-realm line, with the Black Pyre as his domain; inside 1000 only the Stillworks | Merged (#413). |
