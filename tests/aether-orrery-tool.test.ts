@@ -1,6 +1,6 @@
 // The Aether Orrery (Tim, 2026-11-04): a magic-damage tool. Tap: an orb that sheds pellets. Hold: a cone of sparks, then a
-// piercing great orb; overcharging locks the charge for about 6 s. Echo glyphs: up to three circling orbs (contact damage,
-// drone lasers, a triangle while charging, right-angle two-hit lasers on release). Shadow Clone: its own orb and a tether.
+// piercing great orb; overcharging locks the charge for about 6 s. Circling orbs: one, two with one Echo glyph, three with two (contact
+// damage, drone lasers, a beam or triangle while charging, right-angle two-hit lasers on release). Shadow Clone: its own orb and a tether.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
@@ -92,11 +92,11 @@ test('overcharge: holding past the limit loses the charge and locks charging ~6 
   t = frames(g, 6 * 60, idle, t); g.toolReadyAt = 1e12; t = frames(g, 1, input('tool', 'tool'), t); assert.ok(g.orrery.charge, 'charging again after the lockout');
 });
 
-test('Echo tiers: one circling orb per Echo glyph in the tool, three at most', () => {
-  assert.deepEqual([0, 1, 2, 3, 4, 9].map(orbTier), [0, 1, 2, 3, 3, 3]);
-  for (const [glyphs, n] of [[[], 0], [['echo'], 1], [['echo', 'echo'], 2], [['echo', 'echo', 'echo'], 3], [['echo', 'echo', 'echo', 'echo'], 3]]) {
+test('orb tiers (Tim, 2026-11-05): one circling orb with no Echo, two with one, three with two; a third Echo adds nothing', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 9].map(orbTier), [1, 2, 3, 3, 3, 3]); assert.equal(ORRERY.halo.base, 1); assert.equal(ORRERY.halo.max, 3);
+  for (const [glyphs, n] of [[[], 1], [['echo'], 2], [['echo', 'echo'], 3], [['echo', 'echo', 'echo'], 3], [['echo', 'echo', 'echo', 'echo'], 3], [['pierce', 'swift'], 1]]) {
     const { g } = arena(glyphs); g.fireSecondary(1000, { x: 1, y: 0 }); assert.equal(g.orrery?.halo?.n || 0, n, `${glyphs.length} echoes`);
-    if (n) assert.equal(g.orrery.halo.pts.length, 3, 'a fixed set of orb places');
+    assert.equal(g.orrery.halo.pts.length, 3, 'a fixed set of orb places');
   }
 });
 
@@ -126,6 +126,18 @@ test('charging spreads the orbs into a triangle of energy that burns foes inside
   assert.ok(lost(e) > before, 'the triangle burned it');
 });
 
+test('charging with fewer orbs: one orb has no beam (it only burns by touch); two orbs make a single beam; release fires one laser per orb', () => {
+  const pts = [{ x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 0 }];
+  assert.equal(beamsTouching(0, 0, .1, pts, 1, null), 0, 'one orb: no beam, even at its centre');
+  assert.equal(beamsTouching(0, 0, .1, pts, 2, null), 1, 'two orbs: the beam between them');
+  assert.equal(beamsTouching(0, 2, .1, pts, 2, null), 0, 'and nothing off it');
+  for (const [glyphs, n] of [[[], 1], [['echo'], 2]]) {
+    const { g } = arena(glyphs, {}, [[13, 10], [13, 12]]); g.fireSecondary(1000, { x: 1, y: 0 }); g.toolReadyAt = 1e12; assert.equal(g.orrery.halo.n, n);
+    let t = frames(g, 1, input('tool', 'tool'), 1100); t = frames(g, 30, input(null, 'tool'), t); t = frames(g, 1, idle, t);
+    assert.equal(of(g, 'cube').length, n, `${n} laser(s) on release`); assert.equal(of(g, 'big').length, 1, 'and the great orb');
+  }
+});
+
 test('release with orbs: one laser per orb, right angles (a blocky path), two hits each, seeking different foes', () => {
   const { g } = arena(['echo', 'echo', 'echo'], {}, [[13, 10], [13, 12.5], [13, 7.5]]); g.fireSecondary(1000, { x: 1, y: 0 }); g.toolReadyAt = 1e12;
   let t = frames(g, 1, input('tool', 'tool'), 1100); t = frames(g, 30, input(null, 'tool'), t); t = frames(g, 1, idle, t);
@@ -147,7 +159,7 @@ test('Shadow Clone: its own orb fires straight two-hit lasers; while charging a 
   assert.equal(g.projectiles.filter((p) => p.shadow && !p.orrery).length, 0, 'no ordinary shot copy');
   let t = 1000; const before = lost(g.enemies[0]); for (let i = 0; i < 60 && !laser.dead; i++) t = frames(g, 1, idle, t);
   assert.equal(laser.combo, 2, 'two hits'); assert.ok(lost(g.enemies[0]) - before >= laser.damage * 2 - 2);
-  assert.equal(g.orrery.halo, null, 'not part of a triangle (no Echo here)');
+  assert.equal(g.orrery.halo.n, 1, 'the one circling orb, with no Echo'); const cp = g.orrery.clonePt; assert.ok(cp.x || cp.y, 'the clone carries its own orb'); assert.ok(Math.hypot(cp.x - g.orrery.halo.pts[0].x, cp.y - g.orrery.halo.pts[0].y) > .5, 'apart from the circling orb');
   // the tether: a foe between the Wayfarer and the clone, behind the aim
   const { g: h } = arena([], {}, [[10, 11.2]]); h.shadowClone = { ox: 0, oy: 2.5, until: 1e12 }; h.toolReadyAt = 1e12; h.save.lastAim = { x: -1, y: -1 };
   let u = frames(h, 1, input('tool', 'tool'), 1000); u = frames(h, 40, input(null, 'tool'), u); h.save.lastAim = { x: -1, y: -1 };
