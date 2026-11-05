@@ -2860,7 +2860,9 @@ Found by the pre-publish review of r739→r754.
 
 **CODE:** `src/game.ts` `packWorld()`: the `dragonDue` line's trailing `//` comment (added in 754 for the Stillworks) commented out `dragonLava`, `dragonLavaPreview` and `playerMaxHp` on the same line; the comment is now a block comment. `tests/pack-world-hooks-755.test.ts` checks the real `Game.packWorld()` offers all four (it fails without the fix; `tests/crimson-tyrant-709.test.ts` uses its own stub world, so it could not catch this).
 
-**BOUNDARY:** No save or generator change. Restores 709's Colonize (lava claim, preview tiles, cast counting) and the Supernova's lethal share against the Wayfarer's real maximum health.
+Restoring the hooks showed a Stillworks bug: a Wayfarer who fled a Sunfall past the dungeon's 18-tile simulation range froze the Tyrant aloft and untargetable. `shouldSimulateEnemy` (dungeon branch) now always simulates an awake finale beast (`pentFinaleBeast && pentArenaAwake`), as a hunting world beast is; asleep, it still isn't. The arena duel test's bot now runs from the Sunfall (standing in it was only ever survivable because `playerMaxHp` was missing), and a regression test covers: standing in reach kills and resets the fight; fleeing to the far side lets it land and be struck; no ground is claimed.
+
+**BOUNDARY:** No save or generator change. Restores 709's Colonize (lava claim, preview tiles, cast counting) on the land and the Sunfall's lethal share against the Wayfarer's real maximum health (lethal in its 11-tile reach, escapable by distance). In the Stillworks there is still no claim and no lava tiles.
 
 ## Release 754: the Stillworks and the Gloomvast — 2026-11-05
 
