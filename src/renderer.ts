@@ -1630,6 +1630,15 @@ export function drawWaymarkIcon(ctx,signalKind,s){
 function waymark(ctx,o,s){
   const cx=(o.x+.5)*s,cy=(o.y+.55)*s,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);drawWaymarkIcon(ctx,o.signalKind,s);ctx.restore();
 }
+// Pentagon finding (pentagon.ts PENTAGON_FINDING): a five-sided sigil cut into the ground, wider than a tile, one of its points
+// drawn out long into an arrowhead along the true bearing to its Pentagon (dirX, dirY); a dark cut under a gold line, so it reads on
+// any ground. Paths only, nothing allocated.
+function pentagonSigilMark(ctx,o,s){
+  const cx=(o.x+.5)*s,cy=(o.y+.5)*s,r=s*.62,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);ctx.lineJoin="round";
+  const path=()=>{ctx.beginPath();ctx.moveTo(r*2.3,0);for(let i=1;i<5;i++){const t=i*Math.PI*2/5;ctx.lineTo(Math.cos(t)*r,Math.sin(t)*r)}ctx.closePath();ctx.moveTo(r*2.3,0);ctx.lineTo(r*1.75,-r*.32);ctx.moveTo(r*2.3,0);ctx.lineTo(r*1.75,r*.32);ctx.moveTo(r*.42,0);ctx.arc(0,0,r*.42,0,Math.PI*2)};
+  path();ctx.fillStyle="rgba(20,14,4,.28)";ctx.fill();ctx.strokeStyle="rgba(16,10,2,.6)";ctx.lineWidth=Math.max(3,s*.16);ctx.stroke();
+  ctx.strokeStyle=o.state==="read"?"#e7c46a":"#ffd36a";ctx.lineWidth=Math.max(1.5,s*.07);ctx.stroke();ctx.restore();
+}
 function shelterSigil(ctx,cx,cy,r,glyph){
   const kind=Math.abs(glyph||0)%4;ctx.beginPath();
   if(kind===0){ctx.arc(cx,cy,r,Math.PI*.25,Math.PI*1.75);ctx.moveTo(cx+r*.2,cy-r*.7);ctx.lineTo(cx+r*.72,cy)}
@@ -2337,6 +2346,7 @@ export function render(ctx, g, w, h, now) {
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
           if (o.kind === "wayfindingCue") waymark(ctx,o,s);
+          else if (o.kind === "pentWaysign") pentagonSigilMark(ctx,o,s); // Pentagon finding: a sigil cut in the ground, its long point toward its Pentagon
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
           else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301

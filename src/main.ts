@@ -183,6 +183,7 @@ setTimeout(() => {
       openShop();
     }
     if (game.smithyRequested) { game.smithyRequested = null; openSmithy(game.message); } // release 441: Act at the town smith opens the forge
+    if (game.compassRequest) { const q = game.compassRequest; game.compassRequest = null; compassPin = { rx: q.rx, ry: q.ry, name: q.name }; rememberGuidance(); } // Pentagon finding: a sigil read sets the compass on its Pentagon
     if (game.area === "dungeon" && !panel.open && !game.paused && marginRun(save, game.areaId())?.offer?.length) { game.marginOfferRequested = false; openMarginOffer(); } // release 459: a page left on offer by an older release (473 applies pages at once)
     if (game.marginPasteRequested) { game.marginPasteRequested = false; openScrapbookPaste(); } // release 459
     if (game.kitchenRequested) { const id = game.kitchenRequested; game.kitchenRequested = null; kitchenPick = []; openKitchen(id, game.message); } // release 447: Act at a cook opens the kitchen
@@ -217,7 +218,7 @@ import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
 import { STATS, freshSave } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.ts";
 import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.ts";
-import { PENTAGON_LORE, inscriptionsRead } from "./pentagon.ts";
+import { PENTAGON_LORE, inscriptionsRead, pentagonHuntsOpen } from "./pentagon.ts";
 import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.ts";
 import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.ts";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
@@ -625,6 +626,7 @@ function activeQuests(){
   const w=save.wanderer?.quest;if(w)add("Old Quillon's errand",w.done?"Done. Find Quillon on the road to collect your pay.":w.type==="hunt"?`Defeat creatures: ${w.progress}/${w.goal}.`:w.type==="cache"?"Find his buried satchel.":"Stand in any town square.",w.type==="cache"&&!w.done?w.target:null);
   const beast=save.questingBeast?.active;if(beast)add("The Questing Beast",`It roams this section. ${questingBeastTriesLeft(save)} tries remain.`,beast);
   const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save),n=relaysUntilReturn(save),pieces=`Gate ${f.gate}: ${f.toNext||0}/${piecesToUnlock(f.gate)} pieces`;/* 2026-11-05: the Listener's cycle (LISTENER_CYCLE v2) */if(!f.quiet)add("The Far Array",`${pieces}${LISTENER_CYCLE.sealsCall?` · seals ${f.pieces}/${piecesNeeded(f.gate)}`:""}. A Listener waits at its Mouth: ${far.rx}, ${far.ry}.`,far);else if(!f.moves)add("The Far Array",`${pieces}. The Listener is away; answer ${n} more relay${n===1?"":"s"} and one returns to its Mouth at ${far.rx}, ${far.ry}.`,far);else add("The Far Array",`Gate unlocked (tier ${f.gate}). No coordinate for the next Mouth yet: answer ${n} more relay${n===1?"":"s"}.`,null)}
+  {const pf=save.pentagonFinding,hunts=pentagonHuntsOpen(save);for(const h of hunts)add("Pentagon hunt",h.status==="found"?"Found. Complete the Pentagon to end the hunt; another will be laid out.":"A five-sided wall stands far out. Find it, and complete it.",{rx:h.cx,ry:h.cy});if(pf?.follow&&!hunts.some(h=>h.cx===pf.follow.cx&&h.cy===pf.follow.cy))add("A Pentagon sigil's line",`Read at ${pf.follow.rx}, ${pf.follow.ry}: the sigils of that ground point to this Pentagon.`,{rx:pf.follow.cx,ry:pf.follow.cy})} // Pentagon finding (pentagon.ts PENTAGON_FINDING)
   const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
   if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null);
   if(!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
@@ -1558,6 +1560,7 @@ function drawAtlasPins(w,h,cell){
   { // Release 551 (surveyor.ts): with Corwin's twelve links, the crossings they lay in join into a brass chain on the Atlas, running on to his statue.
     const chain=surveyorChainPath(save); if(chain.length>1){mctx.save();mctx.strokeStyle="#c79a3e";mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.beginPath();chain.forEach((q,i)=>{const[x,y]=at(q.rx,q.ry);if(i)mctx.lineTo(x,y);else mctx.moveTo(x,y)});mctx.stroke();mctx.setLineDash([]);mctx.fillStyle="#e6c46a";for(const q of chain.slice(0,-1)){const[x,y]=at(q.rx,q.ry);mctx.beginPath();mctx.ellipse(x,y,3.5,2,0,0,7);mctx.fill()}mctx.restore();const st=chain.at(-1);pins.push({rx:st.rx,ry:st.ry,color:"#d9d4c6",label:"Abel Corwin's statue",mark:true})}}
   for(const m of save.mapMarks||[])pins.push({rx:m.rx,ry:m.ry,color:MAP_MARKS.colors[m.color],label:`${MAP_MARKS.names[m.color]} mark`,mark:true}); // release 355: drawn under the waypoint and the quest
+  for(const h of pentagonHuntsOpen(save))pins.push({rx:h.cx,ry:h.cy,color:"#ffd36a",label:"Pentagon hunt"}); // Pentagon finding: the hunts laid out
   for(const q of nearestWonders(save,game.rx,game.ry)){const K=WONDERS.kinds[q.kind];pins.push({rx:q.rx,ry:q.ry,color:K.color,label:K.atlas})} // release 674: the nearest unexplored skyway, great tree and Starfield crossing
   {const lair=game.stalkerLairPin?.();if(lair)pins.push({rx:lair.rx,ry:lair.ry,color:"#d8e2ee",label:"The Stalker"})} // release 699: where the Stalker is, while it hunts
   for(const r of retreatsUnderWay(save))pins.push({rx:r.rx,ry:r.ry,color:"#ff8f4a",label:`${WORLD_BEASTS[r.id].name}, retreating`}); // release 605: a retreat can be followed on the Atlas
