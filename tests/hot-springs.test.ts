@@ -30,7 +30,7 @@ test('the table: a slow share of maximum health a second, springPool only, count
   assert.equal(springMend(99.9, 100, 100, .1), 100, 'never past maximum health');
   assert.equal(springMend(70, 100, 70, .1), 70, 'never past the health ceiling (blight rot)');
   assert.equal(springMend(80, 100, 70, .1), 80, 'never lowers health');
-  assert.equal(LANDSCAPE_VERSION, 21, 'no generation change');
+  assert.equal(LANDSCAPE_VERSION, 22, 'no generation change of its own (landscape 22 is the canopy groves, release 780)');
 });
 
 test('wading in a spring pool heals at the table rate after a calm moment; a rim, a mat or terrace ground does not', () => {

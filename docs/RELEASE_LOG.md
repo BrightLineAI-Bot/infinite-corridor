@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 779, the next is **780**.
+Taken at merge time: `main`'s release + 1 (see above). After 780, the next is **781**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 779 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 2: new crossings hold a story piece at 12% (was 13%); three new threads past 1000 (Tall Child's Slates, Spore Prints, Ink-Clerk's Blotters) share those slots | In flight. |
+| 780 | Claude | `claude/dreamy-rubin-yn6q2p` | Canopy groves (landscape 22, trees v21): several great crowns joined high above a hidden floor by branch bridges and one-tile hops, one tree climbed; groves never need a hop the Wayfarer can't make | In flight. |
+| 779 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 2: new crossings hold a story piece at 12% (was 13%); three new threads past 1000 (Tall Child's Slates, Spore Prints, Ink-Clerk's Blotters) share those slots | Merged (#427). |
 | 778 | Claude | `claude/dreamy-rubin-yn6q2p` | The crown wake needs the crown (standing on it, not height alone) and takes that crown's Crown Rest; a jump saved mid-air resumes at its height | Merged (#426). |
 | 777 | Claude | `claude/dreamy-rubin-yn6q2p` | Pentagon finding is hands-off (no compass, no Atlas pins, hunts open quietly in the Journal in words); the Rite seals Wayglass travel | Merged (#425). |
 | 776 | Claude | `claude/dreamy-rubin-yn6q2p` | Healing hot springs: a Terrace Springs pool mends 1.5% of max health a second, out of combat, with a wisp of steam | Merged (#424). |

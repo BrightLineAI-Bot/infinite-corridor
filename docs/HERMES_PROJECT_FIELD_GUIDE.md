@@ -2854,6 +2854,65 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 780: canopy groves; groves never need a hop you can't make — 2026-11-05
+
+Tim, 2026-11-05: "a grove where there's multiple great trees and they make like a canopy area up above the floor, where the floor is kind of invisible... a series of platforms... If they fall off they'll die, or their glider will get deployed... Maybe there's only one tree to access the whole larger area... It doesn't have to be offered in every grove." He also asked to fix the rare grove that needs a two-tile hop.
+
+**CODE:**
+
+`src/trees.ts`:
+- `TREES_V21` is tree generator 21, from landscape 22 (`since: 22`).
+  - `walkGapOpen`: a grove walk hops only over open ground (`gapOk`).
+  - `longGap` 2 and `longGapAt(tiles, w, laid)`: two platforms in line across two open tiles that a sky hop would land on. Any v21 tree with such a pair is passed over.
+  - `canopy` table:
+
+    | Key | Value |
+    | --- | --- |
+    | `share` | .12 |
+    | `access` | trunk [2,3], sides [3], reach [3,4] |
+    | `minTop` | 18 |
+    | `crowns` | [2,4] |
+    | `trunk` | [2,3] |
+    | `bridge` | min 2, max 9, gapEvery 3, ramp .35, rampMin 5 |
+    | `tries` | 160 |
+    | `crownTries` | 120 |
+    | `layouts` | 24 |
+
+- `growTrees` runs the "canopy" pass first wherever `h("canopy-form") < share`.
+- `layCanopy` lays the access tree's climb. Then, for each further crown, it runs a bridge search from every crown already laid and takes the first hashed square at the shortest bridge. The bridge is branch wood at crown height: level one-tile hops over open ground, and perhaps one slope tile. The crown is kept only if:
+  - `longGapAt` finds no gap,
+  - the foot is reached,
+  - no ground is cut off,
+  - `readableTree` passes.
+- The last crown is the door tree, with the Crown Rest. The record adds `crowns` and `hops`.
+
+`src/landscape.ts`:
+- `LANDSCAPE_VERSION` is 22.
+
+`src/renderer.ts`:
+- `CANOPY_FLOOR` and `canopyFloorReveal`. From 3 levels under the access crown, the ground is replaced by sky.
+- `drawCanopyFloor` draws 16 fixed leaf masses under the bridges.
+
+`src/game.ts`:
+- The Crown Rest and `crownSpot` keep to the door tree's own square.
+
+Tests:
+- New: `tests/canopy-grove-v21.test.ts`.
+- The `LANDSCAPE_VERSION` assertion goes from 21 to 22 in the tests that pin it, including `tests/hot-springs.test.ts`.
+
+**Measured:**
+- At landscape 21, 2 groves in 137 could not be finished (a walk hop over a buttress root), and 4 needed a two-tile hop. None do at 22.
+- 300 tree sections at 22 grew 23 canopy groves (7.7%), with 2–4 crowns, 5–24 bridge tiles and 0–3 hops.
+- In every sampled canopy grove, the Wayfarer reaches every bridge and crown with one-tile hops and comes back down the climb without a fall.
+- Generation takes about 53 ms per section, against 55 ms at 21.
+
+**BOUNDARY:**
+- Only ground first seen at landscape 22 changes. Landscapes 14–21 regenerate byte for byte; 290 section-versions were compared.
+- Only the access tree is climbed. The way down is that climb or the glider.
+- A fall off a bridge is an ordinary fall, and the tree glide window still holds.
+- The canopy floor is drawing only.
+- No save change. Not tested on a device.
+
 ## Release 779: story version 2 — 12%, and three stories past 1000 — 2026-11-05
 
 Tim, 2026-11-05: trim the shared story rate to about 12%, and write stories for the land out past 1000 without raising the density.
