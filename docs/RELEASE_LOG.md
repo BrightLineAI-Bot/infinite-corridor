@@ -15,16 +15,17 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 786, the next is **787**.
+Taken at merge time: `main`'s release + 1 (see above). After 787, the next is **788**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 786 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View (prototype, off by default): a low third-person camera inside the Pentagon, great buildings and keeps, with torchlight, fog and perspective walls; courts and the overworld keep the usual view | In flight. |
-| 785 | Claude | `claude/dreamy-rubin-yn6q2p` | Fog of war in every labyrinth: sight 7 tiles, walls block it; seen ground stays dimmed and is remembered per chamber; creatures and the safe-drop rim only in sight; the map shows only what you've seen | Merged (#433). |
-| 784 | Claude | `claude/dreamy-rubin-yn6q2p` | Room mazes: half of new labyrinths are mazes of rooms over four floors (undercroft, ground, upper, roof); barriers crossed on another floor, sub-floor routes, dead ends, loops, drops, far-side barred doors | Merged (#432). |
-| 783 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 4: past 1000 the first-ten slots go to the shared roll, so far crossings keep the full 0.12 | Merged (#431). |
+| 787 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View v2: a steady view, readable walls, a pan crescent and Elden Ring style lock-on; walls no longer seen through | In flight. |
+| 786 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View (prototype, off by default): a low third-person camera inside the Pentagon, great buildings and keeps, with torchlight, fog and perspective walls; courts and the overworld keep the usual view | Merged (#434). Published as r786-92e4788905a0 on 2026-11-06. |
+| 785 | Claude | `claude/dreamy-rubin-yn6q2p` | Fog of war in every labyrinth: sight 7 tiles, walls block it; seen ground stays dimmed and is remembered per chamber; creatures and the safe-drop rim only in sight; the map shows only what you've seen | Merged (#433). Published in r786. |
+| 784 | Claude | `claude/dreamy-rubin-yn6q2p` | Room mazes: half of new labyrinths are mazes of rooms over four floors (undercroft, ground, upper, roof); barriers crossed on another floor, sub-floor routes, dead ends, loops, drops, far-side barred doors | Merged (#432). Published in r786. |
+| 783 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 4: past 1000 the first-ten slots go to the shared roll, so far crossings keep the full 0.12 | Merged (#431). Published in r786. |
 | 782 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite is a lockdown (no door, sky gate, Far Gate, fold, dive or edge leaves it; only finishing, death or a Crossing Sigil); old Pentagon Journal lines in words; hot springs heal 2% | Merged (#430). Published as r782-fa66724a8d00 on 2026-11-06. |
 | 781 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 3: two more far threads past 1000 (the Enumerator's Count, the Tinker's Tags); far stories take about 79% of the shared slots out there, at 0.12 | Merged (#429). Published in r782. |
 | 780 | Claude | `claude/dreamy-rubin-yn6q2p` | Canopy groves (landscape 22, trees v21): several great crowns joined high above a hidden floor by branch bridges and one-tile hops, one tree climbed; groves never need a hop the Wayfarer can't make | Merged (#428). Published as r780-e230fbd94ccd on 2026-11-05. |
@@ -172,6 +173,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 786, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 786 | `r786-92e4788905a0` | 2026-11-06 | Fable review (782→786): no blockers. Story version 4 (#431), room mazes (#432), fog of war in labyrinths (#433), Close View prototype (#434). |
 | 782 | `r782-fa66724a8d00` | 2026-11-06 | Fable review (780→782): no blockers. Story version 3 with two more far stories (#429); the Rite lockdown, Pentagon Journal lines in words, springs heal 2% (#430). |
 | 780 | `r780-e230fbd94ccd` | 2026-11-05 | Fable review (775→780): no blockers. Healing hot springs (#424), Pentagons hands-off and the Rite seals the Wayglass (#425), the crown wake needs the crown (#426), story version 2 with three far stories (#427), canopy groves (#428). |
 | 775 | `r775-9678a017d60c` | 2026-11-05 | Fable review (772→775): no blockers. The story budget (#421), the Crossing Sigil anywhere (#422), Pentagon sigils and hunts (#423). |
