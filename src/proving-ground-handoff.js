@@ -1,4 +1,4 @@
-// Release r791-114d17e5e7e1 (Tim: "in options, there should just be Enter Proving Ground... you can start messing with things based on
+// Release 791 (Tim: "in options, there should just be Enter Proving Ground... you can start messing with things based on
 // your save, and then you can go back to options and hit exit to game, and then you should be able to just go back to your
 // save to where you were as if nothing had happened"; and a setting so it "can turn it off later").
 //
@@ -8,8 +8,8 @@
 // artifact refuses a laboratory graph that does) and nothing in this module names a production storage key, so nothing the
 // player does in the Proving Ground can reach a production journey. Exit to game opens the production page, which loads the
 // journey it flushed, untouched.
-import { Game } from "./game.js?v=r791-114d17e5e7e1";
-import { migrateSave } from "./types.js?v=r791-114d17e5e7e1";
+import { Game } from "./game.js?v=r792-5b14ec5bba1f";
+import { migrateSave } from "./types.js?v=r792-5b14ec5bba1f";
 
 export const PROVING_GROUND_HANDOFF = Object.freeze({
   namespace: "ic-proving-ground-scratch-v1", // the Proving Ground's storage namespace (proving-ground-mobile.ts resets it)

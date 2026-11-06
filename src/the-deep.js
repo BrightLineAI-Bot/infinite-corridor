@@ -16,7 +16,7 @@
 //   first time a floor is cleared (`payoffOnce`).
 // - The record: your deepest floor in any shaft (`save.theDeep.record`), on the Wayfarer's page and in the journal.
 // Save: additive at schema 14 (`save.theDeep`: { embers, record, shafts: { [key]: { floor, best } } }).
-import { hashSeed } from "./random.js?v=r791-114d17e5e7e1";
+import { hashSeed } from "./random.js?v=r792-5b14ec5bba1f";
 
 export const THE_DEEP = {
   version: 1,
