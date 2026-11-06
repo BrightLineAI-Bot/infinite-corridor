@@ -88,7 +88,7 @@ import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatt
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.ts";
 import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
-import { ASCENDANCY, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
+import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding } from "./great-buildings.ts";
@@ -3535,8 +3535,21 @@ export class Game {
       e.hp = Math.min(e.hp, Math.max(1, Math.round(e.maxHp * f)));
     }
   }
+  // The rite's fire at the edge (RITE_LOCKDOWN): the Wayfarer is set back `inset` tiles inside it when the ground there (and
+  // half way to it) holds them on foot, or the water a skiff; otherwise they stay where they stood (a swimmer, glider, drone or
+  // robot too); only one carried past the edge itself is brought back inside, onto safe ground. Never a section load. False.
+  riteHoldEdge() {
+    const p = this.player, w = mapWidth(this.map, "overworld"), S = SECTION_SIZE, I = RITE_LOCKDOWN.inset, sea = aboard(this.save);
+    const loose = !sea && (this.swimming || !!this.glide || !!this.droneLift || this.mechUp());
+    const holds = (x, y) => sea ? footprintSailable(this.map, w, x, y) : footprintOpen(this.map, w, x, y) && !footprintHazard(this.map, w, x, y);
+    const bx = Math.max(I, Math.min(S - 1 - I, p.x)), by = Math.max(I, Math.min(S - 1 - I, p.y));
+    if ((bx !== p.x || by !== p.y) && !loose && holds(bx, by) && holds((bx + p.x) / 2, (by + p.y) / 2)) { p.x = bx; p.y = by; }
+    else if (!(p.x >= 0 && p.y >= 0 && p.x <= S - .78 && p.y <= S - .9)) { p.x = Math.max(.3, Math.min(S - 1.1, p.x)); p.y = Math.max(.3, Math.min(S - 1.1, p.y)); if (!loose && !holds(p.x, p.y)) this.landSafely(); }
+    if (sea) { p.sailVx = 0; p.sailVy = 0; }
+    this.message = ASCENDANCY.messages.noLeave; return false;
+  }
   transitionSection(dx, dy) {
-    if (this.rite && this.area === "overworld") { const p = this.player; p.x = Math.max(1.2, Math.min(SECTION_SIZE - 2.2, p.x)); p.y = Math.max(1.2, Math.min(SECTION_SIZE - 2.2, p.y)); this.message = ASCENDANCY.messages.noLeave; return false; } // the rite's fire bars every edge
+    if (this.rite && this.area === "overworld") return this.riteHoldEdge(); // the rite's fire bars every edge
     const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }, wade = this.wading(), fromPent = !!this.map?.pentagon, fromCoherent = !!this._coherence;
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
     // Release 259: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
@@ -3818,6 +3831,7 @@ export class Game {
         ok: false,
         message: (this.message = "Nothing nearby responds."),
       };
+    if (this.rite && this.area === "overworld") { const why = riteExit(o, action || validActions(o, this.save)[0]); if (why) { this.message = why; return { ok: false, message: why, riteSealed: true }; } } // RITE_LOCKDOWN: no door, gate or fold off the rite's ground
     if (!action && o.roofHatch && o.kind === "dungeon") action = "enter"; // roof report (2026-11-04): a roof hatch is a ladder down, taken at the first press like the ladder up to it (no crossing chooser)
     if (o.skyway && (o.disc ? this.skyLevel || 0 : elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) < (o.elev || 0)) return { ok: false, message: (this.message = "The skyway door hangs above you. Climb the floating platforms to reach it: jump from one to the next.") }; // release 585
     if (o.completionExit) {
@@ -7904,7 +7918,7 @@ export class Game {
     if(!fellIntoHazard&&this.area==="dungeon")this.updateDungeonDiscovery();
     if(!fellIntoHazard&&this.area==='overworld'){
       const insideId=structureOccupancy(this.map.tiles,width,p.x,p.y);
-      if(insideId){const trap=this.map.objects.find(o=>o.kind==='displacementTrap'&&o.shelterId===insideId&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.shelterId===insideId&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;if(hazard.hazardType==='toxicVent'){applyStrongPoison(eliteStateInPlace(this.save).status,this.save.maxHp);this.message=`${hazard.name} erupts. ${hazard.damage||10} damage and strong poison — a Clearroot Ampoule ends it.`}journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
+      if(insideId){const trap=!this.rite&&/* RITE_LOCKDOWN: a hidden Folded Seam stays shut while a rite burns */this.map.objects.find(o=>o.kind==='displacementTrap'&&o.shelterId===insideId&&o.state!=='used'&&!this.save.worldFlags[`displacement-trigger:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.55);if(trap){this.startDisplacement(trap,true);return}const hazard=this.map.objects.find(o=>o.kind==='shelterHazard'&&o.shelterId===insideId&&o.state==='armed'&&!this.save.worldFlags[`shelter-hazard:${this.rx},${this.ry}:${o.id}`]&&Math.hypot(o.x+.5-(p.x+.5),o.y+.5-(p.y+.7))<.6);if(hazard){const key=`shelter-hazard:${this.rx},${this.ry}:${hazard.id}`;this.save.worldFlags[key]=true;hazard.state='spent';p.hp=Math.max(1,p.hp-(hazard.damage||10));this.message=`${hazard.name} erupts. ${hazard.damage||10} damage — the mechanism falls quiet.`;if(hazard.hazardType==='toxicVent'){applyStrongPoison(eliteStateInPlace(this.save).status,this.save.maxHp);this.message=`${hazard.name} erupts. ${hazard.damage||10} damage and strong poison — a Clearroot Ampoule ends it.`}journalOnce(this.save,`shelter-hazard:${hazard.hazardType}`,`Shelters may conceal ${hazard.name.toLowerCase()} mechanisms. Their floor marks can be inspected, avoided, and remembered.`,'Shelter hazards');this.sync()}}
     }
     if(!fellIntoHazard){
       for(const e of this.enemies){
