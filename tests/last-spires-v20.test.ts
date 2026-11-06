@@ -94,7 +94,7 @@ function trees(v, count = COUNT) {
 const mix = (list) => { const n = { spire: 0, compact: 0, grove: 0 }; for (const { m } of list) n[m.canopy.form]++; return n; };
 
 test('landscape 20: the tables; version 19 keeps its own `least`; the trunk list moved to trees.ts unchanged', () => {
-  assert.equal(LANDSCAPE_VERSION, 22); assert.equal(TREES_V20.version, 20); assert.equal(TREES_V19.version, 19);
+  assert.equal(LANDSCAPE_VERSION, 23); assert.equal(TREES_V20.version, 20); assert.equal(TREES_V19.version, 19);
   assert.deepEqual(TREES_V19.specs.spire.least, { 4: [3, 4, 3, 3] }, 'version 19 as it shipped'); assert.deepEqual(TREES_V19.specs.greater.least, { 4: [3, 4, 3, 3] });
   for (const k of ['spire', 'greater']) { assert.equal(TREES_V20.specs[k].least, undefined, `${k}: every side may be three tiles`); assert.deepEqual(TREES_V20.specs[k].reach, TREES_V19.specs[k].reach); }
   for (const k of ['tall', 'compact', 'lesser']) assert.deepEqual(TREES_V20.specs[k], TREES_V19.specs[k]);
@@ -179,7 +179,7 @@ test('older ground regenerates byte for byte: version 19 sections fingerprinted 
 
 test('in the game: new ground grows version 20 trees and pins landscape 20; ground first seen at 19 keeps its version 19 tree', () => {
   const [x, y] = [282, 14], fresh = freshSave(); fresh.seed = SEED; const g = new Game(fresh, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
-  assert.equal(fresh.atlas[`${x},${y}`].landscapeVersion, 22); assert.equal(g.map.canopy.version, 21); assert.equal(g.map.canopy.form, 'spire');
+  assert.equal(fresh.atlas[`${x},${y}`].landscapeVersion, 23); assert.equal(g.map.canopy.version, 21); assert.equal(g.map.canopy.form, 'spire');
   const old = freshSave(); old.seed = SEED; old.atlas = { [`${x},${y}`]: { ...fresh.atlas[`${x},${y}`], landscapeVersion: 19 } }; const g19 = new Game(old, 0); g19.rx = x; g19.ry = y; g19.loadArea('overworld');
   assert.equal(g19.map.canopy.version, 19); assert.equal(g19.map.canopy.form, 'compact'); assert.deepEqual(g19.map.canopy, section(SEED, x, y, 19).canopy, 'the version 19 tree, as it was');
 });

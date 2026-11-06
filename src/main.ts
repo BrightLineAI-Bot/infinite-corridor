@@ -279,7 +279,7 @@ const $ = (s) => document.querySelector(s),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
   settings = loadSettings(),
   input = createInput(document, globalThis, settings),
-  [save, game] = startGame(await loadSave()), // release 790
+  [save, game] = startGame(await loadSave()), // release 792
   panel = $("#panel"),
   body = $("#panelBody"),
   pausePanel = $("#pausePanel"),
@@ -955,7 +955,7 @@ function startPulse() {
       noise.start(t);
     }
     step++;
-  }, 790);
+  }, 792);
 }
 addEventListener("pointerdown", () => setTimeout(startPulse, 0), {
   once: true,
