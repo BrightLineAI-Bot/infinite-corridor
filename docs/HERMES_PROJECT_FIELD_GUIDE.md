@@ -2854,6 +2854,38 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 790: Close View v3 — one material, steady creatures, attack cues, a side bullseye — 2026-11-06
+
+Tim looked at Close View again on 2026-11-06. He asked for a bullseye lock icon and for walls that feel like the Corridor: "smooth because of like future technology, that's just old... most of the time it's just clean... some of it could be gritty, and some of it could be falling apart... the forms and things that we're seeing are functional equivalents that our mind can process". Then he refined it: "I say gritty, but I just mean made more cohesive... monsters phasing in and out of view depending on where the camera is... the way the monsters' attacks are." He also couldn't find Close View in the preview or the Proving Ground. He wanted the lock "off to the side of the screen, not in the center of the Crescent", easy to hit on purpose, and out of the thumb paths. The 787 review had flagged the crescent running over Spell B. Release 789 was in flight in PR #437, so this is 790.
+
+**CODE:** `src/close-view.ts` (`CLOSE_VIEW.version` 3). New numbers live in `CLOSE_VIEW.grit`, `material`, `cues`, the extended `crescent` and the `quality` tiers (`inlay`, `detail`, `detailNear`/`detailFar`, `ao`).
+
+- **One material.** Every wall style except doors is mixed 42% toward one shared grey-blue (`material.base`), so the floor and walls read as one built surface. Version 2's brick mortar is gone. Instead a faint inlaid seam runs round each room, with a panel joint every 3 tiles: one stroke per face, from a precomputed `INLAY_LUT`.
+  - Inside corners take ambient occlusion: `wallGeometry` marks them in `geo.ao`, and each one copies a cached 32×1 gradient once.
+  - A cached vault gradient darkens the top of the screen.
+- **Wear as an accent.** `wallDetail` gives each face its surface once per floor, from a hash of the floor's name and size and the face's tile and side. There are 9 variants: clean (52 of 100.5 weight), glyph traces, grime, crack, spall, growth, filament, exposed lattice, and the rare "unresolved" panel. Each texture is painted once, the first time a frame wants detail, into a 64×154 canvas (2 seeded instances each; clean is never painted, so at most 16 canvases). A frame only copies textures onto faces, clipped to the face and mapped to its nearest parallelogram. A face cut by the near plane takes the same share of its texture, so the texture never squeezes. Detail fades out between 4.5 and 7 tiles (balanced) or 6 and 9 (full); the low tier has none.
+  - `closeViewGritAlpha`: an unresolved panel breathes slowly (a 6.4 s period); with reduced motion it holds still.
+- **A continuous floor.** Version 2 gave each floor band one lateral scale, so lines running into the view stepped sideways at every seam. Now each band is two triangles (`floorTriangle`), each mapped exactly at its three corners and grown 1.5 px to hide seams. The band counts were cut to 12 / 20 / 28 to keep the draw budget.
+- **Creatures that hold steady.** This was the phasing. Version 2 sorted a billboard against each wall face by the face's mid-depth only, so a creature standing in front of a face that ran away from the camera was drawn under it, then over it as the view turned. `occludeBillboards` now orders each billboard against every face its body overlaps on screen, by which side of that face it stands on (a wall it is behind always wins).
+  - Opacity and occlusion ease per creature (`FOE_FADE`, a `WeakMap`, at `cues.fade` 7/s). A creature fades in as it comes into sight, and fades to nothing at the fog's far edge instead of dropping out from a tenth.
+  - A creature that a wall hides from the camera is drawn again over the walls as a 0.34 ghost.
+- **Attack cues** (all tiers): while a creature winds up (`telegraph`, or its pattern's `windup` phase), it pulses a cached glow and rings the floor at its feet. Struck, it flashes in light for its `hitFlash`. Actors keep their contact shadows.
+- **Lock and crescent.** The lock is a bullseye: two rings and a dot, with the inner ring filling when locked (`styles.css .close-lock`). It is a 46 px touch target with a 36 px disc, sitting at the screen's right edge (6 px in), 16 px above the crescent's band.
+  - It fires on a release within 10 px of where the press started on it. A pointer already panning the crescent never counts.
+  - The crescent's ends are drawn back in 2° steps out from −90°, until the band clears every other control in `#actions` (the lock included) by 6 px and stays 4 px inside the screen.
+- **Discoverability.** Options has a new **Camera** tab holding the Close View toggle, the camera style and auto-follow. The toggle reads "Close View: third-person camera indoors (prototype, this journey)" and its hint says how to use it. The default stays off.
+  - In `src/proving-ground.ts`, the Close View Lab starts its first scenario at once and folds the developer menu on a phone. Choosing another scenario starts it at once. Any lab with no test running says what to do on the canvas.
+
+**BOUNDARY:**
+- Drawing only. There are no save changes (schema 14) and no generation changes: the wear is derived from the floor each time and never stored.
+- The overworld and open-air tiles render exactly as before.
+- Bounded:
+  - Textures are painted once (at most 16 canvases of 64×154).
+  - The occlusion pass is at most actors × faces in view.
+  - There is no per-frame allocation beyond version 2's except the cue paths.
+  - Measured on the lab floors at 390×844, the worst screen draws per frame were: low 117 (bound 160), balanced 260 (bound 280), full 315 (bound 400).
+- The lab still runs only on its scratch save.
+- Tests: `tests/close-view-cohesion.test.ts`. In `tests/close-view-controls.test.ts`, the "lock button sits on the arc" assertion became "at the right, clear of the crescent's band".
 ## Release 789: sealed towers — the keep needs a key won in the maze — 2026-11-06
 
 Tim, 2026-11-06: "For the keeps with courtyards, with the tower in the center, let's make it so that unless you are climbing those towers to access a lever, you need a key to enter it. So you can't just hop down with the drone and then just finish the level by getting on the roof somehow. Sometimes that's okay, but that shouldn't be a way to circumvent all the mazes."
