@@ -585,8 +585,9 @@ export const TERRACES = {
 // within `foeNear` tiles (an aroused one within `aggroNear`), and not hurt for `calm` seconds. Counted in play seconds only, each
 // frame's share at most `step` seconds, so a pause, backgrounding or a long frame never grants heal for time away. One message a
 // visit (a visit ends `visitGap` seconds off the pools); a wisp of steam every `wisp` seconds while it mends.
+// Tim, 2026-11-06: "2% is fine and the water should be the one that heals you": `share` .02 (was .015), springPool alone.
 export const HOT_SPRINGS = {
-  kinds: ["springPool"], share: .015, step: .1, calm: 4, foeNear: 7, aggroNear: 14, scan: .25, visitGap: 3, wisp: .9, wispLife: 1.2,
+  kinds: ["springPool"], share: .02, step: .1, calm: 4, foeNear: 7, aggroNear: 14, scan: .25, visitGap: 3, wisp: .9, wispLife: 1.2,
   message: "The spring's warmth seeps into your wounds.",
 };
 // The health after `dt` seconds of soaking: up `share` of `maxHp` a second (dt counted to `step` at most), never above `ceiling`.

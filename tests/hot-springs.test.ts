@@ -24,7 +24,7 @@ function soak(g, t, seconds, dt = .05, start = { now: 1000 }) {
 
 test('the table: a slow share of maximum health a second, springPool only, counted to a short step', () => {
   assert.deepEqual(HOT_SPRINGS.kinds, ['springPool']);
-  assert.ok(HOT_SPRINGS.share > 0 && HOT_SPRINGS.share <= .02, 'slow: no faster than Sanctum');
+  assert.equal(HOT_SPRINGS.share, .02, 'Tim, 2026-11-06: "2% is fine and the water should be the one that heals you"');
   assert.ok(HOT_SPRINGS.step <= .1 && HOT_SPRINGS.calm >= 3 && HOT_SPRINGS.foeNear >= 6);
   assert.equal(springMend(50, 100, 100, 1), 50 + 100 * HOT_SPRINGS.share * HOT_SPRINGS.step, 'a long frame counts only `step` seconds');
   assert.equal(springMend(99.9, 100, 100, .1), 100, 'never past maximum health');

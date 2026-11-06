@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 781, the next is **782**.
+Taken at merge time: `main`'s release + 1 (see above). After 782, the next is **783**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 781 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 3: two more far threads past 1000 (the Enumerator's Count, the Tinker's Tags); far stories take about 79% of the shared slots out there, at 0.12 | In flight. |
+| 782 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite is a lockdown (no door, sky gate, Far Gate, fold, dive or edge leaves it; only finishing, death or a Crossing Sigil); old Pentagon Journal lines in words; hot springs heal 2% | In flight. |
+| 781 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 3: two more far threads past 1000 (the Enumerator's Count, the Tinker's Tags); far stories take about 79% of the shared slots out there, at 0.12 | Merged (#429). |
 | 780 | Claude | `claude/dreamy-rubin-yn6q2p` | Canopy groves (landscape 22, trees v21): several great crowns joined high above a hidden floor by branch bridges and one-tile hops, one tree climbed; groves never need a hop the Wayfarer can't make | Merged (#428). Published as r780-e230fbd94ccd on 2026-11-05. |
 | 779 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 2: new crossings hold a story piece at 12% (was 13%); three new threads past 1000 (Tall Child's Slates, Spore Prints, Ink-Clerk's Blotters) share those slots | Merged (#427). Published in r780. |
 | 778 | Claude | `claude/dreamy-rubin-yn6q2p` | The crown wake needs the crown (standing on it, not height alone) and takes that crown's Crown Rest; a jump saved mid-air resumes at its height | Merged (#426). Published in r780. |

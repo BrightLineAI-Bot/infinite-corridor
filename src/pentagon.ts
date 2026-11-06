@@ -813,6 +813,35 @@ export function ensurePentagonFinding(save) {
   save.pentagonFinding = { ...raw, version: PENTAGON_FINDING.version, follow: at(raw.follow) ? { ...raw.follow } : null, hunts: [...done, ...live], n: Math.max(0, Math.floor(Number(raw.n) || 0)), read: Math.max(0, Math.floor(Number(raw.read) || 0)) };
   return save;
 }
+// Tim, 2026-11-06: the Journal lines release 775 wrote gave a Pentagon's section ("…points north-east to a Pentagon at 120, 44",
+// "A Pentagon hunt: a five-sided wall stands at cx, cy…"); release 777 writes words only. `retired` holds 775's two shapes, by
+// record id prefix: the pattern its text was written in and which groups hold the reading (or offering) section and the
+// Pentagon's centre. A hunt's completion line (`pentagon-hunt-done:`) keeps its section: the Wayfarer stood there by then.
+export const PENTAGON_JOURNAL = {
+  retired: {
+    "pentagon-sigil:": { text: /^A Pentagon sigil, read at (-?\d+), (-?\d+), points [a-z-]+ to a Pentagon at (-?\d+), (-?\d+)\.$/, from: [1, 2], to: [3, 4], say: "sigilJournal" },
+    "pentagon-hunt:": { text: /^A Pentagon hunt: a five-sided wall stands at (-?\d+), (-?\d+), [a-z-]+ of (-?\d+), (-?\d+)\.$/, from: [3, 4], to: [1, 2], say: "huntJournal" },
+  },
+};
+// The 775 line of one Journal record in 777's words, or null (not one of 775's lines, already in words, or not parsed).
+export function pentagonJournalWords(rec) {
+  if (!rec || typeof rec !== "object" || typeof rec.recordId !== "string" || typeof rec.text !== "string") return null;
+  for (const [prefix, R] of Object.entries(PENTAGON_JOURNAL.retired)) {
+    if (!rec.recordId.startsWith(prefix)) continue;
+    const m = R.text.exec(rec.text); if (!m) return null;
+    const [rx, ry, cx, cy] = [...R.from, ...R.to].map((i) => Number(m[i]));
+    if (![rx, ry, cx, cy].every(Number.isSafeInteger) || (rx === cx && ry === cy)) return null;
+    return PENTAGON_FINDING.messages[R.say](pentagonHeading(cx - rx, cy - ry), pentagonFarWords(Math.round(Math.hypot(cx - rx, cy - ry))));
+  }
+  return null;
+}
+// Additive at schema 14 (migrateSave): rewrites those 775 lines in place, every other field of the record kept. Idempotent (777's
+// words never match 775's pattern); a record it cannot read is left as it is. Never throws on odd data.
+export function ensurePentagonJournal(save) {
+  const list = save?.narrative?.journal; if (!Array.isArray(list)) return save;
+  for (let i = 0; i < list.length; i++) { const text = pentagonJournalWords(list[i]); if (text != null) list[i] = { ...list[i], text }; }
+  return save;
+}
 export const pentagonHuntsOpen = (save) => (save?.pentagonFinding?.hunts || []).filter((q) => q.status !== "done");
 // Where to look for hunt number `n`, offered at section (rx, ry): points `near`..`far` sections out on bearings hashed from the
 // seed and `n`, each at least `spread` radians from the bearing of every hunt still open (so two open hunts lie in different
