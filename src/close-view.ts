@@ -1,3 +1,4 @@
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, writeCloseViewModel } from "./close-view-models.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { dungeonTileVisibility } from "./dungeon-framework.ts";
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
@@ -985,8 +986,9 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   occludeBillboards(n, faces);
   insertionSortByDepth(n);
   const turnFacing = relativeFacing(p), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
-  const packed = packBillboards(g, draws, n, s, turnFacing);
-  if (useGL) glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts);
+  const models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null;
+  const packed = packBillboards(g, draws, n, s, turnFacing, models ? MODEL_STATE.admitted : null);
+  if (useGL) glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models);
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
     if (itemKind[it] === 0) { const fo = it * 8, st = faceStyle[it], lv = faceLevel[it], al = faceAlpha[it]; if (al < 1) ctx.globalAlpha = al;
@@ -1131,11 +1133,12 @@ function relativeFacing(p) {
 // The atlas is a band of the ground canvas below its texture (the captured closures can only draw into the canvas they were
 // captured with), so the texture is copied once a frame when the atlas is first written, not once per actor.
 const SPRITES = { used: 0 };
-function packBillboards(g, draws, n, s, facing) {
+function packBillboards(g, draws, n, s, facing, native = null) {
   const A = CLOSE_VIEW.actors, ac = GROUND.ctx; if (!ac) return false;
   const Y0 = GROUND.atlasY, AW = GROUND.canvas.width, AH = GROUND.canvas.height - Y0; let x = 0, y = 0, rowH = 0;
   ac.setTransform(1, 0, 0, 1, 0, 0); ac.clearRect(0, Y0, AW, AH);
   let first = true; for (let oi = n - 1; oi >= 0; oi--) { const it = order[oi]; if (itemKind[it] !== 1) continue; // nearest first: they get the room
+    if (native?.has(it)) { boardPW[it] = 0; continue; }
     const d = draws[itemRef[it]], sc = boardScale[it], k = boardK[it], hw = A.halfWidth * sc, top = A.height * sc, bw = 2 * hw, bh = top + A.below;
     let q = k * spriteDpr / s; q = Math.min(q, (AW - 2) / (bw * s), (AH * (first && closeViewStats.gl ? CLOSE_VIEW.atmosphere.sprite.nearShare : 1 / 3)) / (bh * s)); first = false; // version 5: the nearest (the Wayfarer, mostly) may take more // a third of the atlas at most: room for every actor in view
     let pw = Math.ceil(bw * s * q), ph = Math.ceil(bh * s * q);
@@ -1560,8 +1563,79 @@ const falloff = (d, R) => { const x = d / R, k = Math.max(0, 1 - x * x); return 
 const lumOf = (c) => (c[0] + c[1] + c[2]) / 3;
 function lightLevel(F, X, Y, Z) { let l = lumOf(F.amb) + lumOf(F.torch) * F.torchP[1] * falloff(Math.hypot(X - F.px, Y - F.py, Z - F.torchP[2]), F.torchP[0]);
   for (let i = 0; i < F.nl; i++) l += (F.lc[i * 4] + F.lc[i * 4 + 1] + F.lc[i * 4 + 2]) / 3 * F.lc[i * 4 + 3] * falloff(Math.hypot(X - F.lp[i * 4], Y - F.lp[i * 4 + 1], Z - F.lp[i * 4 + 2]), F.lp[i * 4 + 3]); return l; }
+const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
+const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
+const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, hitSec: .18, walkTurn: Math.PI });
+const MODEL_STATE = {
+  map: null, admitted: new Set(), tracks: new Map(),
+  vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
+};
+function buildActorModels(g, draws, n, Q, now, reduce) {
+  const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
+  state.admitted.clear();
+  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); }
+  let offset = 0, count = 0;
+  const append = (actor) => {
+    if (count >= limit) return false;
+    const next = writeCloseViewModel(state.vertices, offset, actor);
+    if (next === offset) return false;
+    offset = next; count++;
+    return true;
+  };
+  const admit = (it, who, kind) => {
+    const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], attack = who.attackUntil > now || who.pack?.phase === "strike" || who.pack?.phase === "active" || who.gateAttack?.phase === "strike" || who.gateAttack?.phase === "active";
+    let track = state.tracks.get(who);
+    if (!track) track = { x: who.x, y: who.y, yaw: facing ? Math.atan2(facing[1], facing[0]) : CAM.yaw, pace: 0, at: -1, hitAt: -Infinity, hp: who.hp, deathAt: null, actor: null };
+    const dx = who.x - track.x, dy = who.y - track.y, dist = Math.hypot(dx, dy);
+    if (track.at !== now) {
+      if (dist > .005) track.yaw = Math.atan2(dy, dx);
+      else if (facing && (attack || !track.actor)) track.yaw = Math.atan2(facing[1], facing[0]);
+      track.pace = dist > .005 ? 1 : Math.max(0, track.pace - Math.max(0, now - track.at) / 180);
+    }
+    if (who.hp < track.hp) track.hitAt = now;
+    const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
+    const winding = who !== player && foeWindingUp(who);
+    const pose = hit ? "hit" : attack ? "attack" : winding ? "windup" : track.pace ? "walk" : "idle";
+    const amount = hit || (attack ? who.attackUntil > now ? 1 - Math.min(1, (who.attackUntil - now) / MODEL_TIMING.attackMs) : .6 : winding ? .85 : 0);
+    const actor = { kind, x: boardWX[it], y: boardWY[it], z: Math.max(0, d.lift || 0), yaw: track.yaw,
+      phase: reduce ? 0 : (who.walkPhase || now / 160) * MODEL_TIMING.walkTurn, pace: track.pace, pose, amount };
+    if (!append(actor)) return;
+    Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
+    state.tracks.set(who, track);
+    state.admitted.add(it);
+  };
+  for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
+    const it = order[oi];
+    if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer && !g.save.mech?.active && g.save.magicSkills?.active?.id !== "ember-form") {
+      admit(it, player, "player"); break;
+    }
+  }
+  const locked = g.lockedTarget?.();
+  // These actors keep sprite art because their captured draw also carries gameplay cues.
+  const canModel = (it, foe) => itemKind[it] === 1 && foe && modelSupported(foe.kind) &&
+    !foe.fracRank && !foe.fracWarden && !foe.fracShaman && !foe.warded && !foe.affixes?.length &&
+    (draws[itemRef[it]].alpha ?? 1) >= 1;
+  if (locked) for (let oi = n - 1; oi >= 0; oi--) {
+    const it = order[oi];
+    if (boardFoe[it] === locked && canModel(it, locked)) { admit(it, locked, locked.kind); break; }
+  }
+  for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
+    const it = order[oi], foe = boardFoe[it];
+    if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
+  }
+  for (const [who, track] of state.tracks) {
+    if (who.dead && who.hp <= 0 && !who.noRewards) {
+      track.deathAt ??= now;
+      const amount = (now - track.deathAt) / MODEL_TIMING.deathMs;
+      if (amount < 1) append({ ...track.actor, pose: "death", amount });
+      else state.tracks.delete(who);
+    } else if (now - track.at > 120 || who.dead) state.tracks.delete(who);
+  }
+  closeViewGLStats.models = count;
+  return offset ? state.vertices.subarray(0, offset) : null;
+}
 const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
-function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts) {
+function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models) {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, At = CLOSE_VIEW.atmosphere, F = GLF, p = g.player;
   const th = themeOf(g.map), tg = themeGL(th), st = staticFor(g.map, geo, th); closeViewGLStats.theme = THEME_OF.get(g.map) || ""; const seen = (SEEN.map === g.map ? SEEN.fn : (SEEN.map = g.map, SEEN.fn = glSeen(g.map)));
   const scale = Math.max(.5, Math.min(4, (ctx.canvas?.width || w) / w)) * (Q.glScale || 1);
@@ -1599,15 +1673,36 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const BV = (X, Y, Z, u, v, a, fl, gh, li) => { const b = bv * BOARD_FLOATS; B[b] = X; B[b + 1] = Y; B[b + 2] = Z; B[b + 3] = u; B[b + 4] = v; B[b + 5] = a; B[b + 6] = fl; B[b + 7] = gh; B[b + 8] = li; bv++; };
   const DV = (X, Y, Z, lx, ly, kind, a, wd, li) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z; D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
   const flatD = (X, Y, r, kind, a, wd, li = 1) => { room(6); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y - r, .01, 1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y + r, .01, -1, 1, kind, a, wd, li); };
+  const shadow = (X, Y, sc) => {
+    let lx = px, ly = py, best = lightLevel(F, X, Y, .4);
+    for (let i = 0; i < F.nl; i++) {
+      const j = i * 4, distance = Math.hypot(X - F.lp[j], Y - F.lp[j + 1], F.lp[j + 2] - .4);
+      const score = F.lc[j + 3] * falloff(distance, F.lp[j + 3]);
+      if (score > best * .35) { best = score / .35; lx = F.lp[j]; ly = F.lp[j + 1]; }
+    }
+    const dx = X - lx, dy = Y - ly, distance = Math.hypot(dx, dy);
+    if (distance < .12) return;
+    const along = Math.min(MODEL_SHADOW.max, MODEL_SHADOW.length + distance * .12) * sc;
+    const ux = dx / distance, uy = dy / distance, wx = -uy * MODEL_SHADOW.width * sc, wy = ux * MODEL_SHADOW.width * sc;
+    const ax = X - ux * .12, ay = Y - uy * .12, bx = X + ux * along, by = Y + uy * along;
+    const a = MODEL_SHADOW.alpha;
+    room(6);
+    DV(ax - wx, ay - wy, .008, -1, -1, 10, a, 0, 0);
+    DV(bx - wx, by - wy, .008, 1, -1, 10, a, 0, 0);
+    DV(bx + wx, by + wy, .008, 1, 1, 10, a, 0, 0);
+    DV(ax - wx, ay - wy, .008, -1, -1, 10, a, 0, 0);
+    DV(bx + wx, by + wy, .008, 1, 1, 10, a, 0, 0);
+    DV(ax + wx, ay + wy, .008, -1, 1, 10, a, 0, 0);
+  };
   const card = (X, Y, z0, z1, hw, kind, a, wd, li) => { room(6); const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li); DV(qx, qy, z0, 1, -1, kind, a, wd, li); DV(qx, qy, z1, 1, 1, kind, a, wd, li); DV(lx, ly, z0, -1, -1, kind, a, wd, li); DV(qx, qy, z1, 1, 1, kind, a, wd, li); DV(lx, ly, z1, -1, 1, kind, a, wd, li); };
   const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
-  for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || !boardPW[it]) continue;
+  for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const sc = boardScale[it], hw = A.halfWidth * sc, top = A.height * sc, X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])), foe = boardFoe[it]; // the Wayfarer never fainter than nearFade (nothing see-through)
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const fl = foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
-    const lx = X - RX * hw, ly = Y - RY * hw, rxp = X + RX * hw, ryp = Y + RY * hw, zb = -A.below;
-    BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li);
-    if (foe || isPlayer) { const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6, 0);
+    if (boardPW[it]) { const lx = X - RX * hw, ly = Y - RY * hw, rxp = X + RX * hw, ryp = Y + RY * hw, zb = -A.below;
+    BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
+    if (foe || isPlayer) { if (MODEL_STATE.admitted.has(it)) shadow(X, Y, sc); const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b, CLOSE_VIEW.gl.ringWidth); } }
   GLB.nBoard = bv;
   // card props near the Wayfarer: cobwebs, chains, bones (the nearest `cards`), and the spikes of traps that are up
@@ -1623,7 +1718,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) card(ox + .2 + i * .3, oy + .2 + j * .3, 0, hgt, .035, 7, 1, 0, li); } }
   GLB.nGlowStart = dv;
   // added in light: wind-up glows, the flames of the lights in reach, their halos, and dust drifting near them (full tier)
-  for (let oi = 0; oi < n; oi++) { const it = order[oi]; const foe = boardFoe[it]; if (itemKind[it] !== 1 || !boardPW[it] || !foe || !foeWindingUp(foe)) continue;
+  for (let oi = 0; oi < n; oi++) { const it = order[oi]; const foe = boardFoe[it]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it)) || !foe || !foeWindingUp(foe)) continue;
     const sc = boardScale[it], X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), a = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b, hs = A.halfWidth * sc * 1.1, zc = A.height * .45 * sc;
     room(6); DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc - hs, 1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1);
     DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1); DV(X - RX * hs, Y - RY * hs, zc + hs, -1, 1, 2, a, 0, 1); }
@@ -1636,7 +1731,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
           const X = L[o] + (hx - .5) * 1.6 + Math.sin(t * M.drift + m) * .15, Y = L[o + 1] + (hy - .5) * 1.6 + Math.cos(t * M.drift * .8 + m * 1.7) * .15, Z = .4 + hz * 1.8 + Math.sin(t * M.drift * .5 + m * 2.3) * .2;
           card(X, Y, Z - M.size, Z + M.size, M.size, 6, M.alpha * (.4 + .6 * hz), L[o + 5], 1); } } } }
   GLB.nDecal = dv;
-  if (!drawSceneGL(GROUND.canvas, UNI)) return false;
+  if (!drawSceneGL(GROUND.canvas, UNI, models)) return false;
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); ctx.restore();
   return true;
 }
