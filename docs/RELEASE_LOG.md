@@ -15,17 +15,18 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 780, the next is **781**.
+Taken at merge time: `main`'s release + 1 (see above). After 781, the next is **782**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 780 | Claude | `claude/dreamy-rubin-yn6q2p` | Canopy groves (landscape 22, trees v21): several great crowns joined high above a hidden floor by branch bridges and one-tile hops, one tree climbed; groves never need a hop the Wayfarer can't make | In flight. |
-| 779 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 2: new crossings hold a story piece at 12% (was 13%); three new threads past 1000 (Tall Child's Slates, Spore Prints, Ink-Clerk's Blotters) share those slots | Merged (#427). |
-| 778 | Claude | `claude/dreamy-rubin-yn6q2p` | The crown wake needs the crown (standing on it, not height alone) and takes that crown's Crown Rest; a jump saved mid-air resumes at its height | Merged (#426). |
-| 777 | Claude | `claude/dreamy-rubin-yn6q2p` | Pentagon finding is hands-off (no compass, no Atlas pins, hunts open quietly in the Journal in words); the Rite seals Wayglass travel | Merged (#425). |
-| 776 | Claude | `claude/dreamy-rubin-yn6q2p` | Healing hot springs: a Terrace Springs pool mends 1.5% of max health a second, out of combat, with a wisp of steam | Merged (#424). |
+| 781 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 3: two more far threads past 1000 (the Enumerator's Count, the Tinker's Tags); far stories take about 79% of the shared slots out there, at 0.12 | In flight. |
+| 780 | Claude | `claude/dreamy-rubin-yn6q2p` | Canopy groves (landscape 22, trees v21): several great crowns joined high above a hidden floor by branch bridges and one-tile hops, one tree climbed; groves never need a hop the Wayfarer can't make | Merged (#428). Published as r780-e230fbd94ccd on 2026-11-05. |
+| 779 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 2: new crossings hold a story piece at 12% (was 13%); three new threads past 1000 (Tall Child's Slates, Spore Prints, Ink-Clerk's Blotters) share those slots | Merged (#427). Published in r780. |
+| 778 | Claude | `claude/dreamy-rubin-yn6q2p` | The crown wake needs the crown (standing on it, not height alone) and takes that crown's Crown Rest; a jump saved mid-air resumes at its height | Merged (#426). Published in r780. |
+| 777 | Claude | `claude/dreamy-rubin-yn6q2p` | Pentagon finding is hands-off (no compass, no Atlas pins, hunts open quietly in the Journal in words); the Rite seals Wayglass travel | Merged (#425). Published in r780. |
+| 776 | Claude | `claude/dreamy-rubin-yn6q2p` | Healing hot springs: a Terrace Springs pool mends 1.5% of max health a second, out of combat, with a wisp of steam | Merged (#424). Published in r780. |
 | 775 | Claude | `claude/dreamy-rubin-yn6q2p` | Pentagon sigils that truly point (catchments around each unfinished Pentagon; bearing, distance, compass) and Pentagon hunts (two at a time in the Journal and on the Atlas) | Merged (#423). Published as r775-9678a017d60c on 2026-11-05. |
 | 774 | Claude | `claude/dreamy-rubin-yn6q2p` | Crossing Sigils work anywhere you're alive: every interior, boss fights, the Rite (that attempt is lost), displacements, the open world; safe landing | Merged (#422). Published in r775. |
 | 773 | Claude | `claude/dreamy-rubin-yn6q2p` | The story budget: one steady thread density (0.13 per crossing) from the Refuge out past 1000 for crossings entered from now on; later stories share one roll | Merged (#421). Published in r775. |

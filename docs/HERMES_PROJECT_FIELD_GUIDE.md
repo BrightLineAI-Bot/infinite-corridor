@@ -2854,6 +2854,34 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 781: story version 3 — the far stories lead past 1000 — 2026-11-06
+
+Tim, 2026-11-06: the far stories should be the main stories out past 1000, since they exist only there, and there is room for more of them ("the world is huge and I intended it to be massive").
+
+**CODE:** `src/threads.ts`:
+- `STORY_BUDGET` is `{ version: 3, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12 } }`.
+- Two new threads join the shared roll. Both are band `beyond`, with `shared: { 3: ["beyond"] }` and `weight: { 3: 3 }`:
+  - `enumerator`: The Enumerator's Count (Crystal Civilisation), relic `census`.
+  - `tinkerTags`: The Tinker's Tags (Storm Halls), relic `tag`.
+- `tallSlates`, `sporePrints` and `inkBlotters` gain `shared[3]` and `weight: { 2: 2, 3: 3 }`.
+- `threadWeight(id, version)` reads the latest weight entry at or before the crossing's version, and `sharedThreadIn` passes that version in.
+- `pinDungeonLayout` pins new crossings to `storyVersion` 3.
+
+Elsewhere:
+- `renderer.ts` gains the relic drawings `census` and `tag`.
+- `docs/narrative-bible.md` §6 items 6–7.
+
+Tests:
+- `tests/threads-far-v3.test.ts` (new).
+- `tests/threads-far.test.ts` and `tests/story-budget.test.ts` now name version 2 explicitly where they meant it.
+
+**BOUNDARY:**
+- Crossings pinned at versions 0, 1 and 2 roll exactly as before. This is checked against written-out references over 100,000+ crossings out to 5000.
+- Version 3 holds a piece in exactly the same crossings as version 2, at 0.12. Only who fills the shared slots past 1000 changes.
+- Past 1000, the five far threads take about 79% of the shared slots (it was 60%). Each needs about 760 crossings to finish.
+- The first ten threads (the Second Surveyor and the Sleeper) keep their own 0.07 out there.
+- Schema 14; no new save fields.
+
 ## Release 780: canopy groves; groves never need a hop you can't make — 2026-11-05
 
 Tim, 2026-11-05: "a grove where there's multiple great trees and they make like a canopy area up above the floor, where the floor is kind of invisible... a series of platforms... If they fall off they'll die, or their glider will get deployed... Maybe there's only one tree to access the whole larger area... It doesn't have to be offered in every grove." He also asked to fix the rare grove that needs a two-tile hop.
