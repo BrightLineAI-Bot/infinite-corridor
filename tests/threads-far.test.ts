@@ -42,14 +42,14 @@ const circle = (r, n, tag = 'c') => Array.from({ length: n }, (_, i) => { const 
 const NEAR = [[3, 6], [7, 18], [19, 35], [36, 70], [71, 150], [495, 505]], OUT = [[995, 1005], [1100, 1110], [1495, 1505], [2995, 3005]];
 
 test('story version 2: the budget is 0.12, one table entry; version 1 keeps 0.13; the three far threads are written in full', () => {
-  assert.equal(STORY_BUDGET.version, 2); assert.equal(STORY_BUDGET.perCrossing, .12); assert.deepEqual(STORY_BUDGET.byVersion, { 1: .13, 2: .12 });
+  assert.ok(STORY_BUDGET.version >= 2); assert.equal(STORY_BUDGET.perCrossing, .12); assert.equal(STORY_BUDGET.byVersion[1], .13); assert.equal(STORY_BUDGET.byVersion[2], .12); // story version 3 (2026-11-06) adds an entry
   assert.equal(budgetFor(0), 0); assert.equal(budgetFor(1), .13); assert.equal(budgetFor(2), .12); assert.equal(budgetFor(9), .12, 'a later version keeps the latest budget until it sets its own');
-  assert.equal(storyVersionFor(false), 2); assert.equal(storyVersionFor(true), 0);
-  for (const id of FAR) { const T = THREADS[id]; assert.ok(T, id); assert.equal(T.band, 'beyond'); assert.deepEqual(T.shared, { 2: ['beyond'] }); assert.ok(!T.wave && !T.layer, `${id} is never a wave`);
+  assert.equal(storyVersionFor(false), STORY_BUDGET.version); assert.equal(storyVersionFor(true), 0);
+  for (const id of FAR) { const T = THREADS[id]; assert.ok(T, id); assert.equal(T.band, 'beyond'); assert.deepEqual(T.shared[2], ['beyond']); assert.ok(!T.wave && !T.layer, `${id} is never a wave`);
     assert.equal(T.pieces.length, 6); assert.equal(new Set(T.pieces).size, 6); assert.ok(T.pieces.every((p) => p.length > 80 && p.length < 400), id); assert.ok(T.ending.length > 200 && T.ending.length < 650, id);
-    assert.ok(!/corridor/i.test(T.pieces.join(' ')), `${id}: the pieces never name what the Corridor is`); assert.equal(threadWeight(id), 2); }
+    assert.ok(!/corridor/i.test(T.pieces.join(' ')), `${id}: the pieces never name what the Corridor is`); assert.equal(threadWeight(id, 2), 2); }
   assert.deepEqual(THREAD_ORDER.filter((id) => THREADS[id].shared?.[2]), FAR, 'only the far threads join at version 2');
-  for (const id of THREAD_ORDER.filter((t) => !FAR.includes(t))) assert.equal(threadWeight(id), 1, `${id} keeps an even share`);
+  for (const id of THREAD_ORDER.filter((t) => !FAR.includes(t))) assert.equal(threadWeight(id, 2), 1, `${id} keeps an even share`);
   const rend = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'), main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
   for (const k of ['slate', 'print', 'blotter']) assert.match(rend, new RegExp(`case "${k}"`), `the ${k} is drawn`);
   assert.match(main, /beyond: "the far realms/, 'the Arcana says where the far threads lie');
@@ -81,9 +81,9 @@ test('the far threads lie only beyond 1000 sections (straight line), only at ver
   for (const r of [999.4, 999.9]) assert.ok(!inBand('beyond', r, 0)); assert.ok(inBand('beyond', 1000, 0)); assert.ok(inBand('beyond', 708, 708)); assert.ok(!inBand('beyond', 707, 707));
   // Shares out there: the first ten keep 0.07; each far thread takes twice the share of each deep-band shared thread.
   const counts = {}; let all = 0; for (const [seed, id] of circle(1500, 120000, 's')) { all++; const t = threadIn(seed, id, 2); if (t) counts[t] = (counts[t] || 0) + 1; }
-  const pool = sharedThreads(2, 1500, 0), weights = pool.reduce((s, t) => s + threadWeight(t), 0), rest = .12 - THREAD_RULES.chance;
+  const pool = sharedThreads(2, 1500, 0), weights = pool.reduce((s, t) => s + threadWeight(t, 2), 0), rest = .12 - THREAD_RULES.chance;
   assert.deepEqual(pool, ['wellDigger', 'tollKeys', 'weaver', 'mirror', ...FAR]);
-  for (const t of pool) assert.ok(Math.abs(counts[t] / all - rest * threadWeight(t) / weights) < .002, `${t}: ${(counts[t] / all).toFixed(4)}`);
+  for (const t of pool) assert.ok(Math.abs(counts[t] / all - rest * threadWeight(t, 2) / weights) < .002, `${t}: ${(counts[t] / all).toFixed(4)}`);
   const farShare = FAR.reduce((s, t) => s + counts[t], 0) / pool.reduce((s, t) => s + counts[t], 0); assert.ok(farShare > .55 && farShare < .65, `far share ${farShare.toFixed(3)}`);
   assert.ok(Math.abs((counts.cartographer + counts.sleeper) / all - THREAD_RULES.chance) < .003, 'the first ten keep their slots');
 });
@@ -106,12 +106,12 @@ test('a crossing pinned before keeps its version through save and load; a crossi
   for (const id of v1) s.consequences.dungeons[id] = { discovered: true, bypassed: false, visits: 1, abandoned: 0, guardianDefeated: false, resolved: false, visitOpen: false, storyVersion: 1 };
   const loaded = migrateSave(JSON.parse(JSON.stringify(s)));
   for (const id of v1) { pinDungeonLayout(loaded, id); assert.equal(storyVersionOf(loaded, id), 1); assert.equal(addThreadRelic(map(), loaded, id)?.thread ?? null, r773('FARPIN', id)); }
-  for (const id of fresh) { const h = pinDungeonLayout(loaded, id); assert.equal(h.storyVersion, 2); assert.ok(FAR.includes(addThreadRelic(map(), loaded, id).thread)); }
+  for (const id of fresh) { const h = pinDungeonLayout(loaded, id); assert.equal(h.storyVersion, STORY_BUDGET.version); assert.equal(addThreadRelic(map(), loaded, id)?.thread ?? null, threadIn('FARPIN', id, STORY_BUDGET.version)); }
   const again = migrateSave(JSON.parse(JSON.stringify(loaded)));
-  for (const id of v1) assert.equal(again.consequences.dungeons[id].storyVersion, 1); for (const id of fresh) assert.equal(again.consequences.dungeons[id].storyVersion, 2);
+  for (const id of v1) assert.equal(again.consequences.dungeons[id].storyVersion, 1); for (const id of fresh) assert.equal(again.consequences.dungeons[id].storyVersion, STORY_BUDGET.version);
 });
 
-const farCrossings = (seed, thread, n) => { const out = []; for (let i = 0; out.length < n && i < 200000; i++) { const a = i * 2.399963, r = 1000 + (i % 400), x = Math.round(Math.cos(a) * r), y = Math.round(Math.sin(a) * r), id = `dungeon:${seed}:g1:${x}:${y}:room${i}`; if (threadIn(seed, id, 2) === thread) out.push(id); } return out; };
+const farCrossings = (seed, thread, n, v = 2) => { const out = []; for (let i = 0; out.length < n && i < 200000; i++) { const a = i * 2.399963, r = 1000 + (i % 400), x = Math.round(Math.cos(a) * r), y = Math.round(Math.sin(a) * r), id = `dungeon:${seed}:g1:${x}:${y}:room${i}`; if (threadIn(seed, id, v) === thread) out.push(id); } return out; };
 
 test('each far thread is read in order across crossings, never stranded, and the save keeps it at schema 14', () => {
   for (const id of FAR) { const T = THREADS[id], seed = `READ-${id}`, c = farCrossings(seed, id, T.pieces.length + 1), s = freshSave(); s.seed = seed;
@@ -126,10 +126,10 @@ test('each far thread is read in order across crossings, never stranded, and the
 });
 
 test('in the game, the last piece of a far thread writes its ending in the Journal and raises QUEST COMPLETE', () => {
-  const id = 'sporePrints', T = THREADS[id], seed = 'FARGAME', c = farCrossings(seed, id, T.pieces.length), s = freshSave(); s.seed = seed;
-  for (let i = 0; i < T.pieces.length - 1; i++) { s.consequences.dungeons[c[i]] = { storyVersion: 2 }; readThreadRelic(s, addThreadRelic(map(), s, c[i])); }
+  const id = 'sporePrints', T = THREADS[id], seed = 'FARGAME', c = farCrossings(seed, id, T.pieces.length, STORY_BUDGET.version), s = freshSave(); s.seed = seed;
+  for (let i = 0; i < T.pieces.length - 1; i++) { s.consequences.dungeons[c[i]] = { storyVersion: STORY_BUDGET.version }; readThreadRelic(s, addThreadRelic(map(), s, c[i])); }
   const last = c[T.pieces.length - 1], [x, y] = at(last); s.session.activeDungeonId = last; s.session.dungeonReturn = { rx: x, ry: y, x: 16, y: 16 };
-  const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[last].storyVersion, 2, 'a new crossing pins to version 2');
+  const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[last].storyVersion, STORY_BUDGET.version, 'a new crossing pins to the current version');
   const o = g.map.objects.find((q) => q.kind === 'threadRelic'); assert.ok(o, 'laid in the crossing'); assert.equal(o.thread, id); assert.equal(o.index, T.pieces.length - 1);
   g.player.x = o.x; g.player.y = o.y; const r = g.interact('read', o.id); assert.ok(r.ok && r.done, g.message);
   assert.ok(threadsDone(s).includes(id)); assert.ok(s.narrative.journal.some((j) => j.text === T.ending)); assert.ok(s.narrative.journal.some((j) => j.text === T.pieces.at(-1)));
