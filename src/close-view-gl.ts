@@ -114,6 +114,7 @@ uniform vec4 u_ceil; uniform vec3 u_ceilRGB; uniform vec4 u_ceilK; // ceil: heig
 uniform vec4 u_hall; uniform vec3 u_backdrop[3]; // backdrop kind, open roof, skylight, shaft depth
 uniform vec4 u_pit; uniform vec3 u_stone; uniform vec3 u_lip; uniform vec3 u_safe; uniform vec4 u_safeP; // pit: hole depth, chasm depth, darkening a tile, lip width; safeP: near, full, breath, on
 uniform vec4 u_lava; uniform vec3 u_lavaA; uniform vec3 u_lavaB; uniform vec3 u_lavaC; uniform vec3 u_chasm; // lava: scale, flow, light, light reach
+uniform vec3 u_inlayColors[3];
 uniform vec4 u_floorP; uniform vec3 u_floorRGB; uniform vec3 u_floorJ; uniform vec3 u_rug; uniform vec4 u_floorQ; // floorP: kind, stone size, wear, sewer; floorQ: bump on, wet, detail on, -
 uvec4 maskAt(ivec2 T) { if (T.x < 0 || T.y < 0 || T.x >= u_mapSize.x || T.y >= u_mapSize.y) return uvec4(0u, 0u, 0u, 1u); return texelFetch(u_mask, T, 0); }
 bool pitCode(uint g) { return g == 1u || g == 3u || g == 4u || g == 5u; }
@@ -265,6 +266,18 @@ void main() {
       else if (m.g == 1u || m.g == 3u || m.g == 5u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
       else if (m.g == 2u) { col = atmos(lavaColor(P, T), W3, depth, vec3(0.0)); }
       else { float h, wet; uint mat = m.b >> 1u; vec3 alb = floorMat(P, T, mat, h, wet);
+        vec2 inlayFootprint = u_hall.x > 0.0 ? fwidth(P) : vec2(0.0);
+        uint inlay = m.a >> 1u;
+        if (inlay > 0u) {
+          vec2 cell = abs(fract(P) - 0.5);
+          float edge = max(cell.x, cell.y);
+          float aa = clamp(max(inlayFootprint.x, inlayFootprint.y), 0.005, 0.06);
+          float rim = 1.0 - smoothstep(0.44 - aa, 0.44 + aa, edge);
+          float center = 1.0 - smoothstep(0.35 - aa, 0.35 + aa, edge);
+          vec3 metal = inlay == 4u || inlay == 2u ? u_inlayColors[2] : u_inlayColors[1];
+          alb = mix(alb, u_inlayColors[0], rim * 0.8);
+          if (inlay > 1u) alb = mix(alb, metal, center * 0.88);
+        }
         vec3 N = u_floorQ.x > 0.5 ? bump(vec3(0.0, 0.0, 1.0), W3, h * 0.035) : vec3(0.0, 0.0, 1.0);
         lightsAt(W3, N, wet > 0.05 ? 24.0 : 0.0, dif, spe); col = alb * dif + spe * wet * 0.35;
         // the lit lip at a drop's edge (the floor's broken edge catches the light)
@@ -501,7 +514,7 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
     ivec2 tile = ivec2(floor(v_world));
     if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize))) discard;
     uvec4 m = texelFetch(u_mask, tile, 0);
-    if ((m.r & 2u) != 0u || m.a != 0u || (m.g != 0u && m.g != 4u)) discard;
+    if ((m.r & 2u) != 0u || (m.a & 1u) != 0u || (m.g != 0u && m.g != 4u)) discard;
     a = v_meta.y * (1.0 - smoothstep(0.32, 1.0, r)) * keep;
     outColor = vec4(0.0, 0.0, 0.0, a);
     return;
@@ -560,8 +573,8 @@ export const closeViewGLCanvas = () => S.canvas;
 export function resetCloseViewGL() { S.gl = null; S.canvas = null; S.gritReady = false; S.maskMap = null; S.staticKey = null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
-// r: bit 1 a ceiling over it (else open sky), bit 2 unseen (the fog of war); g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 a bridge
-// over a drop; b: bit 1 a safe drop, bits 2.. the floor's material (closeViewFloorMaterial); a: 1 a wall.
+// r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
+// b: low bit a safe drop, remaining bits floor material; a: low bit a wall, remaining bits floor inlay.
 // Hazards show only where the Wayfarer has seen (the fog of war keeps its secrets). Pure: tests read it.
 const HOLE = /hole|pit|abyss|void/i, LAVA = /lava|magma/i;
 export function closeViewHazardCode(t) { if (!t) return 0; if (t.bridge) return 4; if (t.hallVoid) return 5; if (t.chasm) return t.blocked && !/void|chasm|abyss|canyon/i.test(String(t.kind || "")) ? 0 : 3; const k = String(t.kind || ""); if (t.hole || (!t.blocked && HOLE.test(k))) return 1; if (LAVA.test(k)) return 2; return 0; }
@@ -578,7 +591,8 @@ export function closeViewMask(map, seen = null, safe = null, out = null, remap =
     const open = t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || t.open === true || t.kind === "yardGrass";
     const vis = !seen || (t.blocked && seen.wall ? seen.wall(x, y) : seen(x, y)), code = vis ? closeViewHazardCode(t) : 0, mat = closeViewFloorMaterial(t);
     const sky = skylights.length && skylights.some((f) => Math.abs(f.x - x) <= 1 && Math.abs(f.y - y) <= 1);
-    data[o] = (open ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); data[o + 3] = t.blocked && !code ? 1 : 0; if (code === 2) lava++; }
+    data[o] = (open ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); const inlay = !t.blocked && map.hall && vis ? (t.sigil === "pupil" ? 4 : t.sigil ? 3 : t.inlay === 2 ? 2 : t.inlay === 1 ? 1 : 0) : 0;
+    data[o + 3] = (t.blocked && !code ? 1 : 0) | (inlay << 1); if (code === 2) lava++; }
   return { data, w, h, lava };
 }
 export function glMask(map, now, seen, safe, everyMs, remap = null) {
