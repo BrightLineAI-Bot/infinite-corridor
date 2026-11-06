@@ -1554,7 +1554,8 @@ const lumOf = (c) => (c[0] + c[1] + c[2]) / 3;
 function lightLevel(F, X, Y, Z) { let l = lumOf(F.amb) + lumOf(F.torch) * F.torchP[1] * falloff(Math.hypot(X - F.px, Y - F.py, Z - F.torchP[2]), F.torchP[0]);
   for (let i = 0; i < F.nl; i++) l += (F.lc[i * 4] + F.lc[i * 4 + 1] + F.lc[i * 4 + 2]) / 3 * F.lc[i * 4 + 3] * falloff(Math.hypot(X - F.lp[i * 4], Y - F.lp[i * 4 + 1], Z - F.lp[i * 4 + 2]), F.lp[i * 4 + 3]); return l; }
 const SHOT_DRAW = Object.freeze({ low: 12, balanced: 20, full: 28, maxRange: 14, height: .66,
-  minSize: .075, magicSize: .12, maxTrail: .9, trailSeconds: .058 });
+  minSize: .075, magicSize: .12, maxTrail: .9, trailSeconds: .058, trailAlpha: .46, headAlpha: .95 });
+const CONTACT_GLINT = Object.freeze({ max: 8, height: .84, radius: .08, spread: .17, front: .28, alpha: .9, color: 0xffbd7e });
 const PROJECTED_SHOTS = new Set();
 const SHOT_COLORS = new Map();
 function selectProjectedShots(g, q) {
@@ -1608,9 +1609,15 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const winding = who !== player && foeWindingUp(who);
     const tool = who === player && attack && !(player.meleeUntil > now);
     const aim = tool ? g.save.lastAim : null;
-    const pose = hit ? "hit" : attack ? tool ? "tool" : "attack" : winding ? "windup" : track.pace ? "walk" : "idle";
+    const attackPose = tool ? "tool" : "attack";
+    const pose = hit ? "hit" : attack ? attackPose : winding ? "windup" : track.pace ? "walk" : "idle";
     const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
-    const amount = hit || (attack ? who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / (tool ? MODEL_TIMING.toolMs : MODEL_TIMING.attackMs)) : .6 : winding ? .85 : 0);
+    let amount = winding ? .85 : 0;
+    if (attack) {
+      const duration = tool ? MODEL_TIMING.toolMs : MODEL_TIMING.attackMs;
+      amount = who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / duration) : .6;
+    }
+    if (hit) amount = hit;
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack) ? "playerTool" : kind, x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, d.lift || 0), yaw: aim && Math.hypot(aim.x, aim.y) > .01 ? Math.atan2(aim.y, aim.x) : track.yaw,
       phase: reduce ? 0 : (who.walkPhase || now / 160) * MODEL_TIMING.walkTurn, pace: track.pace, pose, amount };
@@ -1748,14 +1755,15 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
           card(X, Y, Z - M.size, Z + M.size, M.size, 6, M.alpha * (.4 + .6 * hz), L[o + 5], 1); } } } }
   // Contact glints share the existing additive batch, after the depth-tested actor draw.
   let impacts = 0;
-  if (!reduce) for (let oi = n - 1; oi >= 0 && impacts < 8; oi--) {
+  const impact = CONTACT_GLINT;
+  if (!reduce) for (let oi = n - 1; oi >= 0 && impacts < impact.max; oi--) {
     const it = order[oi], foe = boardFoe[it];
     if (itemKind[it] !== 1 || !(foe?.hitFlash > 0) || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const X = boardWX[it], Y = boardWY[it];
     if (!sightTo(g.map, CAM.cx, CAM.cy, X, Y)) continue;
     const a = Math.min(1, foe.hitFlash / MODEL_TIMING.hitSec), scale = boardScale[it];
-    const z = .84 * scale, size = .08 + (1 - a) * .17, front = .28 * scale;
-    card(X - CAM.fx * front, Y - CAM.fy * front, z - size, z + size, size, 11, a * .9, 0xffbd7e, 0);
+    const z = impact.height * scale, size = impact.radius + (1 - a) * impact.spread, front = impact.front * scale;
+    card(X - CAM.fx * front, Y - CAM.fy * front, z - size, z + size, size, 11, a * impact.alpha, impact.color, 0);
     impacts++;
   }
   closeViewGLStats.impactGlints = impacts;
@@ -1773,15 +1781,15 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
         const length = Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
         const tx = X - shot.dx * length / d, ty = Y - shot.dy * length / d, r = size * .75;
         room(6);
-        DV(tx, ty, z - r, -1, -1, 11, .46, color, 1);
-        DV(X, Y, z - r, 1, -1, 11, .46, color, 1);
-        DV(X, Y, z + r, 1, 1, 11, .46, color, 1);
-        DV(tx, ty, z - r, -1, -1, 11, .46, color, 1);
-        DV(X, Y, z + r, 1, 1, 11, .46, color, 1);
-        DV(tx, ty, z + r, -1, 1, 11, .46, color, 1);
+        DV(tx, ty, z - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1);
+        DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1);
+        DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1);
+        DV(tx, ty, z - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1);
+        DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1);
+        DV(tx, ty, z + r, -1, 1, 11, SHOT_DRAW.trailAlpha, color, 1);
       }
     }
-    card(X, Y, z - size, z + size, size, 11, .95, color, 0);
+    card(X, Y, z - size, z + size, size, 11, SHOT_DRAW.headAlpha, color, 0);
   }
   closeViewGLStats.projectedShots = shots?.size || 0;
   GLB.nDecal = dv;
