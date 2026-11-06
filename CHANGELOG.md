@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 783 — **The far realms keep their stories.** Past 1000 sections, crossings entered from now on give the Second Surveyor's and the Sleeper's slots to the far stories, so the far realms keep their full story density after those two are finished. Inside 1000 nothing changes, and crossings already entered keep what they offered.
 - Release 782 — **The Rite is a lockdown.** Once a Rite of Ascendancy burns, no door, sky gate, Far Gate, fold, dive or section edge takes you off its ground: finish it, die, or burn a Crossing Sigil. Old Pentagon Journal lines now give directions in words, and the hot springs heal 2% of your health a second.
 - Release 781 — **More far stories.** Two more stories lie past 1000 sections: The Enumerator's Count (the Crystal Civilisation) and The Tinker's Tags (the Storm Halls). Out there the far stories now take about four-fifths of the story slots, at the same density; crossings already entered keep what they offered.
 - Release 780 — **Canopy groves.** In some new great-tree sections, several great trees' crowns are joined high above an unseen floor by bridges of branch wood and short hops, reached by climbing one tree, with the door and Crown Rest on the farthest crown. Fall off and you die, or your glider opens. Groves never again need a hop the Wayfarer can't make. New ground only.
