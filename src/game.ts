@@ -93,7 +93,7 @@ import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistor
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding } from "./great-buildings.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId } from "./compounds.ts";
-import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW } from "./labyrinths.ts";
+import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
@@ -310,6 +310,7 @@ function labyrinthState(save, map) {
   map.objects = map.objects.filter((o) => !(o.kind === "labKey" && keys.includes(o.keyId)));
   for (const o of map.objects) { if (o.lock && keys.includes(o.lock)) o.unlocked = true; if (o.barred && opened.includes(o.shortcutKey)) o.opened = true; if (o.kind === "pentRelic" && (L.pentRelics || []).includes(o.relic)) o.state = "read"; if (o.sigil && (o.sigilKey ? (L.pentOpened || []).includes(o.sigilKey) : L.pentSigil)) o.unsealed = true; }
   if (L.pentSigil) map.objects = map.objects.filter((o) => o.kind !== "pentSigil"); // the Pentagon's Fivefold Seal, once taken
+  if (map.building.roomMaze) for (const o of map.objects) if (o.kind === "labGate" && opened.includes(o.gateKey)) openRoomGate(map, o); // a room maze's barred doors, once opened from the far side
   return map;
 }
 // Release 735: the interior version of a great building, compound, castle part or labyrinth, pinned per interior. Recorded on
@@ -436,7 +437,7 @@ export function roofExitPlan(save, id, map) {
 }
 function addRoofExit(save, id, map, history) {
   const R = roofExitPlan(save, id, map); if (!R || map.objects.some((o) => o.dir === "roofExit")) return;
-  const at = roofExitSpot(map); if (!at) return;
+  const at = map.building?.roofSpot || roofExitSpot(map); if (!at) return; // a room maze names its spot, in the vault's room
   const guarded = (map.enemySpawns || []).some((e) => e.buildingGuardian || String(e.id).endsWith(":guardian"));
   map.objects.push({ id: "roof-exit", kind: "buildingStair", dir: "roofExit", roofExit: R, name: R.roof ? ROOF_EXIT.names[R.part === "tower" ? "tower" : R.part === "keep" ? "keep" : "roof"] : ROOF_EXIT.names.door, x: at.x, y: at.y, state: "open", actions: ["climb"], ...(guarded && !history.roofExit ? { sealed: true } : {}) });
 }
@@ -3887,6 +3888,7 @@ export class Game {
     if (o.kind === "pentDais") return this.pentagonDais(o, action); // and its dais: Transit, and its rerolls
     if (o.kind === "pentArenaGate") return this.pentagonArenaGate(o); // the Stillworks' gates (pentagon-arena.ts)
     if (o.kind === "labKey") return this.takeLabKey(o); // a labyrinth's key
+    if (o.kind === "labGate") return this.roomMazeGate(o); // a room maze's barred door
     if (o.kind === "pentRubble") { const m = (this.save.materials ||= {}); m.stone = Math.max(Number(m.stone) || 0, 10); setBuildKind(this.save, "stone"); this.message = `${PENTAGON.messages.rubble}: you have ${m.stone} stone, and a block is ready to build.`; this.sync(); return { ok: true, message: this.message }; } // enough for a block on the plate
     if (o.kind === "pentRelic") { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`); H.pentRelics = [...new Set([...(H.pentRelics || []), o.relic])]; o.state = "read"; this.message = `${o.lore} (${PENTAGON.messages.relic}: ${H.pentRelics.length} of ${PENTAGON.relics.length + (this.map.building.V >= 5 ? PENTAGON.sealedRelics.length : 0)})`; journalOnce(this.save, `pentagon-relic:${this.map.building.base}:${o.relic}`, o.lore, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; }
     if (o.kind === "pentWaysign") return this.readPentagonSigil(o); // a Pentagon sigil on the ground (PENTAGON_FINDING)
@@ -4039,7 +4041,8 @@ export class Game {
       if (o.enterAt && o.enterAt !== "roof" && o.enterAt !== "breach" && this.map.building?.entries?.[o.enterAt]) { this.player.x = this.map.building.entries[o.enterAt].x; this.player.y = this.map.building.entries[o.enterAt].y; } // a compound's doors each open onto their own spot
       if (o.enterAt === "roof" && this.map.building?.roofLadder) { const at = buildingArrival(this.map, this.map.building.roofLadder.x, this.map.building.roofLadder.y); this.player.x = at.x; this.player.y = at.y; } // down through its roof hatch
       if (o.buildingDoors && this.map.building) dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors = { ...o.buildingDoors }; // where each of its ways out lets you out
-      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: this.map.building.labyrinth ? `one way through, one real end · ${this.labyrinthProgress()}` : `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
+      if (o.buildingDoors && this.map.building?.roomMaze && this.map.building.vault) addRoofExit(this.save, this.areaId(), this.map, dungeonHistory(this.save, this.areaId())); // ROOM_MAZES: the vault stands on the floor the door opens onto, laid before its door was recorded
+      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: this.map.building.roomMaze ? `${this.map.building.hint} · ${this.labyrinthProgress()}` : this.map.building.labyrinth ? `one way through, one real end · ${this.labyrinthProgress()}` : `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
       if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
     } else if (r.transition === "exit") {
@@ -6729,6 +6732,7 @@ export class Game {
   // A labyrinth's progress: chambers found (of all), keys held (of all).
   labyrinthProgress() { const B = this.map?.building; if (!B?.labyrinth) return ""; const H = dungeonHistory(this.save, `${B.base}:f1`); const seen = (H.labSeen ||= []); if (!seen.includes(B.node)) seen.push(B.node);
     const links = B.pentagon && H.pentLinks ? pentagonPlan(...(() => { const p = parsePentagonId(this.areaId()); return p ? [p.seed, p.cx, p.cy, p.V] : [this.save.seed, 0, 0, 1]; })()).links || [] : [], open = links.filter((l) => (H.labOpen || []).includes(pentagonLinkKey(l.id))).length;
+    if (B.roomMaze) return `${seen.length} of ${B.of} floors found`; // a room maze: its floors
     return `${seen.length} of ${B.of} chambers found${B.keys?.length ? ` · keys ${(H.labKeys || []).length} of ${B.keys.length}` : ""}${links.length ? ` · shortcuts ${open} of ${links.length}` : ""}`; }
   // The Pentagon's shortcut links (pentagon.ts PENTAGON.shortcuts): shut from the near side ("barred from the other side");
   // the first use from the deep side opens it for good (history labOpen `link:<id>`) and carries you through; once open it
@@ -6879,6 +6883,15 @@ export class Game {
   takeLabKey(o) { const H = dungeonHistory(this.save, `${this.map.building.base}:f1`); H.labKeys = [...new Set([...(H.labKeys || []), o.keyId])]; this.map.objects = this.map.objects.filter((q) => q !== o);
     for (const q of this.map.objects) if (q.lock === o.keyId) q.unlocked = true;
     this.message = `You take the ${o.name}. Somewhere along the way, a sealed door will open for it. (${this.labyrinthProgress()})`; this.sync(); return { ok: true, message: this.message }; }
+  // ROOM_MAZES: a barred door. From the far side the bolt draws and it stays open for good (`labOpen`, the gate's key, on the
+  // first floor's history); from the near side it will not give.
+  roomMazeGate(o) {
+    const H = dungeonHistory(this.save, `${this.map.building.base}:f1`), open = (H.labOpen || []).includes(o.gateKey);
+    if (open) { this.message = ROOM_MAZES.messages.open; return { ok: true, message: this.message }; }
+    if (roomGateSide(o, this.player.x) !== "far") { this.message = ROOM_MAZES.messages.barred; return { ok: false, message: this.message }; }
+    H.labOpen = [...new Set([...(H.labOpen || []), o.gateKey])]; openRoomGate(this.map, o); this.message = ROOM_MAZES.messages.opens;
+    this.defeatNotice = { title: "SHORTCUT", detail: `${this.map.name.split(" · ")[1] || "the door"} · ${this.labyrinthProgress()}`, kind: "discovery", sound: "shortcut" }; this.sync(); return { ok: true, message: this.message };
+  }
   takeBuildingStair(o) {
     if (o.dir === "roofExit") return this.takeRoofExit(o); // release 746
     if (o.dir === "roof") { // up through the hatch, onto the roof: high ground on the section itself
@@ -6893,7 +6906,7 @@ export class Game {
       if (o.plateLock && !(H.labOpen || []).includes(`plate:${this.map.building.node}`)) { if (!this.map.tiles.some((t) => t.plate && t.build === "stone")) { this.message = PENTAGON.messages.plate; return { ok: false, message: this.message }; } H.labOpen = [...new Set([...(H.labOpen || []), `plate:${this.map.building.node}`])]; } // the Pentagon's pressure plate: a block on it holds the door, and once through it stays wedged open
       if (o.shortcutOpens) { H.labOpen = [...new Set([...(H.labOpen || []), o.shortcutOpens])]; } // opened from the far side: open from the hall now too
       this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, where = this.map.name.split(" · ")[1] || "the next chamber";
-      this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? HOLE_DROPS.messages.gallery : B.kind === "court" ? "out under the sky, still inside" : "find the way on"} · ${this.labyrinthProgress()}`, kind: "danger" };
+      this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${B.roomMaze ? B.hint : B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? HOLE_DROPS.messages.gallery : B.kind === "court" ? "out under the sky, still inside" : "find the way on"} · ${this.labyrinthProgress()}`, kind: "danger" };
       this.message = `${o.dir === "door" ? LABYRINTHS.messages.door : o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${where}.`; this.sync(); return { ok: true, message: this.message }; }
     this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, top = B.floor >= B.floors;
     this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };
@@ -7843,7 +7856,7 @@ export class Game {
     if(terrainHazard==="lava"&&this.mechUp())terrainHazard=null;/* release 475: the robot wades through lava; the heat is settled at the frame's end */
     if(terrainHazard==="lava"&&this.mountRide())terrainHazard=null;/* mounted lava (Tim, 2026-11-04): "if you go into lava, it's not an instant kill, it's like a two-second kill"; the burn is settled at the frame's end (MOUNT_RIDE.lavaSeconds) */
     if(sailing){terrainHazard=null;this.swimming=false}else if(this.robotPutsToSea(nx,ny,width,terrainHazard))terrainHazard=null;else if(this.swimsHere(terrainHazard)){this.swimKind=terrainHazard;if(!this.swimming){this.swimming=true;if(now>(this.swimMessageAt||0)){this.swimMessageAt=now+8000;this.message=this.mechUp()?"The robot seals and wades on through the water.":"The Tidemantle holds you up. Swimming drains stamina.";}}terrainHazard=null}else this.swimming=false;
-    const fellIntoHazard=!!terrainHazard&&!aerial;this._fatalFall=!!this._fatalFallPending;this._fatalFallPending=false;/* release 609; 615: a raft drop */
+    const fellIntoHazard=!!terrainHazard&&!aerial;if(fellIntoHazard&&this.area==="dungeon"&&this.map?.building?.roomMaze&&!this.save.session.holeDeath){this.noteFloorEntry();const e=this.save.session.floorEntry;this.save.session.holeDeath={id:e.id,x:e.x,y:e.y};}/* ROOM_MAZES: lava in a room maze wakes you where you came onto the floor, as a hole does */this._fatalFall=!!this._fatalFallPending;this._fatalFallPending=false;/* release 609; 615: a raft drop */
     if (this.glideHome && !gliding && !this.glide && p.hp > 0 && !fellIntoHazard && !this._fatalFall) this.glideHome = null; // TREE_GLIDE.home: the first frame stood on (or swum in) alive after a glide from the crown ends it
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?(tileUnder(this.map,width,nx,ny)?.chasm?(this.fellStars=true,"The Wayfarer steps off the edge and falls away into the stars."):"The ledge gives way beneath the Wayfarer."):"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);

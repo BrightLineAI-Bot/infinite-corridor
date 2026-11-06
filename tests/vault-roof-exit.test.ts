@@ -31,7 +31,7 @@ const memo = {};
 const once = (k, f) => (k in memo ? memo[k] : (memo[k] = f()));
 const plainBuilding = (hatch) => once(`b${hatch}`, () => ring(4, 40, (x, y) => { if (!buildingHereV2(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; const g = visit(x, y), B = g.map.greatBuilding; return B && !B.compound && !B.labyrinth && !B.castle && !!B.roof === hatch && (hatch || B.roofTop) ? { x, y } : null; }));
 const compoundNoHatch = () => once('c', () => ring(5, 40, (x, y) => { if (!compoundHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; const g = visit(x, y), t = g.map.objects.find((o) => o.compoundDoor && /:t:\d+:f1$/.test(o.dungeonId)); return t ? { x, y } : null; }));
-const labyrinth = () => once('l', () => ring(LABYRINTHS.minRing, 40, (x, y) => { if (!labyrinthHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; return visit(x, y).map.greatBuilding?.roofTop ? { x, y } : null; }));
+const labyrinth = () => once('l', () => ring(LABYRINTHS.minRing, 40, (x, y) => { if (!labyrinthHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; const B = visit(x, y).map.greatBuilding; return B?.roofTop && !B.roomMaze ? { x, y } : null; })); // a maze of chambers (room mazes: tests/room-mazes.test.ts)
 const castle = () => once('k', () => { const g = visit(0, 0); for (let d = 3; d < 60; d += 3) for (let X = -d; X <= d; X += 3) for (const Y of [d - Math.abs(X), Math.abs(X) - d]) if (g.castleHere(X, Y)) { const k = quarterSection(X, Y, castleTopology(SEED, X, Y).k); if (visit(k.rx, k.ry).map.objects.some((o) => o.castleDoor && o.buildingDoors?.roofTop)) return { X, Y }; } return null; });
 
 // Into each kind of vault (new ground), by its own doors
@@ -43,7 +43,7 @@ function intoVault() { const at = labyrinth(), g = visit(at.x, at.y), d = g.map.
 const KINDS = { 'great building (no hatch)': () => intoBuilding(false), 'compound tower (no hatch)': intoTower, 'castle keep': intoKeep, 'labyrinth vault': intoVault };
 
 test('new ground: every roof the exits lead to stands on the section, walkable, at a fatal height; the section keeps its ways through', () => {
-  assert.equal(BUILDINGS.version, 3); assert.equal(CASTLES.version, 2); assert.equal(LABYRINTHS.version, 2);
+  assert.equal(BUILDINGS.version, 3); assert.equal(CASTLES.version, 2); assert.equal(LABYRINTHS.version, 3);
   const bld = visit(plainBuilding(false).x, plainBuilding(false).y), B = bld.map.objects.find((o) => o.kind === 'greatBuilding' && !o.compound);
   assert.ok(bld.map.greatBuilding.roofTop && !bld.map.greatBuilding.roof, 'no hatch, but a roof to stand on'); assert.ok(!bld.map.objects.some((o) => o.roofHatch), 'no way in from the roof');
   const c = castle(), k = quarterSection(c.X, c.Y, castleTopology(SEED, c.X, c.Y).k), keep = visit(k.rx, k.ry), K = keep.map.objects.find((o) => o.castle).blocks.find((b) => b.part === 't');
