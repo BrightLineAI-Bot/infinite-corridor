@@ -1,8 +1,8 @@
-import { drawRangedEffects } from "./combat-visuals.js?v=r787-79b4a7ca7811";
-import { createInput } from "./input.js?v=r787-79b4a7ca7811";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r787-79b4a7ca7811";
-import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r787-79b4a7ca7811"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r787-79b4a7ca7811";
+import { drawRangedEffects } from "./combat-visuals.js?v=r789-7b41b2c419e8";
+import { createInput } from "./input.js?v=r789-7b41b2c419e8";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r789-7b41b2c419e8";
+import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r789-7b41b2c419e8"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r789-7b41b2c419e8";
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";

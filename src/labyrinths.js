@@ -7,21 +7,23 @@
 //
 // A labyrinth is one closed building on the overworld with one door. Inside it is a maze of chambers, each an area of its own,
 // joined by doors (the same level) and ladders (up to a loft, down to a cellar or a subcellar). The chambers are:
-//   hall    rooms split by inner walls (great-buildings.js?v=r787-79b4a7ca7811's floor plan)
+//   hall    rooms split by inner walls (great-buildings.js?v=r789-7b41b2c419e8's floor plan)
 //   court   an open-air hedge maze: outside, but still inside the labyrinth
 //   cellar  a stone maze under the ground (two levels down is a subcellar)
 //   gaps    a gallery of platforms over a drop: jump the one-tile gaps; fall and you land in a cellar somewhere else
 // The chambers form a tree, so there is one way through. The vault is the chamber farthest from the door, the one real end,
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
-import { hashSeed, rng, byHash } from "./random.js?v=r787-79b4a7ca7811";
-import { BUILDINGS, layFloor, farthest, guardianBeside } from "./great-buildings.js?v=r787-79b4a7ca7811";
+import { hashSeed, rng, byHash } from "./random.js?v=r789-7b41b2c419e8";
+import { BUILDINGS, layFloor, farthest, guardianBeside } from "./great-buildings.js?v=r789-7b41b2c419e8";
 
 export const LABYRINTHS = {
-  version: 3, // 3 (room mazes, Tim 2026-11-06): on ground first seen from now on, ROOM_MAZES.share of labyrinths are room mazes (placeLabyrinth); sections pinned to 1 or 2 place exactly as before
+  version: 4, // 4: styles rolled evenly (styleWeights), room mazes ~r2 (the vault by style, told at the door; keys); sections pinned to 3 keep their region's style and ~r1
+  // 3 (room mazes, Tim 2026-11-06): on ground first seen from now on, ROOM_MAZES.share of labyrinths are room mazes (placeLabyrinth); sections pinned to 1 or 2 place exactly as before
   // 2 (release 746, Tim: "there should always be an exit to the roof"): the block's top is a roof to stand on, `roof.elev`
   // up (a fatal drop), reached only by the vault's roof exit once its guardian has fallen; sections pinned to 1 keep a closed block
   roof: { elev: 5 },
+  styleWeights: { keep: 1, apartment: 1, hive: 1 }, // version 4: the style a newly placed labyrinth takes (placeLabyrinth, labyrinthStyle); before, its region's (labyrinthHere)
   chance: .06, minRing: 6,
   chambers: [14, 20], minPath: 9, // the way from the door to the vault passes through at least `minPath` chambers
   size: [27, 19], // odd, so the mazes have walls between cells
@@ -43,7 +45,7 @@ export const LABYRINTHS = {
     hive: { name: "Hive Labyrinth", hall: "Brood Hall", court: "Spore Garden", cellar: "Burrow", subcellar: "Deep Burrow", gaps: "Rift Gallery", vault: "Queen's Chamber" },
     // The Shell-Labyrinth (turtle-shell.ts): the maze inside a slain Mountain Turtle's shell. Never rolled on the overworld. Its
     // rooms are laid out as the Old Keep's (`building`); Tim (2026-11-04): "let's use the clockwork dungeon theme, and the mosaic
-    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.js?v=r787-79b4a7ca7811's Brass Engine and Mosaic
+    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.js?v=r789-7b41b2c419e8's Brass Engine and Mosaic
     // Sanctum tiles, see SHELL_THEMES): the halls and galleries are clockwork, the courts, undercrofts and the vault mosaic.
     shell: { name: "The Shell-Labyrinth", hall: "Gear Hall", court: "Mosaic Court", cellar: "Mosaic Undercroft", subcellar: "Deep Undercroft", gaps: "Gallery of Gears", vault: "Heart of the Shell", building: "keep",
       themes: { hall: "clockwork", gaps: "clockwork", court: "mosaic", cellar: "mosaic", vault: "mosaic" } },
@@ -225,6 +227,12 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
 // ------------------------------------------------------------------------------------------------ outside, on the overworld
 const I = (x, y) => y * 32 + x, WET = /ocean|Ocean|lake|Lake|swamp|Swamp|toxic|Toxic|water|Water|lava|abyss|river|canyon|mire|Mire|shallows|pool|Pool/;
 const CLEARS = new Set(["tree", "treeShrub", "treeSpindle", "rock", "wayfindingCue"]);
+// Labyrinth version 4 (Tim, 2026-11-06: "we don't always see keeps... we can see all the different building types pretty much evenly"):
+// a labyrinth's style is an even roll of its seed and section (`styleWeights`), not its region's, whichever form it takes.
+export function labyrinthStyle(seed, rx, ry) {
+  const w = LABYRINTHS.styleWeights, ks = Object.keys(w), tot = ks.reduce((a, k) => a + w[k], 0); let v = (hashSeed(`${seed}:labyrinth:style:v4:${rx}:${ry}`) % 10000) / 10000 * tot;
+  for (const k of ks) { v -= w[k]; if (v < 0) return k; } return ks[ks.length - 1];
+}
 // `doorOk(map, at)` (world coherence 1, new ground only): the door must join the land the exits join (landscape.ts joinsCore);
 // a spot whose door stands in a closed pocket is passed over (WG-05). Without it, placement is as it always was.
 export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null, V = 1) {
@@ -235,8 +243,11 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null
   const objAt = (x, y) => (map.objects || []).some((o) => !o.decor && !o.environmental && !CLEARS.has(o.kind) && Math.round(o.x) === x && Math.round(o.y) === y);
   const natural = (t) => !!t && !t.structure && !t.buildingId && !t.canopy && !t.keep && !t.greatBuilding && !WET.test(t.kind || "") && !(t.environment && t.environment !== "tree") && (t.elev || 0) <= 2;
   const ground = (x, y) => natural(map.tiles[I(x, y)]) && !lane(x, y) && !objAt(x, y), open = (x, y) => { const t = map.tiles[I(x, y)]; return natural(t) && !t.blocked && !t.slope && !(t.elev > 0) && !objAt(x, y); };
+  const style = V >= 4 ? labyrinthStyle(seed, rx, ry) : plan.style; // version 4: an even roll of style, for both forms (LABYRINTHS.styleWeights); before, the region's
   const rooms = V >= 3 && labyrinthForm(seed, rx, ry) === "rooms"; // version 3: ROOM_MAZES.share of labyrinths are room mazes, the rest mazes of chambers as before
-  const h = (k) => hashSeed(`${seed}:labyrinth-spot:${rx}:${ry}:${k}`), base = `labyrinth:${seed}:${rx}:${ry}:${plan.style}${rooms ? `~r${ROOM_MAZES.version}` : ""}`, S = L.styles[plan.style];
+  const rv = V >= 4 ? 2 : 1; // the room-maze generator a labyrinth version places (3: ~r1, as released; 4: ~r2)
+  const h = (k) => hashSeed(`${seed}:labyrinth-spot:${rx}:${ry}:${k}`), base = `labyrinth:${seed}:${rx}:${ry}:${style}${rooms ? `~r${rv}` : ""}`, S = L.styles[style];
+  const VP = rooms && rv >= 2 ? roomVaultOf(base) : null, NAME = VP ? VP.name : S.name; // ~r2: the maze's name tells where its vault lies
   let tries = 0, doorMiss = 0;
   for (const [W, H] of L.footprint) {
     const spots = []; for (let oy = 2; oy <= 30 - H; oy++) for (let ox = 2; ox <= 30 - W; ox++) spots.push([ox, oy]); spots.sort((a, b) => h(a) - h(b));
@@ -244,16 +255,16 @@ export function placeLabyrinth(map, seed, rx, ry, plan, exitsOpen, doorOk = null
       let fits = true; for (let y = oy; y < oy + H && fits; y++) for (let x = ox; x < ox + W && fits; x++) fits = ground(x, y); if (!fits) continue;
       const south = oy + H / 2 < 16, dx = ox + (W >> 1), dy = south ? oy + H - 1 : oy, out = { x: dx, y: dy + (south ? 1 : -1) }; if (!open(out.x, out.y)) continue;
       const tiles = map.tiles.slice(), before = exitsOpen(map), cells = [], roof = V >= 2 && !!map.landscape, floors0 = 3 + h("floors") % 2, lift = (1 + floors0 * .5) / (L.roof.elev * .34); // landscape.ts LIFT_PER_LEVEL
-      for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) { cells.push({ x, y }); const i = I(x, y); map.tiles[i] = roof ? { ...map.tiles[i], x, y, kind: plan.style === "keep" ? "castleCourt" : "arcFloor", landscape: plan.style === "keep" ? "castle" : "arcology", blocked: false, slope: false, elev: L.roof.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, environment: undefined, canopy: undefined } : { ...map.tiles[i], x, y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; } // version 2: a roof to stand on
+      for (let y = oy; y < oy + H; y++) for (let x = ox; x < ox + W; x++) { cells.push({ x, y }); const i = I(x, y); map.tiles[i] = roof ? { ...map.tiles[i], x, y, kind: style === "keep" ? "castleCourt" : "arcFloor", landscape: style === "keep" ? "castle" : "arcology", blocked: false, slope: false, elev: L.roof.elev, roofLift: lift, structure: "buildingRoof", greatBuilding: true, environment: undefined, canopy: undefined } : { ...map.tiles[i], x, y, blocked: true, slope: false, elev: 0, greatBuilding: true, environment: undefined }; } // version 2: a roof to stand on
       const after = exitsOpen(map); if (!before.every((o, i) => !o || after[i])) { map.tiles = tiles; if (++tries >= 6) return null; continue; }
       if (doorOk && !doorOk(map, out)) { map.tiles = tiles; if (++doorMiss >= doorOk.tries) return null; continue; }
       const set = new Set(cells.map((c) => I(c.x, c.y))), id = `labyrinth-${rx}-${ry}`, floors = 3 + h("floors") % 2, faceH = 1 + floors * .5;
       map.objects = (map.objects || []).filter((o) => !set.has(I(Math.round(o.x), Math.round(o.y))));
       map.enemySpawns = (map.enemySpawns || []).filter((e) => !set.has(I(Math.round(e.x), Math.round(e.y))));
-      const rec = { id, kind: "greatBuilding", v: 2, labyrinth: true, name: S.name, style: plan.style, x: dx, y: oy + H - 1, bounds: { x: ox, y: oy, w: W, h: H }, footprint: cells, blocks: [{ part: "b", cells, faceH, floors }], doors: [{ x: dx, y: dy, face: south ? "south" : "north" }], hatches: [], crumbled: [], grain: h("grain") % 97, state: "closed", actions: [] };
+      const rec = { id, kind: "greatBuilding", v: 2, labyrinth: true, name: NAME, style: style, x: dx, y: oy + H - 1, bounds: { x: ox, y: oy, w: W, h: H }, footprint: cells, blocks: [{ part: "b", cells, faceH, floors }], doors: [{ x: dx, y: dy, face: south ? "south" : "north" }], hatches: [], crumbled: [], grain: h("grain") % 97, state: "closed", actions: [] };
       map.objects.push(rec);
-      map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, labyrinthDoor: true, buildingDoors: { rx, ry, front: out, exits: {}, hatch: null, ...(roof ? { roofTop: true } : {}) }, dungeonId: `${base}:f${rooms ? roomFloorOf(ROOM_MAZES.entryLevel) : 1}`, dungeonType: "labyrinth", name: S.name, identity: rooms ? ROOM_MAZES.messages.identity : "one door in, one real end", x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: rooms ? `${S.name}: ${ROOM_MAZES.messages.lore}` : `${S.name}: a maze of halls, courts, cellars and galleries. One way through; the vault at its heart lets you out at the front.`, ...(rooms ? { roomMaze: ROOM_MAZES.version } : {}) });
-      map.greatBuilding = { id, base, labyrinth: true, style: plan.style, version: V >= 2 ? V : 1, ...(roof ? { roofTop: true } : {}), ...(rooms ? { roomMaze: ROOM_MAZES.version } : {}) };
+      map.objects.push({ id: `${id}-door`, kind: "dungeon", buildingDoor: true, labyrinthDoor: true, buildingDoors: { rx, ry, front: out, exits: {}, hatch: null, ...(roof ? { roofTop: true } : {}) }, dungeonId: `${base}:f${rooms ? roomFloorOf(ROOM_MAZES.entryLevel) : 1}`, dungeonType: "labyrinth", name: NAME, identity: VP ? `${ROOM_MAZES.messages.identity} · ${VP.line}` : rooms ? ROOM_MAZES.messages.identity : "one door in, one real end", x: out.x, y: out.y, state: "open", actions: ["enter"], landmark: true, lore: VP ? `${NAME}: ${ROOM_MAZES.messages.lore} ${VP.line[0].toUpperCase()}${VP.line.slice(1)}.` : rooms ? `${S.name}: ${ROOM_MAZES.messages.lore}` : `${S.name}: a maze of halls, courts, cellars and galleries. One way through; the vault at its heart lets you out at the front.`, ...(rooms ? { roomMaze: rv } : {}), ...(VP ? { vaultPlace: VP.place } : {}) });
+      map.greatBuilding = { id, base, labyrinth: true, style: style, version: V >= 2 ? V : 1, ...(roof ? { roofTop: true } : {}), ...(rooms ? { roomMaze: rv } : {}) };
       return rec;
     }
   }
@@ -359,7 +370,21 @@ export const LAB_BURROW = {
 // ground you can walk back from); a barred door opens from the far side and stays open (a shortcut back). Every stair is two-way.
 // The way through is laid by construction and proved by tests/room-mazes.test.ts, a solver over the whole multi-floor graph.
 export const ROOM_MAZES = {
-  version: 1, // the generator, in the base id (`~r1`): a later algorithm takes a new one and this one stays as it is
+  version: 2, // the newest generator, in the base id (`~r<n>`); every earlier one stays as it is. 1: the vault always on the ground
+  // beyond the last barrier. 2 (Tim, 2026-11-06: "a rhyme or reason to where you were going... you come to recognize it"; "we can
+  // just have the vaults at different locations based on the type of building"): the vault lies where the style puts it, the keep
+  // up in the tower (the roof), the hive deep in the undercroft, the arcology on the ground beyond the last barrier, and the door
+  // says so; `unknown` of them are "Shifting", their vault in one of the two other places, the door says it is not known. Styles
+  // are rolled evenly from labyrinth version 4 (LABYRINTHS.styleWeights), so the three places come about equally. The vault is
+  // always in the last segment, so every barrier's crossing still lies on the way.
+  vault: {
+    unknown: .1, // the share that break the rule
+    byStyle: { keep: "roof", hive: "under", apartment: "ground" },
+    levels: { roof: 2, ground: 0, under: -1 },
+    names: { keep: { known: "Tower Labyrinth", unknown: "Shifting Labyrinth" }, apartment: { known: "Arcology Maze", unknown: "Shifting Maze" }, hive: { known: "Brood Hive", unknown: "Shifting Hive" } },
+    lines: { roof: "the vault lies in the tower, up on the roof", ground: "the vault lies on the ground floor, beyond what it cannot cross", under: "the vault lies below, in the undercroft", unknown: "the vault's place is not known" },
+  },
+  keys: { count: [1, 2] }, // generator 2: stairs sealed by a key (a side wing's, or a loop's second), the corridor labyrinths' keys (LABYRINTHS.keys)
   share: .5, // of labyrinths first placed at labyrinth version 3, this share are room mazes; the rest are mazes of chambers exactly as before (Tim, 2026-11-06: "maybe we can have both")
   cols: [5, 6], rows: [3, 4], cell: 6, wide: 8, // cells across and down; a cell's inside (tiles); a barrier column's inside
   room: [4, 6], // a room's side within its cell (a stair, drop, door or vault room is the whole cell)
@@ -374,7 +399,7 @@ export const ROOM_MAZES = {
   guards: { share: .4, max: 6, roofMax: 3 }, // of a floor's rooms, guarded (one each), at most
   deadCache: .3, lookoutCache: .6, caches: 4, // a dead-end room's cache; a dead-end floor's; at most this many
   props: .3, // share of a room's edge tiles (never in line with a doorway) that hold a prop
-  // Room themes (a floor and a prop; `u`: drawn from underlands.js?v=r787-79b4a7ca7811's tiles; `q`: a 2x2 motif) by level: the undercroft, the roof,
+  // Room themes (a floor and a prop; `u`: drawn from underlands.js?v=r789-7b41b2c419e8's tiles; `q`: a 2x2 motif) by level: the undercroft, the roof,
   // and the floors between by style.
   themes: {
     keep: [{ name: "Crypt", floor: "ossuary", prop: "sarcophagus", u: 1 }, { name: "Chapel", floor: "templeMosaic", prop: "templePillar", u: 1, q: 1 }, { name: "Solar", floor: "carpetFloor" },
@@ -404,6 +429,13 @@ export const roomLevelOf = (f) => f - 1 + ROOM_MAZES.levels[0];
 // Which form a labyrinth first placed at labyrinth version 3 takes (a hash of the seed and the section).
 export function labyrinthForm(seed, rx, ry) { return (hashSeed(`${seed}:labyrinth:form:v1:${rx}:${ry}`) % 10000) / 10000 < ROOM_MAZES.share ? "rooms" : "chambers"; }
 
+// Generator 2: where a room maze's vault lies (a hash of its base): { place, level, known, name, line }.
+export function roomVaultOf(base) {
+  const P = parseLabyrinthId(`${base}:f1`), V = ROOM_MAZES.vault, style = V.byStyle[P?.style] ? P.style : "keep", u = (k) => (hashSeed(`${base}:vault:v2:${k}`) % 10000) / 10000;
+  const rule = V.byStyle[style], known = u("rule") >= V.unknown, others = Object.keys(V.levels).filter((k) => k !== rule), place = known ? rule : others[Math.floor(u("other") * others.length)];
+  return { place, level: V.levels[place], known, name: V.names[style][known ? "known" : "unknown"], line: V.lines[known ? place : "unknown"] };
+}
+
 const rmMemo = new Map();
 const cellsOf = (cols, R) => cols.flatMap((c) => Array.from({ length: R }, (_, row) => ({ c, row })));
 // The plan (pure): the grid, the barriers and their crossings, which rooms stand on which floor, how they are joined, the stairs,
@@ -431,6 +463,10 @@ export function roomMazePlan(base) {
     if (b.crossing === "upper") { need(1, k0); need(1, k1); stairs.push({ lo: 0, k: k0 }, { lo: 0, k: k1 }); }
     else if (b.crossing === "roof") { for (const L of [1, 2]) { need(L, k0); need(L, k1); } stairs.push({ lo: 0, k: k0 }, { lo: 1, k: k0 }, { lo: 1, k: k1 }, { lo: 0, k: k1 }); }
     else { need(-1, k0); need(-1, k1); const far = segCols[k1][segCols[k1].length - 1]; stairs.push({ lo: -1, k: k1, corner: { c: far, row: r() < .5 ? 0 : R - 1 } }, { lo: -1, k: k0 }); } }
+  // generator 2: the vault's floor in the last segment (on the roof, up through the upper floor; or in the undercroft), on the way
+  const VP = P.rooms >= 2 ? roomVaultOf(base) : null, vL = VP ? VP.level : 0;
+  if (vL !== 0) { const has = (lo) => stairs.some((s) => s.lo === lo && s.k === last && !s.extra);
+    for (const L of vL > 0 ? [1, 2] : [-1]) need(L, last); for (const lo of vL > 0 ? [0, 1] : [-1]) if (!has(lo)) stairs.push({ lo, k: last }); }
   // floors off the way: dead ends up (the upper floor, then the roof) and down (the undercroft)
   for (let k = 0; k <= last; k++) for (const L of [1, 2, -1]) { if (zones.has(zk(L, k)) || (L === 2 && !zones.has(zk(1, k))) || r() >= M.optional[L]) continue; need(L, k).dead = true; stairs.push({ lo: L === -1 ? -1 : L - 1, k }); }
   { const seen = new Set(), extra = []; for (const s of stairs) { const key = `${s.lo}:${s.k}`; if (seen.has(key)) continue; seen.add(key); if (r() < M.extraStair) extra.push({ lo: s.lo, k: s.k, extra: true }); } stairs.push(...extra); }
@@ -472,8 +508,9 @@ export function roomMazePlan(base) {
     for (const k of adj.keys()) for (const q of nb(k)) if (k < q && !adj.get(k).has(q) && r() < M.braid) { adj.get(k).add(q); adj.get(q).add(k); }
     z.adj = adj; }
   // the vault: the ground room of the last segment farthest from where its stairs come in (a whole room, off the stairs if it can be)
-  const zl = zones.get(zk(0, last)), into = placed.filter((s) => s.k === last && (s.lo === 0 || s.lo === -1)).map((s) => ({ c: s.c, row: s.row }));
-  const busy = (c, row) => placed.some((s) => s.c === c && s.row === row && (s.lo === 0 || s.lo + 1 === 0)) || drops.some((d) => d.c === c && d.row === row) || (last === 0 && c === entry.c && row === entry.row);
+  // (generator 2: the same on the vault's own floor, `vL`; 0, the ground, is exactly generator 1)
+  const zl = zones.get(zk(vL, last)), into = placed.filter((s) => s.k === last && (s.lo === vL || s.lo + 1 === vL)).map((s) => ({ c: s.c, row: s.row }));
+  const busy = (c, row) => placed.some((s) => s.c === c && s.row === row && (s.lo === vL || s.lo + 1 === vL)) || drops.some((d) => d.c === c && d.row === row) || (vL === 0 && last === 0 && c === entry.c && row === entry.row);
   const vaultCands = [...zl.adj.keys()].map((k) => { const [c, row] = k.split(",").map(Number); return { c, row, d: into.length ? Math.min(...into.map((p) => Math.abs(p.c - c) + Math.abs(p.row - row))) : 0, busy: busy(c, row) }; })
     .sort((a, b) => (a.busy ? 1 : 0) - (b.busy ? 1 : 0) || b.d - a.d || hashSeed(`${base}:v:${a.c},${a.row}`) - hashSeed(`${base}:v:${b.c},${b.row}`));
   const vault = { c: vaultCands[0].c, row: vaultCands[0].row }; zl.full.add(`${vault.c},${vault.row}`);
@@ -482,13 +519,36 @@ export function roomMazePlan(base) {
   for (const z of zones.values()) { z.rooms = new Map();
     for (const key of z.adj.keys()) { const [c, row] = key.split(",").map(Number), full = z.full.has(key), w = full ? wi[c] : span(M.room), h = full ? M.cell : span(M.room);
       const x0 = xs[c] + Math.floor(r() * (wi[c] - w + 1)), y0 = ys[row] + Math.floor(r() * (M.cell - h + 1)), pool = z.L === -1 ? T.undercroft : z.L === 2 ? T.roof : styleThemes;
-      const isEntry = z.L === 0 && z.k === 0 && c === entry.c && row === entry.row, isVault = z.L === 0 && z.k === last && c === vault.c && row === vault.row;
+      const isEntry = z.L === 0 && z.k === 0 && c === entry.c && row === entry.row, isVault = z.L === vL && z.k === last && c === vault.c && row === vault.row;
       const theme = pool[hashSeed(`${base}:theme:${z.L}:${key}`) % pool.length], stairsHere = placed.some((s) => s.c === c && s.row === row && (s.lo === z.L || s.lo + 1 === z.L));
       const linkHere = barriers.some((b) => { const lk = b.links[z.L]; return lk && ((lk.near === row && c === b.col - 1) || (lk.far === row && c === b.col + 1)); });
       const dead = !isEntry && !isVault && !stairsHere && !linkHere && z.adj.get(key).size <= 1, cache = dead && caches < M.caches && r() < (z.dead ? M.lookoutCache : M.deadCache);
       if (cache) caches++;
       z.rooms.set(key, { c, row, x0, y0, x1: x0 + w - 1, y1: y0 + h - 1, cx: xs[c] + (wi[c] >> 1), cy: ys[row] + (M.cell >> 1), theme: isEntry ? { name: M.entryTheme } : isVault ? { name: LABYRINTHS.styles[P.style].vault, floor: M.vaultFloor } : theme, entry: isEntry, vault: isVault, dead, cache }); } }
-  const plan = { base, ...P, W, H, C, R, xs, ys, wi, bcols, segCols, barriers, zones, stairs: placed, drops, entry, vault, last, front: { x: xs[entry.c] + (wi[entry.c] >> 1), y: H - 1 }, S: LABYRINTHS.styles[P.style] };
+  // generator 2 (Tim, 2026-11-06: "sealed doors that can be unlocked by keys are cool"): one or two stairs sealed by a key, the
+  // corridor labyrinths' keys and sealed doors as they are (labKey, lock, labKeys). A seal shuts a side wing (a dead-end floor,
+  // every stair into it, with a cache inside) or a loop's second stair. Each key lies in a room reachable with every seal shut
+  // (so never behind its own door nor one whose key is behind it), off the entry, the vault and the stairs, a dead end first,
+  // another floor than its door first.
+  const keys = [];
+  if (VP) { const kr = rng(`${base}:keys:v2`), K = M.keys, want = K.count[0] + Math.floor(kr() * (K.count[1] - K.count[0] + 1)), ks = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(kr() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const deadZ = (L, k) => !!zones.get(zk(L, k))?.dead, zoneOf = (q) => segCols.findIndex((cols) => cols.includes(q.c));
+    const sides = ks([...zones.values()].filter((z) => z.dead)).map((z) => ({ kind: "wing", zone: z, stairs: placed.filter((s) => s.k === z.k && (s.lo === z.L || s.lo + 1 === z.L) && !deadZ(s.lo === z.L ? s.lo + 1 : s.lo, z.k)) })).filter((c) => c.stairs.length && [...c.zone.rooms.values()].some((q) => !placed.some((s) => s.c === q.c && s.row === q.row && (s.lo === c.zone.L || s.lo + 1 === c.zone.L)))); // a wing with a room for its cache
+    const loops = ks(placed.filter((s) => s.extra && !deadZ(s.lo, s.k) && !deadZ(s.lo + 1, s.k))).map((s) => ({ kind: "loop", stairs: [s] }));
+    const reach = () => { const seen = new Set([zk(0, 0)]), q = [zk(0, 0)], edge = (a, b) => { if (seen.has(a) && !seen.has(b) && zones.has(b)) { seen.add(b); q.push(b); return true; } return false; };
+      for (let grew = true; grew;) { grew = false; for (const s of placed) if (!s.lock) { grew = edge(zk(s.lo, s.k), zk(s.lo + 1, s.k)) || grew; grew = edge(zk(s.lo + 1, s.k), zk(s.lo, s.k)) || grew; }
+        for (const b of barriers) { grew = edge(zk(b.level, b.i), zk(b.level, b.i + 1)) || grew; grew = edge(zk(b.level, b.i + 1), zk(b.level, b.i)) || grew; } }
+      return seen; };
+    for (const cand of [...sides, ...loops]) { if (keys.length >= want || cand.stairs.some((s) => s.lock)) continue;
+      const key = { id: `key${keys.length}`, name: LABYRINTHS.keys[P.style][keys.length] }; for (const s of cand.stairs) s.lock = key;
+      const ok = reach(), doorLevels = new Set(cand.stairs.flatMap((s) => [s.lo, s.lo + 1])), rooms = [];
+      for (const z of zones.values()) if (ok.has(zk(z.L, z.k))) for (const q of z.rooms.values()) { const stairsHere = placed.some((s) => s.c === q.c && s.row === q.row && (s.lo === z.L || s.lo + 1 === z.L));
+        if (!q.entry && !q.vault && !q.key && !stairsHere) rooms.push({ q, L: z.L, score: (q.dead ? 0 : 2) + (doorLevels.has(z.L) ? 1 : 0) + (q.cache ? .5 : 0), h: hashSeed(`${base}:key:${keys.length}:${z.L}:${q.c},${q.row}`) }); }
+      rooms.sort((a, b) => a.score - b.score || a.h - b.h);
+      if (!rooms.length || keys.some((k) => !ok.has(k.zone))) { for (const s of cand.stairs) delete s.lock; continue; } // this seal would shut the way to an earlier key
+      const home = rooms[0]; home.q.key = key; home.q.cache = false; keys.push({ ...key, kind: cand.kind, level: home.L, doorLevels: [...doorLevels], zone: zk(home.L, zoneOf(home.q)) });
+      if (cand.kind === "wing" && ![...cand.zone.rooms.values()].some((q) => q.cache)) { const q = [...cand.zone.rooms.values()].filter((q) => !placed.some((s) => s.c === q.c && s.row === q.row && (s.lo === cand.zone.L || s.lo + 1 === cand.zone.L))).sort((a, b) => (b.dead ? 1 : 0) - (a.dead ? 1 : 0))[0]; if (q) q.cache = true; } } }
+  const plan = { base, ...P, W, H, C, R, xs, ys, wi, bcols, segCols, barriers, zones, stairs: placed, drops, entry, vault, last, keys, front: { x: xs[entry.c] + (wi[entry.c] >> 1), y: H - 1 }, S: LABYRINTHS.styles[P.style], vaultLevel: vL, ...(VP ? { vaultPlace: VP } : {}) };
   if (rmMemo.size > 24) rmMemo.clear(); rmMemo.set(base, plan); return plan;
 }
 
@@ -523,8 +583,9 @@ export function generateRoomMazeFloor(seed, id) {
   // objects: stairs, the doors out, the barred doors, the vault, caches
   const objects = [], fid = (lv) => `${plan.base}:f${roomFloorOf(lv)}`, FN = M.floorNames, ladder = (lo) => lo === -1;
   plan.stairs.forEach((s, i) => { const a = slotA(s.c, s.row), b = slotB(s.c, s.row);
-    if (s.lo === L) objects.push({ id: `lab-stair-${i}-up`, kind: "buildingStair", name: `${ladder(s.lo) ? "Ladder up" : "Stair up"} · ${FN[s.lo + 1]}`, x: a.x, y: a.y, state: "open", actions: ["climb"], toId: fid(s.lo + 1), toX: b.x, toY: b.y, dir: "up", labyrinth: true });
-    if (s.lo + 1 === L) objects.push({ id: `lab-stair-${i}-down`, kind: "buildingStair", name: `${ladder(s.lo) ? "Ladder down" : "Stair down"} · ${FN[s.lo]}`, x: b.x, y: b.y, state: "open", actions: ["descend"], toId: fid(s.lo), toX: a.x, toY: a.y, dir: "down", labyrinth: true }); });
+    const seal = s.lock ? { lock: s.lock.id, lockName: s.lock.name } : null, sealed = seal ? ` (sealed: the ${s.lock.name})` : ""; // generator 2's keys (none in generator 1)
+    if (s.lo === L) objects.push({ id: `lab-stair-${i}-up`, kind: "buildingStair", name: `${ladder(s.lo) ? "Ladder up" : "Stair up"} · ${FN[s.lo + 1]}${sealed}`, x: a.x, y: a.y, state: "open", actions: ["climb"], toId: fid(s.lo + 1), toX: b.x, toY: b.y, dir: "up", labyrinth: true, ...seal });
+    if (s.lo + 1 === L) objects.push({ id: `lab-stair-${i}-down`, kind: "buildingStair", name: `${ladder(s.lo) ? "Ladder down" : "Stair down"} · ${FN[s.lo]}${sealed}`, x: b.x, y: b.y, state: "open", actions: ["descend"], toId: fid(s.lo), toX: a.x, toY: a.y, dir: "down", labyrinth: true, ...seal }); });
   if (L === 0) { objects.push({ id: "building-exit", kind: "exit", name: "Door out", x: plan.front.x, y: plan.front.y, state: "open", actions: ["exit"] });
     for (const b of barriers) { if (b.obstacle !== "barred") continue; const x = xs[b.col] + (wi[b.col] >> 1); objects.push({ id: `lab-gate-${b.i}`, kind: "labGate", name: "Barred door", x, y: b.links[0].gate, state: "shut", actions: ["open"], gateKey: `gate:${b.i}`, farX: x + 1, labyrinth: true }); } }
   // props on a room's edge tiles: never in line with a doorway, never beside an object
@@ -558,16 +619,40 @@ export function generateRoomMazeFloor(seed, id) {
       const gd = guardianBeside(tiles, W, c, (x, y) => free(x, y), 2, c); if (gd) { taken.add(at(gd.x, gd.y)); enemySpawns.push({ id: `${id}:guardian`, kind: S.guardian, x: gd.x, y: gd.y, buildingGuard: true, buildingGuardian: true }); }
       const out = spotIn(q, "out"); if (out) { objects.push({ id: "building-exit-vault", kind: "exit", name: "Way out · the front", x: out.x, y: out.y, state: "open", actions: ["exit"] }); taken.add(at(out.x, out.y)); }
       roofSpot = spotIn(q, "roof"); if (roofSpot) taken.add(at(roofSpot.x, roofSpot.y)); }
+    else if (q.key) { const c = spotIn(q, "key"); if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere in the maze, a sealed stair waits for it.` }); taken.add(at(c.x, c.y)); } }
     else if (q.cache) { const c = spotIn(q, "cache"); if (c) { objects.push({ id: `lab-cache-${L}-${q.c}-${q.row}`, kind: "chest", name: L === 2 ? "Lookout Cache" : "Forgotten Cache", x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache }); taken.add(at(c.x, c.y)); } } }
   const first = L === 0 ? null : objects.find((o) => o.kind === "buildingStair"), entry = L === 0 ? { x: plan.front.x, y: plan.front.y - 1 } : first ? stepOffTile(tiles, W, first) : { x: W >> 1, y: H >> 1 };
-  const floorName = FN[L], name = `${plan.S.name} · ${floorName}`, F = roomFloorOf(M.levels[1]);
-  return { seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${floorName}`, danger: L === 0 ? "what the ground cannot cross" : L === 2 ? "a long fall" : "a maze of rooms", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
-    building: { keys: [], base: plan.base, style: Pid.style, roomMaze: plan.rooms, level: L, floor: f, floors: F, roof: false, labyrinth: true, node: f - 1, kind: L === -1 ? "undercroft" : L === 2 ? "roof" : "rooms", vault: L === 0, depth: f - 1, of: F,
-      fallTo: null, entries: {}, breachEntry: null, roofLadder: null, open: L === 2, roofSpot, hint: M.messages.hint[L],
+  const VP = plan.vaultPlace, SN = VP ? VP.name : plan.S.name, floorName = FN[L], name = `${SN} · ${floorName}`, F = roomFloorOf(M.levels[1]); // generator 2: the maze's own name
+  return { seed, id, recipe: "greatBuilding", name, identity: `${SN}: ${floorName}`, danger: L === 0 ? "what the ground cannot cross" : L === 2 ? "a long fall" : "a maze of rooms", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
+    building: { keys: plan.keys.map((k) => ({ id: k.id, name: k.name })), base: plan.base, style: Pid.style, roomMaze: plan.rooms, level: L, floor: f, floors: F, roof: false, labyrinth: true, node: f - 1, kind: L === -1 ? "undercroft" : L === 2 ? "roof" : "rooms", vault: L === plan.vaultLevel, depth: f - 1, of: F,
+      fallTo: null, entries: {}, breachEntry: null, roofLadder: null, open: L === 2, roofSpot, hint: M.messages.hint[L], ...(VP ? { vaultLine: VP.line, vaultPlace: VP.place } : {}),
       rooms: rooms.map((q) => ({ x0: q.x0, y0: q.y0, x1: q.x1, y1: q.y1, name: q.theme.name, ...(q.vault ? { vault: true } : {}), ...(q.entry ? { entry: true } : {}) })),
       barriers: barriers.map((b) => ({ x0: xs[b.col], x1: xs[b.col] + wi[b.col] - 1, obstacle: b.obstacle, name: M.obstacleNames[b.obstacle], crossing: b.crossing })) }, layoutVersion: 1, themePool: 0 };
 }
 const stepOffTile = (tiles, W, p) => { for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) { const t = tiles[(p.y + dy) * W + p.x + dx]; if (t && !t.blocked && !t.hole && !t.environment) return { x: p.x + dx, y: p.y + dy }; } return { x: p.x, y: p.y }; };
+// The view below (Tim, 2026-11-06, the room mazes' galleries and roof beams: "looking down on what you couldn't cross"): on an
+// upper floor or the roof, each void tile over a barrier shows, faintly, what lies under it: down through any void on the floors
+// between, to the first thing that is not one (a walkway's planks, a stub, the ground floor's holes, lava, rubble, a bank).
+// Drawing only (renderer.ts drawRoomViewBelow, a cached dim image, only for void tiles in sight). Worked out once per floor map
+// (a WeakMap, so it goes with the map), from the floors below as generated: a barrier's band never changes in play.
+export const ROOM_VIEW = {
+  alpha: .42, // the view's strength over the void
+  // what shows, by code: 1 a pit (the ground's holes), 2 lava, 3 rubble, 4 planks, 5 floor, 6 wall
+  colors: { 1: "#0d0f1a", 2: "#ff6a1f", 3: "#6b6258", 4: "#8a6a44", 5: "#5a5650", 6: "#2b2824" },
+};
+const viewMemo = new WeakMap(), viewFloors = new Map();
+export function roomViewBelow(map) {
+  const B = map?.building; if (!B?.roomMaze || !(B.level >= 1) || !Array.isArray(map.tiles)) return null;
+  if (viewMemo.has(map)) return viewMemo.get(map);
+  const W = map.width, H = map.height, P = parseLabyrinthId(map.id), below = (L) => { const id = `${B.base}:f${roomFloorOf(L)}`;
+    if (!viewFloors.has(id)) { if (viewFloors.size >= 6) viewFloors.clear(); viewFloors.set(id, generateRoomMazeFloor(map.seed ?? P?.seed, id)); } return viewFloors.get(id); };
+  let out = null, n = 0;
+  for (const b of B.barriers || []) for (let y = 0; y < H; y++) for (let x = b.x0; x <= b.x1; x++) { const k = y * W + x; if (!map.tiles[k]?.hole || map.tiles[k].drop) continue;
+    let code = 1; for (let L = B.level - 1; L >= 0; L--) { const t = below(L)?.tiles?.[k]; if (!t) break; if (t.hole) { code = 1; continue; }
+      code = t.kind === "lava" ? 2 : t.rubble ? 3 : t.bridge ? 4 : t.blocked ? 6 : 5; break; }
+    (out ||= new Uint8Array(W * H))[k] = code; n++; }
+  const V = out ? { W, H, codes: out, n } : null; viewMemo.set(map, V); return V;
+}
 // A barred door opened from the far side (`labOpen` holds its gateKey): its tile becomes a doorway (a new tile object, so the
 // cached ground redraws) and its object stands open.
 export function openRoomGate(map, o) {

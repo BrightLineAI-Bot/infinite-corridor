@@ -6,8 +6,8 @@
 // "infinite tier 3 and beyond... after you've unlocked the second gate with the listener... take the submersible on land";
 // "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Gate's climbs (far-array.ts; release 704:
 // the Gate at tier g climbs after g more Listener kills, so the second Gate opens on the third kill). Pure rules; boats.ts, diving.ts and game.ts ask these.
-import { apertureTier } from "./world.js?v=r787-79b4a7ca7811";
-import { listenerKills } from "./stages.js?v=r787-79b4a7ca7811";
+import { apertureTier } from "./world.js?v=r789-7b41b2c419e8";
+import { listenerKills } from "./stages.js?v=r789-7b41b2c419e8";
 
 export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechGates: 2, droneGates: 4 }; // Gates opened (far-array.ts: the Gate at tier g climbs after g more Listener kills)
 const TIER_NAMES = { 12: "Infinite II", 13: "Infinite III" };
@@ -137,6 +137,9 @@ export const DRONE_FIZZLE = {
   zones: [
     { id: "pentagon", match: { pentagon: true, blocked: true }, message: "The drone's lift fizzles out over the Pentagon's walls. The Corridor's rules are different here." },
     { id: "castle", match: { kind: "castleWall", landscape: "castle", greatBuilding: true, blocked: true }, message: "The drone's lift fizzles out over the Great Castle. The Corridor's rules are different here.", glide: "The air over the Great Castle's walls will not carry the glider; it turns you away. The Corridor's rules are different here." },
+    // Tower seals (great-buildings.ts TOWER_SEAL; Tim, 2026-11-06: no hopping onto the central tower with the drone): a sealed
+    // tower's top, and the ledges of its climb, laid only on new ground (`towerAir`). Walking and climbing them is unaffected.
+    { id: "tower", match: { towerAir: true }, message: "The drone's lift fizzles out beside the sealed tower. The Corridor's rules are different here.", glide: "The air round the sealed tower will not carry the glider; it turns you away. The Corridor's rules are different here." },
   ],
   burst: 1.2, // seconds the sparks and the burst show
   sparks: 14,

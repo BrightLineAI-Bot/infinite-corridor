@@ -1,35 +1,35 @@
-import { FAR_FOLK } from "./far-realms.js?v=r787-79b4a7ca7811";
-import { astralBeamAnchors } from "./astral-worm.js?v=r787-79b4a7ca7811";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r787-79b4a7ca7811";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r787-79b4a7ca7811";
-import { enemyMeleeGeometry } from "./combat.js?v=r787-79b4a7ca7811";
-import { ruleRows } from "./elders.js?v=r787-79b4a7ca7811";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r787-79b4a7ca7811";
-import { BOAT } from "./boats.js?v=r787-79b4a7ca7811";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r787-79b4a7ca7811";
-import { isMarineTile } from "./world-beasts.js?v=r787-79b4a7ca7811";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r787-79b4a7ca7811"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r787-79b4a7ca7811";
-import { setTreeSeason } from "./landscape-render.js?v=r787-79b4a7ca7811";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r787-79b4a7ca7811";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r787-79b4a7ca7811";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r787-79b4a7ca7811";
-import { TREES } from "./trees.js?v=r787-79b4a7ca7811";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r787-79b4a7ca7811";
-import { KIT_MOVES } from "./boss-kit.js?v=r787-79b4a7ca7811";
-import { SKY_DISCS } from "./skylands.js?v=r787-79b4a7ca7811"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r787-79b4a7ca7811";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r787-79b4a7ca7811"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r787-79b4a7ca7811"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r787-79b4a7ca7811"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r787-79b4a7ca7811"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r787-79b4a7ca7811"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r787-79b4a7ca7811";
-import { drawRelayNode } from "./relay-network.js?v=r787-79b4a7ca7811";
-import { structureOccupancy } from "./world.js?v=r787-79b4a7ca7811";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r787-79b4a7ca7811";
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState } from "./labyrinths.js?v=r787-79b4a7ca7811";
-import { closeViewFrame, closeViewCapturing, closeViewTake } from "./close-view.js?v=r787-79b4a7ca7811"; // Close View: three hooks below, marked CLOSE VIEW
+import { FAR_FOLK } from "./far-realms.js?v=r789-7b41b2c419e8";
+import { astralBeamAnchors } from "./astral-worm.js?v=r789-7b41b2c419e8";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r789-7b41b2c419e8";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r789-7b41b2c419e8";
+import { enemyMeleeGeometry } from "./combat.js?v=r789-7b41b2c419e8";
+import { ruleRows } from "./elders.js?v=r789-7b41b2c419e8";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r789-7b41b2c419e8";
+import { BOAT } from "./boats.js?v=r789-7b41b2c419e8";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r789-7b41b2c419e8";
+import { isMarineTile } from "./world-beasts.js?v=r789-7b41b2c419e8";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r789-7b41b2c419e8"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r789-7b41b2c419e8";
+import { setTreeSeason } from "./landscape-render.js?v=r789-7b41b2c419e8";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r789-7b41b2c419e8";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r789-7b41b2c419e8";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r789-7b41b2c419e8";
+import { TREES } from "./trees.js?v=r789-7b41b2c419e8";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r789-7b41b2c419e8";
+import { KIT_MOVES } from "./boss-kit.js?v=r789-7b41b2c419e8";
+import { SKY_DISCS } from "./skylands.js?v=r789-7b41b2c419e8"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r789-7b41b2c419e8";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r789-7b41b2c419e8"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r789-7b41b2c419e8"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r789-7b41b2c419e8"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r789-7b41b2c419e8"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r789-7b41b2c419e8"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r789-7b41b2c419e8";
+import { drawRelayNode } from "./relay-network.js?v=r789-7b41b2c419e8";
+import { structureOccupancy } from "./world.js?v=r789-7b41b2c419e8";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r789-7b41b2c419e8";
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r789-7b41b2c419e8";
+import { closeViewFrame, closeViewCapturing, closeViewTake } from "./close-view.js?v=r789-7b41b2c419e8"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1818,6 +1818,7 @@ function greatBlocks(ctx,o,s,p,map,view){
     if(fallen.has(`${c.x},${c.y}`)){ctx.fillStyle="#060607";ctx.beginPath();ctx.moveTo(x+s*.1,y+s*.2);ctx.lineTo(x+s*(.4+(k%5)*.05),y+s*.05);ctx.lineTo(x+s*.9,y+s*.25);ctx.lineTo(x+s*.85,y+s*.85);ctx.lineTo(x+s*.3,y+s*.95);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.62,y+s*.6,s*.2,s*.14)}
     const hq=hatchAt.get(`${c.x},${c.y}`);if(hq){ctx.fillStyle="#1a1612";ctx.fillRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle="#8a7650";ctx.beginPath();ctx.moveTo(x+s*.32,y+s*.12);ctx.lineTo(x+s*.32,y+s*.88);ctx.moveTo(x+s*.68,y+s*.12);ctx.lineTo(x+s*.68,y+s*.88);for(let q=.28;q<.9;q+=.2){ctx.moveTo(x+s*.32,y+s*q);ctx.lineTo(x+s*.68,y+s*q)}ctx.stroke()}
     const d=doorAt.get(`${c.x},${c.y}`);if(d&&d.face!=="south"){ctx.fillStyle="#08090a";const w=s*.6;if(d.face==="north"){ctx.fillRect(x+s*.2,y,w,s*.34)}else if(d.face==="west"){ctx.fillRect(x,y+s*.2,s*.3,w)}else{ctx.fillRect(x+s*.7,y+s*.2,s*.3,w)}ctx.strokeStyle=C.trim;ctx.lineWidth=1.5;ctx.strokeRect(d.face==="north"?x+s*.2:d.face==="west"?x:x+s*.7,d.face==="north"?y:y+s*.2,d.face==="north"?w:s*.3,d.face==="north"?s*.34:w)}
+    if(o.lever&&o.lever.x===c.x&&o.lever.y===c.y)drawPentLever(ctx,{x:c.x,y:c.y-b.faceH,state:o.lever.state},s,0); // TOWER_SEAL: the lever on a sealed tower's top, drawn with its roof
     // the facade under an open south side
     if(!has(0,1)){const fy=(c.y+1)*s-lift,band=lift/b.floors;ctx.fillStyle=C.wall;ctx.fillRect(x,fy,s+1,lift);ctx.fillStyle="#00000033";ctx.fillRect(x,fy,s+1,s*.1);
       for(let f=0;f<b.floors;f++){const by=fy+lift-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+s,by);ctx.stroke();
@@ -2273,6 +2274,7 @@ export function render(ctx, g, w, h, now) {
   const sightTile=(x,y)=>seenTile(x,y)&&(g.area!=="dungeon"||labFogState(g.map,x,y)===2); // LAB_FOG: a safe drop's rim only in sight
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile); // per frame: brinks sit over animated water, as before
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
+  if (g.area === "dungeon" && g.map?.building?.roomMaze && !closeViewCapturing()) drawRoomViewBelow(ctx, g, s, { l, t, r, b }); // ROOM_VIEW: through a gallery's void, the barrier below (Close View skips it)
   if (g.area === "dungeon" && g.map?.building) drawSafeDropRims(ctx, g.map, mw, p, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), sightTile); // HOLE_DROPS: a safe drop shows its green rim only close up
   if (g.area === "dungeon" && g.map?.canyon && g.drillTile) { const d = g.drillTile, x = d.x * s, y = d.y * s, k = Math.min(1, d.progress / (d.need || 1)); // Canyon craters: the auger's cracks, and a yellow clod's strain
     ctx.save(); ctx.strokeStyle = `rgba(20,12,6,${.4 + .5 * k})`; ctx.lineWidth = Math.max(1, s * .06); ctx.beginPath(); for (let i = 0; i < 2 + Math.floor(k * 5); i++) { const a = i * 2.1 + d.x, r = s * (.15 + .35 * k); ctx.moveTo(x + s / 2, y + s / 2); ctx.lineTo(x + s / 2 + Math.cos(a) * r, y + s / 2 + Math.sin(a) * r); } ctx.stroke();
@@ -2388,6 +2390,7 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
           else if (o.kind === "pentInscription") drawPentInscription(ctx, o, s, now); // the marks in its walls
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
+          else if (o.kind === "towerLever") {} // TOWER_SEAL: drawn on the tower's top with its roof (greatBlocks)
           else if (o.kind === "labGate") { if (o.state !== "open") drawBars(ctx, o, s); } // a room maze's barred door (labyrinths.ts ROOM_MAZES)
           else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
           else if (o.kind === "pentShortcut") drawPentShortcut(ctx, o, s, now); // and its shortcut links (v6)
@@ -2925,6 +2928,26 @@ export function drawLabFog(ctx, g, s, view, quality) {
   } else renderCacheStats.labFogRuns = paintLabFog(ctx, F, Math.max(0, view.l), Math.min(F.W, view.r), Math.max(0, view.t), Math.min(F.H, view.b), s);
   renderCacheStats.labFogDraws = (renderCacheStats.labFogDraws || 0) + 1;
   return true;
+}
+// ROOM_VIEW (labyrinths.ts roomViewBelow): on a room maze's upper floor or roof, the void over a barrier shows the floor below it,
+// dim. One image a tile a pixel, painted only for void tiles in sight (LAB_FOG), rebuilt only when the sight changes (the fog's
+// stamp) or the map does; each frame it is one scaled copy. Without an offscreen canvas (tests) the void tiles in view are
+// filled straight onto the view (bounded by the barrier columns in view).
+const roomViewImage = { canvas: null, map: null, stamp: -1 };
+function paintRoomView(c, V, F, x0, x1, y0, y1, k) {
+  let n = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = y * V.W + x, code = V.codes[i]; if (!code || (F && !F.sight[i])) continue; c.fillStyle = ROOM_VIEW.colors[code]; c.fillRect(x * k, y * k, k, k); n++; }
+  return n;
+}
+export function drawRoomViewBelow(ctx, g, s, view) {
+  const V = roomViewBelow(g.map); if (!V) return false; const F = labFogOf(g.map), I = roomViewImage;
+  const c = typeof ctx.drawImage === "function" ? I.canvas || (I.canvas = makeGroundCanvas()) : null, gc = c?.getContext?.("2d");
+  ctx.save(); ctx.globalAlpha = ROOM_VIEW.alpha;
+  if (gc) {
+    const stamp = F ? F.stamp : 0;
+    if (I.map !== g.map || I.stamp !== stamp) { if (c.width !== V.W || c.height !== V.H) { c.width = V.W; c.height = V.H; } gc.clearRect(0, 0, V.W, V.H); paintRoomView(gc, V, F, 0, V.W, 0, V.H, 1); I.map = g.map; I.stamp = stamp; renderCacheStats.roomViewBuilds = (renderCacheStats.roomViewBuilds || 0) + 1; }
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(c, 0, 0, V.W, V.H, 0, 0, V.W * s, V.H * s);
+  } else renderCacheStats.roomViewTiles = paintRoomView(ctx, V, F, Math.max(0, Math.floor(view.l)), Math.min(V.W, Math.ceil(view.r)), Math.max(0, Math.floor(view.t)), Math.min(V.H, Math.ceil(view.b)), s);
+  ctx.restore(); renderCacheStats.roomViewDraws = (renderCacheStats.roomViewDraws || 0) + 1; return true;
 }
 // Unexplored dungeon space: dark slate with a faint diagonal hatch, distinct from the indigo depth of a chasm.
 function fogTile(ctx, x, y, s) {
