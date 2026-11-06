@@ -1,35 +1,36 @@
-import { FAR_FOLK } from "./far-realms.js?v=r793-e86fa19ff8f8";
-import { astralBeamAnchors } from "./astral-worm.js?v=r793-e86fa19ff8f8";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r793-e86fa19ff8f8";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r793-e86fa19ff8f8";
-import { enemyMeleeGeometry } from "./combat.js?v=r793-e86fa19ff8f8";
-import { ruleRows } from "./elders.js?v=r793-e86fa19ff8f8";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r793-e86fa19ff8f8";
-import { BOAT } from "./boats.js?v=r793-e86fa19ff8f8";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r793-e86fa19ff8f8";
-import { isMarineTile } from "./world-beasts.js?v=r793-e86fa19ff8f8";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r793-e86fa19ff8f8"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r793-e86fa19ff8f8";
-import { setTreeSeason } from "./landscape-render.js?v=r793-e86fa19ff8f8";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r793-e86fa19ff8f8";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r793-e86fa19ff8f8";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r793-e86fa19ff8f8";
-import { TREES } from "./trees.js?v=r793-e86fa19ff8f8";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r793-e86fa19ff8f8";
-import { KIT_MOVES } from "./boss-kit.js?v=r793-e86fa19ff8f8";
-import { SKY_DISCS } from "./skylands.js?v=r793-e86fa19ff8f8"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r793-e86fa19ff8f8";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r793-e86fa19ff8f8"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r793-e86fa19ff8f8"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r793-e86fa19ff8f8"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r793-e86fa19ff8f8"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r793-e86fa19ff8f8"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r793-e86fa19ff8f8";
-import { drawRelayNode } from "./relay-network.js?v=r793-e86fa19ff8f8";
-import { structureOccupancy } from "./world.js?v=r793-e86fa19ff8f8";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r793-e86fa19ff8f8";
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r793-e86fa19ff8f8";
-import { closeViewFrame, closeViewCapturing, closeViewTake } from "./close-view.js?v=r793-e86fa19ff8f8"; // Close View: three hooks below, marked CLOSE VIEW
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r796-817d6b861fd9"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r796-817d6b861fd9";
+import { astralBeamAnchors } from "./astral-worm.js?v=r796-817d6b861fd9";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r796-817d6b861fd9";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r796-817d6b861fd9";
+import { enemyMeleeGeometry } from "./combat.js?v=r796-817d6b861fd9";
+import { ruleRows } from "./elders.js?v=r796-817d6b861fd9";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r796-817d6b861fd9";
+import { BOAT } from "./boats.js?v=r796-817d6b861fd9";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r796-817d6b861fd9";
+import { isMarineTile } from "./world-beasts.js?v=r796-817d6b861fd9";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r796-817d6b861fd9"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r796-817d6b861fd9";
+import { setTreeSeason } from "./landscape-render.js?v=r796-817d6b861fd9";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r796-817d6b861fd9";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r796-817d6b861fd9";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r796-817d6b861fd9";
+import { TREES } from "./trees.js?v=r796-817d6b861fd9";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r796-817d6b861fd9";
+import { KIT_MOVES } from "./boss-kit.js?v=r796-817d6b861fd9";
+import { SKY_DISCS } from "./skylands.js?v=r796-817d6b861fd9"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r796-817d6b861fd9";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r796-817d6b861fd9"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r796-817d6b861fd9"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r796-817d6b861fd9"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r796-817d6b861fd9"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r796-817d6b861fd9"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r796-817d6b861fd9";
+import { drawRelayNode } from "./relay-network.js?v=r796-817d6b861fd9";
+import { structureOccupancy } from "./world.js?v=r796-817d6b861fd9";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r796-817d6b861fd9";
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r796-817d6b861fd9";
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r796-817d6b861fd9"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -116,7 +117,7 @@ const PAL = {
   // great buildings (great-buildings.ts): their walls and floors
   keepWall: ["#4a443b", "#544d43"], aptWall: ["#55595d", "#5f6367"],
   mosaicFloor: ["#5a4a3a", "#5e4d3c"], carpetFloor: ["#5b2a2c", "#5f2c2e"], plankFloor: ["#6a4a2e", "#6e4d30"], flagFloor: ["#5a5650", "#5e5a53"],
-  tileFloor: ["#8a8a84", "#7e7e78"], concreteFloor: ["#5b5d5e", "#585a5b"], rubbleFloor: ["#4a4640", "#46423c"], floorHole: ["#060607", "#060607"],
+  tileFloor: ["#8a8a84", "#7e7e78"], concreteFloor: ["#5b5d5e", "#585a5b"], rubbleFloor: ["#4a4640", "#46423c"], floorHole: ["#060607", "#060607"], hallVoid: ["#030308", "#04040a"], /* release 795: a grand hall's open shaft */
   hedgeWall: ["#2c4a2a", "#30502e"], yardGrass: ["#4f6a3a", "#53703d"], cellarWall: ["#1c1a18", "#211f1c"], cellarFloor: ["#33302b", "#36332e"], // labyrinths
   hiveWall: ["#3a2a44", "#40304a"], chitinFloor: ["#3d3046", "#42344b"], fleshFloor: ["#5a2e3e", "#5e3142"], crystalFloor: ["#3a4a66", "#3e4f6b"], // compounds' hives
   ash: ["#3b3834", "#5a5049"],
@@ -240,7 +241,10 @@ function tile(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) 
     ctx.fillStyle = "#c2a87a33"; ctx.fillRect(px + s * (.2 + (d % 3) * .12), py + s * (.3 + (d % 2) * .25), s * .14, s * .1);
   }
   if (t?.sigil) sigilInlay(ctx, t, x, y, s);
+  if (t?.inlay) hallInlay(ctx, t, x, y, s); // release 795: a grand hall's floor mural
 }
+// Release 795: a floor mural's tile (pentagon-halls.ts muralPattern): a lit line (2) or a dark groove (1) set in the floor.
+function hallInlay(ctx, t, x, y, s) { const px = x * s, py = y * s; ctx.fillStyle = t.inlay === 2 ? "#e8d8a055" : "#00000033"; ctx.fillRect(px + s * .14, py + s * .14, s * .72, s * .72); if (t.inlay === 2) { ctx.strokeStyle = "#f4e6b066"; ctx.lineWidth = Math.max(1, s * .03); ctx.strokeRect(px + s * .2, py + s * .2, s * .6, s * .6); } }
 // Release 289: a tile of the Watcher's sigil (watcher.ts): pale violet inlaid stone, the eye's pupil brightest; in arenas a
 // border and tesserae of small tiles around it; on a shrine, the raised platforms (their faces are the landscape's own).
 const SIGIL_INLAY = { lid: ["#b8b0d855", "#e6e0ff66"], ring: ["#b8b0d855", "#e6e0ff66"], eye: ["#a79ed066", "#e6e0ff55"], pupil: ["#d8d0ff99", "#ffffffaa"], orbit: ["#9f96c855", "#d8d2f855"], tools: ["#a79ed055", "#e6e0ff55"], border: ["#c9a15c44", "#e2c04f55"], tessera: ["#6d5f8a33", "#b8b0d833"] };
@@ -1923,6 +1927,24 @@ function drawPentInscription(ctx, o, s, now) {
   for (let i = 0; i < 4; i++) { const ly = y + s * (.32 + i * .12), a = x + s * (.28 + (i % 2) * .05); ctx.moveTo(a, ly); ctx.lineTo(a + s * (.3 + ((i * 7) % 3) * .05), ly + s * .02 * (i % 2 ? 1 : -1)); }
   ctx.stroke(); ctx.restore();
 }
+// Release 795 (pentagon-halls.ts): the grand halls' marks, drawn small, for the top-down view (Close View paints them large later).
+// The Watcher's sigil in a few strokes: a shut lid, an open eye, the stroke through it, the tools below.
+function watcherGlyph(ctx, cx, cy, r, color) { ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, r * .16); ctx.beginPath(); ctx.arc(cx, cy - r * .62, r * .34, .15 * Math.PI, .85 * Math.PI); ctx.moveTo(cx + r * .32, cy); ctx.arc(cx, cy, r * .32, 0, 7); ctx.moveTo(cx - r * .7, cy + r * .42); ctx.lineTo(cx + r * .7, cy - r * .42); ctx.moveTo(cx - r * .1, cy + r * .52); ctx.lineTo(cx + r * .1, cy + r * .66); ctx.lineTo(cx, cy + r * .9); ctx.stroke(); ctx.fillStyle = color; ctx.fillRect(cx - r * .07, cy - r * .07, r * .14, r * .14); }
+function drawHallMarks(ctx, map, s, l, t, r, b) {
+  ctx.save();
+  for (const m of map.murals || []) { if (m.place !== "wall" || !visibleInCamera(m, l, t, r, b)) continue; const M = PENTAGON_MURALS.find((q) => q.id === m.muralId), pal = M?.palette || ["#2a2520", "#8a7a5e", "#e0c890"], px = m.x * s, py = m.y * s;
+    const along = m.side === "north" || m.side === "south", half = Math.min(2, (m.scale - 1) >> 1), x0 = px - (along ? half * s : 0), y0 = py - (along ? 0 : half * s), w = along ? (half * 2 + 1) * s : s, h = along ? s : (half * 2 + 1) * s;
+    const fy = m.side === "north" ? py + s * .45 : y0, fh = m.side === "north" ? s * .5 : h; ctx.fillStyle = pal[0] + "cc"; ctx.fillRect(x0 + s * .08, fy, w - s * .16, fh); ctx.strokeStyle = pal[1]; ctx.lineWidth = Math.max(1, s * .05); ctx.strokeRect(x0 + s * .1, fy + s * .03, w - s * .2, fh - s * .06);
+    ctx.strokeStyle = pal[2] + "aa"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); const n = (along ? half * 2 + 1 : 1) * 3; for (let i = 0; i < n; i++) { const qx = x0 + s * .2 + (w - s * .4) * (i + .5) / n, qy = fy + fh * .5; ctx.moveTo(qx, qy - fh * .22); ctx.lineTo(qx + s * .05, qy + fh * .22); } ctx.stroke(); }
+  for (const g of map.sigils || []) { if (g.kind === "inlay" || !visibleInCamera(g, l, t, r, b)) continue; const cx = (g.x + .5) * s, cy = (g.y + (g.kind === "column" ? .3 : g.side === "north" ? .7 : .5)) * s;
+    if (g.kind === "banner") { const bx = cx - s * .26, by = g.side === "north" ? (g.y + .45) * s : (g.y + .12) * s; ctx.fillStyle = "#3a2a4ae6"; ctx.fillRect(bx, by, s * .52, s * .72); ctx.fillStyle = "#c9a15c"; ctx.fillRect(bx, by, s * .52, s * .05); watcherGlyph(ctx, cx, by + s * .34, s * .22, "#d8d0ffcc"); }
+    else watcherGlyph(ctx, cx, cy, s * (g.kind === "lintel" ? .2 : .18), g.kind === "lintel" ? "#b8b0d8bb" : "#a79ed0aa"); }
+  ctx.restore();
+}
+function drawPentMural(ctx, o, s, now) { const cx = (o.x + .5) * s, cy = (o.y + .55) * s, lit = o.state !== "read", a = lit ? .35 + .25 * (.5 + .5 * Math.sin(now / 1100 + o.x)) : .18; ctx.save();
+  ctx.strokeStyle = `rgba(230,214,170,${a})`; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); ctx.ellipse(cx, cy, s * .3, s * .14, 0, 0, 7); ctx.stroke();
+  if (o.place === "ceiling") { ctx.beginPath(); ctx.moveTo(cx - s * .12, cy - s * .02); ctx.lineTo(cx, cy - s * .2); ctx.lineTo(cx + s * .12, cy - s * .02); ctx.stroke(); } // look up
+  ctx.restore(); }
 // Version 2 (release 728): the Fivefold Seal's sigil, cut into a door it has not yet opened; the great levers in the courts;
 // the Seal itself, a five-sided disc with an eyeless face, turning; the dread that closes in the deeper you go.
 const pentPath = (ctx, cx, cy, r, a0 = -Math.PI / 2) => { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = a0 + i * Math.PI * 2 / 5; ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } ctx.closePath(); };
@@ -2014,7 +2036,7 @@ function drawBuildingStair(ctx, o, s, now) {
   ctx.restore();
 }
 // Inside a great building: dressed or concrete walls with a face where they stand over open floor, and each room's floor.
-const BUILDING_TILES = new Set(["hedgeWall", "yardGrass", "cellarWall", "cellarFloor", "keepWall", "aptWall", "hiveWall", "mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor"]);
+const BUILDING_TILES = new Set(["hallVoid", "hedgeWall", "yardGrass", "cellarWall", "cellarFloor", "keepWall", "aptWall", "hiveWall", "mosaicFloor", "carpetFloor", "plankFloor", "flagFloor", "tileFloor", "concreteFloor", "rubbleFloor", "floorHole", "chitinFloor", "fleshFloor", "crystalFloor"]);
 function paintBuildingTile(ctx, t, x, y, s, d, map, w) {
   const px = x * s, py = y * s, k = t.kind, at = (dx, dy) => map[(y + dy) * w + x + dx], same = (dx, dy) => at(dx, dy)?.kind === k;
   if (k === "hedgeWall") { const below = at(0, 1), face = below && !below.blocked; // a labyrinth court's hedge: clipped leaves, darker where it meets the path
@@ -2039,6 +2061,10 @@ function paintBuildingTile(ctx, t, x, y, s, d, map, w) {
       ctx.fillStyle = "#00000044"; ctx.fillRect(px, py + s - 3, s + 1, 3); }
     return;
   }
+  if (k === "hallVoid") { // release 795: a grand hall's open shaft (pentagon-halls.ts): no floor, a few far lights below, the lip lit where floor meets it
+    ctx.fillStyle = "#030308"; ctx.fillRect(px, py, s + 1, s + 1); if ((d & 3) === 1) { ctx.fillStyle = "#6e5aa855"; ctx.fillRect(px + s * (.2 + (x % 3) * .2), py + s * (.3 + (y % 2) * .3), Math.max(1, s * .06), Math.max(1, s * .06)); }
+    ctx.fillStyle = "#3a345055"; for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const n = at(dx, dy); if (n && !n.blocked) { if (dy) ctx.fillRect(px, py + (dy < 0 ? 0 : s * .86), s + 1, s * .14); else ctx.fillRect(px + (dx < 0 ? 0 : s * .86), py, s * .14, s + 1); } }
+    return; }
   if (k === "floorHole") { // a hole through to the floor below: dark, its broken edge, a glint of the floor beneath
     ctx.fillStyle = "#020203"; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle = "#16130f"; ctx.fillRect(px + s * .3, py + s * .55, s * .4, s * .3);
     ctx.fillStyle = "#3d342a"; for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const n = at(dx, dy); if (n && n.kind !== "floorHole" && !n.blocked) { for (let i = 0; i < 3; i++) { const q = (d + i * 5) % 7 / 7; if (dy) ctx.fillRect(px + q * s * .8, dy < 0 ? py : py + s - s * .12, s * .2, s * .12); else ctx.fillRect(dx < 0 ? px : px + s - s * .12, py + q * s * .8, s * .12, s * .2); } } }
@@ -2210,8 +2236,9 @@ export function render(ctx, g, w, h, now) {
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = "#141816";
-  ctx.fillRect(0, 0, w, h);
+  const bareFloor = closeViewBareFloor(); // Close View bare floor (release 794): its GPU scene shades the floor; only what lies on it is drawn here
+  if (bareFloor) ctx.clearRect(0, 0, w, h); else { ctx.fillStyle = "#141816";
+  ctx.fillRect(0, 0, w, h); }
   const budget = presentationBudget(g.presentation, g.area),
     s = Math.round(Math.max(28, Math.min(44, w / 12))),
     p = g.player,
@@ -2240,7 +2267,7 @@ export function render(ctx, g, w, h, now) {
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
   if (g.area === "dungeon" && g.map?.stillworks) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
-  const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
+  const groundCached = !bareFloor && (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
     const animated = render.animatedTiles || (render.animatedTiles = []), glitter = render.chasmGlitter || (render.chasmGlitter = []); animated.length = 0; glitter.length = 0;
     for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
@@ -2254,7 +2281,7 @@ export function render(ctx, g, w, h, now) {
     if (glitter.length) glitterChasm(ctx, glitter, s, now);
     if (g.map.movers?.length) drawRafts(ctx, g, s, now); // release 613
   }
-  else { for (let y = t; y < b; y++)
+  else if (!bareFloor) { for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
       if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"&&!(LETHAL_KINDS.has(g.map.tiles[y*mw+x]?.kind)&&Math.hypot(x-p.x,y-p.y)<2.6)){fogTile(ctx,x,y,s);continue}
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId, scarSurface);
@@ -2389,6 +2416,7 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentRubble") drawPentRubble(ctx, o, s); // the Pentagon's rubble
           else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
           else if (o.kind === "pentInscription") drawPentInscription(ctx, o, s, now); // the marks in its walls
+          else if (o.kind === "pentMural") drawPentMural(ctx, o, s, now); // release 795: where a grand hall's mural is read
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
           else if (o.kind === "towerLever") {} // TOWER_SEAL: drawn on the tower's top with its roof (greatBlocks)
           else if (o.kind === "labGate") { if (o.state !== "open") drawBars(ctx, o, s); } // a room maze's barred door (labyrinths.ts ROOM_MAZES)
@@ -2692,6 +2720,7 @@ export function render(ctx, g, w, h, now) {
   }
   for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && seenInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
   for (const o of g.map.objects) if (o.pentagonDoor && o.barred && !o.opened && visibleInCamera(o, l, t, r, b)) drawBars(ctx, o, s); // v6: an exterior shortcut door, bolted from within
+  if (g.area === "dungeon" && (g.map.murals || g.map.sigils)) drawHallMarks(ctx, g.map, s, l, t, r, b); // release 795: murals carved in a grand hall's walls, the Watcher's sigil over doors, on banners and columns
   if (g.shortcutBurst) drawShortcutBurst(ctx, g, s, now); // a shortcut just opened
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk

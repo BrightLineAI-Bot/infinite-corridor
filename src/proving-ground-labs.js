@@ -1,24 +1,24 @@
-import { Game } from "./game.js?v=r793-e86fa19ff8f8";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r793-e86fa19ff8f8"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS } from "./close-view.js?v=r793-e86fa19ff8f8";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r793-e86fa19ff8f8";
-import { sectionRegion, LANDSCAPE_VERSION } from "./landscape.js?v=r793-e86fa19ff8f8";
-import { freshSave, migrateSave } from "./types.js?v=r793-e86fa19ff8f8";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r793-e86fa19ff8f8";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r793-e86fa19ff8f8";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r793-e86fa19ff8f8";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r793-e86fa19ff8f8";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r793-e86fa19ff8f8";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r793-e86fa19ff8f8";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r793-e86fa19ff8f8";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r793-e86fa19ff8f8";
-import { BIOMES, biomeFor } from "./landscape.js?v=r793-e86fa19ff8f8";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r793-e86fa19ff8f8";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r793-e86fa19ff8f8";
-import { ensureConstellation } from "./constellation.js?v=r793-e86fa19ff8f8";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r793-e86fa19ff8f8";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r793-e86fa19ff8f8";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r793-e86fa19ff8f8";
+import { Game } from "./game.js?v=r796-817d6b861fd9";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r796-817d6b861fd9"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r796-817d6b861fd9";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r796-817d6b861fd9";
+import { sectionRegion, LANDSCAPE_VERSION } from "./landscape.js?v=r796-817d6b861fd9";
+import { freshSave, migrateSave } from "./types.js?v=r796-817d6b861fd9";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r796-817d6b861fd9";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r796-817d6b861fd9";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r796-817d6b861fd9";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r796-817d6b861fd9";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r796-817d6b861fd9";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r796-817d6b861fd9";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r796-817d6b861fd9";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r796-817d6b861fd9";
+import { BIOMES, biomeFor } from "./landscape.js?v=r796-817d6b861fd9";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r796-817d6b861fd9";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r796-817d6b861fd9";
+import { ensureConstellation } from "./constellation.js?v=r796-817d6b861fd9";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r796-817d6b861fd9";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r796-817d6b861fd9";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r796-817d6b861fd9";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -118,6 +118,11 @@ const CLOSE_VIEW_LAB = [
   { id: "vault", label: "Pentagon: the Regent's Vault", pick: (P) => P.nodes.find((n) => n.id === `h${P.nh - 1}`) },
   { id: "building", label: "Great building: a keep's first floor" },
   { id: "hazards", label: "Great building: an upper floor's holes, with lava stamped in (Close View's pits and lava)" }, // release 793
+  // release 794: one floor for each of Close View's themes (CLOSE_VIEW.themes); the Pentagon's are "outer" (a tomb) and "cellar" (a root cellar)
+  { id: "keep", label: "Theme: a keep (cold dressed stone)", style: "keep", lived: false },
+  { id: "lived-in", label: "Theme: a lived-in keep (a household of ghosts)", style: "keep", lived: true },
+  { id: "hive", label: "Theme: an alien hive's Second Gallery (chitin and resin)", style: "hive", floor: 2 },
+  { id: "arcology", label: "Theme: a ruined arcology (an old machine, failing)", style: "apartment" },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
 // GPU scene's lava and pits can be seen without hunting for a room maze's gallery
@@ -140,7 +145,11 @@ function findLabBuilding(seed) {
 function closeViewFixture(scenario, seed, now) {
   const spec = CLOSE_VIEW_LAB.find((q) => q.id === scenario) || CLOSE_VIEW_LAB[0];
   let id, back;
-  if (spec.id === "building" || spec.id === "hazards") { const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); id = `building:${seed}:${b.rx}:${b.ry}:keep:${b.floors}:f${spec.id === "hazards" ? Math.min(2, b.floors) : 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
+  if (spec.style) { // release 794: a theme's floor, built from a great building's id near the keep the lab finds (scratch only)
+    const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); const floors = 3; let rx = b.rx;
+    if (spec.style === "keep") for (let k = 0; k < 200 && closeViewThemeLivedIn(`building:${seed}:${rx}:${b.ry}:keep:${floors}`) !== spec.lived; k++) rx++; // a keep that is (or is not) lived in
+    id = `building:${seed}:${rx}:${b.ry}:${spec.style}:${floors}:f${spec.floor || 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
+  else if (spec.id === "building" || spec.id === "hazards") { const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); id = `building:${seed}:${b.rx}:${b.ry}:keep:${b.floors}:f${spec.id === "hazards" ? Math.min(2, b.floors) : 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
   else { const c = findLabPentagon(seed, now); if (!c) throw new Error(`No Pentagon near the origin for seed ${seed}.`); const P = pentagonPlan(seed, c.cx, c.cy, c.V), q = spec.pick(P) || P.nodes[0]; id = `${P.base}:f${q.n + 1}`; back = { rx: c.cx, ry: c.cy, x: 16, y: 16 }; }
   const save = scratchSave(seed); save.closeView = true; if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET; if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL; ensureCloseView(save); // ?cvPreset=close|wide tries a camera preset
   Object.assign(save.session, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 }); Object.assign(save.position, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 });

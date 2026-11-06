@@ -6,8 +6,8 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { rng } from "./random.js?v=r793-e86fa19ff8f8";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r793-e86fa19ff8f8";
+import { rng } from "./random.js?v=r796-817d6b861fd9";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r796-817d6b861fd9";
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;

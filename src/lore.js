@@ -4,7 +4,7 @@
 // fragments (about 20, differing by Reading) listed in the Reciter's Tome; a Reading whose fragments are all found is
 // mastered. Lines a player has heard are remembered (one bitset per voice), so nobody repeats a line until
 // that voice is exhausted. Pure data and rules: no DOM, no randomness beyond the seeded `pick` passed in.
-import { RECITATIONS } from "./recitations.js?v=r793-e86fa19ff8f8";
+import { RECITATIONS } from "./recitations.js?v=r796-817d6b861fd9";
 
 export const LORE_VERSION = 1;
 // Distance bands, in sections from the origin (|rx| + |ry|).
@@ -87,6 +87,7 @@ export function ensureLore(s) {
   // The Pentagon's marks (pentagon.ts PENTAGON_LORE), once any is read: the ids read, and which chamber holds which.
   // Unknown ids are kept, as unknown fields are.
   if (l.inscriptions !== undefined) s.lore.inscriptions = [...new Set((Array.isArray(l.inscriptions) ? l.inscriptions : []).filter((id) => typeof id === "string"))];
+  if (l.murals !== undefined) s.lore.murals = [...new Set((Array.isArray(l.murals) ? l.murals : []).filter((id) => typeof id === "string"))]; // release 795: the grand halls' murals read (pentagon-halls.ts); unknown ids kept
   if (l.inscribedAt !== undefined) s.lore.inscribedAt = Object.fromEntries(Object.entries(l.inscribedAt && typeof l.inscribedAt === "object" ? l.inscribedAt : {}).filter(([, id]) => typeof id === "string"));
   return s;
 }
