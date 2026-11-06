@@ -28,7 +28,7 @@ import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
-import { HOLE_DROPS, holeDrops } from "./labyrinths.ts";
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState } from "./labyrinths.ts";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -70,6 +70,11 @@ export function visibleInCamera(o, left, top, right, bottom, padding = 2) {
 // a world beast is always drawn, so nothing fights unseen inside the white.
 const scarredAt=(g,point)=>{const w=g.map?.width||32,t=g.map?.tiles?.[Math.floor(Number(point?.y)+.5)*w+Math.floor(Number(point?.x)+.5)];return !!t?.voidScar};
 const discoveredInDungeon=(g,point)=>g.area!=="dungeon"||!!point?.worldBeast||scarredAt(g,point)||dungeonPointDiscovered(g.map,point);
+// LAB_FOG (labyrinths.ts): in a labyrinth chamber an object shows on a tile seen (now or before); everywhere else this is discoveredInDungeon.
+export const seenInDungeon=(g,o)=>discoveredInDungeon(g,o)&&(g.area!=="dungeon"||!!o?.worldBeast||labFogState(g.map,o?.x,o?.y)>0);
+// LAB_FOG (labyrinths.ts): in a labyrinth chamber a creature shows only while its tile is in sight (objects on any tile seen,
+// above; in sight is always seen); everywhere else this is discoveredInDungeon.
+export const shownInDungeon=(g,e)=>discoveredInDungeon(g,e)&&(g.area!=="dungeon"||!!e?.worldBeast||labFogState(g.map,e?.x,e?.y)===2);
 
 const structureRenderCache = new WeakMap();
 const mapObjectCache = new WeakMap();
@@ -1854,7 +1859,7 @@ export function wayLabel(o, map) { // the way's name (its interaction name carri
 }
 function drawWayMarks(ctx, g, s, now) {
   const pulse = .5 + .5 * Math.sin(now / 380);
-  for (const o of g.map.objects || []) { const k = wayKind(o, g.map); if (!k || o.state === "hidden" || !renderableObject(g, o) || !discoveredInDungeon(g, o)) continue;
+  for (const o of g.map.objects || []) { const k = wayKind(o, g.map); if (!k || o.state === "hidden" || !renderableObject(g, o) || !seenInDungeon(g, o)) continue;
     const cx = (o.x + .5) * s, top = o.y * s - s * .9;
     ctx.save();
     ctx.strokeStyle = k === "down" ? `rgba(255,226,140,${.45 + .3 * pulse})` : `rgba(120,230,190,${.35 + .25 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, o.y * s + s * .84, s * .46, s * .14, 0, 0, 7); ctx.stroke();
@@ -1874,7 +1879,7 @@ function drawWayMarker(ctx, o, s, now, dir, ember = false) {
   ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = Math.max(2, s * .08); ctx.stroke(); ctx.restore();
 }
 function drawWayDownPointer(ctx, g, w, h, s, p, lift, now) {
-  const down = (g.map.objects || []).find((o) => wayKind(o, g.map) === "down" && o.state !== "hidden" && renderableObject(g, o) && discoveredInDungeon(g, o)); if (!down) return; // only a way you have found
+  const down = (g.map.objects || []).find((o) => wayKind(o, g.map) === "down" && o.state !== "hidden" && renderableObject(g, o) && seenInDungeon(g, o)); if (!down) return; // only a way you have found
   const sx = w / 2 + (down.x + .5 - p.x) * s, sy = h / 2 + (down.y + .5 - p.y + lift) * s, m = 38;
   if (sx > m && sx < w - m && sy > m && sy < h - m) return; // on the screen: its own mark shows it
   const dx = sx - w / 2, dy = sy - h / 2, k = Math.min((w / 2 - m) / Math.max(1e-6, Math.abs(dx)), (h / 2 - m) / Math.max(1e-6, Math.abs(dy))), ax = w / 2 + dx * k, ay = h / 2 + dy * k, a = Math.atan2(dy, dx), pulse = .6 + .4 * Math.sin(now / 300);
@@ -2218,6 +2223,7 @@ export function render(ctx, g, w, h, now) {
     lift = jumpLift(g, now) * s,
     dodging = now < (p.dodgeUntil || 0);
   const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map,g.area);
+  if (g.area === "dungeon" && labFogOf(g.map)) { const at = labFogTile(p); labFogLook(g.map, at.x, at.y); } // LAB_FOG: the sight is current before anything asks it (the game normally worked it out this frame)
   renderCacheStats.visibleTiles=(r-l)*(b-t);
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
@@ -2261,10 +2267,11 @@ export function render(ctx, g, w, h, now) {
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
   if(g.area==="overworld"&&g.seaHazards)drawSeaHazards(ctx,g.seaHazards,s,now,l,t,r,b,g.map);
-  const seenTile=(x,y)=>g.area!=="dungeon"||dungeonTileVisibility(g.map,x,y)!=="unseen";
+  const seenTile=(x,y)=>g.area!=="dungeon"||(dungeonTileVisibility(g.map,x,y)!=="unseen"&&labFogState(g.map,x,y)>0);
+  const sightTile=(x,y)=>seenTile(x,y)&&(g.area!=="dungeon"||labFogState(g.map,x,y)===2); // LAB_FOG: a safe drop's rim only in sight
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile); // per frame: brinks sit over animated water, as before
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
-  if (g.area === "dungeon" && g.map?.building) drawSafeDropRims(ctx, g.map, mw, p, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), seenTile); // HOLE_DROPS: a safe drop shows its green rim only close up
+  if (g.area === "dungeon" && g.map?.building) drawSafeDropRims(ctx, g.map, mw, p, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), sightTile); // HOLE_DROPS: a safe drop shows its green rim only close up
   if (g.area === "dungeon" && g.map?.canyon && g.drillTile) { const d = g.drillTile, x = d.x * s, y = d.y * s, k = Math.min(1, d.progress / (d.need || 1)); // Canyon craters: the auger's cracks, and a yellow clod's strain
     ctx.save(); ctx.strokeStyle = `rgba(20,12,6,${.4 + .5 * k})`; ctx.lineWidth = Math.max(1, s * .06); ctx.beginPath(); for (let i = 0; i < 2 + Math.floor(k * 5); i++) { const a = i * 2.1 + d.x, r = s * (.15 + .35 * k); ctx.moveTo(x + s / 2, y + s / 2); ctx.lineTo(x + s / 2 + Math.cos(a) * r, y + s / 2 + Math.sin(a) * r); } ctx.stroke();
     if (d.strain > 0) { const f = Math.min(1, d.strain / 1); ctx.fillStyle = "#0008"; ctx.fillRect(x + s * .1, y - s * .22, s * .8, s * .12); ctx.fillStyle = f > .75 ? "#ff4a3a" : f > .45 ? "#ffd24a" : "#7ddf6a"; ctx.fillRect(x + s * .1, y - s * .22, s * .8 * f, s * .12); }
@@ -2296,15 +2303,15 @@ export function render(ctx, g, w, h, now) {
   // Active combat effects, including Supernova, intentionally paint over fog. They never reveal tiles or actors.
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
-  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&!e.gloomVeil&&discoveredInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
+  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&!e.gloomVeil&&shownInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
   for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? Math.max(0, Math.min(1, 1 - (h.armAt - now) / ((A?.arm || .5) * 1000))) : 1; /* release 694: rounding put k a hair below 0 the frame a mark was laid, and a negative radius threw */ if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
     if (arming) { ctx.strokeStyle = A.color; ctx.globalAlpha = .45 + .45 * k; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.stroke(); ctx.fillStyle = A.color + "40"; ctx.beginPath(); ctx.ellipse(x, y, R * k, R * .6 * k, 0, 0, 7); ctx.fill(); }
     else if (h.kind === "volcanic" || h.kind === "venomous") { ctx.globalAlpha = Math.min(1, (h.until - now) / 600) * .75; const gr = ctx.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, h.kind === "volcanic" ? "#ffd27a" : "#d8ff9a"); gr.addColorStop(.5, A.color); gr.addColorStop(1, A.color + "00"); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); }
     else { const f = Math.max(0, (h.until - now) / 250); ctx.globalAlpha = f; if (h.kind === "skyAssault") { ctx.fillStyle = "#e9f8ff"; ctx.fillRect(x - R * .35, y - s * 6, R * .7, s * 6); } ctx.fillStyle = A.color; if (h.kind === "spiked") { ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .35; ctx.moveTo(x + (i - 2) * R * .3, y); ctx.lineTo(x + Math.cos(a) * R * .2 + (i - 2) * R * .3, y - R * (1.1 - Math.abs(i - 2) * .25)); ctx.lineTo(x + (i - 2) * R * .3 + R * .12, y); } ctx.fill(); } else { ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); } }
     ctx.restore(); }
-  for(const e of g.enemies)if(!e.dead&&discoveredInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=DANGER.edge;ctx.lineWidth=3;/* release 397: the uniform warning colour */ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
+  for(const e of g.enemies)if(!e.dead&&shownInDungeon(g,e)&&e.eliteWindup>0&&visibleInCamera(e,l,t,r,b,e.kind==='gravitantBell'?6:3)){ctx.strokeStyle=DANGER.edge;ctx.lineWidth=3;/* release 397: the uniform warning colour */ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc((e.x+.5)*s,(e.y+.4)*s,(e.kind==='gravitantBell'?6:2.3)*s,0,7);ctx.stroke();ctx.setLineDash([])}
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,e.threatRange||2)) {
+    if (!e.dead && shownInDungeon(g,e) && e.telegraph > 0 && visibleInCamera(e,l,t,r,b,e.threatRange||2)) {
       const pulse = e.threatRange||(.65 + (0.9 - e.telegraph) * 0.2);
       ctx.fillStyle = DANGER.fill; // release 397: the uniform warning colour
       ctx.strokeStyle = DANGER.edge;
@@ -2321,7 +2328,7 @@ export function render(ctx, g, w, h, now) {
       ctx.fill();
       ctx.stroke();
     }
-  for (const e of g.enemies) if(!e.dead && e.strike>0 && e.strikeGeometry && discoveredInDungeon(g,e)) {
+  for (const e of g.enemies) if(!e.dead && e.strike>0 && e.strikeGeometry && shownInDungeon(g,e)) {
     const q=e.strikeGeometry;
     if(!visibleInCamera({x:q.x,y:q.y},l,t,r,b,q.range))continue;
     ctx.strokeStyle=e.tentacles?'#927d9dcc':'#c2a77dcc';ctx.lineWidth=Math.max(2,s*.06);ctx.beginPath();
@@ -2358,10 +2365,10 @@ export function render(ctx, g, w, h, now) {
     ctx.lineTo((p.x + 0.5) * s, (p.y + 0.75) * s);
     ctx.stroke();
   }
-  if (g.area === "dungeon" && g.map.wallGlints?.length) for (const q of g.map.wallGlints) if (visibleInCamera(q, l, t, r, b) && discoveredInDungeon(g, q)) drawWallGlint(ctx, q, s, now); // release 225
+  if (g.area === "dungeon" && g.map.wallGlints?.length) for (const q of g.map.wallGlints) if (visibleInCamera(q, l, t, r, b) && seenInDungeon(g, q)) drawWallGlint(ctx, q, s, now); // release 225
   const draws = [];
   for (const o of g.map.objects)
-    if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
+    if (renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
         y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
@@ -2488,7 +2495,7 @@ export function render(ctx, g, w, h, now) {
         },
       });
   for (const e of g.enemies)
-    if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && discoveredInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
+    if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         fn: () => {
@@ -2676,7 +2683,7 @@ export function render(ctx, g, w, h, now) {
     if (skyA > 0 && d !== playerDraw && !d.inSky && !(Number.isFinite(d.x) && tileUnder(g.map, mw, d.x, d.y)?.canopy)) { if (skyA >= .98) continue; ctx.save(); if (raise) ctx.translate(0, -raise * s); ctx.globalAlpha = (d.alpha ?? 1) * (1 - skyA); d.fn(); ctx.restore(); continue; }
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
-  for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && discoveredInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
+  for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && seenInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
   for (const o of g.map.objects) if (o.pentagonDoor && o.barred && !o.opened && visibleInCamera(o, l, t, r, b)) drawBars(ctx, o, s); // v6: an exterior shortcut door, bolted from within
   if (g.shortcutBurst) drawShortcutBurst(ctx, g, s, now); // a shortcut just opened
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
@@ -2730,7 +2737,7 @@ export function render(ctx, g, w, h, now) {
     if (veiled.length) { drawPackTelegraphs(ctx, veiled, s, now, () => true, { ground: groundLift, reduceMotion: quiet }); drawGloomVeiled(ctx, veiled, s, now, { low: budget.quality === "low", reduceMotion: quiet }); }
   }
   for (const e of g.enemies)
-    if (!e.dead && discoveredInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && !e.gloomVeil && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2)) {
+    if (!e.dead && shownInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && !e.gloomVeil && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2)) {
       const barY = e.kind === "stalker" ? e.y - .1 - Math.max(0, (Number(e.scale) || 1) - 1) * .75 - (Number(e.stalkLift) || 0) : e.packKind ? e.y - 0.1 - Math.max(0, (Number(e.scale) || 1) - 1) * 0.75 - (e.flying ? 0.35 : 0) - (e.kind === "psychicCrystal" ? crystalLift(e) : 0) : e.y - 0.1;
       ctx.fillStyle = "#211617";
       ctx.fillRect(e.x * s, barY * s, s, 3);
@@ -2738,29 +2745,29 @@ export function render(ctx, g, w, h, now) {
       ctx.fillRect(e.x * s, barY * s, (s * e.hp) / e.maxHp, 3);
     }
   drawEchoPatches(ctx,g,s,now);
-  drawGlyphStatus(ctx,g,s,now,(e)=>discoveredInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
+  drawGlyphStatus(ctx,g,s,now,(e)=>shownInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
-  { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
+  { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&shownInDungeon(g,q)&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
-  for(const o of objectLists.structures)if(renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?16:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?(o.blocks?greatBlocks:greatBuilding):architecturalBuilding;
+  for(const o of objectLists.structures)if(renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?16:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?(o.blocks?greatBlocks:greatBuilding):architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
     const bounds = o.bounds || { x:o.x-2, y:o.y-2, w:5, h:4 };
     const cells = o.footprint?.length ? o.footprint : Array.from({length:Math.max(0,bounds.w*bounds.h)},(_,i)=>({x:bounds.x+i%bounds.w,y:bounds.y+Math.floor(i/bounds.w)}));
     let surviving = 0;
-    for(const c of cells)if(g.map.tiles[c.y*mw+c.x]?.kind!=="voidScar"&&discoveredInDungeon(g,c))surviving++;
+    for(const c of cells)if(g.map.tiles[c.y*mw+c.x]?.kind!=="voidScar"&&seenInDungeon(g,c))surviving++;
     if(!surviving)continue;
     ctx.save();
     if(surviving!==cells.length){
       ctx.beginPath();
-      for(const c of cells)if(g.map.tiles[c.y*mw+c.x]?.kind!=="voidScar"&&discoveredInDungeon(g,c))ctx.rect(c.x*s,c.y*s,s,s);
+      for(const c of cells)if(g.map.tiles[c.y*mw+c.x]?.kind!=="voidScar"&&seenInDungeon(g,c))ctx.rect(c.x*s,c.y*s,s,s);
       ctx.clip();
     }
     drawStructure(ctx,o,s,p,g.map.tiles,{l,t,r,b});
     ctx.restore();
   }
   if(skyA>0)ctx.restore()}
-  const frontShelter=objectLists.shelters.find(o=>!roofUnder&&renderableObject(g,o)&&discoveredInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
+  const frontShelter=objectLists.shelters.find(o=>!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   // roof report 2026-11-04: not from a roof's front row (it drew a second Wayfarer on the ground below), and at the ground's own height
   const shelterRaise=frontShelter?groundLift(p.x,p.y):0;if(shelterRaise){ctx.save();ctx.translate(0,-shelterRaise*s)}
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
@@ -2772,7 +2779,7 @@ export function render(ctx, g, w, h, now) {
     const raise=groundLift(p.x,p.y)+(playerDraw.lift||0);ctx.save();ctx.globalAlpha=GIANT_TREE.ghost;if(raise)ctx.translate(0,-raise*s);playerDraw.fn();ctx.restore(); }
   const motion = now / 1000;
   for (const o of objectLists.animated)
-    if (renderableObject(g,o)&&discoveredInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)) {
+    if (renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b)) {
       const cx = (o.x + 0.5) * s,
         cy = (o.y + 0.35) * s,
         spin = motion * 0.55 + ((o.x * 13 + o.y * 7) % 11);
@@ -2786,6 +2793,7 @@ export function render(ctx, g, w, h, now) {
       ctx.arc(cx + Math.cos(spin) * s * 0.52, cy + Math.sin(spin) * s * 0.52, 2, 0, 7);
       ctx.fill();
     }
+  if (g.area === "dungeon") drawLabFog(ctx, g, s, { l, t, r, b }, budget.quality); // LAB_FOG: a labyrinth chamber's fog of war, over everything on its floor
   if (g.area === "dungeon") drawWayMarks(ctx, g, s, now); // which way is down and which is out, plainly marked
   ctx.restore();
   // Release 661 (Tim: "something on the heads up display that just shows the different levels... on the right side... little
@@ -2887,6 +2895,32 @@ export function render(ctx, g, w, h, now) {
   if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; }
 }
 
+// LAB_FOG (labyrinths.ts): a labyrinth chamber's fog of war. The fog is a tiny image, one pixel a tile (the dark over tiles never
+// seen, the dim over tiles seen and out of sight, clear in sight), painted in runs of a row and redrawn only when the sight
+// changes (the Wayfarer steps onto another tile); each frame it is one scaled copy, blurred across a tile's width on the
+// balanced and full tiers, crisp on low. Nothing moves in it, so reduced motion and safe mode need nothing else. Without an
+// offscreen canvas (tests, old browsers) the runs on screen are filled straight onto the view, at most one per run of a row.
+const labFogImage = { canvas: null, map: null, stamp: 0, w: 0, h: 0 };
+const LAB_FOG_FILL = [`rgba(${LAB_FOG.rgb},${LAB_FOG.dark})`, `rgba(${LAB_FOG.rgb},${LAB_FOG.dim})`];
+function paintLabFog(c, F, x0, x1, y0, y1, k) {
+  let runs = 0;
+  for (let state = 0; state < 2; state++) { c.fillStyle = LAB_FOG_FILL[state];
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1;) { if (labFogAt(F, x, y) !== state) { x++; continue; } let e = x + 1; while (e < x1 && labFogAt(F, e, y) === state) e++; c.fillRect(x * k, y * k, (e - x) * k, k); runs++; x = e; } }
+  return runs;
+}
+export function drawLabFog(ctx, g, s, view, quality) {
+  const F = labFogOf(g.map); if (!F) return false;
+  const I = labFogImage, c = typeof ctx.drawImage === "function" ? I.canvas || (I.canvas = makeGroundCanvas()) : null, gc = c?.getContext?.("2d");
+  if (gc) {
+    if (I.map !== g.map || I.stamp !== F.stamp || I.w !== F.W || I.h !== F.H) {
+      if (c.width !== F.W || c.height !== F.H) { c.width = F.W; c.height = F.H; }
+      gc.clearRect(0, 0, F.W, F.H); paintLabFog(gc, F, 0, F.W, 0, F.H, 1);
+      Object.assign(I, { map: g.map, stamp: F.stamp, w: F.W, h: F.H }); renderCacheStats.labFogBuilds = (renderCacheStats.labFogBuilds || 0) + 1; }
+    ctx.save(); ctx.imageSmoothingEnabled = LAB_FOG.soft[quality] !== false; ctx.drawImage(c, 0, 0, F.W, F.H, 0, 0, F.W * s, F.H * s); ctx.restore();
+  } else renderCacheStats.labFogRuns = paintLabFog(ctx, F, Math.max(0, view.l), Math.min(F.W, view.r), Math.max(0, view.t), Math.min(F.H, view.b), s);
+  renderCacheStats.labFogDraws = (renderCacheStats.labFogDraws || 0) + 1;
+  return true;
+}
 // Unexplored dungeon space: dark slate with a faint diagonal hatch, distinct from the indigo depth of a chasm.
 function fogTile(ctx, x, y, s) {
   ctx.fillStyle = "#0b0e11"; ctx.fillRect(x * s, y * s, s + .5, s + .5);

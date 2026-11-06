@@ -93,7 +93,7 @@ import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistor
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding } from "./great-buildings.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId } from "./compounds.ts";
-import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW } from "./labyrinths.ts";
+import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
@@ -2659,12 +2659,12 @@ export class Game {
   // A level's spawns are kept for the session per dungeon, level and the history's pins (DUNGEON_LEVEL_KEEP entries);
   // the progress records that change in play (discovery, combat clear, visits, deep progress) are not part of the key.
   levelSpawns(history, levelId) {
-    const id = this.areaId(), { discovery, combatClear, visits, visitOpen, abandoned, deep, ...pins } = history || {}, key = JSON.stringify([this.save.seed, id, levelId, pins]);
+    const id = this.areaId(), { discovery, combatClear, visits, visitOpen, abandoned, deep, labFog, ...pins } = history || {}, key = JSON.stringify([this.save.seed, id, levelId, pins]);
     const memo = this._levelSpawns ||= new Map(), kept = memo.get(key); if (kept) return kept;
     const map = generatePinnedDungeon(this.save, id, { levelId }), spawns = { enemySpawns: map.enemySpawns || [] };
     // Kept under the history as it is after this generation, so a history whose pins (interior, deep placement, canyon
     // generator...) a first generation has just laid, or that was reset, never finds another's spawns.
-    const { discovery: _d, combatClear: _c, visits: _v, visitOpen: _o, abandoned: _a, deep: _p, ...after } = history || {}, key2 = JSON.stringify([this.save.seed, id, levelId, after]);
+    const { discovery: _d, combatClear: _c, visits: _v, visitOpen: _o, abandoned: _a, deep: _p, labFog: _f, ...after } = history || {}, key2 = JSON.stringify([this.save.seed, id, levelId, after]);
     if (memo.size >= DUNGEON_LEVEL_KEEP) memo.delete(memo.keys().next().value);
     memo.set(key2, spawns); return spawns;
   }
@@ -2709,6 +2709,7 @@ export class Game {
     if(area==="dungeon"&&isArrayRun(loadingId)&&ensureFarArray(this.save).activeRun?.id===loadingId){const run=this.save.farArray.activeRun,spawns=this.map.enemySpawns,multi=!!this.map.multiLevel,g=spawns.find(e=>e.dungeonRole==="finalBoss")||spawns.find(e=>e.dungeonRole==="gateWarden")||(multi?null:spawns.find(e=>e.boss)||spawns[spawns.length-1]);if(g){const boss=runBossSpawn(this.save,{x:g.x,y:g.y});if(boss){spawns.splice(spawns.indexOf(g),1);if(!spawns.some(e=>e.id===boss.id))spawns.push({...boss,objectiveId:g.objectiveId||null})}}if(!this.map.objects.some(o=>o.kind==="arrayPylon"))this.map.objects.push(...arrayPylons(this.map,`${loadingId}:${this.map.levelId||""}`,mapWidth(this.map,area)));this.map.name=runName(run,run.gate)}
     if(area==="dungeon"&&history?.relayNode){if(placeRelayNode(this.map,loadingId,this.save))ensureRelayNetwork(this.save).seen=true;}
     if(area==="dungeon"&&this.map.dungeonContract?.discoveryEnabled){const discovered=discoveryForLevel(history,this.map);applyDungeonDiscovery(this.map,discovered);this._dungeonChunkId=null;}
+    if(area==="dungeon"&&labFogOn(this.map))labFogOf(this.map,history?.labFog); // LAB_FOG: what this chamber has shown you before (the sight itself is worked out on the first frame, labFogTick)
     if(area==='overworld'){
       const site=storySiteFor(this.save,this.rx,this.ry);if(site&&!this.map.objects.some(o=>o.id===site.id)){const open=this.map.tiles[site.y*32+site.x];if(!open?.blocked&&!open?.structure)this.map.objects.push(site)}
       const candidate=foundryEncounter(this.save.seed,this.rx,this.ry,this.save.worldGeneration);if(candidate&&validateFoundryCandidate(candidate).ok&&!this.save.worldFlags[`foundry-retired:${candidate.foundryId}`]){const open=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>4&&t.x<28&&t.y>4&&t.y<28);if(open.length){const at=open[hashSeed(candidate.foundryId)%open.length];candidate.x=at.x;candidate.y=at.y;this.map.enemySpawns.push(candidate)}}
@@ -6932,6 +6933,12 @@ export class Game {
     this.player.hp = Math.max(1, this.player.hp - hurt);
     this.message = B.fallTo ? `${LABYRINTHS.messages.fall} ${this.map.name.split(" · ")[1] || "the dark"} (−${hurt}).` : `${BUILDINGS.messages.fall} ${this.map.name.split(" · ")[1] || `floor ${B.floor - 1}`} (−${hurt}).`; this.sync(); return true;
   }
+  // LAB_FOG (labyrinths.ts): in a labyrinth chamber, the sight round the Wayfarer, worked out again only on a new tile, and what
+  // has been seen stored on the chamber's history once it grows (so it lasts through a save, a reload and an exact resume).
+  labFogTick() {
+    if (!labFogOn(this.map)) return; const h = dungeonHistory(this.save, this.areaId()), t = labFogTile(this.player);
+    labFogLook(this.map, t.x, t.y, h.labFog); labFogStore(this.map, h);
+  }
   // HOLE_DROPS (labyrinths.ts): where the Wayfarer came onto this building floor (`save.session.floorEntry`), noted on the first
   // frame on a floor, however they came: a door, a ladder, a hatch, a safe drop or a reload.
   noteFloorEntry() {
@@ -7706,7 +7713,7 @@ export class Game {
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
-    if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)
+    if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); this.labFogTick(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)
     if (this.area === "dungeon" && this.map?.building?.boss && this.enemies.some((e) => e.buildingGuard) && !this.enemies.some((e) => e.pentBoss && !e.dead)) { const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`); if (!(H.pentBosses || []).includes(B.node)) { const name = this.enemies.find((e) => e.pentBoss)?.packName || "Its keeper"; H.pentBosses = [...(H.pentBosses || []), B.node]; this.message = `${name} ${PENTAGON.messages.bossDown}.`; this.defeatNotice = { title: String(name).toUpperCase(), detail: "falls", kind: "discovery" }; } } // the Pentagon's lords and keepers (v2)
     if (this.area === "dungeon" && this.map?.building?.trial && this.enemies.some((e) => e.buildingGuard) && this.enemies.every((e) => !e.buildingGuard || e.dead)) { const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`); if (!(H.pentTrials || []).includes(B.node)) { H.pentTrials = [...(H.pentTrials || []), B.node]; const n = H.pentTrials.length; this.message = `${PENTAGON.messages.trial} (${n} of ${B.trials}).${n >= B.trials ? " Somewhere at the centre, the Heart unseals." : ""}`; this.defeatNotice = { title: "A TRIAL CLEARED", detail: `${n} of ${B.trials}`, kind: "discovery" }; } } // the Pentagon's trials
     if (this.rite) this.riteTick(dt, now); // the Rite of Ascendancy

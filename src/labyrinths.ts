@@ -329,3 +329,102 @@ export const LAB_BURROW = {
     burrow: "The glinting stone gives way to the shovel.",
   },
 };
+
+// ------------------------------------------------------------------------------------------------ fog of war
+// Tim (2026-11-06): "if there were fog that would be better, so I'd be able to kind of explore and figure out where I need to
+// go." In a labyrinth chamber (the Shell-Labyrinth's too; not the Pentagon's, nor buildings, compounds or castles) the floor
+// is dark until the Wayfarer has seen it. Sight reaches `radius` tiles (centre to centre) and walls stop it: a straight line
+// (Bresenham) from the Wayfarer's tile to each tile in reach is clear when no blocked tile stands between (a diagonal step
+// between two blocked tiles is blocked too); a wall is in sight when the line reaches it, or when it borders open floor in
+// sight. A tile once seen stays drawn, dimmed by `dim` while out of sight. Creatures show only in sight; objects (doors,
+// ladders, keys, caches) on any tile seen. The sight is worked out again only when the Wayfarer steps onto another tile (about
+// π·radius² short lines, no allocation). What was seen is kept per chamber on its own history (`labFog`, "<W>x<H>:<bits>", six
+// tiles a character, base64url): a 27×19 chamber is 92 characters. Play only: no tile, object or creature of a chamber changes.
+export const LAB_FOG = {
+  version: 1,
+  radius: 7, // sight, in tiles
+  rgb: "11,14,17", // the dark (renderer.ts fogTile's slate)
+  dark: 1, // over a tile never seen
+  dim: .55, // over a tile seen before, out of sight now
+  soft: { low: false, balanced: true, full: true }, // the fog's edge blurred across a tile on these quality tiers (crisp on low)
+  maxChars: 512, // a stored record longer than this is dropped (normalised on load)
+  map: { unseen: "#05080b", remembered: .55 }, // the dungeon map: unseen tiles' colour; a seen tile out of sight drawn at this brightness
+};
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const FOG_RE = /^(\d{1,3})x(\d{1,3}):([A-Za-z0-9_-]*)$/;
+export const labFogOn = (map) => !!map?.building?.labyrinth && !map.building.pentagon && isLabyrinthId(map.id) && Array.isArray(map.tiles) && map.width > 0;
+export function encodeLabFog(seen, W, H) {
+  let out = `${W}x${H}:`; const n = W * H;
+  for (let i = 0; i < n; i += 6) { let v = 0; for (let b = 0; b < 6 && i + b < n; b++) if (seen[i + b]) v |= 1 << b; out += B64[v]; }
+  return out;
+}
+// Into `seen` (a byte a tile); a record for another size, or a malformed one, adds nothing.
+export function decodeLabFog(text, W, H, seen = new Uint8Array(W * H)) {
+  const m = typeof text === "string" && text.length <= LAB_FOG.maxChars ? FOG_RE.exec(text) : null;
+  if (!m || Number(m[1]) !== W || Number(m[2]) !== H) return seen;
+  const n = W * H, s = m[3];
+  for (let c = 0; c < s.length; c++) { const v = B64.indexOf(s[c]); for (let b = 0; b < 6; b++) { const i = c * 6 + b; if (i < n && v & (1 << b)) seen[i] = 1; } }
+  return seen;
+}
+// The fog of a chamber's map: `seen` and `sight` (a byte a tile; sight 1 by a line, 2 a wall beside floor in sight), the tile the
+// sight was worked from (`at`), a `stamp` that changes whenever either does (the renderer redraws its fog image only then), and
+// `dirty` while `seen` has grown since it was stored. Held per map object (a WeakMap), so it goes with the map.
+const fogMemo = new WeakMap();
+export function labFogOf(map, stored = undefined) {
+  let F = map ? fogMemo.get(map) : null; if (F) return F;
+  if (!labFogOn(map)) return null;
+  { const W = map.width, H = map.height || Math.floor(map.tiles.length / W);
+    F = { W, H, seen: decodeLabFog(stored, W, H), sight: new Uint8Array(W * H), at: -1, stamp: 1, dirty: false, looks: 0 };
+    fogMemo.set(map, F); }
+  return F;
+}
+const blocks = (T, k) => !!T[k]?.blocked;
+// A Bresenham line from (x, y) to (tx, ty): clear when no tile strictly between is blocked, nor a diagonal step squeezes
+// between two blocked tiles.
+function clearLine(T, W, x, y, tx, ty) {
+  const dx = tx - x, dy = ty - y, sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, ax = Math.abs(dx), ay = Math.abs(dy); let err = ax - ay;
+  while (x !== tx || y !== ty) { const e2 = 2 * err, mx = e2 > -ay, my = e2 < ax;
+    if (mx && my && blocks(T, y * W + x + sx) && blocks(T, (y + sy) * W + x)) return false;
+    if (mx) { err -= ay; x += sx; } if (my) { err += ax; y += sy; }
+    if ((x !== tx || y !== ty) && blocks(T, y * W + x)) return false; }
+  return true;
+}
+// The Wayfarer's tile (as game.ts markWalked and landscape.ts tileUnder read it).
+export const labFogTile = (p) => ({ x: Math.floor(p.x + .5), y: Math.floor(p.y + .75) });
+// Work the sight out from tile (ox, oy). Does nothing when the tile has not changed since the last time.
+export function labFogLook(map, ox, oy, stored = undefined) {
+  const F = labFogOf(map, stored); if (!F) return null;
+  const { W, H, seen, sight } = F, T = map.tiles; ox = Math.max(0, Math.min(W - 1, ox | 0)); oy = Math.max(0, Math.min(H - 1, oy | 0));
+  const at = oy * W + ox; if (at === F.at) return F;
+  F.at = at; F.looks++; sight.fill(0); const R = LAB_FOG.radius, n = Math.floor(R), R2 = R * R; let grew = false;
+  for (let ty = Math.max(0, oy - n); ty <= Math.min(H - 1, oy + n); ty++) for (let tx = Math.max(0, ox - n); tx <= Math.min(W - 1, ox + n); tx++) {
+    const dx = tx - ox, dy = ty - oy; if (dx * dx + dy * dy > R2) continue;
+    if (!clearLine(T, W, ox, oy, tx, ty) && !clearLine(T, W, tx, ty, ox, oy)) continue; // either way along the line (symmetric)
+    const k = ty * W + tx; sight[k] = 1; if (!seen[k]) { seen[k] = 1; grew = true; } }
+  // a wall beside open floor in sight is in sight (a room's walls whole, not ragged where a line grazed past them)
+  for (let ty = Math.max(0, oy - n - 1); ty <= Math.min(H - 1, oy + n + 1); ty++) for (let tx = Math.max(0, ox - n - 1); tx <= Math.min(W - 1, ox + n + 1); tx++) {
+    const k = ty * W + tx; if (sight[k] || !blocks(T, k)) continue; let lit = false;
+    for (let ny = Math.max(0, ty - 1); ny <= Math.min(H - 1, ty + 1) && !lit; ny++) for (let nx = Math.max(0, tx - 1); nx <= Math.min(W - 1, tx + 1); nx++) { const j = ny * W + nx; if (sight[j] === 1 && !blocks(T, j)) { lit = true; break; } }
+    if (lit) { sight[k] = 2; if (!seen[k]) { seen[k] = 1; grew = true; } } }
+  F.stamp++; if (grew) F.dirty = true; return F;
+}
+// 0: never seen; 1: seen, out of sight; 2: in sight. Off the chamber: never seen. A map without fog: in sight.
+export function labFogState(map, x, y) {
+  const F = labFogOf(map); if (!F) return 2;
+  const tx = Math.floor(Number(x) + .5), ty = Math.floor(Number(y) + .5); if (!(tx >= 0 && ty >= 0 && tx < F.W && ty < F.H)) return 0;
+  const k = ty * F.W + tx; return F.sight[k] ? 2 : F.seen[k] ? 1 : 0;
+}
+// By tile index (renderer.ts and main.ts loops over whole tiles).
+export function labFogAt(F, x, y) { const k = y * F.W + x; return F.sight[k] ? 2 : F.seen[k] ? 1 : 0; }
+// Store what was seen on the chamber's history once it has grown (game.ts, at most once a frame).
+export function labFogStore(map, history) {
+  const F = fogMemo.get(map); if (!F || !F.dirty || !history) return false;
+  history.labFog = encodeLabFog(F.seen, F.W, F.H); F.dirty = false; return true;
+}
+// Saves: a dungeon history's `labFog` is kept only when it is a well-formed record (freshSave / migrateSave; schema 14, additive).
+export const labFogValid = (v) => typeof v === "string" && v.length <= LAB_FOG.maxChars && FOG_RE.test(v);
+export function ensureLabFog(save) {
+  const D = save?.consequences?.dungeons; if (!D || typeof D !== "object") return save;
+  for (const h of Object.values(D)) if (h && typeof h === "object" && "labFog" in h && !labFogValid(h.labFog)) delete h.labFog;
+  return save;
+}
