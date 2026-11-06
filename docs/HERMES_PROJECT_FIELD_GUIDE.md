@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 799: Close View touch controls
+
+**CODE:** `src/close-view.ts` reserves the right-side drag touches for the camera in Drag anywhere mode. A second right-side touch cannot start the movement stick. Close View adds a translucent, pointer-transparent movement guide for touch devices. Camera drag gain and response increase slightly, and focus loss clears the active gestures.
+
+**BOUNDARY:** Close View input and presentation only. Existing floating movement, tap-to-act, the crescent, lock-on and saved camera settings retain their behavior. The movement guide adds no WebGL draw calls.
+
 ## Release 798: native Close View characters
 
 **CODE:** `src/close-view-models.ts` builds reusable rigid-part models for the Wayfarer and four foes. `src/close-view.ts` selects visible actors from the existing capture list, prioritizes the Wayfarer and locked foe, and samples movement and combat poses. `src/close-view-gl.ts` draws the batch with the existing camera, fog and torch lights. Directional shadows reuse the decal batch and are masked to solid, revealed ground.
