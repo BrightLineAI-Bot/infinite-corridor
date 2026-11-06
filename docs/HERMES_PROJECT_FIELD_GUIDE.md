@@ -2854,6 +2854,36 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 796: Close View v5 — atmosphere, a look per place, no see-through walls — 2026-11-06
+
+Tim, 2026-11-06, after 793: Close View looked "like the backrooms". He wanted "an oppressive, dark, ancient structure", with the Pentagon in the feel of a cursed stone tomb (sewers, root cellars, dirt walls) and keeps cold and stern (some lived in, even by ghosts). His screenshots also showed walls tearing into translucent slabs near the camera. The art is original; only the mood is borrowed.
+
+**CODE:** `src/close-view.ts`, `CLOSE_VIEW.version` 5:
+- `themes` holds six looks. `closeViewThemeId`, `closeViewTheme` and `closeViewThemeLivedIn` pick one as a pure hash of the building and floor: Pentagon tomb, root cellar (every Pentagon cellar and 18% of other Pentagon floors), keep, lived-in keep (16%), hive and arcology.
+- `atmosphere` sets the look; `camera.sightStep`, `sightPad` and `hardPad` set camera collision. Each tier sets `lights` (3/5/8), `motes`, `bump` and `cards`. Balanced `glScale` is .8 and the actor atlas is 1600 px.
+- `buildStatic` / `closeViewStatic` build each floor's walls, plinths, cornices, pilasters, arches with soffits, sconce brackets, candles and props once per floor and theme, together with the placed lights, flames and card props.
+- `sightClear` pulls the boom spring in before a wall comes between the camera and the Wayfarer, and cuts in only inside `hardPad`. `archCapAt` keeps the camera under an arch's soffit.
+- `closeViewBareFloor` makes `src/renderer.ts` skip floor tiles while the GPU scene captures the ground. Only telegraphs, traps, marks and the aim chevron reach the texture; the floor itself is procedural.
+
+`src/close-view-gl.ts`:
+- `FS_COMMON` lighting: `lightsAt`, `atmos`, `finish`, `bump`, `ashlar`.
+- Procedural `floorMat` and `ceilMat`, a material wall shader and a `WALL_DEPTH_FS` pre-pass.
+- A silhouette board pass for anything a wall hides, and decal kinds for raised spikes.
+- Draw order: wall depth, then wall shade (EQUAL), then the environment at the far plane, then decals, then boards and silhouettes, then added glows.
+- The mask carries the floor material (b>>1), an unseen bit (r&2) and a per-theme remap.
+
+Lab scenarios `keep`, `lived-in`, `hive` and `arcology` join `heart` (tomb) and `cellar` (root cellar). The test is `tests/close-view-atmosphere-794.test.ts`.
+
+**BOUNDARY:**
+- Drawing only. No save or generation change: themes and placements are hashes of the floor.
+- The overworld and Close View off stay byte-identical (the 793 digest test).
+- Bounded: one static buffer per floor (about 11–14k vertices), at most 8 lights, and capped cards and decals.
+- The 2D fallback is version 4's.
+- Known limits:
+  - With the Wayfarer's back to a wall, the camera can still close in onto them.
+  - Braziers and root-cellar sections within a floor are not built; root cellars are chosen per floor.
+  - The new shaders are roughly 2–3 times the 793 fill cost on software GL. They have not been measured on a device.
+
 ## Release 795: grand halls, lore murals and the Watcher's sigil in the Pentagon (Pentagon version 8) — 2026-11-06
 
 Tim, 2026-11-06: "In the Pentagons there can be larger open ballrooms — the Pentagon is so huge — huge open arenas and structures that we can just wander through and look up at. Various indications of the Watcher sigil in different places. Interesting skyboxes and interesting rooms, so as we explore in Close View we can look around and see cool, interesting things... use the lore as prompts and seeds to build different scenes, rooms, backdrops within the Pentagon... carvings or images of the world beasts or stories, including world bosses moving together... The Elder Wanderers are probably a good place to integrate things." Release 794 (Close View atmosphere) was built in parallel, so this release only lays the halls and their art as map data; the Close View pass that renders them is 796.
