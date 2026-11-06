@@ -1823,8 +1823,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   if (canvas?.addEventListener) {
     canvas.addEventListener("pointerdown", (e) => {
       if (!shown) return;
-      const rect = canvas.getBoundingClientRect?.();
-      const split = rect?.width ? rect.left + rect.width * D.side : (host.innerWidth || canvas.clientWidth || 0) * D.side;
+      const split = (host.innerWidth || canvas.clientWidth || 0) * D.side;
       if (e.clientX < split) {
         if (e.pointerType === "touch" && moveId === null) { moveId = e.pointerId; movePad.setAttribute("data-active", "true"); }
         return;
@@ -1846,7 +1845,14 @@ export function mountCloseViewControls(getGame, host = globalThis) {
       if (t === "lostpointercapture") { if (dragging(e)) { dragId = null; flush(now()); } }
       else dragEnd(e);
     }, { capture: true });
-    host.addEventListener?.("blur", clearMovePad);
+    host.addEventListener?.("blur", () => {
+      clearMovePad();
+      dragId = null;
+      id = null;
+      PEND.dx = PEND.dy = 0;
+      rail.setAttribute("stroke-opacity", String(K.idle));
+      rail.setAttribute("stroke-dasharray", "2 7");
+    });
   }
   // the lock: a tap that starts on it (press, release within tapMove px); a pointer already panning the crescent never counts
   let lockId = null, lockX = 0, lockY = 0;
