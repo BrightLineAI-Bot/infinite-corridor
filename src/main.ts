@@ -279,7 +279,7 @@ const $ = (s) => document.querySelector(s),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
   settings = loadSettings(),
   input = createInput(document, globalThis, settings),
-  [save, game] = startGame(await loadSave()), // release 789
+  [save, game] = startGame(await loadSave()), // release 790
   panel = $("#panel"),
   body = $("#panelBody"),
   pausePanel = $("#pausePanel"),
@@ -955,7 +955,7 @@ function startPulse() {
       noise.start(t);
     }
     step++;
-  }, 789);
+  }, 790);
 }
 addEventListener("pointerdown", () => setTimeout(startPulse, 0), {
   once: true,
@@ -1199,7 +1199,7 @@ function recoverOverlay(error){
 }
 addEventListener("error",(event)=>recoverOverlay(event.error||event.message));
 addEventListener("unhandledrejection",(event)=>recoverOverlay(event.reason));
-const optionCategories=["Journeys","Challenge","Performance","Controls","Accessibility","Audio","System"];
+const optionCategories=["Journeys","Challenge","Performance","Camera","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
 function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -1357,7 +1357,7 @@ async function renderSettings(category){const grid=document.createElement("div")
     sel.onchange=()=>{save.fractured=sel.value||null;persist();game.message=save.fractured?`${FRACTURED.modes[save.fractured].name} mode: the Corridor is breaking open. Towns, home and cleared dungeons stay safe.`:"Fractured mode off."};
     grid.append(settingRow("Fractured mode (this journey)",sel,`${note} More creatures, in packs with champions and rares, and more keep coming; towns, home, the Refuge lands and cleared dungeons stay safe. Takes full effect in the next place you enter.`));
   }
-  if(category==="Controls"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View indoors (prototype, this journey)",cv,"Inside the Pentagon, great buildings and keeps, a low camera behind the Wayfarer that turns with them; drag up to walk the way the view looks. Courts, roofs and the overworld keep the usual view."));const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last touch the crescent round the action buttons, the view slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the button at its top locks on)."))} // 2026-11-06
+  if(category==="Camera"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View: third-person camera indoors (prototype, this journey)",cv,"Off by default. Turn it on and step inside the Pentagon, a great building or a keep: a low camera follows behind the Wayfarer and turns with them; drag up to walk the way the view looks. A crescent round the action buttons turns the view; the bullseye at the right edge, above it, locks on. Courts, roofs and the overworld keep the usual view."));const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last touch the crescent round the action buttons, the view slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the bullseye at the right edge locks on)."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("World boss tries (on: 4 deaths and the boss leaves; off: no tries, it loses patience after 3 minutes of fighting, 5 once it is below half health)",toggleSetting("beastTries")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
@@ -2423,7 +2423,7 @@ function viewportFrame(dt, now) {
     viewportSeq = ev.seq;
     if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
     if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
-    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 789's one clock list: the respawn's protection outlasts the black
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 788's one clock list: the respawn's protection outlasts the black
     if (ev.end) { viewportEnd(); return null; }
     return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }

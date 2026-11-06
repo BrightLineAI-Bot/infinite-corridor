@@ -971,3 +971,13 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 
 /* Viewport Closed (2026-11-04): while the Viewport is closed the HUD and controls step aside (pause still answers: Esc, P, back) */
 body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #eventBanner{opacity:0;pointer-events:none;transition:opacity .3s}
+
+/* Close View lock-on (release 790): a bullseye at the screen's right edge, above the pan crescent (off its arc, out of the
+   stick's and the crescent's thumb paths). The button is a 46 px touch target; its disc is drawn 36 px. Pressed it dips;
+   locked the disc's rim glows red and the bullseye's inner ring fills. */
+.close-lock { transition: transform .08s ease-out; -webkit-tap-highlight-color: transparent; }
+.close-lock::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; border: 1px solid #8b7857; background: radial-gradient(circle at 45% 35%, #403b31, #1c1b18 72%); box-shadow: inset 0 0 0 2px #151411, 0 3px 9px #0009; transition: border-color .15s, box-shadow .15s; }
+.close-lock:active { transform: scale(.9); }
+.close-lock .bull-ring { transition: fill-opacity .15s; }
+.close-lock[aria-pressed="true"]::before { border-color: #ff6a5a; box-shadow: inset 0 0 0 2px #151411, 0 0 12px #ff6a5aaa; }
+.close-lock[aria-pressed="true"] .bull-ring { fill-opacity: .38; }
