@@ -1,9 +1,9 @@
-import { drawRangedEffects } from "./combat-visuals.js?v=r792-5b14ec5bba1f";
-import { createInput } from "./input.js?v=r792-5b14ec5bba1f";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r792-5b14ec5bba1f";
-import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r792-5b14ec5bba1f"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r792-5b14ec5bba1f";
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r792-5b14ec5bba1f"; // release 791: Enter Proving Ground from Options
+import { drawRangedEffects } from "./combat-visuals.js?v=r793-e86fa19ff8f8";
+import { createInput } from "./input.js?v=r793-e86fa19ff8f8";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r793-e86fa19ff8f8";
+import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r793-e86fa19ff8f8"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r793-e86fa19ff8f8";
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r793-e86fa19ff8f8"; // release 791: Enter Proving Ground from Options
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
