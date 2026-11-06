@@ -1,3 +1,4 @@
+import { MODEL_FLOATS } from "./close-view-models.ts";
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -435,16 +436,40 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
   vec2 q = gl_FragCoord.xy / u_dev - 0.5; c.rgb *= 1.0 - u_finish.x * smoothstep(0.28, 0.86, length(q * vec2(1.0, 1.12)));
   c *= a; if (c.a < 0.004) discard; outColor = c; }`;
 
+// Native models share the environment's camera, lights and fog.
+const MODEL_VS = VS_COMMON + `
+in vec3 a_pos; in vec3 a_nrm; in vec3 a_col;
+out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_depth;
+void main() {
+  float d;
+  gl_Position = project(a_pos, d);
+  v_pos = a_pos; v_nrm = a_nrm; v_col = a_col; v_depth = d;
+}`;
+const MODEL_FS = FS_COMMON + `
+in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_depth;
+uniform float u_pass; uniform vec3 u_sil;
+void main() {
+  if (v_pos.z < 0.0) discard;
+  if (u_pass > 0.5) { outColor = vec4(u_sil * 0.1, 0.1); return; }
+  vec3 normal = normalize(v_nrm), toEye = normalize(u_eye - v_pos);
+  vec3 dif, spe;
+  lightsAt(v_pos, normal, 14.0, dif, spe);
+  float rim = 1.0 - max(0.0, dot(normal, toEye));
+  vec3 color = v_col * max(dif, vec3(0.28)) + spe * 0.25 + vec3(0.19, 0.15, 0.11) * rim * rim;
+  outColor = vec4(finish(atmos(color, v_pos, v_depth, dif)), 1.0);
+}`;
+
 // ---------------------------------------------------------------------------------------------- decals, props and glows
 // a_loc: -1..1 across the quad; a_meta: kind, alpha, a parameter, light. Kinds, blended: 0 contact shadow, 1 wind-up ring,
 // 4 cobweb (a corner triangle), 5 chain, 7 spike (a small metal spike, a card), 8 bones; added in light: 2 wind-up glow,
 // 3 flame, 6 dust mote, 9 a flame's halo.
 const DECAL_VS = VS_COMMON + `
-in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; out float v_depth;
-void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; }`;
+in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; out float v_depth; out vec2 v_world;
+void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; v_world = a_pos.xy; }`;
 const DECAL_FS = `#version 300 es
 precision highp float;
-uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; out vec4 outColor;
+uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; out vec4 outColor;
+uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : vec3(1.0, 0.75, 0.35); } // warm, bioluminescent, ghost-light, a failing lamp
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0), keep = 1.0 - fogK; vec3 lit = vec3(v_meta.w);
@@ -472,13 +497,22 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
       vec2 q = p - c0; q = vec2(cos(an) * q.x - sin(an) * q.y, sin(an) * q.x + cos(an) * q.y); float bone = 1.0 - smoothstep(0.05, 0.08, length(vec2(max(abs(q.x) - 0.22, 0.0), q.y))); float knob = 1.0 - smoothstep(0.06, 0.09, length(vec2(abs(q.x) - 0.22, abs(q.y) - 0.04))); m = max(m, max(bone, knob)); }
     float skull = 1.0 - smoothstep(0.16, 0.2, length(p - vec2(0.25, -0.2))); m = max(m, skull); float eye = (1.0 - smoothstep(0.03, 0.05, length(p - vec2(0.2, -0.24)))) + (1.0 - smoothstep(0.03, 0.05, length(p - vec2(0.31, -0.24))));
     vec3 c = vec3(0.55, 0.51, 0.42) * lit * (1.0 - 0.8 * clamp(eye, 0.0, 1.0) * skull); a = m * v_meta.y * keep; outColor = vec4(c * a, a); return; }
+  if (k > 9.5) {
+    ivec2 tile = ivec2(floor(v_world));
+    if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize))) discard;
+    uvec4 m = texelFetch(u_mask, tile, 0);
+    if ((m.r & 2u) != 0u || m.a != 0u || (m.g != 0u && m.g != 4u)) discard;
+    a = v_meta.y * (1.0 - smoothstep(0.32, 1.0, r)) * keep;
+    outColor = vec4(0.0, 0.0, 0.0, a);
+    return;
+  }
   // a flame's halo, added in light
   a = v_meta.y * pow(max(0.0, 1.0 - r), 2.4) * keep; outColor = vec4(hue(v_meta.z) * a, 0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- state
-export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false };
+export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0 };
 globalThis.__closeViewGL = closeViewGLStats; // read by the browser harness and the lab's console (diagnostics only)
-const S = { canvas: null, gl: null, env: null, wall: null, wallZ: null, board: null, decal: null, vbo: { env: null, wall: null, board: null, decal: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null },
+const S = { canvas: null, gl: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, vbo: { env: null, wall: null, board: null, decal: null, model: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null },
   tex: { ground: null, mask: null, grit: null }, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
 // The dynamic vertex arrays, grown by doubling (never per frame once warm).
 export const WALL_FLOATS = 20, BOARD_FLOATS = 9, DECAL_FLOATS = 9;
@@ -508,12 +542,14 @@ export function closeViewGLReady(makeCanvas) {
     if (!(gl instanceof WebGL2RenderingContext)) throw new Error("no WebGL2 context");
     c.addEventListener?.("webglcontextlost", (e) => { e.preventDefault?.(); closeViewGLStats.lost = true; });
     S.env = compile(gl, ENV_VS, ENV_FS); S.wall = compile(gl, WALL_VS, WALL_FS); S.wallZ = compile(gl, WALL_VS, WALL_DEPTH_FS); S.board = compile(gl, BOARD_VS, BOARD_FS); S.decal = compile(gl, DECAL_VS, DECAL_FS);
-    for (const k of ["env", "wall", "board", "decal"]) S.vbo[k] = gl.createBuffer();
+    S.model = compile(gl, MODEL_VS, MODEL_FS);
+    for (const k of ["env", "wall", "board", "decal", "model"]) S.vbo[k] = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.env); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     S.vao.env = layout(gl, S.env, S.vbo.env, 2, [["a_pos", 2]]);
     S.vao.wall = layout(gl, S.wall, S.vbo.wall, WALL_FLOATS, [["a_pos", 3], ["a_tex", 4], ["a_nrm", 4], ["a_col", 3], ["a_meta", 4], ["a_tile", 2]]); S.vao.wallZ = layout(gl, S.wallZ, S.vbo.wall, WALL_FLOATS, [["a_pos", 3], ["a_tex", 4], ["a_nrm", 4], ["a_col", 3], ["a_meta", 4], ["a_tile", 2]]);
     S.vao.board = layout(gl, S.board, S.vbo.board, BOARD_FLOATS, [["a_pos", 3], ["a_uv", 2], ["a_meta", 4]]);
     S.vao.decal = layout(gl, S.decal, S.vbo.decal, DECAL_FLOATS, [["a_pos", 3], ["a_loc", 2], ["a_meta", 4]]);
+    S.vao.model = layout(gl, S.model, S.vbo.model, MODEL_FLOATS, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3]]);
     for (const k of ["ground", "mask", "grit"]) S.tex[k] = gl.createTexture();
     S.aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true; return true;
@@ -572,7 +608,7 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   fog: new Float32Array(3), haze: new Float32Array(3), fogP: new Float32Array(4), amb: new Float32Array(3), torch: new Float32Array(3), torchP: new Float32Array(4), grade: new Float32Array(4), finish: new Float32Array(4),
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1 };
-export function drawSceneGL(ground, U) {
+export function drawSceneGL(ground, U, models = null) {
   const gl = S.gl; if (!gl) return false; const F = GLF; let calls = 0;
   const c = S.canvas; if (c.width !== F.devW || c.height !== F.devH) { c.width = F.devW; c.height = F.devH; }
   gl.viewport(0, 0, F.devW, F.devH);
@@ -604,14 +640,27 @@ export function drawSceneGL(ground, U) {
   gl.bindVertexArray(S.vao.env); gl.drawArrays(gl.TRIANGLES, 0, 3); calls++;
   // 3. the floor's decals and the props drawn as cards (shadows, rings, cobwebs, chains, spikes, bones): blended, depth-tested, not written
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-  const decalU = () => { cam(S.decal); U.decal(gl, S.decal.U); gl.uniform1f(S.decal.U.u_time, F.time); gl.uniform3fv(S.decal.U.u_fog, F.fog); gl.uniform4fv(S.decal.U.u_fogP, F.fogP); };
+  const decalU = () => { cam(S.decal); U.decal(gl, S.decal.U); gl.uniform1i(S.decal.U.u_mask, 1); gl.uniform2i(S.decal.U.u_mapSize, S.maskW, S.maskH); gl.uniform1f(S.decal.U.u_time, F.time); gl.uniform3fv(S.decal.U.u_fog, F.fog); gl.uniform4fv(S.decal.U.u_fogP, F.fogP); };
   if (GLB.nDecal > 0) { gl.useProgram(S.decal.p); decalU(); gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.decal); gl.bufferData(gl.ARRAY_BUFFER, GLB.decal.subarray(0, GLB.nDecal * DECAL_FLOATS), gl.DYNAMIC_DRAW); gl.bindVertexArray(S.vao.decal);
     if (GLB.nGlowStart > 0) { gl.drawArrays(gl.TRIANGLES, 0, GLB.nGlowStart); calls++; } }
-  // 4. the creatures and the Wayfarer (far to near), then their silhouettes where a wall hides them
-  if (GLB.nBoard > 0) { gl.useProgram(S.board.p); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW); gl.bindVertexArray(S.vao.board);
-    gl.uniform1f(S.board.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++;
+  // Compare silhouettes against wall depth before the opaque models write actor depth.
+  const model = S.model, hasModels = !!models?.length;
+  const useBoards = () => { gl.useProgram(S.board.p); gl.bindVertexArray(S.vao.board); };
+  if (GLB.nBoard > 0) { useBoards(); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW);
     gl.depthFunc(gl.GREATER); gl.uniform1f(S.board.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; gl.depthFunc(gl.LEQUAL); }
+  if (hasModels) {
+    gl.useProgram(model.p); cam(model); light(model); gl.uniform3fv(model.U.u_sil, F.sil);
+    gl.bindVertexArray(S.vao.model); gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.model);
+    gl.bufferData(gl.ARRAY_BUFFER, models, gl.DYNAMIC_DRAW);
+    const vertices = models.length / MODEL_FLOATS;
+    gl.depthFunc(gl.GREATER); gl.uniform1f(model.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
+    gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
+    gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
+    gl.depthMask(false); gl.enable(gl.BLEND);
+  }
+  if (GLB.nBoard > 0) { useBoards(); gl.uniform1f(S.board.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; }
+  closeViewGLStats.modelTriangles = hasModels ? models.length / (3 * MODEL_FLOATS) : 0;
   // 5. flames, halos, motes and wind-up glows, added in light
   if (GLB.nDecal > GLB.nGlowStart) { gl.useProgram(S.decal.p); decalU(); gl.bindVertexArray(S.vao.decal); gl.blendFunc(gl.ONE, gl.ONE); gl.drawArrays(gl.TRIANGLES, GLB.nGlowStart, GLB.nDecal - GLB.nGlowStart); calls++; }
   gl.bindVertexArray(null); gl.depthMask(true); gl.disable(gl.BLEND);
