@@ -2854,6 +2854,34 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 783: story version 4 — the far realms keep their full story density — 2026-11-06
+
+Tim, 2026-11-06, accepting the recommendation: past 1000 the Second Surveyor's and the Sleeper's fixed slots go to the far stories, so the far realms don't go quiet once those two are finished.
+
+**CODE:**
+- `src/threads.ts` `STORY_BUDGET` is version 4, with `byVersion[4] = .12` and `firstTenGivesWay: 4`.
+- `firstTenGivesWay(rx, ry, version)` is true from that version in band `beyond`, meaning a straight-line `farDistance` of at least `FAR_REALMS.start`. Where it holds:
+  - `threadIn` skips the first-ten roll and goes straight to `sharedThreadIn`;
+  - `sharedRate` drops the first-ten share, so the shared roll gets the whole 0.12.
+- Pools and weights are unchanged:
+  - five far threads at weight 3;
+  - the Well-Digger, Tollkeeper, Weaver and Mirror at weight 1.
+- New crossings pin `storyVersion` 4.
+- Tests:
+  - `tests/threads-far-v4.test.ts` (new);
+  - `tests/threads-far-v3.test.ts` now names the current version rather than 3;
+  - `tests/story-budget.test.ts:38` again asserts `budgetFor(1)` and `budgetFor(2)`.
+
+**Measured at radius 1500:**
+- Each far thread holds about 0.019 per crossing at v4, against 0.008 at v3.
+- Density stays at 0.12. A veteran who has finished the Surveyor and the Sleeper now meets about 0.12 out there, not about 0.05.
+
+**BOUNDARY:**
+- Only crossings first pinned at v4 change, and only past 1000.
+- Inside 1000, v4 gives every crossing exactly v3's thread, so the first ten can still be finished on the way out.
+- Crossings pinned at v0–v3 roll byte for byte as before, checked against independent references.
+- No new threads. Schema 14.
+
 ## Release 782: the Rite is a lockdown; Pentagon Journal lines in words; springs heal 2% — 2026-11-06
 
 Tim, 2026-11-06:

@@ -35,7 +35,7 @@ const STRETCHES = [[3, 6], [7, 18], [19, 35], [36, 70], [71, 150], [195, 205], [
 
 test('the budget is one table number, and its chance comes out exactly the budget at every distance from 3 to 3000', () => {
   // Story version 2 (2026-11-05) trimmed the budget of crossings entered from then on to 0.12; version 1 keeps 0.13.
-  assert.ok(STORY_BUDGET.version >= 2); assert.equal(STORY_BUDGET.perCrossing, .12); // story version 3 (2026-11-06) keeps 0.12 assert.equal(budgetFor(1), .13); assert.equal(budgetFor(2), .12);
+  assert.ok(STORY_BUDGET.version >= 2); assert.equal(STORY_BUDGET.perCrossing, .12); assert.equal(budgetFor(1), .13); assert.equal(budgetFor(2), .12); // story versions 3 and 4 (2026-11-06) keep 0.12
   // The reference: the near-and-middle stretch (7 to 18 out) before wave 5, the most any stretch held then.
   const before5 = 1 - (1 - R772.chance) * (1 - R772.third) * (1 - R772.fourth); assert.ok(Math.abs(before5 - budgetFor(1)) < .001, String(before5));
   for (let d = THREAD_RULES.minDepth; d <= 3000; d++) for (const v of [1, 2]) { const r = sharedRate(d, 0, v), held = THREAD_RULES.chance + (1 - THREAD_RULES.chance) * r;

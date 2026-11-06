@@ -46,8 +46,8 @@ const circle = (r, n, tag = 'c') => Array.from({ length: n }, (_, i) => { const 
 const NEAR = [[3, 6], [7, 18], [19, 35], [36, 70], [71, 150], [495, 505]], OUT = [[995, 1005], [1100, 1110], [1495, 1505], [2995, 3005]];
 
 test('story version 3: the budget stays 0.12, the five far threads share the beyond slots at weight 3, and the two new ones are written in full', () => {
-  assert.equal(STORY_BUDGET.version, 3); assert.equal(STORY_BUDGET.perCrossing, .12); assert.deepEqual(STORY_BUDGET.byVersion, { 1: .13, 2: .12, 3: .12 });
-  assert.equal(budgetFor(3), .12); assert.equal(budgetFor(2), .12); assert.equal(budgetFor(1), .13); assert.equal(storyVersionFor(false), 3); assert.equal(storyVersionFor(true), 0);
+  assert.ok(STORY_BUDGET.version >= 3); assert.equal(STORY_BUDGET.perCrossing, .12); assert.equal(STORY_BUDGET.byVersion[3], .12); // story version 4 (2026-11-06) adds an entry
+  assert.equal(budgetFor(3), .12); assert.equal(budgetFor(2), .12); assert.equal(budgetFor(1), .13); assert.equal(storyVersionFor(false), STORY_BUDGET.version); assert.equal(storyVersionFor(true), 0);
   for (const id of FAR) { const T = THREADS[id]; assert.equal(T.band, 'beyond'); assert.deepEqual(T.shared[3], ['beyond']); assert.equal(threadWeight(id, 3), 3, id); assert.equal(threadWeight(id), 3); }
   for (const id of OLD_FAR) { assert.deepEqual(THREADS[id].shared[2], ['beyond']); assert.equal(threadWeight(id, 2), 2, `${id} keeps weight 2 at version 2`); assert.equal(threadWeight(id, 1), 1); }
   for (const id of THREAD_ORDER.filter((t) => !FAR.includes(t))) for (const v of [1, 2, 3]) assert.equal(threadWeight(id, v), 1, `${id} v${v}`);
@@ -107,16 +107,16 @@ test('crossings pinned at version 0, 1 or 2 roll exactly as releases 772, 773 an
   assert.ok(n >= 100000 && kept > 5000 && moved > 1000, `${n} crossings, ${kept} first-ten, ${moved} differ at version 3`);
 });
 
-test('a crossing pinned at version 2 keeps its thread through save and load; a crossing never generated pins to version 3', () => {
+test('a crossing pinned at version 2 keeps its thread through save and load; a crossing never generated pins to the current version', () => {
   const s = freshSave(); s.seed = 'FAR3PIN'; const ids = circle(1300, 4000, 'pin').map(([, id]) => id.replace(/FAR3C\d/, 'FAR3PIN'));
   const v2 = ids.filter((id) => threadIn('FAR3PIN', id, 2) !== threadIn('FAR3PIN', id, 3)).slice(0, 30), fresh = ids.filter((id) => NEW_FAR.includes(threadIn('FAR3PIN', id, 3)) && !v2.includes(id)).slice(0, 30);
   assert.ok(v2.length >= 20 && fresh.length >= 10, `${v2.length}, ${fresh.length}`);
   for (const id of v2) s.consequences.dungeons[id] = { discovered: true, bypassed: false, visits: 1, abandoned: 0, guardianDefeated: false, resolved: false, visitOpen: false, storyVersion: 2 };
   const loaded = migrateSave(JSON.parse(JSON.stringify(s)));
   for (const id of v2) { pinDungeonLayout(loaded, id); assert.equal(storyVersionOf(loaded, id), 2); assert.equal(addThreadRelic(map(), loaded, id)?.thread ?? null, r779('FAR3PIN', id)); }
-  for (const id of fresh) { const h = pinDungeonLayout(loaded, id); assert.equal(h.storyVersion, 3); assert.ok(NEW_FAR.includes(addThreadRelic(map(), loaded, id).thread)); }
+  for (const id of fresh) { const h = pinDungeonLayout(loaded, id); assert.equal(h.storyVersion, STORY_BUDGET.version); assert.ok(NEW_FAR.includes(addThreadRelic(map(), loaded, id).thread)); }
   const again = migrateSave(JSON.parse(JSON.stringify(loaded)));
-  for (const id of v2) assert.equal(again.consequences.dungeons[id].storyVersion, 2); for (const id of fresh) assert.equal(again.consequences.dungeons[id].storyVersion, 3);
+  for (const id of v2) assert.equal(again.consequences.dungeons[id].storyVersion, 2); for (const id of fresh) assert.equal(again.consequences.dungeons[id].storyVersion, STORY_BUDGET.version);
   assert.equal(again.version, 14);
 });
 
@@ -138,7 +138,7 @@ test('each new far thread is read in order across crossings, never stranded, and
 test('in the game, each new far thread is read to its end: the Journal keeps every piece and the ending, and QUEST COMPLETE is raised', () => {
   for (const id of NEW_FAR) { const T = THREADS[id], seed = `FAR3GAME-${id}`, c = farCrossings(seed, id, T.pieces.length), s = freshSave(); s.seed = seed;
     for (let i = 0; i < T.pieces.length; i++) { const q = c[i], [x, y] = at(q); s.session.activeDungeonId = q; s.session.dungeonReturn = { rx: x, ry: y, x: 16, y: 16 };
-      const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[q].storyVersion, 3, 'a new crossing pins to version 3');
+      const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[q].storyVersion, STORY_BUDGET.version, 'a new crossing pins to the current version');
       const o = g.map.objects.find((k) => k.kind === 'threadRelic'); assert.ok(o, `${id} ${i}: laid in the crossing`); assert.equal(o.thread, id); assert.equal(o.index, i);
       g.player.x = o.x; g.player.y = o.y; const r = g.interact('read', o.id); assert.ok(r.ok, g.message); assert.equal(r.done, i === T.pieces.length - 1);
       assert.ok(s.narrative.journal.some((j) => j.text === T.pieces[i]), `piece ${i + 1} is in the Journal`);
