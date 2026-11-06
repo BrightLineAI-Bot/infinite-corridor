@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 783, the next is **784**.
+Taken at merge time: `main`'s release + 1 (see above). After 784, the next is **785**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 783 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 4: past 1000 the first-ten slots go to the shared roll, so far crossings keep the full 0.12 | In flight. |
+| 784 | Claude | `claude/dreamy-rubin-yn6q2p` | Room mazes: half of new labyrinths are mazes of rooms over four floors (undercroft, ground, upper, roof); barriers crossed on another floor, sub-floor routes, dead ends, loops, drops, far-side barred doors | In flight. |
+| 783 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 4: past 1000 the first-ten slots go to the shared roll, so far crossings keep the full 0.12 | Merged (#431). |
 | 782 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite is a lockdown (no door, sky gate, Far Gate, fold, dive or edge leaves it; only finishing, death or a Crossing Sigil); old Pentagon Journal lines in words; hot springs heal 2% | Merged (#430). Published as r782-fa66724a8d00 on 2026-11-06. |
 | 781 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 3: two more far threads past 1000 (the Enumerator's Count, the Tinker's Tags); far stories take about 79% of the shared slots out there, at 0.12 | Merged (#429). Published in r782. |
 | 780 | Claude | `claude/dreamy-rubin-yn6q2p` | Canopy groves (landscape 22, trees v21): several great crowns joined high above a hidden floor by branch bridges and one-tile hops, one tree climbed; groves never need a hop the Wayfarer can't make | Merged (#428). Published as r780-e230fbd94ccd on 2026-11-05. |

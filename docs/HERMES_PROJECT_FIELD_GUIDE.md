@@ -2854,6 +2854,43 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 784: room mazes — rooms, stairs and floors — 2026-11-06
+
+Tim, 2026-11-06, asked for mazes "where you go between different rooms... choices between going up these stairs or down these stairs... some of it is a dead end... maybe it'll take you to the roof, and then you can walk over the floor that was all holes or all lava". He also wanted sub-floors: "a ladder that takes you down to a sub floor and you can walk around the obstacle... take a ladder up in like the Northwest corner". And he wanted both kinds: "the standard labyrinths are pretty good... and the new labyrinths".
+
+**CODE:**
+- **Generator** (`src/labyrinths.ts`): `ROOM_MAZES` (data), `labyrinthForm`, `roomMazePlan`, `generateRoomMazeFloor`, `openRoomGate`, `roomGateSide`.
+- **Choosing the form.** `LABYRINTHS.version` is 3, recorded per section in the atlas `labVersion`. At version 3, `placeLabyrinth` rolls the form with its own hash; `ROOM_MAZES.share` is 0.5.
+- **Ids and floors.** A room maze's base id is `labyrinth:<seed>:<rx>:<ry>:<style>~r1`. Its four floors are `:f1` (undercroft), `:f2` (ground, where the door opens), `:f3` (upper floor) and `:f4` (roof).
+- **Rooms.** Each floor is a grid of themed rooms joined by doorways and short corridors: a spanning tree, pruned, with braids for loops.
+- **Barriers.** One or two barrier columns cut the ground floor from wall to wall. Each is a band 6 tiles wide (wider than a 3-tile jump) of holes, lava, a chasm, rubble, or a barred wall.
+  - Each barrier is crossed on exactly one other floor: a gallery upstairs, a beam on the roof, or a passage through the undercroft that comes up by a ladder in a far corner.
+  - Two barriers never share a crossing kind.
+- **Within a segment.** Stairs join floors only within a segment. Dead-end floors and branches hold caches. Green-rimmed drops fall one way from the upper floor to the ground floor.
+- **Barred doors** open from the far side only and stay open (`labOpen` `gate:<i>`).
+- **Deaths.** In `src/game.ts`, lava on a room-maze floor wakes you at the floor entry, the same as a hole. In `holeDrops`, only the designed shafts are safe.
+- **Vault.** The vault's roof exit sits at `roofSpot`.
+- **Drawing.** `src/renderer.ts` draws the barred door.
+- **Tests.**
+  - New: `tests/room-mazes.test.ts`. It runs a solver over the whole multi-floor graph (stairs and ladders both ways, one-way drops, staged barred doors). It proves the goal is reachable, that you can always walk back out of a dead end, and that each barrier can be crossed only on its own floor.
+  - Updated: `tests/vault-roof-exit.test.ts` (version 3).
+
+**Measured:**
+- Share: 0.498 over 40,000 sections.
+- Floors: at most 6×4 cells, about 47×29 tiles.
+- Rooms: mean 40 over four floors.
+- Guards: at most 6 per floor.
+- Generation: a whole maze takes about 3 ms; one floor's p99 is 16 ms.
+- A 5000-maze proof passes.
+
+**BOUNDARY:**
+- Only new ground at labyrinth version 3 gets room mazes. Sections pinned to versions 1 or 2, every corridor maze and the Shell-Labyrinth generate exactly as in release 782; a digest test checks this.
+- The room-maze generator is pinned by `~r1`. A change to its algorithm needs `~r2`.
+- Saves only add `labOpen` entries. Schema 14 is unchanged.
+- There are no keys, no raised ledges, and no view of the floor below from a gallery yet (the tiles are marked so it can be drawn later).
+- Burrowing still works after a floor's warden falls. It never crosses lava or holes.
+- Fog of war comes separately.
+
 ## Release 783: story version 4 — the far realms keep their full story density — 2026-11-06
 
 Tim, 2026-11-06, accepting the recommendation: past 1000 the Second Surveyor's and the Sleeper's fixed slots go to the far stories, so the far realms don't go quiet once those two are finished.

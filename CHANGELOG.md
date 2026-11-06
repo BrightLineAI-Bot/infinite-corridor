@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 784 — **Room mazes.** About half of new labyrinths are now mazes of rooms over four floors: undercroft, ground, upper floor and roof. What the ground floor can't cross (holes, lava, a chasm, a collapsed hall, a barred door) you cross on another floor: over it upstairs, along a roof beam, or under it through the undercroft and up a ladder in a far corner. Dead ends, loops, drops, and barred doors that open from the far side. The corridor labyrinths are unchanged.
 - Release 783 — **The far realms keep their stories.** Past 1000 sections, crossings entered from now on give the Second Surveyor's and the Sleeper's slots to the far stories, so the far realms keep their full story density after those two are finished. Inside 1000 nothing changes, and crossings already entered keep what they offered.
 - Release 782 — **The Rite is a lockdown.** Once a Rite of Ascendancy burns, no door, sky gate, Far Gate, fold, dive or section edge takes you off its ground: finish it, die, or burn a Crossing Sigil. Old Pentagon Journal lines now give directions in words, and the hot springs heal 2% of your health a second.
 - Release 781 — **More far stories.** Two more stories lie past 1000 sections: The Enumerator's Count (the Crystal Civilisation) and The Tinker's Tags (the Storm Halls). Out there the far stories now take about four-fifths of the story slots, at the same density; crossings already entered keep what they offered.

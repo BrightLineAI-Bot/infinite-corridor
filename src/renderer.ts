@@ -2379,6 +2379,7 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
           else if (o.kind === "pentInscription") drawPentInscription(ctx, o, s, now); // the marks in its walls
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
+          else if (o.kind === "labGate") { if (o.state !== "open") drawBars(ctx, o, s); } // a room maze's barred door (labyrinths.ts ROOM_MAZES)
           else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
           else if (o.kind === "pentShortcut") drawPentShortcut(ctx, o, s, now); // and its shortcut links (v6)
           else if (o.kind === "pentFinaleWall") drawPentFinaleWall(ctx, o, s, now); // the finale's opened wall
