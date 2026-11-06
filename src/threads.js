@@ -7,9 +7,9 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r780-e230fbd94ccd";
-import { READING_BANDS } from "./lore.js?v=r780-e230fbd94ccd";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r780-e230fbd94ccd";
+import { hashSeed } from "./random.js?v=r782-fa66724a8d00";
+import { READING_BANDS } from "./lore.js?v=r782-fa66724a8d00";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r782-fa66724a8d00";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -34,7 +34,12 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // threads (band `beyond`) join the shared roll out past FAR_REALMS.start. There they take a larger share than the threads that
 // share the whole deep band (`weight`, from version 2 only), so the stories written for the far realms are the ones met there,
 // in place of the generic draws, not on top of them. Never edit a `byVersion` entry; a new version adds one.
-export const STORY_BUDGET = { version: 2, perCrossing: .12, byVersion: { 1: .13, 2: .12 } };
+// Story version 3 (Tim, 2026-11-06: "I'm sure we can have more stories... there's tons of room to find stories... the world is huge
+// and I intended it to be massive"; the far stories should be the main ones out past 1000, since they only exist there): two more
+// far threads (the Enumerator's Count, the Tinker's Tags) join the beyond slots at the same budget, and every far thread takes a
+// weight of 3 there from version 3 (`weight: { version: w }`, the latest at or before the crossing's version), so the five take
+// about 0.79 of the shared slots past FAR_REALMS.start. Crossings pinned at version 0, 1 or 2 roll exactly as before.
+export const STORY_BUDGET = { version: 3, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12 } };
 // The budget of a crossing pinned to story version `version`: the latest entry at or before it (0 below version 1).
 export const budgetFor = (version) => { let p = 0; for (const [v, b] of Object.entries(STORY_BUDGET.byVersion)) if (Number(v) <= version) p = b; return p; };
 // beyond (story version 2): the far realms, measured straight-line from the Refuge as the realms are (far-realms.ts farDistance),
@@ -223,10 +228,10 @@ export const THREADS = {
   },
   // The far threads (story version 2, 2026-11-05; Tim: "Yes, you should write them for out past 1000"). Written for the far realms
   // (far-realms.ts): the Giants' Reach and the Tall Country, the great mushrooms, the Ink Wastes. Never a wave: they share the
-  // budget's slots past FAR_REALMS.start (band `beyond`, straight-line), at `weight` 2 against the deep band's shared threads, so
-  // out there the stories met are mostly these. docs/narrative-bible.md section 1: what is read is firmer ground; things let go of
+  // budget's slots past FAR_REALMS.start (band `beyond`, straight-line), at `weight` 2 against the deep band's shared threads (3
+  // from story version 3, with two more far threads beside them), so out there the stories met are mostly these. docs/narrative-bible.md section 1: what is read is firmer ground; things let go of
   // are seen once on their way out; ink holds only while it is read.
-  tallSlates: { title: "The Tall Child's Slates", band: "beyond", relic: "slate", colour: "#8a9aa6", shared: { 2: ["beyond"] }, weight: 2,
+  tallSlates: { title: "The Tall Child's Slates", band: "beyond", relic: "slate", colour: "#8a9aa6", shared: { 2: ["beyond"], 3: ["beyond"] }, weight: { 2: 2, 3: 3 },
     pieces: [
       "A slate the size of a door, leaning on the wall. Chalked across it, each as tall as you, the first three letters of an alphabet you know, copied over and over, the strokes going wrong and starting again.",
       "A second great slate. In one corner a small book has been drawn with enormous care, far larger than itself: a primer, open at a picture of a cup. Under it, copied huge: CUP. Under that, pressed too hard, a cup the size of a cart.",
@@ -236,7 +241,7 @@ export const THREADS = {
       "The last slate is clean but for one word, low down, at the height where a tall child kneels to write. It is not a word from the primer. It is a name, in letters taller than you, and the floor beneath it is as hard as the floor of a house.",
     ],
     ending: "Out where the doors are twice the height of a man, a girl of the Tall Country found a primer no bigger than her thumbnail, blown a thousand sections from wherever Hanna Brisk lost it, and taught herself to read from it, a letter a slate. Nobody out there had ever written anything down. Now one thing is: her own name, at the height a child kneels, on ground that has gone hard under it. And somewhere far behind you a small book is a little less lost, because someone a long way off has read every page of it, slowly, more times than its owner ever did." },
-  sporePrints: { title: "The Spore Prints", band: "beyond", relic: "print", colour: "#b0906e", shared: { 2: ["beyond"] }, weight: 2,
+  sporePrints: { title: "The Spore Prints", band: "beyond", relic: "print", colour: "#b0906e", shared: { 2: ["beyond"], 3: ["beyond"] }, weight: { 2: 2, 3: 3 },
     pieces: [
       "A square of stiff paper with a spore print on it in brown dust: not the fan of gills a mushroom leaves, but the plain shape of a staircase, seven steps and a landing. Pencilled in the corner: \"North stand, the tallest cap. Print 1. A staircase. Whose?\"",
       "A second print, rust-coloured: a cart wheel with one spoke missing. The pencil: \"Print 2. They grow on what has fallen, like mushrooms anywhere. Out here nothing falls, exactly. Things are only let go of.\"",
@@ -246,7 +251,7 @@ export const THREADS = {
       "The last print is a long, low building with a bell on the roof and a yard in front, and the pencil shakes. \"I know this one. The school at Pell's Ford. I taught in it forty years. I had not thought it was let go of already. I will keep this print.\"",
     ],
     ending: "Among the great mushrooms an old schoolmistress went from cap to cap with a ledger, taking spore prints, because out there the caps grow on what has been let go of and a print is the last shape a thing takes. She knew none of them and did not need to; she only saw each one once, so that nothing went out unseen. The last was her own school. She kept that print, and now you have it: the school at Pell's Ford, bell and yard and the step worn hollow at the door, seen one more time." },
-  inkBlotters: { title: "The Ink-Clerk's Blotters", band: "beyond", relic: "blotter", colour: "#5a6478", shared: { 2: ["beyond"] }, weight: 2,
+  inkBlotters: { title: "The Ink-Clerk's Blotters", band: "beyond", relic: "blotter", colour: "#5a6478", shared: { 2: ["beyond"], 3: ["beyond"] }, weight: { 2: 2, 3: 3 },
     pieces: [
       "A sheet of blotting paper pressed flat under a stone. It keeps one line, backwards, as blotters do; held to the light it reads: \"Received of the black ground, one well of ink, for copying. It is warm. It is the first ink in years that my hand does not shake out of.\"",
       "A second blotter. \"Copied today: the deed to a farm, two fields and a pond. The ink would not dry until I read the page back aloud. Then it dried all at once, the whole page, like a held breath let go.\"",
@@ -256,6 +261,30 @@ export const THREADS = {
       "The last blotter keeps no words at all: only the print of an old hand laid flat, fingers spread, as if to keep something from running off a page.",
     ],
     ending: "At the edge of the Ink Wastes a clerk copied deeds and letters in the warm black ink of that country, because it was the only ink his hand did not shake out of; and it held only while someone read what it said. When his voice went, the black things of the Wastes learned to listen in his place. They are still at his door. They are not only what they seem to be when they come at you across the soft ground. They are the last readers of a few hundred pages that would otherwise run home into the dark, and they lean in close to every line." },
+  // Story version 3 (2026-11-06; Tim: "there's tons of room to find stories... the world is huge and I intended it to be massive").
+  // Two more far threads, for the two far civilisations (far-realms.ts FAR_CIVS): the Crystal Civilisation and the Storm Halls.
+  // They share only the beyond slots, from version 3, at weight 3 like the three before them. docs/narrative-bible.md section 1:
+  // what is thought clearly enough sets hard; things are made by being needed long enough.
+  enumerator: { title: "The Enumerator's Count", band: "beyond", relic: "census", colour: "#b6a4e6", shared: { 3: ["beyond"] }, weight: { 3: 3 },
+    pieces: [
+      "A census sheet held down by a violet chip of crystal. Ruled columns, a careful hand: Name, Household, Occupation. One row filled in. \"Household 1. One crystal, the height of a man, floating. Name: would not give one. When I asked, the air went quiet and I thought, very clearly, of a river I have never seen.\"",
+      "A second sheet, the rows full. \"Households 2 to 30. Crystals, floating, keeping the street. Occupation, as near as I can tell: keeping still. They push me back when I come close with the pencil. When I put the pencil behind my ear, they let me near.\"",
+      "A third sheet, the margin written over. \"I should set down why I am here. I am the enumerator for Wendmere. I took its count every ten years for fifty years: four hundred and twelve, then three hundred, then nine. The parish wrote that the count must still be taken. There was no one left to count, so I walked out until there was.\"",
+      "A fourth sheet, creased small as if carried in a fist. \"The crab that wears the stone on its back followed me all day. At dusk it set the stone down and opened it. Inside, small and clear as a drop of water, was my own kitchen at Wendmere, the kettle on. I had not thought of it in years. Someone had, once, clearly enough for it to set.\"",
+      "A fifth sheet. \"Household 211. A young one that has begun to think in my hand. I watched the columns come up inside it like frost on a pane: Name, Household, Occupation. It does not know what to put in them. Nor did I, the first time.\"",
+      "The last sheet is not in his hand. The columns are cut into it, very fine, as if by something patient that had watched a pencil a long time. \"Household 212. One man. Name: Tobias Rell, of Wendmere. Occupation: counting.\" Where he would have signed there is a small clear stone, still warm.",
+    ],
+    ending: "Out among the crystal streets an old enumerator took a census of a people with no names, no households and no work but keeping still, because the count must be taken and there was no one left at home to take. They answered him the only way they could, with things somebody once thought clearly enough to set: a river, a kitchen with the kettle on. In the end they counted him. He is household two hundred and twelve, written in a hand finer than his own, and a thing written that clearly out there does not wear away." },
+  tinkerTags: { title: "The Tinker's Tags", band: "beyond", relic: "tag", colour: "#d08a4e", shared: { 3: ["beyond"] }, weight: { 3: 3 },
+    pieces: [
+      "A copper tag on a loop of wire, stamped with a number, a card tied to it. \"No. 1. In for mending: one coil, off the shoulder of a young one of the stone country. Fault: burnt through. Owner: none given. I asked whose it was. It looked at me a long while and held out its arm.\"",
+      "A second tag, the card spotted with grease. \"No. 2. A hauler's knee. Fault: worn. I asked the tall one who keeps the street who made them. It did not understand the question. As near as I can tell, nobody did. They were needed for long enough, and here they are.\"",
+      "A third tag. \"No. 3. The thunder goes on all day with no cloud in the sky. It comes off the coils. When one of them falls quiet, every head in the street turns toward it at once, the way a kitchen does when the clock on the wall stops.\"",
+      "A fourth tag, its card written small to fit. \"No. 4. How I came. Thirty-one years at the shop in Saltry, ANYTHING MENDED on the board. Then nothing came in. People stopped bringing things, or stopped being anywhere to bring them from. I shut up the shop and walked out until I heard something broken.\"",
+      "A fifth tag. \"No. 5. A warden came to the bench tonight with nothing wrong with it. It sat where they sit to be mended, and waited. I went over it with the lamp all the same, every joint, and told it it was sound. It hummed, very low, and went home.\"",
+      "The last tag is not in his hand: the number is burnt into the copper, neat as a hot point makes it. \"No. 7. In for mending: one hauler's knee. Mended by: Anything Mended.\" Under it, his bench, his lamp set on it, and the stool still warm. There is no tag numbered 6.",
+    ],
+    ending: "A tinker who had mended anything for thirty-one years, until nobody brought him anything, walked out until he heard something broken and found the Storm Halls, where the machines are people and nobody ever made them. He mended their coils and their knees, and sat with the ones who came to the bench with nothing wrong, because being gone over with a lamp is a kind of mending too. Nobody out there says where he went. They kept the bench. They mend each other at it now, under the name of his shop, and when the thunder stops all at once, it is because every head has turned toward the stool." },
 };
 export const THREAD_ORDER = Object.keys(THREADS);
 const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave && !THREADS[id].shared); // the first ten (release 627): what a crossing offered then, it still offers
@@ -278,15 +307,21 @@ export function sharedRate(rx, ry, version = STORY_BUDGET.version) {
   const base = FIRST_THREADS.some((id) => inBand(THREADS[id].band, rx, ry)) ? THREAD_RULES.chance : 0;
   return Math.max(0, (budgetFor(version) - base) / (1 - base));
 }
-// The share a thread takes of the shared slots where it is listed, from story version 2 (`weight`, default 1).
-export const threadWeight = (id) => Math.max(1, Math.floor(Number(THREADS[id]?.weight) || 1));
+// The share a thread takes of the shared slots where it is listed at story version `version` (from version 2; `weight`, default 1).
+// `weight` is { storyVersion: w }: the latest entry at or before `version` (a plain number holds from version 2). Never edit an
+// existing entry; a new version adds one.
+export function threadWeight(id, version = STORY_BUDGET.version) {
+  const w = THREADS[id]?.weight; let n = 1;
+  if (w && typeof w === "object") { for (const [v, x] of Object.entries(w)) if (Number(v) <= version) n = Number(x); } else if (version >= 2) n = Number(w);
+  return Math.max(1, Math.floor(n) || 1);
+}
 function sharedThreadIn(seed, dungeonId, rx, ry, version) {
   if (roll(`${seed}:threads:shared:v1:${dungeonId}`) >= sharedRate(rx, ry, version)) return null;
   const here = sharedThreads(version, rx, ry); if (!here.length) return null;
   const h = hashSeed(`${seed}:threads:shared:which:v1:${dungeonId}`);
   if (version < 2) return here[h % here.length]; // version 1: an even share, exactly as release 773 chose
-  let k = h % here.reduce((n, id) => n + threadWeight(id), 0);
-  for (const id of here) { k -= threadWeight(id); if (k < 0) return id; }
+  let k = h % here.reduce((n, id) => n + threadWeight(id, version), 0);
+  for (const id of here) { k -= threadWeight(id, version); if (k < 0) return id; }
   return null;
 }
 // A crossing's story version: what its dungeon history was pinned to when it was first generated (0, the waves, when missing).

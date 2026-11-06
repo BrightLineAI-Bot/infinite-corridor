@@ -17,7 +17,7 @@
 //   (landscape.ts growRiteTree; its platforms climb out of the earth over `rise` s, rubble falling), the same each time you come
 //   back, with a Divine Viscera bloom on its crown (`viscera`, once) and its door to the sky (`skyway`): a skyway to another tree.
 // Save: additive at schema 14 (`save.ascendancy`: { ["rx,ry"]: { tries, done, risen, bloom } }).
-import { hashSeed } from "./random.js?v=r780-e230fbd94ccd";
+import { hashSeed } from "./random.js?v=r782-fa66724a8d00";
 
 export const ASCENDANCY = {
   version: 1,
@@ -57,6 +57,43 @@ export const ASCENDANCY = {
   },
 };
 
+// The Rite is a lockdown (Tim, 2026-11-06: "you should also be blocked from going into anything other than the Rite. Once you
+// start the Rite you can't do anything other than the Rite until you die or use a crossing sigil"). While a rite burns nothing
+// carries the Wayfarer off its ground: no edge (Game.transitionSection, the fire), no Wayglass (travelToCheckpoint, release
+// 777), and no door, gate or fold, by the table below (Game.interact asks `riteExit` before anything else; a hidden Folded
+// Seam stays shut, Game.update). Only death (the rite fails, its old rules) and the Crossing Sigil (the attempt is lost, the
+// strange tree keeps its others: release 774) still lead out. The timer never stops, so finishing, dying or a sigil is always
+// within reach, and Stuck? still frees the Wayfarer from a pocket of the rite's own ground.
+// - `kinds`: what using an object of that kind does (its `say`, a key of `messages`), for every action but those it `keep`s.
+// - `actions`: any other object asked to do one of these (the part before a ":", so "ascend:2" is "ascend").
+// - `inset`: tiles inside the edge the fire sets the Wayfarer back to, where that ground holds them (else they stay put).
+export const RITE_LOCKDOWN = {
+  kinds: {
+    dungeon: { say: "door", keep: ["bypass"] }, // every crossing, great building, castle, compound, labyrinth and Pentagon door
+    arenaEntrance: { say: "door" }, deepShaft: { say: "door" }, huntInstance: { say: "door" }, elitePortal: { say: "door", keep: ["inspect"] },
+    skyStair: { say: "sky" }, canopyGate: { say: "sky" },
+    arrayMouth: { say: "farGate" }, silentMouth: { say: "farGate" }, listenerDais: { say: "farGate" },
+    displacementDevice: { say: "fold" }, displacementTrap: { say: "fold" }, watcherTomb: { say: "fold" },
+    diveSite: { say: "dive" }, diveOnward: { say: "dive" }, diveExit: { say: "dive" },
+  },
+  actions: { enter: "door", descend: "door", travel: "door", ascend: "sky", dive: "dive", follow: "dive", surface: "dive" },
+  inset: 1.2,
+  messages: {
+    door: "The rite's fire seals every door while it burns. Survive the rite, or burn a Crossing Sigil (the attempt is lost).",
+    sky: "The rite's fire holds the sky gate shut. Survive the rite, or burn a Crossing Sigil (the attempt is lost).",
+    farGate: "The rite's fire holds the line shut. Survive the rite, or burn a Crossing Sigil (the attempt is lost).",
+    fold: "The fold will not open while the rite burns. Survive it, or burn a Crossing Sigil (the attempt is lost).",
+    dive: "The rite's fire holds you above the water. Survive the rite, or burn a Crossing Sigil (the attempt is lost).",
+  },
+};
+// The message refusing `action` on object `o` while a rite burns, or null when it keeps the Wayfarer on the rite's ground.
+export function riteExit(o, action) {
+  if (!o || typeof o !== "object") return null;
+  const L = RITE_LOCKDOWN, a = String(action ?? ""), k = Object.hasOwn(L.kinds, o.kind) ? L.kinds[o.kind] : null;
+  if (k && !(k.keep || []).includes(a)) return L.messages[k.say];
+  const verb = a.split(":")[0], say = Object.hasOwn(L.actions, verb) ? L.actions[verb] : null;
+  return say ? L.messages[say] : null;
+}
 export const riteKey = (rx, ry) => `${rx},${ry}`;
 export const saplingHere = (seed, rx, ry) => Math.abs(rx) + Math.abs(ry) >= ASCENDANCY.minRing && (hashSeed(`${seed}:sapling-dais:v1:${rx}:${ry}`) % 10000) / 10000 < ASCENDANCY.chance;
 export const riteSkyway = (seed, rx, ry) => (hashSeed(`${seed}:rite-skyway:v1:${rx}:${ry}`) % 1000) / 1000 < ASCENDANCY.skyway;

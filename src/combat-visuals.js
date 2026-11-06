@@ -1,8 +1,8 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r780-e230fbd94ccd";
-import { SHADOW_CLONE } from "./late-spells.js?v=r780-e230fbd94ccd";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r780-e230fbd94ccd";
-import { drawOrbit } from "./orbit-volley.js?v=r780-e230fbd94ccd";
-import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r780-e230fbd94ccd";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r782-fa66724a8d00";
+import { SHADOW_CLONE } from "./late-spells.js?v=r782-fa66724a8d00";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r782-fa66724a8d00";
+import { drawOrbit } from "./orbit-volley.js?v=r782-fa66724a8d00";
+import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r782-fa66724a8d00";
 export function drawRangedEffects(ctx,game,width,height) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [

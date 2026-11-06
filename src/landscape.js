@@ -10,12 +10,12 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { farCivAt } from "./far-realms.js?v=r780-e230fbd94ccd";
-import { hashSeed, byHash } from "./random.js?v=r780-e230fbd94ccd";
-import { placeDock } from "./boats.js?v=r780-e230fbd94ccd";
-import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r780-e230fbd94ccd";
-import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r780-e230fbd94ccd";
-import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r780-e230fbd94ccd";
+import { farCivAt } from "./far-realms.js?v=r782-fa66724a8d00";
+import { hashSeed, byHash } from "./random.js?v=r782-fa66724a8d00";
+import { placeDock } from "./boats.js?v=r782-fa66724a8d00";
+import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r782-fa66724a8d00";
+import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r782-fa66724a8d00";
+import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r782-fa66724a8d00";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -585,8 +585,9 @@ export const TERRACES = {
 // within `foeNear` tiles (an aroused one within `aggroNear`), and not hurt for `calm` seconds. Counted in play seconds only, each
 // frame's share at most `step` seconds, so a pause, backgrounding or a long frame never grants heal for time away. One message a
 // visit (a visit ends `visitGap` seconds off the pools); a wisp of steam every `wisp` seconds while it mends.
+// Tim, 2026-11-06: "2% is fine and the water should be the one that heals you": `share` .02 (was .015), springPool alone.
 export const HOT_SPRINGS = {
-  kinds: ["springPool"], share: .015, step: .1, calm: 4, foeNear: 7, aggroNear: 14, scan: .25, visitGap: 3, wisp: .9, wispLife: 1.2,
+  kinds: ["springPool"], share: .02, step: .1, calm: 4, foeNear: 7, aggroNear: 14, scan: .25, visitGap: 3, wisp: .9, wispLife: 1.2,
   message: "The spring's warmth seeps into your wounds.",
 };
 // The health after `dt` seconds of soaking: up `share` of `maxHp` a second (dt counted to `step` at most), never above `ceiling`.

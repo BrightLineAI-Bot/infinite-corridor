@@ -1,34 +1,34 @@
-import { FAR_FOLK } from "./far-realms.js?v=r780-e230fbd94ccd";
-import { astralBeamAnchors } from "./astral-worm.js?v=r780-e230fbd94ccd";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r780-e230fbd94ccd";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r780-e230fbd94ccd";
-import { enemyMeleeGeometry } from "./combat.js?v=r780-e230fbd94ccd";
-import { ruleRows } from "./elders.js?v=r780-e230fbd94ccd";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r780-e230fbd94ccd";
-import { BOAT } from "./boats.js?v=r780-e230fbd94ccd";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r780-e230fbd94ccd";
-import { isMarineTile } from "./world-beasts.js?v=r780-e230fbd94ccd";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r780-e230fbd94ccd"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r780-e230fbd94ccd";
-import { setTreeSeason } from "./landscape-render.js?v=r780-e230fbd94ccd";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r780-e230fbd94ccd";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r780-e230fbd94ccd";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r780-e230fbd94ccd";
-import { TREES } from "./trees.js?v=r780-e230fbd94ccd";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r780-e230fbd94ccd";
-import { KIT_MOVES } from "./boss-kit.js?v=r780-e230fbd94ccd";
-import { SKY_DISCS } from "./skylands.js?v=r780-e230fbd94ccd"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r780-e230fbd94ccd";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r780-e230fbd94ccd"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r780-e230fbd94ccd"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r780-e230fbd94ccd"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r780-e230fbd94ccd"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r780-e230fbd94ccd"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r780-e230fbd94ccd";
-import { drawRelayNode } from "./relay-network.js?v=r780-e230fbd94ccd";
-import { structureOccupancy } from "./world.js?v=r780-e230fbd94ccd";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r780-e230fbd94ccd";
-import { HOLE_DROPS, holeDrops } from "./labyrinths.js?v=r780-e230fbd94ccd";
+import { FAR_FOLK } from "./far-realms.js?v=r782-fa66724a8d00";
+import { astralBeamAnchors } from "./astral-worm.js?v=r782-fa66724a8d00";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r782-fa66724a8d00";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r782-fa66724a8d00";
+import { enemyMeleeGeometry } from "./combat.js?v=r782-fa66724a8d00";
+import { ruleRows } from "./elders.js?v=r782-fa66724a8d00";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r782-fa66724a8d00";
+import { BOAT } from "./boats.js?v=r782-fa66724a8d00";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r782-fa66724a8d00";
+import { isMarineTile } from "./world-beasts.js?v=r782-fa66724a8d00";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r782-fa66724a8d00"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r782-fa66724a8d00";
+import { setTreeSeason } from "./landscape-render.js?v=r782-fa66724a8d00";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r782-fa66724a8d00";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r782-fa66724a8d00";
+import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r782-fa66724a8d00";
+import { TREES } from "./trees.js?v=r782-fa66724a8d00";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r782-fa66724a8d00";
+import { KIT_MOVES } from "./boss-kit.js?v=r782-fa66724a8d00";
+import { SKY_DISCS } from "./skylands.js?v=r782-fa66724a8d00"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r782-fa66724a8d00";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r782-fa66724a8d00"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r782-fa66724a8d00"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r782-fa66724a8d00"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r782-fa66724a8d00"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r782-fa66724a8d00"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r782-fa66724a8d00";
+import { drawRelayNode } from "./relay-network.js?v=r782-fa66724a8d00";
+import { structureOccupancy } from "./world.js?v=r782-fa66724a8d00";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r782-fa66724a8d00";
+import { HOLE_DROPS, holeDrops } from "./labyrinths.js?v=r782-fa66724a8d00";
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -1154,7 +1154,9 @@ export function drawThreadRelic(ctx, o, s, now) {
     case "mirror": ctx.beginPath(); ctx.moveTo(-s * .16, -s * .12); ctx.lineTo(s * .02, -s * .2); ctx.lineTo(s * .17, -s * .02); ctx.lineTo(s * .06, s * .18); ctx.lineTo(-s * .14, s * .1); ctx.closePath(); ctx.fillStyle = "#b8d0e0"; ctx.fill(); ctx.stroke(); ctx.strokeStyle = "#ffffffaa"; ctx.beginPath(); ctx.moveTo(-s * .08, -s * .08); ctx.lineTo(s * .04, -s * .13); ctx.stroke(); break; // release 712
     case "slate": ctx.rotate(-.08); ctx.fillStyle = "#6a5440"; R(-.2, -.24, .4, .46); ctx.fillStyle = c; R(-.16, -.2, .32, .38); ctx.strokeStyle = "#f2efe6"; ctx.lineWidth = Math.max(1, s * .025); ctx.beginPath(); ctx.moveTo(-s * .1, s * .08); ctx.lineTo(-s * .05, -s * .1); ctx.lineTo(0, s * .08); ctx.moveTo(s * .04, -s * .1); ctx.lineTo(s * .04, s * .08); ctx.stroke(); break; // the Tall Child's Slates (story version 2): a framed slate with chalk letters on it
     case "print": ctx.rotate(.12); R(-.19, -.19, .38, .38); ctx.strokeStyle = "#5a402a99"; ctx.lineWidth = Math.max(1, s * .018); for (let a = 0; a < 6.28; a += .52) { ctx.beginPath(); ctx.moveTo(Math.cos(a) * s * .025, Math.sin(a) * s * .025); ctx.lineTo(Math.cos(a) * s * .14, Math.sin(a) * s * .14); ctx.stroke(); } break; // the Spore Prints (story version 2): a square of paper, a spore print fanned on it
-    case "blotter": ctx.fillStyle = "#e8e2d4"; R(-.2, -.14, .4, .26); ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(-s * .04, -s * .01, s * .09, s * .05, .3, 0, 7); ctx.fill(); ctx.fillRect(s * .03, s * .03, s * .12, s * .02); ctx.fillStyle = "#3a2e22"; ctx.beginPath(); ctx.ellipse(0, s * .17, s * .14, s * .05, 0, Math.PI, 0); ctx.fill(); break; // the Ink-Clerk's Blotters (story version 2): a sheet of blotting paper with an ink blot, on a rocker blotter
+    case "census": ctx.rotate(-.06); ctx.fillStyle = "#efe9dc"; R(-.18, -.22, .36, .42); ctx.strokeStyle = "#7a6a5a99"; ctx.lineWidth = Math.max(1, s * .015); ctx.beginPath(); for (let y2 = -.13; y2 < .1; y2 += .065) { ctx.moveTo(-s * .14, y2 * s); ctx.lineTo(s * .14, y2 * s); } ctx.moveTo(-s * .05, -s * .18); ctx.lineTo(-s * .05, s * .08); ctx.stroke(); ctx.strokeStyle = "#2a241c"; ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(s * .1, s * .04); ctx.lineTo(s * .17, s * .14); ctx.lineTo(s * .1, s * .24); ctx.lineTo(s * .03, s * .14); ctx.closePath(); ctx.fill(); ctx.stroke(); break; // the Enumerator's Count (story version 3): a ruled census sheet held down by a violet crystal chip
+    case "tag": ctx.rotate(-.2); ctx.fillStyle = "#efe9dc"; R(-.13, .06, .17, .13); ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(-s * .17, -s * .08); ctx.lineTo(s * .07, -s * .08); ctx.lineTo(s * .16, 0); ctx.lineTo(s * .07, s * .08); ctx.lineTo(-s * .17, s * .08); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#1b1a20"; ctx.beginPath(); ctx.arc(s * .08, 0, s * .025, 0, 7); ctx.fill(); ctx.strokeStyle = "#7a4a22"; ctx.beginPath(); ctx.moveTo(-s * .12, -s * .03); ctx.lineTo(-s * .12, s * .03); ctx.moveTo(-s * .07, -s * .03); ctx.lineTo(-s * .04, s * .03); ctx.lineTo(-s * .01, -s * .03); ctx.stroke(); ctx.strokeStyle = "#a8aeb6"; ctx.beginPath(); ctx.ellipse(s * .17, -s * .05, s * .07, s * .05, .4, 0, 7); ctx.stroke(); break; // the Tinker's Tags (story version 3): a stamped copper repair tag on a wire loop, its card behind it
+    case "blotter":ctx.fillStyle = "#e8e2d4"; R(-.2, -.14, .4, .26); ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(-s * .04, -s * .01, s * .09, s * .05, .3, 0, 7); ctx.fill(); ctx.fillRect(s * .03, s * .03, s * .12, s * .02); ctx.fillStyle = "#3a2e22"; ctx.beginPath(); ctx.ellipse(0, s * .17, s * .14, s * .05, 0, Math.PI, 0); ctx.fill(); break; // the Ink-Clerk's Blotters (story version 2): a sheet of blotting paper with an ink blot, on a rocker blotter
     case "jar": R(-.13, -.12, .26, .3); ctx.fillStyle = "#f4e2b0"; R(-.15, -.19, .3, .07); ctx.fillStyle = "#fff4d0aa"; ctx.fillRect(-s * .08, -s * .07, s * .04, s * .18); break; // the Beekeeper's Jars (2026-11-04): a honey jar under a wax lid
     case "handle": ctx.rotate(-.5); ctx.beginPath(); ctx.moveTo(-s * .03, -s * .22); ctx.quadraticCurveTo(s * .045, 0, -s * .025, s * .22); ctx.lineTo(s * .035, s * .22); ctx.quadraticCurveTo(s * .085, 0, s * .03, -s * .22); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeStyle = "#2a241c88"; for (const y2 of [.1, .14, .18]) { ctx.beginPath(); ctx.moveTo(-s * .02, y2 * s); ctx.lineTo(s * .045, (y2 - .015) * s); ctx.stroke(); } break; // the Toolmaker's Handles (2026-11-05): a worn wooden handle with no tool on it, a grip worn into its foot
     case "compass": ctx.beginPath(); ctx.arc(0, 0, s * .16, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#b03a2e"; ctx.beginPath(); ctx.moveTo(0, -s * .12); ctx.lineTo(s * .04, 0); ctx.lineTo(-s * .04, 0); ctx.fill(); break;

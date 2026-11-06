@@ -1,17 +1,17 @@
-import { mealLure } from "./meals.js?v=r780-e230fbd94ccd";
-import { ensureDragonLava } from "./crimson-dragon.js?v=r780-e230fbd94ccd";
-import { ensureFarQuests, farDistance, FAR_REALMS } from "./far-realms.js?v=r780-e230fbd94ccd";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r780-e230fbd94ccd";
+import { mealLure } from "./meals.js?v=r782-fa66724a8d00";
+import { ensureDragonLava } from "./crimson-dragon.js?v=r782-fa66724a8d00";
+import { ensureFarQuests, farDistance, FAR_REALMS } from "./far-realms.js?v=r782-fa66724a8d00";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r782-fa66724a8d00";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed, byHash } from "./random.js?v=r780-e230fbd94ccd";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r780-e230fbd94ccd";
-import { sectionExits, apertureTier } from "./world.js?v=r780-e230fbd94ccd";
-import { stageOneBeastReference } from "./stages.js?v=r780-e230fbd94ccd";
+import { hashSeed, byHash } from "./random.js?v=r782-fa66724a8d00";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r782-fa66724a8d00";
+import { sectionExits, apertureTier } from "./world.js?v=r782-fa66724a8d00";
+import { stageOneBeastReference } from "./stages.js?v=r782-fa66724a8d00";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -591,7 +591,7 @@ export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - 
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
 export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
-export { BEAST_GUARD_HOLD } from "./stages.js?v=r780-e230fbd94ccd"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
+export { BEAST_GUARD_HOLD } from "./stages.js?v=r782-fa66724a8d00"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
 export function beastTuningReference(save, stats = {}) { return stageOneBeastReference(save, liveBeastReference(save, stats)); }
 // The Wayfarer as they stand, before any Stage 1 hold (release 331: also what a Listener kill catches the beasts up to).
 export function liveBeastReference(save, stats = {}) {
