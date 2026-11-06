@@ -1818,6 +1818,7 @@ function greatBlocks(ctx,o,s,p,map,view){
     if(fallen.has(`${c.x},${c.y}`)){ctx.fillStyle="#060607";ctx.beginPath();ctx.moveTo(x+s*.1,y+s*.2);ctx.lineTo(x+s*(.4+(k%5)*.05),y+s*.05);ctx.lineTo(x+s*.9,y+s*.25);ctx.lineTo(x+s*.85,y+s*.85);ctx.lineTo(x+s*.3,y+s*.95);ctx.closePath();ctx.fill();ctx.fillStyle=C.dark;ctx.fillRect(x+s*.62,y+s*.6,s*.2,s*.14)}
     const hq=hatchAt.get(`${c.x},${c.y}`);if(hq){ctx.fillStyle="#1a1612";ctx.fillRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle=C.trim;ctx.lineWidth=2;ctx.strokeRect(x+s*.12,y+s*.12,s*.76,s*.76);ctx.strokeStyle="#8a7650";ctx.beginPath();ctx.moveTo(x+s*.32,y+s*.12);ctx.lineTo(x+s*.32,y+s*.88);ctx.moveTo(x+s*.68,y+s*.12);ctx.lineTo(x+s*.68,y+s*.88);for(let q=.28;q<.9;q+=.2){ctx.moveTo(x+s*.32,y+s*q);ctx.lineTo(x+s*.68,y+s*q)}ctx.stroke()}
     const d=doorAt.get(`${c.x},${c.y}`);if(d&&d.face!=="south"){ctx.fillStyle="#08090a";const w=s*.6;if(d.face==="north"){ctx.fillRect(x+s*.2,y,w,s*.34)}else if(d.face==="west"){ctx.fillRect(x,y+s*.2,s*.3,w)}else{ctx.fillRect(x+s*.7,y+s*.2,s*.3,w)}ctx.strokeStyle=C.trim;ctx.lineWidth=1.5;ctx.strokeRect(d.face==="north"?x+s*.2:d.face==="west"?x:x+s*.7,d.face==="north"?y:y+s*.2,d.face==="north"?w:s*.3,d.face==="north"?s*.34:w)}
+    if(o.lever&&o.lever.x===c.x&&o.lever.y===c.y)drawPentLever(ctx,{x:c.x,y:c.y-b.faceH,state:o.lever.state},s,0); // TOWER_SEAL: the lever on a sealed tower's top, drawn with its roof
     // the facade under an open south side
     if(!has(0,1)){const fy=(c.y+1)*s-lift,band=lift/b.floors;ctx.fillStyle=C.wall;ctx.fillRect(x,fy,s+1,lift);ctx.fillStyle="#00000033";ctx.fillRect(x,fy,s+1,s*.1);
       for(let f=0;f<b.floors;f++){const by=fy+lift-band*(f+1);ctx.strokeStyle=C.mortar;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+s,by);ctx.stroke();
@@ -2389,6 +2390,7 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentRelic") drawPentRelic(ctx, o, s, now); // and its relics
           else if (o.kind === "pentInscription") drawPentInscription(ctx, o, s, now); // the marks in its walls
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
+          else if (o.kind === "towerLever") {} // TOWER_SEAL: drawn on the tower's top with its roof (greatBlocks)
           else if (o.kind === "labGate") { if (o.state !== "open") drawBars(ctx, o, s); } // a room maze's barred door (labyrinths.ts ROOM_MAZES)
           else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
           else if (o.kind === "pentShortcut") drawPentShortcut(ctx, o, s, now); // and its shortcut links (v6)

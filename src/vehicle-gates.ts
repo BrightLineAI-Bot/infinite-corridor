@@ -137,6 +137,9 @@ export const DRONE_FIZZLE = {
   zones: [
     { id: "pentagon", match: { pentagon: true, blocked: true }, message: "The drone's lift fizzles out over the Pentagon's walls. The Corridor's rules are different here." },
     { id: "castle", match: { kind: "castleWall", landscape: "castle", greatBuilding: true, blocked: true }, message: "The drone's lift fizzles out over the Great Castle. The Corridor's rules are different here.", glide: "The air over the Great Castle's walls will not carry the glider; it turns you away. The Corridor's rules are different here." },
+    // Tower seals (great-buildings.ts TOWER_SEAL; Tim, 2026-11-06: no hopping onto the central tower with the drone): a sealed
+    // tower's top, and the ledges of its climb, laid only on new ground (`towerAir`). Walking and climbing them is unaffected.
+    { id: "tower", match: { towerAir: true }, message: "The drone's lift fizzles out beside the sealed tower. The Corridor's rules are different here.", glide: "The air round the sealed tower will not carry the glider; it turns you away. The Corridor's rules are different here." },
   ],
   burst: 1.2, // seconds the sparks and the burst show
   sparks: 14,
