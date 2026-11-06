@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r798 on main, this PR takes r799.
+Taken at merge time: main's release + 1. With r799 on main, this PR takes r800.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 799 | Codex | `claude/close-view-touch` | Separate movement and camera touches in Close View | In flight. |
-| 798 | Codex | `claude/close-view-characters` | Native low-poly Close View characters | Merged (#445). Preview candidate r798-9a66727bd0d5. |
+| 800 | Codex | `claude/close-view-floor-inlays` | Stabilize floor murals and Watcher inlays in Close View | In flight. |
+| 799 | Codex | `claude/close-view-touch` | Separate movement and camera touches in Close View | Merged (#446). Preview candidate r799-088c959943b6. |
+| 798 | Codex | `claude/close-view-characters` | Native low-poly Close View characters | Merged (#445). Previewed as r798-9a66727bd0d5. |
 | 797 | Codex | `claude/close-view-grand-halls` | Render Pentagon v8 grand halls in Close View | Merged (#444). Previewed as r797-77b8fb9966ce. |
 | 796 | Claude | `claude/close-view-atmosphere` | Close View v5 atmosphere: a look per place (Pentagon tomb and root cellar, keep, lived-in keep, hive, arcology), built stonework, vaulted ceilings, placed candle and sconce light, fog and haze, camera collision instead of see-through walls, full-resolution sprites | Merged (#443). Previewed and published as r796-817d6b861fd9 on 2026-11-06. |
 | 795 | Claude | `claude/pentagon-grand-halls` | Pentagon version 8: grand halls (ballroom, arena, vaulted gallery, colonnaded hall, pit-gallery round an open shaft) among the ring chambers of new Pentagons, tall with a ceiling class and a backdrop; 17 lore murals (`PENTAGON_MURALS`) on walls, ceilings and floors, read once into the Journal; the Watcher's sigil over doors, on banners and columns, inlaid in hall floors; all as map data for the Close View pass (796). Older Pentagons byte-identical | Merged (#442). Previewed as r795-9923cf44a701. Published in r796. |

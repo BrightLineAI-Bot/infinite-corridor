@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 800: stable Close View floor inlays
+
+**CODE:** The Close View mask encodes existing inlay and sigil tiles in spare bits. The environment shader shades them directly on the floor, with antialiasing at each tile edge. This removes the raised floor-stamp geometry that produced dark bands in software WebGL.
+
+**BOUNDARY:** Presentation only. Hall generation, blocked tiles, wall and ceiling reliefs, mural interactions and saves retain their behavior. The same floor and light pass draws the inlay with no added draw call.
+
 ## Release 799: Close View touch controls
 
 **CODE:** `src/close-view.ts` reserves the right-side drag touches for the camera in Drag anywhere mode. A second right-side touch cannot start the movement stick. Close View adds a translucent, pointer-transparent movement guide for touch devices. Camera drag gain and response increase slightly, and focus loss clears the active gestures.
