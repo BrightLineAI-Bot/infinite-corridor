@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 799 — **Close View touch controls.** A translucent left-thumb guide shows where movement starts. A second right-side touch stays out of movement, and the default pan responds faster.
 - Release 798 — **Low-poly characters in Close View.** The Wayfarer, Ashling, Root Brute, Pallid Crawler and Hollow Marshal have lit 3D bodies, combat poses and directional floor shadows.
 - Release 797 — **Pentagon grand halls in Close View.** Look up into tall vaults, skylights and open vistas. Watcher sigils and lore carvings are built into the room, and the pit gallery opens into a dark shaft beneath its bridges. Try a grand hall in the Close View Lab.
 - Release 796 — **Close View: atmosphere.** Each place has its own look. The Pentagon is a dark stone tomb with sewer channels, iron grates and root cellars; keeps are cold dressed stone (a few are lived in, warmer, with pale ghost-light); hives are chitin and resin with a faint glow; arcologies are a failing machine. Walls have real stonework, pilasters and arched doorways, ceilings are vaulted, candles and sconces light pools in the dark, and fog and haze hang in the air. The camera now pulls in instead of looking through walls, a Wayfarer or creature behind a wall shows as a silhouette, and sprites are drawn at full resolution.
