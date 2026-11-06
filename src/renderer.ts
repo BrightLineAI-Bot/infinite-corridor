@@ -28,7 +28,7 @@ import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState } from "./labyrinths.ts";
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
 import { closeViewFrame, closeViewCapturing, closeViewTake } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
@@ -2273,6 +2273,7 @@ export function render(ctx, g, w, h, now) {
   const sightTile=(x,y)=>seenTile(x,y)&&(g.area!=="dungeon"||labFogState(g.map,x,y)===2); // LAB_FOG: a safe drop's rim only in sight
   drawHazardBrinks(ctx,g.map,mw,l,t,r,b,s,seenTile); // per frame: brinks sit over animated water, as before
   drawTraversalCues(ctx,g.map,mw,p,s,now,g.ledgeHint,seenTile);
+  if (g.area === "dungeon" && g.map?.building?.roomMaze && !closeViewCapturing()) drawRoomViewBelow(ctx, g, s, { l, t, r, b }); // ROOM_VIEW: through a gallery's void, the barrier below (Close View skips it)
   if (g.area === "dungeon" && g.map?.building) drawSafeDropRims(ctx, g.map, mw, p, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), sightTile); // HOLE_DROPS: a safe drop shows its green rim only close up
   if (g.area === "dungeon" && g.map?.canyon && g.drillTile) { const d = g.drillTile, x = d.x * s, y = d.y * s, k = Math.min(1, d.progress / (d.need || 1)); // Canyon craters: the auger's cracks, and a yellow clod's strain
     ctx.save(); ctx.strokeStyle = `rgba(20,12,6,${.4 + .5 * k})`; ctx.lineWidth = Math.max(1, s * .06); ctx.beginPath(); for (let i = 0; i < 2 + Math.floor(k * 5); i++) { const a = i * 2.1 + d.x, r = s * (.15 + .35 * k); ctx.moveTo(x + s / 2, y + s / 2); ctx.lineTo(x + s / 2 + Math.cos(a) * r, y + s / 2 + Math.sin(a) * r); } ctx.stroke();
@@ -2925,6 +2926,26 @@ export function drawLabFog(ctx, g, s, view, quality) {
   } else renderCacheStats.labFogRuns = paintLabFog(ctx, F, Math.max(0, view.l), Math.min(F.W, view.r), Math.max(0, view.t), Math.min(F.H, view.b), s);
   renderCacheStats.labFogDraws = (renderCacheStats.labFogDraws || 0) + 1;
   return true;
+}
+// ROOM_VIEW (labyrinths.ts roomViewBelow): on a room maze's upper floor or roof, the void over a barrier shows the floor below it,
+// dim. One image a tile a pixel, painted only for void tiles in sight (LAB_FOG), rebuilt only when the sight changes (the fog's
+// stamp) or the map does; each frame it is one scaled copy. Without an offscreen canvas (tests) the void tiles in view are
+// filled straight onto the view (bounded by the barrier columns in view).
+const roomViewImage = { canvas: null, map: null, stamp: -1 };
+function paintRoomView(c, V, F, x0, x1, y0, y1, k) {
+  let n = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = y * V.W + x, code = V.codes[i]; if (!code || (F && !F.sight[i])) continue; c.fillStyle = ROOM_VIEW.colors[code]; c.fillRect(x * k, y * k, k, k); n++; }
+  return n;
+}
+export function drawRoomViewBelow(ctx, g, s, view) {
+  const V = roomViewBelow(g.map); if (!V) return false; const F = labFogOf(g.map), I = roomViewImage;
+  const c = typeof ctx.drawImage === "function" ? I.canvas || (I.canvas = makeGroundCanvas()) : null, gc = c?.getContext?.("2d");
+  ctx.save(); ctx.globalAlpha = ROOM_VIEW.alpha;
+  if (gc) {
+    const stamp = F ? F.stamp : 0;
+    if (I.map !== g.map || I.stamp !== stamp) { if (c.width !== V.W || c.height !== V.H) { c.width = V.W; c.height = V.H; } gc.clearRect(0, 0, V.W, V.H); paintRoomView(gc, V, F, 0, V.W, 0, V.H, 1); I.map = g.map; I.stamp = stamp; renderCacheStats.roomViewBuilds = (renderCacheStats.roomViewBuilds || 0) + 1; }
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(c, 0, 0, V.W, V.H, 0, 0, V.W * s, V.H * s);
+  } else renderCacheStats.roomViewTiles = paintRoomView(ctx, V, F, Math.max(0, Math.floor(view.l)), Math.min(V.W, Math.ceil(view.r)), Math.max(0, Math.floor(view.t)), Math.min(V.H, Math.ceil(view.b)), s);
+  ctx.restore(); renderCacheStats.roomViewDraws = (renderCacheStats.roomViewDraws || 0) + 1; return true;
 }
 // Unexplored dungeon space: dark slate with a faint diagonal hatch, distinct from the indigo depth of a chasm.
 function fogTile(ctx, x, y, s) {

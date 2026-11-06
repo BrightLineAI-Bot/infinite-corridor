@@ -43,7 +43,7 @@ function intoVault() { const at = labyrinth(), g = visit(at.x, at.y), d = g.map.
 const KINDS = { 'great building (no hatch)': () => intoBuilding(false), 'compound tower (no hatch)': intoTower, 'castle keep': intoKeep, 'labyrinth vault': intoVault };
 
 test('new ground: every roof the exits lead to stands on the section, walkable, at a fatal height; the section keeps its ways through', () => {
-  assert.equal(BUILDINGS.version, 3); assert.equal(CASTLES.version, 2); assert.equal(LABYRINTHS.version, 3);
+  assert.equal(BUILDINGS.version, 3); assert.equal(CASTLES.version, 2); assert.equal(LABYRINTHS.version, 4);
   const bld = visit(plainBuilding(false).x, plainBuilding(false).y), B = bld.map.objects.find((o) => o.kind === 'greatBuilding' && !o.compound);
   assert.ok(bld.map.greatBuilding.roofTop && !bld.map.greatBuilding.roof, 'no hatch, but a roof to stand on'); assert.ok(!bld.map.objects.some((o) => o.roofHatch), 'no way in from the roof');
   const c = castle(), k = quarterSection(c.X, c.Y, castleTopology(SEED, c.X, c.Y).k), keep = visit(k.rx, k.ry), K = keep.map.objects.find((o) => o.castle).blocks.find((b) => b.part === 't');

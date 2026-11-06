@@ -13,11 +13,11 @@ import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { buildingArrival } from '../src/great-buildings.ts';
 import { sectionRegion, LANDSCAPE_VERSION } from '../src/landscape.ts';
-import { LABYRINTHS, ROOM_MAZES, roomMazePlan, roomFloorOf, generateLabyrinthChamber, generateRoomMazeFloor, parseLabyrinthId, isLabyrinthId, labyrinthForm, labyrinthHere, labyrinthPlan, placeLabyrinth, holeDrops, safeDropAt } from '../src/labyrinths.ts';
+import { LABYRINTHS, ROOM_MAZES, roomMazePlan, roomFloorOf, generateLabyrinthChamber, generateRoomMazeFloor, parseLabyrinthId, isLabyrinthId, labyrinthForm, roomVaultOf, labyrinthHere, labyrinthPlan, placeLabyrinth, holeDrops, safeDropAt } from '../src/labyrinths.ts';
 
 const LETHAL = new Set(['canyon', 'river', 'dungeonWater', 'lava', 'abyss', 'deepWater', 'deepOcean', 'ocean', 'lakeWater']);
 const STYLES = ['keep', 'apartment', 'hive'];
-const baseOf = (i, tag = 'R') => `labyrinth:${tag}${i}:${(i * 7) % 23 - 11}:${(i * 5) % 19 - 9}:${STYLES[i % 3]}~r${ROOM_MAZES.version}`;
+const baseOf = (i, tag = 'R', v = ROOM_MAZES.version) => `labyrinth:${tag}${i}:${(i * 7) % 23 - 11}:${(i * 5) % 19 - 9}:${STYLES[i % 3]}~r${v}`;
 const F = roomFloorOf(ROOM_MAZES.levels[1]);
 const floorsOf = (base) => { const seed = parseLabyrinthId(`${base}:f1`).seed; return Array.from({ length: F }, (_, i) => generateLabyrinthChamber(seed, `${base}:f${i + 1}`)); };
 
@@ -69,12 +69,18 @@ const crossLevel = { upper: 1, roof: 2, under: -1 };
 
 // ------------------------------------------------------------------------------------------------ the proof
 const MAZES = Number(process.env.ROOM_MAZE_PROOF) || 1200; // ROOM_MAZE_PROOF=5000 for a longer run
-test(`room mazes are solvable: over ${MAZES} mazes the vault is reached from the front door with base movement, nothing reachable strands you, and every barrier is crossed only on its crossing's floor`, () => {
-  const bad = [], tally = { crossings: {}, obstacles: {}, rooms: 0, floors: 0, deadEnds: 0, drops: 0, gates: 0, loops: 0, caches: 0, maxRooms: 0, maxTiles: 0 };
-  for (let i = 0; i < MAZES; i++) { const base = baseOf(i), P = roomMazePlan(base), S = solve(base), { maps, reached, usable } = S;
-    const g = roomFloorOf(0) - 1, vaultMap = maps[g], chest = vaultMap.objects.find((o) => o.id === 'building-cache'), out = vaultMap.objects.find((o) => o.id === 'building-exit-vault');
-    if (!chest || !usable(g, chest)) bad.push(`${base}: the vault's treasure out of reach`);
-    if (!out || !usable(g, out)) bad.push(`${base}: the vault's way out out of reach`);
+function proof(version, MAZES) {
+  const bad = [], tally = { crossings: {}, obstacles: {}, rooms: 0, floors: 0, deadEnds: 0, drops: 0, gates: 0, loops: 0, caches: 0, maxRooms: 0, maxTiles: 0, vaults: { roof: 0, ground: 0, under: 0 }, known: 0 };
+  for (let i = 0; i < MAZES; i++) { const base = baseOf(i, 'R', version), P = roomMazePlan(base), S = solve(base), { maps, reached, usable } = S;
+    const g = roomFloorOf(0) - 1, vf = maps.findIndex((m) => m.building.vault), vaultMap = maps[vf], chest = vaultMap?.objects.find((o) => o.id === 'building-cache'), out = vaultMap?.objects.find((o) => o.id === 'building-exit-vault');
+    if (maps.filter((m) => m.building.vault).length !== 1) bad.push(`${base}: not one vault floor`);
+    tally.vaults[{ 2: 'roof', 0: 'ground', [-1]: 'under' }[vf + ROOM_MAZES.levels[0]]]++; if (P.vaultPlace?.known) tally.known++;
+    if (version >= 2) { const want = ROOM_MAZES.vault.levels[P.vaultPlace.place]; if (vaultMap.building.level !== want) bad.push(`${base}: the vault is not where its name says`); if (!vaultMap.building.vaultLine) bad.push(`${base}: no vault line`); }
+    else if (vf !== g) bad.push(`${base}: generator 1 puts the vault on the ground`);
+    // the vault lies beyond every barrier (in the last segment), so the way to it needs every crossing (each only on its own floor, below)
+    if (chest && !(chest.x > Math.max(...maps[g].building.barriers.map((b) => b.x1)))) bad.push(`${base}: the vault short of the last barrier`);
+    if (!chest || !usable(vf, chest)) bad.push(`${base}: the vault's treasure out of reach`);
+    if (!out || !usable(vf, out)) bad.push(`${base}: the vault's way out out of reach`);
     if (!vaultMap.enemySpawns.some((e) => e.buildingGuardian)) bad.push(`${base}: no guardian in the vault`);
     maps.forEach((m, f) => { for (const o of m.objects) if (!usable(f, o)) bad.push(`${base} f${f + 1}: ${o.kind} ${o.name} out of reach`);
       for (const e of m.enemySpawns) if (!reached(f, e.x, e.y)) bad.push(`${base} f${f + 1}: a creature out of reach`);
@@ -86,18 +92,27 @@ test(`room mazes are solvable: over ${MAZES} mazes the vault is reached from the
     for (const b of P.barriers) { const far = maps[g].tiles.findIndex((t, k) => (k % P.W) > P.xs[b.col] + P.wi[b.col] - 1 && !t.blocked && !t.hole && !t.environment);
       if (far < 0 || !reached(g, far % P.W, (far / P.W) | 0)) bad.push(`${base}: the ground beyond a barrier never reached`); tally.crossings[b.crossing] = (tally.crossings[b.crossing] || 0) + 1; tally.obstacles[b.obstacle] = (tally.obstacles[b.obstacle] || 0) + 1; }
     // the way weaves: the ground floor alone never reaches the vault
-    { const m = maps[g], W = m.width, seen = new Uint8Array(m.tiles.length), q = [m.entry.y * W + m.entry.x]; seen[q[0]] = 1;
+    if (vf === g) { const m = maps[g], W = m.width, seen = new Uint8Array(m.tiles.length), q = [m.entry.y * W + m.entry.x]; seen[q[0]] = 1;
       for (let j = 0; j < q.length; j++) { const x = q[j] % W, y = (q[j] / W) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = (y + dy) * W + x + dx, t = m.tiles[n]; if (t && !seen[n] && !t.blocked && !t.hole && !t.environment) { seen[n] = 1; q.push(n); } } }
       if (seen[chest.y * W + chest.x] || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen[(chest.y + dy) * W + chest.x + dx])) bad.push(`${base}: the vault reached without leaving the ground floor`); }
     for (const z of P.zones.values()) { tally.rooms += z.rooms.size; for (const q of z.rooms.values()) { if (q.dead) tally.deadEnds++; if (q.cache) tally.caches++; } }
     tally.loops += P.stairs.filter((s) => s.extra).length; tally.drops += P.drops.length; tally.gates += S.gates.length; tally.floors += maps.filter((m) => m.objects.length || m.tiles.some((t) => !t.blocked)).length;
     tally.maxRooms = Math.max(tally.maxRooms, [...P.zones.values()].reduce((a, z) => a + z.rooms.size, 0)); tally.maxTiles = Math.max(tally.maxTiles, P.W * P.H); }
   assert.deepEqual(bad.slice(0, 20), []);
+  return tally; }
+test(`room mazes are solvable (generator ${ROOM_MAZES.version}): over ${MAZES} mazes the vault, on whichever floor its name says, is reached from the front door with base movement, nothing reachable strands you, and every barrier is crossed only on its crossing's floor`, () => {
+  const tally = proof(ROOM_MAZES.version, MAZES);
+  console.log(`# vaults: ${JSON.stringify(tally.vaults)} of ${MAZES}; known ${tally.known}`);
+  for (const k of ['roof', 'ground', 'under']) assert.ok(tally.vaults[k] > MAZES * .2, `${k} vaults: ${tally.vaults[k]}`);
+  assert.ok(Math.abs(tally.known / MAZES - (1 - ROOM_MAZES.vault.unknown)) < .04, `the rule kept: ${tally.known}`);
   for (const k of ['upper', 'roof', 'under']) assert.ok(tally.crossings[k] > MAZES * .15, `${k} crossings: ${tally.crossings[k]}`);
   for (const k of Object.keys(ROOM_MAZES.obstacles)) assert.ok(tally.obstacles[k] > MAZES * .08, `${k} barriers: ${tally.obstacles[k]}`);
   assert.ok(tally.deadEnds > MAZES * 2, `dead ends: ${tally.deadEnds}`); assert.ok(tally.drops > MAZES * .5, `drops: ${tally.drops}`); assert.ok(tally.loops > MAZES * .5, `second stairs: ${tally.loops}`); assert.ok(tally.caches > MAZES, `caches: ${tally.caches}`);
   // bounded for mobile: rooms, floors and tiles a floor
   assert.ok(tally.maxRooms <= ROOM_MAZES.cols[1] * ROOM_MAZES.rows[1] * F, `rooms ≤ ${tally.maxRooms}`); assert.ok(tally.maxTiles <= 47 * 29, `tiles a floor ${tally.maxTiles}`);
+});
+test('room mazes of generator 1 (released in 784) still prove out: every vault on the ground beyond the last barrier', () => {
+  const tally = proof(1, 400); assert.equal(tally.vaults.ground, 400); assert.equal(tally.known, 0);
 });
 
 test('the barriers are impassable on their own floor: wider than any jump, holes and lava kill (no safe drop over a barrier), a barred door is shut from the near side', () => {
@@ -133,15 +148,26 @@ test('version pinning: mazes of chambers (labyrinth versions 1 and 2, the Shell-
   assert.ok(isLabyrinthId('labyrinth:S:1:-2:hive~r1:f4')); assert.equal(labyrinthPlan('labyrinth:S:1:-2:hive~r1'), null); assert.equal(roomMazePlan('labyrinth:S:1:-2:hive'), null);
 });
 
-test(`the share of room mazes: about ${ROOM_MAZES.share} of labyrinths placed at labyrinth version 3, none before`, () => {
-  assert.equal(LABYRINTHS.version, 3);
+test('version pinning: room mazes of generator 1 (~r1, release 784) and their placement at labyrinth version 3 regenerate byte for byte', () => {
+  const h = createHash('sha256');
+  for (let i = 0; i < 300; i++) { const base = `labyrinth:P${i}:${i % 11 - 5}:${i % 7 - 3}:${STYLES[i % 3]}~r1`; for (let f = 1; f <= F; f++) h.update(JSON.stringify(generateLabyrinthChamber(`P${i}`, `${base}:f${f}`))); }
+  assert.equal(h.digest('hex'), '229c0d48ea1ef9280288910c4fe86024096d7712d4e0153328a085fdf7a0c0f4', 'the digest taken from main 92e47889 before generator 2');
+  const k = createHash('sha256'), flat = () => ({ tiles: Array.from({ length: 1024 }, (_, q) => ({ x: q % 32, y: (q / 32) | 0, kind: 'grass', blocked: false })), objects: [], enemySpawns: [], exits: { north: 16, south: 16 }, landscape: true });
+  for (let i = 0; i < 60; i++) { const m = flat(), rec = placeLabyrinth(m, `Q${i}`, i, -3, { style: STYLES[i % 3] }, () => [true], null, 3); k.update(JSON.stringify([rec, m]));
+    const d = m.objects.find((o) => o.labyrinthDoor); if (/~r1:/.test(d.dungeonId)) for (let f = 1; f <= 4; f++) k.update(JSON.stringify(generateLabyrinthChamber(`Q${i}`, d.dungeonId.replace(/:f\d+$/, `:f${f}`)))); }
+  assert.equal(k.digest('hex'), '3281fec3f67f52f455b0d6471dca6973a643e5473b1b0e9f761df9839e637dbc', 'labyrinth version 3 places exactly as main 92e47889 did');
+});
+
+test(`the share of room mazes: about ${ROOM_MAZES.share} of labyrinths placed at labyrinth versions 3 (~r1) and 4 (~r2), none before`, () => {
+  assert.equal(LABYRINTHS.version, 4);
   let rooms = 0, n = 0; for (let x = -60; x < 60; x++) for (let y = -60; y < 60; y++) { n++; if (labyrinthForm('SHARE', x, y) === 'rooms') rooms++; }
   assert.ok(Math.abs(rooms / n - ROOM_MAZES.share) < .02, `room mazes ${(rooms / n).toFixed(3)} of ${n}`);
   const flat = () => ({ tiles: Array.from({ length: 1024 }, (_, k) => ({ x: k % 32, y: (k / 32) | 0, kind: 'grass', blocked: false })), objects: [], enemySpawns: [], exits: { north: 16, south: 16 }, landscape: true });
-  const placed = { 1: 0, 2: 0, 3: 0 }; let all = 0;
-  for (let i = 0; i < 300; i++) for (const V of [1, 2, 3]) { const m = flat(); placeLabyrinth(m, 'SH', i, -i, { style: STYLES[i % 3] }, () => [true], null, V); const d = m.objects.find((o) => o.labyrinthDoor); if (V === 3) all++;
-    if (/~r\d+:f\d+$/.test(d.dungeonId)) { placed[V]++; assert.equal(d.dungeonId, `${m.greatBuilding.base}:f${roomFloorOf(ROOM_MAZES.entryLevel)}`, 'the door opens onto the ground floor'); assert.equal(d.roomMaze, ROOM_MAZES.version); } }
-  assert.equal(placed[1], 0); assert.equal(placed[2], 0); assert.ok(Math.abs(placed[3] / all - ROOM_MAZES.share) < .08, `placed at version 3: ${placed[3]} of ${all}`);
+  const placed = { 1: 0, 2: 0, 3: 0, 4: 0 }; let all = 0;
+  for (let i = 0; i < 300; i++) for (const V of [1, 2, 3, 4]) { const m = flat(); placeLabyrinth(m, 'SH', i, -i, { style: STYLES[i % 3] }, () => [true], null, V); const d = m.objects.find((o) => o.labyrinthDoor); if (V === 3) all++;
+    if (/~r\d+:f\d+$/.test(d.dungeonId)) { placed[V]++; assert.equal(d.dungeonId, `${m.greatBuilding.base}:f${roomFloorOf(ROOM_MAZES.entryLevel)}`, 'the door opens onto the ground floor'); assert.equal(d.roomMaze, V >= 4 ? 2 : 1); assert.equal(parseLabyrinthId(d.dungeonId).rooms, V >= 4 ? 2 : 1);
+      if (V >= 4) { const P = roomVaultOf(m.greatBuilding.base); assert.equal(d.name, P.name, 'the name tells the place'); assert.ok(d.identity.includes(P.line) && d.lore.includes(P.line.slice(1)), 'the door says where the vault lies'); } } }
+  assert.equal(placed[1], 0); assert.equal(placed[2], 0); assert.equal(placed[3], placed[4], 'the same labyrinths are room mazes at 3 and 4'); assert.ok(Math.abs(placed[3] / all - ROOM_MAZES.share) < .08, `placed at version 3: ${placed[3]} of ${all}`);
 });
 
 // ------------------------------------------------------------------------------------------------ in the game
@@ -164,7 +190,7 @@ test('in the game: a hole or lava on a room maze\'s floor is a death that wakes 
 
 test('in the game: the door opens onto the ground floor; stairs and ladders carry you both ways; a barred door opens only from its far side and stays open', () => {
   const B = findBase((P) => P.barriers.some((b) => b.obstacle === 'barred')), ground = `${B.base}:f${roomFloorOf(0)}`, g = onFloor(B.seed, ground);
-  assert.ok(g.map.building.labyrinth && g.map.building.roomMaze && g.map.building.vault); assert.match(g.labyrinthProgress(), /1 of 4 floors found/);
+  assert.ok(g.map.building.labyrinth && g.map.building.roomMaze); assert.equal(g.map.building.vault, B.P.vaultLevel === 0); assert.match(g.labyrinthProgress(), /1 of 4 floors found/);
   const gate = g.map.objects.find((o) => o.kind === 'labGate'); g.player.x = gate.x - 1; g.player.y = gate.y;
   const no = g.interact('open', gate.id); assert.ok(!no.ok); assert.match(no.message, /Barred from the other side/); assert.ok(g.map.tiles[gate.y * g.map.width + gate.x].blocked);
   g.player.x = gate.x + 1; const yes = g.interact('open', gate.id); assert.ok(yes.ok, yes.message); assert.ok(!g.map.tiles[gate.y * g.map.width + gate.x].blocked, 'open');
@@ -174,21 +200,33 @@ test('in the game: the door opens onto the ground floor; stairs and ladders carr
   const again = g.map.objects.find((o) => o.kind === 'labGate'); assert.equal(again.state, 'open', 'stays open'); assert.ok(!g.map.tiles[again.y * g.map.width + again.x].blocked);
   // from the overworld: a version-3 labyrinth door leads to a room maze's ground floor
   const m = { tiles: Array.from({ length: 1024 }, (_, k) => ({ x: k % 32, y: (k / 32) | 0, kind: 'grass', blocked: false })), objects: [], enemySpawns: [], exits: {}, landscape: true };
-  let door = null; for (let i = 0; i < 40 && !door; i++) { const mm = structuredClone(m); placeLabyrinth(mm, 'DOOR', i, 3, { style: 'keep' }, () => [true], null, 3); door = mm.objects.find((o) => o.labyrinthDoor && o.roomMaze); }
+  let door = null; for (let i = 0; i < 40 && !door; i++) { const mm = structuredClone(m); placeLabyrinth(mm, 'DOOR', i, 3, { style: 'keep' }, () => [true], null, LABYRINTHS.version); door = mm.objects.find((o) => o.labyrinthDoor && o.roomMaze); }
   assert.ok(door); const P = parseLabyrinthId(door.dungeonId); assert.equal(P.rooms, ROOM_MAZES.version); assert.equal(P.node + 1, roomFloorOf(0));
   assert.equal(generateRoomMazeFloor(P.seed, door.dungeonId).building.level, 0);
 });
 
 test('on new ground: a room maze stands on the overworld; its door opens onto the ground floor; its vault has a roof exit, sealed while the guardian stands, and a way out at the front', () => {
   const SEED = 'TIM1', visit = (x, y, s = null) => { const sv = s || freshSave(); sv.seed = SEED; const g = new Game(sv, 0); g.rx = x; g.ry = y; g.loadArea('overworld', false); return g; };
-  let at = null; for (let d = LABYRINTHS.minRing; d < 40 && !at; d++) for (let x = -d; x <= d && !at; x++) for (const y of [d - Math.abs(x), Math.abs(x) - d]) { if (!labyrinthHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION)) || labyrinthForm(SEED, x, y) !== 'rooms') continue; if (visit(x, y).map.objects.some((o) => o.labyrinthDoor && o.roomMaze)) { at = { x, y }; break; } }
+  let at = null; for (let d = LABYRINTHS.minRing; d < 40 && !at; d++) for (let x = -d; x <= d && !at; x++) for (const y of [d - Math.abs(x), Math.abs(x) - d]) { if (!labyrinthHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION)) || labyrinthForm(SEED, x, y) !== 'rooms') continue; if (visit(x, y).map.objects.some((o) => o.labyrinthDoor && o.roomMaze && o.vaultPlace === 'ground')) { at = { x, y }; break; } }
   assert.ok(at, 'a room maze on TIM1'); const g = visit(at.x, at.y), door = g.map.objects.find((o) => o.labyrinthDoor); assert.ok(g.map.greatBuilding.roomMaze);
   g.player.x = door.x; g.player.y = door.y; const r = g.interact('enter', door.id); assert.ok(r.ok, r.message);
-  assert.equal(g.areaId(), door.dungeonId); assert.ok(g.map.building.roomMaze && g.map.building.level === 0); assert.match(g.defeatNotice.detail, /floors found/);
+  assert.equal(g.areaId(), door.dungeonId); assert.ok(g.map.building.roomMaze && g.map.building.level === 0); assert.match(g.defeatNotice.detail, /floors found/); assert.ok(g.defeatNotice.detail.startsWith(ROOM_MAZES.vault.lines.ground), 'the door line, inside too');
   const exit = g.map.objects.find((o) => o.dir === 'roofExit'), spot = g.map.building.roofSpot; assert.ok(exit, 'a roof exit in the vault'); assert.deepEqual([exit.x, exit.y], [spot.x, spot.y]);
   const vault = g.map.building.rooms.find((q) => q.vault); assert.ok(exit.x >= vault.x0 && exit.x <= vault.x1 && exit.y >= vault.y0 && exit.y <= vault.y1, 'in the vault\'s room');
   g.player.x = exit.x; g.player.y = exit.y; if (g.enemies.some((e) => e.id.endsWith(':guardian') && !e.dead)) assert.ok(!g.interact(exit.actions[0], exit.id).ok, 'sealed while the guardian stands');
   const out = g.map.objects.find((o) => o.id === 'building-exit-vault'); g.player.x = out.x; g.player.y = out.y; assert.ok(g.interact('exit', out.id).ok);
   assert.equal(g.area, 'overworld'); assert.deepEqual([g.player.x, g.player.y], [door.x, door.y], 'out at the front');
   console.log(`# a room maze on seed ${SEED}: section (${at.x},${at.y}), ${door.name}, ${door.dungeonId}`);
+});
+
+test('generator 2: a vault on the roof or in the undercroft holds its treasure, its guardian, its way out and its roof exit; the door and the floors are named for it', () => {
+  for (const place of ['roof', 'under']) { let base = null; for (let i = 0; i < 400 && !base; i++) { const b = baseOf(i, 'V'); if (roomVaultOf(b).place === place && roomVaultOf(b).known) base = b; }
+    assert.ok(base, place); const P = roomMazePlan(base), L = ROOM_MAZES.vault.levels[place], id = `${base}:f${roomFloorOf(L)}`, s = freshSave(); s.seed = P.seed;
+    s.consequences.dungeons[`${base}:f1`] = { buildingDoors: { rx: P.rx, ry: P.ry, front: { x: 16, y: 20 }, exits: {}, hatch: null, roofTop: true } };
+    s.session.activeDungeonId = id; s.session.dungeonReturn = { rx: P.rx, ry: P.ry, x: 16, y: 20 }; const g = new Game(s, 0); g.loadArea('dungeon', false);
+    const B = g.map.building; assert.ok(B.vault && B.level === L, `${place}: the vault's floor`); assert.equal(B.vaultLine, ROOM_MAZES.vault.lines[place]); assert.ok(g.map.name.startsWith(ROOM_MAZES.vault.names[P.style][place]));
+    assert.ok(g.map.objects.some((o) => o.id === 'building-cache') && g.enemies.some((e) => e.id.endsWith(':guardian')), `${place}: treasure and guardian`);
+    const ex = g.map.objects.find((o) => o.dir === 'roofExit'); assert.ok(ex, `${place}: a roof exit`); assert.deepEqual([ex.x, ex.y], [B.roofSpot.x, B.roofSpot.y]);
+    const ground = generateRoomMazeFloor(P.seed, `${base}:f${roomFloorOf(0)}`); assert.ok(!ground.building.vault && !ground.objects.some((o) => o.id === 'building-cache'), 'no vault on the ground');
+    const out = g.map.objects.find((o) => o.id === 'building-exit-vault'); g.enemies = []; g.player.x = out.x; g.player.y = out.y; assert.ok(g.interact('exit', out.id).ok); assert.equal(g.area, 'overworld'); }
 });
