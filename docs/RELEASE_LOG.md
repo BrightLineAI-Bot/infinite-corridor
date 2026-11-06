@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 788, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 790 | Claude | `claude/close-view-grit` | Close View v3: one material for walls and floor (clean ancient panels, sparse deterministic wear, corner occlusion), a continuous floor, creatures that fade instead of popping (ghosted behind walls), windup and hit cues, a bullseye lock on the screen's edge, the crescent clear of Spell B, an Options → Camera tab, and a Close View Lab that starts at once | In flight. 789 is in flight in PR #437. |
 | 788 | Claude | `claude/dreamy-rubin-yn6q2p` | Even building types for new labyrinths; room-maze vault by type (keep tower, hive undercroft, arcology ground; 10% Shifting) with a door line; keys and sealed stairs in room mazes; galleries look down | In flight. |
 | 787 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View v2: a steady view, readable walls, a pan crescent and Elden Ring style lock-on; walls no longer seen through | Merged (#435). |
 | 786 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View (prototype, off by default): a low third-person camera inside the Pentagon, great buildings and keeps, with torchlight, fog and perspective walls; courts and the overworld keep the usual view | Merged (#434). Published as r786-92e4788905a0 on 2026-11-06. |
