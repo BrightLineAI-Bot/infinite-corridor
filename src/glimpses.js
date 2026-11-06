@@ -2,7 +2,7 @@
 // for a few seconds through someone's, or something's, eyes. This module holds the catalogue and the rules (where a
 // Glimpse may surface, how rarely it repeats, which fragment it gives); the drawing lives in glimpse-render.ts.
 // Pure data and rules: no DOM.
-import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r790-d8f0e5e716fc";
+import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r791-114d17e5e7e1";
 
 // `human` places a Glimpse on the drift from human residue (1) to the wholly unhuman (0). Near Ember Refuge the
 // Corridor offers mostly human Glimpses, far out mostly unhuman ones, but every region keeps some of the other end.
