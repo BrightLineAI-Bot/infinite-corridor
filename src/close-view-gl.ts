@@ -266,10 +266,12 @@ void main() {
       else if (m.g == 1u || m.g == 3u || m.g == 5u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
       else if (m.g == 2u) { col = atmos(lavaColor(P, T), W3, depth, vec3(0.0)); }
       else { float h, wet; uint mat = m.b >> 1u; vec3 alb = floorMat(P, T, mat, h, wet);
+        vec2 inlayFootprint = u_hall.x > 0.0 ? fwidth(P) : vec2(0.0);
         uint inlay = m.a >> 1u;
         if (inlay > 0u) {
           vec2 cell = abs(fract(P) - 0.5);
-          float edge = max(cell.x, cell.y), aa = clamp(fwidth(edge), 0.005, 0.06);
+          float edge = max(cell.x, cell.y);
+          float aa = clamp(max(inlayFootprint.x, inlayFootprint.y), 0.005, 0.06);
           float rim = 1.0 - smoothstep(0.44 - aa, 0.44 + aa, edge);
           float center = 1.0 - smoothstep(0.35 - aa, 0.35 + aa, edge);
           vec3 metal = inlay == 4u || inlay == 2u ? u_inlayColors[2] : u_inlayColors[1];
@@ -571,8 +573,8 @@ export const closeViewGLCanvas = () => S.canvas;
 export function resetCloseViewGL() { S.gl = null; S.canvas = null; S.gritReady = false; S.maskMap = null; S.staticKey = null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
-// r: bit 1 a ceiling over it (else open sky), bit 2 unseen (the fog of war); g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 a bridge
-// over a drop; b: bit 1 a safe drop, bits 2.. the floor's material (closeViewFloorMaterial); a: 1 a wall.
+// r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
+// b: low bit a safe drop, remaining bits floor material; a: low bit a wall, remaining bits floor inlay.
 // Hazards show only where the Wayfarer has seen (the fog of war keeps its secrets). Pure: tests read it.
 const HOLE = /hole|pit|abyss|void/i, LAVA = /lava|magma/i;
 export function closeViewHazardCode(t) { if (!t) return 0; if (t.bridge) return 4; if (t.hallVoid) return 5; if (t.chasm) return t.blocked && !/void|chasm|abyss|canyon/i.test(String(t.kind || "")) ? 0 : 3; const k = String(t.kind || ""); if (t.hole || (!t.blocked && HOLE.test(k))) return 1; if (LAVA.test(k)) return 2; return 0; }
