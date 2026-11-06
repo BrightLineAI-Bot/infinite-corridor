@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 789, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 791 | Claude | `claude/pg-in-options` | Enter Proving Ground from Options → System (scratch copy of the journey through a one-shot handoff; Exit to game resumes it untouched), a "Proving Ground access" setting, and Get latest release in the Proving Ground | Reserved, in flight (790 is `claude/close-view-grit`). |
 | 789 | Claude | `claude/dreamy-rubin-yn6q2p` | Sealed towers: a compound's central tower and a Great Castle's keep open only with a key won deep in the maze (Key Warden); no drone/glide bypass; ~15% have a ledge climb to a lever | In flight. |
 | 788 | Claude | `claude/dreamy-rubin-yn6q2p` | Even building types for new labyrinths; room-maze vault by type (keep tower, hive undercroft, arcology ground; 10% Shifting) with a door line; keys and sealed stairs in room mazes; galleries look down | Merged (#436). |
 | 787 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View v2: a steady view, readable walls, a pan crescent and Elden Ring style lock-on; walls no longer seen through | Merged (#435). Published as r787-79b4a7ca7811 on 2026-11-06. |
