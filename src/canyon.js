@@ -17,8 +17,8 @@
 // - Caverns, a lava stream and an underground pool (each with a crossing), a ravine spanned by a bridge, the wreck in the
 //   deepest cavern, creatures in the caverns. The outer rock cannot be drilled.
 // Save: additive at schema 14 (the crater's dungeon history: `canyon` { caveIns, sealed, drilled: [tile indexes] }).
-import { hashSeed, rng } from "./random.js?v=r789-7b41b2c419e8";
-import { LETHAL_KINDS } from "./landscape.js?v=r789-7b41b2c419e8";
+import { hashSeed, rng } from "./random.js?v=r790-d8f0e5e716fc";
+import { LETHAL_KINDS } from "./landscape.js?v=r790-d8f0e5e716fc";
 
 export const CANYON = {
   version: 1,

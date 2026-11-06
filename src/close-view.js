@@ -1,4 +1,4 @@
-import { dungeonTileVisibility } from "./dungeon-framework.js?v=r789-7b41b2c419e8";
+import { dungeonTileVisibility } from "./dungeon-framework.js?v=r790-d8f0e5e716fc";
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -26,7 +26,7 @@ import { dungeonTileVisibility } from "./dungeon-framework.js?v=r789-7b41b2c419e
 //
 // Every number is in CLOSE_VIEW. Distances are in tiles; angles in degrees.
 export const CLOSE_VIEW = Object.freeze({
-  version: 2, // 2 (2026-11-06, Tim: "the walls kind of moved or weren't stable... a more stable view"): the stability pass
+  version: 3, // 3 (2026-11-06, release 790): the walls' surface (CLOSE_VIEW.grit) and the bullseye lock; 2 (2026-11-06, Tim: "the walls kind of moved or weren't stable... a more stable view"): the stability pass
   camera: Object.freeze({
     minDistance: 1, // the boom's usual shortest... (a wall closer than this pulls it in further: the camera is never inside a wall)
     closest: .3, // ...and its absolute shortest
@@ -78,9 +78,18 @@ export const CLOSE_VIEW = Object.freeze({
   // It is drawn `width` px wide at `idle` opacity (`active` while touched) and answers within `band` px of the arc; it sits
   // beneath the buttons, so where a button overlaps the band the button wins. Sliding along it turns the view, `yaw` radians per
   // px of arc (clockwise turns right); moving away from the cluster tilts it up a little (`radialPitch` x the pitch rate).
-  // A double tap on it puts the view back behind the Wayfarer. The lock button sits on the arc at `lockAt` degrees.
+  // A double tap on it puts the view back behind the Wayfarer.
+  // Version 3 (Tim: "the Bullseye lock should be ... off to the side of the screen, not in the center of the Crescent... I
+  // don't want my camera maneuvering interrupted by the lock"): the lock button is off the arc, a bullseye (a `lockSize`
+  // px touch target) at the screen's right edge (`lockEdge` px in), `lockGap` px above the top of the crescent's band. It locks only on a
+  // tap that starts on it (a press and release on it within `tapMove` px); a drag on the crescent holds its own pointer, so
+  // it never reaches the lock. And (the 787 review: the crescent ran over Spell B) each end of the arc is drawn back, in
+  // `step` degree steps out from `mid`, to the last point whose band stays `clear` px off every other control in #actions
+  // (the lock button too) and `edge` px inside the screen; never shorter than `minSpan` degrees each side of `mid`.
   crescent: Object.freeze({ gap: 24, band: 16, width: 7, from: -32, to: 162, idle: .22, active: .62, yaw: .012, radialPitch: .5, pitch: .0035, pitchRange: Object.freeze([-.22, .32]),
-    lockAt: -92, lockSize: 36, doubleTapMs: 340, tapMs: 260, tapMove: 10, recentreRate: 7 }),
+    doubleTapMs: 340, tapMs: 260, tapMove: 10, recentreRate: 7,
+    lockSize: 46, lockEdge: 6, lockGap: 16, mid: -90, // lockSize: the touch target (Tim: easy to hit on purpose); its disc is drawn 36 px (styles.css .close-lock::before)
+    clear: 6, edge: 4, step: 2, minSpan: 24 }),
   turn: Object.freeze({
     cone: 100, // walking toward the camera (more than this many degrees off the view) never swings it round
     reducedScale: .45, // with reduced motion the view turns this much slower
@@ -110,12 +119,58 @@ export const CLOSE_VIEW = Object.freeze({
   edges: Object.freeze({ seam: .6, outline: "rgba(6,5,8,0.85)", outlineWidth: 1.5, cap: .05, capLight: 1.45, base: .1, baseDark: .55, shadow: .32, shadowAlpha: .55, px: 22,
     hole: "rgba(0,0,0,0.6)", holeRim: "rgba(230,214,170,0.75)", lava: "rgba(255,120,40,0.85)", drop: "rgba(120,200,255,0.7)" }),
   contact: Object.freeze({ radius: .27, flat: .55, alpha: .38 }), // a creature's or the Wayfarer's shadow: radius (tiles x its scale), at most `flat` as deep as wide, its darkness
+  // version 3 (2026-11-06, Tim: walls "smooth because of like future technology, that's just old"): `inlay` draws the faint
+  // seams of the walls' panels (CLOSE_VIEW.grit.inlay, one stroke a face) in place of version 2's brick mortar; `detail` lays
+  // the sparse grit textures (CLOSE_VIEW.grit) on faces nearer than `detailFar` camera-depth tiles, fading in from `detailNear`.
   quality: Object.freeze({
-    low: Object.freeze({ sprite: .6, floorBands: 16, texScale: .75, radius: 6.5, fogGradient: false, warm: false, bands: 1, mortar: false, vignette: false, outline: true, edgeFills: false }), // low: the edges as one stroke a face (no cap or baseboard fills)
-    balanced: Object.freeze({ sprite: .85, floorBands: 28, texScale: 1, radius: 8, fogGradient: true, warm: true, bands: 1, mortar: false, vignette: true, outline: true, edgeFills: true }),
-    full: Object.freeze({ sprite: 1, floorBands: 32, texScale: 1.25, radius: 9.5, fogGradient: true, warm: true, bands: 2, mortar: true, vignette: true, outline: true, edgeFills: true }),
+    low: Object.freeze({ sprite: .6, floorBands: 12, texScale: .75, radius: 6.5, fogGradient: false, warm: false, bands: 1, inlay: false, detail: false, detailNear: 0, detailFar: 0, ao: false, vignette: false, outline: true, edgeFills: false }), // low: the edges as one stroke a face (no cap or baseboard fills), no seams, no grit
+    balanced: Object.freeze({ sprite: .85, floorBands: 20, texScale: 1, radius: 8, fogGradient: true, warm: true, bands: 1, inlay: true, detail: true, detailNear: 4.5, detailFar: 7, ao: true, vignette: true, outline: true, edgeFills: true }),
+    full: Object.freeze({ sprite: 1, floorBands: 28, texScale: 1.25, radius: 9.5, fogGradient: true, warm: true, bands: 2, inlay: true, detail: true, detailNear: 6, detailFar: 9, ao: true, vignette: true, outline: true, edgeFills: true }),
   }),
-  styles: Object.freeze({ // wall colours by tile kind (a face, and its mortar lines)
+  // The walls' surface (version 3, Tim, 2026-11-06: "smooth because of like future technology, that's just old... maybe some
+  // things grow on there... most of the time it's just clean because of the technology... some of it could be gritty, and
+  // some of it could be falling apart... the forms and things that we're seeing are functional equivalents that our mind can
+  // process, not necessarily the real thing"). Mostly seamless, ancient panels with a faint inlaid seam; here and there,
+  // chosen once per wall face from its tile, its side and the floor (wallGeometry, never per frame), a texture over the face:
+  // inlaid glyph traces, grime streaks, a crack, spalling, growth creeping up from the foot, pale filaments, exposed lattice
+  // where a panel has fallen away, and rarely a panel that does not quite resolve (a slow faint shimmer, still with reduced
+  // motion). Each texture is painted once into a small canvas (`size` px, `instances` of each, seeded) the first time a frame
+  // wants detail; frames only copy them onto faces. Weights are out of their sum. Faces of a style not in `styles` (doors,
+  // hedges, rubble) stay plain. `light`: a texture's strength follows its face's light to this power.
+  grit: Object.freeze({
+    version: 1, size: Object.freeze([64, 154]), instances: 2, salt: 0x6c1f3a, light: .7,
+    styles: Object.freeze(["keepWall", "aptWall", "cellarWall", "hiveWall", "default"]),
+    // the seam: a faint line round the room at `row` (a share of the height from the foot) and a panel joint every `joint`
+    // tiles along a run, in the face's colour taken `mix` of the way toward `tint` and lit `lift` times the face
+    inlay: Object.freeze({ row: .72, joint: 3, tint: Object.freeze([150, 205, 215]), mix: .25, lift: 1.12 }),
+    variants: Object.freeze([
+      Object.freeze({ id: "clean", weight: 52 }),
+      Object.freeze({ id: "glyph", weight: 13, alpha: .8, traces: 3, color: "150,215,228", a: .2 }),
+      Object.freeze({ id: "grime", weight: 11, alpha: .9, streaks: 9, color: "10,9,8", a: .36 }),
+      Object.freeze({ id: "crack", weight: 6, alpha: 1, branches: 3, color: "6,6,8", a: .66, rim: "225,230,226", rimA: .16 }),
+      Object.freeze({ id: "spall", weight: 5, alpha: 1, chips: 7, color: "12,11,10", a: .5, rim: "210,206,196", rimA: .2 }),
+      Object.freeze({ id: "growth", weight: 6, alpha: .95, blobs: 60, reach: .55, color: "58,92,54", a: .45, tip: "120,160,96" }),
+      Object.freeze({ id: "filament", weight: 3, alpha: .9, strands: 5, color: "196,232,214", a: .22 }),
+      Object.freeze({ id: "lattice", weight: 3, alpha: 1, color: "4,4,6", a: .8, grid: "150,200,210", gridA: .28, cells: 7 }),
+      Object.freeze({ id: "unresolved", weight: 1.5, alpha: .8, color: "200,226,240", a: .32, frames: 3, shimmer: .45, period: 6400 }),
+    ]),
+  }),
+  // One material and one light for the whole place (version 3, Tim: "made more cohesive"): every wall style but the door is taken `unify`
+  // of the way toward the shared `base` colour (the grey-blue of the floors' stone; the floor itself is left as drawn, so its
+  // telegraphs keep their full colour), so walls and floor read as one built surface; the vault overhead closes in (`vault`: the dark's opacity at the screen's
+  // top, clear by `vaultTo` of the way down to the aim point); inside corners take ambient occlusion, a soft shadow `ao.width`
+  // of a face wide and `ao.alpha` deep at the corner. `vault` and `ao` are off on the low tier (quality.*.ao).
+  material: Object.freeze({ base: Object.freeze([88, 90, 96]), unify: .42, vault: .5, vaultTo: .9,
+    ao: Object.freeze({ width: .3, alpha: .5, px: 32 }) }),
+  // How creatures read from the close camera (version 3, Tim: "monsters phasing in and out of view depending on where the
+  // camera is... the way the monsters' attacks are"). `fade`: a creature's opacity eases toward what its light, fog and the
+  // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
+  // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
+  // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r790-d8f0e5e716fc's hitFlash,
+  // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
+  cues: Object.freeze({ fade: 7, ghost: .34, glowRGB: "255,96,64", glow: .32, glowPeak: .62, pulseMs: 150, ringWidth: 2.5, ringAlpha: .8, ring: .5, flash: .75, flashSec: .18, glowPx: 64 }),
+  styles: Object.freeze({ // wall colours by tile kind (a face, and its darker second tone)
     keepWall: ["#6b6255", "#3a342c"], aptWall: ["#74787b", "#4a4e52"], cellarWall: ["#3a352e", "#1e1b17"], hiveWall: ["#5a3f66", "#2f2238"],
     hedgeWall: ["#2f552b", "#1d331b"], rubbleFloor: ["#4e463c", "#2e2922"], door: ["#3a2a1d", "#21170f"], default: ["#5a544c", "#2f2b26"], // door: a way out at the floor's edge
   }),
@@ -134,7 +189,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r789-7b41b2c419e8's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r790-d8f0e5e716fc's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null) };
@@ -164,30 +219,36 @@ const CAM = { yawV: 0, headX: 0, headY: 0, lockId: null, lostFor: 0, distV: 0, c
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
 // cached screen gradients, each rebuilt only when the canvas or its size changes (keys are numbers: nothing is built per frame)
-const SCREEN = { ctx: null, fog: null, fogEnd: 0, fogW: 0, fogH: 0, fogY: NaN, vignette: null, vigW: 0, vigH: 0, warm: null, warmW: 0, warmH: 0 };
+const SCREEN = { ctx: null, fog: null, fogEnd: 0, fogW: 0, fogH: 0, fogY: NaN, vignette: null, vigW: 0, vigH: 0, warm: null, warmW: 0, warmH: 0, vault: null, vaultH: 0, vaultY: NaN };
 let capturing = false, captured = null, capturedPlayer = null;
 let N = CLOSE_VIEW.maxItems;
 let itemKind = new Int8Array(N), itemRef = new Int32Array(N), itemDepth = new Float32Array(N), order = new Int32Array(N);
 let faceCorner = new Int8Array(N), faceXY = new Float32Array(N * 8), faceLevel = new Int16Array(N), faceAlpha = new Float32Array(N), faceStyle = new Int16Array(N), faceOrient = new Int8Array(N), faceLow = new Int8Array(N);
+let faceGeo = new Int32Array(N), faceU0 = new Float32Array(N), faceU1 = new Float32Array(N); // the face's index in its floor's geometry, and the share of its width on screen (after the near-plane cut)
 const boardFoe = []; // the creature each billboard is (or null), by item: what the art hook draws
 let boardSX = new Int32Array(N), boardSY = new Int32Array(N), boardPW = new Int32Array(N), boardPH = new Int32Array(N), boardX = new Float32Array(N), boardY = new Float32Array(N), boardK = new Float32Array(N), boardB = new Float32Array(N), boardScale = new Float32Array(N);
+let boardWX = new Float32Array(N), boardWY = new Float32Array(N), boardOcc = new Float32Array(N); // a billboard's foot in the world, and how much of it a wall hides from the camera (eased, 0..1)
 function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n); b.set(A); return b; };
-  faceCorner = re(faceCorner, N); itemKind = re(itemKind, N); itemRef = re(itemRef, N); itemDepth = re(itemDepth, N); order = re(order, N); faceXY = re(faceXY, N * 8); faceLevel = re(faceLevel, N); faceAlpha = re(faceAlpha, N); faceStyle = re(faceStyle, N); faceOrient = re(faceOrient, N); faceLow = re(faceLow, N);
-  boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); }
+  faceCorner = re(faceCorner, N); itemKind = re(itemKind, N); itemRef = re(itemRef, N); itemDepth = re(itemDepth, N); order = re(order, N); faceXY = re(faceXY, N * 8); faceLevel = re(faceLevel, N); faceAlpha = re(faceAlpha, N); faceStyle = re(faceStyle, N); faceOrient = re(faceOrient, N); faceLow = re(faceLow, N); faceGeo = re(faceGeo, N); faceU0 = re(faceU0, N); faceU1 = re(faceU1, N);
+  boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r789-7b41b2c419e8's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r790-d8f0e5e716fc's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
-export const closeViewStats = { snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0 };
+export const closeViewStats = { snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0 };
 
 // ------------------------------------------------------------------------------------------------ colours, built once
 const STYLE_NAMES = Object.keys(CLOSE_VIEW.styles), STYLE_INDEX = Object.fromEntries(STYLE_NAMES.map((k, i) => [k, i]));
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-// FACE_LUT[style][orient][band][level] / MORTAR_LUT[style][level]: rgb() strings, mixed toward the fog colour.
+// A style's colour in the shared material (CLOSE_VIEW.material: `unify` of the way toward its `base`)
+const material = (hex) => { const M = CLOSE_VIEW.material; return rgb(hex).map((v, i) => v + (M.base[i] - v) * M.unify); };
+// FACE_LUT[style][orient][band][level] / INLAY_LUT[style][level]: rgb() strings, mixed toward the fog colour.
 const L = CLOSE_VIEW.fog.levels, FOG = CLOSE_VIEW.fog.color;
 const mix = (c, b) => `rgb(${Math.round(FOG[0] + (c[0] - FOG[0]) * b)},${Math.round(FOG[1] + (c[1] - FOG[1]) * b)},${Math.round(FOG[2] + (c[2] - FOG[2]) * b)})`;
-const FACE_LUT = STYLE_NAMES.map((k) => { const c = rgb(CLOSE_VIEW.styles[k][0]); return [CLOSE_VIEW.shade.x, CLOSE_VIEW.shade.y].map((sh) => [1, .72].map((band) => Array.from({ length: L }, (_, i) => mix(c, sh * band * i / (L - 1))))); });
-const MORTAR_LUT = STYLE_NAMES.map((k) => { const c = rgb(CLOSE_VIEW.styles[k][1]); return Array.from({ length: L }, (_, i) => mix(c, i / (L - 1))); });
+const FACE_LUT = STYLE_NAMES.map((k) => { const c = (k === "door" ? rgb : material)(CLOSE_VIEW.styles[k][0]); return [CLOSE_VIEW.shade.x, CLOSE_VIEW.shade.y].map((sh) => [1, .72].map((band) => Array.from({ length: L }, (_, i) => mix(c, sh * band * i / (L - 1))))); });
+const GRIT = CLOSE_VIEW.grit, INL = GRIT.inlay, GRIT_STYLE = new Uint8Array(STYLE_NAMES.length);
+for (const k of GRIT.styles) if (k in STYLE_INDEX) GRIT_STYLE[STYLE_INDEX[k]] = 1;
+const INLAY_LUT = STYLE_NAMES.map((k) => { const c = material(CLOSE_VIEW.styles[k][0]).map((v, i) => Math.min(255, (v + (INL.tint[i] - v) * INL.mix) * INL.lift)); return Array.from({ length: L }, (_, i) => mix(c, i / (L - 1))); });
 const FOG_CSS = `rgb(${FOG[0]},${FOG[1]},${FOG[2]})`, fogA = (a) => `rgba(${FOG[0]},${FOG[1]},${FOG[2]},${a})`;
 
 // ------------------------------------------------------------------------------------------------ wall geometry, per floor
@@ -220,13 +281,112 @@ export function wallGeometry(map) {
   for (let i = 0; i < n; i++) index[fill[chunkOf(i)]++] = i;
   // corner: bit 1 where a face's start is a corner (the wall turns, ends or a door is there), bit 2 its end. Along a straight run
   // of wall the faces meet flush and no edge is drawn between them; at a corner the outline marks where one wall stops.
-  const corner = new Uint8Array(n);
+  // ao (version 3): bit 1 where the face's start is an inside corner (the wall beside it comes out toward the room), bit 2 its
+  // end: those corners take a soft shadow up the face (CLOSE_VIEW.material.ao)
+  const corner = new Uint8Array(n), ao = new Uint8Array(n);
   for (let i = 0; i < n; i++) { const o = i * 10, tx = faces[o + 6], ty = faces[o + 7], nx = faces[o + 4], ny = faces[o + 5], dx = Math.sign(faces[o + 2] - faces[o]), dy = Math.sign(faces[o + 3] - faces[o + 1]);
     if (faces[o + 8] === door) { corner[i] = 3; continue; }
     const goesOn = (sx, sy) => solid(tx + sx, ty + sy) && !solid(tx + sx + nx, ty + sy + ny) && !(tx + sx + nx < 0 || ty + sy + ny < 0 || tx + sx + nx >= w || ty + sy + ny >= h);
-    corner[i] = (goesOn(-dx, -dy) ? 0 : 1) | (goesOn(dx, dy) ? 0 : 2); }
-  geo = { tiles, w, h, faces, count: n, C, cw, ch, start, end: fill, index, sig: blockedSignature(tiles), checked: now, ghost: new Uint8Array(n), alpha: new Float32Array(n).fill(1), corner, edges: null };
+    corner[i] = (goesOn(-dx, -dy) ? 0 : 1) | (goesOn(dx, dy) ? 0 : 2);
+    const inside = (sx, sy) => { const qx = tx + sx + nx, qy = ty + sy + ny; return qx >= 0 && qy >= 0 && qx < w && qy < h && solid(qx, qy); };
+    if (!faces[o + 9]) ao[i] = (inside(-dx, -dy) ? 1 : 0) | (inside(dx, dy) ? 2 : 0); }
+  geo = { tiles, w, h, faces, count: n, C, cw, ch, start, end: fill, index, sig: blockedSignature(tiles), checked: now, ghost: new Uint8Array(n), alpha: new Float32Array(n).fill(1), corner, ao, edges: null, ...wallDetail(map, faces, n) };
   wallCache.set(map, geo); return geo;
+}
+
+// ------------------------------------------------------------------------------------------------ the walls' surface (CLOSE_VIEW.grit)
+// Chosen once per face when its floor's geometry is built: a pure function of the floor's name and size, the face's tile and
+// its side, so a wall always shows the same surface (between frames, between visits, after a resume). detail[i]: the index
+// of the face's variant in GRIT.variants (0, "clean", has no texture); inst[i]: which painted instance (low bits) and whether
+// it is mirrored (bit 4); joint[i]: 1 when a panel joint falls at the face's start.
+const hash32 = (a) => { a = Math.imul(a ^ (a >>> 16), 0x7feb352d); a = Math.imul(a ^ (a >>> 15), 0x846ca68b); return (a ^ (a >>> 16)) >>> 0; };
+const strHash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
+const GRIT_TOTAL = GRIT.variants.reduce((a, v) => a + v.weight, 0);
+function wallDetail(map, faces, n) {
+  const detail = new Uint8Array(n), inst = new Uint8Array(n), joint = new Uint8Array(n), floor = strHash(`${map?.name || ""}|${map?.width}|${map?.height}`) ^ GRIT.salt;
+  for (let i = 0; i < n; i++) { const o = i * 10, st = faces[o + 8]; if (!GRIT_STYLE[st] || faces[o + 9]) continue; // doors, hedges and low rubble stay plain
+    const tx = faces[o + 6], ty = faces[o + 7], nx = faces[o + 4], ny = faces[o + 5], side = nx > 0 ? 1 : nx < 0 ? 3 : ny > 0 ? 2 : 0;
+    const h = hash32(floor ^ hash32((tx * 73856093) ^ (ty * 19349663) ^ (side * 83492791))), along = ny !== 0 ? tx : ty;
+    joint[i] = ((along % INL.joint) + INL.joint) % INL.joint === 0 ? 1 : 0;
+    let r = (h % 100000) / 100000 * GRIT_TOTAL, v = 0; while (v < GRIT.variants.length - 1 && r >= GRIT.variants[v].weight) { r -= GRIT.variants[v].weight; v++; }
+    detail[i] = v; inst[i] = ((h >>> 20) % GRIT.instances) | ((h >>> 27) & 1 ? 16 : 0); }
+  return { detail, detailInst: inst, joint };
+}
+// For tests and the lab report: the floor's per-face variant ids, in face order.
+export function closeViewWallDetail(map) { const geo = wallGeometry(map); return Array.from(geo.detail, (v) => GRIT.variants[v].id); }
+// The painted textures, GRIT_TEX[variant][instance]: built on the first frame that wants detail, then kept (a few hundred KB).
+const GRIT_TEX = []; let gritFailed = false;
+export const closeViewGritStats = { painted: 0 };
+function gritTexture(v, k) {
+  if (gritFailed) return null; const row = GRIT_TEX[v] || (GRIT_TEX[v] = []); if (row[k] !== undefined) return row[k];
+  const c = makeCanvas(), x = c?.getContext?.("2d"); if (!x) { gritFailed = true; return null; }
+  const [TW, TH] = GRIT.size; c.width = TW; c.height = TH; x.clearRect(0, 0, TW, TH);
+  let a = (GRIT.salt ^ hash32(v * 977 + k * 131 + 7)) >>> 0; const rnd = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const P = GRIT.variants[v], painter = GRIT_PAINT[P.id]; if (painter) painter(x, rnd, P, TW, TH);
+  row[k] = c; closeViewGritStats.painted++; return c;
+}
+const rgba = (c, al) => `rgba(${c},${Math.max(0, Math.min(1, al)).toFixed(3)})`;
+// One painter per variant: a few strokes and fills into the texture's canvas, from its own seeded random stream.
+const GRIT_PAINT = {
+  glyph(x, r, P, W, H) { // inlaid circuit traces: right-angled runs ending in a node, and a small glyph of three strokes
+    x.lineCap = "square"; x.lineWidth = 1.2;
+    for (let i = 0; i < P.traces; i++) { let px = Math.round(W * (.15 + r() * .7)), py = Math.round(H * (.25 + r() * .6)); x.strokeStyle = rgba(P.color, P.a * (.7 + r() * .5)); x.beginPath(); x.moveTo(px, py);
+      for (let s = 0; s < 4; s++) { if (s % 2) px = Math.round(Math.max(4, Math.min(W - 4, px + (r() - .5) * W * .6))); else py = Math.round(Math.max(6, py - H * (.06 + r() * .14))); x.lineTo(px, py); }
+      x.stroke(); x.fillStyle = rgba(P.color, P.a * 1.6); x.beginPath(); x.arc(px, py, 1.8, 0, 6.2832); x.fill(); }
+    const gx = W * (.3 + r() * .4), gy = H * (.12 + r() * .1); x.strokeStyle = rgba(P.color, P.a * 1.2); x.lineWidth = 1; x.beginPath();
+    x.moveTo(gx - 5, gy); x.lineTo(gx + 5, gy); x.moveTo(gx, gy - 5); x.lineTo(gx + 4 * (r() - .5), gy + 6); x.moveTo(gx - 4, gy + 8); x.lineTo(gx + 4, gy + 4); x.stroke();
+  },
+  grime(x, r, P, W, H) { // streaks run down from the top, and the foot is dirtier
+    for (let i = 0; i < P.streaks; i++) { const sx = r() * W, sw = 1 + r() * 3.5, len = H * (.18 + r() * .62), g = x.createLinearGradient(0, 0, 0, len);
+      g.addColorStop(0, rgba(P.color, P.a * (.5 + r() * .5))); g.addColorStop(1, rgba(P.color, 0)); x.fillStyle = g; x.fillRect(sx, 0, sw, len); }
+    const f = x.createLinearGradient(0, H, 0, H * .7); f.addColorStop(0, rgba(P.color, P.a * .8)); f.addColorStop(1, rgba(P.color, 0)); x.fillStyle = f; x.fillRect(0, H * .7, W, H * .3);
+  },
+  crack(x, r, P, W, H) { // a jagged crack down from the top with branches; a pale lip along one side catches the light
+    const walk = (px, py, steps, dx) => { const pts = [[px, py]]; for (let s = 0; s < steps; s++) { px = Math.max(2, Math.min(W - 2, px + dx * 2 + (r() - .5) * 9)); py += H * (.03 + r() * .05); pts.push([px, py]); } return pts; };
+    const main = walk(W * (.3 + r() * .4), 0, 12, r() - .5), lines = [main]; for (let b = 0; b < P.branches; b++) { const at = main[2 + Math.floor(r() * (main.length - 4))]; lines.push(walk(at[0], at[1], 3 + Math.floor(r() * 4), r() < .5 ? -1.5 : 1.5)); }
+    for (const [pass, col, al, wd, off] of [[0, P.rim, P.rimA, 1, 1], [1, P.color, P.a, 1.6, 0]]) { x.strokeStyle = rgba(col, al); x.lineWidth = wd; x.beginPath(); for (const pts of lines) { x.moveTo(pts[0][0] + off, pts[0][1] + off * pass); for (const q of pts) x.lineTo(q[0] + off, q[1]); } x.stroke(); }
+  },
+  spall(x, r, P, W, H) { // a patch where the surface has flaked away from a corner, its aggregate showing, chips below
+    const cx = r() < .5 ? W * .2 : W * .8, cy = r() < .6 ? H * (.08 + r() * .15) : H * (.6 + r() * .2), R = W * (.22 + r() * .14); x.beginPath();
+    for (let i = 0; i < 11; i++) { const t = i / 11 * 6.2832, k = R * (.6 + r() * .55); x.lineTo(cx + Math.cos(t) * k, cy + Math.sin(t) * k * 1.3); } x.closePath();
+    x.fillStyle = rgba(P.color, P.a); x.fill(); x.strokeStyle = rgba(P.rim, P.rimA); x.lineWidth = 1; x.stroke();
+    x.fillStyle = rgba(P.rim, P.rimA * .9); for (let i = 0; i < 14; i++) x.fillRect(cx + (r() - .5) * R * 1.2, cy + (r() - .5) * R * 1.4, 1 + r() * 2, 1 + r() * 2);
+    x.fillStyle = rgba(P.color, P.a * .8); for (let i = 0; i < P.chips; i++) x.fillRect(r() * W, H * (.86 + r() * .12), 1.5 + r() * 2.5, 1 + r() * 1.5);
+  },
+  growth(x, r, P, W, H) { // moss creeping up from the foot (thicker low down) and a few tendrils climbing past it
+    for (let i = 0; i < P.blobs; i++) { const up = Math.pow(r(), 1.8) * P.reach, bx = r() * W, by = H * (1 - up), rad = (1.2 + r() * 3.6) * (1 - up / P.reach * .6);
+      x.fillStyle = rgba(r() < .2 ? P.tip : P.color, P.a * (.6 + r() * .6)); x.beginPath(); x.arc(bx, by, rad, 0, 6.2832); x.fill(); }
+    x.strokeStyle = rgba(P.color, P.a); x.lineWidth = 1.1; x.beginPath();
+    for (let t = 0; t < 4; t++) { let px = r() * W, py = H * (1 - P.reach * .7); x.moveTo(px, py); for (let s = 0; s < 8; s++) { px += (r() - .5) * 6; py -= H * (.02 + r() * .03); x.lineTo(px, py); } } x.stroke();
+  },
+  filament(x, r, P, W, H) { // pale threads that wander across the panel and fork, each with a few beads
+    x.lineWidth = .8;
+    for (let i = 0; i < P.strands; i++) { let px = r() * W, py = r() * H, ang = r() * 6.2832; x.strokeStyle = rgba(P.color, P.a * (.6 + r() * .6)); x.beginPath(); x.moveTo(px, py);
+      for (let s = 0; s < 16; s++) { ang += (r() - .5) * .9; px += Math.cos(ang) * 5; py += Math.sin(ang) * 6; x.lineTo(px, py); } x.stroke();
+      x.fillStyle = rgba(P.color, P.a * 1.8); x.beginPath(); x.arc(px, py, 1.3, 0, 6.2832); x.fill(); }
+  },
+  lattice(x, r, P, W, H) { // a panel fallen away: a dark recess with the structure's lattice behind, a lit lip along its lower edge
+    const x0 = W * (.1 + r() * .2), y0 = H * (.18 + r() * .3), w = W * (.45 + r() * .3), h = H * (.22 + r() * .2), pts = [];
+    for (let i = 0; i < 14; i++) { const t = i / 14, side = Math.floor(t * 4), u = t * 4 - side, j = () => (r() - .5) * 5; pts.push(side === 0 ? [x0 + w * u, y0 + j()] : side === 1 ? [x0 + w + j(), y0 + h * u] : side === 2 ? [x0 + w * (1 - u), y0 + h + j()] : [x0 + j(), y0 + h * (1 - u)]); }
+    const path = () => { x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (const q of pts) x.lineTo(q[0], q[1]); x.closePath(); };
+    path(); x.fillStyle = rgba(P.color, P.a); x.fill(); x.save(); path(); x.clip(); x.strokeStyle = rgba(P.grid, P.gridA); x.lineWidth = 1; x.beginPath(); const step = w / P.cells;
+    for (let k = -P.cells * 3; k <= P.cells * 3; k++) { x.moveTo(x0 + k * step, y0); x.lineTo(x0 + k * step + h, y0 + h); x.moveTo(x0 + k * step, y0 + h); x.lineTo(x0 + k * step + h, y0); } x.stroke(); x.restore();
+    x.strokeStyle = rgba(P.grid, P.gridA * .9); x.lineWidth = 1.2; x.beginPath(); for (let i = 7; i <= 11; i++) { x.lineTo(pts[i % 14][0], pts[i % 14][1] + 1); } x.stroke();
+  },
+  unresolved(x, r, P, W, H) { // nested frames whose corners join the wrong frame: a shape the eye cannot settle
+    const cx = W / 2, cy = H * (.4 + r() * .15); x.strokeStyle = rgba(P.color, P.a); x.lineWidth = 1;
+    const fr = []; for (let i = 0; i < P.frames; i++) { const k = 1 - i * .28; fr.push([cx - W * .34 * k, cy - H * .24 * k, W * .68 * k, H * .48 * k]); x.strokeRect(...fr[i]); }
+    x.beginPath(); for (let i = 0; i + 1 < fr.length; i++) { const a = fr[i], b = fr[i + 1]; x.moveTo(a[0], a[1]); x.lineTo(b[0] + b[2], b[1]); x.moveTo(a[0] + a[2], a[1] + a[3]); x.lineTo(b[0], b[1] + b[3]); } x.stroke();
+    x.strokeStyle = rgba(P.color, P.a * .45); x.beginPath(); for (let k = 0; k < 9; k++) { const yy = cy - H * .24 + k * H * .06; x.moveTo(cx - W * .34, yy); x.lineTo(cx + W * .34, yy + (k % 2 ? 2 : -2)); } x.stroke();
+  },
+};
+// A face's detail strength this frame: its light, its depth fade, and for an unresolved panel a slow breath (none with
+// reduced motion: a still mid value). Exported for tests.
+export function closeViewGritAlpha(v, level, depth, q, now = 0, reduce = false, phase = 0) {
+  const P = GRIT.variants[v]; if (!P || !v || !q?.detail) return 0; const fade = depth <= q.detailNear ? 1 : depth >= q.detailFar ? 0 : 1 - (depth - q.detailNear) / (q.detailFar - q.detailNear);
+  let a = (P.alpha ?? 1) * fade * Math.pow(Math.max(0, level) / (L - 1), GRIT.light);
+  if (P.shimmer) a *= 1 - P.shimmer * (reduce ? .5 : .5 + .5 * Math.sin(now / P.period * 6.2832 + phase));
+  return a;
 }
 
 // ------------------------------------------------------------------------------------------------ the camera
@@ -439,7 +599,7 @@ function groundCanvas(W, H, ts) {
   GROUND.atlasY = Math.ceil(H * ts);
   GROUND.W = W; GROUND.H = H; GROUND.ts = ts; return GROUND.ctx;
 }
-export function setCloseViewCanvasFactory(factory) { CLOSE_VIEW_HOOKS.makeCanvas = factory || null; GROUND.canvas = null; GROUND.ctx = null; GROUND.failed = false; GROUND.torch = null; SCREEN.ctx = null; }
+export function setCloseViewCanvasFactory(factory) { CLOSE_VIEW_HOOKS.makeCanvas = factory || null; GROUND.canvas = null; GROUND.ctx = null; GROUND.failed = false; GROUND.torch = null; SCREEN.ctx = null; CUE.glow = CUE.ao = null; CUE.failed = false; GRIT_TEX.length = 0; gritFailed = false; }
 
 function qualityOf(g) { const q = g.presentation?.effectiveQuality; return CLOSE_VIEW.quality[q] || CLOSE_VIEW.quality.balanced; }
 // Far to near. Depths within 1/1000 of a tile are a tie, broken the same way every frame (a wall face before a billboard, then
@@ -500,22 +660,18 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     // Version 2: the band's rows are mapped exactly at both its edges (the secant, not the tangent at its middle row), so the
     // floor is continuous across band seams and nothing crawls along them as the camera moves; its lateral scale is the one at
     // the geometric mean depth. And the texture is sampled smoothly (nearest-texel sampling of the magnified floor shimmered).
-    const vA = vOfRow(yPrev), vB = vOfRow(y1), dA = vA * cosP + hc * sinP, dB = vB * cosP + hc * sinP, kx = F / Math.sqrt(Math.max(1e-6, dA * dB)), m = (y1 - yPrev) / (vB - vA), vm = vA, ym = yPrev;
-    // world -> screen for this band: sx = kx*(r.(P-C)) + ppx, sy = m*(f.(P-C) - vm) + ym; texture -> world: X = (tx/ts - Tx)/s
-    const A1 = kx * rx, B1 = kx * ry, C1 = ppx - kx * (CAM.cx * rx + CAM.cy * ry), A2 = m * fx, B2 = m * fy, C2 = ym - m * vm - m * (CAM.cx * fx + CAM.cy * fy);
-    ctx.save(); ctx.imageSmoothingEnabled = true; ctx.beginPath(); ctx.rect(0, y1, w, yPrev - y1 + .75); ctx.clip();
-    ctx.transform(A1 / sts, A2 / sts, B1 / sts, B2 / sts, C1 - (A1 * Tx + B1 * Ty) / s, C2 - (A2 * Tx + B2 * Ty) / s);
-    // only the part of the texture this band shows: the bounding box of its four corners (screen x 0 and w, rows y1 and yPrev)
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1t = -Infinity;
-    for (let c = 0; c < 4; c++) { const rowY = c < 2 ? y1 : yPrev, sx = c & 1 ? w : 0, vv = vOfRow(rowY), dd = vv * cosP + hc * sinP, uu = (sx - ppx) * dd / F, X = CAM.cx + rx * uu + fx * vv, Y = CAM.cy + ry * uu + fy * vv, tx = (X * s + Tx) * ts, ty = (Y * s + Ty) * ts;
-      if (tx < x0) x0 = tx; if (tx > x1) x1 = tx; if (ty < y0) y0 = ty; if (ty > y1t) y1t = ty; }
-    x0 = Math.max(0, Math.floor(x0) - 2); y0 = Math.max(0, Math.floor(y0) - 2); x1 = Math.min(img.width, Math.ceil(x1) + 2); y1t = Math.min(GROUND.atlasY, Math.ceil(y1t) + 2); // never into the atlas below the texture
-    if (x1 > x0 && y1t > y0) ctx.drawImage(img, x0, y0, x1 - x0, y1t - y0, x0, y0, x1 - x0, y1t - y0);
-    ctx.restore(); closeViewStats.bands++;
+    // Version 3 (Tim: "it looks kind of shit... we need some visual passes"): version 2 gave a whole band one lateral scale,
+    // so anything running into the view (a rug's edge, a telegraph, a tile line) stepped sideways at every band seam. Now each
+    // band is two triangles, each mapped exactly at its three corners: the floor is continuous everywhere, with no steps.
+    // The band's corners on screen (x 0 and w, rows y1 and yPrev) and in the ground texture:
+    for (let c = 0; c < 4; c++) { const rowY = c < 2 ? y1 : yPrev, sx = c & 1 ? w : 0, vv = vOfRow(rowY), dd = vv * cosP + hc * sinP, uu = (sx - ppx) * dd / F, X = CAM.cx + rx * uu + fx * vv, Y = CAM.cy + ry * uu + fy * vv;
+      BAND[c * 4] = sx; BAND[c * 4 + 1] = rowY; BAND[c * 4 + 2] = (X * s + Tx) * ts; BAND[c * 4 + 3] = (Y * s + Ty) * ts; }
+    floorTriangle(ctx, img, 2, 3, 0); floorTriangle(ctx, img, 3, 1, 0); // (0, yPrev) (w, yPrev) (0, y1), then (w, yPrev) (w, y1) (0, y1)
+    closeViewStats.bands++;
     yPrev = y1;
   }
   const yFar = floorRow(vFar);
-  if (SCREEN.ctx !== ctx) { SCREEN.ctx = ctx; SCREEN.fog = SCREEN.vignette = SCREEN.warm = null; }
+  if (SCREEN.ctx !== ctx) { SCREEN.ctx = ctx; SCREEN.fog = SCREEN.vignette = SCREEN.warm = SCREEN.vault = null; }
   if (Q.fogGradient) { const yk = Math.round(yFar); if (!SCREEN.fog || SCREEN.fogW !== w || SCREEN.fogH !== h || SCREEN.fogY !== yk) { const vFogNear = fogNear, yN = floorRow(vFogNear), gr = ctx.createLinearGradient(0, yFar, 0, Math.max(yFar + 1, yN)); gr.addColorStop(0, fogA(1)); gr.addColorStop(1, fogA(0)); SCREEN.fog = gr; SCREEN.fogEnd = Math.max(yFar + 1, yN); SCREEN.fogW = w; SCREEN.fogH = h; SCREEN.fogY = yk; }
     ctx.fillStyle = SCREEN.fog; ctx.fillRect(0, yFar - 1, w, Math.min(h, SCREEN.fogEnd) - yFar + 1); } // below the fog's near row it is clear: not filled
   const t3 = tm ? performance.now() : 0;
@@ -538,7 +694,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
       let ax = x0, ay = y0, bx = x1, by = y1; const da = ((ax - CAM.cx) * fx + (ay - CAM.cy) * fy) * cosP - dz * sinP, db = ((bx - CAM.cx) * fx + (by - CAM.cy) * fy) * cosP - dz * sinP, nr = CLOSE_VIEW.near;
       if (da < nr && db < nr) { closeViewStats.culled++; continue; }
       let cornerBits = geo.corner[fi];
-      if (da < nr) { const t = (nr - da) / (db - da); ax += (bx - ax) * t; ay += (by - ay) * t; cornerBits &= 2; } else if (db < nr) { const t = (nr - db) / (da - db); bx += (ax - bx) * t; by += (ay - by) * t; cornerBits &= 1; }
+      let u0 = 0, u1 = 1; // the share of the face's width left after the cut (its grit texture is cut the same way, never squeezed)
+      if (da < nr) { const t = (nr - da) / (db - da); ax += (bx - ax) * t; ay += (by - ay) * t; cornerBits &= 2; u0 = t; } else if (db < nr) { const t = (nr - db) / (da - db); bx += (ax - bx) * t; by += (ay - by) * t; cornerBits &= 1; u1 = 1 - t; }
       const q0 = project(ax, ay, 0); if (!q0) continue; const s0x = q0.sx, s0y = q0.sy, d0 = q0.depth; const q1 = project(bx, by, 0); if (!q1) continue; const s1x = q1.sx, s1y = q1.sy, d1 = q1.depth;
       const q2 = project(bx, by, top); if (!q2) continue; const s2x = q2.sx, s2y = q2.sy; const q3 = project(ax, ay, top); if (!q3) continue; const s3x = q3.sx, s3y = q3.sy;
       if (Math.max(s0x, s1x, s2x, s3x) < 0 || Math.min(s0x, s1x, s2x, s3x) > w || Math.max(s0y, s1y) < 0 || Math.min(s2y, s3y) > h) { closeViewStats.culled++; continue; }
@@ -548,7 +705,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
       const sm = CLOSE_VIEW.edges.seam, bl = Math.hypot(s1x - s0x, s1y - s0y) || 1, tl = Math.hypot(s2x - s3x, s2y - s3y) || 1, bux = (s1x - s0x) / bl * sm, buy = (s1y - s0y) / bl * sm, tux = (s2x - s3x) / tl * sm, tuy = (s2y - s3y) / tl * sm;
       const fo = n * 8; faceXY[fo] = s0x - bux; faceXY[fo + 1] = s0y - buy; faceXY[fo + 2] = s1x + bux; faceXY[fo + 3] = s1y + buy; faceXY[fo + 4] = s2x + tux; faceXY[fo + 5] = s2y + tuy; faceXY[fo + 6] = s3x - tux; faceXY[fo + 7] = s3y - tuy;
       const dl = Math.hypot(mx - ox, my - oy) / lightR, depthMid = (d0 + d1) / 2, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (depthMid - fogNear) / (fogFar - fogNear)));
-      faceLevel[n] = Math.round(Math.pow(Math.max(0, lit * (1 - fog)), Fg.gamma) * (L - 1)); faceStyle[n] = faces[o + 8]; faceOrient[n] = nx !== 0 ? 0 : 1; faceLow[n] = faces[o + 9];
+      faceLevel[n] = Math.round(Math.pow(Math.max(0, lit * (1 - fog)), Fg.gamma) * (L - 1)); faceStyle[n] = faces[o + 8]; faceOrient[n] = nx !== 0 ? 0 : 1; faceLow[n] = faces[o + 9]; faceGeo[n] = fi; faceU0[n] = u0; faceU1[n] = u1;
       // the cut-away: only a face across (or within cutPad of) the line from the camera to the Wayfarer. It used to be any face
       // nearer than the Wayfarer whose screen box overlapped theirs: close to a wall that ghosted whole runs of the walls
       // beside the camera, and the rooms behind them showed through.
@@ -566,11 +723,13 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - A.height * sc * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
-    boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : Math.max(0, 1 - A.fade * (1 - lit * (1 - fog))); boardScale[n] = sc;
+    boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : Math.max(0, 1 - A.fade * (1 - lit)) * (1 - fog); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
     if (d !== capturedPlayer && q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2) boardB[n] = Math.min(boardB[n], A.cutAlpha); // on the line from the camera to the Wayfarer: a ghost
+    boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
+  occludeBillboards(n, faces);
   insertionSortByDepth(n);
-  const turnFacing = relativeFacing(p), mortar = Q.mortar, bands = Q.bands; spriteDpr = Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite);
+  const turnFacing = relativeFacing(p), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite);
   const packed = packBillboards(g, draws, n, s, turnFacing);
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
     if (itemKind[it] === 0) { const fo = it * 8, st = faceStyle[it], lv = faceLevel[it], al = faceAlpha[it]; if (al < 1) ctx.globalAlpha = al;
@@ -580,6 +739,20 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
         ctx.fillStyle = LUT[0][lv]; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(hx1, hy1); ctx.lineTo(hx0, hy0); ctx.closePath(); ctx.fill();
         ctx.fillStyle = LUT[1][lv]; ctx.beginPath(); ctx.moveTo(hx0, hy0); ctx.lineTo(hx1, hy1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill(); }
       else { ctx.fillStyle = LUT[0][lv]; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill(); }
+      // the grit: this face's painted texture, if it has one and is near enough, laid over it (clipped to the face)
+      const gi = faceGeo[it], gv = Q.detail && lv > 2 ? gdet[gi] : 0;
+      if (gv) { const ga = closeViewGritAlpha(gv, lv, itemDepth[it], Q, now, reduce, gi * .37) * al, tex = ga > .02 ? gritTexture(gv, ginst[gi] & 15) : null;
+        if (tex) { const TW = GRIT.size[0], TH = GRIT.size[1], u0 = faceU0[it], u1 = faceU1[it], sw = Math.max(1, (u1 - u0) * TW), flip = ginst[gi] & 16;
+          // the face's quad, as its nearest parallelogram (its four corners' average axes): U along the face's run, V from top to foot
+          const Ux = (x1 - x0 + x2 - x3) / 2, Uy = (y1 - y0 + y2 - y3) / 2, Vx = (x0 - x3 + x1 - x2) / 2, Vy = (y0 - y3 + y1 - y2) / 2, Ox = (x0 + x1 + x2 + x3) / 4 - Ux / 2 - Vx / 2, Oy = (y0 + y1 + y2 + y3) / 4 - Uy / 2 - Vy / 2;
+          ctx.save(); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.clip(); ctx.globalAlpha = Math.min(1, ga);
+          if (flip) ctx.transform(-Ux / sw, -Uy / sw, Vx / TH, Vy / TH, Ox + Ux, Oy + Uy); else ctx.transform(Ux / sw, Uy / sw, Vx / TH, Vy / TH, Ox, Oy);
+          ctx.drawImage(tex, (flip ? 1 - u1 : u0) * TW, 0, sw, TH, 0, 0, sw, TH); ctx.restore(); closeViewStats.detailed++; } }
+      // ambient occlusion up an inside corner (one copy of a cached gradient per corner, mapped onto the face's edge)
+      if (Q.ao && geo.ao[gi]) { const bits = geo.ao[gi]; if ((bits & 1) && faceU0[it] === 0) aoCorner(ctx, x0, y0, x1, y1, x2, y2, x3, y3, false, lv); if ((bits & 2) && faceU1[it] === 1) aoCorner(ctx, x0, y0, x1, y1, x2, y2, x3, y3, true, lv); }
+      // the panels' seams: a faint inlaid line round the room, and a joint every few tiles (one stroke)
+      if (inlay && lv > 3 && GRIT_STYLE[st] && !faceLow[it]) { const q = INL.row; ctx.strokeStyle = INLAY_LUT[st][Math.min(L - 1, lv)]; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0 + (x3 - x0) * q, y0 + (y3 - y0) * q); ctx.lineTo(x1 + (x2 - x1) * q, y1 + (y2 - y1) * q);
+        if (gjoint[gi] && faceU0[it] === 0) { ctx.moveTo(x0 + (x3 - x0) * CLOSE_VIEW.edges.base, y0 + (y3 - y0) * CLOSE_VIEW.edges.base); ctx.lineTo(x3 + (x0 - x3) * CLOSE_VIEW.edges.cap * 2, y3 + (y0 - y3) * CLOSE_VIEW.edges.cap * 2); } ctx.stroke(); }
       if (Q.outline) { const E = CLOSE_VIEW.edges, cb = faceCorner[it], lb = Math.round(lv * E.baseDark), lc = Math.min(L - 1, Math.round(lv * E.capLight) + 3), LT = LUT[0];
         if (Q.edgeFills) { // the baseboard: the face's foot, darker, where it meets the floor
         ctx.fillStyle = LT[lb]; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x1 + (x2 - x1) * E.base, y1 + (y2 - y1) * E.base); ctx.lineTo(x0 + (x3 - x0) * E.base, y0 + (y3 - y0) * E.base); ctx.closePath(); ctx.fill();
@@ -587,12 +760,16 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
         ctx.fillStyle = LT[lc]; ctx.beginPath(); ctx.moveTo(x3, y3); ctx.lineTo(x2, y2); ctx.lineTo(x2 + (x1 - x2) * E.cap, y2 + (y1 - y2) * E.cap); ctx.lineTo(x3 + (x0 - x3) * E.cap, y3 + (y0 - y3) * E.cap); ctx.closePath(); ctx.fill(); }
         // the outline: the foot, and each real corner (not the seams along a straight run); on low, the top edge too
         ctx.strokeStyle = E.outline; ctx.lineWidth = E.outlineWidth; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); if (!Q.edgeFills) { ctx.moveTo(x3, y3); ctx.lineTo(x2, y2); } if (cb & 2) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); } if (cb & 1) { ctx.moveTo(x0, y0); ctx.lineTo(x3, y3); } ctx.stroke(); }
-      if (mortar && lv > 3 && !faceLow[it]) { ctx.strokeStyle = MORTAR_LUT[st][lv]; ctx.lineWidth = 1; ctx.beginPath(); for (let mi = 0; mi < MORTAR_ROWS.length; mi++) { const q = MORTAR_ROWS[mi]; ctx.moveTo(x0 + (x3 - x0) * q, y0 + (y3 - y0) * q); ctx.lineTo(x1 + (x2 - x1) * q, y1 + (y2 - y1) * q); } ctx.stroke(); }
       if (al < 1) ctx.globalAlpha = 1; }
     else if (packed) { if (boardPW[it] && (boardFoe[it] || draws[itemRef[it]] === capturedPlayer)) { // a creature or the Wayfarer stands on a soft shadow (objects carry their own)
         const Cs = CLOSE_VIEW.contact, k = boardK[it], rxs = Cs.radius * boardScale[it] * k, rys = Math.max(1, Math.min(rxs * Cs.flat, rxs * hc * k / F)); // the floor's foreshortening at that depth
-        ctx.globalAlpha = Cs.alpha * Math.max(0, Math.min(1, boardB[it])); ctx.fillStyle = "#000"; ctx.beginPath(); ctx.ellipse(boardX[it], boardY[it] - rys * .35, rxs, rys, 0, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
-      drawBillboard(ctx, it); } }
+        ctx.globalAlpha = Cs.alpha * Math.max(0, Math.min(1, boardB[it])); ctx.fillStyle = "#000"; ctx.beginPath(); ctx.ellipse(boardX[it], boardY[it] - rys * .35, rxs, rys, 0, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1;
+        if (boardFoe[it] && foeWindingUp(boardFoe[it])) windupCue(ctx, it, rxs, rys, now, reduce); }
+      drawBillboard(ctx, it); if (boardFoe[it]?.hitFlash > 0) hitFlashCue(ctx, it, boardFoe[it]); } }
+  // creatures a wall hides from the camera: drawn again over the walls, faint (eased in and out, never popping)
+  if (packed) for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || !boardFoe[it] || !(boardOcc[it] > .01)) continue;
+    const b = boardB[it]; boardB[it] = CLOSE_VIEW.cues.ghost * boardOcc[it] * Math.min(1, b * 2); drawBillboard(ctx, it); boardB[it] = b; }
+  if (Q.ao) vaultShade(ctx, w, h, ppy);
   const t4 = tm ? performance.now() : 0;
   lockBrackets(ctx, g, now);
   // 6. the torch's warm cast and the vignette, both cached
@@ -605,7 +782,26 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   captured = null; capturedPlayer = null; closeViewStats.frames++; CAM.drawn = true;
   return true;
 }
-const MORTAR_ROWS = Object.freeze([.33, .66]);
+// The floor band's four corners, [screen x, screen y, texture x, texture y] each (preallocated: no allocation per frame).
+const BAND = new Float64Array(16);
+// One floor triangle (three of BAND's corners): the ground texture mapped exactly at its corners (an affine map solved from
+// the three pairs), clipped to the triangle grown by `FLOOR_GROW` px so neighbouring triangles overlap and no seam shows.
+const FLOOR_GROW = 1.5;
+function grownTo(ctx, q, mx, my) { const dx = BAND[q] - mx, dy = BAND[q + 1] - my, l = Math.hypot(dx, dy) || 1; ctx.lineTo(BAND[q] + dx / l * FLOOR_GROW, BAND[q + 1] + dy / l * FLOOR_GROW); }
+function floorTriangle(ctx, img, i, j, k) {
+  const a = i * 4, b = j * 4, c = k * 4, Sx0 = BAND[a], Sy0 = BAND[a + 1], Tx0 = BAND[a + 2], Ty0 = BAND[a + 3];
+  const u1x = BAND[b + 2] - Tx0, u1y = BAND[b + 3] - Ty0, u2x = BAND[c + 2] - Tx0, u2y = BAND[c + 3] - Ty0, det = u1x * u2y - u2x * u1y; if (!(Math.abs(det) > 1e-9)) return;
+  const s1x = BAND[b] - Sx0, s1y = BAND[b + 1] - Sy0, s2x = BAND[c] - Sx0, s2y = BAND[c + 1] - Sy0;
+  const A = (s1x * u2y - s2x * u1y) / det, C = (s2x * u1x - s1x * u2x) / det, B = (s1y * u2y - s2y * u1y) / det, D = (s2y * u1x - s1y * u2x) / det, E = Sx0 - A * Tx0 - C * Ty0, Fq = Sy0 - B * Tx0 - D * Ty0;
+  const mx = (Sx0 + BAND[b] + BAND[c]) / 3, my = (Sy0 + BAND[b + 1] + BAND[c + 1]) / 3;
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.beginPath();
+  grownTo(ctx, a, mx, my); grownTo(ctx, b, mx, my); grownTo(ctx, c, mx, my); ctx.closePath(); ctx.clip(); ctx.transform(A, B, C, D, E, Fq);
+  // only the part of the texture this triangle shows (never into the billboards' atlas below the texture)
+  const x0 = Math.max(0, Math.floor(Math.min(Tx0, BAND[b + 2], BAND[c + 2])) - 2), y0 = Math.max(0, Math.floor(Math.min(Ty0, BAND[b + 3], BAND[c + 3])) - 2);
+  const x1 = Math.min(img.width, Math.ceil(Math.max(Tx0, BAND[b + 2], BAND[c + 2])) + 2), y1 = Math.min(GROUND.atlasY, Math.ceil(Math.max(Ty0, BAND[b + 3], BAND[c + 3])) + 2);
+  if (x1 > x0 && y1 > y0) ctx.drawImage(img, x0, y0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0);
+  ctx.restore();
+}
 // The squared distance between segments a-b and c-d (0 when they cross). No closures: it runs per face per frame.
 const orient = (px, py, qx, qy, rx, ry) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
 function segDist2(ax, ay, bx, by, cx, cy, dx, dy) {
@@ -699,6 +895,60 @@ function packBillboards(g, draws, n, s, facing) {
     x += pw + 2; rowH = Math.max(rowH, ph + 2); }
   SPRITES.used = y + rowH; return true;
 }
+// Version 3 (Tim: "monsters phasing in and out of view depending on where the camera is"). Version 2 sorted a billboard
+// among the walls by its depth against each face's middle depth only, so a creature standing in front of a wall face that
+// ran away from the camera was drawn before (under) it, then over it again as the view turned: it blinked in and out. Now,
+// for every wall face its body overlaps on screen, a billboard is ordered by which side of the face it stands: in front of
+// the face (the camera's side), it is drawn after it; behind it (the face stands between it and the camera), before it, and
+// it is marked hidden. Its opacity, and how hidden it is, ease per creature (CLOSE_VIEW.cues.fade), so a creature walking
+// round a corner fades to a ghost and back, and one coming into sight fades in. At most actors x faces in view (64 x 200).
+const FOE_FADE = new WeakMap(); // creature -> { a: its eased opacity, o: how far a wall hides it, eased } (one small object a creature, kept with it)
+function occludeBillboards(n, faces) {
+  const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, k = 1 - Math.exp(-Cu.fade * Math.max(CAM.dt, 1 / 120));
+  for (let j = 0; j < n; j++) { if (itemKind[j] !== 1) continue;
+    const sc = boardScale[j], kk = boardK[j], hw = CLOSE_VIEW.pick.bodyWidth * .5 * sc * kk, bx0 = boardX[j] - hw, bx1 = boardX[j] + hw, by1 = boardY[j], by0 = by1 - A.height * .8 * sc * kk, wx = boardWX[j], wy = boardWY[j];
+    let upper = Infinity, lower = -Infinity, occ = 0;
+    for (let i = 0; i < n; i++) { if (itemKind[i] !== 0) continue; const fo = i * 8, X0 = faceXY[fo], X1 = faceXY[fo + 2], X2 = faceXY[fo + 4], X3 = faceXY[fo + 6], Y0 = faceXY[fo + 1], Y1 = faceXY[fo + 3], Y2 = faceXY[fo + 5], Y3 = faceXY[fo + 7];
+      if (Math.max(X0, X1, X2, X3) < bx0 || Math.min(X0, X1, X2, X3) > bx1 || Math.max(Y0, Y1, Y2, Y3) < by0 || Math.min(Y0, Y1, Y2, Y3) > by1) continue;
+      const o = faceGeo[i] * 10, side = (wx - faces[o]) * faces[o + 4] + (wy - faces[o + 1]) * faces[o + 5];
+      if (side > 0) { if (itemDepth[i] < upper) upper = itemDepth[i]; } else { if (itemDepth[i] > lower) lower = itemDepth[i]; if (faceAlpha[i] > .5) occ = 1; } }
+    let key = itemDepth[j]; if (key >= upper) key = upper - 2e-3; if (key <= lower) key = lower + 2e-3; itemDepth[j] = key; // a wall it is behind wins
+    const foe = boardFoe[j]; boardOcc[j] = occ;
+    if (foe && typeof foe === "object") { let st = FOE_FADE.get(foe); if (!st) { st = { a: 0, o: occ }; FOE_FADE.set(foe, st); } st.a += (boardB[j] - st.a) * k; st.o += (occ - st.o) * k; boardB[j] = st.a; boardOcc[j] = st.o; } }
+}
+// Attack cues (CLOSE_VIEW.cues): winding up (its pattern's windup, or the plain telegraph), a creature glows and rings the floor.
+const foeWindingUp = (e) => e.telegraph > 0 || e.pack?.phase === "windup" || e.gateAttack?.phase === "windup";
+const CUE = { glow: null, ao: null, failed: false, ring: `rgb(${CLOSE_VIEW.cues.glowRGB})` };
+function cueCanvases() {
+  if (CUE.glow || CUE.failed) return; const Cu = CLOSE_VIEW.cues, M = CLOSE_VIEW.material.ao, g = makeCanvas(), gx = g?.getContext?.("2d"), a = makeCanvas(), ax = a?.getContext?.("2d"); if (!gx || !ax) { CUE.failed = true; return; }
+  g.width = g.height = Cu.glowPx; const r = Cu.glowPx / 2, gr = gx.createRadialGradient(r, r, 0, r, r, r); gr.addColorStop(0, `rgba(${Cu.glowRGB},1)`); gr.addColorStop(.45, `rgba(${Cu.glowRGB},.45)`); gr.addColorStop(1, `rgba(${Cu.glowRGB},0)`); gx.fillStyle = gr; gx.fillRect(0, 0, Cu.glowPx, Cu.glowPx);
+  a.width = M.px; a.height = 1; const ag = ax.createLinearGradient(0, 0, M.px, 0); ag.addColorStop(0, "rgba(0,0,0,1)"); ag.addColorStop(.4, "rgba(0,0,0,.45)"); ag.addColorStop(1, "rgba(0,0,0,0)"); ax.fillStyle = ag; ax.fillRect(0, 0, M.px, 1);
+  CUE.glow = g; CUE.ao = a;
+}
+function windupCue(ctx, it, rxs, rys, now, reduce) {
+  const Cu = CLOSE_VIEW.cues, A = CLOSE_VIEW.actors, b = Math.max(0, Math.min(1, boardB[it])), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), sc = boardScale[it], k = boardK[it];
+  ctx.save(); ctx.globalAlpha = Cu.ringAlpha * b; ctx.strokeStyle = CUE.ring; ctx.lineWidth = Cu.ringWidth; ctx.beginPath(); ctx.ellipse(boardX[it], boardY[it] - rys * .35, rxs * (1 + Cu.ring), rys * (1 + Cu.ring), 0, 0, 6.2832); ctx.stroke();
+  cueCanvases(); if (CUE.glow) { const s = A.halfWidth * sc * k * 2.2; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b; ctx.drawImage(CUE.glow, boardX[it] - s / 2, boardY[it] - A.height * .45 * sc * k - s / 2, s, s); }
+  ctx.restore();
+}
+function hitFlashCue(ctx, it, foe) { // the creature drawn again, added in light, for the length of its hit flash
+  const Cu = CLOSE_VIEW.cues, b = boardB[it], a = Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) * Math.max(0, Math.min(1, b)); if (!(a > .01)) return;
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; boardB[it] = a; drawBillboard(ctx, it); boardB[it] = b; ctx.restore();
+}
+// Ambient occlusion up an inside corner: the cached gradient (dark at the corner) across `material.ao.width` of the face.
+function aoCorner(ctx, x0, y0, x1, y1, x2, y2, x3, y3, end, lv) {
+  cueCanvases(); if (!CUE.ao) return; const M = CLOSE_VIEW.material.ao, Wd = M.width, px = M.px;
+  const Ux = (x1 - x0 + x2 - x3) / 2, Uy = (y1 - y0 + y2 - y3) / 2, Vx = (x0 - x3 + x1 - x2) / 2, Vy = (y0 - y3 + y1 - y2) / 2, Ox = (x0 + x1 + x2 + x3) / 4 - Ux / 2 - Vx / 2, Oy = (y0 + y1 + y2 + y3) / 4 - Uy / 2 - Vy / 2;
+  ctx.save(); ctx.globalAlpha *= M.alpha * Math.min(1, .35 + lv / (L - 1));
+  if (end) ctx.transform(-Ux * Wd / px, -Uy * Wd / px, Vx, Vy, Ox + Ux, Oy + Uy); else ctx.transform(Ux * Wd / px, Uy * Wd / px, Vx, Vy, Ox, Oy);
+  ctx.drawImage(CUE.ao, 0, 0, px, 1, 0, 0, px, 1); ctx.restore();
+}
+// The vault: the dark overhead closing in from the screen's top (one cached gradient, rebuilt only when the aim row moves a pixel).
+function vaultShade(ctx, w, h, ppy) {
+  const M = CLOSE_VIEW.material, bottom = Math.max(1, Math.round(ppy * M.vaultTo));
+  if (!SCREEN.vault || SCREEN.vaultH !== h || SCREEN.vaultY !== bottom) { const gr = ctx.createLinearGradient(0, 0, 0, bottom); gr.addColorStop(0, fogA(M.vault)); gr.addColorStop(1, fogA(0)); SCREEN.vault = gr; SCREEN.vaultH = h; SCREEN.vaultY = bottom; }
+  ctx.fillStyle = SCREEN.vault; ctx.fillRect(0, 0, w, bottom);
+}
 function drawBillboard(ctx, it) {
   const pw = boardPW[it]; if (!pw) return; const A = CLOSE_VIEW.actors, sc = boardScale[it], k = boardK[it], hw = A.halfWidth * sc, top = A.height * sc, b = boardB[it];
   if (b < 1) ctx.globalAlpha = Math.max(0, b);
@@ -730,16 +980,30 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   hit.setAttribute("fill", "none"); hit.setAttribute("stroke", "transparent"); hit.setAttribute("stroke-width", String(K.band * 2)); hit.setAttribute("stroke-linecap", "round"); hit.style.pointerEvents = "stroke"; hit.style.touchAction = "none"; hit.style.cursor = "ew-resize";
   svg.append(rail, hit); actions.insertBefore(svg, cluster); // before the cluster: beneath its buttons
   lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Lock on: tap to lock the foe in view, tap again to release"); lock.setAttribute("aria-pressed", "false");
-  lock.innerHTML = '<svg viewBox="0 0 24 24" width="62%" height="62%" aria-hidden="true" style="pointer-events:none"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg>';
-  Object.assign(lock.style, { position: "absolute", width: `${K.lockSize}px`, height: `${K.lockSize}px`, padding: "0", borderRadius: "50%", border: "1px solid #8b7857", background: "radial-gradient(circle at 45% 35%, #403b31, #1c1b18 72%)", color: "#ddd5c4", boxShadow: "inset 0 0 0 2px #151411, 0 3px 9px #0009", display: "none", placeItems: "center", pointerEvents: "auto", touchAction: "manipulation", zIndex: "2" });
+  // version 3 (Tim): a bullseye, concentric rings and a centre dot; locked, the inner ring fills (styles.css .close-lock)
+  lock.innerHTML = '<svg class="bullseye" viewBox="0 0 24 24" width="52%" height="52%" aria-hidden="true" style="pointer-events:none;position:relative"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle class="bull-ring" cx="12" cy="12" r="6.2" fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg>';
+  Object.assign(lock.style, { position: "absolute", width: `${K.lockSize}px`, height: `${K.lockSize}px`, padding: "0", borderRadius: "50%", border: "0", background: "none", color: "#ddd5c4", display: "none", placeItems: "center", pointerEvents: "auto", touchAction: "manipulation", zIndex: "2" });
   cluster.after(lock);
   let cx = 0, cy = 0, R = 0, laidAt = -1e9, shown = false, locked = false, id = null, lastA = 0, lastR = 0, downAt = 0, moved = 0, lastTap = -1e9, swipe = 0;
   const now = () => (host.performance || performance).now();
+  // The lock button's place on the screen (a rect): the right edge, above the crescent's band.
+  const lockRect = (scx, scy, vw) => { const s = K.lockSize, right = Number.isFinite(vw) ? vw - K.lockEdge : scx + R + K.band, top = scy - R - K.band - K.lockGap - s; return { left: right - s, top, right, bottom: top + s }; };
+  // The arc's two ends (degrees, A0 > A1, drawn from A0 down over the top to A1): K.from and K.to, each drawn back until the
+  // arc clears every other control in #actions (Spell A and B, Map, Pack, the lock button) and stays on the screen.
+  const crescentSpan = () => { const A0 = K.from, A1 = K.to - 360, lockA = K.mid; if (!cluster.getBoundingClientRect) return [A0, A1];
+    const c = cluster.getBoundingClientRect(), scx = c.left + c.width / 2, scy = c.top + c.height / 2, pad = K.band + K.clear, vw = host.innerWidth || 1e9, vh = host.innerHeight || 1e9, boxes = [lockRect(scx, scy, host.innerWidth)];
+    for (const el of actions.querySelectorAll?.("button, .nav-compass") || []) { if (el === lock || cluster.contains?.(el) || el.hidden || el.offsetParent === null) continue; const b = el.getBoundingClientRect(); if (b.width > 0 && b.height > 0) boxes.push(b); }
+    const clear = (deg) => { const x = scx + R * Math.cos(deg * DEG), y = scy + R * Math.sin(deg * DEG);
+      if (x < K.edge + K.band || x > vw - K.edge - K.band || y > vh - K.edge) return false;
+      for (const b of boxes) if (x > b.left - pad && x < b.right + pad && y > b.top - pad && y < b.bottom + pad) return false; return true; };
+    const reach = (dir, limit) => { let a = lockA; while ((dir > 0 ? a + K.step <= limit : a - K.step >= limit) && clear(a + dir * K.step)) a += dir * K.step; return a; };
+    return [Math.max(lockA + K.minSpan, Math.min(A0, reach(1, A0))), Math.min(lockA - K.minSpan, Math.max(A1, reach(-1, A1)))]; };
   const layout = () => { const w = cluster.offsetWidth || 162, h = cluster.offsetHeight || w; R = w / 2 + K.gap; const S = 2 * (R + K.band + 4);
     cx = cluster.offsetLeft + w / 2; cy = cluster.offsetTop + h / 2; Object.assign(svg.style, { left: `${cx - S / 2}px`, top: `${cy - S / 2}px`, width: `${S}px`, height: `${S}px` }); svg.setAttribute("viewBox", `${-S / 2} ${-S / 2} ${S} ${S}`);
-    const a0 = K.from * DEG, a1 = K.to * DEG, P0 = [R * Math.cos(a0), R * Math.sin(a0)], P1 = [R * Math.cos(a1), R * Math.sin(a1)], large = Math.abs(wrap(a1 - a0)) > Math.PI || (K.from - K.to + 360) % 360 > 180 ? 1 : 0;
-    const d = `M ${P0[0].toFixed(1)} ${P0[1].toFixed(1)} A ${R} ${R} 0 ${large} 0 ${P1[0].toFixed(1)} ${P1[1].toFixed(1)}`; rail.setAttribute("d", d); hit.setAttribute("d", d);
-    const la = K.lockAt * DEG; Object.assign(lock.style, { left: `${cx + R * Math.cos(la) - K.lockSize / 2}px`, top: `${cy + R * Math.sin(la) - K.lockSize / 2}px` }); laidAt = now(); };
+    const [A0, A1] = crescentSpan(), a0 = A0 * DEG, a1 = A1 * DEG, P0 = [R * Math.cos(a0), R * Math.sin(a0)], P1 = [R * Math.cos(a1), R * Math.sin(a1)], large = A0 - A1 > 180 ? 1 : 0;
+    const d = `M ${P0[0].toFixed(1)} ${P0[1].toFixed(1)} A ${R} ${R} 0 ${large} 0 ${P1[0].toFixed(1)} ${P1[1].toFixed(1)}`; rail.setAttribute("d", d); hit.setAttribute("d", d); svg.setAttribute("data-span", `${A0} ${A1}`);
+    { const c = cluster.getBoundingClientRect?.() || { left: cx - w / 2, top: cy - h / 2, width: w, height: h }, a = actions.getBoundingClientRect?.() || { left: 0, top: 0 }, L0 = lockRect(c.left + c.width / 2, c.top + c.height / 2, host.innerWidth);
+      Object.assign(lock.style, { left: `${L0.left - a.left}px`, top: `${L0.top - a.top}px` }); } laidAt = now(); };
   const polar = (e) => { const b = svg.getBoundingClientRect(), x = e.clientX - (b.left + b.width / 2), y = e.clientY - (b.top + b.height / 2); return [Math.atan2(y, x), Math.hypot(x, y)]; };
   const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
   hit.addEventListener("pointerdown", (e) => { stop(e); if (id !== null) return; id = e.pointerId; [lastA, lastR] = polar(e); downAt = now(); moved = 0; swipe = 0; hit.setPointerCapture?.(id); rail.setAttribute("stroke-opacity", String(K.active)); rail.setAttribute("stroke-dasharray", ""); });
@@ -750,11 +1014,15 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   const end = (e) => { if (e.pointerId !== id) return; stop(e); id = null; rail.setAttribute("stroke-opacity", String(K.idle)); rail.setAttribute("stroke-dasharray", "2 7"); const t = now();
     if (t - downAt < K.tapMs && moved < K.tapMove) { if (t - lastTap < K.doubleTapMs) { const g = getGame(); if (g) closeViewRecentre(g, t); lastTap = -1e9; } else lastTap = t; } else CAM.panAt = t; };
   hit.addEventListener("pointerup", end); hit.addEventListener("pointercancel", end); hit.addEventListener("lostpointercapture", (e) => { if (e.pointerId === id) end(e); });
-  lock.addEventListener("pointerdown", (e) => { stop(e); const g = getGame(); if (g) closeViewLockToggle(g); });
+  // the lock: a tap that starts on it (press, release within tapMove px); a pointer already panning the crescent never counts
+  let lockId = null, lockX = 0, lockY = 0;
+  lock.addEventListener("pointerdown", (e) => { stop(e); if (e.pointerId === id || lockId !== null) return; lockId = e.pointerId; lockX = e.clientX; lockY = e.clientY; lock.setPointerCapture?.(lockId); });
+  lock.addEventListener("pointerup", (e) => { if (e.pointerId !== lockId) return; stop(e); lockId = null; if (Math.hypot(e.clientX - lockX, e.clientY - lockY) > K.tapMove) return; const g = getGame(); if (g) closeViewLockToggle(g); });
+  lock.addEventListener("pointercancel", (e) => { if (e.pointerId === lockId) lockId = null; });
   for (const el of [hit, lock]) for (const t of ["click", "dblclick", "contextmenu"]) el.addEventListener(t, (e) => { e.preventDefault(); e.stopPropagation(); });
   host.addEventListener?.("resize", () => { laidAt = -1e9; }, { passive: true });
   return { svg, lock, layout, sync() { const g = getGame(), want = !!g && !g.paused && closeViewShowing(g);
     if (want !== shown) { shown = want; svg.style.display = want ? "block" : "none"; lock.style.display = want ? "grid" : "none"; if (!want) id = null; else laidAt = -1e9; }
     if (!want) return; if (now() - laidAt > 1000) layout();
-    const on = !!g.lockedTarget?.(); if (on !== locked) { locked = on; lock.setAttribute("aria-pressed", String(on)); lock.style.color = on ? "#ff8a78" : "#ddd5c4"; lock.style.borderColor = on ? "#ff6a5a" : "#8b7857"; lock.style.boxShadow = on ? "inset 0 0 0 2px #151411, 0 0 10px #ff6a5a88" : "inset 0 0 0 2px #151411, 0 3px 9px #0009"; } } };
+    const on = !!g.lockedTarget?.(); if (on !== locked) { locked = on; lock.setAttribute("aria-pressed", String(on)); lock.style.color = on ? "#ff8a78" : "#ddd5c4"; } } };
 }
