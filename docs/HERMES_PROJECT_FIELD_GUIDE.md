@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 798: native Close View characters
+
+**CODE:** `src/close-view-models.ts` builds reusable rigid-part models for the Wayfarer and four foes. `src/close-view.ts` selects visible actors from the existing capture list, prioritizes the Wayfarer and locked foe, and samples movement and combat poses. `src/close-view-gl.ts` draws the batch with the existing camera, fog and torch lights. Directional shadows reuse the decal batch and are masked to solid, revealed ground.
+
+**BOUNDARY:** Presentation only. No change to attacks, collision, saves, generation or scratch isolation. Unsupported or specially decorated actors, alternate player forms and the 2D fallback keep sprite art. Quality tiers cap native actors at 8, 14 and 20, with at most 252 triangles per actor and two model draw calls. Floor shadows are projected approximations. Physical phone performance has not been measured.
+
 ## Release 797: Pentagon grand halls in Close View
 
 **CODE:** `src/close-view.ts` builds tall walls and low arena tiers from existing hall data and adds depth-tested murals and sigils. `src/close-view-gl.ts` shades high ceilings, openings, world-oriented backdrops and the gallery shaft. The Close View Lab loads a generated grand hall with a scratch save.
