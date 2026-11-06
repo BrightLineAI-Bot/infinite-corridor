@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 797: Pentagon grand halls in Close View
+
+**CODE:** `src/close-view.ts` builds tall walls and low arena tiers from existing hall data and adds depth-tested murals and sigils. `src/close-view-gl.ts` shades high ceilings, openings, world-oriented backdrops and the gallery shaft. The Close View Lab loads a generated grand hall with a scratch save.
+
+**BOUNDARY:** Presentation only. The existing Pentagon generator, collision, mural interactions and schema 14 saves retain their behavior. The Proving Ground fixture uses its isolated scratch state. The 2D fallback retains its existing camera and projection.
+
 ## Release 796: Close View v5 — atmosphere, a look per place, no see-through walls — 2026-11-06
 
 Tim, 2026-11-06, after 793: Close View looked "like the backrooms". He wanted "an oppressive, dark, ancient structure", with the Pentagon in the feel of a cursed stone tomb (sewers, root cellars, dirt walls) and keeps cold and stern (some lived in, even by ghosts). His screenshots also showed walls tearing into translucent slabs near the camera. The art is original; only the mood is borrowed.
