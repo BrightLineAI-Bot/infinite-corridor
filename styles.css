@@ -975,6 +975,26 @@ body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #ev
 /* Close View lock-on (release 790): a bullseye at the screen's right edge, above the pan crescent (off its arc, out of the
    stick's and the crescent's thumb paths). The button is a 46 px touch target; its disc is drawn 36 px. Pressed it dips;
    locked the disc's rim glows red and the bullseye's inner ring fills. */
+/* Close View movement guide. The canvas still owns the touch and keeps its floating origin. */
+.close-move-pad {
+  position: absolute;
+  left: clamp(18px, 9vw, 50px);
+  bottom: 118px;
+  width: 72px;
+  height: 72px;
+  border: 1px solid #ddd5c44d;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ddd5c430 0 14%, transparent 16% 58%, #1c1b1838 60%);
+  pointer-events: none;
+}
+.close-move-pad::before, .close-move-pad::after {
+  content: "";
+  position: absolute;
+  background: #ddd5c440;
+}
+.close-move-pad::before { left: 19px; right: 19px; top: 50%; height: 1px; }
+.close-move-pad::after { top: 19px; bottom: 19px; left: 50%; width: 1px; }
+.close-move-pad[data-active="true"] { border-color: #ddd5c494; }
 .close-lock { transition: transform .08s ease-out; -webkit-tap-highlight-color: transparent; }
 .close-lock::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; border: 1px solid #8b7857; background: radial-gradient(circle at 45% 35%, #403b31, #1c1b18 72%); box-shadow: inset 0 0 0 2px #151411, 0 3px 9px #0009; transition: border-color .15s, box-shadow .15s; }
 .close-lock:active { transform: scale(.9); }
