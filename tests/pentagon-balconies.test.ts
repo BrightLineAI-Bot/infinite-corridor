@@ -51,7 +51,7 @@ function longWay(P) { const adj = new Map(), link = (a, b) => { (adj.get(a) || a
   const d = new Map([['land', 0]]), q = ['land']; for (let i = 0; i < q.length; i++) for (const u of adj.get(q[i]) || []) if (!d.has(u)) { d.set(u, d.get(q[i]) + 1); q.push(u); } return d; }
 
 test('v7 plan: 1-3 balconies, each just outside the outer face, 1 or 2 levels under the roof, its door into an outer chamber you otherwise reach the long way', () => {
-  assert.equal(PENTAGON.version, V7); assert.equal(PENTAGON.stair.steps, R0 - 1, 'a level a step from the land up to the roof');
+  assert.ok(PENTAGON.version >= V7, 'version 7 or later'); /* release 795: version 8 is the newest (grand halls) */ assert.equal(PENTAGON.stair.steps, R0 - 1, 'a level a step from the land up to the roof');
   const bad = [], tally = { n: {}, below: {}, hops: {} };
   for (let i = 0; i < 400; i++) { const seed = 'X' + i, P = pentagonPlan(seed, i * 8, -i * 8, V7), L = P.ledges, tag = `${seed}`, d = longWay(P), balc = P.world.filter((w) => w.balcony);
     tally.n[balc.length] = (tally.n[balc.length] || 0) + 1;
@@ -161,7 +161,7 @@ test('the fall numbers: a balcony 1 level down is free, 2 levels costs 15% of ma
 });
 
 test('v7: a balcony door takes you into its chamber and back out onto the balcony; only from up there; the roof seams cross anywhere along it', () => {
-  const { cx, cy } = find(), P = pentagonPlan(SEED, cx, cy, V7), g = game();
+  const { cx, cy } = find(), P = pentagonPlan(SEED, cx, cy, V7), g = pinned(SEED, cx, cy, V7); // release 795: new ground is version 8; this Pentagon is pinned to 7
   for (const b of P.ledges.balconies) { const rx = cx - 1 + Math.floor(b.out.gx / 32), ry = cy - 1 + Math.floor(b.out.gy / 32); visit(g, rx, ry);
     const o = g.map.objects.find((q) => q.enterAt === b.key); assert.ok(o && o.roofHatch && o.pentagonDoor && o.dungeonId.includes(':v7:')); assert.equal(o.x, b.out.gx % 32); assert.equal(o.y, b.out.gy % 32);
     // from the ground below it, Act does not reach it
@@ -203,7 +203,7 @@ test('v7 reload: a save on a balcony resumes there; the roof and balconies regen
 test('the terrain cache: a v7 section never gets a v6 Pentagon, nor a v6 one a v7, whichever loads first', () => {
   const { cx, cy } = find(), rx = cx, ry = cy + 1, snap = (g) => JSON.stringify([g.map.tiles, g.map.objects.filter((o) => o.kind !== 'traveler'), g.map.pentagon]);
   const fresh = (mk) => { clearSectionTerrainCache(); return snap(visit(mk(), rx, ry)); };
-  const v6 = () => pinned(SEED, cx, cy, 6), v7 = () => game(), want6 = fresh(v6), want7 = fresh(v7);
+  const v6 = () => pinned(SEED, cx, cy, 6), v7 = () => pinned(SEED, cx, cy, 7) /* release 795: new ground is version 8 */, want6 = fresh(v6), want7 = fresh(v7);
   assert.ok(want6.includes(':v6:') && !want6.includes(':v7:') && !want6.includes('pentRoof')); assert.ok(want7.includes(':v7:') && !want7.includes(':v6:') && want7.includes('pentRoof'));
   for (const order of [[v6, v7], [v7, v6]]) { clearSectionTerrainCache(); const [a, b] = order.map((mk) => visit(mk(), rx, ry)); assert.ok(sectionTerrainCacheStats().hits >= 1, 'the second load is served from the cache');
     for (const [gm, mk] of [[a, order[0]], [b, order[1]]]) assert.equal(snap(gm), mk === v6 ? want6 : want7); }

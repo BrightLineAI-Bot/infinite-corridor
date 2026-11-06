@@ -12,7 +12,7 @@ import { ROOF_DWELLERS, ROOF_KINDS, useRoof, roofAt, roofPlan, roofPlanCount, ro
 import { MONSTER_PACK, ATTACK_MODULES, COLOSSUS, PACK_KINDS, updatePackMonster, tickPackEffects, addPackEffect, freshPackState, validateMonster, packVariant } from '../src/monster-pack.ts';
 import { createCombatant } from '../src/combat.ts';
 import { drawPackMonster, drawPackTelegraphs, roofWakeStage } from '../src/monster-render.ts';
-import { LETHAL_KINDS } from '../src/landscape.ts';
+import { LETHAL_KINDS, LANDSCAPE_VERSION } from '../src/landscape.ts';
 
 const SEED = 'TIM1';
 const BOX = { lo: 6, hi: 25 };
@@ -27,7 +27,8 @@ const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
 const run = (g, seconds, t0 = 1000) => { let now = t0; for (let t = 0; t < seconds; t += 1 / 30) g.update(1 / 30, idle, (now += 1000 / 30)); return now; };
 const offRoofSpot = (g) => g.map.tiles.find((t) => !t.blocked && !LETHAL_KINDS.has(t.kind) && t.x > 1 && t.y > 1 && t.x < BOX.lo - 1 && !fakeRoofAt(g.map, t.x, t.y));
 const roofSpotNear = (g, e) => g.map.tiles.filter((t) => fakeRoofAt(g.map, t.x, t.y)).sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y)).find((t) => Math.hypot(t.x - e.x, t.y - e.y) >= 2);
-const roofed = () => { for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) { const g = atSection(dx, dy); if (g.roofDwell?.sleepers.length) return { g, dx, dy }; } throw new Error('no dwellers'); };
+const pin = (V) => { if (!V) return null; const c = pentagon(), s = freshSave(); s.atlas = { [`${c.cx + 1},${c.cy + 1}`]: { landscapeVersion: LANDSCAPE_VERSION, pentVersion: V } }; return s; }; // release 795: a Pentagon pinned to an older version
+const roofed = (V = 0) => { for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) { const g = atSection(dx, dy, pin(V)); if (g.roofDwell?.sleepers.length) return { g, dx, dy }; } throw new Error('no dwellers'); };
 const quiet = (g) => { g.enemies = g.enemies.filter((e) => e.roofDweller); }; // the section's own creatures out of the way
 
 test('four new roof kinds compose and validate; no new angel (the Cinder Seraph serves); none enters the shared roster', () => {
@@ -103,7 +104,7 @@ test('stepping onto the roof: they wake (a short, visible wake-up), aggro and at
 });
 
 test('leaving the roof: ground dwellers stay up there and sleep again; fliers pursue a while, then fly home and sleep', () => {
-  const { g } = roofed(); quiet(g); const first = g.roofDwell.sleepers[0], at = roofSpotNear(g, first); g.player.x = at.x; g.player.y = at.y; g.player.invulnerableUntil = 1e15;
+  const { g } = roofed(7); quiet(g); /* release 795: the roof this was written on (version 7) */ const first = g.roofDwell.sleepers[0], at = roofSpotNear(g, first); g.player.x = at.x; g.player.y = at.y; g.player.invulnerableUntil = 1e15;
   const total = g.roofDwell.sleepers.length; let now = run(g, 2); const awake = g.enemies.filter((e) => e.roofDweller && !e.dead), fliers = awake.filter((e) => fliesHigh(e)), ground = awake.filter((e) => !fliesHigh(e));
   const off = offRoofSpot(g); g.player.x = off.x; g.player.y = off.y; now = run(g, .2, now);
   for (const e of ground) { assert.ok(!g.enemies.includes(e), `${e.kind} is no longer about`); assert.deepEqual([e.x, e.y], [e.roofHome.x, e.roofHome.y], 'back on its perch'); }
