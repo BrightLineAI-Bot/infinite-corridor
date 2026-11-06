@@ -30,7 +30,7 @@ import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
-import { closeViewFrame, closeViewCapturing, closeViewTake } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -2236,8 +2236,9 @@ export function render(ctx, g, w, h, now) {
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = "#141816";
-  ctx.fillRect(0, 0, w, h);
+  const bareFloor = closeViewBareFloor(); // Close View bare floor (release 794): its GPU scene shades the floor; only what lies on it is drawn here
+  if (bareFloor) ctx.clearRect(0, 0, w, h); else { ctx.fillStyle = "#141816";
+  ctx.fillRect(0, 0, w, h); }
   const budget = presentationBudget(g.presentation, g.area),
     s = Math.round(Math.max(28, Math.min(44, w / 12))),
     p = g.player,
@@ -2266,7 +2267,7 @@ export function render(ctx, g, w, h, now) {
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
   if (g.area === "dungeon" && g.map?.stillworks) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
-  const groundCached = (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
+  const groundCached = !bareFloor && (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
     const animated = render.animatedTiles || (render.animatedTiles = []), glitter = render.chasmGlitter || (render.chasmGlitter = []); animated.length = 0; glitter.length = 0;
     for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
@@ -2280,7 +2281,7 @@ export function render(ctx, g, w, h, now) {
     if (glitter.length) glitterChasm(ctx, glitter, s, now);
     if (g.map.movers?.length) drawRafts(ctx, g, s, now); // release 613
   }
-  else { for (let y = t; y < b; y++)
+  else if (!bareFloor) { for (let y = t; y < b; y++)
     for (let x = l; x < r; x++) {
       if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"&&!(LETHAL_KINDS.has(g.map.tiles[y*mw+x]?.kind)&&Math.hypot(x-p.x,y-p.y)<2.6)){fogTile(ctx,x,y,s);continue}
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId, scarSurface);

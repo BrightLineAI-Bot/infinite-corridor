@@ -1,6 +1,6 @@
 import { dungeonTileVisibility } from "./dungeon-framework.ts";
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
-import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -28,13 +28,13 @@ import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glM
 //
 // Every number is in CLOSE_VIEW. Distances are in tiles; angles in degrees.
 export const CLOSE_VIEW = Object.freeze({
-  version: 4, // 4 (2026-11-06, release 793): the GPU scene (CLOSE_VIEW.gl; close-view-gl.ts): a floor that holds still, a ceiling, detailed walls, pits with depth, lava, smooth motion; 3 (2026-11-06, release 790): the walls' surface (CLOSE_VIEW.grit) and the bullseye lock; 2 (2026-11-06, Tim: "the walls kind of moved or weren't stable... a more stable view"): the stability pass
+  version: 5, // 5 (2026-11-06, release 794): atmosphere: a theme per building kind (CLOSE_VIEW.themes), procedural stone, placed light, fog and haze, a camera that never looks through a wall; 4 (2026-11-06, release 793): the GPU scene (CLOSE_VIEW.gl; close-view-gl.ts): a floor that holds still, a ceiling, detailed walls, pits with depth, lava, smooth motion; 3 (2026-11-06, release 790): the walls' surface (CLOSE_VIEW.grit) and the bullseye lock; 2 (2026-11-06, Tim: "the walls kind of moved or weren't stable... a more stable view"): the stability pass
   camera: Object.freeze({
     minDistance: 1, // the boom's usual shortest... (a wall closer than this pulls it in further: the camera is never inside a wall)
     closest: .3, // ...and its absolute shortest
     crane: .75, // ...and for each tile it is pulled in, it rises this much (never above the walls' tops less `craneClear`), so
     craneClear: .25, // the Wayfarer stays a figure in the view, not a wall of cloth
-    nearFade: Object.freeze([1.6, .55]), // nearer than this (camera depth), the Wayfarer is drawn this faint, so the way ahead shows
+    nearFade: Object.freeze([1.6, .55]), // (version 5, the GPU scene: never fainter than atmosphere.nearFade) // nearer than this (camera depth), the Wayfarer is drawn this faint, so the way ahead shows
     center: .5, // the aim point's place on screen, as a share of the height from the top
     boomPad: .32, // the camera keeps this far off a wall
     boomStep: .2, // the boom is tested against walls in steps of this length
@@ -48,6 +48,11 @@ export const CLOSE_VIEW = Object.freeze({
     // `followMax` tiles behind (a dodge or a knock-back is followed, not jumped to); `followSnap` tiles or more away (a fall, a
     // teleport) it is there at once
     follow: 16, followMax: .45, followSnap: 3,
+    // version 5 (Tim: "where we're tearing through the walls"): the line from the Wayfarer's chest to the camera is kept clear
+    // of walls (probed every `sightStep` tiles, `sightPad` tiles to either side): the boom's spring is pulled in to where that
+    // line clears before any wall can come between. `hardPad`: nearer a wall than this the camera is never put (cut at once;
+    // it sits under the spring's target, so it is seldom reached). Nothing is ever faded to show the Wayfarer.
+    sightStep: .1, sightPad: .26, hardPad: .14,
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -143,7 +148,7 @@ export const CLOSE_VIEW = Object.freeze({
     dreadShrink: .45, // a Pentagon floor's dread (0..1) shrinks the reach by up to this share
     warm: "rgba(255,168,92,0.09)", // the torch's warm cast round the Wayfarer
   }),
-  actors: Object.freeze({ back: Object.freeze({ hood: "#79877b", seam: "#5d695f", rect: Object.freeze([-.14, -.71, .28, .18]) }), atlas: 1200 /* device pixels of atlas height below the ground texture; a sprite takes at most a third of it */, cutAlpha: .4, halfWidth: 1.05, height: 2.35, below: .55, fade: .9, sprite: 1, maxSprite: 1.6 }), // sprite box in tiles (times the creature's scale)
+  actors: Object.freeze({ back: Object.freeze({ hood: "#79877b", seam: "#5d695f", rect: Object.freeze([-.14, -.71, .28, .18]) }), atlas: 1600 /* device pixels of atlas height below the ground texture; a sprite takes at most a third of it (version 5: the nearest, atmosphere.sprite.nearShare) */, cutAlpha: .4, halfWidth: 1.05, height: 2.35, below: .55, fade: .9, sprite: 1, maxSprite: 1.6 }), // sprite box in tiles (times the creature's scale)
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
@@ -158,11 +163,11 @@ export const CLOSE_VIEW = Object.freeze({
   // the sparse grit textures (CLOSE_VIEW.grit) on faces nearer than `detailFar` camera-depth tiles, fading in from `detailNear`.
   quality: Object.freeze({
     low: Object.freeze({ sprite: .6, floorBands: 12, texScale: .75, radius: 6.5, fogGradient: false, warm: false, bands: 1, inlay: false, detail: false, detailNear: 0, detailFar: 0, ao: false, vignette: false, outline: true, edgeFills: false,
-      gl: true, glScale: .75, mip: true, aniso: 2, ceiling: true, ceilingDetail: false, relief: false, lavaLight: false }), // low: the edges as one stroke a face (no cap or baseboard fills), no seams, no grit
+      gl: true, glScale: .75, mip: true, aniso: 2, ceiling: true, ceilingDetail: false, relief: false, lavaLight: false, lights: 3, motes: false, bump: false, cards: 10 }), // low: the edges as one stroke a face (no cap or baseboard fills), no seams, no grit
     balanced: Object.freeze({ sprite: .85, floorBands: 20, texScale: 1, radius: 8, fogGradient: true, warm: true, bands: 1, inlay: true, detail: true, detailNear: 4.5, detailFar: 7, ao: true, vignette: true, outline: true, edgeFills: true,
-      gl: true, glScale: 1, mip: true, aniso: 4, ceiling: true, ceilingDetail: true, relief: true, lavaLight: true }),
+      gl: true, glScale: .8, mip: true, aniso: 4, ceiling: true, ceilingDetail: true, relief: true, lavaLight: true, lights: 5, motes: false, bump: true, cards: 20 }),
     full: Object.freeze({ sprite: 1, floorBands: 28, texScale: 1.25, radius: 9.5, fogGradient: true, warm: true, bands: 2, inlay: true, detail: true, detailNear: 6, detailFar: 9, ao: true, vignette: true, outline: true, edgeFills: true,
-      gl: true, glScale: 1, mip: true, aniso: 8, ceiling: true, ceilingDetail: true, relief: true, lavaLight: true }),
+      gl: true, glScale: 1, mip: true, aniso: 8, ceiling: true, ceilingDetail: true, relief: true, lavaLight: true, lights: 8, motes: true, bump: true, cards: 28 }),
   }),
   // The walls' surface (version 3, Tim, 2026-11-06: "smooth because of like future technology, that's just old... maybe some
   // things grow on there... most of the time it's just clean because of the technology... some of it could be gritty, and
@@ -234,6 +239,103 @@ export const CLOSE_VIEW = Object.freeze({
   // Floor features drawn flat on the floor (version 4): marks in the ground, daises, and a ladder down through a hatch, which
   // version 3 stood up as cards.
   flat: Object.freeze({ kinds: Object.freeze(["wayfindingCue", "pentWaysign", "shelterHazard", "displacementTrap", "warpDais"]), stairDirs: Object.freeze(["down"]) }),
+  // Atmosphere (version 5, release 794; Tim, 2026-11-06: "all the keeps, all the labyrinths and close views should be an
+  // oppressive, dark, ancient structure... some can be lit up (e.g. keeps with royal family members, even those can be ghost
+  // family members)... the Pentagon should really have the feel of a [gothic] chalice dungeon... stone sewers... root
+  // cellars, dirt walls... even the well-lit rooms... were still kind of weird and detailed and structured, a little bit
+  // oppressive... it seems like you're just in a room instead of in an environment or atmosphere"). Original work in that
+  // spirit: a theme per place (closeViewTheme) sets the walls' material, the floor, the ceiling, the trim, the decorations and
+  // props, the light (its colour, the ambient, the placed sources) and the air (fog, a low haze, a colour grade, a vignette).
+  // Colours are 0..255. The Pentagon is a tomb and sewer (`rootCellarShare` of its floors, and every cellar, a root cellar);
+  // keeps and castles are cold dressed stone (`livedInShare` of them lived in: warmer, tapestries, some lights burning with
+  // ghost-light); hives are chitin and resin with a dim bioluminescence; arcologies are an old machine's failing panels.
+  // Every choice is a hash of the building and its floor: never stored, never per frame.
+  // wall.kind: 0 coursed stone, 1 packed dirt and timber, 2 chitin, 3 machine panels; stone: course height, block length,
+  // bevel, roughness (tiles); damp: height of the wet foot (tiles) and how wet; topFall: how bright the wall's top stays.
+  // floor.kind: the shader's floorMat for an ordinary floor (0 flagstones, 6 dirt, 7 resin, 10 plating; a rug, planks or
+  // mosaic keep their own); size: a flagstone's course; sewer: a channel down the middle of passages.
+  // ceiling.kind: 0 a ribbed vault (bays of `bay` tiles), 1 timber beams, 2 organic ribs, 3 conduits; dark: how far up into
+  // the dark the vault's webs go. arch: an arch over each doorway (spring height, radius: 0 a flat lintel; band: voussoirs).
+  // pilaster: one every this many tiles along a straight wall (0 none); plinth, cornice: height, depth (tiles).
+  // light: the carried light (colour, reach, strength, height) and the ambient; sources: placed lights on `share` of the wall
+  // faces, at least `spacing` tiles apart (`reach`, `strength`; `hue` 0 warm, 1 bioluminescent, 2 ghost-light, 3 a failing
+  // lamp; `ghost`: the share burning with ghost-light; `candles`: the share of inside corners with candles on the floor).
+  // fog: colour, near, far; haze: density a tile and height, its colour. grade: tint (rgb) and contrast. vignette.
+  // deco1/deco2: cloth and its trim (banners, tapestries); glow: a hive's or machine's light in its walls.
+  // decor: shares of wall faces with each decoration; props: shares of wall-side places with each prop.
+  themes: Object.freeze({
+    version: 1, salt: "close-view-theme", livedInShare: .16, rootCellarShare: .18,
+    pentagon: Object.freeze({ label: "Pentagon: a tomb beneath the corridor",
+      wall: Object.freeze({ kind: 0, rgb: Object.freeze([96, 90, 80]), mortar: Object.freeze([20, 18, 16]), stone: Object.freeze([.27, .62, .05, .9]), damp: Object.freeze([.85, .8]), dampRGB: Object.freeze([128, 140, 128]), topFall: .32 }),
+      floor: Object.freeze({ kind: 0, rgb: Object.freeze([82, 76, 66]), joint: Object.freeze([16, 15, 13]), rug: Object.freeze([70, 22, 20]), size: .58, wear: .6, wet: .35, sewer: true, remap: Object.freeze({ 2: 0, 3: 1, 4: 0, 5: 0, 10: 0 }) }), // remap: the tomb's floors are stone (planks and tiles to flags, rugs to an old mosaic)
+      ceiling: Object.freeze({ kind: 0, rgb: Object.freeze([70, 66, 60]), bay: 2, rib: .09, dark: .85 }),
+      arch: Object.freeze({ spring: 1.72, radius: .5, band: .15 }), pilaster: 4, plinth: Object.freeze([.2, .07]), cornice: Object.freeze([.16, .08]),
+      light: Object.freeze({ torch: Object.freeze([255, 182, 124]), reach: 5.4, strength: 1.7, height: 1.15, ambient: Object.freeze([10, 10, 12]),
+        sources: Object.freeze({ share: .1, spacing: 5, reach: 4.2, strength: 1.5, hue: 0, ghost: 0, candles: .3 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([6, 6, 7]), near: 2.4, far: 11.5, haze: Object.freeze([.09, .7]), hazeRGB: Object.freeze([16, 15, 14]) }),
+      grade: Object.freeze([1, .96, .9, 1.14]), vignette: .58, deco1: Object.freeze([70, 20, 18]), deco2: Object.freeze([150, 120, 70]), glow: Object.freeze([255, 150, 80]),
+      decor: Object.freeze({ niche: .05, roots: .06, banner: .02 }), props: Object.freeze({ urn: .06, coffin: .035, bones: .07, rubble: .05, chain: .04, web: .5 }) }),
+    rootCellar: Object.freeze({ label: "Pentagon: a root cellar",
+      wall: Object.freeze({ kind: 1, rgb: Object.freeze([70, 52, 36]), mortar: Object.freeze([20, 15, 10]), stone: Object.freeze([.3, .7, .05, .9]), damp: Object.freeze([.6, .5]), dampRGB: Object.freeze([150, 146, 140]), topFall: .3 }),
+      floor: Object.freeze({ kind: 6, rgb: Object.freeze([70, 54, 38]), joint: Object.freeze([20, 15, 10]), rug: Object.freeze([60, 30, 18]), size: .6, wear: .3, wet: .1, sewer: false, remap: Object.freeze({ 1: 0, 4: 0, 5: 0, 10: 0 }) }), // remap: in a root cellar, laid stone and tiles are packed dirt too
+      ceiling: Object.freeze({ kind: 1, rgb: Object.freeze([50, 36, 24]), bay: 1, rib: .1, dark: .8 }),
+      arch: Object.freeze({ spring: 1.8, radius: 0, band: .2 }), pilaster: 0, plinth: Object.freeze([0, 0]), cornice: Object.freeze([0, 0]),
+      light: Object.freeze({ torch: Object.freeze([255, 160, 90]), reach: 5, strength: 1.7, height: 1.15, ambient: Object.freeze([9, 8, 7]),
+        sources: Object.freeze({ share: .07, spacing: 6, reach: 3.6, strength: 1.4, hue: 0, ghost: 0, candles: .4 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([6, 5, 4]), near: 2.2, far: 10.5, haze: Object.freeze([.12, .6]), hazeRGB: Object.freeze([18, 14, 10]) }),
+      grade: Object.freeze([1.08, .96, .82, 1.1]), vignette: .6, deco1: Object.freeze([60, 40, 22]), deco2: Object.freeze([120, 90, 50]), glow: Object.freeze([255, 150, 80]),
+      decor: Object.freeze({ roots: .45 }), props: Object.freeze({ urn: .05, bones: .04, rubble: .07, web: .6 }) }),
+    keep: Object.freeze({ label: "Keep: cold dressed stone",
+      wall: Object.freeze({ kind: 0, rgb: Object.freeze([92, 94, 98]), mortar: Object.freeze([22, 22, 24]), stone: Object.freeze([.36, .85, .04, .45]), damp: Object.freeze([.5, .45]), dampRGB: Object.freeze([158, 168, 164]), topFall: .4 }),
+      floor: Object.freeze({ kind: 0, rgb: Object.freeze([82, 82, 84]), joint: Object.freeze([18, 18, 20]), rug: Object.freeze([66, 20, 24]), size: .7, wear: .4, wet: .12, sewer: false }),
+      ceiling: Object.freeze({ kind: 0, rgb: Object.freeze([66, 66, 70]), bay: 3, rib: .11, dark: .8 }),
+      arch: Object.freeze({ spring: 1.72, radius: .5, band: .15 }), pilaster: 3, plinth: Object.freeze([.22, .07]), cornice: Object.freeze([.18, .09]),
+      light: Object.freeze({ torch: Object.freeze([255, 188, 136]), reach: 5.6, strength: 1.45, height: 1.15, ambient: Object.freeze([10, 11, 14]),
+        sources: Object.freeze({ share: .08, spacing: 5, reach: 4.4, strength: 1.4, hue: 0, ghost: 0, candles: .12 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([6, 7, 9]), near: 2.6, far: 12, haze: Object.freeze([.07, .8]), hazeRGB: Object.freeze([14, 16, 20]) }),
+      grade: Object.freeze([.94, .98, 1.06, 1.12]), vignette: .62, deco1: Object.freeze([58, 22, 26]), deco2: Object.freeze([150, 128, 80]), glow: Object.freeze([150, 190, 230]),
+      decor: Object.freeze({ banner: .07, slit: .3, niche: .02 }), props: Object.freeze({ urn: .03, rubble: .05, bones: .02, chain: .03, web: .4 }) }),
+    livedIn: Object.freeze({ label: "Keep: lived in (a household of ghosts)",
+      wall: Object.freeze({ kind: 0, rgb: Object.freeze([104, 96, 86]), mortar: Object.freeze([26, 22, 18]), stone: Object.freeze([.36, .85, .035, .35]), damp: Object.freeze([.35, .25]), dampRGB: Object.freeze([178, 178, 174]), topFall: .5 }),
+      floor: Object.freeze({ kind: 0, rgb: Object.freeze([88, 80, 70]), joint: Object.freeze([22, 18, 14]), rug: Object.freeze([92, 24, 30]), size: .7, wear: .25, wet: .08, sewer: false }),
+      ceiling: Object.freeze({ kind: 1, rgb: Object.freeze([60, 44, 30]), bay: 1, rib: .1, dark: .7 }),
+      arch: Object.freeze({ spring: 1.72, radius: .5, band: .15 }), pilaster: 3, plinth: Object.freeze([.22, .07]), cornice: Object.freeze([.18, .09]),
+      light: Object.freeze({ torch: Object.freeze([255, 184, 120]), reach: 5.8, strength: 1.65, height: 1.15, ambient: Object.freeze([14, 13, 14]),
+        sources: Object.freeze({ share: .16, spacing: 3.5, reach: 4.8, strength: 1.5, hue: 0, ghost: .4, candles: .35 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([8, 8, 10]), near: 3, far: 13, haze: Object.freeze([.06, .9]), hazeRGB: Object.freeze([18, 18, 22]) }),
+      grade: Object.freeze([1.02, .98, .96, 1.06]), vignette: .5, deco1: Object.freeze([96, 22, 30]), deco2: Object.freeze([176, 150, 92]), glow: Object.freeze([150, 190, 230]),
+      decor: Object.freeze({ tapestry: .14, banner: .08, slit: .2 }), props: Object.freeze({ urn: .04, chain: .01, web: .2 }) }),
+    hive: Object.freeze({ label: "Hive: chitin and resin",
+      wall: Object.freeze({ kind: 2, rgb: Object.freeze([60, 44, 42]), mortar: Object.freeze([12, 8, 10]), stone: Object.freeze([.3, .6, .05, .6]), damp: Object.freeze([1.2, .7]), dampRGB: Object.freeze([140, 128, 128]), topFall: .3 }),
+      floor: Object.freeze({ kind: 7, rgb: Object.freeze([46, 32, 34]), joint: Object.freeze([10, 6, 8]), rug: Object.freeze([50, 20, 24]), size: .6, wear: .2, wet: .6, sewer: false }),
+      ceiling: Object.freeze({ kind: 2, rgb: Object.freeze([40, 28, 30]), bay: 2, rib: .1, dark: .85 }),
+      arch: Object.freeze({ spring: 1.65, radius: .5, band: .2 }), pilaster: 0, plinth: Object.freeze([0, 0]), cornice: Object.freeze([0, 0]),
+      light: Object.freeze({ torch: Object.freeze([236, 176, 128]), reach: 5, strength: 1.6, height: 1.15, ambient: Object.freeze([7, 8, 10]),
+        sources: Object.freeze({ share: .12, spacing: 4, reach: 3.6, strength: 1.2, hue: 1, ghost: 0, candles: 0 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([5, 6, 7]), near: 2.2, far: 10.5, haze: Object.freeze([.12, .7]), hazeRGB: Object.freeze([10, 16, 16]) }),
+      grade: Object.freeze([.92, 1.02, 1, 1.12]), vignette: .62, deco1: Object.freeze([40, 30, 30]), deco2: Object.freeze([80, 60, 50]), glow: Object.freeze([70, 230, 190]),
+      decor: Object.freeze({ pods: .16 }), props: Object.freeze({ bones: .05, rubble: .03, web: .3 }) }),
+    arcology: Object.freeze({ label: "Arcology: an old machine, failing",
+      wall: Object.freeze({ kind: 3, rgb: Object.freeze([70, 76, 74]), mortar: Object.freeze([14, 15, 15]), stone: Object.freeze([.34, .8, .04, .4]), damp: Object.freeze([.6, .45]), dampRGB: Object.freeze([152, 158, 142]), topFall: .4 }),
+      floor: Object.freeze({ kind: 10, rgb: Object.freeze([60, 64, 62]), joint: Object.freeze([12, 13, 13]), rug: Object.freeze([40, 40, 46]), size: .6, wear: .5, wet: .2, sewer: false }),
+      ceiling: Object.freeze({ kind: 3, rgb: Object.freeze([46, 50, 50]), bay: 2, rib: .1, dark: .7 }),
+      arch: Object.freeze({ spring: 2.05, radius: 0, band: .35 }), pilaster: 4, plinth: Object.freeze([.14, .05]), cornice: Object.freeze([.12, .06]),
+      light: Object.freeze({ torch: Object.freeze([232, 196, 150]), reach: 5.4, strength: 1.6, height: 1.15, ambient: Object.freeze([9, 11, 11]),
+        sources: Object.freeze({ share: .09, spacing: 5, reach: 4.2, strength: 1.3, hue: 3, ghost: .3, candles: 0 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([5, 7, 7]), near: 2.6, far: 12, haze: Object.freeze([.08, .8]), hazeRGB: Object.freeze([12, 16, 15]) }),
+      grade: Object.freeze([.92, 1.02, .98, 1.1]), vignette: .56, deco1: Object.freeze([30, 34, 32]), deco2: Object.freeze([90, 96, 80]), glow: Object.freeze([150, 220, 160]),
+      decor: Object.freeze({ vent: .1 }), props: Object.freeze({ rubble: .06, chain: .02, web: .25 }) }),
+  }),
+  // The atmosphere's budget and feel (version 5). `lights`: placed sources lit a frame at most (the nearest in reach; per tier
+  // in quality.*.lights); `flicker`: their gentle breathing (amount, period ms), held still with reduced motion; `flame`: a
+  // source's drawn flame (half width, half height) and halo (radius), tiles; `motes`: dust drifting in the light of the
+  // nearest `of` sources (`per` each; full tier only); `props`: at most `cards` card props (cobwebs, chains, bones) a frame (never within `nearCam` of the camera),
+  // within `reach` tiles; `silhouette`: the Wayfarer's colour where a wall hides them (a creature's: `silhouetteFoe`), at
+  // `silAlpha`; `sprite`: billboards at device resolution up to `cap` x CSS px, the nearest taking up to `nearShare` of the
+  // atlas; `boardLight`: a creature card's light, floor and ceiling (so a foe in the dark still reads); `nearFade`: with the camera close, the Wayfarer is never fainter than this.
+  atmosphere: Object.freeze({ lights: 8, flicker: Object.freeze([.12, 210]), flame: Object.freeze([.06, .12, .6]), motes: Object.freeze({ per: 9, of: 3, size: .022, alpha: .5, drift: .25 }),
+    props: Object.freeze({ cards: 28, reach: 9, nearCam: 1.1 }), silhouette: Object.freeze([150, 200, 230]), silhouetteFoe: Object.freeze([220, 90, 70]), silAlpha: .7, sprite: Object.freeze({ cap: 3, nearShare: .55 }),
+    boardLight: Object.freeze([.42, 1.25]), nearFade: .8 }),
   cues: Object.freeze({ fade: 7, ghost: .34, glowRGB: "255,96,64", glow: .32, glowPeak: .62, pulseMs: 150, ringWidth: 2.5, ringAlpha: .8, ring: .5, flash: .75, flashSec: .18, glowPx: 64 }),
   styles: Object.freeze({ // wall colours by tile kind (a face, and its darker second tone)
     keepWall: ["#6b6255", "#3a342c"], aptWall: ["#74787b", "#4a4e52"], cellarWall: ["#3a352e", "#1e1b17"], hiveWall: ["#5a3f66", "#2f2238"],
@@ -278,19 +380,33 @@ export function interiorMap(map) { return !!map?.building && !map.building.final
 // An open-air tile inside an interior's map (a keep's yard, a labyrinth court): the ordinary view there.
 const OPEN_AIR_KINDS = new Set(["yardGrass"]);
 export function openAirAt(map, x, y) { const w = Math.max(1, Number(map?.width) || 32), t = map?.tiles?.[Math.floor(y + .75) * w + Math.floor(x + .5)]; return !!t && (t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || OPEN_AIR_KINDS.has(t.kind)); }
+// The place's theme (CLOSE_VIEW.themes, version 5): from what the floor is (its building's kind) and a hash of the building
+// and the floor, so the same floor always looks the same. Returns the theme's id. Pure.
+const themeRoll = (key, salt) => (strHash(`${CLOSE_VIEW.themes.salt}:${CLOSE_VIEW.themes.version}:${key}:${salt}`) % 10000) / 10000;
+export function closeViewThemeId(b) {
+  const T = CLOSE_VIEW.themes; if (!b || typeof b !== "object") return "keep"; const key = String(b.base || "");
+  if (b.pentagon) return b.kind === "cellar" || themeRoll(key, `root:${b.floor}:${b.node}`) < T.rootCellarShare ? "rootCellar" : "pentagon";
+  if (b.style === "hive") return "hive";
+  if (b.style === "apartment") return "arcology";
+  return themeRoll(key, "lived") < T.livedInShare ? "livedIn" : "keep"; // keeps, castles, compounds' keeps, a keep's labyrinth, any other building
+}
+export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "lived") < CLOSE_VIEW.themes.livedInShare; // for the lab: which keeps are lived in
+const THEME_OF = new WeakMap();
+export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
+const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
 // Close View is chosen and this is an interior (the area as a whole).
 export function closeViewWanted(g) { return g?.save?.closeView === true && g.area === "dungeon" && interiorMap(g.map) && !!g.player; }
 // ...and the Wayfarer stands indoors in it: Close View's camera applies.
 export function closeViewApplies(g) { return closeViewWanted(g) && !openAirAt(g.map, g.player.x, g.player.y); }
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
-const CAM = { qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+const CAM = { sightLimit: Infinity, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
 // cached screen gradients, each rebuilt only when the canvas or its size changes (keys are numbers: nothing is built per frame)
 const SCREEN = { ctx: null, fog: null, fogEnd: 0, fogW: 0, fogH: 0, fogY: NaN, vignette: null, vigW: 0, vigH: 0, warm: null, warmW: 0, warmH: 0, vault: null, vaultH: 0, vaultY: NaN };
-let capturing = false, captured = null, capturedPlayer = null;
+let capturing = false, captured = null, capturedPlayer = null, bareFloor = false; // bareFloor (version 5): the GPU scene shades the floor itself; the renderer draws only what lies on it
 let N = CLOSE_VIEW.maxItems;
 let itemKind = new Int8Array(N), itemRef = new Int32Array(N), itemDepth = new Float32Array(N), order = new Int32Array(N);
 let faceCorner = new Int8Array(N), faceXY = new Float32Array(N * 8), faceLevel = new Int16Array(N), faceAlpha = new Float32Array(N), faceStyle = new Int16Array(N), faceOrient = new Int8Array(N), faceLow = new Int8Array(N);
@@ -305,7 +421,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
 // What the last frame cost (tests and the Proving Ground read it).
 // Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.ts's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
-export const closeViewStats = { snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
+export const closeViewStats = { sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 
 // ------------------------------------------------------------------------------------------------ colours, built once
 const STYLE_NAMES = Object.keys(CLOSE_VIEW.styles), STYLE_INDEX = Object.fromEntries(STYLE_NAMES.map((k, i) => [k, i]));
@@ -470,7 +586,7 @@ const footX = (p) => p.x + .5, footY = (p) => p.y + .75;
 // open line of the eight headings (so stepping through a door you look into the room, not at the door's frame).
 function ensureCam(g) {
   if (CAM.map === g.map) return;
-  CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0;
+  CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.sightLimit = Infinity;
   const facing = FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
   let yaw = facing, best = open(facing);
   if (best < closeViewPreset(g).distance + 1) for (let i = 0; i < 8; i++) { const a = wrap(i * Math.PI / 4), t = open(a); if (t > best + .01) { best = t; yaw = a; } }
@@ -576,6 +692,13 @@ function lockTick(g, dt) {
   CAM.lostFor = sightTo(g.map, px, py, ex, ey) ? 0 : CAM.lostFor + dt; if (CAM.lostFor > L.lostSec) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
   return t;
 }
+// Version 5: how much of the line from (ax, ay) to (bx, by) is clear of walls, `pad` tiles to either side (sampled every
+// `step` tiles): 1 all of it, else the share up to `pad` short of the first wall.
+function sightClear(map, ax, ay, bx, by, step, pad) {
+  const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy); if (L < 1e-4) return 1; const nx = -dy / L * pad, ny = dx / L * pad, n = Math.ceil(L / step);
+  for (let i = 1; i <= n; i++) { const t = i / n, x = ax + dx * t, y = ay + dy * t; if (wallAt(map, x, y) || (t * L > .4 && (wallAt(map, x + nx, y + ny) || wallAt(map, x - nx, y - ny)))) return Math.max(0, (t * L - step - pad) / L); } // beside the feet themselves a wall the Wayfarer leans on is no matter
+  return 1;
+}
 // The boom: from the Wayfarer's feet back along the view, stopped short of a wall.
 function boomLength(g, fx, fy, ox = footX(g.player), oy = footY(g.player)) {
   const C = CLOSE_VIEW.camera, map = g.map, rx = -fy, ry = fx, hit = (x, y) => wallAt(map, x, y);
@@ -611,6 +734,7 @@ export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = 
 export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.dist, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, pitchUser: CAM.pitchUser, lockId: CAM.lockId, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
 export function resetCloseViewCamera() { CAM.map = null; CAM.valid = false; CAM.drawn = false; }
+globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats }; // read by the browser harness and the lab's console (diagnostics only)
 // Close View drew the last frame of this area: the host then leaves out its own top-down overlays (they were drawn onto the
 // ground texture through CLOSE_VIEW_HOOKS.groundLayers).
 export function closeViewShowing(g) { return CAM.drawn && CAM.map === g?.map && closeViewWanted(g); }
@@ -684,6 +808,9 @@ const actorScale = (e) => Math.max(1, Math.min(4, Number(e?.scale) || (e?.boss ?
 // ------------------------------------------------------------------------------------------------ the renderer's side
 // renderer.ts calls closeViewCapturing() and closeViewTake() at two marked points; nothing else in it knows about Close View.
 export const closeViewCapturing = () => capturing;
+// Version 5: while the GPU scene captures the ground, the ordinary renderer leaves out the floor tiles (closeViewBareFloor):
+// the ground texture holds only what lies on the floor (telegraphs, traps, marks), over the floor the shader builds.
+export const closeViewBareFloor = () => capturing && bareFloor;
 export function closeViewTake(draws, playerDraw) { captured = draws; capturedPlayer = playerDraw; }
 
 function makeCanvas() {
@@ -726,14 +853,14 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // a whole device pixel. The host's layers place themselves from the unrounded camera: they are moved by the rounding (dxL,
   // dyL), so a trap mark or a telegraph lies exactly where the floor under it is.
   const Tx = Math.round(W / 2 - p.x * s), Ty = Math.round(H / 2 - p.y * s), gox = Math.round(Tx * ts) - Tx * ts, goy = Math.round(Ty * ts) - Ty * ts, dxL = (Tx - (W / 2 - p.x * s)) * ts, dyL = (Ty - (H / 2 - p.y * s)) * ts;
-  gc.setTransform(ts, 0, 0, ts, gox, goy); gc.imageSmoothingEnabled = false; captured = null; capturedPlayer = null; capturing = true;
+  gc.setTransform(ts, 0, 0, ts, gox, goy); gc.imageSmoothingEnabled = false; captured = null; capturedPlayer = null; capturing = true; bareFloor = useGL;
   try { baseRender(gc, g, W, H, now); for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H); } } finally { capturing = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick;
   const t1 = tm ? performance.now() : 0;
   // the floor's boundaries (the shadow along every wall's foot, the rims of holes and lava), built once a floor, one copy a frame
-  { const geo0 = wallGeometry(g.map), ec = useGL ? geo0.edgesGL || (geo0.edgesGL = edgeCanvas(g.map, geo0, false)) : geo0.edges || (geo0.edges = edgeCanvas(g.map, geo0)); if (ec) { const k0 = s * ts / CLOSE_VIEW.edges.px; gc.save(); gc.imageSmoothingEnabled = true; gc.setTransform(k0, 0, 0, k0, Tx * ts + gox, Ty * ts + goy); gc.drawImage(ec, 0, 0); gc.restore(); gc.setTransform(ts, 0, 0, ts, gox, goy); } }
+  if (!useGL) { const geo0 = wallGeometry(g.map), ec = geo0.edges || (geo0.edges = edgeCanvas(g.map, geo0)); if (ec) { const k0 = s * ts / CLOSE_VIEW.edges.px; gc.save(); gc.imageSmoothingEnabled = true; gc.setTransform(k0, 0, 0, k0, Tx * ts + gox, Ty * ts + goy); gc.drawImage(ec, 0, 0); gc.restore(); gc.setTransform(ts, 0, 0, ts, gox, goy); } }
   aimChevron(gc, g, s, ts, W, H, gox, goy);
   // 2. torch falloff over the ground (the Wayfarer is always at the same texture point, so the gradient is built once). The
   // GPU scene lights the floor itself, per pixel.
@@ -747,11 +874,12 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (!Number.isFinite(off) || off > C.followSnap || !CAM.valid) { CAM.fpx = tx; CAM.fpy = ty; CAM.fvx = CAM.fvy = 0; }
     else if (CAM.dt > 0) { spring(CAM, "fpx", "fvx", tx, C.follow, CAM.dt); spring(CAM, "fpy", "fvy", ty, C.follow, CAM.dt); const ex = CAM.fpx - tx, ey = CAM.fpy - ty, el = Math.hypot(ex, ey); if (el > C.followMax) { CAM.fpx = tx + ex / el * C.followMax; CAM.fpy = ty + ey / el * C.followMax; } }
     if (wallAt(g.map, CAM.fpx, CAM.fpy) || !sightTo(g.map, tx, ty, CAM.fpx, CAM.fpy)) { CAM.fpx = tx; CAM.fpy = ty; CAM.fvx = CAM.fvy = 0; } }
-  const ax = CAM.fpx, ay = CAM.fpy, want = Math.min(camD, boomLength(g, fx, fy, ax, ay));
+  const ax = CAM.fpx, ay = CAM.fpy, want = Math.min(camD, boomLength(g, fx, fy, ax, ay), boomLength(g, fx, fy) + Math.hypot(ax - footX(p), ay - footY(p)), CAM.sightLimit); // version 5: from the feet too, and short of a wall near the line of sight
   // critically damped springs (stable at any frame rate, never overshooting); a boom that would leave the camera inside a
   // wall is cut at once, the only snap there is
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && wallAt(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
+  if (useGL) { const cap = archCapAt(g.map, CAM.cx, CAM.cy); if (CAM.crane > cap) { CAM.crane = cap; CAM.craneV = 0; } } // version 5: under an arch the camera keeps below its soffit (it never looks out from inside the stone)
   const craneUp = CAM.crane, pitch = Math.atan2(craneUp - lerp(E.lookHeight, Cp.lookHeight, mix), CAM.dist + lerp(E.lookAhead, Cp.lookAhead, mix)) + CAM.pitchUser * mix /* the pad's tilt */, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
   const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = Cp.shoulder * mix; let room = sh;
@@ -761,7 +889,15 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // the hard rule under the springs: the camera is never inside a wall. If a spring still lags there (the view turning in a
   // narrow way), the shoulder goes and the boom shortens at once until it is clear.
   if (wallAt(g.map, CAM.cx, CAM.cy)) { CAM.shoulder = CAM.shoulderV = 0; let d = CAM.dist; while (d > .03 && wallAt(g.map, ax - fx * d, ay - fy * d)) d -= .03;
-    CAM.dist = Math.max(.03, d); CAM.distV = 0; CAM.cx = ax - fx * CAM.dist; CAM.cy = ay - fy * CAM.dist; } CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;
+    CAM.dist = Math.max(.03, d); CAM.distV = 0; CAM.cx = ax - fx * CAM.dist; CAM.cy = ay - fy * CAM.dist; }
+  // version 5: nothing stands between the camera and the Wayfarer. The spring aims at the shorter of the boom from the follow
+  // point and from their feet; if a corner still cuts the line from their feet to the camera (the shoulder, a turn in a narrow
+  // way), the camera is drawn in along that line at once, to where it clears by `hardPad`.
+  { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
+    if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
+    // and with the wider `sightPad`, next frame's spring aims short of where this line comes near a wall, so the cut above is seldom needed
+    const ks = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.sightPad); CAM.sightLimit = ks < 1 ? Math.max(C.closest, CAM.dist * ks) : Infinity; }
+  CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;
   CAM.cosP = Math.cos(pitch); CAM.sinP = Math.sin(pitch); CAM.hc = craneUp; CAM.w = w; CAM.h = h; CAM.valid = true;
   const cosP = CAM.cosP, sinP = CAM.sinP, hc = CAM.hc, ppx = CAM.ppx, ppy = CAM.ppy;
   // the background: the dark beyond the light, and the vault above
@@ -800,7 +936,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const disc = !!g.map?.dungeonContract?.discoveryEnabled, minCx = Math.max(0, Math.floor((CAM.cx - reach) / geo.C)), maxCx = Math.min(geo.cw - 1, Math.floor((CAM.cx + reach) / geo.C)), minCy = Math.max(0, Math.floor((CAM.cy - reach) / geo.C)), maxCy = Math.min(geo.ch - 1, Math.floor((CAM.cy + reach) / geo.C));
   // the Wayfarer's place on screen, for the cut-away
   const pq = project(ox, oy, 0), pDepth = pq ? pq.depth : CAM.dist, pSx = pq ? pq.sx : ppx, pSy = pq ? pq.sy : ppy, pk = F / Math.max(.2, pDepth), pHalf = (Wl.cutPad + .4) * pk, pTop = pSy - 1.25 * pk;
-  for (let cy = minCy; cy <= maxCy; cy++) for (let cx = minCx; cx <= maxCx; cx++) { const ci = cy * geo.cw + cx;
+  if (!useGL) for (let cy = minCy; cy <= maxCy; cy++) for (let cx = minCx; cx <= maxCx; cx++) { const ci = cy * geo.cw + cx; // version 5: the GPU scene draws its walls from a static buffer (no per-frame face work)
     for (let j = geo.start[ci]; j < geo.end[ci]; j++) { const fi = geo.index[j], o = fi * 10, x0 = faces[o], y0 = faces[o + 1], x1 = faces[o + 2], y1 = faces[o + 3], nx = faces[o + 4], ny = faces[o + 5];
       const mx = (x0 + x1) / 2, my = (y0 + y1) / 2; if (Math.min((x0 - CAM.cx) * fx + (y0 - CAM.cy) * fy, (x1 - CAM.cx) * fx + (y1 - CAM.cy) * fy) > reach) { closeViewStats.culled++; continue; } // beyond the floor's far edge
       if ((mx - CAM.cx) * nx + (my - CAM.cy) * ny >= 0) { closeViewStats.culled++; continue; } // its back is to the camera
@@ -845,7 +981,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
   occludeBillboards(n, faces);
   insertionSortByDepth(n);
-  const turnFacing = relativeFacing(p), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite);
+  const turnFacing = relativeFacing(p), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
   const packed = packBillboards(g, draws, n, s, turnFacing);
   if (useGL) glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts);
   else {
@@ -891,9 +1027,9 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const t4 = tm ? performance.now() : 0;
   lockBrackets(ctx, g, now);
   // 6. the torch's warm cast and the vignette, both cached
-  if (Q.warm && pq) { if (!SCREEN.warm || SCREEN.warmW !== w || SCREEN.warmH !== h) { const r0 = Math.min(w, h) * .55, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r0); gr.addColorStop(0, Lt.warm); gr.addColorStop(1, "rgba(255,168,92,0)"); SCREEN.warm = gr; SCREEN.warmW = w; SCREEN.warmH = h; }
+  if (Q.warm && pq && !useGL) { if (!SCREEN.warm || SCREEN.warmW !== w || SCREEN.warmH !== h) { const r0 = Math.min(w, h) * .55, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r0); gr.addColorStop(0, Lt.warm); gr.addColorStop(1, "rgba(255,168,92,0)"); SCREEN.warm = gr; SCREEN.warmW = w; SCREEN.warmH = h; }
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(pSx, pSy - .6 * pk); ctx.fillStyle = SCREEN.warm; const r0 = Math.min(w, h) * .55; ctx.fillRect(-r0, -r0, 2 * r0, 2 * r0); ctx.restore(); } // only the glow's own square
-  if (Q.vignette) { if (!SCREEN.vignette || SCREEN.vigW !== w || SCREEN.vigH !== h) { const gr = ctx.createRadialGradient(w / 2, h * .55, Math.min(w, h) * .3, w / 2, h * .55, Math.max(w, h) * .75); gr.addColorStop(0, fogA(0)); gr.addColorStop(1, fogA(.5)); SCREEN.vignette = gr; SCREEN.vigW = w; SCREEN.vigH = h; }
+  if (Q.vignette && !useGL) { if (!SCREEN.vignette || SCREEN.vigW !== w || SCREEN.vigH !== h) { const gr = ctx.createRadialGradient(w / 2, h * .55, Math.min(w, h) * .3, w / 2, h * .55, Math.max(w, h) * .75); gr.addColorStop(0, fogA(0)); gr.addColorStop(1, fogA(.5)); SCREEN.vignette = gr; SCREEN.vigW = w; SCREEN.vigH = h; }
     ctx.fillStyle = SCREEN.vignette; ctx.fillRect(0, 0, w, h); }
   drawPlaceLabel(ctx, g, w, h);
   if (tm) { const t5 = performance.now(); T.ground = t1 - t0; T.torch = t2 - t1; T.floor = t3 - t2; T.scene = t4 - t3; T.overlay = t5 - t4; }
@@ -996,9 +1132,9 @@ function packBillboards(g, draws, n, s, facing) {
   const A = CLOSE_VIEW.actors, ac = GROUND.ctx; if (!ac) return false;
   const Y0 = GROUND.atlasY, AW = GROUND.canvas.width, AH = GROUND.canvas.height - Y0; let x = 0, y = 0, rowH = 0;
   ac.setTransform(1, 0, 0, 1, 0, 0); ac.clearRect(0, Y0, AW, AH);
-  for (let oi = n - 1; oi >= 0; oi--) { const it = order[oi]; if (itemKind[it] !== 1) continue; // nearest first: they get the room
+  let first = true; for (let oi = n - 1; oi >= 0; oi--) { const it = order[oi]; if (itemKind[it] !== 1) continue; // nearest first: they get the room
     const d = draws[itemRef[it]], sc = boardScale[it], k = boardK[it], hw = A.halfWidth * sc, top = A.height * sc, bw = 2 * hw, bh = top + A.below;
-    let q = k * spriteDpr / s; q = Math.min(q, (AW - 2) / (bw * s), (AH / 3) / (bh * s)); // a third of the atlas at most: room for every actor in view
+    let q = k * spriteDpr / s; q = Math.min(q, (AW - 2) / (bw * s), (AH * (first && closeViewStats.gl ? CLOSE_VIEW.atmosphere.sprite.nearShare : 1 / 3)) / (bh * s)); first = false; // version 5: the nearest (the Wayfarer, mostly) may take more // a third of the atlas at most: room for every actor in view
     let pw = Math.ceil(bw * s * q), ph = Math.ceil(bh * s * q);
     if (x + pw > AW) { x = 0; y += rowH; rowH = 0; }
     if (y + ph > AH) { boardPW[it] = 0; continue; } // no room left this frame: the farthest go undrawn (never more than the atlas)
@@ -1106,24 +1242,39 @@ function flatPass(g, draws, gc, s, ts, gox, goy, Tx, Ty) {
 }
 export const closeViewFlatObject = flatObject; // for tests
 
-// ------------------------------------------------------------------------------------------------ the GPU scene (version 4)
-// Fills close-view-gl.ts's preallocated vertex arrays from this frame's culled wall faces and billboards (the same lists the 2D
-// view draws), sets the frame's numbers and draws; then copies the GPU canvas onto the screen in one drawImage.
+// ------------------------------------------------------------------------------------------------ the GPU scene (versions 4 and 5)
+// Version 5: the walls, their trim, the arches and the props of a floor are built once into a static buffer (buildStatic),
+// with the floor's placed lights and card props; each frame picks the nearest lights, fills the cards, creatures and decals,
+// sets the theme's numbers and draws; then copies the GPU canvas onto the screen in one drawImage.
 const STYLE_RGB = STYLE_NAMES.map((k) => (k === "door" ? rgb : material)(CLOSE_VIEW.styles[k][0]).map((v) => v / 255));
-const CAP_STAMP = { tiles: new Uint32Array(64 * 64), frame: 1 };
 const rgb01 = (a) => new Float32Array(a.map((v) => v / 255));
-const UNI = (() => { const Cl = CLOSE_VIEW.ceiling, Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Rf = CLOSE_VIEW.relief, E = CLOSE_VIEW.edges, M = CLOSE_VIEW.material, Cu = CLOSE_VIEW.cues, R = HOLE_DROPS.rim;
-  const ceilRGB = rgb01(M.base.map((v) => v * Cl.dim)), stone = rgb01(Pt.stone), lip = rgb01(Pt.lipRGB), chasm = rgb01(Pt.chasmRGB), safe = rgb01(R.rgb.split(",").map(Number)), lavaA = rgb01(Lv.crust), lavaB = rgb01(Lv.hot), lavaC = rgb01(Lv.vein);
-  const inlay = rgb01(INL.tint), gritA = new Float32Array(9), ring = rgb01(Cu.glowRGB.split(",").map(Number)); for (let i = 0; i < 9; i++) gritA[i] = GRIT.variants[i]?.alpha ?? 0;
+// a wall's material by its style (-1: the theme's own); and each material's colour where it is not the theme's own
+const MAT_OF_STYLE = STYLE_NAMES.map((k) => ({ hiveWall: 2, aptWall: 3, cellarWall: 1, hedgeWall: 4, door: 5 })[k] ?? -1);
+const MAT_RGB = [[92, 90, 86], [70, 52, 36], [60, 44, 42], [70, 76, 74], [30, 56, 28]].map((c) => c.map((v) => v / 255));
+const THEME_GL = new Map(); // theme id -> its colours as 0..1 arrays (made once a theme)
+function themeGL(th) {
+  let t = THEME_GL.get(th); if (t) return t; const W = th.wall, Fl = th.floor, L = th.light;
+  t = { wall: rgb01(W.rgb), mortar: rgb01(W.mortar), damp: rgb01(W.dampRGB), floor: rgb01(Fl.rgb), joint: rgb01(Fl.joint), rug: rgb01(Fl.rug), ceil: rgb01(th.ceiling.rgb), deco1: rgb01(th.deco1), deco2: rgb01(th.deco2), glow: rgb01(th.glow || [255, 150, 80]),
+    torch: rgb01(L.torch), amb: rgb01(L.ambient), fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB) };
+  THEME_GL.set(th, t); return t;
+}
+const HUE_RGB = [[1, .62, .32], [.3, .95, .8], [.55, .72, 1], [1, .78, .42]]; // a placed light's colour by hue: warm, bioluminescent, ghost-light, a failing lamp
+const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOSE_VIEW.cues, R = HOLE_DROPS.rim;
+  const stone = rgb01(Pt.stone), lip = rgb01(Pt.lipRGB), chasm = rgb01(Pt.chasmRGB), safe = rgb01(R.rgb.split(",").map(Number)), lavaA = rgb01(Lv.crust), lavaB = rgb01(Lv.hot), lavaC = rgb01(Lv.vein);
+  const gritA = new Float32Array(9), ring = rgb01(Cu.glowRGB.split(",").map(Number)); for (let i = 0; i < 9; i++) gritA[i] = GRIT.variants[i]?.alpha ?? 0;
   const un = GRIT.variants.find((v) => v.id === "unresolved") || { shimmer: 0, period: 1 };
-  return { q: null, reduce: false, now: 0, safeOn: false,
-    env(gl, U, F, lavaTiles) { const q = UNI.q; gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling ? 1 : 0, Cl.beamEvery, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, ceilRGB); gl.uniform3f(U.u_ceilBeam, Cl.beamHalf, Cl.beamDark, Cl.beamEdge);
+  return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null,
+    env(gl, U, F, lavaTiles) { const q = UNI.q, th = UNI.th, tg = UNI.tg, C = th.ceiling, Fl = th.floor;
+      gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling ? 1 : 0, C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
       gl.uniform4f(U.u_pit, Pt.hole, Pt.chasm, Pt.dark, Pt.lip); gl.uniform3fv(U.u_stone, stone); gl.uniform3fv(U.u_lip, lip); gl.uniform3fv(U.u_safe, safe); gl.uniform3fv(U.u_chasm, chasm);
       const breath = UNI.reduce ? 1 : 1 - R.pulseDepth * (.5 + .5 * Math.sin(UNI.now / R.pulse * Math.PI * 2)); gl.uniform4f(U.u_safeP, R.near, R.full, R.alpha * breath, UNI.safeOn ? 1 : 0);
-      gl.uniform4f(U.u_lava, Lv.scale, Lv.flow, Lv.light, q.lavaLight && lavaTiles > 0 ? 3 / Lv.reach : 0); gl.uniform3fv(U.u_lavaA, lavaA); gl.uniform3fv(U.u_lavaB, lavaB); gl.uniform3fv(U.u_lavaC, lavaC); },
-    wall(gl, U, F) { const q = UNI.q; gl.uniform4f(U.u_detail, q.detail ? 1 : 0, q.detailNear, q.detailFar, GRIT.light); gl.uniform4f(U.u_shade, CLOSE_VIEW.shade.x, CLOSE_VIEW.shade.y, Rf.topFall, q.relief ? 1 : 0);
-      gl.uniform4f(U.u_relief, Rf.inset, Rf.bevel, Rf.recess, Rf.vary); gl.uniform4f(U.u_trim, E.base, E.cap, Rf.cornice, Rf.outline); gl.uniform3fv(U.u_inlay, inlay); gl.uniform4f(U.u_inlayP, INL.row, INL.joint, INL.mix, INL.lift);
-      gl.uniform1fv(U.u_gritA, gritA); gl.uniform4f(U.u_shimmer, un.shimmer || 0, un.period || 1, UNI.reduce ? 1 : 0, GRIT.size[0] / (GRIT.size[0] * GRIT.instances * 9)); },
+      gl.uniform4f(U.u_lava, Lv.scale, Lv.flow, Lv.light, q.lavaLight && lavaTiles > 0 ? 3 / Lv.reach : 0); gl.uniform3fv(U.u_lavaA, lavaA); gl.uniform3fv(U.u_lavaB, lavaB); gl.uniform3fv(U.u_lavaC, lavaC);
+      gl.uniform4f(U.u_floorP, Fl.kind, Fl.size, Fl.wear, Fl.sewer ? 1 : 0); gl.uniform3fv(U.u_floorRGB, tg.floor); gl.uniform3fv(U.u_floorJ, tg.joint); gl.uniform3fv(U.u_rug, tg.rug); gl.uniform4f(U.u_floorQ, q.bump ? 1 : 0, Fl.wet, q.relief ? 1 : 0, 0); },
+    wall(gl, U, F) { const q = UNI.q, th = UNI.th, tg = UNI.tg, Wl = th.wall, A = th.arch;
+      gl.uniform4f(U.u_detail, q.detail ? 1 : 0, q.detailNear, q.detailFar, GRIT.light); gl.uniform1fv(U.u_gritA, gritA); gl.uniform4f(U.u_shimmer, un.shimmer || 0, un.period || 1, UNI.reduce ? 1 : 0, GRIT.size[0] / (GRIT.size[0] * GRIT.instances * 9));
+      gl.uniform4f(U.u_stoneP, Wl.stone[0], Wl.stone[1], q.relief ? Wl.stone[2] : Wl.stone[2] * .5, Wl.stone[3]); gl.uniform4f(U.u_wallP, Wl.damp[0], Wl.damp[1], q.bump ? 1 : 0, Wl.topFall);
+      gl.uniform3fv(U.u_mortar, tg.mortar); gl.uniform3fv(U.u_damp, tg.damp); gl.uniform3fv(U.u_deco1, tg.deco1); gl.uniform3fv(U.u_deco2, tg.deco2); gl.uniform4f(U.u_arch, A.spring, A.radius, A.band, 0); gl.uniform3fv(U.u_glowRGB, tg.glow); },
+    arch(gl, U) { const A = UNI.th.arch; gl.uniform4f(U.u_arch, A.spring, A.radius, A.band, 0); },
     decal(gl, U) { gl.uniform3fv(U.u_ring, ring); gl.uniform3fv(U.u_glow, ring); } }; })();
 function gritAtlas() { // every variant's painted instances side by side, once
   const [TW, TH] = GRIT.size, c = makeCanvas(), x = c?.getContext?.("2d"); if (!x) return null; c.width = TW * GRIT.instances * 9; c.height = TH; x.clearRect(0, 0, c.width, c.height);
@@ -1132,53 +1283,183 @@ function gritAtlas() { // every variant's painted instances side by side, once
 }
 function glSeen(map) { // what the fog of war has shown (null: everything)
   const disc = !!map?.dungeonContract?.discoveryEnabled, lab = !!map?.building && labFogState(map, -1e6, -1e6) !== 2; if (!disc && !lab) return null;
-  return (x, y) => (!disc || dungeonTileVisibility(map, x, y) !== "unseen") && (!lab || labFogState(map, x - .5, y - .5) > 0);
+  const fn = (x, y) => (!disc || dungeonTileVisibility(map, x, y) !== "unseen") && (!lab || labFogState(map, x - .5, y - .5) > 0);
+  fn.wall = (x, y) => !disc || dungeonTileVisibility(map, x, y) !== "unseen"; // walls hide only where the discovery fog hides them (as the 2D view)
+  return fn;
 }
 const SEEN = { map: null, fn: null };
+
+// The floor's built things (version 5), made once a floor and theme (never per frame) from its wall geometry: a pure function of
+// the floor (its tiles, objects, building and name), so they are the same between frames, visits and after a resume.
+// data: the static wall buffer (close-view-gl.ts WALL_FLOATS a vertex); lights: LIGHT_FLOATS a light (x, y, z, reach, strength,
+// hue, phase, kind: 0 on a wall, 1 candles); flames: FLAME_FLOATS a flame (x, y, z, size, hue, phase); cards: CARD_FLOATS a card
+// prop (kind: 4 cobweb, 5 chain, 8 bones; x, y; then for a web the run's and the room's directions, for a chain its length, for
+// bones a seed). Counts: closeViewStatic.
+export const LIGHT_FLOATS = 8, FLAME_FLOATS = 6, CARD_FLOATS = 8;
+const STATIC = new WeakMap();
+export const closeViewStaticStats = { builds: 0 };
+function buildStatic(map, geo, th) {
+  closeViewStaticStats.builds++;
+  const out = [], lights = [], flames = [], cards = [], w = geo.w, h = geo.h, tiles = map.tiles, Fc = geo.faces, H = CLOSE_VIEW.walls.height, RB = CLOSE_VIEW.walls.rubble, tg = themeGL(th), src = th.light.sources;
+  const solid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || isWall(tiles[y * w + x]);
+  const busy = new Uint8Array(w * h); for (const o of map.objects || []) { const ox = Math.floor(Number(o.x) + .5), oy = Math.floor(Number(o.y) + .5); for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const x = ox + i, y = oy + j; if (x >= 0 && y >= 0 && x < w && y < h && (i === 0 && j === 0 || o.kind === "buildingStair" || o.kind === "exit" || o.kind === "dungeon")) busy[y * w + x] = 1; } }
+  const free = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !solid(x, y) && !busy[y * w + x] && !closeViewHazardCode(tiles[y * w + x]) && !tiles[y * w + x].doorway;
+  const salt = strHash(`${map.building?.base || map.name || ""}:${map.building?.floor ?? ""}:${map.building?.node ?? ""}:${w}x${h}`);
+  const rnd = (a, b, c, k) => hash32(salt ^ hash32((a * 73856093) ^ (b * 19349663) ^ (c * 83492791) ^ (k * 2654435761))) / 4294967296;
+  const V = (X, Y, Z, along, u, z, top, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty) => { out.push(X, Y, Z, along, u, z, top, nx, ny, part, mat, c[0], c[1], c[2], deco, grit, bits, hsh, tx, ty); };
+  // a vertical quad from a to b, z0 to z1 (along a0 to a1 on the run; u 0 to 1 across)
+  const quad = (ax, ay, bx, by, z0, z1, a0, a1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty) => {
+    V(ax, ay, z0, a0, 0, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z0, a1, 1, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z1, a1, 1, z1, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty);
+    V(ax, ay, z0, a0, 0, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z1, a1, 1, z1, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(ax, ay, z1, a0, 0, z1, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); };
+  // a horizontal quad (corners in order) at height z
+  const flat = (x0, y0, x1, y1, x2, y2, x3, y3, z, part, mat, c, hsh, tx, ty) => { const P = [[x0, y0, 0], [x1, y1, 1], [x2, y2, 1], [x0, y0, 0], [x2, y2, 1], [x3, y3, 0]]; for (const [X, Y, u] of P) V(X, Y, z, X + Y, u, z, z, 0, 0, part, mat, c, 0, 0, 0, hsh, tx, ty); };
+  // a box (no bottom), axis-aligned, centred on (cx, cy)
+  const box = (cx, cy, hx, hy, z0, z1, part, mat, c, hsh, tx, ty) => { const x0 = cx - hx, x1 = cx + hx, y0 = cy - hy, y1 = cy + hy;
+    quad(x0, y0, x1, y0, z0, z1, x0, x1, 0, -1, part, mat, c, 0, 0, 0, hsh, tx, ty); quad(x1, y1, x0, y1, z0, z1, x1, x0, 0, 1, part, mat, c, 0, 0, 0, hsh, tx, ty);
+    quad(x0, y1, x0, y0, z0, z1, y1, y0, -1, 0, part, mat, c, 0, 0, 0, hsh, tx, ty); quad(x1, y0, x1, y1, z0, z1, y0, y1, 1, 0, part, mat, c, 0, 0, 0, hsh, tx, ty); flat(x0, y0, x1, y0, x1, y1, x0, y1, z1, part, mat, c, hsh, tx, ty); };
+  const arch = new Uint8Array(w * h), capped = new Uint8Array(w * h), D = th.decor || {}, Pr = th.props || {}, PL = th.plinth, CO = th.cornice, PIL = th.pilaster;
+  const iron = [.09, .085, .08], wax = [.72, .66, .52], clay = [.36, .27, .2], wood = [.2, .13, .08];
+  for (let i = 0; i < geo.count; i++) { const o = i * 10, x0 = Fc[o], y0 = Fc[o + 1], x1 = Fc[o + 2], y1 = Fc[o + 3], nx = Fc[o + 4], ny = Fc[o + 5], tx = Fc[o + 6], ty = Fc[o + 7], st = Fc[o + 8], low = Fc[o + 9];
+    const door = st === STYLE_INDEX.door, mat = door ? 5 : MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = low ? RB : H;
+    const a0 = ny !== 0 ? x0 : y0, a1 = ny !== 0 ? x1 : y1, grit = (geo.detail[i] || 0) * 4 + (geo.detailInst[i] & 15) * 2 + (geo.detailInst[i] & 16 ? 1 : 0), cb = geo.corner[i] & 3, ab = geo.ao[i] & 3, bits = cb + ab * 4, side = nx > 0 ? 1 : nx < 0 ? 3 : ny > 0 ? 2 : 0, hsh = ((tx * 73 + ty * 151 + side * 37) % 997 + 997) % 997;
+    const dx = x1 - x0, dy = y1 - y0, fx = tx + nx, fy = ty + ny, front = free(fx, fy), exterior = tx - nx < 0 || ty - ny < 0 || tx - nx >= w || ty - ny >= h, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    // the face's decoration, chosen once
+    let deco = 0; if (!door && !low && mat !== 4) { const r = rnd(tx, ty, side, 9); let acc = 0; const pick = (k, share, code) => { if (!deco && share) { acc += share; if (r < acc) deco = code; } };
+      if (exterior) pick("slit", D.slit, 3); pick("tapestry", D.tapestry, 2); pick("banner", D.banner, 1); pick("roots", D.roots, 4); pick("niche", D.niche, 6); pick("pods", D.pods, 7); pick("vent", D.vent, 8); }
+    quad(x0, y0, x1, y1, 0, top, a0, a1, nx, ny, 0, mat, col, deco, grit, bits, hsh, tx, ty);
+    if (low) { if (!capped[ty * w + tx]) { capped[ty * w + tx] = 1; flat(tx, ty, tx + 1, ty, tx + 1, ty + 1, tx, ty + 1, top, 1, mat, col, hsh, tx, ty); } continue; }
+    if (door || mat === 4) continue;
+    // the plinth and the cornice: real depth along the wall's foot and under its top; at an outside corner each runs on to meet the other
+    const e0s = (cb & 1) && !(ab & 1), e1s = (cb & 2) && !(ab & 2);
+    for (const [hgt, dep, atTop] of [[PL[0], PL[1], false], [CO[0], CO[1], true]]) { if (!(hgt > 0 && dep > 0)) continue;
+      const e0 = e0s ? dep : 0, e1 = e1s ? dep : 0, sx = x0 - dx * e0, sy = y0 - dy * e0, ex = x1 + dx * e1, ey = y1 + dy * e1, z0 = atTop ? top - hgt : 0, z1 = atTop ? top : hgt;
+      quad(sx + nx * dep, sy + ny * dep, ex + nx * dep, ey + ny * dep, z0, z1, a0 - e0 * Math.sign(a1 - a0), a1 + e1 * Math.sign(a1 - a0), nx, ny, 3, mat, col, 0, 0, 0, hsh, tx, ty);
+      flat(sx, sy, ex, ey, ex + nx * dep, ey + ny * dep, sx + nx * dep, sy + ny * dep, atTop ? z0 : z1, atTop ? 3.25 : 3, mat, col, hsh, tx, ty); }
+    // a pilaster where a straight wall reaches a joint every `pilaster` tiles
+    if (PIL > 0 && !cb && (mat === 0 || mat === 3) && ((Math.round(Math.min(a0, a1)) % PIL) + PIL) % PIL === 0 && !(cb & 1)) { const pw = .17, pd = Math.max(.13, (PL[1] || 0) + .05), cx = dx < 0 || dy < 0 ? x1 : x0, cy = dx < 0 || dy < 0 ? y1 : y0, ux = Math.abs(dx), uy = Math.abs(dy);
+      const lx = cx - ux * pw, ly = cy - uy * pw, rx2 = cx + ux * pw, ry2 = cy + uy * pw;
+      quad(lx + nx * pd, ly + ny * pd, rx2 + nx * pd, ry2 + ny * pd, 0, H, 0, 1, nx, ny, 2, mat, col, 0, 0, 0, hsh, tx, ty);
+      quad(lx, ly, lx + nx * pd, ly + ny * pd, 0, H, 0, 1, -ux, -uy, 2, mat, col, 0, 0, 0, hsh, tx, ty); quad(rx2 + nx * pd, ry2 + ny * pd, rx2, ry2, 0, H, 0, 1, ux, uy, 2, mat, col, 0, 0, 0, hsh, tx, ty); }
+    if (!front) continue;
+    // a placed light: a sconce on the wall (on a bracket), a pod in a hive's wall, a lamp in a machine's
+    let lit = false;
+    if (rnd(tx, ty, side, 1) < src.share && deco !== 3) { const lx = mx + nx * .2, ly = my + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - lx, lights[k + 1] - ly) >= src.spacing;
+      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
+        if (hue !== 1) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
+    // candles in an inside corner, on the floor
+    if ((ab & 1) && src.candles > 0 && rnd(tx, ty, side, 6) < src.candles) { const ux = Math.sign(dx), uy = Math.sign(dy), cx = x0 + ux * .2 + nx * .2, cy = y0 + uy * .2 + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - cx, lights[k + 1] - cy) >= src.spacing * .5;
+      if (ok) { lights.push(cx, cy, .35, src.reach * .7, src.strength * .7, 0, rnd(tx, ty, side, 7) * 6.283, 1);
+        for (let k = 0; k < 3; k++) { const ox = cx + (rnd(tx, ty, k, 11) - .5) * .2, oy = cy + (rnd(tx, ty, k, 12) - .5) * .2, ch = .1 + rnd(tx, ty, k, 13) * .14; box(ox, oy, .022, .022, 0, ch, 8, 0, wax, hsh, fx, fy); flames.push(ox, oy, ch + .035, .45, 0, rnd(tx, ty, k, 14) * 6.283); } } }
+    // props along the wall
+    const along = (k) => (rnd(tx, ty, side, k) - .5) * .5, ux = Math.sign(dx), uy = Math.sign(dy);
+    if (!lit && Pr.urn && rnd(tx, ty, side, 20) < Pr.urn) { const t = along(21), cx = mx + ux * t + nx * .2, cy = my + uy * t + ny * .2, hh = .26 + rnd(tx, ty, side, 22) * .14; box(cx, cy, .1, .1, 0, hh, 7, 0, clay, hsh, fx, fy); box(cx, cy, .065, .065, hh, hh + .06, 7, 0, clay, hsh, fx, fy); }
+    else if (!lit && Pr.coffin && rnd(tx, ty, side, 23) < Pr.coffin) { const cx = mx + nx * .09, cy = my + ny * .09; box(cx, cy, ny !== 0 ? .25 : .08, ny !== 0 ? .08 : .25, 0, 1.55, 9, 0, wood, hsh, fx, fy); }
+    if (Pr.rubble && rnd(tx, ty, side, 24) < Pr.rubble) for (let k = 0; k < 3; k++) { const t = along(25 + k), s2 = .05 + rnd(tx, ty, side, 28 + k) * .07, cx = mx + ux * t + nx * (.12 + rnd(tx, ty, side, 31 + k) * .25), cy = my + uy * t + ny * (.12 + rnd(tx, ty, side, 34 + k) * .25); box(cx, cy, s2, s2 * .8, 0, s2 * 1.2, 7, 0, col, hsh, fx, fy); }
+    if (Pr.bones && rnd(tx, ty, side, 40) < Pr.bones) cards.push(8, mx + ux * along(41) + nx * .42, my + uy * along(41) + ny * .42, rnd(tx, ty, side, 42) * 97, 0, 0, 0, 0);
+    if (Pr.chain && rnd(tx, ty, side, 43) < Pr.chain) cards.push(5, mx + ux * along(44) + nx * .32, my + uy * along(44) + ny * .32, .8 + rnd(tx, ty, side, 45) * .7, 0, 0, 0, 0);
+    if ((ab & 1) && Pr.web && rnd(tx, ty, side, 46) < Pr.web) cards.push(4, x0, y0, ux, uy, nx, ny, .45 + rnd(tx, ty, side, 47) * .35);
+  }
+  // arches over doorways: a passage one tile wide through a wall between two rooms takes an arch at each end, with its soffit
+  const A = th.arch, stoneMat = th.wall.kind === 1 ? 1 : th.wall.kind, acol = th.wall.kind === 1 ? wood : tg.wall, round = A.radius > .01;
+  const roomy = (x, y, ew) => ew ? !solid(x - 1, y) || !solid(x + 1, y) : !solid(x, y - 1) || !solid(x, y + 1);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue;
+    const ns = solid(x - 1, y) && solid(x + 1, y) && !solid(x, y - 1) && !solid(x, y + 1) && roomy(x, y - 1, true) && roomy(x, y + 1, true), ew = solid(x, y - 1) && solid(x, y + 1) && !solid(x - 1, y) && !solid(x + 1, y) && roomy(x - 1, y, false) && roomy(x + 1, y, false);
+    if (!ns && !ew) continue; const hsh = (x * 31 + y * 17) % 997; arch[y * w + x] = 1;
+    // the two faces (ends of the passage), each a quad from the spring to the top with the opening cut out in the shader
+    const ends = ns ? [[x + 1, y, x, y, 0, -1], [x, y + 1, x + 1, y + 1, 0, 1]] : [[x, y, x, y + 1, -1, 0], [x + 1, y + 1, x + 1, y, 1, 0]];
+    for (const [ax, ay, bx, by, nx, ny] of ends) quad(ax, ay, bx, by, A.spring, H, 0, 1, nx, ny, 4, stoneMat, acol, 0, 0, 0, hsh, x, y);
+    // the soffit: the arch's underside through the wall's thickness (segments round the curve; a flat lintel's is one quad)
+    const seg = round ? 9 : 1, P = (k, end) => { const th2 = Math.PI * (1 - k / seg), u = round ? .5 + .5 * Math.cos(th2) : k / seg, z = round ? A.spring + A.radius * Math.sin(th2) : A.spring, [ax, ay, bx, by] = ends[end]; return [ax + (bx - ax) * (end ? 1 - u : u), ay + (by - ay) * (end ? 1 - u : u), z, u]; };
+    for (let k = 0; k < seg; k++) { const a = P(k, 0), b = P(k + 1, 0), c2 = P(k + 1, 1), d2 = P(k, 1);
+      for (const q of [a, b, c2, a, c2, d2]) V(q[0], q[1], q[2], 0, q[3], q[2], H, 0, 0, 5, stoneMat, acol, 0, 0, 0, hsh, x, y); } }
+  return { arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
+}
+// How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.
+function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map)); if (!st) return Infinity; const w = st.w;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const tx = Math.floor(x + i * .3), ty = Math.floor(y + j * .3); if (tx >= 0 && ty >= 0 && tx < w && st.arch[ty * w + tx]) return st.archCap; } return Infinity; }
+function staticFor(map, geo, th) { let st = STATIC.get(geo); if (!st || st.th !== th) { st = buildStatic(map, geo, th); st.th = th; STATIC.set(geo, st); } return st; }
+// For tests and the lab: the floor's built things (counts, and the lights and props as plain lists).
+export function closeViewStatic(map) { const geo = wallGeometry(map), st = staticFor(map, geo, themeOf(map)); return { theme: closeViewThemeId(map?.building), verts: st.verts, lights: st.nLights, flames: st.nFlames, cards: st.nCards, data: st.data, lightList: st.lights, cardList: st.cards }; }
+
+// The light reaching a point, as one number (a creature's card, a prop's): the shader's falloff, from the carried light and the
+// frame's placed lights.
+const falloff = (d, R) => { const x = d / R, k = Math.max(0, 1 - x * x); return k * k / (1 + 2.5 * x * x); }; // as the shader's
+const lumOf = (c) => (c[0] + c[1] + c[2]) / 3;
+function lightLevel(F, X, Y, Z) { let l = lumOf(F.amb) + lumOf(F.torch) * F.torchP[1] * falloff(Math.hypot(X - F.px, Y - F.py, Z - F.torchP[2]), F.torchP[0]);
+  for (let i = 0; i < F.nl; i++) l += (F.lc[i * 4] + F.lc[i * 4 + 1] + F.lc[i * 4 + 2]) / 3 * F.lc[i * 4 + 3] * falloff(Math.hypot(X - F.lp[i * 4], Y - F.lp[i * 4 + 1], Z - F.lp[i * 4 + 2]), F.lp[i * 4 + 3]); return l; }
+const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts) {
-  const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, F = GLF, p = g.player, faces = geo.faces;
+  const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, At = CLOSE_VIEW.atmosphere, F = GLF, p = g.player;
+  const th = themeOf(g.map), tg = themeGL(th), st = staticFor(g.map, geo, th); closeViewGLStats.theme = THEME_OF.get(g.map) || ""; const seen = (SEEN.map === g.map ? SEEN.fn : (SEEN.map = g.map, SEEN.fn = glSeen(g.map)));
   const scale = Math.max(.5, Math.min(4, (ctx.canvas?.width || w) / w)) * (Q.glScale || 1);
   F.w = w; F.h = h; F.devW = Math.max(1, Math.round(w * scale)); F.devH = Math.max(1, Math.round(h * scale));
   F.cx = CAM.cx; F.cy = CAM.cy; F.fx = CAM.fx; F.fy = CAM.fy; F.rx = CAM.rx; F.ry = CAM.ry; F.hc = CAM.hc; F.cosP = CAM.cosP; F.sinP = CAM.sinP; F.F = CAM.F; F.ppx = CAM.ppx; F.ppy = CAM.ppy;
-  F.px = footX(p); F.py = footY(p); F.lightR = lightR; F.inner = Lt.inner; F.ambient = Lt.ambient; F.fogNear = fogNear; F.fogFar = fogFar; F.fog[0] = FOG[0] / 255; F.fog[1] = FOG[1] / 255; F.fog[2] = FOG[2] / 255;
+  F.px = footX(p); F.py = footY(p);
+  // the theme's light and air (the Pentagon's dread still shrinks the carried light, as before)
+  const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = (fogNear - CLOSE_VIEW.fog.near); // the blend's fog shift, carried over
+  F.fogNear = Fo.near + fogK; F.fogFar = Fo.far + fogK; F.reach = F.fogFar + 2;
+  F.fog.set(tg.fog); F.haze.set(tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = Fo.haze[0]; F.fogP[3] = Fo.haze[1];
+  F.amb.set(tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height; F.torchP[3] = .3;
+  F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
+  { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = Wl.height;
-  UNI.q = Q; UNI.reduce = reduce; UNI.now = now; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
-  if (SEEN.map !== g.map) { SEEN.map = g.map; SEEN.fn = glSeen(g.map); }
-  glMask(g.map, now, SEEN.fn, drops, CLOSE_VIEW.gl.maskMs);
+  UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
+  glMask(g.map, now, seen, drops, CLOSE_VIEW.gl.maskMs, th.floor.remap || null);
   if (Q.detail) glGrit(gritAtlas);
-  // walls: the opaque faces first, then the cut-away ones (drawn last, faint)
-  let wv = 0; const mw = geo.w, mh = geo.h; if (CAP_STAMP.tiles.length < mw * mh) CAP_STAMP.tiles = new Uint32Array(mw * mh); const stamp = ++CAP_STAMP.frame;
-  let nFaces = 0; for (let i = 0; i < n; i++) if (itemKind[i] === 0) nFaces++;
-  let W = glEnsure("wall", (nFaces * 2 + 8) * 6);
-  for (let pass = 0; pass < 2; pass++) { if (pass === 1) GLB.nGhostStart = wv;
-    for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 0) continue; const ghost = faceAlpha[it] < .995; if (ghost !== (pass === 1)) continue;
-      const fi = faceGeo[it], o = fi * 10, x0 = faces[o], y0 = faces[o + 1], x1 = faces[o + 2], y1 = faces[o + 3], nx = faces[o + 4], ny = faces[o + 5], tx = faces[o + 6], ty = faces[o + 7], st = faces[o + 8], low = faces[o + 9], top = low ? Wl.rubble : Wl.height;
-      const col = STYLE_RGB[st], a0 = ny !== 0 ? x0 : y0, a1 = ny !== 0 ? x1 : y1, grit = (geo.detail[fi] || 0) * 4 + (geo.detailInst[fi] & 15) * 2 + (geo.detailInst[fi] & 16 ? 1 : 0), bits = (geo.corner[fi] & 3) + (geo.ao[fi] & 3) * 4, side = nx > 0 ? 1 : nx < 0 ? 3 : ny > 0 ? 2 : 0, hsh = ((tx * 73 + ty * 151 + side * 37) % 997 + 997) % 997, door = st === STYLE_INDEX.door ? 1 : 0, al = faceAlpha[it];
-      const V = (X, Y, Z, along, u, zn) => { const b = wv * WALL_FLOATS; W[b] = X; W[b + 1] = Y; W[b + 2] = Z; W[b + 3] = along; W[b + 4] = u; W[b + 5] = zn; W[b + 6] = top; W[b + 7] = nx; W[b + 8] = ny; W[b + 9] = 0; W[b + 10] = door; W[b + 11] = col[0]; W[b + 12] = col[1]; W[b + 13] = col[2]; W[b + 14] = al; W[b + 15] = grit; W[b + 16] = bits; W[b + 17] = hsh; wv++; };
-      V(x0, y0, 0, a0, 0, 0); V(x1, y1, 0, a1, 1, 0); V(x1, y1, top, a1, 1, 1); V(x0, y0, 0, a0, 0, 0); V(x1, y1, top, a1, 1, 1); V(x0, y0, top, a0, 0, 1);
-      if (low && !ghost && tx >= 0 && ty >= 0 && tx < mw && ty < mh && CAP_STAMP.tiles[ty * mw + tx] !== stamp) { CAP_STAMP.tiles[ty * mw + tx] = stamp; W = glEnsure("wall", wv + 6 + (nFaces * 2) * 6);
-        const C = (X, Y) => { const b = wv * WALL_FLOATS; W[b] = X; W[b + 1] = Y; W[b + 2] = top; W[b + 3] = X; W[b + 4] = 0; W[b + 5] = 1; W[b + 6] = top; W[b + 7] = 0; W[b + 8] = 0; W[b + 9] = 1; W[b + 10] = 0; W[b + 11] = col[0]; W[b + 12] = col[1]; W[b + 13] = col[2]; W[b + 14] = 1; W[b + 15] = 0; W[b + 16] = 0; W[b + 17] = hsh; wv++; };
-        C(tx, ty); C(tx + 1, ty); C(tx + 1, ty + 1); C(tx, ty); C(tx + 1, ty + 1); C(tx, ty + 1); } } }
-  GLB.nWall = wv;
-  // billboards (far to near), and their floor decals and glows
+  glStaticWalls(st, () => st.data);
+  // the placed lights: the nearest few to the Wayfarer that the fog of war has shown, each breathing gently (still with reduced motion)
+  const K = Math.min(8, Q.lights ?? At.lights), L = st.lights, px = F.px, py = F.py; let nk = 0;
+  for (let i = 0; i < st.nLights; i++) { const o = i * LIGHT_FLOATS, d = Math.hypot(L[o] - px, L[o + 1] - py); if (d > F.reach + L[o + 3]) continue; if (seen && !seen(Math.floor(L[o]), Math.floor(L[o + 1]))) continue;
+    if (nk < K) { PICK.idx[nk] = i; PICK.d[nk] = d; nk++; } else { let wi = 0; for (let j = 1; j < nk; j++) if (PICK.d[j] > PICK.d[wi]) wi = j; if (d < PICK.d[wi]) { PICK.idx[wi] = i; PICK.d[wi] = d; } } }
+  for (let i = 1; i < nk; i++) { const di = PICK.d[i], ii = PICK.idx[i]; let j = i - 1; while (j >= 0 && PICK.d[j] > di) { PICK.d[j + 1] = PICK.d[j]; PICK.idx[j + 1] = PICK.idx[j]; j--; } PICK.d[j + 1] = di; PICK.idx[j + 1] = ii; } // nearest first (the shader's highlights take the first two)
+  const famp = At.flicker[0], fper = At.flicker[1];
+  for (let j = 0; j < nk; j++) { const o = PICK.idx[j] * LIGHT_FLOATS, hue = HUE_RGB[L[o + 5]] || HUE_RGB[0], ph = L[o + 6], fail = L[o + 5] === 3;
+    const fl = reduce ? 1 : 1 + famp * (fail ? 2.2 : 1) * (Math.sin(now / fper + ph) * .6 + Math.sin(now / (fper * .37) + ph * 2.1) * .4) - (fail && Math.sin(now / 1700 + ph * 3) > .93 ? .6 : 0);
+    F.lp[j * 4] = L[o]; F.lp[j * 4 + 1] = L[o + 1]; F.lp[j * 4 + 2] = L[o + 2]; F.lp[j * 4 + 3] = L[o + 3]; F.lc[j * 4] = hue[0]; F.lc[j * 4 + 1] = hue[1]; F.lc[j * 4 + 2] = hue[2]; F.lc[j * 4 + 3] = L[o + 4] * Math.max(0, fl); }
+  F.nl = nk;
+  // billboards (far to near), and their floor decals
   let nb = 0; for (let i = 0; i < n; i++) if (itemKind[i] === 1) nb++;
-  const B = glEnsure("board", nb * 6), D = glEnsure("decal", nb * 3 * 6); let bv = 0, dv = 0; const tw = GROUND.canvas.width, th = GROUND.canvas.height, RX = CAM.rx, RY = CAM.ry;
-  const BV = (X, Y, Z, u, v, a, fl, gh) => { const b = bv * BOARD_FLOATS; B[b] = X; B[b + 1] = Y; B[b + 2] = Z; B[b + 3] = u; B[b + 4] = v; B[b + 5] = a; B[b + 6] = fl; B[b + 7] = gh; B[b + 8] = 0; bv++; };
-  const DV = (X, Y, Z, lx, ly, kind, a, wd) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z; D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = 0; dv++; };
-  const flat = (X, Y, r, kind, a, wd) => { DV(X - r, Y - r, .01, -1, -1, kind, a, wd); DV(X + r, Y - r, .01, 1, -1, kind, a, wd); DV(X + r, Y + r, .01, 1, 1, kind, a, wd); DV(X - r, Y - r, .01, -1, -1, kind, a, wd); DV(X + r, Y + r, .01, 1, 1, kind, a, wd); DV(X - r, Y + r, .01, -1, 1, kind, a, wd); };
+  const B = glEnsure("board", nb * 6); let D = glEnsure("decal", (nb * 3 + 400) * 6); let bv = 0, dv = 0; const tw = GROUND.canvas.width, th2 = GROUND.canvas.height, RX = CAM.rx, RY = CAM.ry;
+  const room = (verts) => { if ((dv + verts) * DECAL_FLOATS > D.length) D = glEnsure("decal", dv + verts + 600); };
+  const BV = (X, Y, Z, u, v, a, fl, gh, li) => { const b = bv * BOARD_FLOATS; B[b] = X; B[b + 1] = Y; B[b + 2] = Z; B[b + 3] = u; B[b + 4] = v; B[b + 5] = a; B[b + 6] = fl; B[b + 7] = gh; B[b + 8] = li; bv++; };
+  const DV = (X, Y, Z, lx, ly, kind, a, wd, li) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z; D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
+  const flatD = (X, Y, r, kind, a, wd, li = 1) => { room(6); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y - r, .01, 1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y + r, .01, -1, 1, kind, a, wd, li); };
+  const card = (X, Y, z0, z1, hw, kind, a, wd, li) => { room(6); const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li); DV(qx, qy, z0, 1, -1, kind, a, wd, li); DV(qx, qy, z1, 1, 1, kind, a, wd, li); DV(lx, ly, z0, -1, -1, kind, a, wd, li); DV(qx, qy, z1, 1, 1, kind, a, wd, li); DV(lx, ly, z1, -1, 1, kind, a, wd, li); };
+  const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || !boardPW[it]) continue;
-    const sc = boardScale[it], hw = A.halfWidth * sc, top = A.height * sc, X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])), foe = boardFoe[it], isPlayer = draws[itemRef[it]] === capturedPlayer;
-    const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th, v1 = (boardSY[it] + boardPH[it]) / th;
-    const fl = foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = foe ? Cu.ghost * Math.min(1, b * 2) : 0;
+    const sc = boardScale[it], hw = A.halfWidth * sc, top = A.height * sc, X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])), foe = boardFoe[it]; // the Wayfarer never fainter than nearFade (nothing see-through)
+    const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
+    const fl = foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
     const lx = X - RX * hw, ly = Y - RY * hw, rxp = X + RX * hw, ryp = Y + RY * hw, zb = -A.below;
-    BV(lx, ly, zb, u0, v1, b, fl, gh); BV(rxp, ryp, zb, u1, v1, b, fl, gh); BV(rxp, ryp, top, u1, v0, b, fl, gh); BV(lx, ly, zb, u0, v1, b, fl, gh); BV(rxp, ryp, top, u1, v0, b, fl, gh); BV(lx, ly, top, u0, v0, b, fl, gh);
-    if (foe || isPlayer) { const r = Cs.radius * sc; flat(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.4, 0);
-      if (foe && foeWindingUp(foe)) flat(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b, CLOSE_VIEW.gl.ringWidth); } }
-  GLB.nBoard = bv; GLB.nGlowStart = dv;
+    BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li);
+    if (foe || isPlayer) { const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6, 0);
+      if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b, CLOSE_VIEW.gl.ringWidth); } }
+  GLB.nBoard = bv;
+  // card props near the Wayfarer: cobwebs, chains, bones (the nearest `cards`), and the spikes of traps that are up
+  { const P = At.props, C2 = st.cards, cap = Q.cards ?? P.cards; let used = 0; const H0 = Wl.height;
+    for (let i = 0; i < st.nCards && used < cap; i++) { const o = i * CARD_FLOATS, X = C2[o + 1], Y = C2[o + 2]; if (Math.hypot(X - px, Y - py) > P.reach || Math.hypot(X - CAM.cx, Y - CAM.cy) < P.nearCam) continue; // never a card right at the lens if (seen && !seen(Math.floor(X + (C2[o] === 4 ? C2[o + 5] * .5 : 0)), Math.floor(Y + (C2[o] === 4 ? C2[o + 6] * .5 : 0)))) continue; used++;
+      const kind = C2[o];
+      if (kind === 4) { const ux = C2[o + 3], uy = C2[o + 4], nx = C2[o + 5], ny = C2[o + 6], sz = C2[o + 7], cxp = X + (ux + nx) * .05, cyp = Y + (uy + ny) * .05, li = Math.max(.25, lightLevel(F, X, Y, H0 - .3));
+        room(3); DV(cxp, cyp, H0 - sz * .75, -1, -1, 4, .75, 0, li); DV(X + ux * sz, Y + uy * sz, H0 - .02, 1, -1, 4, .75, 0, li); DV(X + nx * sz, Y + ny * sz, H0 - .02, -1, 1, 4, .75, 0, li); }
+      else if (kind === 5) { const len = C2[o + 3]; card(X, Y, H0 - len, H0, .045, 5, 1, len, Math.max(.2, lightLevel(F, X, Y, H0 - len * .5))); }
+      else if (kind === 8) flatD(X, Y, .3, 8, 1, C2[o + 3], Math.max(.2, lightLevel(F, X, Y, .05))); }
+    for (const o of g.map.objects || []) { if (o.kind !== "trap" || o.gas || (o.trapType && o.trapType !== "spikes") || (o.phase !== "active" && o.phase !== "warning")) continue;
+      const ox = Number(o.x), oy = Number(o.y); if (Math.hypot(ox + .5 - px, oy + .5 - py) > P.reach || (seen && !seen(Math.floor(ox), Math.floor(oy)))) continue; const hgt = o.phase === "active" ? .26 : .07, li = Math.max(.3, lightLevel(F, ox + .5, oy + .5, .1));
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) card(ox + .2 + i * .3, oy + .2 + j * .3, 0, hgt, .035, 7, 1, 0, li); } }
+  GLB.nGlowStart = dv;
+  // added in light: wind-up glows, the flames of the lights in reach, their halos, and dust drifting near them (full tier)
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; const foe = boardFoe[it]; if (itemKind[it] !== 1 || !boardPW[it] || !foe || !foeWindingUp(foe)) continue;
     const sc = boardScale[it], X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), a = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b, hs = A.halfWidth * sc * 1.1, zc = A.height * .45 * sc;
-    DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0); DV(X + RX * hs, Y + RY * hs, zc - hs, 1, -1, 2, a, 0); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0);
-    DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0); DV(X - RX * hs, Y - RY * hs, zc + hs, -1, 1, 2, a, 0); }
+    room(6); DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc - hs, 1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1);
+    DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1); DV(X - RX * hs, Y - RY * hs, zc + hs, -1, 1, 2, a, 0, 1); }
+  { const fw = At.flame[0], fh = At.flame[1], halo = At.flame[2], Fl = st.flames;
+    for (let i = 0; i < st.nFlames; i++) { const o = i * FLAME_FLOATS, X = Fl[o], Y = Fl[o + 1]; if (Math.hypot(X - px, Y - py) > F.reach) continue; if (seen && !seen(Math.floor(X), Math.floor(Y))) continue;
+      const k = Fl[o + 3], wob = reduce ? 1 : 1 + .12 * Math.sin(now / 90 + Fl[o + 5]) + .06 * Math.sin(now / 37 + Fl[o + 5] * 2); card(X, Y, Fl[o + 2] - fh * k * .5, Fl[o + 2] + fh * k * wob, fw * k, 3, 1, Fl[o + 4], 1); }
+    for (let j = 0; j < nk; j++) { const o = PICK.idx[j] * LIGHT_FLOATS, r = halo * (L[o + 7] === 1 ? .7 : 1) * (L[o + 5] === 1 ? 1.6 : 1); card(L[o], L[o + 1], L[o + 2] - r, L[o + 2] + r, r, 9, .3 * Math.min(1.4, F.lc[j * 4 + 3]), L[o + 5], 1); }
+    if (Q.motes) { const M = At.motes, t = reduce ? 0 : now / 1000; for (let j = 0; j < Math.min(nk, M.of); j++) { const o = PICK.idx[j] * LIGHT_FLOATS;
+        for (let m = 0; m < M.per; m++) { const hx = hash32(PICK.idx[j] * 131 + m * 7) / 4294967296, hy = hash32(PICK.idx[j] * 337 + m * 11) / 4294967296, hz = hash32(PICK.idx[j] * 521 + m * 13) / 4294967296;
+          const X = L[o] + (hx - .5) * 1.6 + Math.sin(t * M.drift + m) * .15, Y = L[o + 1] + (hy - .5) * 1.6 + Math.cos(t * M.drift * .8 + m * 1.7) * .15, Z = .4 + hz * 1.8 + Math.sin(t * M.drift * .5 + m * 2.3) * .2;
+          card(X, Y, Z - M.size, Z + M.size, M.size, 6, M.alpha * (.4 + .6 * hz), L[o + 5], 1); } } } }
   GLB.nDecal = dv;
   if (!drawSceneGL(GROUND.canvas, UNI)) return false;
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); ctx.restore();
