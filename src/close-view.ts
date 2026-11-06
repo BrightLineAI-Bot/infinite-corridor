@@ -1570,7 +1570,7 @@ function selectProjectedShots(g, q) {
 }
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
-const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkTurn: Math.PI });
+const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkTurn: Math.PI });
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
@@ -1606,11 +1606,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (who.hp < track.hp) track.hitAt = now;
     const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
     const winding = who !== player && foeWindingUp(who);
-    const pose = hit ? "hit" : attack ? "attack" : winding ? "windup" : track.pace ? "walk" : "idle";
+    const tool = who === player && attack && !(player.meleeUntil > now);
+    const aim = tool ? g.save.lastAim : null;
+    const pose = hit ? "hit" : attack ? tool ? "tool" : "attack" : winding ? "windup" : track.pace ? "walk" : "idle";
     const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
-    const amount = hit || (attack ? who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / MODEL_TIMING.attackMs) : .6 : winding ? .85 : 0);
+    const amount = hit || (attack ? who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / (tool ? MODEL_TIMING.toolMs : MODEL_TIMING.attackMs)) : .6 : winding ? .85 : 0);
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
-    const actor = { kind, x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, d.lift || 0), yaw: track.yaw,
+    const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack) ? "playerTool" : kind, x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, d.lift || 0), yaw: aim && Math.hypot(aim.x, aim.y) > .01 ? Math.atan2(aim.y, aim.x) : track.yaw,
       phase: reduce ? 0 : (who.walkPhase || now / 160) * MODEL_TIMING.walkTurn, pace: track.pace, pose, amount };
     if (!append(actor)) return;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
@@ -1619,7 +1621,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   };
   for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
     const it = order[oi];
-    if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer && !g.save.mech?.active && g.save.magicSkills?.active?.id !== "ember-form") {
+    if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer && !g.fistsEquipped?.() && !g.save.mech?.active && g.save.magicSkills?.active?.id !== "ember-form") {
       admit(it, player, "player"); break;
     }
   }
