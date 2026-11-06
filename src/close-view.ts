@@ -122,7 +122,7 @@ export const CLOSE_VIEW = Object.freeze({
   // (of the tilt's range, as the crescent) a px of drag, times the player's sensitivity (save.closeViewSensitivity, from
   // `sensitivity` min to max, 1 by default) and up to 1 + `accel` for a fast swipe (`accelFrom` to `accelTo` px a second). A
   // press that hardly moves (`tapMove` px, `tapMs`) is still a tap on the world (aim, act). Eased like the crescent (`smooth`).
-  drag: Object.freeze({ side: .5, yaw: .0075, pitch: .0032, accel: .8, accelFrom: 260, accelTo: 1600, tapMove: 10, tapMs: 300, smooth: 26, sensitivity: Object.freeze([.4, 2.5]) }),
+  drag: Object.freeze({ side: .5, yaw: .0087, pitch: .0035, accel: .8, accelFrom: 260, accelTo: 1600, tapMove: 10, tapMs: 300, smooth: 32, sensitivity: Object.freeze([.4, 2.5]) }),
   controls: Object.freeze(["drag", "crescent"]), defaultControl: "drag",
   // The quick turnaround (version 4, Tim: the quick 180 of survival horror): with the stick held back toward the camera (within
   // `stickCone` degrees of straight back, past `stickMin`), a camera drag swiping down the screen (at least `swipePx` px, at
@@ -1756,6 +1756,14 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   lock.innerHTML = '<svg class="bullseye" viewBox="0 0 24 24" width="52%" height="52%" aria-hidden="true" style="pointer-events:none;position:relative"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle class="bull-ring" cx="12" cy="12" r="6.2" fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg>';
   Object.assign(lock.style, { position: "absolute", width: `${K.lockSize}px`, height: `${K.lockSize}px`, padding: "0", borderRadius: "50%", border: "0", background: "none", color: "#ddd5c4", display: "none", placeItems: "center", pointerEvents: "auto", touchAction: "manipulation", zIndex: "2" });
   cluster.after(lock);
+  const movePad = doc.createElement("div");
+  movePad.className = "close-move-pad";
+  movePad.setAttribute("aria-hidden", "true");
+  movePad.hidden = true;
+  actions.insertBefore(movePad, cluster);
+  const touchDevice = () => !!(host.navigator?.maxTouchPoints || host.matchMedia?.("(any-pointer: coarse)")?.matches);
+  let moveId = null;
+  const clearMovePad = () => { moveId = null; movePad.setAttribute("data-active", "false"); };
   let cx = 0, cy = 0, R = 0, laidAt = -1e9, shown = false, locked = false, id = null, lastA = 0, lastR = 0, downAt = 0, moved = 0, lastTap = -1e9, swipe = 0, lastMoveAt = 0, mode = "drag";
   const now = () => (host.performance || performance).now();
   // version 4: the turn is fed in, then eased onto the view by sync() (once a frame); a release applies what is left
@@ -1813,8 +1821,18 @@ export function mountCloseViewControls(getGame, host = globalThis) {
     if (ms > 400) { strokeX = x; strokeY = y; strokeAt = t; } return false; };
   const dragging = (e) => e.pointerId === dragId;
   if (canvas?.addEventListener) {
-    canvas.addEventListener("pointerdown", (e) => { if (!shown || mode !== "drag" || dragId !== null) return; const vw = host.innerWidth || canvas.clientWidth || 0; if (!(e.clientX >= vw * D.side)) return;
-      e.stopImmediatePropagation?.(); e.preventDefault?.(); dragId = e.pointerId; dragX = dragX0 = strokeX = e.clientX; dragY = dragY0 = strokeY = e.clientY; dragAt = dragDown = strokeAt = now(); dragMoved = 0; swipe = 0; try { canvas.setPointerCapture?.(dragId); } catch { /* a synthetic pointer has nothing to capture */ } }, { capture: true });
+    canvas.addEventListener("pointerdown", (e) => {
+      if (!shown) return;
+      const split = (host.innerWidth || canvas.clientWidth || 0) * D.side;
+      if (e.clientX < split) {
+        if (e.pointerType === "touch" && moveId === null) { moveId = e.pointerId; movePad.setAttribute("data-active", "true"); }
+        return;
+      }
+      if (mode !== "drag") return;
+      e.stopImmediatePropagation?.(); e.preventDefault?.();
+      // The camera already owns a right-side touch. Keep any extra right touch out of the movement stick.
+      if (dragId !== null) return;
+      dragId = e.pointerId; dragX = dragX0 = strokeX = e.clientX; dragY = dragY0 = strokeY = e.clientY; dragAt = dragDown = strokeAt = now(); dragMoved = 0; swipe = 0; try { canvas.setPointerCapture?.(dragId); } catch { /* a synthetic pointer has nothing to capture */ } }, { capture: true });
     canvas.addEventListener("pointermove", (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); const dx = e.clientX - dragX, dy = e.clientY - dragY, t = now(); dragX = e.clientX; dragY = e.clientY; dragMoved = Math.max(dragMoved, Math.hypot(e.clientX - dragX0, e.clientY - dragY0));
       const g = getGame(); if (!g) return; const k = sens() * accelOf(Math.hypot(dx, dy), t - dragAt, D.accel, D.accelFrom, D.accelTo); dragAt = t;
       if (stroke(g, e.clientX, e.clientY, t, dy) || closeViewTurning()) return; // the turnaround owns the view while it swings
@@ -1822,8 +1840,20 @@ export function mountCloseViewControls(getGame, host = globalThis) {
     const dragEnd = (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); dragId = null; const t = now(); flush(t);
       if (e.type === "pointerup" && dragMoved < D.tapMove && t - dragDown < D.tapMs && typeof CustomEvent === "function") canvas.dispatchEvent?.(new CustomEvent("worldtap", { detail: { clientX: e.clientX, clientY: e.clientY, pointerType: e.pointerType } }));
       else CAM.panAt = t; };
-    for (const t of ["pointerup", "pointercancel"]) canvas.addEventListener(t, dragEnd, { capture: true });
-    canvas.addEventListener("lostpointercapture", (e) => { if (dragging(e)) { dragId = null; flush(now()); } }, { capture: true }); }
+    for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) canvas.addEventListener(t, (e) => {
+      if (e.pointerId === moveId) clearMovePad();
+      if (t === "lostpointercapture") { if (dragging(e)) { dragId = null; flush(now()); } }
+      else dragEnd(e);
+    }, { capture: true });
+    host.addEventListener?.("blur", () => {
+      clearMovePad();
+      dragId = null;
+      id = null;
+      PEND.dx = PEND.dy = 0;
+      rail.setAttribute("stroke-opacity", String(K.idle));
+      rail.setAttribute("stroke-dasharray", "2 7");
+    });
+  }
   // the lock: a tap that starts on it (press, release within tapMove px); a pointer already panning the crescent never counts
   let lockId = null, lockX = 0, lockY = 0;
   lock.addEventListener("pointerdown", (e) => { stop(e); if (e.pointerId === id || lockId !== null) return; lockId = e.pointerId; lockX = e.clientX; lockY = e.clientY; lock.setPointerCapture?.(lockId); });
@@ -1832,7 +1862,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   for (const el of [hit, lock]) for (const t of ["click", "dblclick", "contextmenu"]) el.addEventListener(t, (e) => { e.preventDefault(); e.stopPropagation(); });
   host.addEventListener?.("resize", () => { laidAt = -1e9; }, { passive: true });
   return { svg, lock, layout, get dragging() { return dragId !== null; }, sync() { const g = getGame(), want = !!g && !g.paused && closeViewShowing(g), m = closeViewControl(g);
-    if (want !== shown || m !== mode) { shown = want; mode = m; svg.style.display = want && mode === "crescent" ? "block" : "none"; lock.style.display = want ? "grid" : "none"; if (!want) { id = null; dragId = null; PEND.dx = PEND.dy = 0; } else laidAt = -1e9; }
+    if (want !== shown || m !== mode) { shown = want; mode = m; svg.style.display = want && mode === "crescent" ? "block" : "none"; lock.style.display = want ? "grid" : "none"; movePad.hidden = !want || !touchDevice(); if (!want) { id = null; dragId = null; PEND.dx = PEND.dy = 0; clearMovePad(); } else laidAt = -1e9; }
     if (!want) return; if (now() - laidAt > 1000) layout();
     { const t = now(), dt = PEND.at >= 0 ? Math.max(0, Math.min(.1, (t - PEND.at) / 1000)) : 1 / 60; PEND.at = t; // ease the fed turn onto the view
       if (closeViewTurning()) PEND.dx = PEND.dy = 0;
