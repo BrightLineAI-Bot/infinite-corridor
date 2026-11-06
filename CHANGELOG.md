@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 781 — **More far stories.** Two more stories lie past 1000 sections: The Enumerator's Count (the Crystal Civilisation) and The Tinker's Tags (the Storm Halls). Out there the far stories now take about four-fifths of the story slots, at the same density; crossings already entered keep what they offered.
 - Release 780 — **Canopy groves.** In some new great-tree sections, several great trees' crowns are joined high above an unseen floor by bridges of branch wood and short hops, reached by climbing one tree, with the door and Crown Rest on the farthest crown. Fall off and you die, or your glider opens. Groves never again need a hop the Wayfarer can't make. New ground only.
 - Release 779 — **Stories past 1000, at 12%.** Crossings entered from now on hold a story piece at 12% (was 13%), and three new stories lie past 1000 sections: The Tall Child's Slates, The Spore Prints and The Ink-Clerk's Blotters. They share the same slots, so the far realms have their own stories without any more of them. Crossings already entered keep what they offered.
 - Release 778 — **The crown wake needs the crown.** After a fatal glide you wake on a great tree's crown only if you actually stood on it (a lower branch, a grove's lesser crown or ground as high as the crown gives the usual recovery), and waking there makes that crown's Crown Rest your rest point. A jump saved in mid-air now resumes at the height it left from.
