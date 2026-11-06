@@ -110,29 +110,31 @@ uniform vec2 u_cam; uniform vec2 u_fwd; uniform vec2 u_right; uniform float u_hc
 uniform sampler2D u_ground; uniform vec4 u_gmap; uniform vec2 u_tex; // gmap: px per tile, x0, y0 (device px of world 0,0), the texture's last row of ground
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 uniform vec4 u_ceil; uniform vec3 u_ceilRGB; uniform vec4 u_ceilK; // ceil: height, on (0/1), bay (tiles), detail (0/1); ceilK: kind, rib width, darkness above, -
+uniform vec4 u_hall; uniform vec3 u_backdrop[3]; // backdrop kind, open roof, skylight, shaft depth
 uniform vec4 u_pit; uniform vec3 u_stone; uniform vec3 u_lip; uniform vec3 u_safe; uniform vec4 u_safeP; // pit: hole depth, chasm depth, darkening a tile, lip width; safeP: near, full, breath, on
 uniform vec4 u_lava; uniform vec3 u_lavaA; uniform vec3 u_lavaB; uniform vec3 u_lavaC; uniform vec3 u_chasm; // lava: scale, flow, light, light reach
 uniform vec4 u_floorP; uniform vec3 u_floorRGB; uniform vec3 u_floorJ; uniform vec3 u_rug; uniform vec4 u_floorQ; // floorP: kind, stone size, wear, sewer; floorQ: bump on, wet, detail on, -
 uvec4 maskAt(ivec2 T) { if (T.x < 0 || T.y < 0 || T.x >= u_mapSize.x || T.y >= u_mapSize.y) return uvec4(0u, 0u, 0u, 1u); return texelFetch(u_mask, T, 0); }
-bool pitCode(uint g) { return g == 1u || g == 3u || g == 4u; }
+bool pitCode(uint g) { return g == 1u || g == 3u || g == 4u || g == 5u; }
 bool wallAt(ivec2 T) { return (maskAt(T).a & 1u) == 1u; }
 uint matAt(ivec2 T) { return maskAt(T).b >> 1u; }
 // what lies on the floor (the ordinary renderer's marks and telegraphs, premultiplied; clear where nothing does)
 vec4 overlayAt(vec2 P) { vec2 px = P * u_gmap.x + u_gmap.yz; if (px.x < 0.0 || px.y < 0.0 || px.y > u_gmap.w || px.x > u_tex.x) return vec4(0.0); return texture(u_ground, px / u_tex); }
 // down through a hole: the first inner wall the ray meets, or the bottom
 vec3 pitColor(vec2 P, vec3 dir, uint code, bool safe) {
-  float D = code == 3u ? u_pit.y : u_pit.x; vec2 h = dir.xy; float hl = max(length(h), 1e-5); vec2 hd = h / hl; float descent = -dir.z / hl;
+  float D = code == 5u ? u_hall.w : code == 3u ? u_pit.y : u_pit.x; vec2 h = dir.xy; float hl = max(length(h), 1e-5); vec2 hd = h / hl; float descent = -dir.z / hl;
   ivec2 T = ivec2(floor(P)); vec2 st = vec2(hd.x >= 0.0 ? 1.0 : -1.0, hd.y >= 0.0 ? 1.0 : -1.0); vec2 ah = max(abs(hd), vec2(1e-5));
   vec2 tMax = (vec2(T) + max(st, vec2(0.0)) - P) / (st * ah), tDelta = 1.0 / ah; float hitT = -1.0, side = 0.0;
   for (int i = 0; i < 10; i++) { float tN = min(tMax.x, tMax.y); if (tN * descent >= D) break;
     if (tMax.x < tMax.y) { T.x += int(st.x); tMax.x += tDelta.x; side = 0.0; } else { T.y += int(st.y); tMax.y += tDelta.y; side = 1.0; }
     uvec4 m = maskAt(T); if (!pitCode(m.g)) { hitT = tN; break; } }
-  if (hitT < 0.0) { return code == 3u ? u_chasm * 0.55 : vec3(0.0); }
+  if (hitT < 0.0) { return code == 5u ? u_backdrop[0] : code == 3u ? u_chasm * 0.55 : vec3(0.0); }
   float depth = hitT * descent; vec2 W = P + hd * hitT; float along = side < 0.5 ? W.y : W.x;
   float strata = aline(fract(depth * 3.2 + hash12(vec2(floor(along * 1.5), 3.0)) * 0.3) - 0.5, 0.06);
   vec3 c = u_stone * (0.82 + 0.22 * vnoise(vec2(along * 5.0, depth * 7.0))) * (1.0 - 0.35 * strata) * (side < 0.5 ? 0.8 : 1.0);
   vec3 dif, spe; lightsAt(vec3(W, -depth), vec3(0.0, 0.0, 1.0), 0.0, dif, spe); c *= dif * exp(-depth * u_pit.z);
   if (code == 3u) c += u_chasm * smoothstep(0.0, D, depth) * 0.6;
+  if (code == 5u) c = mix(c, u_backdrop[1] * 0.3, smoothstep(0.0, D, depth));
   float lip = 1.0 - smoothstep(u_pit.w * 0.6, u_pit.w, depth);
   vec3 lipC = u_lip * dif;
   if (safe && u_safeP.w > 0.5) { float d = length(W - u_player), a = (1.0 - smoothstep(u_safeP.y, u_safeP.x, d)) * u_safeP.z; lipC = mix(lipC, u_safe, a); }
@@ -230,6 +232,25 @@ vec3 ceilMat(vec2 P, out float h, out float dark) {
     h = girder + rib * 0.5 + pipe * 0.7; dark = (1.0 - max(girder, max(pipe, rib))) * u_ceilK.z; }
   return c;
 }
+vec3 hallBackdrop(vec3 ray) {
+  vec3 d = normalize(ray);
+  vec2 p = d.xy / (0.55 + abs(d.z));
+  vec3 c = mix(u_backdrop[0], u_backdrop[1] * 0.36, pow(max(0.0, d.z), 1.4));
+  if (u_hall.x < 1.5) {
+    vec2 cell = p * 52.0, id = floor(cell);
+    float star = step(0.96, hash12(id)) * (1.0 - smoothstep(0.06, 0.23, length(fract(cell) - 0.5)));
+    c += u_backdrop[2] * star * 0.5;
+  } else if (u_hall.x < 2.5) {
+    float ledge = abs(fract(d.z * 11.0) - 0.5);
+    c += u_backdrop[2] * (1.0 - smoothstep(0.02, 0.08, ledge)) * step(0.78, hash12(floor(p * 19.0))) * 0.2;
+  } else if (u_hall.x < 3.5) {
+    vec2 g = abs(fract(vec2(p.x + p.y * 0.7, p.y - p.x * 0.53) * 5.0) - 0.5);
+    c += u_backdrop[2] * (1.0 - smoothstep(0.012, 0.04, min(g.x, g.y))) * 0.16;
+  } else {
+    c += u_backdrop[2] * pow(max(0.0, d.z), 6.0) * 0.18;
+  }
+  return c;
+}
 void main() {
   vec2 css = vec2(gl_FragCoord.x, u_dev.y - gl_FragCoord.y) * (u_size / u_dev);
   float b = (css.x - u_pp.x) / u_F, a = (u_pp.y - css.y) / u_F;
@@ -240,7 +261,7 @@ void main() {
     if (fogK < 0.999) {
       vec3 dif, spe; vec3 W3 = vec3(P, 0.0);
       if ((m.r & 2u) == 2u) { col = u_fog; } // unseen: the dark keeps its secrets
-      else if (m.g == 1u || m.g == 3u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
+      else if (m.g == 1u || m.g == 3u || m.g == 5u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
       else if (m.g == 2u) { col = atmos(lavaColor(P, T), W3, depth, vec3(0.0)); }
       else { float h, wet; uint mat = m.b >> 1u; vec3 alb = floorMat(P, T, mat, h, wet);
         vec3 N = u_floorQ.x > 0.5 ? bump(vec3(0.0, 0.0, 1.0), W3, h * 0.035) : vec3(0.0, 0.0, 1.0);
@@ -260,10 +281,14 @@ void main() {
     } else col = u_fog;
   } else if (dir.z > 1e-5 && u_ceil.y > 0.5) { float t = (u_ceil.x - u_hc) / dir.z; vec2 P = u_cam + dir.xy * t; uvec4 m = maskAt(ivec2(floor(P)));
     float depth = t;
-    if ((m.r & 1u) == 1u && (m.r & 2u) == 0u) { vec3 W3 = vec3(P, u_ceil.x); float h = 0.0, dark = 0.0; vec3 c = u_ceilRGB;
+    bool skylight = u_hall.z > 0.5 && (m.r & 4u) == 4u;
+    if ((m.r & 2u) == 0u && u_hall.x > 0.0 && (u_hall.y > 0.5 || skylight)) {
+      col = hallBackdrop(dir);
+    } else if ((m.r & 1u) == 1u && (m.r & 2u) == 0u) { vec3 W3 = vec3(P, u_ceil.x); float h = 0.0, dark = 0.0; vec3 c = u_ceilRGB;
       if (u_ceil.w > 0.5) c = ceilMat(P, h, dark);
       vec3 N = u_ceil.w > 0.5 ? bump(vec3(0.0, 0.0, -1.0), W3, h * 0.04) : vec3(0.0, 0.0, -1.0); vec3 dif, spe; lightsAt(W3, N, 0.0, dif, spe);
-      c *= dif * (1.0 - dark); col = atmos(c, W3, depth, dif * 0.5); }
+      c *= dif * (1.0 - dark); col = atmos(c, W3, depth, dif * 0.5);
+      if (u_hall.x > 0.0) col = mix(col, hallBackdrop(dir), 0.24 + dark * 0.25); }
     else col = u_fog;
   }
   outColor = vec4(finish(col), 1.0);
@@ -503,7 +528,7 @@ export function resetCloseViewGL() { S.gl = null; S.canvas = null; S.gritReady =
 // over a drop; b: bit 1 a safe drop, bits 2.. the floor's material (closeViewFloorMaterial); a: 1 a wall.
 // Hazards show only where the Wayfarer has seen (the fog of war keeps its secrets). Pure: tests read it.
 const HOLE = /hole|pit|abyss|void/i, LAVA = /lava|magma/i;
-export function closeViewHazardCode(t) { if (!t) return 0; if (t.bridge) return 4; if (t.chasm) return t.blocked && !/void|chasm|abyss|canyon/i.test(String(t.kind || "")) ? 0 : 3; const k = String(t.kind || ""); if (t.hole || (!t.blocked && HOLE.test(k))) return 1; if (LAVA.test(k)) return 2; return 0; }
+export function closeViewHazardCode(t) { if (!t) return 0; if (t.bridge) return 4; if (t.hallVoid) return 5; if (t.chasm) return t.blocked && !/void|chasm|abyss|canyon/i.test(String(t.kind || "")) ? 0 : 3; const k = String(t.kind || ""); if (t.hole || (!t.blocked && HOLE.test(k))) return 1; if (LAVA.test(k)) return 2; return 0; }
 // A tile's floor material (the shader's floorMat): 0 the theme's own, 1 mosaic, 2 planks, 3 a rug, 4 ceramic tiles,
 // 5 concrete, 6 packed dirt, 7 resin, 8 flesh, 9 crystal resin, 10 plating.
 const FLOOR_MATERIAL = Object.freeze({ mosaicFloor: 1, plankFloor: 2, logBridge: 2, bridge: 2, carpetFloor: 3, tileFloor: 4, concreteFloor: 5, cellarFloor: 6, rootFloor: 6, chitinFloor: 7, fleshFloor: 8, crystalFloor: 9, arcFloor: 10, arcologyFloor: 10 });
@@ -511,10 +536,13 @@ export const closeViewFloorMaterial = (t) => FLOOR_MATERIAL[t?.kind] || 0;
 export function closeViewMask(map, seen = null, safe = null, out = null, remap = null) {
   const w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Number(map?.height) || Math.floor(tiles.length / w)), data = out && out.length >= w * h * 4 ? out : new Uint8Array(w * h * 4);
   let lava = 0;
+  const skylights = map?.hall?.sky ? (map.hall.features || []).filter((f) => f.kind === "skylight") : [];
+  if (map?.hall?.sky && !skylights.length) skylights.push({ x: Math.floor(w / 2), y: Math.floor(h / 2) });
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const k = y * w + x, t = tiles[k], o = k * 4; if (!t) { data[o] = 0; data[o + 1] = 0; data[o + 2] = 0; data[o + 3] = 1; continue; }
     const open = t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || t.open === true || t.kind === "yardGrass";
     const vis = !seen || (t.blocked && seen.wall ? seen.wall(x, y) : seen(x, y)), code = vis ? closeViewHazardCode(t) : 0, mat = closeViewFloorMaterial(t);
-    data[o] = (open ? 0 : 1) | (vis ? 0 : 2); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); data[o + 3] = t.blocked && !code ? 1 : 0; if (code === 2) lava++; }
+    const sky = skylights.length && skylights.some((f) => Math.abs(f.x - x) <= 1 && Math.abs(f.y - y) <= 1);
+    data[o] = (open ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); data[o + 3] = t.blocked && !code ? 1 : 0; if (code === 2) lava++; }
   return { data, w, h, lava };
 }
 export function glMask(map, now, seen, safe, everyMs, remap = null) {

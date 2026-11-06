@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 789, the next is **790**. (793 is taken by `claude/close-view-v4` while 792 is in flight in PR #440.)
+Taken at merge time: main's release + 1. With r796 on main, this PR takes r797.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 796 | Claude | `claude/close-view-atmosphere` | Close View v5 atmosphere: a look per place (Pentagon tomb and root cellar, keep, lived-in keep, hive, arcology), built stonework, vaulted ceilings, placed candle and sconce light, fog and haze, camera collision instead of see-through walls, full-resolution sprites | In flight. |
-| 795 | Claude | `claude/pentagon-grand-halls` | Pentagon version 8: grand halls (ballroom, arena, vaulted gallery, colonnaded hall, pit-gallery round an open shaft) among the ring chambers of new Pentagons, tall with a ceiling class and a backdrop; 17 lore murals (`PENTAGON_MURALS`) on walls, ceilings and floors, read once into the Journal; the Watcher's sigil over doors, on banners and columns, inlaid in hall floors; all as map data for the Close View pass (796). Older Pentagons byte-identical | Merged (#442). |
+| 797 | Codex | `claude/close-view-grand-halls` | Render Pentagon v8 grand halls in Close View | In flight. |
+| 796 | Claude | `claude/close-view-atmosphere` | Close View v5 atmosphere: a look per place (Pentagon tomb and root cellar, keep, lived-in keep, hive, arcology), built stonework, vaulted ceilings, placed candle and sconce light, fog and haze, camera collision instead of see-through walls, full-resolution sprites | Merged (#443). Previewed and published as r796-817d6b861fd9 on 2026-11-06. |
+| 795 | Claude | `claude/pentagon-grand-halls` | Pentagon version 8: grand halls (ballroom, arena, vaulted gallery, colonnaded hall, pit-gallery round an open shaft) among the ring chambers of new Pentagons, tall with a ceiling class and a backdrop; 17 lore murals (`PENTAGON_MURALS`) on walls, ceilings and floors, read once into the Journal; the Watcher's sigil over doors, on banners and columns, inlaid in hall floors; all as map data for the Close View pass (796). Older Pentagons byte-identical | Merged (#442). Previewed as r795-9923cf44a701. Published in r796. |
 | 793 | Claude | `claude/close-view-v4` | Close View v4: a GPU scene (WebGL2) with a floor cast per pixel (no more swimming), a ceiling, detailed walls (panel relief, bevels, trim), pits with depth and lava, smooth follow and sprite motion, drag-anywhere camera control by default (crescent kept as an option, wider and faster), and a quick turnaround | Merged (#441). Published as r793-e86fa19ff8f8 on 2026-11-06. |
 | 792 | Claude | `claude/region-792` | The Reckoning Fields (landscape 23): a far region (site 24+ sections out) laid as one self-similar figure (sieve, carpet or cross) from its site, raised plates, monoliths, caches | Merged (#440). Published as r792-5b14ec5bba1f on 2026-11-06. |
 | 791 | Claude | `claude/pg-in-options` | Enter Proving Ground from Options → System (scratch copy of the journey through a one-shot handoff; Exit to game resumes it untouched), a "Proving Ground access" setting, and Get latest release in the Proving Ground | Merged (#439). Published as r791-114d17e5e7e1 on 2026-11-06. |
@@ -181,6 +182,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 789, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 796 | `r796-817d6b861fd9` | 2026-11-06 | Close View atmosphere (#443) and Pentagon grand-hall map data (#442). |
 | 793 | `r793-e86fa19ff8f8` | 2026-11-06 | Fable review (792→793): no blockers. Close View v4 (#441). |
 | 792 | `r792-5b14ec5bba1f` | 2026-11-06 | Fable review (791→792): no blockers. The Reckoning Fields, landscape 23 (#440). |
 | 791 | `r791-114d17e5e7e1` | 2026-11-06 | Fable review (790→791): no blockers. Enter Proving Ground from Options, Exit to game, Get latest release (#439). |

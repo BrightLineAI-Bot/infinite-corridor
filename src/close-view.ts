@@ -1,5 +1,8 @@
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { dungeonTileVisibility } from "./dungeon-framework.ts";
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
+import { SIGIL_CELLS } from "./watcher.ts";
 import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
@@ -1259,13 +1262,16 @@ function themeGL(th) {
   THEME_GL.set(th, t); return t;
 }
 const HUE_RGB = [[1, .62, .32], [.3, .95, .8], [.55, .72, 1], [1, .78, .42]]; // a placed light's colour by hue: warm, bioluminescent, ghost-light, a failing lamp
+const NO_BACKDROP = { kind: 0, colors: new Float32Array(9) };
 const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOSE_VIEW.cues, R = HOLE_DROPS.rim;
   const stone = rgb01(Pt.stone), lip = rgb01(Pt.lipRGB), chasm = rgb01(Pt.chasmRGB), safe = rgb01(R.rgb.split(",").map(Number)), lavaA = rgb01(Lv.crust), lavaB = rgb01(Lv.hot), lavaC = rgb01(Lv.vein);
   const gritA = new Float32Array(9), ring = rgb01(Cu.glowRGB.split(",").map(Number)); for (let i = 0; i < 9; i++) gritA[i] = GRIT.variants[i]?.alpha ?? 0;
   const un = GRIT.variants.find((v) => v.id === "unresolved") || { shimmer: 0, period: 1 };
-  return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null,
+  return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null, hall: null, backdrop: NO_BACKDROP,
     env(gl, U, F, lavaTiles) { const q = UNI.q, th = UNI.th, tg = UNI.tg, C = th.ceiling, Fl = th.floor;
-      gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling ? 1 : 0, C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
+      gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
+      gl.uniform4f(U.u_hall, UNI.backdrop.kind, UNI.hall?.open ? 1 : 0, UNI.hall?.sky ? 1 : 0, HALL_VIEW.shaftDepth);
+      gl.uniform3fv(U.u_backdrop, UNI.backdrop.colors);
       gl.uniform4f(U.u_pit, Pt.hole, Pt.chasm, Pt.dark, Pt.lip); gl.uniform3fv(U.u_stone, stone); gl.uniform3fv(U.u_lip, lip); gl.uniform3fv(U.u_safe, safe); gl.uniform3fv(U.u_chasm, chasm);
       const breath = UNI.reduce ? 1 : 1 - R.pulseDepth * (.5 + .5 * Math.sin(UNI.now / R.pulse * Math.PI * 2)); gl.uniform4f(U.u_safeP, R.near, R.full, R.alpha * breath, UNI.safeOn ? 1 : 0);
       gl.uniform4f(U.u_lava, Lv.scale, Lv.flow, Lv.light, q.lavaLight && lavaTiles > 0 ? 3 / Lv.reach : 0); gl.uniform3fv(U.u_lavaA, lavaA); gl.uniform3fv(U.u_lavaB, lavaB); gl.uniform3fv(U.u_lavaC, lavaC);
@@ -1297,10 +1303,20 @@ const SEEN = { map: null, fn: null };
 // bones a seed). Counts: closeViewStatic.
 export const LIGHT_FLOATS = 8, FLAME_FLOATS = 6, CARD_FLOATS = 8;
 const STATIC = new WeakMap();
+const HALL_VIEW = Object.freeze({ minHeight: 6, maxHeight: 14, tierHeight: .65, shaftDepth: 24, ceilingBay: 4 });
+const BACKDROPS = new Map(PENTAGON_BACKDROPS.map(({ id, palette }, i) => [
+  id, { kind: i + 1, colors: Float32Array.from(palette.flatMap((hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255))) },
+]));
+function hallHeight(map) {
+  const height = map.hall?.ceilingHeight;
+  return map.hall?.tall && Number.isFinite(height)
+    ? Math.max(HALL_VIEW.minHeight, Math.min(HALL_VIEW.maxHeight, height))
+    : CLOSE_VIEW.walls.height;
+}
 export const closeViewStaticStats = { builds: 0 };
 function buildStatic(map, geo, th) {
   closeViewStaticStats.builds++;
-  const out = [], lights = [], flames = [], cards = [], w = geo.w, h = geo.h, tiles = map.tiles, Fc = geo.faces, H = CLOSE_VIEW.walls.height, RB = CLOSE_VIEW.walls.rubble, tg = themeGL(th), src = th.light.sources;
+  const out = [], lights = [], flames = [], cards = [], w = geo.w, h = geo.h, tiles = map.tiles, Fc = geo.faces, H = hallHeight(map), RB = CLOSE_VIEW.walls.rubble, tg = themeGL(th), src = th.light.sources;
   const solid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || isWall(tiles[y * w + x]);
   const busy = new Uint8Array(w * h); for (const o of map.objects || []) { const ox = Math.floor(Number(o.x) + .5), oy = Math.floor(Number(o.y) + .5); for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const x = ox + i, y = oy + j; if (x >= 0 && y >= 0 && x < w && y < h && (i === 0 && j === 0 || o.kind === "buildingStair" || o.kind === "exit" || o.kind === "dungeon")) busy[y * w + x] = 1; } }
   const free = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !solid(x, y) && !busy[y * w + x] && !closeViewHazardCode(tiles[y * w + x]) && !tiles[y * w + x].doorway;
@@ -1317,10 +1333,167 @@ function buildStatic(map, geo, th) {
   const box = (cx, cy, hx, hy, z0, z1, part, mat, c, hsh, tx, ty) => { const x0 = cx - hx, x1 = cx + hx, y0 = cy - hy, y1 = cy + hy;
     quad(x0, y0, x1, y0, z0, z1, x0, x1, 0, -1, part, mat, c, 0, 0, 0, hsh, tx, ty); quad(x1, y1, x0, y1, z0, z1, x1, x0, 0, 1, part, mat, c, 0, 0, 0, hsh, tx, ty);
     quad(x0, y1, x0, y0, z0, z1, y1, y0, -1, 0, part, mat, c, 0, 0, 0, hsh, tx, ty); quad(x1, y0, x1, y1, z0, z1, y0, y1, 1, 0, part, mat, c, 0, 0, 0, hsh, tx, ty); flat(x0, y0, x1, y0, x1, y1, x0, y1, z1, part, mat, c, hsh, tx, ty); };
+  // The generated marks are the only source of Close View art placement.
+  const inward = { north: [0, 1], east: [-1, 0], south: [0, -1], west: [1, 0] };
+  const paint = (x, y, z, nx, ny, width, height) => {
+    const horizontal = nx === 0 && ny === 0, part = horizontal && z > 1 ? 7.25 : 7;
+    const point = (u, v, depth) => horizontal
+      ? [x + u * width, y + v * height, z + depth]
+      : [x + ny * u * width + nx * depth, y - nx * u * width + ny * depth, z - v * height];
+    const stamp = (points, color, depth) => {
+      for (const i of [0, 1, 2, 0, 2, 3]) {
+        const [X, Y, Z] = point(...points[i], depth);
+        V(X, Y, Z, X + Y, 0, Z, Z, nx, ny, part, 0, color, 0, 0, 0, 0, Math.floor(X), Math.floor(Y));
+      }
+    };
+    const rect = (u, v, a, b, color, depth = 0) => stamp([[u - a, v - b], [u + a, v - b], [u + a, v + b], [u - a, v + b]], color, depth);
+    const path = (points, color, weight = .018) => {
+      for (let i = 1; i < points.length; i++) {
+        const [a, b] = points[i - 1], [c, d] = points[i], length = Math.hypot(c - a, d - b);
+        if (!length) continue;
+        const p = (b - d) * weight / length, q = (c - a) * weight / length;
+        stamp([[a + p, b + q], [c + p, d + q], [c - p, d - q], [a - p, b - q]], color, horizontal ? -.013 : .013);
+      }
+    };
+    return { rect, path };
+  };
+  const sigilColors = [[.22, .19, .3], [.65, .53, .82], [.92, .78, .99]];
+  const glyph = (surface, colors = sigilColors, depth = .012) => {
+    for (const { dx, dy, part } of SIGIL_CELLS) {
+      const color = colors[part === "pupil" ? 2 : part === "orbit" || part === "ring" ? 0 : 1];
+      surface.rect(dx / 12, (dy - 1) / 16, .043, .033, color, depth);
+    }
+  };
+  for (const m of map.murals || []) {
+    const art = PENTAGON_MURALS.find(({ id }) => id === m.muralId);
+    if (!art) continue;
+    const [ground, middle, bright] = art.palette.map((color) => rgb(color).map((v) => v / 255));
+    const x = m.x + .5, y = m.y + .5;
+    if (m.place === "floor") {
+      for (let j = m.y - (m.h >> 1); j < m.y + (m.h >> 1) + 1; j++) {
+        for (let i = m.x - (m.w >> 1); i < m.x + (m.w >> 1) + 1; i++) {
+          const mark = tiles[j * w + i]?.inlay;
+          if (!mark) continue;
+          const tile = paint(i + .5, j + .5, .012, 0, 0, 1, 1);
+          tile.rect(0, 0, .47, .47, ground);
+          if (mark === 2) tile.rect(0, 0, .38, .38, bright, .006);
+        }
+      }
+      continue;
+    }
+    const ceiling = m.place === "ceiling", normal = inward[m.side];
+    if (ceiling ? !map.hall || map.hall.open : !normal) continue;
+    const [nx, ny] = normal || [0, 0], wallSpan = nx ? Math.min(y - 1, h - 1 - y) : Math.min(x - 1, w - 1 - x);
+    const width = ceiling ? m.scale * .94 : Math.min(m.scale * .94, wallSpan * 2), height = ceiling ? width * .7 : 1.36;
+    const face = paint(x + nx * .52, y + ny * .52, ceiling ? H - .027 : 1.47, nx, ny, width, height);
+    const depth = ceiling ? -.014 : .014;
+    face.rect(0, 0, .5, .5, middle);
+    face.rect(0, 0, .482, .47, ground, depth * .5);
+    if (art.motif === "rule-figure") {
+      const cols = 27, rows = ceiling ? 19 : 13, cells = muralPattern(art, cols, rows);
+      for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) if (cells[j][i]) {
+        face.rect((i - (cols >> 1)) / 30, (j - (rows >> 1)) / (rows + 4), .015, .43 / (rows + 4), bright, depth);
+      }
+    } else if (art.motif === "constellation") {
+      for (let i = 0; i < 88; i++) {
+        const ring = art.id === "eightyEight", angle = i * (ring ? Math.PI / 44 : 2.39996323), reach = ring ? .39 + .02 * rnd(m.x, m.y, i, 82) : .42 * Math.sqrt((i + 1) / 88);
+        const u = Math.cos(angle) * reach, v = Math.sin(angle) * reach;
+        if (!ring && Math.abs(u + v * .45) < .08 && v > -.23) continue;
+        const size = .005 + .007 * rnd(m.x, m.y, i, 83);
+        face.rect(u, v, size, size, i % 3 ? bright : middle, depth);
+      }
+    } else if (art.id === "unclosingEye") {
+      glyph(face, [middle, bright, bright], depth);
+    } else if (art.motif === "mosaic") {
+      // Opposed grains converge on a warmer seam through the stone.
+      for (let i = -4; i <= 4; i++) {
+        const v = i * .088;
+        face.path([[-.43, v], [-.28, v + .036], [-.12, v - .035], [0, v]], middle);
+        face.path([[.43, v], [.30, v - .03], [.12, v + .05], [0, v]], bright, .009);
+      }
+      face.path([[-.02, -.42], [.025, -.2], [-.013, .05], [.02, .19], [0, .42]], bright, .025);
+    } else if (art.id === "measureThatGrew") {
+      for (let i = 0; i < 9; i++) {
+        const u = -.42 + i * .1, a = .023 + i * .003, b = .046 + i * .025;
+        face.path([[u - a, .1], [u, .1 - b], [u + a, .1], [u, .1 + b], [u - a, .1]], bright, .009);
+      }
+    } else {
+      // Friezes and reliefs share a register, but each scene has its own silhouettes.
+      face.path([[-.43, .32], [.43, .32]], middle);
+      const figures = {
+        longMigration: [
+          [[-.42,.27],[-.37,.02],[-.29,-.09],[-.22,.08],[-.17,.09],[-.21,.26],[-.42,.27]],
+          [[-.17,.23],[-.11,.15],[-.04,.24],[.02,.16],[.08,.24]],
+          [[.09,.29],[.15,.05],[.23,.02],[.25,-.13],[.20,-.27],[.25,-.22],[.27,-.32],[.29,-.15],[.23,.02],[.24,.29]],
+          [[.35,.14],[.31,-.13],[.40,-.06],[.45,-.15],[.42,.13],[.40,-.06]],
+        ],
+        unbowedProcession: [
+          [[-.44,.25],[-.38,.05],[-.31,.01],[-.26,.11],[-.30,.27]],
+          [[-.21,.27],[-.16,-.17],[-.09,-.23],[-.03,-.07],[-.10,-.02],[-.07,.22]],
+          [[.01,.29],[.08,-.06],[.16,-.15],[.21,-.06],[.15,.27]],
+          [[.22,.15],[.29,-.21],[.36,.06],[.29,.24],[.22,.15]],
+          [[.37,.32],[.37,-.33],[.44,-.33],[.44,.32]],
+        ],
+        tallHearth: [
+          [[-.17,.3],[-.17,-.22],[0,-.35],[.17,-.22],[.17,.3]],
+          [[-.07,.29],[-.1,.13],[0,-.06],[.09,.14],[.07,.29]],
+          [[-.41,.26],[-.36,-.18],[-.28,-.15],[-.24,.08],[-.31,.27]],
+          [[.25,.27],[.30,-.06],[.35,.02],[.38,.27]],
+          [[.32,.08],[.4,.02],[.42,.14],[.34,.2],[.32,.08]],
+        ],
+        deepDiggers: [
+          [[-.39,.29],[-.31,-.15],[-.25,-.22],[-.18,-.11],[-.22,.02],[-.09,-.18],[-.05,-.29]],
+          [[-.11,-.31],[-.04,-.29],[.01,-.19]],
+          [[.03,.29],[.12,-.13],[.19,-.20],[.23,-.04],[.36,-.19],[.36,-.31]],
+          [[.30,-.32],[.39,-.3],[.42,-.19]],
+          [[.25,.27],[.25,.1],[.41,.09],[.41,.27],[.25,.27]],
+        ],
+      }[art.id];
+      if (figures) {
+        for (const line of figures) face.path(line, bright);
+      } else {
+        const bells = art.id === "sevenBells", count = bells ? 7 : 6;
+        for (let i = 0; i < count; i++) {
+          const u = (i - (count - 1) / 2) * .13, v = bells ? -.14 + .07 * Math.cos(i * 2) : -.06;
+          face.path([[u - .047, v + .17], [u - .026, v - .08], [u, v - .15], [u + .026, v - .08], [u + .047, v + .17], [u - .047, v + .17]], bright);
+          if (bells || i !== 3) face.rect(u, v + .04, .018, .045, middle, depth);
+          if (bells) face.path([[u, v + .17], [u, .19], [u * 1.12, .32]], middle);
+        }
+      }
+    }
+  }
+  for (const s of map.sigils || []) {
+    const x = s.x + .5, y = s.y + .5;
+    if (s.kind === "inlay") {
+      for (const { dx, dy, part } of SIGIL_CELLS) {
+        if (tiles[(s.y + dy) * w + s.x + dx]?.sigil !== part) continue;
+        const tile = paint(x + dx, y + dy, .016, 0, 0, 1, 1);
+        tile.rect(0, 0, .44, .44, sigilColors[0]);
+        tile.rect(0, 0, .34, .34, sigilColors[part === "pupil" ? 2 : 1], .006);
+      }
+      continue;
+    }
+    const sides = s.kind === "column" ? Object.values(inward) : [inward[s.side]];
+    for (const normal of sides) {
+      if (!normal) continue;
+      const [nx, ny] = normal, banner = s.kind === "banner", lintel = s.kind === "lintel";
+      const crown = th.arch.spring + th.arch.radius, lintelHeight = Math.min(.38, H - crown - .015);
+      const face = paint(x + nx * .537, y + ny * .537, lintel ? crown + lintelHeight / 2 + .01 : 1.52, nx, ny, banner ? .97 : lintel ? .67 : .62, banner ? 1.46 : lintel ? lintelHeight : .83);
+      const cloth = [.24, .075, .14], border = [.6, .42, .24];
+      face.rect(0, 0, .5, .5, banner ? cloth : sigilColors[0].map((v) => v * .55));
+      if (banner) {
+        face.rect(0, -.49, .56, .017, border, .008);
+        face.rect(-.46, 0, .012, .46, border, .008);
+        face.rect(.46, 0, .012, .46, border, .008);
+        face.rect(0, .46, .47, .012, border, .008);
+      }
+      glyph(face);
+    }
+  }
   const arch = new Uint8Array(w * h), capped = new Uint8Array(w * h), D = th.decor || {}, Pr = th.props || {}, PL = th.plinth, CO = th.cornice, PIL = th.pilaster;
   const iron = [.09, .085, .08], wax = [.72, .66, .52], clay = [.36, .27, .2], wood = [.2, .13, .08];
-  for (let i = 0; i < geo.count; i++) { const o = i * 10, x0 = Fc[o], y0 = Fc[o + 1], x1 = Fc[o + 2], y1 = Fc[o + 3], nx = Fc[o + 4], ny = Fc[o + 5], tx = Fc[o + 6], ty = Fc[o + 7], st = Fc[o + 8], low = Fc[o + 9];
-    const door = st === STYLE_INDEX.door, mat = door ? 5 : MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = low ? RB : H;
+  for (let i = 0; i < geo.count; i++) { const o = i * 10, x0 = Fc[o], y0 = Fc[o + 1], x1 = Fc[o + 2], y1 = Fc[o + 3], nx = Fc[o + 4], ny = Fc[o + 5], tx = Fc[o + 6], ty = Fc[o + 7], st = Fc[o + 8], tier = tiles[ty * w + tx]?.tier === true, low = Fc[o + 9] || tier;
+    const door = st === STYLE_INDEX.door, mat = door ? 5 : MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = tier ? HALL_VIEW.tierHeight : low ? RB : H;
     const a0 = ny !== 0 ? x0 : y0, a1 = ny !== 0 ? x1 : y1, grit = (geo.detail[i] || 0) * 4 + (geo.detailInst[i] & 15) * 2 + (geo.detailInst[i] & 16 ? 1 : 0), cb = geo.corner[i] & 3, ab = geo.ao[i] & 3, bits = cb + ab * 4, side = nx > 0 ? 1 : nx < 0 ? 3 : ny > 0 ? 2 : 0, hsh = ((tx * 73 + ty * 151 + side * 37) % 997 + 997) % 997;
     const dx = x1 - x0, dy = y1 - y0, fx = tx + nx, fy = ty + ny, front = free(fx, fy), exterior = tx - nx < 0 || ty - ny < 0 || tx - nx >= w || ty - ny >= h, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
     // the face's decoration, chosen once
@@ -1402,7 +1575,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   F.amb.set(tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height; F.torchP[3] = .3;
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
-  F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = Wl.height;
+  F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map);
+  UNI.hall = g.map.hall?.tall ? g.map.hall : null;
+  UNI.backdrop = BACKDROPS.get(UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
   glMask(g.map, now, seen, drops, CLOSE_VIEW.gl.maskMs, th.floor.remap || null);
   if (Q.detail) glGrit(gritAtlas);
