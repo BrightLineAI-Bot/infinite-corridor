@@ -2854,6 +2854,59 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 787: Close View v2 — a steady view, readable walls, pan crescent and lock-on — 2026-11-06
+
+Tim tried Close View on 2026-11-06. He found the walls "kind of moved or weren't stable", couldn't tell "what the boundaries of everything were", found the camera hard to control and targeting poor, and could see through walls. He asked for a pan crescent around the action buttons with a lock-on button at its top, "similar to the targeting in Elden Ring", and a camera that mostly follows you but "helps you get around walls".
+
+**CODE:** `src/close-view.ts`. All numbers live in `CLOSE_VIEW`, under `camera`, `assist`, `lock`, `crescent`, `walls`, `edges` and `contact`.
+
+- **Stability.** Each cause of the moving walls had its own fix:
+  - The boom snapped in and out; the boom, shoulder and height now ride critically damped `spring`s.
+  - Auto-follow turned toward every small change in walk direction; it now follows a smoothed heading through `yawSpring`, with a 6° dead zone and a 1.2 s hold after you touch the crescent.
+  - Torch flicker and coarse 24-step shading made walls pulse; flicker is off and shading uses 64 steps.
+  - Floor bands were exact only at their middle; they are now exact at both edges and smoothly sampled.
+  - Wall ghosting has hysteresis.
+  - The depth sort has a fixed tie-break.
+  - Wall pieces overlap by 0.6 px so seams don't show.
+  - A hard rule keeps the camera outside walls.
+- **Readable boundaries.** Walls have cap lines, baseboards and corner outlines. A per-floor `edgeCanvas` draws foot shadows and rims around holes, lava and chasms. Doors have a door face. Actors stand on contact shadows. The default camera is slightly higher: Standard 1.6 / 2.7 / .42 / 72°.
+- **See-through fixes.**
+  - Walls are now kept out to the floor's reach.
+  - The boom shortens and rises rather than pushing through the wall at the Wayfarer's back.
+  - Only walls within 0.35 tiles of the camera-to-Wayfarer line are ghosted.
+  - Near-plane clipping works on either edge.
+- **Controls.** `mountCloseViewControls` puts the pan crescent in `#actions` as an SVG under the buttons, so the buttons always win a tap.
+  - The crescent is a dotted arc running from −32° to 162°. It is touchable 16 px either side of the line, and each touch captures its own pointer, so you can move and pan at once.
+  - A double-tap recentres the camera.
+  - Its top holds the lock button.
+- **Lock-on.**
+  - `closeViewLockCandidate` scores foes within 11 tiles and 70° of the camera, in clear sight, at 0.6 × angle + 0.4 × distance.
+  - `closeViewLockToggle` and `closeViewLockSwitch` (a swipe along the crescent) use the game's own `lockTarget`.
+  - `lockTick` moves the lock to a nearby foe when its target dies, and releases it out of range or after 1.2 s out of sight.
+  - While locked, movement is relative to the target: up walks at it, sideways circles it.
+- **Aim.** With no lock and no tap, attacks go where the camera looks. Taps hit within 34 px of a body. A faint chevron on the floor shows which way you'll swing.
+- **Trap and combat marks.** `drawTruthfulCombatGeometry`, `drawNewTraps` and `drawNewTrap` in main.ts now take a layer, so they draw on the Close View floor.
+- **Save.** `save.closeViewAutoFollow` (default true), set by `ensureCloseView`. The Options entry is "Close View auto-follow".
+- **Tests.** `tests/close-view.test.ts` and `tests/close-view-controls.test.ts` (new).
+
+**Measured** (headless CPU Chromium, relative only), draw calls per frame:
+
+| View | Calls per frame | Time per frame |
+|---|---|---|
+| Classic | 1207–2268 | 17–21 ms |
+| Low | 111–175 | 16–19 ms |
+| Balanced | 189–259 | 34–36 ms |
+| Full | 250–328 | 44–49 ms |
+
+**BOUNDARY:**
+- Presentation and input only; Close View is still off by default.
+- The lock is the game's existing lock. Aiming along the camera writes `save.lastAim` as walking already does.
+- The overworld, courts, roof and finale keep the normal view.
+- Known limits:
+  - In one-tile corridors the Wayfarer looks large.
+  - There is no real back view; the Wayfarer still has the painted hood.
+- Not tested on a device.
+
 ## Release 786: Close View (prototype) — a low third-person camera inside — 2026-11-06
 
 Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like you're in Bloodborne... the camera's in the cavern with you... third person, same view as Bloodborne or soulslikes... fewer monsters, more like exploring the Chalice Dungeons." When you step out into the courts it should go back to the normal view. He named Bloodborne, Remnant: From the Ashes and Elder Scrolls Online as references. Tim chose a 2.5D close camera built on the current renderer, as phase 1.
