@@ -13,6 +13,7 @@ import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountL
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.ts";
@@ -77,7 +78,10 @@ export function equipFromInventory(save, index) {
   if (prior && !stashForOtherPreset(save, item.slot, prior)) save.inventory.push(prior); // release 541: or it stays the other preset's
   return true;
 }
-function drawRangedEffects() { drawCombatEffects(ctx,game,innerWidth,innerHeight); }
+function drawRangedEffects() { if (closeViewShowing(game)) return; /* Close View drew them on its floor */ drawCombatEffects(ctx,game,innerWidth,innerHeight); }
+// Close View: traps and vines, aperture marks and shots in flight are drawn onto its floor texture, under the billboards.
+const closeViewLayer = { ctx: null, w: 0, h: 0 };
+CLOSE_VIEW_HOOKS.groundLayers.push((c, W, H) => { closeViewLayer.ctx = c; closeViewLayer.w = W; closeViewLayer.h = H; drawDungeonSystems(closeViewLayer); drawApertureVisuals(closeViewLayer); drawCombatEffects(c, game, W, H); });
 function openShop(vendorId = "vendor-vela") {
   pauseForOverlay();
   body.replaceChildren();
@@ -149,7 +153,7 @@ setTimeout(() => {
   canvas.addEventListener("worldtap", (e) => {
     if (game.paused || viewportSeq) return; // Viewport Closed: taps are ignored too
     const r = canvas.getBoundingClientRect(),
-      q = screenToWorld(
+      q = closeViewScreenToWorld(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top) || screenToWorld( // Close View: the billboard or floor under the tap
         game,
         r.width,
         r.height,
@@ -483,7 +487,11 @@ function render(ctx, game, w, h, now) {
       game.enemies[i].telegraph = telegraphs[i];
   }
 }
-function drawApertureVisuals() {
+// Close View draws these onto its ground texture (layer: { ctx, w, h }); otherwise they draw on the screen as always.
+const screenCtx = () => ctx;
+function drawApertureVisuals(layer = null) {
+  if (!layer && closeViewShowing(game)) return; // Close View drew these on its floor (CLOSE_VIEW_HOOKS.groundLayers)
+  const ctx = layer ? layer.ctx : screenCtx(), innerWidth = layer ? layer.w : globalThis.innerWidth, innerHeight = layer ? layer.h : globalThis.innerHeight;
   const s = Math.round(Math.max(28, Math.min(44, innerWidth / 12))),
     sx = (x) => innerWidth / 2 + (x - game.player.x) * s,
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s,
@@ -838,7 +846,9 @@ function drawNewTrap(o, x, y, s, t) {
   }
   ctx.restore();
 }
-function drawDungeonSystems() {
+function drawDungeonSystems(layer = null) {
+  if (!layer && closeViewShowing(game)) return; // Close View drew these on its floor (CLOSE_VIEW_HOOKS.groundLayers)
+  const ctx = layer ? layer.ctx : screenCtx(), innerWidth = layer ? layer.w : globalThis.innerWidth, innerHeight = layer ? layer.h : globalThis.innerHeight;
   const s = Math.round(Math.max(28, Math.min(44, innerWidth / 12))),
     sx = (x) => innerWidth / 2 + (x - game.player.x) * s,
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s;
@@ -1327,6 +1337,7 @@ async function renderSettings(category){const grid=document.createElement("div")
     sel.onchange=()=>{save.fractured=sel.value||null;persist();game.message=save.fractured?`${FRACTURED.modes[save.fractured].name} mode: the Corridor is breaking open. Towns, home and cleared dungeons stay safe.`:"Fractured mode off."};
     grid.append(settingRow("Fractured mode (this journey)",sel,`${note} More creatures, in packs with champions and rares, and more keep coming; towns, home, the Refuge lands and cleared dungeons stay safe. Takes full effect in the next place you enter.`));
   }
+  if(category==="Controls"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View indoors (prototype, this journey)",cv,"Inside the Pentagon, great buildings and keeps, a low camera behind the Wayfarer that turns with them; drag up to walk the way the view looks. Courts, roofs and the overworld keep the usual view."));const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("World boss tries (on: 4 deaths and the boss leaves; off: no tries, it loses patience after 3 minutes of fighting, 5 once it is below half health)",toggleSetting("beastTries")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
@@ -2415,7 +2426,7 @@ function frame(now) {
   const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
-  if (!viewportBefore || viewportBefore.world) measured("update", () => game.update(dt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, now));
+  if (!viewportBefore || viewportBefore.world) measured("update", () => { const steer = !viewportSeq && closeViewSteer(game, input.state); try { game.update(dt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, now); } finally { if (steer) closeViewUnsteer(input.state); } }); // Close View: movement relative to the view
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   if (game.paused) return;
   const viewportStage = viewportFrame(probeInterval / 1000, now);
