@@ -2854,6 +2854,62 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 793: Close View v4 — a floor that holds still, a ceiling, detailed walls, pits and lava, drag-anywhere camera, the quick turnaround — 2026-11-06
+
+Tim played Close View v3 and said it was "working pretty well". His notes: "The floor moves and shifts a lot... it's re-rendered every time you walk... the floor kind of looks like it's just made of water"; "there should be a ceiling... you should feel like you're enclosed"; the walls "look like they're just 3D render[ed]", they should be "more highly textured or more detailed"; "the holes and so on" need better renderings; "it seems a little bit choppy... needs more fluid, smooth framing"; and the crescent should have "larger/higher sensitivity... your finger should be able to be positioned a little bit farther out". The bar: "emulate a AAA game... without parting too far from the art." Mid-build he added drag-anywhere camera control as the default (the usual phone layout of third-person action games, the crescent kept as an option) and a quick turnaround (the quick 180 of survival horror). 792 was in flight in PR #440, so this is 793.
+
+**Root cause of the swim.** Versions 1–3 laid the floor as screen-space bands, each one or two triangles of the ground texture under an affine map. A floor seen in perspective is a projective map; an affine map is exact only at its corners. Measured with v3's own band maths at Tim's 475×661: every band was off by up to 13 CSS px (mean 4.4 px) at the screen's sides, in a pattern fixed to the screen. Walking slid the world through that fixed pattern, so lines bent, crawled and breathed. A second, smaller cause: at a texture scale that is not whole (.75 low, 1.25 full) the texture's origin fell between device pixels by a different fraction each step, so its crisp pixels were resampled differently every frame. The host's ground layers (trap marks, telegraphs) also sat up to half a world pixel off the floor under them.
+
+**CODE:**
+- `src/close-view-gl.ts` (new; added to `scripts/build.mjs` and both `sw.js` precache lists): the GPU scene, WebGL2. Nothing is allocated per frame; vertex arrays are preallocated and grow by doubling.
+  - The environment pass: one full-screen triangle. Each pixel casts its ray to the floor plane (or up to the ceiling) and reads the ground texture at that exact world point, mipmapped with anisotropic filtering. It is lit by the same torch and fog formula as the walls.
+  - Pits: through a hole's tiles the ray carries on down, by a grid walk, to the first inner wall (stone, strata, darkening with depth) or the dark bottom. Chasms are deeper, with a pale light below. A lit lip rims every drop on the floor's side and the top of its inner walls; a safe drop's lip glows green near the Wayfarer (`HOLE_DROPS.rim`).
+  - Lava: two layers of moving noise (crust, heat, veins), a cooler crust at its edge, and its light thrown on the floor nearby. Still with reduced motion.
+  - The ceiling: world-anchored panels and beams, lit from the torch below, fog-faded; the dark sky over open-air tiles.
+  - The mask: one texel a tile (`closeViewMask`: ceiling, hazard code, safe drop, wall). It shows hazards only where the fog of war has revealed them, and is rebuilt every `gl.maskMs` (250 ms) only on floors with fog.
+  - Walls: real quads with a depth buffer, shaded per pixel: two recessed panels a tile with bevels lit from above, the inlaid seam, joints every 3 tiles, baseboard with a lit lip, cornice with a groove, a per-panel light variation, corner outlines, inside-corner occlusion, the v3 grit from an atlas painted once, and the top falling into the dark. Rubble gets a top.
+  - Creatures: camera-facing cards from the sprite atlas, cut cleanly by walls in the depth buffer, and drawn again faintly where a wall hides them (a depth `GREATER` pass). Contact shadows and wind-up rings are floor decals; wind-up glows are added in light.
+  - Draw calls per frame: 5–6 GL calls plus one `drawImage` to the screen. Context loss, or no WebGL2, falls back to the 2D view of version 3 (also kept for the tests' recording canvases).
+- `src/close-view.ts` (`CLOSE_VIEW.version` 4): new tables `gl`, `ceiling`, `pits`, `lava`, `relief`, `flat`, `drag`, `controls`, `quickTurn`; `camera.follow`/`followMax`/`followSnap`; `crescent.reach`/`stickShare`/`gain`/`accel*`/`smooth`; and per tier `gl`, `glScale`, `mip`, `aniso`, `ceiling`, `ceilingDetail`, `relief`, `lavaLight`.
+  - The ground texture's origin is snapped to whole device pixels (`gox`, `goy`; `closeViewGroundOrigin`), and the host's layers are moved by the camera's rounding.
+  - Floor features lie flat: marks, daises and a ladder down are drawn into the ground (`flatPass`, `CLOSE_VIEW.flat`) instead of standing up as cards.
+  - Sprites are drawn into the atlas at their place snapped to the world's pixel grid, and the card is laid at the true place. This removes the 2–3 screen-pixel judder of every walker under the close camera.
+  - The boom hangs from a follow point on a critically damped spring (`camera.follow` 16/s, at most .45 tiles behind; snaps after 3 tiles or when a wall comes between).
+  - Fades (creatures, the cut-away) no longer advance on a repeated instant.
+- **Controls** (`mountCloseViewControls`):
+  - Drag anywhere is the default (`save.closeViewCamera` "drag"). A capturing `pointerdown` on `#game` right of `drag.side` (half the width) takes the pointer before the movement stick sees it, captures it, and turns the view until it lifts, over buttons too. A touch that starts on a button never reaches the canvas. A press that hardly moves is re-sent as `worldtap`.
+  - The crescent ("Pan crescent"): its arc is hidden in drag mode. It gains an undrawn outer band `reach` (46) px beyond the arc, only where clear of every control and the lock and right of `stickShare`, plus gain ×1.35 and up to +110% for a fast swipe.
+  - Both controls feed the turn into `sync()`, eased at `smooth` per second, and flush it on release.
+  - `save.closeViewSensitivity` (0.4–2.5, default 1) scales both.
+- **The quick turnaround** (`closeViewQuickTurn`, `CLOSE_VIEW.quickTurn`): with the stick within 40° of straight back past .45, a camera drag swiping down at least 44 px at 550 px/s or faster (no more than .7 px across per px down) swings the yaw π in a critically damped 0.3 s (0.1 s with reduced motion). The Wayfarer turns to face the new way and the tilt is released. The stick's latched basis is left alone, so the held stick keeps walking the same world way without a hitch. At most one every 0.4 s. Locked on, it breaks the lock (`lock: "break"`): turning your back is choosing to leave, and a lock would swing the view straight back.
+- `src/main.ts`: Options → Camera gains "Camera control" (Drag anywhere (default) / Pan crescent) and "Camera sensitivity"; the hints describe drag, the crescent and the turnaround.
+- `src/proving-ground-labs.ts`: a Close View Lab scenario "hazards" (a keep's upper floor with its holes and ladder, plus a stamped lava pool and hole, scratch only); `?cvQuality=`, `?cvGL=0` (the 2D view, to compare) and `?cvControl=crescent`.
+- Tests: `tests/close-view-v4.test.ts` (floor exactness and anchoring, fallback, the mask, flat ladders, sprite restore and follow bounds, drag-anywhere, move and look at once, the crescent option and outer band, the quick turnaround and its guards, save fields); `tests/close-view-overworld-793.test.ts` (the overworld with Close View off: a digest of every draw call pinned from origin/main and matched on this branch). In `tests/close-view-controls.test.ts` the crescent mount test now chooses the crescent (drag-anywhere is the default). Release assertions moved to 793 in `tests/proposal-workflow.test.ts`, `tests/proving-ground-fixture.test.ts`, `tests/prototype.test.ts` and `tests/proving-ground-handoff-791.test.ts` (its precache line).
+
+**Measured** (headless Chromium, SwiftShader, 475×661 at DPR 2.6, the lab walking; relative only; the machine was loaded):
+
+| Floor | Build | JS per frame, mean / p95 (ms) | Screen 2D draws | Clips | GL draw calls |
+|---|---|---|---|---|---|
+| Cellar | v3 (791) | 3.71 / 7.7 | 254 (max 290) | 50 | 0 |
+| Cellar | v4, GPU | 3.57 / 8.2 | 5 | 0 | 5–7 |
+| Cellar | v4, 2D (`?cvGL=0`) | 3.73 / 7.5 | 247 (max 290) | 50 | 0 |
+| Heart | v3 (791) | 5.39 / 25.2 | 255 (max 267) | 46 | 0 |
+| Heart | v4, GPU | 4.84 / 18.3 | 5 | 0 | 5 |
+| Great hall | v3 (791) | 3.16 / 7.9 | 261 (max 293) | 48 | 0 |
+| Great hall | v4, GPU | 2.28 / 5.3 | 5 | 0 | 5 |
+
+The main thread's cost is mostly the ground texture the ordinary renderer still draws each frame, so it moves little. The work that left the main thread is the floor's 40–56 clipped texture copies and the walls' fills, about 250 screen calls a frame and every clip path. Frame intervals under software GL on a loaded machine say nothing about a phone; they are not reported. Node, 2D path with a recording canvas (150 walking frames a tier): unchanged within noise (cellar balanced 1.67 → 1.48 ms, 198 → 204 draws).
+
+**BOUNDARY:**
+- Drawing and input only. Generation is unchanged; nothing generated is stored. Saves stay at schema 14 with two additive fields (`closeViewCamera`, `closeViewSensitivity`), normalised in `ensureCloseView` (called by `freshSave` and `migrateSave`).
+- The overworld and Close View off draw byte for byte as before (pinned digest).
+- Bounded: at most one GL context; three textures (the ground and atlas, the mask at one texel a tile, the grit atlas 1152×154 painted once); vertex arrays grown only by doubling.
+- Without WebGL2 the 2D view is version 3's: no ceiling, no pit depth.
+- The lab's lava is stamped into scratch state only.
+- Known limits:
+  - With the Wayfarer's back to a wall the boom still pulls in close, and they can fill or leave the bottom of the screen.
+  - The Wayfarer's back view is still the painted hood.
+- Not tested on a device.
 ## Release 792: the Reckoning Fields (landscape 23) — 2026-11-06
 
 Daily world-regions pass (Tim, 2026-10-29: "find ways to make the map have interesting features... beautiful collections of regions... rich and vibrant... without decreasing performance"). Every idea on Tim's list already exists (see release 772's inventory; since then canopy groves, 780). What did not exist was an overland region for docs/narrative-bible.md section 1's far drift: "Farther out, the Corridor forgets that it was ever human... patterns that compute themselves" (until now only dungeons, the Elder Wanderers and a Glimpse carried that). The Reckoning Fields are that: the ground is one self-similar figure, computed, not painted, and it only appears far from the Refuge.

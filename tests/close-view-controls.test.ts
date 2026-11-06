@@ -121,7 +121,7 @@ test('the crescent and lock button mount round the action cluster, beneath its b
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 300, height: 300 }), setPointerCapture() {}, set innerHTML(v) { this._html = v; } }; return el; };
   const actions = mk('section'), cluster = mk('div'); cluster.cls = 'action-diamond'; cluster.offsetWidth = 162; cluster.offsetHeight = 162; cluster.offsetLeft = 200; cluster.offsetTop = 16; actions.append(cluster);
   const doc = { getElementById: (id) => id === 'actions' ? actions : null, createElementNS: (ns, t) => mk(t), createElement: (t) => mk(t) };
-  const { g } = room(), host = { document: doc, performance: { now: () => T }, addEventListener() {} }, ui = CV.mountCloseViewControls(() => g, host);
+  const { g } = room(); g.save.closeViewCamera = 'crescent'; /* release 793: drag-anywhere is the default; this test is the crescent option */ const host = { document: doc, performance: { now: () => T }, addEventListener() {} }, ui = CV.mountCloseViewControls(() => g, host);
   const i = actions.children.indexOf(ui.svg); assert.ok(i >= 0 && i < actions.children.indexOf(cluster), 'the crescent is before (beneath) the buttons'); assert.ok(actions.children.indexOf(ui.lock) > actions.children.indexOf(cluster), 'the lock button above them');
   ui.sync(); assert.equal(ui.svg.style.display, 'none', 'hidden until Close View shows'); frame(g, 2); ui.sync(); assert.equal(ui.svg.style.display, 'block'); assert.equal(ui.lock.style.display, 'grid');
   // release 790 (Tim): the lock is off the arc, a 46 px bullseye at the screen's right edge above the crescent's band
