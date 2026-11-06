@@ -2854,6 +2854,56 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 789: sealed towers — the keep needs a key won in the maze — 2026-11-06
+
+Tim, 2026-11-06: "For the keeps with courtyards, with the tower in the center, let's make it so that unless you are climbing those towers to access a lever, you need a key to enter it. So you can't just hop down with the drone and then just finish the level by getting on the roof somehow. Sometimes that's okay, but that shouldn't be a way to circumvent all the mazes."
+
+**Bypasses closed:**
+- **Drone onto the compound tower top.** `DRONE_LIFT.max` is 5 and the tower top is at elevation 5. The tower's roof hatch dropped you straight into the Throne Room.
+- **Courtyard door.** The drone could cross the wall walk into the courtyard and go in by the tower's courtyard door.
+- **Glider.** A glide from high ground could land on the tower top.
+- **Castle keep door.** The keep door was open.
+
+**CODE:**
+- `src/great-buildings.ts`:
+  - `TOWER_SEAL`: the sealing versions (compound 2, castle 3); the key names (Tower Key, Core Keycard, Heart Sigil, Keep Key); the keeper, "Key Warden"; `climb` (share .15, ledges [1,2,3,4], fatal 4, tries 64); and the messages.
+  - `towerSealText`, `towerUnsealed`, `towerKeySpot`, `placeTowerKey` and `planTowerClimb`.
+- `src/compounds.ts`:
+  - `COMPOUNDS.version` is 2. `compoundTopology` returns a `seal`: the key wing has three floors, and the key sits on floor 2 of a maze or on the top floor of a simple compound's door wing, which has no hatch. The tower always has a hatch.
+  - `compoundVersionOf` and `compoundSeal`.
+  - `placeCompound` puts `towerSeal` on the tower doors and the hatch, and `towerAir` on the tower tiles. It also lays the climb, the `towerLever` and a sign.
+- `src/castles.ts`:
+  - `CASTLES.version` is 3. `castleSeal` puts the Keep Key on the top floor of the wing between, with a Warden, and seals the keep door.
+  - Where the keep has a roof, the climb is in the keep's court.
+- `src/vehicle-gates.ts`: `DRONE_FIZZLE` gets a `tower` zone (`towerAir`), so the drone fizzles over the tower and the glider is held off.
+- `src/game.ts`:
+  - `interact` checks the seal.
+  - `takeTowerKey` uses `takeLabKey`, keyed by `keyBase`. `towerKeyState` runs after generation.
+  - `pullTowerLever` works only from the top ledge or the tower top.
+  - Placement and interiors read the atlas versions.
+- `src/renderer.ts`: the lever is drawn on the tower roof.
+- Tests:
+  - New: `tests/tower-seals.test.ts`.
+  - Updated: the compounds and castles maze walks now take the key. `vault-roof-exit` pins its hatchless tower to compound v1 and expects `CASTLES.version` 3.
+
+**Measured:**
+- The solver covered 909 v2 compounds and 300 v3 castles. For each it showed:
+  - the key is reachable on foot;
+  - the tower opens with the key;
+  - without the key nothing enters the tower, even by an over-estimated air route;
+  - the ledges are the only way onto the tower top;
+  - there is no softlock.
+- Climb share: compounds 13.5%, castles 17.7%.
+- Generation cost: about 13 ms per compound section, against 12.4 ms before.
+
+**BOUNDARY:**
+- New ground only (`atlas.compoundVersion` 2, `castleVersionOf` 3). v1 compounds and v1/v2 castles regenerate byte for byte; gold hashes come from release 786.
+- Schema 14. The tower key and the lever reuse `labKeys` on the tower's first-floor history.
+- Courtyards can still be reached by air ("sometimes that's okay"). Only the tower is gated.
+- The release 746 vault roof exit stays a way out after you win.
+- Great Keeps are no longer generated (since release 711), so nothing new to gate.
+- Not tested on a device.
+
 ## Release 788: even building types, vaults by type, keys in room mazes, galleries look down — 2026-11-06
 
 Tim, 2026-11-06, on how the castle keeps feel: "it's always in the tower... you know where you're gonna get to." He wanted "a rhyme or reason, like Bloodborne's chalice dungeons... the familiarity... you come to recognize it."

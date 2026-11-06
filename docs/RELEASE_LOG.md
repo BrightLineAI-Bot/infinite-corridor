@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 788, the next is **789**.
+Taken at merge time: `main`'s release + 1 (see above). After 789, the next is **790**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 788 | Claude | `claude/dreamy-rubin-yn6q2p` | Even building types for new labyrinths; room-maze vault by type (keep tower, hive undercroft, arcology ground; 10% Shifting) with a door line; keys and sealed stairs in room mazes; galleries look down | In flight. |
-| 787 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View v2: a steady view, readable walls, a pan crescent and Elden Ring style lock-on; walls no longer seen through | Merged (#435). |
+| 789 | Claude | `claude/dreamy-rubin-yn6q2p` | Sealed towers: a compound's central tower and a Great Castle's keep open only with a key won deep in the maze (Key Warden); no drone/glide bypass; ~15% have a ledge climb to a lever | In flight. |
+| 788 | Claude | `claude/dreamy-rubin-yn6q2p` | Even building types for new labyrinths; room-maze vault by type (keep tower, hive undercroft, arcology ground; 10% Shifting) with a door line; keys and sealed stairs in room mazes; galleries look down | Merged (#436). |
+| 787 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View v2: a steady view, readable walls, a pan crescent and Elden Ring style lock-on; walls no longer seen through | Merged (#435). Published as r787-79b4a7ca7811 on 2026-11-06. |
 | 786 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View (prototype, off by default): a low third-person camera inside the Pentagon, great buildings and keeps, with torchlight, fog and perspective walls; courts and the overworld keep the usual view | Merged (#434). Published as r786-92e4788905a0 on 2026-11-06. |
 | 785 | Claude | `claude/dreamy-rubin-yn6q2p` | Fog of war in every labyrinth: sight 7 tiles, walls block it; seen ground stays dimmed and is remembered per chamber; creatures and the safe-drop rim only in sight; the map shows only what you've seen | Merged (#433). Published in r786. |
 | 784 | Claude | `claude/dreamy-rubin-yn6q2p` | Room mazes: half of new labyrinths are mazes of rooms over four floors (undercroft, ground, upper, roof); barriers crossed on another floor, sub-floor routes, dead ends, loops, drops, far-side barred doors | Merged (#432). Published in r786. |
@@ -174,6 +175,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 788, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 787 | `r787-79b4a7ca7811` | 2026-11-06 | Fable review (786→787): no blockers. Close View v2: steady view, readable walls, pan crescent and lock-on (#435). |
 | 786 | `r786-92e4788905a0` | 2026-11-06 | Fable review (782→786): no blockers. Story version 4 (#431), room mazes (#432), fog of war in labyrinths (#433), Close View prototype (#434). |
 | 782 | `r782-fa66724a8d00` | 2026-11-06 | Fable review (780→782): no blockers. Story version 3 with two more far stories (#429); the Rite lockdown, Pentagon Journal lines in words, springs heal 2% (#430). |
 | 780 | `r780-e230fbd94ccd` | 2026-11-05 | Fable review (775→780): no blockers. Healing hot springs (#424), Pentagons hands-off and the Rite seals the Wayglass (#425), the crown wake needs the crown (#426), story version 2 with three far stories (#427), canopy groves (#428). |
