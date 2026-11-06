@@ -167,6 +167,8 @@ Taken at merge time: `main`'s release + 1 (see above). After 781, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 780 | `r780-e230fbd94ccd` | 2026-11-05 | Fable review (775→780): no blockers. Healing hot springs (#424), Pentagons hands-off and the Rite seals the Wayglass (#425), the crown wake needs the crown (#426), story version 2 with three far stories (#427), canopy groves (#428). |
+| 775 | `r775-9678a017d60c` | 2026-11-05 | Fable review (772→775): no blockers. The story budget (#421), the Crossing Sigil anywhere (#422), Pentagon sigils and hunts (#423). |
 | 772 | `r772-32d768cda137` | 2026-11-05 | Fable review (770→772): no blockers. The Toolmaker's Handles (#419) and Terrace Springs (#420). |
 | 770 | `r770-9899db3b2b7b` | 2026-11-05 | Fable review (764→770): no blockers. The Doom Chaser beyond 1000 (#413), a glide from the crown comes home (#414), Tesseract classes and curses (#415), the last spires back (#416), Essence Walk (#417), deadly holes and burrowing (#418). |
 | 764 | `r764-0eb650c60230` | 2026-11-05 | Fable review (759→764): no blockers. Stillworks pillars and the Doom Chaser's one home (#408), the Listener's cycle v2 (#409), Tesseracts by tier (#410), the glider only goes down and never over a Pentagon (#411), tall spires again (#412). |
