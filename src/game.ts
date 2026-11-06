@@ -6733,7 +6733,7 @@ export class Game {
   // A labyrinth's progress: chambers found (of all), keys held (of all).
   labyrinthProgress() { const B = this.map?.building; if (!B?.labyrinth) return ""; const H = dungeonHistory(this.save, `${B.base}:f1`); const seen = (H.labSeen ||= []); if (!seen.includes(B.node)) seen.push(B.node);
     const links = B.pentagon && H.pentLinks ? pentagonPlan(...(() => { const p = parsePentagonId(this.areaId()); return p ? [p.seed, p.cx, p.cy, p.V] : [this.save.seed, 0, 0, 1]; })()).links || [] : [], open = links.filter((l) => (H.labOpen || []).includes(pentagonLinkKey(l.id))).length;
-    if (B.roomMaze) return `${seen.length} of ${B.of} floors found`; // a room maze: its floors
+    if (B.roomMaze) return `${seen.length} of ${B.of} floors found${B.keys?.length ? ` · keys ${(H.labKeys || []).length} of ${B.keys.length}` : ""}`; // a room maze: its floors (generator 2: its keys)
     return `${seen.length} of ${B.of} chambers found${B.keys?.length ? ` · keys ${(H.labKeys || []).length} of ${B.keys.length}` : ""}${links.length ? ` · shortcuts ${open} of ${links.length}` : ""}`; }
   // The Pentagon's shortcut links (pentagon.ts PENTAGON.shortcuts): shut from the near side ("barred from the other side");
   // the first use from the deep side opens it for good (history labOpen `link:<id>`) and carries you through; once open it

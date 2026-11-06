@@ -13,7 +13,7 @@ import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { buildingArrival } from '../src/great-buildings.ts';
 import { sectionRegion, LANDSCAPE_VERSION } from '../src/landscape.ts';
-import { LABYRINTHS, ROOM_MAZES, roomMazePlan, roomFloorOf, generateLabyrinthChamber, generateRoomMazeFloor, parseLabyrinthId, isLabyrinthId, labyrinthForm, roomVaultOf, labyrinthHere, labyrinthPlan, placeLabyrinth, holeDrops, safeDropAt } from '../src/labyrinths.ts';
+import { LABYRINTHS, ROOM_MAZES, roomMazePlan, roomFloorOf, generateLabyrinthChamber, generateRoomMazeFloor, parseLabyrinthId, isLabyrinthId, labyrinthForm, labyrinthStyle, roomVaultOf, labyrinthHere, labyrinthPlan, placeLabyrinth, holeDrops, safeDropAt } from '../src/labyrinths.ts';
 
 const LETHAL = new Set(['canyon', 'river', 'dungeonWater', 'lava', 'abyss', 'deepWater', 'deepOcean', 'ocean', 'lakeWater']);
 const STYLES = ['keep', 'apartment', 'hive'];
@@ -31,27 +31,31 @@ function solve(base) {
     if (t.gate) return open.has(`${f}:${x},${y}`); return !t.blocked && !t.hole && !LETHAL.has(t.kind) && !t.environment; };
   // an object is used from any tile within reach (game.ts interact: reachOf < 1.5)
   const near = (o) => { const out = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) out.push([o.x + dx, o.y + dy]); return out; };
-  const edges = (open) => { const fw = Array.from({ length: N }, () => []);
+  const keyObjs = maps.flatMap((m, f) => m.objects.filter((o) => o.kind === 'labKey').map((o) => ({ f, o })));
+  const edges = (open, held = new Set()) => { const fw = Array.from({ length: N }, () => []);
     for (let f = 0; f < F; f++) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!walk(open, f, x, y)) continue; const k = f * WH + y * W + x;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (walk(open, f, x + dx, y + dy)) fw[k].push(f * WH + (y + dy) * W + x + dx);
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, t = maps[f].tiles[ny * W + nx]; // a step into a safe drop: one way down, onto the same spot
         if (t?.hole && safeDropAt(maps[f], nx, ny)) { assert.ok(f > 0, 'a drop has a floor below'); assert.ok(walk(open, f - 1, nx, ny), `${base}: a drop lands on open floor`); fw[k].push((f - 1) * WH + ny * W + nx); } } }
-    for (let f = 0; f < F; f++) for (const o of maps[f].objects) { if (o.kind !== 'buildingStair') continue; const tf = fOf(o.toId), at = buildingArrival(maps[tf], o.toX, o.toY);
+    for (let f = 0; f < F; f++) for (const o of maps[f].objects) { if (o.kind !== 'buildingStair' || (o.lock && !held.has(o.lock))) continue; const tf = fOf(o.toId), at = buildingArrival(maps[tf], o.toX, o.toY);
       assert.ok(walk(open, tf, at.x, at.y), `${base}: ${o.name} arrives on open floor`); for (const [x, y] of near(o)) if (walk(open, f, x, y)) fw[f * WH + y * W + x].push(tf * WH + at.y * W + at.x); }
     return fw; };
   const bfs = (adj, starts) => { const seen = new Uint8Array(N), q = [...starts]; for (const s of q) seen[s] = 1; for (let i = 0; i < q.length; i++) for (const n of adj[q[i]]) if (!seen[n]) { seen[n] = 1; q.push(n); } return seen; };
   const reverse = (fw) => { const rv = Array.from({ length: N }, () => []); fw.forEach((ns, k) => { for (const n of ns) rv[n].push(k); }); return rv; };
   const ground = roomFloorOf(0) - 1, entry = maps[ground].entry, start = ground * WH + entry.y * W + entry.x;
   assert.ok(walk(new Set(), ground, entry.x, entry.y), 'the front door opens onto floor');
-  // stages: doors opened from the far side open for good; each stage's reachable ground must lead back to the front door
-  const open = new Set(), stages = []; let seen;
-  for (let guard = 0; guard < 8; guard++) { const fw = edges(open); seen = bfs(fw, [start]); const back = bfs(reverse(fw), [start]);
+  // stages: doors opened from the far side open for good, keys picked up open their sealed stairs for good; each stage's
+  // reachable ground must lead back to the front door
+  const open = new Set(), held = new Set(), keyStage = {}, stages = []; let seen, first = null;
+  for (let guard = 0; guard < 12; guard++) { const fw = edges(open, held); seen = bfs(fw, [start]); if (!first) first = seen; const back = bfs(reverse(fw), [start]);
     let strand = -1; for (let k = 0; k < N; k++) if (seen[k] && !back[k]) { strand = k; break; }
-    stages.push({ open: open.size, strand: strand < 0 ? null : { f: Math.floor(strand / WH), x: strand % W, y: Math.floor((strand % WH) / W) } });
+    stages.push({ open: open.size, keys: held.size, strand: strand < 0 ? null : { f: Math.floor(strand / WH), x: strand % W, y: Math.floor((strand % WH) / W) } });
     let more = false; for (const { f, o } of gates) { const key = `${f}:${o.x},${o.y}`; if (open.has(key)) continue; if ([[o.x + 1, o.y]].some(([x, y]) => seen[f * WH + y * W + x])) { open.add(key); more = true; } }
+    for (const { f, o } of keyObjs) { if (held.has(o.keyId)) continue; if (near(o).some(([x, y]) => x >= 0 && y >= 0 && x < W && y < H && seen[f * WH + y * W + x])) { held.add(o.keyId); keyStage[o.keyId] = stages.length - 1; more = true; } } // taken with only the keys held before
     if (!more) break; }
   const reached = (f, x, y) => !!seen[f * WH + y * W + x], usable = (f, o) => near(o).some(([x, y]) => x >= 0 && y >= 0 && x < W && y < H && reached(f, x, y));
-  return { maps, W, H, reached, usable, stages, gates, open };
+  const usableFirst = (f, o) => near(o).some(([x, y]) => x >= 0 && y >= 0 && x < W && y < H && first[f * WH + y * W + x]);
+  return { maps, W, H, reached, usable, usableFirst, stages, gates, open, keyObjs, held, keyStage };
 }
 // A floor on its own, from every open tile west of a barrier, with a generous jump (up to ROOM_MAZES.jump hazard tiles in a
 // straight line, any of eight ways, landing on open floor): does any open tile east of it come within reach?
@@ -70,16 +74,24 @@ const crossLevel = { upper: 1, roof: 2, under: -1 };
 // ------------------------------------------------------------------------------------------------ the proof
 const MAZES = Number(process.env.ROOM_MAZE_PROOF) || 1200; // ROOM_MAZE_PROOF=5000 for a longer run
 function proof(version, MAZES) {
-  const bad = [], tally = { crossings: {}, obstacles: {}, rooms: 0, floors: 0, deadEnds: 0, drops: 0, gates: 0, loops: 0, caches: 0, maxRooms: 0, maxTiles: 0, vaults: { roof: 0, ground: 0, under: 0 }, known: 0 };
+  const bad = [], tally = { crossings: {}, obstacles: {}, rooms: 0, floors: 0, deadEnds: 0, drops: 0, gates: 0, loops: 0, caches: 0, maxRooms: 0, maxTiles: 0, vaults: { roof: 0, ground: 0, under: 0 }, known: 0, keys: 0, keyMiss: 0, keyKinds: {}, keyOtherFloor: 0, wingCache: 0 };
   for (let i = 0; i < MAZES; i++) { const base = baseOf(i, 'R', version), P = roomMazePlan(base), S = solve(base), { maps, reached, usable } = S;
     const g = roomFloorOf(0) - 1, vf = maps.findIndex((m) => m.building.vault), vaultMap = maps[vf], chest = vaultMap?.objects.find((o) => o.id === 'building-cache'), out = vaultMap?.objects.find((o) => o.id === 'building-exit-vault');
     if (maps.filter((m) => m.building.vault).length !== 1) bad.push(`${base}: not one vault floor`);
     tally.vaults[{ 2: 'roof', 0: 'ground', [-1]: 'under' }[vf + ROOM_MAZES.levels[0]]]++; if (P.vaultPlace?.known) tally.known++;
-    if (version >= 2) { const want = ROOM_MAZES.vault.levels[P.vaultPlace.place]; if (vaultMap.building.level !== want) bad.push(`${base}: the vault is not where its name says`); if (!vaultMap.building.vaultLine) bad.push(`${base}: no vault line`); }
+    if (version >= 2) { const want = ROOM_MAZES.vault.levels[P.vaultPlace.place]; if (vaultMap.building.level !== want) bad.push(`${base}: the vault is not where its name says`); if (P.vaultPlace.known !== (P.vaultPlace.place === ROOM_MAZES.vault.byStyle[P.style])) bad.push(`${base}: the vault not by its style`); if (!vaultMap.building.vaultLine) bad.push(`${base}: no vault line`); }
     else if (vf !== g) bad.push(`${base}: generator 1 puts the vault on the ground`);
     // the vault lies beyond every barrier (in the last segment), so the way to it needs every crossing (each only on its own floor, below)
     if (chest && !(chest.x > Math.max(...maps[g].building.barriers.map((b) => b.x1)))) bad.push(`${base}: the vault short of the last barrier`);
     if (!chest || !usable(vf, chest)) bad.push(`${base}: the vault's treasure out of reach`);
+    if (chest && !S.usableFirst(vf, chest)) bad.push(`${base}: the vault needs a key (no seal shuts the way on)`);
+    // keys: every seal has its key, every key is taken, each before (never behind) its own door; generator 1 has none
+    { const locks = new Set(maps.flatMap((m) => m.objects.filter((o) => o.lock).map((o) => o.lock))), keyIds = new Set(S.keyObjs.map((k) => k.o.keyId));
+      if (version < 2 && (locks.size || keyIds.size)) bad.push(`${base}: keys in generator 1`);
+      for (const id of locks) if (!keyIds.has(id)) bad.push(`${base}: a seal without its key`);
+      for (const id of keyIds) { if (!S.held.has(id)) bad.push(`${base}: ${id} never reached (behind its own door, or a cycle)`); if (S.keyStage[id] !== 0) bad.push(`${base}: ${id} not reachable with every seal shut`); }
+      if (version >= 2) { const n = keyIds.size; if (n < ROOM_MAZES.keys.count[0] || n > ROOM_MAZES.keys.count[1]) tally.keyMiss++; tally.keys += n;
+        for (const k of P.keys) { tally.keyKinds[k.kind] = (tally.keyKinds[k.kind] || 0) + 1; if (!k.doorLevels.includes(k.level)) tally.keyOtherFloor++; if (k.kind === 'wing') { const z = [...P.zones.values()].find((q) => q.dead && P.stairs.some((s) => s.lock?.id === k.id && s.k === q.k && (s.lo === q.L || s.lo + 1 === q.L))); if (z && [...z.rooms.values()].some((q) => q.cache)) tally.wingCache++; } } } }
     if (!out || !usable(vf, out)) bad.push(`${base}: the vault's way out out of reach`);
     if (!vaultMap.enemySpawns.some((e) => e.buildingGuardian)) bad.push(`${base}: no guardian in the vault`);
     maps.forEach((m, f) => { for (const o of m.objects) if (!usable(f, o)) bad.push(`${base} f${f + 1}: ${o.kind} ${o.name} out of reach`);
@@ -102,7 +114,8 @@ function proof(version, MAZES) {
   return tally; }
 test(`room mazes are solvable (generator ${ROOM_MAZES.version}): over ${MAZES} mazes the vault, on whichever floor its name says, is reached from the front door with base movement, nothing reachable strands you, and every barrier is crossed only on its crossing's floor`, () => {
   const tally = proof(ROOM_MAZES.version, MAZES);
-  console.log(`# vaults: ${JSON.stringify(tally.vaults)} of ${MAZES}; known ${tally.known}`);
+  console.log(`# vaults: ${JSON.stringify(tally.vaults)} of ${MAZES}; known ${tally.known}; keys ${tally.keys} (${JSON.stringify(tally.keyKinds)}, on another floor than the door ${tally.keyOtherFloor}, wings with a cache ${tally.wingCache}, mazes short of ${ROOM_MAZES.keys.count[0]}: ${tally.keyMiss})`);
+  assert.ok(tally.keys > MAZES, `keys: ${tally.keys}`); assert.ok(tally.keyMiss < MAZES * .05, `mazes without a key: ${tally.keyMiss}`); assert.ok(tally.keyKinds.wing > 0 && tally.keyKinds.loop > 0); assert.equal(tally.wingCache, tally.keyKinds.wing, 'every sealed wing holds a cache');
   for (const k of ['roof', 'ground', 'under']) assert.ok(tally.vaults[k] > MAZES * .2, `${k} vaults: ${tally.vaults[k]}`);
   assert.ok(Math.abs(tally.known / MAZES - (1 - ROOM_MAZES.vault.unknown)) < .04, `the rule kept: ${tally.known}`);
   for (const k of ['upper', 'roof', 'under']) assert.ok(tally.crossings[k] > MAZES * .15, `${k} crossings: ${tally.crossings[k]}`);
@@ -224,9 +237,34 @@ test('generator 2: a vault on the roof or in the undercroft holds its treasure, 
     assert.ok(base, place); const P = roomMazePlan(base), L = ROOM_MAZES.vault.levels[place], id = `${base}:f${roomFloorOf(L)}`, s = freshSave(); s.seed = P.seed;
     s.consequences.dungeons[`${base}:f1`] = { buildingDoors: { rx: P.rx, ry: P.ry, front: { x: 16, y: 20 }, exits: {}, hatch: null, roofTop: true } };
     s.session.activeDungeonId = id; s.session.dungeonReturn = { rx: P.rx, ry: P.ry, x: 16, y: 20 }; const g = new Game(s, 0); g.loadArea('dungeon', false);
-    const B = g.map.building; assert.ok(B.vault && B.level === L, `${place}: the vault's floor`); assert.equal(B.vaultLine, ROOM_MAZES.vault.lines[place]); assert.ok(g.map.name.startsWith(ROOM_MAZES.vault.names[P.style][place]));
+    const B = g.map.building; assert.ok(B.vault && B.level === L, `${place}: the vault's floor`); assert.equal(B.vaultLine, ROOM_MAZES.vault.lines[place]); assert.ok(g.map.name.startsWith(ROOM_MAZES.vault.names[P.style].known));
     assert.ok(g.map.objects.some((o) => o.id === 'building-cache') && g.enemies.some((e) => e.id.endsWith(':guardian')), `${place}: treasure and guardian`);
     const ex = g.map.objects.find((o) => o.dir === 'roofExit'); assert.ok(ex, `${place}: a roof exit`); assert.deepEqual([ex.x, ex.y], [B.roofSpot.x, B.roofSpot.y]);
     const ground = generateRoomMazeFloor(P.seed, `${base}:f${roomFloorOf(0)}`); assert.ok(!ground.building.vault && !ground.objects.some((o) => o.id === 'building-cache'), 'no vault on the ground');
     const out = g.map.objects.find((o) => o.id === 'building-exit-vault'); g.enemies = []; g.player.x = out.x; g.player.y = out.y; assert.ok(g.interact('exit', out.id).ok); assert.equal(g.area, 'overworld'); }
+});
+
+test("labyrinth version 4: a new labyrinth's style is an even roll (both forms), whatever its region; version 3 and before keep the region's; a room maze's vault lies where its style puts it", () => {
+  const flat = () => ({ tiles: Array.from({ length: 1024 }, (_, k) => ({ x: k % 32, y: (k / 32) | 0, kind: 'grass', blocked: false })), objects: [], enemySpawns: [], exits: { north: 16, south: 16 }, landscape: true });
+  const n = { 3: {}, 4: {} }, forms = { rooms: {}, chambers: {} }, places = {}; let known = 0, rooms = 0;
+  for (let i = 0; i < 900; i++) for (const V of [3, 4]) { const m = flat(); placeLabyrinth(m, 'EVEN', i, 11 - i, { style: 'keep' }, () => [true], null, V); const B = m.greatBuilding; n[V][B.style] = (n[V][B.style] || 0) + 1;
+    if (V === 4) { assert.equal(B.style, labyrinthStyle('EVEN', i, 11 - i)); const f = B.roomMaze ? 'rooms' : 'chambers'; forms[f][B.style] = (forms[f][B.style] || 0) + 1;
+      if (B.roomMaze) { rooms++; const v = roomVaultOf(B.base); places[v.place] = (places[v.place] || 0) + 1; if (v.known) { known++; assert.equal(v.place, ROOM_MAZES.vault.byStyle[B.style]); assert.equal(v.name, ROOM_MAZES.vault.names[B.style].known); } else { assert.notEqual(v.place, ROOM_MAZES.vault.byStyle[B.style]); assert.equal(v.line, ROOM_MAZES.vault.lines.unknown); } } } }
+  assert.deepEqual(n[3], { keep: 900 }, "version 3: the region's style, as placed before");
+  for (const st of STYLES) { assert.ok(Math.abs(n[4][st] / 900 - 1 / 3) < .05, `${st}: ${n[4][st]} of 900`); for (const f of ['rooms', 'chambers']) assert.ok(forms[f][st] > 100, `${f} ${st}: ${forms[f][st]}`); }
+  assert.ok(Math.abs(known / rooms - (1 - ROOM_MAZES.vault.unknown)) < .04, `the rule kept: ${known} of ${rooms}`); for (const p of ['roof', 'ground', 'under']) assert.ok(places[p] / rooms > .25, `${p}: ${places[p]}`);
+  console.log(`# version 4 styles ${JSON.stringify(n[4])}; vaults ${JSON.stringify(places)} of ${rooms} room mazes`);
+});
+
+test("generator 2 keys: a sealed stair will not open without its key; the key, found on another floor, opens it for good (the corridor labyrinths' keys, labKeys)", () => {
+  let base = null; for (let i = 0; i < 400 && !base; i++) { const b = baseOf(i, 'K'); const P = roomMazePlan(b); if (P.keys.length && P.keys[0].kind === 'wing' && !P.keys[0].doorLevels.includes(P.keys[0].level)) base = b; }
+  assert.ok(base); const P = roomMazePlan(base), K = P.keys[0], doorL = K.doorLevels.find((L) => P.stairs.some((s) => s.lock?.id === K.id && s.lo === L)) ?? K.doorLevels[0];
+  const s = freshSave(); s.seed = P.seed; s.session.activeDungeonId = `${base}:f${roomFloorOf(doorL)}`; s.session.dungeonReturn = { rx: 7, ry: 7, x: 16, y: 16 }; const g = new Game(s, 0); g.loadArea('dungeon', false); g.enemies = [];
+  const door = g.map.objects.find((o) => o.kind === 'buildingStair' && o.lock === K.id); assert.ok(door, 'the sealed stair'); assert.match(door.name, new RegExp(`sealed: the ${K.name}`)); assert.match(g.labyrinthProgress(), /keys 0 of/);
+  g.player.x = door.x; g.player.y = door.y; const no = g.interact(door.actions[0], door.id); assert.ok(!no.ok); assert.match(no.message, new RegExp(K.name));
+  g.goBuildingFloor(`${base}:f${roomFloorOf(K.level)}`, g.map.entry.x, g.map.entry.y); const key = g.map.objects.find((o) => o.kind === 'labKey' && o.keyId === K.id); assert.ok(key, 'the key, on another floor');
+  g.player.x = key.x; g.player.y = key.y; assert.ok(g.interact('take', key.id).ok); assert.match(g.labyrinthProgress(), /keys 1 of/);
+  g.goBuildingFloor(`${base}:f${roomFloorOf(doorL)}`, door.x, door.y); const again = g.map.objects.find((o) => o.id === door.id); assert.ok(again.unlocked); g.player.x = again.x; g.player.y = again.y;
+  const yes = g.interact(again.actions[0], again.id); assert.ok(yes.ok, yes.message); assert.equal(g.areaId(), again.toId);
+  g.goBuildingFloor(`${base}:f${roomFloorOf(K.level)}`, 2, 2); assert.ok(!g.map.objects.some((o) => o.kind === 'labKey' && o.keyId === K.id), 'taken for good');
 });
