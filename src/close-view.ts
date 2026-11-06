@@ -1582,15 +1582,21 @@ function selectProjectedShots(g, q) {
 }
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
-const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, hitSec: .18, walkTurn: Math.PI });
+const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkTurn: Math.PI });
 const MODEL_STATE = {
-  map: null, admitted: new Set(), tracks: new Map(),
+  map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
 };
 function buildActorModels(g, draws, n, Q, now, reduce) {
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
   state.admitted.clear();
-  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); }
+  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; }
+  if (!reduce && player.meleeUntil > now) {
+    for (let it = 0; it < n; it++) {
+      const foe = itemKind[it] === 1 && boardFoe[it], prior = foe && state.tracks.get(foe);
+      if (prior && foe.hp < prior.hp && foe.recoil > 0) { state.lastMeleeHit = now; break; }
+    }
+  }
   let offset = 0, count = 0;
   const append = (actor) => {
     if (count >= limit) return false;
@@ -1613,8 +1619,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
     const winding = who !== player && foeWindingUp(who);
     const pose = hit ? "hit" : attack ? "attack" : winding ? "windup" : track.pace ? "walk" : "idle";
-    const amount = hit || (attack ? who.attackUntil > now ? 1 - Math.min(1, (who.attackUntil - now) / MODEL_TIMING.attackMs) : .6 : winding ? .85 : 0);
-    const actor = { kind, x: boardWX[it], y: boardWY[it], z: Math.max(0, d.lift || 0), yaw: track.yaw,
+    const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
+    const amount = hit || (attack ? who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / MODEL_TIMING.attackMs) : .6 : winding ? .85 : 0);
+    const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
+    const actor = { kind, x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, d.lift || 0), yaw: track.yaw,
       phase: reduce ? 0 : (who.walkPhase || now / 160) * MODEL_TIMING.walkTurn, pace: track.pace, pose, amount };
     if (!append(actor)) return;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
@@ -1747,6 +1755,19 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
         for (let m = 0; m < M.per; m++) { const hx = hash32(PICK.idx[j] * 131 + m * 7) / 4294967296, hy = hash32(PICK.idx[j] * 337 + m * 11) / 4294967296, hz = hash32(PICK.idx[j] * 521 + m * 13) / 4294967296;
           const X = L[o] + (hx - .5) * 1.6 + Math.sin(t * M.drift + m) * .15, Y = L[o + 1] + (hy - .5) * 1.6 + Math.cos(t * M.drift * .8 + m * 1.7) * .15, Z = .4 + hz * 1.8 + Math.sin(t * M.drift * .5 + m * 2.3) * .2;
           card(X, Y, Z - M.size, Z + M.size, M.size, 6, M.alpha * (.4 + .6 * hz), L[o + 5], 1); } } } }
+  // Contact glints share the existing additive batch, after the depth-tested actor draw.
+  let impacts = 0;
+  if (!reduce) for (let oi = n - 1; oi >= 0 && impacts < 8; oi--) {
+    const it = order[oi], foe = boardFoe[it];
+    if (itemKind[it] !== 1 || !(foe?.hitFlash > 0) || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
+    const X = boardWX[it], Y = boardWY[it];
+    if (!sightTo(g.map, CAM.cx, CAM.cy, X, Y)) continue;
+    const a = Math.min(1, foe.hitFlash / MODEL_TIMING.hitSec), scale = boardScale[it];
+    const z = .84 * scale, size = .08 + (1 - a) * .17, front = .28 * scale;
+    card(X - CAM.fx * front, Y - CAM.fy * front, z - size, z + size, size, 11, a * .9, 0xffbd7e, 0);
+    impacts++;
+  }
+  closeViewGLStats.impactGlints = impacts;
   // Render the shot at its simulation X/Y and use the same depth-tested additive batch as flames.
   for (const shot of shots || []) {
     const X = shot.x, Y = shot.y, z = SHOT_DRAW.height, magic = shot.damageType === "magic";
