@@ -2854,6 +2854,35 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 785: fog of war in labyrinths — 2026-11-06
+
+Tim, 2026-11-06: in labyrinths "you can see everything in the maze... if there were fog that would be better, so I'd be able to kind of explore and figure out where I need to go."
+
+**CODE:**
+- `src/labyrinths.ts`:
+  - `LAB_FOG` holds the settings: sight radius 7, colour rgb 11,14,17, `dark` 1 for never-seen tiles, `dim` .55 for seen tiles out of sight, softness per quality tier, `maxChars` 512, and map colours.
+  - `labFogOn` turns fog on for labyrinth ids only, including the Shell-Labyrinth and room mazes.
+  - `labFogOf` keeps the per-map seen and sight bytes (a WeakMap).
+  - `labFogLook` traces two-way Bresenham lines of sight that cannot squeeze through diagonal gaps; walls beside lit floor are lit too. It reruns only when the Wayfarer steps onto a new tile.
+  - `encodeLabFog` and `decodeLabFog` store seen tiles as `"<W>x<H>:<base64url>"`.
+  - `labFogStore` writes the record; `ensureLabFog` runs in `freshSave` and `migrateSave`.
+- `src/game.ts`: `loadArea` fills the fog from `history.labFog`, and `labFogTick` runs each frame on a building floor.
+- `src/renderer.ts`:
+  - Objects show on seen tiles (`seenInDungeon`). Creatures and the aim mark show only in sight (`shownInDungeon`).
+  - The safe-drop rim shows only in sight.
+  - `drawLabFog` draws one cached image at one pixel per tile, rebuilt only when sight changes.
+- `src/main.ts`: the dungeon map shows only seen tiles and objects.
+- Tests: `tests/labyrinth-fog.test.ts`.
+
+**BOUNDARY:**
+- This is play only: no generator change. Every labyrinth, old and new, has fog, and layouts are byte for byte as before (1,630 chambers digested).
+- Room-maze floors work too: about 190 characters stored per floor.
+- Save: schema 14, with one additive history string per chamber.
+- Buildings, castles and the Pentagon have no fog. Ordinary and deep dungeons keep their chunk discovery.
+- Boss markers on the dungeon map are unchanged (release 403).
+- Remembered doors, keys and caches stay drawn dimmed under the fog.
+- Not tested on a device.
+
 ## Release 784: room mazes — rooms, stairs and floors — 2026-11-06
 
 Tim, 2026-11-06, asked for mazes "where you go between different rooms... choices between going up these stairs or down these stairs... some of it is a dead end... maybe it'll take you to the roof, and then you can walk over the floor that was all holes or all lava". He also wanted sub-floors: "a ladder that takes you down to a sub floor and you can walk around the obstacle... take a ladder up in like the Northwest corner". And he wanted both kinds: "the standard labyrinths are pretty good... and the new labyrinths".
