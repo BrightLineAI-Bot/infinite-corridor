@@ -29,6 +29,7 @@ import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { HOLE_DROPS, holeDrops } from "./labyrinths.ts";
+import { closeViewFrame, closeViewCapturing, closeViewTake } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -2199,6 +2200,7 @@ function drawScreenOverlay(ctx, w, h) {
   return true;
 }
 export function render(ctx, g, w, h, now) {
+  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) return; // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
   ctx.imageSmoothingEnabled = false;
@@ -2669,6 +2671,7 @@ export function render(ctx, g, w, h, now) {
   const roofUnder = standingOnRoof(g, mw);
   if (!roofUnder) draws.push(playerDraw);
   { const fz = g.area === "overworld" ? g.droneFizzleFx : null; if (fz && now < fz.until && visibleInCamera(fz, l, t, r, b, 4)) { const under = tileUnder(g.map, mw, fz.x, fz.y); draws.push({ y: fz.y + .01, x: fz.x, lift: (fz.levels || 0) * LIFT_PER_LEVEL * tileLiftScale(under), inSky: true, fn: () => drawDroneFizzle(ctx, fz, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) }); } } // the drone fizzle
+  if (closeViewCapturing()) closeViewTake(draws.splice(0), playerDraw); // CLOSE VIEW (2/3): the actors become billboards
   draws.sort((a, b) => a.y - b.y);
   for (const d of draws) {
     const raise = (Number.isFinite(d.x) ? groundLift(d.x, d === playerDraw ? p.y : d.y) : 0) + (d.lift || 0);
@@ -2788,6 +2791,7 @@ export function render(ctx, g, w, h, now) {
     }
   if (g.area === "dungeon") drawWayMarks(ctx, g, s, now); // which way is down and which is out, plainly marked
   ctx.restore();
+  if (closeViewCapturing()) return; // CLOSE VIEW (3/3): the ground texture is done; the screen overlays are Close View's own
   // Release 661 (Tim: "something on the heads up display that just shows the different levels... on the right side... little
   // dots... pretty unobtrusive"): in a dungeon of several floors, a column of dots at the right edge, the top one the first floor:
   // the floor you stand on lit and ringed, floors you have found dim, the rest faint.
