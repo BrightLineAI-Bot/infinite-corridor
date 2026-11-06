@@ -53,7 +53,7 @@ test('Pentagon floors and a great building floor render in Close View at every q
 });
 
 test('draw cost: Close View stays bounded and below the ordinary interior view; wall geometry is cached per floor', () => {
-  const bound = { low: 140, balanced: 200, full: 320 };
+  const bound = { low: 160, balanced: 280, full: 400 }; // version 2: + the walls' outline (one stroke a face; on balanced and full, a cap and a baseboard fill too)
   for (const sc of SCENARIOS) { const { game: g } = lab(sc);
     for (const q of ['low', 'balanced', 'full']) { g.presentation = { effectiveQuality: q };
       g.save.closeView = false; const a = recorder(); render(a.ctx, g, W, H, 3000);

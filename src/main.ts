@@ -13,7 +13,7 @@ import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountL
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.ts";
@@ -81,6 +81,7 @@ export function equipFromInventory(save, index) {
 function drawRangedEffects() { if (closeViewShowing(game)) return; /* Close View drew them on its floor */ drawCombatEffects(ctx,game,innerWidth,innerHeight); }
 // Close View: traps and vines, aperture marks and shots in flight are drawn onto its floor texture, under the billboards.
 const closeViewLayer = { ctx: null, w: 0, h: 0 };
+const closePan = mountCloseViewControls(() => game); // Close View: the pan crescent round the action buttons and its lock button, shown only in Close View
 CLOSE_VIEW_HOOKS.groundLayers.push((c, W, H) => { closeViewLayer.ctx = c; closeViewLayer.w = W; closeViewLayer.h = H; drawDungeonSystems(closeViewLayer); drawApertureVisuals(closeViewLayer); drawCombatEffects(c, game, W, H); });
 function openShop(vendorId = "vendor-vela") {
   pauseForOverlay();
@@ -821,7 +822,7 @@ setInterval(() => {
 }, 250);
 // Release 523 (dungeon-traps.ts): a pentagram etched in the floor, a cracked lava vent, a dart slit in a wall. Each glows
 // while it warns.
-function drawNewTrap(o, x, y, s, t) {
+function drawNewTrap(o, x, y, s, t, ctx = screenCtx()) { // ctx: the screen, or Close View's floor texture
   const warn = o.phase === "warning", rest = o.phase === "rest", pulse = .5 + .5 * Math.sin(t * 14);
   ctx.save(); ctx.lineWidth = 2;
   if (o.trapType === "sigil") {
@@ -999,23 +1000,27 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
   return out;
 }
 // Release 523: the new traps and the sigil orbs, on the live combat layer.
-function drawNewTraps(s, sx, sy) {
+function drawNewTraps(s, sx, sy, ctx = screenCtx()) {
   if (game.area !== "dungeon") return;
   const t = performance.now() / 1000;
-  for (const o of game.map.objects) if (o.kind === "trap" && o.newTrap && dungeonPointDiscovered(game.map, o)) drawNewTrap(o, sx(o.x + .5), sy(o.y + .5), s, t);
+  for (const o of game.map.objects) if (o.kind === "trap" && o.newTrap && dungeonPointDiscovered(game.map, o)) drawNewTrap(o, sx(o.x + .5), sy(o.y + .5), s, t, ctx);
   for (const q of game.trapSeeds || []) { // the sigil orbs, landing and spinning
     const x = sx(q.x), y = sy(q.y), landed = q.t >= DUNGEON_TRAPS.sigil.flight, r = s * (landed ? .22 : .16);
     ctx.fillStyle = "#c46bff44"; ctx.beginPath(); ctx.arc(x, y, r * 2, 0, 7); ctx.fill();
     ctx.fillStyle = "#f2d9ff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
     if (landed) { ctx.strokeStyle = "#d58bff"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i <= 5; i++) { const a = q.spin + t * 9 + i * Math.PI * 4 / 5, px = x + Math.cos(a) * r * 2.4, py = y + Math.sin(a) * r * 2.4; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); } ctx.stroke(); }
   }}
-function drawTruthfulCombatGeometry() {
+// Close View (2026-11-06 review): this is what drawDungeonSystems is bound to below, so it takes the layer Close View hands its
+// ground layers (its floor texture) and stays off the screen while Close View shows; it drew top-down over the 3D view before.
+function drawTruthfulCombatGeometry(layer = null) {
+  if (!layer && closeViewShowing(game)) return;
+  const ctx = layer ? layer.ctx : screenCtx(), innerWidth = layer ? layer.w : globalThis.innerWidth, innerHeight = layer ? layer.h : globalThis.innerHeight;
   const s = Math.round(Math.max(28, Math.min(44, innerWidth / 12))),
     sx = (x) => innerWidth / 2 + (x - game.player.x) * s,
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s,
     g = combatIndicatorGeometry(game);
   ctx.save();
-  drawNewTraps(s, sx, sy); // release 523
+  drawNewTraps(s, sx, sy, ctx); // release 523
   for (const q of g.traps) {
     ctx.fillStyle = q.active ? "#a43c2638" : "#17151288";
     ctx.strokeStyle = q.active ? "#ef8158" : "#8c806d";
@@ -1337,7 +1342,7 @@ async function renderSettings(category){const grid=document.createElement("div")
     sel.onchange=()=>{save.fractured=sel.value||null;persist();game.message=save.fractured?`${FRACTURED.modes[save.fractured].name} mode: the Corridor is breaking open. Towns, home and cleared dungeons stay safe.`:"Fractured mode off."};
     grid.append(settingRow("Fractured mode (this journey)",sel,`${note} More creatures, in packs with champions and rares, and more keep coming; towns, home, the Refuge lands and cleared dungeons stay safe. Takes full effect in the next place you enter.`));
   }
-  if(category==="Controls"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View indoors (prototype, this journey)",cv,"Inside the Pentagon, great buildings and keeps, a low camera behind the Wayfarer that turns with them; drag up to walk the way the view looks. Courts, roofs and the overworld keep the usual view."));const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."))} // 2026-11-06
+  if(category==="Controls"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View indoors (prototype, this journey)",cv,"Inside the Pentagon, great buildings and keeps, a low camera behind the Wayfarer that turns with them; drag up to walk the way the view looks. Courts, roofs and the overworld keep the usual view."));const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last touch the crescent round the action buttons, the view slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the button at its top locks on)."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("World boss tries (on: 4 deaths and the boss leaves; off: no tries, it loses patience after 3 minutes of fighting, 5 once it is below half health)",toggleSetting("beastTries")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
@@ -2262,7 +2267,7 @@ function robotTag(save, item) {
 }
 function hudSet(el,key,value){if(!el)return;let m=hudLast.get(el);if(!m)hudLast.set(el,m={});if(m[key]===value)return;m[key]=value;
   if(key==="text")el.textContent=value;else if(key==="max"||key==="value")el[key]=value;else if(key.startsWith("--")||key==="transform")key==="transform"?el.style.transform=value:el.style.setProperty(key,value);else if(key.startsWith("class:"))el.classList.toggle(key.slice(6),value);else if(key.startsWith("data-"))el.dataset[key.slice(5)]=value;else el.setAttribute(key,value)}
-function updateHud(now) {
+function updateHud(now) { closePan.sync(); // Close View's crescent and lock button: shown only while Close View is
   const health = Math.max(0, Math.ceil(game.player.hp)),
     stamina = Math.max(0, Math.ceil(game.player.stamina)),
     next = Math.max(1, save.nextXp || 30);
