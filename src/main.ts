@@ -82,7 +82,7 @@ function drawRangedEffects() { if (closeViewShowing(game)) return; /* Close View
 // Close View: traps and vines, aperture marks and shots in flight are drawn onto its floor texture, under the billboards.
 const closeViewLayer = { ctx: null, w: 0, h: 0 };
 const closePan = mountCloseViewControls(() => game); // Close View: the pan crescent round the action buttons and its lock button, shown only in Close View
-CLOSE_VIEW_HOOKS.groundLayers.push((c, W, H) => { closeViewLayer.ctx = c; closeViewLayer.w = W; closeViewLayer.h = H; drawDungeonSystems(closeViewLayer); drawApertureVisuals(closeViewLayer); drawCombatEffects(c, game, W, H); });
+CLOSE_VIEW_HOOKS.groundLayers.push((c, W, H, projectedShots) => { closeViewLayer.ctx = c; closeViewLayer.w = W; closeViewLayer.h = H; drawDungeonSystems(closeViewLayer); drawApertureVisuals(closeViewLayer); drawCombatEffects(c, game, W, H, projectedShots); });
 function openShop(vendorId = "vendor-vela") {
   pauseForOverlay();
   body.replaceChildren();
