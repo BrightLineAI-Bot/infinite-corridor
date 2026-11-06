@@ -510,6 +510,17 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
       vec2 q = p - c0; q = vec2(cos(an) * q.x - sin(an) * q.y, sin(an) * q.x + cos(an) * q.y); float bone = 1.0 - smoothstep(0.05, 0.08, length(vec2(max(abs(q.x) - 0.22, 0.0), q.y))); float knob = 1.0 - smoothstep(0.06, 0.09, length(vec2(abs(q.x) - 0.22, abs(q.y) - 0.04))); m = max(m, max(bone, knob)); }
     float skull = 1.0 - smoothstep(0.16, 0.2, length(p - vec2(0.25, -0.2))); m = max(m, skull); float eye = (1.0 - smoothstep(0.03, 0.05, length(p - vec2(0.2, -0.24)))) + (1.0 - smoothstep(0.03, 0.05, length(p - vec2(0.31, -0.24))));
     vec3 c = vec3(0.55, 0.51, 0.42) * lit * (1.0 - 0.8 * clamp(eye, 0.0, 1.0) * skull); a = m * v_meta.y * keep; outColor = vec4(c * a, a); return; }
+  if (k > 10.5) {
+    ivec2 tile = ivec2(floor(v_world));
+    if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize)) ||
+        (texelFetch(u_mask, tile, 0).r & 2u) != 0u) discard;
+    uint rgb = uint(floor(v_meta.z + 0.5));
+    vec3 tint = vec3(float(rgb >> 16u), float((rgb >> 8u) & 255u), float(rgb & 255u)) / 255.0;
+    float shape = v_meta.w > 0.5 ? (1.0 - abs(v_loc.y)) * smoothstep(-1.0, 1.0, v_loc.x)
+      : 1.0 - smoothstep(0.08, 1.0, r);
+    outColor = vec4(tint * shape * v_meta.y * keep, 0.0);
+    return;
+  }
   if (k > 9.5) {
     ivec2 tile = ivec2(floor(v_world));
     if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize))) discard;

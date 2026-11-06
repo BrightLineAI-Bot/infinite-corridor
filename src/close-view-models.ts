@@ -81,6 +81,14 @@ player.push(
   part(taper, .155, -.35, .967, .037, .076, .22, bronze, -2, 0, 1.19),
 );
 
+// A short two-tone emitter for the ranged stance. It shares the Wayfarer's arm pivot.
+const playerTool = [
+  ...player.slice(0, -2),
+  block(.161, -.35, .746, .193, .085, .063, iron, -2, 0, 1.19),
+  block(.315, -.35, .746, .057, .067, .056, bronze, -2, 0, 1.19),
+  block(.37, -.35, .746, .017, .04, .037, visor, -2, 0, 1.19),
+];
+
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
 const ashling = [
   part(bevel, 0, 0, .64, .23, .258, .29, ash),
@@ -160,7 +168,7 @@ hollowMarshal.push(
 );
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { player, wayfarer: player, ashling, rootBrute, pallidCrawler, hollowMarshal };
+const models = { player, wayfarer: player, playerTool, ashling, rootBrute, pallidCrawler, hollowMarshal };
 const modelSize = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length, 0),
 ]));
@@ -172,7 +180,7 @@ export function modelSupported(kind) {
 
 export function writeCloseViewModel(out, offset, actor) {
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
-  const size = kind === "player" || kind === "wayfarer" ? .82 : 1;
+  const size = kind === "player" || kind === "wayfarer" || kind === "playerTool" ? .82 : 1;
   if (!modelSupported(kind) || !Number.isSafeInteger(offset) || offset < 0 || offset + modelSize[kind] > out.length) return offset;
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(yaw) ||
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
@@ -181,19 +189,20 @@ export function writeCloseViewModel(out, offset, actor) {
   const beat = Math.sin(phase) * moving;
   const windup = pose === "windup" ? progress : 0;
   const strike = pose === "attack" ? Math.sin(Math.PI * progress) : 0;
+  const tool = pose === "tool" ? Math.sin(Math.PI * progress) : 0;
   const flinch = pose === "hit" ? progress : 0;
   const fall = pose === "death" ? progress : 0;
   const turn = .12 * strike;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = -.15 * windup + .24 * strike - .24 * flinch + 1.52 * fall;
+  const pitch = -.15 * windup + .24 * strike - .11 * tool - .24 * flinch + 1.52 * fall;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = (.014 * Math.sin(phase * 2) * (1 - moving) + .044 * Math.abs(beat)) * (1 - fall) + (kind === "pallidCrawler" ? .61 : .36) * fall;
-  const shift = .10 * strike - .08 * flinch;
+  const shift = .10 * strike - .06 * tool - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   for (const { mesh, swing, px, pz } of models[kind]) {
     let angle = 0;
     if (swing === 3) angle = -.12 * moving + .08 * beat + .15 * strike;
-    else if (swing === -2) angle = beat * stride + 1.15 * windup - 1.72 * strike + .22 * flinch;
+    else if (swing === -2) angle = beat * stride + 1.15 * windup - 1.72 * strike - 1.1 * tool + .22 * flinch;
     else if (swing === 2) angle = -beat * stride + .35 * windup - .31 * strike - .18 * flinch;
     else angle = -swing * beat * stride;
     const c = Math.cos(angle), s = Math.sin(angle);

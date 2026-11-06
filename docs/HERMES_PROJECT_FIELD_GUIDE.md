@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 801: Close View combat readability
+
+**CODE:** `src/close-view.ts` projects standard shots at their simulation coordinates, uses existing shot colors, and puts trails and contact glints in the current depth-tested additive batch. The Wayfarer uses a short emitter and a recoil pose for standard ranged attacks. Confirmed melee damage holds the contact pose briefly, and enemy recoil follows existing combat state.
+
+**BOUNDARY:** Presentation only. The simulation clock, damage, hitboxes, saved state, and top-down rendering retain their behavior. Specialized shots retain their existing effects. Reduced motion suppresses trails, glints, and the presentation hold. The quality tiers cap projected shots at 12, 20, and 28.
+
 ## Release 800: stable Close View floor inlays
 
 **CODE:** The Close View mask encodes existing inlay and sigil tiles in spare bits. The environment shader shades them directly on the floor, with antialiasing at each tile edge. This removes the raised floor-stamp geometry that produced dark bands in software WebGL.
