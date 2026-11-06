@@ -22,7 +22,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 789, the next is **
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 791 | Claude | `claude/pg-in-options` | Enter Proving Ground from Options → System (scratch copy of the journey through a one-shot handoff; Exit to game resumes it untouched), a "Proving Ground access" setting, and Get latest release in the Proving Ground | Reserved, in flight (790 is `claude/close-view-grit`). |
-| 790 | Claude | `claude/close-view-grit` | Close View v3: one material for walls and floor (clean ancient panels, sparse deterministic wear, corner occlusion), a continuous floor, creatures that fade instead of popping (ghosted behind walls), windup and hit cues, a bullseye lock on the screen's edge, the crescent clear of Spell B, an Options → Camera tab, and a Close View Lab that starts at once | Merged (#438). |
+| 790 | Claude | `claude/close-view-grit` | Close View v3: one material for walls and floor (clean ancient panels, sparse deterministic wear, corner occlusion), a continuous floor, creatures that fade instead of popping (ghosted behind walls), windup and hit cues, a bullseye lock on the screen's edge, the crescent clear of Spell B, an Options → Camera tab, and a Close View Lab that starts at once | Merged (#438). Published as r790-d8f0e5e716fc on 2026-11-06. |
 | 789 | Claude | `claude/dreamy-rubin-yn6q2p` | Sealed towers: a compound's central tower and a Great Castle's keep open only with a key won deep in the maze (Key Warden); no drone/glide bypass; ~15% have a ledge climb to a lever | Merged (#437). Published as r789-7b41b2c419e8 on 2026-11-06. |
 | 788 | Claude | `claude/dreamy-rubin-yn6q2p` | Even building types for new labyrinths; room-maze vault by type (keep tower, hive undercroft, arcology ground; 10% Shifting) with a door line; keys and sealed stairs in room mazes; galleries look down | Merged (#436). Published in r789. |
 | 787 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View v2: a steady view, readable walls, a pan crescent and Elden Ring style lock-on; walls no longer seen through | Merged (#435). Published as r787-79b4a7ca7811 on 2026-11-06. |
@@ -177,6 +177,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 789, the next is **
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 790 | `r790-d8f0e5e716fc` | 2026-11-06 | Fable review (789→790): no blockers. Close View v3: one material, steady creatures, attack cues, side bullseye (#438). |
 | 789 | `r789-7b41b2c419e8` | 2026-11-06 | Fable review (787→789): no blockers. Room mazes by building type with keys (788, #436) and sealed towers (789, #437). |
 | 787 | `r787-79b4a7ca7811` | 2026-11-06 | Fable review (786→787): no blockers. Close View v2: steady view, readable walls, pan crescent and lock-on (#435). |
 | 786 | `r786-92e4788905a0` | 2026-11-06 | Fable review (782→786): no blockers. Story version 4 (#431), room mazes (#432), fog of war in labyrinths (#433), Close View prototype (#434). |
