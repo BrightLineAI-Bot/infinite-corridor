@@ -124,7 +124,10 @@ test('the crescent and lock button mount round the action cluster, beneath its b
   const { g } = room(), host = { document: doc, performance: { now: () => T }, addEventListener() {} }, ui = CV.mountCloseViewControls(() => g, host);
   const i = actions.children.indexOf(ui.svg); assert.ok(i >= 0 && i < actions.children.indexOf(cluster), 'the crescent is before (beneath) the buttons'); assert.ok(actions.children.indexOf(ui.lock) > actions.children.indexOf(cluster), 'the lock button above them');
   ui.sync(); assert.equal(ui.svg.style.display, 'none', 'hidden until Close View shows'); frame(g, 2); ui.sync(); assert.equal(ui.svg.style.display, 'block'); assert.equal(ui.lock.style.display, 'grid');
-  const R = 81 + CV.CLOSE_VIEW.crescent.gap, la = CV.CLOSE_VIEW.crescent.lockAt * Math.PI / 180; assert.ok(Math.abs(parseFloat(ui.lock.style.left) + CV.CLOSE_VIEW.crescent.lockSize / 2 - (281 + R * Math.cos(la))) < 1, 'the lock button sits on the arc');
+  // release 790 (Tim): the lock is off the arc, a 46 px bullseye at the screen's right edge above the crescent's band
+  const K = CV.CLOSE_VIEW.crescent, R = 81 + K.gap, lx = parseFloat(ui.lock.style.left), ly = parseFloat(ui.lock.style.top), near = Math.hypot(Math.max(0, lx - 150), Math.max(0, 150 - (ly + K.lockSize)));
+  assert.ok(Math.abs(lx + K.lockSize - (150 + R + K.band)) < 1, `the lock button sits at the right (${lx})`); assert.ok(K.lockSize >= 44, 'a comfortable touch target');
+  assert.ok(near > R + K.band, `the lock button is clear of the crescent's band (${near.toFixed(1)} > ${R + K.band})`);
   const hit = ui.svg.children[1]; assert.equal(hit.style.pointerEvents, 'stroke', 'it answers only on its band'); const y0 = CV.closeViewCamera().yaw, ev = (x, y) => ({ pointerId: 7, clientX: x, clientY: y, preventDefault() {}, stopPropagation() {} });
   hit.listeners.pointerdown[0](ev(150 - R, 150)); hit.listeners.pointermove[0](ev(150 - R * Math.cos(.3), 150 - R * Math.sin(.3))); hit.listeners.pointerup[0](ev(150 - R * Math.cos(.3), 150 - R * Math.sin(.3)));
   assert.ok(wrap(CV.closeViewCamera().yaw - y0) > .1, 'sliding up the left side (clockwise) turns the view right');

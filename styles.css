@@ -677,6 +677,7 @@ body.proving-ground #actions .utility-buttons,body.proving-ground #actions #fiel
 /* Standalone mobile Proving Ground identity and diagnostics. */
 #pgGlimpseList{display:grid;gap:.5rem;margin-top:.6rem}#pgGlimpses{max-width:min(92vw,28rem);color:#e9f7f5;background:#111923;border:1px solid #43c9bf}body.proving-ground #pgGlimpses[open]{display:block!important}body.proving-ground #pgDiagnostics[open]{display:block!important}
 .pg-identity{position:fixed;z-index:40;top:env(safe-area-inset-top,0);left:50%;transform:translateX(-50%);display:flex;gap:.45rem;align-items:center;max-width:94vw;padding:.35rem .6rem;border:1px solid #43c9bf;background:#071018e8;color:#d9fffa;font:11px/1.2 monospace;border-radius:0 0 8px 8px}.pg-identity strong{color:#63eee4}.pg-identity button{font:inherit;padding:.2rem .35rem}#pgDiagnostics{max-width:min(92vw,32rem);color:#e9f7f5;background:#111923;border:1px solid #43c9bf}#pgDiagnostics dl{display:grid;grid-template-columns:auto 1fr;gap:.35rem .7rem;text-align:left}#pgDiagnostics dt{color:#77d8d1}#pgDiagnostics dd{margin:0;overflow-wrap:anywhere}
+/* release 791: Get latest release and Exit to game join the bar; it wraps on a phone */.pg-identity{flex-wrap:wrap;justify-content:center}#pgLatestStatus:empty{display:none}#provingGroundPanel label[hidden]{display:none}/* the lab labels openLab hides really hide */
 .creature-portrait.pack-portrait{height:78px;background:radial-gradient(circle at 50% 60%,#2a2620,#100f0d);image-rendering:auto}
 #provingGroundPanel header{grid-template-columns:1fr auto;align-items:center}#provingGroundPanel header span{grid-column:1/-1}#pgCollapse{min-height:36px;min-width:64px;padding:0 10px;font-weight:700}
 #provingGroundPanel.collapsed{width:auto;max-height:none;overflow:visible;padding:6px}#provingGroundPanel.collapsed>:not(header),#provingGroundPanel.collapsed header strong,#provingGroundPanel.collapsed header span{display:none!important}#provingGroundPanel.collapsed header{margin:0;display:block}
@@ -970,3 +971,13 @@ button[aria-current], button[aria-selected="true"], .arc-kind.active, .options-t
 
 /* Viewport Closed (2026-11-04): while the Viewport is closed the HUD and controls step aside (pause still answers: Esc, P, back) */
 body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #eventBanner{opacity:0;pointer-events:none;transition:opacity .3s}
+
+/* Close View lock-on (release 790): a bullseye at the screen's right edge, above the pan crescent (off its arc, out of the
+   stick's and the crescent's thumb paths). The button is a 46 px touch target; its disc is drawn 36 px. Pressed it dips;
+   locked the disc's rim glows red and the bullseye's inner ring fills. */
+.close-lock { transition: transform .08s ease-out; -webkit-tap-highlight-color: transparent; }
+.close-lock::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; border: 1px solid #8b7857; background: radial-gradient(circle at 45% 35%, #403b31, #1c1b18 72%); box-shadow: inset 0 0 0 2px #151411, 0 3px 9px #0009; transition: border-color .15s, box-shadow .15s; }
+.close-lock:active { transform: scale(.9); }
+.close-lock .bull-ring { transition: fill-opacity .15s; }
+.close-lock[aria-pressed="true"]::before { border-color: #ff6a5a; box-shadow: inset 0 0 0 2px #151411, 0 0 12px #ff6a5aaa; }
+.close-lock[aria-pressed="true"] .bull-ring { fill-opacity: .38; }
