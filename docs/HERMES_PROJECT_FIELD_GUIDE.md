@@ -2854,6 +2854,52 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 788: even building types, vaults by type, keys in room mazes, galleries look down — 2026-11-06
+
+Tim, 2026-11-06, on how the castle keeps feel: "it's always in the tower... you know where you're gonna get to." He wanted "a rhyme or reason, like Bloodborne's chalice dungeons... the familiarity... you come to recognize it."
+
+His decisions:
+- Every building type should turn up about evenly ("we don't always see keeps").
+- The vault's place follows the building type.
+- Room mazes get keys and sealed doors ("those are cool, we should have those").
+- His earlier answers stand: barriers stay 6 tiles wide, and galleries show the hazard below.
+
+**CODE:** `src/labyrinths.ts`.
+
+- **Versions.** `LABYRINTHS.version` is 4. New ground places room-maze generator 2 (`~r2`), and `placeLabyrinth` sets `rv = V >= 4 ? 2 : 1`.
+- **Even styles.** From version 4, `labyrinthStyle(seed, rx, ry)` rolls keep, apartment or hive evenly (`LABYRINTHS.styleWeights`). This happens before the base id is built and before the form roll, so corridor mazes and room mazes both take the even style. At version 3 and below the region's style holds. `labyrinthHere`, which decides whether a labyrinth exists at all, is unchanged.
+- **Vault by style.** `ROOM_MAZES.vault.byStyle` and `roomVaultOf(base)` place the vault:
+
+  | Style | Maze name | Vault |
+  |---|---|---|
+  | Keep | Tower Labyrinth | the tower roof |
+  | Hive | Brood Hive | the undercroft |
+  | Apartment | Arcology Maze | the ground beyond the last barrier |
+
+  `unknown` is 0.1: those mazes are Shifting Labyrinth, Hive or Maze, with the vault elsewhere and the door line "the vault's place is not known". The vault's floor is always in the last segment, beyond every barrier, and the entry notice leads with the door line.
+- **Keys.** `ROOM_MAZES.keys` gives 1–2 key seals per maze, using the corridor labyrinths' own mechanism: `labKey`, `takeLabKey`, `labKeys`, sealed `buildingStair` objects with `lock`/`lockName`, and `labyrinthState` reopening them.
+  - A seal shuts either a side wing, which is a dead-end floor with a cache, or a loop's second stair. It never shuts the way on.
+  - Each key lies in a room reachable with every seal shut, usually on another floor.
+  - The progress line counts the keys.
+- **View below.** `ROOM_VIEW` and `roomViewBelow(map)` find, for each void tile over a barrier on the upper floor or roof, the first solid tile below. `renderer.ts` `drawRoomViewBelow` draws it as a dim cached image:
+  - only for void tiles in fog sight;
+  - rebuilt when the fog changes;
+  - skipped in Close View.
+- **Tests.** `tests/room-mazes.test.ts` stages keys, sealed stairs and barred doors in the solver for both generators. It covers the even style roll and the vault rule, keys in the game, `~r1` pinning and version-3 placement pinning. `tests/room-view.test.ts` is new, and `tests/vault-roof-exit.test.ts` now expects version 4.
+
+**Measured on Tim's seed** (within 60 sections):
+- Styles: keep 293, hive 276, apartment 275. Before, it was 714 / 82 / 48.
+- Room-maze vaults: roof 139, ground 140, undercroft 150; 42 of those are Shifting.
+- Keys: 612.
+- 5000-maze proof: 83% of keys lie on a different floor from their door; 2.5% of mazes have no seal.
+
+**BOUNDARY:**
+- Ground pinned at labyrinth version 3 or below keeps the region's style and its exact layout. The `~r1` floor digests and the version-3 placement digests were taken from main and still match.
+- The view below is drawing only; falling still kills.
+- No save change; schema 14.
+- Barriers stay 6 tiles wide.
+- Labyrinth version 4 was never live, so there are no released journeys to preserve at version 4.
+
 ## Release 787: Close View v2 — a steady view, readable walls, pan crescent and lock-on — 2026-11-06
 
 Tim tried Close View on 2026-11-06. He found the walls "kind of moved or weren't stable", couldn't tell "what the boundaries of everything were", found the camera hard to control and targeting poor, and could see through walls. He asked for a pan crescent around the action buttons with a lock-on button at its top, "similar to the targeting in Elden Ring", and a camera that mostly follows you but "helps you get around walls".

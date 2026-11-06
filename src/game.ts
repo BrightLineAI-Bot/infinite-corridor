@@ -4043,7 +4043,7 @@ export class Game {
       if (o.enterAt === "roof" && this.map.building?.roofLadder) { const at = buildingArrival(this.map, this.map.building.roofLadder.x, this.map.building.roofLadder.y); this.player.x = at.x; this.player.y = at.y; } // down through its roof hatch
       if (o.buildingDoors && this.map.building) dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors = { ...o.buildingDoors }; // where each of its ways out lets you out
       if (o.buildingDoors && this.map.building?.roomMaze && this.map.building.vault) addRoofExit(this.save, this.areaId(), this.map, dungeonHistory(this.save, this.areaId())); // ROOM_MAZES: the vault stands on the floor the door opens onto, laid before its door was recorded
-      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: this.map.building.roomMaze ? `${this.map.building.hint} · ${this.labyrinthProgress()}` : this.map.building.labyrinth ? `one way through, one real end · ${this.labyrinthProgress()}` : `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
+      if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: this.map.building.roomMaze ? `${this.map.building.vaultLine || this.map.building.hint} · ${this.labyrinthProgress()}` : this.map.building.labyrinth ? `one way through, one real end · ${this.labyrinthProgress()}` : `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
       if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
     } else if (r.transition === "exit") {
@@ -6733,7 +6733,7 @@ export class Game {
   // A labyrinth's progress: chambers found (of all), keys held (of all).
   labyrinthProgress() { const B = this.map?.building; if (!B?.labyrinth) return ""; const H = dungeonHistory(this.save, `${B.base}:f1`); const seen = (H.labSeen ||= []); if (!seen.includes(B.node)) seen.push(B.node);
     const links = B.pentagon && H.pentLinks ? pentagonPlan(...(() => { const p = parsePentagonId(this.areaId()); return p ? [p.seed, p.cx, p.cy, p.V] : [this.save.seed, 0, 0, 1]; })()).links || [] : [], open = links.filter((l) => (H.labOpen || []).includes(pentagonLinkKey(l.id))).length;
-    if (B.roomMaze) return `${seen.length} of ${B.of} floors found`; // a room maze: its floors
+    if (B.roomMaze) return `${seen.length} of ${B.of} floors found${B.keys?.length ? ` · keys ${(H.labKeys || []).length} of ${B.keys.length}` : ""}`; // a room maze: its floors (generator 2: its keys)
     return `${seen.length} of ${B.of} chambers found${B.keys?.length ? ` · keys ${(H.labKeys || []).length} of ${B.keys.length}` : ""}${links.length ? ` · shortcuts ${open} of ${links.length}` : ""}`; }
   // The Pentagon's shortcut links (pentagon.ts PENTAGON.shortcuts): shut from the near side ("barred from the other side");
   // the first use from the deep side opens it for good (history labOpen `link:<id>`) and carries you through; once open it

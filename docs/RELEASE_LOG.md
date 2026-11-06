@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 787, the next is **788**.
+Taken at merge time: `main`'s release + 1 (see above). After 788, the next is **789**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 787 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View v2: a steady view, readable walls, a pan crescent and Elden Ring style lock-on; walls no longer seen through | In flight. |
+| 788 | Claude | `claude/dreamy-rubin-yn6q2p` | Even building types for new labyrinths; room-maze vault by type (keep tower, hive undercroft, arcology ground; 10% Shifting) with a door line; keys and sealed stairs in room mazes; galleries look down | In flight. |
+| 787 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View v2: a steady view, readable walls, a pan crescent and Elden Ring style lock-on; walls no longer seen through | Merged (#435). |
 | 786 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View (prototype, off by default): a low third-person camera inside the Pentagon, great buildings and keeps, with torchlight, fog and perspective walls; courts and the overworld keep the usual view | Merged (#434). Published as r786-92e4788905a0 on 2026-11-06. |
 | 785 | Claude | `claude/dreamy-rubin-yn6q2p` | Fog of war in every labyrinth: sight 7 tiles, walls block it; seen ground stays dimmed and is remembered per chamber; creatures and the safe-drop rim only in sight; the map shows only what you've seen | Merged (#433). Published in r786. |
 | 784 | Claude | `claude/dreamy-rubin-yn6q2p` | Room mazes: half of new labyrinths are mazes of rooms over four floors (undercroft, ground, upper, roof); barriers crossed on another floor, sub-floor routes, dead ends, loops, drops, far-side barred doors | Merged (#432). Published in r786. |
