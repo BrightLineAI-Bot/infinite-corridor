@@ -2854,6 +2854,54 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 782: the Rite is a lockdown; Pentagon Journal lines in words; springs heal 2% — 2026-11-06
+
+Tim, 2026-11-06:
+- "Once you start the Rite you can't do anything other than the Rite until you die or use a crossing sigil."
+- Old Pentagon Journal lines should give directions in words.
+- Hot springs heal 2% a second, and only the water heals.
+
+**CODE:**
+- `src/ascendancy.ts`: `RITE_LOCKDOWN` holds:
+  - `kinds`: each object kind maps to its `say` message group and the actions it keeps.
+  - `actions`: enter, descend, travel, ascend, dive, follow, surface.
+  - `inset`: 1.2.
+  - Five messages: door, sky, farGate, fold, dive.
+  - `riteExit(o, action)` checks own properties only.
+- `src/game.ts`:
+  - `interact`: while a Rite burns on the overworld, it asks `riteExit` before any other branch and refuses with `{ ok: false, riteSealed: true }`. This covers:
+    - dungeon, building, castle, labyrinth and Pentagon doors, and craters;
+    - the Deep, hunts, arenas and the Cantor Threshold;
+    - sky stairs and canopy gates;
+    - Far Gates;
+    - folds;
+    - dives.
+  - `riteHoldEdge()` (from `transitionSection`): the player is set back from the edge only onto ground, or water aboard a skiff, that holds them. A player carried past the edge is brought back inside with `landSafely`.
+  - The hidden `displacementTrap` stays armed while a Rite burns.
+- `src/pentagon.ts`: `PENTAGON_JOURNAL.retired`, `pentagonJournalWords` and `ensurePentagonJournal`, called in `migrateSave` and `freshSave` (`src/types.ts`). They rewrite release 775's `pentagon-sigil:` and `pentagon-hunt:` Journal lines with the 777 words-only text.
+- `src/landscape.ts`: `HOT_SPRINGS.share` is .02.
+- Tests:
+  - New: `tests/rite-lockdown.test.ts` and `tests/pentagon-journal-words.test.ts`.
+  - `tests/hot-springs.test.ts` uses the new rate.
+
+**BOUNDARY:**
+- The only ways out of a Rite:
+  - Finishing it.
+  - Death: the attempt fails.
+  - The Crossing Sigil: the attempt is spent, and the tree keeps its other tries.
+- Still allowed during a Rite:
+  - lighting a Wayglass with Act;
+  - leaving a crossing unexplored (`bypass`);
+  - boarding a skiff on the section;
+  - trees, shrines, chests and NPCs;
+  - Stuck?;
+  - Rift Step within the section;
+  - every supply.
+- The Rite's timer is never stopped, so finishing it is always reachable.
+- The Journal rewrite is idempotent. It keeps unknown fields and leaves records it can't parse untouched. Completion lines keep their coordinates.
+- No generator change and no new save fields; schema 14.
+- Not tested on a device.
+
 ## Release 781: story version 3 — the far stories lead past 1000 — 2026-11-06
 
 Tim, 2026-11-06: the far stories should be the main stories out past 1000, since they exist only there, and there is room for more of them ("the world is huge and I intended it to be massive").
