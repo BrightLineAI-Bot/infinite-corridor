@@ -1,48 +1,48 @@
-import { BOAT, forgeSubmersible } from "./boats.js?v=r786-92e4788905a0"; // release 311
-import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r786-92e4788905a0";
-import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r786-92e4788905a0"; // release 393; 541: preset gear
-import { FRACTURED } from "./fractured.js?v=r786-92e4788905a0"; // release 651: Fractured mode
-import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r786-92e4788905a0"; // release 543
-import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.js?v=r786-92e4788905a0"; // release 551; 559
-import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.js?v=r786-92e4788905a0";
-import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r786-92e4788905a0"; // release 447
-import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r786-92e4788905a0"; // release 459 // release 395 // release 315; 321: the drone
-import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r786-92e4788905a0"; // release 339; 341
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.js?v=r786-92e4788905a0";
-import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText } from "./beast-mounts.js?v=r786-92e4788905a0"; // release 748: the stable
-import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r786-92e4788905a0";
-import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.js?v=r786-92e4788905a0";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r786-92e4788905a0";
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld } from "./close-view.js?v=r786-92e4788905a0"; // Close View (2026-11-06): interiors from behind the Wayfarer
-import { renderTimings } from "./renderer.js?v=r786-92e4788905a0";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r786-92e4788905a0";
-import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.js?v=r786-92e4788905a0";
-import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt } from "./brawler-spells.js?v=r786-92e4788905a0"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
-import { sectionAtlasColor } from "./atlas-colors.js?v=r786-92e4788905a0";
-import { sectionRegion, regionName, REGIONS } from "./landscape.js?v=r786-92e4788905a0"; // release 573
-import { skylandLabel } from "./skylands.js?v=r786-92e4788905a0";
-import { CREATURE_TRAITS } from "./combat.js?v=r786-92e4788905a0";
-import { nearestWonders, WONDERS } from "./wonders.js?v=r786-92e4788905a0"; // release 674
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY } from "./monster-pack.js?v=r786-92e4788905a0";
-import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.js?v=r786-92e4788905a0";
-import { curseDef } from "./haunts.js?v=r786-92e4788905a0"; // release 737: the haunt curses on the HUD
-import { activeFarQuest } from "./far-realms.js?v=r786-92e4788905a0"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
-import { drawPackPortrait } from "./monster-render.js?v=r786-92e4788905a0";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r786-92e4788905a0";
-import { hashSeed } from "./random.js?v=r786-92e4788905a0";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r786-92e4788905a0";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r786-92e4788905a0";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r786-92e4788905a0";
-import { linksKnown } from "./linked-dungeons.js?v=r786-92e4788905a0";
-import { DIG } from "./digging.js?v=r786-92e4788905a0";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark } from "./atlas-view.js?v=r786-92e4788905a0";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r786-92e4788905a0";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r786-92e4788905a0";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r786-92e4788905a0";
-import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r786-92e4788905a0";
-import { questingBeastTriesLeft } from "./questing-beast.js?v=r786-92e4788905a0";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb, piecesToUnlock, listenerCycle, LISTENER_CYCLE, LISTENER_RETURN } from "./far-array.js?v=r786-92e4788905a0";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r786-92e4788905a0";
+import { BOAT, forgeSubmersible } from "./boats.js?v=r787-79b4a7ca7811"; // release 311
+import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r787-79b4a7ca7811";
+import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r787-79b4a7ca7811"; // release 393; 541: preset gear
+import { FRACTURED } from "./fractured.js?v=r787-79b4a7ca7811"; // release 651: Fractured mode
+import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r787-79b4a7ca7811"; // release 543
+import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.js?v=r787-79b4a7ca7811"; // release 551; 559
+import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork } from "./smithy.js?v=r787-79b4a7ca7811";
+import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r787-79b4a7ca7811"; // release 447
+import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r787-79b4a7ca7811"; // release 459 // release 395 // release 315; 321: the drone
+import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r787-79b4a7ca7811"; // release 339; 341
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.js?v=r787-79b4a7ca7811";
+import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText } from "./beast-mounts.js?v=r787-79b4a7ca7811"; // release 748: the stable
+import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r787-79b4a7ca7811";
+import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.js?v=r787-79b4a7ca7811";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r787-79b4a7ca7811";
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r787-79b4a7ca7811"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { renderTimings } from "./renderer.js?v=r787-79b4a7ca7811";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r787-79b4a7ca7811";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.js?v=r787-79b4a7ca7811";
+import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt } from "./brawler-spells.js?v=r787-79b4a7ca7811"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
+import { sectionAtlasColor } from "./atlas-colors.js?v=r787-79b4a7ca7811";
+import { sectionRegion, regionName, REGIONS } from "./landscape.js?v=r787-79b4a7ca7811"; // release 573
+import { skylandLabel } from "./skylands.js?v=r787-79b4a7ca7811";
+import { CREATURE_TRAITS } from "./combat.js?v=r787-79b4a7ca7811";
+import { nearestWonders, WONDERS } from "./wonders.js?v=r787-79b4a7ca7811"; // release 674
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY } from "./monster-pack.js?v=r787-79b4a7ca7811";
+import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.js?v=r787-79b4a7ca7811";
+import { curseDef } from "./haunts.js?v=r787-79b4a7ca7811"; // release 737: the haunt curses on the HUD
+import { activeFarQuest } from "./far-realms.js?v=r787-79b4a7ca7811"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
+import { drawPackPortrait } from "./monster-render.js?v=r787-79b4a7ca7811";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r787-79b4a7ca7811";
+import { hashSeed } from "./random.js?v=r787-79b4a7ca7811";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r787-79b4a7ca7811";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.js?v=r787-79b4a7ca7811";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r787-79b4a7ca7811";
+import { linksKnown } from "./linked-dungeons.js?v=r787-79b4a7ca7811";
+import { DIG } from "./digging.js?v=r787-79b4a7ca7811";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark } from "./atlas-view.js?v=r787-79b4a7ca7811";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r787-79b4a7ca7811";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r787-79b4a7ca7811";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r787-79b4a7ca7811";
+import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r787-79b4a7ca7811";
+import { questingBeastTriesLeft } from "./questing-beast.js?v=r787-79b4a7ca7811";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb, piecesToUnlock, listenerCycle, LISTENER_CYCLE, LISTENER_RETURN } from "./far-array.js?v=r787-79b4a7ca7811";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r787-79b4a7ca7811";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -81,6 +81,7 @@ export function equipFromInventory(save, index) {
 function drawRangedEffects() { if (closeViewShowing(game)) return; /* Close View drew them on its floor */ drawCombatEffects(ctx,game,innerWidth,innerHeight); }
 // Close View: traps and vines, aperture marks and shots in flight are drawn onto its floor texture, under the billboards.
 const closeViewLayer = { ctx: null, w: 0, h: 0 };
+const closePan = mountCloseViewControls(() => game); // Close View: the pan crescent round the action buttons and its lock button, shown only in Close View
 CLOSE_VIEW_HOOKS.groundLayers.push((c, W, H) => { closeViewLayer.ctx = c; closeViewLayer.w = W; closeViewLayer.h = H; drawDungeonSystems(closeViewLayer); drawApertureVisuals(closeViewLayer); drawCombatEffects(c, game, W, H); });
 function openShop(vendorId = "vendor-vela") {
   pauseForOverlay();
@@ -205,7 +206,7 @@ setTimeout(() => {
     document.querySelector('[data-action="build"]')?.classList.toggle("selected", save.aimMode === "build");
   }, 100);
 }, 0);
-import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r786-92e4788905a0";
+import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r787-79b4a7ca7811";
 import {
   Game,
   actionReadiness,
@@ -215,15 +216,15 @@ import {
   EQUIPMENT_CAPACITY,
   salvageInventoryItem,
   salvageInventoryItems,
-} from "./game.js?v=r786-92e4788905a0";
-import { createInput } from "./input.js?v=r786-92e4788905a0";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r786-92e4788905a0";
-import { STATS, freshSave } from "./types.js?v=r786-92e4788905a0";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.js?v=r786-92e4788905a0";
-import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.js?v=r786-92e4788905a0";
-import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.js?v=r786-92e4788905a0";
-import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r786-92e4788905a0";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r786-92e4788905a0";
+} from "./game.js?v=r787-79b4a7ca7811";
+import { createInput } from "./input.js?v=r787-79b4a7ca7811";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r787-79b4a7ca7811";
+import { STATS, freshSave } from "./types.js?v=r787-79b4a7ca7811";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.js?v=r787-79b4a7ca7811";
+import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.js?v=r787-79b4a7ca7811";
+import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.js?v=r787-79b4a7ca7811";
+import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r787-79b4a7ca7811";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r787-79b4a7ca7811";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
 // Release 293 (Tim: "convincing symbols... relevant and easy to discern"): solid, filled item icons (spells stay line drawings).
 const ITEM_NAMES = { restorativeDraught: "Restorative Draught", highPotion: "High Potion", maxPotion: "Max Potion", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield", submersible: "Submersible Frame" };
@@ -243,17 +244,17 @@ const ITEM_ICONS = {
   submersible: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><rect x="16.4" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><circle cx="12" cy="10" r="7" fill="#c9cfd6" stroke="#3a4048" stroke-width="1"/><circle cx="12" cy="9.4" r="4.2" fill="#2a6f86" stroke="#3a4048" stroke-width="1"/><path d="M10 7.8a2.6 2.6 0 0 1 3-1" stroke="#ffffff" stroke-width="1" fill="none"/><path d="M5.6 11.6 2.8 14.4l.6 2.6M18.4 11.6l2.8 2.8-.6 2.6" stroke="#7d858e" stroke-width="1.6" fill="none" stroke-linecap="round"/><rect x="8.4" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><rect x="13.2" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><path d="M7.8 20.4h3.6M12.6 20.4h3.6" stroke="#4b525a" stroke-width="1.6" stroke-linecap="round"/></svg>',  // release 315: the robot
   hullShield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 14.4h18.8l-2.8 5.6H5.4z" fill="#8a5a32" stroke="#3e2614" stroke-width="1"/><path d="M12 2.4 17.4 4.4v4.3c0 3.3-2.3 5.4-5.4 6.6-3.1-1.2-5.4-3.3-5.4-6.6V4.4z" fill="#3fb6c8" stroke="#d8f6fb" stroke-width="1.2"/><path d="M12 5.4v6.4M9.4 7.8h5.2" stroke="#0f3a42" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 21.4c2-1 4-1 6 0s4 1 6 0 4-1 6 0 2.6.5 3 .3" stroke="#7fc6e6" stroke-width="1.2" fill="none"/></svg>',
 };
-import { buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r786-92e4788905a0";
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.js?v=r786-92e4788905a0";
-import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r786-92e4788905a0";
-import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r786-92e4788905a0";
-import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r786-92e4788905a0";
-import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r786-92e4788905a0";
-import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r786-92e4788905a0";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r786-92e4788905a0";
-import { LAB_FOG, labFogOf, labFogAt, labFogState } from "./labyrinths.js?v=r786-92e4788905a0"; // LAB_FOG: a labyrinth chamber's map shows only what has been seen
-import { worldStewardReport } from "./story.js?v=r786-92e4788905a0";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r786-92e4788905a0";
+import { buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, presetButton, setPresetButton, assignPresetItem, activeButton } from "./spell-slots.js?v=r787-79b4a7ca7811";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.js?v=r787-79b4a7ca7811";
+import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r787-79b4a7ca7811";
+import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r787-79b4a7ca7811";
+import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r787-79b4a7ca7811";
+import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r787-79b4a7ca7811";
+import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r787-79b4a7ca7811";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r787-79b4a7ca7811";
+import { LAB_FOG, labFogOf, labFogAt, labFogState } from "./labyrinths.js?v=r787-79b4a7ca7811"; // LAB_FOG: a labyrinth chamber's map shows only what has been seen
+import { worldStewardReport } from "./story.js?v=r787-79b4a7ca7811";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r787-79b4a7ca7811";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -265,19 +266,19 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r786-92e4788905a0";
-import { warmWayfindingSignals } from "./world.js?v=r786-92e4788905a0";
-import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.js?v=r786-92e4788905a0"; // release 431
-import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.js?v=r786-92e4788905a0"; // release 595
-import { THREADS, THREAD_ORDER, threadsStarted, threadFound } from "./threads.js?v=r786-92e4788905a0"; // release 627
-import { ILSE_MEETINGS, ilseMet } from "./ilse.js?v=r786-92e4788905a0"; // the Journal's Arcana tab
-import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.js?v=r786-92e4788905a0"; // release 605
+} from "./world.js?v=r787-79b4a7ca7811";
+import { warmWayfindingSignals } from "./world.js?v=r787-79b4a7ca7811";
+import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.js?v=r787-79b4a7ca7811"; // release 431
+import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.js?v=r787-79b4a7ca7811"; // release 595
+import { THREADS, THREAD_ORDER, threadsStarted, threadFound } from "./threads.js?v=r787-79b4a7ca7811"; // release 627
+import { ILSE_MEETINGS, ilseMet } from "./ilse.js?v=r787-79b4a7ca7811"; // the Journal's Arcana tab
+import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.js?v=r787-79b4a7ca7811"; // release 605
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
   settings = loadSettings(),
   input = createInput(document, globalThis, settings),
-  [save, game] = startGame(await loadSave()), // release 786
+  [save, game] = startGame(await loadSave()), // release 787
   panel = $("#panel"),
   body = $("#panelBody"),
   pausePanel = $("#pausePanel"),
@@ -821,7 +822,7 @@ setInterval(() => {
 }, 250);
 // Release 523 (dungeon-traps.ts): a pentagram etched in the floor, a cracked lava vent, a dart slit in a wall. Each glows
 // while it warns.
-function drawNewTrap(o, x, y, s, t) {
+function drawNewTrap(o, x, y, s, t, ctx = screenCtx()) { // ctx: the screen, or Close View's floor texture
   const warn = o.phase === "warning", rest = o.phase === "rest", pulse = .5 + .5 * Math.sin(t * 14);
   ctx.save(); ctx.lineWidth = 2;
   if (o.trapType === "sigil") {
@@ -953,7 +954,7 @@ function startPulse() {
       noise.start(t);
     }
     step++;
-  }, 786);
+  }, 787);
 }
 addEventListener("pointerdown", () => setTimeout(startPulse, 0), {
   once: true,
@@ -999,23 +1000,27 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
   return out;
 }
 // Release 523: the new traps and the sigil orbs, on the live combat layer.
-function drawNewTraps(s, sx, sy) {
+function drawNewTraps(s, sx, sy, ctx = screenCtx()) {
   if (game.area !== "dungeon") return;
   const t = performance.now() / 1000;
-  for (const o of game.map.objects) if (o.kind === "trap" && o.newTrap && dungeonPointDiscovered(game.map, o)) drawNewTrap(o, sx(o.x + .5), sy(o.y + .5), s, t);
+  for (const o of game.map.objects) if (o.kind === "trap" && o.newTrap && dungeonPointDiscovered(game.map, o)) drawNewTrap(o, sx(o.x + .5), sy(o.y + .5), s, t, ctx);
   for (const q of game.trapSeeds || []) { // the sigil orbs, landing and spinning
     const x = sx(q.x), y = sy(q.y), landed = q.t >= DUNGEON_TRAPS.sigil.flight, r = s * (landed ? .22 : .16);
     ctx.fillStyle = "#c46bff44"; ctx.beginPath(); ctx.arc(x, y, r * 2, 0, 7); ctx.fill();
     ctx.fillStyle = "#f2d9ff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
     if (landed) { ctx.strokeStyle = "#d58bff"; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i <= 5; i++) { const a = q.spin + t * 9 + i * Math.PI * 4 / 5, px = x + Math.cos(a) * r * 2.4, py = y + Math.sin(a) * r * 2.4; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); } ctx.stroke(); }
   }}
-function drawTruthfulCombatGeometry() {
+// Close View (2026-11-06 review): this is what drawDungeonSystems is bound to below, so it takes the layer Close View hands its
+// ground layers (its floor texture) and stays off the screen while Close View shows; it drew top-down over the 3D view before.
+function drawTruthfulCombatGeometry(layer = null) {
+  if (!layer && closeViewShowing(game)) return;
+  const ctx = layer ? layer.ctx : screenCtx(), innerWidth = layer ? layer.w : globalThis.innerWidth, innerHeight = layer ? layer.h : globalThis.innerHeight;
   const s = Math.round(Math.max(28, Math.min(44, innerWidth / 12))),
     sx = (x) => innerWidth / 2 + (x - game.player.x) * s,
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s,
     g = combatIndicatorGeometry(game);
   ctx.save();
-  drawNewTraps(s, sx, sy); // release 523
+  drawNewTraps(s, sx, sy, ctx); // release 523
   for (const q of g.traps) {
     ctx.fillStyle = q.active ? "#a43c2638" : "#17151288";
     ctx.strokeStyle = q.active ? "#ef8158" : "#8c806d";
@@ -1337,13 +1342,13 @@ async function renderSettings(category){const grid=document.createElement("div")
     sel.onchange=()=>{save.fractured=sel.value||null;persist();game.message=save.fractured?`${FRACTURED.modes[save.fractured].name} mode: the Corridor is breaking open. Towns, home and cleared dungeons stay safe.`:"Fractured mode off."};
     grid.append(settingRow("Fractured mode (this journey)",sel,`${note} More creatures, in packs with champions and rares, and more keep coming; towns, home, the Refuge lands and cleared dungeons stay safe. Takes full effect in the next place you enter.`));
   }
-  if(category==="Controls"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View indoors (prototype, this journey)",cv,"Inside the Pentagon, great buildings and keeps, a low camera behind the Wayfarer that turns with them; drag up to walk the way the view looks. Courts, roofs and the overworld keep the usual view."));const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."))} // 2026-11-06
+  if(category==="Controls"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View indoors (prototype, this journey)",cv,"Inside the Pentagon, great buildings and keeps, a low camera behind the Wayfarer that turns with them; drag up to walk the way the view looks. Courts, roofs and the overworld keep the usual view."));const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last touch the crescent round the action buttons, the view slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the button at its top locks on)."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("World boss tries (on: 4 deaths and the boss leaves; off: no tries, it loses patience after 3 minutes of fighting, 5 once it is below half health)",toggleSetting("beastTries")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r786-92e4788905a0",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r786-92e4788905a0\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r787-79b4a7ca7811",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r787-79b4a7ca7811\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1355,7 +1360,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r786-92e4788905a0",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release: "r787-79b4a7ca7811",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2262,7 +2267,7 @@ function robotTag(save, item) {
 }
 function hudSet(el,key,value){if(!el)return;let m=hudLast.get(el);if(!m)hudLast.set(el,m={});if(m[key]===value)return;m[key]=value;
   if(key==="text")el.textContent=value;else if(key==="max"||key==="value")el[key]=value;else if(key.startsWith("--")||key==="transform")key==="transform"?el.style.transform=value:el.style.setProperty(key,value);else if(key.startsWith("class:"))el.classList.toggle(key.slice(6),value);else if(key.startsWith("data-"))el.dataset[key.slice(5)]=value;else el.setAttribute(key,value)}
-function updateHud(now) {
+function updateHud(now) { closePan.sync(); // Close View's crescent and lock button: shown only while Close View is
   const health = Math.max(0, Math.ceil(game.player.hp)),
     stamina = Math.max(0, Math.ceil(game.player.stamina)),
     next = Math.max(1, save.nextXp || 30);
@@ -2403,7 +2408,7 @@ function viewportFrame(dt, now) {
     viewportSeq = ev.seq;
     if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
     if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
-    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 786's one clock list: the respawn's protection outlasts the black
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 787's one clock list: the respawn's protection outlasts the black
     if (ev.end) { viewportEnd(); return null; }
     return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
