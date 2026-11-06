@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 800 — **Grand-hall floor inlays hold steady.** Pentagon floor murals and Watcher sigils are shaded directly on the floor, removing the dark stripes seen at shallow viewing angles.
 - Release 799 — **Close View touch controls.** A translucent left-thumb guide shows where movement starts. A second right-side touch stays out of movement, and the default pan responds faster.
 - Release 798 — **Low-poly characters in Close View.** The Wayfarer, Ashling, Root Brute, Pallid Crawler and Hollow Marshal have lit 3D bodies, combat poses and directional floor shadows.
 - Release 797 — **Pentagon grand halls in Close View.** Look up into tall vaults, skylights and open vistas. Watcher sigils and lore carvings are built into the room, and the pit gallery opens into a dark shaft beneath its bridges. Try a grand hall in the Close View Lab.

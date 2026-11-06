@@ -1267,16 +1267,19 @@ function themeGL(th) {
   THEME_GL.set(th, t); return t;
 }
 const HUE_RGB = [[1, .62, .32], [.3, .95, .8], [.55, .72, 1], [1, .78, .42]]; // a placed light's colour by hue: warm, bioluminescent, ghost-light, a failing lamp
+const SIGIL_COLORS = [[.22, .19, .3], [.65, .53, .82], [.92, .78, .99]];
+const SIGIL_INLAY = Float32Array.from(SIGIL_COLORS.flat());
 const NO_BACKDROP = { kind: 0, colors: new Float32Array(9) };
 const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOSE_VIEW.cues, R = HOLE_DROPS.rim;
   const stone = rgb01(Pt.stone), lip = rgb01(Pt.lipRGB), chasm = rgb01(Pt.chasmRGB), safe = rgb01(R.rgb.split(",").map(Number)), lavaA = rgb01(Lv.crust), lavaB = rgb01(Lv.hot), lavaC = rgb01(Lv.vein);
   const gritA = new Float32Array(9), ring = rgb01(Cu.glowRGB.split(",").map(Number)); for (let i = 0; i < 9; i++) gritA[i] = GRIT.variants[i]?.alpha ?? 0;
   const un = GRIT.variants.find((v) => v.id === "unresolved") || { shimmer: 0, period: 1 };
-  return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null, hall: null, backdrop: NO_BACKDROP,
+  return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null, hall: null, backdrop: NO_BACKDROP, inlay: SIGIL_INLAY,
     env(gl, U, F, lavaTiles) { const q = UNI.q, th = UNI.th, tg = UNI.tg, C = th.ceiling, Fl = th.floor;
       gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
       gl.uniform4f(U.u_hall, UNI.backdrop.kind, UNI.hall?.open ? 1 : 0, UNI.hall?.sky ? 1 : 0, HALL_VIEW.shaftDepth);
       gl.uniform3fv(U.u_backdrop, UNI.backdrop.colors);
+      gl.uniform3fv(U.u_inlayColors, UNI.inlay);
       gl.uniform4f(U.u_pit, Pt.hole, Pt.chasm, Pt.dark, Pt.lip); gl.uniform3fv(U.u_stone, stone); gl.uniform3fv(U.u_lip, lip); gl.uniform3fv(U.u_safe, safe); gl.uniform3fv(U.u_chasm, chasm);
       const breath = UNI.reduce ? 1 : 1 - R.pulseDepth * (.5 + .5 * Math.sin(UNI.now / R.pulse * Math.PI * 2)); gl.uniform4f(U.u_safeP, R.near, R.full, R.alpha * breath, UNI.safeOn ? 1 : 0);
       gl.uniform4f(U.u_lava, Lv.scale, Lv.flow, Lv.light, q.lavaLight && lavaTiles > 0 ? 3 / Lv.reach : 0); gl.uniform3fv(U.u_lavaA, lavaA); gl.uniform3fv(U.u_lavaB, lavaB); gl.uniform3fv(U.u_lavaC, lavaC);
@@ -1362,7 +1365,8 @@ function buildStatic(map, geo, th) {
     };
     return { rect, path };
   };
-  const sigilColors = [[.22, .19, .3], [.65, .53, .82], [.92, .78, .99]];
+  const sigilColors = SIGIL_COLORS;
+  let inlay = SIGIL_INLAY;
   const glyph = (surface, colors = sigilColors, depth = .012) => {
     for (const { dx, dy, part } of SIGIL_CELLS) {
       const color = colors[part === "pupil" ? 2 : part === "orbit" || part === "ring" ? 0 : 1];
@@ -1375,15 +1379,7 @@ function buildStatic(map, geo, th) {
     const [ground, middle, bright] = art.palette.map((color) => rgb(color).map((v) => v / 255));
     const x = m.x + .5, y = m.y + .5;
     if (m.place === "floor") {
-      for (let j = m.y - (m.h >> 1); j < m.y + (m.h >> 1) + 1; j++) {
-        for (let i = m.x - (m.w >> 1); i < m.x + (m.w >> 1) + 1; i++) {
-          const mark = tiles[j * w + i]?.inlay;
-          if (!mark) continue;
-          const tile = paint(i + .5, j + .5, .012, 0, 0, 1, 1);
-          tile.rect(0, 0, .47, .47, ground);
-          if (mark === 2) tile.rect(0, 0, .38, .38, bright, .006);
-        }
-      }
+      inlay = Float32Array.from([...ground, ...middle, ...bright]);
       continue;
     }
     const ceiling = m.place === "ceiling", normal = inward[m.side];
@@ -1469,15 +1465,7 @@ function buildStatic(map, geo, th) {
   }
   for (const s of map.sigils || []) {
     const x = s.x + .5, y = s.y + .5;
-    if (s.kind === "inlay") {
-      for (const { dx, dy, part } of SIGIL_CELLS) {
-        if (tiles[(s.y + dy) * w + s.x + dx]?.sigil !== part) continue;
-        const tile = paint(x + dx, y + dy, .016, 0, 0, 1, 1);
-        tile.rect(0, 0, .44, .44, sigilColors[0]);
-        tile.rect(0, 0, .34, .34, sigilColors[part === "pupil" ? 2 : 1], .006);
-      }
-      continue;
-    }
+    if (s.kind === "inlay") continue; // the floor material reads these marks from the tile mask
     const sides = s.kind === "column" ? Object.values(inward) : [inward[s.side]];
     for (const normal of sides) {
       if (!normal) continue;
@@ -1550,7 +1538,7 @@ function buildStatic(map, geo, th) {
     const seg = round ? 9 : 1, P = (k, end) => { const th2 = Math.PI * (1 - k / seg), u = round ? .5 + .5 * Math.cos(th2) : k / seg, z = round ? A.spring + A.radius * Math.sin(th2) : A.spring, [ax, ay, bx, by] = ends[end]; return [ax + (bx - ax) * (end ? 1 - u : u), ay + (by - ay) * (end ? 1 - u : u), z, u]; };
     for (let k = 0; k < seg; k++) { const a = P(k, 0), b = P(k + 1, 0), c2 = P(k + 1, 1), d2 = P(k, 1);
       for (const q of [a, b, c2, a, c2, d2]) V(q[0], q[1], q[2], 0, q[3], q[2], H, 0, 0, 5, stoneMat, acol, 0, 0, 0, hsh, x, y); } }
-  return { arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
+  return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
 }
 // How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.
 function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map)); if (!st) return Infinity; const w = st.w;
@@ -1677,6 +1665,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map);
   UNI.hall = g.map.hall?.tall ? g.map.hall : null;
   UNI.backdrop = BACKDROPS.get(UNI.hall?.backdrop) || NO_BACKDROP;
+  UNI.inlay = st.inlay;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
   glMask(g.map, now, seen, drops, CLOSE_VIEW.gl.maskMs, th.floor.remap || null);
   if (Q.detail) glGrit(gritAtlas);
