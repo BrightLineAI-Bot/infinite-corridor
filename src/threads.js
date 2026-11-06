@@ -7,9 +7,9 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r782-fa66724a8d00";
-import { READING_BANDS } from "./lore.js?v=r782-fa66724a8d00";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r782-fa66724a8d00";
+import { hashSeed } from "./random.js?v=r786-92e4788905a0";
+import { READING_BANDS } from "./lore.js?v=r786-92e4788905a0";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r786-92e4788905a0";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -39,7 +39,12 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // far threads (the Enumerator's Count, the Tinker's Tags) join the beyond slots at the same budget, and every far thread takes a
 // weight of 3 there from version 3 (`weight: { version: w }`, the latest at or before the crossing's version), so the five take
 // about 0.79 of the shared slots past FAR_REALMS.start. Crossings pinned at version 0, 1 or 2 roll exactly as before.
-export const STORY_BUDGET = { version: 3, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12 } };
+// Story version 4 (Tim, 2026-11-06: past 1000 the Second Surveyor and the Sleeper held their own 0.07, about four times any far
+// thread, and once a veteran had read them those slots showed nothing): from version `firstTenGivesWay` on, past FAR_REALMS.start
+// (straight line, band `beyond`) the first ten's roll takes no slot, and its share joins the shared roll, so the whole 0.12 is
+// shared there among the far threads and the deep-band shared threads at their weights. Inside 1000 version 4 rolls exactly as
+// version 3, so the first ten can still be read on the way out. Crossings pinned at version 0 to 3 roll exactly as before.
+export const STORY_BUDGET = { version: 4, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12 }, firstTenGivesWay: 4 };
 // The budget of a crossing pinned to story version `version`: the latest entry at or before it (0 below version 1).
 export const budgetFor = (version) => { let p = 0; for (const [v, b] of Object.entries(STORY_BUDGET.byVersion)) if (Number(v) <= version) p = b; return p; };
 // beyond (story version 2): the far realms, measured straight-line from the Refuge as the realms are (far-realms.ts farDistance),
@@ -291,20 +296,24 @@ const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave && !THREADS[
 const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 export const inBand = (band, rx, ry) => { const d = STRAIGHT_BANDS.has(band) ? farDistance(rx, ry) : Math.abs(rx) + Math.abs(ry), [lo, hi] = THREAD_BANDS[band]; return d >= lo && d <= hi; };
 const roll = (key) => (hashSeed(key) % 10000) / 10000;
+// Story version 4: whether the first ten's roll gives its slot to the shared roll here (past FAR_REALMS.start, straight line).
+const firstTenGivesWay = (rx, ry, version) => version >= STORY_BUDGET.firstTenGivesWay && inBand("beyond", rx, ry);
 // Which thread this crossing holds, or null: one roll for whether it holds any, one for which of its band's threads. `version` is
 // the crossing's story version (storyVersionOf); 0, the default, is the rule every crossing entered before the budget keeps.
 export function threadIn(seed, dungeonId, version = 0) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return null;
   const rx = Number(m[1]), ry = Number(m[2]); if (Math.abs(rx) + Math.abs(ry) < THREAD_RULES.minDepth) return null;
+  if (firstTenGivesWay(rx, ry, version)) return sharedThreadIn(seed, dungeonId, rx, ry, version);
   if (roll(`${seed}:threads:v1:${dungeonId}`) >= THREAD_RULES.chance) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version) : laterThreadIn(seed, dungeonId, rx, ry);
   const here = FIRST_THREADS.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version) : null;
   return here[hashSeed(`${seed}:threads:which:v1:${dungeonId}`) % here.length];
 }
 // The story budget (STORY_BUDGET): the later threads sharing slots in a section at story version `version`, in THREAD_ORDER.
 export const sharedThreads = (version, rx, ry) => THREAD_ORDER.filter((id) => Object.entries(THREADS[id].shared || {}).some(([v, bands]) => Number(v) <= version && bands.some((b) => inBand(b, rx, ry))));
-// The chance of the shared roll, made only where the first ten's roll placed nothing: what the budget of `version` leaves there.
+// The chance of the shared roll, made only where the first ten's roll placed nothing: what the budget of `version` leaves there
+// (the whole budget where the first ten give way: story version 4, past FAR_REALMS.start).
 export function sharedRate(rx, ry, version = STORY_BUDGET.version) {
-  const base = FIRST_THREADS.some((id) => inBand(THREADS[id].band, rx, ry)) ? THREAD_RULES.chance : 0;
+  const base = !firstTenGivesWay(rx, ry, version) && FIRST_THREADS.some((id) => inBand(THREADS[id].band, rx, ry)) ? THREAD_RULES.chance : 0;
   return Math.max(0, (budgetFor(version) - base) / (1 - base));
 }
 // The share a thread takes of the shared slots where it is listed at story version `version` (from version 2; `weight`, default 1).
