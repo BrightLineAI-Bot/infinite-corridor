@@ -20,7 +20,7 @@ import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.ts";
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 22; // the canopy grove (trees.ts TREES_V21: several great trees joined at crown height by branch bridges, one climbed; walk hops only over open ground, no two-tile gaps); 772: Terrace Springs (REGIONS_V21, applyTerraces: stepped sinter terraces, spring pools, hot springs); 768: the last spires back (trees.ts TREES_V20: every side may be three tiles again; a tree is laid only where every climb tile is drawn, with canopyRepaint); 764: tall spires again (trees.ts TREES_V19: groves tried first and harder, tall spires, then the earlier spire reach, every readable turn); 758: great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 23; // the Reckoning Fields (REGIONS_V23, applyReckoning: self-similar figures computed from each region's site, raised plates, monoliths); 22: the canopy grove (trees.ts TREES_V21: several great trees joined at crown height by branch bridges, one climbed; walk hops only over open ground, no two-tile gaps); 772: Terrace Springs (REGIONS_V21, applyTerraces: stepped sinter terraces, spring pools, hot springs); 768: the last spires back (trees.ts TREES_V20: every side may be three tiles again; a tree is laid only where every climb tile is drawn, with canopyRepaint); 764: tall spires again (trees.ts TREES_V19: groves tried first and harder, tall spires, then the earlier spire reach, every readable turn); 758: great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
 export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : t?.roofLift || 1); // a great building's roof is drawn at the top of its facade (great-buildings.ts)
@@ -41,7 +41,7 @@ export const BIOMES = {
   blight: { id: "blight", name: "Blight Mire", atlas: "#7cbf3a" },
 };
 // Release 573: ground laid by a region rather than by the landscape fields (biomeFor never reports these).
-export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" }, pillars: { id: "pillars", name: "Pillar Lands", atlas: "#b9784c" }, fog: { id: "fog", name: "Fog Moors", atlas: "#7f8a86" }, jungle: { id: "jungle", name: "Jungle", atlas: "#1f6b2c" }, biomech: { id: "biomech", name: "Carapace Wastes", atlas: "#4a4f57" }, salt: { id: "salt", name: "Salt Marsh", atlas: "#e4dfd0" }, crystal: { id: "crystal", name: "Crystal Fields", atlas: "#8fd3e8" }, fungal: { id: "fungal", name: "Sporewood", atlas: "#7a4f8a" }, petrified: { id: "petrified", name: "Petrified Wood", atlas: "#8d8a82" }, savanna: { id: "savanna", name: "Savanna", atlas: "#c9a84a" }, reef: { id: "reef", name: "Reef Flats", atlas: "#e48f7a" }, amber: { id: "amber", name: "Amberwood", atlas: "#b8652a" }, obsidian: { id: "obsidian", name: "Obsidian Fields", atlas: "#1d1b22" }, terraces: { id: "terraces", name: "Terrace Springs", atlas: "#bfe0d8" } };
+export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" }, pillars: { id: "pillars", name: "Pillar Lands", atlas: "#b9784c" }, fog: { id: "fog", name: "Fog Moors", atlas: "#7f8a86" }, jungle: { id: "jungle", name: "Jungle", atlas: "#1f6b2c" }, biomech: { id: "biomech", name: "Carapace Wastes", atlas: "#4a4f57" }, salt: { id: "salt", name: "Salt Marsh", atlas: "#e4dfd0" }, crystal: { id: "crystal", name: "Crystal Fields", atlas: "#8fd3e8" }, fungal: { id: "fungal", name: "Sporewood", atlas: "#7a4f8a" }, petrified: { id: "petrified", name: "Petrified Wood", atlas: "#8d8a82" }, savanna: { id: "savanna", name: "Savanna", atlas: "#c9a84a" }, reef: { id: "reef", name: "Reef Flats", atlas: "#e48f7a" }, amber: { id: "amber", name: "Amberwood", atlas: "#b8652a" }, obsidian: { id: "obsidian", name: "Obsidian Fields", atlas: "#1d1b22" }, terraces: { id: "terraces", name: "Terrace Springs", atlas: "#bfe0d8" }, reckoning: { id: "reckoning", name: "Reckoning Fields", atlas: "#2c3270" } };
 // Waterbodies (version 2) balance table. `continent` bends the ocean field so whole seas form; `island` lifts land back
 // out of open water; `deep` is how far above the ocean threshold deep water starts.
 export const WATERBODIES = {
@@ -56,11 +56,13 @@ export const WATERBODIES = {
 export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "toxicWater"];
 // Terrace Springs (version 21): the walkable kinds (applyTerraces); `springVent` is blocked.
 const TERRACE_WALKABLE = ["sinterTerrace", "sinterRim", "springPool", "springMat", "springFringe"];
+// The Reckoning Fields (version 23): the walkable kinds (applyReckoning); `ruleMonolith` is blocked.
+const RECKONING_WALKABLE = ["ruleSlate", "ruleCell", "ruleNode"];
 // Thresholds tuned so roughly a third of sections carry a landscape feature (see tests/landscape.test.ts).
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
 const WALKABLE_LANDSCAPE = new Set(["craterFloor", /* Canyon craters */ "arcFloor", "arcStair", /* the ruined arcologies (keeps.ts) */ "snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool", "canopyBranch", "canopyCrown", "canopyLeaf", ...MUSHROOM_KINDS, "thornBasalt", "thornFloor", "thornShards", ...DOMAIN_WALKABLE, ...TERRACE_WALKABLE]); // 721: great mushroom caps; 723: the Thornglass Caldera (far-domains.ts) // 631: canopy trees (canopyTrunk is blocked) // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool", "canopyBranch", "canopyCrown", "canopyLeaf", ...MUSHROOM_KINDS, "thornBasalt", "thornFloor", "thornShards", ...DOMAIN_WALKABLE, ...TERRACE_WALKABLE, ...RECKONING_WALKABLE]); // 721: great mushroom caps; 723: the Thornglass Caldera (far-domains.ts) // 631: canopy trees (canopyTrunk is blocked) // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
 
 // ---------------------------------------------------------------- noise
 // Perf pack (worldgen WG-09): a lattice value is hashSeed(`${key}:${ix}:${iy}`), and a section needs about 70k of them, each
@@ -122,7 +124,7 @@ export const REGIONS = { heartland: 12, fadeIn: 4, cell: 9, jitter: .8, weightSp
     alien: { alien: .3, ocean: -.2 }, swamp: { wet: .11, ocean: -.2, desert: -.3 }, lakes: { lake: .2, ocean: -.15 }, dream: { ocean: -.2, mountain: -.2 },
     ashfields: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 }, glasslands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
     emberlands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
-    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ pillars: { ocean: -.3, wet: -.4, lake: -.3, desert: -.15, mountain: -.2, alien: -.2 }, /* 591 */ fog: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15, lake: -.1 }, /* 617 */ jungle: { ocean: -.2, desert: -.4, alien: -.25, mountain: -.15, wet: .04 }, biomech: { ocean: -.3, wet: -.35, lake: -.3, desert: -.2, alien: -.2, mountain: -.2 }, salt: { ocean: -.18, desert: -.1, alien: -.3, mountain: -.25, lake: -.1 }, crystal: { ocean: -.3, wet: -.35, lake: -.25, desert: -.25, alien: -.1, mountain: -.15 }, fungal: { ocean: -.25, desert: -.4, alien: -.15, mountain: -.2, wet: -.05 }, /* 625 */ petrified: { ocean: -.25, wet: -.3, lake: -.2, desert: -.15, alien: -.25, mountain: -.15 }, savanna: { ocean: -.25, wet: -.3, desert: -.05, alien: -.3, mountain: -.25 }, reef: { ocean: -.1, desert: -.3, alien: -.2, mountain: -.3, lake: .05 }, amber: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15 }, obsidian: { ocean: -.3, wet: -.4, lake: -.3, desert: -.2, alien: -.15, mountain: -.1 }, /* 629 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 }, terraces: { ocean: -.3, wet: -.4, lake: -.3, desert: -.3, alien: -.25, mountain: -.2 } /* version 21 */ }, // release 573 (version 5)
+    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ pillars: { ocean: -.3, wet: -.4, lake: -.3, desert: -.15, mountain: -.2, alien: -.2 }, /* 591 */ fog: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15, lake: -.1 }, /* 617 */ jungle: { ocean: -.2, desert: -.4, alien: -.25, mountain: -.15, wet: .04 }, biomech: { ocean: -.3, wet: -.35, lake: -.3, desert: -.2, alien: -.2, mountain: -.2 }, salt: { ocean: -.18, desert: -.1, alien: -.3, mountain: -.25, lake: -.1 }, crystal: { ocean: -.3, wet: -.35, lake: -.25, desert: -.25, alien: -.1, mountain: -.15 }, fungal: { ocean: -.25, desert: -.4, alien: -.15, mountain: -.2, wet: -.05 }, /* 625 */ petrified: { ocean: -.25, wet: -.3, lake: -.2, desert: -.15, alien: -.25, mountain: -.15 }, savanna: { ocean: -.25, wet: -.3, desert: -.05, alien: -.3, mountain: -.25 }, reef: { ocean: -.1, desert: -.3, alien: -.2, mountain: -.3, lake: .05 }, amber: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15 }, obsidian: { ocean: -.3, wet: -.4, lake: -.3, desert: -.2, alien: -.15, mountain: -.1 }, /* 629 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 }, terraces: { ocean: -.3, wet: -.4, lake: -.3, desert: -.3, alien: -.25, mountain: -.2 } /* version 21 */, reckoning: { ocean: -.3, wet: -.45, lake: -.35, desert: -.3, alien: -.3, mountain: -.3 } /* version 23 */ }, // release 573 (version 5)
   plains: { ashfields: "ash", glasslands: "glass", emberlands: "ember" } };
 const REGION_TOTAL = REGIONS.types.reduce((n, [, w]) => n + w, 0), siteCache = new Map();
 function regionSite(seed, cx, cy) {
@@ -175,6 +177,17 @@ function v21RegionType(seed, id, type) {
   let roll = (hashSeed(`${seed}:region-site:v21:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V21.to) { if ((roll -= p) < 0) return t; }
   return type;
 }
+// The Reckoning Fields (landscape version 23; the daily world-regions work; docs/narrative-bible.md section 1: "Farther out, the
+// Corridor forgets that it was ever human... patterns that compute themselves"). A region still wild or bare plains after the
+// version 21 roll, whose site lies at least `minRing` sections (straight line) from Ember Refuge, may become reckoning fields, on
+// its own hash, so every other region keeps the type it had and the near world never shows one.
+export const REGIONS_V23 = { from: ["wild", "ashfields", "glasslands", "emberlands"], to: [["reckoning", .6]], minRing: 24 };
+function v23RegionType(seed, id, type) {
+  if (!REGIONS_V23.from.includes(type)) return type;
+  const [cx, cy] = String(id).split(",").map(Number), q = regionSite(seed, cx, cy); if (Math.hypot(q.x, q.y) < REGIONS_V23.minRing) return type;
+  let roll = (hashSeed(`${seed}:region-site:v23:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V23.to) { if ((roll -= p) < 0) return t; }
+  return type;
+}
 function wildRegionType(seed, id, version = 5) {
   let roll = (hashSeed(`${seed}:region-site:v5:${id}`) % 10007) / 10007;
   for (const [t, p] of REGIONS_V5.wildTo) { if ((roll -= p) < 0) return t; }
@@ -193,6 +206,7 @@ export function regionAt(seed, sx, sy, version = 4) {
   if (version >= 10) type = v10RegionType(seed, best.id, type); // release 625
   if (version >= 11) type = v11RegionType(seed, best.id, type); // release 629
   if (version >= 21) type = v21RegionType(seed, best.id, type); // Terrace Springs
+  if (version >= 23) type = v23RegionType(seed, best.id, type); // the Reckoning Fields
   if (version >= 15) { const civ = farCivAt(seed, sx, sy); if (civ && version >= civ.landSince) type = civ.land; } // release 716: a civilisation's country is its own land (717: from its own version)
   const ring = Math.hypot(sx, sy), fade = Math.max(0, Math.min(1, (ring - REGIONS.heartland) / REGIONS.fadeIn)); // the heartland round Ember Refuge keeps the old mix
   return { id: best.id, type: fade > 0 ? type : "wild", hold: Math.min(1, (second - bd) / REGIONS.blend) * fade, gap: fade > 0 ? second - bd : Infinity };
@@ -208,7 +222,7 @@ export const REGION_NAMES = {
     mountains: ["Peaks", "Spine", "Heights", "Teeth", "Range"], desert: ["Waste", "Dunes", "Barrens", "Sands", "Erg"], alien: ["Garden", "Bloom", "Lattice", "Strangeland", "Reef"],
     swamp: ["Fen", "Mire", "Bog", "Sump", "Marsh"], lakes: ["Meres", "Lakes", "Tarns", "Waters"], isles: ["Isles", "Archipelago", "Scatter", "Keys"],
     dream: ["Sleep", "Reverie", "Dreaming", "Slumber"], ashfields: ["Ashfields", "Cinderplain", "Greys"], glasslands: ["Glasslands", "Shards", "Mirrorfields"],
-    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], fog: ["Moor", "Mists", "Fogs", "Greyfells", "Murk", "Hollows"], jungle: ["Jungle", "Canopy", "Green Deep", "Vines", "Rainwood"], biomech: ["Carapace", "Ossuary", "Engine", "Ribwork", "Husk"], salt: ["Saltings", "Brines", "Salt Pans", "Salt Marsh", "Flats"], crystal: ["Prisms", "Facets", "Geodes", "Crystal Fields", "Lattice Fields"], fungal: ["Sporewood", "Caps", "Mycelium", "Gills", "Rotwood"], petrified: ["Stonewood", "Petrified Wood", "Grey Grove", "Fossil Wood"], savanna: ["Savanna", "Grasslands", "Veldt", "Long Grass", "Plains"], reef: ["Reef", "Coral Flats", "Shoals", "Tidelands"], amber: ["Amberwood", "Autumn Wood", "Leaffall", "Russet Wood"], obsidian: ["Obsidian", "Black Glass", "Mirrors", "Quicksilver Fields"], pillars: ["Pillars", "Mesas", "Tablelands", "Hoodoos", "Stone Forest", "Tepuis"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"], terraces: ["Springs", "Terraces", "Basins", "Steps", "Wells", "Sinters"] },
+    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], fog: ["Moor", "Mists", "Fogs", "Greyfells", "Murk", "Hollows"], jungle: ["Jungle", "Canopy", "Green Deep", "Vines", "Rainwood"], biomech: ["Carapace", "Ossuary", "Engine", "Ribwork", "Husk"], salt: ["Saltings", "Brines", "Salt Pans", "Salt Marsh", "Flats"], crystal: ["Prisms", "Facets", "Geodes", "Crystal Fields", "Lattice Fields"], fungal: ["Sporewood", "Caps", "Mycelium", "Gills", "Rotwood"], petrified: ["Stonewood", "Petrified Wood", "Grey Grove", "Fossil Wood"], savanna: ["Savanna", "Grasslands", "Veldt", "Long Grass", "Plains"], reef: ["Reef", "Coral Flats", "Shoals", "Tidelands"], amber: ["Amberwood", "Autumn Wood", "Leaffall", "Russet Wood"], obsidian: ["Obsidian", "Black Glass", "Mirrors", "Quicksilver Fields"], pillars: ["Pillars", "Mesas", "Tablelands", "Hoodoos", "Stone Forest", "Tepuis"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"], terraces: ["Springs", "Terraces", "Basins", "Steps", "Wells", "Sinters"], reckoning: ["Reckoning", "Sieve", "Recursion", "Proof", "Tessellation", "Rulework"] },
 };
 export function regionName(seed, region) {
   const h = hashSeed(`${seed}:region-name:v1:${region.id}`), N = REGION_NAMES, nouns = N.nouns[region.type] || N.nouns.wild;
@@ -218,6 +232,11 @@ export function regionName(seed, region) {
 // bounded cache, so generating a section costs a few hundred lookups, not thousands.
 const leanCache = new Map();
 function regionTile(seed, gx, gy, version = 4) {
+  if (version >= 23) { // version 23: the version 21 tile, rolled once more (outside the heartland) for the Reckoning Fields
+    const key = `${seed}:23:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
+    const b = regionTile(seed, gx, gy, 21); r = b.gap === Infinity ? b : { ...b, type: v23RegionType(seed, b.id, b.type) };
+    leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); return r;
+  }
   if (version >= 21) { // version 21: the version 11 tile, rolled once more (outside the heartland) for Terrace Springs
     const key = `${seed}:21:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
     const b = regionTile(seed, gx, gy, 11); r = b.gap === Infinity ? b : { ...b, type: v21RegionType(seed, b.id, b.type) };
@@ -436,6 +455,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   if (version >= 9 && !full) touched += applyFogMoor(map, seed, rx, ry, mask); // release 617
   if (version >= 10 && !full) touched += applyPaletteRegions(map, seed, rx, ry, mask, hamlet, version); // release 625; 629: version-aware
   if (version >= 21 && !full) touched += applyTerraces(map, seed, rx, ry, mask, hamlet); // Terrace Springs
+  if (version >= 23 && !full) touched += applyReckoning(map, seed, rx, ry, mask, hamlet); // the Reckoning Fields
   if (biome === "castle") touched += buildCastle(map, seed, rx, ry, protectedMask(map, { spawns: false, ruins: false, decor: false }));
   if (!touched) return map;
   if (biome === "mountains" && hashSeed(`${seed}:land:volcano:${rx}:${ry}`) % 3 === 0) buildVolcano(map, seed, rx, ry, mask);
@@ -637,6 +657,83 @@ function applyTerraces(map, seed, rx, ry, mask, hamlet) {
   if ((h("cache") % 1000) / 1000 < T.cache.chance) {
     const seen = reachableFromPlaza(map), top = mine.filter((t) => t.elev >= T.cache.minLevel && t.kind === "sinterTerrace" && !t.blocked && seen[idx(t.x, t.y)] && t.x >= 2 && t.y >= 2 && t.x <= 29 && t.y <= 29 && !map.objects.some((o) => Math.round(o.x) === t.x && Math.round(o.y) === t.y));
     if (top.length) { const at = top[h("cache-at") % top.length]; map.objects.push({ id: `terrace-cache-${rx}-${ry}`, kind: "chest", name: T.cache.name, x: at.x, y: at.y, state: "closed", actions: ["open"], rewardSource: "chest" }); }
+  }
+  return touched;
+}
+// The Reckoning Fields (landscape version 23; the daily world-regions work, Tim 2026-10-29: "beautiful collections of regions...
+// rich and vibrant"; docs/narrative-bible.md section 1: far out, "patterns that compute themselves"). Bare ground in a reckoning
+// region is laid as one self-similar figure, computed in closed form from the distance (in cells) to the region's own site and
+// mirrored four ways about it: each region takes one `rules` row (hashed per region): a sieve (Pascal's triangle read mod 2: no
+// base-2 digit pair both 1), a carpet (no base-3 digit pair both 1) or a cross (every base-3 digit pair holds a 1). A cell's index
+// is read in `base` to `digits` digits (so the figure repeats every base^digits cells); the figure is on at a scale when the digit
+// pairs from that scale up all pass the rule. Because the rule only drops digits as the scale grows, the scales nest: the fine
+// figure (cells `fine` tiles wide) lies inside the mid (the lowest `step` digits dropped), which lies inside the coarse (2·`step`
+// dropped). The coarse figure raises broad plates one level, the mid figure a second; where the fine figure is on the ground is
+// a lit cell (`ruleCell`), else dark slate (`ruleSlate`); a fine cell whose lowest `node.digits` digit pairs are `node.pair` is a
+// bright node (`ruleNode`). The same raster sweeps as Terrace Springs cap every tile at one level above its lowest walkable
+// neighbour (protected ground stays 0), so every step is one jump and the figure runs on over section borders (the same world
+// coordinates on both sides). Nothing is stepped or searched: a few digit reads a tile. A few black monoliths (`monoliths` per
+// section, hashed; blocked, drawn `monolithRise` levels above their plate) stand on the plates; one that would cut any ground off
+// from the plaza is not made. `cache.chance` of sections with a top plate hold a cache on one the plaza reaches. Hamlet sections
+// keep the figure's colours but stay flat (no plates, monoliths or cache). Generation only: drawn into the static ground cache.
+export const RECKONING = {
+  rules: [
+    { id: "sieve", base: 2, digits: 5, fine: 2, step: 2, node: { digits: 2, pair: [0, 0] } },
+    { id: "carpet", base: 3, digits: 4, fine: 1, step: 1, node: { digits: 1, pair: [0, 0] } },
+    { id: "cross", base: 3, digits: 3, fine: 2, step: 1, node: { digits: 1, pair: [1, 1] } },
+  ],
+  levels: 2, monoliths: [0, 2], monolithRise: 2,
+  cache: { chance: .35, minLevel: 2, name: "A cache where the figure closes" },
+};
+const RULE_PASS = { sieve: (p, q) => !(p === 1 && q === 1), carpet: (p, q) => !(p === 1 && q === 1), cross: (p, q) => p === 1 || q === 1 };
+// The figure of a reckoning region: its rule row and its origin in global tiles (the region's site). Cached per region id.
+const reckoningFigures = new Map();
+export function reckoningFigure(seed, id) {
+  const key = `${seed}:${id}`; let f = reckoningFigures.get(key); if (f) return f;
+  const [cx, cy] = String(id).split(",").map(Number), q = regionSite(seed, cx, cy), R = RECKONING.rules[hashSeed(`${seed}:reckoning:v1:${id}:rule`) % RECKONING.rules.length];
+  f = { rule: R, ox: Math.floor(q.x * 32), oy: Math.floor(q.y * 32) };
+  if (reckoningFigures.size >= 1024) reckoningFigures.clear(); reckoningFigures.set(key, f); return f;
+}
+// The figure at a global tile: the lowest digit (scale) from which every digit pair passes (0: on at the fine scale; `digits`:
+// on nowhere below the period), and whether the tile is a node.
+export function reckoningAt(f, gx, gy) {
+  const R = f.rule, B = R.base, pass = RULE_PASS[R.id]; let a = Math.floor(Math.abs(gx - f.ox) / R.fine), b = Math.floor(Math.abs(gy - f.oy) / R.fine), from = 0, node = true;
+  for (let k = 0; k < R.digits; k++, a = Math.floor(a / B), b = Math.floor(b / B)) { const p = a % B, q = b % B; if (!pass(p, q)) from = k + 1; if (k < R.node.digits && (p !== R.node.pair[0] || q !== R.node.pair[1])) node = false; }
+  return { from, node: node && from === 0 };
+}
+function applyReckoning(map, seed, rx, ry, mask, hamlet) {
+  const K = RECKONING, mine = [], lv = new Int8Array(1024).fill(-1); let touched = 0; // lv: each reckoning tile's level (-1: not one)
+  for (const t of map.tiles) {
+    if (t.structure || t.buildingId || t.blocked || t.landscape || !BARE_GROUND.has(t.kind)) continue;
+    const gx = rx * 32 + t.x, gy = ry * 32 + t.y, r = regionTile(seed, gx, gy, 23); if (r.type !== "reckoning") continue;
+    const f = reckoningFigure(seed, r.id), S = f.rule.step, { from, node } = reckoningAt(f, gx, gy);
+    Object.assign(t, { kind: node ? "ruleNode" : from === 0 ? "ruleCell" : "ruleSlate", landscape: "reckoning", elev: 0, detail: terraceDetail(gx, gy) }); touched++;
+    const i = idx(t.x, t.y); lv[i] = hamlet || mask[i] ? 0 : Math.min(K.levels, (from <= 2 * S ? 1 : 0) + (from <= S ? 1 : 0));
+    if (!mask[i]) mine.push(t);
+  }
+  if (!touched) return 0;
+  map.reckoning = true;
+  for (let pass = 0, changed = true; changed && pass < 8; pass++) { changed = false; // every step is one level (as applyTerraces)
+    for (let k = 0; k < 2048; k++) { const i = k < 1024 ? k : 2047 - k; if (lv[i] <= 0) continue; const x = i % 32, y = (i - x) / 32; let lo = 99;
+      for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const j = idx(nx, ny), n = map.tiles[j], e = lv[j] >= 0 ? lv[j] : !n.blocked && !LETHAL_KINDS.has(n.kind) ? n.elev || 0 : 99; if (e < lo) lo = e; }
+      if (lv[i] > lo + 1) { lv[i] = lo + 1; changed = true; } } }
+  for (let i = 0; i < 1024; i++) if (lv[i] > 0) map.tiles[i].elev = lv[i];
+  if (hamlet || !mine.length) return touched;
+  const h = (k) => hashSeed(`${seed}:reckoning:v1:${rx}:${ry}:${k}`), n = K.monoliths[0] + h("n") % (K.monoliths[1] - K.monoliths[0] + 1), made = [];
+  const objAt = new Set((map.objects || []).map((o) => idx(Math.round(o.x), Math.round(o.y)))), spawnAt = new Set((map.enemySpawns || []).map((o) => idx(Math.round(o.x), Math.round(o.y))));
+  for (let k = 0; k < n; k++) {
+    const plates = mine.filter((t) => !t.blocked && (t.elev || 0) >= 1 && t.x >= 3 && t.y >= 3 && t.x <= 28 && t.y <= 28 && !objAt.has(idx(t.x, t.y)) && !spawnAt.has(idx(t.x, t.y)));
+    if (!plates.length) break;
+    const t = plates[h(`at${k}`) % plates.length], before = reachableFromPlaza(map), was = { kind: t.kind, elev: t.elev };
+    Object.assign(t, { kind: "ruleMonolith", blocked: true, elev: Math.min(MAX_LEVEL, (t.elev || 0) + K.monolithRise) });
+    const after = reachableFromPlaza(map); let cut = false; for (let i = 0; i < 1024 && !cut; i++) if (before[i] && !after[i] && !map.tiles[i].blocked) cut = true;
+    if (cut) { Object.assign(t, was, { blocked: false }); continue; }
+    made.push({ x: t.x, y: t.y });
+  }
+  if (made.length) map.monoliths = made;
+  if ((h("cache") % 1000) / 1000 < K.cache.chance) {
+    const seen = reachableFromPlaza(map), top = mine.filter((t) => t.elev >= K.cache.minLevel && !t.blocked && seen[idx(t.x, t.y)] && t.x >= 2 && t.y >= 2 && t.x <= 29 && t.y <= 29 && !objAt.has(idx(t.x, t.y)));
+    if (top.length) { const at = top[h("cache-at") % top.length]; map.objects.push({ id: `reckoning-cache-${rx}-${ry}`, kind: "chest", name: K.cache.name, x: at.x, y: at.y, state: "closed", actions: ["open"], rewardSource: "chest" }); }
   }
   return touched;
 }
@@ -1404,7 +1501,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (diff === 1) return !!entity.jumping;
   return diff < 0; // dropping off a ledge: the game applies fall damage by height
 }
-export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "arcWall", "clodPlain", "clodGreen", "clodYellow", "clodRed", "craterWall", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo", "moorStone", "canopyTrunk", "thornCrystal", "springVent", ...DOMAIN_BLOCKED, ...PALETTE_BLOCKERS].includes(kind); }
+export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "arcWall", "clodPlain", "clodGreen", "clodYellow", "clodRed", "craterWall", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo", "moorStone", "canopyTrunk", "thornCrystal", "springVent", "ruleMonolith", ...DOMAIN_BLOCKED, ...PALETTE_BLOCKERS].includes(kind); }
 export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnder(map, width, x, y)?.elev || 0) : 0; }
 
 // ---------------------------------------------------------------- the Far Sleep (release 305)

@@ -21,6 +21,7 @@ Taken at merge time: `main`'s release + 1 (see above). After 789, the next is **
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 792 | Claude | `claude/region-792` | The Reckoning Fields (landscape 23): a far region (site 24+ sections out) laid as one self-similar figure (sieve, carpet or cross) from its site, raised plates, monoliths, caches | In flight (790 is PR #438 Close View, 791 is `claude/pg-in-options`; neither touches region code). |
 | 791 | Claude | `claude/pg-in-options` | Enter Proving Ground from Options → System (scratch copy of the journey through a one-shot handoff; Exit to game resumes it untouched), a "Proving Ground access" setting, and Get latest release in the Proving Ground | Reserved, in flight (790 is `claude/close-view-grit`). |
 | 790 | Claude | `claude/close-view-grit` | Close View v3: one material for walls and floor (clean ancient panels, sparse deterministic wear, corner occlusion), a continuous floor, creatures that fade instead of popping (ghosted behind walls), windup and hit cues, a bullseye lock on the screen's edge, the crescent clear of Spell B, an Options → Camera tab, and a Close View Lab that starts at once | Merged (#438). Published as r790-d8f0e5e716fc on 2026-11-06. |
 | 789 | Claude | `claude/dreamy-rubin-yn6q2p` | Sealed towers: a compound's central tower and a Great Castle's keep open only with a key won deep in the maze (Key Warden); no drone/glide bypass; ~15% have a ledge climb to a lever | Merged (#437). Published as r789-7b41b2c419e8 on 2026-11-06. |
