@@ -45,7 +45,8 @@ test('the way through: in at the gate, out into the next section\'s court, throu
   const s1 = T.wings[T.a].sides[0]; climbTo(s1.floor); act(g.map.objects.find((o) => o.id === `building-exit-side${s1.to}`), 'exit');
   assert.equal(g.area, 'overworld'); assert.deepEqual([g.rx, g.ry], [sec(T.b).rx, sec(T.b).ry], 'another section'); assert.ok(g.map.tiles[Math.round(g.player.y) * 32 + Math.round(g.player.x)].courtyard);
   act(g.map.objects.find((o) => o.castleDoor && o.enterAt === 'court' && o.dungeonId.includes(`:w${T.b}:`)), 'enter');
-  const s2 = T.wings[T.b].sides[0]; climbTo(s2.floor); act(g.map.objects.find((o) => o.id === `building-exit-side${s2.to}`), 'exit'); assert.deepEqual([g.rx, g.ry], [sec(T.k).rx, sec(T.k).ry]);
+  const s2 = T.wings[T.b].sides[0]; climbTo(T.wings[T.b].floors); act(g.map.objects.find((o) => o.kind === 'labKey'), 'take'); // castle version 3 (TOWER_SEAL): the Keep Key on this wing's top floor
+  while (g.map.building.floor > s2.floor) act(g.map.objects.find((o) => o.kind === 'buildingStair' && o.dir === 'down'), 'descend'); act(g.map.objects.find((o) => o.id === `building-exit-side${s2.to}`), 'exit'); assert.deepEqual([g.rx, g.ry], [sec(T.k).rx, sec(T.k).ry]);
   act(g.map.objects.find((o) => o.castleDoor && o.dungeonId.includes(':k:')), 'enter'); climbTo(T.keep.floors);
   assert.ok(g.map.objects.some((o) => o.kind === 'chest')); assert.ok(g.enemies.find((e) => e.id.endsWith(':guardian'))?.affixes?.length, 'its lord');
   act(g.map.objects.find((o) => o.id === 'building-exit-gate'), 'exit'); assert.deepEqual([g.rx, g.ry, g.player.x, g.player.y], [sec(T.a).rx, sec(T.a).ry, front.x, front.y], 'out at the gate');

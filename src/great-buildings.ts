@@ -423,3 +423,94 @@ export function roofLanding(map, part) {
   const best = [...high].sort((a, b) => Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my) || a.y - b.y || a.x - b.x)[0];
   return { x: best.x, y: best.y };
 }
+
+// ------------------------------------------------------------------------------------------------ sealed towers
+// Tower seals (Tim, 2026-11-06: "For the keeps with courtyards, with the tower in the center... unless you are climbing those
+// towers to access a lever or something, you need a key to enter it. So you can't just hop down with the rope, with the drone,
+// and then just finish the level by getting on the roof somehow. Sometimes that's okay, but that shouldn't be a way to
+// circumvent all the mazes."). From compound version `compound` and castle version `castle` (new ground only), every way into
+// the central tower (a compound's Keep Tower, Core Spire or Hive Heart; a Great Castle's keep) is a sealed door: its courtyard
+// door, and a compound tower's roof hatch. They open for the tower's key, which lies deep in the maze: in a compound, on an
+// inner floor of the wing the way through runs down (or, in a simple compound, the top floor of the wing whose doors reach the
+// courtyard, which then has no hatch), held by a Key Warden; in a castle, on the top floor of the wing between the gate's and the
+// keep's quarters. The key is a labyrinth key (`labKey`), kept on the tower's first floor's history (`labKeys`), so it is never
+// lost and pays nothing. A compound tower's airspace is closed (vehicle-gates.ts DRONE_FIZZLE zone `tower`, tiles `towerAir`):
+// the drone fizzles and the glider is turned away, so nobody lands on its top. A share of the towers (`climb.share`, where the
+// courtyard has room) have a designed way round: a climb of ledges up the tower's face from the courtyard, one level a jump (a
+// fall from the upper ledges hurts or kills), to a lever on the top that unseals the tower as the key does. The ledges stand
+// clear of every other raised ground (no drop onto them from the wall walk), and the tower and its ledges are closed to the air.
+export const TOWER_SEAL = {
+  compound: 2, castle: 3, // the placement versions from which the tower is sealed
+  key: { id: "towerKey", names: { keep: "Tower Key", apartment: "Core Keycard", hive: "Heart Sigil", castle: "Keep Key" }, clear: 4 }, // `clear`: tiles the key lies from the floor's ladder up
+  keeper: { name: "Key Warden" },
+  climb: { share: .15, ledges: [1, 2, 3, 4], fatal: 4, tries: 64 }, // the ledges' heights, foot to top (each one jump up); `fatal`: a drop this many levels kills (landscape.ts fallDamage); chains tried a tower
+  messages: {
+    sealed: "Sealed. The {tower} wants the {key}.",
+    hatch: "The hatch is bolted from below. The {tower} wants the {key}.",
+    key: "You take the {key}. The {tower}'s doors will open for it.",
+    lever: "You haul the lever over. Deep in the {tower}, bolts draw back: its doors stand unsealed.",
+    pulled: "The lever is already over; the {tower} stands unsealed.",
+    reach: "The lever stands on the top of the {tower}: climb up to it.",
+    climb: "Ledges climb the {tower}'s face, one jump at a time, to a lever at the top. A long way down from the last of them.",
+  },
+};
+export const towerSealText = (msg, seal) => String(msg).replace("{tower}", seal?.tower || "tower").replace("{key}", seal?.name || "key");
+// Is this seal open for the journey (its key taken or its lever pulled, both kept as the key on the tower's first floor)? Pure.
+export const towerUnsealed = (save, seal) => !seal || (save?.consequences?.dungeons?.[`${seal.base}:f1`]?.labKeys || []).includes(seal.key);
+
+// Where the key lies on its floor (a laid floor `F` of a building part): the farthest free cell from the floor's way in that is at
+// least `clear` from its ladder up. Null when nothing is free.
+export function towerKeySpot(F, free) {
+  const C = TOWER_SEAL.key.clear, far = F.far.filter((p) => free(p.x, p.y));
+  return far.find((p) => !F.up || Math.abs(p.x - F.up.x) + Math.abs(p.y - F.up.y) >= C) || far[0] || null;
+}
+// The tower's key on its floor (compounds from version 2, castles from version 3): a labyrinth key (`labKey`) whose record is kept on
+// the tower's first floor (`keyBase`), on the floor's farthest free cell clear of the ladder up, its Key Warden beside it (a guardian
+// in strength, `keyKeeper`). Pushes onto `objects` / `enemySpawns`; returns the key's cell or null.
+export function placeTowerKey(objects, enemySpawns, tiles, W, F, free, seal, id, guardian, V, entry) {
+  const taken = (x, y) => objects.some((o) => o.x === x && o.y === y) || enemySpawns.some((e) => e.x === x && e.y === y), open = (x, y) => free(x, y) && !taken(x, y);
+  const c = towerKeySpot(F, open); if (!c) return null;
+  const S = { key: seal.key, name: seal.name, tower: seal.tower, base: seal.base };
+  objects.push({ id: "tower-key", kind: "labKey", keyId: seal.key, keyBase: seal.base, towerSeal: S, name: seal.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${seal.name}. The ${seal.tower}'s sealed doors wait for it.` });
+  const g = guardianBeside(tiles, W, c, open, Math.max(2, V), entry); // new with the seal: the wider search (interior v2) at either interior version
+  if (g) enemySpawns.push({ id: `${id}:keeper`, kind: guardian, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true, keyKeeper: true });
+  return c;
+}
+
+// The climb up a tower's face (section tiles, 32 wide). `tower`, `court`: cells; `avoid`: court cells kept clear (doors and the
+// ground before them); `noLever`: tower cells the lever may not stand on. No raised ground but the climb itself may let you onto a
+// ledge: every neighbour of a ledge (the eight round it) is the tower, the court, blocked, or ground so high above it that the drop
+// onto it kills (`climb.fatal` levels or more). Where the only fault is a cell of a wall walk next to it, `crumble(k)` may say that
+// cell can fall in (the wall walk above the climb has crumbled); the cells to crumble are returned, and `holds(cells)` must accept
+// them (the wall walk still joins its hatches). The ledges run foot to top, each beside the last, the top one beside the tower;
+// the court left over stays one piece. Returns { ledges: [{ x, y, elev }], lever: { x, y }, foot: { x, y }, crumble: [{ x, y }] }
+// or null. Pure; at most `climb.tries` whole chains are tested.
+export function planTowerClimb(map, tower, court, avoid, noLever, key, crumble = () => false, holds = () => true) {
+  const C = TOWER_SEAL.climb, n = C.ledges.length, at = (x, y) => y * 32 + x, T = new Set(tower.map((c) => at(c.x, c.y))), K = new Set(court.map((c) => at(c.x, c.y)));
+  const keep = new Set(avoid.map((c) => at(c.x, c.y))), bad = new Set(noLever.map((c) => at(c.x, c.y)));
+  // a ledge `e` levels up on k: null when it cannot stand there, else the wall-walk cells that must fall in for it
+  const fit = (k, e) => { if (!K.has(k) || keep.has(k)) return null; const x = k % 32, y = (k / 32) | 0, fall = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) return null; const q = at(nx, ny), t = map.tiles[q]; if (T.has(q) || K.has(q) || !t || t.blocked || (t.elev || 0) - e >= C.fatal) continue; if (crumble(q)) fall.push(q); else return null; }
+    return fall; };
+  const nb = (k) => { const out = []; for (const [dx, dy] of N4) { const x = k % 32 + dx, y = ((k / 32) | 0) + dy; if (x >= 0 && y >= 0 && x <= 31 && y <= 31) out.push(at(x, y)); } return out; };
+  const elevAt = (i) => C.ledges[n - 1 - i]; // a chain is grown from its top down: its i-th cell is that high
+  const tops = court.map((c) => at(c.x, c.y)).filter((k) => fit(k, elevAt(0)) && nb(k).some((q) => T.has(q) && !bad.has(q))).sort(byHash((k) => `${key}:top:${k}`));
+  let tries = 0;
+  for (const top of tops) {
+    const chains = [[top]];
+    while (chains.length && tries < C.tries) { const ch = chains.pop();
+      if (ch.length < n) { for (const q of nb(ch[ch.length - 1]).sort(byHash((k) => `${key}:step:${ch.length}:${k}`)).reverse()) if (!ch.includes(q) && fit(q, elevAt(ch.length))) chains.push([...ch, q]); continue; }
+      tries++; const lad = ch.slice().reverse(), used = new Set(lad), rest = court.map((c) => at(c.x, c.y)).filter((k) => !used.has(k));
+      const foot = nb(lad[0]).find((q) => K.has(q) && !used.has(q)); if (foot === undefined || !rest.length) continue;
+      // the court left over is one piece (every door's ground and the climb's foot in it)
+      const seen = new Set([rest[0]]), q = [rest[0]]; while (q.length) { const k = q.pop(); for (const m of nb(k)) if (K.has(m) && !used.has(m) && !seen.has(m)) { seen.add(m); q.push(m); } }
+      if (seen.size !== rest.length) continue;
+      const fall = [...new Set(lad.flatMap((k, i) => fit(k, C.ledges[i])))].sort((a, b) => a - b), cells = fall.map((k) => ({ x: k % 32, y: (k / 32) | 0 }));
+      if (fall.length && !holds(cells)) continue;
+      const lever = nb(top).filter((m) => T.has(m) && !bad.has(m)).sort(byHash((k) => `${key}:lever:${k}`))[0];
+      return { ledges: lad.map((k, i) => ({ x: k % 32, y: (k / 32) | 0, elev: C.ledges[i] })), lever: { x: lever % 32, y: (lever / 32) | 0 }, foot: { x: foot % 32, y: (foot / 32) | 0 }, crumble: cells };
+    }
+    if (tries >= C.tries) break;
+  }
+  return null;
+}

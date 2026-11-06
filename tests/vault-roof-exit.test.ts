@@ -6,6 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { freshSave, migrateSave } from '../src/types.ts';
+import { dungeonHistory } from '../src/interactions.ts';
 import { Game, generatePinnedDungeon, roofExitPlan, clearSectionTerrainCache } from '../src/game.ts';
 import { sectionRegion, LANDSCAPE_VERSION, fallDamage } from '../src/landscape.ts';
 import { BUILDINGS, ROOF_EXIT, buildingHereV2, roofLanding } from '../src/great-buildings.ts';
@@ -30,24 +31,26 @@ const tileAt = (g) => g.map.tiles[Math.round(g.player.y) * 32 + Math.round(g.pla
 const memo = {};
 const once = (k, f) => (k in memo ? memo[k] : (memo[k] = f()));
 const plainBuilding = (hatch) => once(`b${hatch}`, () => ring(4, 40, (x, y) => { if (!buildingHereV2(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; const g = visit(x, y), B = g.map.greatBuilding; return B && !B.compound && !B.labyrinth && !B.castle && !!B.roof === hatch && (hatch || B.roofTop) ? { x, y } : null; }));
-const compoundNoHatch = () => once('c', () => ring(5, 40, (x, y) => { if (!compoundHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; const g = visit(x, y), t = g.map.objects.find((o) => o.compoundDoor && /:t:\d+:f1$/.test(o.dungeonId)); return t ? { x, y } : null; }));
+// compound version 2 (TOWER_SEAL) gives every tower a roof hatch: a tower without one stands on ground pinned to version 1
+const visitV1 = (x, y) => { const first = visit(x, y), s = freshSave(); s.seed = SEED; s.atlas = { [`${x},${y}`]: { ...first.save.atlas[`${x},${y}`], compoundVersion: 1 } }; return visit(x, y, s); };
+const compoundNoHatch = () => once('c', () => ring(5, 40, (x, y) => { if (!compoundHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; const g = visitV1(x, y), t = g.map.objects.find((o) => o.compoundDoor && /:t:\d+:f1$/.test(o.dungeonId)); return t ? { x, y } : null; }));
 const labyrinth = () => once('l', () => ring(LABYRINTHS.minRing, 40, (x, y) => { if (!labyrinthHere(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; const B = visit(x, y).map.greatBuilding; return B?.roofTop && !B.roomMaze ? { x, y } : null; })); // a maze of chambers (room mazes: tests/room-mazes.test.ts)
 const castle = () => once('k', () => { const g = visit(0, 0); for (let d = 3; d < 60; d += 3) for (let X = -d; X <= d; X += 3) for (const Y of [d - Math.abs(X), Math.abs(X) - d]) if (g.castleHere(X, Y)) { const k = quarterSection(X, Y, castleTopology(SEED, X, Y).k); if (visit(k.rx, k.ry).map.objects.some((o) => o.castleDoor && o.buildingDoors?.roofTop)) return { X, Y }; } return null; });
 
 // Into each kind of vault (new ground), by its own doors
 function intoBuilding(hatch) { const at = plainBuilding(hatch), g = visit(at.x, at.y), d = g.map.objects.find((o) => o.buildingDoor && !o.breachDoor && !o.roofHatch); assert.ok(act(g, d, 'enter').ok); climbAll(g); return { g, at, part: 'building' }; }
-function intoTower() { const at = compoundNoHatch(), g = visit(at.x, at.y), d = g.map.objects.find((o) => o.compoundDoor && /:t:\d+:f1$/.test(o.dungeonId)); assert.ok(act(g, d, 'enter').ok); climbAll(g); return { g, at, part: 'tower' }; }
-function intoKeep() { const c = castle(), s = quarterSection(c.X, c.Y, castleTopology(SEED, c.X, c.Y).k), g = visit(s.rx, s.ry), d = g.map.objects.find((o) => o.castleDoor && o.dungeonId.includes(':k:')); assert.ok(act(g, d, 'enter').ok); climbAll(g); return { g, at: { x: s.rx, y: s.ry }, part: 'keep' }; }
+function intoTower() { const at = compoundNoHatch(), g = visitV1(at.x, at.y), d = g.map.objects.find((o) => o.compoundDoor && /:t:\d+:f1$/.test(o.dungeonId)); assert.ok(act(g, d, 'enter').ok); climbAll(g); return { g, at, part: 'tower' }; }
+function intoKeep() { const c = castle(), s = quarterSection(c.X, c.Y, castleTopology(SEED, c.X, c.Y).k), g = visit(s.rx, s.ry), d = g.map.objects.find((o) => o.castleDoor && o.dungeonId.includes(':k:')); if (d.towerSeal) dungeonHistory(g.save, `${d.towerSeal.base}:f1`).labKeys = [d.towerSeal.key]; /* castle version 3: the Keep Key, earned in the maze */ assert.ok(act(g, d, 'enter').ok); climbAll(g); return { g, at: { x: s.rx, y: s.ry }, part: 'keep' }; }
 function intoVault() { const at = labyrinth(), g = visit(at.x, at.y), d = g.map.objects.find((o) => o.labyrinthDoor); assert.ok(act(g, d, 'enter').ok); const base = g.areaId().replace(/:f\d+$/, ''), P = labyrinthPlan(base), v = P.nodes.find((q) => q.vault);
   const first = [...v.slots.values()][0].inner; g.goBuildingFloor(`${base}:f${v.n + 1}`, first.x, first.y); assert.ok(g.map.building.vault); return { g, at, part: 'labyrinth' }; }
 const KINDS = { 'great building (no hatch)': () => intoBuilding(false), 'compound tower (no hatch)': intoTower, 'castle keep': intoKeep, 'labyrinth vault': intoVault };
 
 test('new ground: every roof the exits lead to stands on the section, walkable, at a fatal height; the section keeps its ways through', () => {
-  assert.equal(BUILDINGS.version, 3); assert.equal(CASTLES.version, 2); assert.equal(LABYRINTHS.version, 3);
+  assert.equal(BUILDINGS.version, 3); assert.equal(CASTLES.version, 3); assert.equal(LABYRINTHS.version, 3);
   const bld = visit(plainBuilding(false).x, plainBuilding(false).y), B = bld.map.objects.find((o) => o.kind === 'greatBuilding' && !o.compound);
   assert.ok(bld.map.greatBuilding.roofTop && !bld.map.greatBuilding.roof, 'no hatch, but a roof to stand on'); assert.ok(!bld.map.objects.some((o) => o.roofHatch), 'no way in from the roof');
   const c = castle(), k = quarterSection(c.X, c.Y, castleTopology(SEED, c.X, c.Y).k), keep = visit(k.rx, k.ry), K = keep.map.objects.find((o) => o.castle).blocks.find((b) => b.part === 't');
-  const lab = visit(labyrinth().x, labyrinth().y), L = lab.map.objects.find((o) => o.labyrinth), tow = visit(compoundNoHatch().x, compoundNoHatch().y), T = tow.map.objects.find((o) => o.compound).blocks.find((b) => b.part === 't');
+  const lab = visit(labyrinth().x, labyrinth().y), L = lab.map.objects.find((o) => o.labyrinth), tow = visitV1(compoundNoHatch().x, compoundNoHatch().y), T = tow.map.objects.find((o) => o.compound).blocks.find((b) => b.part === 't');
   for (const [g, cells, what] of [[bld, B.footprint, 'building'], [keep, K.cells, 'keep'], [lab, L.footprint, 'labyrinth'], [tow, T.cells, 'tower']]) {
     const roof = cells.map((q) => g.map.tiles[q.y * 32 + q.x]).filter((t) => t.structure === 'buildingRoof' && !t.blocked);
     assert.ok(roof.length >= Math.min(cells.length, 9) * .8, `${what}: walkable roof`); assert.ok(roof.every((t) => t.elev === 5), `${what}: at roof height`);
@@ -112,7 +115,7 @@ test('ground explored before roofs: an old building\'s top floor lets you out by
   const flat = ring(4, 40, (x, y) => { if (!buildingHereV2(SEED, x, y, sectionRegion(SEED, x, y, LANDSCAPE_VERSION))) return null; const v = visit(x, y), B = v.map.greatBuilding; return B && !B.compound && !B.labyrinth && !B.castle && !B.roof && !B.roofTop && !v.map.landscape ? { x, y } : null; });
   if (flat) { const f = visit(flat.x, flat.y), fd = f.map.objects.find((o) => o.buildingDoor && !o.breachDoor && !o.roofHatch); assert.ok(act(f, fd, 'enter').ok); climbAll(f); const fr = f.map.objects.find((o) => o.dir === 'roofExit'); assert.ok(fr && fr.roofExit.roof === false && fr.name === ROOF_EXIT.names.door); }
   // a castle any section of which was pinned to version 1 stays version 1 in all four
-  const c = castle(), atlas = { [`${quarterSection(c.X, c.Y, 0).rx},${quarterSection(c.X, c.Y, 0).ry}`]: { castleVersion: 1 } }; assert.equal(castleVersionOf(atlas, c.X, c.Y), 1); assert.equal(castleVersionOf({}, c.X, c.Y), 2);
+  const c = castle(), atlas = { [`${quarterSection(c.X, c.Y, 0).rx},${quarterSection(c.X, c.Y, 0).ry}`]: { castleVersion: 1 } }; assert.equal(castleVersionOf(atlas, c.X, c.Y), 1); assert.equal(castleVersionOf({}, c.X, c.Y), 3);
   assert.equal(roofExitPlan({ atlas }, `castle:${SEED}:${c.X}:${c.Y}:k:3:f3`, { building: { castle: true, part: 'k', floor: 3, floors: 3 } }), null, 'an old keep: its gate way out, no roof');
   assert.equal(roofExitPlan({ atlas: { '9,9': { labVersion: 1 } } }, `labyrinth:${SEED}:9:9:keep:f4`, { building: { labyrinth: true, vault: true } }), null, 'an old labyrinth: its front way out');
   assert.deepEqual(roofExitPlan({ atlas: { '9,9': { compoundVersion: 1 } } }, `compound:${SEED}:9:9:keep:t:3:f3`, { building: { compound: true, part: 't', floor: 3, floors: 3, roof: false } }), { part: 'tower', rx: 9, ry: 9, roof: true }, 'an old tower: its roof was always walkable');

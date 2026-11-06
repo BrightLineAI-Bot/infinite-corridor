@@ -50,7 +50,8 @@ test('the maze, walked: in by an outer door, no way to the courtyard there; up, 
   climbAll(g); const rl = g.map.objects.find((o) => o.dir === 'roof'); assert.ok(rl, 'a ladder to the wall walk'); act(g, rl, 'climb');
   assert.equal(g.area, 'overworld'); const here = g.map.tiles[Math.round(g.player.y) * 32 + Math.round(g.player.x)]; assert.equal(here.elev, COMPOUNDS.elev, 'on the wall walk');
   const courtWing = g.map.objects.find((o) => o.compoundDoor && o.enterAt === 'court' && partOf(o)[1] !== 't'), wingB = partOf(courtWing)[1]; assert.notEqual(wingA, wingB);
-  const hatchB = g.map.objects.find((o) => o.roofHatch && partOf(o)[1] === wingB); act(g, hatchB, 'enter'); assert.equal(g.map.building.floor, g.map.building.floors); downAll(g);
+  const hatchB = g.map.objects.find((o) => o.roofHatch && partOf(o)[1] === wingB); act(g, hatchB, 'enter'); assert.equal(g.map.building.floor, g.map.building.floors);
+  for (let i = 0; i < 8; i++) { const key = g.map.objects.find((o) => o.kind === 'labKey'); if (key) act(g, key, 'take'); const dn = g.map.objects.find((o) => o.kind === 'buildingStair' && o.dir === 'down'); if (!dn) break; act(g, dn, 'descend'); } // compound version 2 (TOWER_SEAL): the tower's key lies on the way down
   const cd = g.map.objects.find((o) => o.id === 'building-exit-court'); assert.ok(cd); act(g, cd, 'exit');
   assert.equal(g.area, 'overworld'); assert.ok(g.map.tiles[Math.round(g.player.y) * 32 + Math.round(g.player.x)].courtyard, 'in the courtyard');
   const td = g.map.objects.find((o) => o.compoundDoor && partOf(o)?.[1] === 't' && o.enterAt === 'court'); act(g, td, 'enter'); climbAll(g);
