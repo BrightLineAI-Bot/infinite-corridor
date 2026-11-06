@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 786 — **Close View (prototype).** Turn it on in Options → Controls: inside the Pentagon, great buildings and keeps, a low third-person camera follows behind the Wayfarer with torchlight, fog and perspective walls (Standard, Close and Wide styles). The Pentagon's courts, roof and the overworld keep the usual view, with a short blend at each threshold.
 - Release 785 — **Fog of war in labyrinths.** You see about 7 tiles around you and walls block your sight. Ground you've seen stays on screen, dimmed, and is remembered per chamber through saves. Creatures and the safe-drop rim show only in sight, and the dungeon map shows only what you've seen.
 - Release 784 — **Room mazes.** About half of new labyrinths are now mazes of rooms over four floors: undercroft, ground, upper floor and roof. What the ground floor can't cross (holes, lava, a chasm, a collapsed hall, a barred door) you cross on another floor: over it upstairs, along a roof beam, or under it through the undercroft and up a ladder in a far corner. Dead ends, loops, drops, and barred doors that open from the far side. The corridor labyrinths are unchanged.
 - Release 783 — **The far realms keep their stories.** Past 1000 sections, crossings entered from now on give the Second Surveyor's and the Sleeper's slots to the far stories, so the far realms keep their full story density after those two are finished. Inside 1000 nothing changes, and crossings already entered keep what they offered.

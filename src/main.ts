@@ -13,6 +13,7 @@ import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountL
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks } from "./game.ts";
@@ -77,7 +78,10 @@ export function equipFromInventory(save, index) {
   if (prior && !stashForOtherPreset(save, item.slot, prior)) save.inventory.push(prior); // release 541: or it stays the other preset's
   return true;
 }
-function drawRangedEffects() { drawCombatEffects(ctx,game,innerWidth,innerHeight); }
+function drawRangedEffects() { if (closeViewShowing(game)) return; /* Close View drew them on its floor */ drawCombatEffects(ctx,game,innerWidth,innerHeight); }
+// Close View: traps and vines, aperture marks and shots in flight are drawn onto its floor texture, under the billboards.
+const closeViewLayer = { ctx: null, w: 0, h: 0 };
+CLOSE_VIEW_HOOKS.groundLayers.push((c, W, H) => { closeViewLayer.ctx = c; closeViewLayer.w = W; closeViewLayer.h = H; drawDungeonSystems(closeViewLayer); drawApertureVisuals(closeViewLayer); drawCombatEffects(c, game, W, H); });
 function openShop(vendorId = "vendor-vela") {
   pauseForOverlay();
   body.replaceChildren();
@@ -149,7 +153,7 @@ setTimeout(() => {
   canvas.addEventListener("worldtap", (e) => {
     if (game.paused || viewportSeq) return; // Viewport Closed: taps are ignored too
     const r = canvas.getBoundingClientRect(),
-      q = screenToWorld(
+      q = closeViewScreenToWorld(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top) || screenToWorld( // Close View: the billboard or floor under the tap
         game,
         r.width,
         r.height,
@@ -273,7 +277,7 @@ const $ = (s) => document.querySelector(s),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
   settings = loadSettings(),
   input = createInput(document, globalThis, settings),
-  [save, game] = startGame(await loadSave()), // release 785
+  [save, game] = startGame(await loadSave()), // release 786
   panel = $("#panel"),
   body = $("#panelBody"),
   pausePanel = $("#pausePanel"),
@@ -483,7 +487,11 @@ function render(ctx, game, w, h, now) {
       game.enemies[i].telegraph = telegraphs[i];
   }
 }
-function drawApertureVisuals() {
+// Close View draws these onto its ground texture (layer: { ctx, w, h }); otherwise they draw on the screen as always.
+const screenCtx = () => ctx;
+function drawApertureVisuals(layer = null) {
+  if (!layer && closeViewShowing(game)) return; // Close View drew these on its floor (CLOSE_VIEW_HOOKS.groundLayers)
+  const ctx = layer ? layer.ctx : screenCtx(), innerWidth = layer ? layer.w : globalThis.innerWidth, innerHeight = layer ? layer.h : globalThis.innerHeight;
   const s = Math.round(Math.max(28, Math.min(44, innerWidth / 12))),
     sx = (x) => innerWidth / 2 + (x - game.player.x) * s,
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s,
@@ -838,7 +846,9 @@ function drawNewTrap(o, x, y, s, t) {
   }
   ctx.restore();
 }
-function drawDungeonSystems() {
+function drawDungeonSystems(layer = null) {
+  if (!layer && closeViewShowing(game)) return; // Close View drew these on its floor (CLOSE_VIEW_HOOKS.groundLayers)
+  const ctx = layer ? layer.ctx : screenCtx(), innerWidth = layer ? layer.w : globalThis.innerWidth, innerHeight = layer ? layer.h : globalThis.innerHeight;
   const s = Math.round(Math.max(28, Math.min(44, innerWidth / 12))),
     sx = (x) => innerWidth / 2 + (x - game.player.x) * s,
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s;
@@ -943,7 +953,7 @@ function startPulse() {
       noise.start(t);
     }
     step++;
-  }, 785);
+  }, 786);
 }
 addEventListener("pointerdown", () => setTimeout(startPulse, 0), {
   once: true,
@@ -1327,12 +1337,13 @@ async function renderSettings(category){const grid=document.createElement("div")
     sel.onchange=()=>{save.fractured=sel.value||null;persist();game.message=save.fractured?`${FRACTURED.modes[save.fractured].name} mode: the Corridor is breaking open. Towns, home and cleared dungeons stay safe.`:"Fractured mode off."};
     grid.append(settingRow("Fractured mode (this journey)",sel,`${note} More creatures, in packs with champions and rares, and more keep coming; towns, home, the Refuge lands and cleared dungeons stay safe. Takes full effect in the next place you enter.`));
   }
+  if(category==="Controls"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View indoors (prototype, this journey)",cv,"Inside the Pentagon, great buildings and keeps, a low camera behind the Wayfarer that turns with them; drag up to walk the way the view looks. Courts, roofs and the overworld keep the usual view."));const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("World boss tries (on: 4 deaths and the boss leaves; off: no tries, it loses patience after 3 minutes of fighting, 5 once it is below half health)",toggleSetting("beastTries")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:785,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 785\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:786,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 786\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);
@@ -1344,7 +1355,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:785,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:786,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2392,7 +2403,7 @@ function viewportFrame(dt, now) {
     viewportSeq = ev.seq;
     if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
     if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
-    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 785's one clock list: the respawn's protection outlasts the black
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 786's one clock list: the respawn's protection outlasts the black
     if (ev.end) { viewportEnd(); return null; }
     return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
@@ -2415,7 +2426,7 @@ function frame(now) {
   const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
-  if (!viewportBefore || viewportBefore.world) measured("update", () => game.update(dt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, now));
+  if (!viewportBefore || viewportBefore.world) measured("update", () => { const steer = !viewportSeq && closeViewSteer(game, input.state); try { game.update(dt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, now); } finally { if (steer) closeViewUnsteer(input.state); } }); // Close View: movement relative to the view
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   if (game.paused) return;
   const viewportStage = viewportFrame(probeInterval / 1000, now);

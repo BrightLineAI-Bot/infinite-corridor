@@ -2854,6 +2854,49 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 786: Close View (prototype) — a low third-person camera inside — 2026-11-06
+
+Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like you're in Bloodborne... the camera's in the cavern with you... third person, same view as Bloodborne or soulslikes... fewer monsters, more like exploring the Chalice Dungeons." When you step out into the courts it should go back to the normal view. He named Bloodborne, Remnant: From the Ashes and Elder Scrolls Online as references. Tim chose a 2.5D close camera built on the current renderer, as phase 1.
+
+**CODE:** `src/close-view.ts` (a new module, added to `scripts/build.mjs` and both service worker precache lists) holds the whole feature and its numbers in `CLOSE_VIEW`:
+- Presets: Standard (height 1.35, distance 2.6, shoulder .42 right, 72° field of view), Close (Bloodborne) and Wide (Remnant/ESO).
+- Quality settings, blend, fog, light, walls, actors and turning.
+
+`renderer.ts` calls `closeViewFrame` at the start of each frame.
+- It picks the camera. Indoor floors of the Pentagon, great buildings and keeps use Close View. The overworld (including the Pentagon's courts, roof and balconies), the finale's walk among the stars, and yard tiles keep the normal view.
+- At a threshold it runs a 0.42 s snapshot blend, or switches instantly with reduced motion.
+
+`renderCloseView` draws in four steps:
+1. The ordinary renderer draws the floor around the Wayfarer into a texture, and its actor draw list is captured.
+2. Torch falloff is painted, then the floor is laid in perspective bands.
+3. Walls are extruded per exposed tile edge. They are cached per floor, culled, and depth-sorted with billboards drawn through an atlas strip.
+4. Walls and creatures between the camera and the Wayfarer are ghosted.
+
+Camera and controls:
+- The camera boom stops short of walls and rises rather than crowding the Wayfarer.
+- Movement is camera-relative and locked for each gesture (`closeViewSteer`/`closeViewUnsteer` around `Game.update`).
+- Taps use `closeViewScreenToWorld`.
+- Later creature art plugs in through `CLOSE_VIEW_HOOKS.art[kind]`.
+
+Saves, menus and tests:
+- Save fields `closeView` (false) and `closeViewPreset` ("standard") are additive at schema 14, normalised in `freshSave` and `migrateSave`.
+- The toggle and preset picker are in Options → Controls.
+- Proving Ground: "Close View Lab (prototype)".
+- Tests: `tests/close-view.test.ts`; `tests/prototype.test.ts` expects 19 labs.
+
+**Measured (headless CPU Chromium; relative only):**
+- Draw calls per frame, normal view against Close View: about 1200–2250 normal; about 50–100 on the low setting; about 80–125 balanced; about 110–170 full.
+- The low setting draws faster than the normal view. Balanced and full cost more pixel fill.
+- The blend's first frame costs a one-time snapshot.
+
+**BOUNDARY:**
+- Presentation only, and off by default. Gameplay, combat, generation and saves are unchanged, except that taps resolve through the 3D view while it shows.
+- The camera state is never saved. Exact resume rebuilds it.
+- The Proving Ground lab uses scratch state only.
+- Known limits: creatures use the top-down art scaled up, with no back views (the Wayfarer gets a painted hood); the floor looks pixelated near the camera; creature facing isn't remapped to the camera; the way-down chevron isn't drawn.
+- Phase 2: lock-on, soulslike combat, fewer and tougher Pentagon creatures, higher-fidelity monster art, and wall torches.
+- Not tested on a device.
+
 ## Release 785: fog of war in labyrinths — 2026-11-06
 
 Tim, 2026-11-06: in labyrinths "you can see everything in the maze... if there were fog that would be better, so I'd be able to kind of explore and figure out where I need to go."
