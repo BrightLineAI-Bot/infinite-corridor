@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: `main`'s release + 1 (see above). After 785, the next is **786**.
+Taken at merge time: `main`'s release + 1 (see above). After 786, the next is **787**.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 785 | Claude | `claude/dreamy-rubin-yn6q2p` | Fog of war in every labyrinth: sight 7 tiles, walls block it; seen ground stays dimmed and is remembered per chamber; creatures and the safe-drop rim only in sight; the map shows only what you've seen | In flight. |
+| 786 | Claude | `claude/dreamy-rubin-yn6q2p` | Close View (prototype, off by default): a low third-person camera inside the Pentagon, great buildings and keeps, with torchlight, fog and perspective walls; courts and the overworld keep the usual view | In flight. |
+| 785 | Claude | `claude/dreamy-rubin-yn6q2p` | Fog of war in every labyrinth: sight 7 tiles, walls block it; seen ground stays dimmed and is remembered per chamber; creatures and the safe-drop rim only in sight; the map shows only what you've seen | Merged (#433). |
 | 784 | Claude | `claude/dreamy-rubin-yn6q2p` | Room mazes: half of new labyrinths are mazes of rooms over four floors (undercroft, ground, upper, roof); barriers crossed on another floor, sub-floor routes, dead ends, loops, drops, far-side barred doors | Merged (#432). |
 | 783 | Claude | `claude/dreamy-rubin-yn6q2p` | Story version 4: past 1000 the first-ten slots go to the shared roll, so far crossings keep the full 0.12 | Merged (#431). |
 | 782 | Claude | `claude/dreamy-rubin-yn6q2p` | The Rite is a lockdown (no door, sky gate, Far Gate, fold, dive or edge leaves it; only finishing, death or a Crossing Sigil); old Pentagon Journal lines in words; hot springs heal 2% | Merged (#430). Published as r782-fa66724a8d00 on 2026-11-06. |
