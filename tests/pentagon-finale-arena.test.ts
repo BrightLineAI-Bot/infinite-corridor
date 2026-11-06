@@ -12,6 +12,7 @@ import { regionalThreat } from '../src/world.ts';
 import { PENTAGON, pentagonPlan, pentagonVaultId, pentagonFinaleId, isPentagonId, isPentagonFinaleId, generatePentagonChamber } from '../src/pentagon.ts';
 import { PENTAGON_ARENA, FINALE_GHOST, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, arenaDepth } from '../src/pentagon-arena.ts';
 import { WORLD_BEASTS, tuneWorldBeast } from '../src/world-beasts.ts';
+import { LANDSCAPE_VERSION } from '../src/landscape.ts';
 import { MONSTER_PACK, ATTACK_MODULES, BOSS_PACE, PACK_EFFECT_CAP, isPackKind } from '../src/monster-pack.ts';
 import { createCombatant } from '../src/combat.ts';
 import { stillworksSpriteCount, drawStillworksTile } from '../src/pentagon-arena-render.ts';
@@ -20,7 +21,8 @@ const SEED = 'TIM1', A = PENTAGON_ARENA, BEASTS = ['crimsonTyrant', 'doomChaser'
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset() {} };
 const game = (seed = SEED, save = null) => { const s = save || freshSave(); s.seed = seed; return new Game(s, 0); };
 let found = null; const find = () => { if (found) return found; const g = game(); for (let cx = -64; cx <= 64 && !found; cx += PENTAGON.every) for (let cy = -64; cy <= 64 && !found; cy += PENTAGON.every) if (g.pentagonHere(cx, cy)) found = { cx, cy }; return found; };
-const plan = () => { const { cx, cy } = find(); return pentagonPlan(SEED, cx, cy, PENTAGON.version); };
+const plan = (V = PENTAGON.version) => { const { cx, cy } = find(); return pentagonPlan(SEED, cx, cy, V); };
+const pinned7 = () => { const { cx, cy } = find(), s = freshSave(); s.seed = SEED; s.atlas = { [`${cx + 1},${cy + 1}`]: { landscapeVersion: LANDSCAPE_VERSION, pentVersion: 7 } }; return new Game(s, 0); }; // release 795: a Pentagon pinned to version 7
 const H = (g, P) => g.save.consequences.dungeons[`${P.base}:f1`] || {};
 const loadVault = (g, P) => { g.save.session.activeDungeonId = pentagonVaultId(P); g.save.session.dungeonReturn = { rx: P.cx, ry: P.cy, x: 16, y: 16 }; g.loadArea('dungeon', false); };
 const fellRegent = (g) => { const e = g.enemies.find((q) => String(q.id).endsWith(':guardian')); e.hp = 0; e.dead = true; g.defeatEnemy(e); };
@@ -172,7 +174,7 @@ test('the Stillworks draws without throwing for every beast, quality tier and re
 });
 
 test('the Gloomvast in the Stillworks: its Dark lays its decoys on the arena floor, and the Dark ends when you leave', () => {
-  const g = game(), P = plan(); intoArena(g, P, 'gloomvast'); const b = beastOf(g); assert.equal(b.kind, 'gloomvast'); assert.equal(b.pentFinaleBeast, 'gloomvast');
+  const g = pinned7(), P = plan(7); intoArena(g, P, 'gloomvast'); /* release 795: the Stillworks this was written on (version 7) */ const b = beastOf(g); assert.equal(b.kind, 'gloomvast'); assert.equal(b.pentFinaleBeast, 'gloomvast');
   g.save.maxHp = g.player.hp = 1e7; g.player.x = b.x; g.player.y = b.y + 4; let dark = false, decoys = 0;
   b.hp = Math.round(b.maxHp * .7); // past its first threshold: it calls the Dark
   run(g, 20, () => { g.player.hp = g.save.maxHp; g.player.invulnerableUntil = 0; if (b.gloomDark) dark = true; const d = g.enemies.filter((e) => e.gloomOrbOf && !e.dead); decoys = Math.max(decoys, d.length);

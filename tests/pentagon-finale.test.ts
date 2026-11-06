@@ -213,7 +213,7 @@ test('the Regent\'s rewards are unchanged by the finale: his fall grants no glyp
   const chest = g.map.objects.find((o) => o.id === 'building-cache'); g.player.x = chest.x; g.player.y = chest.y; g.interact('open', chest.id); assert.ok(g.save.tesseracts.got[`${P.base}:hoard`], 'the hoard pays it');
 });
 test('the dais: one free reroll of a Tesseract line, then one for 10 Divine Viscera, then only Transit; deterministic across a reload', () => {
-  const { cx, cy } = find(), g = game(), P = pentagonPlan(SEED, cx, cy, PENTAGON.version); glyphs(g); const d = atDais(g, P), R = F.reroll;
+  const { cx, cy } = find(), g = pinned(SEED, cx, cy, 7), P = pentagonPlan(SEED, cx, cy, 7); glyphs(g); const d = atDais(g, P), R = F.reroll; // release 795: the Pentagon this was written on (version 7), pinned
   assert.deepEqual(R, { free: 1, paid: 1, viscera: 10, list: 12 });
   const r0 = g.interact(undefined, d.id); assert.equal(g.interactionRequested, d.id, 'Act opens its choices'); assert.equal(g.area, 'dungeon'); g.interactionRequested = null;
   const g0 = g.save.tesseracts.owned[0], uid = g0.uid; assert.ok(d.actions.includes('transit') && d.actions.includes(`pick:${uid}`)); assert.match(d.actionLabels[`pick:${uid}`], /free/);

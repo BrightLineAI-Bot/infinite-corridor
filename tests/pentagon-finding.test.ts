@@ -123,7 +123,7 @@ test('explored ground keeps its tiles: a sigil is an object only, and Pentagons 
   const s = freshSave(); s.seed = 'TIM1'; const h = new Game(s, 0);
   for (let cx = -96; cx <= 96; cx += 8) for (let cy = -96; cy <= 96; cy += 8) { const want = pentagonAt('TIM1', cx, cy, (rx, ry) => !regionSettled(rx, ry) && !hamletSection('TIM1', rx, ry) && !openSeaSection('TIM1', rx, ry) && !h.domainCentreAt(rx, ry));
     assert.equal(h.pentagonHere(cx, cy), want, `${cx},${cy}`); assert.equal(h.pentagonReal(cx, cy), want); }
-  assert.equal(PENTAGON.version, 7); assert.equal(PENTAGON.every, 8); assert.equal(PENTAGON.chance, .5); assert.equal(PENTAGON.minRing, 10);
+  assert.equal(PENTAGON.version, 8); /* release 795: grand halls */ assert.equal(PENTAGON.every, 8); assert.equal(PENTAGON.chance, .5); assert.equal(PENTAGON.minRing, 10);
 });
 
 test('determinism: two fresh journeys lay the same sigils and the same hunts', () => {
