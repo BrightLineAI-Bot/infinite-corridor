@@ -95,7 +95,7 @@ const player = [
 for (const side of [-1, 1]) {
   player.push(
     part(frontPatch, .108, side * .048, 1.464, 1, .022, .011, amber),
-    part(box, -.005, side * .115, .353, .116, .089, .353, coat, side, 0, .71),
+    part(bevel, -.005, side * .115, .353, .116, .089, .353, coat, side, 0, .71),
     block(.044, side * .115, .076, .12, .077, .076, leather, side, 0, .71),
     part(bevel, -.014, side * .25, .984, .083, .092, .211, coat, side * 2, 0, 1.19, -.14),
     block(.045, side * .25, .759, .068, .067, .087, leather, side * 2, 0, 1.19),
@@ -111,7 +111,25 @@ const playerTool = [
   ...player.slice(0, -2),
   block(.161, -.25, .783, .163, .066, .052, iron, -2, 0, 1.19),
   block(.303, -.25, .783, .043, .052, .046, bronze, -2, 0, 1.19),
-  block(.349, -.25, .783, .012, .033, .032, visor, -2, 0, 1.19),
+  part(frontPatch, .349, -.25, .783, 1, .033, .032, visor, -2, 0, 1.19),
+];
+const playerUnarmed = player.slice(0, -2);
+const playerHammer = [
+  ...playerUnarmed,
+  part(taper, .17, -.25, 1.02, .035, .038, .34, bronze, -2, 0, 1.19),
+  block(.19, -.25, 1.32, .105, .18, .085, iron, -2, 0, 1.19),
+];
+const playerSweep = [...playerUnarmed];
+const playerMirage = [
+  ...playerUnarmed,
+  part(taper, .18, -.25, 1.11, .028, .048, .37, visor, -2, 0, 1.19),
+  part(frontPatch, .21, -.25, 1.44, 1, .08, .025, amber, -2, 0, 1.19),
+];
+const playerOrrery = [
+  ...playerUnarmed,
+  part(bevel, .18, -.25, .86, .08, .08, .08, bronze, -2, 0, 1.19),
+  part(frontPatch, .22, -.25, 1.03, 1, .035, .035, visor, -2, 0, 1.19),
+  part(frontPatch, .10, -.34, 1.07, 1, .022, .022, amber, -2, 0, 1.19),
 ];
 
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
@@ -227,7 +245,8 @@ const coilStalker = [
 ];
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { player, wayfarer: player, playerTool, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker };
+const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
+  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker };
 const modelSize = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length, 0),
 ]));
@@ -239,14 +258,14 @@ export function modelSupported(kind) {
 
 export function writeCloseViewModel(out, offset, actor) {
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
-  const size = kind === "player" || kind === "wayfarer" || kind === "playerTool" ? .82 : 1;
+  const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
+  const size = playerLike ? .82 : 1;
   if (!modelSupported(kind) || !Number.isSafeInteger(offset) || offset < 0 || offset + modelSize[kind] > out.length) return offset;
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(yaw) ||
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
   const moving = Math.max(0, Math.min(1, pace));
   const progress = Math.max(0, Math.min(1, amount));
   const secondary = actor.reduceMotion ? 0 : 1;
-  const playerLike = kind === "player" || kind === "wayfarer" || kind === "playerTool";
   const turnAmount = Number.isFinite(actor.turn) ? Math.max(-1, Math.min(1, actor.turn)) : 0;
   const beat = Math.sin(phase) * moving;
   const heel = Math.cos(phase * 2) * moving;
@@ -265,14 +284,15 @@ export function writeCloseViewModel(out, offset, actor) {
   const jumpSettle = pose === "jump" && progress > .72 ? Math.sin((progress - .72) / .28 * Math.PI) : 0;
   const flinch = pose === "hit" ? progress : 0;
   const fall = pose === "death" ? progress : 0;
+  const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
   const turn = .21 * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch = -.18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump
-    + .09 * jumpSettle - .24 * flinch + 1.52 * fall;
+    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
-    * (1 - fall) - .075 * jumpSettle + (kind === "pallidCrawler" ? .61 : .36) * fall;
+    * (1 - fall) * (1 - knocked) - .075 * jumpSettle + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
   const shift = .14 * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
@@ -314,9 +334,13 @@ export function writeCloseViewModel(out, offset, actor) {
       out[offset++] = nf * cy - nv * sy;
       out[offset++] = nf * sy + nv * cy;
       out[offset++] = nw * cp - nu * sp;
-      out[offset++] = mesh[i + 6] + (.96 - mesh[i + 6]) * flinch * .6;
-      out[offset++] = mesh[i + 7] + (.34 - mesh[i + 7]) * flinch * .6;
-      out[offset++] = mesh[i + 8] + (.23 - mesh[i + 8]) * flinch * .6;
+      const poison = actor.poison ? .55 : 0;
+      const red = mesh[i + 6] + (.32 - mesh[i + 6]) * poison;
+      const green = mesh[i + 7] + (.82 - mesh[i + 7]) * poison;
+      const blue = mesh[i + 8] + (.24 - mesh[i + 8]) * poison;
+      out[offset++] = red + (.96 - red) * flinch * .6;
+      out[offset++] = green + (.34 - green) * flinch * .6;
+      out[offset++] = blue + (.23 - blue) * flinch * .6;
     }
   }
   return offset;

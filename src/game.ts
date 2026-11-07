@@ -1,4 +1,4 @@
-import { ACTION_MOTION } from "./action-motion.ts";
+import { ACTION_MOTION, normalizeAttackVisual, stampAttackVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
@@ -2189,6 +2189,7 @@ export class Game {
       walkPhase: s.playerRuntime.walkPhase || 0,
       attackReadyAt: now + s.playerRuntime.attackCooldown,
       attackUntil: now + (s.playerRuntime.attackMotion || 0),
+      attackVisual: normalizeAttackVisual(s.playerRuntime.attackVisual, Number(s.playerRuntime.attackMotion) || 0),
       meleeUntil: now + (s.playerRuntime.meleeMotion || 0),
       meleeStrike: s.playerRuntime.meleeStrike
         ? { ...s.playerRuntime.meleeStrike }
@@ -3205,6 +3206,7 @@ export class Game {
         walkPhase: this.player.walkPhase,
         attackCooldown: remaining(this.player.attackReadyAt, clock),
         attackMotion: remaining(this.player.attackUntil, clock),
+        attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(this.player.attackUntil, clock)),
         meleeMotion: remaining(this.player.meleeUntil, clock),
         meleeAim: this.player.meleeAim ? { ...this.player.meleeAim } : null,
         meleeStrike: this.player.meleeStrike
@@ -3471,6 +3473,7 @@ export class Game {
       p.meleeUntil =
         0;
     p.meleeStrike = null;
+    p.attackVisual = null;
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
@@ -4421,6 +4424,7 @@ export class Game {
       p.meleeUntil =
         0;
     p.meleeStrike = null;
+    p.attackVisual = null;
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
@@ -6172,6 +6176,7 @@ export class Game {
         this.player.meleeAim || this.save.lastAim,
       );
     this.player.meleeStrike = { ...geometry };
+    stampAttackVisual(this.player, "melee", ACTION_MOTION.meleeMs, { x: geometry.dx, y: geometry.dy });
     const hits = primaryAttackHits(
       this.player,
       [...this.enemies.filter(e=>!e.untargetable&&this.bodyReach(e)), ...this.npcTargets()], // Tim (2026-11-04): the Wayfarer's swing does not reach a creature far below or above (ELEVATION_REACH)
@@ -6247,6 +6252,7 @@ export class Game {
     this.save.lastAim = d;
     this.player.attackReadyAt = now + 360 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
     this.player.attackUntil = now + ACTION_MOTION.toolMs;
+    stampAttackVisual(this.player, "emitter", ACTION_MOTION.toolMs, d);
     this.player.meleeUntil = 0;
     this.player.meleeStrike = null;
     const derived=characterStats(this.save),reachMultiplier=1+derived.attackReach,projectileLifetime=weapon.lifetime*reachMultiplier;
@@ -6538,17 +6544,21 @@ export class Game {
     // and Charged Air the Great Sweep alone (more damage, a wider sweep).
     const blade = this.spellbladeOn(now), air = kind === "great-sweep" && fieldOn(this.save, "charged-air") && this.spellRunning(now), SB = FIELD_PASSIVES.spellblade, CA = FIELD_PASSIVES["charged-air"];
     const fieldMult = (blade ? 1 + SB.damage : 1) * (air ? 1 + CA.damage : 1), fieldGrow = (kind === "great-sweep" && blade ? 1 + SB.reach / B.radius : 1) * (air ? CA.blast : 1);
+    let visualAim = null;
     const fx = (x, y, extra = {}) => { const e = { id: `tool-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x, y, life: B.lifetime, radius: B.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.toolPower() * B.share * (1 + (boxing?.damage || 0)) * fieldMult)), pulseIndex: 0, hits: {}, glyphHost: "tool", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), ...extra }; if (fieldGrow !== 1) e.radius *= fieldGrow; /* release 495: boxing damage and heal; 569: Spellblade and Charged Air */ this.effects.push(e); return e; };
     if (kind === "hammerfall") {
       const reach = B.reach + (boxing ? boxing.stick : 0) + (blade ? SB.reach : 0); // release 495: with Shadow Boxing the hammer reaches farther; 569: Spellblade too
       let { d, foe } = this.brawlerAim(reach + 1); if (!foe && direction && Math.hypot(direction.x, direction.y) > .01) d = projectileDirection(direction.x, direction.y, p.facing);
       const fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
+      visualAim = d;
       fx(at.x, at.y, { delay: B.delay, stun: B.stun });
       if (fieldOn(this.save, "corridor-golem")) this.raiseGolem(at, now + B.delay * 1000); // release 535
     } else fx(cx, cy); // Great Sweep: all round you
     { const main = this.effects[this.effects.length - 1], plan = echoPlan(this.glyphLoadout("tool")); if (plan && main) plan.copies.forEach((c, i) => this.effects.push({ ...main, id: main.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, delay: (main.delay || 0) + BRAWLER_ECHO.toolGap * (i + 1), damage: Math.max(1, Math.round(main.damage * c.share)), imbue: (main.imbue || 0) * c.share, echo: true })); } // release 503: Echo in the tool repeats the blow; 507: one more per Echo glyph, bang, bang, boom
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
-    p.attackUntil = now + 240; this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
+    p.attackUntil = now + 240;
+    stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", 240, visualAim);
+    this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
   }
   // The healing hot springs (landscape.ts HOT_SPRINGS; Tim, 2026-11-05). Called once a frame from update, after every blow of the
@@ -7433,7 +7443,7 @@ export class Game {
       const a = i ? (i % 2 ? 1 : -1) * M.spread * Math.ceil(i / 2) : 0, c = Math.cos(a), sn = Math.sin(a), blade = (this.mirageTurn = ((this.mirageTurn || 0) + 1) % 3);
       this.projectiles.push({ id: `mirage-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x: cx, y: cy, dx: d.x * c - d.y * sn, dy: d.x * sn + d.y * c, speed: M.speed, life: M.out / M.speed + M.back + 1, outFor: M.out / M.speed, damage: Math.max(1, Math.round(base * share * glyphs.mods.damage)), damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce: 0, knife: true, mirage: true, blade: (blade + 2) % 3, born: now + i, grow: M.grow + (air ? CA.grow * 2 : 0), ...(air ? { scale: CA.scale } : {}), ...(i ? { echo: true } : {}) });
     });
-    p.attackUntil = now + 200; this.message = "Mirage of Blades!";
+    p.attackUntil = now + 200; stampAttackVisual(p, "mirage", 200, d); this.message = "Mirage of Blades!";
     return true;
   }
   mirageFoe(range = MIRAGE.range) { const t = this.lockedTarget(), p = this.player; return t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= range ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), range)?.e || null; }
@@ -7512,7 +7522,7 @@ export class Game {
     this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, landed] };
     if (step >= F.punches.length) this.fistRecoverUntil = now + F.recover * 1000;
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each punch
-    p.attackUntil = now + 240; p.meleeUntil = now + 240;
+    p.attackUntil = now + 240; p.meleeUntil = now + 240; stampAttackVisual(p, "fist", 240, d);
     this.message = finisher ? "Uppercut! All three landed." : step === 1 ? (charge >= 1 ? "Dash punch, fully charged!" : "Dash punch.") : step === 2 ? "Jab." : "Uppercut.";
     return true;
   }
