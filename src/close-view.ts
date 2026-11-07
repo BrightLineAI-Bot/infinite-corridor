@@ -1,3 +1,4 @@
+import { ACTION_MOTION } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, writeCloseViewModel } from "./close-view-models.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
@@ -1625,12 +1626,13 @@ function selectProjectedShots(g, q) {
 }
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
-const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkTurn: Math.PI });
+const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkRadians: 5.4, castMs: ACTION_MOTION.castMs, turnRate: 12, strideSpeed: 4, windupMs: 450 });
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
 };
 function buildActorModels(g, draws, n, Q, now, reduce) {
+  now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
   state.admitted.clear();
   if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; }
@@ -1651,30 +1653,48 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const admit = (it, who, kind) => {
     const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], attack = who.attackUntil > now || who.pack?.phase === "strike" || who.pack?.phase === "active" || who.gateAttack?.phase === "strike" || who.gateAttack?.phase === "active";
     let track = state.tracks.get(who);
-    if (!track) track = { x: who.x, y: who.y, yaw: facing ? Math.atan2(facing[1], facing[0]) : CAM.yaw, pace: 0, at: -1, hitAt: -Infinity, hp: who.hp, deathAt: null, actor: null };
+    if (!track) track = { x: who.x, y: who.y, yaw: facing ? Math.atan2(facing[1], facing[0]) : CAM.yaw,
+      phase: Number.isFinite(who.walkPhase) ? who.walkPhase * Math.PI : 0, pace: 0, at: now,
+      hitAt: -Infinity, hp: who.hp, deathAt: null, actor: null, winding: false, attacking: false };
     const dx = who.x - track.x, dy = who.y - track.y, dist = Math.hypot(dx, dy);
-    if (track.at !== now) {
-      if (dist > .005) track.yaw = Math.atan2(dy, dx);
-      else if (facing && (attack || !track.actor)) track.yaw = Math.atan2(facing[1], facing[0]);
-      track.pace = dist > .005 ? 1 : Math.max(0, track.pace - Math.max(0, now - track.at) / 180);
-    }
+    const elapsed = Math.max(0, Math.min(.1, (now - track.at) / 1000));
+    const tool = who === player && attack && !(player.meleeUntil > now);
+    const cast = who === player && player.castUntil > now;
+    const jump = who === player && g.jumpUntil > now;
+    const aim = who === player && attack ? (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim : null;
+    let targetYaw = track.yaw;
+    if (dist > .005) targetYaw = Math.atan2(dy, dx);
+    else if (facing) targetYaw = Math.atan2(facing[1], facing[0]);
+    const ax = aim?.dx ?? aim?.x, ay = aim?.dy ?? aim?.y;
+    if (Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
+    const yawDelta = Math.atan2(Math.sin(targetYaw - track.yaw), Math.cos(targetYaw - track.yaw));
+    const turn = Math.max(-1, Math.min(1, yawDelta));
+    if (attack || dist > 3) track.yaw = targetYaw;
+    else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
+    if (dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
+    const speed = elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
+    track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
     if (who.hp < track.hp) track.hitAt = now;
     const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
     const winding = who !== player && foeWindingUp(who);
-    const tool = who === player && attack && !(player.meleeUntil > now);
-    const aim = tool ? g.save.lastAim : null;
-    const attackPose = tool ? "tool" : "attack";
-    const pose = hit ? "hit" : attack ? attackPose : winding ? "windup" : track.pace ? "walk" : "idle";
+    if (winding && !track.winding) track.windAt = now;
+    if (attack && !track.attacking) track.attackAt = now;
+    const pose = hit ? "hit" : attack ? (tool ? "tool" : "attack") : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
     const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
-    let amount = winding ? .85 : 0;
+    let amount = 0;
+    if (winding) amount = Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
     if (attack) {
-      const duration = tool ? MODEL_TIMING.toolMs : MODEL_TIMING.attackMs;
-      amount = who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / duration) : .6;
-    }
+      const duration = tool ? MODEL_TIMING.toolMs : who === player ? ACTION_MOTION.meleeMs : MODEL_TIMING.attackMs;
+      amount = who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / duration) : Math.min(1, (poseTime - track.attackAt) / duration);
+    } else if (cast) amount = 1 - Math.min(1, (player.castUntil - now) / MODEL_TIMING.castMs);
+    else if (jump) amount = 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
     if (hit) amount = hit;
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
-    const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack) ? "playerTool" : kind, x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, d.lift || 0), yaw: aim && Math.hypot(aim.x, aim.y) > .01 ? Math.atan2(aim.y, aim.x) : track.yaw,
-      phase: reduce ? 0 : (who.walkPhase || now / 160) * MODEL_TIMING.walkTurn, pace: track.pace, pose, amount };
+    const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : kind,
+      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, (d.lift || 0) + (d.jumpLift || 0)), yaw: track.yaw,
+      phase: track.phase, pace: track.pace, pose, amount, turn, reduceMotion: reduce };
+    track.winding = winding;
+    track.attacking = attack;
     if (!append(actor)) return;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
     state.tracks.set(who, track);

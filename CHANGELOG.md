@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 807 — **Readable Close View actions.** Distance-driven walking, committed sword cuts, casting and jump poses, smooth turns, and evolving enemy attack motion.
 - Release 806 — **Proving Ground idle frame.** Restore the launcher prompt so starting a Pentagon test after entering from the game keeps rendering.
 
 Textured structural ceiling bays. Closed corridors gain shallow stone, timber, resin, or conduit ribs with themed textured infill.
