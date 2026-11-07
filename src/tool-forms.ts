@@ -365,7 +365,7 @@ export function drawOrrery(ctx, game, toScreen, s, t, capture = null) {
     const rgb=Number.parseInt(color.slice(1),16);
     const accepted=capture.captureActor({source,x:source.x,y:source.y,lift:radius,height:Math.max(.5,radius*3),
       draw:(c,unit)=>orb(c,[source.x*unit,source.y*unit],unit*radius,color),
-      sample:()=>({kind:'nativeOrb',x:source.x,y:source.y,lift:radius,radius,paletteMap:{[0xb9a6ff]:rgb},pose:'idle',amount:0})});
+      sample:()=>({kind:'nativeOrb',x:source.x,y:source.y,lift:radius,radius,phase:0,pace:0,paletteMap:{[0xb9a6ff]:rgb},pose:'idle',amount:0})});
     if(accepted)orb(ctx,toScreen(source),s*radius,color,false);return accepted;
   };
   if (S?.charge && S.charge.held >= ORRERY.charge.grace) { // the cone of sparks

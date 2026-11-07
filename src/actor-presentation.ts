@@ -2,6 +2,28 @@
 import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.ts';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
+// Player drone: its source sprite carries above the player but its simulation point eases behind.
+// These are presentation anchors only; rockets keep their authoritative spawn, aim and collision path.
+export const PLAYER_DRONE_VISUAL = Object.freeze({ hover:.37, carry:1.34, bob:.04, bobMs:260,
+  portForward:-.10, portHeight:-.20, settleSeconds:.12, maxLaunchOffset:64 });
+export function playerDroneVisualAnchor(player, drone, { carrying=false, lift=0, support=0, now=0, quiet=false } = {}) {
+  if(!player||!drone||![player.x,player.y,drone.x,drone.y,lift,support,now].every(Number.isFinite))return null;
+  const V=PLAYER_DRONE_VISUAL,yaw=player.facing==='left'?Math.PI:0,x=(carrying?player.x:drone.x)+.5,y=(carrying?player.y:drone.y)+.82;
+  const z=support+lift+(carrying?V.carry:V.hover)-(quiet?0:Math.sin(now/V.bobMs)*V.bob);
+  return {x,y,z,yaw,muzzle:{x:x+Math.cos(yaw)*V.portForward,y:y+Math.sin(yaw)*V.portForward,z:z+V.portHeight}};
+}
+export function readProjectileVisualLaunch(raw) {
+  return raw&&typeof raw==='object'&&!Array.isArray(raw)&&raw.v===1&&['dx','dy','dz'].every(k=>Number.isFinite(raw[k])&&Math.abs(raw[k])<=PLAYER_DRONE_VISUAL.maxLaunchOffset)?raw:null;
+}
+export function projectileLaunchMetadata(shot, anchor, support=0) {
+  if(!shot||!anchor||![shot.x,shot.y,anchor.x,anchor.y,anchor.z,support].every(Number.isFinite))return null;
+  return readProjectileVisualLaunch({v:1,dx:anchor.x-shot.x,dy:anchor.y-shot.y,dz:anchor.z-support-shotVisualHeight(shot)});
+}
+export function projectileVisualPoint(shot, support=0, x=shot.x, y=shot.y, age=shot.age) {
+  const launch=readProjectileVisualLaunch(shot.visualLaunch),t=Number.isFinite(age)&&age>=0?Math.min(1,age/PLAYER_DRONE_VISUAL.settleSeconds):1,w=launch?1-t*t*(3-2*t):0;
+  return {x:x+(launch?.dx||0)*w,y:y+(launch?.dy||0)*w,z:finite(support,0)+shotVisualHeight(shot)+(launch?.dz||0)*w};
+}
+
 const profile = (bodyLift, head, shot, action, decoration = true, extra = {}) => Object.freeze({ bodyLift, head, shot, action, decoration, ...extra });
 const foundryProfiles = Object.fromEntries(Object.entries(FOUNDRY_BASE_BODIES).map(([kind,body])=>[kind,profile(0,FOUNDRY_MODEL_METADATA[body].headZ,FOUNDRY_MODEL_METADATA[body].actionZ,'foundry')]));
 export const ACTOR_PRESENTATION = Object.freeze({

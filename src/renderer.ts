@@ -19,7 +19,7 @@ import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
 import { TREES } from "./trees.ts";
 import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
-import { actorPresentation } from "./actor-presentation.ts";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
@@ -2830,7 +2830,7 @@ export function render(ctx, g, w, h, now) {
   const roofUnder = standingOnRoof(g, mw);
   if(captureDrone){
     const source=g.droneAt,clock=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),carry=!!g.mechBoosting;
-    const x=carry?p.x:source.x,y=carry?p.y:source.y,rawY=y-(carry?.97:0),lift=(playerDraw.lift||0)+(playerDraw.jumpLift||0),sample=()=>({kind:'corridorDrone',x:x+.5,y:y+.82,supportX:p.x+.5,supportY:p.y+.75,lift:lift+(carry?1.34:.37)-(quiet?0:Math.sin(clock/260)*.04),pose:'idle',amount:0,carrying:carry,yaw:p.facing==='left'?Math.PI:0});
+    const x=carry?p.x:source.x,y=carry?p.y:source.y,rawY=y-(carry?.97:0),lift=(playerDraw.lift||0)+(playerDraw.jumpLift||0),sample=()=>{const a=playerDroneVisualAnchor(p,source,{carrying:carry,lift,now:clock,quiet});return a?{kind:'corridorDrone',x:a.x,y:a.y,supportX:p.x+.5,supportY:p.y+.75,lift:a.z,pose:'idle',phase:0,pace:0,amount:0,carrying:carry,yaw:a.yaw}:null;};
     draws.push({x,y,lift,nativeSupportX:p.x+.5,nativeSupportY:p.y+.75,nativeHeight:2.1,nativeAux:{source,sample},nativeEffects:g.droneHealFx>0,
       nativeFloor:()=>{ctx.fillStyle='#00000033';ctx.beginPath();ctx.ellipse((x+.5)*s,(y+.82)*s,s*.34*1.1,s*.34*.3,0,0,7);ctx.fill();},
       fn:()=>drawDrone(ctx,x,rawY,s,p.facing,quiet?0:clock,carry,g.droneHealFx||0),
