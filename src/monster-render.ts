@@ -1559,12 +1559,14 @@ export function drawPackMonster(ctx, e, s, now, facing = "down") {
   return drawn;
 }
 // Stars circling over a staggered boss, and a cracked ring at its feet that closes as it recovers.
-function drawDazed(ctx, e, s, now, stun) {
+export function drawDazed(ctx, e, s, now, stun, layer = 'all', head = null) {
   const scale = Math.max(.6, Number(e.scale) || 1), k = (e.x + .5) * s, b = (e.y + .82) * s, top = b - s * scale * 1.15, t = now / 1000, r = s * scale * .42;
   ctx.save();
+  if (layer !== 'body') {
   ctx.strokeStyle = `rgba(255,226,140,${.55 * stun})`; ctx.lineWidth = Math.max(2, s * .06); ctx.setLineDash([s * .18, s * .1]);
   ctx.beginPath(); ctx.ellipse(k, b, s * scale * .7, s * scale * .22, 0, 0, Math.PI * 2 * stun); ctx.stroke(); ctx.setLineDash([]);
-  for (let i = 0; i < 4; i++) { const a = t * 4 + i * Math.PI / 2, x = k + Math.cos(a) * r, y = top + Math.sin(a) * r * .3, z = s * .1 * (1 + .25 * Math.sin(a));
+  }
+  if (layer !== 'floor') for (let i = 0; i < 4; i++) { const a = t * 4 + i * Math.PI / 2, x = k + Math.cos(a) * r, y = (head == null ? top : b - head * s) + Math.sin(a) * r * .3, z = s * .1 * (1 + .25 * Math.sin(a));
     ctx.fillStyle = i % 2 ? "#fff3b0" : "#ffd25a"; ctx.beginPath(); for (let j = 0; j < 10; j++) { const q = j * Math.PI / 5 - Math.PI / 2, rr = j % 2 ? z * .45 : z; ctx.lineTo(x + Math.cos(q) * rr, y + Math.sin(q) * rr); } ctx.closePath(); ctx.fill(); }
   ctx.restore();
 }

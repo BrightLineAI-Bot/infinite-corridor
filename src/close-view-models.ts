@@ -1,61 +1,13 @@
-// Rigid parts are baked once. Local +X is forward, +Y is lateral, and +Z is up.
-// Mesh colors are RGB in [0, 1]. Close View supplies world-space lighting.
-export const MODEL_FLOATS = 9;
-
-function prism(sides, taper = 1) {
-  const low = [], high = [], faces = [];
-  for (let i = 0; i < sides; i++) {
-    const a = (i + .5) * 2 * Math.PI / sides;
-    low.push([Math.cos(a), Math.sin(a), -1]);
-    high.push([Math.cos(a) * taper, Math.sin(a) * taper, 1]);
-  }
-  for (let i = 0; i < sides; i++) {
-    const j = (i + 1) % sides;
-    faces.push([low[i], low[j], high[j]], [low[i], high[j], high[i]]);
-  }
-  for (let i = 1; i < sides - 1; i++) {
-    faces.push([low[0], low[i + 1], low[i]], [high[0], high[i], high[i + 1]]);
-  }
-  return faces;
-}
-
-const box = prism(4), bevel = prism(6, .81), flare = prism(6, 1.45), taper = prism(4, .18);
-const square = Math.SQRT2;
+// Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
+import { MESH_FLOATS, box, bevel, flare, taper, ellipsoid, ringLoft, membrane, part, block } from './close-view-mesh.ts';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
+export { MESH_FLOATS } from './close-view-mesh.ts';
+export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
 const ash = 0x87503f, coal = 0x372927, ember = 0xf3a55c;
 const bark = 0x626c50, darkBark = 0x373e2d, root = 0xb6a06b;
 const bone = 0xb7ad91, sinew = 0x625550, crawlerEye = 0xd88f80;
 const plate = 0x78434a, iron = 0x3a2a32, brass = 0xc6a46f;
-
-function part(shape, x, y, z, sx, sy, sz, color, swing = 0, px = x, pz = z, rest = 0) {
-  const mesh = new Float32Array(shape.length * 3 * MODEL_FLOATS);
-  const cos = Math.cos(rest), sin = Math.sin(rest);
-  let k = 0;
-  for (const triangle of shape) {
-    const points = triangle.map(([u, v, w]) => [x + u * sx, y + v * sy, z + w * sz]);
-    const [a, b, c] = points;
-    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
-    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
-    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    const length = Math.hypot(nx, ny, nz);
-    for (const [u, v, w] of points) {
-      mesh[k++] = (u - px) * cos + (w - pz) * sin;
-      mesh[k++] = v;
-      mesh[k++] = (w - pz) * cos - (u - px) * sin;
-      mesh[k++] = (nx * cos + nz * sin) / length;
-      mesh[k++] = ny / length;
-      mesh[k++] = (nz * cos - nx * sin) / length;
-      mesh[k++] = (color >> 16) / 255;
-      mesh[k++] = ((color >> 8) & 255) / 255;
-      mesh[k++] = (color & 255) / 255;
-    }
-  }
-  return { mesh, swing, px, pz };
-}
-
-function block(x, y, z, sx, sy, sz, color, swing, px, pz, rest) {
-  return part(box, x, y, z, sx * square, sy * square, sz, color, swing, px, pz, rest);
-}
 
 // Swing groups are left/right leg (+/-1), left/right arm (+/-2), cape (3), coil segments (4/5), and hound tail (6).
 // The hood's opening faces +X. Its rolled edge frames a recessed face.
@@ -84,8 +36,11 @@ const frontPatch = [
 const coat = 0x303934, coatHem = 0x28312e, hoodLiningGreen = 0x46594c;
 const faceShadow = 0x232522, amber = 0xf3a55c, satchelLeather = 0x67533b;
 const player = [
-  part(flare, 0, 0, 1.076, .129, .166, .240, coat),
-  part(bevel, -.034, 0, .723, .201, .255, .237, coatHem, 3, -.035, .933, .08),
+  // Rounded shoulder-to-waist loft and three separate coat panels replace the old stacked block torso.
+  part(ringLoft([[0,.14,-.24],[.01,.20,-.06],[-.02,.17,.18],[-.04,.12,.29]], 6), 0, 0, 1.02, 1, 1, 1, coat, 0, 0, 1.02, 0, true),
+  part(membrane([[0,-.03,.15],[-.05,-.20,-.31],[-.14,-.06,-.42],[.02,.01,-.13]]), -.02, 0, .83, 1, 1, 1, coatHem, 3, -.02, .98),
+  part(membrane([[0,-.02,.13],[-.09,.02,-.34],[-.02,.19,-.39],[.04,.05,-.10]]), -.03, 0, .82, 1, 1, 1, coatHem, 3, -.03, .98),
+  part(membrane([[0,-.12,.11],[-.10,-.26,-.27],[-.03,-.18,-.40],[.05,-.05,-.10]]), -.05, 0, .82, 1, 1, 1, cloth, 3, -.05, .98),
   part(hoodShell, 0, 0, 0, 1, 1, 1, cloth),
   part(hoodLining, 0, 0, 0, 1, 1, 1, hoodLiningGreen),
   part(hoodFace, 0, 0, 0, 1, 1, 1, faceShadow),
@@ -95,10 +50,9 @@ const player = [
 for (const side of [-1, 1]) {
   player.push(
     part(frontPatch, .108, side * .048, 1.464, 1, .022, .011, amber),
-    part(bevel, -.005, side * .115, .353, .116, .089, .353, coat, side, 0, .71),
+    part(bevel, -.005, side * .115, .353, .104, .079, .353, coat, side, 0, .71, 0, true),
     block(.044, side * .115, .076, .12, .077, .076, leather, side, 0, .71),
-    part(bevel, -.014, side * .25, .984, .083, .092, .211, coat, side * 2, 0, 1.19, -.14),
-    block(.045, side * .25, .759, .068, .067, .087, leather, side * 2, 0, 1.19),
+    part(bevel, -.014, side * .25, .984, .073, .082, .211, coat, side * 2, 0, 1.19, -.14, true),
   );
 }
 player.push(
@@ -246,11 +200,17 @@ const coilStalker = [
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
-  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker };
-const modelSize = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
-  kind, parts.reduce((size, item) => size + item.mesh.length, 0),
+  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS };
+const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
+  kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
-export const MODEL_MAX_VERTICES = Math.max(...Object.values(modelSize)) / MODEL_FLOATS;
+export const MODEL_ATTACHMENT_TRIANGLES = 8, MODEL_MAX_ATTACHMENTS = 3;
+export const MODEL_MAX_VERTICES = 256 * 3;
+
+export function modelTriangleCount(kind) { return modelSupported(kind) ? modelVertices[kind] / 3 : 0; }
+export function modelSupportsAttachments(kind, count = 0) {
+  return modelSupported(kind) && Number.isSafeInteger(count) && count >= 0 && count <= MODEL_MAX_ATTACHMENTS && modelTriangleCount(kind) + count * MODEL_ATTACHMENT_TRIANGLES <= 256;
+}
 
 export function modelSupported(kind) {
   return Object.hasOwn(models, kind);
@@ -259,12 +219,17 @@ export function modelSupported(kind) {
 export function writeCloseViewModel(out, offset, actor) {
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
-  const size = playerLike ? .82 : 1;
-  if (!modelSupported(kind) || !Number.isSafeInteger(offset) || offset < 0 || offset + modelSize[kind] > out.length) return offset;
+  const actorScale = Number.isFinite(actor.scale) ? Math.max(.25, Math.min(4, actor.scale)) : 1;
+  const size = (playerLike ? .82 : 1) * actorScale;
+  const attachments = Array.isArray(actor.attachments) ? actor.attachments.slice(0, MODEL_MAX_ATTACHMENTS).filter((q) => q && Number.isFinite(q.x) && Number.isFinite(q.y) && Number.isFinite(q.z)) : [];
+  const needed = (modelVertices[kind] + attachments.length * MODEL_ATTACHMENT_TRIANGLES * 3) * MODEL_FLOATS;
+  if (!modelSupported(kind) || !modelSupportsAttachments(kind, attachments.length) || !Number.isSafeInteger(offset) || offset < 0 || offset + needed > out.length) return offset;
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(yaw) ||
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
   const moving = Math.max(0, Math.min(1, pace));
   const progress = Math.max(0, Math.min(1, amount));
+  const alpha = Number.isFinite(actor.alpha) ? Math.max(0, Math.min(1, actor.alpha)) : 1;
+  const stagger = Number.isFinite(actor.stagger) ? Math.max(0, Math.min(1, actor.stagger)) : 0;
   const secondary = actor.reduceMotion ? 0 : 1;
   const turnAmount = Number.isFinite(actor.turn) ? Math.max(-1, Math.min(1, actor.turn)) : 0;
   const beat = Math.sin(phase) * moving;
@@ -288,11 +253,11 @@ export function writeCloseViewModel(out, offset, actor) {
   const turnLean = turnAmount * .13 * secondary;
   const turn = .21 * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = -.18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump
+  const pitch = -.18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
-    * (1 - fall) * (1 - knocked) - .075 * jumpSettle + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
+    * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
   const shift = .14 * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
@@ -304,6 +269,9 @@ export function writeCloseViewModel(out, offset, actor) {
     if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup)
       + Math.sign(turnAmount || 1) * .04 * Math.abs(turnAmount) * secondary;
     else if (swing === 6) angle = .19 * beat - .23 * windup + .24 * strike;
+    else if (Math.abs(swing) === 7) angle = Math.sign(swing) * ((.10 * Math.sin(phase * 4) + .25 * beat) * secondary + .34 * windup - .72 * strike);
+    else if (swing === 8) angle = .08 * Math.sin(phase * 1.7) * secondary + .12 * windup - .20 * strike;
+    else if (swing >= 10) angle = Math.sin(phase * 1.25 + swing * .83) * (.08 + moving * .08) * secondary + .16 * windup - .22 * strike;
     else if (hound && swing) angle = -Math.sign(swing) * beat * .50
       + (Math.abs(swing) === 2 ? .27 * windup - .48 * strike + .28 * jump : -.16 * windup + .24 * strike - .34 * jump);
     else if (swing === 3) angle = -.16 * moving + .11 * beat + .24 * strike - .13 * jump + .08 * turnLean;
@@ -316,7 +284,7 @@ export function writeCloseViewModel(out, offset, actor) {
     const cutYaw = playerLike && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = playerLike && swing === -2 ? -.25 : 0;
-    for (let i = 0; i < mesh.length; i += MODEL_FLOATS) {
+    for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
       const forward = mesh[i] * c + mesh[i + 2] * s + px;
       const lateral = mesh[i + 1] + coilSway;
       const u = forward * cc - (lateral - pivotY) * sc;
@@ -341,7 +309,20 @@ export function writeCloseViewModel(out, offset, actor) {
       out[offset++] = red + (.96 - red) * flinch * .6;
       out[offset++] = green + (.34 - green) * flinch * .6;
       out[offset++] = blue + (.23 - blue) * flinch * .6;
+      out[offset++] = alpha;
     }
+  }
+  for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, alpha, actorScale);
+  return offset;
+}
+
+function writeAttachment(out, offset, attachment, alpha, scale) {
+  const r = .075 * scale, top = [0, 0, r], bottom = [0, 0, -r], ring = [[r,0,0],[0,r,0],[-r,0,0],[0,-r,0]], color = Number.isSafeInteger(attachment.color) ? attachment.color : 0x9ad9d2;
+  const triangles = [];
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; triangles.push([top,ring[i],ring[j]],[bottom,ring[j],ring[i]]); }
+  for (const tri of triangles) {
+    const [a,b,c] = tri, ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2],nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,n=Math.hypot(nx,ny,nz)||1;
+    for (const p of tri) { out[offset++]=attachment.x+p[0];out[offset++]=attachment.y+p[1];out[offset++]=attachment.z+p[2];out[offset++]=nx/n;out[offset++]=ny/n;out[offset++]=nz/n;out[offset++]=(color>>16)/255;out[offset++]=((color>>8)&255)/255;out[offset++]=(color&255)/255;out[offset++]=alpha; }
   }
   return offset;
 }
