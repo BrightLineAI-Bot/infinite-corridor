@@ -27,11 +27,11 @@ Finish and publish the current animation, spacious-interior, elevation, drone an
 - [x] Build and release consistency for r810; 70 Close View tests, including all four new traversal fixtures through mocked WebGL2.
 - [x] Fresh Astra source review of live r805 commit `9122ca315766a22cb090bd492d392c87066da373` through r810 source `bfe23725ff98b1e9e6091356694c8e340d5f4b5c`: no blocking issues found. Review covers only that named source candidate; coordinator must verify final candidate consistency.
 - [x] Complete r810 CI and merge: PR #458, main `8ed20b74216b6137856641ea8a896328ff520f7f`. Its tree `04d7660377625a7c60fa05c32a09c53925259ce7` exactly matches the reviewed source tree.
-- [ ] Complete r810 Preview (`r810-8ed20b74216b`, run `42386790754`).
-- [ ] Verify real hosted GPU rendering, traversal and camera recovery for the repaired candidate.
+- [x] Complete r810 Preview (`r810-8ed20b74216b`, run `42386790754`).
+- [x] Verify real hosted GPU rendering for all four new traversal scenarios; walk the ramp in both directions, jump onto the first platform, engage indoor drone boost, and orbit/walk in the v9 Pentagon. No r810 console errors/warnings were captured. Legacy hive tight-camera centering/recovery was checked on the identical r809 camera code.
 - [x] Save this versioned manifest/release-status record in the working branch; carry it into the first independent-pass PR. The first publication uses the already reviewed r810 source candidate.
-- [ ] Re-read live identity and exact successful preview candidate; report and resolve review/QA blockers.
-- [ ] Dispatch the approved Publish candidate using the normal workflow approval prompt when required.
+- [x] Re-read live identity and exact successful preview candidate; report and resolve review/QA blockers. Live was r805; candidate/source tree matched the reviewed r810 merge exactly. No blocking findings remained.
+- [x] Dispatch the approved Publish candidate using the normal workflow approval path: run `42388584029`, candidate `r810-8ed20b74216b`. Artifact verification passed; deployment is in progress.
 - [ ] Verify workflow success, live identity and in-game System release label.
 - [ ] Record the verified publication in the release log and this ledger.
 
@@ -44,7 +44,7 @@ Finish and publish the current animation, spacious-interior, elevation, drone an
 | 807 | #455 / `r807-3228675c72d5` | Preview completed; hosted hive/arcology checks exercised animation and camera. |
 | 808 | #456 / `r808-ca55b4cd807c` | Workflow completed; hosted terrain rendering exposed the undefined actor-index blocker. Superseded by repair in r810. |
 | 809 | #457 / `r809-9bae1bce42e2` | Preview completed; camera centering checked on a legacy hive. Shares the terrain blocker repaired in r810. |
-| 810 | #458 / `r810-8ed20b74216b` | CI passed and merged; Preview and publication pending. Reviewed source tree equals the merge tree. |
+| 810 | #458 / `r810-8ed20b74216b` | CI, Preview, review and hosted GPU checks passed. Publish run `42388584029` is deploying. |
 
 ## Independent pass A — collision and traversal
 
@@ -53,6 +53,8 @@ Status: queued after the current delivery.
 Queued reproduction from the source audit: `generateBuildingFloor("AUDIT0", "building:AUDIT0:1:1:keep:4:f4", 3)` puts `building-stair-down` at blocked tile `(6,5)`, with arrival `(6,4)`. Adjacent Act remains in range. Investigate the visual/collision defect; a repair after v3 publication must preserve existing version pins and generator outputs or introduce a new generation version.
 
 Read-only preparation reproduced actual collision and interaction: movement toward the ladder stops at `y=4.1152`, while adjacent `interact("descend", id)` succeeds to floor 3. A 600-map sample (50 seeds × three styles × four floors) found 269/450 down ladders on blocked tiles, with zero actionable objects lacking a reachable interaction approach. Only down ladders were affected. The connector helper advances before opening its starting cell. Regression targets: the down-ladder tile itself is open and walk-reachable on the new version, stair alignment stays valid, and all older version digests remain unchanged.
+
+Hosted traversal-lab preparation also showed nearby enemies interrupting inspection, damaging the scratch player and sometimes returning it to the original floor entry. Make the new traversal-focused fixtures quiet/deterministic while keeping their real generated geometry and the separate combat scenarios intact.
 
 - [ ] Check wall/corner sliding, diagonal movement, door widths and locked boundaries in old and new interiors.
 - [ ] Check ramps in both directions, terrace edges, optional step/platform approaches, holes and grand-hall shafts.
@@ -97,7 +99,7 @@ Status: queued.
 
 | Pass | Findings / fix | Branch / PR | Tests and hosted evidence | Reviewed candidate / reviewer | Publish run and live identity | State |
 |---|---|---|---|---|---|---|
-| Current delivery | Animation, rooms/elevation/drone, controls and GPU terrain repair | #454–#458 | Focused checks above; final hosted repair check pending | Astra, r805→r810 source: no blockers | Pending | In progress |
+| Current delivery | Animation, rooms/elevation/drone, controls and GPU terrain repair | #454–#458 | CI, Preview and hosted GPU repair checks passed | Astra, r805→r810 source: no blockers; merge-tree equality verified | `42388584029`, deploying `r810-8ed20b74216b` | In progress |
 | A | Blocked down-ladder landing, reproducible across styles | Pending | 600-map read-only scan and actual scratch collision/Act reproduction | Pending | Pending | Queued |
 | B | Pending | Pending | Pending | Pending | Pending | Queued |
 | C | Pending | Pending | Pending | Pending | Pending | Queued |

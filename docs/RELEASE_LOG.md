@@ -21,7 +21,7 @@ Taken at merge time: main's release + 1. With r810 on main, the next game change
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 810 | Codex | `claude/close-view-terrain-render-fix` | Repair heightfield actor projection and exercise full GPU frames | Merged (#458). Candidate r810-8ed20b74216b; Preview verification pending. Not published. |
+| 810 | Codex | `claude/close-view-terrain-render-fix` | Repair heightfield actor projection and exercise full GPU frames | Merged (#458). Previewed and GPU-checked as r810-8ed20b74216b. Publish run 42388584029 deploying. |
 | 809 | Codex | `claude/close-view-control-feel` | Tight-space camera framing and near-ready attack input | Merged (#457). Preview candidate r809-9bae1bce42e2. Shares the heightfield render blocker found in r808; superseded by r810. |
 | 808 | Codex | `claude/vertical-dungeon-interiors` | Versioned spacious rooms, indoor ramps, jump platforms and drone traversal | Merged (#456). Preview artifact r808-ca55b4cd807c completed; hosted heightfield render blocker found, superseded by r810. |
 | 807 | Codex | `claude/close-view-action-animation` | Improve walking, cuts, casting, jump and enemy poses | Merged (#455). Previewed as r807-3228675c72d5. |
