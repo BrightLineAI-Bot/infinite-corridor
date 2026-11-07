@@ -35,3 +35,6 @@ The owner approved the style/design of the first textured hybrid preview, but fo
 
 
 Implemented owner refinement: bind-space frame width .80/depth .82, wrist/palm/thumb-root scale .62, unchanged world height and source feet/animation stroke. Amber lenses sit behind real mask apertures; all original silver mask/white hair remains source-colored. Body, normals and both sockets share knockdown transforms; pause-adjusted idle and accepted-action geometry survive actual Game pause/resume. Twenty-five focused converter/runtime/GL/actual-renderer checks passed. CPU full-body and enlarged-head views confirm revised proportions and amber apertures across front/quarter/side; hosted GPU acceptance remains pending.
+
+
+Packaging rehearsal reproduced a parent-reference rejection in the imported loader. The loader now derives its application root from the terminal src module path, preserves the exact hosted/preview prefix and clears only module query/hash. Metadata, binary and texture requests stay inside that application. Unsupported module layouts refuse loading and retain fallback. The preview validator, workflows and release-script guards are unchanged. Pure URL tests cover hosted, nested preview and file URLs without network; focused URL/runtime/actual-renderer checks pass26/26.

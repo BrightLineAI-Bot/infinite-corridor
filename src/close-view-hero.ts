@@ -5,6 +5,15 @@ const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)
 let loaded = null, loading = null;
 export const getCloseViewHeroAsset = () => loaded;
 
+export function closeViewHeroAssetUrl(moduleUrl = import.meta.url) {
+  const url = new URL(moduleUrl), match = /^(.*\/)src\/[^/]+\.(?:js|ts)$/.exec(url.pathname);
+  if (!match) throw new Error('Unsupported hero module URL layout');
+  url.pathname = `${match[1]}assets/wayfarer/rogue-v2.json`;
+  url.search = '';
+  url.hash = '';
+  return url;
+}
+
 export function decodeCloseViewHero(meta, binary, images = []) {
   if (meta?.version !== 2 || !(binary instanceof ArrayBuffer) || !Number.isInteger(meta.vertexCount) || meta.vertexCount < 1 || meta.vertexCount > 65535 || !Number.isInteger(meta.indexCount) || meta.indexCount % 3 || meta.indexCount > HERO_BODY_TRIANGLES * 3) throw new Error('Invalid hero header');
   const arrays = Object.create(null), types = { f32: Float32Array, u16: Uint16Array, u8: Uint8Array };
@@ -55,7 +64,7 @@ export function loadCloseViewHero() {
   if (typeof window === 'undefined' || typeof fetch !== 'function') return Promise.resolve(null);
   loading = (async () => {
     try {
-      const url = new URL('../assets/wayfarer/rogue-v2.json', import.meta.url), r = await fetch(url); if (!r.ok) return null;
+      const url = closeViewHeroAssetUrl(), r = await fetch(url); if (!r.ok) return null;
       const meta = await r.json(), b = await fetch(new URL(meta.binary, url)); if (!b.ok) return null;
       const bytes = await b.arrayBuffer(), images = [];
       for (const t of meta.textures) { const r = await fetch(new URL(t.file, url)); if (!r.ok) throw new Error('Hero texture unavailable'); const blob = await r.blob(); let image;
