@@ -1,6 +1,7 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
 import { MESH_FLOATS, box, bevel, flare, taper, ellipsoid, ringLoft, membrane, part, block } from './close-view-mesh.ts';
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
+import { CLOSE_VIEW_FOUNDRY_MODELS, foundryPaletteColor } from './close-view-foundry-models.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -200,7 +201,7 @@ const coilStalker = [
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
-  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS };
+  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
@@ -261,9 +262,12 @@ export function writeCloseViewModel(out, offset, actor) {
   const shift = .14 * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
+  const foundry = kind.startsWith('foundry-');
   for (const { mesh, swing, px, pz } of models[kind]) {
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
+      : swing >= 40 && swing < 60
+        ? Math.sin(phase * 1.3 - swing * .57) * (.018 + .045 * moving) * secondary * (1 - fall)
       : 0;
     let angle = 0;
     if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup)
@@ -271,6 +275,13 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (swing === 6) angle = .19 * beat - .23 * windup + .24 * strike;
     else if (Math.abs(swing) === 7) angle = Math.sign(swing) * ((.10 * Math.sin(phase * 4) + .25 * beat) * secondary + .34 * windup - .72 * strike);
     else if (swing === 8) angle = .08 * Math.sin(phase * 1.7) * secondary + .12 * windup - .20 * strike;
+    else if (swing >= 70) angle = Math.sin(phase + swing * 1.3) * (.08 + .28 * moving) * secondary + (swing >= 73 ? .30 : .16) * windup - (swing >= 73 ? .52 : .30) * strike;
+    else if (swing >= 60) angle = Math.sin(phase * 1.1 + swing * 1.17) * .10 * secondary + .24 * windup - .42 * strike;
+    else if (swing >= 50) angle = Math.sin(phase * 1.25 + swing * .81) * (.08 + .08 * moving) * secondary + .18 * windup - .28 * strike;
+    else if (swing >= 40) angle = Math.sin(phase * 1.5 - swing * .65) * (.08 + .18 * moving) * secondary + .18 * windup - .34 * strike;
+    else if (swing >= 30) angle = Math.sin(phase * (swing < 32 ? 1.4 : 1.8) + swing) * .12 * secondary + .22 * windup - .38 * strike;
+    else if (swing >= 20) angle = (swing === 24 ? Math.sin(phase * 1.4) * .16 * secondary : Math.sin(phase + swing * 1.57) * (.12 + .35 * moving) * secondary)
+      + (swing < 22 ? .25 * windup - .48 * strike : -.12 * windup + .22 * strike);
     else if (swing >= 10) angle = Math.sin(phase * 1.25 + swing * .83) * (.08 + moving * .08) * secondary + .16 * windup - .22 * strike;
     else if (hound && swing) angle = -Math.sign(swing) * beat * .50
       + (Math.abs(swing) === 2 ? .27 * windup - .48 * strike + .28 * jump : -.16 * windup + .24 * strike - .34 * jump);
@@ -303,9 +314,11 @@ export function writeCloseViewModel(out, offset, actor) {
       out[offset++] = nf * sy + nv * cy;
       out[offset++] = nw * cp - nu * sp;
       const poison = actor.poison ? .55 : 0;
-      const red = mesh[i + 6] + (.32 - mesh[i + 6]) * poison;
-      const green = mesh[i + 7] + (.82 - mesh[i + 7]) * poison;
-      const blue = mesh[i + 8] + (.24 - mesh[i + 8]) * poison;
+      let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
+      if(foundry){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=foundryPaletteColor(rgb,actor.palette);sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}
+      const red = sourceRed + (.32 - sourceRed) * poison;
+      const green = sourceGreen + (.82 - sourceGreen) * poison;
+      const blue = sourceBlue + (.24 - sourceBlue) * poison;
       out[offset++] = red + (.96 - red) * flinch * .6;
       out[offset++] = green + (.34 - green) * flinch * .6;
       out[offset++] = blue + (.23 - blue) * flinch * .6;
