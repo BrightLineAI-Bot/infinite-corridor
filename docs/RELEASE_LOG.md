@@ -15,14 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r818 on main, this PR takes r819.
+Taken at merge time: main's release + 1. With r819 on main, this PR takes r820.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| — | Codex | `claude/wayfarer-rogue-asset` | Imported protective Wayfarer with masked head, source rig and textured palette | Source/build checks passed; integration review and hosted verification pending. Assign main+1 only when ready. |
-| 819 | Codex | `claude/mobile-close-view-camera` | Cramped-space follow, pause ownership and reachable target lock | Source review cleared after two fixes; final consistency/build/CI and hosted acceptance pending. |
+| 820 | Codex | `claude/wayfarer-rogue-asset` | Imported protective masked Wayfarer, source rig, adult proportions and amber eyes | Source art and25 focused checks passed; final consistency/build/CI, independent review and hosted GPU acceptance pending. |
+| 819 | Codex | `claude/mobile-close-view-camera` / #468 | Cramped-space camera, pause ownership and reachable target lock | Merged as6d227b4301b4e8fabaa2437250274e913fad2eb8. Exact CI42425201941 passed; fresh Astra review cleared ce5ae998/treeadbe681794bab916676c153f6184d5985fd978ba. Preview42426203941 running; not yet published. |
 | 818 | Codex | `claude/close-view-character-forms` / #467 | Actual player forms, companions, travelers, launch ports and startup readiness | Published as r818-791b1eff716d. CI42422197065, Preview42423282390 and Publish42424762364 succeeded; live identity and actual Options → System verified. Astra review (816→818): no blockers. |
 | 817 | Codex | `claude/close-view-foundry-assets` | Six native Foundry morphologies with exact palette, appendage and attack contracts | Merged (#466) as f75cc54ad71cfa3d6c7e06c1c7dabd113600956c. Approved runner isolation preserves every assertion/threshold/output and workflows. Exact-head CI42420980003 passed at3f63019b; Astra delta review cleared. Preview42422053055 succeeded as r817-f75cc54ad71c; nine hosted Foundry cases reviewed without console errors. Published in r818; r817 was not published independently. |
 | 816 | Codex | `claude/close-view-pentagon-assets` | Complete non-Foundry native creature roster and authored attack readability | Merged (#465). Published as r816-093cff214c39. CI42412608347, Preview42413362028 and Publish42416350924 succeeded; live identity and Options → System verified. Astra review (814→816): no blockers after torso/tube corrections. A cold-launch UI initialization race was observed and corrected in the following character candidate. |

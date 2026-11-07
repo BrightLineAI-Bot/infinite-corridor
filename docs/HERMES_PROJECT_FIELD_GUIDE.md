@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 820: imported protective Wayfarer
+
+**CODE:** A reproducible CC0 Quaternius Rogue body/rig with the central Cleric masked head replaces only the normal player when its asset/textures are ready. The original hood is removed and its collar sealed; the head alone is seated/scaled to .40. Bind-space frame width .80/depth .82 and hands .62 retain world height and original feet/animation translations. Green/gray clothing, protected sleeves/gloves, leather and bronze retain original texture detail. Two small amber lenses behind actual mask apertures preserve silver mask and white hair. Existing gait and accepted action clocks drive source animation or explicit missing-clip layers; sampled sockets retain actual tool size. Whole-body knockdown and pause-adjusted idle/action poses preserve both gear sockets.
+
+**CODE:** The hero uses3,140 triangles/3,583 indexed vertices,85,992 dynamic bytes/frame and two original1024 texture layers (~10.67MiB with mips); fitted bind state adds~177KB once. Two indexed draws share existing silhouette/body phases. Source archives, CC0 provenance and deterministic offline converter are documented; both workers precache modules/assets. Unavailable textures/context keep the working procedural model.
+
+**BOUNDARY:** One actual normal player occupies one existing8/14/20 actor slot. Native robot, empowered suit, Iron Fists, Ember, clones, creatures and companions retain actual-state routing. Animation never moves gameplay coordinates, triggers attacks or rewrites accepted aim. Ordinary model format/caps, hit/AI rules, schema14, unknown fields, pins, generators, exact game clocks, reduced motion and Proving Ground isolation remain. CPU diagnostics/tests are not hosted GPU acceptance or physical-phone performance measurements.
+
 ## Release 819: camera clearance and lock comfort
 
 **CODE:** Centered boom and full shoulder-line clearance stop corner pumping; compressed-space framing centers the Wayfarer. Runtime-only Game pause bookkeeping freezes camera turns even without render/input callbacks. Held camera-thumb ownership preserves manual follow grace and the locked-target spring. A reachable52px lock button, visible-first acquisition, bounded forward fallback and one raw-distance switch per gesture improve targeting. Ineligible targets release; brief LOS grace retains identity without tracking hidden motion. Near-target camera follow stays bounded and presentation-only facing follows a visible lock below committed action aim.
@@ -9442,10 +9450,3 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
   - `tests/revenant-horde.test.ts`;
   - `tests/wood-boats.test.ts` (repairs, the guard);
   - `tests/building.test.ts` (costs).
-
-
-## Pending imported Wayfarer presentation
-
-**CODE:** The ordinary player uses a converted CC0 Quaternius Rogue body/rig with the central Cleric silver mask and white hair. The source hood is removed and its collar sealed; the new head alone is scaled to .40 and seated once. Twelve source clips retain the original independently translated feet. Existing gait distance and accepted action clocks sample source motion; missing jump/ranged/cast clips use explicit derivative pose layers. Real held equipment is drawn from sampled sockets. Green/gray fabric, protective undersleeves/gloves, silver head, leather and bronze retain original texture detail. Two indexed draws inside existing silhouette/body phases render 3,140 triangles and3,583 unique vertices. Unavailable textures/context retain the working procedural model. Both scoped workers precache the asset/modules.
-
-**BOUNDARY:** Imported presentation applies only to the actual normal player in one existing actor slot. Robot, empowered suit, Iron Fists, Ember, clones, creatures and companions retain their actual native paths. Animation never moves gameplay coordinates, fires attacks or changes aim/hit rules. Schema14, exact-resume clocks, unknown fields, generated/pinned history, Proving Ground isolation, reduced motion and8/14/20 actor limits remain. Hero cost: two additional indexed draws,85,992 dynamic bytes/frame and about10.67MiB of mipmapped textures. CPU diagnostics and automated mocks do not establish hosted GPU acceptance or phone performance.

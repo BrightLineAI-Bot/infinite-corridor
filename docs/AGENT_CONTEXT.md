@@ -71,3 +71,8 @@ The camera manifest documents requested mobile dungeon-crawler research and Elde
 
 
 Verified publication 2026-11-07: r818-791b1eff716d is live (Publish42424762364). Its exact identity and actual Options → System match after using Get latest release from the cached r816 build. The updated build reports no recent errors. Astra reviewed every change since live r816 without blockers. r817 is included, not separately published. Hosted checks exercised all nine actual visible-actor fixture producers and representative native forms/clone/Reciter; complete per-phase animation coverage, some NPC/summon views and physical-phone performance remain open.
+
+
+## Imported Wayfarer candidate — 2026-11-07
+
+The focused r820 branch imports licensed Rogue motion/body with the approved central Cleric silver-mask/white-hair head, muted green/gray/leather/bronze protective fabric and warm amber eyes. The owner-requested thinner frame and smaller hands retain actual tool size. Reproducible conversion, proportion derivation, source facts and acceptance gates are in the Wayfarer asset manifest/contract. Source animation is presentation-only; actual forms and all game/save/isolation rules remain. Main r819 camera work is merged; its Preview and hosted acceptance are separate. r820 exact CI, review and GPU acceptance are pending; no publication claim is made.

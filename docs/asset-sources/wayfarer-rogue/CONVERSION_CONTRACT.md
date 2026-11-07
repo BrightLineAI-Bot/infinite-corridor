@@ -14,7 +14,7 @@ Cleric extraction: complete rigid Head mesh node1/mesh1, parent Head joint2;1816
 
 Metadata contains version:2, sources:[{id,sha256,license:"CC0-1.0"}], binary:"rogue-v2.bin", textures:[{layer:0|1,file,width:1024,height:1024,sha256}], vertexCount,indexCount, and arrays:{key:{byteOffset,count,componentType:"f32"|"u16"|"u8"}}. Count is scalar components; views4-byte aligned.
 
-nodes:[{name,parent,translation:[3],rotation:[4 xyzw],scale:[3]}] preserves original Rogue node indices/hierarchy, parent-1 at roots, plus node41. skins:[{joints:[original node indices],inverseBindMatrices:arrayKey}]. meshes:[{name,node,skin:-1 for rigid or skinIndex,firstVertex,vertexCount,firstIndex,indexCount,materialLayer:0|1,paletteClass:"source"|"wayfarer-body"|"collar-seal"}].
+nodes:[{name,parent,translation:[3],rotation:[4 xyzw],scale:[3]}] preserves original Rogue node indices/hierarchy, parent-1 at roots, plus node41. skins:[{joints:[original node indices],inverseBindMatrices:arrayKey}]. meshes:[{name,node,skin:-1 for rigid or skinIndex,firstVertex,vertexCount,firstIndex,indexCount,materialLayer:0|1,paletteClass:"source"|"wayfarer-body"|"collar-seal"|"warm-amber-eyes"}].
 
 clips:[{name,duration seconds,channels:[{node,path:"translation"|"rotation"|"scale",times:arrayKey,values:arrayKey,interpolation:"LINEAR"}]}] preserves all12 Rogue clips and local TRS. Retain all original transforms/joints initially; never rebuild feet under lower legs or discard foot translations. Constant-track optimization is optional only if constant values remain represented.
 
