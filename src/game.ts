@@ -4289,7 +4289,8 @@ export class Game {
   restoreDroneLift(q, now) {
     this.droneLift = null;
     if (!q || !this.droneLiftAllowed() || !["base", "z", "vz"].every(k => Number.isFinite(Number(q[k])))) return false;
-    const lift = { ...q, base: Number(q.base), z: Number(q.z), vz: Number(q.vz) };
+    const { area: _area, areaId: _areaId, levelId: _levelId, ...metadata } = q;
+    const lift = { ...metadata, base: Number(q.base), z: Number(q.z), vz: Number(q.vz) };
     if (this.area === "dungeon") {
       if (!this.validInteriorLift(q)) return false;
       this.skyAir = lift.z;
