@@ -1,10 +1,11 @@
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
-import { ACTION_MOTION } from "./action-motion.ts";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, writeCloseViewModel } from "./close-view-models.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
 import { ATTACK_MODULES } from "./monster-pack.ts";
+import { knockdownPose } from "./lightning-giant-render.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
@@ -1739,6 +1740,11 @@ function selectProjectedShots(g, q) {
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
 const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkRadians: 5.4, castMs: ACTION_MOTION.castMs, turnRate: 12, strideSpeed: 4, windupMs: 450 });
+const PLAYER_VISUAL_KIND = Object.freeze({
+  melee: "player", fist: "playerUnarmed", emitter: "playerTool", hammer: "playerHammer", sweep: "playerSweep",
+  mirage: "playerMirage", "orrery-tap": "playerOrrery", "orrery-release": "playerOrrery",
+});
+const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
@@ -1772,6 +1778,16 @@ export function closeViewMonsterAction(who, kind) {
     : null;
   return { attack, winding, leapActive, packRecovery, aim, amount, leapAmount };
 }
+export function closeViewPlayerAction(g, now) {
+  const player = g?.player;
+  if (!player) return { active: false, legacy: false, record: null, profile: null, amount: 0, aim: null };
+  const hasRecord = player.attackVisual != null;
+  const record = hasRecord ? normalizeAttackVisual(player.attackVisual) : null;
+  const active = !!record && player.attackUntil > now;
+  const legacy = !hasRecord && player.attackUntil > now;
+  const amount = active ? 1 - Math.min(1, Math.max(0, player.attackUntil - now) / record.durationMs) : 0;
+  return { active, legacy, record, profile: active ? record.profile : null, amount, aim: active ? record.aim || null : null };
+}
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
@@ -1794,41 +1810,51 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const admit = (it, who, kind) => {
     const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], pack = who.pack;
     const monsterAction = who === player ? null : closeViewMonsterAction(who, kind);
-    const attack = who.attackUntil > now || !!monsterAction?.attack;
+    const playerAction = who === player ? closeViewPlayerAction(g, now) : null;
+    const visualRecord = playerAction?.record, visualAttack = !!playerAction?.active;
+    const attack = !!playerAction?.legacy || visualAttack || who !== player && (who.attackUntil > now || !!monsterAction?.attack);
+    const stunned = who === player && now < (player.stunnedUntil || 0);
     let track = state.tracks.get(who);
     if (!track) track = { x: who.x, y: who.y, yaw: facing ? Math.atan2(facing[1], facing[0]) : CAM.yaw,
       phase: Number.isFinite(who.walkPhase) ? who.walkPhase * Math.PI : 0, pace: 0, at: now,
       hitAt: -Infinity, hp: who.hp, deathAt: null, actor: null, winding: false, attacking: false };
     const dx = who.x - track.x, dy = who.y - track.y, dist = Math.hypot(dx, dy);
     const elapsed = Math.max(0, Math.min(.1, (now - track.at) / 1000));
-    const tool = who === player && attack && !(player.meleeUntil > now);
+    const visualProfile = visualAttack ? visualRecord.profile : null;
+    const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
+    const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" : !(player.meleeUntil > now));
     const cast = who === player && player.castUntil > now;
     const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
     const winding = !!monsterAction?.winding;
-    const aim = who === player && attack ? (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
+    const aim = who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
       : monsterAction?.aim;
     let targetYaw = track.yaw;
-    if (dist > .005) targetYaw = Math.atan2(dy, dx);
-    else if (facing) targetYaw = Math.atan2(facing[1], facing[0]);
+    if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
+    else if (!stunned && facing) targetYaw = Math.atan2(facing[1], facing[0]);
     const ax = aim?.dx ?? aim?.x, ay = aim?.dy ?? aim?.y;
-    if (Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
+    if (!stunned && Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
     const yawDelta = Math.atan2(Math.sin(targetYaw - track.yaw), Math.cos(targetYaw - track.yaw));
     const turn = Math.max(-1, Math.min(1, yawDelta));
-    if (attack || winding || monsterAction?.leapActive || dist > 3) track.yaw = targetYaw;
+    if (!stunned && (attack || winding || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
+    else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
-    if (dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
-    const speed = elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
-    track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
+    if (!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
+    const speed = !stunned && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
+    if (stunned) track.pace = 0;
+    else track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
     if (who.hp < track.hp) track.hitAt = now;
     const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
     if (winding && !track.winding) track.windAt = now;
     if (attack && !track.attacking) track.attackAt = now;
-    const pose = hit ? "hit" : attack ? (tool ? "tool" : "attack") : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
+    const knock = stunned ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
+    const profilePose = visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
+    const pose = stunned ? "knockdown" : hit ? "hit" : attack ? profilePose : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
     const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
     let amount = 0;
     if (winding) amount = Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
     if (attack) {
-      if (monsterAction?.amount != null) amount = monsterAction.amount;
+      if (visualAttack) amount = poseTime === now ? playerAction.amount : 1 - Math.min(1, (player.attackUntil - poseTime) / visualRecord.durationMs);
+      else if (monsterAction?.amount != null) amount = monsterAction.amount;
       else {
         const duration = tool ? MODEL_TIMING.toolMs : who === player ? ACTION_MOTION.meleeMs : MODEL_TIMING.attackMs;
         amount = who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / duration) : Math.min(1, (poseTime - track.attackAt) / duration);
@@ -1838,10 +1864,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       ? monsterAction.leapAmount
       : 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
     if (hit) amount = hit;
+    if (stunned) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
-    const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : kind,
+    const activeKind = visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
+    const actor = { kind: activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true), yaw: track.yaw,
-      phase: track.phase, pace: track.pace, pose, amount, turn, reduceMotion: reduce };
+      phase: track.phase, pace: track.pace, pose, amount, turn: stunned ? 0 : turn, reduceMotion: reduce,
+      poison: who === player && g.save.elites?.status?.poison > 0 };
     track.winding = winding;
     track.attacking = attack;
     if (!append(actor)) return;
@@ -1969,6 +1998,19 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) card(ox + .2 + i * .3, oy + .2 + j * .3, 0, hgt, .035, 7, 1, 0, li); } }
   GLB.nGlowStart = dv;
   // added in light: wind-up glows, the flames of the lights in reach, their halos, and dust drifting near them (full tier)
+  if (g.playerFire?.left > 0) for (let oi = 0; oi < n; oi++) {
+    const it = order[oi], draw = draws[itemRef[it]];
+    if (itemKind[it] !== 1 || draw !== capturedPlayer || !MODEL_STATE.admitted.has(it)) continue;
+    const X = boardWX[it], Y = boardWY[it], support = interiorSurfaceHeight(g.map, X, Y - .07) + closeViewActorLift(draw, true);
+    const knocked = now < (g.player.stunnedUntil || 0), body = knocked ? .35 : .72;
+    for (let i = 0; i < 3; i++) {
+      const phase = reduce ? i * 2.094 : now / 150 + i * 2.094;
+      const side = (i - 1) * .15 + (reduce ? 0 : Math.sin(phase) * .035);
+      const height = .22 + i * .045 + (reduce ? 0 : Math.sin(phase * 1.7) * .025);
+      card(X + CAM.rx * side, Y + CAM.ry * side, support + body - height * .45, support + body + height, .055, 3, .82, i & 1 ? 0xffae2a : 0xff5a1a, 1, true);
+    }
+    break;
+  }
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; const foe = boardFoe[it]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it)) || !foe || !foeWindingUp(foe)) continue;
     const sc = boardScale[it], X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), a = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b, hs = A.halfWidth * sc * 1.1, zc = A.height * .45 * sc;
     room(6); DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc - hs, 1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1);

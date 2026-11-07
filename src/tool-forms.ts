@@ -1,3 +1,4 @@
+import { stampAttackVisual } from "./action-motion.ts";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -234,7 +235,7 @@ export function orreryPress(game, now, dir, action = null) {
   if (now >= (game.toolReadyAt || 0) && room(game) > 0 && count(game, "orb") < O.caps.orbs) {
     game.toolReadyAt = now + O.tap.cooldown * 1000 * game.toolCooldownScale();
     shot(game, "orb", c.x + d.x * .35, c.y + d.y * .35, d, O.tap.speed, O.tap.life, power * O.tap.share, { grow: O.tap.grow, shedAcc: 0, shedTurn: Math.atan2(d.y, d.x) });
-    p.attackUntil = now + 160; fired = true;
+    p.attackUntil = now + 160; stampAttackVisual(p, "orrery-tap", 160, d); fired = true;
     const tier = orbTier(game.glyphLoadout("tool").count("echo"));
     if (tier && S.halo && S.halo.where === game.orreryWhere()) { // the circling orbs fire, one laser each
       S.halo.idle = O.halo.idle; S.halo.n = tier; const foes = nearest(game, c.x, c.y, O.drone.range, S.halo.n);
@@ -296,7 +297,7 @@ function release(game, c, now) {
       shot(game, "cube", h.pts[i].x, h.pts[i].y, ld, O.cube.speed, O.cube.life, power * O.cube.share, { knife: true, grow: O.cube.grow, combo: 0, cube: { phase: "out", dist: 0, leg: 0, turns: 0, side: i % 2 ? -1 : 1, targetId: null, volley, fx: ld.x, fy: ld.y, corners: [] } }); }
   }
   cloneLaser(game, now, d, power);
-  game.player.attackUntil = now + 220; game.message = "The Orrery releases!";
+  game.player.attackUntil = now + 220; stampAttackVisual(game.player, "orrery-release", 220, d); game.message = "The Orrery releases!";
 }
 
 // The shots' own motion: orbs shed pellets, the right-angle lasers turn, the clone's laser lands its second hit.
