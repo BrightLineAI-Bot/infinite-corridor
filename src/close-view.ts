@@ -1872,9 +1872,8 @@ export function mountCloseViewControls(getGame, host = globalThis) {
     if (t - downAt < K.tapMs && moved < K.tapMove) { if (t - lastTap < K.doubleTapMs) { const g = getGame(); if (g) closeViewRecentre(g, t); lastTap = -1e9; } else lastTap = t; } else CAM.panAt = t; };
   for (const el of [hit, outer]) { el.addEventListener("pointerdown", down(el)); el.addEventListener("pointermove", drag); el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", (e) => { if (e.pointerId === id) end(e); }); }
   // Drag anywhere (CLOSE_VIEW.drag, the default control): a press on the open screen (the game canvas: a press on any button
-  // never reaches it) right of `side` turns the view until it lifts. It is taken before the movement stick sees it (a capturing
-  // listener on the canvas stops it there), so the stick never takes the right thumb, and a left thumb on the stick is untouched:
-  // moving and looking at once. A press that hardly moves is handed on as the world tap it would have been.
+  // never reaches it) outside the joystick turns the view until it lifts. The joystick owns only touches that start within
+  // its visible circle. In crescent mode, other canvas touches can tap the world or slide without moving the Wayfarer.
   const canvas = doc.getElementById?.("game"), D = CLOSE_VIEW.drag, QT = CLOSE_VIEW.quickTurn; let dragId = null, dragX = 0, dragY = 0, dragAt = 0, dragMoved = 0, dragDown = 0, dragX0 = 0, dragY0 = 0, strokeX = 0, strokeY = 0, strokeAt = 0;
   // the quick turnaround: a stroke down the screen (it restarts whenever the finger goes up again), with the stick held back
   const stroke = (g, x, y, t, dy) => { if (dy < 0 || strokeAt < 0) { strokeX = x; strokeY = y; strokeAt = t; return false; }
@@ -1886,17 +1885,23 @@ export function mountCloseViewControls(getGame, host = globalThis) {
     canvas.addEventListener("pointerdown", (e) => {
       if (!shown) return;
       const split = (host.innerWidth || canvas.clientWidth || 0) * D.side;
-      if (e.clientX < split) {
-        if (e.pointerType === "touch" && moveId === null) { moveId = e.pointerId; movePad.setAttribute("data-active", "true"); }
-        return;
-      }
-      if (mode !== "drag") return;
+      if (e.pointerType === "touch") {
+        const pad = movePad.getBoundingClientRect();
+        const radius = Math.min(pad.width, pad.height) / 2;
+        const inside = radius > 0 && Math.hypot(e.clientX - pad.left - pad.width / 2, e.clientY - pad.top - pad.height / 2) <= radius;
+        if (inside && moveId === null) {
+          moveId = e.pointerId;
+          movePad.setAttribute("data-active", "true");
+          return;
+        }
+        if (inside) { e.stopImmediatePropagation?.(); e.preventDefault?.(); return; }
+      } else if (e.clientX < split || mode !== "drag") return;
       e.stopImmediatePropagation?.(); e.preventDefault?.();
-      // The camera already owns a right-side touch. Keep any extra right touch out of the movement stick.
+      // A non-joystick touch never reaches movement, even when a camera gesture is already active.
       if (dragId !== null) return;
       dragId = e.pointerId; dragX = dragX0 = strokeX = e.clientX; dragY = dragY0 = strokeY = e.clientY; dragAt = dragDown = strokeAt = now(); dragMoved = 0; swipe = 0; try { canvas.setPointerCapture?.(dragId); } catch { /* a synthetic pointer has nothing to capture */ } }, { capture: true });
     canvas.addEventListener("pointermove", (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); const dx = e.clientX - dragX, dy = e.clientY - dragY, t = now(); dragX = e.clientX; dragY = e.clientY; dragMoved = Math.max(dragMoved, Math.hypot(e.clientX - dragX0, e.clientY - dragY0));
-      const g = getGame(); if (!g) return; const k = sens() * accelOf(Math.hypot(dx, dy), t - dragAt, D.accel, D.accelFrom, D.accelTo); dragAt = t;
+      const g = getGame(); if (!g || mode !== "drag") return; const k = sens() * accelOf(Math.hypot(dx, dy), t - dragAt, D.accel, D.accelFrom, D.accelTo); dragAt = t;
       if (stroke(g, e.clientX, e.clientY, t, dy) || closeViewTurning()) return; // the turnaround owns the view while it swings
       turn(g, dx * k * D.yaw / K.yaw, dy * k * D.pitch / K.pitch, t); }, { capture: true });
     const dragEnd = (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); dragId = null; const t = now(); flush(t);

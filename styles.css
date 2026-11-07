@@ -975,14 +975,14 @@ body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #ev
 /* Close View lock-on (release 790): a bullseye at the screen's right edge, above the pan crescent (off its arc, out of the
    stick's and the crescent's thumb paths). The button is a 46 px touch target; its disc is drawn 36 px. Pressed it dips;
    locked the disc's rim glows red and the bullseye's inner ring fills. */
-/* Close View movement guide. The canvas still owns the touch and keeps its floating origin. */
+/* Close View joystick. The canvas captures movement that starts inside this circle. */
 .close-move-pad {
   position: absolute;
   left: clamp(18px, 9vw, 50px);
   bottom: 118px;
-  width: 72px;
-  height: 72px;
-  border: 1px solid #ddd5c44d;
+  width: 92px;
+  height: 92px;
+  border: 1px solid #ddd5c46b;
   border-radius: 50%;
   background: radial-gradient(circle, #ddd5c430 0 14%, transparent 16% 58%, #1c1b1838 60%);
   pointer-events: none;
