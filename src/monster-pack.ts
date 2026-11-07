@@ -1193,6 +1193,9 @@ export const VOID = {
 const voidEffects = (w) => typeof w.effects === "function" ? w.effects() : (w.effects || []);
 const liveVoidOwner = (w, f) => w.enemies?.find((q) => q.id === f.owner && !q.dead && !q.retreating && !q.fleeTo);
 function voidAdd(w, e, effect) {
+  // Warned moving hazards must start outside Stillworks cover, before their arming delay.
+  const open = w.marineProjectileOpen || w.projectileOpen || w.tileOpen;
+  if (w.map?.stillworks?.cover && (effect.vx || effect.vy) && open && !open(effect.x + .5, effect.y + .5)) return null;
   // Do not evict another creature's warned strike to create a decoration or a new Walker hazard.
   const effects = voidEffects(w);
   if (effects.length >= PACK_EFFECT_CAP) { const spent = effects.findIndex((f) => f.kind === "debris" && f.medium === "water" && f.state === "splash"); if (spent >= 0) effects.splice(spent, 1); else return null; }

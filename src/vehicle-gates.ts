@@ -116,6 +116,62 @@ export const DRONE = { range: 8, rocketEvery: 1.6, rocketDamage: 10, rocketSpeed
 // move across), burning `burn` of its carry a second. Let go and they fall, gathering speed. A landing hurts by its speed, as a
 // fall from the height that speed is worth (v²/2g): feathered down it is gentle; dropped from the top, or by a booster run dry,
 // it is a fall of four levels or more, and death.
+// New interior heightfields share roof dimensions with Close View. Heights are
+// rendered tile units; the drone's position and velocity remain elevation levels.
+export const INTERIOR_TRAVERSAL = Object.freeze({ ceiling: 2.4, hallMin: 6, hallMax: 14, bodyClearance: 1.35, archClearance: 1.65, ceilingPad: .13, maxLevel: 5 });
+export function interiorCeilingHeight(map) {
+  const H = INTERIOR_TRAVERSAL;
+  return map?.hall?.tall && Number.isFinite(map.hall.ceilingHeight) ? Math.max(H.hallMin, Math.min(H.hallMax, map.hall.ceilingHeight)) : H.ceiling;
+}
+// The same one-cell passage test used to build Close View's arch mesh. Return its
+// orientation so rendering and traversal can share the predicate without GPU imports.
+export function interiorArchAt(map, x, y) {
+  const tiles = map?.tiles, w = Math.max(1, Number(map?.width) || 32);
+  if (!tiles?.length || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const h = Math.max(1, Number(map.height) || Math.floor(tiles.length / w));
+  x = Math.floor(x); y = Math.floor(y);
+  const solid = (tx, ty) => {
+    if (tx < 0 || ty < 0 || tx >= w || ty >= h) return true;
+    const t = tiles[ty * w + tx];
+    return !!t && t.blocked === true && !t.chasm && !t.doorway && !/water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|sky|star|cloud/i.test(String(t.kind || ""));
+  };
+  if (solid(x, y)) return null;
+  const t = tiles[y * w + x];
+  if (!t) return null;
+  const kind = String(t.kind || "");
+  // Match closeViewHazardCode: bridges and open hazards never receive an arch.
+  const hazard = t.bridge || t.hallVoid || (t.chasm
+    ? !(t.blocked && !/void|chasm|abyss|canyon/i.test(kind))
+    : t.hole || (!t.blocked && /hole|pit|abyss|void/i.test(kind)) || /lava|magma/i.test(kind));
+  if (hazard) return null;
+  const roomy = (tx, ty, eastWest) => eastWest
+    ? !solid(tx - 1, ty) || !solid(tx + 1, ty)
+    : !solid(tx, ty - 1) || !solid(tx, ty + 1);
+  const northSouth = solid(x - 1, y) && solid(x + 1, y) && !solid(x, y - 1) && !solid(x, y + 1)
+    && roomy(x, y - 1, true) && roomy(x, y + 1, true);
+  if (northSouth) return "ns";
+  const eastWest = solid(x, y - 1) && solid(x, y + 1) && !solid(x - 1, y) && !solid(x + 1, y)
+    && roomy(x - 1, y, false) && roomy(x + 1, y, false);
+  return eastWest ? "ew" : null;
+}
+// Additive schema-14 runtime field. Unknown fields survive; old outdoor lifts have
+// no identity fields and retain their existing numeric conversion behavior.
+export function ensureDroneLiftRuntime(save) {
+  const runtime = save?.session?.playerRuntime;
+  if (!runtime) return save;
+  const q = runtime.droneLift;
+  if (q == null) { runtime.droneLift = null; return save; }
+  if (typeof q !== "object" || Array.isArray(q) || !["base", "z", "vz"].every(k => Number.isFinite(Number(q[k])))) {
+    runtime.droneLift = null;
+    return save;
+  }
+  if (q.area === "dungeon" && (!["base", "z", "vz"].every(k => Number.isFinite(q[k])) || typeof q.areaId !== "string" || !q.areaId || typeof q.levelId !== "string")) {
+    runtime.droneLift = null;
+    return save;
+  }
+  runtime.droneLift = { ...q, base: Number(q.base), z: Number(q.z), vz: Number(q.vz) };
+  return save;
+}
 export const DRONE_LIFT = { thrust: 30, rise: 4, max: 5, gravity: 14, burn: 1, engage: "The drone grips your shoulders and its booster roars. Hold Jump to climb, feather it to hold, let go to fall.", empty: "The booster sputters out of lift!", none: "The drone has no lift left: land and let it recharge." };
 // The drone fizzle (Tim, 2026-11-04: "If you try to fly the drone across some area of the Pentagon that would break the whole map, the
 // drone just isn't able to fly there. You can start flying there, but your drone will explode or fizzle out, noticeably, so you

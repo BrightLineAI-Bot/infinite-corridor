@@ -74,7 +74,7 @@ test('the stairs: up to the next floor and back, each floor an area of its own; 
 test('holes: only above the ground floor, over open floor below; step into a safe drop and you fall a floor, hurt (HOLE_DROPS: the others are deadly); jumping clears them', () => {
   const { g } = enter('keep'), st = g.map.objects.find((o) => o.kind === 'buildingStair' && o.dir === 'up'); g.player.x = st.x; g.player.y = st.y; g.interact('climb', st.id);
   const m = g.map, W = m.width, holes = m.tiles.filter((t) => t.hole); assert.ok(holes.length > 0, 'the floor has fallen through somewhere');
-  const plan = buildingPlan(m.building.base), below = plan.floors[0]; for (const h of holes) assert.equal(below.grid[h.y * W + h.x], 0, 'open floor beneath every hole');
+  const plan = buildingPlan(m.building.base, m.building.interiorVersion || 1), below = plan.floors[0]; for (const h of holes) assert.equal(below.grid[h.y * W + h.x], 0, 'open floor beneath every hole');
   const h = holes.find((t) => safeDropAt(m, t.x, t.y)) || holes[0]; if (!safeDropAt(m, h.x, h.y)) holeDrops(m)[h.y * W + h.x] = 1; /* this floor's holes are all deadly: the test marks one safe to walk the drop */ g.player.x = h.x; g.player.y = h.y; g.jumpUntil = Number.MAX_SAFE_INTEGER; g.update(.016, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, 1000); assert.equal(g.map.building.floor, 2, 'a jump carries you over');
   g.jumpUntil = 0; const hp = g.player.hp; assert.ok(g.buildingFall()); assert.equal(g.map.building.floor, 1); assert.deepEqual([Math.round(g.player.x), Math.round(g.player.y)], [h.x, h.y]);
   assert.ok(g.player.hp < hp && g.player.hp >= 1); assert.match(g.message, /floor gives way/);

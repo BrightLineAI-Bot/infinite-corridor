@@ -108,6 +108,7 @@ const ENV_VS = `#version 300 es
 in vec2 a_pos; void main() { gl_Position = vec4(a_pos, 1.0, 1.0); }`; // at the far plane: behind every wall
 const ENV_FS = FS_COMMON + `
 uniform vec2 u_cam; uniform vec2 u_fwd; uniform vec2 u_right; uniform float u_hc; uniform float u_cosP; uniform float u_sinP; uniform float u_F; uniform vec2 u_pp; uniform vec2 u_size;
+uniform float u_terrain;
 uniform sampler2D u_ground; uniform vec4 u_gmap; uniform vec2 u_tex; // gmap: px per tile, x0, y0 (device px of world 0,0), the texture's last row of ground
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 uniform vec4 u_ceil; uniform vec3 u_ceilRGB; uniform vec4 u_ceilK; // ceil: height, on (0/1), bay (tiles), detail (0/1); ceilK: kind, rib width, darkness above, -
@@ -257,7 +258,8 @@ void main() {
   vec2 css = vec2(gl_FragCoord.x, u_dev.y - gl_FragCoord.y) * (u_size / u_dev);
   float b = (css.x - u_pp.x) / u_F, a = (u_pp.y - css.y) / u_F;
   vec3 dir = vec3(u_fwd * (u_cosP + a * u_sinP) + u_right * b, -u_sinP + a * u_cosP);
-  vec3 col = u_fog;
+  vec3 col = u_terrain > .5 && dir.z > 0.0 && u_hall.x > 0.0 ? hallBackdrop(dir) : u_fog;
+  if (u_terrain > .5) { outColor = vec4(finish(col), 1.0); return; }
   if (dir.z < -1e-5) { float t = -u_hc / dir.z; vec2 P = u_cam + dir.xy * t; ivec2 T = ivec2(floor(P)); uvec4 m = maskAt(T);
     float depth = t /* dir's component along the view axis is 1: t is the camera depth */, fogK = clamp((depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0);
     if (fogK < 0.999) {
@@ -293,7 +295,7 @@ void main() {
         vec4 ov = overlayAt(P); float lum = clamp(dot(dif, vec3(0.33)), 0.0, 1.0); col = col * (1.0 - ov.a) + ov.rgb * (0.5 + 0.5 * lum);
         col = atmos(col, W3, depth, dif); }
     } else col = u_fog;
-  } else if (dir.z > 1e-5 && u_ceil.y > 0.5) { float t = (u_ceil.x - u_hc) / dir.z; vec2 P = u_cam + dir.xy * t; uvec4 m = maskAt(ivec2(floor(P)));
+  } else if (dir.z > 1e-5 && u_ceil.y > 0.5 && u_terrain < .5) { float t = (u_ceil.x - u_hc) / dir.z; vec2 P = u_cam + dir.xy * t; uvec4 m = maskAt(ivec2(floor(P)));
     float depth = t;
     bool skylight = u_hall.z > 0.5 && (m.r & 4u) == 4u;
     if ((m.r & 2u) == 0u && u_hall.x > 0.0 && (u_hall.y > 0.5 || skylight)) {
@@ -324,13 +326,41 @@ void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_world = a
   ivec2 T = ivec2(a_tile); bool unseen = T.x >= 0 && T.y >= 0 && T.x < u_mapSize.x && T.y < u_mapSize.y && (texelFetch(u_mask, T, 0).r & 2u) == 2u;
   bool far = length(a_tile + 0.5 - u_cam) > u_reach, back = dot(a_nrm.xy, a_nrm.xy) > 0.5 && dot(a_nrm.xy, u_cam - a_pos.xy) < -0.01;
   if (unseen || far || back) gl_Position = vec4(2.0, 2.0, 2.0, 1.0); }`;
-const WALL_FS = FS_COMMON + `
+const SURFACE_FUNCTIONS = ENV_FS.slice(FS_COMMON.length, ENV_FS.indexOf("void main()"));
+const WALL_FS = FS_COMMON + SURFACE_FUNCTIONS + `
 in vec3 v_world; in vec4 v_tex; in vec4 v_nrm; in vec3 v_col; in vec4 v_meta; in float v_depth;
 uniform sampler2D u_grit; uniform vec4 u_detail; uniform float u_gritA[9]; uniform vec4 u_shimmer;
 uniform vec4 u_stoneP; uniform vec4 u_wallP; uniform vec3 u_mortar; uniform vec3 u_damp; uniform vec3 u_deco1; uniform vec3 u_deco2; uniform vec4 u_arch; uniform vec3 u_glowRGB;
 // stoneP: course, block, bevel, roughness; wallP: damp height, damp amount, bump on, top falloff; arch: spring, radius, band, -
 void main() {
   vec3 c = v_col; float along = v_tex.x, u = v_tex.y, z = v_tex.z, top = v_tex.w, part = v_nrm.z, mat = v_nrm.w, deco = v_meta.x;
+  if (part >= 20.0) {
+    vec2 P = v_world.xy; ivec2 T = ivec2(floor(P)); uvec4 m = maskAt(T);
+    vec3 N = normalize(cross(dFdx(v_world), dFdy(v_world)));
+    if (part < 20.5 && N.z < 0.0 || part >= 20.5 && N.z > 0.0) N = -N;
+    vec3 dif, spe, alb; float relief = 0.0, wetness = 0.0;
+    if(part >= 21.5) {
+      vec3 ray=normalize(v_world-u_eye),col=pitColor(P,ray,m.g,(m.b&1u)==1u);
+      lightsAt(v_world,vec3(0,0,1),0.0,dif,spe);
+      outColor=vec4(finish(atmos(col,v_world,v_depth,dif*.3)),1);return;
+    }
+    if (part >= 20.5) { float dark = 0.0; alb = u_ceil.w > 0.5 ? ceilMat(P, relief, dark) : u_ceilRGB; alb *= 1.0 - dark; }
+    else if (m.g == 2u) { outColor = vec4(finish(atmos(lavaColor(P,T),v_world,v_depth,vec3(0))),1); return; }
+    else {
+      alb = floorMat(P, T, m.b >> 1u, relief, wetness);
+      uint inlay = m.a >> 1u;
+      if(inlay > 0u) {
+        float edge=max(abs(fract(P).x-.5),abs(fract(P).y-.5)), aa=clamp(max(fwidth(P).x,fwidth(P).y),.005,.06);
+        alb=mix(alb,u_inlayColors[0],(1.0-smoothstep(.44-aa,.44+aa,edge))*.8);
+        if(inlay>1u) alb=mix(alb,inlay==4u||inlay==2u?u_inlayColors[2]:u_inlayColors[1],(1.0-smoothstep(.35-aa,.35+aa,edge))*.88);
+      }
+    }
+    if(u_floorQ.x>.5) N=bump(N,v_world,relief*.035);
+    lightsAt(v_world,N,wetness>.05?24.0:0.0,dif,spe);
+    vec3 col=alb*dif+spe*wetness*.35;
+    if(part<20.5){vec4 ov=overlayAt(P);col=col*(1.0-ov.a)+ov.rgb*(.5+.5*clamp(dot(dif,vec3(.33)),0.0,1.0));}
+    outColor=vec4(finish(atmos(col,v_world,v_depth,dif)),1.0); return;
+  }
   vec3 N0 = vec3(v_nrm.xy, 0.0); if (dot(N0, N0) < 0.25) N0 = vec3(0.0, 0.0, (part > 4.5 && part < 5.5) || fract(part) > 0.1 ? -1.0 : 1.0); // a flat face: up, or down (a soffit, a cornice's underside: part x.25)
   float h = 1.0, shin = 0.0, wet = 0.0; vec3 emit = vec3(0.0); vec2 id; float mortar = 0.0; vec2 q = vec2(along, z);
   if (part >= 10.0) { // structural ceiling beams and their undersides
@@ -674,12 +704,13 @@ export function drawSceneGL(ground, U, models = null) {
   if (S.staticVerts > 0) { const Z = S.wallZ; gl.useProgram(Z.p); cam(Z); gl.uniform1i(Z.U.u_mask, 1); gl.uniform2i(Z.U.u_mapSize, S.maskW, S.maskH); gl.uniform1f(Z.U.u_reach, F.reach); U.arch(gl, Z.U);
     gl.colorMask(false, false, false, false); gl.bindVertexArray(S.vao.wallZ); gl.drawArrays(gl.TRIANGLES, 0, S.staticVerts); calls++; gl.colorMask(true, true, true, true); // depth only
     gl.depthFunc(gl.EQUAL); gl.depthMask(false);
-    gl.useProgram(S.wall.p); cam(S.wall); light(S.wall); U.wall(gl, S.wall.U, F); gl.uniform1i(S.wall.U.u_grit, 2); gl.uniform1i(S.wall.U.u_mask, 1); gl.uniform2i(S.wall.U.u_mapSize, S.maskW, S.maskH); gl.uniform1f(S.wall.U.u_reach, F.reach);
+    gl.useProgram(S.wall.p); cam(S.wall); light(S.wall); U.wall(gl, S.wall.U, F);
+    U.env(gl,S.wall.U,F,S.lavaTiles); gl.uniform1i(S.wall.U.u_ground,0); gl.uniform4f(S.wall.U.u_gmap,F.gmapK,F.gmapX,F.gmapY,F.atlasY); gl.uniform2f(S.wall.U.u_tex,ground.width,ground.height); gl.uniform1i(S.wall.U.u_grit, 2); gl.uniform1i(S.wall.U.u_mask, 1); gl.uniform2i(S.wall.U.u_mapSize, S.maskW, S.maskH); gl.uniform1f(S.wall.U.u_reach, F.reach);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, S.tex.grit); gl.activeTexture(gl.TEXTURE0);
     gl.bindVertexArray(S.vao.wall); gl.drawArrays(gl.TRIANGLES, 0, S.staticVerts); calls++; gl.depthFunc(gl.LEQUAL); }
   // 2. the environment: floor, ceiling, pits, lava; a full-screen triangle at the far plane, depth-tested and not written, so
   // the early depth test leaves every pixel a wall covers unshaded
-  gl.depthMask(false); gl.useProgram(S.env.p); cam(S.env); light(S.env); U.env(gl, S.env.U, F, S.lavaTiles);
+  gl.depthMask(false); gl.useProgram(S.env.p); gl.uniform1f(S.env.U.u_terrain,F.terrain?1:0); cam(S.env); light(S.env); U.env(gl, S.env.U, F, S.lavaTiles);
   gl.uniform1i(S.env.U.u_ground, 0); gl.uniform1i(S.env.U.u_mask, 1); gl.uniform4f(S.env.U.u_gmap, F.gmapK, F.gmapX, F.gmapY, F.atlasY); gl.uniform2f(S.env.U.u_tex, ground.width, ground.height); gl.uniform2i(S.env.U.u_mapSize, S.maskW, S.maskH);
   gl.bindVertexArray(S.vao.env); gl.drawArrays(gl.TRIANGLES, 0, 3); calls++;
   // 3. the floor's decals and the props drawn as cards (shadows, rings, cobwebs, chains, spikes, bones): blended, depth-tested, not written

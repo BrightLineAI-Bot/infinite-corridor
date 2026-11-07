@@ -29,5 +29,6 @@ test('the leap leaves the ground on the frame you press, at every Quickening ran
 test('the robot boost holds the top; a resumed leap still arcs; the renderer uses jumpLift', () => {
   const g = { jumpUntil: 2000, jumpStart: 1900, jumpDur: 520, mechBoosting: true }; assert.equal(jumpLift(g, 1950), JUMP.arc);
   assert.ok(jumpLift({ jumpUntil: 2000 }, 1800) > 0, 'no start recorded');
-  assert.match(readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'), /lift = jumpLift\(g, now\) \* s/);
+  const renderer = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8');
+  assert.match(renderer, /jumpLift\(g, now\)/); assert.match(renderer, /interiorTerrain\(g\.map\).*closeViewCapturing\(\)/);
 });

@@ -40,9 +40,9 @@ test('old Pentagons: every plan and chamber of versions 1-7 regenerates byte for
     for (const q of P.nodes) { const m = chamber(seed, P, q); assert.equal(m.width, PENTAGON.size[0]); assert.equal(m.height, PENTAGON.size[1]); assert.ok(!('hall' in m) && !('murals' in m) && !('sigils' in m) && !('backdrop' in m)); assert.ok(!m.objects.some((o) => o.kind === 'pentMural')); } }
 });
 
-test('the version: new ground is Pentagon 8; its ids carry :v8:, and a section pinned to 7 keeps 7', () => {
-  assert.equal(PENTAGON.version, V8); assert.equal(PENTAGON_HALLS.since, V8); assert.equal(PENTAGON_SIGILS.since, V8);
-  const { cx, cy } = find(), g = game(); g.rx = cx; g.ry = cy + 1; g.loadArea('overworld', false); assert.equal(g.map.pentagon.V, V8); assert.ok(g.map.objects.filter((o) => o.pentagonDoor).every((o) => o.dungeonId.includes(':v8:')));
+test('the version: new ground uses the current Pentagon; grand halls and sigils began in v8, and a section pinned to 7 keeps 7', () => {
+  assert.equal(PENTAGON.version, 9); assert.equal(PENTAGON_HALLS.since, V8); assert.equal(PENTAGON_SIGILS.since, V8);
+  const { cx, cy } = find(), g = game(); g.rx = cx; g.ry = cy + 1; g.loadArea('overworld', false); assert.equal(g.map.pentagon.V, PENTAGON.version); assert.ok(g.map.objects.filter((o) => o.pentagonDoor).every((o) => o.dungeonId.includes(`:v${PENTAGON.version}:`)));
   const s = freshSave(); s.seed = SEED; s.atlas = { [`${cx + 1},${cy + 1}`]: { pentVersion: 7 } }; const old = new Game(s, 0); old.rx = cx; old.ry = cy + 1; old.loadArea('overworld', false); assert.equal(old.map.pentagon.V, 7);
 });
 
