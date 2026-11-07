@@ -1,9 +1,9 @@
-import { drawRangedEffects } from "./combat-visuals.js?v=r811-a0060f80fb7a";
-import { createInput } from "./input.js?v=r811-a0060f80fb7a";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r811-a0060f80fb7a";
-import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r811-a0060f80fb7a"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r811-a0060f80fb7a";
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r811-a0060f80fb7a"; // release 791: Enter Proving Ground from Options
+import { drawRangedEffects } from "./combat-visuals.js?v=r812-1f4b36dd0279";
+import { createInput } from "./input.js?v=r812-1f4b36dd0279";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r812-1f4b36dd0279";
+import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r812-1f4b36dd0279"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r812-1f4b36dd0279";
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r812-1f4b36dd0279"; // release 791: Enter Proving Ground from Options
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
@@ -16,7 +16,7 @@ const panel=document.createElement("aside");panel.id="provingGroundPanel";panel.
   <div class="proving-grid"><label>Seed <input id="seedInput" maxlength="80"></label><label>Variant <input id="variantInput" type="number" min="0" max="999"></label><label id="sizeProfileLabel">Size <select id="sizeProfileSelect"><option value="compact">Compact</option><option value="standard" selected>Standard</option><option value="extended">Extended</option></select></label><label id="revealModeLabel">Reveal <select id="revealModeSelect"><option value="normal">Normal discovery</option><option value="explored">Explored only</option><option value="full">Full diagnostic topology</option></select></label></div>
   <div class="proving-buttons"><button id="scenarioPrevious">Previous</button><button id="scenarioNext">Next</button><button id="scenarioGenerate" class="pg-start">Start test</button><button id="scenarioReset">Reset same</button><button id="scenarioCompare">Compare same seed</button><button id="scenarioEntrance">Start at entrance</button><button id="scenarioPause">Pause</button></div>
   <label>Developer teleport <select id="teleportSelect"><option value="">Select target…</option></select></label>
-  <pre id="fixtureDiagnostics" aria-live="polite"></pre><p>Move with drag, WASD, or arrow keys. Production combat and Act controls remain available below.</p>
+  <pre id="fixtureDiagnostics" aria-live="polite"></pre><p>Use the movement control, WASD, or arrow keys. In Close View, use the left joystick to move and drag the scene to look. Production combat and Act controls remain available below.</p>
   <div class="proving-buttons"><button id="fixtureCopy">Copy recipe/report</button><button id="fixtureExit">Exit to normal game</button></div>
  </section>`;document.body.append(panel);
 const $=selector=>panel.querySelector(selector),launcher=$("#labLauncher"),controls=$("#labControls"),scenarioSelect=$("#scenarioSelect"),seedInput=$("#seedInput"),variantInput=$("#variantInput"),sizeProfileSelect=$("#sizeProfileSelect"),revealModeSelect=$("#revealModeSelect"),teleportSelect=$("#teleportSelect"),environmentSelect=$("#environmentSelect");
