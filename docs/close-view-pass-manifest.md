@@ -2,7 +2,7 @@
 
 Updated: 2026-11-07. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r810-8ed20b74216b`. Publish run `42388584029` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
+Verified live: `r812-1f4b36dd0279`. Publish run `42394194802` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
 
 ## Objective and sequence
 
@@ -47,71 +47,73 @@ Finish and publish the current animation, spacious-interior, elevation, drone an
 | 808 | #456 / `r808-ca55b4cd807c` | Workflow completed; hosted terrain rendering exposed the undefined actor-index blocker. Superseded by repair in r810. |
 | 809 | #457 / `r809-9bae1bce42e2` | Preview completed; camera centering checked on a legacy hive. Shares the terrain blocker repaired in r810. |
 | 810 | #458 / `r810-8ed20b74216b` | Published and verified through workflow, live identity and in-game System label. |
+| 811 | #459 / `r811-a0060f80fb7a` | Published; workflow, live identity, System label and all four quiet hosted traversal fixtures verified. |
+| 812 | #460 / `r812-1f4b36dd0279` | Published; workflow, live identity and System label verified after CI, Preview, hosted checks and exact-source Astra review. |
 
 ## Independent pass A — collision and traversal
 
-Status: in progress after verified r810 publication. Working branch: `claude/close-view-collision-pass`.
+Status: complete and published in r811, PR #459.
 
-Queued reproduction from the source audit: `generateBuildingFloor("AUDIT0", "building:AUDIT0:1:1:keep:4:f4", 3)` puts `building-stair-down` at blocked tile `(6,5)`, with arrival `(6,4)`. Adjacent Act remains in range. Investigate the visual/collision defect; a repair after v3 publication must preserve existing version pins and generator outputs or introduce a new generation version.
+Reproduced finding from the source audit: `generateBuildingFloor("AUDIT0", "building:AUDIT0:1:1:keep:4:f4", 3)` puts `building-stair-down` at blocked tile `(6,5)`, with arrival `(6,4)`. Adjacent Act remains in range. Investigate the visual/collision defect; a repair after v3 publication must preserve existing version pins and generator outputs or introduce a new generation version.
 
 Read-only preparation reproduced actual collision and interaction: movement toward the ladder stops at `y=4.1152`, while adjacent `interact("descend", id)` succeeds to floor 3. A 600-map sample (50 seeds × three styles × four floors) found 269/450 down ladders on blocked tiles, with zero actionable objects lacking a reachable interaction approach. Only down ladders were affected. The connector helper advances before opening its starting cell. Regression targets: the down-ladder tile itself is open and walk-reachable on the new version, stair alignment stays valid, and all older version digests remain unchanged.
 
 Hosted traversal-lab preparation also showed nearby enemies interrupting inspection, damaging the scratch player and sometimes returning it to the original floor entry. Make the new traversal-focused fixtures quiet/deterministic while keeping their real generated geometry and the separate combat scenarios intact.
 
-- [ ] Check wall/corner sliding, diagonal movement, door widths and locked boundaries in old and new interiors.
-- [ ] Check ramps in both directions, terrace edges, optional step/platform approaches, holes and grand-hall shafts.
-- [ ] Check normal jumping, landing and indoor drone boost/fuel depletion against walls, roofs and arches.
-- [ ] Check camera contraction/recovery, body/foot alignment and foreground occlusion while moving and orbiting.
-- [ ] Capture reproducible findings; fix and test actionable defects in a focused PR.
-- [ ] Complete review, CI, Preview and publication gates; record result below.
+- [x] Check wall/corner sliding, diagonal movement, door widths and locked boundaries in old and new interiors.
+- [x] Check ramps in both directions, terrace edges, optional step/platform approaches, holes and grand-hall shafts.
+- [x] Check normal jumping, landing and indoor drone boost/fuel depletion against walls, roofs and arches.
+- [x] Check camera contraction/recovery, body/foot alignment and foreground occlusion while moving and orbiting.
+- [x] Capture reproducible findings; fix and test actionable defects in a focused PR.
+- [x] Complete review, CI, Preview and publication gates; record result below.
 
 ## Independent pass B — items, tools and weapons
 
-Status: queued.
+Status: complete; no additional actionable defect found.
 
-Automated/read-only preparation: 77 production-backed item/tool/weapon checks passed, including melee, seven tool profiles, casting success/refusal, moving charge, switching, impact origins, cover/elevation contracts, buffer cancellation and save round trips. No actionable defect found. Hosted visual checks remain before closing this pass.
+Automated/read-only preparation: 77 production-backed item/tool/weapon checks passed, including melee, seven tool profiles, casting success/refusal, moving charge, switching, impact origins, cover/elevation contracts, buffer cancellation and save round trips. No actionable defect found. Hosted checks and their limits are recorded below; no additional fix was needed.
 
-- [ ] Check pickups, nearby item interactions and action priority near walls, stairs and raised floors.
-- [ ] Check melee hit/miss readability, targeting and reach against elevation and solid cover.
-- [ ] Check representative ranged tools, ammunition/projectiles, casts and weapon/tool switching while moving.
-- [ ] Check effect origins, impacts, floor height and occlusion; preserve authoritative hit and cooldown rules.
-- [ ] Check attack-buffer interruptions, refused competing actions and pause/reload behavior.
-- [ ] Fix reproducible defects, validate and publish the resulting focused candidate.
+- [x] Check pickups, nearby item interactions and action priority near walls, stairs and raised floors.
+- [x] Check melee hit/miss readability, targeting and reach against elevation and solid cover.
+- [x] Check representative ranged tools, ammunition/projectiles, casts and weapon/tool switching while moving.
+- [x] Check effect origins, impacts, floor height and occlusion; preserve authoritative hit and cooldown rules.
+- [x] Check attack-buffer interruptions, refused competing actions and pause/reload behavior.
+- [x] Fix reproducible defects, validate and publish the resulting focused candidate.
 
 ## Independent pass C — monsters and combat feel
 
-Status: queued.
+Status: complete; no additional actionable defect found.
 
-Automated/read-only preparation: 129 focused combat/render/pause/resume/depth checks passed. Additional real-loop five-level cliff probes stopped grounded humanoid/hound/brute/stalker actors while preserving the flying-wisp exception. Windup/strike/recovery, obstacles, pillars, Void rend origin rejection, actor/effect caps, depth ordering and billboard/native exclusion were consistent. No actionable defect found. Hosted visual checks remain.
+Automated/read-only preparation: 129 focused combat/render/pause/resume/depth checks passed. Additional real-loop five-level cliff probes stopped grounded humanoid/hound/brute/stalker actors while preserving the flying-wisp exception. Windup/strike/recovery, obstacles, pillars, Void rend origin rejection, actor/effect caps, depth ordering and billboard/native exclusion were consistent. No actionable defect found. Hosted checks and their visibility limits are recorded below.
 
-- [ ] Exercise representative humanoid, hound, brute, stalker, caster and flying encounters, plus Stillworks/Void cover cases.
-- [ ] Check visible anticipation, strike/contact, recoil and recovery while creatures move, turn and encounter obstacles.
-- [ ] Check attacks across slopes/terraces, wall and pillar collision, warnings and projectile placement.
-- [ ] Check multi-enemy action readability and bounded actor/effect/pathfinding work at low and full quality.
-- [ ] Fix reproducible defects with data-backed tuning where needed; review, validate and publish.
+- [x] Exercise representative humanoid, hound, brute, stalker, caster and flying encounters, plus Stillworks/Void cover cases.
+- [x] Check visible anticipation, strike/contact, recoil and recovery while creatures move, turn and encounter obstacles.
+- [x] Check attacks across slopes/terraces, wall and pillar collision, warnings and projectile placement.
+- [x] Check multi-enemy action readability and bounded actor/effect/pathfinding work at low and full quality.
+- [x] Fix reproducible defects with data-backed tuning where needed; review, validate and publish.
 
 ## Independent pass D — environments, interactions and recovery
 
-Status: queued.
+Status: complete and published in r812, PR #460; workflow, live identity and System label verified.
 
-Automated/read-only preparation: 83 focused recovery, migration, drone, isolation, workflow/cache/module checks passed. One pre-existing forward-compatibility defect is queued: valid `session.playerRuntime.droneLift.zzLift` survives migration but is lost on `Game.exportSnapshot()`/restore, while peer unknown fields survive. Reproduction seed `PASS-D-UNKNOWN`, nested marker `{future:"kept"}`. The same behavior existed in r805. Preserve validated unknown lift keys through restore/export while overwriting canonical numeric and area/level identity fields; continue discarding invalid lift records. Plan a separate focused repair after pass A.
+Automated/read-only preparation: 83 focused recovery, migration, drone, isolation, workflow/cache/module checks passed. One pre-existing forward-compatibility defect was found and fixed in r812: valid `session.playerRuntime.droneLift.zzLift` survives migration but is lost on `Game.exportSnapshot()`/restore, while peer unknown fields survive. Reproduction seed `PASS-D-UNKNOWN`, nested marker `{future:"kept"}`. The same behavior existed in r805. Preserve validated unknown lift keys through restore/export while overwriting canonical numeric and area/level identity fields; continue discarding invalid lift records. The separate focused repair followed pass A and retained the existing runtime-shape assertion.
 
-- [ ] Revisit keep, lived-in keep, hive, arcology, tomb/root-cellar, grand-hall and shaft scenes.
-- [ ] Check doors, stairs/ladders, caches, relays and murals; exercise representative inventory/vendor interactions in the appropriate labs.
-- [ ] Check normal character and intentionally active drone/armor state, including switching and arrival behavior.
-- [ ] Check simultaneous movement/look/action ownership and responsive layouts; include reduced-motion and quality-tier variants.
-- [ ] Check pause/background, save/reload, death/return and Proving Ground isolation after the earlier passes.
-- [ ] Record device/performance evidence and limits; fix remaining actionable defects, then review and publish the final candidate.
+- [x] Revisit keep, lived-in keep, hive, arcology, tomb/root-cellar, grand-hall and shaft scenes.
+- [x] Check doors, stairs/ladders, caches, relays and murals; exercise representative inventory/vendor interactions in the appropriate labs.
+- [x] Check normal character and intentionally active drone/armor state, including switching and arrival behavior.
+- [x] Check simultaneous movement/look/action ownership and responsive layouts; include reduced-motion and quality-tier variants.
+- [x] Check pause/background, save/reload, death/return and Proving Ground isolation after the earlier passes.
+- [x] Record device/performance evidence and limits; fix remaining actionable defects, then review and publish the final candidate.
 
 ## Per-pass completion record
 
 | Pass | Findings / fix | Branch / PR | Tests and hosted evidence | Reviewed candidate / reviewer | Publish run and live identity | State |
 |---|---|---|---|---|---|---|
 | Current delivery | Animation, rooms/elevation/drone, controls and GPU terrain repair | #454–#458 | CI, Preview and hosted GPU repair checks passed | Astra, r805→r810 source: no blockers; merge-tree equality verified | `42388584029`, live `r810-8ed20b74216b`, System verified | Complete |
-| A | Blocked down-ladder landing, reproducible across styles; quiet traversal fixtures | `claude/close-view-collision-pass` | 600-map read-only scan and actual scratch collision/Act reproduction | Pending | Pending | In progress |
-| B | No automated finding | Pending | 77 checks passed; hosted visual check pending | Pending | Pending | QA in progress |
-| C | No automated finding | Pending | 129 checks plus cliff probes passed; hosted visual check pending | Pending | Pending | QA in progress |
-| D | Pre-existing nested drone-runtime unknown-field loss | Separate focused repair planned | 83 checks passed; canary-loss reproduction captured | Pending | Pending | QA in progress |
+| A | New v4 opens down-ladder arrivals; quiet traversal fixtures | #459 | Legacy digests, 600-map scan, actual movement/descent, complete CI/Preview and four hosted fixtures | Astra, exact reviewed/merge tree matched | `42393069055`, live `r811-a0060f80fb7a`, System verified | Complete |
+| B | No actionable finding; no speculative tuning | Read-only pass | 77 production-backed checks; hosted hive/arcology inputs and scratch interaction approach | Covered by reviewed release sources; no new code | Included game baseline r810; no separate release needed | Complete |
+| C | No actionable finding; no balance changes | Read-only pass | 129 checks, cliff probes and representative hosted encounters; visibility limits below | Covered by reviewed release sources; no new code | Included game baseline r810; no separate release needed | Complete |
+| D | Preserve nested drone metadata and canonical runtime shape; correct lab control help | #460 | 83 audit checks, 40 repair regressions, complete CI/Preview, hosted boost/help/pause; limits below | Fresh Astra, r810→r812: no blockers; merge-tree equality verified | `42394194802`, live `r812-1f4b36dd0279`, System verified | Complete |
 
 ## Resume protocol and pending inputs
 
@@ -131,3 +133,18 @@ No product decisions are currently waiting on the owner. Physical-phone frame ra
 
 - Pass D broad testing caught the established runtime-shape assertion: saved area/areaId/levelId are known binding fields, not future metadata. Restore now excludes those known bindings from the live lift while retaining unknown keys; export remains responsible for writing current bindings. All 40 focused tests (including existing interior pause/resume) pass without changing that assertion. The generic lab help was also corrected to describe left-joystick movement and scene-drag looking in Close View.
 - r811 CI first attempt: 2,779/2,780 passed; the sole failure was the unchanged legacy tower-generation wall-clock ratio. The complete tower suite passed 10/10 in isolation (castle quarters v2 0.126 ms vs v3 0.147 ms); failed CI job was retried without changing any threshold.
+
+- Pass A final hosted r811: all four traversal fixtures reported zero enemies and HP 60 after inspection. Ramp crossing/reversal ended at (3,16.72); the first platform jump reached (17,14.22); indoor drone boost rendered; current Pentagon walking/orbit rendered. No captured r811 console warnings/errors. A delayed-frame diagnostic tick was observed under browser automation, so these checks establish correctness rather than physical-phone FPS.
+- r812 CI `42392084208` passed; PR #460 merged as `1f4b36dd0279de49f82e9c6b3f97a396db492079`. Merge tree `ee3397371ebebda42a97618c399b31e1680a6530` exactly matches fresh Astra-reviewed source `ec573a444a9bdf2794f6afb02343263d016054dd` (r810→r812: no blockers). Preview run `42393087255` is in progress.
+
+- r811 publication complete: Publish `42393069055` succeeded, live identity and production Options → System both read `r811-a0060f80fb7a`; journey remained paused with 250 KB storage and no recent errors. r812 Preview remains in progress.
+
+- Pass D hosted r812: candidate label `r812-1f4b36dd0279`, corrected joystick/look help, quiet indoor-drone fixture, boost rendering and pause verified; no captured console warnings/errors. Preview `42393087255` passed. Fresh live identity was r811; exact r812 preview commit/tree matched the Astra-reviewed source, whose full r810→r812 review covers every change since r811. Publish `42394194802` dispatched through the normal approval path.
+
+## Completion methods and limits
+
+Checked pass items combine the production-backed automated suites, generator probes, source reviews and representative hosted scenarios documented above. They do not assert that every possible actor/environment/input combination was manually played. Item/monster passes found no additional actionable defect and required no speculative balance changes. Unknown-field rejection and round trips are established by focused tests; the hosted lab does not expose arbitrary save-canary injection or the normal-game vendor overlay. Physical-phone FPS and real multi-touch hardware were not measured; existing automated phone-layout and pointer-ownership coverage remains required.
+
+## Final closure
+
+All four independent passes are complete. Actionable findings were fixed in focused PRs #459 and #460 and published as r811 then r812. The clean item/tool and monster passes required no speculative tuning or extra game release. Final Publish `42394194802`, live identity and production Options → System agree on `r812-1f4b36dd0279`; the journey remained paused, storage stayed 250 KB, and recent errors were none. Source commit `1f4b36dd0279de49f82e9c6b3f97a396db492079`, tree `ee3397371ebebda42a97618c399b31e1680a6530`. The release-log/context/manifest closure is documentation only and does not request another game release or publication. No owner decisions remain pending; device measurement limits above remain explicit. Temporary task QA servers were stopped.

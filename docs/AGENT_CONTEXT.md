@@ -1,6 +1,10 @@
 # Agent context — current state
 
-For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-10-21.
+For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
+
+## Close View delivery and independent passes — 2026-11-07
+
+Read [the pass manifest](close-view-pass-manifest.md) and [release log](RELEASE_LOG.md) for current release identities, completed scope, evidence and limits. Releases 806–810 delivered action animation, versioned spacious interiors/elevation/drone traversal, control feel and the hosted GPU repair. Release 811 opens new v4 stair arrivals and quiets traversal labs; it is published and verified. Release 812 preserves valid nested drone metadata while retaining runtime/identity validation, and clarifies lab movement/look help; it is published and verified as `r812-1f4b36dd0279` (Publish run `42394194802`; live identity and Options → System match). Independent item/tool and monster passes found no additional actionable defect. Physical-phone FPS and hardware multi-touch were not measured. This paragraph grants no deployment authority; follow current AGENTS.md and re-read live identity before publishing.
 
 ## Void Walker design handoff — recorded 2026-10-21 UTC
 
