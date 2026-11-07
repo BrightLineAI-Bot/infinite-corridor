@@ -1,3 +1,4 @@
+import { projectileVisualHeight } from "./actor-presentation.ts";
 const TAU=Math.PI*2;
 export const ENEMY_PROJECTILE_CAP=64;
 export const DUNGEON_THREAT_TUNING_VERSION=1;
@@ -5,7 +6,7 @@ export const DUNGEON_THREAT_TUNING_VERSION=1;
 function normalize(v){const m=Math.hypot(Number(v?.x)||0,Number(v?.y)||0)||1;return{x:(Number(v?.x)||0)/m,y:(Number(v?.y)||0)/m}}
 function rotate(v,a){return{x:v.x*Math.cos(a)-v.y*Math.sin(a),y:v.x*Math.sin(a)+v.y*Math.cos(a)}}
 function scaledDamage(shooter,factor=1){return Math.max(1,Math.ceil((Number(shooter?.damage)||1)*factor))}
-function projectile(shooter,now,id,direction,extra={}){const d=normalize(direction);return{x:(Number(shooter.x)||0)+.5,y:(Number(shooter.y)||0)+.42,id:`enemy-shot-${shooter.id}-${now}-${id}`,dx:d.x,dy:d.y,speed:4.2,life:2.4,damage:scaledDamage(shooter),hostile:true,hits:{},path:'straight',...extra}}
+function projectile(shooter,now,id,direction,extra={}){const d=normalize(direction);return{x:(Number(shooter.x)||0)+.5,y:(Number(shooter.y)||0)+.42,id:`enemy-shot-${shooter.id}-${now}-${id}`,dx:d.x,dy:d.y,speed:4.2,life:2.4,damage:scaledDamage(shooter),hostile:true,visualHeight:projectileVisualHeight(shooter),...(typeof shooter.id==='string'?{visualOwnerId:shooter.id}:{}),hits:{},path:'straight',...extra}}
 function bounded(shots,activeCount,cap){return shots.slice(0,Math.max(0,Math.min(cap,ENEMY_PROJECTILE_CAP)-Math.max(0,activeCount)))}
 
 export function enemyPatternWindup(shooter){if(shooter?.kind==='gravitantBell'||shooter?.kind==='riftColossus')return 1.15;if(shooter?.kind==='knifeChoir'||shooter?.kind==='vesperwing')return 1;return .9}

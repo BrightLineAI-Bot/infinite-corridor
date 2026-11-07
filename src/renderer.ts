@@ -3,7 +3,8 @@ import { FAR_FOLK } from "./far-realms.ts";
 import { astralBeamAnchors } from "./astral-worm.ts";
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { knockdownPose, drawShockSparks } from "./lightning-giant-render.ts";
-import { enemyMeleeGeometry } from "./combat.ts";
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.ts";
+import { enemyPatternWindup } from "./enemy-patterns.ts";
 import { ruleRows } from "./elders.ts";
 import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
@@ -17,20 +18,63 @@ import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
 import { TREES } from "./trees.ts";
 import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
+import { actorPresentation } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.ts";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed } from "./monster-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.ts";
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
 import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+
+// Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
+// the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
+export function nativeWindupDuration(e) {
+  if (!actorPresentation(e)?.decoration || !(e.telegraph > 0)) return null;
+  if (e.meleePhase?.stage === 1) return .42;
+  const pattern = MELEE_PATTERNS[e.meleePhase?.id], phase = e.boss && e.hp <= e.maxHp * .5 ? .82 : 1;
+  let duration = Math.max(.48, e.minimumAttackWindup || 0, (pattern?.telegraph || enemyPatternWindup(e)) * (e.telegraphScale || 1) * phase) * (bossPaced(e) ? BOSS_PACE.windup : 1);
+  if (!pattern && e.range >= 2.5 && !e.instantStrike) duration = Math.max(duration, enemyPatternWindup(e));
+  return duration;
+}
+export function drawNativeCreatureFloor(ctx, g, e, s, now) {
+  const p = actorPresentation(e); if (!p || e.hidden || e.gloomVeil || e.dead) return;
+  const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), t = quiet ? 0 : now / 1000;
+  const x = (e.x + .5) * s, y = (e.y + .82) * s, radius = Number(e.bodyRadius) || .4;
+  ctx.save(); ctx.globalAlpha = p.alpha;
+  const ring = (r, color, width) => { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); };
+  if (e.fracRank) ring(s * (.42 + radius * .6), e.fracRank === 'rare' ? '#ffc446cc' : '#6eaaffbb', Math.max(2, s * .07));
+  if (e.fracWarden) { const r = s * (.5 + radius * .7); ctx.strokeStyle = '#ff4678cc'; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath();
+    for (let i = 0; i <= 14; i++) { const a = i / 14 * Math.PI * 2 + t * .4, rr = r * (i % 2 ? .82 : 1.08); ctx[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.stroke(); }
+  if (e.fracShaman) {
+    for (const k of [0, 1]) { const f = (t * .8 + k * .5) % 1; ctx.globalAlpha = p.alpha * (1 - f); ring(s * (.8 + f * .9), '#be78ffcc', Math.max(2, s * .07)); }
+    ctx.globalAlpha = p.alpha * .35; ctx.strokeStyle = '#be78ff'; ctx.lineWidth = Math.max(2, s * .07);
+    let links = 0; for (const m of g.enemies) { if (links >= 20) break; if (m.dead || m.hidden || m.gloomVeil || m.wardBy !== e.id || !m.warded || !shownInDungeon(g, m)) continue;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo((m.x + .5) * s, (m.y + .82) * s); ctx.stroke(); links++; }
+  }
+  if (p.stagger) drawDazed(ctx, e, s, quiet ? 0 : now, p.stagger, 'floor');
+  ctx.restore();
+}
+export function drawNativeCreatureDecorations(ctx, e, s, now, presentation) {
+  const p = actorPresentation(e); if (!p || e.hidden || e.gloomVeil || e.dead) return;
+  const quiet = !!(presentation?.reduceMotion || presentation?.safeMode), x = (e.x + .5) * s, foot = (e.y + .82) * s;
+  ctx.save(); ctx.globalAlpha = p.alpha; ctx.textAlign = 'center'; ctx.lineWidth = 3;
+  let labelY = foot - (p.head + .15) * s;
+  const label = (text, color, font) => { ctx.font = font; ctx.strokeStyle = '#000b'; ctx.fillStyle = color; ctx.strokeText(text, x, labelY, s * 1.95 * p.scale); ctx.fillText(text, x, labelY, s * 1.95 * p.scale); labelY -= s * .26 * p.scale; };
+  if (e.fracRank === 'rare' && e.packName) label(e.packName, '#ffd77a', `bold ${Math.max(10, s * .3)}px serif`);
+  if (e.fracWarden) label('Fracture Warden', '#ff8fb0', `bold ${Math.max(10, s * .3)}px serif`);
+  const names = affixNames(e); if (names.length) label(names.join(' · '), '#ffe2b0', `${Math.max(9, s * .24)}px sans-serif`);
+  if (e.warded) { ctx.strokeStyle = '#b48cffcc'; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.ellipse(x, foot - (p.bodyLift + (p.head - p.bodyLift) * .45) * s, s * (.55 + (e.bodyRadius || .4) * .5), s * (p.head - p.bodyLift) * .65, 0, 0, Math.PI * 2); ctx.stroke(); }
+  if (p.stagger) drawDazed(ctx, e, s, quiet ? 0 : now, p.stagger, 'body', p.head + .1);
+  ctx.restore();
+}
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -2539,6 +2583,10 @@ export function render(ctx, g, w, h, now) {
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
+        enemy: e,
+        nativeWindup: nativeWindupDuration(e),
+        nativeFloor: (time = now) => drawNativeCreatureFloor(ctx, g, e, s, time),
+        nativeDecorations: () => drawNativeCreatureDecorations(ctx, e, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, g.presentation),
         nativeLift: Math.max(0, Number(e.hopLift) || 0),
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }

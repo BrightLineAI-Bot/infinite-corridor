@@ -16,6 +16,7 @@
 //   it cannot be harmed (a ward shimmers round them, a ring round the shaman). Kill the shaman first.
 // Runtime state on the creatures (`affixClock`, `inAura`, `wardedBy`) and in game.affixHazards (never saved; at most `maxHazards`).
 import { hashSeed, byHash } from "./random.ts";
+import { projectileVisualHeight } from "./actor-presentation.ts";
 
 export const AFFIXES = {
   volcanic: { name: "Volcanic", color: "#ff6a2a", every: 3.2, arm: .8, radius: 1.15, life: 4, dps: .35 },
@@ -57,7 +58,7 @@ export function tickAffixes(game, dt, now, hurt, poison) {
       if (clock[id] == null) clock[id] = now + (hashSeed(`${e.id}:${id}`) % 1000); // staggered starts
       if (now < clock[id]) continue; clock[id] = now + A.every * 1000;
       if (id === "droneSwarm") { const k = (e.droneTurn = ((e.droneTurn || 0) + 1) % A.count), d = dronePos(e, k, t), dx = px - d.x, dy = py - d.y, n = Math.hypot(dx, dy) || 1;
-        game.projectiles.push({ id: `drone-shot-${e.id}-${now}`, x: d.x, y: d.y, dx: dx / n, dy: dy / n, speed: A.speed, life: A.life, damage: Math.max(1, Math.round(e.damage * A.damage)), hostile: true, path: "straight", age: 0, hits: {}, affixShot: true }); continue; }
+        game.projectiles.push({ id: `drone-shot-${e.id}-${now}`, x: d.x, y: d.y, dx: dx / n, dy: dy / n, speed: A.speed, life: A.life, damage: Math.max(1, Math.round(e.damage * A.damage)), hostile: true, path: "straight", age: 0, hits: {}, affixShot: true, visualHeight: projectileVisualHeight(e, "drone"), visualOwnerId: e.id }); continue; }
       if (hz.length >= T.maxHazards) continue;
       hz.push({ kind: id, x: px, y: py, radius: A.radius, armAt: now + A.arm * 1000, until: now + (A.arm + (A.life || T.burst)) * 1000, damage: Math.max(1, Math.round(e.damage * (A.damage || A.dps || 0))), by: e.id, struck: false });
     }

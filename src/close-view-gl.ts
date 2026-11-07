@@ -499,18 +499,23 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
 
 // Native models share the environment's camera, lights and fog.
 const MODEL_VS = VS_COMMON + `
-in vec3 a_pos; in vec3 a_nrm; in vec3 a_col;
-out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_depth;
+in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in float a_alpha;
+out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_depth; out float v_alpha;
 void main() {
   float d;
   gl_Position = project(a_pos, d);
-  v_pos = a_pos; v_nrm = a_nrm; v_col = a_col; v_depth = d;
+  v_pos = a_pos; v_nrm = a_nrm; v_col = a_col; v_depth = d; v_alpha = a_alpha;
 }`;
 const MODEL_FS = FS_COMMON + `
-in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_depth;
+in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_depth; in float v_alpha;
 uniform float u_pass; uniform vec3 u_sil;
 void main() {
   if (v_pos.z < 0.0) discard;
+  // Identical, time-independent coverage in the silhouette and depth-writing body passes.
+  // Alpha remains a separate float; a packed 32-bit RGBA integer would lose precision.
+  const float bayer[16] = float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0);
+  ivec2 pixel = ivec2(gl_FragCoord.xy) & ivec2(3);
+  if (v_alpha <= (bayer[pixel.y * 4 + pixel.x] + 0.5) / 16.0) discard;
   if (u_pass > 0.5) { outColor = vec4(u_sil * 0.1, 0.1); return; }
   vec3 normal = normalize(v_nrm), toEye = normalize(u_eye - v_pos);
   vec3 dif, spe;
@@ -622,7 +627,7 @@ export function closeViewGLReady(makeCanvas) {
     S.vao.wall = layout(gl, S.wall, S.vbo.wall, WALL_FLOATS, [["a_pos", 3], ["a_tex", 4], ["a_nrm", 4], ["a_col", 3], ["a_meta", 4], ["a_tile", 2]]); S.vao.wallZ = layout(gl, S.wallZ, S.vbo.wall, WALL_FLOATS, [["a_pos", 3], ["a_tex", 4], ["a_nrm", 4], ["a_col", 3], ["a_meta", 4], ["a_tile", 2]]);
     S.vao.board = layout(gl, S.board, S.vbo.board, BOARD_FLOATS, [["a_pos", 3], ["a_uv", 2], ["a_meta", 4]]);
     S.vao.decal = layout(gl, S.decal, S.vbo.decal, DECAL_FLOATS, [["a_pos", 3], ["a_loc", 2], ["a_meta", 4]]);
-    S.vao.model = layout(gl, S.model, S.vbo.model, MODEL_FLOATS, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3]]);
+    S.vao.model = layout(gl, S.model, S.vbo.model, MODEL_FLOATS, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3], ["a_alpha", 1]]);
     for (const k of ["ground", "mask", "grit"]) S.tex[k] = gl.createTexture();
     S.aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true; return true;
