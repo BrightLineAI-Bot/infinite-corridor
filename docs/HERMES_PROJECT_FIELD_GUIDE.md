@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 814: truthful player attack presentation
+
+**CODE:** Accepted attacks record an additive schema-14 presentation profile, duration and committed aim, normalized in freshSave/migrateSave and at Game import/export. Existing attackUntil remains the sole clock. Native bodies distinguish tool poses, knockdown, poison and bounded fire cues; tapered limbs soften the Wayfarer silhouette.
+
+**BOUNDARY:** Existing hit rules, cooldowns, melee windows, aim state, save version, pins, generators and Proving Ground isolation remain unchanged. Unknown valid presentation fields survive reload; malformed or expired records use a safe neutral pose. Physical-phone performance remains unmeasured.
+
 ## Release 813: truthful native monster actions and combat asset gallery
 
 **CODE:** Native ordinary monsters consume the existing strike countdown and committed melee direction. Crawler bite and leap landing use authored attack phase durations, and native airborne support uses hopLift without altering sprite projection or damage timing.

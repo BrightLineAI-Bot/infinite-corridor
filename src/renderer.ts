@@ -21,7 +21,7 @@ import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
 import { actorPresentation } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed } from "./monster-render.ts";
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
@@ -45,8 +45,9 @@ export function nativeWindupDuration(e) {
   return duration;
 }
 export function drawNativeCreatureFloor(ctx, g, e, s, now) {
-  const p = actorPresentation(e); if (!p || e.hidden || e.gloomVeil || e.dead) return;
+  const p = actorPresentation(e); if (!p || e.gloomVeil || e.dead) return;
   const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), t = quiet ? 0 : now / 1000;
+  if (e.hidden) { drawNativePackFloor(ctx, e, s, now, quiet); return; }
   const x = (e.x + .5) * s, y = (e.y + .82) * s, radius = Number(e.bodyRadius) || .4;
   ctx.save(); ctx.globalAlpha = p.alpha;
   const ring = (r, color, width) => { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); };
@@ -66,6 +67,7 @@ export function drawNativeCreatureDecorations(ctx, e, s, now, presentation) {
   const p = actorPresentation(e); if (!p || e.hidden || e.gloomVeil || e.dead) return;
   const quiet = !!(presentation?.reduceMotion || presentation?.safeMode), x = (e.x + .5) * s, foot = (e.y + .82) * s;
   ctx.save(); ctx.globalAlpha = p.alpha; ctx.textAlign = 'center'; ctx.lineWidth = 3;
+  drawNativePackEffects(ctx, e, s, now, presentation || {}, p);
   let labelY = foot - (p.head + .15) * s;
   const label = (text, color, font) => { ctx.font = font; ctx.strokeStyle = '#000b'; ctx.fillStyle = color; ctx.strokeText(text, x, labelY, s * 1.95 * p.scale); ctx.fillText(text, x, labelY, s * 1.95 * p.scale); labelY -= s * .26 * p.scale; };
   if (e.fracRank === 'rare' && e.packName) label(e.packName, '#ffd77a', `bold ${Math.max(10, s * .3)}px serif`);
@@ -2587,6 +2589,8 @@ export function render(ctx, g, w, h, now) {
         nativeWindup: nativeWindupDuration(e),
         nativeFloor: (time = now) => drawNativeCreatureFloor(ctx, g, e, s, time),
         nativeDecorations: () => drawNativeCreatureDecorations(ctx, e, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, g.presentation),
+        nativePackEffects: (time = now) => drawNativePackEffects(ctx, e, s, time, g.presentation, actorPresentation(e) || {}),
+        nativeEffects: hasNativePackEffects(e),
         nativeLift: Math.max(0, Number(e.hopLift) || 0),
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
