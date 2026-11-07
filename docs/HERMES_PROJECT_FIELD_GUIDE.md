@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 812: preserve nested drone-lift metadata
+
+**CODE:** Game.restoreDroneLift retains validated unknown keys before restoring canonical numeric values. exportSnapshot retains that runtime metadata before overwriting numeric and current dungeon identity fields. Focused outdoor and bound-dungeon round trips cover nested and peer unknown keys, stale identity and invalid numeric rejection.
+
+**BOUNDARY:** Schema remains 14. Invalid or mismatched lift records are still discarded; no generators, tool balance, movement rules, rendering budgets, save namespaces or production/Proving Ground boundaries change.
+
 ## Release 811: open stair landings and quiet traversal labs
 
 **CODE:** Interior version 4 layers one repair over the unchanged version-3 room grammar: a blocked in-bounds arrival cell becomes ordinary floor before stair choices, holes, objects and terrain are placed. Great buildings, compound parts, castle parts and classic labyrinth room floors dispatch explicitly by their existing interior-version pin. New untouched groups select version 4; existing own/sibling pins retain their versions and per-part granularity.
