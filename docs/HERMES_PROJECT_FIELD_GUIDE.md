@@ -2854,6 +2854,13 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 805 — structured Close View ceilings
+
+- Closed roof tiles receive cached shallow ribs with textured undersides and fascia. Stone bays use rough ashlar infill, with timber, organic, and conduit materials following the room theme.
+- The geometry uses the existing static wall pass and discovery mask. Open halls, skylights, courtyards, arch openings, and ceiling mural footprints remain clear.
+- Roof depth is 0.105 tile. No additional draw call, save field, collision change, or generator change. Phone-sized isolated Chromium checks covered the keep, Heart, hive, and open pit gallery.
+- Static vertex counts increase with covered roof area. Physical-phone frame timing still needs device verification.
+
 ## Release 804: recognizable Close View characters
 
 **CODE:** The Wayfarer shares a hooded travel coat across melee and tool stances. Ashen Hounds use a four-legged gait and Coil Stalkers use articulated segments. Existing native enemies keep their meshes.
