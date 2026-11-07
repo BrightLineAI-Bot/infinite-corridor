@@ -907,7 +907,9 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
         if (!spec?.source || !Number.isFinite(spec.x) || !Number.isFinite(spec.y) || typeof spec.draw !== 'function' || typeof spec.sample !== 'function') return false;
         if(auxiliarySeen&&!auxiliarySeen(spec.x,spec.y))return true;
         captured.push({ x:spec.x-.5,y:spec.y-.82,lift:spec.lift||0,nativeAux:spec,nativeHeight:spec.height||1.8,nativeEffects:!!spec.decorate,
-          nativeDecorations:spec.decorate?()=>spec.decorate(gc,s):null,fn:()=>spec.draw(gc,s) });
+          nativeDecorations:spec.decorate?()=>spec.decorate(gc,s):null,
+          // A rejected native body still owns its residual label/effects on its sprite card.
+          fn:()=>{spec.draw(gc,s);spec.decorate?.(gc,s);} });
         return true;
       };
     }

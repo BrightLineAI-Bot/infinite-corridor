@@ -73,3 +73,39 @@ test('capture suppresses only source bodies and keeps Golem, clone and Orrery re
 test('colocated speakers keep independent native identities and actual listening state',()=>gpu(({screen})=>{
   const g=fixture('dungeon-reciter'),r=g.map.objects.find(o=>o.reciter),e=fixture('elder-wanderer').map.objects.find(o=>o.elder);g.map.objects.push(e);r.x=e.x=g.player.x+.4;r.y=e.y=g.player.y+.4;tickTravelers(g.map,g.player,.05);assert.equal(r.state,'listening');const before=structuredClone([r,e]);resetCloseViewCamera();layer(g,()=>render(screen,g,390,844,100100));assert.equal(closeViewGLStats.auxKinds['dungeonReciter:'+r.look],1);assert.equal(closeViewGLStats.auxKinds.elderWanderer,1);assert.equal(closeViewGLStats.models,3);assert.deepEqual([r,e],before);
 }));
+
+// Deferred capture must retain complete fallback ownership after admission runs.
+test('actual Shadow Clone BLOCKED label survives native admission and every actor cap exactly once',()=>gpu(({screen,log})=>{
+  const g=fixture('shadow-clone');g.lastUpdateNow=100050;g.shadowClone.ox=2;g.shadowClone.oy=0;g.shadowClone.blockedUntil=101000;
+  const count=a=>a.filter(q=>q[0]==='fillText'&&q[1]==='BLOCKED').length,ordinary=[];
+  drawRangedEffects(ctx(ordinary),g,390,844);assert.equal(count(ordinary),1,'ordinary source label');
+  resetCloseViewCamera();log.length=0;layer(g,()=>render(screen,g,390,844,100050));
+  assert.equal(closeViewGLStats.auxKinds.playerShadow,1);assert.equal(count(log),1,'native residual label');
+  for(const [tier,cap] of [['low',8],['balanced',14],['full',20]]){
+    g.enemies=Array.from({length:Math.max(15,cap)},(_,i)=>g.createEnemyFromSpawn({kind:'ashling',id:'aux-fallback-'+i,x:g.player.x,y:g.player.y}));
+    g.presentation.effectiveQuality=tier;resetCloseViewCamera();log.length=0;layer(g,()=>render(screen,g,390,844,100050));
+    assert.equal(closeViewGLStats.models,cap,tier);assert.equal(closeViewGLStats.auxKinds.playerShadow,undefined,tier+' really falls back');
+    assert.equal(count(log),1,tier+' fallback label');assert.ok(closeViewGLStats.drawCalls<=12);
+  }
+}));
+
+test('actual Orrery orb keeps one ground halo in ordinary, native and every cap fallback path',()=>gpu(({screen,log})=>{
+  const g=fixture('aether-orrery'),orb=g.projectiles.find(q=>q.orrery==='orb');assert.ok(orb,'actual accepted secondary orb');
+  g.orrery.halo=null;g.orrery.clonePt=null;g.orrery.charge=null;g.orreryLockUntil=0;g.effects=[];g.projectiles=[orb];orb.x=g.player.x+2;orb.y=g.player.y+.5;
+  const s=44,r=s*.17,count=(a,radius)=>a.filter(q=>q[0]==='arc'&&Math.abs(q[3]-radius)<1e-9).length;
+  const ordinary=[],floor=[],records=[],fallback=[];
+  drawOrrery(ctx(ordinary),g,q=>[q.x*s,q.y*s],s,0);
+  drawOrrery(ctx(floor),g,q=>[q.x*s,q.y*s],s,0,{captureActor:q=>(records.push(q),true)});
+  assert.equal(records.length,1);assert.equal(records[0].source,orb);records[0].draw(ctx(fallback),s);
+  assert.equal(count(ordinary,r*1.9),1);assert.equal(count(ordinary,r),1);assert.equal(count(ordinary,r*.45),1);
+  assert.equal(count(floor,r*1.9),1);assert.equal(count(fallback,r*1.9),0,'deferred body never repeats ground halo');
+  assert.equal(count(fallback,r),1);assert.equal(count(fallback,r*.45),1);
+  resetCloseViewCamera();log.length=0;layer(g,()=>render(screen,g,390,844,100050));
+  assert.equal(closeViewGLStats.auxKinds.nativeOrb,1);assert.equal(count(log,r*1.9),1,'native ground halo');assert.equal(count(log,r),0,'native body replaces source disk');
+  for(const [tier,cap] of [['low',8],['balanced',14],['full',20]]){
+    g.enemies=Array.from({length:Math.max(15,cap)},(_,i)=>g.createEnemyFromSpawn({kind:'ashling',id:'aux-fallback-'+i,x:g.player.x,y:g.player.y}));
+    g.presentation.effectiveQuality=tier;resetCloseViewCamera();log.length=0;layer(g,()=>render(screen,g,390,844,100050));
+    assert.equal(closeViewGLStats.models,cap,tier);assert.equal(closeViewGLStats.auxKinds.nativeOrb,undefined,tier+' really falls back');
+    assert.equal(count(log,r*1.9),1,tier+' single ground halo');assert.equal(count(log,r),1,tier+' fallback solid body');assert.equal(count(log,r*.45),1,tier+' fallback core');assert.ok(closeViewGLStats.drawCalls<=12);
+  }
+}));

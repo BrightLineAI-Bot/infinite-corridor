@@ -364,7 +364,7 @@ export function drawOrrery(ctx, game, toScreen, s, t, capture = null) {
     if(!capture?.captureActor)return false;
     const rgb=Number.parseInt(color.slice(1),16);
     const accepted=capture.captureActor({source,x:source.x,y:source.y,lift:radius,height:Math.max(.5,radius*3),
-      draw:(c,unit)=>orb(c,[source.x*unit,source.y*unit],unit*radius,color),
+      draw:(c,unit)=>orb(c,[source.x*unit,source.y*unit],unit*radius,color,true,false),
       sample:()=>({kind:'nativeOrb',x:source.x,y:source.y,lift:radius,radius,phase:0,pace:0,paletteMap:{[0xb9a6ff]:rgb},pose:'idle',amount:0})});
     if(accepted)orb(ctx,toScreen(source),s*radius,color,false);return accepted;
   };
@@ -396,4 +396,4 @@ export function drawOrrery(ctx, game, toScreen, s, t, capture = null) {
   }
   const lock = (game.orreryLockUntil || 0) - now; if (lock > 0) { const [x, y] = toScreen(centre(game)); ctx.strokeStyle = "#ff7ac0aa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, s * .6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * lock / (ORRERY.charge.lockout * 1000)); ctx.stroke(); }
 }
-function orb(ctx, [x, y], r, color,body=true) { ctx.fillStyle = color + "55"; ctx.beginPath(); ctx.arc(x, y, r * 1.9, 0, 7); ctx.fill(); if(!body)return; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = CORE; ctx.beginPath(); ctx.arc(x, y, r * .45, 0, 7); ctx.fill(); }
+function orb(ctx, [x, y], r, color,body=true,halo=true) { if(halo){ctx.fillStyle = color + "55"; ctx.beginPath(); ctx.arc(x, y, r * 1.9, 0, 7); ctx.fill();} if(!body)return; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = CORE; ctx.beginPath(); ctx.arc(x, y, r * .45, 0, 7); ctx.fill(); }
