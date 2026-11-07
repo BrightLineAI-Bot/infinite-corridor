@@ -8,10 +8,10 @@
 // chosen home ("rx,ry"; Ember Refuge, "0,0", when unset). Home is where the Atlas's Return button goes, and where the farm,
 // the quarry and the regrowth ring sit (refuge-lands.ts, by `homeCenter`). A town becomes home from the Atlas once its
 // Wayglass is lit.
-import { hashSeed } from "./random.js?v=r813-dbbd7b6c6a51";
-import { hamletIdentity, hamletSection } from "./settlements.js?v=r813-dbbd7b6c6a51";
-import { openSeaSection } from "./landscape.js?v=r813-dbbd7b6c6a51";
-import { killsAtMouthFromJournal } from "./far-array.js?v=r813-dbbd7b6c6a51";
+import { hashSeed } from "./random.js?v=r814-2bbee6cc627a";
+import { hamletIdentity, hamletSection } from "./settlements.js?v=r814-2bbee6cc627a";
+import { openSeaSection } from "./landscape.js?v=r814-2bbee6cc627a";
+import { killsAtMouthFromJournal } from "./far-array.js?v=r814-2bbee6cc627a";
 
 // townWhen: "kill" raises a Mouth's town on the first Listener kill there (releases 373-756, and again from Tim's 2026-11-05
 // cycle: "after you beat the listener [at a Mouth] for the first time there's a town that springs up"); "unlock" only when its
