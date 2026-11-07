@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 803: dedicated Close View joystick
+
+**CODE:** Close View reserves touch movement for gestures that begin inside the visible joystick. Open-screen drags pan on either side in Drag anywhere mode. The alternate crescent still pans from its own arc.
+
+**BOUNDARY:** Pointer ownership lasts through release or cancellation. Keyboard, mouse, action buttons, camera settings, and saves keep their existing behavior.
+
 ## Release 802: Close View decal color precision
 
 **CODE:** The decal fragment shader uses high-precision integers when unpacking projectile and contact-glint colors. The viewport scale test again covers 1280 × 800.

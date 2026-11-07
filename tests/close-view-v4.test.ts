@@ -83,7 +83,7 @@ function page(vw = 400, vh = 800) {
     addEventListener(t, f, o) { ((o === true || o?.capture) ? this.cap : this.listeners)[t] ||= []; ((o === true || o?.capture) ? this.cap : this.listeners)[t].push(f); }, removeEventListener() {}, dispatchEvent(e) { (this.listeners[e.type] || []).forEach((f) => f(e)); },
     append(...c) { for (const x of c) { x.parent = this; this.children.push(x); } }, insertBefore(n, ref) { n.parent = this; this.children.splice(this.children.indexOf(ref), 0, n); }, after(n) { const p = this.parent; n.parent = p; p.children.splice(p.children.indexOf(this) + 1, 0, n); },
     querySelector(sel) { return sel === '.action-diamond' ? this.children.find((c) => c.cls === 'action-diamond') : sel === '#game' ? canvas : null; }, querySelectorAll() { return []; },
-    getBoundingClientRect: () => ({ left: 220, top: 560, width: 162, height: 162 }), setPointerCapture() {}, set innerHTML(v) { this._html = v; } }; return el; };
+    getBoundingClientRect() { return this.className === "close-move-pad" ? { left: 34, top: 454, width: 92, height: 92 } : { left: 220, top: 560, width: 162, height: 162 }; }, setPointerCapture() {}, set innerHTML(v) { this._html = v; } }; return el; };
   const actions = mk('section'), cluster = mk('div'), canvas = mk('canvas'); cluster.cls = 'action-diamond'; cluster.offsetWidth = 162; cluster.offsetHeight = 162; cluster.offsetLeft = 220; cluster.offsetTop = 560; actions.append(cluster); actions.getBoundingClientRect = () => ({ left: 0, top: 0, width: vw, height: vh });
   const doc = { getElementById: (id) => id === 'actions' ? actions : id === 'game' ? canvas : null, createElementNS: (ns, t) => mk(t), createElement: (t) => mk(t) };
   const host = { document: doc, performance: { now: () => T }, addEventListener() {}, innerWidth: vw, innerHeight: vh };
@@ -94,14 +94,17 @@ function page(vw = 400, vh = 800) {
   return { doc, host, canvas, actions, fire, root };
 }
 
-test('drag anywhere (the default): a drag that starts on the right turns the view, even over the buttons; the left side stays the stick; a tap is still a tap', () => {
+test('drag anywhere (the default): a drag outside the joystick pans on either side; a tap is still a tap', () => {
   const { g } = room(); assert.equal(g.save.closeViewCamera, 'drag', 'the default control'); const P = page(), ui = CV.mountCloseViewControls(() => g, P.host);
   frame(g, 2); ui.sync(); assert.equal(ui.svg.style.display, 'none', 'drag mode: no crescent drawn'); assert.equal(ui.lock.style.display, 'grid', 'the bullseye stays');
   const y0 = CV.closeViewCamera().yaw;
   assert.equal(P.fire('pointerdown', 1, 300, 300), true, 'a press on the right is the camera\'s'); for (let i = 1; i <= 10; i++) { T += 16; P.fire('pointermove', 1, 300 + i * 6, 300); ui.sync(); }
   P.fire('pointermove', 1, 372, 700); // sliding down over the action buttons: still the camera's
   P.fire('pointerup', 1, 372, 700); ui.sync(); assert.ok(wrap(CV.closeViewCamera().yaw - y0) > .2, `dragging right turns the view right (${wrap(CV.closeViewCamera().yaw - y0).toFixed(3)})`);
-  assert.equal(P.fire('pointerdown', 2, 80, 400), false, 'a press on the left is left to the stick'); P.fire('pointerup', 2, 80, 400);
+  const beforeLeft = CV.closeViewCamera().yaw;
+  assert.equal(P.fire('pointerdown', 2, 80, 400), true, 'an off-stick press on the left belongs to the camera');
+  P.fire('pointermove', 2, 132, 400); P.fire('pointerup', 2, 132, 400);
+  assert.ok(wrap(CV.closeViewCamera().yaw - beforeLeft) > .2, 'a left-side drag outside the stick pans');
   let taps = 0; P.canvas.listeners.worldtap = [() => taps++]; P.fire('pointerdown', 3, 330, 250); P.fire('pointerup', 3, 332, 251); assert.equal(taps, 1, 'a tap on the right still reaches the world');
   const yl = CV.closeViewCamera().yaw; ui.lock.listeners.pointerdown[0]({ pointerId: 4, clientX: 360, clientY: 300, preventDefault() {}, stopPropagation() {} }); ui.lock.listeners.pointerup[0]({ pointerId: 4, clientX: 360, clientY: 300, preventDefault() {}, stopPropagation() {} });
   for (let i = 0; i < 3; i++) { T += 16; ui.sync(); } assert.equal(CV.closeViewCamera().yaw, yl, 'a touch on the lock never turns the view');
@@ -112,6 +115,7 @@ test('move and look at once: the left thumb drives the stick while the right dra
   const { g } = room(); const P = page(), input = createInput(P.root, { addEventListener() {} }), ui = CV.mountCloseViewControls(() => g, P.host); frame(g, 2); ui.sync();
   const y0 = CV.closeViewCamera().yaw;
   assert.equal(P.fire('pointerdown', 10, 80, 500), false, 'left thumb: the stick'); assert.equal(P.fire('pointerdown', 11, 320, 300), true, 'right thumb: the camera');
+  assert.equal(P.fire('pointerdown', 12, 85, 500), true, 'an extra joystick touch cannot take over');
   for (let i = 1; i <= 12; i++) { T += 16; P.fire('pointermove', 10, 80, 500 - i * 5); P.fire('pointermove', 11, 320 + i * 5, 300); input.update(.016); ui.sync(); }
   assert.ok(input.state.y < -.5, `the stick pushes up (${input.state.y.toFixed(2)})`); assert.ok(wrap(CV.closeViewCamera().yaw - y0) > .2, 'and the view turned');
   P.fire('pointerup', 11, 380, 300); P.fire('pointerup', 10, 80, 440); input.update(.5); assert.ok(Math.abs(input.state.y) < .2, 'both let go');
@@ -119,7 +123,7 @@ test('move and look at once: the left thumb drives the stick while the right dra
 
 test('the crescent option still turns the view, with its wider band beyond the arc and more gain; it never reaches left into the stick\'s side', () => {
   const { g } = room(); g.save.closeViewCamera = 'crescent'; const P = page(), ui = CV.mountCloseViewControls(() => g, P.host); frame(g, 2); ui.sync();
-  assert.equal(ui.svg.style.display, 'block'); assert.equal(P.fire('pointerdown', 5, 300, 300), false, 'crescent mode: the canvas is the stick\'s again');
+  assert.equal(ui.svg.style.display, 'block'); assert.equal(P.fire('pointerdown', 5, 300, 300), true, 'crescent mode also reserves movement for the joystick'); P.fire('pointerup', 5, 300, 300);
   const outer = ui.svg.children[2], K = CV.CLOSE_VIEW.crescent; assert.equal(outer.style.pointerEvents, 'stroke'); assert.ok(K.reach >= 30 && K.gain > 1, 'a generous band, more gain');
   const span = (ui.svg.getAttribute('data-outer') || '').split(' ').map(Number); assert.ok(span.length === 2 && span[0] > span[1], `the outer band has a span (${span})`);
   const cx = 301, cy = 641, R = 81 + K.gap; for (const deg of [span[0], span[1]]) { const r = R + K.band + K.reach, x = cx + r * Math.cos(deg * Math.PI / 180); assert.ok(x >= 400 * K.stickShare - 1, `outer band right of the stick's side (${x.toFixed(0)})`); }
