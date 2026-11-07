@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 802: Close View decal color precision
+
+**CODE:** The decal fragment shader uses high-precision integers when unpacking projectile and contact-glint colors. The viewport scale test again covers 1280 × 800.
+
+**BOUNDARY:** The change is limited to decal color decoding. The projectile and combat simulation, save schema, and Proving Ground isolation retain their behavior.
+
 ## Release 801: Close View combat readability
 
 **CODE:** `src/close-view.ts` projects standard shots at their simulation coordinates, uses existing shot colors, and puts trails and contact glints in the current depth-tested additive batch. The Wayfarer uses a short emitter and a recoil pose for standard ranged attacks. Confirmed melee damage holds the contact pose briefly, and enemy recoil follows existing combat state.
@@ -2876,7 +2882,7 @@ die".
 
 **CODE:** `src/close-view-models.ts` builds reusable rigid-part models for the Wayfarer and four foes. `src/close-view.ts` selects visible actors from the existing capture list, prioritizes the Wayfarer and locked foe, and samples movement and combat poses. `src/close-view-gl.ts` draws the batch with the existing camera, fog and torch lights. Directional shadows reuse the decal batch and are masked to solid, revealed ground.
 
-**BOUNDARY:** Presentation only. No change to attacks, collision, saves, generation or scratch isolation. Unsupported or specially decorated actors, alternate player forms and the 2D fallback keep sprite art. Quality tiers cap native actors at 8, 14 and 20, with at most 252 triangles per actor and two model draw calls. Floor shadows are projected approximations. Physical phone performance has not been measured.
+**BOUNDARY:** Presentation only. No change to attacks, collision, saves, generation or scratch isolation. Unsupported or specially decorated actors, alternate player forms and the 2D fallback keep sprite art. Quality tiers cap native actors at 8, 14 and 20, with at most 256 triangles per actor and two model draw calls. Floor shadows are projected approximations. Physical phone performance has not been measured.
 
 ## Release 797: Pentagon grand halls in Close View
 
