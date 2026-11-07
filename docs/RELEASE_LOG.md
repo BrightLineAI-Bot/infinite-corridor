@@ -15,15 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r816 on main, this PR takes r817.
+Taken at merge time: main's release + 1. With r818 on main, this PR takes r819.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| — | Codex | `claude/wayfarer-rogue-asset` | Imported protective Wayfarer with masked head, source rig and textured palette | Source/build and20 focused checks passed; independent review and hosted verification pending. Assign main+1 only when ready. |
-| — | Codex | `claude/close-view-character-forms` | Actual native player forms, companions, travelers, drone launch ports and startup readiness | Source reviewed and locally tested; number unassigned pending r817 merge. Startup fix6cbf37cb clears the observed cold-launch race. Publication is held behind the existing generation timing CI blocker. |
-| 817 | Codex | `claude/close-view-foundry-assets` | Six native Foundry morphologies with exact palette, appendage and attack contracts | PR #466. Original CI42413525175 failed twice only on unchanged generation timing; isolated suite passes. Tim approved focused runner isolation, preserving every test/assertion/threshold/output and workflows. Updated exact-head CI pending. |
+| — | Codex | `claude/wayfarer-rogue-asset` | Imported protective Wayfarer with masked head, source rig and textured palette | Source/build checks passed; integration review and hosted verification pending. Assign main+1 only when ready. |
+| 819 | Codex | `claude/mobile-close-view-camera` | Cramped-space follow, pause ownership and reachable target lock | Source review cleared after two fixes; final consistency/build/CI and hosted acceptance pending. |
+| 818 | Codex | `claude/close-view-character-forms` / #467 | Actual player forms, companions, travelers, drone launch ports and startup readiness | Merged as791b1eff716dbf96cebce406b912c0dbdf732763; exact CI42422197065 passed and full since-live Astra review cleared. Preview42423282390 running; not yet published. |
+| 817 | Codex | `claude/close-view-foundry-assets` | Six native Foundry morphologies with exact palette, appendage and attack contracts | Merged (#466) as f75cc54ad71cfa3d6c7e06c1c7dabd113600956c. Approved runner isolation preserves every assertion/threshold/output and workflows. Exact-head CI42420980003 passed at3f63019b; Astra delta review cleared. Preview42422053055 succeeded as r817-f75cc54ad71c; nine hosted Foundry cases reviewed without console errors. Not published separately. |
 | 816 | Codex | `claude/close-view-pentagon-assets` | Complete non-Foundry native creature roster and authored attack readability | Merged (#465). Published as r816-093cff214c39. CI42412608347, Preview42413362028 and Publish42416350924 succeeded; live identity and Options → System verified. Astra review (814→816): no blockers after torso/tube corrections. A cold-launch UI initialization race was observed and corrected in the following character candidate. |
 | 815 | Codex | `claude/close-view-arcology-assets` | Five authored creature bodies, rounded Wayfarer and full creature gallery | Merged (#464). Preview42410401068 succeeded as r815-fe5a2f35f0a4. Source review found flattened upright torso lofts; held from production and superseded by the vertical-loft correction in r816. Published in r816 with the corrections; the r815 candidate itself was never published. |
 | 814 | Codex | `claude/player-presentation-contract` | Actual accepted tool poses, additive exact-resume presentation and player status cues | Merged (#463). Previewed and published as r814-2bbee6cc627a. CI42407875425, Preview42408769197 and Publish42410274815 succeeded; live identity and Options → System verified with no recent errors. |

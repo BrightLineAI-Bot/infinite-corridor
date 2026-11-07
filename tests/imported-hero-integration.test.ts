@@ -30,6 +30,11 @@ test('actual renderer gates imported normal player on readiness, preserves forms
     assert.ok(gl.uploads.at(-1).every(Number.isFinite));assert.equal(gl.uploads.at(-1).byteLength,asset.vertexCount*24);
     assert.deepEqual({player:g.player,save:g.save,projectiles:g.projectiles},before,'presentation cannot mutate gameplay');
     g.setPaused(true,100016);render(screen,g,390,844,100032);const frozen=gl.uploads.at(-1);render(screen,g,390,844,110032);assert.deepEqual(gl.uploads.at(-1),frozen);
+    g.setPaused(false,110032);render(screen,g,390,844,110032);assert.deepEqual(gl.uploads.at(-1),frozen,'actual callback-free Game resume keeps idle at its logical phase');
+    g.primaryAttack(110040);assert.ok(g.player.attackUntil>110046,'actual accepted action is active');render(screen,g,390,844,110046);
+    const active=gl.uploads.at(-1),remaining=g.player.attackUntil-110046;
+    g.setPaused(true,110046);g.setPaused(false,115046);render(screen,g,390,844,115046);
+    assert.equal(g.player.attackUntil-115046,remaining);assert.deepEqual(gl.uploads.at(-1),active,'real Game pause shift preserves partial accepted-action geometry');
     for(const id of ['wayfarer-iron-fists','wayfarer-active-robot','wayfarer-empowered-suit','wayfarer-ember-form']){
       const form=fixture(id);resetCloseViewCamera();render(screen,form,390,844,100000);assert.equal(closeViewGLStats.heroTriangles,0,id+' keeps actual native special form');
     }
