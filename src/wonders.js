@@ -5,11 +5,11 @@
 // (placement 2); a great tree where the section's centre lies in a tree region and the version 14 roll grows one (a tree may
 // still find no room, so the Atlas says "said to stand"); a Starfield crossing where the section's ordinary crossing would roll
 // one on first entry. Only sections with no Atlas entry are named, so all of this is new ground (placement 2, landscape 14).
-import { hashSeed, rng } from "./random.js?v=r816-093cff214c39";
-import { dungeonId } from "./world.js?v=r816-093cff214c39";
-import { sectionRegion, farSleepSection, dreamsHere, DREAM_VERSION } from "./landscape.js?v=r816-093cff214c39";
-import { skylandSection, SKY_PLACE } from "./skylands.js?v=r816-093cff214c39";
-import { TREES_V14 } from "./trees.js?v=r816-093cff214c39";
+import { hashSeed, rng } from "./random.js?v=r818-791b1eff716d";
+import { dungeonId } from "./world.js?v=r818-791b1eff716d";
+import { sectionRegion, farSleepSection, dreamsHere, DREAM_VERSION } from "./landscape.js?v=r818-791b1eff716d";
+import { skylandSection, SKY_PLACE } from "./skylands.js?v=r818-791b1eff716d";
+import { TREES_V14 } from "./trees.js?v=r818-791b1eff716d";
 
 export const WONDERS = {
   radius: 24, // sections searched round the Wayfarer (Manhattan)

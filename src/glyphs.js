@@ -7,8 +7,8 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r816-093cff214c39";
-import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r816-093cff214c39";
+import { hashSeed } from "./random.js?v=r818-791b1eff716d";
+import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r818-791b1eff716d";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];

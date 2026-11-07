@@ -1,8 +1,14 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r816-093cff214c39";
-import { SHADOW_CLONE } from "./late-spells.js?v=r816-093cff214c39";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r816-093cff214c39";
-import { drawOrbit } from "./orbit-volley.js?v=r816-093cff214c39";
-import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r816-093cff214c39";
+// Body only: capture can lift the same silhouette while rings, targeting and attack geometry retain their owners.
+function drawShadowBody(ctx,x,y,s){
+    ctx.fillStyle = "#1b1030"; ctx.beginPath(); ctx.moveTo(x - s * .24, y + s * .34); ctx.quadraticCurveTo(x - s * .28, y - s * .1, x - s * .12, y - s * .2); ctx.lineTo(x + s * .12, y - s * .2); ctx.quadraticCurveTo(x + s * .28, y - s * .1, x + s * .24, y + s * .34); ctx.closePath(); ctx.fill(); // cloak
+    ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
+    ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
+}
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r818-791b1eff716d";
+import { SHADOW_CLONE } from "./late-spells.js?v=r818-791b1eff716d";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r818-791b1eff716d";
+import { drawOrbit } from "./orbit-volley.js?v=r818-791b1eff716d";
+import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r818-791b1eff716d";
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
 export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
@@ -59,8 +65,8 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   drawBrawler(ctx, game, toScreen, s, t); // release 483: Hammerfall, Great Sweep, Iron Fist
   drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
   drawOrbit(ctx, game, toScreen, s, t); // release 487: Orbit Volley
-  drawToolForms(ctx, game, toScreen, s, t); // release 533: Nanoknives and the Arc Wave
-  drawOrrery(ctx, game, toScreen, s, t); // the Aether Orrery
+  drawToolForms(ctx, game, toScreen, s, t, projectedShots); // release 533: Nanoknives and the Arc Wave
+  drawOrrery(ctx, game, toScreen, s, t, projectedShots); // the Aether Orrery
   if (game.rite && game.area === "overworld") drawRiteFire(ctx, toScreen, s, t); // the Rite of Ascendancy: fire round the section's edges
   for (const fx of game.effects) if (fx.kind === "riteRubble" && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / fx.maxLife, drop = (fx.h || 2) * (1 - k) * s; ctx.fillStyle = k > .85 ? "rgba(120,100,80,.5)" : "#7a6650"; ctx.fillRect(x - s * .07, y - drop - s * .07, s * .14, s * .12); if (k > .8) { ctx.fillStyle = "rgba(160,140,110,.35)"; ctx.beginPath(); ctx.ellipse(x, y, s * .3 * (k - .6) * 3, s * .1, 0, 0, 7); ctx.fill(); } } // the great tree rising: rubble falling off it
   for (const fx of game.effects) if (fx.kind === "riteFlash" && fx.life > 0) { const a = Math.min(1, fx.life / fx.maxLife * 1.4); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = `rgba(255,250,235,${a * .9})`; ctx.fillRect(0, 0, ctx.canvas?.width || 4000, ctx.canvas?.height || 4000); ctx.restore(); } // ... the flash as it begins
@@ -73,6 +79,12 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   for (const e of game.enemies) { const f = !e.dead && e.mirror?.frozen; if (!f?.length) continue; // release 369: shots held around the Listener
     f.forEach((q, i) => { const [x, y] = toScreen(q), r = 5 + Math.sin(t * 9 + i) * 1.5; ctx.fillStyle = "#c9a6ff55"; ctx.beginPath(); ctx.arc(x, y, r + 5, 0, 7); ctx.fill(); ctx.fillStyle = "#f3eaff"; ctx.beginPath(); ctx.arc(x, y, r * .6, 0, 7); ctx.fill(); });
     const [lx, ly] = toScreen({ x: e.x + .5, y: e.y + .45 }); ctx.strokeStyle = "#c9a6ff88"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.arc(lx, ly, 2.2 * s, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+  const shadowNow=projectedShots?.now??game.lastUpdateNow??0;
+  const shadow=game.shadowCloneActive?.(shadowNow)&&game.shadowClone;
+  const shadowCaptured=shadow&&!shadow.charging&&projectedShots?.captureActor?.({source:shadow,x:game.player.x+shadow.ox+.5,y:game.player.y+shadow.oy+.82,height:2,
+    draw:(c,unit)=>{const left=Math.max(0,(shadow.until-shadowNow)/1000),quiet=game.presentation?.reduceMotion||game.presentation?.safeMode;c.save();c.globalAlpha=Math.min(1,left/1.5)*(.62+(quiet?0:.08*Math.sin(shadowNow/1000*6)));drawShadowBody(c,(game.player.x+shadow.ox+.5)*unit,(game.player.y+shadow.oy+.45)*unit,unit);c.restore();},
+    decorate:(c,unit)=>{if(shadow.blockedUntil>shadowNow){c.save();c.globalAlpha=1;c.font=`bold ${Math.round(unit*.36)}px monospace`;c.textAlign='center';c.lineWidth=3;c.strokeStyle='#091018';c.strokeText('BLOCKED',(game.player.x+shadow.ox+.5)*unit,(game.player.y+shadow.oy-.25)*unit);c.fillStyle='#ff7a7a';c.fillText('BLOCKED',(game.player.x+shadow.ox+.5)*unit,(game.player.y+shadow.oy-.25)*unit);c.restore();}},
+    sample:(now,quiet)=>{const attack=shadow.swingUntil>now&&shadow.swingDir,d=attack?shadow.swingDir:({up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}}[game.player.facing]);return {kind:'playerShadow',x:game.player.x+shadow.ox+.5,y:game.player.y+shadow.oy+.82,yaw:d?Math.atan2(d.y,d.x):undefined,shadow:true,alpha:Math.min(1,Math.max(0,(shadow.until-now)/1500))*(.62+(quiet?0:.08*Math.sin(now/1000*6))),pose:attack?'attack':undefined,amount:attack?1-Math.min(1,(shadow.swingUntil-now)/240):0};}});
   const sc = game.shadowCloneActive?.() && game.shadowClone;
   if (sc) {
     const [x, y] = toScreen({ x: game.player.x + sc.ox + .5, y: game.player.y + sc.oy + .45 }), left = Math.max(0, (sc.until - (game.lastUpdateNow || 0)) / 1000), a = Math.min(1, left / 1.5) * (.62 + .08 * Math.sin(t * 6));
@@ -86,13 +98,11 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
       ctx.restore();
     } else {
     ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x, y + s * .36, s * .3, s * .1, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = "#1b1030"; ctx.beginPath(); ctx.moveTo(x - s * .24, y + s * .34); ctx.quadraticCurveTo(x - s * .28, y - s * .1, x - s * .12, y - s * .2); ctx.lineTo(x + s * .12, y - s * .2); ctx.quadraticCurveTo(x + s * .28, y - s * .1, x + s * .24, y + s * .34); ctx.closePath(); ctx.fill(); // cloak
-    ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
-    ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
+    if(!shadowCaptured)drawShadowBody(ctx,x,y,s);
     ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(x, y, s * .45, 0, 7); ctx.stroke(); ctx.setLineDash([]);
     if ((sc.swingUntil || 0) > (game.lastUpdateNow || 0) && sc.swingDir) { const ang = Math.atan2(sc.swingDir.y, sc.swingDir.x); ctx.strokeStyle = "#b48cffcc"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, s * .9, ang - .9, ang + .9); ctx.stroke(); }
     if (game.cloneAim) { ctx.globalAlpha = .5; ctx.strokeStyle = "#b48cff"; ctx.lineWidth = 1; ctx.setLineDash([2, 5]); const [px, py] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }); ctx.beginPath(); ctx.arc(px, py, 2 * s, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
-    if ((sc.blockedUntil || 0) > (game.lastUpdateNow || 0)) { ctx.globalAlpha = 1; ctx.font = `bold ${Math.round(s * .36)}px monospace`; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "#091018"; ctx.strokeText("BLOCKED", x, y - s * .7); ctx.fillStyle = "#ff7a7a"; ctx.fillText("BLOCKED", x, y - s * .7); ctx.textAlign = "left"; }
+    if (!shadowCaptured && (sc.blockedUntil || 0) > (game.lastUpdateNow || 0)) { ctx.globalAlpha = 1; ctx.font = `bold ${Math.round(s * .36)}px monospace`; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "#091018"; ctx.strokeText("BLOCKED", x, y - s * .7); ctx.fillStyle = "#ff7a7a"; ctx.fillText("BLOCKED", x, y - s * .7); ctx.textAlign = "left"; }
     ctx.restore();}
   }}
   const target = game.lockedTarget?.(); // release 309: brackets on the locked target

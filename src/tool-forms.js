@@ -1,4 +1,4 @@
-import { stampAttackVisual } from "./action-motion.js?v=r816-093cff214c39";
+import { stampAttackVisual } from "./action-motion.js?v=r818-791b1eff716d";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -72,10 +72,10 @@ function sweepBlade(ctx, x, y, a, s, i, spinAt) {
 // A rounded rectangle drawn with arcs, so it works where ctx.roundRect is missing (older Safari and Chrome).
 function rounded(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 // The golem: a squat stone figure with yellow sigil eyes, rising out of the floor and sinking back.
-function drawGolem(ctx, game, toScreen, s) {
-  const g = game.golem, now = game.lastUpdateNow || 0; if (!g || now < g.start) return;
+export function drawGolem(ctx, game, toScreen, s, clock = game.lastUpdateNow || 0, shadow = true) {
+  const g = game.golem, now = clock; if (!g || now < g.start) return;
   const up = g.sinkAt ? Math.max(0, 1 - (now - g.sinkAt) / (GOLEM.sink * 1000)) : Math.min(1, (now - g.start) / (GOLEM.rise * 1000)), [x, y] = toScreen(g), H = s * 1.05 * up, W = s * .75, f = g.face || 1;
-  ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(x, y + s * .3, W * .7, s * .16, 0, 0, 7); ctx.fill();
+  if(shadow){ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(x, y + s * .3, W * .7, s * .16, 0, 0, 7); ctx.fill();}
   ctx.save(); try { ctx.beginPath(); ctx.rect(x - s, y + s * .32 - s * 1.6, s * 2, s * 1.6); ctx.clip(); // below the floor line it is still in the ground
   const top = y + s * .32 - H; ctx.fillStyle = "#857a68"; ctx.strokeStyle = "#3f382e"; ctx.lineWidth = 2;
   ctx.beginPath(); rounded(ctx, x - W / 2, top + s * .22, W, H, s * .12); ctx.fill(); ctx.stroke(); // body
@@ -85,8 +85,13 @@ function drawGolem(ctx, game, toScreen, s) {
   } finally { ctx.restore(); } // the clip never outlives the golem, whatever happens while drawing it
 }
 
-export function drawToolForms(ctx, game, toScreen, s, t) {
-  drawGolem(ctx, game, toScreen, s);
+export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
+  const g=game.golem,clock=capture?.now??game.lastUpdateNow??0;
+  const captured=g&&clock>=g.start&&capture?.captureActor?.({source:g,x:g.x,y:g.y+.32,height:1.5,
+    draw:(c,unit)=>drawGolem(c,game,q=>[q.x*unit,q.y*unit],unit,clock,false),
+    sample:(now)=>{const up=g.sinkAt?Math.max(0,1-(now-g.sinkAt)/(GOLEM.sink*1000)):Math.max(0,Math.min(1,(now-g.start)/(GOLEM.rise*1000))),punch=now-(g.punchAt??-1e9);return {kind:'corridorGolem',x:g.x,y:g.y+.32,supportX:g.x,supportY:g.y,scale:1.05/1.49,lift:(up-1)*1.05,yaw:(g.face||1)<0?Math.PI:0,pose:punch>=0&&punch<160?'fist':'idle',amount:Math.max(0,Math.min(1,punch/160)),fistStep:1,alpha:up>0?1:0};}});
+  if(captured){const [x,y]=toScreen(g);ctx.fillStyle='#00000033';ctx.beginPath();ctx.ellipse(x,y+s*.3,s*.75*.7,s*.16,0,0,7);ctx.fill();}
+  else drawGolem(ctx, game, toScreen, s);
   for (const fx of game.effects) if (fx.fireBurst && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / .32, R = fx.radius * s * (.5 + .6 * k); const g = ctx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, `rgba(255,236,160,${.9 * (1 - k)})`); g.addColorStop(.5, `rgba(255,128,40,${.7 * (1 - k)})`); g.addColorStop(1, "rgba(160,40,10,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); } // release 547: Fire Burst's flame
   { // Sunburst Ricochet's shards: one path for all of them (they are many and small); streaks only at full motion and quality
     const pr = game.presentation || {}, still = pr.reduceMotion || pr.safeMode || pr.effectiveQuality === "low"; let any = false;
@@ -353,8 +358,16 @@ export function orreryOnHit(game, p, e, now) {
 
 // ---------------------------------------------------------------- drawing
 const VIOLET = "#b9a6ff", TEAL = "#7ff3e6", CORE = "#f2eeff";
-export function drawOrrery(ctx, game, toScreen, s, t) {
+export function drawOrrery(ctx, game, toScreen, s, t, capture = null) {
   const S = game.orrery, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode), q = game.presentation?.effectiveQuality || "balanced", now = game.lastUpdateNow || 0;
+  const captureOrb=(source,radius,color)=>{
+    if(!capture?.captureActor)return false;
+    const rgb=Number.parseInt(color.slice(1),16);
+    const accepted=capture.captureActor({source,x:source.x,y:source.y,lift:radius,height:Math.max(.5,radius*3),
+      draw:(c,unit)=>orb(c,[source.x*unit,source.y*unit],unit*radius,color,true,false),
+      sample:()=>({kind:'nativeOrb',x:source.x,y:source.y,lift:radius,radius,phase:0,pace:0,paletteMap:{[0xb9a6ff]:rgb},pose:'idle',amount:0})});
+    if(accepted)orb(ctx,toScreen(source),s*radius,color,false);return accepted;
+  };
   if (S?.charge && S.charge.held >= ORRERY.charge.grace) { // the cone of sparks
     const c = S.charge, [ox, oy] = toScreen(centre(game)), a0 = Math.atan2(c.dir.y, c.dir.x), N = ORRERY.sparks[q] ?? ORRERY.sparks.balanced, R = ORRERY.cone.range * s, H = ORRERY.cone.half, k = Math.min(1, c.held / ORRERY.charge.full), hot = c.held > ORRERY.charge.max - .5;
     ctx.fillStyle = hot ? "#ff9ad633" : "#b9a6ff22"; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.arc(ox, oy, R, a0 - H, a0 + H); ctx.closePath(); ctx.fill();
@@ -369,18 +382,18 @@ export function drawOrrery(ctx, game, toScreen, s, t) {
       ctx.beginPath(); for (let i = 0; i < h.n; i++) { const [x, y] = toScreen(h.pts[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath();
       if (h.n >= 3) { ctx.fillStyle = "#7ff3e622"; ctx.fill(); } ctx.strokeStyle = TEAL; ctx.lineWidth = Math.max(2, s * .07); ctx.stroke();
     }
-    for (let i = 0; i < h.n; i++) orb(ctx, toScreen(h.pts[i]), s * .13, VIOLET);
+    for (let i = 0; i < h.n; i++) if(!captureOrb(h.pts[i],.13,VIOLET))orb(ctx, toScreen(h.pts[i]), s * .13, VIOLET);
   }
-  const cp = S?.clonePt; if (cp && (cp.x || cp.y)) { orb(ctx, toScreen(cp), s * .11, "#8f7ad8");
+  const cp = S?.clonePt; if (cp && (cp.x || cp.y)) { if(!captureOrb(cp,.11,"#8f7ad8"))orb(ctx, toScreen(cp), s * .11, "#8f7ad8");
     if (S.charge && S.charge.held >= ORRERY.charge.grace) { const at = clonePlace(game, now); if (at) { const [ax, ay] = toScreen(centre(game)), [bx, by] = toScreen(at); ctx.strokeStyle = "#d7c9ff"; ctx.lineWidth = Math.max(2, s * .06); ctx.globalAlpha = still ? .8 : .6 + .3 * Math.sin(t * 20); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.globalAlpha = 1; } } }
   for (const p of game.projectiles) {
     if (p.dead || !p.orrery) continue; const [x, y] = toScreen(p);
-    if (p.orrery === "orb") orb(ctx, [x, y], s * .17, VIOLET);
+    if (p.orrery === "orb") {if(!captureOrb(p,.17,VIOLET))orb(ctx, [x, y], s * .17, VIOLET);}
     else if (p.orrery === "pellet") { ctx.fillStyle = TEAL; ctx.globalAlpha = Math.min(1, p.life * 2); ctx.beginPath(); ctx.arc(x, y, s * .06, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
-    else if (p.orrery === "big") { const R = s * (.3 + ORRERY.big.grow * .5); ctx.fillStyle = "#b9a6ff40"; ctx.beginPath(); ctx.arc(x, y, R * 1.6, 0, 7); ctx.fill(); orb(ctx, [x, y], R, VIOLET); if (!still) { ctx.strokeStyle = TEAL; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R * 1.2, t * 6, t * 6 + 2); ctx.stroke(); } }
+    else if (p.orrery === "big") { const R = s * (.3 + ORRERY.big.grow * .5); ctx.fillStyle = "#b9a6ff40"; ctx.beginPath(); ctx.arc(x, y, R * 1.6, 0, 7); ctx.fill(); if(!captureOrb(p,R/s,VIOLET))orb(ctx, [x, y], R, VIOLET); if (!still) { ctx.strokeStyle = TEAL; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R * 1.2, t * 6, t * 6 + 2); ctx.stroke(); } }
     else { const L = s * (p.orrery === "drone" ? .35 : .5); ctx.strokeStyle = p.orrery === "drone" ? TEAL : p.orrery === "clone" ? "#d7c9ff" : CORE; ctx.lineWidth = Math.max(2, s * (p.orrery === "drone" ? .05 : .08));
       ctx.beginPath(); const tail = p.cube?.corners; if (tail?.length && !still) { const [cx, cy] = toScreen(tail[tail.length - 1]); ctx.moveTo(cx, cy); ctx.lineTo(x, y); } else { ctx.moveTo(x - p.dx * L, y - p.dy * L); ctx.lineTo(x, y); } ctx.stroke(); }
   }
   const lock = (game.orreryLockUntil || 0) - now; if (lock > 0) { const [x, y] = toScreen(centre(game)); ctx.strokeStyle = "#ff7ac0aa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, s * .6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * lock / (ORRERY.charge.lockout * 1000)); ctx.stroke(); }
 }
-function orb(ctx, [x, y], r, color) { ctx.fillStyle = color + "55"; ctx.beginPath(); ctx.arc(x, y, r * 1.9, 0, 7); ctx.fill(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = CORE; ctx.beginPath(); ctx.arc(x, y, r * .45, 0, 7); ctx.fill(); }
+function orb(ctx, [x, y], r, color,body=true,halo=true) { if(halo){ctx.fillStyle = color + "55"; ctx.beginPath(); ctx.arc(x, y, r * 1.9, 0, 7); ctx.fill();} if(!body)return; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = CORE; ctx.beginPath(); ctx.arc(x, y, r * .45, 0, 7); ctx.fill(); }

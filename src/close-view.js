@@ -1,18 +1,20 @@
-import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r816-093cff214c39";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r816-093cff214c39";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.js?v=r816-093cff214c39";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel } from "./close-view-models.js?v=r816-093cff214c39";
-import { actorPresentation, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, shotVisualHeight } from "./actor-presentation.js?v=r816-093cff214c39";
-import { dronePos } from "./affixes.js?v=r816-093cff214c39";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r816-093cff214c39";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r816-093cff214c39";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r816-093cff214c39";
-import { knockdownPose } from "./lightning-giant-render.js?v=r816-093cff214c39";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r816-093cff214c39";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r816-093cff214c39";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r816-093cff214c39";
-import { SIGIL_CELLS } from "./watcher.js?v=r816-093cff214c39";
-import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r816-093cff214c39"; // version 4: the GPU scene
+import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r818-791b1eff716d";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r818-791b1eff716d";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.js?v=r818-791b1eff716d";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel } from "./close-view-models.js?v=r818-791b1eff716d";
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.js?v=r818-791b1eff716d";
+import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.js?v=r818-791b1eff716d';
+import { fistCharge } from './brawler-spells.js?v=r818-791b1eff716d';
+import { dronePos } from "./affixes.js?v=r818-791b1eff716d";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r818-791b1eff716d";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r818-791b1eff716d";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r818-791b1eff716d";
+import { knockdownPose } from "./lightning-giant-render.js?v=r818-791b1eff716d";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r818-791b1eff716d";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r818-791b1eff716d";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r818-791b1eff716d";
+import { SIGIL_CELLS } from "./watcher.js?v=r818-791b1eff716d";
+import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r818-791b1eff716d"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -224,7 +226,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r816-093cff214c39's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r818-791b1eff716d's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -371,7 +373,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r816-093cff214c39's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r818-791b1eff716d's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -434,7 +436,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r816-093cff214c39's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r818-791b1eff716d's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 
@@ -807,7 +809,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r816-093cff214c39's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r818-791b1eff716d's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && interiorTerrain(CAM.map)) return terrainFloorRay(CAM.map, x, y);
@@ -895,7 +897,23 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // dyL), so a trap mark or a telegraph lies exactly where the floor under it is.
   const Tx = Math.round(W / 2 - p.x * s), Ty = Math.round(H / 2 - p.y * s), gox = Math.round(Tx * ts) - Tx * ts, goy = Math.round(Ty * ts) - Ty * ts, dxL = (Tx - (W / 2 - p.x * s)) * ts, dyL = (Ty - (H / 2 - p.y * s)) * ts;
   gc.setTransform(ts, 0, 0, ts, gox, goy); gc.imageSmoothingEnabled = false; captured = null; capturedPlayer = null; capturing = true; bareFloor = useGL;
-  try { baseRender(gc, g, W, H, now); for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = false; }
+  try { baseRender(gc, g, W, H, now);
+    if (shots) {
+      shots.now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+      // Effect producers hand over exact source references and body-only closures. Even a cap-overflow body
+      // keeps its captured sprite; suppression does not depend on guessing the later native admission result.
+      const auxiliarySeen=glSeen(g.map);
+      shots.captureActor = (spec) => {
+        if (!spec?.source || !Number.isFinite(spec.x) || !Number.isFinite(spec.y) || typeof spec.draw !== 'function' || typeof spec.sample !== 'function') return false;
+        if(auxiliarySeen&&!auxiliarySeen(spec.x,spec.y))return true;
+        captured.push({ x:spec.x-.5,y:spec.y-.82,lift:spec.lift||0,nativeAux:spec,nativeHeight:spec.height||1.8,nativeEffects:!!spec.decorate,
+          nativeDecorations:spec.decorate?()=>spec.decorate(gc,s):null,
+          // A rejected native body still owns its residual label/effects on its sprite card.
+          fn:()=>{spec.draw(gc,s);spec.decorate?.(gc,s);} });
+        return true;
+      };
+    }
+    for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick;
@@ -1060,7 +1078,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i])) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
     const q = project(bxw, byw, interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, bxw, byw - .07) + closeViewActorLift(d) : 0); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
-    if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - (d.enemy ? nativeBoardTop(d.enemy, sc) : A.height * sc) * k > h || q.sy + A.below * k < 0) continue;
+    if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
     boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : Math.max(0, 1 - A.fade * (1 - lit)) * (1 - fog); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
@@ -1164,7 +1182,7 @@ let matched = null; // the creature scaleFor last matched (or null): boardFoe ke
 function scaleFor(g, d) { // the exact captured creature, including colocated illusions, supplies its sprite box
   matched = d.enemy || null;
   if (matched) return Math.min(CLOSE_VIEW.actors.maxSprite * 2.5, actorScale(matched));
-  return CLOSE_VIEW.actors.sprite;
+  return d.nativeAux?.spriteScale || CLOSE_VIEW.actors.sprite;
 }
 // The Wayfarer's facing as the camera sees it: walking away from the camera shows their back ("up").
 const FACING_VEC = Object.freeze({ up: Object.freeze([0, -1]), down: Object.freeze([0, 1]), left: Object.freeze([-1, 0]), right: Object.freeze([1, 0]) });
@@ -1223,9 +1241,9 @@ function relativeFacing(p) {
 // The atlas is a band of the ground canvas below its texture (the captured closures can only draw into the canvas they were
 // captured with), so the texture is copied once a frame when the atlas is first written, not once per actor.
 const SPRITES = { used: 0 };
-function nativeBoardTop(foe, scale) {
+function nativeBoardTop(foe, scale, height = 0) {
   const p = actorPresentation(foe);
-  return Math.max(CLOSE_VIEW.actors.height * scale, p ? p.head + .95 * p.scale : 0);
+  return Math.max(CLOSE_VIEW.actors.height * scale, height, p ? p.head + .95 * p.scale : 0);
 }
 function packBillboards(g, draws, n, s, facing, native = null) {
   const A = CLOSE_VIEW.actors, ac = GROUND.ctx; if (!ac) return false;
@@ -1235,7 +1253,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     const d = draws[itemRef[it]], nativeBody = native?.has(it), foe = boardFoe[it];
     const residual = nativeBody && typeof d.nativeDecorations === 'function' && (d.nativeEffects || foe?.fracRank === 'rare' && foe.packName || foe?.fracWarden || foe?.warded || foe?.affixes?.length || foe?.poiseBreak > 0 || foe?.pack?.phase === 'stunned');
     if (nativeBody && !residual) { boardPW[it] = 0; continue; }
-    const sc = boardScale[it], k = boardK[it], hw = A.halfWidth * sc, top = nativeBody ? nativeBoardTop(foe, sc) : A.height * sc, bw = 2 * hw, bh = top + A.below;
+    const sc = boardScale[it], k = boardK[it], hw = A.halfWidth * sc, top = nativeBody ? nativeBoardTop(foe, sc, d.nativeHeight) : Math.max(A.height * sc,d.nativeHeight||0), bw = 2 * hw, bh = top + A.below;
     let q = k * spriteDpr / s; q = Math.min(q, (AW - 2) / (bw * s), (AH * (first && closeViewStats.gl ? CLOSE_VIEW.atmosphere.sprite.nearShare : 1 / 3)) / (bh * s)); first = false; // version 5: the nearest (the Wayfarer, mostly) may take more // a third of the atlas at most: room for every actor in view
     let pw = Math.ceil(bw * s * q), ph = Math.ceil(bh * s * q);
     if (x + pw > AW) { x = 0; y += rowH; rowH = 0; }
@@ -1246,13 +1264,13 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     // place jumped a whole world pixel at a time inside its card, which the close camera magnifies to two or three screen
     // pixels: every walker juddered. Now it is drawn at its place snapped to that grid (so its pixels never move inside the
     // card) and the card itself is laid at its true place on screen, smoothly.
-    const p = g.player, wasFacing = p.facing, player = d === capturedPlayer, who = player ? p : boardFoe[it], wx = who ? who.x : d.x, wy = who ? who.y : d.y, snx = Math.round(wx * s) / s, sny = Math.round(wy * s) / s;
+    const p = g.player, wasFacing = p.facing, player = d === capturedPlayer, who = player ? p : boardFoe[it] || d.object, wx = who ? who.x : d.x, wy = who ? who.y : d.y, snx = Math.round(wx * s) / s, sny = Math.round(wy * s) / s;
     const sx0 = (snx + .5 - hw) * s, sy0 = (sny + .82 - top) * s; ac.setTransform(q, 0, 0, q, x - sx0 * q, Y0 + y - sy0 * q); // the closures draw in raw world pixels
     if (who) { who.x = snx; who.y = sny; } if (player) p.facing = facing;
     if (d.lift && !interiorTerrain(g.map)) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1) ac.globalAlpha = d.alpha;
     const art = foe && CLOSE_VIEW_HOOKS.art[foe.kind]; // (boardFoe is written afresh for every item each frame)
     // phase 2: a creature with close-view art draws itself, from the camera's side (view: where it stands relative to the camera)
-    try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && facing === "up") backOfHood(ac, p, s); } finally { ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
+    try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && !nativeBody && facing === "up") backOfHood(ac, p, s); } finally { ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
     x += pw + 2; rowH = Math.max(rowH, ph + 2); }
   SPRITES.used = y + rowH; return true;
 }
@@ -1338,7 +1356,7 @@ function flatPass(g, draws, gc, s, ts, gox, goy, Tx, Ty) {
   const objs = g.map?.objects || []; FLAT.n = draws.length; let drawn = 0;
   for (let i = 0; i < draws.length; i++) { FLAT.mark[i] = 0; const d = draws[i]; if (d === capturedPlayer || !Number.isFinite(d?.x) || typeof d.fn !== "function") continue;
     let hit = null; for (let j = 0; j < objs.length; j++) { const o = objs[j]; if (o.x === d.x && o.y === d.y) { hit = o; break; } }
-    if (d.enemy || !flatObject(hit)) continue;
+    if (d.enemy || d.nativeAux || !flatObject(hit)) continue;
     FLAT.mark[i] = 1; gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty); if ((d.alpha ?? 1) < 1) gc.globalAlpha = d.alpha; try { d.fn(); } finally { gc.restore(); } drawn++; }
   closeViewStats.flat = drawn;
 }
@@ -1763,7 +1781,7 @@ const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
 };
-export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0) {
+export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
   const semantic = actorPresentation(who)?.action === 'pack' ? packActionPresentation(who, ATTACK_MODULES, BOSS_PACE.windup, now) : null;
   const legacyCrawler = kind === 'pallidCrawler' && ['bite', 'leapSlam'].includes(semantic?.action);
@@ -1801,6 +1819,15 @@ export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0
   let windupAmount = null;
   if (winding && Number.isFinite(windupDuration) && windupDuration > 0 && who.telegraph > 0)
     windupAmount = 1 - Math.min(1, Math.max(0, who.telegraph) / windupDuration);
+  if (actorPresentation(who)?.action === 'foundry') {
+    const shape = winding ? actionShape : who.strikeGeometry?.kind;
+    const melee = !!shape || !!who.meleePhase || who.range < 2.5;
+    const family = shape === 'stab' ? 'stab' : shape === 'slam' ? 'slam' : melee ? 'sweep' : 'ranged';
+    const phase = winding ? 'windup' : attack ? 'recover' : 'idle';
+    return { attack, winding, aim, amount, windupAmount, semanticPose: winding || attack,
+      semantic: { action: who.meleePhase?.id || who.foundryAttack || 'meleeSwipe', family, phase,
+        progress: winding ? windupAmount ?? 0 : attack ? 1 - Math.min(1, who.strike * 1000 / ACTION_MOTION.monsterStrikeMs) : 0 } };
+  }
   return { attack, winding, leapActive, packRecovery, aim, amount, leapAmount, windupAmount, semantic };
 }
 export function closeViewPlayerAction(g, now) {
@@ -1816,6 +1843,7 @@ export function closeViewPlayerAction(g, now) {
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
+  const form = playerFormPresentation(g);
   state.admitted.clear();
   closeViewGLStats.modelFallbacks = Object.create(null);
   if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; }
@@ -1836,7 +1864,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const admit = (it, who, kind) => {
     const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], pack = who.pack;
     const presentation = who === player ? null : actorPresentation(who);
-    const monsterAction = who === player ? null : closeViewMonsterAction(who, kind, d.nativeWindup, now);
+    const monsterAction = who === player ? null : closeViewMonsterAction(who, kind, d.nativeWindup, now, d.nativeActionShape);
     const playerAction = who === player ? closeViewPlayerAction(g, now) : null;
     const visualRecord = playerAction?.record, visualAttack = !!playerAction?.active;
     const attack = !!playerAction?.legacy || visualAttack || who !== player && (who.attackUntil > now || !!monsterAction?.attack);
@@ -1849,12 +1877,14 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const dx = who.x - track.x, dy = who.y - track.y, dist = Math.hypot(dx, dy);
     const elapsed = Math.max(0, Math.min(.1, (now - track.at) / 1000));
     const visualProfile = visualAttack ? visualRecord.profile : null;
+    const fisting = who === player && (visualProfile === 'fist' || playerAction?.legacy && !!g.fistsEquipped?.());
+    const charge = who === player && !attack && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
     const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
     const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" : !(player.meleeUntil > now));
     const cast = who === player && player.castUntil > now;
     const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
     const winding = !!monsterAction?.winding;
-    const aim = who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
+    const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
       : monsterAction?.aim;
     let targetYaw = track.yaw;
     if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
@@ -1863,7 +1893,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (!stunned && Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
     const yawDelta = Math.atan2(Math.sin(targetYaw - track.yaw), Math.cos(targetYaw - track.yaw));
     const turn = Math.max(-1, Math.min(1, yawDelta));
-    if (!stunned && (attack || winding || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
+    if (!stunned && (attack || winding || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
     if (!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
@@ -1875,8 +1905,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (winding && !track.winding) track.windAt = now;
     if (attack && !track.attacking) track.attackAt = now;
     const knock = stunned ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
-    const profilePose = visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
-    const pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
+    const profilePose = fisting ? 'fist' : visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
+    const pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
     const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
     let amount = 0;
     if (winding) amount = monsterAction?.windupAmount ?? Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
@@ -1892,13 +1922,19 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       ? monsterAction.leapAmount
       : 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
     if (hit) amount = hit;
+    if (charge != null && !hit) amount = charge;
     if (stunned) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const activeKind = visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
-    const actor = { kind: activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : kind),
+    const held = visualAttack ? knownProfile ? visualProfile : 'fist' : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists ? 'fist' : 'melee';
+    const formKind = who === player && form ? playerFormModelKey(form, held) : null;
+    const actor = { kind: formKind || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
-      scale: presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      fistStep: charge != null ? g.fistCharge.step || 1 : visualRecord?.fistStep,
+      effectTime: now,
+      palette: presentation?.palette,
       watched,
       action: presentation?.stagger ? null : monsterAction?.semantic?.action,
       actionFamily: presentation?.stagger ? null : monsterAction?.semantic?.family,
@@ -1916,16 +1952,31 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   };
   for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
     const it = order[oi];
-    if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer && !g.fistsEquipped?.() && !g.save.mech?.active && g.save.magicSkills?.active?.id !== "ember-form") {
+    if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer) {
       admit(it, player, "player"); break;
     }
   }
+  const admitAux = (it, d) => {
+    const spec=d.nativeAux,a=spec.sample(now,reduce); if(!a||!modelSupported(a.kind))return;
+    const x=Number.isFinite(a.x)?a.x:boardWX[it],y=Number.isFinite(a.y)?a.y:boardWY[it],source=spec.source;
+    if(!Number.isFinite(x)||!Number.isFinite(y))return;
+    let track=state.tracks.get(source); if(!track)track={x,y,yaw:Number.isFinite(a.yaw)?a.yaw:CAM.yaw,phase:0,at:now};
+    const dx=x-track.x,dy=y-track.y,dist=Math.hypot(dx,dy),elapsed=Math.max(0,Math.min(.1,(now-track.at)/1000));
+    if(dist>.002&&dist<3){track.phase=(track.phase+dist*MODEL_TIMING.walkRadians)%(Math.PI*2);track.yaw=Math.atan2(dy,dx);}
+    const pace=elapsed>0&&dist<3?Math.min(1,dist/elapsed/MODEL_TIMING.strideSpeed):0;
+    const actor={x,y,z:interiorSurfaceHeight(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
+      phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
+      z:interiorSurfaceHeight(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it]))};
+    if(!append(actor))return;Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
+    closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
+  };
+  closeViewGLStats.auxModels=0;closeViewGLStats.auxKinds=Object.create(null);
   const locked = g.lockedTarget?.();
   // Admission is an effect/action coverage contract, not a growing kind whitelist.
   const canModel = (it, foe) => {
     if (itemKind[it] !== 1 || !foe) return false;
     const reason = CLOSE_VIEW_HOOKS.art[foe.kind] ? 'custom-art'
-      : nativeCreatureCoverage(foe, draws[itemRef[it]], { mesh: modelSupported(foe.kind), attachments: modelSupportsAttachments(foe.kind, 3) });
+      : nativeCreatureCoverage(foe, draws[itemRef[it]], { mesh: modelSupported(actorModelKey(foe)), attachments: modelSupportsAttachments(actorModelKey(foe), 3) });
     if (reason) { closeViewGLStats.modelFallbacks[reason] = (closeViewGLStats.modelFallbacks[reason] || 0) + 1; return false; }
     return true;
   };
@@ -1935,7 +1986,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   }
   for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
     const it = order[oi], foe = boardFoe[it];
-    if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
+    const d=draws[itemRef[it]];
+    if(itemKind[it]===1&&d?.nativeAux)admitAux(it,d);
+    else if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
   }
   for (const [who, track] of state.tracks) {
     if (who.dead && who.hp <= 0 && !who.noRewards) {
@@ -2013,16 +2066,16 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : interiorSurfaceHeight(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
   const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
-    const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = MODEL_STATE.admitted.has(it) ? nativeBoardTop(foe, sc) : A.height * sc, X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
+    const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = MODEL_STATE.admitted.has(it) ? nativeBoardTop(foe, sc, draws[itemRef[it]].nativeHeight) : Math.max(A.height * sc,draws[itemRef[it]].nativeHeight||0), X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
     const draw = draws[itemRef[it]];
     boardBase = interiorTerrain(g.map)
-      ? interiorSurfaceHeight(g.map, X, Y - .07) + closeViewActorLift(draw, MODEL_STATE.admitted.has(it))
+      ? interiorSurfaceHeight(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07)) + closeViewActorLift(draw, MODEL_STATE.admitted.has(it))
       : 0;
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const residual = MODEL_STATE.admitted.has(it);
     const statusAlpha = residual && foe ? actorPresentation(foe)?.alpha ?? 1 : 1;
     const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
-    if (boardPW[it]) { const lx = X - RX * hw, ly = Y - RY * hw, rxp = X + RX * hw, ryp = Y + RY * hw, zb = -A.below;
+    if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front,lx = bx - RX * hw, ly = by - RY * hw, rxp = bx + RX * hw, ryp = by + RY * hw, zb = -A.below;
     BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
     if (foe || isPlayer) { if (MODEL_STATE.admitted.has(it)) shadow(X, Y, sc, statusAlpha); const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * statusAlpha, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
@@ -2044,9 +2097,10 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const it = order[oi], draw = draws[itemRef[it]];
     if (itemKind[it] !== 1 || draw !== capturedPlayer || !MODEL_STATE.admitted.has(it)) continue;
     const X = boardWX[it], Y = boardWY[it], support = interiorSurfaceHeight(g.map, X, Y - .07) + closeViewActorLift(draw, true);
-    const knocked = now < (g.player.stunnedUntil || 0), body = knocked ? .35 : .72;
+    const statusNow = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+    const knocked = statusNow < (g.player.stunnedUntil || 0), form = playerFormPresentation(g), body = knocked ? .35 : form ? form.head * .52 : .72;
     for (let i = 0; i < 3; i++) {
-      const phase = reduce ? i * 2.094 : now / 150 + i * 2.094;
+      const phase = reduce ? i * 2.094 : statusNow / 150 + i * 2.094;
       const side = (i - 1) * .15 + (reduce ? 0 : Math.sin(phase) * .035);
       const height = .22 + i * .045 + (reduce ? 0 : Math.sin(phase * 1.7) * .025);
       card(X + CAM.rx * side, Y + CAM.ry * side, support + body - height * .45, support + body + height, .055, 3, .82, i & 1 ? 0xffae2a : 0xff5a1a, 1, true);
@@ -2079,9 +2133,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     impacts++;
   }
   closeViewGLStats.impactGlints = impacts;
-  // Render the shot at its simulation X/Y and use the same depth-tested additive batch as flames.
+  // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
   for (const shot of shots || []) {
-    const X = shot.x, Y = shot.y, z = shotVisualHeight(shot), magic = shot.damageType === "magic";
+    const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
     const size = (magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1));
     const hue = standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
@@ -2091,17 +2145,17 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       if (d > 1e-4) {
         const trailTime = Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
         const length = Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
-        const tx = X - shot.dx * length / d, ty = Y - shot.dy * length / d, r = size * .75;
+        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d,tail=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tx=tail.x,ty=tail.y,tz=tail.z,r = size * .75;
         room(6);
-        DV(tx, ty, z - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1);
-        DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1);
-        DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1);
-        DV(tx, ty, z - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1);
-        DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1);
-        DV(tx, ty, z + r, -1, 1, 11, SHOT_DRAW.trailAlpha, color, 1);
+        DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
+        DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
+        DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
+        DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
+        DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
+        DV(tx, ty, tz + r, -1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
       }
     }
-    card(X, Y, z - size, z + size, size, 11, SHOT_DRAW.headAlpha, color, 0);
+    card(X, Y, z - size, z + size, size, 11, SHOT_DRAW.headAlpha, color, 0, true);
   }
   closeViewGLStats.projectedShots = shots?.size || 0;
   GLB.nDecal = dv;
