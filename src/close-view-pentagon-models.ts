@@ -46,7 +46,7 @@ for(let i=0;i<5;i++){const a=i*Math.PI*2/5,y=Math.sin(a)*.34,z=.88+Math.cos(a)*.
 );}
 
 // Amalgam: a low flesh mass with mismatched heads and six independently articulated limbs.
-const amalgam = [part(E8,-.08,0,.62,.48,.37,.42,0xc99a8f,0,-.08,.62,0,true),part(E6,.29,-.15,.95,.17,.15,.19,0xf2d0c4),part(E6,.18,.19,1.04,.15,.14,.17,0x3a1a1c)];
+const amalgam = [part(E8,-.08,0,.62,.48,.37,.42,0xc99a8f,0,-.08,.62,0,true),part(E6,.29,-.15,.95,.17,.15,.19,0xf2d0c4,56,.12,.78),part(E6,.18,.19,1.04,.15,.14,.17,0x3a1a1c,57,.08,.80)];
 for(let i=0;i<3;i++)for(const side of [-1,1]){const x=.22-i*.25,y=side*(.28+i*.035),s=50+i*2+(side>0?1:0);amalgam.push(limb([[x,y,.61,.07],[x+(i===0?.22:-.08),side*.52,.38,.05],[x+.12,side*.60,.08,.025]],i===1?0x6b0f1a:0xc99a8f,s,x,.61));}
 
 // Gnawing Maw: masonry-bound flesh aperture, opposing jaws and radial grasping feelers.
@@ -62,15 +62,15 @@ for(let i=0;i<10;i++){const a=i*Math.PI*2/10;cinderSeraph.push(part(taper,-.02,M
 for(const side of [-1,1]) cinderSeraph.push(limb([[0,side*.11,.65,.055],[.04,side*.16,.34,.04],[.13,side*.17,.08,.02]],0x2d120c,side,0,.65));
 
 // Lumen Wraith: hooded shroud, bright lens and four long trailing light ribbons.
-const lumenWraith=[part(ringLoft([[0,.10,0],[-.06,.34,.38],[.02,.29,.82],[.10,.18,1.12]],7),0,0,.35,1,1,1,0xc9e8f2),part(E6,.12,0,1.47,.23,.21,.23,0x2c3b52),part(E6,.31,0,1.47,.055,.10,.08,0xf6fdff)];
+const lumenWraith=[part(ringLoft([[0,.10,0],[-.06,.34,.38],[.02,.29,.82],[.10,.18,1.12]],7),0,0,.35,1,1,1,0xc9e8f2),part(E6,.12,0,1.47,.23,.21,.23,0x2c3b52,64,.04,1.20),part(E6,.31,0,1.47,.055,.10,.08,0xf6fdff,64,.04,1.20)];
 for(let i=0;i<4;i++){const y=(i-1.5)*.13;lumenWraith.push(limb([[0,y,.56,.045],[-.18,y*.9,.28,.03],[-.32,y*1.35,.02,.009]],i%2?0x7fe7ff:0xc9e8f2,60+i,0,.56));}
 
 // Veil Spinner: abdomen/head pair, hourglass mark and eight long jointed legs.
-const veilSpinner=[part(E8,-.18,0,.54,.34,.29,.28,0x4a3d4f,0,-.18,.54,0,true),part(E6,.22,0,.51,.20,.19,.18,0x18131a),part(membrane([[0,-.07,-.12],[0,.07,-.12],[0,0,.13]]),.13,0,.56,1,1,1,0xff6b8a)];
+const veilSpinner=[part(E8,-.18,0,.54,.34,.29,.28,0x4a3d4f,0,-.18,.54,0,true),part(E6,.22,0,.51,.20,.19,.18,0x18131a,78,.08,.48),part(membrane([[0,-.07,-.12],[0,.07,-.12],[0,0,.13]]),.13,0,.56,1,1,1,0xff6b8a)];
 for(let i=0;i<4;i++)for(const side of [-1,1]){const x=.18-i*.16,s=70+i*2+(side>0?1:0);veilSpinner.push(limb([[x,side*.14,.50,.04],[x+(i-1.5)*.06,side*.48,.32,.03],[x+(i-1.5)*.10,side*.67,.04,.012]],i%2?0xe7d6f2:0x4a3d4f,s,x,.50));}
 
 // Rift Lynx: long feline torso, pointed ears, four legs and a forked rift tail.
-const riftLynx=[part(E8,-.08,0,.62,.43,.21,.24,0x3b3f63,0,-.08,.62,0,true),part(E6,.38,0,.73,.22,.18,.20,0x16172b),part(taper,.42,-.12,.99,.09,.055,.15,0xc58cff,0,.42,.90,-.2),part(taper,.42,.12,.99,.09,.055,.15,0xc58cff,0,.42,.90,-.2)];
+const riftLynx=[part(E8,-.08,0,.62,.43,.21,.24,0x3b3f63,0,-.08,.62,0,true),part(E6,.38,0,.73,.22,.18,.20,0x16172b,84,.20,.62),part(taper,.42,-.12,.99,.09,.055,.15,0xc58cff,84,.20,.62,-.2),part(taper,.42,.12,.99,.09,.055,.15,0xc58cff,84,.20,.62,-.2)];
 for(const [x,s] of [[.20,2],[-.30,1]])for(const side of [-1,1])riftLynx.push(limb([[x,side*.14,.55,.05],[x+(x>0?.08:-.06),side*.17,.27,.035],[x+.11,side*.18,.03,.018]],0x3b3f63,side*s,x,.55));
 for(const side of [-1,1])riftLynx.push(limb([[-.43,0,.66,.045],[-.65,side*.10,.78,.03],[-.82,side*.18,.62,.01]],0xc58cff,80+(side>0?1:0),-.43,.66));
 
@@ -80,7 +80,7 @@ sunderjaw.push(part(ringLoft([[0,.30,0],[.12,.36,0],[.24,.18,0]],8),.08,0,.45,1,
 for(let i=0;i<8;i++){const a=i*Math.PI*2/8;sunderjaw.push(part(taper,.40,Math.cos(a)*.18,.45+Math.sin(a)*.18,.13,.035,.06,0xe0b071,20,.08,.45,-Math.PI/2));}
 
 // Thunderhorn: heavy quadruped with paired yellow battering horns and grounded hooves.
-const thunderhorn=[part(E8,-.10,0,.74,.50,.29,.34,0x6d5a4c,0,-.10,.74,0,true),part(E6,.40,0,.78,.27,.24,.25,0x251d18)];
+const thunderhorn=[part(E8,-.10,0,.74,.50,.29,.34,0x6d5a4c,0,-.10,.74,0,true),part(E6,.40,0,.78,.27,.24,.25,0x251d18,24,.40,.78)];
 for(const side of [-1,1]) thunderhorn.push(part(curvedTube([[.48,side*.13,.90,.07],[.68,side*.20,1.02,.05],[.88,side*.17,.86,.012]],5),0,0,0,1,1,1,0xffd25a,24,.40,.78));
 for(const [x,s] of [[.23,2],[-.34,1]])for(const side of [-1,1])thunderhorn.push(limb([[x,side*.19,.60,.065],[x-.02,side*.22,.26,.05],[x+.09,side*.23,.04,.025]],0x251d18,side*s,x,.60));
 
