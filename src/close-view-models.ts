@@ -294,6 +294,8 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (swing === 2) angle = -beat * stride + .35 * windup - .43 * strike
       + (playerLike ? 1.02 : .18) * cast - .18 * flinch + .58 * jump - .22 * jumpSettle;
     else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
+    // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
+    if (angle === 0) angle = 0;
     const c = Math.cos(angle), s = Math.sin(angle);
     const cutYaw = playerLike && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
@@ -367,33 +369,72 @@ function semanticAngle(kind, swing, action, family, actionPhase, p, force, beat,
     if (family === 'slam') return (front ? .52 : -.24) * wind - (front ? .72 : -.36) * contact;
     return null;
   }
+  // Each family has a deliberate preparation, held action and resolved release. These sample the
+  // producer's phase clock once; no periodic attack motion or additional presentation timer is introduced.
+  const gesture = family === 'bite' ? -.34 * wind + .24 * active + .52 * contact
+    : family === 'stab' ? -.42 * wind + .38 * active + .72 * contact
+    : family === 'sweep' ? -.50 * wind + .36 * active + .76 * contact
+    : family === 'slam' ? -.60 * wind - .28 * active + .82 * contact
+    : family === 'beam' ? -.32 * wind - .44 * active + .26 * contact
+    : family === 'charge' ? -.40 * wind - .48 * active + .34 * contact
+    : family === 'ranged' ? -.30 * wind - .24 * active + .48 * contact
+    : family === 'curse' ? -.38 * wind - .46 * active + .34 * contact
+    : family === 'teleport' ? -.44 * wind - .35 * active + .48 * contact
+    : family === 'leap' ? -.48 * wind - .38 * active + .62 * contact
+    : family === 'burrow' ? .48 * wind + .56 * active - .44 * contact
+    : family === 'dive' ? -.54 * wind - .64 * active + .42 * contact
+    : family === 'summon' ? -.42 * wind - .50 * active + .36 * contact
+    : family === 'inhale' ? -.44 * wind - .60 * active + .28 * contact
+    : family === 'howl' ? -.46 * wind - .62 * active + .36 * contact : 0;
+  // Grounded quadrupeds lead with their forelimbs and head, with the hind pair bracing. A claw sweep
+  // really moves the Lynx's forelegs; a Thunderhorn bite/slam articulates the horned head and hooves.
+  if ((kind === 'riftLynx' || kind === 'thunderhorn') && Math.abs(swing) >= 1 && Math.abs(swing) <= 2) {
+    const front = Math.abs(swing) === 2, side = Math.sign(swing);
+    return -side * beat * .42 * secondary + (front ? (family === 'sweep' ? side : 1) : -.4) * gesture;
+  }
+  if (kind === 'riftLynx' && swing === 84) return .85 * gesture;
+  if (kind === 'amalgam' && swing >= 50 && swing <= 57) {
+    if (swing >= 56) return (swing === 56 ? 1 : .75) * gesture;
+    return Math.sin(phase * 1.4 + swing) * (.04 + .10 * moving) * secondary + (swing % 2 ? -1 : 1) * gesture;
+  }
   if (swing < 20) return null;
-  if (swing === 20 || swing === 21) { // opposed jaws/maws: inhale opens, bite snaps, howl holds wide
-    const open = family === 'inhale' || family === 'howl' ? .85 * force : family === 'bite' ? .72 * wind + .55 * active - .58 * contact + .32 * recoil : .16 * force;
+  if (swing === 20 || swing === 21) { // opposed jaws/maws: wind open, close on bite, hold the inhale aperture
+    const open = family === 'inhale' || family === 'howl' ? .85 * wind + .95 * active - .42 * contact
+      : family === 'bite' ? .72 * wind + .55 * active - .58 * contact + .32 * recoil : .65 * gesture;
     return (swing === 20 ? 1 : -1) * open;
   }
-  if (swing === 22 || swing === 23) { // seraph wings: true dive fold, ranged release and locomotion flap
+  if (swing === 22 || swing === 23) { // six Seraph wings fold for a dive and fan outward on release
     const flap = Math.sin(phase * 2.8 + (swing === 23 ? Math.PI : 0)) * (.12 + .20 * moving) * secondary;
-    const wingAction = family === 'dive' ? -.62 * force : family === 'ranged' || family === 'beam' ? .46 * wind + .38 * active - .25 * contact : .18 * force;
+    const wingAction = family === 'dive' ? -.62 * wind - .70 * active + .45 * contact
+      : family === 'ranged' || family === 'beam' ? .46 * wind + .38 * active - .25 * contact : .75 * gesture;
     return flap + wingAction;
   }
-  if (swing === 24) return family === 'charge' ? -.46 * wind - .32 * active + .36 * contact + .20 * recoil : family === 'ranged' ? -.18 * wind + .24 * contact : .04 * beat; // horn brace
+  if (swing === 24) return family === 'charge' ? -.46 * wind - .32 * active + .36 * contact + .20 * recoil : .85 * gesture; // horned head
   if (swing === 25 || swing === 26) { // Gloomgorge hooked arms
     const side = swing === 25 ? -1 : 1, gait = side * beat * .16 * secondary;
-    return gait + side * (family === 'sweep' ? .85 * wind - 1.18 * contact + .42 * recoil : family === 'inhale' ? -.52 * force : .18 * force);
+    return gait + side * (family === 'sweep' ? .85 * wind - 1.18 * contact + .42 * recoil : .85 * gesture);
   }
-  if (swing === 30) return family === 'ranged' ? -.42 * wind + .64 * contact - .20 * recoil : .04 * Math.sin(phase * 1.4) * secondary; // mortar
-  if (swing === 31) return .08 * Math.sin(phase * 1.3) * secondary + (family === 'curse' || family === 'howl' ? .20 * force : family === 'ranged' ? .18 * wind - .25 * contact : 0); // chain/rope
-  if (swing >= 32 && swing <= 39) return Math.sin(phase * 1.15 + swing) * .06 * secondary + (family === 'howl' ? (swing % 2 ? 1 : -1) * .34 * force : family === 'ranged' || family === 'curse' ? (swing % 2 ? -1 : 1) * .22 * force : family === 'dive' ? -.48 * force : 0);
-  if (swing >= 40 && swing <= 44) return Math.sin(phase * .8 + swing) * .035 * secondary + (family === 'teleport' ? (swing - 42) * .16 * force : family === 'beam' ? .25 * force : family === 'stab' ? .48 * wind - .78 * contact : family === 'sweep' ? (swing % 2 ? -1 : 1) * .38 * force : family === 'ranged' ? (swing % 2 ? -1 : 1) * (.20 * wind - .28 * contact) : 0);
-  if (swing >= 50 && swing <= 54) return Math.sin(phase * 1.4 + swing) * (.04 + .10 * moving) * secondary + (family === 'sweep' || family === 'slam' ? (swing % 2 ? -1 : 1) * .58 * force : family === 'stab' ? .72 * wind - 1.04 * contact + .32 * recoil : family === 'ranged' ? .28 * wind - .45 * contact : .16 * force);
-  if (swing >= 55 && swing <= 59) return Math.sin(phase + swing) * .055 * secondary + (family === 'inhale' ? -.48 * force : family === 'bite' ? .44 * force : family === 'ranged' ? .24 * wind - .36 * contact : 0);
-  if (swing >= 60 && swing <= 69) return Math.sin(phase * 1.2 + swing) * .075 * secondary + (family === 'beam' || family === 'ranged' ? (swing % 2 ? -1 : 1) * .32 * force : 0);
-  if (swing >= 70 && swing <= 79) return Math.sin(phase * 2.2 + swing) * (.05 + .13 * moving) * secondary + (family === 'summon' || family === 'ranged' ? (swing % 2 ? -1 : 1) * .42 * force : family === 'leap' ? -.30 * force : 0);
-  if (swing === 80 || swing === 81) return Math.sin(phase * 1.8 + swing) * .14 * secondary + (family === 'teleport' || family === 'leap' ? (swing === 80 ? -1 : 1) * .46 * force : family === 'ranged' ? (swing === 80 ? -1 : 1) * .20 * force : 0);
-  if (swing >= 82 && swing <= 89) return Math.sin(phase - (swing - 82) * .8) * (.04 + .10 * moving) * secondary + (family === 'bite' || family === 'burrow' ? .20 * force : family === 'ranged' ? .14 * wind - .20 * contact : 0);
-  if (swing >= 90 && swing <= 99) return Math.sin(phase * 2.5 + swing) * (.05 + .15 * moving) * secondary + (family === 'slam' ? (swing % 2 ? -1 : 1) * .22 * force : 0);
-  if (swing >= 100) return Math.sin(phase * 1.3 + swing) * .07 * secondary + (family === 'bite' || family === 'curse' || family === 'howl' ? (swing % 2 ? -1 : 1) * .26 * force : family === 'ranged' ? (swing % 2 ? -1 : 1) * (.18 * wind - .24 * contact) : 0);
+  if (swing === 30) return family === 'ranged' ? -.42 * wind + .64 * contact - .20 * recoil : .04 * Math.sin(phase * 1.4) * secondary + .45 * gesture; // mortar brace
+  if (swing === 31) return .08 * Math.sin(phase * 1.3) * secondary + .75 * gesture; // Lantern cage and Choir suspension
+  if (swing >= 32 && swing <= 39) return Math.sin(phase * 1.15 + swing) * .06 * secondary + (family === 'dive' ? 1 : swing % 2 ? -1 : 1) * .85 * gesture; // suspended singers/censers
+  if (swing >= 40 && swing <= 44) return Math.sin(phase * .8 + swing) * .035 * secondary
+    + (family === 'teleport' ? (swing - 42) * .55 : family === 'sweep' || family === 'summon' ? (swing % 2 ? -1 : 1) : 1) * gesture; // mirror planes
+  if (swing >= 50 && swing <= 54) return Math.sin(phase * 1.4 + swing) * (.04 + .10 * moving) * secondary
+    + (family === 'stab' ? .72 * wind - 1.04 * contact + .32 * recoil : (swing % 2 ? -1 : 1) * gesture); // Saint hands clear the face
+  if (swing >= 55 && swing <= 59) return Math.sin(phase + swing) * .055 * secondary + .85 * gesture; // Maw grasping feelers
+  if (swing >= 60 && swing <= 69) {
+    if (kind === 'lumenWraith' && swing === 64) return (family === 'bite' || family === 'stab' ? 1.15 : .45) * gesture; // lens/hood snap
+    return Math.sin(phase * 1.2 + swing) * .075 * secondary + (swing % 2 ? -1 : 1) * .85 * gesture; // light ribbons brace the shroud
+  }
+  if (swing >= 70 && swing <= 79) {
+    if (kind === 'veilSpinner' && swing === 78) return (family === 'bite' ? 1.2 : .65) * gesture; // head thrust
+    return Math.sin(phase * 2.2 + swing) * (.05 + .13 * moving) * secondary + (swing < 74 ? 1 : -.6) * gesture; // front/rear skitter legs
+  }
+  if (swing === 80 || swing === 81) return Math.sin(phase * 1.8 + swing) * .14 * secondary + (swing === 80 ? -1 : 1) * .65 * gesture; // forked Lynx tail
+  if (swing >= 82 && swing <= 89) return Math.sin(phase - (swing - 82) * .8) * (.04 + .10 * moving) * secondary + .8 * gesture; // delver segment brace
+  if (swing >= 90 && swing <= 99) return Math.sin(phase * 2.5 + swing) * (.05 + .15 * moving) * secondary + (swing < 92 ? 1 : -.6) * gesture; // beetle forelegs brace its shell
+  if (swing >= 100) return Math.sin(phase * 1.3 + swing) * .07 * secondary + (swing % 2 ? -1 : 1) * .85 * gesture; // wisp plume contracts around the grin
+
   return null;
 }
 
