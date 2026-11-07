@@ -33,11 +33,11 @@ function objectReached(map, seen, object) {
 }
 
 test('current building interiors have deterministic bounded heightfields, cardinal ramps and optional jump chains', () => {
-  assert.equal(BUILDINGS.interior.version, 3);
+  assert.equal(BUILDINGS.interior.version, 4);
   let platforms = 0;
   for (let i = 0; i < 30; i++) {
     const seed = `IT${i}`, id = `building:${seed}:${i}:-${i}:keep:4:f2`;
-    const a = generateBuildingFloor(seed, id, 3), b = generateBuildingFloor(seed, id, 3);
+    const a = generateBuildingFloor(seed, id, 4), b = generateBuildingFloor(seed, id, 4);
     assert.equal(interiorTerrainSignature(a), interiorTerrainSignature(b), id);
     assert.deepEqual(a.interiorTerrain, { version: 1, maxLevel: 5 });
     assert.ok(a.tiles.every((t) => Number.isFinite(t.elev) && t.elev >= 0 && t.elev <= 5));
@@ -66,7 +66,7 @@ test('all cardinal ramp directions interpolate from elev - 1 to the declared hig
 test('ramps preserve every mandatory route on foot, including boundary doors', () => {
   for (let i = 0; i < 40; i++) {
     const seed = `IR${i}`, id = `building:${seed}:${i % 9}:${-i}:apartment:4:f${1 + i % 4}`;
-    const map = generateBuildingFloor(seed, id, 3), seen = baselineReach(map);
+    const map = generateBuildingFloor(seed, id, 4), seen = baselineReach(map);
     for (const object of map.objects.filter((o) => o.actions?.length)) assert.ok(objectReached(map, seen, object), `${id}: ${object.id}`);
   }
 });
@@ -93,7 +93,7 @@ test('every fresh v9 vault reserves a reachable, clear finale opening', () => {
 test('an indoor drone lift pauses and restores only in the same generated floor; malformed runtime is dropped at schema 14', () => {
   const seed = 'IDRONE', id = `building:${seed}:4:-3:keep:4:f2`, save = freshSave();
   save.seed = seed; save.session.activeDungeonId = id; save.session.dungeonReturn = { rx: 4, ry: -3, x: 16, y: 16 };
-  (save.consequences.dungeons[id] ||= {}).interiorVersion = 3;
+  (save.consequences.dungeons[id] ||= {}).interiorVersion = 4;
   save.mech = { ...(save.mech || {}), built: true, active: true, mode: 'drone', fuel: 20 };
   const game = new Game(save, 0); game.loadArea('dungeon', false); game.player.x = game.map.entry.x; game.player.y = game.map.entry.y;
   const runtime = { base: 0, z: .5, vz: .2, area: 'dungeon', areaId: id, levelId: String(game.map.levelId || 'root') };

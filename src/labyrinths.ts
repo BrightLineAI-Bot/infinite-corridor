@@ -15,7 +15,7 @@
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
 import { hashSeed, rng, byHash } from "./random.ts";
-import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.ts";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.ts";
 
 export const LABYRINTHS = {
   version: 4, // 4: styles rolled evenly (styleWeights), room mazes ~r2 (the vault by style, told at the door; keys); sections pinned to 3 keep their region's style and ~r1
@@ -181,7 +181,7 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
   const arrive = open[0]?.inner || { x: W >> 1, y: H >> 1 };
   if (q.kind === "court" || q.kind === "cellar") grid = carveMaze(P.base, q, W, H, open);
   else if (q.kind === "gaps") grid = carveGaps(P.base, q, W, H, open, V);
-  else { const F = (V >= 3 ? layFloorV3 : layFloor)(P.base, 100 + q.n, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; far = farthest(F, arrive, () => true); }
+  else { const layout = V >= 4 ? layFloorV4 : V === 3 ? layFloorV3 : layFloor, F = layout(P.base, 100 + q.n, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; far = farthest(F, arrive, () => true); }
   const [courtFloor, courtWall] = L.floors.court, [cellFloor, cellWall] = L.floors.cellar, tiles = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, v = grid[k];
     const wallKind = q.kind === "court" ? courtWall : q.kind === "cellar" ? cellWall : S.wall, floorKind = q.kind === "court" ? courtFloor : q.kind === "cellar" ? cellFloor : q.kind === "gaps" ? S.hall : (room && room[k] >= 0 ? mat[room[k]] : S.hall);

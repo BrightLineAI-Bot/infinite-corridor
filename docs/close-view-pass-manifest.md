@@ -33,7 +33,7 @@ Finish and publish the current animation, spacious-interior, elevation, drone an
 - [x] Verify real hosted GPU rendering for all four new traversal scenarios; walk the ramp in both directions, jump onto the first platform, engage indoor drone boost, and orbit/walk in the v9 Pentagon. No r810 console errors/warnings were captured. Legacy hive tight-camera centering/recovery was checked on the identical r809 camera code.
 - [x] Save this versioned manifest/release-status record in the working branch; carry it into the first independent-pass PR. The first publication uses the already reviewed r810 source candidate.
 - [x] Re-read live identity and exact successful preview candidate; report and resolve review/QA blockers. Live was r805; candidate/source tree matched the reviewed r810 merge exactly. No blocking findings remained.
-- [x] Dispatch the approved Publish candidate using the normal workflow approval path: run `42388584029`, candidate `r810-8ed20b74216b`. Artifact verification passed; deployment is in progress.
+- [x] Dispatch the approved Publish candidate using the normal workflow approval path: run `42388584029`, candidate `r810-8ed20b74216b`. Artifact verification and deployment both passed.
 - [x] Verify workflow success, live identity and in-game System release label: all name `r810-8ed20b74216b`.
 - [x] Record the verified publication in the release log and this ledger; rows 806–810 are marked published in r810. The record is carried by the first independent-pass branch.
 
@@ -69,6 +69,8 @@ Hosted traversal-lab preparation also showed nearby enemies interrupting inspect
 
 Status: queued.
 
+Automated/read-only preparation: 77 production-backed item/tool/weapon checks passed, including melee, seven tool profiles, casting success/refusal, moving charge, switching, impact origins, cover/elevation contracts, buffer cancellation and save round trips. No actionable defect found. Hosted visual checks remain before closing this pass.
+
 - [ ] Check pickups, nearby item interactions and action priority near walls, stairs and raised floors.
 - [ ] Check melee hit/miss readability, targeting and reach against elevation and solid cover.
 - [ ] Check representative ranged tools, ammunition/projectiles, casts and weapon/tool switching while moving.
@@ -80,6 +82,8 @@ Status: queued.
 
 Status: queued.
 
+Automated/read-only preparation: 129 focused combat/render/pause/resume/depth checks passed. Additional real-loop five-level cliff probes stopped grounded humanoid/hound/brute/stalker actors while preserving the flying-wisp exception. Windup/strike/recovery, obstacles, pillars, Void rend origin rejection, actor/effect caps, depth ordering and billboard/native exclusion were consistent. No actionable defect found. Hosted visual checks remain.
+
 - [ ] Exercise representative humanoid, hound, brute, stalker, caster and flying encounters, plus Stillworks/Void cover cases.
 - [ ] Check visible anticipation, strike/contact, recoil and recovery while creatures move, turn and encounter obstacles.
 - [ ] Check attacks across slopes/terraces, wall and pillar collision, warnings and projectile placement.
@@ -89,6 +93,8 @@ Status: queued.
 ## Independent pass D — environments, interactions and recovery
 
 Status: queued.
+
+Automated/read-only preparation: 83 focused recovery, migration, drone, isolation, workflow/cache/module checks passed. One pre-existing forward-compatibility defect is queued: valid `session.playerRuntime.droneLift.zzLift` survives migration but is lost on `Game.exportSnapshot()`/restore, while peer unknown fields survive. Reproduction seed `PASS-D-UNKNOWN`, nested marker `{future:"kept"}`. The same behavior existed in r805. Preserve validated unknown lift keys through restore/export while overwriting canonical numeric and area/level identity fields; continue discarding invalid lift records. Plan a separate focused repair after pass A.
 
 - [ ] Revisit keep, lived-in keep, hive, arcology, tomb/root-cellar, grand-hall and shaft scenes.
 - [ ] Check doors, stairs/ladders, caches, relays and murals; exercise representative inventory/vendor interactions in the appropriate labs.
@@ -103,9 +109,9 @@ Status: queued.
 |---|---|---|---|---|---|---|
 | Current delivery | Animation, rooms/elevation/drone, controls and GPU terrain repair | #454–#458 | CI, Preview and hosted GPU repair checks passed | Astra, r805→r810 source: no blockers; merge-tree equality verified | `42388584029`, live `r810-8ed20b74216b`, System verified | Complete |
 | A | Blocked down-ladder landing, reproducible across styles; quiet traversal fixtures | `claude/close-view-collision-pass` | 600-map read-only scan and actual scratch collision/Act reproduction | Pending | Pending | In progress |
-| B | Pending | Pending | Pending | Pending | Pending | Queued |
-| C | Pending | Pending | Pending | Pending | Pending | Queued |
-| D | Pending | Pending | Pending | Pending | Pending | Queued |
+| B | No automated finding | Pending | 77 checks passed; hosted visual check pending | Pending | Pending | QA in progress |
+| C | No automated finding | Pending | 129 checks plus cliff probes passed; hosted visual check pending | Pending | Pending | QA in progress |
+| D | Pre-existing nested drone-runtime unknown-field loss | Separate focused repair planned | 83 checks passed; canary-loss reproduction captured | Pending | Pending | QA in progress |
 
 ## Resume protocol and pending inputs
 

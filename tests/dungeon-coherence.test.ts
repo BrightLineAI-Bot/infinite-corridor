@@ -26,7 +26,7 @@ const flood = (map, from, { pass = standable, jump = false } = {}) => { const W 
 const near = (map, seen, o, r = 1.5) => { const W = map.width; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = Math.round(o.x) + dx, y = Math.round(o.y) + dy; if (seen.has(y * W + x) && Math.hypot(x - o.x, y - o.y) < r) return true; } return false; };
 
 test('interior versions are pinned per interior: fresh interiors take the current version, anything generated before keeps version 1', () => {
-  assert.equal(BUILDINGS.interior.version, 3);
+  assert.equal(BUILDINGS.interior.version, 4);
   const s = save('TIM1'), id = 'building:TIM1:-24:-16:hive:4r';
   generatePinnedDungeon(s, `${id}:f1`); assert.equal(s.consequences.dungeons[`${id}:f1`].interiorVersion, BUILDINGS.interior.version);
   generatePinnedDungeon(s, `${id}:f3`); assert.equal(s.consequences.dungeons[`${id}:f3`].interiorVersion, BUILDINGS.interior.version, 'later floors follow the first');

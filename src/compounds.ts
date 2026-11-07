@@ -13,7 +13,7 @@
 // through another wing's hatch and floors to reach the courtyard, and from the courtyard the tower climbs to the boss and the
 // treasure room (and, sometimes, the tower's own roof). Everything is pinned per section (`atlas.compoundVersion`).
 import { hashSeed } from "./random.ts";
-import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.ts";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.ts";
 import { canStep } from "./landscape.ts";
 
 export const COMPOUNDS = {
@@ -210,7 +210,8 @@ export function compoundPartPlan(base, V = 1, CV = 1) { // `CV`: the compound's 
   const first = doors.outer?.inner || doors.court?.inner || { x: W >> 1, y: H >> 1 }, floors = []; let arrive = first;
   for (let f = 1; f <= P.floors; f++) {
     const keep = f === 1 ? Object.values(doors).flatMap((d) => [{ x: d.x, y: d.y, v: 2 }, { ...d.inner, v: 2 }]) : [];
-    const L = (V >= 3 ? layFloorV3 : layFloor)(base, f, W, H, S, arrive, keep), top = f === P.floors, far = farthest(L, arrive, () => true);
+    const layout = V >= 4 ? layFloorV4 : V === 3 ? layFloorV3 : layFloor;
+    const L = layout(base, f, W, H, S, arrive, keep), top = f === P.floors, far = farthest(L, arrive, () => true);
     const up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
     floors.push({ ...L, floor: f, arrive, up, top, far }); if (up) arrive = up;
   }
