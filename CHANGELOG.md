@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 818: native actual-state Iron Fists, robot, empowered suit and Ember bodies; native companions and travelers; truthful drone launch ports; defer live UI until journey loading completes.
 - Release 817: render six Foundry morphologies with exact palettes, appendage counts and actual attack/socket state; isolate the existing generation timing suite before concurrent tests without changing its bounds.
 - Release 816: give all non-Foundry interior creatures authored native bodies and readable attacks, and curve the original six silhouettes.
 - Release 815: author five native Arcology and Hive creature bodies, round the Wayfarer, and add a full creature inspection gallery.
