@@ -63,3 +63,8 @@ Release 101 is live; release 102 (Tidemantle surface swimming) is merged and in 
 ## Combined Gate Revenant and Astral Worm candidate
 
 The Gate pressure kit and shared major-beast lifecycle are now integrated with corrected ocean/Walker history and the completed Astral Worm. Read `docs/gate-revenant-implementation.md`, `docs/astral-worm-prototype.md`, and their exact owner transcripts. Earlier isolated-prototype/publication-boundary statements in historical stage records describe those earlier checkpoints, not the scope of this combined release 251 candidate. Roaming Gate behavior still preserves deep-boss progression; Astral uses the shared strength/death/reset contract. Owner-approved regression coverage is present. Upload, exact-candidate CI/preview and the required fresh publication review remain distinct from local implementation validation.
+
+
+## Camera and targeting continuation — 2026-11-07
+
+The camera manifest documents requested mobile dungeon-crawler research and Elden Ring-inspired lock comfort. r819 stabilizes cramped clearance, follows nearby locks, lowers/enlarges the drag-mode lock target and preserves action aim, joystick ownership and pause clocks. Independent Astra review cleared reproduced pause and held-thumb defects after fixes. Hosted acceptance and exact release workflows remain separate gates. Imported Wayfarer work is preserved on its own branch; no asset replacement is included in the camera PR. Physical-phone FPS and hardware multitouch remain unmeasured.

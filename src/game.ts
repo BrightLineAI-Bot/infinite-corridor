@@ -3174,7 +3174,11 @@ export class Game {
       if (this.orrery) this.orrery.charge = null; // the Aether Orrery: a charge held into the pause is dropped, never released
     }
     if (!v && this.paused && this.pauseStarted !== null) {
-      shiftClocks(this, Math.max(0, now - this.pauseStarted)); // release 736 (F5/C12): every timer, from the one list
+      const pausedMs = Math.max(0, now - this.pauseStarted);
+      shiftClocks(this, pausedMs); // release 736 (F5/C12): every timer, from the one list
+      // Runtime presentation clocks can observe a pause even when scenes/background suspension skip every render/input callback.
+      // This accumulator is not saved and does not join the gameplay clock lists.
+      this.presentationPausedMs = (this.presentationPausedMs || 0) + pausedMs;
     }
     this.paused = v;
     this.pauseStarted = v ? this.pauseStarted : null;

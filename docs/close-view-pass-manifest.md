@@ -148,3 +148,8 @@ Checked pass items combine the production-backed automated suites, generator pro
 ## Final closure
 
 All four independent passes are complete. Actionable findings were fixed in focused PRs #459 and #460 and published as r811 then r812. The clean item/tool and monster passes required no speculative tuning or extra game release. Final Publish `42394194802`, live identity and production Options → System agree on `r812-1f4b36dd0279`; the journey remained paused, storage stayed 250 KB, and recent errors were none. Source commit `1f4b36dd0279de49f82e9c6b3f97a396db492079`, tree `ee3397371ebebda42a97618c399b31e1680a6530`. The release-log/context/manifest closure is documentation only and does not request another game release or publication. No owner decisions remain pending; device measurement limits above remain explicit. Temporary task QA servers were stopped.
+
+
+## Additional approved mobile camera pass — 2026-11-07
+
+The owner reports unreliable following and cramped-space navigation while liking the environment feel. Research, design inferences, work items and acceptance gates are tracked in [the mobile camera manifest](mobile-close-view-camera-manifest.md). Preserve prior assets, controls and generated/pinned interiors; no new release number is reserved. This pass is additional work, not a claim that the earlier feel pass covered the newly reported issue.
