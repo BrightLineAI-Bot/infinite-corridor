@@ -8,7 +8,7 @@ Read [the pass manifest](close-view-pass-manifest.md) and [release log](RELEASE_
 
 ## Creature and combat presentation pass — 2026-11-07
 
-The expanded creature request and evidence gates are tracked in [the creature manifest](creature-asset-manifest.md) and [combat asset manifest](combat-asset-review-manifest.md). r813 is published as `r813-dbbd7b6c6a51` (Publish run42408237197; live identity verified, Options → System pending browser-control recovery). PR #463 contains accepted player presentation metadata; later focused branches add five Arcology bodies, all remaining non-Foundry bodies, then six Foundry morphologies. Native-body source coverage alone is not visual completion. Read the release log and current GitHub state before assigning numbers or publishing. This paragraph grants no deployment authority.
+The expanded creature request and evidence gates are tracked in [the creature manifest](creature-asset-manifest.md) and [combat asset manifest](combat-asset-review-manifest.md). r813 is published as `r813-dbbd7b6c6a51` (Publish run42408237197; live identity and Options → System verified; no recent errors). r814 is now published as `r814-2bbee6cc627a` (Publish42410274815; live identity and Options → System verified). PR #464 merged the five Arcology bodies and rounded Wayfarer asfe5a2f35f0a45a5b740fa39b0063b01273d606cd; Preview42410401068 is running. Following branches add all remaining non-Foundry bodies, six Foundry morphologies and native visible character/companion forms. Native-body source coverage alone is not visual completion. Read the release log and current GitHub state before assigning numbers or publishing. This paragraph grants no deployment authority.
 
 ## Void Walker design handoff — recorded 2026-10-21 UTC
 

@@ -1,6 +1,6 @@
 // Authored Close View bodies for the Pentagon, its dungeon grotesques and its blue haunts.
 // Geometry follows the original monster-render silhouettes; presentation metadata controls admission.
-import { bevel, taper, ellipsoid, ringLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
+import { bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
 
 const E5 = ellipsoid(5, 1), E6 = ellipsoid(6, 2), E8 = ellipsoid(8, 3);
 const limb = (points, color, swing, px, pz, sides = 4) => part(curvedTube(points, sides), 0, 0, 0, 1, 1, 1, color, swing, px, pz);
@@ -9,7 +9,7 @@ const smallWing = membrane([[0,0,0],[-.10,.30,.05],[-.26,.44,-.05],[-.05,.12,-.0
 
 // Weeping Saint: bowed pale statue, covered face, red tears and long reaching arms.
 const weepingSaint = [
-  part(ringLoft([[0,.22,0],[-.04,.29,.42],[.02,.22,.84],[.12,.16,1.18]],6),0,0,.18,1,1,1,0xb9b1a4),
+  part(verticalLoft([[0,.22,0],[-.04,.29,.42],[.02,.22,.84],[.12,.16,1.18]],6),0,0,.18,1,1,1,0xb9b1a4),
   part(E6,.16,0,1.48,.19,.18,.22,0xd9d2c6,0,.16,1.48,0,true),
   block(.345,-.07,1.48,.018,.025,.12,0x7a1f1f), block(.345,.07,1.48,.018,.025,.12,0x7a1f1f),
 ];
@@ -62,7 +62,7 @@ for(let i=0;i<10;i++){const a=i*Math.PI*2/10;cinderSeraph.push(part(taper,-.02,M
 for(const side of [-1,1]) cinderSeraph.push(limb([[0,side*.11,.65,.055],[.04,side*.16,.34,.04],[.13,side*.17,.08,.02]],0x2d120c,side,0,.65));
 
 // Lumen Wraith: hooded shroud, bright lens and four long trailing light ribbons.
-const lumenWraith=[part(ringLoft([[0,.10,0],[-.06,.34,.38],[.02,.29,.82],[.10,.18,1.12]],7),0,0,.35,1,1,1,0xc9e8f2),part(E6,.12,0,1.47,.23,.21,.23,0x2c3b52,64,.04,1.20),part(E6,.31,0,1.47,.055,.10,.08,0xf6fdff,64,.04,1.20)];
+const lumenWraith=[part(verticalLoft([[0,.10,0],[-.06,.34,.38],[.02,.29,.82],[.10,.18,1.12]],7),0,0,.35,1,1,1,0xc9e8f2),part(E6,.12,0,1.47,.23,.21,.23,0x2c3b52,64,.04,1.20),part(E6,.31,0,1.47,.055,.10,.08,0xf6fdff,64,.04,1.20)];
 for(let i=0;i<4;i++){const y=(i-1.5)*.13;lumenWraith.push(limb([[0,y,.56,.045],[-.18,y*.9,.28,.03],[-.32,y*1.35,.02,.009]],i%2?0x7fe7ff:0xc9e8f2,60+i,0,.56));}
 
 // Veil Spinner: abdomen/head pair, hourglass mark and eight long jointed legs.
