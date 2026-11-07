@@ -33,7 +33,7 @@ const SOURCES = (V) => { const { cx, cy } = find(), P = pentagonPlan(SEED, cx, c
     if (V >= 3 && B.heartFloor >= PENTAGON.deepGlyphFrom && B.boss) n.deep++; });
   return n; };
 test('the audit: what each version pays before completion (v1–v2 none; v3–v4 six; v5–v7 nine), and completion adds one to every version', () => {
-  const want = { 1: 0, 2: 0, 3: 6, 4: 6, 5: 9, 6: 9, 7: 9, 8: 9 }; // release 795: v8 (grand halls) pays as v7
+  const want = { 1: 0, 2: 0, 3: 6, 4: 6, 5: 9, 6: 9, 7: 9, 8: 9, 9: 9 }; // v8 grand halls and v9 spacious ordinary chambers keep v7 rewards
   for (let V = 1; V <= PENTAGON.version; V++) { const n = SOURCES(V), sum = n.reliquary + n.sealed + n.deep + n.hoard; assert.equal(sum, want[V], `v${V}: ${JSON.stringify(n)}`); }
   assert.ok(TESSERACTS.grades[PENTAGON_COMPLETE.grade], 'the completion grade is a Tesseract grade');
 });
