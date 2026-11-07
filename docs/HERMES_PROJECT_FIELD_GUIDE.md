@@ -9428,3 +9428,10 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
   - `tests/revenant-horde.test.ts`;
   - `tests/wood-boats.test.ts` (repairs, the guard);
   - `tests/building.test.ts` (costs).
+
+
+## Pending imported Wayfarer presentation
+
+**CODE:** The ordinary player uses a converted CC0 Quaternius Rogue body/rig with the central Cleric silver mask and white hair. The source hood is removed and its collar sealed; the new head alone is scaled to .40 and seated once. Twelve source clips retain the original independently translated feet. Existing gait distance and accepted action clocks sample source motion; missing jump/ranged/cast clips use explicit derivative pose layers. Real held equipment is drawn from sampled sockets. Green/gray fabric, protective undersleeves/gloves, silver head, leather and bronze retain original texture detail. Two indexed draws inside existing silhouette/body phases render 3,136 triangles and3,575 unique vertices. Unavailable textures/context retain the working procedural model. Both scoped workers precache the asset/modules.
+
+**BOUNDARY:** Imported presentation applies only to the actual normal player in one existing actor slot. Robot, empowered suit, Iron Fists, Ember, clones, creatures and companions retain their actual native paths. Animation never moves gameplay coordinates, fires attacks or changes aim/hit rules. Schema14, exact-resume clocks, unknown fields, generated/pinned history, Proving Ground isolation, reduced motion and8/14/20 actor limits remain. Hero cost: two additional indexed draws,85,800 dynamic bytes/frame and about10.67MiB of mipmapped textures. CPU diagnostics and automated mocks do not establish hosted GPU acceptance or phone performance.

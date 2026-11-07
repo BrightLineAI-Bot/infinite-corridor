@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Import a licensed, rigged masked Wayfarer with preserved green/gray styling, source locomotion, accepted-action animation and real held-gear sockets.
+
 - Release 817: render six Foundry morphologies with exact palettes, appendage counts and actual attack/socket state; isolate the existing generation timing suite before concurrent tests without changing its bounds.
 - Release 816: give all non-Foundry interior creatures authored native bodies and readable attacks, and curve the original six silhouettes.
 - Release 815: author five native Arcology and Hive creature bodies, round the Wayfarer, and add a full creature inspection gallery.
