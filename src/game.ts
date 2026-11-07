@@ -1,3 +1,4 @@
+import { ACTION_MOTION } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
@@ -42,7 +43,7 @@ import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
 import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, skiffMooring, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.ts";
 import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.ts";
 import { canSwim, swimsThrough, isSwimmableKind, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.ts";
-import { CAST_MOTION_MS, createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
+import { createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee } from "./combat.ts";
 import {
   applyInteraction,
   validActions,
@@ -3449,6 +3450,7 @@ export class Game {
     p.attackReadyAt =
       p.dodgeReadyAt =
       p.dodgeUntil =
+      p.castUntil =
       p.attackUntil =
       p.meleeUntil =
         0;
@@ -4354,6 +4356,7 @@ export class Game {
     p.attackReadyAt =
       p.dodgeReadyAt =
       p.dodgeUntil =
+      p.castUntil =
       p.attackUntil =
       p.meleeUntil =
         0;
@@ -6079,8 +6082,8 @@ export class Game {
     if (!echo && now < (this.boxingUntil || 0)) this.shadowBoxStep(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now); // release 485
     if (!echo) this.player.attackReadyAt = now + 420 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
     if (!echo) tesseractHarm(this.save, this.player, armorGlyphBonus(this.save).selfHarm); // a Tesseract glyph's cost: each swing bites back (never below TESSERACTS.harmFloor)
-    this.player.attackUntil = now + 240;
-    this.player.meleeUntil = now + 240;
+    this.player.attackUntil = now + ACTION_MOTION.meleeMs;
+    this.player.meleeUntil = now + ACTION_MOTION.meleeMs;
     const baseProfile = primaryProfile(this.save.equipment.primary),
       profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range + (this.spellbladeOn(now) ? FIELD_PASSIVES.spellblade.reach : 0) /* release 515: Spellblade */, damage: baseProfile.damage * glyphs.mods.damage },
       geometry = meleeAttackGeometry(
@@ -6163,7 +6166,7 @@ export class Game {
       );
     this.save.lastAim = d;
     this.player.attackReadyAt = now + 360 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
-    this.player.attackUntil = now + 180;
+    this.player.attackUntil = now + ACTION_MOTION.toolMs;
     this.player.meleeUntil = 0;
     this.player.meleeStrike = null;
     const derived=characterStats(this.save),reachMultiplier=1+derived.attackReach,projectileLifetime=weapon.lifetime*reachMultiplier;
@@ -6262,7 +6265,7 @@ export class Game {
   }
   castSpell(spellId = null) {
     const result = this.castSpellEffect(spellId);
-    if (result) this.player.castUntil = (this.lastUpdateNow || 0) + CAST_MOTION_MS;
+    if (result) this.player.castUntil = (this.lastUpdateNow || 0) + ACTION_MOTION.castMs;
     return result;
   }
   castSpellEffect(spellId = null) {
@@ -7611,7 +7614,7 @@ export class Game {
   upgradeEquipmentSlot(slot){const result=upgradeEquipment(this.save,slot);this.message=result.message;if(result.ok){syncCharacterStats(this.save);this.player.maxStamina=this.save.maxStamina;this.sync()}return result}
   activateApertureSkill(id = this.save.magicSkills?.selected) {
     const result = this.activateApertureSkillEffect(id);
-    if (result) this.player.castUntil = (this.lastUpdateNow || 0) + CAST_MOTION_MS;
+    if (result) this.player.castUntil = (this.lastUpdateNow || 0) + ACTION_MOTION.castMs;
     return result;
   }
   activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const ok=riftStep(this,this.lastUpdateNow||0);if(ok)this.riftFlashAt=this.lastUpdateNow||0;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}

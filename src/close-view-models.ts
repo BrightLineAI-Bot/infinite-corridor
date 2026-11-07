@@ -103,7 +103,7 @@ for (const side of [-1, 1]) {
 }
 player.push(
   block(.131, -.25, .771, .092, .074, .03, bronze, -2, 0, 1.19),
-  part(taper, .155, -.25, .998, .032, .059, .21, bronze, -2, 0, 1.19),
+  part(taper, .155, -.25, 1.085, .035, .059, .315, bronze, -2, 0, 1.19),
 );
 
 // A short two-tone emitter for the ranged stance. It shares the Wayfarer's arm pivot.
@@ -293,13 +293,19 @@ export function writeCloseViewModel(out, offset, actor) {
       + (playerLike ? 1.02 : .18) * cast - .18 * flinch + .58 * jump - .22 * jumpSettle;
     else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
     const c = Math.cos(angle), s = Math.sin(angle);
+    const cutYaw = playerLike && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
+    const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
+    const pivotY = playerLike && swing === -2 ? -.25 : 0;
     for (let i = 0; i < mesh.length; i += MODEL_FLOATS) {
-      const u = mesh[i] * c + mesh[i + 2] * s + px;
-      const v = mesh[i + 1] + coilSway;
+      const forward = mesh[i] * c + mesh[i + 2] * s + px;
+      const lateral = mesh[i + 1] + coilSway;
+      const u = forward * cc - (lateral - pivotY) * sc;
+      const v = forward * sc + (lateral - pivotY) * cc + pivotY;
       const w = mesh[i + 2] * c - mesh[i] * s + pz;
       const f = u * cp + w * sp + shift;
-      const nu = mesh[i + 3] * c + mesh[i + 5] * s;
-      const nv = mesh[i + 4];
+      const armNormal = mesh[i + 3] * c + mesh[i + 5] * s;
+      const nu = armNormal * cc - mesh[i + 4] * sc;
+      const nv = armNormal * sc + mesh[i + 4] * cc;
       const nw = mesh[i + 5] * c - mesh[i + 3] * s;
       const nf = nu * cp + nw * sp;
       out[offset++] = x + (f * cy - v * sy) * size;

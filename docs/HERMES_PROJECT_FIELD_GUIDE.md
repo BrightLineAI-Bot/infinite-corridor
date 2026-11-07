@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 807: readable Close View actions
+
+**CODE:** Model motion now uses distance-driven gait and smooth facing, asymmetric sword follow-through, casting and jumping poses, and evolving enemy windup/strike progress. Accepted spells and Aperture skills stamp a shared cast clock, included in existing pause and schema-14 runtime resume. Existing rigid meshes and fixed actor buffers are reused.
+
+**BOUNDARY:** Damage and input timing follow existing combat rules. Special actor forms retain their existing rendering paths. Reduced motion suppresses secondary bob and turning lean. A direct Game-first module import, accepted/rejected casts, pause/reload clocks, and finite mesh/normal checks exercise the changed paths.
+
+Reference study informed readable commitment and recovery, responsive movement, mixed melee/ranged attacks, and clear defensive opportunities. These are design interpretations of the public descriptions. [Bloodborne producer notes](https://blog.playstation.com/2014/08/13/bloodborne-on-ps4-new-combat-details/), [Mortal Shell II](https://mortalshell.com/), [Remnant movement and attacks](https://www.arcgames.com/fr/corp-news/detail/11145053-moving%2C-attacking%2C-%26-dying-in-remnant), [Remnant II](https://www.remnantgame.com/en/), [ESO combat guide](https://www.elderscrollsonline.com/en-us/newplayerguide/gettingstarted/2)
+
 ## Release 806: Proving Ground launcher rendering
 
 **CODE:** Restores the missing idlePrompt canvas helper in src/proving-ground.ts. The initial launcher and asynchronous journey handoff can render an idle frame before a fixture exists, then continue scheduling frames when a Pentagon or another laboratory starts. Canvas state is saved and restored around the prompt.
