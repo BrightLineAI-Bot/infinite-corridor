@@ -12,6 +12,8 @@ flat in int v_layer; flat in int v_class;
 uniform sampler2DArray u_hero; uniform float u_pass; uniform float u_alpha;
 uniform vec3 u_tint; uniform float u_hit; uniform vec3 u_sil;
 vec3 wayfarerPalette(vec3 c) {
+  // Only the two added aperture lenses: all original mask/hair triangles remain source-painted.
+  if (v_class==4) return vec3(.952941,.647059,.360784)*clamp(dot(c,vec3(.2126,.7152,.0722))/.7,0.0,1.0);
   if (v_layer==1 || v_class==0) return c; // silver mask and white hair remain source-painted
   if (v_class==2) return vec3(.157,.192,.180); // bounded derivative collar seal
   // Red fabric has nearly equal green/blue channels; warm leather, skin and bronze do not.
@@ -29,6 +31,9 @@ vec3 wayfarerPalette(vec3 c) {
 }
 void main() {
   if(v_pos.z<0.0) discard;
+  // Back faces of the added lenses must not shine through the source's open hair geometry.
+  // Use the actual surface/view direction rather than the scene projection's winding convention.
+  if(v_class==4 && dot(v_nrm,u_eye-v_pos)<=0.0) discard;
   const float bayer[16]=float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0);
   ivec2 pixel=ivec2(gl_FragCoord.xy)&ivec2(3);
   if(u_alpha <= (bayer[pixel.y*4+pixel.x]+.5)/16.0) discard;

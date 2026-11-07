@@ -24,7 +24,7 @@ test('asset/texture readiness gates admission; two original layers upload once',
 test('hero has exactly two indexed draws; all silhouettes precede all actor depth writes',()=>gpu(gl=>{
   const a=asset(),f=frame(a);assert.ok(prepareCloseViewHeroGL(a));drawSceneGL({width:16,height:16},U,new Float32Array(30),f);
   const actors=gl.calls.filter(c=>c.hero||c.model);assert.deepEqual(actors.map(c=>[c.hero,c.pass,c.write]),[[false,1,false],[true,1,false],[false,0,true],[true,0,true]]);
-  assert.equal(actors[1].depth,gl.GREATER);assert.equal(actors[3].depth,gl.LEQUAL);assert.equal(actors.filter(c=>c.mode==='elements').length,2);assert.deepEqual(gl.dynamic,[a.vertexCount*24]);assert.equal(closeViewGLStats.heroTriangles,3136);
+  assert.equal(actors[1].depth,gl.GREATER);assert.equal(actors[3].depth,gl.LEQUAL);assert.equal(actors.filter(c=>c.mode==='elements').length,2);assert.deepEqual(gl.dynamic,[a.vertexCount*24]);assert.equal(closeViewGLStats.heroTriangles,3140);
 }));
 test('missing or unready hero leaves ordinary model draws available',()=>gpu(gl=>{
   const a=asset(),f=frame(a);drawSceneGL({width:16,height:16},U,new Float32Array(30),f);assert.equal(gl.calls.filter(c=>c.hero).length,0);assert.equal(gl.calls.filter(c=>c.model).length,2);
@@ -35,4 +35,6 @@ test('restored context reuploads hero resources and failure stays bounded',()=>g
 }));
 test('shader keeps source head, common coverage and painted material treatment explicit',()=>{
   assert.match(HERO_FRAGMENT_BODY,/v_layer==1 \|\| v_class==0/);assert.match(HERO_FRAGMENT_BODY,/u_alpha <=/);assert.match(HERO_FRAGMENT_BODY,/sampler2DArray/);assert.match(HERO_FRAGMENT_BODY,/lightsAt\(v_pos,normalize\(v_nrm\),0\.0/);
+  assert.ok(HERO_FRAGMENT_BODY.indexOf('v_class==4')<HERO_FRAGMENT_BODY.indexOf('v_layer==1'));
+  assert.match(HERO_FRAGMENT_BODY,/v_class==4 && dot\(v_nrm,u_eye-v_pos\)<=0\.0/);
 });

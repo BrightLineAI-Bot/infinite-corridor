@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {decodeCloseViewHero,createHeroPoseState,createHeroFrame,sampleCloseViewHero,loadCloseViewHero,getCloseViewHeroAsset} from '../src/close-view-hero.ts';
+import {decodeCloseViewHero,createHeroPoseState,createHeroFrame,sampleCloseViewHero,loadCloseViewHero,getCloseViewHeroAsset,HERO_PROPORTIONS} from '../src/close-view-hero.ts';
 import {writeCloseViewHeroGear,MODEL_FLOATS} from '../src/close-view-models.ts';
 import {knockdownPose} from '../src/lightning-giant-render.ts';
 const meta=JSON.parse(fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.json',import.meta.url),'utf8'));
@@ -11,7 +11,7 @@ const input=(extra={})=>({nowMs:100000,reducedMotion:false,x:3,y:4,groundZ:.3,li
 function sample(i=input()){const s=createHeroPoseState(asset),f=createHeroFrame(asset);assert.equal(sampleCloseViewHero(asset,s,i,f),true);return{s,f};}
 test('hero imports do not fetch, and pure decoding validates bounded arrays',async()=>{
   let calls=0;const old=globalThis.fetch;globalThis.fetch=()=>{calls++;throw new Error('unexpected fetch');};try{assert.equal(getCloseViewHeroAsset(),null);assert.equal(await loadCloseViewHero(),null);assert.equal(calls,0);}finally{globalThis.fetch=old;}
-  assert.equal(asset.indexCount/3,3136);assert.throws(()=>decodeCloseViewHero({...meta,indexCount:100000},bytes));assert.throws(()=>decodeCloseViewHero(meta,bytes.slice(0,40)));
+  assert.equal(asset.indexCount/3,3140);assert.throws(()=>decodeCloseViewHero({...meta,indexCount:100000},bytes));assert.throws(()=>decodeCloseViewHero(meta,bytes.slice(0,40)));
 });
 test('hybrid reference has finite normalized normals, exact height and a seated unscaled collar',()=>{
   const {s,f}=sample(input({nowMs:0,reducedMotion:true,groundZ:0}));let min=Infinity,max=-Infinity;
@@ -75,4 +75,35 @@ test('held gear is body-free, bounded, transformed by the final socket and futur
   const translated=Float32Array.from(f.rightSocket);translated[12]+=2;const b=new Float32Array(out.length);assert.equal(writeCloseViewHeroGear(b,0,{...gear,rightSocket:translated}),end);for(let i=0;i<end;i+=MODEL_FLOATS)assert.ok(Math.abs(b[i]-out[i]-2)<1e-5);
   assert.equal(writeCloseViewHeroGear(out,0,{...gear,profile:'future-tool'}),0);assert.equal(writeCloseViewHeroGear(new Float32Array(10),0,gear),0);
   assert.equal(writeCloseViewHeroGear(out,0,{...gear,profile:'constructor'}),0);assert.equal(writeCloseViewHeroGear(out,0,{...gear,profile:'toString'}),0);
+});
+test('bind-space slimming preserves original height, intact head geometry, tracks and source buffers',()=>{
+  const originalPositions=Float32Array.from(asset.arrays.positions),originalRest=Float64Array.from(asset.rest),before=createHeroPoseState(asset,{width:1,depth:1,hands:1}),after=createHeroPoseState(asset),a=createHeroFrame(asset),b=createHeroFrame(asset),i=input({nowMs:0,reducedMotion:true,groundZ:0});
+  sampleCloseViewHero(asset,before,i,a);sampleCloseViewHero(asset,after,i,b);
+  assert.deepEqual(after.proportions,HERO_PROPORTIONS);assert.deepEqual(before.pose,after.pose);assert.deepEqual(asset.rest,originalRest);assert.deepEqual(asset.arrays.positions,originalPositions);
+  const body=meta.meshes.find(m=>m.skin>=0&&m.paletteClass==='wayfarer-body'),head=meta.meshes.find(m=>m.node===41);
+  assert.ok(body&&head);for(let v=body.firstVertex;v<body.firstVertex+body.vertexCount;v++){assert.ok(Math.abs(after.fit.positions[v*3]-originalPositions[v*3]*.8)<1e-7);assert.equal(after.fit.positions[v*3+1],originalPositions[v*3+1]);assert.ok(Math.abs(after.fit.positions[v*3+2]-originalPositions[v*3+2]*.82)<1e-7);}
+  for(let v=head.firstVertex*3;v<(head.firstVertex+head.vertexCount)*3;v++)assert.equal(after.fit.positions[v],asset.arrays.positions[v]);
+  for(const f of [a,b]){const heights=f.positionsNormals.filter((_,k)=>k%6===2);assert.ok(Math.abs(Math.max(...heights)-i.height)<1e-5);assert.ok(Math.abs(Math.min(...heights))<1e-5);}
+  const span=(s,axis)=>{let lo=Infinity,hi=-Infinity;for(let v=body.firstVertex;v<body.firstVertex+body.vertexCount;v++){const y=asset.arrays.positions[v*3+1];if(y>.8&&y<1.8){lo=Math.min(lo,s.vertices[v*6+axis]);hi=Math.max(hi,s.vertices[v*6+axis]);}}return hi-lo;};
+  assert.ok(span(after,0)<span(before,0)*.88);assert.ok(span(after,2)<span(before,2)*.9);
+});
+test('hand reduction acts independently around wrists and moves gear grips without shrinking equipment',()=>{
+  const before=createHeroPoseState(asset,{width:.8,depth:.82,hands:1}),after=createHeroPoseState(asset),a=createHeroFrame(asset),b=createHeroFrame(asset),i=input({nowMs:0,reducedMotion:true});sampleCloseViewHero(asset,before,i,a);sampleCloseViewHero(asset,after,i,b);
+  for(const root of [7,9,18,20])for(let k=12;k<15;k++)assert.ok(Math.abs(before.global[root*16+k]-after.global[root*16+k])<1e-8,'wrist pivot stays put');
+  const handNodes=new Set([7,6,5]);let checked=0;
+  for(const m of meta.meshes)if(m.skin>=0)for(let v=m.firstVertex;v<m.firstVertex+m.vertexCount;v++){let weight=0;for(let k=0;k<4;k++)if(handNodes.has(asset.skins[m.skin].joints[asset.arrays.joints[v*4+k]]))weight+=asset.arrays.weights[v*4+k];if(weight<.99999)continue;checked++;const root=7*16;
+    for(let axis=0;axis<3;axis++){const origin=before.global[root+12+axis],delta=before.vertices[v*6+axis]-origin;assert.ok(Math.abs(after.vertices[v*6+axis]-(origin+delta*.62))<1e-6);}
+  }assert.ok(checked>10);
+  const dx=b.rightSocket[12]-a.rightSocket[12],dy=b.rightSocket[13]-a.rightSocket[13],dz=b.rightSocket[14]-a.rightSocket[14];assert.ok(Math.hypot(dx,dy,dz)>.01);
+  for(const profile of ['melee','emitter','hammer']){const oldGear=new Float32Array(256*3*MODEL_FLOATS),newGear=new Float32Array(oldGear.length),end=writeCloseViewHeroGear(oldGear,0,{profile,rightSocket:a.rightSocket});assert.equal(writeCloseViewHeroGear(newGear,0,{profile,rightSocket:b.rightSocket}),end);assert.ok(end>0);
+    for(let k=0;k<end;k+=MODEL_FLOATS){assert.ok(Math.abs(newGear[k]-oldGear[k]-dx)<1e-6);assert.ok(Math.abs(newGear[k+1]-oldGear[k+1]-dy)<1e-6);assert.ok(Math.abs(newGear[k+2]-oldGear[k+2]-dz)<1e-6);}
+  }
+});
+test('fitted feet preserve source locomotion translations and all action rotations',()=>{
+  const original=createHeroPoseState(asset,{width:1,depth:1,hands:1}),fitted=createHeroPoseState(asset),a=createHeroFrame(asset),b=createHeroFrame(asset),i=input({speed:4}),offsets=[];
+  for(const phase of [0,Math.PI/2,Math.PI,Math.PI*1.5]){i.gaitPhase=phase;sampleCloseViewHero(asset,original,i,a);sampleCloseViewHero(asset,fitted,i,b);assert.deepEqual(fitted.pose,original.pose);
+    const delta=[];for(const node of [1,36])for(let axis=0;axis<3;axis++)delta.push(fitted.global[node*16+12+axis]-original.global[node*16+12+axis]);offsets.push(delta);
+  }
+  for(const delta of offsets)for(let k=0;k<delta.length;k++)assert.ok(Math.abs(delta[k]-offsets[0][k])<1e-6,'foot stroke keeps its original amplitude');
+  for(const kind of ['melee','dodge','death','cast']){i.action={kind,profile:'melee',phase:.4,durationMs:240,yaw:0};sampleCloseViewHero(asset,original,i,a);sampleCloseViewHero(asset,fitted,i,b);assert.deepEqual(fitted.pose,original.pose);assert.ok(b.positionsNormals.every(Number.isFinite));}
 });

@@ -26,7 +26,7 @@ test('actual renderer gates imported normal player on readiness, preserves forms
     globalThis.fetch=async url=>{const u=new URL(url);assert.equal(u.protocol,'file:','fixture must never access a network');requested.push(u.pathname);const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};
     const asset=await loadCloseViewHero();assert.ok(asset);assert.equal(requested.length,4);
     const before=structuredClone({player:g.player,save:g.save,projectiles:g.projectiles});
-    render(screen,g,390,844,100016);assert.equal(closeViewGLStats.heroTriangles,3136);assert.equal(closeViewGLStats.models,1);
+    render(screen,g,390,844,100016);assert.equal(closeViewGLStats.heroTriangles,3140);assert.equal(closeViewGLStats.models,1);
     assert.ok(gl.uploads.at(-1).every(Number.isFinite));assert.equal(gl.uploads.at(-1).byteLength,asset.vertexCount*24);
     assert.deepEqual({player:g.player,save:g.save,projectiles:g.projectiles},before,'presentation cannot mutate gameplay');
     g.setPaused(true,100016);render(screen,g,390,844,100032);const frozen=gl.uploads.at(-1);render(screen,g,390,844,110032);assert.deepEqual(gl.uploads.at(-1),frozen);

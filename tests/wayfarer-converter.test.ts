@@ -19,23 +19,26 @@ const typed=(meta,bin,key)=>{const a=meta.arrays[key],ctor=a.componentType==='f3
 
 test('converter output has fixed geometry, topology and packed-array invariants',()=>{
   const {meta,bin}=load();
-  assert.equal(meta.version,2);assert.equal(meta.vertexCount,3575);assert.equal(meta.indexCount,9408);assert.equal(meta.indexCount/3,3136);
+  assert.equal(meta.version,2);assert.equal(meta.vertexCount,3583);assert.equal(meta.indexCount,9420);assert.equal(meta.indexCount/3,3140);
   assert.equal(meta.derivatives.removedRogueHoodTriangles.length,144);assert.equal(meta.derivatives.collarSealIndexCount,18);assert.equal(meta.headAttachment.collarVertexIndices.length,6);
   assert.ok(meta.diagnostics.removedMinHeadInfluence>=.7946);assert.ok(meta.diagnostics.retainedMaxHeadInfluence<=.2281);
   assert.deepEqual(meta.diagnostics.collarBounds.min.map(x=>+x.toFixed(6)),[-.164792,1.958049,-.238973]);
   assert.deepEqual(meta.diagnostics.collarBounds.max.map(x=>+x.toFixed(6)),[.164792,1.997361,.114702]);
   assert.equal(meta.meshes.find(m=>m.name==='ClericHead').indexCount/3,1816);
-  assert.deepEqual(meta.meshes.map(m=>m.node),[39,39,0,10,25,26,35,41]);
+  assert.deepEqual(meta.meshes.map(m=>m.node),[39,39,0,10,25,26,35,41,41]);
   for(const a of Object.values(meta.arrays))assert.equal(a.byteOffset%4,0);
   const ix=typed(meta,bin,'indices'),w=typed(meta,bin,'weights'),j=typed(meta,bin,'joints'),classes=typed(meta,bin,'paletteClasses');
   assert.ok([...ix].every(x=>x<meta.vertexCount));assert.ok([...j].every(Number.isFinite));
   assert.equal(new Set(ix).size,meta.vertexCount);
   const trianglesByClass=new Map();for(let i=0;i<ix.length;i+=3){const value=classes[ix[i]];assert.equal(classes[ix[i+1]],value);assert.equal(classes[ix[i+2]],value);trianglesByClass.set(value,(trianglesByClass.get(value)||0)+1);}
-  assert.deepEqual(Object.fromEntries([...trianglesByClass].sort()),{'0':1816,'1':1040,'2':6,'3':274});
+  assert.deepEqual(Object.fromEntries([...trianglesByClass].sort()),{'0':1816,'1':1040,'2':6,'3':274,'4':4});
   assert.equal(meta.diagnostics.protectedBodyTriangles,274);
   assert.deepEqual(meta.diagnostics.protectedRegionSourceNodes,[11,7,6,5,9,8,21,18,17,14,20,19]);
   for(const mesh of meta.meshes.slice(2,7))assert.ok(classes.subarray(mesh.firstVertex,mesh.firstVertex+mesh.vertexCount).every(value=>value===1));
-  const head=meta.meshes.find(mesh=>mesh.name==='ClericHead');assert.ok(classes.subarray(head.firstVertex,head.firstVertex+head.vertexCount).every(value=>value===0));
+  const head=meta.meshes.find(mesh=>mesh.name==='ClericHead'),headClasses=classes.subarray(head.firstVertex,head.firstVertex+head.vertexCount);assert.ok(headClasses.every(value=>value===0));
+  const lenses=meta.meshes.find(mesh=>mesh.name==='ClericEyeLenses'),lensClasses=classes.subarray(lenses.firstVertex,lenses.firstVertex+lenses.vertexCount);assert.equal(lenses.vertexCount,8);assert.equal(lenses.indexCount,12);assert.ok(lensClasses.every(value=>value===4));
+  assert.equal(meta.diagnostics.eyeLensTriangles,4);assert.deepEqual(meta.diagnostics.eyeLensCenters,[[-.1485,-.218,.515],[.1327,-.218,.515]]);assert.deepEqual(meta.diagnostics.eyeLensSize,[.14,.06]);assert.deepEqual(meta.diagnostics.eyeLensNormal,[0,0,1]);assert.deepEqual(meta.diagnostics.eyeLensUv,[.4985,.0447]);
+  assert.equal(meta.diagnostics.eyeMaskMethod,'two head-local quads immediately behind the source mask apertures; original Cleric head remains class 0');
   for(let i=0;i<w.length;i+=4){const sum=w[i]+w[i+1]+w[i+2]+w[i+3];assert.ok(Number.isFinite(sum));assert.ok(sum===0||Math.abs(sum-1)<2e-4);}
   assert.equal(sha(bin),meta.binarySha256);
 });
