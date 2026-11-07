@@ -12,7 +12,7 @@
 // somewhere across the floor from where you came in, and above the ground floor, holes where the floor has fallen through
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
-import { hashSeed, rng, byHash } from "./random.js?v=r810-8ed20b74216b";
+import { hashSeed, rng, byHash } from "./random.js?v=r811-a0060f80fb7a";
 
 export const BUILDINGS = {
   version: 3, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
@@ -63,7 +63,7 @@ export const BUILDINGS = {
   // - a top-floor guardian (great buildings, compound towers, castle keeps, labyrinth vaults) that finds no free tile beside its
   //   cache stands on the nearest free tile it can be walked to within `guardianReach` instead of not appearing at all;
   // - labyrinth galleries of gaps keep the platform beside every door (labyrinths.ts), and a key always lies somewhere.
-  interior: { version: 3, guardianReach: 3 },
+  interior: { version: 4, guardianReach: 3 },
   messages: {
     arrive: "A great building stands here, shut and dark. Its door is the way in.",
     enter: "inside",
@@ -232,7 +232,8 @@ export function buildingPlan(base, V = 1) {
   const breach = (hashSeed(`${P.seed}:great-building:v1:${P.rx}:${P.ry}:breach`) % 1000) / 1000 < BUILDINGS.breach ? { x: 3 + h("breach") % (W - 6), y: 0 } : null;
   let arrive = entry;
   for (let f = 1; f <= P.floors; f++) {
-    const L = (V >= 3 ? layFloorV3 : layFloor)(base, f, W, H, S, arrive, f === 1 ? [{ ...door, v: 2 }, { ...entry, v: 2 }, ...(breach ? [{ ...breach, v: 3 }, { x: breach.x, y: 1, v: 3 }] : [])] : []);
+    const layout = V >= 4 ? layFloorV4 : V === 3 ? layFloorV3 : layFloor;
+    const L = layout(base, f, W, H, S, arrive, f === 1 ? [{ ...door, v: 2 }, { ...entry, v: 2 }, ...(breach ? [{ ...breach, v: 3 }, { x: breach.x, y: 1, v: 3 }] : [])] : []);
     const top = f === P.floors, far = farthest(L, arrive, (x, y) => true);
     const up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
     floors.push({ ...L, floor: f, arrive, up, top, far });
@@ -409,6 +410,18 @@ export function layFloorV3(base, f, W, H, S, arrive, keepOpen = []) {
   const big = leaves.reduce((b, q, i) => (q.x1 - q.x0 + 1) * (q.y1 - q.y0 + 1) > (leaves[b].x1 - leaves[b].x0 + 1) * (leaves[b].y1 - leaves[b].y0 + 1) ? i : b, 0);
   const mat = leaves.map((q, i) => i === big ? S.hall : S.rooms[hashSeed(`${base}:mat:v3:${f}:${i}`) % S.rooms.length]);
   return { W, H, grid, room, leaves, mat, walls };
+}
+
+// Interior v4 keeps v3's rooms, corridors and hash namespace byte-for-byte, changing only a blocked
+// in-bounds arrival into floor. In v3 the connector started one step beyond this cell, which could
+// leave an upper floor's ladder down embedded in a wall even though it remained usable from beside it.
+export function layFloorV4(base, f, W, H, S, arrive, keepOpen = []) {
+  const floor = layFloorV3(base, f, W, H, S, arrive, keepOpen);
+  if (arrive && arrive.x >= 0 && arrive.y >= 0 && arrive.x < W && arrive.y < H) {
+    const index = arrive.y * W + arrive.x;
+    if (floor.grid[index] === 1) floor.grid[index] = 0;
+  }
+  return floor;
 }
 
 // A tame, single-surface heightfield for v3 maps. Mandatory objects remain on level ground; broad cardinal

@@ -1,25 +1,25 @@
-import { Game } from "./game.js?v=r810-8ed20b74216b";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r810-8ed20b74216b"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r810-8ed20b74216b";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r810-8ed20b74216b";
-import { sectionRegion, LANDSCAPE_VERSION } from "./landscape.js?v=r810-8ed20b74216b";
-import { freshSave, migrateSave } from "./types.js?v=r810-8ed20b74216b";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r810-8ed20b74216b";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r810-8ed20b74216b";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r810-8ed20b74216b";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r810-8ed20b74216b";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r810-8ed20b74216b";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r810-8ed20b74216b";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r810-8ed20b74216b";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r810-8ed20b74216b";
-import { BIOMES, biomeFor } from "./landscape.js?v=r810-8ed20b74216b";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r810-8ed20b74216b";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r810-8ed20b74216b";
-import { ensureConstellation } from "./constellation.js?v=r810-8ed20b74216b";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r810-8ed20b74216b";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r810-8ed20b74216b";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r810-8ed20b74216b";
-import { ensureMech, DRONE } from "./vehicle-gates.js?v=r810-8ed20b74216b";
+import { Game } from "./game.js?v=r811-a0060f80fb7a";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r811-a0060f80fb7a"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r811-a0060f80fb7a";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r811-a0060f80fb7a";
+import { sectionRegion, LANDSCAPE_VERSION } from "./landscape.js?v=r811-a0060f80fb7a";
+import { freshSave, migrateSave } from "./types.js?v=r811-a0060f80fb7a";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r811-a0060f80fb7a";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r811-a0060f80fb7a";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r811-a0060f80fb7a";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r811-a0060f80fb7a";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r811-a0060f80fb7a";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r811-a0060f80fb7a";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r811-a0060f80fb7a";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r811-a0060f80fb7a";
+import { BIOMES, biomeFor } from "./landscape.js?v=r811-a0060f80fb7a";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r811-a0060f80fb7a";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r811-a0060f80fb7a";
+import { ensureConstellation } from "./constellation.js?v=r811-a0060f80fb7a";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r811-a0060f80fb7a";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r811-a0060f80fb7a";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r811-a0060f80fb7a";
+import { ensureMech, DRONE } from "./vehicle-gates.js?v=r811-a0060f80fb7a";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -168,6 +168,15 @@ function closeViewFixture(scenario, seed, now) {
   Object.assign(save.session, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 }); Object.assign(save.position, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 });
   const game = new Game(save, now); game.installSystems();
   save.session.activeDungeonId = id; save.session.dungeonReturn = back; game.loadArea("dungeon", false);
+  if (spec.buildingFeature || spec.latestPentagon) {
+    const loadArea = game.loadArea.bind(game);
+    game.loadArea = (area, capture = true) => {
+      const result = loadArea(area, capture);
+      if (area === "dungeon") game.enemies = [];
+      return result;
+    };
+    game.enemies = [];
+  }
   let entry = game.map.entry || { x: 4, y: 5 };
   if ((spec.id === "grand-hall" || spec.id === "pit-gallery") && game.map.hall) {
     const { tiles, width, height } = game.map;
