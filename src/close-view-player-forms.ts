@@ -50,9 +50,16 @@ const powerSuit = [
   part(bevel,.13,0,1.18,.18,.19,.21,iron,0,.13,1.18,0,true),
   block(.305,0,1.19,.018,.14,.055,glass),
   block(-.14,0,1.00,.08,.15,.23,iron),
-  block(.19,0,1.05,.024,.035,.024,amber),
   ...legs(ironEdge,.92),
 ];
+// The source suit's two-armed amber spiral is body geometry, so it stays on the chest and occludes correctly.
+const sigil = [];
+for(const arm of [0,Math.PI])for(let i=0;i<4;i++){
+  const point=(q,edge)=>{const a=arm+q*4.2,r=.008+q*.045+edge*.005;return [0,Math.cos(a)*r,Math.sin(a)*r];};
+  const a=point(i/4,-1),b=point((i+1)/4,-1),c=point((i+1)/4,1),d=point(i/4,1);sigil.push([a,b,c],[a,c,d]);
+}
+for(let i=0;i<4;i++){const a=i*Math.PI/2,b=(i+1)*Math.PI/2;sigil.push([[0,0,0],[0,Math.cos(a)*.012,Math.sin(a)*.012],[0,Math.cos(b)*.012,Math.sin(b)*.012]]);}
+powerSuit.push({...part(sigil,.314,0,1.05,1,1,1,0xb9925f),axialSpin:true});
 for (const side of [-1,1]) powerSuit.push(
   part(curvedTube([[0,side*.19,1.17,.065],[.04,side*.26,.94,.055],[.12,side*.27,.77,.045]],4),0,0,0,1,1,1,ironEdge,side*2,0,1.18),
   part(bevel,.14,side*.27,.82,.09,.075,.14,iron,side*2,0,1.18,0,true),
@@ -79,10 +86,4 @@ export const CLOSE_VIEW_PLAYER_FORM_MODELS = Object.freeze({
   playerEmberForm: emberForm,
 });
 
-// Parent integration contract: these are presentation facts, never activation predicates.
-export const CLOSE_VIEW_PLAYER_FORM_PROFILES = Object.freeze({
-  playerIronFists: Object.freeze({ head: 1.68, lift: 0, pose: 'fist' }),
-  playerRobot: Object.freeze({ head: 1.48, lift: 0, pose: 'robot' }),
-  playerPowerSuit: Object.freeze({ head: 1.39, lift: 0, pose: 'suit' }),
-  playerEmberForm: Object.freeze({ head: 1.91, lift: 0, pose: 'ember' }),
-});
+export { CLOSE_VIEW_PLAYER_FORM_PROFILES } from './close-view-player-presentation.ts';

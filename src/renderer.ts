@@ -3,6 +3,7 @@ import { FAR_FOLK } from "./far-realms.ts";
 import { astralBeamAnchors } from "./astral-worm.ts";
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { knockdownPose, drawShockSparks } from "./lightning-giant-render.ts";
+import { playerFormPresentation } from './close-view-player-presentation.ts';
 import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.ts";
 import { enemyPatternWindup } from "./enemy-patterns.ts";
 import { ruleRows } from "./elders.ts";
@@ -45,6 +46,27 @@ export function nativeWindupDuration(e) {
   return duration;
 }
 export function nativeActionShape(e) { return e.telegraph > 0 ? MELEE_PATTERNS[e.meleePhase?.id]?.shape || null : e.strikeGeometry?.kind || null; }
+// Native player bodies replace only the body. These existing state-owned cues remain in the residual atlas.
+export function drawNativePlayerDecorations(ctx, g, s, now) {
+  const p=g.player,form=playerFormPresentation(g),quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),t=quiet?0:now;
+  const x=(p.x+.5)*s,foot=(p.y+.82)*s;
+  ctx.save();
+  if(now<(p.stunnedUntil||0))drawShockSparks(ctx,x,(p.y+.9)*s,s,t);
+  if(form?.mech){
+    const m=g.save.mech;
+    if(form.empowered){const r=s*(.72+.05*Math.sin(t/140)),glow=ctx.createRadialGradient(x,foot-.27*s,r*.2,x,foot-.27*s,r);glow.addColorStop(0,'#ffb05a55');glow.addColorStop(1,'#ff5a1f00');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(x,foot-.27*s,r,0,Math.PI*2);ctx.fill();}
+    if(g.mechBoosting===true){
+      for(const side of [-1,1]){const jx=x+side*s*.17,top=foot-s*.06,len=s*(.24+(quiet?0:.04*Math.sin(t/70+side))),jet=ctx.createLinearGradient(jx,top,jx,top+len);jet.addColorStop(0,'#e8f6ff');jet.addColorStop(.35,'#7fb9d8aa');jet.addColorStop(1,'#4a7fa000');ctx.fillStyle=jet;ctx.beginPath();ctx.moveTo(jx-s*.035,top);ctx.lineTo(jx+s*.035,top);ctx.lineTo(jx,top+len);ctx.closePath();ctx.fill();}
+    }
+    // Gauges stay below the feet at the pre-boost height, as in the ordinary player closure.
+    const bx=(p.x+.08)*s,by=(p.y+1.1+form.lift)*s,bw=s*.84,bh=Math.max(3,s*.08);
+    ctx.fillStyle='#0b1218cc';ctx.fillRect(bx-1,by-1,bw+2,bh*2+3);
+    ctx.fillStyle='#d8dee5';ctx.fillRect(bx,by,bw*Math.max(0,Math.min(1,m.plate/MECH.plate)),bh);
+    ctx.fillStyle='#5fc6e0';ctx.fillRect(bx,by+bh+1,bw*Math.max(0,Math.min(1,m.fuel/(MECH.boost*(m.empowered?2:1)))),bh);
+    if(form.empowered){ctx.fillStyle='#ff8a3d';ctx.fillRect(bx,by+bh*2+2,bw,Math.max(2,bh*.6));}
+  }
+  ctx.restore();
+}
 export function drawNativeCreatureFloor(ctx, g, e, s, now) {
   const p = actorPresentation(e); if (!p || e.gloomVeil || e.dead) return;
   const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), t = quiet ? 0 : now / 1000;
@@ -2653,7 +2675,10 @@ export function render(ctx, g, w, h, now) {
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    jumpLift: jumpLift(g, now),
+    nativeLift: playerFormPresentation(g)?.lift || 0,
+    nativeEffects: !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
+    nativeDecorations: () => drawNativePlayerDecorations(ctx,g,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
+    jumpLift: jumpLift(g, g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
     y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && interior
       ? Math.max(0, g.droneLift.z - supportLevel) * LIFT_PER_LEVEL
       : g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level

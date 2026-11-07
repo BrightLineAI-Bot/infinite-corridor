@@ -7522,7 +7522,7 @@ export class Game {
     this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, landed] };
     if (step >= F.punches.length) this.fistRecoverUntil = now + F.recover * 1000;
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each punch
-    p.attackUntil = now + 240; p.meleeUntil = now + 240; stampAttackVisual(p, "fist", 240, d);
+    p.attackUntil = now + 240; p.meleeUntil = now + 240; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) visual.fistStep = step; // accepted combo identity in the existing presentation record
     this.message = finisher ? "Uppercut! All three landed." : step === 1 ? (charge >= 1 ? "Dash punch, fully charged!" : "Dash punch.") : step === 2 ? "Jab." : "Uppercut.";
     return true;
   }

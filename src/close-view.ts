@@ -3,6 +3,8 @@ import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorT
 import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel } from "./close-view-models.ts";
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, shotVisualHeight } from "./actor-presentation.ts";
+import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.ts';
+import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
@@ -1252,7 +1254,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     if (d.lift && !interiorTerrain(g.map)) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1) ac.globalAlpha = d.alpha;
     const art = foe && CLOSE_VIEW_HOOKS.art[foe.kind]; // (boardFoe is written afresh for every item each frame)
     // phase 2: a creature with close-view art draws itself, from the camera's side (view: where it stands relative to the camera)
-    try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && facing === "up") backOfHood(ac, p, s); } finally { ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
+    try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && !nativeBody && facing === "up") backOfHood(ac, p, s); } finally { ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
     x += pw + 2; rowH = Math.max(rowH, ph + 2); }
   SPRITES.used = y + rowH; return true;
 }
@@ -1825,6 +1827,7 @@ export function closeViewPlayerAction(g, now) {
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
+  const form = playerFormPresentation(g);
   state.admitted.clear();
   closeViewGLStats.modelFallbacks = Object.create(null);
   if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; }
@@ -1858,12 +1861,14 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const dx = who.x - track.x, dy = who.y - track.y, dist = Math.hypot(dx, dy);
     const elapsed = Math.max(0, Math.min(.1, (now - track.at) / 1000));
     const visualProfile = visualAttack ? visualRecord.profile : null;
+    const fisting = who === player && (visualProfile === 'fist' || playerAction?.legacy && !!g.fistsEquipped?.());
+    const charge = who === player && !attack && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
     const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
     const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" : !(player.meleeUntil > now));
     const cast = who === player && player.castUntil > now;
     const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
     const winding = !!monsterAction?.winding;
-    const aim = who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
+    const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
       : monsterAction?.aim;
     let targetYaw = track.yaw;
     if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
@@ -1872,7 +1877,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (!stunned && Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
     const yawDelta = Math.atan2(Math.sin(targetYaw - track.yaw), Math.cos(targetYaw - track.yaw));
     const turn = Math.max(-1, Math.min(1, yawDelta));
-    if (!stunned && (attack || winding || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
+    if (!stunned && (attack || winding || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
     if (!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
@@ -1884,8 +1889,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (winding && !track.winding) track.windAt = now;
     if (attack && !track.attacking) track.attackAt = now;
     const knock = stunned ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
-    const profilePose = visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
-    const pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
+    const profilePose = fisting ? 'fist' : visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
+    const pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
     const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
     let amount = 0;
     if (winding) amount = monsterAction?.windupAmount ?? Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
@@ -1901,13 +1906,18 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       ? monsterAction.leapAmount
       : 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
     if (hit) amount = hit;
+    if (charge != null && !hit) amount = charge;
     if (stunned) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const activeKind = visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
-    const actor = { kind: activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
+    const held = visualAttack ? knownProfile ? visualProfile : 'fist' : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists ? 'fist' : 'melee';
+    const formKind = who === player && form ? playerFormModelKey(form, held) : null;
+    const actor = { kind: formKind || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
-      scale: presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      fistStep: charge != null ? g.fistCharge.step || 1 : visualRecord?.fistStep,
+      effectTime: now,
       palette: presentation?.palette,
       watched,
       action: presentation?.stagger ? null : monsterAction?.semantic?.action,
@@ -1926,7 +1936,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   };
   for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
     const it = order[oi];
-    if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer && !g.fistsEquipped?.() && !g.save.mech?.active && g.save.magicSkills?.active?.id !== "ember-form") {
+    if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer) {
+      // The source closure also owns the attached drone; retain it until that auxiliary body is captured separately.
+      if (g.droneUp?.() && g.droneAt) { closeViewGLStats.modelFallbacks["player-drone"] = 1; break; }
       admit(it, player, "player"); break;
     }
   }
@@ -2054,9 +2066,10 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const it = order[oi], draw = draws[itemRef[it]];
     if (itemKind[it] !== 1 || draw !== capturedPlayer || !MODEL_STATE.admitted.has(it)) continue;
     const X = boardWX[it], Y = boardWY[it], support = interiorSurfaceHeight(g.map, X, Y - .07) + closeViewActorLift(draw, true);
-    const knocked = now < (g.player.stunnedUntil || 0), body = knocked ? .35 : .72;
+    const statusNow = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+    const knocked = statusNow < (g.player.stunnedUntil || 0), form = playerFormPresentation(g), body = knocked ? .35 : form ? form.head * .52 : .72;
     for (let i = 0; i < 3; i++) {
-      const phase = reduce ? i * 2.094 : now / 150 + i * 2.094;
+      const phase = reduce ? i * 2.094 : statusNow / 150 + i * 2.094;
       const side = (i - 1) * .15 + (reduce ? 0 : Math.sin(phase) * .035);
       const height = .22 + i * .045 + (reduce ? 0 : Math.sin(phase * 1.7) * .025);
       card(X + CAM.rx * side, Y + CAM.ry * side, support + body - height * .45, support + body + height, .055, 3, .82, i & 1 ? 0xffae2a : 0xff5a1a, 1, true);

@@ -4,6 +4,7 @@ import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.ts';
+import { PLAYER_FORM_HANDS } from './close-view-player-presentation.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -192,9 +193,18 @@ const coilStalker = [
   part(ringLoft([[0,.14,-.03],[.01,.17,0],[.02,.14,.03]],6),-.686,0,.169,1,1,1,coilLight,5,-.686,.169,0,true),
 ];
 
+// Static held-part variants reuse the authored body. Move only existing tool meshes to each form's grip;
+// they stay in the same bounded actor submission (the widest robot plus emitter is exactly 256 triangles).
+const heldParts = { melee:player.slice(-2),fist:[],emitter:playerTool.slice(playerUnarmed.length),hammer:playerHammer.slice(playerUnarmed.length),sweep:[],mirage:playerMirage.slice(playerUnarmed.length),'orrery-tap':playerOrrery.slice(playerUnarmed.length),'orrery-release':playerOrrery.slice(playerUnarmed.length) };
+const playerFormModels = Object.fromEntries(Object.entries(CLOSE_VIEW_PLAYER_FORM_MODELS).flatMap(([kind,body])=>Object.entries(heldParts).map(([profile,parts])=>{
+  const hand=PLAYER_FORM_HANDS[kind];
+  const held=parts.map(p=>{const mesh=Float32Array.from(p.mesh);for(let i=0;i<mesh.length;i+=MESH_FLOATS){mesh[i]+=p.px+hand.x-.161-hand.px;mesh[i+1]+=hand.y+.25;mesh[i+2]+=p.pz+hand.z-.783-hand.pz;}return {...p,mesh,px:hand.px,pz:hand.pz};});
+  return [`${kind}:${profile}`,[...body,...held]];
+})));
+
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
-  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
+  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
@@ -233,7 +243,7 @@ export function writeCloseViewModel(out, offset, actor) {
   // Contact comes early, then the cut carries through before recovering. Damage remains a gameplay event;
   // this curve only makes its already-immediate result read as a committed, weighted blow.
   let strike = 0;
-  if (pose === "attack") {
+  if (pose === "attack" || pose === "fist") {
     if (progress < .18) { const t = progress / .18; strike = t * t * (3 - 2 * t); }
     else if (progress < .52) strike = 1;
     else { const t = (progress - .52) / .48; strike = 1 - t * t * (3 - 2 * t); }
@@ -246,9 +256,10 @@ export function writeCloseViewModel(out, offset, actor) {
   const fall = pose === "death" ? progress : 0;
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
-  const turn = .21 * strike + .08 * cast + turnLean;
+  const fist = pose === "fist", chargingFist = pose === "fistCharge", fistStep = [1,2,3].includes(actor.fistStep) ? actor.fistStep : 1;
+  const turn = (fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = -.18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
+  const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
@@ -265,14 +276,17 @@ export function writeCloseViewModel(out, offset, actor) {
   const actionWeight = actionPhase === 'windup' || actionPhase === 'track' || actionPhase === 'lock' || actionPhase === 'travel' || actionPhase === 'strike'
     ? actionProgress : actionPhase === 'active' || actionPhase === 'erupt' ? 1
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
-  for (const { mesh, swing, px, pz } of models[kind]) {
+  for (const { mesh, swing, px, pz, axialSpin } of models[kind]) {
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
       : swing >= 40 && swing < 60
         ? Math.sin(phase * 1.3 - swing * .57) * (.018 + .045 * moving) * secondary * (1 - fall)
       : 0;
     let angle = semanticAngle(kind, swing, actor.action, actionFamily, actionPhase, actionProgress, actionWeight, beat, moving, phase, secondary);
-    if (angle !== null) { /* authored action-family joint */ }
+    if (playerLike && Math.abs(swing) === 2 && (fist || chargingFist)) {
+      const lead=swing===(fistStep===2?2:-2);
+      angle=chargingFist?-.65-.35*progress:lead?-.65-(fistStep===3?1.75:.95)*strike:-.55-.18*strike;
+    } else if (angle !== null) { /* authored action-family joint */ }
     else if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup)
       + Math.sign(turnAmount || 1) * .04 * Math.abs(turnAmount) * secondary;
     else if (swing === 6) angle = .19 * beat - .23 * windup + .24 * strike;
@@ -296,21 +310,24 @@ export function writeCloseViewModel(out, offset, actor) {
     else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
+    const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
-    const cutYaw = playerLike && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
+    const cutYaw = playerLike && !fist && !chargingFist && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
-    const pivotY = playerLike && swing === -2 ? -.25 : 0;
+    const pivotY = playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
-      const forward = mesh[i] * c + mesh[i + 2] * s + px;
-      const lateral = mesh[i + 1] + coilSway;
+      const localY = axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
+      const normalY = axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
+      const forward = mesh[i] * c + localZ * s + px;
+      const lateral = localY + coilSway;
       const u = forward * cc - (lateral - pivotY) * sc;
       const v = forward * sc + (lateral - pivotY) * cc + pivotY;
-      const w = mesh[i + 2] * c - mesh[i] * s + pz;
+      const w = localZ * c - mesh[i] * s + pz;
       const f = u * cp + w * sp + shift;
-      const armNormal = mesh[i + 3] * c + mesh[i + 5] * s;
-      const nu = armNormal * cc - mesh[i + 4] * sc;
-      const nv = armNormal * sc + mesh[i + 4] * cc;
-      const nw = mesh[i + 5] * c - mesh[i + 3] * s;
+      const armNormal = mesh[i + 3] * c + normalZ * s;
+      const nu = armNormal * cc - normalY * sc;
+      const nv = armNormal * sc + normalY * cc;
+      const nw = normalZ * c - mesh[i + 3] * s;
       const nf = nu * cp + nw * sp;
       out[offset++] = x + (f * cy - v * sy) * size;
       out[offset++] = y + (f * sy + v * cy) * size;
