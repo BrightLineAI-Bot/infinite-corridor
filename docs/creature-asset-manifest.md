@@ -59,6 +59,14 @@ Direct body/action views were obtained for Hound, Root Brute, Coil, Marshal, War
 
 Publish42416350924 succeeded. Production identity and actual Options → System both identify r816-093cff214c39; the existing journey remained250KB and was left paused. A cold production launch exposed an existing early-timer/game-initialization race in main.ts, although the game subsequently loaded and System reported no recent errors. The following character candidate moves the unchanged UI registration below the completed asynchronous load. Both immediate/deferred startup regressions pass; independent replay against the old source reproduces the exact ReferenceError. Hosted cold-launch confirmation remains required before its publish. Phone FPS and physical multi-touch remain unmeasured. Rows retain Pending until each full evidence gate is satisfied.
 
+## Integration hold and remaining acceptance
+
+The native character/companion source and startup correction are preserved on claude/close-view-character-forms. They have not been assigned a new release or published. PR #466/r817 is held: CI42413525175 failed twice on the unchanged tower-seals generation timing assertion; all2857 other checks and preview rehearsal passed. Astra verified the timing test and11 transitive generator dependencies are byte-identical to r816; isolated tower tests and eight benchmark repetitions pass, with observed GC sensitivity. Test-runner isolation requires the owner approval requested in this session; no assertion, threshold, workflow or generator was weakened or changed.
+
+Independent work completed during the hold: source startup fix and two regressions, character build, updated r816 publication record, and a seven-subject front/side/rear CPU geometry contact sheet. Attempted local UI validation at http://127.0.0.1:8767/proving-ground/ returned net::ERR_FAILED; that transport and temporary server were stopped. Do not use a tunnel, proxy or relay. Continue normal hosted Preview validation after CI is resolved.
+
+Remaining: resolve the CI blocker within approved scope; merge r817 and follow Preview; fetch current main and assign its next number to the character PR; run release consistency/build/CI, exact final Astra delta review, hosted Foundry and character/companion visual passes, then publish under this session's existing explicit authorization. Re-read current live identity and exact latest successful candidate before dispatch. Verify workflow/live identity/System label and record publication. Physical-device FPS and multi-touch remain unmeasured. The additional crawler lock-on/backstep pass obtained an unobstructed native body/limb view; further low-creature and burrow/floating phase views remain deliberately pending.
+
 ## Completion rule
 
 A creature is **Complete** only when all of the following have direct evidence in Close View:
