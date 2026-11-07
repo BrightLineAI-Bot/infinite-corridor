@@ -4,6 +4,7 @@ import { ACTION_MOTION } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, writeCloseViewModel } from "./close-view-models.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
+import { ATTACK_MODULES } from "./monster-pack.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
@@ -843,6 +844,8 @@ export const closeViewCapturing = () => capturing;
 // Version 5: while the GPU scene captures the ground, the ordinary renderer leaves out the floor tiles (closeViewBareFloor):
 // the ground texture holds only what lies on the floor (telegraphs, traps, marks), over the floor the shader builds.
 export const closeViewBareFloor = () => capturing && bareFloor;
+export const closeViewActorLift = (draw, native = false) => Math.max(0,
+  (draw?.lift || 0) + (draw?.jumpLift || 0) + (native ? draw?.nativeLift || 0 : 0));
 export function closeViewTake(draws, playerDraw) { captured = draws; capturedPlayer = playerDraw; }
 
 function makeCanvas() {
@@ -1053,7 +1056,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const draws = captured || [];
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i])) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
-    const q = project(bxw, byw, interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, bxw, byw - .07) + (d.lift || 0) + (d.jumpLift || 0) : 0); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
+    const q = project(bxw, byw, interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, bxw, byw - .07) + closeViewActorLift(d) : 0); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - A.height * sc * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
@@ -1740,6 +1743,35 @@ const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
 };
+export function closeViewMonsterAction(who, kind) {
+  const pack = who.pack;
+  const ordinaryStrike = who.strike > 0;
+  const leapActive = pack?.attack === "leapSlam" && pack.phase === "active";
+  const packRecovery = kind === "pallidCrawler" && pack?.phase === "recover" &&
+    (pack.attack === "bite" || pack.attack === "leapSlam");
+  const winding = foeWindingUp(who);
+  const strikeAim = Math.hypot(who.strikeGeometry?.dx || 0, who.strikeGeometry?.dy || 0) > .01
+    ? who.strikeGeometry : who.attackAim;
+  const aim = ordinaryStrike ? strikeAim
+    : winding ? who.meleePhase?.aim || pack?.data?.aim || who.attackAim
+    : packRecovery || pack?.phase === "strike" || pack?.phase === "active" ? pack?.data?.aim || who.attackAim
+    : null;
+  const attack = ordinaryStrike || packRecovery || pack?.phase === "strike" ||
+    (pack?.phase === "active" && !leapActive) || who.gateAttack?.phase === "strike" || who.gateAttack?.phase === "active";
+  let amount = null;
+  if (ordinaryStrike) {
+    const recovery = 1 - Math.min(1, who.strike * 1000 / ACTION_MOTION.monsterStrikeMs);
+    amount = ACTION_MOTION.monsterContact + (1 - ACTION_MOTION.monsterContact) * recovery;
+  } else if (packRecovery) {
+    const recoveryDuration = ATTACK_MODULES[pack.attack].recover;
+    const recovery = 1 - Math.min(1, Math.max(0, Number(pack.t) || 0) / recoveryDuration);
+    amount = ACTION_MOTION.monsterContact + (1 - ACTION_MOTION.monsterContact) * recovery;
+  }
+  const leapAmount = leapActive
+    ? 1 - Math.min(1, Math.max(0, Number(pack.t) || 0) / ATTACK_MODULES.leapSlam.active)
+    : null;
+  return { attack, winding, leapActive, packRecovery, aim, amount, leapAmount };
+}
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
@@ -1760,7 +1792,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     return true;
   };
   const admit = (it, who, kind) => {
-    const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], attack = who.attackUntil > now || who.pack?.phase === "strike" || who.pack?.phase === "active" || who.gateAttack?.phase === "strike" || who.gateAttack?.phase === "active";
+    const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], pack = who.pack;
+    const monsterAction = who === player ? null : closeViewMonsterAction(who, kind);
+    const attack = who.attackUntil > now || !!monsterAction?.attack;
     let track = state.tracks.get(who);
     if (!track) track = { x: who.x, y: who.y, yaw: facing ? Math.atan2(facing[1], facing[0]) : CAM.yaw,
       phase: Number.isFinite(who.walkPhase) ? who.walkPhase * Math.PI : 0, pace: 0, at: now,
@@ -1769,8 +1803,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const elapsed = Math.max(0, Math.min(.1, (now - track.at) / 1000));
     const tool = who === player && attack && !(player.meleeUntil > now);
     const cast = who === player && player.castUntil > now;
-    const jump = who === player && g.jumpUntil > now;
-    const aim = who === player && attack ? (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim : null;
+    const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
+    const winding = !!monsterAction?.winding;
+    const aim = who === player && attack ? (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
+      : monsterAction?.aim;
     let targetYaw = track.yaw;
     if (dist > .005) targetYaw = Math.atan2(dy, dx);
     else if (facing) targetYaw = Math.atan2(facing[1], facing[0]);
@@ -1778,14 +1814,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
     const yawDelta = Math.atan2(Math.sin(targetYaw - track.yaw), Math.cos(targetYaw - track.yaw));
     const turn = Math.max(-1, Math.min(1, yawDelta));
-    if (attack || dist > 3) track.yaw = targetYaw;
+    if (attack || winding || monsterAction?.leapActive || dist > 3) track.yaw = targetYaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
     if (dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
     track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
     if (who.hp < track.hp) track.hitAt = now;
     const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
-    const winding = who !== player && foeWindingUp(who);
     if (winding && !track.winding) track.windAt = now;
     if (attack && !track.attacking) track.attackAt = now;
     const pose = hit ? "hit" : attack ? (tool ? "tool" : "attack") : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
@@ -1793,14 +1828,19 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     let amount = 0;
     if (winding) amount = Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
     if (attack) {
-      const duration = tool ? MODEL_TIMING.toolMs : who === player ? ACTION_MOTION.meleeMs : MODEL_TIMING.attackMs;
-      amount = who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / duration) : Math.min(1, (poseTime - track.attackAt) / duration);
+      if (monsterAction?.amount != null) amount = monsterAction.amount;
+      else {
+        const duration = tool ? MODEL_TIMING.toolMs : who === player ? ACTION_MOTION.meleeMs : MODEL_TIMING.attackMs;
+        amount = who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / duration) : Math.min(1, (poseTime - track.attackAt) / duration);
+      }
     } else if (cast) amount = 1 - Math.min(1, (player.castUntil - now) / MODEL_TIMING.castMs);
-    else if (jump) amount = 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
+    else if (jump) amount = monsterAction?.leapAmount != null
+      ? monsterAction.leapAmount
+      : 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
     if (hit) amount = hit;
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : kind,
-      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + Math.max(0, (d.lift || 0) + (d.jumpLift || 0)), yaw: track.yaw,
+      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true), yaw: track.yaw,
       phase: track.phase, pace: track.pace, pose, amount, turn, reduceMotion: reduce };
     track.winding = winding;
     track.attacking = attack;
@@ -1907,7 +1947,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const sc = boardScale[it], hw = A.halfWidth * sc, top = A.height * sc, X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])), foe = boardFoe[it]; // the Wayfarer never fainter than nearFade (nothing see-through)
     const draw = draws[itemRef[it]];
     boardBase = interiorTerrain(g.map)
-      ? interiorSurfaceHeight(g.map, X, Y - .07) + (draw?.lift || 0) + (draw?.jumpLift || 0)
+      ? interiorSurfaceHeight(g.map, X, Y - .07) + closeViewActorLift(draw)
       : 0;
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const fl = foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));

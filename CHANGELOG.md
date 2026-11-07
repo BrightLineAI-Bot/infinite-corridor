@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 813: align native monster windup/contact/recovery and crawler airborne height with actual combat state; add eleven production-backed Close View combat-asset scenarios and correct Forge fixture metadata.
 - Release 812: preserve validated nested drone-lift metadata through play, save and reload; keep canonical identity and numeric validation authoritative, and clarify Close View lab movement/look help.
 - Release 811 — New interior version 4 opens stair landing cells without altering older layouts; traversal-focused Close View labs stay quiet across reloads.
 - Release 810 — Fix heightfield actor projection in the full WebGL Close View frame and exercise all new traversal scenarios through the GPU scene path.

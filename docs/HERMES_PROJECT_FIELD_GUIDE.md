@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 813: truthful native monster actions and combat asset gallery
+
+**CODE:** Native ordinary monsters consume the existing strike countdown and committed melee direction. Crawler bite and leap landing use authored attack phase durations, and native airborne support uses hopLift without altering sprite projection or damage timing.
+
+**CODE:** Combat Asset Lab exposes eleven scratch Close View scenarios with actual normalized weapons, specialized tools, spells and creature producers. It retains generated grand-hall geometry, chooses a clear level lane and provides a precise gallery-start teleport. Diagnostics report effective forms; the older Forge fixture now labels its gear Awakening-ready and normalizes upgraded display metadata.
+
+**BOUNDARY:** No gameplay hit, targeting, cooldown, generation, save-schema or production-save changes. Existing actor/triangle/effect/draw-call caps and special sprite paths remain. Focused regression changes were approved by Tim. Physical-phone FPS remains unmeasured; additional native creature models and player/tool presentation are tracked separately in the combat asset manifest.
+
 ## Release 812: preserve nested drone-lift metadata
 
 **CODE:** Game.restoreDroneLift retains validated unknown keys before restoring canonical numeric values. exportSnapshot retains that runtime metadata before overwriting numeric and current dungeon identity fields. Focused outdoor and bound-dungeon round trips cover nested and peer unknown keys, stale identity and invalid numeric rejection.

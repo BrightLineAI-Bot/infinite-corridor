@@ -18,8 +18,11 @@ import { ECHO_IDS, ensureEchoState } from "./echoes.ts";
 import { ensureConstellation } from "./constellation.ts";
 import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.ts";
 import { placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.ts";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.ts";
 import { ensureMech, DRONE } from "./vehicle-gates.ts";
+import { ensureLattice } from "./transit-lattice.ts";
+import { ensureSlots } from "./spell-slots.ts";
+import { fieldOn } from "./lattice-fields.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -35,6 +38,7 @@ export const LABORATORIES = [
   { id: "landscape", label: "Landscape Pack", status: "implemented", description: "Nearest production overland section of each landscape biome: mountains with stair trails, dune seas, coasts, alien wilds and castles." },
   { id: "test-tile", label: "Standard Test Tile", status: "implemented", description: "One fixed overworld section with water, a chasm, raised blocks with stairs, a building and a dungeon door, for trying creatures and interactions." },
   { id: "combat", label: "Monster & Elite Combat Arena", status: "implemented", description: "Pick an environment and a creature, then press Start test." },
+  { id: "combat-assets", label: "Combat Asset Lab", status: "implemented", description: "Close View production gallery for representative weapons, tools, spells, and monster forms in a generated interior." },
   { id: "wayglass", label: "Wayglass, Checkpoint & Compass Lab", status: "implemented", description: "Production navigation, recovery, migration, Atlas, and dual-arrow fixtures." },
   { id: "environment", label: "Bespoke Environment & District Lab", status: "implemented", description: "Production districts, overworld landmarks, domains, and arena families." },
   { id: "hunts", label: "Hunt, Domain & Boss Arena Lab", status: "implemented", description: "Scratch Viewport lifecycle, creature, elite, and boss-arena fixtures." },
@@ -63,10 +67,23 @@ const SHELTERS = [
 ].map(([id,label,seed,rx,ry])=>({id,label,seed,rx,ry}));
 
 const ORDINARY = ["hollow", "cistern", "kiln"].map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} topology` }));
-const FORGE = [{ id: "sandbox", label: "Sandbox: every glyph, empty sockets" }, { id: "echoes", label: "Echoes: every Creature Echo owned, none set" }, { id: "awakening", label: "Constellation + Awakening: Aperture 90, lumen dust, max-rank relics holding Wildfire" }, ...Object.entries(RESONANCES).map(([id, r]) => ({ id: `resonance-${id}`, label: `${r.name} (${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].name})` }))];
+const FORGE = [{ id: "sandbox", label: "Sandbox: every glyph, empty sockets" }, { id: "echoes", label: "Echoes: every Creature Echo owned, none set" }, { id: "awakening", label: "Awakening-ready: Aperture 90, lumen dust, max-rank relics holding Wildfire" }, ...Object.entries(RESONANCES).map(([id, r]) => ({ id: `resonance-${id}`, label: `${r.name} (${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].name})` }))];
 const UNDERLANDS = [...LAYOUTS.map((id) => ({ id: `layout-${id}`, label: `${id[0].toUpperCase()}${id.slice(1)} layout` })), ...Object.entries(UNDER_THEMES).map(([id, t]) => ({ id: `theme-${id}`, label: `${t.name || id} environment` })), { id: "relay-node", label: "Relay node, guardian defeated" }];
 const DEEP = [{id:"legacy-v1",label:"Legacy v1 Threefold expedition"},...DEEP_ARCHETYPE_IDS.map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} deep expedition` }))];
 const CREATURES = [...Object.keys(CREATURE_FORMS).filter(id=>!MONSTER_PACK[id]?.prototypeOnly), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers",...PACK_KINDS.map(id=>`pack-boss-${id}`)].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
+const COMBAT_ASSETS = [
+  { id: "blade-spark-ashling", label: "Salvage Blade + Spark Coil · Ashling", primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling" },
+  { id: "pike-spindle-hound", label: "Cinder Pike + Lumen Spindle · Ashen Hound", primary: "Cinder Pike", tool: "Lumen Spindle", spell: "cinder-dart", foe: "ashenHound" },
+  { id: "cleaver-bombard-crawler", label: "Verge Cleaver + Rift Bombard · Glass Mite", primary: "Verge Cleaver", tool: "Rift Bombard", spell: "fire-burst", foe: "glassMite" },
+  { id: "blade-bombard-pallid-crawler", label: "Salvage Blade + Rift Bombard · Pallid Crawler", primary: "Salvage Blade", tool: "Rift Bombard", spell: "grave-sun", foe: "pallidCrawler" },
+  { id: "blade-hammerfall-brute", label: "Salvage Blade + Hammerfall/Golem · Root Brute", primary: "Salvage Blade", tool: "Hammerfall", spell: "aegis", foe: "rootBrute", passive: "corridor-golem" },
+  { id: "cleaver-sweep-marshal", label: "Verge Cleaver + Great Sweep · Hollow Marshal", primary: "Verge Cleaver", tool: "Great Sweep", spell: "ember-ring", foe: "hollowMarshal" },
+  { id: "cleaver-mirage-stalker", label: "Verge Cleaver + Mirage of Blades · Coil Stalker", primary: "Verge Cleaver", tool: "Great Sweep", spell: "shadow-boxing", foe: "coilStalker", passive: "nanoknives" },
+  { id: "blade-orrery-sentinel", label: "Salvage Blade + Aether Orrery · Void Sentinel", primary: "Salvage Blade", tool: "Aether Orrery", spell: "gravity-well", foe: "voidSentinel" },
+  { id: "pike-blunder-caster", label: "Cinder Pike + Blunderbuss · Mire Apostle", primary: "Cinder Pike", tool: "Blunderbuss", spell: "stillpoint", foe: "mireApostle" },
+  { id: "blade-arc-wave-wisp", label: "Salvage Blade + Blunderbuss/Arc Wave · Cinder Wisp", primary: "Salvage Blade", tool: "Blunderbuss", spell: "fire-burst", foe: "cinderWisp", passive: "arc-wave" },
+  { id: "fists-spindle-flying", label: "Iron Fists + Lumen Spindle · Veil Moth", primary: "Iron Fists", tool: "Lumen Spindle", spell: "orbit-volley", foe: "veilMoth" },
+];
 const WAYGLASS_SCENARIOS=["unactivated-wayglass","activated-wayglass","travel-pair","rest-point","activated-rest-point","broken-observatory","manual-waypoint","quest-guidance","hunt-guidance","dual-compass","death-marker","save-reconstruction","legacy-migration","drought-corpus"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const ENVIRONMENTS=[...SHELTERS.filter(q=>q.id.endsWith("district")),...ARENA_FAMILIES.map(id=>({id:`arena-${id}`,label:`${id.replaceAll("-"," ")} arena`})),{id:"temporary-hunt-arena",label:"Temporary hunt arena"},{id:"persistent-arena",label:"Persistent arena entrance"},{id:"sentinel-domain",label:"Sentinel manufactory domain"},{id:"rootbound-domain",label:"Rootbound crown domain"}];
 const HUNTS=["empty-viewport","tracking-hunt","located-hunt","completed-hunt","failed-hunt","elite-attributes","projectile-patterns","aggro-pursuit","guardian-boss","foundry-review","temporary-arena","persistent-arena"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
@@ -84,6 +101,7 @@ export function scenariosForLab(lab) {
   if (lab === "threefold") return [{ id: "threefold", label: "Threefold sealed expedition" }];
   if (lab === "landscape") return LANDSCAPE_SCENARIOS;
   if (lab === "combat") return CREATURES;
+  if (lab === "combat-assets") return COMBAT_ASSETS;
   if(lab==="wayglass")return WAYGLASS_SCENARIOS;
   if(lab==="environment")return ENVIRONMENTS;
   if(lab==="hunts")return HUNTS;
@@ -218,6 +236,53 @@ function closeViewFixture(scenario, seed, now) {
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(traversal ? { diagnostics: { traversal } } : {}) };
 }
 
+function combatAssetGear(slot, name) {
+  if (slot === "primary") {
+    const id = name === "Salvage Blade" ? "salvage-blade" : name === "Cinder Pike" ? "primary-cinder-pike" : name === "Iron Fists" ? "primary-iron-fists" : "primary-verge-cleaver";
+    return normalizeItemUpgrade(normalizeSockets({ id, name, slot, power: 12, property: name === "Iron Fists" ? "brawler" : "impact", tier: "relic", affixes: [] }));
+  }
+  if (name === "Blunderbuss") return normalizeItemUpgrade(normalizeSockets({ id: "secondary-needle-caster", name: "Needle Caster", slot, basePower: 6, power: 12, upgradeRank: 6, property: "quick", tier: "relic", affixes: [] }));
+  const id = name === "Spark Coil" ? "spark-coil" : `secondary-${name.toLowerCase().replaceAll(" ", "-")}`;
+  return normalizeItemUpgrade(normalizeSockets({ id, name, slot, power: 12, property: name === "Aether Orrery" ? "orrery" : "focus", tier: "relic", affixes: [] }));
+}
+
+// A generated Close View room is retained byte-for-byte. This only chooses two already-clear, same-height points in it,
+// then equips and spawns through the production item/spell/enemy paths so the gallery exercises the real combat assets.
+function combatAssetFixture(scenario, seed, now) {
+  const spec = COMBAT_ASSETS.find((q) => q.id === scenario) || COMBAT_ASSETS[0], fixture = closeViewFixture("grand-hall", seed, now), { game, save } = fixture, map = game.map;
+  const at = new Map(map.tiles.map((tile) => [`${tile.x},${tile.y}`, tile])), clear = (tile) => tile && !tile.blocked && !tile.hole && !tile.environment && !tile.doorway;
+  const roomy = (tile) => clear(tile) && [[-1,0],[1,0],[0,-1],[0,1]].every(([dx,dy]) => clear(at.get(`${tile.x+dx},${tile.y+dy}`)) && (at.get(`${tile.x+dx},${tile.y+dy}`).elev || 0) === (tile.elev || 0));
+  let placement = null;
+  for (const player of map.tiles.filter(roomy).sort((a,b) => Math.hypot(a.x-map.width/2,a.y-map.height/2)-Math.hypot(b.x-map.width/2,b.y-map.height/2) || a.y-b.y || a.x-b.x)) {
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const foe = at.get(`${player.x+dx*5},${player.y+dy*5}`);
+      if (!roomy(foe) || (foe.elev || 0) !== (player.elev || 0)) continue;
+      if (Array.from({length:4},(_,i) => at.get(`${player.x+dx*(i+1)},${player.y+dy*(i+1)}`)).every((tile) => clear(tile) && (tile.elev || 0) === (player.elev || 0))) { placement = { player, foe, dx, dy }; break; }
+    }
+    if (placement) break;
+  }
+  if (!placement) throw new Error(`Combat Asset Lab could not find an unobstructed same-height lane in ${map.id}.`);
+  save.equipment.primary = combatAssetGear("primary", spec.primary);
+  save.equipment.secondary = combatAssetGear("secondary", spec.tool);
+  save.perception.aperture = APERTURE_BANDS[13].threshold;
+  save.farArray.listeners = Math.max(1, Number(save.farArray.listeners) || 0);
+  save.equippedSpell = spec.spell;
+  save.magicSkills.slots = { a: `spell:${spec.spell}`, b: spec.spell === "ember-ring" ? "spell:cinder-dart" : "spell:ember-ring" };
+  ensureSlots(save);
+  ensureLattice(save);
+  save.lattice.passives = spec.passive ? [`field:${spec.passive}`] : [];
+  Object.assign(game.player, { x: placement.player.x, y: placement.player.y, facing: placement.dx < 0 ? "left" : placement.dx > 0 ? "right" : placement.dy < 0 ? "up" : "down" });
+  save.lastAim = { x: placement.dx, y: placement.dy };
+  game.enemies = [game.createEnemyFromSpawn({ id: `proving:combat-assets:${spec.id}`, kind: spec.foe, x: placement.foe.x, y: placement.foe.y }, "dungeon")];
+  game.projectiles = []; game.effects = []; game.eliteHazards = [];
+  game.message = `${spec.label}. Attack, Tool, Spell A, and Spell B use production controls; Pause freezes the inspection.`;
+  game.sync();
+  const tool = rangedWeapon(save.equipment.secondary), spell = SPELLS[spec.spell];
+  const form = tool?.brawlerTool === "great-sweep" && fieldOn(save, "nanoknives") ? "mirage-of-blades" : tool?.brawlerTool === "hammerfall" && fieldOn(save, "corridor-golem") ? "hammerfall+corridor-golem" : tool?.name === "Blunderbuss" && fieldOn(save, "arc-wave") ? "blunderbuss+arc-wave" : tool?.brawlerTool || (tool?.orrery ? "aether-orrery" : tool?.path || null);
+  return { ...fixture, lab: "combat-assets", scenario: spec.id, label: spec.label, primary: placement.player,
+    diagnostics: { resolved: { primary: { name: save.equipment.primary.name, ...primaryProfile(save.equipment.primary) }, tool: { name: save.equipment.secondary.name, profile: tool?.name || null, path: tool?.path || null, form }, spell: { id: spell.id, name: spell.name }, foe: { kind: game.enemies[0].kind, id: game.enemies[0].id } }, placement: { player: { x: placement.player.x, y: placement.player.y, elev: placement.player.elev || 0 }, foe: { x: placement.foe.x, y: placement.foe.y, elev: placement.foe.elev || 0 }, unobstructedTiles: 5 } } };
+}
+
 function gameForOverworld(seed, rx, ry, now) {
   const save = scratchSave(seed);
   Object.assign(save.session, { area: "overworld", rx, ry, x: 16, y: 16 });
@@ -287,7 +352,7 @@ function forgeFixture(scenario, seed, variant, now) {
   save.equipment.secondary = normalizeSockets({ id: "secondary-needle-caster", name: "Needle Caster", slot: "secondary", power: 6, property: "quick", tier: "relic", affixes: [] });
   save.glyphDust = 30;
   ensureEchoState(save); if (spec.id === "echoes") for (const e of ECHO_IDS) save.echoes.owned[e] = true;
-  if (spec.id === "awakening") { save.perception.aperture = 90; save.materials.lumenDust = 40; for (const slot of ["primary", "secondary"]) { const it = save.equipment[slot]; it.basePower = it.power; it.upgradeRank = 6; it.power += 6; it.glyphs = ["ignite", "chain", null]; } ensureConstellation(save); }
+  if (spec.id === "awakening") { save.perception.aperture = 90; save.materials.lumenDust = 40; for (const slot of ["primary", "secondary"]) { const it = save.equipment[slot]; it.basePower = it.power; it.upgradeRank = 6; it.power += 6; it.glyphs = ["ignite", "chain", null]; save.equipment[slot] = normalizeItemUpgrade(it); } ensureConstellation(save); }
   const r = RESONANCES[spec.id.replace("resonance-", "")];
   if (r) { for (const slots of [save.equipment.primary.glyphs, save.equipment.secondary.glyphs]) { slots[0] = r.pair[0]; slots[1] = r.pair[1]; } save.spellGlyphs[save.equippedSpell || "ember-ring"] = [...r.pair]; for (const g of r.pair) save.glyphs[g] = Math.max(0, save.glyphs[g] - 3); }
   return { lab: "forge", scenario: spec.id, label: map.name, seed, variant, production: true, ...base, diagnostics: { resonance: r ? spec.id.slice(10) : null, sockets: { primary: save.equipment.primary.glyphs, tool: save.equipment.secondary.glyphs } } };
@@ -424,6 +489,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
   if(lab==="shelters")return shelterFixture(scenario,cleanSeed,now);
   if(lab==="test-tile")return testTileFixture(now);
   if(lab==="close-view")return closeViewFixture(scenario,cleanSeed,now);
+  if(lab==="combat-assets")return combatAssetFixture(scenario,cleanSeed,now);
   let fixture;
   if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
   else if(lab==="forge")fixture=forgeFixture(scenario,cleanSeed,cleanVariant,now);
@@ -446,6 +512,7 @@ export function labReport(fixture) {
 
 export function teleportTargets(fixture) {
   const map=fixture.game.map,targets=[];
+  if(fixture.lab==="combat-assets"&&fixture.diagnostics?.placement?.player)targets.push({id:"gallery-start",label:"Gallery start",x:fixture.diagnostics.placement.player.x,y:fixture.diagnostics.placement.player.y});
   if(map.entry)targets.push({id:"entry",label:"Entrance",x:map.entry.x,y:map.entry.y});
   const foe=fixture.lab==="combat"&&fixture.game.enemies?.find(e=>!e.dead&&!e.ambient),near=foe&&map.tiles.find(t=>!t.blocked&&!t.environment&&!["canyon","river","dungeonWater","bridge"].includes(t.kind)&&Math.hypot(t.x-foe.x,t.y-foe.y)>=3&&Math.hypot(t.x-foe.x,t.y-foe.y)<=4.5);
   if(near)targets.push({id:"near-combatant",label:"Near the combatants",x:near.x,y:near.y});
