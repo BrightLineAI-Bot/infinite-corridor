@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 810: heightfield actor projection
+
+**CODE:** The full heightfield rendering path now samples each captured actor's actual foot position and adds its lift/jump data when projecting it onto the raised floor. The hosted r808 terrain lab exposed an out-of-scope actor-index reference that headless terrain fallback checks did not execute. Full GPU-scene regression coverage now exercises the new traversal scenarios, including both native and sprite actor paths.
+
+**BOUNDARY:** This is a rendering correctness repair. Generation versions, schema-14 saves, movement, attack timing, camera framing and scratch isolation retain the r808/r809 contracts. Candidates r808/r809 contained this heightfield rendering blocker and should be superseded by a verified r810 Preview; production remains unchanged.
+
 ## Release 809: camera framing and near-ready combat input
 
 **CODE:** Close View enabled interiors accept one action-button or keyboard Attack press during the last 120 ms of the existing cooldown. The normal attack runs once when ready using current aim/lock targeting. Early presses do not build a queue. Tool, spell, dodge, stun, death, pause and floor changes discard pending intent, even when a competing action is refused.

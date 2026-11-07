@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r808 on main, this PR takes r809.
+Taken at merge time: main's release + 1. With r809 on main, this PR takes r810.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 809 | Codex | `claude/close-view-control-feel` | Tight-space camera framing and near-ready attack input | In flight. |
-| 808 | Codex | `claude/vertical-dungeon-interiors` | Versioned spacious rooms, indoor ramps, jump platforms and drone traversal | Merged (#456). Preview candidate r808-ca55b4cd807c; workflow running. |
+| 810 | Codex | `claude/close-view-terrain-render-fix` | Repair heightfield actor projection and exercise full GPU frames | In flight. |
+| 809 | Codex | `claude/close-view-control-feel` | Tight-space camera framing and near-ready attack input | Merged (#457). Preview candidate r809-9bae1bce42e2. Shares the heightfield render blocker found in r808; superseded by r810. |
+| 808 | Codex | `claude/vertical-dungeon-interiors` | Versioned spacious rooms, indoor ramps, jump platforms and drone traversal | Merged (#456). Preview artifact r808-ca55b4cd807c completed; hosted heightfield render blocker found, superseded by r810. |
 | 807 | Codex | `claude/close-view-action-animation` | Improve walking, cuts, casting, jump and enemy poses | Merged (#455). Previewed as r807-3228675c72d5. |
 | 806 | Codex | `claude/proving-ground-idle-frame` | Restore rendering after the lab launcher and journey handoff | Merged (#454). Previewed as r806-2ac648555b7a. |
 | 805 | Codex | `claude/close-view-ceiling` | Add themed textured ceiling structure | Merged (#452). Previewed as r805-9122ca315766. Published in r805. |
