@@ -61,6 +61,9 @@ export const CLOSE_VIEW = Object.freeze({
     // line clears before any wall can come between. `hardPad`: nearer a wall than this the camera is never put (cut at once;
     // it sits under the spring's target, so it is seldom reached). Nothing is ever faded to show the Wayfarer.
     sightStep: .1, sightPad: .26, hardPad: .14,
+    // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
+    // bound encloses the Wayfarer's .82-scale, 1.68-tile hood, including its walking bob.
+    framing: Object.freeze({ bodyHeight: 1.45, margin: .05, pitchMin: -1.2, pitchMax: 1.35 }),
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -740,7 +743,7 @@ export function closeViewSteer(g, state) {
   CAM.sx = sx; CAM.sy = sy; state.x = rx * sx - fx * sy; state.y = ry * sx - fy * sy; CAM.steered = true; return true;
 }
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
-export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.dist, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, pitchUser: CAM.pitchUser, lockId: CAM.lockId, valid: CAM.valid, drawn: CAM.drawn }; }
+export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.dist, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
 export function resetCloseViewCamera() { CAM.map = null; CAM.valid = false; CAM.drawn = false; }
 globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats }; // read by the browser harness and the lab's console (diagnostics only)
@@ -875,6 +878,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
   // version 4: the GPU scene when it can be had (close-view-gl.ts); else the 2D view of version 3
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
+  if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
   const shots = useGL ? selectProjectedShots(g, Q) : null;
   // 1. the ground, drawn by the ordinary renderer into the texture, its actors captured.
@@ -910,12 +914,12 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // wall is cut at once, the only snap there is
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && wallAt(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
-  if (useGL) { const cap = archCapAt(g.map, CAM.cx, CAM.cy); if (CAM.crane > cap) { CAM.crane = cap; CAM.craneV = 0; } } // version 5: under an arch the camera keeps below its soffit (it never looks out from inside the stone)
-  const craneUp = CAM.crane, pitch = Math.atan2(craneUp - lerp(E.lookHeight, Cp.lookHeight, mix), CAM.dist + lerp(E.lookAhead, Cp.lookAhead, mix)) + CAM.pitchUser * mix /* the pad's tilt */, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const craneUp = CAM.crane, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
-  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = Cp.shoulder * mix; let room = sh;
+  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = Cp.shoulder * mix * Math.min(1, CAM.dist / camD); let room = sh;
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (wallAt(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
   spring(CAM, "shoulder", "shoulderV", room, room < CAM.shoulder ? C.pullIn : C.letOut, dt);
+  if (CAM.shoulder > sh) { CAM.shoulder = sh; CAM.shoulderV = 0; } // collision compression cannot leave a full-width shoulder beside a tiny boom
   CAM.cx = bx + rx * CAM.shoulder; CAM.cy = by + ry * CAM.shoulder;
   // the hard rule under the springs: the camera is never inside a wall. If a spring still lags there (the view turning in a
   // narrow way), the shoulder goes and the boom shortens at once until it is clear.
@@ -928,12 +932,13 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
     // and with the wider `sightPad`, next frame's spring aims short of where this line comes near a wall, so the cut above is seldom needed
     const ks = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.sightPad); CAM.sightLimit = ks < 1 ? Math.max(C.closest, CAM.dist * ks) : Infinity; }
-  let terrainCameraZ = 0, terrainPitch = pitch;
+  const playerZ = interiorSurfaceHeight(g.map, footX(p), footY(p)) +
+    Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
+  // Sample the final eye, not the previous frame's position. Arches and the roof
+  // remain solid even when a collision or a jump changes the camera in one frame.
+  const cap = (x, y) => interiorSurfaceHeight(g.map, x, y) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
+  let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
   if (interiorTerrain(g.map)) {
-    const playerZ = interiorSurfaceHeight(g.map, footX(p), footY(p)) +
-      Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
-    const cap = (x, y) => interiorSurfaceHeight(g.map, x, y) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
-    terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
     const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
     for (let i = 1; i <= steps; i++) {
       const k = i / steps, x = footX(p) + dx * k, y = footY(p) + dy * k, z = playerZ + .6 + (terrainCameraZ - playerZ - .6) * k;
@@ -945,15 +950,37 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
       }
     }
     terrainCameraZ = Math.max(interiorSurfaceHeight(g.map, CAM.cx, CAM.cy) + .12, terrainCameraZ);
-    const eyeDX = footX(p) - CAM.cx, eyeDY = footY(p) - CAM.cy;
-    const compression = Math.min(1, Math.hypot(eyeDX, eyeDY) / Math.max(.15, camD));
-    const ahead = Math.max(.15, lerp(E.lookAhead, Cp.lookAhead, mix) * compression);
-    const forward = Math.max(.15, eyeDX * fx + eyeDY * fy + ahead);
-    terrainPitch = Math.max(-1.2, Math.min(1.35,
-      Math.atan2(terrainCameraZ - playerZ - lerp(E.lookHeight, Cp.lookHeight, mix), forward) + CAM.pitchUser * mix));
   }
+  const eyeDX = footX(p) - CAM.cx, eyeDY = footY(p) - CAM.cy;
+  const compression = Math.min(1, Math.hypot(eyeDX, eyeDY) / Math.max(.15, camD));
+  const ahead = Math.max(.15, lerp(E.lookAhead, Cp.lookAhead, mix) * compression);
+  const forward = Math.max(.03, eyeDX * fx + eyeDY * fy);
+  const requestedPitch = Math.atan2(terrainCameraZ - playerZ - lerp(E.lookHeight, Cp.lookHeight, mix), forward + ahead) + CAM.pitchUser * mix;
+  // Use the same foot anchor as the visible model, slightly beyond the movement foot.
+  const bodyForward = Math.max(.03, forward + .07 * fy);
+  const framing = C.framing, margin = h * framing.margin, ppy0 = h * C.center;
+  const footAngle = Math.atan2(terrainCameraZ - playerZ, bodyForward);
+  const headAngle = Math.atan2(terrainCameraZ - playerZ - framing.bodyHeight, bodyForward);
+  let lowPitch = Math.max(framing.pitchMin, footAngle - Math.atan2(h - margin - ppy0, F));
+  let highPitch = Math.min(framing.pitchMax, headAngle + Math.atan2(ppy0 - margin, F));
+  // A small shoulder still matters close to the near plane, especially in portrait.
+  // depth = range*cos(angle-pitch); intersect the vertical fit with enough depth
+  // to keep each endpoint inside the horizontal frame and outside the near plane.
+  const side = eyeDX * rx + (eyeDY + .07) * ry;
+  const minBodyDepth = Math.max(CLOSE_VIEW.near + .01, F * Math.abs(side) / (w * (.5 - framing.margin)));
+  for (let end = 0; end < 2; end++) {
+    const z = playerZ + end * framing.bodyHeight;
+    const dz = terrainCameraZ - z, range = Math.hypot(bodyForward, dz);
+    if (range < minBodyDepth) { highPitch = lowPitch - 1; break; }
+    const angle = Math.atan2(dz, bodyForward), room = Math.acos(Math.min(1, minBodyDepth / range));
+    lowPitch = Math.max(lowPitch, angle - room); highPitch = Math.min(highPitch, angle + room);
+  }
+  // A very short boom under a low arch may not fit the whole body. Centre its
+  // angular span then; never move through stone, widen the FOV or shrink the model.
+  const terrainPitch = lowPitch <= highPitch ? Math.max(lowPitch, Math.min(highPitch, requestedPitch))
+    : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (footAngle + headAngle) / 2));
   CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;
-  CAM.cosP = Math.cos(terrainPitch); CAM.sinP = Math.sin(terrainPitch); CAM.hc = interiorTerrain(g.map) ? terrainCameraZ : craneUp; CAM.w = w; CAM.h = h; CAM.valid = true;
+  CAM.cosP = Math.cos(terrainPitch); CAM.sinP = Math.sin(terrainPitch); CAM.hc = terrainCameraZ; CAM.w = w; CAM.h = h; CAM.valid = true;
   const cosP = CAM.cosP, sinP = CAM.sinP, hc = CAM.hc, ppx = CAM.ppx, ppy = CAM.ppy;
   // the background: the dark beyond the light, and the vault above
   if (!useGL) { ctx.fillStyle = FOG_CSS; ctx.fillRect(0, 0, w, h); }
