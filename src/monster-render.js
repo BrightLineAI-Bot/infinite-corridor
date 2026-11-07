@@ -1,21 +1,21 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r814-2bbee6cc627a";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r814-2bbee6cc627a";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r816-093cff214c39";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r816-093cff214c39";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r814-2bbee6cc627a"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r814-2bbee6cc627a";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r816-093cff214c39"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r816-093cff214c39";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r814-2bbee6cc627a";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r814-2bbee6cc627a";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r814-2bbee6cc627a";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r814-2bbee6cc627a";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r814-2bbee6cc627a";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r814-2bbee6cc627a";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r814-2bbee6cc627a";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r816-093cff214c39";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r816-093cff214c39";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r816-093cff214c39";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r816-093cff214c39";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r816-093cff214c39";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r816-093cff214c39";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r816-093cff214c39";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r814-2bbee6cc627a";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r816-093cff214c39";
 
 const TAU = Math.PI * 2;
 
@@ -1559,12 +1559,14 @@ export function drawPackMonster(ctx, e, s, now, facing = "down") {
   return drawn;
 }
 // Stars circling over a staggered boss, and a cracked ring at its feet that closes as it recovers.
-function drawDazed(ctx, e, s, now, stun) {
+export function drawDazed(ctx, e, s, now, stun, layer = 'all', head = null) {
   const scale = Math.max(.6, Number(e.scale) || 1), k = (e.x + .5) * s, b = (e.y + .82) * s, top = b - s * scale * 1.15, t = now / 1000, r = s * scale * .42;
   ctx.save();
+  if (layer !== 'body') {
   ctx.strokeStyle = `rgba(255,226,140,${.55 * stun})`; ctx.lineWidth = Math.max(2, s * .06); ctx.setLineDash([s * .18, s * .1]);
   ctx.beginPath(); ctx.ellipse(k, b, s * scale * .7, s * scale * .22, 0, 0, Math.PI * 2 * stun); ctx.stroke(); ctx.setLineDash([]);
-  for (let i = 0; i < 4; i++) { const a = t * 4 + i * Math.PI / 2, x = k + Math.cos(a) * r, y = top + Math.sin(a) * r * .3, z = s * .1 * (1 + .25 * Math.sin(a));
+  }
+  if (layer !== 'floor') for (let i = 0; i < 4; i++) { const a = t * 4 + i * Math.PI / 2, x = k + Math.cos(a) * r, y = (head == null ? top : b - head * s) + Math.sin(a) * r * .3, z = s * .1 * (1 + .25 * Math.sin(a));
     ctx.fillStyle = i % 2 ? "#fff3b0" : "#ffd25a"; ctx.beginPath(); for (let j = 0; j < 10; j++) { const q = j * Math.PI / 5 - Math.PI / 2, rr = j % 2 ? z * .45 : z; ctx.lineTo(x + Math.cos(q) * rr, y + Math.sin(q) * rr); } ctx.closePath(); ctx.fill(); }
   ctx.restore();
 }
@@ -1592,6 +1594,65 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if (e.hitFlash > 0) { ctx.globalCompositeOperation = "lighter"; glow(ctx, k, b - u * .4 - bodyLift, u * .55, "#ffffff", .5); }
   ctx.restore();
   return true;
+}
+
+// Body-embedded pack effects, retained when the solid body moves to the native batch. Damage geometry
+// stays exclusively in drawPackTelegraphs/drawPackEffects. No primary sprite is painted here.
+const NATIVE_PACK_FX = new Set(['lumenWraith', 'graveLantern', 'riftLynx', 'siegeBeetle', 'thunderhorn', 'mirrorShade', 'cinderSeraph', 'gnawingMaw', 'gloomwisp', 'gloomgorge', 'hangedChoir']);
+export const hasNativePackEffects = (e) => !!MONSTER_PACK[e?.kind] && (e.boss || NATIVE_PACK_FX.has(e.kind));
+const nativeGasSprites = hauntSprites; // share the existing 48-entry haunt cache, including mixed native/sprite frames
+function nativeGas(ctx, e, k, cy, u, wind) {
+  // The authored haunts intentionally use a still smoke picture (release 733). Keep the cache bounded.
+  const paint = (g, x, y, unit) => {
+    const color = MONSTER_PACK[e.kind].palette[2];
+    if (e.kind === 'gloomwisp') for (let i = 0; i < 12; i++) { const a = i * TAU / 12, r = unit * (.33 + (wind ? .04 : 0)), rr = r * (1.15 + .22 * Math.sin(i * 1.7)); glow(g, x + Math.cos(a) * rr, y + Math.sin(a) * rr * .85, r * (.55 + .14 * Math.sin(i)), color, wind ? .55 : .35); }
+    else { glow(g, x, y, unit * 1.29, color, wind ? .32 : .2); g.strokeStyle = color + '22'; g.lineWidth = Math.max(1, unit * .012); g.beginPath(); g.ellipse(x, y, unit * .75, unit * .6, 0, 0, TAU); g.stroke();
+      for (let i = 0; i < 10; i++) { const life = i / 10; g.fillStyle = color + '55'; g.beginPath(); g.arc(x + Math.sin(i * 7.3) * unit * .612, y - unit * .104 - life * unit * .9, unit * (.024 - life * .012), 0, TAU); g.fill(); } }
+  };
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') { paint(ctx, k, cy, u); return; }
+  const size = Math.max(4, Math.round(u)), key = `native-gas:${e.kind}:${size}:${wind ? 1 : 0}`;
+  let c = nativeGasSprites.get(key);
+  if (!c) { c = document.createElement('canvas'); c.width = c.height = Math.ceil(size * 3); const gc = c.getContext('2d'); if (!gc) { paint(ctx, k, cy, u); return; } paint(gc, c.width / 2, c.height / 2, size); nativeGasSprites.set(key, c); if (nativeGasSprites.size > HAUNT_SPRITE.max) nativeGasSprites.delete(nativeGasSprites.keys().next().value); }
+  const r = c.width / size * u; ctx.drawImage(c, k - r / 2, cy - r / 2, r, r);
+}
+export function drawNativePackEffects(ctx, e, s, now, presentation = {}, anchors = {}) {
+  const def = MONSTER_PACK[e?.kind]; if (!def || e.hidden || e.gloomVeil || e.dead) return;
+  const quiet = !!(presentation.reduceMotion || presentation.safeMode), t = quiet ? 0 : now / 1000;
+  const scale = anchors.scale || Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s;
+  const b = (e.y + .82) * s - (anchors.bodyLift || 0) * s, p = def.palette;
+  const flip = e.facingX || (e.ai?.facing === 'left' ? -1 : 1), wind = e.pack?.phase === 'windup';
+  ctx.save();
+  if (e.boss) glow(ctx, k, b - u * .4, u * 1.05, p[2], .18);
+  if (e.kind === 'lumenWraith') { glow(ctx, k, b - u * .9, u * .9, p[2], .32); glow(ctx, k, b - u * 1.47, u * .26, p[2], .65); }
+  else if (e.kind === 'graveLantern') {
+    const cy = b - u * 1.02; glow(ctx, k, cy, u * .85, p[2], .38);
+    const curse = e.pack?.stillT || 0; if (curse > .3) { ctx.strokeStyle = p[2] + 'cc'; ctx.lineWidth = Math.max(1, u * .03); ctx.beginPath(); ctx.arc(k, cy, u * .5, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, curse / 1.25)); ctx.stroke(); }
+  } else if (e.kind === 'riftLynx') {
+    const alpha = ctx.globalAlpha; for (let i = 1; i <= 2; i++) { ctx.globalAlpha = alpha * .18 / i; drawLynxBody(ctx, k - flip * u * .18 * i, b, u, t, p, flip, quiet ? 0 : (e.ai?.step || 0) * Math.PI); } ctx.globalAlpha = alpha;
+  } else if (e.kind === 'mirrorShade' && e.illusion) {
+    ctx.strokeStyle = '#dff3ff55'; ctx.lineWidth = 1; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(k - u * .25, b - u * (.65 - i * .2) + Math.sin(t * 9 + i) * u * .02); ctx.lineTo(k + u * .25, b - u * (.63 - i * .2)); ctx.stroke(); }
+  } else if (e.kind === 'siegeBeetle') {
+    for (const side of [-1, 1]) glow(ctx, k + side * u * .32, b - u * .26, u * .1, p[2], .7);
+    if (e.pack?.attack) glow(ctx, k, b - u * 1.17, u * .25, p[2], .6);
+  } else if (e.kind === 'thunderhorn') {
+    const x = k + flip * u * .5, y = b - u * .9; ctx.strokeStyle = p[2] + (wind ? 'ff' : '66'); ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + flip * u * .08, y + u * .1); ctx.lineTo(x - flip * u * .02, y + u * .18); ctx.stroke();
+    if (wind || e.pack?.phase === 'active' && e.pack?.attack === 'ramCharge') glow(ctx, x, y, u * .35, p[2], .45);
+  } else if (e.kind === 'cinderSeraph') {
+    glow(ctx, k, b - u * .9, u * 1.1, p[2], .3);
+    for (let i = 0; i < 4; i++) { const x = k + Math.sin(t * 3 + i * 2) * u * .3, y = b - u * .6 + ((t * 40 + i * 25) % 30) / 30 * u * .6; ctx.fillStyle = p[2] + 'cc'; ctx.fillRect(x, y, Math.max(2, u * .03), Math.max(2, u * .03)); }
+  } else if (e.kind === 'hangedChoir') {
+    for (let i = 0; i < 4; i++) glow(ctx, k + (i - 1.5) * u * .26, b - u * 1.28, u * .1, p[3], e.aloft ? .3 : .7);
+  } else if (e.kind === 'gnawingMaw' && e.pack?.attack === 'devourPull') {
+    for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + t * 4, r = u * (1.4 - ((t * 2 + i / 6) % 1)); ctx.fillStyle = '#e8d9c266'; ctx.fillRect(k + Math.cos(a) * r, b - u * .72 + Math.sin(a) * r * .6, 2, 2); }
+  } else if (e.kind === 'gloomwisp' || e.kind === 'gloomgorge') nativeGas(ctx, e, k, b - u * (e.kind === 'gloomwisp' ? .68 : .8), u, wind);
+  ctx.restore();
+}
+export function drawNativePackFloor(ctx, e, s, now, quiet = false) {
+  if (e.kind !== 'sunderjaw' || !e.hidden || e.gloomVeil || e.dead) return;
+  const u = s * Math.max(.6, Number(e.scale) || 1), k = (e.x + .5) * s, b = (e.y + .82) * s, t = quiet ? 0 : now / 1000, p = MONSTER_PACK.sunderjaw.palette;
+  ctx.save(); ctx.fillStyle = p[1] + 'cc'; ctx.beginPath(); ctx.ellipse(k, b, u * .45, u * .35, 0, 0, TAU); ctx.fill();
+  for (let i = 0; i < 6; i++) { const a = t * 3 + i; ctx.fillStyle = p[0] + '99'; ctx.fillRect(k + Math.cos(a) * u * .4, b + Math.sin(a) * u * .3, Math.max(2, u * .05), Math.max(2, u * .05)); }
+  ctx.restore();
 }
 
 // Telegraphs of in-progress attacks (drawn under creatures).

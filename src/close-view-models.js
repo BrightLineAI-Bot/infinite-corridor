@@ -1,61 +1,15 @@
-// Rigid parts are baked once. Local +X is forward, +Y is lateral, and +Z is up.
-// Mesh colors are RGB in [0, 1]. Close View supplies world-space lighting.
-export const MODEL_FLOATS = 9;
-
-function prism(sides, taper = 1) {
-  const low = [], high = [], faces = [];
-  for (let i = 0; i < sides; i++) {
-    const a = (i + .5) * 2 * Math.PI / sides;
-    low.push([Math.cos(a), Math.sin(a), -1]);
-    high.push([Math.cos(a) * taper, Math.sin(a) * taper, 1]);
-  }
-  for (let i = 0; i < sides; i++) {
-    const j = (i + 1) % sides;
-    faces.push([low[i], low[j], high[j]], [low[i], high[j], high[i]]);
-  }
-  for (let i = 1; i < sides - 1; i++) {
-    faces.push([low[0], low[i + 1], low[i]], [high[0], high[i], high[i + 1]]);
-  }
-  return faces;
-}
-
-const box = prism(4), bevel = prism(6, .81), flare = prism(6, 1.45), taper = prism(4, .18);
-const square = Math.SQRT2;
+// Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r816-093cff214c39';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r816-093cff214c39';
+import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r816-093cff214c39';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r816-093cff214c39';
+export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
 const ash = 0x87503f, coal = 0x372927, ember = 0xf3a55c;
 const bark = 0x626c50, darkBark = 0x373e2d, root = 0xb6a06b;
 const bone = 0xb7ad91, sinew = 0x625550, crawlerEye = 0xd88f80;
 const plate = 0x78434a, iron = 0x3a2a32, brass = 0xc6a46f;
-
-function part(shape, x, y, z, sx, sy, sz, color, swing = 0, px = x, pz = z, rest = 0) {
-  const mesh = new Float32Array(shape.length * 3 * MODEL_FLOATS);
-  const cos = Math.cos(rest), sin = Math.sin(rest);
-  let k = 0;
-  for (const triangle of shape) {
-    const points = triangle.map(([u, v, w]) => [x + u * sx, y + v * sy, z + w * sz]);
-    const [a, b, c] = points;
-    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
-    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
-    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    const length = Math.hypot(nx, ny, nz);
-    for (const [u, v, w] of points) {
-      mesh[k++] = (u - px) * cos + (w - pz) * sin;
-      mesh[k++] = v;
-      mesh[k++] = (w - pz) * cos - (u - px) * sin;
-      mesh[k++] = (nx * cos + nz * sin) / length;
-      mesh[k++] = ny / length;
-      mesh[k++] = (nz * cos - nx * sin) / length;
-      mesh[k++] = (color >> 16) / 255;
-      mesh[k++] = ((color >> 8) & 255) / 255;
-      mesh[k++] = (color & 255) / 255;
-    }
-  }
-  return { mesh, swing, px, pz };
-}
-
-function block(x, y, z, sx, sy, sz, color, swing, px, pz, rest) {
-  return part(box, x, y, z, sx * square, sy * square, sz, color, swing, px, pz, rest);
-}
+const leanBevel = prism(5, .81), leanFlare = prism(5, 1.45), detailPrism = prism(3);
 
 // Swing groups are left/right leg (+/-1), left/right arm (+/-2), cape (3), coil segments (4/5), and hound tail (6).
 // The hood's opening faces +X. Its rolled edge frames a recessed face.
@@ -84,8 +38,11 @@ const frontPatch = [
 const coat = 0x303934, coatHem = 0x28312e, hoodLiningGreen = 0x46594c;
 const faceShadow = 0x232522, amber = 0xf3a55c, satchelLeather = 0x67533b;
 const player = [
-  part(flare, 0, 0, 1.076, .129, .166, .240, coat),
-  part(bevel, -.034, 0, .723, .201, .255, .237, coatHem, 3, -.035, .933, .08),
+  // Rounded shoulder-to-waist loft and three separate coat panels replace the old stacked block torso.
+  part(verticalLoft([[0,.14,-.24],[.01,.20,-.06],[-.02,.17,.18],[-.04,.12,.29]], 6), 0, 0, 1.02, 1, 1, 1, coat, 0, 0, 1.02, 0, true),
+  part(membrane([[0,-.03,.15],[-.05,-.20,-.31],[-.14,-.06,-.42],[.02,.01,-.13]]), -.02, 0, .83, 1, 1, 1, coatHem, 3, -.02, .98),
+  part(membrane([[0,-.02,.13],[-.09,.02,-.34],[-.02,.19,-.39],[.04,.05,-.10]]), -.03, 0, .82, 1, 1, 1, coatHem, 3, -.03, .98),
+  part(membrane([[0,-.12,.11],[-.10,-.26,-.27],[-.03,-.18,-.40],[.05,-.05,-.10]]), -.05, 0, .82, 1, 1, 1, cloth, 3, -.05, .98),
   part(hoodShell, 0, 0, 0, 1, 1, 1, cloth),
   part(hoodLining, 0, 0, 0, 1, 1, 1, hoodLiningGreen),
   part(hoodFace, 0, 0, 0, 1, 1, 1, faceShadow),
@@ -95,10 +52,9 @@ const player = [
 for (const side of [-1, 1]) {
   player.push(
     part(frontPatch, .108, side * .048, 1.464, 1, .022, .011, amber),
-    part(bevel, -.005, side * .115, .353, .116, .089, .353, coat, side, 0, .71),
+    part(bevel, -.005, side * .115, .353, .104, .079, .353, coat, side, 0, .71, 0, true),
     block(.044, side * .115, .076, .12, .077, .076, leather, side, 0, .71),
-    part(bevel, -.014, side * .25, .984, .083, .092, .211, coat, side * 2, 0, 1.19, -.14),
-    block(.045, side * .25, .759, .068, .067, .087, leather, side * 2, 0, 1.19),
+    part(bevel, -.014, side * .25, .984, .073, .082, .211, coat, side * 2, 0, 1.19, -.14, true),
   );
 }
 player.push(
@@ -134,8 +90,8 @@ const playerOrrery = [
 
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
 const ashling = [
-  part(bevel, 0, 0, .64, .23, .258, .29, ash),
-  part(bevel, .085, 0, .986, .211, .216, .208, coal),
+  part(ellipsoid(6, 2), 0, 0, .64, .23, .258, .29, ash, 0, 0, .64, 0, true),
+  part(ellipsoid(6, 1), .085, 0, .986, .211, .216, .208, coal, 0, .085, .986, 0, true),
   block(.252, 0, .974, .018, .147, .027, ember),
   block(.199, 0, .68, .03, .025, .116, ember),
   part(taper, .01, -.13, 1.227, .081, .071, .14, ash, 0, .01, 1.15, -.37),
@@ -143,66 +99,58 @@ const ashling = [
 ];
 for (const side of [-1, 1]) {
   ashling.push(
-    part(bevel, .056, side * .27, .524, .136, .127, .22, ash, side * 2, .03, .77, -.43),
-    block(.10, side * .32, .365, .106, .109, .086, coal, side * 2, .03, .77),
-    block(0, side * .133, .237, .11, .097, .173, coal, side, 0, .43),
-    block(.071, side * .133, .075, .133, .102, .069, ash, side, 0, .43),
+    part(ellipsoid(6, 1), .056, side * .27, .524, .136, .127, .22, ash, side * 2, .03, .77, -.43, true),
+    part(ellipsoid(5, 1), .10, side * .32, .365, .106, .109, .086, coal, side * 2, .03, .77, 0, true),
+    part(curvedTube([[0,side*.133,.39,.075],[0,side*.133,.19,.06],[.071,side*.133,.055,.035]],4),0,0,0,1,1,1,coal,side,0,.43),
   );
 }
 
 // Root Brute: heavy bark shoulders and oversized, knotted forearms.
 const rootBrute = [
-  part(bevel, 0, 0, 1.035, .32, .403, .48, bark),
-  part(bevel, .224, 0, 1.455, .221, .235, .199, darkBark),
+  part(ellipsoid(8, 2), 0, 0, 1.035, .32, .403, .48, bark, 0, 0, 1.035, 0, true),
+  part(ellipsoid(6, 1), .224, 0, 1.455, .221, .235, .199, darkBark, 0, .224, 1.455, 0, true),
   block(.409, 0, 1.468, .027, .143, .024, root),
   block(.261, 0, .977, .074, .05, .252, root),
 ];
 for (const side of [-1, 1]) {
   rootBrute.push(
     part(taper, -.05, side * .363, 1.518, .15, .13, .274, bark, side * 2, -.05, 1.27, -.30),
-    part(bevel, .042, side * .465, 1.136, .229, .22, .27, bark, side * 2, .04, 1.27),
-    part(bevel, .145, side * .48, .78, .217, .201, .273, darkBark, side * 2, .04, 1.27),
+    part(ellipsoid(6, 1), .042, side * .465, 1.136, .229, .22, .27, bark, side * 2, .04, 1.27, 0, true),
+    part(ellipsoid(6, 1), .145, side * .48, .78, .217, .201, .273, darkBark, side * 2, .04, 1.27, 0, true),
     block(.307, side * .49, .767, .072, .13, .133, root, side * 2, .04, 1.27),
-    block(-.045, side * .209, .387, .151, .148, .329, darkBark, side, -.04, .71),
-    block(.046, side * .209, .112, .238, .157, .106, bark, side, -.04, .71),
+    part(curvedTube([[-.045,side*.209,.70,.11],[-.045,side*.209,.36,.10],[.046,side*.209,.10,.07]],5),0,0,0,1,1,1,darkBark,side,-.04,.71),
   );
 }
 
 // Pallid Crawler: long, floor-hugging back, splayed limbs and a jutting jaw.
 const pallidCrawler = [
-  part(bevel, -.17, 0, .50, .448, .262, .22, bone),
-  part(bevel, .31, 0, .418, .23, .207, .187, bone),
-  block(.433, 0, .306, .147, .125, .054, sinew),
+  part(ringLoft([[-.50,.08,-.13],[-.20,.25,0],[.18,.22,.01],[.42,.10,-.08]],7), 0, 0, .48, 1, 1, 1, bone, 0, -.17, .50, 0, true),
+  part(ellipsoid(7, 2), .31, 0, .418, .23, .207, .187, bone, 0, .31, .418, 0, true),
+  part(ringLoft([[0,.13,-.04],[.16,.11,0],[.30,.03,.02]],5), .35, 0, .32, 1, 1, 1, sinew, 0, .35, .32),
 ];
 for (const side of [-1, 1]) {
   pallidCrawler.push(
     block(.483, side * .112, .462, .036, .039, .031, crawlerEye),
-    block(.24, side * .254, .328, .101, .165, .098, sinew, side * 2, .14, .48, -.42),
-    block(.38, side * .393, .167, .162, .082, .104, bone, side * 2, .14, .48, -.43),
-    block(.49, side * .398, .081, .14, .081, .055, bone, side * 2, .14, .48),
-    block(-.399, side * .263, .344, .139, .147, .095, sinew, -side, -.34, .45, .40),
-    block(-.53, side * .34, .171, .149, .089, .091, bone, -side, -.34, .45, .37),
-    block(-.426, side * .355, .071, .151, .084, .052, bone, -side, -.34, .45),
+    part(curvedTube([[.18,side*.20,.38,.06],[.35,side*.36,.18,.045],[.51,side*.40,.055,.022]],4),0,0,0,1,1,1,bone,side*2,.14,.48),
+    part(curvedTube([[-.30,side*.20,.38,.06],[-.50,side*.33,.19,.045],[-.43,side*.36,.05,.022]],4),0,0,0,1,1,1,sinew,-side,-.34,.45),
   );
 }
 
 // Hollow Marshal: crimson armor, split brass crest, and a long polearm.
 const hollowMarshal = [
-  part(bevel, 0, 0, 1.179, .26, .354, .435, plate),
-  part(flare, -.215, 0, .97, .092, .31, .457, iron, 3, -.21, 1.412, .08),
-  part(bevel, .04, 0, 1.737, .234, .243, .247, iron),
-  block(.226, 0, 1.737, .047, .147, .057, brass),
-  block(.275, 0, 1.745, .006, .105, .017, iron),
+  part(verticalLoft([[0,.22,-.42],[-.01,.35,-.12],[0,.31,.25],[-.02,.18,.43]],6), 0, 0, 1.18, 1, 1, 1, plate, 0, 0, 1.18, 0, true),
+  part(verticalLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],6), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
+  part(ellipsoid(6, 1), .04, 0, 1.737, .234, .243, .247, iron, 0, .04, 1.737, 0, true),
+  part(detailPrism,.226,0,1.737,.047,.147,.057,brass),
+  part(detailPrism,.275,0,1.745,.006,.105,.017,iron),
   block(.208, 0, 1.254, .053, .143, .096, brass),
   block(.021, 0, .865, .22, .275, .069, iron),
 ];
 for (const side of [-1, 1]) {
   hollowMarshal.push(
     part(taper, .002, side * .132, 2.025, .096, .063, .16, brass, 0, 0, 1.951, -.19),
-    block(.004, side * .368, 1.374, .149, .153, .142, plate, side * 2, 0, 1.46),
-    block(.032, side * .411, 1.113, .132, .119, .241, iron, side * 2, 0, 1.46),
-    block(.034, side * .153, .451, .134, .123, .382, plate, side, 0, .831),
-    block(.083, side * .153, .116, .182, .13, .107, iron, side, 0, .831),
+    part(curvedTube([[0,side*.34,1.43,.10],[.03,side*.41,1.14,.075],[.04,side*.41,.94,.055]],4),0,0,0,1,1,1,iron,side*2,0,1.46),
+    part(curvedTube([[.03,side*.153,.80,.09],[.03,side*.153,.42,.075],[.08,side*.153,.10,.055]],4),0,0,0,1,1,1,plate,side,0,.831),
   );
 }
 hollowMarshal.push(
@@ -213,10 +161,10 @@ hollowMarshal.push(
 // Ashen Hound: low charcoal body, pointed ears and a rust-colored muzzle.
 const houndFur = 0x765244, houndDark = 0x302724, houndEye = 0xc18a63;
 const ashenHound = [
-  part(bevel, -.072, 0, .449, .395, .204, .173, houndDark, 0, -.072, .449, .09),
-  part(bevel, .215, 0, .495, .177, .21, .223, houndFur, 0, .215, .495, -.34),
-  part(bevel, .388, 0, .581, .177, .146, .133, houndFur),
-  block(.543, 0, .526, .113, .091, .06, houndFur),
+  part(ellipsoid(8, 2), -.072, 0, .449, .395, .204, .173, houndDark, 0, -.072, .449, .09, true),
+  part(ellipsoid(6, 2), .215, 0, .495, .177, .21, .223, houndFur, 0, .215, .495, -.34, true),
+  part(ellipsoid(6, 1), .388, 0, .581, .177, .146, .133, houndFur, 0, .388, .581, 0, true),
+  part(ringLoft([[0,.10,-.05],[.15,.08,0],[.25,.025,.02]],5),.43,0,.53,1,1,1,houndFur),
   block(.637, 0, .553, .033, .084, .035, houndDark),
   part(taper, -.484, 0, .574, .076, .074, .216, houndFur, 6, -.354, .477, -.95),
 ];
@@ -224,33 +172,37 @@ for (const side of [-1, 1]) {
   ashenHound.push(
     part(taper, .33, side * .097, .719, .068, .061, .122, houndFur, 0, .33, .657, -.38),
     block(.478, side * .113, .609, .028, .014, .021, houndEye),
-    block(.235, side * .131, .23, .058, .053, .23, houndDark, side * 2, .237, .45),
-    block(.274, side * .131, .037, .092, .064, .037, houndDark, side * 2, .237, .45),
-    block(-.293, side * .132, .216, .09, .062, .216, houndDark, -side, -.299, .432),
-    block(-.263, side * .132, .035, .087, .059, .035, houndDark, -side, -.299, .432),
+    part(curvedTube([[.235,side*.131,.43,.045],[.235,side*.131,.20,.038],[.29,side*.131,.035,.022]],4),0,0,0,1,1,1,houndDark,side*2,.237,.45),
+    part(curvedTube([[-.293,side*.132,.41,.045],[-.293,side*.132,.19,.038],[-.25,side*.132,.035,.022]],4),0,0,0,1,1,1,houndDark,-side,-.299,.432),
   );
 }
 
 // Coil Stalker: a raised teal head, mint transverse ribs and two trailing segments.
 const coilShell = 0x47716d, coilDark = 0x263a39, coilLight = 0x87c0ad;
 const coilStalker = [
-  part(bevel, .022, 0, .348, .301, .274, .328, coilDark, 0, .022, .348, .19),
-  part(bevel, .142, 0, .519, .123, .293, .041, coilLight, 0, .142, .519, -.15),
-  part(bevel, .141, 0, .721, .215, .212, .183, coilShell),
+  part(ellipsoid(8, 2), .022, 0, .348, .301, .274, .328, coilDark, 0, .022, .348, .19, true),
+  part(ringLoft([[0,.27,-.035],[.02,.31,0],[.04,.26,.035]],6), .142, 0, .519, 1, 1, 1, coilLight, 0, .142, .519, -.15, true),
+  part(ellipsoid(6, 2), .141, 0, .721, .215, .212, .183, coilShell, 0, .141, .721, 0, true),
   block(.32, 0, .734, .012, .056, .036, coilLight),
-  part(bevel, -.294, 0, .262, .232, .217, .192, coilShell, 4),
-  part(bevel, -.375, 0, .263, .054, .223, .197, coilLight, 4),
-  part(bevel, -.599, 0, .168, .225, .16, .144, coilDark, 5),
-  part(bevel, -.686, 0, .169, .05, .164, .148, coilLight, 5),
+  part(ellipsoid(6, 2), -.294, 0, .262, .232, .217, .192, coilShell, 4, -.294, .262, 0, true),
+  part(ringLoft([[0,.20,-.04],[.01,.23,0],[.02,.20,.04]],6),-.375,0,.263,1,1,1,coilLight,4,-.375,.263,0,true),
+  part(ellipsoid(6, 1), -.599, 0, .168, .225, .16, .144, coilDark, 5, -.599, .168, 0, true),
+  part(ringLoft([[0,.14,-.03],[.01,.17,0],[.02,.14,.03]],6),-.686,0,.169,1,1,1,coilLight,5,-.686,.169,0,true),
 ];
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
-  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker };
-const modelSize = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
-  kind, parts.reduce((size, item) => size + item.mesh.length, 0),
+  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS };
+const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
+  kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
-export const MODEL_MAX_VERTICES = Math.max(...Object.values(modelSize)) / MODEL_FLOATS;
+export const MODEL_ATTACHMENT_TRIANGLES = 8, MODEL_MAX_ATTACHMENTS = 3;
+export const MODEL_MAX_VERTICES = 256 * 3;
+
+export function modelTriangleCount(kind) { return modelSupported(kind) ? modelVertices[kind] / 3 : 0; }
+export function modelSupportsAttachments(kind, count = 0) {
+  return modelSupported(kind) && Number.isSafeInteger(count) && count >= 0 && count <= MODEL_MAX_ATTACHMENTS && modelTriangleCount(kind) + count * MODEL_ATTACHMENT_TRIANGLES <= 256;
+}
 
 export function modelSupported(kind) {
   return Object.hasOwn(models, kind);
@@ -259,13 +211,19 @@ export function modelSupported(kind) {
 export function writeCloseViewModel(out, offset, actor) {
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
-  const size = playerLike ? .82 : 1;
-  if (!modelSupported(kind) || !Number.isSafeInteger(offset) || offset < 0 || offset + modelSize[kind] > out.length) return offset;
+  const actorScale = Number.isFinite(actor.scale) ? Math.max(.25, Math.min(4, actor.scale)) : 1;
+  const size = (playerLike ? .82 : 1) * actorScale;
+  const attachments = Array.isArray(actor.attachments) ? actor.attachments.slice(0, MODEL_MAX_ATTACHMENTS).filter((q) => q && Number.isFinite(q.x) && Number.isFinite(q.y) && Number.isFinite(q.z)) : [];
+  const needed = (modelVertices[kind] + attachments.length * MODEL_ATTACHMENT_TRIANGLES * 3) * MODEL_FLOATS;
+  if (!modelSupported(kind) || !modelSupportsAttachments(kind, attachments.length) || !Number.isSafeInteger(offset) || offset < 0 || offset + needed > out.length) return offset;
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(yaw) ||
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
   const moving = Math.max(0, Math.min(1, pace));
   const progress = Math.max(0, Math.min(1, amount));
-  const secondary = actor.reduceMotion ? 0 : 1;
+  const alpha = Number.isFinite(actor.alpha) ? Math.max(0, Math.min(1, actor.alpha)) : 1;
+  const stagger = Number.isFinite(actor.stagger) ? Math.max(0, Math.min(1, actor.stagger)) : 0;
+  // The Saint is stone while watched. Reduced motion suppresses ambient/gait flourish, never attack readability.
+  const secondary = actor.reduceMotion || (kind === 'weepingSaint' && actor.watched) ? 0 : 1;
   const turnAmount = Number.isFinite(actor.turn) ? Math.max(-1, Math.min(1, actor.turn)) : 0;
   const beat = Math.sin(phase) * moving;
   const heel = Math.cos(phase * 2) * moving;
@@ -288,22 +246,34 @@ export function writeCloseViewModel(out, offset, actor) {
   const turnLean = turnAmount * .13 * secondary;
   const turn = .21 * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = -.18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump
+  const pitch = -.18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
-    * (1 - fall) * (1 - knocked) - .075 * jumpSettle + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
+    * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
   const shift = .14 * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
+  const actionFamily = typeof actor.actionFamily === 'string' ? actor.actionFamily : '';
+  const actionPhase = typeof actor.actionPhase === 'string' ? actor.actionPhase : '';
+  const actionProgress = Number.isFinite(actor.actionProgress) ? Math.max(0, Math.min(1, actor.actionProgress)) : progress;
+  // Pack phases are authoritative. `strike` (notably blinkStrike) is still pre-hit; resolved contact/release
+  // begins `recover`. Sustained beam/inhale/charge active phases hold their posture instead of oscillating.
+  const actionWeight = actionPhase === 'windup' || actionPhase === 'track' || actionPhase === 'lock' || actionPhase === 'travel' || actionPhase === 'strike'
+    ? actionProgress : actionPhase === 'active' || actionPhase === 'erupt' ? 1
+      : actionPhase === 'recover' ? 1 - actionProgress : 0;
   for (const { mesh, swing, px, pz } of models[kind]) {
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
       : 0;
-    let angle = 0;
-    if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup)
+    let angle = semanticAngle(kind, swing, actor.action, actionFamily, actionPhase, actionProgress, actionWeight, beat, moving, phase, secondary);
+    if (angle !== null) { /* authored action-family joint */ }
+    else if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup)
       + Math.sign(turnAmount || 1) * .04 * Math.abs(turnAmount) * secondary;
     else if (swing === 6) angle = .19 * beat - .23 * windup + .24 * strike;
+    else if (Math.abs(swing) === 7) angle = Math.sign(swing) * ((.10 * Math.sin(phase * 4) + .25 * beat) * secondary + .34 * windup - .72 * strike);
+    else if (swing === 8) angle = .08 * Math.sin(phase * 1.7) * secondary + .12 * windup - .20 * strike;
+    else if (swing >= 10) angle = Math.sin(phase * 1.25 + swing * .83) * (.08 + moving * .08) * secondary + .16 * windup - .22 * strike;
     else if (hound && swing) angle = -Math.sign(swing) * beat * .50
       + (Math.abs(swing) === 2 ? .27 * windup - .48 * strike + .28 * jump : -.16 * windup + .24 * strike - .34 * jump);
     else if (swing === 3) angle = -.16 * moving + .11 * beat + .24 * strike - .13 * jump + .08 * turnLean;
@@ -312,11 +282,13 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (swing === 2) angle = -beat * stride + .35 * windup - .43 * strike
       + (playerLike ? 1.02 : .18) * cast - .18 * flinch + .58 * jump - .22 * jumpSettle;
     else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
+    // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
+    if (angle === 0) angle = 0;
     const c = Math.cos(angle), s = Math.sin(angle);
     const cutYaw = playerLike && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = playerLike && swing === -2 ? -.25 : 0;
-    for (let i = 0; i < mesh.length; i += MODEL_FLOATS) {
+    for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
       const forward = mesh[i] * c + mesh[i + 2] * s + px;
       const lateral = mesh[i + 1] + coilSway;
       const u = forward * cc - (lateral - pivotY) * sc;
@@ -341,7 +313,113 @@ export function writeCloseViewModel(out, offset, actor) {
       out[offset++] = red + (.96 - red) * flinch * .6;
       out[offset++] = green + (.34 - green) * flinch * .6;
       out[offset++] = blue + (.23 - blue) * flinch * .6;
+      const bodyAlpha = kind === 'gloomgorge' ? alpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : alpha;
+      out[offset++] = bodyAlpha;
     }
+  }
+  for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, alpha, actorScale);
+  return offset;
+}
+
+// Numeric groups are deliberately local to authored recipes: they describe a joint role, not a global oscillator.
+// Actual pack phases drive contact/recoil; locomotion only contributes where that body owns gait or hover motion.
+function semanticAngle(kind, swing, action, family, actionPhase, p, force, beat, moving, phase, secondary) {
+  const wind = actionPhase === 'windup' || actionPhase === 'track' || actionPhase === 'lock' || actionPhase === 'travel' || actionPhase === 'strike' ? p : 0;
+  const active = actionPhase === 'active' || actionPhase === 'erupt' ? 1 : 0;
+  // Damage/release for ordinary pack attacks has already happened when recovery starts.
+  const contact = actionPhase === 'recover' ? 1 - p : actionPhase === 'erupt' && action === 'burrowAmbush' ? 1 : 0;
+  const recoil = actionPhase === 'recover' ? 1 - p : 0;
+  // Pallid Crawler retains its exact legacy bite/leap route. Other production hybrids articulate its existing
+  // splayed front (|2|) and rear (|1|) joints instead of borrowing the bite clock or a periodic oscillator.
+  if (kind === 'pallidCrawler' && swing) {
+    const side = Math.sign(swing), front = Math.abs(swing) === 2;
+    if (family === 'stab') return front ? side * (.58 * wind - .92 * contact) : -side * .18 * force;
+    if (family === 'sweep') return side * (front ? .64 : -.30) * force;
+    if (family === 'charge') return (front ? -.42 : .24) * force;
+    if (family === 'beam' || family === 'ranged') return front ? .34 * wind - .48 * contact : -.16 * force;
+    if (family === 'curse') return side * (front ? .34 : -.24) * force;
+    if (family === 'burrow') return (front ? .48 : -.36) * force;
+    if (family === 'dive') return (front ? -.38 : .52) * force;
+    if (family === 'teleport') return side * (front ? -.44 : .32) * force;
+    if (family === 'slam') return (front ? .52 : -.24) * wind - (front ? .72 : -.36) * contact;
+    return null;
+  }
+  // Each family has a deliberate preparation, held action and resolved release. These sample the
+  // producer's phase clock once; no periodic attack motion or additional presentation timer is introduced.
+  const gesture = family === 'bite' ? -.34 * wind + .24 * active + .52 * contact
+    : family === 'stab' ? -.42 * wind + .38 * active + .72 * contact
+    : family === 'sweep' ? -.50 * wind + .36 * active + .76 * contact
+    : family === 'slam' ? -.60 * wind - .28 * active + .82 * contact
+    : family === 'beam' ? -.32 * wind - .44 * active + .26 * contact
+    : family === 'charge' ? -.40 * wind - .48 * active + .34 * contact
+    : family === 'ranged' ? -.30 * wind - .24 * active + .48 * contact
+    : family === 'curse' ? -.38 * wind - .46 * active + .34 * contact
+    : family === 'teleport' ? -.44 * wind - .35 * active + .48 * contact
+    : family === 'leap' ? -.48 * wind - .38 * active + .62 * contact
+    : family === 'burrow' ? .48 * wind + .56 * active - .44 * contact
+    : family === 'dive' ? -.54 * wind - .64 * active + .42 * contact
+    : family === 'summon' ? -.42 * wind - .50 * active + .36 * contact
+    : family === 'inhale' ? -.44 * wind - .60 * active + .28 * contact
+    : family === 'howl' ? -.46 * wind - .62 * active + .36 * contact : 0;
+  // Grounded quadrupeds lead with their forelimbs and head, with the hind pair bracing. A claw sweep
+  // really moves the Lynx's forelegs; a Thunderhorn bite/slam articulates the horned head and hooves.
+  if ((kind === 'riftLynx' || kind === 'thunderhorn') && Math.abs(swing) >= 1 && Math.abs(swing) <= 2) {
+    const front = Math.abs(swing) === 2, side = Math.sign(swing);
+    return -side * beat * .42 * secondary + (front ? (family === 'sweep' ? side : 1) : -.4) * gesture;
+  }
+  if (kind === 'riftLynx' && swing === 84) return .85 * gesture;
+  if (kind === 'amalgam' && swing >= 50 && swing <= 57) {
+    if (swing >= 56) return (swing === 56 ? 1 : .75) * gesture;
+    return Math.sin(phase * 1.4 + swing) * (.04 + .10 * moving) * secondary + (swing % 2 ? -1 : 1) * gesture;
+  }
+  if (swing < 20) return null;
+  if (swing === 20 || swing === 21) { // opposed jaws/maws: wind open, close on bite, hold the inhale aperture
+    const open = family === 'inhale' || family === 'howl' ? .85 * wind + .95 * active - .42 * contact
+      : family === 'bite' ? .72 * wind + .55 * active - .58 * contact + .32 * recoil : .65 * gesture;
+    return (swing === 20 ? 1 : -1) * open;
+  }
+  if (swing === 22 || swing === 23) { // six Seraph wings fold for a dive and fan outward on release
+    const flap = Math.sin(phase * 2.8 + (swing === 23 ? Math.PI : 0)) * (.12 + .20 * moving) * secondary;
+    const wingAction = family === 'dive' ? -.62 * wind - .70 * active + .45 * contact
+      : family === 'ranged' || family === 'beam' ? .46 * wind + .38 * active - .25 * contact : .75 * gesture;
+    return flap + wingAction;
+  }
+  if (swing === 24) return family === 'charge' ? -.46 * wind - .32 * active + .36 * contact + .20 * recoil : .85 * gesture; // horned head
+  if (swing === 25 || swing === 26) { // Gloomgorge hooked arms
+    const side = swing === 25 ? -1 : 1, gait = side * beat * .16 * secondary;
+    return gait + side * (family === 'sweep' ? .85 * wind - 1.18 * contact + .42 * recoil : .85 * gesture);
+  }
+  if (swing === 30) return family === 'ranged' ? -.42 * wind + .64 * contact - .20 * recoil : .04 * Math.sin(phase * 1.4) * secondary + .45 * gesture; // mortar brace
+  if (swing === 31) return .08 * Math.sin(phase * 1.3) * secondary + .75 * gesture; // Lantern cage and Choir suspension
+  if (swing >= 32 && swing <= 39) return Math.sin(phase * 1.15 + swing) * .06 * secondary + (family === 'dive' ? 1 : swing % 2 ? -1 : 1) * .85 * gesture; // suspended singers/censers
+  if (swing >= 40 && swing <= 44) return Math.sin(phase * .8 + swing) * .035 * secondary
+    + (family === 'teleport' ? (swing - 42) * .55 : family === 'sweep' || family === 'summon' ? (swing % 2 ? -1 : 1) : 1) * gesture; // mirror planes
+  if (swing >= 50 && swing <= 54) return Math.sin(phase * 1.4 + swing) * (.04 + .10 * moving) * secondary
+    + (family === 'stab' ? .72 * wind - 1.04 * contact + .32 * recoil : (swing % 2 ? -1 : 1) * gesture); // Saint hands clear the face
+  if (swing >= 55 && swing <= 59) return Math.sin(phase + swing) * .055 * secondary + .85 * gesture; // Maw grasping feelers
+  if (swing >= 60 && swing <= 69) {
+    if (kind === 'lumenWraith' && swing === 64) return (family === 'bite' || family === 'stab' ? 1.15 : .45) * gesture; // lens/hood snap
+    return Math.sin(phase * 1.2 + swing) * .075 * secondary + (swing % 2 ? -1 : 1) * .85 * gesture; // light ribbons brace the shroud
+  }
+  if (swing >= 70 && swing <= 79) {
+    if (kind === 'veilSpinner' && swing === 78) return (family === 'bite' ? 1.2 : .65) * gesture; // head thrust
+    return Math.sin(phase * 2.2 + swing) * (.05 + .13 * moving) * secondary + (swing < 74 ? 1 : -.6) * gesture; // front/rear skitter legs
+  }
+  if (swing === 80 || swing === 81) return Math.sin(phase * 1.8 + swing) * .14 * secondary + (swing === 80 ? -1 : 1) * .65 * gesture; // forked Lynx tail
+  if (swing >= 82 && swing <= 89) return Math.sin(phase - (swing - 82) * .8) * (.04 + .10 * moving) * secondary + .8 * gesture; // delver segment brace
+  if (swing >= 90 && swing <= 99) return Math.sin(phase * 2.5 + swing) * (.05 + .15 * moving) * secondary + (swing < 92 ? 1 : -.6) * gesture; // beetle forelegs brace its shell
+  if (swing >= 100) return Math.sin(phase * 1.3 + swing) * .07 * secondary + (swing % 2 ? -1 : 1) * .85 * gesture; // wisp plume contracts around the grin
+
+  return null;
+}
+
+function writeAttachment(out, offset, attachment, alpha, scale) {
+  const r = .075 * scale, top = [0, 0, r], bottom = [0, 0, -r], ring = [[r,0,0],[0,r,0],[-r,0,0],[0,-r,0]], color = Number.isSafeInteger(attachment.color) ? attachment.color : 0x9ad9d2;
+  const triangles = [];
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; triangles.push([top,ring[i],ring[j]],[bottom,ring[j],ring[i]]); }
+  for (const tri of triangles) {
+    const [a,b,c] = tri, ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2],nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,n=Math.hypot(nx,ny,nz)||1;
+    for (const p of tri) { out[offset++]=attachment.x+p[0];out[offset++]=attachment.y+p[1];out[offset++]=attachment.z+p[2];out[offset++]=nx/n;out[offset++]=ny/n;out[offset++]=nz/n;out[offset++]=(color>>16)/255;out[offset++]=((color>>8)&255)/255;out[offset++]=(color&255)/255;out[offset++]=alpha; }
   }
   return offset;
 }

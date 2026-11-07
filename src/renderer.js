@@ -1,36 +1,82 @@
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r814-2bbee6cc627a"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r814-2bbee6cc627a";
-import { astralBeamAnchors } from "./astral-worm.js?v=r814-2bbee6cc627a";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r814-2bbee6cc627a";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r814-2bbee6cc627a";
-import { enemyMeleeGeometry } from "./combat.js?v=r814-2bbee6cc627a";
-import { ruleRows } from "./elders.js?v=r814-2bbee6cc627a";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r814-2bbee6cc627a";
-import { BOAT } from "./boats.js?v=r814-2bbee6cc627a";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r814-2bbee6cc627a";
-import { isMarineTile } from "./world-beasts.js?v=r814-2bbee6cc627a";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r814-2bbee6cc627a"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r814-2bbee6cc627a";
-import { setTreeSeason } from "./landscape-render.js?v=r814-2bbee6cc627a";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r814-2bbee6cc627a";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r814-2bbee6cc627a";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r814-2bbee6cc627a";
-import { TREES } from "./trees.js?v=r814-2bbee6cc627a";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r814-2bbee6cc627a";
-import { KIT_MOVES } from "./boss-kit.js?v=r814-2bbee6cc627a";
-import { SKY_DISCS } from "./skylands.js?v=r814-2bbee6cc627a"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r814-2bbee6cc627a";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r814-2bbee6cc627a"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r814-2bbee6cc627a"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r814-2bbee6cc627a"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r814-2bbee6cc627a"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r814-2bbee6cc627a"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r814-2bbee6cc627a";
-import { drawRelayNode } from "./relay-network.js?v=r814-2bbee6cc627a";
-import { structureOccupancy } from "./world.js?v=r814-2bbee6cc627a";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r814-2bbee6cc627a";
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r814-2bbee6cc627a";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r814-2bbee6cc627a"; // Close View: three hooks below, marked CLOSE VIEW
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r816-093cff214c39"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r816-093cff214c39";
+import { astralBeamAnchors } from "./astral-worm.js?v=r816-093cff214c39";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r816-093cff214c39";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r816-093cff214c39";
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r816-093cff214c39";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r816-093cff214c39";
+import { ruleRows } from "./elders.js?v=r816-093cff214c39";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r816-093cff214c39";
+import { BOAT } from "./boats.js?v=r816-093cff214c39";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r816-093cff214c39";
+import { isMarineTile } from "./world-beasts.js?v=r816-093cff214c39";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r816-093cff214c39"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r816-093cff214c39";
+import { setTreeSeason } from "./landscape-render.js?v=r816-093cff214c39";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r816-093cff214c39";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r816-093cff214c39";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r816-093cff214c39";
+import { TREES } from "./trees.js?v=r816-093cff214c39";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r816-093cff214c39";
+import { actorPresentation } from "./actor-presentation.js?v=r816-093cff214c39";
+import { KIT_MOVES } from "./boss-kit.js?v=r816-093cff214c39";
+import { SKY_DISCS } from "./skylands.js?v=r816-093cff214c39"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r816-093cff214c39";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r816-093cff214c39"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r816-093cff214c39"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r816-093cff214c39"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r816-093cff214c39"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r816-093cff214c39"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced } from "./monster-pack.js?v=r816-093cff214c39";
+import { drawRelayNode } from "./relay-network.js?v=r816-093cff214c39";
+import { structureOccupancy } from "./world.js?v=r816-093cff214c39";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r816-093cff214c39";
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r816-093cff214c39";
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r816-093cff214c39"; // Close View: three hooks below, marked CLOSE VIEW
+
+// Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
+// the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
+export function nativeWindupDuration(e) {
+  if (!actorPresentation(e)?.decoration || !(e.telegraph > 0)) return null;
+  if (e.meleePhase?.stage === 1) return .42;
+  const pattern = MELEE_PATTERNS[e.meleePhase?.id], phase = e.boss && e.hp <= e.maxHp * .5 ? .82 : 1;
+  let duration = Math.max(.48, e.minimumAttackWindup || 0, (pattern?.telegraph || enemyPatternWindup(e)) * (e.telegraphScale || 1) * phase) * (bossPaced(e) ? BOSS_PACE.windup : 1);
+  if (!pattern && e.range >= 2.5 && !e.instantStrike) duration = Math.max(duration, enemyPatternWindup(e));
+  return duration;
+}
+export function drawNativeCreatureFloor(ctx, g, e, s, now) {
+  const p = actorPresentation(e); if (!p || e.gloomVeil || e.dead) return;
+  const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), t = quiet ? 0 : now / 1000;
+  if (e.hidden) { drawNativePackFloor(ctx, e, s, now, quiet); return; }
+  const x = (e.x + .5) * s, y = (e.y + .82) * s, radius = Number(e.bodyRadius) || .4;
+  ctx.save(); ctx.globalAlpha = p.alpha;
+  const ring = (r, color, width) => { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); };
+  if (e.fracRank) ring(s * (.42 + radius * .6), e.fracRank === 'rare' ? '#ffc446cc' : '#6eaaffbb', Math.max(2, s * .07));
+  if (e.fracWarden) { const r = s * (.5 + radius * .7); ctx.strokeStyle = '#ff4678cc'; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath();
+    for (let i = 0; i <= 14; i++) { const a = i / 14 * Math.PI * 2 + t * .4, rr = r * (i % 2 ? .82 : 1.08); ctx[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.stroke(); }
+  if (e.fracShaman) {
+    for (const k of [0, 1]) { const f = (t * .8 + k * .5) % 1; ctx.globalAlpha = p.alpha * (1 - f); ring(s * (.8 + f * .9), '#be78ffcc', Math.max(2, s * .07)); }
+    ctx.globalAlpha = p.alpha * .35; ctx.strokeStyle = '#be78ff'; ctx.lineWidth = Math.max(2, s * .07);
+    let links = 0; for (const m of g.enemies) { if (links >= 20) break; if (m.dead || m.hidden || m.gloomVeil || m.wardBy !== e.id || !m.warded || !shownInDungeon(g, m)) continue;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo((m.x + .5) * s, (m.y + .82) * s); ctx.stroke(); links++; }
+  }
+  if (p.stagger) drawDazed(ctx, e, s, quiet ? 0 : now, p.stagger, 'floor');
+  ctx.restore();
+}
+export function drawNativeCreatureDecorations(ctx, e, s, now, presentation) {
+  const p = actorPresentation(e); if (!p || e.hidden || e.gloomVeil || e.dead) return;
+  const quiet = !!(presentation?.reduceMotion || presentation?.safeMode), x = (e.x + .5) * s, foot = (e.y + .82) * s;
+  ctx.save(); ctx.globalAlpha = p.alpha; ctx.textAlign = 'center'; ctx.lineWidth = 3;
+  drawNativePackEffects(ctx, e, s, now, presentation || {}, p);
+  let labelY = foot - (p.head + .15) * s;
+  const label = (text, color, font) => { ctx.font = font; ctx.strokeStyle = '#000b'; ctx.fillStyle = color; ctx.strokeText(text, x, labelY, s * 1.95 * p.scale); ctx.fillText(text, x, labelY, s * 1.95 * p.scale); labelY -= s * .26 * p.scale; };
+  if (e.fracRank === 'rare' && e.packName) label(e.packName, '#ffd77a', `bold ${Math.max(10, s * .3)}px serif`);
+  if (e.fracWarden) label('Fracture Warden', '#ff8fb0', `bold ${Math.max(10, s * .3)}px serif`);
+  const names = affixNames(e); if (names.length) label(names.join(' · '), '#ffe2b0', `${Math.max(9, s * .24)}px sans-serif`);
+  if (e.warded) { ctx.strokeStyle = '#b48cffcc'; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.ellipse(x, foot - (p.bodyLift + (p.head - p.bodyLift) * .45) * s, s * (.55 + (e.bodyRadius || .4) * .5), s * (p.head - p.bodyLift) * .65, 0, 0, Math.PI * 2); ctx.stroke(); }
+  if (p.stagger) drawDazed(ctx, e, s, quiet ? 0 : now, p.stagger, 'body', p.head + .1);
+  ctx.restore();
+}
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -2539,6 +2585,12 @@ export function render(ctx, g, w, h, now) {
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
+        enemy: e,
+        nativeWindup: nativeWindupDuration(e),
+        nativeFloor: (time = now) => drawNativeCreatureFloor(ctx, g, e, s, time),
+        nativeDecorations: () => drawNativeCreatureDecorations(ctx, e, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, g.presentation),
+        nativePackEffects: (time = now) => drawNativePackEffects(ctx, e, s, time, g.presentation, actorPresentation(e) || {}),
+        nativeEffects: hasNativePackEffects(e),
         nativeLift: Math.max(0, Number(e.hopLift) || 0),
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
