@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 806: Proving Ground launcher rendering
+
+**CODE:** Restores the missing idlePrompt canvas helper in src/proving-ground.ts. The initial launcher and asynchronous journey handoff can render an idle frame before a fixture exists, then continue scheduling frames when a Pentagon or another laboratory starts. Canvas state is saved and restored around the prompt.
+
+**BOUNDARY:** The change is confined to the laboratory UI. Save schema 14, production journeys, pinned dungeon generation, and combat rules are unaffected. Verification exercises the launcher and delayed handoff before starting Pentagon fixtures, which direct fixture-render tests bypass.
+
 ## Release 805 — structured Close View ceilings
 
 - Closed roof tiles receive cached shallow ribs with textured undersides and fascia. Stone bays use rough ashlar infill, with timber, organic, and conduit materials following the room theme.
