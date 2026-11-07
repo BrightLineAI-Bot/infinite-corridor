@@ -96,7 +96,7 @@ test('the lock button, in a mounted page: a tap on it toggles; a press that slid
     getBoundingClientRect: () => ({ left: 190, top: 500, width: 162, height: 162 }), setPointerCapture() {}, set innerHTML(v) { this._html = v; } }; return el; };
   const actions = mk('section'), cluster = mk('div'); cluster.cls = 'action-diamond'; cluster.offsetWidth = 162; cluster.offsetHeight = 162; cluster.offsetLeft = 190; cluster.offsetTop = 500; actions.append(cluster); actions.getBoundingClientRect = () => ({ left: 0, top: 0, width: 360, height: 740 });
   const doc = { getElementById: (id) => id === 'actions' ? actions : null, createElementNS: (ns, t) => mk(t), createElement: (t) => mk(t) };
-  const { g } = room(); let toggles = 0; const was = g.lockTarget.bind(g); g.lockTarget = (id) => { toggles++; return was(id); };
+  const { g } = room(); g.save.closeViewCamera = 'crescent'; let toggles = 0; const was = g.lockTarget.bind(g); g.lockTarget = (id) => { toggles++; return was(id); };
   const host = { document: doc, performance: { now: () => T }, addEventListener() {}, innerWidth: 360, innerHeight: 740 }, ui = CV.mountCloseViewControls(() => g, host);
   render(recorder().ctx, g, W, H, T += 16); ui.sync(); const K = CV.CLOSE_VIEW.crescent;
   const lx = parseFloat(ui.lock.style.left), ly = parseFloat(ui.lock.style.top); assert.equal(lx + K.lockSize, 360 - K.lockEdge, 'at the screen\'s right edge');

@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 819: camera clearance and lock comfort
+
+**CODE:** Centered boom and full shoulder-line clearance stop corner pumping; compressed-space framing centers the Wayfarer. Runtime-only Game pause bookkeeping freezes camera turns even without render/input callbacks. Held camera-thumb ownership preserves manual follow grace and the locked-target spring. A reachable52px lock button, visible-first acquisition, bounded forward fallback and one raw-distance switch per gesture improve targeting. Ineligible targets release; brief LOS grace retains identity without tracking hidden motion. Near-target camera follow stays bounded and presentation-only facing follows a visible lock below committed action aim.
+
+**BOUNDARY:** No saved settings, action aim, hit/damage/AI rules, schema14, generators, pinned history or Proving Ground storage change. Existing actor/GPU caps, reduced motion, presets, opt-out and joystick ownership remain. The pause accumulator is runtime-only and never exported. Independent Astra review cleared both initial pause/thumb blockers after focused repros. Automated mocks do not establish physical-phone touch feel or FPS.
+
 ## Release 818: actual character forms, companions and launch ports
 
 **CODE:** Actual equipment/mechUp/empowerment/skill state selects native Iron Fists, robot, power-suit or Ember bodies; all eight held profiles remain bounded. Real accepted fistStep augments the existing attackVisual record. Native Corridor Golem, Shadow Clone, Orrery, attached drone, six Reciters and Elder Wanderers use exact source capture references; labels, speech, ground halos, BLOCKED feedback and source rule-cell panels survive native admission and cap overflow. Nine actual producer cases extend Creature Asset Lab to47.

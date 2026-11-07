@@ -109,7 +109,7 @@ test('targeting: standing still a swing goes the way the camera looks; a tap nea
   const c = CV.closeViewCamera(), dx = e.x + .5 - c.x, dy = e.y + .82 - c.y; // find the creature's foot on screen by probing taps
   let hit = null; for (let y = H * .3; y < H * .95 && !hit; y += 6) for (let x = 0; x < W && !hit; x += 6) { const q = CV.closeViewScreenToWorld(g, W, H, x, y); if (q?.enemyId === 'tap') hit = { x, y }; }
   assert.ok(hit && dx * dx + dy * dy > 0, 'the creature answers a tap');
-  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   assert.match(main, /function drawTruthfulCombatGeometry\(layer = null\) \{\n  if \(!layer && closeViewShowing\(game\)\) return;/, 'the combat geometry drawDungeonSystems is bound to takes the layer');
   assert.match(main, /drawNewTraps\(s, sx, sy, ctx\)/); assert.match(main, /drawNewTrap\(o, x, y, s, t, ctx = screenCtx\(\)\)/);
 });
