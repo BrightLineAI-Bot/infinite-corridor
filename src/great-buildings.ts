@@ -63,7 +63,7 @@ export const BUILDINGS = {
   // - a top-floor guardian (great buildings, compound towers, castle keeps, labyrinth vaults) that finds no free tile beside its
   //   cache stands on the nearest free tile it can be walked to within `guardianReach` instead of not appearing at all;
   // - labyrinth galleries of gaps keep the platform beside every door (labyrinths.ts), and a key always lies somewhere.
-  interior: { version: 2, guardianReach: 3 },
+  interior: { version: 3, guardianReach: 3 },
   messages: {
     arrive: "A great building stands here, shut and dark. Its door is the way in.",
     enter: "inside",
@@ -226,13 +226,13 @@ const memo = new Map();
 export function buildingPlan(base, V = 1) {
   const key = V >= 2 ? `${base}|v${V}` : base; if (memo.has(key)) return memo.get(key);
   const P = parseBuildingId(`${base}:f1`); if (!P) return null;
-  const S = BUILDINGS.styles[P.style], [W, H] = S.size, floors = [];
+  const S = BUILDINGS.styles[P.style], [W, H] = V >= 3 ? [44, 40] : S.size, floors = [];
   const h = (k) => hashSeed(`${base}:plan:${k}`);
   const door = { x: W >> 1, y: H - 1 }, entry = { x: W >> 1, y: H - 2 };
   const breach = (hashSeed(`${P.seed}:great-building:v1:${P.rx}:${P.ry}:breach`) % 1000) / 1000 < BUILDINGS.breach ? { x: 3 + h("breach") % (W - 6), y: 0 } : null;
   let arrive = entry;
   for (let f = 1; f <= P.floors; f++) {
-    const L = layFloor(base, f, W, H, S, arrive, f === 1 ? [{ ...door, v: 2 }, { ...entry, v: 2 }, ...(breach ? [{ ...breach, v: 3 }, { x: breach.x, y: 1, v: 3 }] : [])] : []);
+    const L = (V >= 3 ? layFloorV3 : layFloor)(base, f, W, H, S, arrive, f === 1 ? [{ ...door, v: 2 }, { ...entry, v: 2 }, ...(breach ? [{ ...breach, v: 3 }, { x: breach.x, y: 1, v: 3 }] : [])] : []);
     const top = f === P.floors, far = farthest(L, arrive, (x, y) => true);
     const up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
     floors.push({ ...L, floor: f, arrive, up, top, far });
@@ -283,6 +283,228 @@ export function layFloor(base, f, W, H, S, arrive, keepOpen) {
   cells.sort(byHash((a) => `${base}:rub:${f}:${a}`));
   for (const [x, y] of cells.slice(0, Math.round(cells.length * BUILDINGS.rubble))) { grid[at(x, y)] = 4; if (count(reach()) !== total - 1) grid[at(x, y)] = 0; }
   return { W, H, grid, room, leaves, mat, walls };
+}
+
+// Interior v3: a spacious combat room joined to a small graph of broad halls and side cells. The legacy
+// splitter above is deliberately untouched: only callers pinned to v3 opt into this namespace and layout.
+export function layFloorV3(base, f, W, H, S, arrive, keepOpen = []) {
+  const r = rng(`${base}:floor:v3:${f}`);
+  const at = (x, y) => y * W + x;
+  const grid = new Array(W * H).fill(1);
+  const room = new Array(W * H).fill(-1);
+  const leaves = [];
+  const walls = [];
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const open = (x, y, v = 0) => {
+    if (x > 0 && y > 0 && x < W - 1 && y < H - 1) {
+      grid[at(x, y)] = grid[at(x, y)] === 2 ? 2 : v;
+    }
+  };
+  const carveRoom = (x0, y0, w, h) => {
+    const id = leaves.length;
+    const bounds = { x0, y0, x1: x0 + w - 1, y1: y0 + h - 1 };
+    leaves.push(bounds);
+    for (let y = bounds.y0; y <= bounds.y1; y++) {
+      for (let x = bounds.x0; x <= bounds.x1; x++) {
+        open(x, y);
+        room[at(x, y)] = id;
+      }
+    }
+    return { x: x0 + (w >> 1), y: y0 + (h >> 1), id };
+  };
+  const hall = (a, b, width) => {
+    let x = a.x;
+    let y = a.y;
+    const horizontalFirst = r() < .5;
+    const step = (axis, end) => {
+      while ((axis === "x" ? x : y) !== end) {
+        if (axis === "x") x += Math.sign(end - x);
+        else y += Math.sign(end - y);
+        for (let q = -(width >> 1); q <= width - 1 - (width >> 1); q++) {
+          open(axis === "x" ? x : x + q, axis === "x" ? y + q : y);
+        }
+      }
+    };
+    if (horizontalFirst) {
+      step("x", b.x);
+      step("y", b.y);
+    } else {
+      step("y", b.y);
+      step("x", b.x);
+    }
+  };
+  const mainW = clamp(10 + Math.floor(r() * 7), 8, W - 4);
+  const mainH = clamp(10 + Math.floor(r() * 7), 7, H - 4);
+  const main = carveRoom(
+    clamp((W - mainW) >> 1, 2, W - mainW - 2),
+    clamp((H - mainH) >> 1, 2, H - mainH - 2),
+    mainW,
+    mainH,
+  );
+  const nodes = [main];
+  const mainBox = leaves[0];
+  for (let side = 0; side < 4; side++) {
+    const sideWidth = 3 + Math.floor(r() * 3);
+    const sideHeight = 3 + Math.floor(r() * 3);
+    const horizontal = side < 2;
+    const roomSize = horizontal ? sideWidth : sideHeight;
+    const before = !(side & 1);
+    const space = before
+      ? (horizontal ? mainBox.x0 : mainBox.y0) - 1
+      : (horizontal ? W - 2 - mainBox.x1 : H - 2 - mainBox.y1);
+    const gap = clamp(6 + Math.floor(r() * 5), 3, space - roomSize);
+    const x = horizontal
+      ? (before ? mainBox.x0 - gap - sideWidth : mainBox.x1 + gap + 1)
+      : main.x - (sideWidth >> 1);
+    const y = horizontal
+      ? main.y - (sideHeight >> 1)
+      : (before ? mainBox.y0 - gap - sideHeight : mainBox.y1 + gap + 1);
+    nodes.push(carveRoom(
+      clamp(x, 1, W - sideWidth - 1),
+      clamp(y, 1, H - sideHeight - 1),
+      sideWidth,
+      sideHeight,
+    ));
+  }
+  // A branching tree plus one cross-link gives every cell a route and at least one loop where the footprint permits it.
+  hall(main, nodes[1], 2 + (hashSeed(`${base}:floor:v3:${f}:wide`) & 1));
+  hall(main, nodes[2], 2);
+  hall(nodes[1], nodes[3], 2);
+  hall(nodes[2], nodes[4], 3);
+  if (W >= 18 && H >= 14) hall(nodes[3], nodes[4], 2);
+  const nearestOpen = (point) => {
+    let best = main;
+    let bestDistance = Infinity;
+    for (let y = 1; y < H - 1; y++) {
+      for (let x = 1; x < W - 1; x++) {
+        if (grid[at(x, y)] === 1) continue;
+        const distance = Math.abs(x - point.x) + Math.abs(y - point.y);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = { x, y };
+        }
+      }
+    }
+    return best;
+  };
+  for (const point of keepOpen) {
+    const inside = {
+      x: clamp(point.x, 1, W - 2),
+      y: clamp(point.y, 1, H - 2),
+    };
+    const nearest = nearestOpen(inside);
+    hall(inside, nearest, 2);
+    grid[at(point.x, point.y)] = point.v;
+    if (point.x > 0 && point.y > 0 && point.x < W - 1 && point.y < H - 1) {
+      room[at(point.x, point.y)] = -1;
+    }
+  }
+  if (grid[at(arrive.x, arrive.y)] === 1) {
+    hall(
+      { x: clamp(arrive.x, 1, W - 2), y: clamp(arrive.y, 1, H - 2) },
+      nearestOpen(arrive),
+      2,
+    );
+  }
+  const big = leaves.reduce((b, q, i) => (q.x1 - q.x0 + 1) * (q.y1 - q.y0 + 1) > (leaves[b].x1 - leaves[b].x0 + 1) * (leaves[b].y1 - leaves[b].y0 + 1) ? i : b, 0);
+  const mat = leaves.map((q, i) => i === big ? S.hall : S.rooms[hashSeed(`${base}:mat:v3:${f}:${i}`) % S.rooms.length]);
+  return { W, H, grid, room, leaves, mat, walls };
+}
+
+// A tame, single-surface heightfield for v3 maps. Mandatory objects remain on level ground; broad cardinal
+// ramps connect every raised patch, so baseline on-foot progression never depends on a jump or drone.
+export function addInteriorTerrain(map, base, V = 1) {
+  if (V < 3 || !map?.tiles?.length) return map;
+  const W = map.width;
+  const H = map.height;
+  const hash = (key) => hashSeed(`${base}:interior-terrain:v1:${key}`);
+  const level = 2 + hash("level") % 2;
+  const vertical = !!(hash("axis") & 1);
+  const edge = vertical
+    ? 3 + hash("edge") % Math.max(1, W - 8)
+    : 3 + hash("edge") % Math.max(1, H - 8);
+  for (const tile of map.tiles) {
+    tile.elev = 0;
+    tile.slope = false;
+    delete tile.rampDir;
+  }
+  const candidates = map.tiles.filter((t) => !t.blocked && !t.hole && (vertical ? t.x > edge + level : t.y > edge + level));
+  for (const tile of candidates) tile.elev = level;
+  for (let step = 0; step <= level; step++) {
+    for (let cross = 0; cross < (vertical ? H : W); cross++) {
+      const x = vertical ? edge + step : cross;
+      const y = vertical ? cross : edge + step;
+      const tile = map.tiles[y * W + x];
+      if (!tile || tile.blocked || tile.hole) continue;
+      tile.elev = step;
+      tile.slope = step > 0;
+      if (tile.slope) tile.rampDir = vertical ? "east" : "south";
+    }
+  }
+  // Optional jump chain: two stepping blocks lead to a 2x2 top. It is accepted only when the whole
+  // island can be removed from ordinary walking and every interactable still remains reachable.
+  const occupied = [map.entry, ...(map.objects || [])].filter(Boolean);
+  const farFromUse = (x, y) => occupied.every((object) =>
+    Math.abs(Math.round(object.x) - x) + Math.abs(Math.round(object.y) - y) >= 3
+  );
+  const patterns = [];
+  for (let y = 3; y < H - 4; y++) {
+    for (let x = 3; x < W - 6; x++) patterns.push({ x, y });
+  }
+  patterns.sort(byHash((p) => `${base}:interior-platform:v1:${p.x},${p.y}`));
+  for (const pattern of patterns) {
+    const cells = [
+      [pattern.x, pattern.y, 1],
+      [pattern.x + 1, pattern.y, 2],
+      [pattern.x + 2, pattern.y, 3],
+      [pattern.x + 3, pattern.y, 3],
+      [pattern.x + 2, pattern.y + 1, 3],
+      [pattern.x + 3, pattern.y + 1, 3],
+    ];
+    const cut = new Set(cells.map(([x, y]) => y * W + x));
+    const available = cells.every(([x, y]) => {
+      const tile = map.tiles[y * W + x];
+      return tile && !tile.blocked && !tile.hole && !tile.slope && tile.elev === 0 && farFromUse(x, y);
+    });
+    if (!available) continue;
+    const start = Math.round(map.entry.y) * W + Math.round(map.entry.x);
+    if (cut.has(start)) continue;
+    const seen = new Uint8Array(W * H);
+    const queue = [start];
+    seen[start] = 1;
+    for (let i = 0; i < queue.length; i++) {
+      const index = queue[i];
+      const x = index % W;
+      const y = (index / W) | 0;
+      for (const [dx, dy] of N4) {
+        const nx = x + dx;
+        const ny = y + dy;
+        const next = ny * W + nx;
+        const tile = map.tiles[next];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[next] || cut.has(next) || !tile || tile.blocked || tile.hole) continue;
+        seen[next] = 1;
+        queue.push(next);
+      }
+    }
+    const strandsObject = (map.objects || []).some((object) => {
+      const x = Math.round(object.x);
+      const y = Math.round(object.y);
+      return x >= 0 && y >= 0 && x < W && y < H && !seen[y * W + x];
+    });
+    if (strandsObject) continue;
+    for (const [x, y, elev] of cells) {
+      Object.assign(map.tiles[y * W + x], {
+        elev,
+        slope: false,
+        interiorPlatform: true,
+        platformTop: elev === 3 || undefined,
+      });
+    }
+    break;
+  }
+  map.landscape = { version: 0, biome: null, name: null, interior: true };
+  map.interiorTerrain = { version: 1, maxLevel: 5 };
+  return map;
 }
 
 // Open cells by distance from `from`, farthest first (only cells `ok` allows, ignoring holes).
@@ -354,8 +576,8 @@ export function generateBuildingFloor(seed, id, V = 1) {
     if (P.roof) { const gd = enemySpawns.find((e) => e.buildingGuardian), clear = (p) => !gd || Math.hypot(gd.x - p.x, gd.y - p.y) >= BUILDINGS.roofLadderClear; // arriving from the roof, never on the guardian's doorstep
       const q = F.far.find((p) => free(p.x, p.y) && clear(p) && Math.abs(p.x - F.arrive.x) + Math.abs(p.y - F.arrive.y) > 3 && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => taken.has((p.y + dy) * W + p.x + dx))) || [...F.far].reverse().find((p) => free(p.x, p.y) && clear(p)) || F.far.find((p) => free(p.x, p.y));
       if (q) { objects.push({ id: "building-roof-ladder", kind: "buildingStair", name: "Ladder up · the roof", x: q.x, y: q.y, state: "open", actions: ["climb"], dir: "roof" }); taken.add(q.y * W + q.x); } } }
-  return { seed, id, recipe: "greatBuilding", name, identity: `${S.name}, ${P.floor === 1 ? "the ground floor" : `floor ${P.floor}`} of ${P.floors}`, danger: "falling floors", width: W, height: H, tiles, entry, exit: P.floor === 1 ? { ...plan.door } : null, objects, enemySpawns,
-    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, ...(V >= 2 ? { interiorVersion: V } : {}), breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }; // layoutVersion 1: dungeon-variation leaves it as laid
+  return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${S.name}, ${P.floor === 1 ? "the ground floor" : `floor ${P.floor}`} of ${P.floors}`, danger: "falling floors", width: W, height: H, tiles, entry, exit: P.floor === 1 ? { ...plan.door } : null, objects, enemySpawns,
+    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, ...(V >= 2 ? { interiorVersion: V } : {}), breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }, P.base, V); // layoutVersion 1: dungeon-variation leaves it as laid
 }
 
 // The nearest open floor beside `p` (not on a stair or a hole), to stand on when you arrive by it.

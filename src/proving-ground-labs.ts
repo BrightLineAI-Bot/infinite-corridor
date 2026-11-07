@@ -19,6 +19,7 @@ import { ensureConstellation } from "./constellation.ts";
 import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.ts";
 import { placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.ts";
+import { ensureMech, DRONE } from "./vehicle-gates.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -118,8 +119,12 @@ const CLOSE_VIEW_LAB = [
   { id: "vault", label: "Pentagon: the Regent's Vault", pick: (P) => P.nodes.find((n) => n.id === `h${P.nh - 1}`) },
   { id: "grand-hall", label: "Pentagon: a grand hall", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "pit-gallery", label: "Pentagon: a grand hall with a shaft", pick: (P) => P.nodes.find((n) => n.hall?.type === "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "terrain-pentagon", label: "Traversal: current Pentagon rooms and ramps", latestPentagon: true, pick: (P) => P.nodes.find((n) => (n.kind === "outer" || n.kind === "inner") && !n.hall) },
   { id: "building", label: "Great building: a keep's first floor" },
   { id: "hazards", label: "Great building: an upper floor's holes, with lava stamped in (Close View's pits and lava)" }, // release 793
+  { id: "terrain-ramps", label: "Traversal: broad indoor ramps", buildingFeature: "ramp" },
+  { id: "platform-chain", label: "Traversal: jumping-block platform chain", buildingFeature: "platform" },
+  { id: "indoor-drone", label: "Traversal: active drone among indoor heights", buildingFeature: "drone" },
   // release 794: one floor for each of Close View's themes (CLOSE_VIEW.themes); the Pentagon's are "outer" (a tomb) and "cellar" (a root cellar)
   { id: "keep", label: "Theme: a keep (cold dressed stone)", style: "keep", lived: false },
   { id: "lived-in", label: "Theme: a lived-in keep (a household of ghosts)", style: "keep", lived: true },
@@ -151,9 +156,15 @@ function closeViewFixture(scenario, seed, now) {
     const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); const floors = 3; let rx = b.rx;
     if (spec.style === "keep") for (let k = 0; k < 200 && closeViewThemeLivedIn(`building:${seed}:${rx}:${b.ry}:keep:${floors}`) !== spec.lived; k++) rx++; // a keep that is (or is not) lived in
     id = `building:${seed}:${rx}:${b.ry}:${spec.style}:${floors}:f${spec.floor || 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
-  else if (spec.id === "building" || spec.id === "hazards") { const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); id = `building:${seed}:${b.rx}:${b.ry}:keep:${b.floors}:f${spec.id === "hazards" ? Math.min(2, b.floors) : 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
-  else { const c = findLabPentagon(seed, now); if (!c) throw new Error(`No Pentagon near the origin for seed ${seed}.`); const P = pentagonPlan(seed, c.cx, c.cy, c.V), q = spec.pick(P) || P.nodes[0]; id = `${P.base}:f${q.n + 1}`; back = { rx: c.cx, ry: c.cy, x: 16, y: 16 }; }
+  else if (spec.id === "building" || spec.id === "hazards" || spec.buildingFeature) { const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); id = `building:${seed}:${b.rx}:${b.ry}:keep:${b.floors}:f${spec.id === "hazards" ? Math.min(2, b.floors) : 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
+  else { const c = findLabPentagon(seed, now); if (!c) throw new Error(`No Pentagon near the origin for seed ${seed}.`); const P = pentagonPlan(seed, c.cx, c.cy, spec.latestPentagon ? c.V : Math.min(c.V, 8)), q = spec.pick(P) || P.nodes[0]; id = `${P.base}:f${q.n + 1}`; back = { rx: c.cx, ry: c.cy, x: 16, y: 16 }; }
   const save = scratchSave(seed); save.closeView = true; if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET; if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL; ensureCloseView(save); // ?cvPreset=close|wide tries a camera preset
+  if (id.startsWith("building:")) save.consequences.dungeons[id] = { interiorVersion: spec.buildingFeature ? BUILDINGS.interior.version : 2 };
+  if (spec.buildingFeature === "drone") {
+    save.farArray.gate = 5;
+    save.mech = { built: true, active: true, mode: "drone", plate: 60, fuel: DRONE.carry, cooldown: 0, healCd: 0, rocketCd: 0 };
+    ensureMech(save);
+  }
   Object.assign(save.session, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 }); Object.assign(save.position, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 });
   const game = new Game(save, now); game.installSystems();
   save.session.activeDungeonId = id; save.session.dungeonReturn = back; game.loadArea("dungeon", false);
@@ -167,9 +178,35 @@ function closeViewFixture(scenario, seed, now) {
     entry = candidates.reduce((best, t) => !best || distance(t) < distance(best) ? t : best, null) || entry;
   }
   game.player.x = entry.x; game.player.y = entry.y; game.player.attackReadyAt = now;
+  let traversal = null;
+  if (spec.buildingFeature === "ramp") {
+    const ramp = game.map.tiles.find((tile) => tile.slope && tile.rampDir);
+    if (ramp) {
+      const low = ramp.rampDir === "east" ? { x: ramp.x - 1, y: ramp.y } : ramp.rampDir === "west" ? { x: ramp.x + 1, y: ramp.y } : ramp.rampDir === "south" ? { x: ramp.x, y: ramp.y - 1 } : { x: ramp.x, y: ramp.y + 1 };
+      const tile = game.map.tiles[low.y * game.map.width + low.x];
+      entry = tile && !tile.blocked && !tile.hole ? low : ramp;
+      game.player.x = entry.x; game.player.y = entry.y;
+      traversal = { feature: "ramp", found: true, ramp: { x: ramp.x, y: ramp.y, elev: ramp.elev, dir: ramp.rampDir } };
+    } else traversal = { feature: "ramp", found: false, note: "This deterministic floor generated no ramp marker." };
+  } else if (spec.buildingFeature === "platform" || spec.buildingFeature === "drone") {
+    const steps = game.map.tiles.filter((tile) => tile.interiorPlatform).sort((a, b) => a.elev - b.elev || a.y - b.y || a.x - b.x);
+    const first = steps[0];
+    if (first) {
+      const beside = [[-1, 0], [0, -1], [0, 1], [1, 0]].map(([dx, dy]) => game.map.tiles[(first.y + dy) * game.map.width + first.x + dx]).find((tile) => tile && !tile.blocked && !tile.hole && !tile.interiorPlatform && (tile.elev || 0) <= (first.elev || 0));
+      entry = beside || first;
+      game.player.x = entry.x; game.player.y = entry.y;
+      traversal = { feature: spec.buildingFeature, found: true, steps: steps.map((tile) => ({ x: tile.x, y: tile.y, elev: tile.elev, top: tile.platformTop === true })), droneActive: game.droneUp?.() === true };
+    } else traversal = { feature: spec.buildingFeature, found: false, droneActive: game.droneUp?.() === true, note: "The optional platform chain could not be placed safely on this deterministic floor; the lab remains at the production entry." };
+  } else if (spec.latestPentagon) {
+    traversal = { feature: "pentagon-terrain", found: game.map.interiorTerrain?.version === 1, version: game.map.building?.V || null, size: [game.map.width, game.map.height] };
+  }
   if (spec.id === "hazards") stampHazards(game.map, { x: Math.round(entry.x), y: Math.round(entry.y) });
+  if (spec.buildingFeature === "ramp") game.message = "Close View ramp lab: walk across the broad stepped strip and compare the camera at each height.";
+  else if (spec.buildingFeature === "platform") game.message = traversal?.found ? "Close View platform lab: jump onto the +1 and +2 blocks, then up to the 2×2 top." : traversal?.note;
+  else if (spec.buildingFeature === "drone") game.message = traversal?.found ? "Close View drone lab: Jump, then press Jump again and hold to boost over the indoor platform chain." : traversal?.note;
+  else if (spec.latestPentagon) game.message = "Close View Pentagon terrain lab: explore the current mixed rooms, side cells, broad corridors, and ramps.";
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
-  return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true };
+  return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(traversal ? { diagnostics: { traversal } } : {}) };
 }
 
 function gameForOverworld(seed, rx, ry, now) {

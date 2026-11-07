@@ -36,7 +36,7 @@ import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY, isSeaKind } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
@@ -107,7 +107,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
-import { applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend } from "./landscape.ts";
+import { interiorTerrain, interiorSurfaceLevel, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend } from "./landscape.ts";
 import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -328,9 +328,20 @@ function towerKeyState(save, map) {
 function interiorVersion(save, id, history, fresh) {
   if (history.interiorVersion !== undefined) return history.interiorVersion;
   const prefix = id.replace(/:f\d+$/, ":f"), D = save.consequences.dungeons || {}, A = save.session.areas || {};
-  let v = fresh ? BUILDINGS.interior.version : 1;
-  for (const [k, h] of Object.entries(D)) { if (k === id || !k.startsWith(prefix) || !/^\d+$/.test(k.slice(prefix.length)) || !h) continue; if (h.interiorVersion !== undefined) { v = h.interiorVersion; break; } if (h.generatorVersion !== undefined) v = 1; }
-  if (v !== 1 && Object.keys(A).some((k) => k !== id && k.startsWith(prefix) && /^\d+$/.test(k.slice(prefix.length)))) v = 1;
+  const sibling = (key) => key !== id && key.startsWith(prefix) && /^\d+$/.test(key.slice(prefix.length));
+  let v = fresh ? BUILDINGS.interior.version : 1, explicitlyPinned = false;
+  for (const [key, floor] of Object.entries(D)) {
+    if (!sibling(key) || !floor) continue;
+    if (floor.interiorVersion !== undefined) {
+      v = floor.interiorVersion;
+      explicitlyPinned = true;
+      break;
+    }
+    if (floor.generatorVersion !== undefined) v = 1;
+  }
+  // A snapshot identifies legacy floors only when no explicit building pin exists.
+  // Otherwise visiting floor one would downgrade every unseen sibling to version one.
+  if (!explicitlyPinned && v !== 1 && Object.keys(A).some(sibling)) v = 1;
   history.interiorVersion = v; return v;
 }
 export function generatePinnedDungeon(save, id, options = {}) {
@@ -2209,7 +2220,7 @@ export class Game {
     { const q = s.playerRuntime.glideHome; this.glideHome = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) && [q.x, q.y].every(Number.isFinite) ? { rx: q.rx, ry: q.ry, x: q.x, y: q.y } : null; } // TREE_GLIDE.home
     { const q = s.playerRuntime.crownFoot; this.crownFoot = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) ? { rx: q.rx, ry: q.ry } : null; } // TREE_GLIDE.home.reached
     this.restoreJumpAir(s.playerRuntime.jumpAir, now); // a jump resumes at the height it left from
-    { const q = s.playerRuntime.droneLift; this.droneLift = q && s.area === "overworld" && ["base", "z", "vz"].every((k) => Number.isFinite(Number(q[k]))) ? { base: Number(q.base), z: Number(q.z), vz: Number(q.vz) } : null; } // release 647: after loading the area, which clears a lift
+    this.restoreDroneLift(s.playerRuntime.droneLift, now); // release 647: after loading the area, which clears a lift
     for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
   }
   installSystems() {
@@ -2694,6 +2705,7 @@ export class Game {
     if (area !== "overworld") { this.glide = null; this.glideHome = null; this.crownFoot = null; } // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
     this.affixHazards = []; // release 657
 
+    if (this.droneLift && interiorTerrain(this.map)) { this.skyAir=null; this.liftDrop=false; this.jumpUntil=-1e9; this.mechBoosting=false; }
     this.droneLift = null; // release 647: a booster lift never carries over a change of area or section
     this.shadowClone = null; this.cloneAim = false; // release 365: a shadow stays in the place it was cast
     this.builds = []; // release 265: builds belong to the map they stand on
@@ -2996,8 +3008,9 @@ export class Game {
     if(ar&&astralRetreatSceneMatches(ar.scenes?.[ar.sceneKey],this)){const carried=astralRetreatSpawn(this.save.worldBeasts.astralWorm.active);if(carried){const existing=this.enemies.find(e=>e.worldBeast==='astralWorm');if(existing)Object.assign(existing,carried);else this.enemies.push(carried);ensureAI(existing||carried);}}
     this._walkerRoutes = new WeakMap(); this._walkerLandingGraph = null;
     const areaWidth = mapWidth(this.map, area),
-      playerRelocated = !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
-    if (area === "dungeon") { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
+      resumeLiftPosition = !capture && this.validInteriorLift(this.save.session.playerRuntime?.droneLift),
+      playerRelocated = !resumeLiftPosition && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
+    if (area === "dungeon" && !resumeLiftPosition) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
       if (this.astralRiderHeld(e) || e.kind === "astralWorm" || e.kind === "astralMirage") {
@@ -3135,6 +3148,7 @@ export class Game {
     this.hordeTimer = 0; if (this.spawnHordeRevenant(here.id)) this.message = "Another Gate Revenant tears through the crossing.";
   }
   recoverPosition() {
+    if(this.droneLift && interiorTerrain(this.map) && footprintOpen(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y,true))return false;
     // Match load-time exact resume: pausing aboard a valid skiff must not relocate its sailor onto land.
     if (this.area === "overworld" && aboard(this.save) && footprintSailable(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) return false;
     const moved = relocateIfStranded(
@@ -3179,7 +3193,7 @@ export class Game {
       playerRuntime: {
         ...this.save.session.playerRuntime, // release 736 (S7): fields from a newer release are kept
         ...this.resumeRuntime(clock), // release 736 (F6/F7/S8, C13): statuses, timers, the rite and the skiff's way
-        droneLift: this.droneLift && this.area === "overworld" ? { base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz } : null, // release 647: a lift resumes in the air
+        droneLift: this.droneLift && this.droneLiftAllowed() ? { base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz, ...(this.area === "dungeon" ? { area: "dungeon", areaId: this.areaId(), levelId: String(this.map.levelId || "root") } : {}) } : null, // release 647: a lift resumes in the air
         glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null } : null, // release 635: a glide resumes in the air
         glideHome: this.glideHome && this.area === "overworld" ? { ...this.glideHome } : null, // TREE_GLIDE.home: the great tree a glide from its crown wakes you on
         crownFoot: this.crownFoot && this.area === "overworld" ? { rx: this.crownFoot.rx, ry: this.crownFoot.ry } : null, // TREE_GLIDE.home.reached: the great crown last stood on
@@ -3336,7 +3350,7 @@ export class Game {
   }
   elevationHere(x, y) { return elevationAt(this.map, mapWidth(this.map, this.area), x, y); }
   // The Wayfarer's height in levels: the ground under them, or the drone's lift or a glide's height (ELEVATION_REACH).
-  playerLevel() { if (this.area === "overworld" && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; return this.elevationHere(this.player.x, this.player.y + (this.player.riderShift || 0)); } // release 748: a mounted rider stands where the mount's feet are
+  playerLevel() { if (this.droneLiftAllowed() && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; return this.elevationHere(this.player.x, this.player.y + (this.player.riderShift || 0)); } // release 748: a mounted rider stands where the mount's feet are
   bodyReach(e) { return bodyBlowReaches(this.map, mapWidth(this.map, this.area), e, this.player, null, this.playerLevel()); }
   glyphWorld(now) {
     const game = this, p = this.player;
@@ -4239,15 +4253,58 @@ export class Game {
   // lasts, and `skyAir` is its height, so the move rules carry the Wayfarer over lower ground and onto ground no more than a level
   // above them. It ends on landing (or when the drone is stowed): the jump ends at once and the landing is settled by the ordinary
   // fall rule as a drop of v²/2g levels (fallDamage).
+  droneLiftAllowed() { return this.area === "overworld" || (this.area === "dungeon" && interiorTerrain(this.map)); }
+  // Lowest local roof over the footprint. Walls still stop moveAxis; this only
+  // keeps an airborne body from travelling sideways through a descending roof.
+  interiorLiftCeiling(x = this.player.x, y = this.player.y) {
+    if (this.area !== "dungeon" || !interiorTerrain(this.map)) return Infinity;
+    const map = this.map, w = mapWidth(map, this.area), H = INTERIOR_TRAVERSAL;
+    let ceiling = Infinity;
+    for (const [ox, oy] of [[.24, .5], [.76, .5], [.24, .88], [.76, .88], [.5, .75]]) {
+      const X = x + ox, Y = y + oy, t = map.tiles[Math.floor(Y) * w + Math.floor(X)];
+      if (!t || t.blocked) continue;
+      const arch = interiorArchAt(map, X, Y);
+      const openAir = map.hall?.open || t.openAir || t.open || t.courtyard || t.pentRoof || t.pentBalcony || t.kind === "yardGrass";
+      if (openAir && !arch) continue;
+      // Passage geometry creates arches even without a doorway marker, including
+      // open-air courtyards. Their soffits remain solid below an otherwise open sky.
+      const roof = arch || t.doorway ? Math.min(interiorCeilingHeight(map), H.archClearance) : interiorCeilingHeight(map);
+      ceiling = Math.min(ceiling, interiorSurfaceLevel(map, X, Y) + (roof - H.bodyClearance - H.ceilingPad) / LIFT_PER_LEVEL);
+    }
+    return ceiling;
+  }
+  validInteriorLift(q) {
+    if (this.area !== "dungeon" || !interiorTerrain(this.map) || !q || q.area !== "dungeon"
+      || q.areaId !== this.areaId() || q.levelId !== String(this.map.levelId || "root") || !this.droneUp()) return false;
+    if (!["base", "z", "vz"].every(k => Number.isFinite(q[k]))
+      || !footprintOpen(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y, true)) return false;
+    const ground = this.elevationHere(this.player.x, this.player.y), ceiling = this.interiorLiftCeiling();
+    // Player-built stacks may stand above generated level five.
+    const maxBase = this.map.tiles.reduce((n, t) => Math.max(n, Number(t?.elev) || 0), INTERIOR_TRAVERSAL.maxLevel);
+    return q.base >= 0 && q.base <= maxBase && q.z >= ground - 1e-6 && q.z <= q.base + DRONE_LIFT.max + 1e-6
+      && q.z <= ceiling + 1e-6 && q.vz <= DRONE_LIFT.rise && Math.abs(q.vz) <= 100;
+  }
+  restoreDroneLift(q, now) {
+    this.droneLift = null;
+    if (!q || !this.droneLiftAllowed() || !["base", "z", "vz"].every(k => Number.isFinite(Number(q[k])))) return false;
+    const lift = { base: Number(q.base), z: Number(q.z), vz: Number(q.vz) };
+    if (this.area === "dungeon") {
+      if (!this.validInteriorLift(q)) return false;
+      this.skyAir = lift.z;
+      if (!(this.jumpUntil > now)) this.jumpUntil = now + 140;
+    } else if (q.area === "dungeon") return false;
+    this.droneLift = lift;
+    return true;
+  }
   droneLiftStep(dt, now, held) {
     const L = this.droneLift, D = DRONE_LIFT, m = this.save.mech, p = this.player;
-    if (this.area !== "overworld" || !this.droneUp() || !m) { this.endDroneLift(now); return; }
-    const ground = elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), top = L.base + D.max, thrust = held && !this.mechSpent && m.fuel > 0;
+    if (!this.droneLiftAllowed() || !this.droneUp() || !m) { this.endDroneLift(now); return; }
+    const ground = elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), top = Math.min(L.base + D.max, this.interiorLiftCeiling()), thrust = held && !this.mechSpent && m.fuel > 0;
     if (thrust) { m.fuel = Math.max(0, m.fuel - D.burn * dt); this.mechBoosting = true; if (m.fuel <= 0) { this.mechSpent = true; this.message = D.empty; } }
     L.vz = Math.min(D.rise, L.vz + ((thrust ? D.thrust : 0) - D.gravity) * dt); L.z += L.vz * dt;
-    if (L.z >= top) { L.z = top; if (thrust) L.vz = Math.min(0, L.vz); } // the top: it hovers there while Jump is held
+    if (L.z >= top) { L.z = top; if (thrust || interiorTerrain(this.map)) L.vz = Math.min(0, L.vz); } // the top: it hovers there while Jump is held
     if (L.z <= ground) { if (L.vz < 0 && !thrust) { this.endDroneLift(now, ground); return; } L.z = ground; L.vz = Math.max(0, L.vz); }
-    this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.skyAir = Math.floor(L.z + 1e-6);
+    this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.skyAir = this.area === "dungeon" ? L.z : Math.floor(L.z + 1e-6);
   }
   endDroneLift(now, ground = null) {
     const L = this.droneLift; this.droneLift = null; if (!L) return;
@@ -7802,7 +7859,7 @@ export class Game {
       const width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0);
       if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) g.fallFrom = g.z; this.message = g.open ? GLIDE.open : GLIDE.shut; }
       else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.message = GLIDE.open; }
-      else if (now < this.jumpUntil && this.area === "overworld" && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
+      else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
       else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; if (this.mountRide()) this.jumpDur *= MOUNT_BEASTS[this.mountRide().beast].jump; /* release 748: a mount jumps farther */ this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
@@ -7810,7 +7867,7 @@ export class Game {
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
       if (this.droneLift) this.droneLiftStep(dt, now, input.held?.("jump") === true); // release 647
-      else if ((this.mechUp() || (this.droneUp() && this.area !== "overworld")) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 647: on the overworld the drone lifts instead (droneLiftStep) */ /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
+      else if ((this.mechUp() || (this.droneUp() && !this.droneLiftAllowed())) && !this.mechSpent && input.held?.("jump") && now < (this.jumpUntil || 0) + 60 && m.fuel > 0) { /* release 647: on the overworld the drone lifts instead (droneLiftStep) */ /* release 321: the drone carries the same way */ m.fuel = Math.max(0, m.fuel - dt); this.jumpUntil = Math.max(this.jumpUntil || 0, now + 140); this.mechBoosting = true; if (m.fuel <= 0) this.mechSpent = true; }
       const ticked = m?.built ? tickMech(this.save, dt, !(now < (this.jumpUntil || 0))) : null; if (ticked === "spent") this.message = "Out of cinder iron: the robot drops back to its plain stride."; else if (ticked === "replated") this.message = "The robot's plating is whole again."; /* release 383 */ if (this.droneUp()) this.tickDrone(dt, now); }
     if (input.consume("potion")) this.drinkPotion(now); // release 339: the chosen potion tier; 341: brewed when needed
     if (input.consume("preset")) { this.message = swapPreset(this.save).message; this.refreshDerivedStats(); } /* release 541: preset armor changes the maxima */ // release 261: swap spell presets 1 and 2; 393: with the whole build
@@ -7894,7 +7951,7 @@ export class Game {
     let terrainHazard=gliding||this.mountLeap(now)?null:this.hazardWhereMoved(p,dx,dy,nx,ny,width,now);/* release 748: a mount's leap carries over the chasm; where it lands is checked */const raftNow=this.map?.movers?.length?platformUnder(this.map,nx,ny,ps):null,raftWasZ=raft?platformPos(raft,ps-dt).z:0;this.raftZ=raftNow?platformPos(raftNow,ps).z:0;if(terrainHazard&&raftNow)terrainHazard=null;/* release 613: on a raft over the drop */
     // Release 615: stepping off a raft below the level is a step into nothing; off one above it, a fall by its height.
     if(raft&&!raftNow&&raftWasZ< -.5){terrainHazard=terrainHazard||"abyss";this.message="Below the level there is nothing to step onto.";}
-    else if(raft&&!raftNow&&raftWasZ>.5&&!terrainHazard){const hurt=fallDamage(Math.round(raftWasZ),this.save.maxHp);if(hurt===Infinity){p.hp=0;this._fatalFallPending=true;}else if(hurt>0){p.hp=Math.max(0,p.hp-hurt);this.message=`You drop ${Math.round(raftWasZ)} level${Math.round(raftWasZ)>1?"s":""} off the raft.`;}}const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true;/* release 317: the robot's boost carries over hazards */
+    else if(raft&&!raftNow&&raftWasZ>.5&&!terrainHazard){const hurt=fallDamage(Math.round(raftWasZ),this.save.maxHp);if(hurt===Infinity){p.hp=0;this._fatalFallPending=true;}else if(hurt>0){p.hp=Math.max(0,p.hp-hurt);this.message=`You drop ${Math.round(raftWasZ)} level${Math.round(raftWasZ)>1?"s":""} off the raft.`;}}const aerial=this.save.magicSkills?.active?.id==='aerial-step'&&this.save.magicSkills.active.remaining>0||this.mechBoosting===true||(this.area==='dungeon'&&interiorTerrain(this.map)&&!!this.droneLift);/* release 317: the robot's boost carries over hazards */
     // Pits, lava and deep water are lethal to walk into (operator, release 101: the r97 brink guard is removed; rims,
     // fog hatching and level marks keep them readable instead).
     // Release 102: the Tidemantle lets the Wayfarer swim on surface water (stage one of the water traversal plan).
@@ -7913,7 +7970,7 @@ export class Game {
       const skyFrom = tileUnder(this.map, width, p.x, p.y);
       if (skyFrom?.kind === "canopyTrunk") this.lastCrownAt = now; // release 637: the glider opens only from the crown
       if (skyFrom?.kind === "canopyTrunk" && !this.save.glider) { this.save.glider = true; this.message = GLIDE.found; journalOnce(this.save, "glider:found", GLIDE.found, "The Great Trees"); } // release 635
-      if (p.jumping && skyFrom?.skyPlatform) { this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0); this.skyAirScale = tileLiftScale(skyFrom); } // skyAirScale: the launching platform's drawn scale, so the hop is drawn at its height over the gap (renderer.ts)
+      if (p.jumping && (skyFrom?.skyPlatform || (interiorTerrain(this.map) && skyFrom?.interiorPlatform))) { this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0); this.skyAirScale = tileLiftScale(skyFrom); } // skyAirScale: the launching platform's drawn scale, so the hop is drawn at its height over the gap (renderer.ts)
       p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
       let fallStart = this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;
       const finishFall = (height) => {
@@ -7925,6 +7982,7 @@ export class Game {
       // leave a scar in one frame. A safe scar edge ends one ordinary fall segment; it must not
       // erase a real ordinary cliff crossed before or after it. Non-scar movement keeps its net-drop rule.
       moveAxis(p, dx, dy, this.map, width, true, (ax, ay, bx, by) => {
+        if (this.droneLift && interiorTerrain(this.map) && Math.max(this.droneLift.z,elevationAt(this.map,width,bx,by)) > this.interiorLiftCeiling(bx,by) + 1e-6) { p.x=ax; p.y=ay; this.droneLift.vz=Math.min(0,this.droneLift.vz); return; }
         if (safeVoidScarTransition(tileUnder(this.map, width, ax, ay), tileUnder(this.map, width, bx, by))) {
           finishFall(elevationAt(this.map, width, ax, ay));
           fallStart = elevationAt(this.map, width, bx, by);
@@ -7932,6 +7990,15 @@ export class Game {
       });
       if (this.area === "dungeon" && this.map.canyon) this.drillAhead(x, y, dt, now); // Canyon craters: push into a clod to drill it
       const landed = elevationAt(this.map, width, p.x, p.y);
+      if(interiorTerrain(this.map) && this.droneLift) {
+        const L=this.droneLift;
+        if(landed>L.z && landed<=L.z+1+1e-6) { L.z=landed; L.vz=Math.max(0,L.vz); this.skyAir=landed; }
+      }
+      if(interiorTerrain(this.map) && JUMP.landOnArrival && p.jumping && this.skyAir!=null && !this.droneLift && !this.mechBoosting) {
+        const u=tileUnder(this.map,width,p.x,p.y);
+        if(!u?.interiorPlatform && landed<this.skyAir-1e-6)this.skyHopGap=true;
+        else if(this.skyHopGap && u?.interiorPlatform && landed>=this.skyAir && landed<=this.skyAir+1) {this.jumpUntil=now;p.jumping=false;}
+      }
       // Release 759 (pre-publish review of 758): a sky hop lands on the first footing past the gap, at its height or one level up, so a stick
       // held to the end of the hop no longer carries the Wayfarer past the platform it reached (the longer JUMP.sky stays for soft thumbs).
       if (JUMP.landOnArrival && p.jumping && this.skyAir != null && this.area === "overworld" && !this.droneLift && !this.glide && !this.mechBoosting) {

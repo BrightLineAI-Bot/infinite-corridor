@@ -15,7 +15,7 @@
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
 import { hashSeed, rng, byHash } from "./random.ts";
-import { BUILDINGS, layFloor, farthest, guardianBeside } from "./great-buildings.ts";
+import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.ts";
 
 export const LABYRINTHS = {
   version: 4, // 4: styles rolled evenly (styleWeights), room mazes ~r2 (the vault by style, told at the door; keys); sections pinned to 3 keep their region's style and ~r1
@@ -181,7 +181,7 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
   const arrive = open[0]?.inner || { x: W >> 1, y: H >> 1 };
   if (q.kind === "court" || q.kind === "cellar") grid = carveMaze(P.base, q, W, H, open);
   else if (q.kind === "gaps") grid = carveGaps(P.base, q, W, H, open, V);
-  else { const F = layFloor(P.base, 100 + q.n, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; far = farthest(F, arrive, () => true); }
+  else { const F = (V >= 3 ? layFloorV3 : layFloor)(P.base, 100 + q.n, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; far = farthest(F, arrive, () => true); }
   const [courtFloor, courtWall] = L.floors.court, [cellFloor, cellWall] = L.floors.cellar, tiles = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, v = grid[k];
     const wallKind = q.kind === "court" ? courtWall : q.kind === "cellar" ? cellWall : S.wall, floorKind = q.kind === "court" ? courtFloor : q.kind === "cellar" ? cellFloor : q.kind === "gaps" ? S.hall : (room && room[k] >= 0 ? mat[room[k]] : S.hall);
@@ -220,8 +220,8 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
   const nearKey = () => { const k = [...reach].filter((i) => { const t = tiles[i]; return t && !t.blocked && !t.hole && !t.doorway && !taken.has(i) && i !== arrive.y * W + arrive.x; }).sort(byHash((a) => `${id}:k:${a}`))[0]; return k === undefined ? { ...arrive } : { x: k % W, y: (k / W) | 0 }; };
   if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0] || (V >= 2 ? nearKey() : null); if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
   const fall = q.kind === "gaps" ? plan.nodes[q.fallTo] : null, fallAt = fall ? (fall.slots.values().next().value?.inner || { x: W >> 1, y: H >> 1 }) : null;
-  return { seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,
-    ...(theme ? { dress: theme } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 };
+  return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,
+    ...(theme ? { dress: theme } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 }, P.base, V);
 }
 
 // ------------------------------------------------------------------------------------------------ outside, on the overworld

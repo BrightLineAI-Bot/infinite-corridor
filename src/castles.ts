@@ -13,7 +13,7 @@
 // is a feint: its wing leads to its own sealed courtyard and back round. Everything is a hash of the seed and the corner, and a
 // castle stands only where all four sections are new ground (`atlas.castleVersion`) and none of their lanes reaches the corner.
 import { hashSeed } from "./random.ts";
-import { BUILDINGS, layFloor, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.ts";
+import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.ts";
 
 export const CASTLES = {
   version: 3, // 3 (Tim, 2026-11-06; great-buildings.ts TOWER_SEAL): the keep's door is sealed until the Keep Key, which lies on the
@@ -144,7 +144,7 @@ export function castlePartPlan(base, V = 1) {
   const key = V >= 2 ? `${base}|v${V}` : base; if (memo.has(key)) return memo.get(key);
   const P = parseCastleId(`${base}:f1`); if (!P) return null;
   const L = castleLayout(P.seed, P.X, P.Y), T = L.T, keep = P.part === "k", part = keep ? T.keep : T.wings[Number(P.part.slice(1))], S = BUILDINGS.styles.keep;
-  const [W, H] = keep ? CASTLES.interior.keep : CASTLES.interior.wing, h = (k) => hashSeed(`${base}:plan:${k}`), q = part.q, R = L.quarters[q], sec = quarterSection(P.X, P.Y, q);
+  const [W, H] = V >= 3 ? [44, 40] : keep ? CASTLES.interior.keep : CASTLES.interior.wing, h = (k) => hashSeed(`${base}:plan:${k}`), q = part.q, R = L.quarters[q], sec = quarterSection(P.X, P.Y, q);
   // the doors on each floor, each with where it lets you out (its section and tile)
   const doors = []; // { key, floor, x, y, inner, to: { rx, ry, x, y } }
   if (keep) doors.push({ key: "court", floor: 1, x: 3 + h("kd") % (W - 6), y: H - 1, to: { ...sec, ...R.keep.inner } });
@@ -154,7 +154,7 @@ export function castlePartPlan(base, V = 1) {
   for (const d of doors) d.inner = { x: d.x === 0 ? 1 : d.x === W - 1 ? W - 2 : d.x, y: d.y === 0 ? 1 : d.y === H - 1 ? H - 2 : d.y };
   const floors = []; let arrive = (doors.find((d) => d.floor === 1) || doors[0]).inner;
   for (let f = 1; f <= part.floors; f++) { const here = doors.filter((d) => d.floor === f), keepOpen = here.flatMap((d) => [{ x: d.x, y: d.y, v: 2 }, { ...d.inner, v: 2 }]);
-    const F = layFloor(base, f, W, H, S, arrive, keepOpen), top = f === part.floors, far = farthest(F, arrive, () => true), up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
+    const F = (V >= 3 ? layFloorV3 : layFloor)(base, f, W, H, S, arrive, keepOpen), top = f === part.floors, far = farthest(F, arrive, () => true), up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
     floors.push({ ...F, floor: f, arrive, up, top, far }); if (up) arrive = up; }
   for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H, V);
   const plan = { base, ...P, part, keep, W, H, doors, floors, sec, gate: { ...quarterSection(P.X, P.Y, T.a), ...L.quarters[T.a].outer.out }, name: keep ? CASTLES.names.keep : CASTLES.names.wings[q] };
@@ -187,6 +187,6 @@ export function generateCastleFloor(seed, id, V = 1, CV = 1) { // `V`: the inter
   const entry = P.floor === 1 ? { ...(plan.doors.find((d) => d.floor === 1)?.inner || F.arrive) } : { ...F.arrive };
   // version 3: the Keep Key on the top floor of the wing between the gate's quarter and the keep's, held by a Key Warden
   const seal = !plan.keep && top ? castleSeal(P.seed, P.X, P.Y, CV) : null, sealKey = seal && plan.part.q === seal.wing ? placeTowerKey(objects, enemySpawns, tiles, W, F, free, seal, id, S.guardian, V, entry) : null;
-  return { seed, id, recipe: "greatBuilding", name, identity: `${N.castle}: the ${plan.name}`, danger: "a castle's halls", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
-    building: { base: P.base, style: "keep", floor: P.floor, floors: P.floors, castle: true, ...(V >= 2 ? { interiorVersion: V } : {}), part: P.part, entries, exitsTo, breachEntry: null, roofLadder: null, ...(sealKey ? { towerKey: { base: seal.base, key: seal.key } } : {}) }, layoutVersion: 1, themePool: 0 };
+  return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${N.castle}: the ${plan.name}`, danger: "a castle's halls", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
+    building: { base: P.base, style: "keep", floor: P.floor, floors: P.floors, castle: true, ...(V >= 2 ? { interiorVersion: V } : {}), part: P.part, entries, exitsTo, breachEntry: null, roofLadder: null, ...(sealKey ? { towerKey: { base: seal.base, key: seal.key } } : {}) }, layoutVersion: 1, themePool: 0 }, P.base, V);
 }

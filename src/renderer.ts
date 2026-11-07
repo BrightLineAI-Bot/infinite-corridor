@@ -14,7 +14,7 @@ import { SEASONS, treeSeason } from "./seasons.ts";
 import { setTreeSeason } from "./landscape-render.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
 import { TREES } from "./trees.ts";
 import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
@@ -2250,7 +2250,7 @@ export function render(ctx, g, w, h, now) {
     r = Math.min(mw, l + Math.ceil(w / s) + 5),
     b = Math.min(mh, t + Math.ceil(h / s) + 5 + (g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL * CANOPY_LIFT) : 0) + up),
     jumping = now < (g.jumpUntil || 0),
-    lift = jumpLift(g, now) * s,
+    lift = (interiorTerrain(g.map) && closeViewCapturing() ? 0 : jumpLift(g, now)) * s,
     dodging = now < (p.dodgeUntil || 0);
   const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map,g.area);
   if (g.area === "dungeon" && labFogOf(g.map)) { const at = labFogTile(p); labFogLook(g.map, at.x, at.y); } // LAB_FOG: the sight is current before anything asks it (the game normally worked it out this frame)
@@ -2258,11 +2258,18 @@ export function render(ctx, g, w, h, now) {
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
-  const groundLift = (x, y) => (g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
+  const flatCapture = g.map?.interiorTerrain?.version === 1 && closeViewCapturing();
+  const groundLift = (x, y) => (flatCapture ? 0 : g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
   const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
-  const hopLift = g.area === "overworld" && g.skyAir != null && jumping ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1)) : null; // a sky hop is drawn at the launching platform's height while it crosses the gap (great-tree review)
+  const interior = interiorTerrain(g.map);
+  const supportLevel = interior ? interiorSurfaceLevel(g.map, p.x + .5, p.y + .75) : 0;
+  const hopLift = interior && g.skyAir != null && jumping
+    ? Math.max(flatCapture ? 0 : supportLevel, g.skyAir - (flatCapture ? supportLevel : 0)) * LIFT_PER_LEVEL
+    : g.area === "overworld" && g.skyAir != null && jumping
+      ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1))
+      : null;
   const viewLift = g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : hopLift ?? groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
@@ -2591,7 +2598,10 @@ export function render(ctx, g, w, h, now) {
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
+    jumpLift: jumpLift(g, now),
+    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && interior
+      ? Math.max(0, g.droneLift.z - supportLevel) * LIFT_PER_LEVEL
+      : g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
       if (g.glide && g.area === "overworld" && g.glide.open !== false) drawLeafGlider(ctx, p, s, now); // release 635; 641: only while open
       if (jumping) {
