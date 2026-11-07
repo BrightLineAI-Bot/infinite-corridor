@@ -52,6 +52,8 @@ Status: queued after the current delivery.
 
 Queued reproduction from the source audit: `generateBuildingFloor("AUDIT0", "building:AUDIT0:1:1:keep:4:f4", 3)` puts `building-stair-down` at blocked tile `(6,5)`, with arrival `(6,4)`. Adjacent Act remains in range. Investigate the visual/collision defect; a repair after v3 publication must preserve existing version pins and generator outputs or introduce a new generation version.
 
+Read-only preparation reproduced actual collision and interaction: movement toward the ladder stops at `y=4.1152`, while adjacent `interact("descend", id)` succeeds to floor 3. A 600-map sample (50 seeds × three styles × four floors) found 269/450 down ladders on blocked tiles, with zero actionable objects lacking a reachable interaction approach. Only down ladders were affected. The connector helper advances before opening its starting cell. Regression targets: the down-ladder tile itself is open and walk-reachable on the new version, stair alignment stays valid, and all older version digests remain unchanged.
+
 - [ ] Check wall/corner sliding, diagonal movement, door widths and locked boundaries in old and new interiors.
 - [ ] Check ramps in both directions, terrace edges, optional step/platform approaches, holes and grand-hall shafts.
 - [ ] Check normal jumping, landing and indoor drone boost/fuel depletion against walls, roofs and arches.
@@ -96,7 +98,7 @@ Status: queued.
 | Pass | Findings / fix | Branch / PR | Tests and hosted evidence | Reviewed candidate / reviewer | Publish run and live identity | State |
 |---|---|---|---|---|---|---|
 | Current delivery | Animation, rooms/elevation/drone, controls and GPU terrain repair | #454–#458 | Focused checks above; final hosted repair check pending | Astra, r805→r810 source: no blockers | Pending | In progress |
-| A | Pending | Pending | Pending | Pending | Pending | Queued |
+| A | Blocked down-ladder landing, reproducible across styles | Pending | 600-map read-only scan and actual scratch collision/Act reproduction | Pending | Pending | Queued |
 | B | Pending | Pending | Pending | Pending | Pending | Queued |
 | C | Pending | Pending | Pending | Pending | Pending | Queued |
 | D | Pending | Pending | Pending | Pending | Pending | Queued |
