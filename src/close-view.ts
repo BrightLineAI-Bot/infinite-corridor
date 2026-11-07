@@ -14,7 +14,7 @@ import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glM
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
 // the cavern with you... third person... more like exploring the Chalice Dungeons"). Phase 1, a prototype: a low third-person
 // camera behind the Wayfarer, built on the existing 2D canvas renderer, for interiors only (the Pentagon, buildings, keeps),
-// off unless chosen (Options â†’ Controls; save.closeView, additive at schema 14). The overworld keeps its view.
+// off unless chosen (Options → Controls; save.closeView, additive at schema 14). The overworld keeps its view.
 //
 // How a frame is drawn (renderCloseView):
 // 1. The ordinary top-down renderer draws the floor of the area round the Wayfarer, with everything it lays on the ground
@@ -62,7 +62,7 @@ export const CLOSE_VIEW = Object.freeze({
     // it sits under the spring's target, so it is seldom reached). Nothing is ever faded to show the Wayfarer.
     sightStep: .1, sightPad: .26, hardPad: .14,
   }),
-  // The camera's framing, by preset (Options â†’ Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
+  // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
   // one side so the Wayfarer stays readable and the corridor ahead stays open; Elder Scrolls Online's smooth chase camera,
   // easing round turns with a comfortable field of view (CLOSE_VIEW.turn). `shoulder`: tiles the camera sits to the right of

@@ -59,6 +59,22 @@ test('moving away from a marked hand slam avoids it', () => {
   step(w, 2); assert.equal(w.hurts.length, 0);
 });
 
+test('Stillworks rejects a moving rend inside solid cover before its warning is emitted', () => {
+  const control = cast('voidSlash').w;
+  const mark = control.fx.find((f) => f.kind === 'voidRend');
+  assert.ok(mark);
+  const blocked = (x, y) => Math.hypot(x - mark.x, y - mark.y) < .3;
+  // Existing arenas without cover retain their attack behavior.
+  assert.equal(cast('voidSlash', { blocked }).w.emitted.length, control.emitted.length);
+  const w = world({ blocked });
+  w.map = { stillworks: { cover: true } };
+  const e = actor(w); force(e, 'voidSlash'); frame(w); e.packAttacks = [];
+  assert.equal(w.emitted.length, control.emitted.length - 1);
+  assert.ok(w.fx.length > 0, 'the other, unobstructed rend still warns');
+  assert.ok(w.fx.every((f) => f.arming > 0 && !blocked(f.x, f.y)));
+  assert.equal(w.hurts.length, 0);
+});
+
 test('wraiths travel a fixed straight vector, slash only three times and expire without creating actors', () => {
   const { w } = cast('voidWraiths');
   const wr = w.fx.filter((f) => f.kind === 'voidWraith'); assert.equal(wr.length, 2);

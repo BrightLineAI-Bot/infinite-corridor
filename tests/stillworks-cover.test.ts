@@ -49,6 +49,18 @@ test('version 1 is release 754\'s arena byte for byte; the beast pick is the sam
   A.version = 1; try { for (let i = 0; i < 200; i++) assert.equal(pentagonArenaPick(SEED, `pentagon:${SEED}:${i * 8}:0:v6`, isPackKind).id, picks[i]); } finally { A.version = was; }
 });
 
+test('Pentagon v9 preserves v8 arena combat IDs while keeping its own map, gates and history identity', () => {
+  for (let version = 1; version <= 9; version++) {
+    const P = pentagonPlan(SEED, 8, -8, version), id = pentagonArenaId(P.base);
+    const m = generatePentagonArena(SEED, id, A.roster[0], 2);
+    const expected = version === 9 ? `${pentagonArenaId(pentagonPlan(SEED, 8, -8, 8).base)}:finale` : `${id}:finale`;
+    assert.equal(m.enemySpawns[0].id, expected);
+    assert.equal(m.id, id); assert.equal(m.building.base, P.base); assert.equal(m.building.V, version);
+    assert.equal(m.objects.find((o) => o.to === 'vault').toId, pentagonVaultId(P));
+    assert.equal(m.objects.find((o) => o.to === 'walk').toId, `${P.base}:finale`);
+  }
+});
+
 test('version 2: the same floor plus five whole 2×2 pillars round the heart, clear of the ways and the beast; the floor still one piece with both gates reached', () => {
   const bad = []; let total = 0;
   for (let i = 0; i < 60; i++) { const seed = `C${i}`, P = pentagonPlan(seed, i * 8, i * 8, 1 + (i % PENTAGON.version)), id = pentagonArenaId(P.base), m = generatePentagonArena(seed, id, A.roster[i % 5], 2), o = generatePentagonArena(seed, id, A.roster[i % 5], 1);
