@@ -150,62 +150,7 @@ function openShop(vendorId = "vendor-vela") {
   }
   if (!panel.open) panel.showModal();
 }
-setTimeout(() => {
-  canvas.addEventListener("worldtap", (e) => {
-    if (game.paused || viewportSeq) return; // Viewport Closed: taps are ignored too
-    const r = canvas.getBoundingClientRect(),
-      q = closeViewScreenToWorld(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top) || screenToWorld( // Close View: the billboard or floor under the tap
-        game,
-        r.width,
-        r.height,
-        e.detail.clientX - r.left,
-        e.detail.clientY - r.top,
-      );
-    const hit = save.aimMode !== "build" && save.aimMode !== "act" && game.enemyAt(q.x, q.y); // release 309: tap a creature to lock on
-    if (!hit && game.placeShadowClone?.(q.x, q.y)) { persist(); return; } // release 365: the tap after a Shadow Clone sets it; 387: a tap on a creature locks it instead
-    if (hit) { game.lockTarget(hit.id); return; }
-    game.aimAt(q.x, q.y);
-    const direction = {
-      x: q.x - game.player.x - 0.5,
-      y: q.y - game.player.y - 0.45,
-    };
-    if (save.aimMode === "attack")
-      game.primaryAttack(performance.now(), direction);
-    else if (save.aimMode === "tool" || (!save.aimMode && save.activeWeaponSlot === "secondary"))
-      game.fireSecondary(performance.now(), direction);
-    else if (save.aimMode === "act") game.interactAt(q.x, q.y);
-    else if (save.aimMode === "build") game.buildAt(q.x, q.y); // release 267: build mode
-    persist();
-  });
-  setInterval(() => {
-    if (game.interactionRequested) {
-      const id = game.interactionRequested;
-      game.interactionRequested = null;
-      openInteraction(id);
-    }
-    if (game.shopRequested) {
-      game.shopRequested = false;
-      openShop();
-    }
-    if (game.smithyRequested) { game.smithyRequested = null; openSmithy(game.message); } // release 441: Act at the town smith opens the forge
-    if (game.area === "dungeon" && !panel.open && !game.paused && marginRun(save, game.areaId())?.offer?.length) { game.marginOfferRequested = false; openMarginOffer(); } // release 459: a page left on offer by an older release (473 applies pages at once)
-    if (game.marginPasteRequested) { game.marginPasteRequested = false; openScrapbookPaste(); } // release 459
-    if (game.kitchenRequested) { const id = game.kitchenRequested; game.kitchenRequested = null; kitchenPick = []; openKitchen(id, game.message); } // release 447: Act at a cook opens the kitchen
-    const tool = document.querySelector('[data-action="tool"]'),
-      attack = document.querySelector('[data-action="attack"]'),
-      act = document.querySelector('[data-action="interact"]');
-    $("#attackInfo").textContent =
-      `ATTACK ${save.equipment[save.activeWeaponSlot]?.name || "none"}`;
-    $("#spellInfo").textContent =
-      `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
-    $("#toolInfo").textContent =
-      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
-    tool?.classList.toggle("selected", save.aimMode === "tool");
-    attack?.classList.toggle("selected", save.aimMode === "attack");
-    act?.classList.toggle("selected", save.aimMode === "act");
-    document.querySelector('[data-action="build"]')?.classList.toggle("selected", save.aimMode === "build");
-  }, 100);
-}, 0);
+
 import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.ts";
 import {
   Game,
@@ -289,6 +234,63 @@ const $ = (s) => document.querySelector(s),
   journal = $("#journal"),
   mapCanvas = $("#mapCanvas"),
   mctx = mapCanvas.getContext("2d");
+// Register game-dependent UI only after the asynchronous journey load completes.
+setTimeout(() => {
+  canvas.addEventListener("worldtap", (e) => {
+    if (game.paused || viewportSeq) return; // Viewport Closed: taps are ignored too
+    const r = canvas.getBoundingClientRect(),
+      q = closeViewScreenToWorld(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top) || screenToWorld( // Close View: the billboard or floor under the tap
+        game,
+        r.width,
+        r.height,
+        e.detail.clientX - r.left,
+        e.detail.clientY - r.top,
+      );
+    const hit = save.aimMode !== "build" && save.aimMode !== "act" && game.enemyAt(q.x, q.y); // release 309: tap a creature to lock on
+    if (!hit && game.placeShadowClone?.(q.x, q.y)) { persist(); return; } // release 365: the tap after a Shadow Clone sets it; 387: a tap on a creature locks it instead
+    if (hit) { game.lockTarget(hit.id); return; }
+    game.aimAt(q.x, q.y);
+    const direction = {
+      x: q.x - game.player.x - 0.5,
+      y: q.y - game.player.y - 0.45,
+    };
+    if (save.aimMode === "attack")
+      game.primaryAttack(performance.now(), direction);
+    else if (save.aimMode === "tool" || (!save.aimMode && save.activeWeaponSlot === "secondary"))
+      game.fireSecondary(performance.now(), direction);
+    else if (save.aimMode === "act") game.interactAt(q.x, q.y);
+    else if (save.aimMode === "build") game.buildAt(q.x, q.y); // release 267: build mode
+    persist();
+  });
+  setInterval(() => {
+    if (game.interactionRequested) {
+      const id = game.interactionRequested;
+      game.interactionRequested = null;
+      openInteraction(id);
+    }
+    if (game.shopRequested) {
+      game.shopRequested = false;
+      openShop();
+    }
+    if (game.smithyRequested) { game.smithyRequested = null; openSmithy(game.message); } // release 441: Act at the town smith opens the forge
+    if (game.area === "dungeon" && !panel.open && !game.paused && marginRun(save, game.areaId())?.offer?.length) { game.marginOfferRequested = false; openMarginOffer(); } // release 459: a page left on offer by an older release (473 applies pages at once)
+    if (game.marginPasteRequested) { game.marginPasteRequested = false; openScrapbookPaste(); } // release 459
+    if (game.kitchenRequested) { const id = game.kitchenRequested; game.kitchenRequested = null; kitchenPick = []; openKitchen(id, game.message); } // release 447: Act at a cook opens the kitchen
+    const tool = document.querySelector('[data-action="tool"]'),
+      attack = document.querySelector('[data-action="attack"]'),
+      act = document.querySelector('[data-action="interact"]');
+    $("#attackInfo").textContent =
+      `ATTACK ${save.equipment[save.activeWeaponSlot]?.name || "none"}`;
+    $("#spellInfo").textContent =
+      `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
+    $("#toolInfo").textContent =
+      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
+    tool?.classList.toggle("selected", save.aimMode === "tool");
+    attack?.classList.toggle("selected", save.aimMode === "attack");
+    act?.classList.toggle("selected", save.aimMode === "act");
+    document.querySelector('[data-action="build"]')?.classList.toggle("selected", save.aimMode === "build");
+  }, 100);
+}, 0);
 // Release 734 (S4): a journey that validates but still throws in new Game left only "could not start", with no way to the
 // Journeys screen. Its slot is marked damaged (this page never writes it) and a fresh, unsaved journey starts instead,
 // under the Journeys screen (opened below), where the player can Recover, Import, Delete or switch slots.
