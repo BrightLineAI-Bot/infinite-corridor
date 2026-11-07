@@ -23,6 +23,8 @@ import { ensureMech, DRONE } from "./vehicle-gates.ts";
 import { ensureLattice } from "./transit-lattice.ts";
 import { ensureSlots } from "./spell-slots.ts";
 import { fieldOn } from "./lattice-fields.ts";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.ts";
+import { AFFIXES, SHAMAN } from "./affixes.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -39,6 +41,7 @@ export const LABORATORIES = [
   { id: "test-tile", label: "Standard Test Tile", status: "implemented", description: "One fixed overworld section with water, a chasm, raised blocks with stairs, a building and a dungeon door, for trying creatures and interactions." },
   { id: "combat", label: "Monster & Elite Combat Arena", status: "implemented", description: "Pick an environment and a creature, then press Start test." },
   { id: "combat-assets", label: "Combat Asset Lab", status: "implemented", description: "Close View production gallery for representative weapons, tools, spells, and monster forms in a generated interior." },
+  { id: "creature-assets", label: "Creature Asset Lab", status: "implemented", description: "Close View production roster, Foundry morphology, and decorated-variant witnesses in generated interior geometry." },
   { id: "wayglass", label: "Wayglass, Checkpoint & Compass Lab", status: "implemented", description: "Production navigation, recovery, migration, Atlas, and dual-arrow fixtures." },
   { id: "environment", label: "Bespoke Environment & District Lab", status: "implemented", description: "Production districts, overworld landmarks, domains, and arena families." },
   { id: "hunts", label: "Hunt, Domain & Boss Arena Lab", status: "implemented", description: "Scratch Viewport lifecycle, creature, elite, and boss-arena fixtures." },
@@ -84,6 +87,17 @@ const COMBAT_ASSETS = [
   { id: "blade-arc-wave-wisp", label: "Salvage Blade + Blunderbuss/Arc Wave · Cinder Wisp", primary: "Salvage Blade", tool: "Blunderbuss", spell: "fire-burst", foe: "cinderWisp", passive: "arc-wave" },
   { id: "fists-spindle-flying", label: "Iron Fists + Lumen Spindle · Veil Moth", primary: "Iron Fists", tool: "Lumen Spindle", spell: "orbit-volley", foe: "veilMoth" },
 ];
+const CREATURE_ASSET_KINDS = ["ashling","ashenHound","rootBrute","coilStalker","hollowMarshal","glassMite","sparkWarden","cinderWisp","veilMoth","voidSentinel","weepingSaint","hangedChoir","graveLantern","pallidCrawler","mirrorShade","amalgam","gnawingMaw","cinderSeraph","lumenWraith","veilSpinner","riftLynx","sunderjaw","thunderhorn","siegeBeetle","gloomwisp","gloomgorge","latticeHunter","archiveBehemoth","riftGrazer"];
+const FOUNDRY_BODIES = ["quadruped","floating","segmented","tentacled","geometric","biomechanical"];
+const ORDINARY_ASSET_PALETTES={ashling:["#87503f","#342727","#b78a62"],glassMite:["#607c79","#283b3b","#aab7aa"],sparkWarden:["#6b6472","#35313d","#c09b58"],ashenHound:["#765244","#302724","#c18a63"],veilMoth:["#786887","#302c39","#b8a7cd"],rootBrute:["#667052","#303629","#a99a67"],coilStalker:["#47716d","#263a39","#87c0ad"],cinderWisp:["#a95d3c","#4b2923","#efb15d"],voidSentinel:["#645375","#282333","#b896cf"],hollowMarshal:["#78434a","#332429","#b99b68"]};
+const ORDINARY_ASSET_ACTIONS={ashling:["lunge"],ashenHound:["zigzag"],rootBrute:["slam"],coilStalker:["ranged"],hollowMarshal:["longReach","lunge"],glassMite:["hop"],sparkWarden:["arc","straightBolt"],cinderWisp:["threeShotCone"],veilMoth:["instantStrike"],voidSentinel:["grenade","threeShotCone"]};
+const CREATURE_ASSETS = [
+  ...CREATURE_ASSET_KINDS.map((kind) => ({ id: kind, label: MONSTER_PACK[kind]?.name || kind.replace(/([A-Z])/g," $1").replace(/^./,c=>c.toUpperCase()), kind, source: ["gloomwisp","gloomgorge"].includes(kind) ? "haunt-pack" : ["latticeHunter","archiveBehemoth","riftGrazer"].includes(kind) ? "admitted-foundry" : MONSTER_PACK[kind] ? "monster-pack" : "ordinary" })),
+  ...FOUNDRY_BODIES.map((body) => ({ id: `foundry-${body}`, label: `Foundry morphology: ${body}`, kind: "latticeHunter", source: "admitted-foundry", foundryBody: body })),
+  { id: "spark-shaman-ward", label: "Decorated: Spark Warden shaman + warded rare", kind: "sparkWarden", source: "affix-scene", variant: "shaman-ward" },
+  { id: "rare-drone-swarm", label: "Decorated: rare Void Sentinel + Drone Swarm", kind: "voidSentinel", source: "affix-scene", variant: "drone-swarm" },
+  { id: "guardian-volcanic", label: "Decorated: guardian Thunderhorn + Volcanic", kind: "thunderhorn", source: "affix-scene", variant: "guardian-volcanic" },
+];
 const WAYGLASS_SCENARIOS=["unactivated-wayglass","activated-wayglass","travel-pair","rest-point","activated-rest-point","broken-observatory","manual-waypoint","quest-guidance","hunt-guidance","dual-compass","death-marker","save-reconstruction","legacy-migration","drought-corpus"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const ENVIRONMENTS=[...SHELTERS.filter(q=>q.id.endsWith("district")),...ARENA_FAMILIES.map(id=>({id:`arena-${id}`,label:`${id.replaceAll("-"," ")} arena`})),{id:"temporary-hunt-arena",label:"Temporary hunt arena"},{id:"persistent-arena",label:"Persistent arena entrance"},{id:"sentinel-domain",label:"Sentinel manufactory domain"},{id:"rootbound-domain",label:"Rootbound crown domain"}];
 const HUNTS=["empty-viewport","tracking-hunt","located-hunt","completed-hunt","failed-hunt","elite-attributes","projectile-patterns","aggro-pursuit","guardian-boss","foundry-review","temporary-arena","persistent-arena"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
@@ -102,6 +116,7 @@ export function scenariosForLab(lab) {
   if (lab === "landscape") return LANDSCAPE_SCENARIOS;
   if (lab === "combat") return CREATURES;
   if (lab === "combat-assets") return COMBAT_ASSETS;
+  if (lab === "creature-assets") return CREATURE_ASSETS;
   if(lab==="wayglass")return WAYGLASS_SCENARIOS;
   if(lab==="environment")return ENVIRONMENTS;
   if(lab==="hunts")return HUNTS;
@@ -246,22 +261,18 @@ function combatAssetGear(slot, name) {
   return normalizeItemUpgrade(normalizeSockets({ id, name, slot, power: 12, property: name === "Aether Orrery" ? "orrery" : "focus", tier: "relic", affixes: [] }));
 }
 
+function assetLane(game) {
+  const map=game.map,at=new Map(map.tiles.map((tile)=>[`${tile.x},${tile.y}`,tile])),clear=(tile)=>tile&&!tile.blocked&&!tile.hole&&!tile.environment&&!tile.doorway;
+  const roomy=(tile)=>clear(tile)&&[[-1,0],[1,0],[0,-1],[0,1]].every(([dx,dy])=>clear(at.get(`${tile.x+dx},${tile.y+dy}`))&&(at.get(`${tile.x+dx},${tile.y+dy}`).elev||0)===(tile.elev||0));
+  for(const player of map.tiles.filter(roomy).sort((a,b)=>Math.hypot(a.x-map.width/2,a.y-map.height/2)-Math.hypot(b.x-map.width/2,b.y-map.height/2)||a.y-b.y||a.x-b.x))for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const foe=at.get(`${player.x+dx*5},${player.y+dy*5}`);if(roomy(foe)&&(foe.elev||0)===(player.elev||0)&&Array.from({length:4},(_,i)=>at.get(`${player.x+dx*(i+1)},${player.y+dy*(i+1)}`)).every((tile)=>clear(tile)&&(tile.elev||0)===(player.elev||0)))return{player,foe,dx,dy,at,clear}}
+  throw new Error(`Asset laboratory could not find an unobstructed same-height lane in ${map.id}.`);
+}
+
 // A generated Close View room is retained byte-for-byte. This only chooses two already-clear, same-height points in it,
 // then equips and spawns through the production item/spell/enemy paths so the gallery exercises the real combat assets.
 function combatAssetFixture(scenario, seed, now) {
   const spec = COMBAT_ASSETS.find((q) => q.id === scenario) || COMBAT_ASSETS[0], fixture = closeViewFixture("grand-hall", seed, now), { game, save } = fixture, map = game.map;
-  const at = new Map(map.tiles.map((tile) => [`${tile.x},${tile.y}`, tile])), clear = (tile) => tile && !tile.blocked && !tile.hole && !tile.environment && !tile.doorway;
-  const roomy = (tile) => clear(tile) && [[-1,0],[1,0],[0,-1],[0,1]].every(([dx,dy]) => clear(at.get(`${tile.x+dx},${tile.y+dy}`)) && (at.get(`${tile.x+dx},${tile.y+dy}`).elev || 0) === (tile.elev || 0));
-  let placement = null;
-  for (const player of map.tiles.filter(roomy).sort((a,b) => Math.hypot(a.x-map.width/2,a.y-map.height/2)-Math.hypot(b.x-map.width/2,b.y-map.height/2) || a.y-b.y || a.x-b.x)) {
-    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
-      const foe = at.get(`${player.x+dx*5},${player.y+dy*5}`);
-      if (!roomy(foe) || (foe.elev || 0) !== (player.elev || 0)) continue;
-      if (Array.from({length:4},(_,i) => at.get(`${player.x+dx*(i+1)},${player.y+dy*(i+1)}`)).every((tile) => clear(tile) && (tile.elev || 0) === (player.elev || 0))) { placement = { player, foe, dx, dy }; break; }
-    }
-    if (placement) break;
-  }
-  if (!placement) throw new Error(`Combat Asset Lab could not find an unobstructed same-height lane in ${map.id}.`);
+  const placement=assetLane(game);
   save.equipment.primary = combatAssetGear("primary", spec.primary);
   save.equipment.secondary = combatAssetGear("secondary", spec.tool);
   save.perception.aperture = APERTURE_BANDS[13].threshold;
@@ -281,6 +292,31 @@ function combatAssetFixture(scenario, seed, now) {
   const form = tool?.brawlerTool === "great-sweep" && fieldOn(save, "nanoknives") ? "mirage-of-blades" : tool?.brawlerTool === "hammerfall" && fieldOn(save, "corridor-golem") ? "hammerfall+corridor-golem" : tool?.name === "Blunderbuss" && fieldOn(save, "arc-wave") ? "blunderbuss+arc-wave" : tool?.brawlerTool || (tool?.orrery ? "aether-orrery" : tool?.path || null);
   return { ...fixture, lab: "combat-assets", scenario: spec.id, label: spec.label, primary: placement.player,
     diagnostics: { resolved: { primary: { name: save.equipment.primary.name, ...primaryProfile(save.equipment.primary) }, tool: { name: save.equipment.secondary.name, profile: tool?.name || null, path: tool?.path || null, form }, spell: { id: spell.id, name: spell.name }, foe: { kind: game.enemies[0].kind, id: game.enemies[0].id } }, placement: { player: { x: placement.player.x, y: placement.player.y, elev: placement.player.elev || 0 }, foe: { x: placement.foe.x, y: placement.foe.y, elev: placement.foe.elev || 0 }, unobstructedTiles: 5 } } };
+}
+
+function admittedGallerySpawn(save,spec,at){
+  const base=foundryCandidate(save.seed,11,7,`proving-${spec.id}`),role=spec.kind==="archiveBehemoth"?"boss":spec.kind==="riftGrazer"?"passive":"hostile",body=spec.foundryBody||({latticeHunter:"geometric",archiveBehemoth:"biomechanical",riftGrazer:"quadruped"}[spec.kind]),movement=role==="passive"?"stalking":body==="floating"?"hovering":body==="quadruped"?"hopping":body==="segmented"?"orbiting":"stalking",attack=role==="passive"?"none":body==="tentacled"?"sweepingBeam":body==="geometric"?"arcBurst":body==="floating"?"threeShotCone":body==="quadruped"?"meleeSwipe":"straightBolt";
+  const candidate={...base,id:`proving-foundry:${spec.id}`,name:spec.label,baseKind:spec.kind,role,body,movement,attack};
+  const validation=validateFoundryCandidate(candidate);if(!validation.ok)throw new Error(`Invalid Foundry gallery candidate ${spec.id}: ${validation.reason}`);
+  save.viewport.bestiary||={};save.viewport.bestiary[candidate.id]={candidate,mode:"dungeon",name:candidate.name,from:"proving-ground"};
+  for(let n=0;n<4096;n++){const spawn=admittedFoundrySpawn(save,`gallery:${spec.id}:${n}`,"dungeon",at);if(spawn)return{spawn,candidate,validation,key:`gallery:${spec.id}:${n}`}}
+  throw new Error(`No deterministic admitted Foundry witness for ${spec.id}.`);
+}
+
+function creatureAssetFixture(scenario,seed,now){
+  const spec=CREATURE_ASSETS.find((q)=>q.id===scenario)||CREATURE_ASSETS[0],fixture=closeViewFixture("grand-hall",seed,now),{game,save}=fixture,placement=assetLane(game),at={x:placement.foe.x,y:placement.foe.y};
+  Object.assign(game.player,{x:placement.player.x,y:placement.player.y,facing:placement.dx<0?"left":placement.dx>0?"right":placement.dy<0?"up":"down"});save.lastAim={x:placement.dx,y:placement.dy};
+  let foundry=null,spawns=[];
+  if(spec.source==="admitted-foundry"){foundry=admittedGallerySpawn(save,spec,at);spawns=[foundry.spawn]}
+  else if(spec.variant==="shaman-ward"){
+    const shamanTile=game.map.tiles.filter((q)=>placement.clear(q)&&(q.elev||0)===(placement.foe.elev||0)&&Math.hypot(q.x-at.x,q.y-at.y)>=SHAMAN.distance[0]&&Math.hypot(q.x-at.x,q.y-at.y)<=SHAMAN.distance[1]).sort((a,b)=>a.y-b.y||a.x-b.x)[0];if(!shamanTile)throw new Error("No deterministic shaman position in Creature Asset Lab.");
+    const shamanId="proving:creature-assets:spark-shaman";spawns=[{id:"proving:creature-assets:warded-rare",kind:"voidSentinel",x:at.x,y:at.y,fractured:true,fracRank:"rare",affixes:["enraged"],wardBy:shamanId},{id:shamanId,kind:SHAMAN.kind,x:shamanTile.x,y:shamanTile.y,fractured:true,fracShaman:true}];
+  }else if(spec.variant==="drone-swarm")spawns=[{id:"proving:creature-assets:drone-rare",kind:spec.kind,x:at.x,y:at.y,fractured:true,fracRank:"rare",affixes:["droneSwarm"]}];
+  else if(spec.variant==="guardian-volcanic")spawns=[{id:"proving:creature-assets:volcanic-guardian",kind:spec.kind,x:at.x,y:at.y,dungeonRole:"gateWarden",fractured:true,fracRank:"rare",affixes:["volcanic"]}];
+  else spawns=[{id:`proving:creature-assets:${spec.id}`,kind:spec.kind,x:at.x,y:at.y}];
+  game.enemies=spawns.map((spawn)=>game.createEnemyFromSpawn(spawn,"dungeon"));game.projectiles=[];game.effects=[];game.eliteHazards=[];game.affixHazards=[];game.message=`${spec.label}. Production creature state in a scratch Close View gallery; this fixture does not claim native-model completion.`;game.sync();
+  const enemy=game.enemies[0],pack=MONSTER_PACK[enemy.kind],hauntBlocked=spec.source==="haunt-pack"&&!enemy.packKind;
+  return{...fixture,lab:"creature-assets",scenario:spec.id,label:spec.label,primary:placement.player,diagnostics:{roster:{kind:enemy.kind,name:enemy.packName||enemy.foundryName||spec.label,form:enemy.foundryBody||pack?.render||enemy.kind,scale:enemy.scale,palette:foundry?.candidate.palette??pack?.palette??ORDINARY_ASSET_PALETTES[enemy.kind]??null,movement:enemy.foundryMovement||enemy.movement||(enemy.range>0?"ranged":"grounded"),actions:enemy.foundryAttack?[enemy.foundryAttack]:[...(enemy.packAttacks||enemy.meleePatterns?.length?enemy.packAttacks||enemy.meleePatterns:ORDINARY_ASSET_ACTIONS[enemy.kind]||[])],source:spec.source,resolvedSource:foundry?{pipeline:"admittedFoundrySpawn",key:foundry.key,candidate:foundry.candidate,validation:foundry.validation}:"createEnemyFromSpawn",capability:hauntBlocked?"blocked: production haunt pack fields did not construct":"fixture witness only; native body/action/attachments/FX evidence remains separate",variant:spec.variant||null,affixes:[...(enemy.affixes||[])],wardBy:enemy.wardBy||null,foundryValidated:enemy.foundryValidated===true},placement:{player:{x:placement.player.x,y:placement.player.y,elev:placement.player.elev||0},foe:{x:placement.foe.x,y:placement.foe.y,elev:placement.foe.elev||0},unobstructedTiles:5},sceneEnemies:game.enemies.map((q)=>({id:q.id,kind:q.kind,fracRank:q.fracRank||null,fracShaman:!!q.fracShaman,affixes:[...(q.affixes||[])],wardBy:q.wardBy||null}))}};
 }
 
 function gameForOverworld(seed, rx, ry, now) {
@@ -490,6 +526,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
   if(lab==="test-tile")return testTileFixture(now);
   if(lab==="close-view")return closeViewFixture(scenario,cleanSeed,now);
   if(lab==="combat-assets")return combatAssetFixture(scenario,cleanSeed,now);
+  if(lab==="creature-assets")return creatureAssetFixture(scenario,cleanSeed,now);
   let fixture;
   if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
   else if(lab==="forge")fixture=forgeFixture(scenario,cleanSeed,cleanVariant,now);
@@ -512,7 +549,7 @@ export function labReport(fixture) {
 
 export function teleportTargets(fixture) {
   const map=fixture.game.map,targets=[];
-  if(fixture.lab==="combat-assets"&&fixture.diagnostics?.placement?.player)targets.push({id:"gallery-start",label:"Gallery start",x:fixture.diagnostics.placement.player.x,y:fixture.diagnostics.placement.player.y});
+  if(["combat-assets","creature-assets"].includes(fixture.lab)&&fixture.diagnostics?.placement?.player)targets.push({id:"gallery-start",label:"Gallery start",x:fixture.diagnostics.placement.player.x,y:fixture.diagnostics.placement.player.y});
   if(map.entry)targets.push({id:"entry",label:"Entrance",x:map.entry.x,y:map.entry.y});
   const foe=fixture.lab==="combat"&&fixture.game.enemies?.find(e=>!e.dead&&!e.ambient),near=foe&&map.tiles.find(t=>!t.blocked&&!t.environment&&!["canyon","river","dungeonWater","bridge"].includes(t.kind)&&Math.hypot(t.x-foe.x,t.y-foe.y)>=3&&Math.hypot(t.x-foe.x,t.y-foe.y)<=4.5);
   if(near)targets.push({id:"near-combatant",label:"Near the combatants",x:near.x,y:near.y});
