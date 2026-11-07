@@ -1,6 +1,6 @@
 // Authored Close View geometry for player states whose ordinary renderer changes the whole silhouette.
 // This module is deliberately data-only: callers decide when the real equipment/runtime state selects a key.
-import { bevel, block, curvedTube, ellipsoid, membrane, part, ringLoft, taper } from './close-view-mesh.ts';
+import { bevel, block, curvedTube, ellipsoid, membrane, part, ringLoft, verticalLoft, taper } from './close-view-mesh.ts';
 
 const coat = 0x303934, hem = 0x28312e, leather = 0x302b29, amber = 0xf3a55c;
 const iron = 0x34383d, ironEdge = 0x171a1d, worn = 0x747a80, glass = 0x31505b;
@@ -19,7 +19,7 @@ const legs = (color = coat, scale = 1) => [-1, 1].flatMap(side => [
 
 // The weapon is a pair, not a recoloured blade: broad iron gauntlets, knuckle plates and amber seams.
 const ironFists = [
-  part(ringLoft([[0,.16,-.25],[0,.22,-.04],[-.02,.18,.22],[-.04,.12,.3]],5),0,0,1.02,1,1,1,coat,0,0,1.02,0,true),
+  part(verticalLoft([[0,.16,-.25],[0,.22,-.04],[-.02,.18,.22],[-.04,.12,.3]],5),0,0,1.02,1,1,1,coat,0,0,1.02,0,true),
   part(membrane([[0,-.19,.12],[-.08,-.19,-.36],[-.02,.02,-.43],[.04,.06,-.1]]),-.03,0,.85,1,1,1,hem,3,-.03,.98),
   ...hood(), ...legs(),
 ];
@@ -46,7 +46,7 @@ for (const side of [-1, 1]) robot.push(
 // Empowered: the established understated graphite pressure suit, with low segmented plates,
 // smoked visor, compact life-support pack and the tiny amber chest sigil.
 const powerSuit = [
-  part(ringLoft([[0,.13,-.26],[0,.18,-.06],[-.015,.16,.19],[-.035,.11,.28]],6),0,0,1.0,1,1,1,ironEdge,0,0,1,0,true),
+  part(verticalLoft([[0,.13,-.26],[0,.18,-.06],[-.015,.16,.19],[-.035,.11,.28]],6),0,0,1.0,1,1,1,ironEdge,0,0,1,0,true),
   part(bevel,.13,0,1.18,.18,.19,.21,iron,0,.13,1.18,0,true),
   block(.305,0,1.19,.018,.14,.055,glass),
   block(-.14,0,1.00,.08,.15,.23,iron),
@@ -68,7 +68,7 @@ for (const side of [-1,1]) powerSuit.push(
 // Ember Form grows into a guarded striking form. Curved cinder plates and flame crests change its
 // outline; the hot seams remain readable when reduced motion suppresses secondary sway.
 const emberForm = [
-  part(ringLoft([[0,.19,-.31],[-.01,.29,-.08],[-.03,.25,.24],[-.06,.15,.37]],6),0,0,1.13,1,1,1,emberDark,0,0,1.13,0,true),
+  part(verticalLoft([[0,.19,-.31],[-.01,.29,-.08],[-.03,.25,.24],[-.06,.15,.37]],6),0,0,1.13,1,1,1,emberDark,0,0,1.13,0,true),
   part(ellipsoid(6,2),.04,0,1.66,.22,.23,.25,emberDark,0,.04,1.66,0,true),
   part(ringLoft([[0,.13,-.04],[.12,.10,.03],[.25,.02,.08]],4),.23,0,1.64,1,1,1,ember),
   block(.27,-.07,1.67,.018,.035,.035,emberHot), block(.27,.07,1.67,.018,.035,.035,emberHot),

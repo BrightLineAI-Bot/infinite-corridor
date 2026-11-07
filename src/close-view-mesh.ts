@@ -37,6 +37,20 @@ export function ringLoft(rings, sides = 8) {
   return faces;
 }
 
+// Upright loft. Rings remain [forward offset, radius, height], but each cross-section lies in XY at Z.
+// Keep ringLoft as the X-axis primitive for crawlers, muzzles, ribs and other deliberately horizontal forms.
+export function verticalLoft(rings, sides = 8) {
+  const vertices = rings.map(([x, radius, z]) => Array.from({ length: sides }, (_, i) => {
+    const a = (i + .5) * Math.PI * 2 / sides;
+    return [x + Math.cos(a) * radius, Math.sin(a) * radius, z];
+  })), faces = [];
+  for (let r = 0; r < vertices.length - 1; r++) for (let i = 0; i < sides; i++) {
+    const j = (i + 1) % sides, a = vertices[r][i], b = vertices[r][j], c = vertices[r + 1][j], d = vertices[r + 1][i];
+    faces.push([a, b, c], [a, c, d]);
+  }
+  return faces;
+}
+
 // Curved, tapered tube along a short authored path. Rings use a stable lateral/up plane for predictable rigid animation.
 export function curvedTube(points, sides = 5) {
   const rings = points.map(([x, y, z, radius]) => Array.from({ length: sides }, (_, i) => {

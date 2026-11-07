@@ -9,8 +9,22 @@ const idle={state:{x:0,y:0},consume:()=>false,held:()=>false};
 
 test('Creature Asset Lab is separate, exhaustive and leaves the existing combat gallery unchanged',()=>{
   assert.equal(LABORATORIES.length,21);
-  const cases=scenariosForLab('creature-assets');assert.equal(cases.length,38);assert.deepEqual(cases.slice(0,29).map(q=>q.id),roster);assert.deepEqual(cases.slice(29,35).map(q=>q.id),bodies.map(q=>`foundry-${q}`));
+  const cases=scenariosForLab('creature-assets');assert.equal(cases.length,47);assert.deepEqual(cases.slice(0,29).map(q=>q.id),roster);assert.deepEqual(cases.slice(29,35).map(q=>q.id),bodies.map(q=>`foundry-${q}`));assert.deepEqual(cases.slice(38).map(q=>q.id),['wayfarer-iron-fists','wayfarer-active-robot','wayfarer-empowered-suit','wayfarer-ember-form','corridor-golem','shadow-clone','aether-orrery','dungeon-reciter','elder-wanderer']);
   assert.deepEqual(scenariosForLab('combat-assets').map(q=>q.id),['blade-spark-ashling','pike-spindle-hound','cleaver-bombard-crawler','blade-bombard-pallid-crawler','blade-hammerfall-brute','cleaver-sweep-marshal','cleaver-mirage-stalker','blade-orrery-sentinel','pike-blunder-caster','blade-arc-wave-wisp','fists-spindle-flying']);
+});
+
+test('nine visible-actor cases activate their production state without claiming native completion',()=>{
+  const make=(id)=>createLabFixture({lab:'creature-assets',scenario:id,seed,now:1000});
+  let f=make('wayfarer-iron-fists');assert.equal(f.game.fistsEquipped(),true);assert.equal(f.diagnostics.visibleActor.state.fistsEquipped,true);
+  f=make('wayfarer-active-robot');assert.equal(f.game.mechUp(),true);assert.equal(f.save.mech.empowered,undefined);
+  f=make('wayfarer-empowered-suit');assert.equal(f.game.mechUp(),true);assert.equal(f.save.mech.empowered,true);assert.equal(f.diagnostics.visibleActor.state.expectedEmpowered,true);
+  f=make('wayfarer-ember-form');assert.equal(f.save.magicSkills.active.id,'ember-form');assert.ok(f.save.magicSkills.active.remaining>0);
+  f=make('corridor-golem');assert.ok(f.game.golem);assert.equal(f.diagnostics.visibleActor.state.tool,'Hammerfall');assert.equal(f.diagnostics.visibleActor.state.field,true);
+  f=make('shadow-clone');assert.equal(f.game.shadowCloneActive(1000),true);assert.equal(f.diagnostics.visibleActor.state.spell,'shadow-clone');
+  f=make('aether-orrery');assert.equal(f.game.isOrrery(),true);assert.ok(f.game.projectiles.some(q=>q.orrery));
+  f=make('dungeon-reciter');assert.ok(f.game.map.objects.some(q=>q.id===f.diagnostics.visibleActor.state.objectId&&q.reciter));assert.equal(f.diagnostics.visibleActor.state.walkState,true);
+  f=make('elder-wanderer');assert.ok(f.game.map.objects.some(q=>q.id===f.diagnostics.visibleActor.state.objectId&&q.elder));assert.equal(f.diagnostics.visibleActor.state.walkState,true);
+  for(const id of scenariosForLab('creature-assets').slice(38).map(q=>q.id)){const q=make(id);assert.match(q.diagnostics.visibleActor.resolvedSource,/^production:/);assert.match(q.diagnostics.visibleActor.capability,/native completion not claimed/);assert.equal(teleportTargets(q)[0].id,'gallery-start');}
 });
 
 test('all 29 roster witnesses use production constructors and report actual resolved state without claiming completion',()=>{
@@ -32,4 +46,13 @@ test('creature gallery preserves generated grand-hall geometry, deterministic la
   const a=createLabFixture({lab:'creature-assets',scenario:'foundry-tentacled',seed,now:1000}),b=createLabFixture({lab:'creature-assets',scenario:'foundry-tentacled',seed,now:1000}),source=createLabFixture({lab:'close-view',scenario:'grand-hall',seed,now:1000});assert.deepEqual(a.diagnostics.placement,b.diagnostics.placement);
   const geometry=({game})=>({id:game.map.id,width:game.map.width,height:game.map.height,hall:game.map.hall,tiles:game.map.tiles,objects:game.map.objects,enemySpawns:game.map.enemySpawns});assert.deepEqual(geometry(a),geometry(source));assert.ok(a.game.map.tiles.some(q=>q.blocked)&&a.game.map.tiles.some(q=>!q.blocked));const{player,foe}=a.diagnostics.placement;assert.equal(player.elev,foe.elev);assert.equal(Math.hypot(player.x-foe.x,player.y-foe.y),5);
   const production=freshSave();production.name='Production canary';production.seed='DO-NOT-TOUCH';const before=JSON.stringify(production);a.save.currency=999999;a.game.enemies[0].hp=0;assert.equal(JSON.stringify(production),before);assert.notEqual(b.save.currency,a.save.currency);assert.ok(b.game.enemies[0].hp>0);assert.equal(a.save.name,'Proving Ground Wayfarer');
+});
+
+
+test('timed visible-actor fixtures use the supplied long-running browser clock',()=>{
+ for(const now of [100000,1000000]){
+  const clone=createLabFixture({lab:'creature-assets',scenario:'shadow-clone',seed,now});assert.equal(clone.game.shadowCloneActive(now),true);assert.ok(clone.game.shadowClone.until>now);
+  const golem=createLabFixture({lab:'creature-assets',scenario:'corridor-golem',seed,now});assert.ok(golem.game.golem.start>now&&golem.game.golem.start<now+1000,"the existing rise delay is anchored after the fixture clock");
+  const ember=createLabFixture({lab:'creature-assets',scenario:'wayfarer-ember-form',seed,now});assert.equal(ember.game.save.magicSkills.active.id,'ember-form');assert.ok(ember.game.save.magicSkills.active.remaining>0);
+ }
 });

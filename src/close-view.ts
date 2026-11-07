@@ -897,7 +897,21 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // dyL), so a trap mark or a telegraph lies exactly where the floor under it is.
   const Tx = Math.round(W / 2 - p.x * s), Ty = Math.round(H / 2 - p.y * s), gox = Math.round(Tx * ts) - Tx * ts, goy = Math.round(Ty * ts) - Ty * ts, dxL = (Tx - (W / 2 - p.x * s)) * ts, dyL = (Ty - (H / 2 - p.y * s)) * ts;
   gc.setTransform(ts, 0, 0, ts, gox, goy); gc.imageSmoothingEnabled = false; captured = null; capturedPlayer = null; capturing = true; bareFloor = useGL;
-  try { baseRender(gc, g, W, H, now); for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = false; }
+  try { baseRender(gc, g, W, H, now);
+    if (shots) {
+      shots.now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+      // Effect producers hand over exact source references and body-only closures. Even a cap-overflow body
+      // keeps its captured sprite; suppression does not depend on guessing the later native admission result.
+      const auxiliarySeen=glSeen(g.map);
+      shots.captureActor = (spec) => {
+        if (!spec?.source || !Number.isFinite(spec.x) || !Number.isFinite(spec.y) || typeof spec.draw !== 'function' || typeof spec.sample !== 'function') return false;
+        if(auxiliarySeen&&!auxiliarySeen(spec.x,spec.y))return true;
+        captured.push({ x:spec.x-.5,y:spec.y-.82,lift:spec.lift||0,nativeAux:spec,nativeHeight:spec.height||1.8,nativeEffects:!!spec.decorate,
+          nativeDecorations:spec.decorate?()=>spec.decorate(gc,s):null,fn:()=>spec.draw(gc,s) });
+        return true;
+      };
+    }
+    for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick;
@@ -1062,7 +1076,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i])) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
     const q = project(bxw, byw, interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, bxw, byw - .07) + closeViewActorLift(d) : 0); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
-    if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - (d.enemy ? nativeBoardTop(d.enemy, sc) : A.height * sc) * k > h || q.sy + A.below * k < 0) continue;
+    if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
     boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : Math.max(0, 1 - A.fade * (1 - lit)) * (1 - fog); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
@@ -1166,7 +1180,7 @@ let matched = null; // the creature scaleFor last matched (or null): boardFoe ke
 function scaleFor(g, d) { // the exact captured creature, including colocated illusions, supplies its sprite box
   matched = d.enemy || null;
   if (matched) return Math.min(CLOSE_VIEW.actors.maxSprite * 2.5, actorScale(matched));
-  return CLOSE_VIEW.actors.sprite;
+  return d.nativeAux?.spriteScale || CLOSE_VIEW.actors.sprite;
 }
 // The Wayfarer's facing as the camera sees it: walking away from the camera shows their back ("up").
 const FACING_VEC = Object.freeze({ up: Object.freeze([0, -1]), down: Object.freeze([0, 1]), left: Object.freeze([-1, 0]), right: Object.freeze([1, 0]) });
@@ -1225,9 +1239,9 @@ function relativeFacing(p) {
 // The atlas is a band of the ground canvas below its texture (the captured closures can only draw into the canvas they were
 // captured with), so the texture is copied once a frame when the atlas is first written, not once per actor.
 const SPRITES = { used: 0 };
-function nativeBoardTop(foe, scale) {
+function nativeBoardTop(foe, scale, height = 0) {
   const p = actorPresentation(foe);
-  return Math.max(CLOSE_VIEW.actors.height * scale, p ? p.head + .95 * p.scale : 0);
+  return Math.max(CLOSE_VIEW.actors.height * scale, height, p ? p.head + .95 * p.scale : 0);
 }
 function packBillboards(g, draws, n, s, facing, native = null) {
   const A = CLOSE_VIEW.actors, ac = GROUND.ctx; if (!ac) return false;
@@ -1237,7 +1251,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     const d = draws[itemRef[it]], nativeBody = native?.has(it), foe = boardFoe[it];
     const residual = nativeBody && typeof d.nativeDecorations === 'function' && (d.nativeEffects || foe?.fracRank === 'rare' && foe.packName || foe?.fracWarden || foe?.warded || foe?.affixes?.length || foe?.poiseBreak > 0 || foe?.pack?.phase === 'stunned');
     if (nativeBody && !residual) { boardPW[it] = 0; continue; }
-    const sc = boardScale[it], k = boardK[it], hw = A.halfWidth * sc, top = nativeBody ? nativeBoardTop(foe, sc) : A.height * sc, bw = 2 * hw, bh = top + A.below;
+    const sc = boardScale[it], k = boardK[it], hw = A.halfWidth * sc, top = nativeBody ? nativeBoardTop(foe, sc, d.nativeHeight) : Math.max(A.height * sc,d.nativeHeight||0), bw = 2 * hw, bh = top + A.below;
     let q = k * spriteDpr / s; q = Math.min(q, (AW - 2) / (bw * s), (AH * (first && closeViewStats.gl ? CLOSE_VIEW.atmosphere.sprite.nearShare : 1 / 3)) / (bh * s)); first = false; // version 5: the nearest (the Wayfarer, mostly) may take more // a third of the atlas at most: room for every actor in view
     let pw = Math.ceil(bw * s * q), ph = Math.ceil(bh * s * q);
     if (x + pw > AW) { x = 0; y += rowH; rowH = 0; }
@@ -1248,7 +1262,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     // place jumped a whole world pixel at a time inside its card, which the close camera magnifies to two or three screen
     // pixels: every walker juddered. Now it is drawn at its place snapped to that grid (so its pixels never move inside the
     // card) and the card itself is laid at its true place on screen, smoothly.
-    const p = g.player, wasFacing = p.facing, player = d === capturedPlayer, who = player ? p : boardFoe[it], wx = who ? who.x : d.x, wy = who ? who.y : d.y, snx = Math.round(wx * s) / s, sny = Math.round(wy * s) / s;
+    const p = g.player, wasFacing = p.facing, player = d === capturedPlayer, who = player ? p : boardFoe[it] || d.object, wx = who ? who.x : d.x, wy = who ? who.y : d.y, snx = Math.round(wx * s) / s, sny = Math.round(wy * s) / s;
     const sx0 = (snx + .5 - hw) * s, sy0 = (sny + .82 - top) * s; ac.setTransform(q, 0, 0, q, x - sx0 * q, Y0 + y - sy0 * q); // the closures draw in raw world pixels
     if (who) { who.x = snx; who.y = sny; } if (player) p.facing = facing;
     if (d.lift && !interiorTerrain(g.map)) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1) ac.globalAlpha = d.alpha;
@@ -1340,7 +1354,7 @@ function flatPass(g, draws, gc, s, ts, gox, goy, Tx, Ty) {
   const objs = g.map?.objects || []; FLAT.n = draws.length; let drawn = 0;
   for (let i = 0; i < draws.length; i++) { FLAT.mark[i] = 0; const d = draws[i]; if (d === capturedPlayer || !Number.isFinite(d?.x) || typeof d.fn !== "function") continue;
     let hit = null; for (let j = 0; j < objs.length; j++) { const o = objs[j]; if (o.x === d.x && o.y === d.y) { hit = o; break; } }
-    if (d.enemy || !flatObject(hit)) continue;
+    if (d.enemy || d.nativeAux || !flatObject(hit)) continue;
     FLAT.mark[i] = 1; gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty); if ((d.alpha ?? 1) < 1) gc.globalAlpha = d.alpha; try { d.fn(); } finally { gc.restore(); } drawn++; }
   closeViewStats.flat = drawn;
 }
@@ -1937,11 +1951,24 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
     const it = order[oi];
     if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer) {
-      // The source closure also owns the attached drone; retain it until that auxiliary body is captured separately.
-      if (g.droneUp?.() && g.droneAt) { closeViewGLStats.modelFallbacks["player-drone"] = 1; break; }
       admit(it, player, "player"); break;
     }
   }
+  const admitAux = (it, d) => {
+    const spec=d.nativeAux,a=spec.sample(now,reduce); if(!a||!modelSupported(a.kind))return;
+    const x=Number.isFinite(a.x)?a.x:boardWX[it],y=Number.isFinite(a.y)?a.y:boardWY[it],source=spec.source;
+    if(!Number.isFinite(x)||!Number.isFinite(y))return;
+    let track=state.tracks.get(source); if(!track)track={x,y,yaw:Number.isFinite(a.yaw)?a.yaw:CAM.yaw,phase:0,at:now};
+    const dx=x-track.x,dy=y-track.y,dist=Math.hypot(dx,dy),elapsed=Math.max(0,Math.min(.1,(now-track.at)/1000));
+    if(dist>.002&&dist<3){track.phase=(track.phase+dist*MODEL_TIMING.walkRadians)%(Math.PI*2);track.yaw=Math.atan2(dy,dx);}
+    const pace=elapsed>0&&dist<3?Math.min(1,dist/elapsed/MODEL_TIMING.strideSpeed):0;
+    const actor={x,y,z:interiorSurfaceHeight(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
+      phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
+      z:interiorSurfaceHeight(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it]))};
+    if(!append(actor))return;Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
+    closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
+  };
+  closeViewGLStats.auxModels=0;closeViewGLStats.auxKinds=Object.create(null);
   const locked = g.lockedTarget?.();
   // Admission is an effect/action coverage contract, not a growing kind whitelist.
   const canModel = (it, foe) => {
@@ -1957,7 +1984,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   }
   for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
     const it = order[oi], foe = boardFoe[it];
-    if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
+    const d=draws[itemRef[it]];
+    if(itemKind[it]===1&&d?.nativeAux)admitAux(it,d);
+    else if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
   }
   for (const [who, track] of state.tracks) {
     if (who.dead && who.hp <= 0 && !who.noRewards) {
@@ -2035,16 +2064,16 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : interiorSurfaceHeight(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
   const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
-    const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = MODEL_STATE.admitted.has(it) ? nativeBoardTop(foe, sc) : A.height * sc, X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
+    const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = MODEL_STATE.admitted.has(it) ? nativeBoardTop(foe, sc, draws[itemRef[it]].nativeHeight) : Math.max(A.height * sc,draws[itemRef[it]].nativeHeight||0), X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
     const draw = draws[itemRef[it]];
     boardBase = interiorTerrain(g.map)
-      ? interiorSurfaceHeight(g.map, X, Y - .07) + closeViewActorLift(draw, MODEL_STATE.admitted.has(it))
+      ? interiorSurfaceHeight(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07)) + closeViewActorLift(draw, MODEL_STATE.admitted.has(it))
       : 0;
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const residual = MODEL_STATE.admitted.has(it);
     const statusAlpha = residual && foe ? actorPresentation(foe)?.alpha ?? 1 : 1;
     const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
-    if (boardPW[it]) { const lx = X - RX * hw, ly = Y - RY * hw, rxp = X + RX * hw, ryp = Y + RY * hw, zb = -A.below;
+    if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front,lx = bx - RX * hw, ly = by - RY * hw, rxp = bx + RX * hw, ryp = by + RY * hw, zb = -A.below;
     BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
     if (foe || isPlayer) { if (MODEL_STATE.admitted.has(it)) shadow(X, Y, sc, statusAlpha); const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * statusAlpha, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
