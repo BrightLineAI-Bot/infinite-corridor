@@ -8,8 +8,8 @@
 // artifact refuses a laboratory graph that does) and nothing in this module names a production storage key, so nothing the
 // player does in the Proving Ground can reach a production journey. Exit to game opens the production page, which loads the
 // journey it flushed, untouched.
-import { Game } from "./game.js?v=r801-78cd78796baf";
-import { migrateSave } from "./types.js?v=r801-78cd78796baf";
+import { Game } from "./game.js?v=r805-9122ca315766";
+import { migrateSave } from "./types.js?v=r805-9122ca315766";
 
 export const PROVING_GROUND_HANDOFF = Object.freeze({
   namespace: "ic-proving-ground-scratch-v1", // the Proving Ground's storage namespace (proving-ground-mobile.ts resets it)

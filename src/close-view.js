@@ -1,11 +1,11 @@
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, writeCloseViewModel } from "./close-view-models.js?v=r801-78cd78796baf";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r801-78cd78796baf";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r801-78cd78796baf";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r801-78cd78796baf";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r801-78cd78796baf";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r801-78cd78796baf";
-import { SIGIL_CELLS } from "./watcher.js?v=r801-78cd78796baf";
-import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r801-78cd78796baf"; // version 4: the GPU scene
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, writeCloseViewModel } from "./close-view-models.js?v=r805-9122ca315766";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r805-9122ca315766";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r805-9122ca315766";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r805-9122ca315766";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r805-9122ca315766";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r805-9122ca315766";
+import { SIGIL_CELLS } from "./watcher.js?v=r805-9122ca315766";
+import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r805-9122ca315766"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -214,7 +214,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r801-78cd78796baf's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r805-9122ca315766's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -361,7 +361,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r801-78cd78796baf's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r805-9122ca315766's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -424,7 +424,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r801-78cd78796baf's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r805-9122ca315766's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 
@@ -795,7 +795,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r801-78cd78796baf's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r805-9122ca315766's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (!CAM.valid) return null; const b = (x - CAM.ppx) / CAM.F, a = (CAM.ppy - y) / CAM.F, dz = -CAM.sinP + a * CAM.cosP; if (!(dz < -1e-6)) return null;
@@ -1365,6 +1365,7 @@ function buildStatic(map, geo, th) {
     };
     return { rect, path };
   };
+  const ceilingArt = [];
   const sigilColors = SIGIL_COLORS;
   let inlay = SIGIL_INLAY;
   const glyph = (surface, colors = sigilColors, depth = .012) => {
@@ -1386,6 +1387,7 @@ function buildStatic(map, geo, th) {
     if (ceiling ? !map.hall || map.hall.open : !normal) continue;
     const [nx, ny] = normal || [0, 0], wallSpan = nx ? Math.min(y - 1, h - 1 - y) : Math.min(x - 1, w - 1 - x);
     const width = ceiling ? m.scale * .94 : Math.min(m.scale * .94, wallSpan * 2), height = ceiling ? width * .7 : 1.36;
+    if (ceiling) ceilingArt.push([x - width / 2, y - height / 2, x + width / 2, y + height / 2]);
     const face = paint(x + nx * .52, y + ny * .52, ceiling ? H - .027 : 1.47, nx, ny, width, height);
     const depth = ceiling ? -.014 : .014;
     face.rect(0, 0, .5, .5, middle);
@@ -1538,6 +1540,58 @@ function buildStatic(map, geo, th) {
     const seg = round ? 9 : 1, P = (k, end) => { const th2 = Math.PI * (1 - k / seg), u = round ? .5 + .5 * Math.cos(th2) : k / seg, z = round ? A.spring + A.radius * Math.sin(th2) : A.spring, [ax, ay, bx, by] = ends[end]; return [ax + (bx - ax) * (end ? 1 - u : u), ay + (by - ay) * (end ? 1 - u : u), z, u]; };
     for (let k = 0; k < seg; k++) { const a = P(k, 0), b = P(k + 1, 0), c2 = P(k + 1, 1), d2 = P(k, 1);
       for (const q of [a, b, c2, a, c2, d2]) V(q[0], q[1], q[2], 0, q[3], q[2], H, 0, 0, 5, stoneMat, acol, 0, 0, 0, hsh, x, y); } }
+  // Tile-sized beam sections use the same discovery mask as their ceiling plane. At a
+  // crossing the short sections butt against the long one and share no bottom faces.
+  if (!map.hall?.open) {
+    const { data: mask } = closeViewMask(map);
+    const covered = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, flags = mask[i * 4];
+      if ((flags & 5) !== 1 || tiles[i]?.blocked || arch[i] || tiles[i]?.doorway) continue;
+      if (ceilingArt.some(([left, top, right, bottom]) => x < right && x + 1 > left && y < bottom && y + 1 > top)) continue;
+      covered[i] = 1;
+    }
+    const { kind, bay, rib } = th.ceiling;
+    const spacing = map.hall ? HALL_VIEW.ceilingBay : bay, half = rib;
+    const beamZ = H - .105, color = tg.ceil.map((v) => v * 1.25);
+    const hasRoof = (x, y) => x >= 0 && y >= 0 && x < w && y < h && covered[y * w + x];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!hasRoof(x, y)) continue;
+      const acrossX = y % spacing === 0, acrossY = x % spacing === 0 && (kind === 0 || kind === 3);
+      if (!acrossX && !acrossY) continue;
+      const left = x + .5 - half, right = x + .5 + half, top = y + .5 - half, bottom = y + .5 + half;
+      const side = (x0, y0, x1, y1, nx, ny) => quad(x0, y0, x1, y1, beamZ, H,
+        ny ? x0 : y0, ny ? x1 : y1, nx, ny, 10, kind, color, 0, 0, 0, 0, x, y);
+      const underside = (x0, y0, x1, y1) => flat(x0, y0, x1, y0, x1, y1, x0, y1, beamZ, 10.25, kind, color, 0, x, y);
+      if (acrossX) {
+        underside(x, top, x + 1, bottom);
+        if (acrossY) {
+          side(x, top, left, top, 0, -1);
+          side(right, top, x + 1, top, 0, -1);
+          side(x, bottom, left, bottom, 0, 1);
+          side(right, bottom, x + 1, bottom, 0, 1);
+        } else {
+          side(x, top, x + 1, top, 0, -1);
+          side(x, bottom, x + 1, bottom, 0, 1);
+        }
+        if (!hasRoof(x - 1, y)) side(x, top, x, bottom, -1, 0);
+        if (!hasRoof(x + 1, y)) side(x + 1, top, x + 1, bottom, 1, 0);
+      }
+      if (acrossY) {
+        const section = (start, end) => {
+          underside(left, start, right, end);
+          side(left, start, left, end, -1, 0);
+          side(right, start, right, end, 1, 0);
+        };
+        if (acrossX) {
+          section(y, top);
+          section(bottom, y + 1);
+        } else section(y, y + 1);
+        if (!hasRoof(x, y - 1)) side(left, y, right, y, 0, -1);
+        if (!hasRoof(x, y + 1)) side(left, y + 1, right, y + 1, 0, 1);
+      }
+    }
+  }
   return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
 }
 // How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.
@@ -1872,9 +1926,8 @@ export function mountCloseViewControls(getGame, host = globalThis) {
     if (t - downAt < K.tapMs && moved < K.tapMove) { if (t - lastTap < K.doubleTapMs) { const g = getGame(); if (g) closeViewRecentre(g, t); lastTap = -1e9; } else lastTap = t; } else CAM.panAt = t; };
   for (const el of [hit, outer]) { el.addEventListener("pointerdown", down(el)); el.addEventListener("pointermove", drag); el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", (e) => { if (e.pointerId === id) end(e); }); }
   // Drag anywhere (CLOSE_VIEW.drag, the default control): a press on the open screen (the game canvas: a press on any button
-  // never reaches it) right of `side` turns the view until it lifts. It is taken before the movement stick sees it (a capturing
-  // listener on the canvas stops it there), so the stick never takes the right thumb, and a left thumb on the stick is untouched:
-  // moving and looking at once. A press that hardly moves is handed on as the world tap it would have been.
+  // never reaches it) outside the joystick turns the view until it lifts. The joystick owns only touches that start within
+  // its visible circle. In crescent mode, other canvas touches can tap the world or slide without moving the Wayfarer.
   const canvas = doc.getElementById?.("game"), D = CLOSE_VIEW.drag, QT = CLOSE_VIEW.quickTurn; let dragId = null, dragX = 0, dragY = 0, dragAt = 0, dragMoved = 0, dragDown = 0, dragX0 = 0, dragY0 = 0, strokeX = 0, strokeY = 0, strokeAt = 0;
   // the quick turnaround: a stroke down the screen (it restarts whenever the finger goes up again), with the stick held back
   const stroke = (g, x, y, t, dy) => { if (dy < 0 || strokeAt < 0) { strokeX = x; strokeY = y; strokeAt = t; return false; }
@@ -1886,17 +1939,23 @@ export function mountCloseViewControls(getGame, host = globalThis) {
     canvas.addEventListener("pointerdown", (e) => {
       if (!shown) return;
       const split = (host.innerWidth || canvas.clientWidth || 0) * D.side;
-      if (e.clientX < split) {
-        if (e.pointerType === "touch" && moveId === null) { moveId = e.pointerId; movePad.setAttribute("data-active", "true"); }
-        return;
-      }
-      if (mode !== "drag") return;
+      if (e.pointerType === "touch") {
+        const pad = movePad.getBoundingClientRect();
+        const radius = Math.min(pad.width, pad.height) / 2;
+        const inside = radius > 0 && Math.hypot(e.clientX - pad.left - pad.width / 2, e.clientY - pad.top - pad.height / 2) <= radius;
+        if (inside && moveId === null) {
+          moveId = e.pointerId;
+          movePad.setAttribute("data-active", "true");
+          return;
+        }
+        if (inside) { e.stopImmediatePropagation?.(); e.preventDefault?.(); return; }
+      } else if (e.clientX < split || mode !== "drag") return;
       e.stopImmediatePropagation?.(); e.preventDefault?.();
-      // The camera already owns a right-side touch. Keep any extra right touch out of the movement stick.
+      // A non-joystick touch never reaches movement, even when a camera gesture is already active.
       if (dragId !== null) return;
       dragId = e.pointerId; dragX = dragX0 = strokeX = e.clientX; dragY = dragY0 = strokeY = e.clientY; dragAt = dragDown = strokeAt = now(); dragMoved = 0; swipe = 0; try { canvas.setPointerCapture?.(dragId); } catch { /* a synthetic pointer has nothing to capture */ } }, { capture: true });
     canvas.addEventListener("pointermove", (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); const dx = e.clientX - dragX, dy = e.clientY - dragY, t = now(); dragX = e.clientX; dragY = e.clientY; dragMoved = Math.max(dragMoved, Math.hypot(e.clientX - dragX0, e.clientY - dragY0));
-      const g = getGame(); if (!g) return; const k = sens() * accelOf(Math.hypot(dx, dy), t - dragAt, D.accel, D.accelFrom, D.accelTo); dragAt = t;
+      const g = getGame(); if (!g || mode !== "drag") return; const k = sens() * accelOf(Math.hypot(dx, dy), t - dragAt, D.accel, D.accelFrom, D.accelTo); dragAt = t;
       if (stroke(g, e.clientX, e.clientY, t, dy) || closeViewTurning()) return; // the turnaround owns the view while it swings
       turn(g, dx * k * D.yaw / K.yaw, dy * k * D.pitch / K.pitch, t); }, { capture: true });
     const dragEnd = (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); dragId = null; const t = now(); flush(t);
