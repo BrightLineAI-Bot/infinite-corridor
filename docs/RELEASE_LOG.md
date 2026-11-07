@@ -15,16 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r804 on main, this PR takes r805.
+Taken at merge time: main's release + 1. Main is r805, so the next game release is r806.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 805 | Codex | `claude/close-view-ceiling` | Add themed textured ceiling structure | In flight. |
-| 804 | Codex | `claude/close-view-wayfarer` | Clarify the Wayfarer and add two themed enemy meshes | Merged (#451). Preview candidate r804-f24b47e94e6d. |
-| 803 | Codex | `claude/close-view-joystick` | Reserve Close View touch movement for the joystick | Merged (#450). Preview candidate r803-4ffd0f0980f5. |
-| 802 | Codex | `claude/close-view-decal-precision` | Correct packed Close View decal colors | Merged (#449). Previewed as r802-e5748abe9352. |
+| 805 | Codex | `claude/close-view-ceiling` | Add themed textured ceiling structure | Merged (#452). Previewed as r805-9122ca315766. Published in r805. |
+| 804 | Codex | `claude/close-view-wayfarer` | Clarify the Wayfarer and add two themed enemy meshes | Merged (#451). Preview candidate r804-f24b47e94e6d. Published in r805. |
+| 803 | Codex | `claude/close-view-joystick` | Reserve Close View touch movement for the joystick | Merged (#450). Preview candidate r803-4ffd0f0980f5. Published in r805. |
+| 802 | Codex | `claude/close-view-decal-precision` | Correct packed Close View decal colors | Merged (#449). Previewed as r802-e5748abe9352. Published in r805. |
 | 801 | Codex | `claude/close-view-projectiles` | Improve shot, tool, and contact cues in Close View | Merged (#448). Previewed as r801-78cd78796baf. Published in r801. |
 | 800 | Codex | `claude/close-view-floor-inlays` | Stabilize floor murals and Watcher inlays in Close View | Merged (#447). Previewed as r800-6b6f53f18b96. Published in r801. |
 | 799 | Codex | `claude/close-view-touch` | Separate movement and camera touches in Close View | Merged (#446). Previewed as r799-088c959943b6. Published in r801. |
@@ -190,6 +190,7 @@ Taken at merge time: main's release + 1. With r804 on main, this PR takes r805.
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 805 | `r805-9122ca315766` | 2026-11-07 | Astra review (801→805): no blockers. Tim explicitly authorized Astra because Claude was unavailable. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42367463352). |
 | 801 | `r801-78cd78796baf` | 2026-11-06 | Fable review (796→801): no blockers |
 | 796 | `r796-817d6b861fd9` | 2026-11-06 | Close View atmosphere (#443) and Pentagon grand-hall map data (#442). |
 | 793 | `r793-e86fa19ff8f8` | 2026-11-06 | Fable review (792→793): no blockers. Close View v4 (#441). |
