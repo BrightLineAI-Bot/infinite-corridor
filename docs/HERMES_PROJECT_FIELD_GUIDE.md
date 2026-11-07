@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 815: authored creature silhouettes and shared visual anchors
+
+**CODE:** Five distinct native recipes cover Glass Mite, Spark Warden, Cinder Wisp, Veil Moth and Void Sentinel. Rounded hood/coat/limb geometry refines the Wayfarer. Shared data-only sockets anchor actual body and Drone Swarm projectiles; captures retain exact actor references, native decorations and bounded world-space drones. Explicit scalar alpha supports consistent ordered coverage in both existing model passes. The Creature Asset Lab provides38 production-constructor witnesses.
+
+**BOUNDARY:** Schema14, pinned generation, XY collision/hit rules, active actor caps8/14/20, 256-triangle ceiling and existing two model passes remain fixed. Vertex stride grows9→10 floats for explicit alpha; physical-phone cost is unmeasured. The lab proves deterministic setup, not natural building eligibility for Foundry cases or visual completion of the full roster. Source/full regressions pass aside from the known Windows fixture issue; hosted visual gates remain separate.
+
 ## Release 814: truthful player attack presentation
 
 **CODE:** Accepted attacks record an additive schema-14 presentation profile, duration and committed aim, normalized in freshSave/migrateSave and at Game import/export. Existing attackUntil remains the sole clock. Native bodies distinguish tool poses, knockdown, poison and bounded fire cues; tapered limbs soften the Wayfarer silhouette.
