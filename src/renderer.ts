@@ -674,7 +674,7 @@ function drawMosasaur(ctx, e, cx, cy, s, now, colors) {
   const L = s * (e.scale || 3) * 1.15, T = now / 1000, n = 14, phase = e.sea?.phase, striking = phase === "strike";
   const gape = striking ? .55 : phase === "telegraph" ? .32 + .08 * Math.sin(now / 70) : .05 + .03 * Math.sin(T * 1.3);
   const flash = e.hitFlash > 0, back = flash ? "#f3d2b0" : colors[1], hide = flash ? "#f8e0c0" : colors[0], belly = colors[2];
-  const ox = cx - (e.x + .5) * s, oy = cy - (e.y + .72) * s; // tile â†’ screen offset, so the spine sits where the creature is drawn
+  const ox = cx - (e.x + .5) * s, oy = cy - (e.y + .72) * s; // tile → screen offset, so the spine sits where the creature is drawn
   const spine = mosasaurSpine(e, L / s, n).map(([x, y]) => [(x + .5) * s + ox, (y + .72) * s + oy]);
   // The kick: height above the water (px) at each joint, growing toward the tail; a small side sway as well.
   const rate = striking ? 9 : 3.4, P = spine.map(([x, y], i) => {
@@ -1270,7 +1270,7 @@ export function drawDigSpot(ctx, o, s, now) {
 // behind them... maybe you can see like a silhouette"): a giant forest tree, its trunk `height` tiles tall and its crown above.
 // The Wayfarer behind one is drawn again, faint (`ghost`), over it (giantTreeHides).
 export const GIANT_TREE = { height: 9, trunk: .36, crown: 2.3, sway: .06, ghost: .45 };
-// The crown's leaf masses [dx, dy, r (Ã— crown), colour]: drawn by drawGiantTree and tested by giantTreeHides (release 667).
+// The crown's leaf masses [dx, dy, r (× crown), colour]: drawn by drawGiantTree and tested by giantTreeHides (release 667).
 const GIANT_CROWN = [[-.55, .35, .75, "#1e3a24"], [.6, .4, .7, "#1e3a24"], [0, 0, 1, "#26482b"], [-.35, -.35, .7, "#2f5733"], [.4, -.3, .62, "#2f5733"], [0, -.62, .5, "#3a6a3c"]];
 // Release 679 (seasons.ts): the season of the woods this section belongs to, set each frame; null outside them.
 let SEASON = null;
@@ -1336,7 +1336,7 @@ export function drawStrange(ctx, o, s, kind, now) {
   for (let k = 0; k < 9; k++) { const p = ((T * .18 + k / 9) % 1), x = cx + Math.sin(T * .9 + k * 2.1) * s * .45, y = cy + s * .35 - p * s * 1.7, m = Math.max(2, s * .07); ctx.fillStyle = k % 3 ? `rgba(230,240,255,${(1 - p) * .95})` : `rgba(200,160,255,${(1 - p) * .95})`; ctx.fillRect(x, y, m, m); }
 }
 // The Rite of Ascendancy (ascendancy.ts): its dais is one of the strange trees (drawStrange); while the rite burns the tree is
-// on fire and burns down (o.burn 0 â†’ 1: darker, lower, the flames over it); done, a heap of grey ashes with embers in it.
+// on fire and burns down (o.burn 0 → 1: darker, lower, the flames over it); done, a heap of grey ashes with embers in it.
 function drawRiteTree(ctx, o, s, now) {
   const T = now / 1000, cx = (o.x + .5) * s, base = (o.y + .85) * s;
   if (o.kind === "riteAshes") {
@@ -1847,7 +1847,7 @@ function greatBlocks(ctx,o,s,p,map,view){
 }
 // The way down and the way out (Tim, 2026-11-03: "I'll get to the end and there'll be the way out versus the way down... and
 // it'll just take me out... I'm not sure which one I actually should go to... it should just be better marked"): over every
-// way down (an annex stair, the Deep's stair, a deep dungeon's stair down) a gold beam and "â–¼ WAY DOWN Â· FLOOR n"; over every
+// way down (an annex stair, the Deep's stair, a deep dungeon's stair down) a gold beam and "▼ WAY DOWN · FLOOR n"; over every
 // way out (a door out, the cleared return, the Ember Door) "WAY OUT" in red. When the way down is off the screen, an arrow at
 // the edge points to it.
 const WAY_DOWN = new Set(["annexStair", "deepStair"]);
@@ -1857,11 +1857,11 @@ export function wayKind(o, map) {
   return null;
 }
 export function wayLabel(o, map) { // the way's name (its interaction name carries it; nothing is written in the world)
-  if (o.kind === "annexStair") return `â–¼ WAY DOWN Â· FLOOR ${o.floor}`;
-  if (o.kind === "deepStair") return `â–¼ WAY DOWN Â· FLOOR ${(map.deepFloor || 1) + 1}`;
-  if (o.kind === "deepTransition") return `â–¼ WAY DOWN`;
-  if (o.kind === "emberDoor") return "WAY OUT Â· burns an ember";
-  return o.completionExit ? "WAY OUT Â· leave the dungeon" : "WAY OUT";
+  if (o.kind === "annexStair") return `▼ WAY DOWN · FLOOR ${o.floor}`;
+  if (o.kind === "deepStair") return `▼ WAY DOWN · FLOOR ${(map.deepFloor || 1) + 1}`;
+  if (o.kind === "deepTransition") return `▼ WAY DOWN`;
+  if (o.kind === "emberDoor") return "WAY OUT · burns an ember";
+  return o.completionExit ? "WAY OUT · leave the dungeon" : "WAY OUT";
 }
 function drawWayMarks(ctx, g, s, now) {
   const pulse = .5 + .5 * Math.sin(now / 380);
@@ -1872,8 +1872,8 @@ function drawWayMarks(ctx, g, s, now) {
     ctx.restore(); }
 }
 // Tim: "we shouldn't use [the red block] for the exit... a different sprite... stairs lead up or lead down... an upfacing chevron
-// on its head and a downfacing chevron on its head". A way's marker: a squat stone with a glowing chevron above it, â–¼ gold for
-// the way down, â–² green for a way up or out (amber for the Ember Door, which burns an ember).
+// on its head and a downfacing chevron on its head". A way's marker: a squat stone with a glowing chevron above it, ▼ gold for
+// the way down, ▲ green for a way up or out (amber for the Ember Door, which burns an ember).
 function drawWayMarker(ctx, o, s, now, dir, ember = false) {
   const cx = (o.x + .5) * s, base = (o.y + .92) * s, pulse = .5 + .5 * Math.sin(now / 360), col = dir === "down" ? [255, 226, 140] : ember ? [255, 170, 80] : [120, 230, 190];
   ctx.save(); ctx.fillStyle = "#00000060"; ctx.beginPath(); ctx.ellipse(cx, base, s * .36, s * .1, 0, 0, 7); ctx.fill();
@@ -2439,7 +2439,7 @@ export function render(ctx, g, w, h, now) {
             const f = o.facing || "down", step = o.state === "walking" ? Math.floor(now / 180) : 0, lift = o.mount ? .42 : 0;
             if (o.mount) actor(ctx, o.x, o.y + .05, s, o.mount, f, step, o.state === "walking" ? "walk" : "idle");
             actor(ctx, o.x, o.y - lift, s, o.look || "traveler", f, step, "idle");
-            if (o.wanderer) { const q = g.save.wanderer?.quest; ctx.fillStyle = !q || q.done ? "#f0d58a" : "#9cc8b5"; ctx.font = `bold ${Math.max(10, s * .32)}px monospace`; ctx.textAlign = "center"; ctx.fillText(!q || q.done ? "!" : "â€¦", (o.x + .5) * s, (o.y - lift - .25) * s); }
+            if (o.wanderer) { const q = g.save.wanderer?.quest; ctx.fillStyle = !q || q.done ? "#f0d58a" : "#9cc8b5"; ctx.font = `bold ${Math.max(10, s * .32)}px monospace`; ctx.textAlign = "center"; ctx.fillText(!q || q.done ? "!" : "…", (o.x + .5) * s, (o.y - lift - .25) * s); }
             if (o.folkGiant) ctx.restore();
           }
           else if (o.kind === "wandererCache") { if (o.state !== "used") { actor(ctx, o.x, o.y, s, "wandererCache", "down", 0, "idle"); } }
@@ -2465,7 +2465,7 @@ export function render(ctx, g, w, h, now) {
             ctx.font = "10px monospace";
             ctx.fillStyle = "#e2d5ba";
             ctx.fillText(
-              o.name + (n?.status === "dead" ? " â€ " : ""),
+              o.name + (n?.status === "dead" ? " †" : ""),
               cx,
               cy - 15,
             );
@@ -2547,7 +2547,7 @@ export function render(ctx, g, w, h, now) {
             if (e.affixes?.includes("droneSwarm")) for (let i = 0; i < AFFIXES.droneSwarm.count; i++) { const d = dronePos(e, i, tt), dx = d.x * s, dy = d.y * s; ctx.fillStyle = "#2b3a1e"; ctx.strokeStyle = AFFIXES.droneSwarm.color; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(dx, dy - s * .12); ctx.lineTo(dx + s * .12, dy); ctx.lineTo(dx, dy + s * .12); ctx.lineTo(dx - s * .12, dy); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#e9ffb0"; ctx.fillRect(dx - 1.5, dy - 1.5, 3, 3); }
             if (e.warded) { ctx.strokeStyle = `rgba(180,140,255,${.5 + .3 * Math.sin(now / 180)})`; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.arc(cx, cy, s * (.55 + (e.bodyRadius || .4) * .5), 0, 7); ctx.stroke(); }
             if (e.fracShaman) { ctx.strokeStyle = `rgba(190,120,255,${.55 + .35 * Math.sin(now / 140)})`; ctx.lineWidth = Math.max(2, s * .07); for (const k of [0, 1]) { const rr = s * (.8 + ((tt * .8 + k * .5) % 1) * .9); ctx.globalAlpha = 1 - ((tt * .8 + k * .5) % 1); ctx.beginPath(); ctx.ellipse(cx, (e.y + .82) * s, rr, rr * .45, 0, 0, 7); ctx.stroke(); } ctx.globalAlpha = .35; for (const m of g.enemies) if (!m.dead && m.wardBy === e.id && m.warded) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((m.x + .5) * s, (m.y + .45) * s); ctx.stroke(); } ctx.globalAlpha = 1; }
-            const names = affixNames(e); if (names.length) { ctx.font = `${Math.max(9, s * .24)}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffe2b0"; ctx.strokeStyle = "#000b"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s + ((e.packName && e.fracRank === "rare") || e.fracWarden ? s * .32 : 0); ctx.strokeText(names.join(" Â· "), cx, ty); ctx.fillText(names.join(" Â· "), cx, ty); }
+            const names = affixNames(e); if (names.length) { ctx.font = `${Math.max(9, s * .24)}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffe2b0"; ctx.strokeStyle = "#000b"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s + ((e.packName && e.fracRank === "rare") || e.fracWarden ? s * .32 : 0); ctx.strokeText(names.join(" · "), cx, ty); ctx.fillText(names.join(" · "), cx, ty); }
             ctx.restore(); }
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 && !["astralWorm","astralMirage"].includes(e.kind) ? 0.12 : 0,
@@ -2849,7 +2849,7 @@ export function render(ctx, g, w, h, now) {
   if (g.area === "dungeon" && g.map?.deepFloor) { const x = w - 16, y = h / 2, e = Math.min(6, g.save?.theDeep?.embers || 0); ctx.save(); // the Deep: its floor as a number in a purple badge, the Return Embers as dots under it (Tim: "an easy to identify number or... dots")
     ctx.fillStyle = "#2a1f38d0"; ctx.strokeStyle = "#c9a6ffaa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#efe0ff"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.fillText(String(g.map.deepFloor), x, y + 4);
     for (let i = 0; i < e; i++) { ctx.fillStyle = "#ffb35a"; ctx.beginPath(); ctx.arc(x - (e - 1) * 3.5 + i * 7, y + 19, 2.5, 0, Math.PI * 2); ctx.fill(); }
-    ctx.restore(); } // release 725: was the words "THE DEEP Â· FLOOR n" and the ember count
+    ctx.restore(); } // release 725: was the words "THE DEEP · FLOOR n" and the ember count
   if (g.area === "dungeon" && g.map?.annexFloor && !g.map.multiLevel) { const A = g.map.annexFloor, gap = 14, x = w - 12, y0 = h / 2 - (A.of - 1) * gap / 2; // release 675: a deep annex's floors
     ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (A.of - 1) * gap); ctx.stroke();
     for (let i = 0; i < A.of; i++) { const y = y0 + i * gap, here = i + 1 === A.floor; ctx.fillStyle = here ? "#ffe7a6" : i + 1 < A.floor ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } }
@@ -2930,7 +2930,7 @@ export function render(ctx, g, w, h, now) {
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),
     hasLevels = g.map?.landscape && (g.map._hasLevels ??= g.map.tiles.some((q) => (q.elev || 0) > 0)),
-    label = hasLevels ? `${place} Â· ${levelName(elevationAt(g.map, mw, g.player.x, g.player.y))}` : place;
+    label = hasLevels ? `${place} · ${levelName(elevationAt(g.map, mw, g.player.x, g.player.y))}` : place;
   ctx.fillStyle = "#151411ee";
   // Sits just beneath Map and Pack (release 183), aligned with them, never wider than the space before the next control.
   const labelY = h - (g.labelInset ?? 122), labelX = g.labelX ?? 8,
