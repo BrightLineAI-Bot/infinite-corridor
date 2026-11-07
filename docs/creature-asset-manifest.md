@@ -9,9 +9,19 @@ The additional requested scope is:
 1. Give every Close View-eligible creature a coherent native 3D presentation.
 2. Make the Wayfarer less blocky while preserving gameplay readability and the established character identity.
 
-PR 462 at candidate commit `cfc575fa` is the first attack/gallery candidate for this work. It is part of release 813 review and CI, not proof that the exhaustive roster below is complete. Finish and validate 813 before widening implementation.
+PR #462 merged as `dbbd7b6c6a51009fd78ce4ee94a9afd7d07c3c02`; its r813 Preview succeeded. It supplies real combat fixtures, not proof that the exhaustive roster below is complete. PR #463 follows with player presentation; the current branch adds the first five creature bodies and the complete roster inspection lab.
 
 No release number beyond 813 is reserved by this plan.
+
+## Implementation checkpoint — first five creature bodies
+
+Source checkpoint `7519ee42` implements Glass Mite (168 triangles), Spark Warden (196), Cinder Wisp (140), Veil Moth (120), and Void Sentinel (204). Each supports three 8-triangle drones under the existing 256-triangle per-actor limit. The Wayfarer has a rounded hood, shaped coat panels and tapered limbs (238 triangles with blade; tool maximum 240).
+
+Shared anchors place actual enemy and drone projectile effects without changing hit positions, speed, damage or collision. Source tests exercise native submission, colocated actors, status/phase alpha, real producer heights, pause and import order. These results establish implementation and regression coverage; hosted visual evidence is still required before marking any row Complete.
+
+The Creature Asset Lab supplies 38 production-backed witnesses: the 26 current interior kinds plus three validated Foundry fixture kinds, six admitted Foundry morphologies, and three decorated production states. It reports actual form/controller/palette data and uses an unchanged generated hall with a clear same-height lane. It is a scratch fixture, not completion evidence by itself.
+
+The model vertex stride grows from 9 to 10 floats to carry explicit scalar alpha. Actor caps (8/14/20), 256-triangle limit and existing two model passes remain fixed; this is a small per-vertex bandwidth increase, not a claim of zero rendering cost. Physical-phone performance remains unmeasured.
 
 ## Completion rule
 
@@ -25,7 +35,7 @@ A creature is **Complete** only when all of the following have direct evidence i
 
 An existing native body alone is not Complete. Any missing or unaudited column keeps the creature Pending.
 
-## Exhaustive 29-kind baseline
+## Baseline: 26 current interior species plus three Foundry fixture cases
 
 `Existing native` records the currently known body route. It does not imply completion. Pending entries deliberately avoid inventing unaudited behavior.
 
@@ -36,11 +46,11 @@ An existing native body alone is not Complete. Any missing or unaudited column k
 | rootBrute | Existing native | Existing heavy humanoid body; audit mass | Pending audit | Pending heavy-strike audit | Pending audit | Pending audit | 813 gallery candidate witness; full action and FX evidence pending |
 | coilStalker | Existing native | Existing stalker body; audit readable outline | Pending audit | Pending stalk/strike audit | Pending audit | Pending audit | 813 gallery candidate witness; fade/depth and action evidence pending |
 | hollowMarshal | Existing native | Existing armed humanoid body; audit diagonal readability | Pending audit | Pending melee-sequence audit | Pending weapon audit | Pending audit | 813 gallery candidate witness; action, attachment, and FX evidence pending |
-| glassMite | Existing native | Existing small crawler body; audit scale | Pending crawl audit | Pending attack audit | Pending audit | Pending audit | 813 gallery candidate witness; small-body legibility evidence pending |
-| sparkWarden | Pending | Pending audit | Pending audit | Pending audit | Pending audit | Pending audit | No complete Close View evidence recorded |
-| cinderWisp | Pending | Pending floating-body audit | Pending hover audit | Pending cast/projectile audit | Pending audit | Pending effect-origin audit | 813 gallery candidate witness; native-body and complete FX proof pending |
-| veilMoth | Existing native | Existing flying body; audit wing profile | Pending flight audit | Pending aerial-attack audit | Pending wing audit | Pending audit | 813 gallery candidate witness; flight, attachment, and FX evidence pending |
-| voidSentinel | Existing native | Existing sentinel body; audit scale and cover read | Pending audit | Pending ranged/melee audit | Pending audit | Pending audit | 813 gallery candidate witness; complete action and FX proof pending |
+| glassMite | Implemented; visual review pending | Authored native body, 168 triangles | Source motion regression passed | Actual ordinary attack clock covered | Three bounded drones plus authored defining parts | Producer anchors and native decoration regression passed | Creature Asset Lab witness ready; hosted visual gate remains |
+| sparkWarden | Implemented; visual review pending | Authored native body, 196 triangles | Source motion regression passed | Actual ordinary attack clock covered | Three bounded drones plus authored defining parts | Producer anchors and native decoration regression passed | Creature Asset Lab witness ready; hosted visual gate remains |
+| cinderWisp | Implemented; visual review pending | Authored native body, 140 triangles | Source motion regression passed | Actual ordinary attack clock covered | Three bounded drones plus authored defining parts | Producer anchors and native decoration regression passed | Creature Asset Lab witness ready; hosted visual gate remains |
+| veilMoth | Implemented; visual review pending | Authored native body, 120 triangles | Source motion regression passed | Actual ordinary attack clock covered | Three bounded drones plus authored defining parts | Producer anchors and native decoration regression passed | Creature Asset Lab witness ready; hosted visual gate remains |
+| voidSentinel | Implemented; visual review pending | Authored native body, 204 triangles | Source motion regression passed | Actual ordinary attack clock covered | Three bounded drones plus authored defining parts | Producer anchors and native decoration regression passed | Creature Asset Lab witness ready; hosted visual gate remains |
 | weepingSaint | Pending | Pending audit | Pending audit | Pending audit | Pending audit | Pending audit | No complete Close View evidence recorded |
 | hangedChoir | Pending | Pending audit | Pending audit | Pending audit | Pending audit | Pending audit | No complete Close View evidence recorded |
 | graveLantern | Pending | Pending audit | Pending audit | Pending audit | Pending audit | Pending audit | No complete Close View evidence recorded |
@@ -73,6 +83,12 @@ Foundry work must explicitly cover all six morphology families. A shared family 
 | Tentacled | Pending | Native core plus bounded tendril motion, attack pose, occlusion behavior, and FX origin |
 | Geometric | Pending | Native readable facets/planes, motion language, attack transition, and owned glow/projectile FX |
 | Biomechanical | Pending | Native organic/mechanical hierarchy, joint motion, attack pose, attachments, and owned FX |
+
+## Additional visible actor scope and route audit
+
+A later producer audit separates camera eligibility from an injected gallery witness. Current Close View requires dungeon `map.building`. Gate Revenant, domain manifestations, four elite classes and Foundry encounters have no demonstrated natural route into those building IDs; Foundry gallery cases validate presentation integration without claiming a natural interior encounter. Do not expand camera eligibility to manufacture coverage.
+
+Production-reachable presentation work still pending beyond enemy bodies: Iron Fists Wayfarer, deliberately activated robot/mech and Ember Form; Corridor Golem; Shadow Clone; Orrery orbiting/effect geometry; dungeon Reciters and Elder Wanderers. These remain explicit coverage tasks. Player special forms must activate only from real existing equipment/state, never automatically on entering Close View. NPCs retain labels, interactions and original identities; no lore rewrite is implied.
 
 ## Explicit boundaries and conditional coverage
 
