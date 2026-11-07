@@ -168,6 +168,15 @@ function closeViewFixture(scenario, seed, now) {
   Object.assign(save.session, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 }); Object.assign(save.position, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 });
   const game = new Game(save, now); game.installSystems();
   save.session.activeDungeonId = id; save.session.dungeonReturn = back; game.loadArea("dungeon", false);
+  if (spec.buildingFeature || spec.latestPentagon) {
+    const loadArea = game.loadArea.bind(game);
+    game.loadArea = (area, capture = true) => {
+      const result = loadArea(area, capture);
+      if (area === "dungeon") game.enemies = [];
+      return result;
+    };
+    game.enemies = [];
+  }
   let entry = game.map.entry || { x: 4, y: 5 };
   if ((spec.id === "grand-hall" || spec.id === "pit-gallery") && game.map.hall) {
     const { tiles, width, height } = game.map;

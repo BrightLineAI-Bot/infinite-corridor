@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 811 — New interior version 4 opens stair landing cells without altering older layouts; traversal-focused Close View labs stay quiet across reloads.
 - Release 810 — Fix heightfield actor projection in the full WebGL Close View frame and exercise all new traversal scenarios through the GPU scene path.
 - Release 809 — Keep the Close View character framed after wall-constrained camera movement, and accept near-ready action-button attacks with a short interruptible input buffer.
 - Release 808 — Larger version-pinned dungeon rooms and branching corridors, sloped indoor terrain, jumping platforms and ceiling-limited drone traversal; dedicated scratch labs preserve historical fixtures.

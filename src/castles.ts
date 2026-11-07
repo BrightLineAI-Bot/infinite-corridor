@@ -13,7 +13,7 @@
 // is a feint: its wing leads to its own sealed courtyard and back round. Everything is a hash of the seed and the corner, and a
 // castle stands only where all four sections are new ground (`atlas.castleVersion`) and none of their lanes reaches the corner.
 import { hashSeed } from "./random.ts";
-import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.ts";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.ts";
 
 export const CASTLES = {
   version: 3, // 3 (Tim, 2026-11-06; great-buildings.ts TOWER_SEAL): the keep's door is sealed until the Keep Key, which lies on the
@@ -154,7 +154,8 @@ export function castlePartPlan(base, V = 1) {
   for (const d of doors) d.inner = { x: d.x === 0 ? 1 : d.x === W - 1 ? W - 2 : d.x, y: d.y === 0 ? 1 : d.y === H - 1 ? H - 2 : d.y };
   const floors = []; let arrive = (doors.find((d) => d.floor === 1) || doors[0]).inner;
   for (let f = 1; f <= part.floors; f++) { const here = doors.filter((d) => d.floor === f), keepOpen = here.flatMap((d) => [{ x: d.x, y: d.y, v: 2 }, { ...d.inner, v: 2 }]);
-    const F = (V >= 3 ? layFloorV3 : layFloor)(base, f, W, H, S, arrive, keepOpen), top = f === part.floors, far = farthest(F, arrive, () => true), up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
+    const layout = V >= 4 ? layFloorV4 : V === 3 ? layFloorV3 : layFloor;
+    const F = layout(base, f, W, H, S, arrive, keepOpen), top = f === part.floors, far = farthest(F, arrive, () => true), up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];
     floors.push({ ...F, floor: f, arrive, up, top, far }); if (up) arrive = up; }
   for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H, V);
   const plan = { base, ...P, part, keep, W, H, doors, floors, sec, gate: { ...quarterSection(P.X, P.Y, T.a), ...L.quarters[T.a].outer.out }, name: keep ? CASTLES.names.keep : CASTLES.names.wings[q] };

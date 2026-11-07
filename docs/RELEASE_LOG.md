@@ -15,17 +15,18 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r809 on main, this PR takes r810.
+Taken at merge time: main's release + 1. With r810 on main, this PR takes r811.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 810 | Codex | `claude/close-view-terrain-render-fix` | Repair heightfield actor projection and exercise full GPU frames | In flight. |
-| 809 | Codex | `claude/close-view-control-feel` | Tight-space camera framing and near-ready attack input | Merged (#457). Preview candidate r809-9bae1bce42e2. Shares the heightfield render blocker found in r808; superseded by r810. |
-| 808 | Codex | `claude/vertical-dungeon-interiors` | Versioned spacious rooms, indoor ramps, jump platforms and drone traversal | Merged (#456). Preview artifact r808-ca55b4cd807c completed; hosted heightfield render blocker found, superseded by r810. |
-| 807 | Codex | `claude/close-view-action-animation` | Improve walking, cuts, casting, jump and enemy poses | Merged (#455). Previewed as r807-3228675c72d5. |
-| 806 | Codex | `claude/proving-ground-idle-frame` | Restore rendering after the lab launcher and journey handoff | Merged (#454). Previewed as r806-2ac648555b7a. |
+| 811 | Codex | `claude/close-view-collision-pass` | Open new stair landings with interior v4; quiet the four traversal labs | In flight. |
+| 810 | Codex | `claude/close-view-terrain-render-fix` | Repair heightfield actor projection and exercise full GPU frames | Merged (#458). Previewed and GPU-checked as r810-8ed20b74216b. Published in r810. Publish run 42388584029 succeeded; live identity and in-game System label verified. |
+| 809 | Codex | `claude/close-view-control-feel` | Tight-space camera framing and near-ready attack input | Merged (#457). Preview candidate r809-9bae1bce42e2. Shares the heightfield render blocker found in r808; superseded by r810. Published in r810. |
+| 808 | Codex | `claude/vertical-dungeon-interiors` | Versioned spacious rooms, indoor ramps, jump platforms and drone traversal | Merged (#456). Preview artifact r808-ca55b4cd807c completed; hosted heightfield render blocker found, superseded by r810. Published in r810. |
+| 807 | Codex | `claude/close-view-action-animation` | Improve walking, cuts, casting, jump and enemy poses | Merged (#455). Previewed as r807-3228675c72d5. Published in r810. |
+| 806 | Codex | `claude/proving-ground-idle-frame` | Restore rendering after the lab launcher and journey handoff | Merged (#454). Previewed as r806-2ac648555b7a. Published in r810. |
 | 805 | Codex | `claude/close-view-ceiling` | Add themed textured ceiling structure | Merged (#452). Previewed as r805-9122ca315766. Published in r805. |
 | 804 | Codex | `claude/close-view-wayfarer` | Clarify the Wayfarer and add two themed enemy meshes | Merged (#451). Preview candidate r804-f24b47e94e6d. Published in r805. |
 | 803 | Codex | `claude/close-view-joystick` | Reserve Close View touch movement for the joystick | Merged (#450). Preview candidate r803-4ffd0f0980f5. Published in r805. |
@@ -195,6 +196,7 @@ Taken at merge time: main's release + 1. With r809 on main, this PR takes r810.
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 810 | `r810-8ed20b74216b` | 2026-11-07 | Astra review (805→810): no blockers. Animation, versioned interiors/heightfields, indoor drone and control feel; full GPU terrain repair. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42388584029); live identity and in-game System label match. |
 | 805 | `r805-9122ca315766` | 2026-11-07 | Astra review (801→805): no blockers. Tim explicitly authorized Astra because Claude was unavailable. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42367463352). |
 | 801 | `r801-78cd78796baf` | 2026-11-06 | Fable review (796→801): no blockers |
 | 796 | `r796-817d6b861fd9` | 2026-11-06 | Close View atmosphere (#443) and Pentagon grand-hall map data (#442). |

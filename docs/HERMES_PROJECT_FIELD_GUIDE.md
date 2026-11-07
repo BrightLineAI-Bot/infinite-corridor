@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 811: open stair landings and quiet traversal labs
+
+**CODE:** Interior version 4 layers one repair over the unchanged version-3 room grammar: a blocked in-bounds arrival cell becomes ordinary floor before stair choices, holes, objects and terrain are placed. Great buildings, compound parts, castle parts and classic labyrinth room floors dispatch explicitly by their existing interior-version pin. New untouched groups select version 4; existing own/sibling pins retain their versions and per-part granularity.
+
+**CODE:** Only terrain-ramps, platform-chain, indoor-drone and terrain-pentagon clear runtime enemies in their scratch Game instances, including after dungeon reloads and transitions. Their production-generated tiles, objects and enemySpawns remain intact. Legacy theme and combat laboratories retain their actors. No kills or rewards are manufactured.
+
+**BOUNDARY:** Building/compound/castle/labyrinth versions 1–3 and Pentagon versions 1–9 retain their generator bytes. Pentagon v9 still calls the v3 grammar directly; room-maze, topology, terrain and save-schema versions are unchanged. Previously explored v3 wall-hosted ladders keep their adjacent Act interaction; their pinned tiles are not regenerated. Physical-phone frame rate remains unmeasured.
+
 ## Release 810: heightfield actor projection
 
 **CODE:** The full heightfield rendering path now samples each captured actor's actual foot position and adds its lift/jump data when projecting it onto the raised floor. The hosted r808 terrain lab exposed an out-of-scope actor-index reference that headless terrain fallback checks did not execute. Full GPU-scene regression coverage now exercises the new traversal scenarios, including both native and sprite actor paths.
