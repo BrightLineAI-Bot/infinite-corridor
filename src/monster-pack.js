@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r805-9122ca315766";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r810-8ed20b74216b";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,9 +8,9 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r805-9
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r805-9122ca315766";
-import { hashSeed, byHash } from "./random.js?v=r805-9122ca315766";
-import { updateAstralActor } from "./astral-worm.js?v=r805-9122ca315766";
+import { stageOneBeastReference } from "./stages.js?v=r810-8ed20b74216b";
+import { hashSeed, byHash } from "./random.js?v=r810-8ed20b74216b";
+import { updateAstralActor } from "./astral-worm.js?v=r810-8ed20b74216b";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -1193,6 +1193,9 @@ export const VOID = {
 const voidEffects = (w) => typeof w.effects === "function" ? w.effects() : (w.effects || []);
 const liveVoidOwner = (w, f) => w.enemies?.find((q) => q.id === f.owner && !q.dead && !q.retreating && !q.fleeTo);
 function voidAdd(w, e, effect) {
+  // Warned moving hazards must start outside Stillworks cover, before their arming delay.
+  const open = w.marineProjectileOpen || w.projectileOpen || w.tileOpen;
+  if (w.map?.stillworks?.cover && (effect.vx || effect.vy) && open && !open(effect.x + .5, effect.y + .5)) return null;
   // Do not evict another creature's warned strike to create a decoration or a new Walker hazard.
   const effects = voidEffects(w);
   if (effects.length >= PACK_EFFECT_CAP) { const spent = effects.findIndex((f) => f.kind === "debris" && f.medium === "water" && f.state === "splash"); if (spent >= 0) effects.splice(spent, 1); else return null; }

@@ -1,11 +1,14 @@
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, writeCloseViewModel } from "./close-view-models.js?v=r805-9122ca315766";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r805-9122ca315766";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r805-9122ca315766";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r805-9122ca315766";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r805-9122ca315766";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r805-9122ca315766";
-import { SIGIL_CELLS } from "./watcher.js?v=r805-9122ca315766";
-import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r805-9122ca315766"; // version 4: the GPU scene
+import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r810-8ed20b74216b";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r810-8ed20b74216b";
+import { ACTION_MOTION } from "./action-motion.js?v=r810-8ed20b74216b";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, writeCloseViewModel } from "./close-view-models.js?v=r810-8ed20b74216b";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r810-8ed20b74216b";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r810-8ed20b74216b";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r810-8ed20b74216b";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r810-8ed20b74216b";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r810-8ed20b74216b";
+import { SIGIL_CELLS } from "./watcher.js?v=r810-8ed20b74216b";
+import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r810-8ed20b74216b"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -58,6 +61,9 @@ export const CLOSE_VIEW = Object.freeze({
     // line clears before any wall can come between. `hardPad`: nearer a wall than this the camera is never put (cut at once;
     // it sits under the spring's target, so it is seldom reached). Nothing is ever faded to show the Wayfarer.
     sightStep: .1, sightPad: .26, hardPad: .14,
+    // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
+    // bound encloses the Wayfarer's .82-scale, 1.68-tile hood, including its walking bob.
+    framing: Object.freeze({ bodyHeight: 1.45, margin: .05, pitchMin: -1.2, pitchMax: 1.35 }),
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -214,7 +220,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r805-9122ca315766's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r810-8ed20b74216b's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -361,7 +367,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r805-9122ca315766's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r810-8ed20b74216b's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -381,7 +387,7 @@ const WALL_EXEMPT = /water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|
 // An interior: a building's, a keep's or a Pentagon's floor. Not the Pentagon's finale (the walk among the stars) nor its
 // arena: those are open to the sky. The Pentagon's courts, roof and balconies are tiles of its overworld section, so they keep
 // the ordinary view without asking.
-export function interiorMap(map) { return !!map?.building && !map.building.finale && !map.landscape && !map.stillworks && !map.skyCloud && !map.movers?.length && !map.canopy; }
+export function interiorMap(map) { return !!map?.building && !map.building.finale && (!map.landscape || (interiorTerrain(map) && map.tiles?.length <= 4096 && map.width <= 64 && map.height <= 64)) && !map.stillworks && !map.skyCloud && !map.movers?.length && !map.canopy; }
 // An open-air tile inside an interior's map (a keep's yard, a labyrinth court): the ordinary view there.
 const OPEN_AIR_KINDS = new Set(["yardGrass"]);
 export function openAirAt(map, x, y) { const w = Math.max(1, Number(map?.width) || 32), t = map?.tiles?.[Math.floor(y + .75) * w + Math.floor(x + .5)]; return !!t && (t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || OPEN_AIR_KINDS.has(t.kind)); }
@@ -424,7 +430,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r805-9122ca315766's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r810-8ed20b74216b's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 
@@ -450,7 +456,8 @@ function blockedSignature(tiles) { let n = 0; for (let i = 0; i < tiles.length; 
 export function wallGeometry(map) {
   const tiles = map.tiles, w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Number(map.height) || Math.floor(tiles.length / w)), now = Date.now();
   let geo = wallCache.get(map);
-  if (geo && geo.tiles === tiles && (now - geo.checked < 500 || (geo.checked = now, blockedSignature(tiles) === geo.sig))) return geo;
+  const terrainSig = interiorTerrainSignature(map);
+  if (geo && geo.tiles === tiles && geo.terrainSig === terrainSig && (now - geo.checked < 500 || (geo.checked = now, blockedSignature(tiles) === geo.sig))) return geo;
   closeViewStats.wallBuilds++;
   const list = [], at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : tiles[y * w + x]), solid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || isWall(at(x, y));
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = at(x, y); if (!isWall(t)) continue; const st = STYLE_INDEX[t.kind] ?? STYLE_INDEX.default, low = t.kind === "rubbleFloor" ? 1 : 0;
@@ -481,7 +488,7 @@ export function wallGeometry(map) {
     corner[i] = (goesOn(-dx, -dy) ? 0 : 1) | (goesOn(dx, dy) ? 0 : 2);
     const inside = (sx, sy) => { const qx = tx + sx + nx, qy = ty + sy + ny; return qx >= 0 && qy >= 0 && qx < w && qy < h && solid(qx, qy); };
     if (!faces[o + 9]) ao[i] = (inside(-dx, -dy) ? 1 : 0) | (inside(dx, dy) ? 2 : 0); }
-  geo = { tiles, w, h, faces, count: n, C, cw, ch, start, end: fill, index, sig: blockedSignature(tiles), checked: now, ghost: new Uint8Array(n), alpha: new Float32Array(n).fill(1), corner, ao, edges: null, ...wallDetail(map, faces, n) };
+  geo = { terrainSig, tiles, w, h, faces, count: n, C, cw, ch, start, end: fill, index, sig: blockedSignature(tiles), checked: now, ghost: new Uint8Array(n), alpha: new Float32Array(n).fill(1), corner, ao, edges: null, ...wallDetail(map, faces, n) };
   wallCache.set(map, geo); return geo;
 }
 
@@ -736,7 +743,7 @@ export function closeViewSteer(g, state) {
   CAM.sx = sx; CAM.sy = sy; state.x = rx * sx - fx * sy; state.y = ry * sx - fy * sy; CAM.steered = true; return true;
 }
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
-export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.dist, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, pitchUser: CAM.pitchUser, lockId: CAM.lockId, valid: CAM.valid, drawn: CAM.drawn }; }
+export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.dist, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
 export function resetCloseViewCamera() { CAM.map = null; CAM.valid = false; CAM.drawn = false; }
 globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats }; // read by the browser harness and the lab's console (diagnostics only)
@@ -785,22 +792,42 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   if (!closeViewShowing(g) || !CAM.valid || Math.abs(CAM.w - w) > 1 || Math.abs(CAM.h - h) > 1) return null;
   // a creature: the tap within `pick.pad` px of its drawn body; of several, the one whose body centre is nearest the finger
   const K = CLOSE_VIEW.pick; let best = null, bestD = Infinity;
-  for (const e of g.enemies || []) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const q = project(e.x + .5, e.y + .82, 0); if (!q || (q.sx - CAM.ppx) * 0 !== 0) continue;
+  for (const e of g.enemies || []) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const q = project(e.x + .5, e.y + .82, interiorSurfaceHeight(g.map, e.x + .5, e.y + .75)); if (!q || (q.sx - CAM.ppx) * 0 !== 0) continue;
     const sc = actorScale(e), k = CAM.F / q.depth, hw = K.bodyWidth * .5 * sc * k + K.pad, top = q.sy - K.bodyTop * sc * k - K.pad, bottom = q.sy + K.pad * .6, cy = q.sy - K.bodyTop * .5 * sc * k;
     if (x < q.sx - hw || x > q.sx + hw || y < top || y > bottom) continue;
     const d = Math.hypot(x - q.sx, y - cy); if (d < bestD) { best = e; bestD = d; } }
   if (best) return { x: best.x + .5, y: best.y + .4, enemyId: best.id };
+  if (interiorTerrain(g.map)) return terrainFloorRay(g.map, x, y) || { x: footX(g.player), y: footY(g.player) };
   let a = (CAM.ppy - y) / CAM.F; const horizon = CAM.sinP / CAM.cosP; if (a > horizon - .02) a = horizon - .02;
   const v = Math.min(CLOSE_VIEW.fog.far, CAM.hc * (CAM.cosP + a * CAM.sinP) / (CAM.sinP - a * CAM.cosP)), depth = v * CAM.cosP + CAM.hc * CAM.sinP, u = (x - CAM.ppx) * depth / CAM.F;
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r805-9122ca315766's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r810-8ed20b74216b's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
+  if (CAM.valid && interiorTerrain(CAM.map)) return terrainFloorRay(CAM.map, x, y);
   if (!CAM.valid) return null; const b = (x - CAM.ppx) / CAM.F, a = (CAM.ppy - y) / CAM.F, dz = -CAM.sinP + a * CAM.cosP; if (!(dz < -1e-6)) return null;
   const t = -CAM.hc / dz, dx = CAM.fx * (CAM.cosP + a * CAM.sinP) + CAM.rx * b, dy = CAM.fy * (CAM.cosP + a * CAM.sinP) + CAM.ry * b;
   return { x: CAM.cx + dx * t, y: CAM.cy + dy * t, depth: t };
+}
+// Bounded picking ray; binary refinement stays in the first intersected cell.
+// It can hit an uphill floor above the horizon and never selects through a wall.
+function terrainFloorRay(map, x, y) {
+  const b=(x-CAM.ppx)/CAM.F, a=(CAM.ppy-y)/CAM.F;
+  const dx=CAM.fx*(CAM.cosP+a*CAM.sinP)+CAM.rx*b, dy=CAM.fy*(CAM.cosP+a*CAM.sinP)+CAM.ry*b, dz=-CAM.sinP+a*CAM.cosP;
+  const point=(t)=>({x:CAM.cx+dx*t,y:CAM.cy+dy*t,z:CAM.hc+dz*t});
+  let previous=0;
+  for(let i=1;i<=640;i++) {
+    const t=i*.025, p=point(t); if(wallAt(map,p.x,p.y)) return null;
+    if(p.z<=interiorSurfaceHeight(map,p.x,p.y)) {
+      let lo=previous,hi=t;
+      for(let k=0;k<14;k++){const mid=(lo+hi)*.5,q=point(mid);if(q.z>interiorSurfaceHeight(map,q.x,q.y))lo=mid;else hi=mid;}
+      const q=point(hi); return {x:q.x,y:q.y,depth:hi};
+    }
+    previous=t;
+  }
+  return null;
 }
 export function closeViewProject(X, Y, Z = 0) { const q = CAM.valid ? project(X, Y, Z) : null; return q ? { sx: q.sx, sy: q.sy, depth: q.depth } : null; }
 // Where world (0, 0) lies in the ground texture, in device pixels, for the Wayfarer at (px, py), a texture W CSS px wide at scale
@@ -851,6 +878,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
   // version 4: the GPU scene when it can be had (close-view-gl.ts); else the 2D view of version 3
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
+  if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
+  if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
   const shots = useGL ? selectProjectedShots(g, Q) : null;
   // 1. the ground, drawn by the ordinary renderer into the texture, its actors captured.
   // Version 4: the texture is anchored to the world. The renderer puts world (0, 0) at a whole CSS pixel (Tx, Ty); at a
@@ -885,12 +914,12 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // wall is cut at once, the only snap there is
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && wallAt(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
-  if (useGL) { const cap = archCapAt(g.map, CAM.cx, CAM.cy); if (CAM.crane > cap) { CAM.crane = cap; CAM.craneV = 0; } } // version 5: under an arch the camera keeps below its soffit (it never looks out from inside the stone)
-  const craneUp = CAM.crane, pitch = Math.atan2(craneUp - lerp(E.lookHeight, Cp.lookHeight, mix), CAM.dist + lerp(E.lookAhead, Cp.lookAhead, mix)) + CAM.pitchUser * mix /* the pad's tilt */, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const craneUp = CAM.crane, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
-  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = Cp.shoulder * mix; let room = sh;
+  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = Cp.shoulder * mix * Math.min(1, CAM.dist / camD); let room = sh;
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (wallAt(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
   spring(CAM, "shoulder", "shoulderV", room, room < CAM.shoulder ? C.pullIn : C.letOut, dt);
+  if (CAM.shoulder > sh) { CAM.shoulder = sh; CAM.shoulderV = 0; } // collision compression cannot leave a full-width shoulder beside a tiny boom
   CAM.cx = bx + rx * CAM.shoulder; CAM.cy = by + ry * CAM.shoulder;
   // the hard rule under the springs: the camera is never inside a wall. If a spring still lags there (the view turning in a
   // narrow way), the shoulder goes and the boom shortens at once until it is clear.
@@ -903,8 +932,55 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
     // and with the wider `sightPad`, next frame's spring aims short of where this line comes near a wall, so the cut above is seldom needed
     const ks = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.sightPad); CAM.sightLimit = ks < 1 ? Math.max(C.closest, CAM.dist * ks) : Infinity; }
+  const playerZ = interiorSurfaceHeight(g.map, footX(p), footY(p)) +
+    Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
+  // Sample the final eye, not the previous frame's position. Arches and the roof
+  // remain solid even when a collision or a jump changes the camera in one frame.
+  const cap = (x, y) => interiorSurfaceHeight(g.map, x, y) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
+  let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
+  if (interiorTerrain(g.map)) {
+    const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
+    for (let i = 1; i <= steps; i++) {
+      const k = i / steps, x = footX(p) + dx * k, y = footY(p) + dy * k, z = playerZ + .6 + (terrainCameraZ - playerZ - .6) * k;
+      if (z < interiorSurfaceHeight(g.map, x, y) + .12 || z > cap(x, y)) {
+        const keep = Math.max(0, (i - 1) / steps);
+        CAM.cx = footX(p) + dx * keep; CAM.cy = footY(p) + dy * keep;
+        CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0;
+        terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy)); break;
+      }
+    }
+    terrainCameraZ = Math.max(interiorSurfaceHeight(g.map, CAM.cx, CAM.cy) + .12, terrainCameraZ);
+  }
+  const eyeDX = footX(p) - CAM.cx, eyeDY = footY(p) - CAM.cy;
+  const compression = Math.min(1, Math.hypot(eyeDX, eyeDY) / Math.max(.15, camD));
+  const ahead = Math.max(.15, lerp(E.lookAhead, Cp.lookAhead, mix) * compression);
+  const forward = Math.max(.03, eyeDX * fx + eyeDY * fy);
+  const requestedPitch = Math.atan2(terrainCameraZ - playerZ - lerp(E.lookHeight, Cp.lookHeight, mix), forward + ahead) + CAM.pitchUser * mix;
+  // Use the same foot anchor as the visible model, slightly beyond the movement foot.
+  const bodyForward = Math.max(.03, forward + .07 * fy);
+  const framing = C.framing, margin = h * framing.margin, ppy0 = h * C.center;
+  const footAngle = Math.atan2(terrainCameraZ - playerZ, bodyForward);
+  const headAngle = Math.atan2(terrainCameraZ - playerZ - framing.bodyHeight, bodyForward);
+  let lowPitch = Math.max(framing.pitchMin, footAngle - Math.atan2(h - margin - ppy0, F));
+  let highPitch = Math.min(framing.pitchMax, headAngle + Math.atan2(ppy0 - margin, F));
+  // A small shoulder still matters close to the near plane, especially in portrait.
+  // depth = range*cos(angle-pitch); intersect the vertical fit with enough depth
+  // to keep each endpoint inside the horizontal frame and outside the near plane.
+  const side = eyeDX * rx + (eyeDY + .07) * ry;
+  const minBodyDepth = Math.max(CLOSE_VIEW.near + .01, F * Math.abs(side) / (w * (.5 - framing.margin)));
+  for (let end = 0; end < 2; end++) {
+    const z = playerZ + end * framing.bodyHeight;
+    const dz = terrainCameraZ - z, range = Math.hypot(bodyForward, dz);
+    if (range < minBodyDepth) { highPitch = lowPitch - 1; break; }
+    const angle = Math.atan2(dz, bodyForward), room = Math.acos(Math.min(1, minBodyDepth / range));
+    lowPitch = Math.max(lowPitch, angle - room); highPitch = Math.min(highPitch, angle + room);
+  }
+  // A very short boom under a low arch may not fit the whole body. Centre its
+  // angular span then; never move through stone, widen the FOV or shrink the model.
+  const terrainPitch = lowPitch <= highPitch ? Math.max(lowPitch, Math.min(highPitch, requestedPitch))
+    : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (footAngle + headAngle) / 2));
   CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;
-  CAM.cosP = Math.cos(pitch); CAM.sinP = Math.sin(pitch); CAM.hc = craneUp; CAM.w = w; CAM.h = h; CAM.valid = true;
+  CAM.cosP = Math.cos(terrainPitch); CAM.sinP = Math.sin(terrainPitch); CAM.hc = terrainCameraZ; CAM.w = w; CAM.h = h; CAM.valid = true;
   const cosP = CAM.cosP, sinP = CAM.sinP, hc = CAM.hc, ppx = CAM.ppx, ppy = CAM.ppy;
   // the background: the dark beyond the light, and the vault above
   if (!useGL) { ctx.fillStyle = FOG_CSS; ctx.fillRect(0, 0, w, h); }
@@ -977,7 +1053,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const draws = captured || [];
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i])) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
-    const q = project(bxw, byw, 0); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
+    const q = project(bxw, byw, interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, bxw, byw - .07) + (d.lift || 0) + (d.jumpLift || 0) : 0); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - A.height * sc * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
@@ -1112,7 +1188,7 @@ function aimChevron(gc, g, s, ts, W, H, gox = 0, goy = 0) {
 }
 // The locked target's brackets, round its billboard on the screen (combat-visuals draws them flat on the floor, under it).
 function lockBrackets(ctx, g, now) {
-  const t = g.lockedTarget?.(); if (!t || t.gloomVeil || t.dead) return; const q = project(t.x + .5, t.y + .82, 0); if (!q) return;
+  const t = g.lockedTarget?.(); if (!t || t.gloomVeil || t.dead) return; const q = project(t.x + .5, t.y + .82, interiorSurfaceHeight(g.map, t.x + .5, t.y + .75)); if (!q) return;
   const k = CAM.F / q.depth, sc = actorScale(t), r = Math.min(Math.min(CAM.w, CAM.h) * .22, Math.max(.45, (Number(t.bodyRadius) || .4) + .2, sc * .4) * k), cx = q.sx, cy = q.sy - Math.min(.55 * sc * k, r * 1.1), e = r * .45; // never larger than a fifth of the screen, however near
   ctx.save(); ctx.lineJoin = "round"; ctx.globalAlpha = .8 + .2 * Math.sin(now / 200);
   ctx.beginPath(); for (let i = 0; i < 4; i++) { const sx = i === 0 || i === 3 ? -1 : 1, sy = i < 2 ? -1 : 1; ctx.moveTo(cx + sx * r, cy + sy * (r - e)); ctx.lineTo(cx + sx * r, cy + sy * r); ctx.lineTo(cx + sx * (r - e), cy + sy * r); }
@@ -1155,7 +1231,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     const p = g.player, wasFacing = p.facing, player = d === capturedPlayer, who = player ? p : boardFoe[it], wx = who ? who.x : d.x, wy = who ? who.y : d.y, snx = Math.round(wx * s) / s, sny = Math.round(wy * s) / s;
     const sx0 = (snx + .5 - hw) * s, sy0 = (sny + .82 - top) * s; ac.setTransform(q, 0, 0, q, x - sx0 * q, Y0 + y - sy0 * q); // the closures draw in raw world pixels
     if (who) { who.x = snx; who.y = sny; } if (player) p.facing = facing;
-    if (d.lift) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1) ac.globalAlpha = d.alpha;
+    if (d.lift && !interiorTerrain(g.map)) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1) ac.globalAlpha = d.alpha;
     const foe = boardFoe[it], art = foe && CLOSE_VIEW_HOOKS.art[foe.kind]; // (boardFoe is written afresh for every item each frame)
     // phase 2: a creature with close-view art draws itself, from the camera's side (view: where it stands relative to the camera)
     try { if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && facing === "up") backOfHood(ac, p, s); } finally { ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
@@ -1316,6 +1392,7 @@ const BACKDROPS = new Map(PENTAGON_BACKDROPS.map(({ id, palette }, i) => [
   id, { kind: i + 1, colors: Float32Array.from(palette.flatMap((hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255))) },
 ]));
 function hallHeight(map) {
+  if (interiorTerrain(map)) return interiorCeilingHeight(map);
   const height = map.hall?.ceilingHeight;
   return map.hall?.tall && Number.isFinite(height)
     ? Math.max(HALL_VIEW.minHeight, Math.min(HALL_VIEW.maxHeight, height))
@@ -1330,7 +1407,7 @@ function buildStatic(map, geo, th) {
   const free = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !solid(x, y) && !busy[y * w + x] && !closeViewHazardCode(tiles[y * w + x]) && !tiles[y * w + x].doorway;
   const salt = strHash(`${map.building?.base || map.name || ""}:${map.building?.floor ?? ""}:${map.building?.node ?? ""}:${w}x${h}`);
   const rnd = (a, b, c, k) => hash32(salt ^ hash32((a * 73856093) ^ (b * 19349663) ^ (c * 83492791) ^ (k * 2654435761))) / 4294967296;
-  const V = (X, Y, Z, along, u, z, top, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty) => { out.push(X, Y, Z, along, u, z, top, nx, ny, part, mat, c[0], c[1], c[2], deco, grit, bits, hsh, tx, ty); };
+  const V = (X, Y, Z, along, u, z, top, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty, lift = true) => { out.push(X, Y, Z + (lift ? interiorGeometryHeight(map, tx, ty, X, Y) : 0), along, u, z, top, nx, ny, part, mat, c[0], c[1], c[2], deco, grit, bits, hsh, tx, ty); };
   // a vertical quad from a to b, z0 to z1 (along a0 to a1 on the run; u 0 to 1 across)
   const quad = (ax, ay, bx, by, z0, z1, a0, a1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty) => {
     V(ax, ay, z0, a0, 0, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z0, a1, 1, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z1, a1, 1, z1, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty);
@@ -1531,7 +1608,11 @@ function buildStatic(map, geo, th) {
   const A = th.arch, stoneMat = th.wall.kind === 1 ? 1 : th.wall.kind, acol = th.wall.kind === 1 ? wood : tg.wall, round = A.radius > .01;
   const roomy = (x, y, ew) => ew ? !solid(x - 1, y) || !solid(x + 1, y) : !solid(x, y - 1) || !solid(x, y + 1);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue;
-    const ns = solid(x - 1, y) && solid(x + 1, y) && !solid(x, y - 1) && !solid(x, y + 1) && roomy(x, y - 1, true) && roomy(x, y + 1, true), ew = solid(x, y - 1) && solid(x, y + 1) && !solid(x - 1, y) && !solid(x + 1, y) && roomy(x - 1, y, false) && roomy(x + 1, y, false);
+    const direction = interiorTerrain(map) ? interiorArchAt(map, x, y) : null;
+    const ns = interiorTerrain(map) ? direction === "ns"
+      : solid(x - 1, y) && solid(x + 1, y) && !solid(x, y - 1) && !solid(x, y + 1) && roomy(x, y - 1, true) && roomy(x, y + 1, true);
+    const ew = interiorTerrain(map) ? direction === "ew"
+      : solid(x, y - 1) && solid(x, y + 1) && !solid(x - 1, y) && !solid(x + 1, y) && roomy(x - 1, y, false) && roomy(x + 1, y, false);
     if (!ns && !ew) continue; const hsh = (x * 31 + y * 17) % 997; arch[y * w + x] = 1;
     // the two faces (ends of the passage), each a quad from the spring to the top with the opening cut out in the shader
     const ends = ns ? [[x + 1, y, x, y, 0, -1], [x, y + 1, x + 1, y + 1, 0, 1]] : [[x, y, x, y + 1, -1, 0], [x + 1, y + 1, x + 1, y, 1, 0]];
@@ -1592,6 +1673,35 @@ function buildStatic(map, geo, th) {
       }
     }
   }
+  if (interiorTerrain(map)) {
+    const mask = closeViewMask(map).data;
+    const level = (t, x, y) => interiorTileLevel(t, x, y) * LIFT_PER_LEVEL;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const t = tiles[y * w + x]; if (!t || t.blocked) continue;
+      const hazard = closeViewHazardCode(t), k = (y * w + x) * 4;
+      // Pits have no supporting floor mesh. Their rims retain the existing hazard treatment.
+      flat(x, y, x+1, y, x+1, y+1, x, y+1, 0, hazard && hazard !== 2 && hazard !== 4 ? 22 : 20, 0, tg.floor, 0, x, y);
+      if (!map.hall?.open && (mask[k] & 5) === 1 && !arch[y*w+x])
+        flat(x, y, x+1, y, x+1, y+1, x, y+1, H, 21, 0, tg.ceil, 0, x, y);
+      const sides = [[x,y,x+1,y,0,-1],[x+1,y+1,x,y+1,0,1],[x,y+1,x,y,-1,0],[x+1,y,x+1,y+1,1,0]];
+      for (const [ax,ay,bx,by,nx,ny] of sides) {
+        const xx=x+nx, yy=y+ny;
+        if(xx<0||yy<0||xx>=w||yy>=h) continue;
+        const n=tiles[yy*w+xx]; if(!n || n.blocked) continue;
+        const a=level(t,ax,ay), b=level(t,bx,by), na=level(n,ax,ay), nb=level(n,bx,by);
+        if(a<=na+1e-6 && b<=nb+1e-6) continue;
+        // Generated ramp strips have matching edge heights. A higher side exposes rock.
+        for(const [X,Y,Z,u] of [[ax,ay,Math.min(a,na),0],[bx,by,Math.min(b,nb),1],[bx,by,b,1],[ax,ay,Math.min(a,na),0],[bx,by,b,1],[ax,ay,a,0]])
+          V(X,Y,Z,X+Y,u,Z,Math.max(a,b),nx,ny,0,th.wall.kind,tg.wall,0,0,0,0,x,y,false);
+        // Close the ceiling's matching vertical seam, so raised bays never leak into sky.
+        if(!map.hall?.open && (mask[k]&5)===1 && (mask[(yy*w+xx)*4]&5)===1)
+          for(const [X,Y,Z,u] of [[ax,ay,na+H,0],[bx,by,nb+H,1],[bx,by,b+H,1],[ax,ay,na+H,0],[bx,by,b+H,1],[ax,ay,a+H,0]])
+            V(X,Y,Z,X+Y,u,Z,H,-nx,-ny,0,th.wall.kind,tg.wall,0,0,0,0,x,y,false);
+      }
+    }
+    for(let i=0;i<lights.length;i+=LIGHT_FLOATS) lights[i+2]+=interiorSurfaceHeight(map,lights[i],lights[i+1]);
+    for(let i=0;i<flames.length;i+=FLAME_FLOATS) flames[i+2]+=interiorSurfaceHeight(map,flames[i],flames[i+1]);
+  }
   return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
 }
 // How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.
@@ -1625,12 +1735,13 @@ function selectProjectedShots(g, q) {
 }
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
-const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkTurn: Math.PI });
+const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkRadians: 5.4, castMs: ACTION_MOTION.castMs, turnRate: 12, strideSpeed: 4, windupMs: 450 });
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
 };
 function buildActorModels(g, draws, n, Q, now, reduce) {
+  now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
   state.admitted.clear();
   if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; }
@@ -1651,30 +1762,48 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const admit = (it, who, kind) => {
     const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], attack = who.attackUntil > now || who.pack?.phase === "strike" || who.pack?.phase === "active" || who.gateAttack?.phase === "strike" || who.gateAttack?.phase === "active";
     let track = state.tracks.get(who);
-    if (!track) track = { x: who.x, y: who.y, yaw: facing ? Math.atan2(facing[1], facing[0]) : CAM.yaw, pace: 0, at: -1, hitAt: -Infinity, hp: who.hp, deathAt: null, actor: null };
+    if (!track) track = { x: who.x, y: who.y, yaw: facing ? Math.atan2(facing[1], facing[0]) : CAM.yaw,
+      phase: Number.isFinite(who.walkPhase) ? who.walkPhase * Math.PI : 0, pace: 0, at: now,
+      hitAt: -Infinity, hp: who.hp, deathAt: null, actor: null, winding: false, attacking: false };
     const dx = who.x - track.x, dy = who.y - track.y, dist = Math.hypot(dx, dy);
-    if (track.at !== now) {
-      if (dist > .005) track.yaw = Math.atan2(dy, dx);
-      else if (facing && (attack || !track.actor)) track.yaw = Math.atan2(facing[1], facing[0]);
-      track.pace = dist > .005 ? 1 : Math.max(0, track.pace - Math.max(0, now - track.at) / 180);
-    }
+    const elapsed = Math.max(0, Math.min(.1, (now - track.at) / 1000));
+    const tool = who === player && attack && !(player.meleeUntil > now);
+    const cast = who === player && player.castUntil > now;
+    const jump = who === player && g.jumpUntil > now;
+    const aim = who === player && attack ? (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim : null;
+    let targetYaw = track.yaw;
+    if (dist > .005) targetYaw = Math.atan2(dy, dx);
+    else if (facing) targetYaw = Math.atan2(facing[1], facing[0]);
+    const ax = aim?.dx ?? aim?.x, ay = aim?.dy ?? aim?.y;
+    if (Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
+    const yawDelta = Math.atan2(Math.sin(targetYaw - track.yaw), Math.cos(targetYaw - track.yaw));
+    const turn = Math.max(-1, Math.min(1, yawDelta));
+    if (attack || dist > 3) track.yaw = targetYaw;
+    else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
+    if (dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
+    const speed = elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
+    track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
     if (who.hp < track.hp) track.hitAt = now;
     const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
     const winding = who !== player && foeWindingUp(who);
-    const tool = who === player && attack && !(player.meleeUntil > now);
-    const aim = tool ? g.save.lastAim : null;
-    const attackPose = tool ? "tool" : "attack";
-    const pose = hit ? "hit" : attack ? attackPose : winding ? "windup" : track.pace ? "walk" : "idle";
+    if (winding && !track.winding) track.windAt = now;
+    if (attack && !track.attacking) track.attackAt = now;
+    const pose = hit ? "hit" : attack ? (tool ? "tool" : "attack") : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
     const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
-    let amount = winding ? .85 : 0;
+    let amount = 0;
+    if (winding) amount = Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
     if (attack) {
-      const duration = tool ? MODEL_TIMING.toolMs : MODEL_TIMING.attackMs;
-      amount = who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / duration) : .6;
-    }
+      const duration = tool ? MODEL_TIMING.toolMs : who === player ? ACTION_MOTION.meleeMs : MODEL_TIMING.attackMs;
+      amount = who.attackUntil > poseTime ? 1 - Math.min(1, (who.attackUntil - poseTime) / duration) : Math.min(1, (poseTime - track.attackAt) / duration);
+    } else if (cast) amount = 1 - Math.min(1, (player.castUntil - now) / MODEL_TIMING.castMs);
+    else if (jump) amount = 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
     if (hit) amount = hit;
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
-    const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack) ? "playerTool" : kind, x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, d.lift || 0), yaw: aim && Math.hypot(aim.x, aim.y) > .01 ? Math.atan2(aim.y, aim.x) : track.yaw,
-      phase: reduce ? 0 : (who.walkPhase || now / 160) * MODEL_TIMING.walkTurn, pace: track.pace, pose, amount };
+    const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : kind,
+      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + Math.max(0, (d.lift || 0) + (d.jumpLift || 0)), yaw: track.yaw,
+      phase: track.phase, pace: track.pace, pose, amount, turn, reduceMotion: reduce };
+    track.winding = winding;
+    track.attacking = attack;
     if (!append(actor)) return;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
     state.tracks.set(who, track);
@@ -1722,10 +1851,10 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = (fogNear - CLOSE_VIEW.fog.near); // the blend's fog shift, carried over
   F.fogNear = Fo.near + fogK; F.fogFar = Fo.far + fogK; F.reach = F.fogFar + 2;
   F.fog.set(tg.fog); F.haze.set(tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = Fo.haze[0]; F.fogP[3] = Fo.haze[1];
-  F.amb.set(tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height; F.torchP[3] = .3;
+  F.amb.set(tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + interiorSurfaceHeight(g.map, footX(p), footY(p)); F.torchP[3] = .3;
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
-  F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map);
+  F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
   UNI.hall = g.map.hall?.tall ? g.map.hall : null;
   UNI.backdrop = BACKDROPS.get(UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.inlay = st.inlay;
@@ -1747,8 +1876,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   let nb = 0; for (let i = 0; i < n; i++) if (itemKind[i] === 1) nb++;
   const B = glEnsure("board", nb * 6); let D = glEnsure("decal", (nb * 3 + 400) * 6); let bv = 0, dv = 0; const tw = GROUND.canvas.width, th2 = GROUND.canvas.height, RX = CAM.rx, RY = CAM.ry;
   const room = (verts) => { if ((dv + verts) * DECAL_FLOATS > D.length) D = glEnsure("decal", dv + verts + 600); };
-  const BV = (X, Y, Z, u, v, a, fl, gh, li) => { const b = bv * BOARD_FLOATS; B[b] = X; B[b + 1] = Y; B[b + 2] = Z; B[b + 3] = u; B[b + 4] = v; B[b + 5] = a; B[b + 6] = fl; B[b + 7] = gh; B[b + 8] = li; bv++; };
-  const DV = (X, Y, Z, lx, ly, kind, a, wd, li) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z; D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
+  let boardBase = 0;
+  const BV = (X, Y, Z, u, v, a, fl, gh, li) => { const b = bv * BOARD_FLOATS; B[b] = X; B[b + 1] = Y; B[b + 2] = Z + boardBase; B[b + 3] = u; B[b + 4] = v; B[b + 5] = a; B[b + 6] = fl; B[b + 7] = gh; B[b + 8] = li; bv++; };
+  const DV = (X, Y, Z, lx, ly, kind, a, wd, li, absolute = false) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z + (absolute ? 0 : interiorSurfaceHeight(g.map, X, Y)); D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
   const flatD = (X, Y, r, kind, a, wd, li = 1) => { room(6); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y - r, .01, 1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y + r, .01, -1, 1, kind, a, wd, li); };
   const shadow = (X, Y, sc) => {
     let lx = px, ly = py, best = lightLevel(F, X, Y, .4);
@@ -1771,10 +1901,14 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     DV(bx + wx, by + wy, .008, 1, 1, 10, a, 0, 0);
     DV(ax + wx, ay + wy, .008, -1, 1, 10, a, 0, 0);
   };
-  const card = (X, Y, z0, z1, hw, kind, a, wd, li) => { room(6); const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li); DV(qx, qy, z0, 1, -1, kind, a, wd, li); DV(qx, qy, z1, 1, 1, kind, a, wd, li); DV(lx, ly, z0, -1, -1, kind, a, wd, li); DV(qx, qy, z1, 1, 1, kind, a, wd, li); DV(lx, ly, z1, -1, 1, kind, a, wd, li); };
+  const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : interiorSurfaceHeight(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
   const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const sc = boardScale[it], hw = A.halfWidth * sc, top = A.height * sc, X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])), foe = boardFoe[it]; // the Wayfarer never fainter than nearFade (nothing see-through)
+    const draw = draws[itemRef[it]];
+    boardBase = interiorTerrain(g.map)
+      ? interiorSurfaceHeight(g.map, X, Y - .07) + (draw?.lift || 0) + (draw?.jumpLift || 0)
+      : 0;
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const fl = foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
     if (boardPW[it]) { const lx = X - RX * hw, ly = Y - RY * hw, rxp = X + RX * hw, ryp = Y + RY * hw, zb = -A.below;
@@ -1801,8 +1935,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1); DV(X - RX * hs, Y - RY * hs, zc + hs, -1, 1, 2, a, 0, 1); }
   { const fw = At.flame[0], fh = At.flame[1], halo = At.flame[2], Fl = st.flames;
     for (let i = 0; i < st.nFlames; i++) { const o = i * FLAME_FLOATS, X = Fl[o], Y = Fl[o + 1]; if (Math.hypot(X - px, Y - py) > F.reach) continue; if (seen && !seen(Math.floor(X), Math.floor(Y))) continue;
-      const k = Fl[o + 3], wob = reduce ? 1 : 1 + .12 * Math.sin(now / 90 + Fl[o + 5]) + .06 * Math.sin(now / 37 + Fl[o + 5] * 2); card(X, Y, Fl[o + 2] - fh * k * .5, Fl[o + 2] + fh * k * wob, fw * k, 3, 1, Fl[o + 4], 1); }
-    for (let j = 0; j < nk; j++) { const o = PICK.idx[j] * LIGHT_FLOATS, r = halo * (L[o + 7] === 1 ? .7 : 1) * (L[o + 5] === 1 ? 1.6 : 1); card(L[o], L[o + 1], L[o + 2] - r, L[o + 2] + r, r, 9, .3 * Math.min(1.4, F.lc[j * 4 + 3]), L[o + 5], 1); }
+      const k = Fl[o + 3], wob = reduce ? 1 : 1 + .12 * Math.sin(now / 90 + Fl[o + 5]) + .06 * Math.sin(now / 37 + Fl[o + 5] * 2); card(X, Y, Fl[o + 2] - fh * k * .5, Fl[o + 2] + fh * k * wob, fw * k, 3, 1, Fl[o + 4], 1, true); }
+    for (let j = 0; j < nk; j++) { const o = PICK.idx[j] * LIGHT_FLOATS, r = halo * (L[o + 7] === 1 ? .7 : 1) * (L[o + 5] === 1 ? 1.6 : 1); card(L[o], L[o + 1], L[o + 2] - r, L[o + 2] + r, r, 9, .3 * Math.min(1.4, F.lc[j * 4 + 3]), L[o + 5], 1, true); }
     if (Q.motes) { const M = At.motes, t = reduce ? 0 : now / 1000; for (let j = 0; j < Math.min(nk, M.of); j++) { const o = PICK.idx[j] * LIGHT_FLOATS;
         for (let m = 0; m < M.per; m++) { const hx = hash32(PICK.idx[j] * 131 + m * 7) / 4294967296, hy = hash32(PICK.idx[j] * 337 + m * 11) / 4294967296, hz = hash32(PICK.idx[j] * 521 + m * 13) / 4294967296;
           const X = L[o] + (hx - .5) * 1.6 + Math.sin(t * M.drift + m) * .15, Y = L[o + 1] + (hy - .5) * 1.6 + Math.cos(t * M.drift * .8 + m * 1.7) * .15, Z = .4 + hz * 1.8 + Math.sin(t * M.drift * .5 + m * 2.3) * .2;

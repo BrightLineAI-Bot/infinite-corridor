@@ -1,36 +1,36 @@
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r805-9122ca315766"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r805-9122ca315766";
-import { astralBeamAnchors } from "./astral-worm.js?v=r805-9122ca315766";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r805-9122ca315766";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r805-9122ca315766";
-import { enemyMeleeGeometry } from "./combat.js?v=r805-9122ca315766";
-import { ruleRows } from "./elders.js?v=r805-9122ca315766";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r805-9122ca315766";
-import { BOAT } from "./boats.js?v=r805-9122ca315766";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r805-9122ca315766";
-import { isMarineTile } from "./world-beasts.js?v=r805-9122ca315766";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r805-9122ca315766"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r805-9122ca315766";
-import { setTreeSeason } from "./landscape-render.js?v=r805-9122ca315766";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r805-9122ca315766";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r805-9122ca315766";
-import { liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r805-9122ca315766";
-import { TREES } from "./trees.js?v=r805-9122ca315766";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r805-9122ca315766";
-import { KIT_MOVES } from "./boss-kit.js?v=r805-9122ca315766";
-import { SKY_DISCS } from "./skylands.js?v=r805-9122ca315766"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r805-9122ca315766";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r805-9122ca315766"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r805-9122ca315766"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r805-9122ca315766"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r805-9122ca315766"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r805-9122ca315766"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r805-9122ca315766";
-import { drawRelayNode } from "./relay-network.js?v=r805-9122ca315766";
-import { structureOccupancy } from "./world.js?v=r805-9122ca315766";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r805-9122ca315766";
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r805-9122ca315766";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r805-9122ca315766"; // Close View: three hooks below, marked CLOSE VIEW
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r810-8ed20b74216b"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r810-8ed20b74216b";
+import { astralBeamAnchors } from "./astral-worm.js?v=r810-8ed20b74216b";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r810-8ed20b74216b";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r810-8ed20b74216b";
+import { enemyMeleeGeometry } from "./combat.js?v=r810-8ed20b74216b";
+import { ruleRows } from "./elders.js?v=r810-8ed20b74216b";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r810-8ed20b74216b";
+import { BOAT } from "./boats.js?v=r810-8ed20b74216b";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r810-8ed20b74216b";
+import { isMarineTile } from "./world-beasts.js?v=r810-8ed20b74216b";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r810-8ed20b74216b"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r810-8ed20b74216b";
+import { setTreeSeason } from "./landscape-render.js?v=r810-8ed20b74216b";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r810-8ed20b74216b";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r810-8ed20b74216b";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r810-8ed20b74216b";
+import { TREES } from "./trees.js?v=r810-8ed20b74216b";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r810-8ed20b74216b";
+import { KIT_MOVES } from "./boss-kit.js?v=r810-8ed20b74216b";
+import { SKY_DISCS } from "./skylands.js?v=r810-8ed20b74216b"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r810-8ed20b74216b";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r810-8ed20b74216b"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r810-8ed20b74216b"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r810-8ed20b74216b"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r810-8ed20b74216b"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r810-8ed20b74216b"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r810-8ed20b74216b";
+import { drawRelayNode } from "./relay-network.js?v=r810-8ed20b74216b";
+import { structureOccupancy } from "./world.js?v=r810-8ed20b74216b";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r810-8ed20b74216b";
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r810-8ed20b74216b";
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r810-8ed20b74216b"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -2250,7 +2250,7 @@ export function render(ctx, g, w, h, now) {
     r = Math.min(mw, l + Math.ceil(w / s) + 5),
     b = Math.min(mh, t + Math.ceil(h / s) + 5 + (g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL * CANOPY_LIFT) : 0) + up),
     jumping = now < (g.jumpUntil || 0),
-    lift = jumpLift(g, now) * s,
+    lift = (interiorTerrain(g.map) && closeViewCapturing() ? 0 : jumpLift(g, now)) * s,
     dodging = now < (p.dodgeUntil || 0);
   const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map,g.area);
   if (g.area === "dungeon" && labFogOf(g.map)) { const at = labFogTile(p); labFogLook(g.map, at.x, at.y); } // LAB_FOG: the sight is current before anything asks it (the game normally worked it out this frame)
@@ -2258,11 +2258,18 @@ export function render(ctx, g, w, h, now) {
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
-  const groundLift = (x, y) => (g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
+  const flatCapture = g.map?.interiorTerrain?.version === 1 && closeViewCapturing();
+  const groundLift = (x, y) => (flatCapture ? 0 : g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
   const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
-  const hopLift = g.area === "overworld" && g.skyAir != null && jumping ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1)) : null; // a sky hop is drawn at the launching platform's height while it crosses the gap (great-tree review)
+  const interior = interiorTerrain(g.map);
+  const supportLevel = interior ? interiorSurfaceLevel(g.map, p.x + .5, p.y + .75) : 0;
+  const hopLift = interior && g.skyAir != null && jumping
+    ? Math.max(flatCapture ? 0 : supportLevel, g.skyAir - (flatCapture ? supportLevel : 0)) * LIFT_PER_LEVEL
+    : g.area === "overworld" && g.skyAir != null && jumping
+      ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1))
+      : null;
   const viewLift = g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : hopLift ?? groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
@@ -2591,7 +2598,10 @@ export function render(ctx, g, w, h, now) {
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   const playerDraw = {
-    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
+    jumpLift: jumpLift(g, now),
+    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && interior
+      ? Math.max(0, g.droneLift.z - supportLevel) * LIFT_PER_LEVEL
+      : g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
       if (g.glide && g.area === "overworld" && g.glide.open !== false) drawLeafGlider(ctx, p, s, now); // release 635; 641: only while open
       if (jumping) {

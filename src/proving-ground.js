@@ -1,9 +1,9 @@
-import { drawRangedEffects } from "./combat-visuals.js?v=r805-9122ca315766";
-import { createInput } from "./input.js?v=r805-9122ca315766";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r805-9122ca315766";
-import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r805-9122ca315766"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r805-9122ca315766";
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r805-9122ca315766"; // release 791: Enter Proving Ground from Options
+import { drawRangedEffects } from "./combat-visuals.js?v=r810-8ed20b74216b";
+import { createInput } from "./input.js?v=r810-8ed20b74216b";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r810-8ed20b74216b";
+import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r810-8ed20b74216b"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r810-8ed20b74216b";
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r810-8ed20b74216b"; // release 791: Enter Proving Ground from Options
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
@@ -44,6 +44,18 @@ function openLab(id){if(id==="journey"&&journeyRecord)return openJourney();selec
 // test), folds the developer menu away on a phone so the view shows, and a new scenario chosen there starts at once too.
 const AUTO_START=new Set(["close-view"]);
 // With no test running the canvas says what to do, instead of staying black.
+function idlePrompt() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  ctx.save();
+  ctx.fillStyle = "#0b0b0e";
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "#cec7b6";
+  ctx.font = "15px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(controls.hidden ? "Choose a laboratory to begin." : "Choose a scenario, then press Start test.", w / 2, h / 2, Math.max(1, w - 32));
+  ctx.restore();
+}
 function generate(){try{comparison=null;fixture=selectedLab==="journey"?createJourneyFixture(journeyRecord,performance.now()):createLabFixture({lab:selectedLab,scenario:scenarioSelect.value,seed:seedInput.value,variant:Number(variantInput.value)||0,sizeProfile:sizeProfileSelect.value,revealMode:revealModeSelect.value,environment:environmentSelect.value,now:performance.now()});game=fixture.game;paused=false;input.reset();last=performance.now();fillTeleports();syncUrl();updateDiagnostics(true)}catch(error){$("#fixtureDiagnostics").textContent=`FIXTURE ERROR\n${error.stack||error}`}}
 function fillTeleports(){teleportSelect.replaceChildren(new Option("Select target…",""));for(const q of teleportTargets(fixture))teleportSelect.add(new Option(q.label,q.id))}
 function report(){const data=labReport(fixture);data.paused=paused;data.url=location.href;data.sameSeedComparison=comparison;data.teleportTargets=teleportTargets(fixture).map(q=>({id:q.id,label:q.label,x:q.x,y:q.y}));return data}

@@ -10,12 +10,12 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { farCivAt } from "./far-realms.js?v=r805-9122ca315766";
-import { hashSeed, byHash } from "./random.js?v=r805-9122ca315766";
-import { placeDock } from "./boats.js?v=r805-9122ca315766";
-import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r805-9122ca315766";
-import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r805-9122ca315766";
-import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r805-9122ca315766";
+import { farCivAt } from "./far-realms.js?v=r810-8ed20b74216b";
+import { hashSeed, byHash } from "./random.js?v=r810-8ed20b74216b";
+import { placeDock } from "./boats.js?v=r810-8ed20b74216b";
+import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r810-8ed20b74216b";
+import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r810-8ed20b74216b";
+import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r810-8ed20b74216b";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -27,7 +27,15 @@ export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : t?.roofLift || 1)
 export const MAX_LEVEL = 5;
 // Fraction of max health lost when dropping this many levels; null = fatal.
 export const FALL_DAMAGE = { 1: 0, 2: .15, 3: .4 };
-export function fallDamage(drop, maxHp) { if (drop <= 1) return 0; if (drop >= 4) return Infinity; return Math.ceil(maxHp * FALL_DAMAGE[drop]); }
+export function fallDamage(drop, maxHp) {
+  if (drop <= 1) return 0;
+  if (drop >= 4) return Infinity;
+  const lower = Math.floor(drop);
+  const fraction = drop - lower;
+  const from = FALL_DAMAGE[lower];
+  const to = FALL_DAMAGE[Math.min(3, lower + 1)];
+  return Math.ceil(maxHp * (from + (to - from) * fraction));
+}
 export const BIOMES = {
   mountains: { id: "mountains", name: "Snowpeak Range", atlas: "#d9e3ea" },
   desert: { id: "desert", name: "Dune Sea", atlas: "#d6b26e" },
@@ -1484,8 +1492,55 @@ export function tileUnder(map, width, x, y) {
   const tx = Math.floor(x + .5), ty = Math.floor(y + .75);
   return map?.tiles?.[ty * width + tx] || null;
 }
+// Versioned interior heightfields use one support surface per tile. Coordinates here
+// are world feet (tile edges at integers); legacy landscapes keep their old rules.
+export const interiorTerrain = (map) => map?.interiorTerrain?.version === 1;
+const RAMP_DIR = { north: [0, -1], east: [1, 0], south: [0, 1], west: [-1, 0] };
+export function interiorTileLevel(tile, x, y) {
+  const e = Number.isFinite(tile?.elev) ? tile.elev : 0;
+  const d = tile?.slope && RAMP_DIR[tile.rampDir];
+  if (!d) return e;
+  const u = Math.max(0, Math.min(1, d[0] ? x - tile.x : y - tile.y));
+  return e - 1 + ((d[0] || d[1]) > 0 ? u : 1 - u);
+}
+export function interiorSurfaceLevel(map, x, y) {
+  if (!interiorTerrain(map)) return 0;
+  const w = map.width || 32, tx = Math.floor(x), ty = Math.floor(y);
+  if (tx < 0 || ty < 0 || tx >= w || ty >= (map.height || map.tiles.length / w)) return 0;
+  return interiorTileLevel(map.tiles[ty * w + tx], x, y);
+}
+export const interiorSurfaceHeight = (map, x, y) => interiorSurfaceLevel(map, x, y) * LIFT_PER_LEVEL;
+// Wall faces inherit the adjacent floor, including its ramp edge, so ceilings and
+// trim remain closed at a descending tunnel. Callers pass the owning tile explicitly.
+export function interiorGeometryHeight(map, tx, ty, x, y) {
+  if (!interiorTerrain(map)) return 0;
+  const w = map.width || 32, t = map.tiles[ty * w + tx];
+  if (!t?.blocked) return interiorTileLevel(t, x, y) * LIFT_PER_LEVEL;
+  let best = null, distance = Infinity;
+  for (const [dx, dy] of Object.values(RAMP_DIR)) {
+    const nx = tx + dx, ny = ty + dy;
+    if (nx < 0 || ny < 0 || nx >= w || ny >= (map.height || map.tiles.length / w)) continue;
+    const q = map.tiles[ny * w + nx]; if (!q || q.blocked) continue;
+    const d = Math.hypot(x - nx - .5, y - ny - .5);
+    if (d < distance) { best = q; distance = d; }
+  }
+  return interiorTileLevel(best || t, x, y) * LIFT_PER_LEVEL;
+}
+export function interiorTerrainSignature(map) {
+  if (!interiorTerrain(map)) return 0;
+  let h = 2166136261;
+  for (const t of map.tiles || []) {
+    const dir = t?.slope && RAMP_DIR[t.rampDir];
+    h = Math.imul(h ^ Math.round((t?.elev || 0) * 1024), 16777619);
+    h = Math.imul(h ^ ((t?.blocked ? 1 : 0) | (t?.openAir ? 2 : 0) | (dir ? ((dir[0] + 1) * 3 + dir[1] + 2) << 2 : 0)), 16777619);
+    const kind = t?.kind || '';
+    for (let i = 0; i < kind.length; i++) h = Math.imul(h ^ kind.charCodeAt(i), 16777619);
+  }
+  return h >>> 0;
+}
 export function liftAt(map, width, x, y) {
   if (!map?.landscape) return 0;
+  if (interiorTerrain(map)) return interiorSurfaceHeight(map, x + .5, y + .75);
   const t = tileUnder(map, width, x, y);
   return t ? ((t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) : 0;
 }
@@ -1494,6 +1549,17 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (!map?.landscape || entity?.flying || entity?.phases) return true;
   const a = tileUnder(map, width, fromX, fromY), b = tileUnder(map, width, toX, toY);
   if (!a || !b || a === b) return true;
+  if (interiorTerrain(map)) {
+    // Compare the shared edge, not ramp centres; side entry across a retaining
+    // face is a real step. moveAxis already subdivides motion to adjacent cells.
+    const ax = fromX + .5, ay = fromY + .75, bx = toX + .5, by = toY + .75;
+    const k = a.x !== b.x ? ((a.x < b.x ? b.x : a.x) - ax) / (bx - ax) : ((a.y < b.y ? b.y : a.y) - ay) / (by - ay);
+    const ex = ax + (bx - ax) * k, ey = ay + (by - ay) * k;
+    const before = Math.max(interiorTileLevel(a, ex, ey), entity?.airElev ?? -Infinity), after = interiorTileLevel(b, ex, ey), step = after - before;
+    if (Math.abs(step) < 1e-5) return true;
+    if (!entity?.isPlayer) return false;
+    return step < 0 || (!!entity.jumping && step <= 1 + 1e-5);
+  }
   const ea = Math.max(a.elev || 0, entity?.airElev ?? -Infinity), eb = b.elev || 0, diff = eb - ea; // release 585: in the air over a skyway gap
   if (diff === 0 || safeVoidScarTransition(a, b)) return true;
   if ((a.slope || b.slope) && Math.abs(diff) <= 1) return true;
@@ -1502,7 +1568,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   return diff < 0; // dropping off a ledge: the game applies fall damage by height
 }
 export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "arcWall", "clodPlain", "clodGreen", "clodYellow", "clodRed", "craterWall", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo", "moorStone", "canopyTrunk", "thornCrystal", "springVent", "ruleMonolith", ...DOMAIN_BLOCKED, ...PALETTE_BLOCKERS].includes(kind); }
-export function elevationAt(map, width, x, y) { return map?.landscape ? (tileUnder(map, width, x, y)?.elev || 0) : 0; }
+export function elevationAt(map, width, x, y) { return map?.landscape ? interiorTerrain(map) ? interiorSurfaceLevel(map, x + .5, y + .75) : (tileUnder(map, width, x, y)?.elev || 0) : 0; }
 
 // ---------------------------------------------------------------- the Far Sleep (release 305)
 // docs/narrative-bible.md section 7, step 4: "The Far Sleep made strange". Past the far band of Readings (depth > 35,

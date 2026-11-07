@@ -14,9 +14,9 @@
 //
 // All pure: the floor, the pick and the vitals. game.ts lays the way in, spawns, tunes and rewards (pentagonArena*), and
 // pentagon-arena-render.ts draws it.
-import { hashSeed, byHash } from "./random.js?v=r805-9122ca315766";
-import { pentagonPlan, pentagonVaultId, pentagonFinaleId } from "./pentagon.js?v=r805-9122ca315766";
-import { WORLD_BEASTS, liveBeastReference, BEAST_BALANCE, BEAST_BASELINE } from "./world-beasts.js?v=r805-9122ca315766";
+import { hashSeed, byHash } from "./random.js?v=r810-8ed20b74216b";
+import { pentagonPlan, pentagonVaultId, pentagonFinaleId } from "./pentagon.js?v=r810-8ed20b74216b";
+import { WORLD_BEASTS, liveBeastReference, BEAST_BALANCE, BEAST_BASELINE } from "./world-beasts.js?v=r810-8ed20b74216b";
 
 // The finale's own creature, the Gloomvast (haunts.ts GLOOM_FINALE: a haunt grown grand, with its Dark). While `kind` names no creature
 // the pick leaves it out.
@@ -152,7 +152,10 @@ export function generatePentagonArena(seed, id, row = null, version = PENTAGON_A
   const entry = { x: col, y: by - 1 }, vault = pentagonVaultId(plan), walk = pentagonFinaleId(Pp.base);
   objects.push({ id: "pent-arena-back", kind: "pentArenaGate", to: "vault", name: A.names.back, x: col, y: by, inner: { x: col, y: by - 1 }, toId: vault, face: "south", state: "open", actions: ["use"], lore: A.messages.back },
     { id: "pent-arena-on", kind: "pentArenaGate", to: "walk", name: A.names.on, x: col, y: ty, inner: { x: col, y: ty + 1 }, toId: walk, face: "north", state: "sealed", actions: ["use"], lore: A.messages.sealed });
-  const enemySpawns = row ? [{ id: `${id}:finale`, kind: row.kind, x: col, y: Math.round(cy) - 1, boss: true, traits: [], pentFinaleBeast: row.id }] : [];
+  // Version 9 changes ordinary interiors, not Stillworks combat. Keep its actor's
+  // attack hashes on version 8 while the map, gates and reward history retain their real IDs.
+  const combatId = Pp.V === 9 ? id.replace(/:v9:arena$/, ":v8:arena") : id;
+  const enemySpawns = row ? [{ id: `${combatId}:finale`, kind: row.kind, x: col, y: Math.round(cy) - 1, boss: true, traits: [], pentFinaleBeast: row.id }] : [];
   return { seed, id, recipe: "greatBuilding", name: `Pentagon · ${A.names.floor}`, identity: `Pentagon: ${A.names.floor}`, danger: "the finale", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
     building: { base: Pp.base, style: "keep", floor: 3 + plan.nh, floors: 3 + plan.nh, pentagon: true, finale: true, arena: true, V: plan.V, node: -1, kind: "stillworks", of: plan.nodes.length, keys: [], entries: {}, exitsTo: {}, vault: false, breachEntry: null, roofLadder: null, fallTo: null },
     pentArena: V, arena: true, stillworks: { cx, cy, radius: A.radius, ...(pillars ? { cover: true, pillars: pillars.map((q) => ({ x: q.x, y: q.y, size: q.size, v: h(`p${q.k}`) % 4 })) } : {}) }, movers: [], watcherPlaced: true, layoutVersion: 1, themePool: 0 };
