@@ -15,14 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r811 on main, this PR takes r812.
+Taken at merge time: main's release + 1. With r812 on main, the next game change takes r813.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 812 | Codex | `claude/drone-runtime-compatibility` | Preserve valid drone-lift metadata and clarify lab controls | In flight. |
-| 811 | Codex | `claude/close-view-collision-pass` | Open new stair landings with interior v4; quiet the four traversal labs | Merged (#459). |
+| 812 | Codex | `claude/drone-runtime-compatibility` | Preserve valid drone-lift metadata and clarify lab controls | Merged (#460). Previewed as r812-1f4b36dd0279. Published in r812. Publish run 42394194802 succeeded; live identity and in-game System label verified. |
+| 811 | Codex | `claude/close-view-collision-pass` | Open new stair landings with interior v4; quiet the four traversal labs | Merged (#459). Previewed as r811-a0060f80fb7a. Published in r811. Publish run 42393069055 succeeded; live identity and in-game System label verified. |
 | 810 | Codex | `claude/close-view-terrain-render-fix` | Repair heightfield actor projection and exercise full GPU frames | Merged (#458). Previewed and GPU-checked as r810-8ed20b74216b. Published in r810. Publish run 42388584029 succeeded; live identity and in-game System label verified. |
 | 809 | Codex | `claude/close-view-control-feel` | Tight-space camera framing and near-ready attack input | Merged (#457). Preview candidate r809-9bae1bce42e2. Shares the heightfield render blocker found in r808; superseded by r810. Published in r810. |
 | 808 | Codex | `claude/vertical-dungeon-interiors` | Versioned spacious rooms, indoor ramps, jump platforms and drone traversal | Merged (#456). Preview artifact r808-ca55b4cd807c completed; hosted heightfield render blocker found, superseded by r810. Published in r810. |
@@ -197,6 +197,8 @@ Taken at merge time: main's release + 1. With r811 on main, this PR takes r812.
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 812 | `r812-1f4b36dd0279` | 2026-11-07 | Astra review (810→812): no blockers; covers every change since live r811. Nested valid drone metadata survives save/reload, with canonical bindings and invalid/stale rejection preserved; lab movement/look help corrected. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42394194802); live identity and in-game System label match. |
+| 811 | `r811-a0060f80fb7a` | 2026-11-07 | Astra review (810→811): no blockers. Versioned open stair landings and quiet traversal labs. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42393069055); live identity and in-game System label match. |
 | 810 | `r810-8ed20b74216b` | 2026-11-07 | Astra review (805→810): no blockers. Animation, versioned interiors/heightfields, indoor drone and control feel; full GPU terrain repair. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42388584029); live identity and in-game System label match. |
 | 805 | `r805-9122ca315766` | 2026-11-07 | Astra review (801→805): no blockers. Tim explicitly authorized Astra because Claude was unavailable. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42367463352). |
 | 801 | `r801-78cd78796baf` | 2026-11-06 | Fable review (796→801): no blockers |
