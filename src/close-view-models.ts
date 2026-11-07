@@ -57,36 +57,61 @@ function block(x, y, z, sx, sy, sz, color, swing, px, pz, rest) {
   return part(box, x, y, z, sx * square, sy * square, sz, color, swing, px, pz, rest);
 }
 
-// Swing groups are left/right leg (+/-1), left/right arm (+/-2), and cape (3).
-// Wayfarer: wrapped green coat, gold throat clasp, inset visor and a travel blade.
+// Swing groups are left/right leg (+/-1), left/right arm (+/-2), cape (3), coil segments (4/5), and hound tail (6).
+// The hood's opening faces +X. Its rolled edge frames a recessed face.
+const hoodProfile = [
+  [0, .23], [-.116, .191], [-.162, .082], [-.146, -.06],
+  [0, -.153], [.146, -.06], [.162, .082], [.116, .191],
+];
+const hoodBack = hoodProfile.map(([y, z]) => [-.133, y * .68, 1.45 + z * .79]);
+const hoodEdge = hoodProfile.map(([y, z]) => [.127 + .27 * z, y, 1.45 + z]);
+const hoodWell = hoodProfile.map(([y, z]) => [.105, y * .75, 1.45 + z * .65]);
+const hoodShell = [], hoodLining = [], hoodFace = [];
+for (let i = 0; i < hoodProfile.length; i++) {
+  const j = (i + 1) % hoodProfile.length;
+  hoodShell.push([hoodBack[i], hoodBack[j], hoodEdge[j]], [hoodBack[i], hoodEdge[j], hoodEdge[i]]);
+  hoodLining.push([hoodEdge[i], hoodEdge[j], hoodWell[j]], [hoodEdge[i], hoodWell[j], hoodWell[i]]);
+}
+for (let i = 1; i < hoodProfile.length - 1; i++) {
+  hoodShell.push([hoodBack[0], hoodBack[i + 1], hoodBack[i]]);
+  hoodFace.push([hoodWell[0], hoodWell[i], hoodWell[i + 1]]);
+}
+
+const frontPatch = [
+  [[0, -1, -1], [0, 1, -1], [0, 1, 1]],
+  [[0, -1, -1], [0, 1, 1], [0, -1, 1]],
+];
+const coat = 0x303934, coatHem = 0x28312e, hoodLiningGreen = 0x46594c;
+const faceShadow = 0x232522, amber = 0xf3a55c, satchelLeather = 0x67533b;
 const player = [
-  part(bevel, 0, 0, .98, .21, .30, .34, cloth),
-  part(flare, -.16, 0, .79, .105, .27, .35, cloth, 3, -.17, 1.16, .12),
-  part(bevel, .014, 0, 1.47, .23, .245, .245, cloth),
-  block(.199, 0, 1.445, .035, .153, .072, leather),
-  block(.237, 0, 1.46, .009, .122, .022, visor),
-  block(.183, 0, 1.193, .041, .058, .054, bronze),
-  block(.03, 0, .76, .19, .263, .045, leather),
+  part(flare, 0, 0, 1.076, .129, .166, .240, coat),
+  part(bevel, -.034, 0, .723, .201, .255, .237, coatHem, 3, -.035, .933, .08),
+  part(hoodShell, 0, 0, 0, 1, 1, 1, cloth),
+  part(hoodLining, 0, 0, 0, 1, 1, 1, hoodLiningGreen),
+  part(hoodFace, 0, 0, 0, 1, 1, 1, faceShadow),
+  part(frontPatch, .165, 0, 1.23, 1, .031, .022, bronze),
+  block(.007, .228, .831, .105, .063, .09, satchelLeather),
 ];
 for (const side of [-1, 1]) {
   player.push(
-    block(0, side * .13, .382, .119, .105, .34, leather, side, 0, .71),
-    block(.045, side * .13, .108, .163, .11, .102, leather, side, 0, .71),
-    part(bevel, 0, side * .33, .969, .133, .122, .278, cloth, side * 2, 0, 1.19),
-    block(.045, side * .35, .711, .103, .094, .109, leather, side * 2, 0, 1.19),
+    part(frontPatch, .108, side * .048, 1.464, 1, .022, .011, amber),
+    part(box, -.005, side * .115, .353, .116, .089, .353, coat, side, 0, .71),
+    block(.044, side * .115, .076, .12, .077, .076, leather, side, 0, .71),
+    part(bevel, -.014, side * .25, .984, .083, .092, .211, coat, side * 2, 0, 1.19, -.14),
+    block(.045, side * .25, .759, .068, .067, .087, leather, side * 2, 0, 1.19),
   );
 }
 player.push(
-  block(.131, -.35, .715, .104, .097, .041, bronze, -2, 0, 1.19),
-  part(taper, .155, -.35, .967, .037, .076, .22, bronze, -2, 0, 1.19),
+  block(.131, -.25, .771, .092, .074, .03, bronze, -2, 0, 1.19),
+  part(taper, .155, -.25, .998, .032, .059, .21, bronze, -2, 0, 1.19),
 );
 
 // A short two-tone emitter for the ranged stance. It shares the Wayfarer's arm pivot.
 const playerTool = [
   ...player.slice(0, -2),
-  block(.161, -.35, .746, .193, .085, .063, iron, -2, 0, 1.19),
-  block(.315, -.35, .746, .057, .067, .056, bronze, -2, 0, 1.19),
-  block(.37, -.35, .746, .017, .04, .037, visor, -2, 0, 1.19),
+  block(.161, -.25, .783, .163, .066, .052, iron, -2, 0, 1.19),
+  block(.303, -.25, .783, .043, .052, .046, bronze, -2, 0, 1.19),
+  block(.349, -.25, .783, .012, .033, .032, visor, -2, 0, 1.19),
 ];
 
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
@@ -167,8 +192,42 @@ hollowMarshal.push(
   part(taper, .241, -.432, 1.578, .074, .142, .221, brass, -2, 0, 1.46, .12),
 );
 
+// Ashen Hound: low charcoal body, pointed ears and a rust-colored muzzle.
+const houndFur = 0x765244, houndDark = 0x302724, houndEye = 0xc18a63;
+const ashenHound = [
+  part(bevel, -.072, 0, .449, .395, .204, .173, houndDark, 0, -.072, .449, .09),
+  part(bevel, .215, 0, .495, .177, .21, .223, houndFur, 0, .215, .495, -.34),
+  part(bevel, .388, 0, .581, .177, .146, .133, houndFur),
+  block(.543, 0, .526, .113, .091, .06, houndFur),
+  block(.637, 0, .553, .033, .084, .035, houndDark),
+  part(taper, -.484, 0, .574, .076, .074, .216, houndFur, 6, -.354, .477, -.95),
+];
+for (const side of [-1, 1]) {
+  ashenHound.push(
+    part(taper, .33, side * .097, .719, .068, .061, .122, houndFur, 0, .33, .657, -.38),
+    block(.478, side * .113, .609, .028, .014, .021, houndEye),
+    block(.235, side * .131, .23, .058, .053, .23, houndDark, side * 2, .237, .45),
+    block(.274, side * .131, .037, .092, .064, .037, houndDark, side * 2, .237, .45),
+    block(-.293, side * .132, .216, .09, .062, .216, houndDark, -side, -.299, .432),
+    block(-.263, side * .132, .035, .087, .059, .035, houndDark, -side, -.299, .432),
+  );
+}
+
+// Coil Stalker: a raised teal head, mint transverse ribs and two trailing segments.
+const coilShell = 0x47716d, coilDark = 0x263a39, coilLight = 0x87c0ad;
+const coilStalker = [
+  part(bevel, .022, 0, .348, .301, .274, .328, coilDark, 0, .022, .348, .19),
+  part(bevel, .142, 0, .519, .123, .293, .041, coilLight, 0, .142, .519, -.15),
+  part(bevel, .141, 0, .721, .215, .212, .183, coilShell),
+  block(.32, 0, .734, .012, .056, .036, coilLight),
+  part(bevel, -.294, 0, .262, .232, .217, .192, coilShell, 4),
+  part(bevel, -.375, 0, .263, .054, .223, .197, coilLight, 4),
+  part(bevel, -.599, 0, .168, .225, .16, .144, coilDark, 5),
+  part(bevel, -.686, 0, .169, .05, .164, .148, coilLight, 5),
+];
+
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { player, wayfarer: player, playerTool, ashling, rootBrute, pallidCrawler, hollowMarshal };
+const models = { player, wayfarer: player, playerTool, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker };
 const modelSize = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length, 0),
 ]));
@@ -199,16 +258,24 @@ export function writeCloseViewModel(out, offset, actor) {
   const base = (.014 * Math.sin(phase * 2) * (1 - moving) + .044 * Math.abs(beat)) * (1 - fall) + (kind === "pallidCrawler" ? .61 : .36) * fall;
   const shift = .10 * strike - .06 * tool - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
+  const hound = kind === "ashenHound";
   for (const { mesh, swing, px, pz } of models[kind]) {
+    const coilSway = swing === 4 || swing === 5
+      ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
+      : 0;
     let angle = 0;
-    if (swing === 3) angle = -.12 * moving + .08 * beat + .15 * strike;
+    if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup);
+    else if (swing === 6) angle = .19 * beat - .23 * windup + .24 * strike;
+    else if (hound && swing) angle = -Math.sign(swing) * beat * .50
+      + (Math.abs(swing) === 2 ? .27 * windup - .39 * strike : -.16 * windup + .20 * strike);
+    else if (swing === 3) angle = -.12 * moving + .08 * beat + .15 * strike;
     else if (swing === -2) angle = beat * stride + 1.15 * windup - 1.72 * strike - 1.1 * tool + .22 * flinch;
     else if (swing === 2) angle = -beat * stride + .35 * windup - .31 * strike - .18 * flinch;
     else angle = -swing * beat * stride;
     const c = Math.cos(angle), s = Math.sin(angle);
     for (let i = 0; i < mesh.length; i += MODEL_FLOATS) {
       const u = mesh[i] * c + mesh[i + 2] * s + px;
-      const v = mesh[i + 1];
+      const v = mesh[i + 1] + coilSway;
       const w = mesh[i + 2] * c - mesh[i] * s + pz;
       const f = u * cp + w * sp + shift;
       const nu = mesh[i + 3] * c + mesh[i + 5] * s;

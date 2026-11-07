@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r802 on main, this PR takes r803.
+Taken at merge time: main's release + 1. With r803 on main, this PR takes r804.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 803 | Codex | `claude/close-view-joystick` | Reserve Close View touch movement for the joystick | In flight. |
+| 804 | Codex | `claude/close-view-wayfarer` | Clarify the Wayfarer and add two themed enemy meshes | In flight. |
+| 803 | Codex | `claude/close-view-joystick` | Reserve Close View touch movement for the joystick | Merged (#450). Preview candidate r803-4ffd0f0980f5. |
 | 802 | Codex | `claude/close-view-decal-precision` | Correct packed Close View decal colors | Merged (#449). Previewed as r802-e5748abe9352. |
 | 801 | Codex | `claude/close-view-projectiles` | Improve shot, tool, and contact cues in Close View | Merged (#448). Previewed as r801-78cd78796baf. Published in r801. |
 | 800 | Codex | `claude/close-view-floor-inlays` | Stabilize floor murals and Watcher inlays in Close View | Merged (#447). Previewed as r800-6b6f53f18b96. Published in r801. |
