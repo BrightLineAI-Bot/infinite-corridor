@@ -21,7 +21,7 @@ Taken at merge time: main's release + 1. With r816 on main, this PR takes r817.
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 817 | Codex | `claude/close-view-foundry-assets` | Six native Foundry morphologies with exact palette, appendage and attack contracts | In flight. |
+| 817 | Codex | `claude/close-view-foundry-assets` | Six native Foundry morphologies with exact palette, appendage and attack contracts | PR #466. Original CI42413525175 failed twice only on unchanged generation timing; isolated suite passes. Tim approved focused runner isolation, preserving every test/assertion/threshold/output and workflows. Updated exact-head CI pending. |
 | 816 | Codex | `claude/close-view-pentagon-assets` | Complete non-Foundry native creature roster and authored attack readability | Merged (#465) as093cff214c39bbf745e09aae3d776cea602f1c15. Exact-source Astra review and CI42412608347 passed; Preview42413362028 is running. |
 | 815 | Codex | `claude/close-view-arcology-assets` | Five authored creature bodies, rounded Wayfarer and full creature gallery | Merged (#464). Preview42410401068 succeeded as r815-fe5a2f35f0a4. Source review found flattened upright torso lofts; held from production and superseded by the vertical-loft correction in r816. |
 | 814 | Codex | `claude/player-presentation-contract` | Actual accepted tool poses, additive exact-resume presentation and player status cues | Merged (#463). Previewed and published as r814-2bbee6cc627a. CI42407875425, Preview42408769197 and Publish42410274815 succeeded; live identity and Options → System verified with no recent errors. |
