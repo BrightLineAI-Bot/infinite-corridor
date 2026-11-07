@@ -1,4 +1,4 @@
-import { MODEL_FLOATS } from "./close-view-models.js?v=r812-1f4b36dd0279";
+import { MODEL_FLOATS } from "./close-view-models.js?v=r813-dbbd7b6c6a51";
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's

@@ -1,8 +1,8 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r812-1f4b36dd0279";
-import { SHADOW_CLONE } from "./late-spells.js?v=r812-1f4b36dd0279";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r812-1f4b36dd0279";
-import { drawOrbit } from "./orbit-volley.js?v=r812-1f4b36dd0279";
-import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r812-1f4b36dd0279";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r813-dbbd7b6c6a51";
+import { SHADOW_CLONE } from "./late-spells.js?v=r813-dbbd7b6c6a51";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r813-dbbd7b6c6a51";
+import { drawOrbit } from "./orbit-volley.js?v=r813-dbbd7b6c6a51";
+import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r813-dbbd7b6c6a51";
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
 export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {

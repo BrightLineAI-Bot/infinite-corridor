@@ -14,9 +14,9 @@
 //
 // All pure: the floor, the pick and the vitals. game.ts lays the way in, spawns, tunes and rewards (pentagonArena*), and
 // pentagon-arena-render.ts draws it.
-import { hashSeed, byHash } from "./random.js?v=r812-1f4b36dd0279";
-import { pentagonPlan, pentagonVaultId, pentagonFinaleId } from "./pentagon.js?v=r812-1f4b36dd0279";
-import { WORLD_BEASTS, liveBeastReference, BEAST_BALANCE, BEAST_BASELINE } from "./world-beasts.js?v=r812-1f4b36dd0279";
+import { hashSeed, byHash } from "./random.js?v=r813-dbbd7b6c6a51";
+import { pentagonPlan, pentagonVaultId, pentagonFinaleId } from "./pentagon.js?v=r813-dbbd7b6c6a51";
+import { WORLD_BEASTS, liveBeastReference, BEAST_BALANCE, BEAST_BASELINE } from "./world-beasts.js?v=r813-dbbd7b6c6a51";
 
 // The finale's own creature, the Gloomvast (haunts.ts GLOOM_FINALE: a haunt grown grand, with its Dark). While `kind` names no creature
 // the pick leaves it out.

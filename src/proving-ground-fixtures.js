@@ -1,5 +1,5 @@
-import { Game } from "./game.js?v=r812-1f4b36dd0279";
-import { freshSave } from "./types.js?v=r812-1f4b36dd0279";
+import { Game } from "./game.js?v=r813-dbbd7b6c6a51";
+import { freshSave } from "./types.js?v=r813-dbbd7b6c6a51";
 
 export const PROVING_GROUND_SEED = "CINDER-VERGE-47";
 

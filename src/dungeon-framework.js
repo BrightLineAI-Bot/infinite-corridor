@@ -1,4 +1,4 @@
-import { hashSeed } from "./random.js?v=r812-1f4b36dd0279";
+import { hashSeed } from "./random.js?v=r813-dbbd7b6c6a51";
 
 export const DUNGEON_CONTRACT_SCHEMA = "infinite-corridor-dungeon/1.0.0";
 export const DUNGEON_DISCOVERY_SCHEMA = 1;

@@ -1,36 +1,36 @@
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r812-1f4b36dd0279"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r812-1f4b36dd0279";
-import { astralBeamAnchors } from "./astral-worm.js?v=r812-1f4b36dd0279";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r812-1f4b36dd0279";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r812-1f4b36dd0279";
-import { enemyMeleeGeometry } from "./combat.js?v=r812-1f4b36dd0279";
-import { ruleRows } from "./elders.js?v=r812-1f4b36dd0279";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r812-1f4b36dd0279";
-import { BOAT } from "./boats.js?v=r812-1f4b36dd0279";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r812-1f4b36dd0279";
-import { isMarineTile } from "./world-beasts.js?v=r812-1f4b36dd0279";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r812-1f4b36dd0279"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r812-1f4b36dd0279";
-import { setTreeSeason } from "./landscape-render.js?v=r812-1f4b36dd0279";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r812-1f4b36dd0279";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r812-1f4b36dd0279";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r812-1f4b36dd0279";
-import { TREES } from "./trees.js?v=r812-1f4b36dd0279";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r812-1f4b36dd0279";
-import { KIT_MOVES } from "./boss-kit.js?v=r812-1f4b36dd0279";
-import { SKY_DISCS } from "./skylands.js?v=r812-1f4b36dd0279"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r812-1f4b36dd0279";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r812-1f4b36dd0279"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r812-1f4b36dd0279"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r812-1f4b36dd0279"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r812-1f4b36dd0279"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r812-1f4b36dd0279"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r812-1f4b36dd0279";
-import { drawRelayNode } from "./relay-network.js?v=r812-1f4b36dd0279";
-import { structureOccupancy } from "./world.js?v=r812-1f4b36dd0279";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r812-1f4b36dd0279";
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r812-1f4b36dd0279";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r812-1f4b36dd0279"; // Close View: three hooks below, marked CLOSE VIEW
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r813-dbbd7b6c6a51"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r813-dbbd7b6c6a51";
+import { astralBeamAnchors } from "./astral-worm.js?v=r813-dbbd7b6c6a51";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r813-dbbd7b6c6a51";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r813-dbbd7b6c6a51";
+import { enemyMeleeGeometry } from "./combat.js?v=r813-dbbd7b6c6a51";
+import { ruleRows } from "./elders.js?v=r813-dbbd7b6c6a51";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r813-dbbd7b6c6a51";
+import { BOAT } from "./boats.js?v=r813-dbbd7b6c6a51";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r813-dbbd7b6c6a51";
+import { isMarineTile } from "./world-beasts.js?v=r813-dbbd7b6c6a51";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r813-dbbd7b6c6a51"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r813-dbbd7b6c6a51";
+import { setTreeSeason } from "./landscape-render.js?v=r813-dbbd7b6c6a51";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r813-dbbd7b6c6a51";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r813-dbbd7b6c6a51";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r813-dbbd7b6c6a51";
+import { TREES } from "./trees.js?v=r813-dbbd7b6c6a51";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r813-dbbd7b6c6a51";
+import { KIT_MOVES } from "./boss-kit.js?v=r813-dbbd7b6c6a51";
+import { SKY_DISCS } from "./skylands.js?v=r813-dbbd7b6c6a51"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled } from "./monster-render.js?v=r813-dbbd7b6c6a51";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r813-dbbd7b6c6a51"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r813-dbbd7b6c6a51"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r813-dbbd7b6c6a51"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r813-dbbd7b6c6a51"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r813-dbbd7b6c6a51"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER } from "./monster-pack.js?v=r813-dbbd7b6c6a51";
+import { drawRelayNode } from "./relay-network.js?v=r813-dbbd7b6c6a51";
+import { structureOccupancy } from "./world.js?v=r813-dbbd7b6c6a51";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r813-dbbd7b6c6a51";
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r813-dbbd7b6c6a51";
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r813-dbbd7b6c6a51"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Release 159: the tile size is a whole number of pixels everywhere it is computed (renderer, combat visuals, main),
 // so cached tile textures and the ground image blit 1:1 instead of being resampled every frame.
@@ -2539,6 +2539,7 @@ export function render(ctx, g, w, h, now) {
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
+        nativeLift: Math.max(0, Number(e.hopLift) || 0),
         fn: () => {
           if (e.seaKind) { drawSeaCreature(ctx, e, s, now, SEA_CREATURES[e.seaKind].colors, g); return; }
           if (e.fracRank) { const rare = e.fracRank === "rare", pulse = .55 + .45 * Math.sin(now / 260), R = s * (.42 + (e.bodyRadius || .4) * .6); ctx.save(); ctx.strokeStyle = rare ? `rgba(255,196,70,${.5 + .4 * pulse})` : `rgba(110,170,255,${.45 + .35 * pulse})`; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, (e.y + .82) * s, R, R * .42, 0, 0, Math.PI * 2); ctx.stroke(); if (rare && e.packName) { ctx.font = `bold ${Math.max(10, s * .3)}px serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd77a"; ctx.strokeStyle = "#000a"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s; ctx.strokeText(e.packName, (e.x + .5) * s, ty); ctx.fillText(e.packName, (e.x + .5) * s, ty); } ctx.restore(); } // release 651: Fractured mode's champions (blue) and rares (gold, named)
