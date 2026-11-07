@@ -2,30 +2,9 @@
 // presentation integration selects one only after the production Foundry candidate has been validated.
 import { bevel, taper, ellipsoid, ringLoft, curvedTube, membrane, part } from './close-view-mesh.ts';
 
-export const FOUNDRY_MODEL_KEYS = Object.freeze({
-  quadruped: 'foundry-quadruped', floating: 'foundry-floating', segmented: 'foundry-segmented',
-  tentacled: 'foundry-tentacled', geometric: 'foundry-geometric', biomechanical: 'foundry-biomechanical',
-});
-
-// primary, shadow, accent. actor.palette accepts only the production Foundry indices 0..4.
-export const FOUNDRY_PALETTES = Object.freeze([
-  Object.freeze([0x607d78, 0x263b3b, 0xb4d5c5]),
-  Object.freeze([0x77617f, 0x30283b, 0xd0a7d7]),
-  Object.freeze([0x8a6248, 0x3d3029, 0xf0b867]),
-  Object.freeze([0x526f8a, 0x253440, 0x8ed9e7]),
-  Object.freeze([0x73765a, 0x303328, 0xd2cc78]),
-]);
+import { FOUNDRY_MODEL_KEYS, FOUNDRY_PALETTES } from './close-view-foundry-presentation.ts';
+export { FOUNDRY_MODEL_KEYS, FOUNDRY_MODEL_METADATA, FOUNDRY_PALETTES, foundryPaletteIndex, foundryPaletteColor } from './close-view-foundry-presentation.ts';
 const [primary, shadow, accent] = FOUNDRY_PALETTES[0];
-
-// Local-space anchors are presentation evidence for later integration, not gameplay range or timing.
-export const FOUNDRY_MODEL_METADATA = Object.freeze({
-  quadruped: Object.freeze({ key: FOUNDRY_MODEL_KEYS.quadruped, headZ: .78, actionZ: .60, phase: 'four-beat-gait' }),
-  floating: Object.freeze({ key: FOUNDRY_MODEL_KEYS.floating, headZ: .94, actionZ: .72, phase: 'hover-orbit' }),
-  segmented: Object.freeze({ key: FOUNDRY_MODEL_KEYS.segmented, headZ: .55, actionZ: .48, phase: 'segment-wave' }),
-  tentacled: Object.freeze({ key: FOUNDRY_MODEL_KEYS.tentacled, headZ: 1.02, actionZ: .82, phase: 'radial-tendrils' }),
-  geometric: Object.freeze({ key: FOUNDRY_MODEL_KEYS.geometric, headZ: 1.06, actionZ: .82, phase: 'counter-orbit' }),
-  biomechanical: Object.freeze({ key: FOUNDRY_MODEL_KEYS.biomechanical, headZ: 1.22, actionZ: .92, phase: 'paired-stride' }),
-});
 
 // Low, muscular quadruped: arched body, wedge head, four jointed legs, tail and paired brow prongs.
 const quadruped = [
@@ -92,8 +71,11 @@ export const CLOSE_VIEW_FOUNDRY_MODELS = Object.freeze({
 });
 export const CLOSE_VIEW_FOUNDRY_KINDS = Object.freeze(Object.keys(CLOSE_VIEW_FOUNDRY_MODELS));
 
-export function foundryPaletteIndex(value) { return Number.isSafeInteger(value) && value >= 0 && value < FOUNDRY_PALETTES.length ? value : 0; }
-export function foundryPaletteColor(rgb, palette) {
-  const index = foundryPaletteIndex(palette), source = FOUNDRY_PALETTES[0], slot = source.indexOf(rgb);
-  return slot < 0 ? rgb : FOUNDRY_PALETTES[index][slot];
-}
+// Production count variants use the same core and retain room for three drone attachments.
+export const CLOSE_VIEW_FOUNDRY_VARIANTS = Object.freeze(Object.fromEntries([3,6].flatMap(count => {
+  const tendrils = tentacled.filter(p => p.swing < 52);
+  for(let i=0;i<count;i++){const a=(i-.5)*Math.PI*2/count,x=Math.cos(a)*.15,y=Math.sin(a)*.19;tendrils.push(part(curvedTube([[x,y,.56,.05],[x*.9-.08,y*1.25,.28,.032],[x*1.4+.05*Math.sin(i),y*1.55,.035,.009]],4),0,0,0,1,1,1,i%2?shadow:primary,52+i,x,.56));}
+  const chassis = biomechanical.filter(p => p.swing < 75);
+  for(let i=0;i<count;i++){const y=(i-(count-1)/2)*.10;chassis.push(part(curvedTube([[-.18,y,.72,.038],[-.38,y*1.35,.46,.026],[-.48,y*1.6,.18,.008]],count===6?3:4),0,0,0,1,1,1,i%3===1?accent:shadow,75+i,-.18,.72));}
+  return [[`foundry-tentacled-${count}`,tendrils],[`foundry-biomechanical-${count}`,chassis]];
+})));

@@ -1,8 +1,11 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
+import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.ts';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
 const profile = (bodyLift, head, shot, action, decoration = true, extra = {}) => Object.freeze({ bodyLift, head, shot, action, decoration, ...extra });
+const foundryProfiles = Object.fromEntries(Object.entries(FOUNDRY_BASE_BODIES).map(([kind,body])=>[kind,profile(0,FOUNDRY_MODEL_METADATA[body].headZ,FOUNDRY_MODEL_METADATA[body].actionZ,'foundry')]));
 export const ACTOR_PRESENTATION = Object.freeze({
+  ...foundryProfiles,
   ashling: profile(0, 1.05, .66, 'ordinary'),
   rootBrute: profile(0, 1.5, .66, 'ordinary'),
   pallidCrawler: profile(0, .55, .66, 'pack'),
@@ -30,6 +33,17 @@ export const ACTOR_PRESENTATION = Object.freeze({
   gloomwisp: profile(.25, .95, .93, 'pack'),
   gloomgorge: profile(.12, 1.3, .92, 'pack'),
 });
+export function actorProfile(actor) {
+  const p = ACTOR_PRESENTATION[actor?.kind];
+  if (p?.action !== 'foundry') return p;
+  const candidate = actor.foundryValidated === true, body = candidate ? actor.foundryBody : FOUNDRY_BASE_BODIES[actor.kind], m = FOUNDRY_MODEL_METADATA[body];
+  if (!m || !candidate && (actor.foundryId || actor.foundryBody || actor.foundryAttack)) return null;
+  const bodyLift = body === 'floating' ? .2 : body === 'geometric' ? .12 : 0;
+  const fallbackPalette = candidate && Number.isSafeInteger(actor.visualSeed) ? (actor.visualSeed >>> 9) % 5 : ({latticeHunter:3,archiveBehemoth:1,riftGrazer:4})[actor.kind];
+  const palette = Number.isSafeInteger(actor.foundryPalette) && actor.foundryPalette >= 0 && actor.foundryPalette < 5 ? actor.foundryPalette : fallbackPalette;
+  return { ...p, body, modelKey: foundryModelKey(body, candidate ? actor.tentacles : 0), bodyLift, head:m.headZ, shot:bodyLift+m.actionZ, palette, locomotion:m.phase, candidate };
+}
+export const actorModelKey = actor => actorProfile(actor)?.modelKey || actor?.kind;
 // Normal pack kits, movement-compatible hybrids, guardian kits and Fracture Warden modules.
 export const PACK_ACTION_FAMILIES = Object.freeze({
   bite: 'bite', clawSweep: 'sweep', longStab: 'stab', sweepBeam: 'beam', groundRupture: 'slam',
@@ -60,14 +74,14 @@ const burrowing = (actor) => actor?.pack?.attack === 'burrowAmbush' && ['travel'
 export const presentationScale = (actor) => Math.max(.25, Math.min(4, finite(actor?.scale, 1)));
 export function projectileVisualHeight(shooter, source = 'body') {
   if (source === 'drone') return DRONE_VISUAL_HEIGHT;
-  const p = ACTOR_PRESENTATION[shooter?.kind];
+  const p = actorProfile(shooter);
   return p ? Math.min(8, (p.shot + (shooter.kind === 'cinderSeraph' && shooter.aloft ? .9 : 0)) * presentationScale(shooter)) : DEFAULT_PROJECTILE_VISUAL_HEIGHT;
 }
 export function shotVisualHeight(shot) {
   return Math.max(.05, Math.min(8, finite(shot?.visualHeight, DEFAULT_PROJECTILE_VISUAL_HEIGHT)));
 }
 export function actorPresentation(actor) {
-  const p = ACTOR_PRESENTATION[actor?.kind];
+  const p = actorProfile(actor);
   if (!p) return null;
   const scale = presentationScale(actor);
   const air = actor.kind === 'cinderSeraph' && actor.aloft ? .9 : 0;
@@ -78,17 +92,26 @@ export function actorPresentation(actor) {
 const AFFIXES = new Set(['volcanic', 'skyAssault', 'spiked', 'venomous', 'droneSwarm', 'enraged']);
 // A body alone is insufficient. New families opt in only after their action and body-embedded effects are covered.
 export function nativeCreatureCoverage(actor, capture, { mesh = true, attachments = false } = {}) {
-  const p = ACTOR_PRESENTATION[actor?.kind];
+  const p = actorProfile(actor);
   if (!p || !mesh) return 'body';
   if (!capture || capture.enemy !== actor) return 'capture';
   if (actor.hidden && !p.hidden && !burrowing(actor) || actor.gloomVeil || actor.dead) return 'visibility';
-  if (actor.seaKind || actor.astral || actor.gateAttack || actor.foundryForm || actor.foundryAttack || actor.giantCloud || actor.roofWake > 0 || actor.mount) return 'special-form';
+  if (actor.seaKind || actor.astral || actor.gateAttack || actor.foundryForm || actor.foundryAttack && p.action !== 'foundry' || actor.giantCloud || actor.roofWake > 0 || actor.mount) return 'special-form';
+  if (p.action === 'foundry' && p.candidate) {
+    if (!['hostile','boss','passive'].includes(actor.foundryRole)) return 'foundry-role';
+    if (!FOUNDRY_ATTACKS.includes(actor.foundryAttack)) return 'foundry-action';
+    if (!FOUNDRY_MOVEMENTS.includes(actor.foundryMovement)) return 'foundry-movement';
+    const segments = p.body === 'segmented' ? 3 : actor.foundryRole === 'passive' ? 2 : 1;
+    const tentacles = ['tentacled','biomechanical'].includes(p.body) ? actor.foundryRole === 'boss' ? 6 : 3 : 0;
+    if (actor.segments !== segments || actor.tentacles !== tentacles) return 'morphology';
+  }
+  if (p.action === 'foundry' && !p.candidate && (actor.segments > 1 || actor.tentacles > 0)) return 'morphology';
   if (actor.packKind && (p.action !== 'pack' || typeof capture.nativePackEffects !== 'function')) return 'pack-effects';
   if (actor.pack && p.action !== 'pack') return 'pack-action';
   if (actor.pack?.attack && !PACK_ACTION_FAMILIES[actor.pack.attack]) return 'pack-action';
   if (actor.pack?.attack && !PACK_PHASES.has(actor.pack.phase)) return 'pack-phase';
   if (actor.eliteWindup > 0 || actor.eliteActive > 0) return 'elite-action';
-  if (actor.segments > 1 && actor.segments !== p.segments || actor.tentacles > 0 && actor.tentacles !== p.tentacles) return 'morphology';
+  if (p.action !== 'foundry' && (actor.segments > 1 && actor.segments !== p.segments || actor.tentacles > 0 && actor.tentacles !== p.tentacles)) return 'morphology';
   const decorated = actor.fracRank || actor.fracWarden || actor.fracShaman || actor.warded || actor.affixes?.length || actor.poiseBreak > 0;
   if (decorated && (!p.decoration || typeof capture.nativeDecorations !== 'function' || typeof capture.nativeFloor !== 'function')) return 'decorations';
   if (actor.affixes?.some((id) => !AFFIXES.has(id))) return 'affix';

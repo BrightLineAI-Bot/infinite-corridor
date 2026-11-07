@@ -1,7 +1,7 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
 import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
-import { CLOSE_VIEW_FOUNDRY_MODELS, foundryPaletteColor } from './close-view-foundry-models.ts';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
@@ -193,7 +193,7 @@ const coilStalker = [
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
-  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS };
+  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
@@ -340,6 +340,17 @@ function semanticAngle(kind, swing, action, family, actionPhase, p, force, beat,
   // Damage/release for ordinary pack attacks has already happened when recovery starts.
   const contact = actionPhase === 'recover' ? 1 - p : actionPhase === 'erupt' && action === 'burrowAmbush' ? 1 : 0;
   const recoil = actionPhase === 'recover' ? 1 - p : 0;
+  if (kind.startsWith('foundry-')) {
+    // These IDs are Foundry-local morphology joints, not the similarly numbered pack joints.
+    const ranged = family === 'ranged', stab = family === 'stab', slam = family === 'slam';
+    const release = ranged ? .22 * wind - .32 * contact : stab ? .38 * wind - .62 * contact : slam ? .48 * wind - .66 * contact : .32 * wind - .52 * contact;
+    if (kind === 'foundry-quadruped') return swing === 24 ? Math.sin(phase * 1.4) * .12 * secondary + .3 * release : swing >= 20 ? Math.sin(phase + swing * 1.57) * .38 * moving * secondary + (swing < 22 ? 1 : -.45) * release : .35 * release;
+    if (kind === 'foundry-floating') return swing < 32 ? .35 * release : Math.sin(phase * 1.5 + swing) * .10 * secondary + (swing % 2 ? 1 : -1) * release;
+    if (kind === 'foundry-segmented') return Math.sin(phase * 1.5 - swing * .65) * (.025 + .15 * moving) * secondary + (swing === 43 ? 1.3 : swing < 43 ? .35 : .6) * release;
+    if (kind.startsWith('foundry-tentacled')) return swing < 52 ? .4 * release : Math.sin(phase * 1.25 + swing) * (.05 + .10 * moving) * secondary + (ranged ? (swing % 2 ? 1 : -1) : 1) * release;
+    if (kind === 'foundry-geometric') return swing === 60 ? .4 * release : Math.sin(phase * 1.1 + swing * 1.17) * .07 * secondary + (swing % 2 ? 1 : -1) * release;
+    if (kind.startsWith('foundry-biomechanical')) return swing === 70 ? .3 * release : swing < 73 ? (swing === 71 ? 1 : -1) * beat * .35 * secondary - .3 * release : Math.sin(phase + swing * 1.3) * (.04 + .10 * moving) * secondary + (swing < 75 ? 1.4 : .65) * release;
+  }
   // Pallid Crawler retains its exact legacy bite/leap route. Other production hybrids articulate its existing
   // splayed front (|2|) and rear (|1|) joints instead of borrowing the bite clock or a periodic oscillator.
   if (kind === 'pallidCrawler' && swing) {
