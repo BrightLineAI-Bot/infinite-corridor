@@ -5,7 +5,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -1365,6 +1365,7 @@ function buildStatic(map, geo, th) {
     };
     return { rect, path };
   };
+  const ceilingArt = [];
   const sigilColors = SIGIL_COLORS;
   let inlay = SIGIL_INLAY;
   const glyph = (surface, colors = sigilColors, depth = .012) => {
@@ -1386,6 +1387,7 @@ function buildStatic(map, geo, th) {
     if (ceiling ? !map.hall || map.hall.open : !normal) continue;
     const [nx, ny] = normal || [0, 0], wallSpan = nx ? Math.min(y - 1, h - 1 - y) : Math.min(x - 1, w - 1 - x);
     const width = ceiling ? m.scale * .94 : Math.min(m.scale * .94, wallSpan * 2), height = ceiling ? width * .7 : 1.36;
+    if (ceiling) ceilingArt.push([x - width / 2, y - height / 2, x + width / 2, y + height / 2]);
     const face = paint(x + nx * .52, y + ny * .52, ceiling ? H - .027 : 1.47, nx, ny, width, height);
     const depth = ceiling ? -.014 : .014;
     face.rect(0, 0, .5, .5, middle);
@@ -1538,6 +1540,58 @@ function buildStatic(map, geo, th) {
     const seg = round ? 9 : 1, P = (k, end) => { const th2 = Math.PI * (1 - k / seg), u = round ? .5 + .5 * Math.cos(th2) : k / seg, z = round ? A.spring + A.radius * Math.sin(th2) : A.spring, [ax, ay, bx, by] = ends[end]; return [ax + (bx - ax) * (end ? 1 - u : u), ay + (by - ay) * (end ? 1 - u : u), z, u]; };
     for (let k = 0; k < seg; k++) { const a = P(k, 0), b = P(k + 1, 0), c2 = P(k + 1, 1), d2 = P(k, 1);
       for (const q of [a, b, c2, a, c2, d2]) V(q[0], q[1], q[2], 0, q[3], q[2], H, 0, 0, 5, stoneMat, acol, 0, 0, 0, hsh, x, y); } }
+  // Tile-sized beam sections use the same discovery mask as their ceiling plane. At a
+  // crossing the short sections butt against the long one and share no bottom faces.
+  if (!map.hall?.open) {
+    const { data: mask } = closeViewMask(map);
+    const covered = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, flags = mask[i * 4];
+      if ((flags & 5) !== 1 || tiles[i]?.blocked || arch[i] || tiles[i]?.doorway) continue;
+      if (ceilingArt.some(([left, top, right, bottom]) => x < right && x + 1 > left && y < bottom && y + 1 > top)) continue;
+      covered[i] = 1;
+    }
+    const { kind, bay, rib } = th.ceiling;
+    const spacing = map.hall ? HALL_VIEW.ceilingBay : bay, half = rib;
+    const beamZ = H - .105, color = tg.ceil.map((v) => v * 1.25);
+    const hasRoof = (x, y) => x >= 0 && y >= 0 && x < w && y < h && covered[y * w + x];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!hasRoof(x, y)) continue;
+      const acrossX = y % spacing === 0, acrossY = x % spacing === 0 && (kind === 0 || kind === 3);
+      if (!acrossX && !acrossY) continue;
+      const left = x + .5 - half, right = x + .5 + half, top = y + .5 - half, bottom = y + .5 + half;
+      const side = (x0, y0, x1, y1, nx, ny) => quad(x0, y0, x1, y1, beamZ, H,
+        ny ? x0 : y0, ny ? x1 : y1, nx, ny, 10, kind, color, 0, 0, 0, 0, x, y);
+      const underside = (x0, y0, x1, y1) => flat(x0, y0, x1, y0, x1, y1, x0, y1, beamZ, 10.25, kind, color, 0, x, y);
+      if (acrossX) {
+        underside(x, top, x + 1, bottom);
+        if (acrossY) {
+          side(x, top, left, top, 0, -1);
+          side(right, top, x + 1, top, 0, -1);
+          side(x, bottom, left, bottom, 0, 1);
+          side(right, bottom, x + 1, bottom, 0, 1);
+        } else {
+          side(x, top, x + 1, top, 0, -1);
+          side(x, bottom, x + 1, bottom, 0, 1);
+        }
+        if (!hasRoof(x - 1, y)) side(x, top, x, bottom, -1, 0);
+        if (!hasRoof(x + 1, y)) side(x + 1, top, x + 1, bottom, 1, 0);
+      }
+      if (acrossY) {
+        const section = (start, end) => {
+          underside(left, start, right, end);
+          side(left, start, left, end, -1, 0);
+          side(right, start, right, end, 1, 0);
+        };
+        if (acrossX) {
+          section(y, top);
+          section(bottom, y + 1);
+        } else section(y, y + 1);
+        if (!hasRoof(x, y - 1)) side(left, y, right, y, 0, -1);
+        if (!hasRoof(x, y + 1)) side(left, y + 1, right, y + 1, 0, 1);
+      }
+    }
+  }
   return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
 }
 // How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.

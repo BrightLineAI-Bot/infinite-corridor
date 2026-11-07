@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+Textured structural ceiling bays. Closed corridors gain shallow stone, timber, resin, or conduit ribs with themed textured infill.
 - Release 804 — **Close View character silhouettes.** The Wayfarer wears a cloth hood and travel coat. Ashen Hounds and Coil Stalkers have native low-poly models.
 - Release 803 — **Close View joystick.** Touch inside the visible left pad to move. Drags on the open screen outside it pan the camera.
 - Release 802 — **Close View decal colors.** Shots and contact glints retain their intended colors on GPUs with 16-bit medium-precision integers.

@@ -210,17 +210,17 @@ vec3 floorMat(vec2 P, ivec2 T, uint mat, out float h, out float wet) {
         vec3 chan = mix(water, vec3(0.1, 0.09, 0.08), max(bars, frame)); c = mix(c, chan, ch); h = mix(h, grate ? max(bars, frame) : -0.6, ch); wet = mix(wet, grate ? 0.4 : 1.0, ch); } } }
   return c;
 }
-// The ceiling at P: kind 0 a ribbed vault (diagonal ribs across each bay, transverse arches at its edges), 1 timber beams and
-// joists, 2 organic ribs, 3 conduits and dead lamps. Returns its albedo; dark is how far up into the dark this point is.
+// The ceiling plane fills the bays between the structural ribs in the static mesh.
 vec3 ceilMat(vec2 P, out float h, out float dark) {
-  float B = u_ceil.z, k = u_ceilK.x, rw = u_ceilK.y; vec3 c = u_ceilRGB; h = 0.0; dark = 0.0;
-  if (k < 0.5) { vec2 b = fract(P / B), bc = abs(b - 0.5); float tr = min(min(b.x, 1.0 - b.x), min(b.y, 1.0 - b.y)) * B;
-    float diag = min(abs(b.x - b.y), abs(b.x + b.y - 1.0)) * B * 0.7071;
-    float rib = 1.0 - smoothstep(rw * 0.5, rw * 0.5 + fwidth(diag), diag), arch = 1.0 - smoothstep(rw, rw + fwidth(tr), tr);
-    vec2 id; float mortar; float st = ashlar(P * 1.4, 0.32, 0.6, 0.04, 0.5, id, mortar);
-    float cellD = min(diag, tr); dark = smoothstep(0.0, B * 0.4, cellD) * u_ceilK.z; // the webs between the ribs rise into the dark
-    c = c * (0.75 + 0.3 * hash12(id)) * (1.0 - 0.5 * mortar); h = st * 0.5;
-    float r = max(rib, arch); c = mix(c, u_ceilRGB * 1.12, r); h = mix(h, 1.0 + arch * 0.4, r); dark *= 1.0 - r;
+  float B = u_ceil.z, k = u_ceilK.x; vec3 c = u_ceilRGB; h = 0.0; dark = 0.0;
+  if (k < 0.5) {
+    vec2 b = fract((P - 0.5) / B);
+    float edge = min(min(b.x, 1.0 - b.x), min(b.y, 1.0 - b.y)) * B;
+    vec2 id; float mortar;
+    h = ashlar(P, 0.32, 0.59, 0.035, 0.72, id, mortar);
+    c *= (0.72 + 0.34 * hash12(id)) * (0.82 + 0.24 * vnoise(P * 9.0 + id));
+    c = mix(c, u_ceilRGB * 0.35, mortar * 0.88);
+    dark = (0.14 + 0.24 * smoothstep(0.0, B * 0.45, edge)) * u_ceilK.z;
   } else if (k < 1.5) { float beam = 1.0 - smoothstep(0.1, 0.12 + fwidth(P.x), abs(fract(P.x) - 0.5)), joist = 1.0 - smoothstep(0.03, 0.04 + fwidth(P.y), abs(fract(P.y * 2.6) - 0.5) * 0.385);
     float grain = vnoise(vec2(P.x * 20.0, P.y * 1.5)); c = vec3(0.16, 0.11, 0.07) * (0.7 + 0.4 * grain); vec3 plank = vec3(0.1, 0.07, 0.05) * (0.7 + 0.5 * vnoise(vec2(P.x * 4.0, P.y * 30.0)));
     c = mix(plank, c, max(beam, joist)); h = beam * 1.0 + joist * 0.5; dark = (1.0 - max(beam, joist)) * u_ceilK.z;
@@ -333,7 +333,25 @@ void main() {
   vec3 c = v_col; float along = v_tex.x, u = v_tex.y, z = v_tex.z, top = v_tex.w, part = v_nrm.z, mat = v_nrm.w, deco = v_meta.x;
   vec3 N0 = vec3(v_nrm.xy, 0.0); if (dot(N0, N0) < 0.25) N0 = vec3(0.0, 0.0, (part > 4.5 && part < 5.5) || fract(part) > 0.1 ? -1.0 : 1.0); // a flat face: up, or down (a soffit, a cornice's underside: part x.25)
   float h = 1.0, shin = 0.0, wet = 0.0; vec3 emit = vec3(0.0); vec2 id; float mortar = 0.0; vec2 q = vec2(along, z);
-  if (part > 3.5 && part < 4.5) { // an arch's face: the opening cut out, voussoirs round it, coursed stone above
+  if (part >= 10.0) { // structural ceiling beams and their undersides
+    vec2 surface = abs(N0.z) > 0.5 ? v_world.xy : vec2(along, top - z);
+    if (mat < 0.5) {
+      h = ashlar(surface, u_stoneP.x * 0.62, u_stoneP.y, u_stoneP.z, u_stoneP.w, id, mortar);
+      c *= (0.78 + 0.32 * hash12(id)) * (0.83 + 0.25 * vnoise(surface * 11.0 + id));
+      c = mix(c, c * 0.36, mortar);
+    } else if (mat < 1.5) {
+      h = vnoise(surface * vec2(25.0, 2.0));
+      c *= 0.7 + 0.55 * h;
+    } else if (mat < 2.5) {
+      h = 0.55 + 0.38 * vnoise(surface * 9.0);
+      c *= 0.7 + 0.54 * h;
+      shin = 24.0;
+    } else {
+      float seam = aline(fract(surface.x * 2.0) - 0.5, 0.028);
+      c *= (0.78 + 0.34 * vnoise(surface * 12.0)) * (1.0 - seam * 0.46);
+      h = 1.0 - seam * 0.65; shin = 18.0;
+    }
+  } else if (part > 3.5 && part < 4.5) { // an arch's face: the opening cut out, voussoirs round it, coursed stone above
     vec2 r = vec2((u - 0.5), z - u_arch.x); float rr = length(r); // the opening was cut out by the depth pass (WALL_DEPTH_FS): no discard here, so the early depth test holds
     if (u_arch.y < 0.01) { // a flat lintel: one long block over the way through
       if (z < u_arch.x + u_arch.z) { mortar = aline(z - u_arch.x - u_arch.z, 0.012) + aline(u - 0.02, 0.012) + aline(u - 0.98, 0.012); h = 1.0 - clamp(mortar, 0.0, 1.0); id = vec2(3.0, 7.0); c *= 0.9; }
