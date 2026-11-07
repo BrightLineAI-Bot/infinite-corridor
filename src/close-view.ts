@@ -1132,7 +1132,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (d !== capturedPlayer && q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2) boardB[n] = Math.min(boardB[n], A.cutAlpha); // on the line from the camera to the Wayfarer: a ghost
     boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
-  occludeBillboards(n, faces);
+  occludeBillboards(n, faces, g.paused);
   insertionSortByDepth(n);
   const turnFacing = relativeFacing(p, closeViewIdleLockAim(g, now)), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
   const models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null;
@@ -1330,7 +1330,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
 // it is marked hidden. Its opacity, and how hidden it is, ease per creature (CLOSE_VIEW.cues.fade), so a creature walking
 // round a corner fades to a ghost and back, and one coming into sight fades in. At most actors x faces in view (64 x 200).
 const FOE_FADE = new WeakMap(); // creature -> { a: its eased opacity, o: how far a wall hides it, eased } (one small object a creature, kept with it)
-function occludeBillboards(n, faces) {
+function occludeBillboards(n, faces, paused = false) {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, k = 1 - Math.exp(-Cu.fade * CAM.dt /* version 4: a repeat of the same instant changes nothing */);
   for (let j = 0; j < n; j++) { if (itemKind[j] !== 1) continue;
     const sc = boardScale[j], kk = boardK[j], hw = CLOSE_VIEW.pick.bodyWidth * .5 * sc * kk, bx0 = boardX[j] - hw, bx1 = boardX[j] + hw, by1 = boardY[j], by0 = by1 - A.height * .8 * sc * kk, wx = boardWX[j], wy = boardWY[j];
@@ -1341,7 +1341,11 @@ function occludeBillboards(n, faces) {
       if (side > 0) { if (itemDepth[i] < upper) upper = itemDepth[i]; } else { if (itemDepth[i] > lower) lower = itemDepth[i]; if (faceAlpha[i] > .5) occ = 1; } }
     let key = itemDepth[j]; if (key >= upper) key = upper - 2e-3; if (key <= lower) key = lower + 2e-3; itemDepth[j] = key; // a wall it is behind wins
     const foe = boardFoe[j]; boardOcc[j] = occ;
-    if (foe && typeof foe === "object") { let st = FOE_FADE.get(foe); if (!st) { st = { a: 0, o: occ }; FOE_FADE.set(foe, st); } st.a += (boardB[j] - st.a) * k; st.o += (occ - st.o) * k; boardB[j] = st.a; boardOcc[j] = st.o; } }
+    if (foe && typeof foe === "object") { let st = FOE_FADE.get(foe);
+      // A first paused render (including a restored scene) has no prior fade to freeze. Initialize
+      // from current visibility, not zero forever; established fades and active-play fade-in are unchanged.
+      if (!st) { st = { a: paused ? boardB[j] : 0, o: occ }; FOE_FADE.set(foe, st); }
+      st.a += (boardB[j] - st.a) * k; st.o += (occ - st.o) * k; boardB[j] = st.a; boardOcc[j] = st.o; } }
 }
 // Attack cues (CLOSE_VIEW.cues): winding up (its pattern's windup, or the plain telegraph), a creature glows and rings the floor.
 const foeWindingUp = (e) => e.telegraph > 0 || e.pack?.phase === "windup" || e.gateAttack?.phase === "windup";

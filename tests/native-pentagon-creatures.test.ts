@@ -109,8 +109,9 @@ test('each production body and its decorated boss submits native geometry with r
   }
   const e=Object.assign(createCombatant('cinderSeraph',game.player.x+.5,game.player.y+.5),{aloft:true,phasing:true});game.enemies=[e];game.paused=true;game.pauseStarted=now;
   render(screen,game,390,844,now+100);const a=gl.uploads.at(-1);render(screen,game,390,844,now+300);const b=gl.uploads.at(-1);
-  assert.deepEqual(Array.from(a).filter((_,i)=>i%MODEL_FLOATS!==9),Array.from(b).filter((_,i)=>i%MODEL_FLOATS!==9));
-  assert.ok(Array.from(b).some((v,i)=>i%MODEL_FLOATS===9&&v>0&&v<=.45));
+  assert.equal(closeViewGLStats.models,2,'the first paused actor is admitted alongside the player');
+  assert.deepEqual(a,b,'paused geometry and opacity are frozen, including a newly admitted actor');
+  assert.ok(Array.from(b).some((v,i)=>i%MODEL_FLOATS===9&&v>0&&v<=.45), `paused model opacity: ${[...new Set(Array.from(b).filter((_,i)=>i%MODEL_FLOATS===9))]}; models: ${closeViewGLStats.models}`);
 }));
 
 test('authored pack FX remain separate from bodies and pink telegraphs, including hidden mounds',()=>{
