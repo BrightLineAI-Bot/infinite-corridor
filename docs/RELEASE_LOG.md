@@ -15,17 +15,18 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r800 on main, this PR takes r801.
+Taken at merge time: main's release + 1. With r801 on main, this PR takes r802.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 801 | Codex | `claude/close-view-projectiles` | Improve shot, tool, and contact cues in Close View | In flight. |
-| 800 | Codex | `claude/close-view-floor-inlays` | Stabilize floor murals and Watcher inlays in Close View | Merged (#447). Preview candidate r800-6b6f53f18b96. |
-| 799 | Codex | `claude/close-view-touch` | Separate movement and camera touches in Close View | Merged (#446). Previewed as r799-088c959943b6. |
-| 798 | Codex | `claude/close-view-characters` | Native low-poly Close View characters | Merged (#445). Previewed as r798-9a66727bd0d5. |
-| 797 | Codex | `claude/close-view-grand-halls` | Render Pentagon v8 grand halls in Close View | Merged (#444). Previewed as r797-77b8fb9966ce. |
+| 802 | Codex | `claude/close-view-decal-precision` | Correct packed Close View decal colors | In flight. |
+| 801 | Codex | `claude/close-view-projectiles` | Improve shot, tool, and contact cues in Close View | Merged (#448). Previewed as r801-78cd78796baf. Published in r801. |
+| 800 | Codex | `claude/close-view-floor-inlays` | Stabilize floor murals and Watcher inlays in Close View | Merged (#447). Previewed as r800-6b6f53f18b96. Published in r801. |
+| 799 | Codex | `claude/close-view-touch` | Separate movement and camera touches in Close View | Merged (#446). Previewed as r799-088c959943b6. Published in r801. |
+| 798 | Codex | `claude/close-view-characters` | Native low-poly Close View characters | Merged (#445). Previewed as r798-9a66727bd0d5. Published in r801. |
+| 797 | Codex | `claude/close-view-grand-halls` | Render Pentagon v8 grand halls in Close View | Merged (#444). Previewed as r797-77b8fb9966ce. Published in r801. |
 | 796 | Claude | `claude/close-view-atmosphere` | Close View v5 atmosphere: a look per place (Pentagon tomb and root cellar, keep, lived-in keep, hive, arcology), built stonework, vaulted ceilings, placed candle and sconce light, fog and haze, camera collision instead of see-through walls, full-resolution sprites | Merged (#443). Previewed and published as r796-817d6b861fd9 on 2026-11-06. |
 | 795 | Claude | `claude/pentagon-grand-halls` | Pentagon version 8: grand halls (ballroom, arena, vaulted gallery, colonnaded hall, pit-gallery round an open shaft) among the ring chambers of new Pentagons, tall with a ceiling class and a backdrop; 17 lore murals (`PENTAGON_MURALS`) on walls, ceilings and floors, read once into the Journal; the Watcher's sigil over doors, on banners and columns, inlaid in hall floors; all as map data for the Close View pass (796). Older Pentagons byte-identical | Merged (#442). Previewed as r795-9923cf44a701. Published in r796. |
 | 793 | Claude | `claude/close-view-v4` | Close View v4: a GPU scene (WebGL2) with a floor cast per pixel (no more swimming), a ceiling, detailed walls (panel relief, bevels, trim), pits with depth and lava, smooth follow and sprite motion, drag-anywhere camera control by default (crescent kept as an option, wider and faster), and a quick turnaround | Merged (#441). Published as r793-e86fa19ff8f8 on 2026-11-06. |
@@ -186,6 +187,7 @@ Taken at merge time: main's release + 1. With r800 on main, this PR takes r801.
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 801 | `r801-78cd78796baf` | 2026-11-06 | Fable review (796→801): no blockers |
 | 796 | `r796-817d6b861fd9` | 2026-11-06 | Close View atmosphere (#443) and Pentagon grand-hall map data (#442). |
 | 793 | `r793-e86fa19ff8f8` | 2026-11-06 | Fable review (792→793): no blockers. Close View v4 (#441). |
 | 792 | `r792-5b14ec5bba1f` | 2026-11-06 | Fable review (791→792): no blockers. The Reckoning Fields, landscape 23 (#440). |

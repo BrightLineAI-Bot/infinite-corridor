@@ -481,6 +481,7 @@ in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; o
 void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; v_world = a_pos.xy; }`;
 const DECAL_FS = `#version 300 es
 precision highp float;
+precision highp int;
 uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; out vec4 outColor;
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : vec3(1.0, 0.75, 0.35); } // warm, bioluminescent, ghost-light, a failing lamp
