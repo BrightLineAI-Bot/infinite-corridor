@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 816: give all non-Foundry interior creatures authored native bodies and readable attacks, and curve the original six silhouettes.
 - Release 815: author five native Arcology and Hive creature bodies, round the Wayfarer, and add a full creature inspection gallery.
 - Release 814: tie native player attacks to their accepted tool, duration and aim; preserve exact-resume presentation, poison/fire/knockdown cues and softer Wayfarer limbs.
 - Release 813: align native monster windup/contact/recovery and crawler airborne height with actual combat state; add eleven production-backed Close View combat-asset scenarios and correct Forge fixture metadata.
