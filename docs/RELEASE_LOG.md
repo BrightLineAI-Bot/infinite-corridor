@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r813 on main, this PR takes r814.
+Taken at merge time: main's release + 1. With r814 on main, this PR takes r815.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 814 | Codex | `claude/player-presentation-contract` | Actual accepted tool poses, additive exact-resume presentation and player status cues | In flight. |
-| 813 | Codex | `claude/combat-asset-cohesion` | Truthful native monster attack phases and production-backed combat asset gallery | Merged (#462). Previewed as r813-dbbd7b6c6a51; hosted review in progress. |
+| 815 | Codex | `claude/close-view-arcology-assets` | Five authored creature bodies, rounded Wayfarer and full creature gallery | In flight. |
+| 814 | Codex | `claude/player-presentation-contract` | Actual accepted tool poses, additive exact-resume presentation and player status cues | Merged (#463) as2bbee6cc627a60f4048780833f96e0ce0f7d6ad0; CI42407875425 passed and Preview42408769197 is running. |
+| 813 | Codex | `claude/combat-asset-cohesion` | Truthful native monster attack phases and production-backed combat asset gallery | Merged (#462). Previewed as r813-dbbd7b6c6a51. Published in r813; Publish run 42408237197 succeeded and live identity matches. Astra review: no blockers. Options → System verification pending browser-control recovery. |
 | 812 | Codex | `claude/drone-runtime-compatibility` | Preserve valid drone-lift metadata and clarify lab controls | Merged (#460). Previewed as r812-1f4b36dd0279. Published in r812. Publish run 42394194802 succeeded; live identity and in-game System label verified. |
 | 811 | Codex | `claude/close-view-collision-pass` | Open new stair landings with interior v4; quiet the four traversal labs | Merged (#459). Previewed as r811-a0060f80fb7a. Published in r811. Publish run 42393069055 succeeded; live identity and in-game System label verified. |
 | 810 | Codex | `claude/close-view-terrain-render-fix` | Repair heightfield actor projection and exercise full GPU frames | Merged (#458). Previewed and GPU-checked as r810-8ed20b74216b. Published in r810. Publish run 42388584029 succeeded; live identity and in-game System label verified. |
@@ -199,6 +200,7 @@ Taken at merge time: main's release + 1. With r813 on main, this PR takes r814.
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 813 | `r813-dbbd7b6c6a51` | 2026-11-07 | Astra review (812→813): no blockers. Publish 42408237197 succeeded; live identity verified; in-game System label verification pending browser-control recovery. |
 | 812 | `r812-1f4b36dd0279` | 2026-11-07 | Astra review (810→812): no blockers; covers every change since live r811. Nested valid drone metadata survives save/reload, with canonical bindings and invalid/stale rejection preserved; lab movement/look help corrected. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42394194802); live identity and in-game System label match. |
 | 811 | `r811-a0060f80fb7a` | 2026-11-07 | Astra review (810→811): no blockers. Versioned open stair landings and quiet traversal labs. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42393069055); live identity and in-game System label match. |
 | 810 | `r810-8ed20b74216b` | 2026-11-07 | Astra review (805→810): no blockers. Animation, versioned interiors/heightfields, indoor drone and control feel; full GPU terrain repair. [Publish verified](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42388584029); live identity and in-game System label match. |

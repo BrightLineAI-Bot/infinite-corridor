@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 815: author five native Arcology and Hive creature bodies, round the Wayfarer, and add a full creature inspection gallery.
 - Release 814: tie native player attacks to their accepted tool, duration and aim; preserve exact-resume presentation, poison/fire/knockdown cues and softer Wayfarer limbs.
 - Release 813: align native monster windup/contact/recovery and crawler airborne height with actual combat state; add eleven production-backed Close View combat-asset scenarios and correct Forge fixture metadata.
 - Release 812: preserve validated nested drone-lift metadata through play, save and reload; keep canonical identity and numeric validation authoritative, and clarify Close View lab movement/look help.
