@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 804 — **Close View character silhouettes.** The Wayfarer wears a cloth hood and travel coat. Ashen Hounds and Coil Stalkers have native low-poly models.
 - Release 803 — **Close View joystick.** Touch inside the visible left pad to move. Drags on the open screen outside it pan the camera.
 - Release 802 — **Close View decal colors.** Shots and contact glints retain their intended colors on GPUs with 16-bit medium-precision integers.
 - Release 801 — **Close View combat cues.** Standard shots and their trails travel through the scene, a compact emitter recoils when fired, and hits flash at contact. Melee strikes hold their contact pose briefly.

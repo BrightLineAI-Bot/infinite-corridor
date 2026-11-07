@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 804: recognizable Close View characters
+
+**CODE:** The Wayfarer shares a hooded travel coat across melee and tool stances. Ashen Hounds use a four-legged gait and Coil Stalkers use articulated segments. Existing native enemies keep their meshes.
+
+**BOUNDARY:** Character presentation only. The normal and ranged Wayfarer use 238 and 250 triangles. The active robot and empowered suit keep their existing art and controls. No change to player state, generation, combat, or save schema.
+
 ## Release 803: dedicated Close View joystick
 
 **CODE:** Close View reserves touch movement for gestures that begin inside the visible joystick. Open-screen drags pan on either side in Drag anywhere mode. The alternate crescent still pans from its own arc.
