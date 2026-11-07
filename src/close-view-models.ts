@@ -1,5 +1,5 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
@@ -39,7 +39,7 @@ const coat = 0x303934, coatHem = 0x28312e, hoodLiningGreen = 0x46594c;
 const faceShadow = 0x232522, amber = 0xf3a55c, satchelLeather = 0x67533b;
 const player = [
   // Rounded shoulder-to-waist loft and three separate coat panels replace the old stacked block torso.
-  part(ringLoft([[0,.14,-.24],[.01,.20,-.06],[-.02,.17,.18],[-.04,.12,.29]], 6), 0, 0, 1.02, 1, 1, 1, coat, 0, 0, 1.02, 0, true),
+  part(verticalLoft([[0,.14,-.24],[.01,.20,-.06],[-.02,.17,.18],[-.04,.12,.29]], 6), 0, 0, 1.02, 1, 1, 1, coat, 0, 0, 1.02, 0, true),
   part(membrane([[0,-.03,.15],[-.05,-.20,-.31],[-.14,-.06,-.42],[.02,.01,-.13]]), -.02, 0, .83, 1, 1, 1, coatHem, 3, -.02, .98),
   part(membrane([[0,-.02,.13],[-.09,.02,-.34],[-.02,.19,-.39],[.04,.05,-.10]]), -.03, 0, .82, 1, 1, 1, coatHem, 3, -.03, .98),
   part(membrane([[0,-.12,.11],[-.10,-.26,-.27],[-.03,-.18,-.40],[.05,-.05,-.10]]), -.05, 0, .82, 1, 1, 1, cloth, 3, -.05, .98),
@@ -138,8 +138,8 @@ for (const side of [-1, 1]) {
 
 // Hollow Marshal: crimson armor, split brass crest, and a long polearm.
 const hollowMarshal = [
-  part(ringLoft([[0,.22,-.42],[-.01,.35,-.12],[0,.31,.25],[-.02,.18,.43]],6), 0, 0, 1.18, 1, 1, 1, plate, 0, 0, 1.18, 0, true),
-  part(ringLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],6), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
+  part(verticalLoft([[0,.22,-.42],[-.01,.35,-.12],[0,.31,.25],[-.02,.18,.43]],6), 0, 0, 1.18, 1, 1, 1, plate, 0, 0, 1.18, 0, true),
+  part(verticalLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],6), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
   part(ellipsoid(6, 1), .04, 0, 1.737, .234, .243, .247, iron, 0, .04, 1.737, 0, true),
   part(detailPrism,.226,0,1.737,.047,.147,.057,brass),
   part(detailPrism,.275,0,1.745,.006,.105,.017,iron),

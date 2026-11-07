@@ -2856,7 +2856,7 @@ die".
   first seen in 683 / 685.
 ## Release 816: the interior creature roster in native geometry
 
-**CODE:** Fifteen Pentagon and haunt recipes join the five Arcology bodies and six refined legacy creatures. Per-species leading anatomy follows actual own/boss/guardian/Fracture/hybrid phase clocks, including hidden burrow, locked dive, pre-hit blink, held beam, charge wall stun and spike volleys. Shared capture/decor layers preserve source labels, wards, stagger, alpha and real Drone Swarm attachments. Source-derived attack-matrix regressions prevent silent semantic poses.
+**CODE:** Fifteen Pentagon and haunt recipes join the five Arcology bodies and six refined legacy creatures. Per-species leading anatomy follows actual own/boss/guardian/Fracture/hybrid phase clocks, including hidden burrow, locked dive, pre-hit blink, held beam, charge wall stun and spike volleys. Shared capture/decor layers preserve source labels, wards, stagger, alpha and real Drone Swarm attachments. Source-derived attack-matrix regressions prevent silent semantic poses. Explicit vertical lofts restore proper Wayfarer, Marshal, Saint and Wraith torso/cloth depth; horizontal loft recipes remain unchanged.
 
 **BOUNDARY:** Existing damage, target/aim ownership, telegraphs, collision, save schema14, pinned generation and scratch isolation remain unchanged. Every body reserves24 triangles for three drones within256, with the same8/14/20 actor caps and two model passes. Unknown custom actions/forms keep an explicit fallback. Source review resolved the missing-action blocker; hosted visual acceptance and phone-performance limits remain separate from geometry/test coverage.
 
