@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 817: native Foundry morphology contracts
+
+**CODE:** Three base-kind defaults and six admitted morphology families share data-only presentation metadata with native mesh selection, palette0–4, true scale/anchors and three/six appendage variants. Actual ordinary windup/strike, boss slam, close tentacle contact and five projectile patterns drive presentation. Explicit candidate palette survives the real spawn producer and schema14 enemy snapshots; launch heights remain presentation data.
+
+**BOUNDARY:** Source movement labels change the existing speed multiplier; native gait follows actual displacement. sweepingBeam remains its existing five-projectile fan. No hit XY, damage, cooldown, generator pins, camera eligibility or encounter routes change. Natural Foundry encounters in map.building interiors are unproved; gallery cases validate actual production constructors. Unknown malformed/custom forms retain safe fallback. Max body plus three drones is252 triangles within existing caps/passes; phone performance remains unmeasured.
+
 ## Release 816: the interior creature roster in native geometry
 
 **CODE:** Fifteen Pentagon and haunt recipes join the five Arcology bodies and six refined legacy creatures. Per-species leading anatomy follows actual own/boss/guardian/Fracture/hybrid phase clocks, including hidden burrow, locked dive, pre-hit blink, held beam, charge wall stun and spike volleys. Shared capture/decor layers preserve source labels, wards, stagger, alpha and real Drone Swarm attachments. Source-derived attack-matrix regressions prevent silent semantic poses. Explicit vertical lofts restore proper Wayfarer, Marshal, Saint and Wraith torso/cloth depth; horizontal loft recipes remain unchanged. Curved tubes now transport perpendicular cross-sections along their actual paths, retaining limb and tendril volume from the side with unchanged triangle counts.
