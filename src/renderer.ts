@@ -3,6 +3,7 @@ import { FAR_FOLK } from "./far-realms.ts";
 import { astralBeamAnchors } from "./astral-worm.ts";
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { knockdownPose, drawShockSparks } from "./lightning-giant-render.ts";
+import { playerFormPresentation } from './close-view-player-presentation.ts';
 import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.ts";
 import { enemyPatternWindup } from "./enemy-patterns.ts";
 import { ruleRows } from "./elders.ts";
@@ -18,7 +19,7 @@ import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
 import { TREES } from "./trees.ts";
 import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
-import { actorPresentation } from "./actor-presentation.ts";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS } from "./skylands.ts"; // release 587
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
@@ -45,6 +46,50 @@ export function nativeWindupDuration(e) {
   return duration;
 }
 export function nativeActionShape(e) { return e.telegraph > 0 ? MELEE_PATTERNS[e.meleePhase?.id]?.shape || null : e.strikeGeometry?.kind || null; }
+// Native player bodies replace only the body. These existing state-owned cues remain in the residual atlas.
+export function drawNativePlayerDecorations(ctx, g, s, now) {
+  const p=g.player,form=playerFormPresentation(g),quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),t=quiet?0:now;
+  const x=(p.x+.5)*s,foot=(p.y+.82)*s;
+  ctx.save();
+  if(now<(p.stunnedUntil||0))drawShockSparks(ctx,x,(p.y+.9)*s,s,t);
+  if(form?.mech){
+    const m=g.save.mech;
+    if(form.empowered){const r=s*(.72+.05*Math.sin(t/140)),glow=ctx.createRadialGradient(x,foot-.27*s,r*.2,x,foot-.27*s,r);glow.addColorStop(0,'#ffb05a55');glow.addColorStop(1,'#ff5a1f00');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(x,foot-.27*s,r,0,Math.PI*2);ctx.fill();}
+    if(g.mechBoosting===true){
+      for(const side of [-1,1]){const jx=x+side*s*.17,top=foot-s*.06,len=s*(.24+(quiet?0:.04*Math.sin(t/70+side))),jet=ctx.createLinearGradient(jx,top,jx,top+len);jet.addColorStop(0,'#e8f6ff');jet.addColorStop(.35,'#7fb9d8aa');jet.addColorStop(1,'#4a7fa000');ctx.fillStyle=jet;ctx.beginPath();ctx.moveTo(jx-s*.035,top);ctx.lineTo(jx+s*.035,top);ctx.lineTo(jx,top+len);ctx.closePath();ctx.fill();}
+    }
+    // Gauges stay below the feet at the pre-boost height, as in the ordinary player closure.
+    const bx=(p.x+.08)*s,by=(p.y+1.1+form.lift)*s,bw=s*.84,bh=Math.max(3,s*.08);
+    ctx.fillStyle='#0b1218cc';ctx.fillRect(bx-1,by-1,bw+2,bh*2+3);
+    ctx.fillStyle='#d8dee5';ctx.fillRect(bx,by,bw*Math.max(0,Math.min(1,m.plate/MECH.plate)),bh);
+    ctx.fillStyle='#5fc6e0';ctx.fillRect(bx,by+bh+1,bw*Math.max(0,Math.min(1,m.fuel/(MECH.boost*(m.empowered?2:1)))),bh);
+    if(form.empowered){ctx.fillStyle='#ff8a3d';ctx.fillRect(bx,by+bh*2+2,bw,Math.max(2,bh*.6));}
+  }
+  if(g.droneUp?.()&&g.droneAt){const m=g.save.mech,bx=(p.x+.08)*s,by=(p.y+1.1)*s,bw=s*.84,bh=Math.max(3,s*.08);ctx.fillStyle='#0b1218cc';ctx.fillRect(bx-1,by-1,bw+2,bh*2+3);ctx.fillStyle='#5fc6e0';ctx.fillRect(bx,by,bw*Math.max(0,Math.min(1,m.fuel/DRONE.carry)),bh);ctx.fillStyle=m.healCd>0?'#3f7f52':'#7dff9a';ctx.fillRect(bx,by+bh+1,bw*Math.max(0,Math.min(1,1-(m.healCd||0)/DRONE.healCooldown)),bh);}
+  ctx.restore();
+}
+const ELDER_ROWS = new WeakMap();
+function elderRuleRows(o){let rows=o.rows||ELDER_ROWS.get(o);if(!rows){rows=Array.from({length:16},(_,k)=>ruleRows(o.rule,33,26,Math.floor((o.phase||.5)*1e6)+7+k*7919).map(r=>r.slice(12,21))).flat();ELDER_ROWS.set(o,rows);}return rows;}
+const RECITER_NATIVE_LOOKS = new Set(['pilgrim','mercenary','minstrel','scholar','traveler','cartographer']);
+function hueRGB(h,s,l){h=((h%360)+360)%360/360;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h*12)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))));};return (f(0)<<16)|(f(8)<<8)|f(4);}
+export function nativeTraveler(o,now,quiet){
+  if(o?.kind!=='traveler'||o.mount||o.folkGiant||o.customArt)return null;
+  const facing={up:-Math.PI/2,down:Math.PI/2,left:Math.PI,right:0}[o.facing];
+  if(o.elder===true&&Number.isInteger(o.rule)&&o.rule>=0&&o.rule<=255){const hue=(o.rule*137.508)%360;return {kind:'elderWanderer',yaw:facing,paletteMap:{[0x17101d]:hueRGB(hue,.4,.08),[0x342b38]:hueRGB(hue,.25,.22),[0xe8e5dc]:hueRGB(hue,.3,.88)},pose:o.state==='walking'?undefined:'idle',pace:o.state==='walking'?undefined:0};}
+  if(o.reciter&&RECITER_NATIVE_LOOKS.has(o.look)){const colors=COLORS[o.look].map(c=>Number.parseInt(c.slice(1),16));return {kind:'dungeonReciter:'+o.look,yaw:facing,paletteMap:{[0x5f6f92]:colors[0],[0x2f3550]:colors[1],[0xc9cfe6]:colors[2]},pose:o.state==='walking'?undefined:'idle',pace:o.state==='walking'?undefined:0};}
+  return null;
+}
+export function drawNativeTravelerDetails(ctx,o,s,now,quiet=false){
+  if(!o.elder)return;
+  const hue=(o.rule*137.508)%360,T=(quiet?0:now/1000)+(o.phase||0)*10,cx=(o.x+.5)*s,foot=(o.y+.82)*s,H=s*2.2,bodyW=s*.5,bodyTop=foot-H,bodyBot=foot-H*.42;
+  const rows=elderRuleRows(o);
+  const cols=9,rowsShown=15,cw=bodyW/cols,ch=(bodyBot-bodyTop)/rowsShown,scroll=(T*2.2)%(rows.length-rowsShown),top=Math.floor(scroll);
+  ctx.save();ctx.beginPath();ctx.moveTo(cx-bodyW/2,bodyBot);ctx.lineTo(cx-bodyW/2,bodyTop+bodyW*.4);ctx.quadraticCurveTo(cx,bodyTop-bodyW*.2,cx+bodyW/2,bodyTop+bodyW*.4);ctx.lineTo(cx+bodyW/2,bodyBot);ctx.closePath();ctx.clip();
+  ctx.fillStyle=`hsl(${hue},85%,64%)`;
+  for(let y=0;y<=rowsShown;y++){const row=rows[(top+y)%rows.length];for(let x=0;x<cols;x++)if(row[x])ctx.fillRect(cx-bodyW/2+x*cw+cw*.1,bodyBot-(y+1-(scroll-top))*ch+ch*.1,cw*.8,ch*.8);}
+  ctx.restore();
+  const hy=foot-s*2.52,halo=ctx.createRadialGradient(cx,hy,0,cx,hy,s*.45);halo.addColorStop(0,`hsla(${hue},90%,80%,.45)`);halo.addColorStop(1,`hsla(${hue},90%,80%,0)`);ctx.fillStyle=halo;ctx.fillRect(cx-s*.45,hy-s*.45,s*.9,s*.9);
+}
 export function drawNativeCreatureFloor(ctx, g, e, s, now) {
   const p = actorPresentation(e); if (!p || e.gloomVeil || e.dead) return;
   const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), t = quiet ? 0 : now / 1000;
@@ -786,9 +831,10 @@ function drawSkiff(ctx, x, y, s, facing, now) {
 // (`water`) everything below the waterline is drowned in blue; diving, only an arm breaks the surface, with bubbles.
 // Release 321: the drone. A round silver body with a blue eye toward its facing, two rotor arms with spinning discs, a
 // rocket pod underneath; carrying, two claws reach down to the Wayfarer's shoulders. `heal` (0..1) glows it green.
-function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
+function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0, residual = false) {
   const cx = (x + .5) * s, cy = (y + .45) * s + Math.sin(now / 260) * s * .04, u = s * .34, dir = facing === "left" ? -1 : 1, spin = now / 40;
   ctx.save();
+  if(!residual){
   if (carrying) { ctx.strokeStyle = "#6f7880"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.lineCap = "round"; for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + side * u * .5, cy + u * .55); ctx.lineTo(cx + side * u * .95, cy + u * 1.6); ctx.lineTo(cx + side * u * .7, cy + u * 2.05); ctx.stroke(); } }
   ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(cx, cy + s * (carrying ? 1.75 : 1.05), u * 1.1, u * .3, 0, 0, 7); ctx.fill();
   ctx.strokeStyle = "#4b525a"; ctx.lineWidth = Math.max(1.5, s * .06); ctx.beginPath(); ctx.moveTo(cx - u * 1.55, cy - u * .35); ctx.lineTo(cx + u * 1.55, cy - u * .35); ctx.stroke();
@@ -798,6 +844,7 @@ function drawDrone(ctx, x, y, s, facing, now, carrying = false, heal = 0) {
   ctx.fillStyle = body; ctx.strokeStyle = "#3a4048"; ctx.lineWidth = Math.max(1, s * .035); ctx.beginPath(); ctx.ellipse(cx, cy, u, u * .78, 0, 0, 7); ctx.fill(); ctx.stroke();
   ctx.fillStyle = "#14202a"; ctx.beginPath(); ctx.ellipse(cx + dir * u * .38, cy, u * .36, u * .3, 0, 0, 7); ctx.fill();
   ctx.fillStyle = "#5fd6f0"; ctx.beginPath(); ctx.arc(cx + dir * u * .45, cy, u * .15, 0, 7); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(cx + dir * u * .5, cy - u * .06, u * .05, 0, 7); ctx.fill();
+  }
   if (heal > 0) { ctx.globalAlpha = Math.min(1, heal) * .7; ctx.strokeStyle = "#7dff9a"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.ellipse(cx, cy, u * 1.35, u * 1.1, 0, 0, 7); ctx.stroke(); }
   ctx.restore();
 }
@@ -1016,7 +1063,7 @@ export function drawElder(ctx, o, s, now) {
   }
   // The body: a cloak of its rule, rows rising; a fresh random row every 26 rows, so even rules that die out show
   // their character.
-  const cols = 9, rowsShown = 15, rows = o.rows ||= Array.from({ length: 16 }, (_, k) => ruleRows(o.rule, 33, 26, Math.floor((o.phase || .5) * 1e6) + 7 + k * 7919).map((r) => r.slice(12, 12 + cols))).flat(), cw = bodyW / cols, ch = (bodyBot - bodyTop) / rowsShown, scroll = (T * 2.2) % (rows.length - rowsShown);
+  const cols = 9, rowsShown = 15, rows = elderRuleRows(o), cw = bodyW / cols, ch = (bodyBot - bodyTop) / rowsShown, scroll = (T * 2.2) % (rows.length - rowsShown);
   const top = Math.floor(scroll);
   ctx.save(); ctx.beginPath(); ctx.moveTo(cx - bodyW / 2, bodyBot + bob); ctx.lineTo(cx - bodyW / 2, bodyTop + bodyW * .4 + bob); ctx.quadraticCurveTo(cx, bodyTop - bodyW * .2 + bob, cx + bodyW / 2, bodyTop + bodyW * .4 + bob); ctx.lineTo(cx + bodyW / 2, bodyBot + bob); ctx.closePath();
   ctx.fillStyle = `hsl(${hue},40%,8%)`; ctx.fill(); ctx.clip();
@@ -2455,6 +2502,10 @@ export function render(ctx, g, w, h, now) {
   for (const o of g.map.objects)
     if (renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
+        object:o,
+        ...(closeViewCapturing()&&nativeTraveler(o,now,false)?{nativeAux:{source:o,sample:(clock,quiet)=>nativeTraveler(o,clock,quiet)},nativeHeight:o.elder?3.05:1.8,nativePanelOffset:o.elder?.29:0,nativeEffects:!!o.elder,
+          nativeDecorations:()=>drawNativeTravelerDetails(ctx,o,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)),
+          nativeFloor:()=>{ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse((o.x+.5)*s,(o.y+.82)*s,s*(o.elder?.45:.3),s*.12,0,0,7);ctx.fill();}}:{}),
         y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
@@ -2652,8 +2703,12 @@ export function render(ctx, g, w, h, now) {
   // Release 587: the skyway's floating discs, each sorted at its front edge; the Wayfarer standing on one is drawn just after it, lifted.
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
+  const captureDrone=closeViewCapturing()&&closeViewBareFloor()&&!!g.droneUp?.()&&!!g.droneAt;
   const playerDraw = {
-    jumpLift: jumpLift(g, now),
+    nativeLift: playerFormPresentation(g)?.lift || 0,
+    nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
+    nativeDecorations: () => drawNativePlayerDecorations(ctx,g,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
+    jumpLift: jumpLift(g, g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
     y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && interior
       ? Math.max(0, g.droneLift.z - supportLevel) * LIFT_PER_LEVEL
       : g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
@@ -2719,7 +2774,7 @@ export function render(ctx, g, w, h, now) {
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
-      if (drone) { const carry = !!g.mechBoosting; drawDrone(ctx, carry ? p.x : g.droneAt.x, carry ? p.y - (lift + mechLift) / s - .62 : g.droneAt.y - lift / s, s, p.facing, now, carry, g.droneHealFx || 0); // release 321
+      if (drone&&!captureDrone) { const carry = !!g.mechBoosting; drawDrone(ctx, carry ? p.x : g.droneAt.x, carry ? p.y - (lift + mechLift) / s - .62 : g.droneAt.y - lift / s, s, p.facing, now, carry, g.droneHealFx || 0); // release 321
         const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // carry (blue) and mend readiness (green)
         ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh * 2 + 3); ctx.fillStyle = "#5fc6e0"; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, m.fuel / DRONE.carry)), bh); ctx.fillStyle = (m.healCd || 0) > 0 ? "#3f7f52" : "#7dff9a"; ctx.fillRect(bx, by + bh + 1, bw * Math.max(0, Math.min(1, 1 - (m.healCd || 0) / DRONE.healCooldown)), bh); }
       if (mech) { const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // plating (silver) and boost (blue)
@@ -2773,6 +2828,14 @@ export function render(ctx, g, w, h, now) {
   // building's or compound's roof (the tile under the feet, as movement reads it), the Wayfarer is drawn once, after the roofs,
   // lifted to the roof's drawn height; never in this pass, where the roof drawn later covered it.
   const roofUnder = standingOnRoof(g, mw);
+  if(captureDrone){
+    const source=g.droneAt,clock=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),carry=!!g.mechBoosting;
+    const x=carry?p.x:source.x,y=carry?p.y:source.y,rawY=y-(carry?.97:0),lift=(playerDraw.lift||0)+(playerDraw.jumpLift||0),sample=()=>{const a=playerDroneVisualAnchor(p,source,{carrying:carry,lift,now:clock,quiet});return a?{kind:'corridorDrone',x:a.x,y:a.y,supportX:p.x+.5,supportY:p.y+.75,lift:a.z,pose:'idle',phase:0,pace:0,amount:0,carrying:carry,yaw:a.yaw}:null;};
+    draws.push({x,y,lift,nativeSupportX:p.x+.5,nativeSupportY:p.y+.75,nativeHeight:2.1,nativeAux:{source,sample},nativeEffects:g.droneHealFx>0,
+      nativeFloor:()=>{ctx.fillStyle='#00000033';ctx.beginPath();ctx.ellipse((x+.5)*s,(y+.82)*s,s*.34*1.1,s*.34*.3,0,0,7);ctx.fill();},
+      fn:()=>drawDrone(ctx,x,rawY,s,p.facing,quiet?0:clock,carry,g.droneHealFx||0),
+      nativeDecorations:()=>drawDrone(ctx,x,rawY,s,p.facing,quiet?0:clock,carry,g.droneHealFx||0,true)});
+  }
   if (!roofUnder) draws.push(playerDraw);
   { const fz = g.area === "overworld" ? g.droneFizzleFx : null; if (fz && now < fz.until && visibleInCamera(fz, l, t, r, b, 4)) { const under = tileUnder(g.map, mw, fz.x, fz.y); draws.push({ y: fz.y + .01, x: fz.x, lift: (fz.levels || 0) * LIFT_PER_LEVEL * tileLiftScale(under), inSky: true, fn: () => drawDroneFizzle(ctx, fz, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) }); } } // the drone fizzle
   if (closeViewCapturing()) closeViewTake(draws.splice(0), playerDraw); // CLOSE VIEW (2/3): the actors become billboards

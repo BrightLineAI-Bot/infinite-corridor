@@ -1,3 +1,4 @@
+import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
 import { ACTION_MOTION, normalizeAttackVisual, stampAttackVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
@@ -107,7 +108,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
-import { interiorTerrain, interiorSurfaceLevel, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend } from "./landscape.ts";
+import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend } from "./landscape.ts";
 import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -4347,6 +4348,11 @@ export class Game {
     if (!best) return;
     const ax = best.x + .5 - (d.x + .5), ay = best.y + .5 - (d.y + .45), n = Math.hypot(ax, ay) || 1;
     this.projectiles.push({ id: `drone-rocket-${now}`, x: d.x + .5, y: d.y + .45, dx: ax / n, dy: ay / n, speed: DRONE.rocketSpeed, life: DRONE.rocketLife, damage: DRONE.rocketDamage + (characterStats(this.save).magicBonus || 0), damageType: "physical", path: "straight", age: 0, hits: {}, seekId: best.id, seekTurn: DRONE.rocketTurn, droneRocket: true });
+    const shot=this.projectiles[this.projectiles.length-1],support=interiorSurfaceHeight(this.map,p.x+.5,p.y+.75);
+    const lift=jumpLift(this,now)+(this.droneLift&&interiorTerrain(this.map)?Math.max(0,this.droneLift.z-interiorSurfaceLevel(this.map,p.x+.5,p.y+.75))*LIFT_PER_LEVEL:0);
+    const anchor=playerDroneVisualAnchor(p,d,{carrying:!!carry,lift,support,now,quiet:!!(this.presentation?.reduceMotion||this.presentation?.safeMode)});
+    const visualLaunch=projectileLaunchMetadata(shot,anchor?.muzzle,interiorSurfaceHeight(this.map,shot.x,shot.y));
+    if(visualLaunch)shot.visualLaunch=visualLaunch; // serializable visual offset only; every simulation field above is unchanged
     m.rocketCd = DRONE.rocketEvery;
   }
   // Release 319 (dungeon-ladder.ts): a Threefold Deep, a deep archetype or a world-threat arena records, the first time it is
@@ -7522,7 +7528,7 @@ export class Game {
     this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, landed] };
     if (step >= F.punches.length) this.fistRecoverUntil = now + F.recover * 1000;
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each punch
-    p.attackUntil = now + 240; p.meleeUntil = now + 240; stampAttackVisual(p, "fist", 240, d);
+    p.attackUntil = now + 240; p.meleeUntil = now + 240; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) visual.fistStep = step; // accepted combo identity in the existing presentation record
     this.message = finisher ? "Uppercut! All three landed." : step === 1 ? (charge >= 1 ? "Dash punch, fully charged!" : "Dash punch.") : step === 2 ? "Jab." : "Uppercut.";
     return true;
   }

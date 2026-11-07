@@ -19,12 +19,13 @@ import { ensureConstellation } from "./constellation.ts";
 import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.ts";
 import { placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.ts";
-import { ensureMech, DRONE } from "./vehicle-gates.ts";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.ts";
 import { ensureLattice } from "./transit-lattice.ts";
 import { ensureSlots } from "./spell-slots.ts";
 import { fieldOn } from "./lattice-fields.ts";
 import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.ts";
 import { AFFIXES, SHAMAN } from "./affixes.ts";
+import { addDungeonReciter, addDungeonElder } from "./travelers.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -97,6 +98,15 @@ const CREATURE_ASSETS = [
   { id: "spark-shaman-ward", label: "Decorated: Spark Warden shaman + warded rare", kind: "sparkWarden", source: "affix-scene", variant: "shaman-ward" },
   { id: "rare-drone-swarm", label: "Decorated: rare Void Sentinel + Drone Swarm", kind: "voidSentinel", source: "affix-scene", variant: "drone-swarm" },
   { id: "guardian-volcanic", label: "Decorated: guardian Thunderhorn + Volcanic", kind: "thunderhorn", source: "affix-scene", variant: "guardian-volcanic" },
+  { id: "wayfarer-iron-fists", label: "Visible actor: Wayfarer with Iron Fists", source: "primary-equipment", actor: "player" },
+  { id: "wayfarer-active-robot", label: "Visible actor: active robot", source: "toggleMech", actor: "player" },
+  { id: "wayfarer-empowered-suit", label: "Visible actor: empowered power suit", source: "setEmpowered", actor: "player" },
+  { id: "wayfarer-ember-form", label: "Visible actor: Ember Form", source: "activateApertureSkill", actor: "player" },
+  { id: "corridor-golem", label: "Visible actor: Corridor Golem", source: "Hammerfall+corridor-golem", actor: "companion" },
+  { id: "shadow-clone", label: "Visible actor: Shadow Clone", source: "castSpell", actor: "companion" },
+  { id: "aether-orrery", label: "Visible actor: Aether Orrery orbital tool", source: "fireSecondary", actor: "tool" },
+  { id: "dungeon-reciter", label: "Visible actor: dungeon Reciter", source: "addDungeonReciter", actor: "traveler" },
+  { id: "elder-wanderer", label: "Visible actor: Elder Wanderer", source: "addDungeonElder", actor: "traveler" },
 ];
 const WAYGLASS_SCENARIOS=["unactivated-wayglass","activated-wayglass","travel-pair","rest-point","activated-rest-point","broken-observatory","manual-waypoint","quest-guidance","hunt-guidance","dual-compass","death-marker","save-reconstruction","legacy-migration","drought-corpus"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const ENVIRONMENTS=[...SHELTERS.filter(q=>q.id.endsWith("district")),...ARENA_FAMILIES.map(id=>({id:`arena-${id}`,label:`${id.replaceAll("-"," ")} arena`})),{id:"temporary-hunt-arena",label:"Temporary hunt arena"},{id:"persistent-arena",label:"Persistent arena entrance"},{id:"sentinel-domain",label:"Sentinel manufactory domain"},{id:"rootbound-domain",label:"Rootbound crown domain"}];
@@ -306,6 +316,39 @@ function admittedGallerySpawn(save,spec,at){
 function creatureAssetFixture(scenario,seed,now){
   const spec=CREATURE_ASSETS.find((q)=>q.id===scenario)||CREATURE_ASSETS[0],fixture=closeViewFixture("grand-hall",seed,now),{game,save}=fixture,placement=assetLane(game),at={x:placement.foe.x,y:placement.foe.y};
   Object.assign(game.player,{x:placement.player.x,y:placement.player.y,facing:placement.dx<0?"left":placement.dx>0?"right":placement.dy<0?"up":"down"});save.lastAim={x:placement.dx,y:placement.dy};
+  if(spec.actor){
+    game.lastUpdateNow=now; // Producer APIs that read Game.now must share the fixture clock.
+    game.enemies=[game.createEnemyFromSpawn({id:`proving:visible-actor:${spec.id}:target`,kind:"ashling",x:at.x,y:at.y},"dungeon")];game.projectiles=[];game.effects=[];game.eliteHazards=[];game.affixHazards=[];
+    let state=null;
+    if(spec.id==="wayfarer-iron-fists"){
+      save.equipment.primary=combatAssetGear("primary","Iron Fists");
+      state={fistsEquipped:game.fistsEquipped(),equipmentId:save.equipment.primary.id};
+    }else if(spec.id==="wayfarer-active-robot"||spec.id==="wayfarer-empowered-suit"){
+      save.perception.aperture=APERTURE_BANDS[13].threshold;save.farArray.gate=Math.max(3,save.farArray.gate||1);const mech=ensureMech(save);Object.assign(mech,{built:true,active:false,mode:"robot"});
+      const activated=game.toggleMech();if(!activated)throw new Error(`Creature Asset Lab could not activate robot: ${game.message}`);
+      let empowered=false;if(spec.id==="wayfarer-empowered-suit"){save.materials.cinderIron=Math.max(1,save.materials.cinderIron||0);const result=setEmpowered(save,true);if(!result.ok)throw new Error(result.message);empowered=true}
+      state={mechUp:game.mechUp(),active:save.mech.active===true,mode:save.mech.mode||"robot",empowered:save.mech.empowered===true,expectedEmpowered:empowered};
+    }else if(spec.id==="wayfarer-ember-form"){
+      save.perception.aperture=APERTURE_SKILLS["ember-form"].threshold;const learned=learnApertureSkill(save,"ember-form");if(!learned.ok)throw new Error(learned.message);const activated=game.activateApertureSkill("ember-form");if(!activated)throw new Error(game.message);
+      state={activeId:save.magicSkills.active?.id,rank:save.magicSkills.active?.rank,remaining:save.magicSkills.active?.remaining};
+    }else if(spec.id==="corridor-golem"){
+      save.equipment.secondary=combatAssetGear("secondary","Hammerfall");save.perception.aperture=APERTURE_BANDS[13].threshold;save.farArray.listeners=Math.max(1,save.farArray.listeners||0);ensureLattice(save);save.lattice.passives=["field:corridor-golem"];const activated=game.fireSecondary(now,save.lastAim,"tool");if(!activated||!game.golem)throw new Error("Creature Asset Lab could not raise the Corridor Golem through Hammerfall.");
+      state={raised:!!game.golem,where:game.golem.where,start:game.golem.start,punches:game.golem.punches,tool:save.equipment.secondary.name,field:fieldOn(save,"corridor-golem")};
+    }else if(spec.id==="shadow-clone"){
+      const activated=game.castSpell("shadow-clone");if(!activated||!game.shadowCloneActive(now))throw new Error(`Creature Asset Lab could not cast Shadow Clone: ${game.message}`);
+      state={active:game.shadowCloneActive(now),offset:{x:game.shadowClone.ox,y:game.shadowClone.oy},until:game.shadowClone.until,spell:save.equippedSpell};
+    }else if(spec.id==="aether-orrery"){
+      save.equipment.secondary=combatAssetGear("secondary","Aether Orrery");const activated=game.fireSecondary(now,save.lastAim,"tool");if(!activated)throw new Error(`Creature Asset Lab could not fire the Aether Orrery: ${game.message}`);
+      state={isOrrery:game.isOrrery(),tool:save.equipment.secondary.name,orreryState:!!game.orrery,projectiles:game.projectiles.filter(q=>q.orrery).map(q=>q.orrery)};
+    }else if(spec.id==="dungeon-reciter"||spec.id==="elder-wanderer"){
+      const elder=spec.id==="elder-wanderer",add=elder?addDungeonElder:addDungeonReciter;let witness=null;
+      for(let i=0;i<4096&&!witness;i++)witness=add(game.map,`proving:visible-actor:${spec.id}:${i}`,save,game.map.width);
+      if(!witness)throw new Error(`Creature Asset Lab could not construct ${spec.id} through its production dungeon producer.`);
+      state={objectId:witness.id,kind:witness.kind,elder:witness.elder===true,reciter:witness.reciter||null,look:witness.look,walkState:elder?!!game.map.elderWalk:!!game.map.reciterWalk};
+    }
+    game.message=`${spec.label}. Production actor state in a scratch Close View gallery; this fixture does not claim native-model completion.`;game.sync();
+    return{...fixture,lab:"creature-assets",scenario:spec.id,label:spec.label,primary:placement.player,diagnostics:{visibleActor:{id:spec.id,actor:spec.actor,source:spec.source,resolvedSource:`production:${spec.source}`,state,capability:"production witness only; native completion not claimed"},placement:{player:{x:placement.player.x,y:placement.player.y,elev:placement.player.elev||0},foe:{x:placement.foe.x,y:placement.foe.y,elev:placement.foe.elev||0},unobstructedTiles:5}}};
+  }
   let foundry=null,spawns=[];
   if(spec.source==="admitted-foundry"){foundry=admittedGallerySpawn(save,spec,at);spawns=[foundry.spawn]}
   else if(spec.variant==="shaman-ward"){

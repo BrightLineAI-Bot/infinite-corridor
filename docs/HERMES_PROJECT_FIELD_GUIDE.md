@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 818: actual character forms, companions and launch ports
+
+**CODE:** Actual equipment/mechUp/empowerment/skill state selects native Iron Fists, robot, power-suit or Ember bodies; all eight held profiles remain bounded. Real accepted fistStep augments the existing attackVisual record. Native Corridor Golem, Shadow Clone, Orrery, attached drone, six Reciters and Elder Wanderers use exact source capture references; labels, speech, ground halos, BLOCKED feedback and source rule-cell panels survive native admission and cap overflow. Nine actual producer cases extend Creature Asset Lab to47.
+
+**CODE:** Drone rockets latch a finite presentation-only visualLaunch from the real normal/carrying launch port, then meet their unchanged physics path over0.12 seconds using existing projectile age. Head and historical tail share the same curve through pause and split-save reload. Live UI listeners and their100ms poll register only after asynchronous journey initialization, correcting a hosted cold-launch TDZ error; immediate/deferred source-bootstrap regressions reproduce the old failure and preserve interaction/attack behavior.
+
+**BOUNDARY:** Close View never activates a form. No new hit/AI/collision/damage/reward rules, save schema, world generation or eligibility gates. Runtime-held fist charge retains its existing reload cancellation. Schema14, unknown fields, journey pins, exact clocks, isolated scratch storage, reduced motion, two model passes and8/14/20 actor caps remain. Maximum Robot230 + emitter26 =256 triangles. CPU geometry diagnostics and automated tests do not establish hosted visual completeness or physical-phone FPS.
+
 ## Release 817: native Foundry morphology contracts
 
 **CODE:** Three base-kind defaults and six admitted morphology families share data-only presentation metadata with native mesh selection, palette0–4, true scale/anchors and three/six appendage variants. Actual ordinary windup/strike, boss slam, close tentacle contact and five projectile patterns drive presentation. Explicit candidate palette survives the real spawn producer and schema14 enemy snapshots; launch heights remain presentation data.

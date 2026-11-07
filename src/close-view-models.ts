@@ -3,6 +3,9 @@ import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, vert
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.ts';
+import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.ts';
+import { PLAYER_FORM_HANDS } from './close-view-player-presentation.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -191,9 +194,36 @@ const coilStalker = [
   part(ringLoft([[0,.14,-.03],[.01,.17,0],[.02,.14,.03]],6),-.686,0,.169,1,1,1,coilLight,5,-.686,.169,0,true),
 ];
 
+// Static held-part variants reuse the authored body. Move only existing tool meshes to each form's grip;
+// they stay in the same bounded actor submission (the widest robot plus emitter is exactly 256 triangles).
+const heldParts = { melee:player.slice(-2),fist:[],emitter:playerTool.slice(playerUnarmed.length),hammer:playerHammer.slice(playerUnarmed.length),sweep:[],mirage:playerMirage.slice(playerUnarmed.length),'orrery-tap':playerOrrery.slice(playerUnarmed.length),'orrery-release':playerOrrery.slice(playerUnarmed.length) };
+const playerFormModels = Object.fromEntries(Object.entries(CLOSE_VIEW_PLAYER_FORM_MODELS).flatMap(([kind,body])=>Object.entries(heldParts).map(([profile,parts])=>{
+  const hand=PLAYER_FORM_HANDS[kind];
+  const held=parts.map(p=>{const mesh=Float32Array.from(p.mesh);for(let i=0;i<mesh.length;i+=MESH_FLOATS){mesh[i]+=p.px+hand.x-.161-hand.px;mesh[i+1]+=hand.y+.25;mesh[i+2]+=p.pz+hand.z-.783-hand.pz;}return {...p,mesh,px:hand.px,pz:hand.pz};});
+  return [`${kind}:${profile}`,[...body,...held]];
+})));
+
+// Small auxiliary bodies share the actor batch and its cap. Their source producers retain all effects.
+const nativeOrb=[part(ellipsoid(8,3),0,0,0,1,1,1,0xb9a6ff,0,0,0,0,true),part(ellipsoid(6,2),.80,0,0,.30,.35,.35,0xf2eeff,0,0,0,0,true)];
+const corridorDrone=[part(ellipsoid(8,2),0,0,0,.34,.26,.20,0xb9c2ca,0,0,0,0,true),part(ellipsoid(6,2),.27,0,0,.10,.12,.10,0x14202a,0,0,0,0,true),part(ellipsoid(5,1),.35,0,0,.035,.065,.065,0x5fd6f0,0,0,0,0,true),block(0,0,.10,.055,.54,.035,0x4b525a)];
+for(const side of [-1,1])corridorDrone.push(part(ellipsoid(6,1),0,side*.53,.15,.24,.08,.025,0xd8e6ee,0,0,0,0,true),block(0,side*.53,.11,.04,.04,.06,0x3a4048));
+for(const side of [-1,1])corridorDrone.push({...part(curvedTube([[0,side*.17,-.18,.02],[0,side*.32,-.54,.02],[.02,side*.24,-.70,.02]],4),0,0,0,1,1,1,0x6f7880),carryingOnly:true});
+for(const y of [-.085,0,.085])corridorDrone.push(part(ellipsoid(4,1),-.10,y,-.20,.05,.04,.045,0xe0623c,0,0,0,0,true));
+const elderParts=CLOSE_VIEW_COMPANION_MODELS.elderWanderer.slice(0,6).map((p,index)=>{const mesh=Float32Array.from(p.mesh),mapZ=z=>index===0?.924+(z-.68)*(2.2-.924)/1.14:index===1?z+.34:z*.924/.76,pz=mapZ(p.pz);for(let i=0;i<mesh.length;i+=MESH_FLOATS){mesh[i+2]=mapZ(mesh[i+2]+p.pz)-pz;const zScale=index===0?(2.2-.924)/1.14:index===1?1:.924/.76,nz=mesh[i+5]/zScale,n=Math.hypot(mesh[i+3],mesh[i+4],nz)||1;mesh[i+3]/=n;mesh[i+4]/=n;mesh[i+5]=nz/n;}return {...p,mesh,pz};});
+const companions={...CLOSE_VIEW_COMPANION_MODELS,elderWanderer:elderParts};
+const reciterBase=CLOSE_VIEW_COMPANION_MODELS.dungeonReciter;
+for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartographer']){
+  const parts=reciterBase.filter((_,i)=>i!==3&&i!==4);
+  if(look==='scholar'||look==='cartographer')parts.push(reciterBase[3],part(ellipsoid(6,1),.13,0,1.44,.26,.25,.035,0x5f6f92,0,.13,1.31,0,true));
+  if(look==='pilgrim')parts.push(reciterBase[4]);
+  if(look==='mercenary')parts.push(block(.20,.34,.77,.035,.035,.45,0xc9cfe6,2,.03,1.06),block(.20,.34,1.24,.06,.06,.06,0xd8d2c4,2,.03,1.06));
+  if(look==='minstrel')parts.push(part(ellipsoid(6,2),.33,.12,.86,.10,.15,.17,0xc9cfe6,2,.03,1.06,0,true),block(.33,.12,1.10,.025,.035,.14,0x2f3550,2,.03,1.06));
+  companions['dungeonReciter:'+look]=parts;
+} // exact rule cells are the residual panel, never generic bars
+
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
-  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
+const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
+  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
@@ -213,7 +243,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
   const actorScale = Number.isFinite(actor.scale) ? Math.max(.25, Math.min(4, actor.scale)) : 1;
-  const size = (playerLike ? .82 : 1) * actorScale;
+  const size = (kind === "nativeOrb" ? Math.max(.02,Math.min(1,Number(actor.radius)||.13)) : (playerLike ? .82 : 1) * actorScale);
   const attachments = Array.isArray(actor.attachments) ? actor.attachments.slice(0, MODEL_MAX_ATTACHMENTS).filter((q) => q && Number.isFinite(q.x) && Number.isFinite(q.y) && Number.isFinite(q.z)) : [];
   const needed = (modelVertices[kind] + attachments.length * MODEL_ATTACHMENT_TRIANGLES * 3) * MODEL_FLOATS;
   if (!modelSupported(kind) || !modelSupportsAttachments(kind, attachments.length) || !Number.isSafeInteger(offset) || offset < 0 || offset + needed > out.length) return offset;
@@ -232,7 +262,7 @@ export function writeCloseViewModel(out, offset, actor) {
   // Contact comes early, then the cut carries through before recovering. Damage remains a gameplay event;
   // this curve only makes its already-immediate result read as a committed, weighted blow.
   let strike = 0;
-  if (pose === "attack") {
+  if (pose === "attack" || pose === "fist") {
     if (progress < .18) { const t = progress / .18; strike = t * t * (3 - 2 * t); }
     else if (progress < .52) strike = 1;
     else { const t = (progress - .52) / .48; strike = 1 - t * t * (3 - 2 * t); }
@@ -245,9 +275,10 @@ export function writeCloseViewModel(out, offset, actor) {
   const fall = pose === "death" ? progress : 0;
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
-  const turn = .21 * strike + .08 * cast + turnLean;
+  const fist = pose === "fist", chargingFist = pose === "fistCharge", fistStep = [1,2,3].includes(actor.fistStep) ? actor.fistStep : 1;
+  const turn = (fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = -.18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
+  const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
@@ -264,14 +295,17 @@ export function writeCloseViewModel(out, offset, actor) {
   const actionWeight = actionPhase === 'windup' || actionPhase === 'track' || actionPhase === 'lock' || actionPhase === 'travel' || actionPhase === 'strike'
     ? actionProgress : actionPhase === 'active' || actionPhase === 'erupt' ? 1
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
-  for (const { mesh, swing, px, pz } of models[kind]) {
+  for (const { mesh, swing, px, pz, axialSpin, carryingOnly } of models[kind]) {
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
       : swing >= 40 && swing < 60
         ? Math.sin(phase * 1.3 - swing * .57) * (.018 + .045 * moving) * secondary * (1 - fall)
       : 0;
     let angle = semanticAngle(kind, swing, actor.action, actionFamily, actionPhase, actionProgress, actionWeight, beat, moving, phase, secondary);
-    if (angle !== null) { /* authored action-family joint */ }
+    if ((playerLike || kind === "corridorGolem") && Math.abs(swing) === 2 && (fist || chargingFist)) {
+      const lead=swing===(fistStep===2?2:-2);
+      angle=chargingFist?-.65-.35*progress:lead?-.65-(fistStep===3?1.75:.95)*strike:-.55-.18*strike;
+    } else if (angle !== null) { /* authored action-family joint */ }
     else if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup)
       + Math.sign(turnAmount || 1) * .04 * Math.abs(turnAmount) * secondary;
     else if (swing === 6) angle = .19 * beat - .23 * windup + .24 * strike;
@@ -295,21 +329,24 @@ export function writeCloseViewModel(out, offset, actor) {
     else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
+    const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
-    const cutYaw = playerLike && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
+    const cutYaw = playerLike && !fist && !chargingFist && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
-    const pivotY = playerLike && swing === -2 ? -.25 : 0;
+    const pivotY = playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
-      const forward = mesh[i] * c + mesh[i + 2] * s + px;
-      const lateral = mesh[i + 1] + coilSway;
+      const localY = axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
+      const normalY = axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
+      const forward = mesh[i] * c + localZ * s + px;
+      const lateral = localY + coilSway;
       const u = forward * cc - (lateral - pivotY) * sc;
       const v = forward * sc + (lateral - pivotY) * cc + pivotY;
-      const w = mesh[i + 2] * c - mesh[i] * s + pz;
+      const w = localZ * c - mesh[i] * s + pz;
       const f = u * cp + w * sp + shift;
-      const armNormal = mesh[i + 3] * c + mesh[i + 5] * s;
-      const nu = armNormal * cc - mesh[i + 4] * sc;
-      const nv = armNormal * sc + mesh[i + 4] * cc;
-      const nw = mesh[i + 5] * c - mesh[i + 3] * s;
+      const armNormal = mesh[i + 3] * c + normalZ * s;
+      const nu = armNormal * cc - normalY * sc;
+      const nv = armNormal * sc + normalY * cc;
+      const nw = normalZ * c - mesh[i + 3] * s;
       const nf = nu * cp + nw * sp;
       out[offset++] = x + (f * cy - v * sy) * size;
       out[offset++] = y + (f * sy + v * cy) * size;
@@ -320,6 +357,8 @@ export function writeCloseViewModel(out, offset, actor) {
       const poison = actor.poison ? .55 : 0;
       let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
       if(foundry){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=foundryPaletteColor(rgb,actor.palette);sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}
+      if(actor.paletteMap){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=actor.paletteMap[rgb];if(Number.isInteger(mapped)){sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}}
+      if(actor.shadow){const eye=Math.abs(sourceRed-0xc7/255)<.001&&Math.abs(sourceGreen-0xe6/255)<.001;sourceRed=(eye?0xb4:0x1b)/255;sourceGreen=(eye?0x8c:0x10)/255;sourceBlue=(eye?0xff:0x30)/255;}
       const red = sourceRed + (.32 - sourceRed) * poison;
       const green = sourceGreen + (.82 - sourceGreen) * poison;
       const blue = sourceBlue + (.24 - sourceBlue) * poison;
@@ -327,7 +366,7 @@ export function writeCloseViewModel(out, offset, actor) {
       out[offset++] = green + (.34 - green) * flinch * .6;
       out[offset++] = blue + (.23 - blue) * flinch * .6;
       const bodyAlpha = kind === 'gloomgorge' ? alpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : alpha;
-      out[offset++] = bodyAlpha;
+      out[offset++] = carryingOnly && !actor.carrying ? 0 : bodyAlpha;
     }
   }
   for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, alpha, actorScale);
