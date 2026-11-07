@@ -3195,7 +3195,7 @@ export class Game {
       playerRuntime: {
         ...this.save.session.playerRuntime, // release 736 (S7): fields from a newer release are kept
         ...this.resumeRuntime(clock), // release 736 (F6/F7/S8, C13): statuses, timers, the rite and the skiff's way
-        droneLift: this.droneLift && this.droneLiftAllowed() ? { base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz, ...(this.area === "dungeon" ? { area: "dungeon", areaId: this.areaId(), levelId: String(this.map.levelId || "root") } : {}) } : null, // release 647: a lift resumes in the air
+        droneLift: this.droneLift && this.droneLiftAllowed() ? { ...this.droneLift, base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz, ...(this.area === "dungeon" ? { area: "dungeon", areaId: this.areaId(), levelId: String(this.map.levelId || "root") } : {}) } : null, // release 647: a lift resumes in the air; schema-14 unknown fields survive while canonical values win
         glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null } : null, // release 635: a glide resumes in the air
         glideHome: this.glideHome && this.area === "overworld" ? { ...this.glideHome } : null, // TREE_GLIDE.home: the great tree a glide from its crown wakes you on
         crownFoot: this.crownFoot && this.area === "overworld" ? { rx: this.crownFoot.rx, ry: this.crownFoot.ry } : null, // TREE_GLIDE.home.reached: the great crown last stood on
@@ -4289,7 +4289,7 @@ export class Game {
   restoreDroneLift(q, now) {
     this.droneLift = null;
     if (!q || !this.droneLiftAllowed() || !["base", "z", "vz"].every(k => Number.isFinite(Number(q[k])))) return false;
-    const lift = { base: Number(q.base), z: Number(q.z), vz: Number(q.vz) };
+    const lift = { ...q, base: Number(q.base), z: Number(q.z), vz: Number(q.vz) };
     if (this.area === "dungeon") {
       if (!this.validInteriorLift(q)) return false;
       this.skyAir = lift.z;
