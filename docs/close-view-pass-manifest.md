@@ -2,6 +2,8 @@
 
 Updated: 2026-11-07. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
+Verified live: `r810-8ed20b74216b`. Publish run `42388584029` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
+
 ## Objective and sequence
 
 Finish and publish the current animation, spacious-interior, elevation, drone and control-feel candidate. Then complete four independent passes below and publish validated fixes as they become ready. Each pass records evidence, changes, tests, review, preview identity and publication result. Keep PRs focused and choose each game release number from freshly fetched main + 1.
@@ -32,8 +34,8 @@ Finish and publish the current animation, spacious-interior, elevation, drone an
 - [x] Save this versioned manifest/release-status record in the working branch; carry it into the first independent-pass PR. The first publication uses the already reviewed r810 source candidate.
 - [x] Re-read live identity and exact successful preview candidate; report and resolve review/QA blockers. Live was r805; candidate/source tree matched the reviewed r810 merge exactly. No blocking findings remained.
 - [x] Dispatch the approved Publish candidate using the normal workflow approval path: run `42388584029`, candidate `r810-8ed20b74216b`. Artifact verification passed; deployment is in progress.
-- [ ] Verify workflow success, live identity and in-game System release label.
-- [ ] Record the verified publication in the release log and this ledger.
+- [x] Verify workflow success, live identity and in-game System release label: all name `r810-8ed20b74216b`.
+- [x] Record the verified publication in the release log and this ledger; rows 806–810 are marked published in r810. The record is carried by the first independent-pass branch.
 
 ### Artifact ledger
 
@@ -44,11 +46,11 @@ Finish and publish the current animation, spacious-interior, elevation, drone an
 | 807 | #455 / `r807-3228675c72d5` | Preview completed; hosted hive/arcology checks exercised animation and camera. |
 | 808 | #456 / `r808-ca55b4cd807c` | Workflow completed; hosted terrain rendering exposed the undefined actor-index blocker. Superseded by repair in r810. |
 | 809 | #457 / `r809-9bae1bce42e2` | Preview completed; camera centering checked on a legacy hive. Shares the terrain blocker repaired in r810. |
-| 810 | #458 / `r810-8ed20b74216b` | CI, Preview, review and hosted GPU checks passed. Publish run `42388584029` is deploying. |
+| 810 | #458 / `r810-8ed20b74216b` | Published and verified through workflow, live identity and in-game System label. |
 
 ## Independent pass A — collision and traversal
 
-Status: queued after the current delivery.
+Status: in progress after verified r810 publication. Working branch: `claude/close-view-collision-pass`.
 
 Queued reproduction from the source audit: `generateBuildingFloor("AUDIT0", "building:AUDIT0:1:1:keep:4:f4", 3)` puts `building-stair-down` at blocked tile `(6,5)`, with arrival `(6,4)`. Adjacent Act remains in range. Investigate the visual/collision defect; a repair after v3 publication must preserve existing version pins and generator outputs or introduce a new generation version.
 
@@ -99,8 +101,8 @@ Status: queued.
 
 | Pass | Findings / fix | Branch / PR | Tests and hosted evidence | Reviewed candidate / reviewer | Publish run and live identity | State |
 |---|---|---|---|---|---|---|
-| Current delivery | Animation, rooms/elevation/drone, controls and GPU terrain repair | #454–#458 | CI, Preview and hosted GPU repair checks passed | Astra, r805→r810 source: no blockers; merge-tree equality verified | `42388584029`, deploying `r810-8ed20b74216b` | In progress |
-| A | Blocked down-ladder landing, reproducible across styles | Pending | 600-map read-only scan and actual scratch collision/Act reproduction | Pending | Pending | Queued |
+| Current delivery | Animation, rooms/elevation/drone, controls and GPU terrain repair | #454–#458 | CI, Preview and hosted GPU repair checks passed | Astra, r805→r810 source: no blockers; merge-tree equality verified | `42388584029`, live `r810-8ed20b74216b`, System verified | Complete |
+| A | Blocked down-ladder landing, reproducible across styles; quiet traversal fixtures | `claude/close-view-collision-pass` | 600-map read-only scan and actual scratch collision/Act reproduction | Pending | Pending | In progress |
 | B | Pending | Pending | Pending | Pending | Pending | Queued |
 | C | Pending | Pending | Pending | Pending | Pending | Queued |
 | D | Pending | Pending | Pending | Pending | Pending | Queued |
