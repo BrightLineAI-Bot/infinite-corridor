@@ -1,9 +1,11 @@
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r796-817d6b861fd9";
-import { SHADOW_CLONE } from "./late-spells.js?v=r796-817d6b861fd9";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r796-817d6b861fd9";
-import { drawOrbit } from "./orbit-volley.js?v=r796-817d6b861fd9";
-import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r796-817d6b861fd9";
-export function drawRangedEffects(ctx,game,width,height) {
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r801-78cd78796baf";
+import { SHADOW_CLONE } from "./late-spells.js?v=r801-78cd78796baf";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r801-78cd78796baf";
+import { drawOrbit } from "./orbit-volley.js?v=r801-78cd78796baf";
+import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r801-78cd78796baf";
+export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
+export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
+export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
       width / 2 + (q.x - game.player.x) * s,
@@ -15,8 +17,8 @@ export function drawRangedEffects(ctx,game,width,height) {
   const groups = new Map();
   for (const p of game.projectiles) {
     if(!dungeonPointDiscovered(game.map,p))continue;
-    if(p.knife||p.arcWave||p.fireBomb||p.shard||p.orrery)continue; // release 533: drawn by drawToolForms; 547: Fire Burst shells; Sunburst Ricochet shards; the Aether Orrery's by drawOrrery
-    const color = p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276"; // release 321: the drone's rockets burn orange
+    if(!standardProjectile(p)||projectedShots?.has(p))continue; // release 533: drawn by drawToolForms; 547: Fire Burst shells; Sunburst Ricochet shards; the Aether Orrery's by drawOrrery
+    const color = standardProjectileColor(p); // release 321: the drone's rockets burn orange
     let list = groups.get(color); if (!list) groups.set(color, list = []); list.push(p);
   }
   for (const [color, list] of groups) {

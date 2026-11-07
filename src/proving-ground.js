@@ -1,9 +1,9 @@
-import { drawRangedEffects } from "./combat-visuals.js?v=r796-817d6b861fd9";
-import { createInput } from "./input.js?v=r796-817d6b861fd9";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r796-817d6b861fd9";
-import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r796-817d6b861fd9"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r796-817d6b861fd9";
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r796-817d6b861fd9"; // release 791: Enter Proving Ground from Options
+import { drawRangedEffects } from "./combat-visuals.js?v=r801-78cd78796baf";
+import { createInput } from "./input.js?v=r801-78cd78796baf";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r801-78cd78796baf";
+import { CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r801-78cd78796baf"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile } from "./proving-ground-labs.js?v=r801-78cd78796baf";
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r801-78cd78796baf"; // release 791: Enter Proving Ground from Options
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
@@ -32,7 +32,7 @@ document.addEventListener("keydown",event=>{if(event.key==="`"&&!event.target?.c
 try{setPanelCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1")}catch{setPanelCollapsed(false)}
 globalThis.provingGroundGame=()=>game;const closePan=mountCloseViewControls(()=>game); // Close View: the pan crescent and its lock button
  // developer handle (the lab's scratch game only), for headless checks such as the Close View blend
-CLOSE_VIEW_HOOKS.groundLayers.push((c,W,H)=>{if(game)drawRangedEffects(c,game,W,H)}); // in Close View, shots fly over the floor texture
+CLOSE_VIEW_HOOKS.groundLayers.push((c,W,H,projectedShots)=>{if(game)drawRangedEffects(c,game,W,H,projectedShots)});
 let journeyRecord=null,fixture=null,game=null,paused=false,last=performance.now(),lastDiagnostic=0,comparison=null,input=createInput(document,globalThis,{controlSmoothing:38});
 canvas.addEventListener("worldtap",event=>{if(!game||paused||game.paused)return;const rect=canvas.getBoundingClientRect(),point=closeViewScreenToWorld(game,rect.width,rect.height,event.detail.clientX-rect.left,event.detail.clientY-rect.top)||screenToWorld(game,rect.width,rect.height,event.detail.clientX-rect.left,event.detail.clientY-rect.top),direction={x:point.x-game.player.x-.5,y:point.y-game.player.y-.45};game.aimAt(point.x,point.y);if(game.save.aimMode==="attack")game.primaryAttack(performance.now(),direction);else if(game.save.aimMode==="tool"||(!game.save.aimMode&&game.save.activeWeaponSlot==="secondary"))game.fireSecondary(performance.now(),direction);else if(game.save.aimMode==="act")game.interactAt(point.x,point.y);else if(game.save.aimMode==="build")game.buildAt(point.x,point.y);updateDiagnostics(true)});
 function renderLauncher(){controls.hidden=true;launcher.hidden=false;launcher.replaceChildren();const intro=document.createElement("p");intro.textContent="Choose a production package to instantiate directly. Every laboratory is isolated from normal saves.";launcher.append(intro);if(journeyRecord){const b=document.createElement("button");b.className="lab-card";b.innerHTML="<strong>Your journey</strong><span>A scratch copy of the save you came from: world, character, place and gear. Nothing here is saved.</span><small>Available</small>";b.onclick=()=>openLab("journey");launcher.append(b)}for(const lab of LABORATORIES){const button=document.createElement("button");button.className="lab-card";button.disabled=lab.status!=="implemented";button.innerHTML=`<strong>${lab.label}</strong><span>${lab.description}</span><small>${lab.status==="implemented"?"Available":"Planned — unavailable"}</small>`;if(!button.disabled)button.onclick=()=>openLab(lab.id);launcher.append(button)}}

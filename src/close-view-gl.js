@@ -1,3 +1,4 @@
+import { MODEL_FLOATS } from "./close-view-models.js?v=r801-78cd78796baf";
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -110,29 +111,32 @@ uniform vec2 u_cam; uniform vec2 u_fwd; uniform vec2 u_right; uniform float u_hc
 uniform sampler2D u_ground; uniform vec4 u_gmap; uniform vec2 u_tex; // gmap: px per tile, x0, y0 (device px of world 0,0), the texture's last row of ground
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 uniform vec4 u_ceil; uniform vec3 u_ceilRGB; uniform vec4 u_ceilK; // ceil: height, on (0/1), bay (tiles), detail (0/1); ceilK: kind, rib width, darkness above, -
+uniform vec4 u_hall; uniform vec3 u_backdrop[3]; // backdrop kind, open roof, skylight, shaft depth
 uniform vec4 u_pit; uniform vec3 u_stone; uniform vec3 u_lip; uniform vec3 u_safe; uniform vec4 u_safeP; // pit: hole depth, chasm depth, darkening a tile, lip width; safeP: near, full, breath, on
 uniform vec4 u_lava; uniform vec3 u_lavaA; uniform vec3 u_lavaB; uniform vec3 u_lavaC; uniform vec3 u_chasm; // lava: scale, flow, light, light reach
+uniform vec3 u_inlayColors[3];
 uniform vec4 u_floorP; uniform vec3 u_floorRGB; uniform vec3 u_floorJ; uniform vec3 u_rug; uniform vec4 u_floorQ; // floorP: kind, stone size, wear, sewer; floorQ: bump on, wet, detail on, -
 uvec4 maskAt(ivec2 T) { if (T.x < 0 || T.y < 0 || T.x >= u_mapSize.x || T.y >= u_mapSize.y) return uvec4(0u, 0u, 0u, 1u); return texelFetch(u_mask, T, 0); }
-bool pitCode(uint g) { return g == 1u || g == 3u || g == 4u; }
+bool pitCode(uint g) { return g == 1u || g == 3u || g == 4u || g == 5u; }
 bool wallAt(ivec2 T) { return (maskAt(T).a & 1u) == 1u; }
 uint matAt(ivec2 T) { return maskAt(T).b >> 1u; }
 // what lies on the floor (the ordinary renderer's marks and telegraphs, premultiplied; clear where nothing does)
 vec4 overlayAt(vec2 P) { vec2 px = P * u_gmap.x + u_gmap.yz; if (px.x < 0.0 || px.y < 0.0 || px.y > u_gmap.w || px.x > u_tex.x) return vec4(0.0); return texture(u_ground, px / u_tex); }
 // down through a hole: the first inner wall the ray meets, or the bottom
 vec3 pitColor(vec2 P, vec3 dir, uint code, bool safe) {
-  float D = code == 3u ? u_pit.y : u_pit.x; vec2 h = dir.xy; float hl = max(length(h), 1e-5); vec2 hd = h / hl; float descent = -dir.z / hl;
+  float D = code == 5u ? u_hall.w : code == 3u ? u_pit.y : u_pit.x; vec2 h = dir.xy; float hl = max(length(h), 1e-5); vec2 hd = h / hl; float descent = -dir.z / hl;
   ivec2 T = ivec2(floor(P)); vec2 st = vec2(hd.x >= 0.0 ? 1.0 : -1.0, hd.y >= 0.0 ? 1.0 : -1.0); vec2 ah = max(abs(hd), vec2(1e-5));
   vec2 tMax = (vec2(T) + max(st, vec2(0.0)) - P) / (st * ah), tDelta = 1.0 / ah; float hitT = -1.0, side = 0.0;
   for (int i = 0; i < 10; i++) { float tN = min(tMax.x, tMax.y); if (tN * descent >= D) break;
     if (tMax.x < tMax.y) { T.x += int(st.x); tMax.x += tDelta.x; side = 0.0; } else { T.y += int(st.y); tMax.y += tDelta.y; side = 1.0; }
     uvec4 m = maskAt(T); if (!pitCode(m.g)) { hitT = tN; break; } }
-  if (hitT < 0.0) { return code == 3u ? u_chasm * 0.55 : vec3(0.0); }
+  if (hitT < 0.0) { return code == 5u ? u_backdrop[0] : code == 3u ? u_chasm * 0.55 : vec3(0.0); }
   float depth = hitT * descent; vec2 W = P + hd * hitT; float along = side < 0.5 ? W.y : W.x;
   float strata = aline(fract(depth * 3.2 + hash12(vec2(floor(along * 1.5), 3.0)) * 0.3) - 0.5, 0.06);
   vec3 c = u_stone * (0.82 + 0.22 * vnoise(vec2(along * 5.0, depth * 7.0))) * (1.0 - 0.35 * strata) * (side < 0.5 ? 0.8 : 1.0);
   vec3 dif, spe; lightsAt(vec3(W, -depth), vec3(0.0, 0.0, 1.0), 0.0, dif, spe); c *= dif * exp(-depth * u_pit.z);
   if (code == 3u) c += u_chasm * smoothstep(0.0, D, depth) * 0.6;
+  if (code == 5u) c = mix(c, u_backdrop[1] * 0.3, smoothstep(0.0, D, depth));
   float lip = 1.0 - smoothstep(u_pit.w * 0.6, u_pit.w, depth);
   vec3 lipC = u_lip * dif;
   if (safe && u_safeP.w > 0.5) { float d = length(W - u_player), a = (1.0 - smoothstep(u_safeP.y, u_safeP.x, d)) * u_safeP.z; lipC = mix(lipC, u_safe, a); }
@@ -230,6 +234,25 @@ vec3 ceilMat(vec2 P, out float h, out float dark) {
     h = girder + rib * 0.5 + pipe * 0.7; dark = (1.0 - max(girder, max(pipe, rib))) * u_ceilK.z; }
   return c;
 }
+vec3 hallBackdrop(vec3 ray) {
+  vec3 d = normalize(ray);
+  vec2 p = d.xy / (0.55 + abs(d.z));
+  vec3 c = mix(u_backdrop[0], u_backdrop[1] * 0.36, pow(max(0.0, d.z), 1.4));
+  if (u_hall.x < 1.5) {
+    vec2 cell = p * 52.0, id = floor(cell);
+    float star = step(0.96, hash12(id)) * (1.0 - smoothstep(0.06, 0.23, length(fract(cell) - 0.5)));
+    c += u_backdrop[2] * star * 0.5;
+  } else if (u_hall.x < 2.5) {
+    float ledge = abs(fract(d.z * 11.0) - 0.5);
+    c += u_backdrop[2] * (1.0 - smoothstep(0.02, 0.08, ledge)) * step(0.78, hash12(floor(p * 19.0))) * 0.2;
+  } else if (u_hall.x < 3.5) {
+    vec2 g = abs(fract(vec2(p.x + p.y * 0.7, p.y - p.x * 0.53) * 5.0) - 0.5);
+    c += u_backdrop[2] * (1.0 - smoothstep(0.012, 0.04, min(g.x, g.y))) * 0.16;
+  } else {
+    c += u_backdrop[2] * pow(max(0.0, d.z), 6.0) * 0.18;
+  }
+  return c;
+}
 void main() {
   vec2 css = vec2(gl_FragCoord.x, u_dev.y - gl_FragCoord.y) * (u_size / u_dev);
   float b = (css.x - u_pp.x) / u_F, a = (u_pp.y - css.y) / u_F;
@@ -240,9 +263,21 @@ void main() {
     if (fogK < 0.999) {
       vec3 dif, spe; vec3 W3 = vec3(P, 0.0);
       if ((m.r & 2u) == 2u) { col = u_fog; } // unseen: the dark keeps its secrets
-      else if (m.g == 1u || m.g == 3u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
+      else if (m.g == 1u || m.g == 3u || m.g == 5u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
       else if (m.g == 2u) { col = atmos(lavaColor(P, T), W3, depth, vec3(0.0)); }
       else { float h, wet; uint mat = m.b >> 1u; vec3 alb = floorMat(P, T, mat, h, wet);
+        vec2 inlayFootprint = u_hall.x > 0.0 ? fwidth(P) : vec2(0.0);
+        uint inlay = m.a >> 1u;
+        if (inlay > 0u) {
+          vec2 cell = abs(fract(P) - 0.5);
+          float edge = max(cell.x, cell.y);
+          float aa = clamp(max(inlayFootprint.x, inlayFootprint.y), 0.005, 0.06);
+          float rim = 1.0 - smoothstep(0.44 - aa, 0.44 + aa, edge);
+          float center = 1.0 - smoothstep(0.35 - aa, 0.35 + aa, edge);
+          vec3 metal = inlay == 4u || inlay == 2u ? u_inlayColors[2] : u_inlayColors[1];
+          alb = mix(alb, u_inlayColors[0], rim * 0.8);
+          if (inlay > 1u) alb = mix(alb, metal, center * 0.88);
+        }
         vec3 N = u_floorQ.x > 0.5 ? bump(vec3(0.0, 0.0, 1.0), W3, h * 0.035) : vec3(0.0, 0.0, 1.0);
         lightsAt(W3, N, wet > 0.05 ? 24.0 : 0.0, dif, spe); col = alb * dif + spe * wet * 0.35;
         // the lit lip at a drop's edge (the floor's broken edge catches the light)
@@ -260,10 +295,14 @@ void main() {
     } else col = u_fog;
   } else if (dir.z > 1e-5 && u_ceil.y > 0.5) { float t = (u_ceil.x - u_hc) / dir.z; vec2 P = u_cam + dir.xy * t; uvec4 m = maskAt(ivec2(floor(P)));
     float depth = t;
-    if ((m.r & 1u) == 1u && (m.r & 2u) == 0u) { vec3 W3 = vec3(P, u_ceil.x); float h = 0.0, dark = 0.0; vec3 c = u_ceilRGB;
+    bool skylight = u_hall.z > 0.5 && (m.r & 4u) == 4u;
+    if ((m.r & 2u) == 0u && u_hall.x > 0.0 && (u_hall.y > 0.5 || skylight)) {
+      col = hallBackdrop(dir);
+    } else if ((m.r & 1u) == 1u && (m.r & 2u) == 0u) { vec3 W3 = vec3(P, u_ceil.x); float h = 0.0, dark = 0.0; vec3 c = u_ceilRGB;
       if (u_ceil.w > 0.5) c = ceilMat(P, h, dark);
       vec3 N = u_ceil.w > 0.5 ? bump(vec3(0.0, 0.0, -1.0), W3, h * 0.04) : vec3(0.0, 0.0, -1.0); vec3 dif, spe; lightsAt(W3, N, 0.0, dif, spe);
-      c *= dif * (1.0 - dark); col = atmos(c, W3, depth, dif * 0.5); }
+      c *= dif * (1.0 - dark); col = atmos(c, W3, depth, dif * 0.5);
+      if (u_hall.x > 0.0) col = mix(col, hallBackdrop(dir), 0.24 + dark * 0.25); }
     else col = u_fog;
   }
   outColor = vec4(finish(col), 1.0);
@@ -410,16 +449,40 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
   vec2 q = gl_FragCoord.xy / u_dev - 0.5; c.rgb *= 1.0 - u_finish.x * smoothstep(0.28, 0.86, length(q * vec2(1.0, 1.12)));
   c *= a; if (c.a < 0.004) discard; outColor = c; }`;
 
+// Native models share the environment's camera, lights and fog.
+const MODEL_VS = VS_COMMON + `
+in vec3 a_pos; in vec3 a_nrm; in vec3 a_col;
+out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_depth;
+void main() {
+  float d;
+  gl_Position = project(a_pos, d);
+  v_pos = a_pos; v_nrm = a_nrm; v_col = a_col; v_depth = d;
+}`;
+const MODEL_FS = FS_COMMON + `
+in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_depth;
+uniform float u_pass; uniform vec3 u_sil;
+void main() {
+  if (v_pos.z < 0.0) discard;
+  if (u_pass > 0.5) { outColor = vec4(u_sil * 0.1, 0.1); return; }
+  vec3 normal = normalize(v_nrm), toEye = normalize(u_eye - v_pos);
+  vec3 dif, spe;
+  lightsAt(v_pos, normal, 14.0, dif, spe);
+  float rim = 1.0 - max(0.0, dot(normal, toEye));
+  vec3 color = v_col * max(dif, vec3(0.28)) + spe * 0.25 + vec3(0.19, 0.15, 0.11) * rim * rim;
+  outColor = vec4(finish(atmos(color, v_pos, v_depth, dif)), 1.0);
+}`;
+
 // ---------------------------------------------------------------------------------------------- decals, props and glows
 // a_loc: -1..1 across the quad; a_meta: kind, alpha, a parameter, light. Kinds, blended: 0 contact shadow, 1 wind-up ring,
 // 4 cobweb (a corner triangle), 5 chain, 7 spike (a small metal spike, a card), 8 bones; added in light: 2 wind-up glow,
 // 3 flame, 6 dust mote, 9 a flame's halo.
 const DECAL_VS = VS_COMMON + `
-in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; out float v_depth;
-void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; }`;
+in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; out float v_depth; out vec2 v_world;
+void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; v_world = a_pos.xy; }`;
 const DECAL_FS = `#version 300 es
 precision highp float;
-uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; out vec4 outColor;
+uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; out vec4 outColor;
+uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : vec3(1.0, 0.75, 0.35); } // warm, bioluminescent, ghost-light, a failing lamp
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0), keep = 1.0 - fogK; vec3 lit = vec3(v_meta.w);
@@ -447,13 +510,33 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
       vec2 q = p - c0; q = vec2(cos(an) * q.x - sin(an) * q.y, sin(an) * q.x + cos(an) * q.y); float bone = 1.0 - smoothstep(0.05, 0.08, length(vec2(max(abs(q.x) - 0.22, 0.0), q.y))); float knob = 1.0 - smoothstep(0.06, 0.09, length(vec2(abs(q.x) - 0.22, abs(q.y) - 0.04))); m = max(m, max(bone, knob)); }
     float skull = 1.0 - smoothstep(0.16, 0.2, length(p - vec2(0.25, -0.2))); m = max(m, skull); float eye = (1.0 - smoothstep(0.03, 0.05, length(p - vec2(0.2, -0.24)))) + (1.0 - smoothstep(0.03, 0.05, length(p - vec2(0.31, -0.24))));
     vec3 c = vec3(0.55, 0.51, 0.42) * lit * (1.0 - 0.8 * clamp(eye, 0.0, 1.0) * skull); a = m * v_meta.y * keep; outColor = vec4(c * a, a); return; }
+  if (k > 10.5) {
+    ivec2 tile = ivec2(floor(v_world));
+    if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize)) ||
+        (texelFetch(u_mask, tile, 0).r & 2u) != 0u) discard;
+    uint rgb = uint(floor(v_meta.z + 0.5));
+    vec3 tint = vec3(float(rgb >> 16u), float((rgb >> 8u) & 255u), float(rgb & 255u)) / 255.0;
+    float shape = v_meta.w > 0.5 ? (1.0 - abs(v_loc.y)) * smoothstep(-1.0, 1.0, v_loc.x)
+      : 1.0 - smoothstep(0.08, 1.0, r);
+    outColor = vec4(tint * shape * v_meta.y * keep, 0.0);
+    return;
+  }
+  if (k > 9.5) {
+    ivec2 tile = ivec2(floor(v_world));
+    if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize))) discard;
+    uvec4 m = texelFetch(u_mask, tile, 0);
+    if ((m.r & 2u) != 0u || (m.a & 1u) != 0u || (m.g != 0u && m.g != 4u)) discard;
+    a = v_meta.y * (1.0 - smoothstep(0.32, 1.0, r)) * keep;
+    outColor = vec4(0.0, 0.0, 0.0, a);
+    return;
+  }
   // a flame's halo, added in light
   a = v_meta.y * pow(max(0.0, 1.0 - r), 2.4) * keep; outColor = vec4(hue(v_meta.z) * a, 0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- state
-export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false };
+export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0 };
 globalThis.__closeViewGL = closeViewGLStats; // read by the browser harness and the lab's console (diagnostics only)
-const S = { canvas: null, gl: null, env: null, wall: null, wallZ: null, board: null, decal: null, vbo: { env: null, wall: null, board: null, decal: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null },
+const S = { canvas: null, gl: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, vbo: { env: null, wall: null, board: null, decal: null, model: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null },
   tex: { ground: null, mask: null, grit: null }, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
 // The dynamic vertex arrays, grown by doubling (never per frame once warm).
 export const WALL_FLOATS = 20, BOARD_FLOATS = 9, DECAL_FLOATS = 9;
@@ -483,12 +566,14 @@ export function closeViewGLReady(makeCanvas) {
     if (!(gl instanceof WebGL2RenderingContext)) throw new Error("no WebGL2 context");
     c.addEventListener?.("webglcontextlost", (e) => { e.preventDefault?.(); closeViewGLStats.lost = true; });
     S.env = compile(gl, ENV_VS, ENV_FS); S.wall = compile(gl, WALL_VS, WALL_FS); S.wallZ = compile(gl, WALL_VS, WALL_DEPTH_FS); S.board = compile(gl, BOARD_VS, BOARD_FS); S.decal = compile(gl, DECAL_VS, DECAL_FS);
-    for (const k of ["env", "wall", "board", "decal"]) S.vbo[k] = gl.createBuffer();
+    S.model = compile(gl, MODEL_VS, MODEL_FS);
+    for (const k of ["env", "wall", "board", "decal", "model"]) S.vbo[k] = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.env); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     S.vao.env = layout(gl, S.env, S.vbo.env, 2, [["a_pos", 2]]);
     S.vao.wall = layout(gl, S.wall, S.vbo.wall, WALL_FLOATS, [["a_pos", 3], ["a_tex", 4], ["a_nrm", 4], ["a_col", 3], ["a_meta", 4], ["a_tile", 2]]); S.vao.wallZ = layout(gl, S.wallZ, S.vbo.wall, WALL_FLOATS, [["a_pos", 3], ["a_tex", 4], ["a_nrm", 4], ["a_col", 3], ["a_meta", 4], ["a_tile", 2]]);
     S.vao.board = layout(gl, S.board, S.vbo.board, BOARD_FLOATS, [["a_pos", 3], ["a_uv", 2], ["a_meta", 4]]);
     S.vao.decal = layout(gl, S.decal, S.vbo.decal, DECAL_FLOATS, [["a_pos", 3], ["a_loc", 2], ["a_meta", 4]]);
+    S.vao.model = layout(gl, S.model, S.vbo.model, MODEL_FLOATS, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3]]);
     for (const k of ["ground", "mask", "grit"]) S.tex[k] = gl.createTexture();
     S.aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true; return true;
@@ -499,11 +584,11 @@ export const closeViewGLCanvas = () => S.canvas;
 export function resetCloseViewGL() { S.gl = null; S.canvas = null; S.gritReady = false; S.maskMap = null; S.staticKey = null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
-// r: bit 1 a ceiling over it (else open sky), bit 2 unseen (the fog of war); g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 a bridge
-// over a drop; b: bit 1 a safe drop, bits 2.. the floor's material (closeViewFloorMaterial); a: 1 a wall.
+// r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
+// b: low bit a safe drop, remaining bits floor material; a: low bit a wall, remaining bits floor inlay.
 // Hazards show only where the Wayfarer has seen (the fog of war keeps its secrets). Pure: tests read it.
 const HOLE = /hole|pit|abyss|void/i, LAVA = /lava|magma/i;
-export function closeViewHazardCode(t) { if (!t) return 0; if (t.bridge) return 4; if (t.chasm) return t.blocked && !/void|chasm|abyss|canyon/i.test(String(t.kind || "")) ? 0 : 3; const k = String(t.kind || ""); if (t.hole || (!t.blocked && HOLE.test(k))) return 1; if (LAVA.test(k)) return 2; return 0; }
+export function closeViewHazardCode(t) { if (!t) return 0; if (t.bridge) return 4; if (t.hallVoid) return 5; if (t.chasm) return t.blocked && !/void|chasm|abyss|canyon/i.test(String(t.kind || "")) ? 0 : 3; const k = String(t.kind || ""); if (t.hole || (!t.blocked && HOLE.test(k))) return 1; if (LAVA.test(k)) return 2; return 0; }
 // A tile's floor material (the shader's floorMat): 0 the theme's own, 1 mosaic, 2 planks, 3 a rug, 4 ceramic tiles,
 // 5 concrete, 6 packed dirt, 7 resin, 8 flesh, 9 crystal resin, 10 plating.
 const FLOOR_MATERIAL = Object.freeze({ mosaicFloor: 1, plankFloor: 2, logBridge: 2, bridge: 2, carpetFloor: 3, tileFloor: 4, concreteFloor: 5, cellarFloor: 6, rootFloor: 6, chitinFloor: 7, fleshFloor: 8, crystalFloor: 9, arcFloor: 10, arcologyFloor: 10 });
@@ -511,10 +596,14 @@ export const closeViewFloorMaterial = (t) => FLOOR_MATERIAL[t?.kind] || 0;
 export function closeViewMask(map, seen = null, safe = null, out = null, remap = null) {
   const w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Number(map?.height) || Math.floor(tiles.length / w)), data = out && out.length >= w * h * 4 ? out : new Uint8Array(w * h * 4);
   let lava = 0;
+  const skylights = map?.hall?.sky ? (map.hall.features || []).filter((f) => f.kind === "skylight") : [];
+  if (map?.hall?.sky && !skylights.length) skylights.push({ x: Math.floor(w / 2), y: Math.floor(h / 2) });
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const k = y * w + x, t = tiles[k], o = k * 4; if (!t) { data[o] = 0; data[o + 1] = 0; data[o + 2] = 0; data[o + 3] = 1; continue; }
     const open = t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || t.open === true || t.kind === "yardGrass";
     const vis = !seen || (t.blocked && seen.wall ? seen.wall(x, y) : seen(x, y)), code = vis ? closeViewHazardCode(t) : 0, mat = closeViewFloorMaterial(t);
-    data[o] = (open ? 0 : 1) | (vis ? 0 : 2); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); data[o + 3] = t.blocked && !code ? 1 : 0; if (code === 2) lava++; }
+    const sky = skylights.length && skylights.some((f) => Math.abs(f.x - x) <= 1 && Math.abs(f.y - y) <= 1);
+    data[o] = (open ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); const inlay = !t.blocked && map.hall && vis ? (t.sigil === "pupil" ? 4 : t.sigil ? 3 : t.inlay === 2 ? 2 : t.inlay === 1 ? 1 : 0) : 0;
+    data[o + 3] = (t.blocked && !code ? 1 : 0) | (inlay << 1); if (code === 2) lava++; }
   return { data, w, h, lava };
 }
 export function glMask(map, now, seen, safe, everyMs, remap = null) {
@@ -544,7 +633,7 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   fog: new Float32Array(3), haze: new Float32Array(3), fogP: new Float32Array(4), amb: new Float32Array(3), torch: new Float32Array(3), torchP: new Float32Array(4), grade: new Float32Array(4), finish: new Float32Array(4),
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1 };
-export function drawSceneGL(ground, U) {
+export function drawSceneGL(ground, U, models = null) {
   const gl = S.gl; if (!gl) return false; const F = GLF; let calls = 0;
   const c = S.canvas; if (c.width !== F.devW || c.height !== F.devH) { c.width = F.devW; c.height = F.devH; }
   gl.viewport(0, 0, F.devW, F.devH);
@@ -576,14 +665,27 @@ export function drawSceneGL(ground, U) {
   gl.bindVertexArray(S.vao.env); gl.drawArrays(gl.TRIANGLES, 0, 3); calls++;
   // 3. the floor's decals and the props drawn as cards (shadows, rings, cobwebs, chains, spikes, bones): blended, depth-tested, not written
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-  const decalU = () => { cam(S.decal); U.decal(gl, S.decal.U); gl.uniform1f(S.decal.U.u_time, F.time); gl.uniform3fv(S.decal.U.u_fog, F.fog); gl.uniform4fv(S.decal.U.u_fogP, F.fogP); };
+  const decalU = () => { cam(S.decal); U.decal(gl, S.decal.U); gl.uniform1i(S.decal.U.u_mask, 1); gl.uniform2i(S.decal.U.u_mapSize, S.maskW, S.maskH); gl.uniform1f(S.decal.U.u_time, F.time); gl.uniform3fv(S.decal.U.u_fog, F.fog); gl.uniform4fv(S.decal.U.u_fogP, F.fogP); };
   if (GLB.nDecal > 0) { gl.useProgram(S.decal.p); decalU(); gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.decal); gl.bufferData(gl.ARRAY_BUFFER, GLB.decal.subarray(0, GLB.nDecal * DECAL_FLOATS), gl.DYNAMIC_DRAW); gl.bindVertexArray(S.vao.decal);
     if (GLB.nGlowStart > 0) { gl.drawArrays(gl.TRIANGLES, 0, GLB.nGlowStart); calls++; } }
-  // 4. the creatures and the Wayfarer (far to near), then their silhouettes where a wall hides them
-  if (GLB.nBoard > 0) { gl.useProgram(S.board.p); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW); gl.bindVertexArray(S.vao.board);
-    gl.uniform1f(S.board.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++;
+  // Compare silhouettes against wall depth before the opaque models write actor depth.
+  const model = S.model, hasModels = !!models?.length;
+  const useBoards = () => { gl.useProgram(S.board.p); gl.bindVertexArray(S.vao.board); };
+  if (GLB.nBoard > 0) { useBoards(); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW);
     gl.depthFunc(gl.GREATER); gl.uniform1f(S.board.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; gl.depthFunc(gl.LEQUAL); }
+  if (hasModels) {
+    gl.useProgram(model.p); cam(model); light(model); gl.uniform3fv(model.U.u_sil, F.sil);
+    gl.bindVertexArray(S.vao.model); gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.model);
+    gl.bufferData(gl.ARRAY_BUFFER, models, gl.DYNAMIC_DRAW);
+    const vertices = models.length / MODEL_FLOATS;
+    gl.depthFunc(gl.GREATER); gl.uniform1f(model.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
+    gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
+    gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
+    gl.depthMask(false); gl.enable(gl.BLEND);
+  }
+  if (GLB.nBoard > 0) { useBoards(); gl.uniform1f(S.board.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; }
+  closeViewGLStats.modelTriangles = hasModels ? models.length / (3 * MODEL_FLOATS) : 0;
   // 5. flames, halos, motes and wind-up glows, added in light
   if (GLB.nDecal > GLB.nGlowStart) { gl.useProgram(S.decal.p); decalU(); gl.bindVertexArray(S.vao.decal); gl.blendFunc(gl.ONE, gl.ONE); gl.drawArrays(gl.TRIANGLES, GLB.nGlowStart, GLB.nDecal - GLB.nGlowStart); calls++; }
   gl.bindVertexArray(null); gl.depthMask(true); gl.disable(gl.BLEND);

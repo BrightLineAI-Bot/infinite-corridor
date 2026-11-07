@@ -1,24 +1,24 @@
-import { Game } from "./game.js?v=r796-817d6b861fd9";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r796-817d6b861fd9"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r796-817d6b861fd9";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r796-817d6b861fd9";
-import { sectionRegion, LANDSCAPE_VERSION } from "./landscape.js?v=r796-817d6b861fd9";
-import { freshSave, migrateSave } from "./types.js?v=r796-817d6b861fd9";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r796-817d6b861fd9";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r796-817d6b861fd9";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r796-817d6b861fd9";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r796-817d6b861fd9";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r796-817d6b861fd9";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r796-817d6b861fd9";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r796-817d6b861fd9";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r796-817d6b861fd9";
-import { BIOMES, biomeFor } from "./landscape.js?v=r796-817d6b861fd9";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r796-817d6b861fd9";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r796-817d6b861fd9";
-import { ensureConstellation } from "./constellation.js?v=r796-817d6b861fd9";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r796-817d6b861fd9";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r796-817d6b861fd9";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r796-817d6b861fd9";
+import { Game } from "./game.js?v=r801-78cd78796baf";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r801-78cd78796baf"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r801-78cd78796baf";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r801-78cd78796baf";
+import { sectionRegion, LANDSCAPE_VERSION } from "./landscape.js?v=r801-78cd78796baf";
+import { freshSave, migrateSave } from "./types.js?v=r801-78cd78796baf";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r801-78cd78796baf";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r801-78cd78796baf";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r801-78cd78796baf";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r801-78cd78796baf";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r801-78cd78796baf";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r801-78cd78796baf";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r801-78cd78796baf";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r801-78cd78796baf";
+import { BIOMES, biomeFor } from "./landscape.js?v=r801-78cd78796baf";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r801-78cd78796baf";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r801-78cd78796baf";
+import { ensureConstellation } from "./constellation.js?v=r801-78cd78796baf";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r801-78cd78796baf";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r801-78cd78796baf";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand } from "./items.js?v=r801-78cd78796baf";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -116,6 +116,8 @@ const CLOSE_VIEW_LAB = [
   { id: "inner", label: "Pentagon: an inner-ring chamber", pick: (P) => P.nodes.find((n) => n.id.startsWith("i")) },
   { id: "heart", label: "Pentagon: the Heart", pick: (P) => P.nodes.find((n) => n.id === "h0") },
   { id: "vault", label: "Pentagon: the Regent's Vault", pick: (P) => P.nodes.find((n) => n.id === `h${P.nh - 1}`) },
+  { id: "grand-hall", label: "Pentagon: a grand hall", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "pit-gallery", label: "Pentagon: a grand hall with a shaft", pick: (P) => P.nodes.find((n) => n.hall?.type === "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "building", label: "Great building: a keep's first floor" },
   { id: "hazards", label: "Great building: an upper floor's holes, with lava stamped in (Close View's pits and lava)" }, // release 793
   // release 794: one floor for each of Close View's themes (CLOSE_VIEW.themes); the Pentagon's are "outer" (a tomb) and "cellar" (a root cellar)
@@ -155,7 +157,16 @@ function closeViewFixture(scenario, seed, now) {
   Object.assign(save.session, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 }); Object.assign(save.position, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 });
   const game = new Game(save, now); game.installSystems();
   save.session.activeDungeonId = id; save.session.dungeonReturn = back; game.loadArea("dungeon", false);
-  const entry = game.map.entry || { x: 4, y: 5 }; game.player.x = entry.x; game.player.y = entry.y; game.player.attackReadyAt = now;
+  let entry = game.map.entry || { x: 4, y: 5 };
+  if ((spec.id === "grand-hall" || spec.id === "pit-gallery") && game.map.hall) {
+    const { tiles, width, height } = game.map;
+    const candidates = spec.id === "pit-gallery" && tiles.some((t) => t.balcony)
+      ? tiles.filter((t) => t.balcony && !t.blocked)
+      : tiles.filter((t) => !t.blocked && !t.doorway);
+    const distance = (t) => Math.hypot(t.x - width / 2, t.y - height / 2);
+    entry = candidates.reduce((best, t) => !best || distance(t) < distance(best) ? t : best, null) || entry;
+  }
+  game.player.x = entry.x; game.player.y = entry.y; game.player.attackReadyAt = now;
   if (spec.id === "hazards") stampHazards(game.map, { x: Math.round(entry.x), y: Math.round(entry.y) });
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true };
