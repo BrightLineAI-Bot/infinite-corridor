@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r810 on main, this PR takes r811.
+Taken at merge time: main's release + 1. With r811 on main, this PR takes r812.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 811 | Codex | `claude/close-view-collision-pass` | Open new stair landings with interior v4; quiet the four traversal labs | In flight. |
+| 812 | Codex | `claude/drone-runtime-compatibility` | Preserve valid drone-lift metadata and clarify lab controls | In flight. |
+| 811 | Codex | `claude/close-view-collision-pass` | Open new stair landings with interior v4; quiet the four traversal labs | Merged (#459). |
 | 810 | Codex | `claude/close-view-terrain-render-fix` | Repair heightfield actor projection and exercise full GPU frames | Merged (#458). Previewed and GPU-checked as r810-8ed20b74216b. Published in r810. Publish run 42388584029 succeeded; live identity and in-game System label verified. |
 | 809 | Codex | `claude/close-view-control-feel` | Tight-space camera framing and near-ready attack input | Merged (#457). Preview candidate r809-9bae1bce42e2. Shares the heightfield render blocker found in r808; superseded by r810. Published in r810. |
 | 808 | Codex | `claude/vertical-dungeon-interiors` | Versioned spacious rooms, indoor ramps, jump platforms and drone traversal | Merged (#456). Preview artifact r808-ca55b4cd807c completed; hosted heightfield render blocker found, superseded by r810. Published in r810. |
