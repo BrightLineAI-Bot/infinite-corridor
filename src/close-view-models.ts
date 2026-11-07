@@ -245,18 +245,35 @@ export function writeCloseViewModel(out, offset, actor) {
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
   const moving = Math.max(0, Math.min(1, pace));
   const progress = Math.max(0, Math.min(1, amount));
+  const secondary = actor.reduceMotion ? 0 : 1;
+  const playerLike = kind === "player" || kind === "wayfarer" || kind === "playerTool";
+  const turnAmount = Number.isFinite(actor.turn) ? Math.max(-1, Math.min(1, actor.turn)) : 0;
   const beat = Math.sin(phase) * moving;
+  const heel = Math.cos(phase * 2) * moving;
   const windup = pose === "windup" ? progress : 0;
-  const strike = pose === "attack" ? Math.sin(Math.PI * progress) : 0;
+  // Contact comes early, then the cut carries through before recovering. Damage remains a gameplay event;
+  // this curve only makes its already-immediate result read as a committed, weighted blow.
+  let strike = 0;
+  if (pose === "attack") {
+    if (progress < .18) { const t = progress / .18; strike = t * t * (3 - 2 * t); }
+    else if (progress < .52) strike = 1;
+    else { const t = (progress - .52) / .48; strike = 1 - t * t * (3 - 2 * t); }
+  }
   const tool = pose === "tool" ? Math.sin(Math.PI * progress) : 0;
+  const cast = pose === "cast" ? Math.sin(Math.PI * progress) : 0;
+  const jump = pose === "jump" ? Math.sin(Math.PI * progress) : 0;
+  const jumpSettle = pose === "jump" && progress > .72 ? Math.sin((progress - .72) / .28 * Math.PI) : 0;
   const flinch = pose === "hit" ? progress : 0;
   const fall = pose === "death" ? progress : 0;
-  const turn = .12 * strike;
+  const turnLean = turnAmount * .13 * secondary;
+  const turn = .21 * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = -.15 * windup + .24 * strike - .11 * tool - .24 * flinch + 1.52 * fall;
+  const pitch = -.18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump
+    + .09 * jumpSettle - .24 * flinch + 1.52 * fall;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
-  const base = (.014 * Math.sin(phase * 2) * (1 - moving) + .044 * Math.abs(beat)) * (1 - fall) + (kind === "pallidCrawler" ? .61 : .36) * fall;
-  const shift = .10 * strike - .06 * tool - .08 * flinch;
+  const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
+    * (1 - fall) - .075 * jumpSettle + (kind === "pallidCrawler" ? .61 : .36) * fall;
+  const shift = .14 * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
   for (const { mesh, swing, px, pz } of models[kind]) {
@@ -264,14 +281,17 @@ export function writeCloseViewModel(out, offset, actor) {
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
       : 0;
     let angle = 0;
-    if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup);
+    if (swing === 4 || swing === 5) angle = (.12 + (swing - 4) * .07) * (strike - windup)
+      + Math.sign(turnAmount || 1) * .04 * Math.abs(turnAmount) * secondary;
     else if (swing === 6) angle = .19 * beat - .23 * windup + .24 * strike;
     else if (hound && swing) angle = -Math.sign(swing) * beat * .50
-      + (Math.abs(swing) === 2 ? .27 * windup - .39 * strike : -.16 * windup + .20 * strike);
-    else if (swing === 3) angle = -.12 * moving + .08 * beat + .15 * strike;
-    else if (swing === -2) angle = beat * stride + 1.15 * windup - 1.72 * strike - 1.1 * tool + .22 * flinch;
-    else if (swing === 2) angle = -beat * stride + .35 * windup - .31 * strike - .18 * flinch;
-    else angle = -swing * beat * stride;
+      + (Math.abs(swing) === 2 ? .27 * windup - .48 * strike + .28 * jump : -.16 * windup + .24 * strike - .34 * jump);
+    else if (swing === 3) angle = -.16 * moving + .11 * beat + .24 * strike - .13 * jump + .08 * turnLean;
+    else if (swing === -2) angle = beat * stride + 1.15 * windup - 1.96 * strike - 1.1 * tool
+      - (playerLike ? .28 : .08) * cast + .22 * flinch + .58 * jump - .22 * jumpSettle;
+    else if (swing === 2) angle = -beat * stride + .35 * windup - .43 * strike
+      + (playerLike ? 1.02 : .18) * cast - .18 * flinch + .58 * jump - .22 * jumpSettle;
+    else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
     const c = Math.cos(angle), s = Math.sin(angle);
     for (let i = 0; i < mesh.length; i += MODEL_FLOATS) {
       const u = mesh[i] * c + mesh[i + 2] * s + px;

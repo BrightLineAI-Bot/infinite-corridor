@@ -1,3 +1,4 @@
+export const CAST_MOTION_MS = 360;
 import{eliteDefinition,eliteVariant}from'./elites.ts';
 import{isPackKind,PACK_FORMS,PACK_STATS,packCombatantFields,applyPackBossForm}from'./monster-pack.ts';
 export const CREATURE_TRAITS={plated:{name:'Plated',text:'Thicker shell; more vitality.',hp:1.4},feral:{name:'Feral',text:'Greater damage with a frailer body.',hp:.85,damage:1.35},swift:{name:'Swift',text:'Moves considerably faster.',speed:1.35},farcasting:{name:'Far-casting',text:'Threatens from farther away.',range:1.5},vital:{name:'Vital',text:'Dense living structure; increased vitality.',hp:1.22},keen:{name:'Keen',text:'A more dangerous, disciplined strike.',damage:1.2},orbital:{name:'Orbital',text:'Carries a visible rotating ward beyond its body.'}};
