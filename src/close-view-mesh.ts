@@ -37,11 +37,49 @@ export function ringLoft(rings, sides = 8) {
   return faces;
 }
 
-// Curved, tapered tube along a short authored path. Rings use a stable lateral/up plane for predictable rigid animation.
-export function curvedTube(points, sides = 5) {
-  const rings = points.map(([x, y, z, radius]) => Array.from({ length: sides }, (_, i) => {
+// Upright loft. Rings remain [forward offset, radius, height], but each cross-section lies in XY at Z.
+// Keep ringLoft as the X-axis primitive for crawlers, muzzles, ribs and other deliberately horizontal forms.
+export function verticalLoft(rings, sides = 8) {
+  const vertices = rings.map(([x, radius, z]) => Array.from({ length: sides }, (_, i) => {
     const a = (i + .5) * Math.PI * 2 / sides;
-    return [x, y + Math.cos(a) * radius, z + Math.sin(a) * radius];
+    return [x + Math.cos(a) * radius, Math.sin(a) * radius, z];
+  })), faces = [];
+  for (let r = 0; r < vertices.length - 1; r++) for (let i = 0; i < sides; i++) {
+    const j = (i + 1) % sides, a = vertices[r][i], b = vertices[r][j], c = vertices[r + 1][j], d = vertices[r + 1][i];
+    faces.push([a, b, c], [a, c, d]);
+  }
+  return faces;
+}
+
+// Curved, tapered tube along a short authored path. Parallel-transported rings stay perpendicular
+// to the path while preserving the original Y/Z ring orientation for a straight +X tube.
+export function curvedTube(points, sides = 5) {
+  const path = points.filter((point, i) => !i || point.some((value, q) => value !== points[i - 1][q]));
+  const unit = v => { const length = Math.hypot(...v); return length > 1e-9 ? v.map(q => q / length) : [1, 0, 0]; };
+  const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  const tangents = path.map((point, i) => {
+    let low = i - 1, high = i + 1;
+    while (low >= 0 && Math.hypot(path[low][0]-point[0],path[low][1]-point[1],path[low][2]-point[2]) < 1e-9) low--;
+    while (high < path.length && Math.hypot(path[high][0]-point[0],path[high][1]-point[1],path[high][2]-point[2]) < 1e-9) high++;
+    const a = low >= 0 ? path[low] : point, b = high < path.length ? path[high] : point;
+    return unit([b[0]-a[0], b[1]-a[1], b[2]-a[2]]);
+  });
+  let normal = [0, 1, 0];
+  const frames = tangents.map(tangent => {
+    let projected = normal.map((q, i) => q - tangent[i] * dot(normal, tangent));
+    if (Math.hypot(...projected) < 1e-7) {
+      const seed = Math.abs(tangent[1]) < .9 ? [0,1,0] : [1,0,0];
+      projected = seed.map((q, i) => q - tangent[i] * dot(seed, tangent));
+    }
+    normal = unit(projected);
+    return [normal, unit(cross(tangent, normal))];
+  });
+  const rings = path.map(([x, y, z, radius], r) => Array.from({ length: sides }, (_, i) => {
+    const a = (i + .5) * Math.PI * 2 / sides, [n, b] = frames[r];
+    return [x + (Math.cos(a)*n[0]+Math.sin(a)*b[0])*radius,
+      y + (Math.cos(a)*n[1]+Math.sin(a)*b[1])*radius,
+      z + (Math.cos(a)*n[2]+Math.sin(a)*b[2])*radius];
   })), faces = [];
   for (let r = 0; r < rings.length - 1; r++) for (let i = 0; i < sides; i++) {
     const j = (i + 1) % sides;
