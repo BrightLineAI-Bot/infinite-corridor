@@ -2699,6 +2699,7 @@ export class Game {
     applyDungeonDiscovery(this.map,next,this.map._dungeonRevealMode||"normal");return changed;
   }
   loadArea(area, capture = true) {
+    this.attackBufferUntil = 0;
     this.season = null; // release 679: set again below for a section of the woods
     this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (snapshotArea ends it too)
     if (capture) this.snapshotArea();
@@ -3164,6 +3165,7 @@ export class Game {
     return moved;
   }
   setPaused(v, now = 0) {
+    if (v) this.attackBufferUntil = 0;
     if (v && !this.paused) {
       this.pauseStarted = now;
       this.recoverPosition();
@@ -6130,6 +6132,26 @@ export class Game {
   }
   // Release 696: nothing is swung, shot or cast from inside an enclosure (Tim: "you can't attack out of it").
   penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side (items still work)."; } return true; }
+  closeViewAttackBufferEligible(now = 0) {
+    const m = this.map, b = m?.building, p = this.player;
+    // Match Close View's pure interiorMap/openAirAt gates without importing its
+    // renderer into the simulation. Landscape floors opt in only within its bounds.
+    const interior = !!b && !b.finale
+      && (!m.landscape || (interiorTerrain(m) && m.tiles?.length <= 4096 && m.width <= 64 && m.height <= 64))
+      && !m.stillworks && !m.skyCloud && !m.movers?.length && !m.canopy;
+    if (this.save.closeView !== true || this.area !== "dungeon" || !interior || !p) return false;
+    const w = Math.max(1, Number(m.width) || 32), t = m.tiles?.[Math.floor(p.y + .75) * w + Math.floor(p.x + .5)];
+    const openAir = !!t && (t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || t.kind === "yardGrass");
+    return !openAir && p.hp > 0 && !this.fistsEquipped() && this.save.activeWeaponSlot !== "secondary"
+      && !this.cursed("attack", now) && !this.penned(now);
+  }
+  clearAttackBuffer() { this.attackBufferUntil = 0; }
+  tickAttackBuffer(now = 0) {
+    if (!(this.attackBufferUntil > 0)) return false;
+    if (now > this.attackBufferUntil || !this.closeViewAttackBufferEligible(now)) { this.clearAttackBuffer(); return false; }
+    if (now < (this.player.attackReadyAt || 0)) return false;
+    this.clearAttackBuffer(); this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } return true;
+  }
   primaryAttack(now = 0, _direction = null, echo = null) {
     if (this.penned(now)) return [];
     if (!echo && this.cursed("attack", now)) return []; // release 737: NO ATTACK (the Iron Fists too)
@@ -7801,13 +7823,15 @@ export class Game {
       scale = m > 1 ? 1 / m : 1,
       x = rawX * scale,
       y = rawY * scale;
-    if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
+    if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { this.clearAttackBuffer(); p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
     // Knocked down by a shock (release 257): no movement or actions until the Wayfarer gets back up.
     if (p.shockCount && now - (p.shockAt || 0) > GIANT.shockDecay * 1000) p.shockCount = 0; // the shock counter fades
-    if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
+    if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
+    if (p.hp <= 0) this.clearAttackBuffer();
     if (Math.hypot(x, y) > 0.15)
       this.save.lastAim = projectileDirection(x, y, p.facing);
     if (input.consume("tool")) {
+      this.clearAttackBuffer();
       this.save.aimMode = "tool";
       this.save.toolMode = true;
       const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) this.brawlerTool(bt, now); else { // release 493: Hammerfall and Great Sweep
@@ -7842,9 +7866,10 @@ export class Game {
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
-    if (input.consume("spell")) this.castSlot("a");
-    if (input.consume("spell2")) this.castSlot("b");
-    if (input.consume("dodge") && !this.cursed("dodge", now)) { // release 737: NO DODGE
+    if (input.consume("spell")) { this.clearAttackBuffer(); this.castSlot("a"); }
+    if (input.consume("spell2")) { this.clearAttackBuffer(); this.castSlot("b"); }
+    const dodgePressed = input.consume("dodge"); if (dodgePressed) this.clearAttackBuffer();
+    if (dodgePressed && !this.cursed("dodge", now)) { // release 737: NO DODGE
       const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
@@ -8055,10 +8080,13 @@ export class Game {
         this.defeatNotice={title:'UNCLASSIFIED LIFEFORM',detail:`${e.foundryName} · ${e.foundryRole} · journal record added`,kind:e.foundryRole==='passive'?'discovery':'danger'};
       }
     }
+    this.tickAttackBuffer(now);
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
-      this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } // release 493: the Iron Fists charge while Attack is held
+      const ready = this.player.attackReadyAt || 0, canBuffer = this.closeViewAttackBufferEligible(now);
+      if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs;
+      else { this.clearAttackBuffer(); this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } } // release 493: the Iron Fists charge while Attack is held
     }
     // Hold Act for BOAT.leaveHold seconds while aboard to leave the skiff (release 158): step ashore if ground is beside
     // the hull, otherwise go over the side into the water, and the skiff stays moored where it floats.

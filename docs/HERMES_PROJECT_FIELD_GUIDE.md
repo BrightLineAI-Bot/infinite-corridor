@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 809: camera framing and near-ready combat input
+
+**CODE:** Close View enabled interiors accept one action-button or keyboard Attack press during the last 120 ms of the existing cooldown. The normal attack runs once when ready using current aim/lock targeting. Early presses do not build a queue. Tool, spell, dodge, stun, death, pause and floor changes discard pending intent, even when a competing action is refused.
+
+**CODE:** Tight-space camera framing contracts shoulder offset with the collision-constrained boom, calculates pitch from the final eye and actual player lift, and applies the ceiling/arch cap at that final position. A bounded angular framing interval keeps head and feet on-screen where physical clearance permits; spring recovery remains smooth. The projection is shared with floor picking and rendering.
+
+**BOUNDARY:** The queue is transient and never enters schema-14 saves. Damage, cooldown, attack reach, Iron Fists charging and direct directional world-tap APIs remain unchanged. Legacy landscape/open-air scenes are excluded from buffering. Camera framing changes neither model size nor FOV nor wall opacity; under an extreme low ceiling, full-body containment can be physically impossible, so collision safety and finite centered framing take precedence.
+
 ## Release 808: rooms with height and indoor traversal
 
 **CODE:** New great-building, compound and castle interiors use interior version 3; new Pentagons use version 9. The bounded room grammar mixes large rooms, long two- or three-tile branching corridors, loops and small cells. Classic labyrinth footprints retain their pinned dimensions. Old interior versions 1–2 and Pentagon versions 1–8 keep their generators and explored layouts.
