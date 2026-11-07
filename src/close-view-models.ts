@@ -3,6 +3,7 @@ import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, curv
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -193,7 +194,7 @@ const coilStalker = [
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
-  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
+  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
