@@ -1,6 +1,7 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
 import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
@@ -192,7 +193,7 @@ const coilStalker = [
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
-  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS };
+  ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
@@ -254,6 +255,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const shift = .14 * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
+  const foundry = kind.startsWith('foundry-');
   const actionFamily = typeof actor.actionFamily === 'string' ? actor.actionFamily : '';
   const actionPhase = typeof actor.actionPhase === 'string' ? actor.actionPhase : '';
   const actionProgress = Number.isFinite(actor.actionProgress) ? Math.max(0, Math.min(1, actor.actionProgress)) : progress;
@@ -265,6 +267,8 @@ export function writeCloseViewModel(out, offset, actor) {
   for (const { mesh, swing, px, pz } of models[kind]) {
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
+      : swing >= 40 && swing < 60
+        ? Math.sin(phase * 1.3 - swing * .57) * (.018 + .045 * moving) * secondary * (1 - fall)
       : 0;
     let angle = semanticAngle(kind, swing, actor.action, actionFamily, actionPhase, actionProgress, actionWeight, beat, moving, phase, secondary);
     if (angle !== null) { /* authored action-family joint */ }
@@ -273,6 +277,13 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (swing === 6) angle = .19 * beat - .23 * windup + .24 * strike;
     else if (Math.abs(swing) === 7) angle = Math.sign(swing) * ((.10 * Math.sin(phase * 4) + .25 * beat) * secondary + .34 * windup - .72 * strike);
     else if (swing === 8) angle = .08 * Math.sin(phase * 1.7) * secondary + .12 * windup - .20 * strike;
+    else if (swing >= 70) angle = Math.sin(phase + swing * 1.3) * (.08 + .28 * moving) * secondary + (swing >= 73 ? .30 : .16) * windup - (swing >= 73 ? .52 : .30) * strike;
+    else if (swing >= 60) angle = Math.sin(phase * 1.1 + swing * 1.17) * .10 * secondary + .24 * windup - .42 * strike;
+    else if (swing >= 50) angle = Math.sin(phase * 1.25 + swing * .81) * (.08 + .08 * moving) * secondary + .18 * windup - .28 * strike;
+    else if (swing >= 40) angle = Math.sin(phase * 1.5 - swing * .65) * (.08 + .18 * moving) * secondary + .18 * windup - .34 * strike;
+    else if (swing >= 30) angle = Math.sin(phase * (swing < 32 ? 1.4 : 1.8) + swing) * .12 * secondary + .22 * windup - .38 * strike;
+    else if (swing >= 20) angle = (swing === 24 ? Math.sin(phase * 1.4) * .16 * secondary : Math.sin(phase + swing * 1.57) * (.12 + .35 * moving) * secondary)
+      + (swing < 22 ? .25 * windup - .48 * strike : -.12 * windup + .22 * strike);
     else if (swing >= 10) angle = Math.sin(phase * 1.25 + swing * .83) * (.08 + moving * .08) * secondary + .16 * windup - .22 * strike;
     else if (hound && swing) angle = -Math.sign(swing) * beat * .50
       + (Math.abs(swing) === 2 ? .27 * windup - .48 * strike + .28 * jump : -.16 * windup + .24 * strike - .34 * jump);
@@ -307,9 +318,11 @@ export function writeCloseViewModel(out, offset, actor) {
       out[offset++] = nf * sy + nv * cy;
       out[offset++] = nw * cp - nu * sp;
       const poison = actor.poison ? .55 : 0;
-      const red = mesh[i + 6] + (.32 - mesh[i + 6]) * poison;
-      const green = mesh[i + 7] + (.82 - mesh[i + 7]) * poison;
-      const blue = mesh[i + 8] + (.24 - mesh[i + 8]) * poison;
+      let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
+      if(foundry){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=foundryPaletteColor(rgb,actor.palette);sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}
+      const red = sourceRed + (.32 - sourceRed) * poison;
+      const green = sourceGreen + (.82 - sourceGreen) * poison;
+      const blue = sourceBlue + (.24 - sourceBlue) * poison;
       out[offset++] = red + (.96 - red) * flinch * .6;
       out[offset++] = green + (.34 - green) * flinch * .6;
       out[offset++] = blue + (.23 - blue) * flinch * .6;
@@ -329,6 +342,17 @@ function semanticAngle(kind, swing, action, family, actionPhase, p, force, beat,
   // Damage/release for ordinary pack attacks has already happened when recovery starts.
   const contact = actionPhase === 'recover' ? 1 - p : actionPhase === 'erupt' && action === 'burrowAmbush' ? 1 : 0;
   const recoil = actionPhase === 'recover' ? 1 - p : 0;
+  if (kind.startsWith('foundry-')) {
+    // These IDs are Foundry-local morphology joints, not the similarly numbered pack joints.
+    const ranged = family === 'ranged', stab = family === 'stab', slam = family === 'slam';
+    const release = ranged ? .22 * wind - .32 * contact : stab ? .38 * wind - .62 * contact : slam ? .48 * wind - .66 * contact : .32 * wind - .52 * contact;
+    if (kind === 'foundry-quadruped') return swing === 24 ? Math.sin(phase * 1.4) * .12 * secondary + .3 * release : swing >= 20 ? Math.sin(phase + swing * 1.57) * .38 * moving * secondary + (swing < 22 ? 1 : -.45) * release : .35 * release;
+    if (kind === 'foundry-floating') return swing < 32 ? .35 * release : Math.sin(phase * 1.5 + swing) * .10 * secondary + (swing % 2 ? 1 : -1) * release;
+    if (kind === 'foundry-segmented') return Math.sin(phase * 1.5 - swing * .65) * (.025 + .15 * moving) * secondary + (swing === 43 ? 1.3 : swing < 43 ? .35 : .6) * release;
+    if (kind.startsWith('foundry-tentacled')) return swing < 52 ? .4 * release : Math.sin(phase * 1.25 + swing) * (.05 + .10 * moving) * secondary + (ranged ? (swing % 2 ? 1 : -1) : 1) * release;
+    if (kind === 'foundry-geometric') return swing === 60 ? .4 * release : Math.sin(phase * 1.1 + swing * 1.17) * .07 * secondary + (swing % 2 ? 1 : -1) * release;
+    if (kind.startsWith('foundry-biomechanical')) return swing === 70 ? .3 * release : swing < 73 ? (swing === 71 ? 1 : -1) * beat * .35 * secondary - .3 * release : Math.sin(phase + swing * 1.3) * (.04 + .10 * moving) * secondary + (swing < 75 ? 1.4 : .65) * release;
+  }
   // Pallid Crawler retains its exact legacy bite/leap route. Other production hybrids articulate its existing
   // splayed front (|2|) and rear (|1|) joints instead of borrowing the bite clock or a periodic oscillator.
   if (kind === 'pallidCrawler' && swing) {

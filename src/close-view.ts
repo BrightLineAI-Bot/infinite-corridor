@@ -2,7 +2,7 @@ import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
 import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel } from "./close-view-models.ts";
-import { actorPresentation, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, shotVisualHeight } from "./actor-presentation.ts";
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, shotVisualHeight } from "./actor-presentation.ts";
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
@@ -1763,7 +1763,7 @@ const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
 };
-export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0) {
+export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
   const semantic = actorPresentation(who)?.action === 'pack' ? packActionPresentation(who, ATTACK_MODULES, BOSS_PACE.windup, now) : null;
   const legacyCrawler = kind === 'pallidCrawler' && ['bite', 'leapSlam'].includes(semantic?.action);
@@ -1801,6 +1801,15 @@ export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0
   let windupAmount = null;
   if (winding && Number.isFinite(windupDuration) && windupDuration > 0 && who.telegraph > 0)
     windupAmount = 1 - Math.min(1, Math.max(0, who.telegraph) / windupDuration);
+  if (actorPresentation(who)?.action === 'foundry') {
+    const shape = winding ? actionShape : who.strikeGeometry?.kind;
+    const melee = !!shape || !!who.meleePhase || who.range < 2.5;
+    const family = shape === 'stab' ? 'stab' : shape === 'slam' ? 'slam' : melee ? 'sweep' : 'ranged';
+    const phase = winding ? 'windup' : attack ? 'recover' : 'idle';
+    return { attack, winding, aim, amount, windupAmount, semanticPose: winding || attack,
+      semantic: { action: who.meleePhase?.id || who.foundryAttack || 'meleeSwipe', family, phase,
+        progress: winding ? windupAmount ?? 0 : attack ? 1 - Math.min(1, who.strike * 1000 / ACTION_MOTION.monsterStrikeMs) : 0 } };
+  }
   return { attack, winding, leapActive, packRecovery, aim, amount, leapAmount, windupAmount, semantic };
 }
 export function closeViewPlayerAction(g, now) {
@@ -1836,7 +1845,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const admit = (it, who, kind) => {
     const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], pack = who.pack;
     const presentation = who === player ? null : actorPresentation(who);
-    const monsterAction = who === player ? null : closeViewMonsterAction(who, kind, d.nativeWindup, now);
+    const monsterAction = who === player ? null : closeViewMonsterAction(who, kind, d.nativeWindup, now, d.nativeActionShape);
     const playerAction = who === player ? closeViewPlayerAction(g, now) : null;
     const visualRecord = playerAction?.record, visualAttack = !!playerAction?.active;
     const attack = !!playerAction?.legacy || visualAttack || who !== player && (who.attackUntil > now || !!monsterAction?.attack);
@@ -1895,10 +1904,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (stunned) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const activeKind = visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
-    const actor = { kind: activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : kind),
+    const actor = { kind: activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      palette: presentation?.palette,
       watched,
       action: presentation?.stagger ? null : monsterAction?.semantic?.action,
       actionFamily: presentation?.stagger ? null : monsterAction?.semantic?.family,
@@ -1925,7 +1935,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const canModel = (it, foe) => {
     if (itemKind[it] !== 1 || !foe) return false;
     const reason = CLOSE_VIEW_HOOKS.art[foe.kind] ? 'custom-art'
-      : nativeCreatureCoverage(foe, draws[itemRef[it]], { mesh: modelSupported(foe.kind), attachments: modelSupportsAttachments(foe.kind, 3) });
+      : nativeCreatureCoverage(foe, draws[itemRef[it]], { mesh: modelSupported(actorModelKey(foe)), attachments: modelSupportsAttachments(actorModelKey(foe), 3) });
     if (reason) { closeViewGLStats.modelFallbacks[reason] = (closeViewGLStats.modelFallbacks[reason] || 0) + 1; return false; }
     return true;
   };

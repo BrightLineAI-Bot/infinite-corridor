@@ -44,6 +44,7 @@ export function nativeWindupDuration(e) {
   if (!pattern && e.range >= 2.5 && !e.instantStrike) duration = Math.max(duration, enemyPatternWindup(e));
   return duration;
 }
+export function nativeActionShape(e) { return e.telegraph > 0 ? MELEE_PATTERNS[e.meleePhase?.id]?.shape || null : e.strikeGeometry?.kind || null; }
 export function drawNativeCreatureFloor(ctx, g, e, s, now) {
   const p = actorPresentation(e); if (!p || e.gloomVeil || e.dead) return;
   const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), t = quiet ? 0 : now / 1000;
@@ -2587,6 +2588,7 @@ export function render(ctx, g, w, h, now) {
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         enemy: e,
         nativeWindup: nativeWindupDuration(e),
+        nativeActionShape: nativeActionShape(e),
         nativeFloor: (time = now) => drawNativeCreatureFloor(ctx, g, e, s, time),
         nativeDecorations: () => drawNativeCreatureDecorations(ctx, e, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, g.presentation),
         nativePackEffects: (time = now) => drawNativePackEffects(ctx, e, s, time, g.presentation, actorPresentation(e) || {}),
