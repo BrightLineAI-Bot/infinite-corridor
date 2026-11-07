@@ -1691,7 +1691,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (hit) amount = hit;
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const actor = { kind: tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : kind,
-      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, d.lift || 0), yaw: track.yaw,
+      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: Math.max(0, (d.lift || 0) + (d.jumpLift || 0)), yaw: track.yaw,
       phase: track.phase, pace: track.pace, pose, amount, turn, reduceMotion: reduce };
     track.winding = winding;
     track.attacking = attack;
