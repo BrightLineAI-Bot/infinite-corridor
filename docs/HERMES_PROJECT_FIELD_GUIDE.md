@@ -2854,6 +2854,16 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 808: rooms with height and indoor traversal
+
+**CODE:** New great-building, compound and castle interiors use interior version 3; new Pentagons use version 9. The bounded room grammar mixes large rooms, long two- or three-tile branching corridors, loops and small cells. Classic labyrinth footprints retain their pinned dimensions. Old interior versions 1–2 and Pentagon versions 1–8 keep their generators and explored layouts.
+
+**CODE:** Opt-in interiorTerrain version 1 provides a continuous cardinal-ramp heightfield, raised bays, retaining faces and roof seams in the cached WebGL2 scene. Floor picking, character feet, camera clearance, lamps and decals follow the same support height. Optional jump chains are placed only when mandatory walking routes remain open. The drone can boost indoors with existing fuel/progression gates, wall collision and footprint ceiling/arch clearance; its airborne state resumes additively at schema 14 with area/level identity validation.
+
+**CODE:** Close View Lab adds terrain-ramps, platform-chain, indoor-drone and terrain-pentagon. They use real current generators on scratch saves. Existing scenarios stay explicitly pinned to their previous v2/v8 content. A safely omitted optional platform chain is reported in diagnostics rather than stamped into production generation.
+
+**BOUNDARY:** This is one support surface per horizontal position, not stacked walkable rooms or unrestricted flight. New terrain is capped at five levels and 64 by 64 tiles; generated floors remain below 1,800 tiles. Cached surface geometry reuses existing scene batches; actor and projectile limits remain unchanged. Without WebGL2 the new heightfield safely uses the ordinary view. Automated bounds and compatibility checks do not establish physical-phone frame rate.
+
 ## Release 807: readable Close View actions
 
 **CODE:** Model motion now uses distance-driven gait and smooth facing, asymmetric sword follow-through, casting and jumping poses, and evolving enemy windup/strike progress. Accepted spells and Aperture skills stamp a shared cast clock, included in existing pause and schema-14 runtime resume. Existing rigid meshes and fixed actor buffers are reused.

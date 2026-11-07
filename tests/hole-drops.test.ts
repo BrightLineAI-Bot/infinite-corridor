@@ -90,7 +90,7 @@ test('the safe drops are read from the floor as laid: the same every time, no ti
 const holedFloor = () => { for (let i = 0; i < 200; i++) { const seed = `HP${i}`, base = `building:${seed}:7:7:keep:3`, m = generateBuildingFloor(seed, `${base}:f2`, 2), holes = m.tiles.filter((t) => t.hole);
   const deadly = holes.find((t) => !safeDropAt(m, t.x, t.y) && N4.some(([dx, dy]) => { const q = m.tiles[(t.y + dy) * m.width + t.x + dx]; return q && !q.blocked && !q.hole; }));
   const safe = holes.find((t) => safeDropAt(m, t.x, t.y)); if (deadly && safe) return { seed, base, id: `${base}:f2`, deadly, safe }; } return null; };
-const onFloor = (F) => { const s = freshSave(); s.seed = F.seed; s.session.activeDungeonId = F.id; s.session.dungeonReturn = { rx: 7, ry: 7, x: 16, y: 16 }; const g = new Game(s, 0); g.loadArea('dungeon', false); g.enemies = []; return g; };
+const onFloor = (F) => { const s = freshSave(); s.seed = F.seed; s.session.activeDungeonId = F.id; s.session.dungeonReturn = { rx: 7, ry: 7, x: 16, y: 16 }; (s.consequences.dungeons[F.id] ||= {}).interiorVersion = 2; const g = new Game(s, 0); g.loadArea('dungeon', false); g.enemies = []; return g; };
 const idle = { state: { x: 0, y: 0 }, held: () => false, consume: () => false };
 
 test('a step into an ordinary hole is a death that wakes you where you came onto that floor, on that floor; nothing is lost (release 345)', () => {

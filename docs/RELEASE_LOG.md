@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r806 on main, this PR takes r807.
+Taken at merge time: main's release + 1. With r807 on main, this PR takes r808.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 807 | Codex | `claude/close-view-action-animation` | Improve walking, cuts, casting, jump and enemy poses | In flight. |
+| 808 | Codex | `claude/vertical-dungeon-interiors` | Versioned spacious rooms, indoor ramps, jump platforms and drone traversal | In flight. |
+| 807 | Codex | `claude/close-view-action-animation` | Improve walking, cuts, casting, jump and enemy poses | Merged (#455). Preview workflow running for r807-3228675c72d5. |
 | 806 | Codex | `claude/proving-ground-idle-frame` | Restore rendering after the lab launcher and journey handoff | Merged (#454). Previewed as r806-2ac648555b7a. |
 | 805 | Codex | `claude/close-view-ceiling` | Add themed textured ceiling structure | Merged (#452). Previewed as r805-9122ca315766. Published in r805. |
 | 804 | Codex | `claude/close-view-wayfarer` | Clarify the Wayfarer and add two themed enemy meshes | Merged (#451). Preview candidate r804-f24b47e94e6d. Published in r805. |

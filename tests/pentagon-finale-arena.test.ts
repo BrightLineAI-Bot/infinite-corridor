@@ -155,7 +155,18 @@ test('a death in the Stillworks resets the fight fairly: the beast whole and asl
 });
 
 test('exact resume mid-fight keeps its wounds (as a world beast does); after the win a reload keeps it down and the seam open, and pays nothing more', () => {
-  const g = game(), P = plan(); intoArena(g, P, 'astralWorm'); const b = beastOf(g); g.player.x = b.x; g.player.y = b.y + 5; run(g, 3); b.hp = Math.round(b.maxHp * .6);
+  const g = game(), P = plan(); intoArena(g, P, 'astralWorm');
+  const spawned = beastOf(g), deaths = g.save.worldFlags.deaths || 0, protection = g.player.invulnerableUntil;
+  g.player.x = spawned.x; g.player.y = spawned.y + 5;
+  // Warm the live encounter without the level-one fixture dying and replacing
+  // its beast. Arena death/reset behavior has its own test immediately above.
+  g.player.invulnerableUntil = 100000;
+  try { run(g, 3); } finally { g.player.invulnerableUntil = protection; }
+  const b = beastOf(g);
+  assert.equal(b, spawned, 'the same live encounter is being saved');
+  assert.ok(g.player.hp > 0, 'warm-up did not kill the player');
+  assert.equal(g.save.worldFlags.deaths || 0, deaths, 'no arena reset during warm-up');
+  b.hp = Math.round(b.maxHp * .6);
   const r = new Game(deserializeSave(serializeSave(g.exportSnapshot(300))), 900); assert.equal(r.areaId(), pentagonArenaId(P.base)); const rb = beastOf(r);
   assert.equal(rb.hp, b.hp); assert.equal(rb.maxHp, b.maxHp); assert.equal(rb.damage, b.damage, 'its tuning kept'); assert.ok(rb.pentArenaAwake); assert.equal(gate(r, 'walk').state, 'sealed');
   killBeast(r); const cur = r.save.currency; const q = new Game(deserializeSave(serializeSave(r.exportSnapshot(400))), 1000);
