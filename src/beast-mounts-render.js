@@ -2,9 +2,9 @@
 // or riding frame on its back (MOUNT_BEASTS.saddle), and the Wayfarer drawn last, on top, so even the biggest never hides them.
 // The pack beasts reuse monster-render's cached sprites (one per mount id); the Stalker is drawn as its cat; each saddle is painted
 // once into a small cached canvas per style, size and facing.
-import { MOUNT_BEASTS } from "./beast-mounts.js?v=r823-a1b23012a5c2";
-import { drawPackMonster } from "./monster-render.js?v=r823-a1b23012a5c2";
-import { drawStalker } from "./stalker-render.js?v=r823-a1b23012a5c2";
+import { MOUNT_BEASTS } from "./beast-mounts.js?v=r824-2329dc4c0b06";
+import { drawPackMonster } from "./monster-render.js?v=r824-2329dc4c0b06";
+import { drawStalker } from "./stalker-render.js?v=r824-2329dc4c0b06";
 
 // One reused actor per frame (no per-frame allocation beyond it).
 const actor = { id: "", kind: "", packKind: "", x: 0, y: 0, scale: 1, facingX: 1, boss: false, hopLift: 0, stalkForm: "cat", stalkAct: { kind: "prowl", t: 0, total: 0 }, pack: null, mountView: true };

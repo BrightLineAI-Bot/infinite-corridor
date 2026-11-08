@@ -1,31 +1,32 @@
-import { Game } from "./game.js?v=r823-a1b23012a5c2";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r823-a1b23012a5c2"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r823-a1b23012a5c2";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r823-a1b23012a5c2";
-import { sectionRegion, LANDSCAPE_VERSION } from "./landscape.js?v=r823-a1b23012a5c2";
-import { freshSave, migrateSave } from "./types.js?v=r823-a1b23012a5c2";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r823-a1b23012a5c2";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r823-a1b23012a5c2";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r823-a1b23012a5c2";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r823-a1b23012a5c2";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r823-a1b23012a5c2";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r823-a1b23012a5c2";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r823-a1b23012a5c2";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r823-a1b23012a5c2";
-import { BIOMES, biomeFor } from "./landscape.js?v=r823-a1b23012a5c2";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r823-a1b23012a5c2";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r823-a1b23012a5c2";
-import { ensureConstellation } from "./constellation.js?v=r823-a1b23012a5c2";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r823-a1b23012a5c2";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r823-a1b23012a5c2";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r823-a1b23012a5c2";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r823-a1b23012a5c2";
-import { ensureLattice } from "./transit-lattice.js?v=r823-a1b23012a5c2";
-import { ensureSlots } from "./spell-slots.js?v=r823-a1b23012a5c2";
-import { fieldOn } from "./lattice-fields.js?v=r823-a1b23012a5c2";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r823-a1b23012a5c2";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r823-a1b23012a5c2";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r823-a1b23012a5c2";
+import { Game } from "./game.js?v=r824-2329dc4c0b06";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r824-2329dc4c0b06"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r824-2329dc4c0b06";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r824-2329dc4c0b06";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel } from "./landscape.js?v=r824-2329dc4c0b06";
+import { DIG, planDig } from "./digging.js?v=r824-2329dc4c0b06";
+import { freshSave, migrateSave } from "./types.js?v=r824-2329dc4c0b06";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r824-2329dc4c0b06";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r824-2329dc4c0b06";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r824-2329dc4c0b06";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r824-2329dc4c0b06";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r824-2329dc4c0b06";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r824-2329dc4c0b06";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r824-2329dc4c0b06";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r824-2329dc4c0b06";
+import { BIOMES, biomeFor } from "./landscape.js?v=r824-2329dc4c0b06";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r824-2329dc4c0b06";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r824-2329dc4c0b06";
+import { ensureConstellation } from "./constellation.js?v=r824-2329dc4c0b06";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r824-2329dc4c0b06";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r824-2329dc4c0b06";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r824-2329dc4c0b06";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r824-2329dc4c0b06";
+import { ensureLattice } from "./transit-lattice.js?v=r824-2329dc4c0b06";
+import { ensureSlots } from "./spell-slots.js?v=r824-2329dc4c0b06";
+import { fieldOn } from "./lattice-fields.js?v=r824-2329dc4c0b06";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r824-2329dc4c0b06";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r824-2329dc4c0b06";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r824-2329dc4c0b06";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -166,6 +167,7 @@ const CLOSE_VIEW_LAB = [
   { id: "building", label: "Great building: a keep's first floor" },
   { id: "hazards", label: "Great building: an upper floor's holes, with lava stamped in (Close View's pits and lava)" }, // release 793
   { id: "terrain-ramps", label: "Traversal: broad indoor ramps", buildingFeature: "ramp" },
+  { id: "terrain-dig-return", label: "Traversal: excavation ramp return", buildingFeature: "dig-return" },
   { id: "platform-chain", label: "Traversal: jumping-block platform chain", buildingFeature: "platform" },
   { id: "indoor-drone", label: "Traversal: active drone among indoor heights", buildingFeature: "drone" },
   // release 794: one floor for each of Close View's themes (CLOSE_VIEW.themes); the Pentagon's are "outer" (a tomb) and "cellar" (a root cellar)
@@ -192,6 +194,18 @@ function findLabBuilding(seed) {
   for (let d = BUILDINGS.minRing; d < 48; d++) for (let x = -d; x <= d; x++) for (const y of [d - Math.abs(x), Math.abs(x) - d]) { const b = buildingHere(seed, x, y, sectionRegion(seed, x, y, LANDSCAPE_VERSION)); if (b?.style === "keep") return { rx: x, ry: y, ...b }; }
   return null;
 }
+const DIG_RETURN_DIRS = [{ facing: "down", dx: 0, dy: 1 }, { facing: "up", dx: 0, dy: -1 }, { facing: "right", dx: 1, dy: 0 }, { facing: "left", dx: -1, dy: 0 }];
+function digReturnCandidate(game, preferred = null) {
+  const map = game.map, key = game.areaStateId(), tryAt = (x, y, dir) => {
+    const source = map.tiles[y * map.width + x], target = map.tiles[(y + dir.dy) * map.width + x + dir.dx];
+    if (!source || source.blocked || !source.slope || !source.rampDir || !target?.blocked) return null;
+    const plan = planDig(map, x, y, dir.facing, key), edgeX = x + .5 + dir.dx * .5, edgeY = y + .5 + dir.dy * .5, edgeSupport = interiorTileLevel(source, edgeX, edgeY), oldWallHeight = Number.isFinite(target.elev) ? target.elev : 0;
+    return plan.ok && edgeSupport - oldWallHeight >= 2 ? { source, target, plan, edgeSupport, oldWallHeight, dir } : null;
+  };
+  if (preferred) { const exact = tryAt(preferred.x, preferred.y, DIG_RETURN_DIRS.find((q) => q.facing === preferred.facing)); if (exact) return exact; }
+  for (const source of map.tiles) if (source?.slope && source.rampDir) for (const dir of DIG_RETURN_DIRS) { const found = tryAt(source.x, source.y, dir); if (found) return found; }
+  return null;
+}
 function closeViewFixture(scenario, seed, now) {
   const spec = CLOSE_VIEW_LAB.find((q) => q.id === scenario) || CLOSE_VIEW_LAB[0];
   let id, back;
@@ -199,7 +213,7 @@ function closeViewFixture(scenario, seed, now) {
     const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); const floors = 3; let rx = b.rx;
     if (spec.style === "keep") for (let k = 0; k < 200 && closeViewThemeLivedIn(`building:${seed}:${rx}:${b.ry}:keep:${floors}`) !== spec.lived; k++) rx++; // a keep that is (or is not) lived in
     id = `building:${seed}:${rx}:${b.ry}:${spec.style}:${floors}:f${spec.floor || 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
-  else if (spec.id === "building" || spec.id === "hazards" || spec.buildingFeature) { const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); id = `building:${seed}:${b.rx}:${b.ry}:keep:${b.floors}:f${spec.id === "hazards" ? Math.min(2, b.floors) : 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
+  else if (spec.id === "building" || spec.id === "hazards" || spec.buildingFeature) { const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); id = spec.buildingFeature === "dig-return" && seed === "DIG-AUDIT0" ? `building:${seed}:1:1:keep:4:f1` : `building:${seed}:${b.rx}:${b.ry}:keep:${b.floors}:f${spec.id === "hazards" ? Math.min(2, b.floors) : 1}`; back = spec.buildingFeature === "dig-return" && seed === "DIG-AUDIT0" ? { rx: 1, ry: 1, x: 16, y: 16 } : { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
   else { const c = findLabPentagon(seed, now); if (!c) throw new Error(`No Pentagon near the origin for seed ${seed}.`); const P = pentagonPlan(seed, c.cx, c.cy, spec.latestPentagon ? c.V : Math.min(c.V, 8)), q = spec.pick(P) || P.nodes[0]; id = `${P.base}:f${q.n + 1}`; back = { rx: c.cx, ry: c.cy, x: 16, y: 16 }; }
   const save = scratchSave(seed); save.closeView = true; if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET; if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL; ensureCloseView(save); // ?cvPreset=close|wide tries a camera preset
   if (id.startsWith("building:")) save.consequences.dungeons[id] = { interiorVersion: spec.buildingFeature ? BUILDINGS.interior.version : 2 };
@@ -240,6 +254,13 @@ function closeViewFixture(scenario, seed, now) {
       game.player.x = entry.x; game.player.y = entry.y;
       traversal = { feature: "ramp", found: true, ramp: { x: ramp.x, y: ramp.y, elev: ramp.elev, dir: ramp.rampDir } };
     } else traversal = { feature: "ramp", found: false, note: "This deterministic floor generated no ramp marker." };
+  } else if (spec.buildingFeature === "dig-return") {
+    const found = digReturnCandidate(game, seed === "DIG-AUDIT0" ? { x: 18, y: 25, facing: "down" } : null);
+    if (found) {
+      const { source, target, plan, edgeSupport, oldWallHeight, dir } = found; entry = { x: source.x, y: source.y }; Object.assign(game.player, { x: source.x, y: source.y, facing: dir.facing, lastMoveVector: { x: dir.dx, y: dir.dy } });
+      save.digging.shovel = DIG.shovelUses; save.materials.wood = 3; save.materials.stone = 3;
+      traversal = { feature: "dig-return", found: true, origin: { x: source.x, y: source.y }, target: { x: target.x, y: target.y }, facing: dir.facing, oldWallHeight, edgeSupport, plannedSurface: plan.surface, opened: !!target.tunnel, liveElevation: target.elev };
+    } else traversal = { feature: "dig-return", found: false, note: "No production ramp edge beside diggable rock with a two-level historical drop was found on this deterministic floor." };
   } else if (spec.buildingFeature === "platform" || spec.buildingFeature === "drone") {
     const steps = game.map.tiles.filter((tile) => tile.interiorPlatform).sort((a, b) => a.elev - b.elev || a.y - b.y || a.x - b.x);
     const first = steps[0];
@@ -254,11 +275,12 @@ function closeViewFixture(scenario, seed, now) {
   }
   if (spec.id === "hazards") stampHazards(game.map, { x: Math.round(entry.x), y: Math.round(entry.y) });
   if (spec.buildingFeature === "ramp") game.message = "Close View ramp lab: walk across the broad stepped strip and compare the camera at each height.";
+  else if (spec.buildingFeature === "dig-return") game.message = traversal?.found ? "Face the cut wall, Act to dig, walk across and back." : traversal?.note;
   else if (spec.buildingFeature === "platform") game.message = traversal?.found ? "Close View platform lab: jump onto the +1 and +2 blocks, then up to the 2×2 top." : traversal?.note;
   else if (spec.buildingFeature === "drone") game.message = traversal?.found ? "Close View drone lab: Jump, then press Jump again and hold to boost over the indoor platform chain." : traversal?.note;
   else if (spec.latestPentagon) game.message = "Close View Pentagon terrain lab: explore the current mixed rooms, side cells, broad corridors, and ramps.";
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
-  return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(traversal ? { diagnostics: { traversal } } : {}) };
+  return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(traversal ? { diagnostics: { traversal } } : {}) };
 }
 
 function combatAssetGear(slot, name) {
@@ -587,11 +609,13 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
 
 export function labReport(fixture) {
   const {game}=fixture,map=game.map,primary=fixture.primary;
-  return {mode:"developer-proving-ground",lab:fixture.lab,scenario:fixture.scenario,label:fixture.label,seed:fixture.seed,variant:fixture.variant,sizeProfile:fixture.sizeProfile||map.sizeProfile||null,revealMode:fixture.revealMode||"normal",production:fixture.production,scratch:true,area:game.area,identity:map.id||`${game.rx},${game.ry}`,recipe:map.recipe||map.district?.style||primary?.family||"overworld",diagnostics:fixture.diagnostics||null,topology:map.diagnostic||null,topologyHash:map.dungeonContract?.topologyHash||null,discovery:map.dungeonContract?dungeonDiscoveryReport(map):null,level:map.levelId||null,objectives:(map.objectives||[]).map(q=>({id:q.id,type:q.type,name:q.name})),structures:fixture.structures?.map(o=>({id:o.id,kind:o.kind,family:o.family,shape:o.shape,theme:o.theme,entrances:o.entrances?.length||0,interior:o.interior?.length||0,boundary:o.boundary?.length||0}))||[],hazards:map.objects.filter(o=>o.kind==="trap").map(o=>({id:o.id,type:o.trapType,x:o.x,y:o.y,direction:[o.dirX||0,o.dirY||0],warning:o.warningDuration||.7,damage:o.damage||14})),interactables:map.objects.filter(o=>o.actions?.length).map(o=>({id:o.id,kind:o.kind,state:o.state,actions:o.actions,semanticRole:o.semanticRole,spriteIdentity:o.spriteIdentity,atlasIcon:o.atlasIcon,fastTravelEligible:o.fastTravelEligible,respawnEligible:o.respawnEligible})),enemies:{total:game.enemies.length,alive:game.enemies.filter(e=>!e.dead).length,kinds:[...new Set(game.enemies.map(e=>e.kind))]},player:{x:Number(game.player.x.toFixed(2)),y:Number(game.player.y.toFixed(2)),hp:game.player.hp},performance:{...game.performanceStats}};
+  const digTraversal=fixture.diagnostics?.traversal; if(digTraversal?.feature==="dig-return"&&digTraversal.found){const t=map.tiles[digTraversal.target.y*map.width+digTraversal.target.x];digTraversal.opened=!!t?.tunnel;digTraversal.liveElevation=t?.elev;digTraversal.storedSurface=game.save.digging?.surfaces?.[game.areaStateId()]?.[`${digTraversal.target.x},${digTraversal.target.y}`]||null;}
+  return {mode:"developer-proving-ground",lab:fixture.lab,scenario:fixture.scenario,label:fixture.label,seed:fixture.seed,variant:fixture.variant,sizeProfile:fixture.sizeProfile||map.sizeProfile||null,revealMode:fixture.revealMode||"normal",production:fixture.production,scratch:true,area:game.area,identity:map.id||`${game.rx},${game.ry}`,recipe:map.recipe||map.district?.style||primary?.family||"overworld",developerHint:fixture.developerHint||null,diagnostics:fixture.diagnostics||null,topology:map.diagnostic||null,topologyHash:map.dungeonContract?.topologyHash||null,discovery:map.dungeonContract?dungeonDiscoveryReport(map):null,level:map.levelId||null,objectives:(map.objectives||[]).map(q=>({id:q.id,type:q.type,name:q.name})),structures:fixture.structures?.map(o=>({id:o.id,kind:o.kind,family:o.family,shape:o.shape,theme:o.theme,entrances:o.entrances?.length||0,interior:o.interior?.length||0,boundary:o.boundary?.length||0}))||[],hazards:map.objects.filter(o=>o.kind==="trap").map(o=>({id:o.id,type:o.trapType,x:o.x,y:o.y,direction:[o.dirX||0,o.dirY||0],warning:o.warningDuration||.7,damage:o.damage||14})),interactables:map.objects.filter(o=>o.actions?.length).map(o=>({id:o.id,kind:o.kind,state:o.state,actions:o.actions,semanticRole:o.semanticRole,spriteIdentity:o.spriteIdentity,atlasIcon:o.atlasIcon,fastTravelEligible:o.fastTravelEligible,respawnEligible:o.respawnEligible})),enemies:{total:game.enemies.length,alive:game.enemies.filter(e=>!e.dead).length,kinds:[...new Set(game.enemies.map(e=>e.kind))]},player:{x:Number(game.player.x.toFixed(2)),y:Number(game.player.y.toFixed(2)),hp:game.player.hp},performance:{...game.performanceStats}};
 }
 
 export function teleportTargets(fixture) {
   const map=fixture.game.map,targets=[];
+  if(fixture.lab==="close-view"&&fixture.scenario==="terrain-dig-return"&&fixture.diagnostics?.traversal?.found)targets.push({id:"excavation-ramp",label:"Excavation ramp",x:fixture.diagnostics.traversal.origin.x,y:fixture.diagnostics.traversal.origin.y});
   if(["combat-assets","creature-assets"].includes(fixture.lab)&&fixture.diagnostics?.placement?.player)targets.push({id:"gallery-start",label:"Gallery start",x:fixture.diagnostics.placement.player.x,y:fixture.diagnostics.placement.player.y});
   if(map.entry)targets.push({id:"entry",label:"Entrance",x:map.entry.x,y:map.entry.y});
   const foe=fixture.lab==="combat"&&fixture.game.enemies?.find(e=>!e.dead&&!e.ambient),near=foe&&map.tiles.find(t=>!t.blocked&&!t.environment&&!["canyon","river","dungeonWater","bridge"].includes(t.kind)&&Math.hypot(t.x-foe.x,t.y-foe.y)>=3&&Math.hypot(t.x-foe.x,t.y-foe.y)<=4.5);
