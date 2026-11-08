@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 839: make the public Target command a finite centered-rear camera transaction that follows the Wayfarer's displayed facing, preserves safe obstruction escape and refreshes Proving Ground teleport choices only when their public target identities change.
 - Release 838: carry the Verge Cleaver in the anatomical right hand and cycle four accepted full-body cuts up, down, up and down while preserving canonical combat and saved motion compatibility; pick visible legacy stone tops correctly when tapping to stack.
 - Release 837: render legacy and current Close View stone builds as physical one- and two-level supports instead of walls.
 - Release 836: keep ordinary Close View actors grounded with shared player/enemy body contact, bounded overlap escape and height-aware movement consequences.
