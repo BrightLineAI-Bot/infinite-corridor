@@ -10,7 +10,7 @@ Verified live: `r827-ff2d4c13bf18`. Publish42457803577 succeeded; gh-pages ident
 
 Earlier native creature/combat/actor passes r813–818 remain delivered; preserve their roster, Foundry and auxiliary-actor work recorded in the release log.
 
-Current checkpoint: r827 is published and verified. **Priority exception: the settled-corner entry camera fix takes r828 before stage3.** A production-backed no-input death/respawn witness returned the player to (25,4), where the old entry choice compressed the camera to .30 tile and a 71.565° overhead view. This concrete playable-view defect warrants a focused fix ahead of the remaining cosmetic passes. After r828, resume the original queue at Echo; no candidate is dropped or silently completed.
+Current checkpoint: r827 is published and verified. **Priority exception: the settled-corner entry camera fix takes r828 before stage3.** A production-backed no-input death/respawn witness returned the player to (25,4), where the old entry choice compressed the camera to .30 tile and a 71.565° overhead view. This concrete playable-view defect warrants a focused fix ahead of the remaining cosmetic passes. After r828, close the remaining stage2c Salvage/future-primary continuity defect in r829, then resume Echo. The stage2c audit reproduced an imported-body entry snap of about .058 tile; the narrow accepted-clock correction leaves mechanics unchanged. No candidate is dropped or silently completed.
 
 | Order | Pass | Required owner direction / completion target | State |
 |---|---|---|---|
@@ -276,3 +276,16 @@ PR471 source/merge trees match8667848f6de0eb42ad749b8a85e27cc09f6b607d. CI424326
 
 
 Latest block/contact evidence: actual Game.buildAt in building:CONTACT-AUDIT:-4:0:keep:3:f1 succeeds for stone at(8,4) in legacy v2, but cached and rebuilt Close View static geometry omit it. Current v4 terrain-ramps stone at(19,13) is unblocked elevation4 on base3, with a .34-high top; wood produces a2.4-high wall. PG currently lacks the production Pack → Supplies → Build with selector, so hosted wood/stone comparison needs an explicit scratch fixture/control. Production defaults to wood when no material was selected. An ordinary rootBrute movement witness allows body overlap in both views (minimum center distance.0472 versus expected radii sum about.736); the new contact pass is not yet delivered. Owner approved focused armor/contact/block regressions, preserving existing assertions and thresholds.
+
+
+## Prepared-source checkpoint — 2026-11-08
+
+Stages2a/2b are live in827. Camera828 is merged after corrected exact-head CI and fresh Astra review; Preview and actual hosted corner comparison are pending. Stage2c829 fixes the separately reproduced Salvage entry-clock snap before Echo. Its focused audit is [recorded here](remaining-primary-presentation-audit.md). All other candidates remain unnumbered.
+
+- Echo source933af35c adds whole-frame GL failure/recovery protection to the raised afterimages; 24 focused checks/build passed. Quiet fixtures and schema14 ownership remain covered.
+- Named tools source968ef1e9 retains readable Bombard720ms/Blunder640ms/Spindle760ms/Sweep840ms motions, continuous repeats, and current hit/cooldown timing. Direct actual-renderer review found an undefined numeric helper in the cue path; this candidate is held for its correction and positive three-tool frame regressions. Hosted readability and fresh release review remain gates.
+- Hammerfall source1332f144 has connected imported/native stomp phases and additive logical presentation-clock resume; focused checks/CPU evidence pass, hosted review remains.
+- Spells source d524594d has corrected cast origins/metadata, shared capped Fire/Orbit-flight projection and GPU transaction recovery; gather/fields keep their existing floor owners. Build and focused checks pass; no hosted/device claim.
+- Contact a340306f, Stone blocks56575171 and compact opt-in routing a111603a retain their prepared source coverage. Routing230 checks/build passed with contact integration; defaults4/9 and all old pins remain.
+- Armor recovery29afaa0d on claude/close-view-armor-recovery merges the three explicitly approved complete histories, passes99 focused checks/build, and preserves the original failed attempt. Ordered-main integration, fresh review, CI and hosted checks remain.
+- The read-only item audit found no concrete defect; boss rigs remain queued research only. No physical-phone FPS, thermals or hardware multitouch has been measured.

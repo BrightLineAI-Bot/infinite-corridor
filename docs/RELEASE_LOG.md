@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-With r827 on main, this PR takes r828. Other prepared candidates remain unnumbered; re-read fresh main before packaging each focused PR.
+With r828 on main, this PR takes r829. Other prepared candidates remain unnumbered; re-read fresh main before packaging each focused PR.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 828 | Codex | `claude/close-view-camera-audit` | Entry-only fallback for settled-corner/respawn camera compression | In flight. 36 focused camera/environment checks/build passed before packaging. Fresh Astra review, exact CI, Preview, hosted acceptance and publication verification pending. |
+| 829 | Codex | `claude/salvage-action-continuity` | Preserve generic-primary accepted pose continuity | In flight. Narrow runtime fix, focused regressions and audit prepared; exact CI, fresh review, Preview, hosted and publication gates pending. |
+| 828 | Codex | `claude/close-view-camera-audit` / #480 | Entry-only fallback for settled-corner/respawn camera compression | Merged as r828-f15b20b8c54a. Corrected source CI42476407465 passed; fresh Astra full review (827→828): no blockers. Merge tree9ae99a3c matches the reviewed source. Preview42477321826 and merged CI42477321804 are running; hosted acceptance/publication remain pending. |
 | 827 | Codex | `claude/wayfarer-primary-combos` / #479 | Low one-handed gladius carry, three cuts/thrusts and shared accepted presentation clock | Published as r827-ff2d4c13bf18. Source CI42456139704, merged CI42456660067, Preview42456660030 and Publish42457803577 passed. Fresh Astra review (826→827): no blockers; four independent actual-Game clock/Echo probes passed. Hosted Cleaver/Pike carry, attack, recovery, movement/quickstep, jump and tool/cast switching checked without console errors. Live identity and actual Options → System verified after normal update, no recent errors. |
 | 826 | Codex | `claude/wayfarer-iron-fists` / #478 | Imported normal Iron Fists, alternating accepted hand, bind-aware three-stage motion and silver gauntlets | Published as r826-9a7a39cb18a3. Exact source CI42452400981, merged CI42453018594, Preview42453018617 and Publish42454899297 passed. Fresh Astra full review (825→826) plus exact jab and queued-Echo deadline corrections: no remaining blockers. Hosted normal-Fists attacks/charge, casting, jumping, quickstep, walking and special-form priority checked without console errors. Live identity and actual Options → System verified after normal update; no recent errors. |
 | 825 | Codex | `claude/close-view-primary-weapon-poses` / #475 | Distinct Pike/Cleaver silhouettes and accepted two-hand motion | Published as r825-0c066edbc1a0. CI42442905038, merged CI42443790003, Preview42443790053 and Publish42444668551 passed. Astra review (824→825) plus exact action-priority correction delta: no remaining blockers; independent18 integration/hero checks plus64 dodge endpoint cases. Hosted Pike/Cleaver attack, cast, jump, movement/quickstep and tool activation checked with no console errors. Live identity and actual Options → System verified after normal cache update, no recent errors. Owner retains the current gladius-like Cleaver. |
