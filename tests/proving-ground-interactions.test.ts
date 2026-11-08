@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLabFixture, describeLabInteraction, dispatchLabInteraction } from '../src/proving-ground-labs.ts';
+import { createLabFixture, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle } from '../src/proving-ground-labs.ts';
 
 function fixture(actions=['enter']) {
   const object={id:'keep-exit',kind:'exit',name:'Keep threshold',lore:'A road continues beyond.',x:4,y:5,actions};
@@ -47,7 +47,7 @@ test('chooser rejects every stale context without finding a nearby substitute',(
 test('main-game-only controllers are disabled and direct requests are consumed honestly',()=>{
   const unsupported=fixture(['trade']);
   const token=describeLabInteraction(unsupported.game,'keep-exit');
-  assert.equal(token.actions[0].unsupported,true);
+  assert.match(token.actions[0].unsupported,/main game/);
   assert.equal(dispatchLabInteraction(token,'trade').unsupported,true);assert.deepEqual(unsupported.game.calls,[]);
 
   const direct=fixture(['speak']);
@@ -56,10 +56,38 @@ test('main-game-only controllers are disabled and direct requests are consumed h
   assert.equal(result.unsupported,true);assert.equal(direct.game.shopRequested,null);assert.deepEqual(direct.game.calls,[['speak','keep-exit']]);
 });
 
+test('real Viewport Inspect is blocked before mutation while ordinary Inspect still dispatches',()=>{
+  const fixture=createLabFixture({lab:'close-view',scenario:'routing-keep-baseline',seed:'PG-VIEWPORT',variant:0,now:1000});
+  const game:any=fixture.game;game.rx=0;game.ry=0;game.loadArea('overworld');
+  const viewport=game.map.objects.find((q:any)=>q.kind==='viewport');game.player.x=viewport.x;game.player.y=viewport.y;
+  const before=game.save.viewport?.read;
+  const token=describeLabInteraction(game,viewport.id);assert.match(token.actions.find((q:any)=>q.id==='inspect').unsupported,/Viewport/);
+  const blocked=dispatchLabInteraction(token,'inspect');assert.equal(blocked.unsupported,true);assert.equal(game.save.viewport?.read,before);
+  const ordinary=fixtureForInspect();assert.equal(dispatchLabInteraction(describeLabInteraction(ordinary.game,'marker'),'inspect').ok,true);assert.deepEqual(ordinary.game.calls,[['inspect','marker']]);
+});
+
+function fixtureForInspect(){const f=fixture(['inspect']);f.object.id='marker';f.object.kind='ruinMarker';return f}
+
+test('interaction lifecycle closes exactly once and ignores an old generation after reopen',()=>{
+  let now=100,resets=0,canResume=true;const calls:any[]=[];
+  const game:any={paused:false,lastUpdateNow:40,setPaused(value:boolean,time:number){calls.push([value,time]);this.paused=value}};
+  const lifecycle=createLabInteractionLifecycle({resetInput:()=>resets++,now:()=>now,canResume:()=>canResume});
+  const first=lifecycle.begin(game);assert.equal(first,1);assert.deepEqual(calls,[[true,40]]);
+  now=1100;assert.equal(lifecycle.close(first),true);assert.equal(lifecycle.close(first),false);assert.deepEqual(calls,[[true,40],[false,1100]]);assert.equal(resets,2);
+  game.paused=false;const second=lifecycle.begin(game);assert.equal(second,2);assert.equal(lifecycle.close(first),false,'queued close from the old dialog cannot affect the new owner');assert.equal(lifecycle.active,true);
+  canResume=false;assert.equal(lifecycle.close(second),true);assert.equal(game.paused,true,'a later user/background pause remains owned by that reason');
+});
+
+test('an empty canonical request is validated without acquiring modal pause ownership',()=>{
+  const {game,object}=fixture([]);let pauses=0;game.setPaused=()=>pauses++;
+  assert.equal(describeLabInteraction(game,object.id),null);assert.equal(pauses,0);assert.equal(game.paused,undefined);
+});
+
 test('production PG modal owns one frozen-clock pause and does not tick a zero update',async()=>{
   const source=await import('node:fs/promises').then(fs=>fs.readFile(new URL('../src/proving-ground.ts',import.meta.url),'utf8'));
-  assert.match(source,/setPaused\(true,Number\.isFinite\(game\.lastUpdateNow\)\?game\.lastUpdateNow:performance\.now\(\)\)/);
-  assert.match(source,/closingGame\.setPaused\(false,performance\.now\(\)\)/);
+  assert.match(source,/createLabInteractionLifecycle/);
+  assert.match(source,/addEventListener\("submit",event=>\{event\.preventDefault\(\);closeInteraction/);
+  assert.match(source,/addEventListener\("close",/);
   assert.doesNotMatch(source,/game\.update\(0/);
   assert.match(source,/interactionNonce\+\+;const result=dispatchLabInteraction/,'old handlers are consumed before dispatch');
   assert.match(source,/if\(!interactionDialog\.open\)input\.update/,'held input is not sampled behind the modal');
