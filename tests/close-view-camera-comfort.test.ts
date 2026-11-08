@@ -239,8 +239,9 @@ test('Target requests an exact open-ground rear center while preserving accepted
     assert.ok(Math.abs(c.shoulder) < 1e-6 && Math.abs(c.rigOffset) < 1e-6); assert.equal(c.centeredRear, true);
   }
   g.save.lastAim = { x: 1, y: 0 }; g.player.attackReadyAt = 0; g.primaryAttack(now); const accepted = structuredClone(g.player.attackVisual), saved = structuredClone(g.save.lastAim); assert.ok(accepted);
-  CV.closeViewPan(45, 0, now); CV.closeViewTargetActivate(g, now); frame(g, 35);
-  assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - Math.atan2(accepted.aim.y, accepted.aim.x))) < .01, 'committed accepted aim owns body-facing recenter');
+  CV.closeViewPan(45, 0, now); CV.closeViewTargetActivate(g, now); const beforeActionTurn = Math.abs(wrap(CV.closeViewCamera().yaw - Math.atan2(accepted.aim.y, accepted.aim.x))); frame(g, 5);
+  assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - Math.atan2(accepted.aim.y, accepted.aim.x))) < beforeActionTurn, 'committed accepted aim owns the early body-facing recenter');
+  frame(g, 100); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - CV.closeViewCamera().bodyYaw)) < .01); assert.equal(CV.closeViewCamera().targetRecentre, false, `transaction finishes only after action expiry and body settlement ${JSON.stringify(CV.closeViewCamera())}`);
   assert.deepEqual(g.player.attackVisual, accepted); assert.deepEqual(g.save.lastAim, saved); assert.deepEqual([g.player.x, g.player.y], originalXY);
   const stick = { x: 0, y: -1 }; assert.equal(CV.closeViewSteer(g, stick), true); const held = { ...stick }, inputYaw = CV.closeViewCamera().inputYaw;
   CV.closeViewTargetActivate(g, now); frame(g, 8); assert.equal(CV.closeViewCamera().inputYaw, inputYaw, 'held movement basis stays latched during recenter'); assert.deepEqual(stick, held); CV.closeViewUnsteer(stick);
@@ -256,7 +257,7 @@ test('shared facing distinguishes native fallback from the nonzero imported entr
   assert.ok(Math.abs(wrap(CV.closeViewPlayerFacingYaw(g, now, 0, { phase, importedReady: true }) - expected)) < 1e-9, 'ready imported renderer includes the first-eight-percent blend');
   for (const profile of ['fist', 'hammer']) { v.profile = profile; assert.ok(Math.abs(wrap(CV.closeViewPlayerFacingYaw(g, now, 0, { phase, importedReady: true }) - expected)) < 1e-9, `${profile} retains its existing entry blend`); }
   v.profile = 'melee';
-  CV.closeViewPan(35, 0, now); CV.closeViewTargetActivate(g, now); frame(g, 90); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw + Math.PI / 2)) < .01, 'Target follows the actually active native fallback');
+  CV.closeViewPan(35, 0, now); CV.closeViewTargetActivate(g, now); frame(g, 120); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - CV.closeViewCamera().bodyYaw)) < .01, 'Target follows native fallback through expiry to its settled body');
   assert.deepEqual(v.aim, { x: 0, y: -1 }); assert.equal(v.facingYaw, 0);
 });
 
@@ -283,8 +284,8 @@ test('centered Target keeps the existing obstruction escape and camera safety', 
 
 test('Target acquires from the pre-recenter view, recenters on acquire and unlock, and rejects hidden input', () => {
   const g = fixture(); frame(g, 40); CV.closeViewPan(-CV.closeViewCamera().yaw / CV.CLOSE_VIEW.crescent.yaw, 0, now); const e = foe(g, 'target-command', 2, 0); assert.equal(CV.closeViewLockCandidate(g)?.id, e.id);
-  assert.equal(CV.closeViewTargetActivate(g, now)?.id, e.id); frame(g, 90); assert.equal(g.lockedTarget()?.id, e.id); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw)) < .01);
-  assert.equal(CV.closeViewTargetActivate(g, now), null); const unlockYaw = CV.closeViewPlayerFacingYaw(g, now); frame(g, 160); assert.equal(g.lockedTarget(), null); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - unlockYaw)) < .01, 'unlock activation still recenters behind the displayed body');
+  assert.equal(CV.closeViewTargetActivate(g, now)?.id, e.id); frame(g, 240); assert.equal(g.lockedTarget()?.id, e.id); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw)) < .01, JSON.stringify(CV.closeViewCamera()));
+  assert.equal(CV.closeViewTargetActivate(g, now), null); frame(g, 160); const unlocked = CV.closeViewCamera(); assert.equal(g.lockedTarget(), null); assert.ok(Math.abs(wrap(unlocked.yaw - unlocked.bodyYaw)) < .01, 'unlock activation follows the body return to idle'); assert.equal(unlocked.targetRecentre, false);
   const before = CV.closeViewCamera(); g.paused = true; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.deepEqual(CV.closeViewCamera(), before); g.paused = false;
   g.save.closeView = false; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.equal(g.lockedTarget(), null, 'hidden controls cannot queue a Target command'); g.save.closeView = true;
   CV.resetCloseViewCamera(); g.player.facing = 'left'; frame(g, 110); g.presentation = { reduceMotion: true }; const reducedYaw = CV.closeViewPlayerFacingYaw(g, now); CV.closeViewTargetActivate(g, now); frame(g, 110); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - reducedYaw)) < .01, 'reduced motion retains exact centered destination');
