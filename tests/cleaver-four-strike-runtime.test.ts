@@ -33,9 +33,10 @@ test('pure v2 motion, stage and carry helpers preserve legacy and opaque provena
 });
 
 test('six accepted Cleaver presses stamp 1/2/3/4/1/2 while refusal, Echo and clone paths never advance',()=>{
-  const g=fixture(),steps:number[]=[],foe:any=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];
+  const g=fixture(),steps:number[]=[],foe:any=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];let canonical:any=null;
   for(let n=0;n<6;n++){
     const now=100000+n*500,hp=foe.hp,hits=g.primaryAttack(now);assert.equal(hits.filter((q:any)=>q===foe).length,1);assert.ok(foe.hp<hp);
+    const mechanics={damage:hp-foe.hp,cooldown:g.player.attackReadyAt-now,strike:clone(g.player.meleeStrike),range:g.attackProfile.range,arc:g.attackProfile.arc};if(!canonical)canonical=mechanics;else assert.deepEqual(mechanics,canonical,'presentation stage cannot change canonical damage, cooldown, reach or strike geometry');
     assert.equal(g.player.attackVisual.primaryStep,undefined);steps.push(g.player.attackVisual.primaryMotion.step);
     const combo=clone(g.player.primaryCombo),visual=clone(g.player.attackVisual),ready=g.player.attackReadyAt;
     assert.deepEqual(g.primaryAttack(now+1),[]);assert.deepEqual(g.player.primaryCombo,combo);assert.deepEqual(g.player.attackVisual,visual);assert.equal(g.player.attackReadyAt,ready);
