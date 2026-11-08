@@ -41,3 +41,7 @@ r823 packages the implemented directional low quickstep/gait pass described in w
 ## Active excavation candidate (not yet published)
 
 r824 implements the confirmed new-tunnel support repair and a quiet Close View terrain-dig-return fixture. The source DIG-AUDIT0 witness is real generated v4 terrain; normal Act and actual Game reload/return tests cover the repaired height. Additive metadata does not regrade existing coordinate-only tunnels, which retain their geometry and ordinary unstick recovery. Core/fixture component reviews passed; full release gates are pending. Directional dash r823 is merged with resolved recovery-facing review and awaits its Preview/hosted/publication status in RELEASE_LOG.md.
+
+Verified continuation: r823-a1b23012a5c2 is live (Publish42439751394), with CI/Preview, Astra full/delta review, hosted imported-model quicksteps/walking recovery and actual System label verified. r824 remains held for the legacy low-level dig-plan compatibility defect caught by full CI; preserve its old shovel assertions and re-run exact-head gates after the narrow source correction.
+
+The r824 legacy direct-dig compatibility blocker was corrected narrowly in source and cleared by independent Astra delta review (16/16); legacy assertions remain unchanged. Focused correction checks35/35 and sequential build passed. Fresh exact-head CI and subsequent Preview/hosted/publication gates remain required.

@@ -301,7 +301,7 @@ export function dig(save, map, plan, areaKey) {
 
 // Pure atomic preflight. Callers may safely run this before crafting; dig runs it again immediately before commit.
 export function validateDigPlan(save, map, plan, areaKey) {
-  if (!plan?.ok || !Number.isInteger(plan.x) || !Number.isInteger(plan.y)) return { ok: false, message: plan?.reason || "That tunnel is no longer sound." };
+  if (!plan || (plan.ok !== true && (plan.ok !== undefined || interiorTerrain(map))) || !Number.isInteger(plan.x) || !Number.isInteger(plan.y)) return { ok: false, message: plan?.reason || "That tunnel is no longer sound." };
   const coord = `${plan.x},${plan.y}`, list = save?.digging?.dug?.[areaKey];
   if (canDigArea(areaKey) && (Array.isArray(list) && (list.includes(coord) || list.length >= DIG.maxTunnelsPerArea))) return { ok: false, message: list?.includes(coord) ? "That block is already dug." : "This place has been dug enough; the rock is unsound." };
   const target = at(map, plan.x, plan.y); if (!(plan.overworld ? overworldDiggable(map, plan.x, plan.y) : diggable(map, plan.x, plan.y)) || target?.build) return { ok: false, message: "That tunnel is no longer sound." };

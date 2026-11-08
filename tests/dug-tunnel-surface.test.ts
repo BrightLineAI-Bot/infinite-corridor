@@ -121,3 +121,21 @@ test('stale plans, builds and caps reject atomically; temporary heightfield digs
   const temp = save(), tm = heightMap({ elev: 2, slope: true, rampDir: 'south' }), tp = planDig(tm, 3, 3, 'down', 'hunt-instance:x'); assert.equal(dig(temp, tm, tp, 'hunt-instance:x').ok, true); assert.equal(temp.digging.dug['hunt-instance:x'], undefined); assert.equal(temp.digging.surfaces, undefined);
 });
 
+test('legacy direct dig descriptors may omit ok on non-heightfield maps', () => {
+  const m = heightMap({}, {}); delete m.interiorTerrain; m.tiles[4 * 7 + 3] = tile(3, 4, { kind: 'wall', blocked: true });
+  const s = save(), r = dig(s, m, { x: 3, y: 4, cut: 'wall' }, key);
+  assert.equal(r.ok, true); assert.equal(m.tiles[4 * 7 + 3].tunnel, true); assert.equal(s.digging.shovel, 5);
+});
+
+test('an explicitly false legacy descriptor is rejected atomically', () => {
+  const m = heightMap({}, {}); delete m.interiorTerrain; m.tiles[4 * 7 + 3] = tile(3, 4, { kind: 'wall', blocked: true });
+  const s = save(), beforeSave = JSON.stringify(s), beforeTile = { ...m.tiles[4 * 7 + 3] }, r = dig(s, m, { ok: false, x: 3, y: 4, cut: 'wall' }, key);
+  assert.equal(r.ok, false); assert.equal(JSON.stringify(s), beforeSave); assert.deepEqual(m.tiles[4 * 7 + 3], beforeTile);
+});
+
+test('an interior-heightfield descriptor without ok is rejected atomically', () => {
+  const m = heightMap({ elev: 2, slope: true, rampDir: 'south' }), s = save(), beforeSave = JSON.stringify(s), beforeTile = { ...m.tiles[4 * 7 + 3] };
+  const r = dig(s, m, { x: 3, y: 4, from: { x: 3, y: 3 }, surface: { version: DIG.surface.version, elev: 2 }, cut: 'wall' }, key);
+  assert.equal(r.ok, false); assert.equal(JSON.stringify(s), beforeSave); assert.deepEqual(m.tiles[4 * 7 + 3], beforeTile);
+});
+
