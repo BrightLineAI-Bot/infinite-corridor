@@ -15,7 +15,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLFrameReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLFrameReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, resetCloseViewGL, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -1200,15 +1200,15 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   occludeBillboards(n, faces, g.paused);
   insertionSortByDepth(n);
   const turnFacing = relativeFacing(p, closeViewIdleLockAim(g, now)), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
-  const models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null;
+  let models = null; try { models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null; } catch { return false; }
   const hasNativeModels = useGL && (models || MODEL_STATE.hero);
   if (hasNativeModels) for (const it of MODEL_STATE.admitted) {
     const d = draws[itemRef[it]]; if (typeof d.nativeFloor !== 'function') continue;
     gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty);
     try { d.nativeFloor(g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now); } finally { gc.restore(); }
   }
-  const packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null);
-  if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots)) { captured = capturedPlayer = null; GLB.nBoard = GLB.nDecal = GLB.nGlowStart = 0; return false; } }
+  let packed; try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch { return false; }
+  if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots)) { captured = capturedPlayer = null; GLB.nBoard = GLB.nDecal = GLB.nGlowStart = 0; resetCloseViewGL(); return false; } }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
     if (itemKind[it] === 0) { const fo = it * 8, st = faceStyle[it], lv = faceLevel[it], al = faceAlpha[it]; if (al < 1) ctx.globalAlpha = al;
@@ -1899,10 +1899,10 @@ const PROJECTED_SHOTS = new Set();
 const PROJECTED_ENTRIES = [];
 const SHOT_COLORS = new Map();
 const finite = Number.isFinite;
-function validFire(p) { return !!p && p.fireBomb === true && p.path === "grenade" && p.glyphSpell === "fire-burst" && !p.hostile && !p.dead && !p.shadow && !p.echo &&
+function validFire(p) { return !!p && p.fireBomb === true && p.path === "grenade" && p.glyphSpell === "fire-burst" && !p.hostile && !p.dead && !p.shadow && !p.echo && p.visualLaunch == null &&
   finite(p.x) && finite(p.y) && finite(p.dx) && finite(p.dy) && finite(p.age) && p.age >= 0 && finite(p.life) && p.life > 0 &&
   typeof p.id === "string" && p.id.length > 0 && p.id.length <= 160 && p.visualFlight == null; }
-function validOrbit(g, f) { return !!f && g.orbit?.flight === f && typeof g.areaId==='function' && g.orbit.where===`${g.area}:${g.areaId()}` && finite(f.x) && finite(f.y) && finite(f.tx) && finite(f.ty) &&
+function validOrbit(g, f) { return !!f && f.visualLaunch == null && g.orbit?.flight === f && typeof g.areaId==='function' && g.orbit.where===`${g.area}:${g.areaId()}` && finite(f.x) && finite(f.y) && finite(f.tx) && finite(f.ty) &&
   finite(f.radius) && f.radius > 0 && f.radius <= 8 && (f.perfect === undefined || typeof f.perfect === "boolean") && f.visualFlight == null; }
 export function selectProjectedShots(g, q, reduce = false) {
   PROJECTED_SHOTS.clear();
@@ -1941,7 +1941,7 @@ const PLAYER_VISUAL_KIND = Object.freeze({
 function toolCuePointOpen(map,x,y){const w=Number(map?.width)||0,h=Number(map?.height)||0,ix=Math.floor(x),iy=Math.floor(y);if(!finite(x)||!finite(y)||ix<0||iy<0||ix>=w||iy>=h)return false;const tile=map.tiles?.[iy*w+ix];return !!tile&&!tile.blocked&&dungeonTileVisibility(map,x,y)!=='unseen';}
 // Conservative short-segment supercover. At an exact corner both side cells are included; the bounded lane
 // rejects geometry requiring more than eight cells rather than sampling past a wall.
-export function closeViewCueSegmentOpen(map,ax,ay,bx,by){if(!toolCuePointOpen(map,ax,ay)||!toolCuePointOpen(map,bx,by))return false;const cells=[],add=(x,y)=>{if(cells.some(c=>c[0]===x&&c[1]===y))return true;if(cells.length===8)return false;cells.push([x,y]);return true;};let x=Math.floor(ax),y=Math.floor(ay),ex=Math.floor(bx),ey=Math.floor(by);if(!add(x,y))return false;const dx=bx-ax,dy=by-ay,sx=Math.sign(dx),sy=Math.sign(dy),adx=Math.abs(dx),ady=Math.abs(dy);let tx=sx?((sx>0?x+1:x)-ax)/dx:Infinity,ty=sy?((sy>0?y+1:y)-ay)/dy:Infinity,ddx=sx?1/adx:Infinity,ddy=sy?1/ady:Infinity;while(x!==ex||y!==ey){if(Math.abs(tx-ty)<1e-10){if(!add(x+sx,y)||!add(x,y+sy))return false;x+=sx;y+=sy;tx+=ddx;ty+=ddy;}else if(tx<ty){x+=sx;tx+=ddx;}else{y+=sy;ty+=ddy;}if(!add(x,y))return false;}return cells.every(c=>toolCuePointOpen(map,c[0]+.5,c[1]+.5));}
+export function closeViewCueSegmentOpen(map,ax,ay,bx,by){if(!toolCuePointOpen(map,ax,ay)||!toolCuePointOpen(map,bx,by))return false;const cells=[],add=(x,y)=>{if(cells.some(c=>c[0]===x&&c[1]===y))return true;if(cells.length===8)return false;cells.push([x,y]);return true;},boundary=(x,y)=>Math.abs(ay-by)<1e-10&&Math.abs(ay-Math.round(ay))<1e-10?add(x,y-1):Math.abs(ax-bx)<1e-10&&Math.abs(ax-Math.round(ax))<1e-10?add(x-1,y):true;let x=Math.floor(ax),y=Math.floor(ay),ex=Math.floor(bx),ey=Math.floor(by);if(!add(x,y)||!boundary(x,y))return false;const dx=bx-ax,dy=by-ay,sx=Math.sign(dx),sy=Math.sign(dy),adx=Math.abs(dx),ady=Math.abs(dy);let tx=sx?((sx>0?x+1:x)-ax)/dx:Infinity,ty=sy?((sy>0?y+1:y)-ay)/dy:Infinity,ddx=sx?1/adx:Infinity,ddy=sy?1/ady:Infinity;while(x!==ex||y!==ey){if(Math.abs(tx-ty)<1e-10){if(!add(x+sx,y)||!add(x,y+sy))return false;x+=sx;y+=sy;tx+=ddx;ty+=ddy;}else if(tx<ty){x+=sx;tx+=ddx;}else{y+=sy;ty+=ddy;}if(!add(x,y)||!boundary(x,y))return false;}return cells.every(c=>toolCuePointOpen(map,c[0]+.5,c[1]+.5));}
 const toolCueSegmentOpen=closeViewCueSegmentOpen;
 const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
 const KNOWN_TOOL_VISUAL = new Set(TOOL_VISUAL_KINDS);
@@ -2177,7 +2177,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           gear.profile = held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           offset = writeCloseViewHeroGear(state.vertices, offset, gear);
-          if(acceptedTool&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,state.heroFrame.rightSocket)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
+          if(acceptedTool&&input.action===action&&['ranged','melee','cast'].includes(action.kind)&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,state.heroFrame.rightSocket)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
           const spellProfile=action.kind==='cast'&&cast&&['fan-release','orbit-launch'].includes(action.profile)?action.profile:null,left=state.heroFrame.leftSocket;
           const lx=left?.[12],ly=left?.[13],lz=left?.[14];
           if(spellProfile&&left?.length>=16&&finite(lx)&&finite(ly)&&finite(lz)&&actor.alpha>0&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,lx,ly)){
@@ -2248,6 +2248,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
 }
 const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots) {
+ try {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, At = CLOSE_VIEW.atmosphere, F = GLF, p = g.player;
   const th = themeOf(g.map), tg = themeGL(th), st = staticFor(g.map, geo, th); closeViewGLStats.theme = THEME_OF.get(g.map) || ""; const seen = (SEEN.map === g.map ? SEEN.fn : (SEEN.map = g.map, SEEN.fn = glSeen(g.map)));
   const scale = Math.max(.5, Math.min(4, (ctx.canvas?.width || w) / w)) * (Q.glScale || 1);
@@ -2428,6 +2429,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   if (!drawSceneGL(GROUND.canvas, UNI, models, MODEL_STATE.hero)) return false;
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); ctx.restore();
   return true;
+ } catch { return false; }
 }
 
 // ------------------------------------------------------------------------------------------------ the crescent and the lock button

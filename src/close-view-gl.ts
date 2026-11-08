@@ -744,6 +744,7 @@ export function drawSceneGL(ground, U, models = null, hero = null) {
     if (GLB.nGlowStart > 0) { gl.drawArrays(gl.TRIANGLES, 0, GLB.nGlowStart); calls++; } }
   // Compare silhouettes against wall depth before the opaque models write actor depth.
   const model = S.model, hasModels = !!models?.length, hasHero = uploadHeroFrame(gl,S.hero,hero);
+  if (hero && !hasHero) return false;
   const useBoards = () => { gl.useProgram(S.board.p); gl.bindVertexArray(S.vao.board); };
   if (GLB.nBoard > 0) { useBoards(); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW);
