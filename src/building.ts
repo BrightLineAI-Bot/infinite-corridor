@@ -11,6 +11,12 @@
 // like the Turtle's ice: a section load clears them and they are never saved. Data and rules; game.ts calls in.
 import { LETHAL_KINDS } from "./landscape.ts";
 
+// Runtime-only cache invalidation: no tile scans per frame and nothing serialized.
+const buildVisuals = new WeakMap();
+export const buildVisualRevision = (map) => buildVisuals.get(map)?.revision || 0;
+export const hasStoneBuilds = (map) => buildVisuals.get(map)?.stone === true;
+function changedBuilds(game) { buildVisuals.set(game.map, { revision: (buildVisualRevision(game.map) + 1) >>> 0, stone: game.builds.some(b => b.kind === "stone") }); }
+
 export const BUILD = {
   kinds: {
     wood: { name: "Wood wall", cost: { wood: 4 }, hits: 1 }, // release 269 (Tim: "a wall takes 4 wood"; it was 5)
@@ -108,6 +114,7 @@ export function placeBuild(game, x, y, kind = activeBuildKind(game.save) || ensu
     game.map.tiles[i] = kind === "wood" ? { ...t, build: "wood", blocked: true, buildOrig: orig, buildRun: run || (moving && (p.facing === "left" || p.facing === "right") ? "v" : "h") } : { ...t, build: "stone", perch: true, buildLevel: level, landscapeElev: t.elev || 0, elev: (t.elev || 0) + level, buildOrig: orig };
   }
   builds.push({ id: `build-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, kind, x, y, hits: K.hits, life: BUILD.life });
+  changedBuilds(game);
   return { ok: true, message: `${K.name} raised. ${m[mat]} ${mat} left.` };
 }
 
@@ -126,10 +133,11 @@ export function tallBuildAt(map, width, x, y) {
 export function breakBuild(game, b) {
   const builds = game.builds || [], at = builds.indexOf(b); if (at < 0) return false;
   builds.splice(at, 1);
-  if (b.kind === "enclosure") { for (const [i, orig] of Object.entries(b.orig || {})) game.map.tiles[Number(i)] = orig; return true; }
-  const w = W(game.map), i = b.y * w + b.x, t = game.map.tiles[i]; if (!t?.build) return true;
+  if (b.kind === "enclosure") { for (const [i, orig] of Object.entries(b.orig || {})) game.map.tiles[Number(i)] = orig; changedBuilds(game); return true; }
+  const w = W(game.map), i = b.y * w + b.x, t = game.map.tiles[i]; if (!t?.build) { changedBuilds(game); return true; }
   if (t.build === "stone" && (t.buildLevel || 1) > 1) { const level = t.buildLevel - 1; game.map.tiles[i] = { ...t, buildLevel: level, elev: t.landscapeElev + level }; }
   else game.map.tiles[i] = t.buildOrig || { ...t, build: undefined, blocked: false, perch: false };
+  changedBuilds(game);
   return true;
 }
 // A hit on a build: it loses one of its hits and breaks at none. A world beast's melee breaks it outright.
@@ -204,6 +212,7 @@ export function placeEnclosure(game, x, y) {
   const id = `enclosure-${(game.buildSeq = (game.buildSeq || 0) + 1)}`, orig = {};
   for (const q of tiles) { const i = q.ty * w + q.tx; orig[i] = game.map.tiles[i]; game.map.tiles[i] = { ...game.map.tiles[i], enclosure: id, encSides: q.sides }; }
   const pen = { id, kind: "enclosure", x: x0, y: y0, size: N, open, hits: K.hits, life: K.life, orig, trapped: null, cost: { ...cost } }; builds.push(pen);
+  changedBuilds(game);
   // Release 697: built across another pen's opening, it closes that pen: whatever is inside is shut in (game.penClosed rolls the trap).
   // Release 748: game.penClosed may answer { message, undo }: "refund" (no try was made: the closing pen comes down and its materials
   // come back; `also` pens with it), or "crumble" (the beast slipped out: the closing pen and `also` break, their materials lost).

@@ -1,5 +1,6 @@
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
+import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
@@ -466,8 +467,8 @@ function blockedSignature(tiles) { let n = 0; for (let i = 0; i < tiles.length; 
 export function wallGeometry(map) {
   const tiles = map.tiles, w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Number(map.height) || Math.floor(tiles.length / w)), now = Date.now();
   let geo = wallCache.get(map);
-  const terrainSig = interiorTerrainSignature(map);
-  if (geo && geo.tiles === tiles && geo.terrainSig === terrainSig && (now - geo.checked < 500 || (geo.checked = now, blockedSignature(tiles) === geo.sig))) return geo;
+  const terrainSig = interiorTerrainSignature(map), buildRevision = buildVisualRevision(map);
+  if (geo && geo.tiles === tiles && geo.terrainSig === terrainSig && geo.buildRevision === buildRevision && (now - geo.checked < 500 || (geo.checked = now, blockedSignature(tiles) === geo.sig))) return geo;
   closeViewStats.wallBuilds++;
   const list = [], at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : tiles[y * w + x]), solid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || isWall(at(x, y));
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = at(x, y); if (!isWall(t)) continue; const st = STYLE_INDEX[t.kind] ?? STYLE_INDEX.default, low = t.kind === "rubbleFloor" ? 1 : 0;
@@ -498,7 +499,7 @@ export function wallGeometry(map) {
     corner[i] = (goesOn(-dx, -dy) ? 0 : 1) | (goesOn(dx, dy) ? 0 : 2);
     const inside = (sx, sy) => { const qx = tx + sx + nx, qy = ty + sy + ny; return qx >= 0 && qy >= 0 && qx < w && qy < h && solid(qx, qy); };
     if (!faces[o + 9]) ao[i] = (inside(-dx, -dy) ? 1 : 0) | (inside(dx, dy) ? 2 : 0); }
-  geo = { terrainSig, tiles, w, h, faces, count: n, C, cw, ch, start, end: fill, index, sig: blockedSignature(tiles), checked: now, ghost: new Uint8Array(n), alpha: new Float32Array(n).fill(1), corner, ao, edges: null, ...wallDetail(map, faces, n) };
+  geo = { terrainSig, buildRevision, tiles, w, h, faces, count: n, C, cw, ch, start, end: fill, index, sig: blockedSignature(tiles), checked: now, ghost: new Uint8Array(n), alpha: new Float32Array(n).fill(1), corner, ao, edges: null, ...wallDetail(map, faces, n) };
   wallCache.set(map, geo); return geo;
 }
 
@@ -904,7 +905,7 @@ const PROJ = { sx: 0, sy: 0, depth: 0 };
 // Version 4, for tests: the GPU floor's own sum (close-view-gl.ts's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
-  if (CAM.valid && interiorTerrain(CAM.map)) return terrainFloorRay(CAM.map, x, y);
+  if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
   if (!CAM.valid) return null; const b = (x - CAM.ppx) / CAM.F, a = (CAM.ppy - y) / CAM.F, dz = -CAM.sinP + a * CAM.cosP; if (!(dz < -1e-6)) return null;
   const t = -CAM.hc / dz, dx = CAM.fx * (CAM.cosP + a * CAM.sinP) + CAM.rx * b, dy = CAM.fy * (CAM.cosP + a * CAM.sinP) + CAM.ry * b;
   return { x: CAM.cx + dx * t, y: CAM.cy + dy * t, depth: t };
@@ -981,6 +982,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
   if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
+  if (!useGL && g.map?.building && hasStoneBuilds(g.map)) return false; // a raised legacy block also needs real depth; use the established world-view fallback
   const shots = useGL ? selectProjectedShots(g, Q) : null;
   // 1. the ground, drawn by the ordinary renderer into the texture, its actors captured.
   // Version 4: the texture is anchored to the world. The renderer puts world (0, 0) at a whole CSS pixel (Tx, Ty); at a
@@ -1068,9 +1070,9 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
-  const cap = (x, y) => interiorSurfaceHeight(g.map, x, y) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
+  const cap = (x, y) => (interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
   let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
-  if (interiorTerrain(g.map)) {
+  if (interiorTerrain(g.map) || hasStoneBuilds(g.map)) {
     const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
     for (let i = 1; i <= steps; i++) {
       const k = i / steps, x = footX(p) + dx * k, y = footY(p) + dy * k, z = playerZ + .6 + (terrainCameraZ - playerZ - .6) * k;
@@ -1185,7 +1187,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const draws = captured || [];
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i])) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
-    const q = project(bxw, byw, interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, bxw, byw - .07) + closeViewActorLift(d) : 0); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
+    const q = project(bxw, byw, interiorSurfaceHeight(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
@@ -1823,6 +1825,14 @@ function buildStatic(map, geo, th) {
       }
     }
   }
+  if (!interiorTerrain(map)) {
+    // Runtime stone is a short support prism on the historical z=0 floor. It
+    // must not lift the old ceiling, wall trim, arches, furniture or lights.
+    for (const t of tiles) {
+      const level = legacyInteriorBuildLevel(map, t); if (!level) continue;
+      box(t.x + .5, t.y + .5, .5, .5, 0, level * LIFT_PER_LEVEL, 0, 0, MAT_RGB[0], 0, t.x, t.y);
+    }
+  }
   if (interiorTerrain(map)) {
     const mask = closeViewMask(map).data;
     const level = (t, x, y) => interiorTileLevel(t, x, y) * LIFT_PER_LEVEL;
@@ -2240,9 +2250,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = MODEL_STATE.admitted.has(it) ? nativeBoardTop(foe, sc, draws[itemRef[it]].nativeHeight) : Math.max(A.height * sc,draws[itemRef[it]].nativeHeight||0), X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
     const draw = draws[itemRef[it]];
-    boardBase = interiorTerrain(g.map)
-      ? interiorSurfaceHeight(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07)) + closeViewActorLift(draw, MODEL_STATE.admitted.has(it))
-      : 0;
+    boardBase = interiorSurfaceHeight(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07))
+      + (interiorTerrain(g.map) ? closeViewActorLift(draw, MODEL_STATE.admitted.has(it)) : 0);
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const residual = MODEL_STATE.admitted.has(it);
     const statusAlpha = residual && foe ? actorPresentation(foe)?.alpha ?? 1 : 1;
