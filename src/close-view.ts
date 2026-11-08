@@ -15,7 +15,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLFrameReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, resetCloseViewGL, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLFrameReady, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -625,9 +625,17 @@ function ensureCam(g) {
     }
     return { score: forward * (.15 + reach / preset.distance), forward, reach, index };
   };
-  let yaw = facing, best = evaluate(facing);
+  let yaw = facing, best = evaluate(facing), fallback = best.reach >= CLOSE_VIEW.camera.minDistance ? { ...best, yaw: facing, facingDelta: 0 } : null;
   if (best.forward < preset.distance + 1 || best.reach < preset.distance * .55)
-    for (let i = 0; i < 8; i++) { const a = wrap(i * Math.PI / 4), candidate = evaluate(a); if (candidate.score > best.score + .01) { best = candidate; yaw = a; } }
+    for (let i = 0; i < 8; i++) {
+      const a = wrap(i * Math.PI / 4), candidate = evaluate(a), facingDelta = Math.abs(wrap(a - facing));
+      if (candidate.reach >= CLOSE_VIEW.camera.minDistance && (!fallback || candidate.score > fallback.score + .01 || (Math.abs(candidate.score - fallback.score) <= .01 && facingDelta < fallback.facingDelta))) fallback = { ...candidate, yaw: a, facingDelta };
+      if (candidate.score > best.score + .01) { best = candidate; yaw = a; }
+    }
+  // Entry-only escape from a settled corner: if forward scoring chose a sub-tile
+  // boom, use the best-scoring already-probed safe heading. Equivalent score keeps the
+  // arrival facing. Ordinary frames never rerun this selection.
+  if (best.reach < CLOSE_VIEW.camera.minDistance && fallback) { best = fallback; yaw = fallback.yaw; }
   CAM.rigIndex = CAM.rigPending = best.index; CAM.rigOffset = RIG_OFFSETS[best.index] * preset.shoulder;
   CAM.yaw = CAM.inputYaw = yaw;
 }
@@ -972,6 +980,14 @@ function insertionSortByDepth(n) { for (let i = 1; i < n; i++) { const o = order
 
 // Draw the frame in Close View. Returns false (nothing drawn) when there is no ground canvas to draw with; the renderer then
 // draws its ordinary view.
+// A failed GPU frame never commits its captured floor/actor ownership to the screen.
+function abortCloseViewGLFrame() {
+  captured = capturedPlayer = null; capturing = bareFloor = false; CAM.drawn = false;
+  GLB.nBoard = GLB.nDecal = GLB.nGlowStart = 0;
+  closeViewGLStats.echoRibbonPaths = closeViewGLStats.echoRibbonVertices = 0;
+  resetCloseViewGL();
+  return false;
+}
 export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
   const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift, fogNear = Fg.near + fogShift, fogFar = Fg.far + fogShift;
@@ -982,6 +998,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
   // version 4: the GPU scene when it can be had (close-view-gl.ts); else the 2D view of version 3
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
+  if (useGL && !closeViewGLFrameReady()) return abortCloseViewGLFrame();
   if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
   const shots = useGL ? selectProjectedShots(g, Q, reduce) : null;
@@ -1200,15 +1217,17 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   occludeBillboards(n, faces, g.paused);
   insertionSortByDepth(n);
   const turnFacing = relativeFacing(p, closeViewIdleLockAim(g, now)), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
-  let models = null; try { models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null; } catch { return false; }
+  let models;
+  try { models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null; } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; }
   const hasNativeModels = useGL && (models || MODEL_STATE.hero);
   if (hasNativeModels) for (const it of MODEL_STATE.admitted) {
     const d = draws[itemRef[it]]; if (typeof d.nativeFloor !== 'function') continue;
     gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty);
     try { d.nativeFloor(g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now); } finally { gc.restore(); }
   }
-  let packed; try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch { return false; }
-  if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots)) { captured = capturedPlayer = null; GLB.nBoard = GLB.nDecal = GLB.nGlowStart = 0; resetCloseViewGL(); return false; } }
+  let packed;
+  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; }
+  if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots)) return abortCloseViewGLFrame(); }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
     if (itemKind[it] === 0) { const fo = it * 8, st = faceStyle[it], lv = faceLevel[it], al = faceAlpha[it]; if (al < 1) ctx.globalAlpha = al;
@@ -2171,6 +2190,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
         else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
+        // Generic primaries retain their accepted logical breathing phase at both blend endpoints.
+        if (action.kind === 'melee' && action.profile === 'melee' && Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs;
         input.action = action.kind ? action : null;
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           const gear = state.heroGear;
@@ -2250,7 +2271,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
 }
 const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots) {
- try {
+  try {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, At = CLOSE_VIEW.atmosphere, F = GLF, p = g.player;
   const th = themeOf(g.map), tg = themeGL(th), st = staticFor(g.map, geo, th); closeViewGLStats.theme = THEME_OF.get(g.map) || ""; const seen = (SEEN.map === g.map ? SEEN.fn : (SEEN.map = g.map, SEEN.fn = glSeen(g.map)));
   const scale = Math.max(.5, Math.min(4, (ctx.canvas?.width || w) / w)) * (Q.glScale || 1);
@@ -2429,9 +2450,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   closeViewGLStats.projectedShots = shots?.entries?.length || 0;
   GLB.nDecal = dv;
   if (!drawSceneGL(GROUND.canvas, UNI, models, MODEL_STATE.hero)) return false;
-  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); ctx.restore();
+  ctx.save(); try { ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); } finally { ctx.restore(); }
   return true;
- } catch { return false; }
+  } catch { return false; }
 }
 
 // ------------------------------------------------------------------------------------------------ the crescent and the lock button

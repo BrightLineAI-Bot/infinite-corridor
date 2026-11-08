@@ -325,7 +325,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const speed = Math.max(0,Number(input.speed)||0), phase = ((Number(input.gaitPhase) || 0) / TAU % 1 + 1) % 1;
   const action=input.action,p=clamp(Number(action?.phase)||0),knocked=action?.kind==='hit'&&action.profile==='knockdown';
   // Accepted action progress, not wall-clock idle breathing, owns every action blend.
-  const timedPrimary=action?.kind==='melee'&&['cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
+  const timedPrimary=action?.kind==='melee'&&['melee','cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
   clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
