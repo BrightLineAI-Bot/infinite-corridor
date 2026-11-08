@@ -4,6 +4,10 @@ Recorded 2026-11-07 against published game commit `0c066edbc1a0dff1f33bf83b71bbd
 
 The owner wants reusable deterministic room-maze routing with distinct branches, loops and less obvious vertical connections. Keep the enjoyable roof access and movement up/down through buildings. Preserve every explored/pinned layout; a new structure experiment belongs behind a new generator revision for new histories, initially in Proving Ground.
 
+## Latest owner scope clarification — 2026-11-08
+
+The owner has now specified Close View inside **overworld Pentagons and keeps**, rather than existing dungeon families. This supersedes the Room Maze-first implementation target below; the earlier research remains a reusable algorithm/reference audit. A dedicated specialist is auditing Pentagon/keep representation, branching and vertical/roof transition contracts before proposing source changes. Preserve explored/pinned structures and dungeon layouts. Any geometry that changes authoritative routes must use the applicable new structure revision, with an isolated Proving Ground comparison before adoption; a view-only change must not invent passages absent from the authoritative map. No routing implementation is claimed by this clarification.
+
 ## Recommendation
 
 Keep Infinite Corridor's engine and map/save contracts. Adapt the **Rooms and Mazes region/connector structure** to the existing Room Maze family; use rot.js as an isolated comparison implementation and Edgar's graph/template vocabulary as design material. Do not adopt a whole dungeon engine or flatten the existing multi-floor families into a generic 2D generator.
@@ -320,3 +324,36 @@ Validation completed offline at release825:
 - `npm run build` —passed; static offline PWA release825 and PG-1. No release/configuration/module-registration change in this phase.
 
 Hosted cases remain: explore both real stair circuits with ordinary enemy contact active; compare room recognition, encounter density and retreat options; inspect biomechanical wall/floor/ceiling cohesion and actor readability across phone tiers and reduced motion; verify outdoor roof/facade palette and return visually. Courts and roofs intentionally retain the ordinary outdoor view. CPU and mock GL checks cannot establish hardware rendering, art acceptance or exploration quality. The candidate is ready for that explicit PG comparison, not production adoption.
+
+## Routing and grounded-contact preparation — local history merge
+
+The coordinator authorized merging the complete validated Contact history `a340306fe9f862d97172325c8cc92e0f14678fcc` into routing `d39df5b133574a80a64995aa95031b59b536d65b`. This brings its accepted primary/Fists/shared-action/Echo presentation history with it, without any separate armor candidate. This is local integration preparation, not production adoption or publication. Release827 is inherited; no new release number was assigned. Generator defaults remain4/9, and the explicit PG candidates remain5/10, experiment revision2.
+
+Only build/worker registration conflicted. `scripts/build.mjs`, `sw.js` and `proving-ground/sw.js` retain the inherited827 references and the union of `actor-contact` and `close-view-room-routing`, each exactly once. No Game, contact, action-motion, generator, material, progression or save-policy correction was needed. `src/game.ts`, `src/actor-contact.ts` and `src/action-motion.ts` are byte-identical to the incoming Contact parent. Routing's grammars, counterpart/route IDs, complete guard copies, safe shortcut pockets and selected-site PG appearance/selector wrappers remain intact.
+
+The source review retained Contact's supported-height body envelopes and authoritative `liftAt` sampling; ordinary jump arcs do not make bodies intangible. Candidate collection remains one player-to-enemy scan per displacement and enemy-to-player only, with a reusable private trace/probe and at most256 substeps of at most.16 per axis. Terrain validation happens after each clipped proposal and before accepting it; the same accepted trace drives movement consequences. Routing introduces no extra actor pair solver, per-frame route graph, movement-budget change or renderer dependency in physics. All new combined witnesses report zero budget stops.
+
+Seven new tests in `tests/close-view-routing-contact.test.ts` use actual selected-site Game fixtures and unchanged generated maps. Walking, ordinary Jump and dodge stop at vital Root Brute and Hollow Marshal bodies in both views. The production `moveGrounded` adapter then verifies retreat and passage around the reserved3×3 side-stair pocket without advancing enemy AI; that controlled clearance witness is separate from the real input/update frames. A generated enemy moved to coincide with an arrival survives serialize/deserialize/scratch reconstruction and can be escaped monotonically at a correctly advanced resume clock. This does not insert a new load-time relocation rule. Heart travel still refuses partial keeper progress even with other completion flags, then permits Act from the body-clipped approach and an exact counterpart return after actual defeat consequences.
+
+The roof audit preserves two existing contracts rather than inventing a universal return hatch. `ROUTING0`, `building:ROUTING0:-4:-1:keep:3`, has a guardian-gated `roofTop` exit and no hatch back down. `CONTACT-ROOF2`, `building:CONTACT-ROOF2:0:4:keep:4r`, section(0,4), exterior door(24,11), has the actual paired roof hatch. Both permit the real roof action from a safe body-blocked approach; the latter round-trips to its pinned candidate top floor. The former remains one-way as before. Approach selection excludes holes as well as blocked tiles: `footprintOpen` alone intentionally does not mean safe ground over a drop.
+
+Executed sequentially offline after the merge:
+
+```text
+node --test tests/close-view-room-routing.test.ts tests/close-view-routing-exploration.test.ts tests/grounded-contact.test.ts tests/grounded-contact-height.test.ts tests/fist-echo-presentation.test.ts tests/primary-combo-presentation.test.ts tests/close-view-primary-echo.test.ts
+# 56/56 passed, including all15 routing candidate tests.
+
+node --test tests/close-view-routing-contact.test.ts
+# 7/7 new combined tests passed.
+
+node --test tests/great-buildings.test.ts tests/pentagon.test.ts tests/pentagon-grand-halls.test.ts tests/interior-v4-arrival.test.ts tests/interior-terrain.test.ts tests/close-view.test.ts tests/close-view-v4.test.ts tests/close-view-terrain-render.test.ts tests/release-consistency.test.ts tests/close-view-atmosphere-794.test.ts tests/pentagon-shortcuts.test.ts tests/pentagon-balconies.test.ts tests/pentagon-finale.test.ts
+# 130/130 unchanged routing regression tests passed, including old pins/digests.
+
+node --test tests/close-view-combat-contract.test.ts tests/iron-fists-489.test.ts tests/player-attack-visual.test.ts tests/imported-hero-integration.test.ts tests/close-view-hero.test.ts
+# 37/37 existing contact/action/hero regression tests passed.
+
+npm run build
+# Passed: static offline PWA release827 + PG-1.
+```
+
+Total230/230 focused tests passed. A separate output check verified both modules appear once in each registration list and exist in `dist/src`. The routing delta's `git diff --cached --check a340306fe9f862d97172325c8cc92e0f14678fcc` passed. Checking the entire merge against the old routing parent reports four inherited Markdown hard-break lines in `close-view-camera-environment-audit.md` and `close-view-full-combat-audit.md`; those incoming records were preserved. No existing assertion, digest or test floor was weakened. No local server, full npm suite, browser, network, remote push or armor integration was attempted. Hosted navigation/crowd feel, shader execution and physical-phone performance remain unverified; these source witnesses establish integration correctness within the stated controlled fixtures, not final product acceptance.
