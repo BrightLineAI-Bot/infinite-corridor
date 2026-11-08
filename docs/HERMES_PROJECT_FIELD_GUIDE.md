@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 836 — grounded ordinary actor contact
+
+**CODE:** `src/actor-contact.ts` supplies the shared grounded-body contact path used by both production views. Ordinary player/enemy approaches, hops and committed lunges trace against the same finite body footprints and height bands; accepted displacement carries the existing movement consequence instead of allowing bodies to phase through one another. A bounded overlap-escape rule lets actors separate from already coincident or resumed positions without opening a route farther through the other body. Contact height follows the accepted ground/support height, and the existing actor caps bound the work.
+
+**BOUNDARY:** This release does not change attack damage, reach, cooldowns, targeting, enemy pattern selection or accepted action timing. Ghost, flight and other legitimate non-grounded exceptions retain their existing behavior. It adds no save fields, generation revision, production adoption switch or renderer budget. Pickup/Act priority and wall, corner and doorway collision remain owned by their existing systems; automated checks do not establish hosted GPU or physical-device performance.
+
 ## Developer Proving Ground
 
 Release 91 provides fourteen implemented production laboratories: Shelter/Building, Ordinary Dungeon, Legacy/Deep Dungeon, Threefold Dungeon, Monster/Elite Combat, Wayglass/Checkpoint/Compass, Bespoke Environment/Domain, Hunts/Creatures, Inventory/Equipment/Vendors, Aperture/Magic Progression, Performance, Recovery/Save/Death, Narrative Scenes, and Atlas/Journal/Records. Scenario state is encoded through `lab`, `scenario`, `seed`, `variant`, `size`, and `reveal` URL parameters.
