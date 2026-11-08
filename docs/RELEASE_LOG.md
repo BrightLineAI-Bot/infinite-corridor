@@ -15,14 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Release r834 is assigned to the prepared Hammerfall candidate against fresh r833 main. The next game change takes r835; re-read fresh main and resolve all current hosted gates before packaging it.
+Release r835 is assigned to spell PR487 against published r834 main. No later release number is assigned; re-read fresh main after r835 merges before packaging the next focused PR.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 834 | Codex | `claude/close-view-hammerfall-stomp` | Dedicated stomp, original-pulse guard and logical carry continuity | Candidate prepared against verified r833 main; focused server-free checks/build and component review clear. Not merged, previewed, delivered or published. |
-| — | Codex | `claude/close-view-spell-gestures` | Canonical accepted spell gestures and origins | Prepared; final main/release/hosted gates remain. |
+| 835 | Codex | `claude/close-view-spell-gestures` / #487 | Accepted spell gestures, free-hand origins and public manual cast inspections | Source8332e07d/tree4283822d; scoped review clear and CI42508742453 pending. Not merged, previewed, hosted, live or published. |
 | — | Codex | `claude/close-view-grounded-contact` | Grounded bodies, overlap escape, accepted movement consequences and items | Prepared; final main/release/hosted gates remain. |
 | — | Codex | `claude/close-view-traversal-blocks` | Legacy/current stone steps, stacking and active lifetime | Prepared; final main/release/hosted gates remain. |
 | — | Codex | `claude/close-view-cleaver-four-strike` | Right-handed Cleaver and four up/down cuts | Prepared with supported legacy/opaque state and unchanged canonical hit rules; scoped Astra clear, hosted gate remains. |
@@ -222,6 +221,7 @@ Release r834 is assigned to the prepared Hammerfall candidate against fresh r833
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 834 | `r834-32b9249def93` | 2026-11-08 | Astra review (833→834): no blockers, including the missing-original correction. Source CI42506353026, merged CI42507220270, Preview42507220259 and Publish42508619787 succeeded. Live identity commit32b9249def935f4112039ee5383a8759a3ffc196/tree9640ab40fbee158db4e746e6697e8dde6aaf6a6f and actual Options → System match after Get latest/Update Ready, recent errors none; paused250KB journey healthy. Hosted1280×720 stomp, pause/resume, movement/weaving and Spindle/Echo/Dodge/Jump/Spell smoke passed. Phone hardware remains unmeasured. |
 | 833 | `r833-23e83526084b` | 2026-11-08 | Astra review (829→833): no blockers; the4d correction delta is clear. Source CI42494696828, merged CI42495799008, Preview42495798951 and Publish42505081135 succeeded. Live identity commit23e83526084bb3f7dcad0cde10a2fa69e18618a8/treefc9f84c98be3ef96d124e7e3ad1dcdd7fc74d861 and actual Options → System match, recent errors none; existing paused250KB journey healthy. Hosted1280×720 violet Echo, four named poses, startup/release/recovery, movement/weaving and variant smoke checks passed. Phone hardware remains unmeasured. |
 | 832 | Published in r833 | 2026-11-08 | Exact GPU decal-color correction delivered with r833; r832 was never published independently. |
 | 831 | Published in r833 | 2026-11-08 | Stationary harmless attackable Echo inspection targets delivered with r833; r831 was never published independently. |
