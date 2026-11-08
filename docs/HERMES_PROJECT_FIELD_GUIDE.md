@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 829: continuous generic-primary attack endpoints
+
+**CODE:** Accepted generic melee forwards its saved logical pose time to the imported hero, alongside the existing Pike, Cleaver and Fists handling. The source dagger animation now blends from and back into the matching breathing/gait phase. Focused production-renderer coverage includes Salvage Blade, future-item fallback, normal asset-unavailable/native Robot paths, equipment switching, interruption and schema-14 pause/reload.
+
+**BOUNDARY:** No new combat profile, staged Salvage combo, yaw, damage, reach, cooldown or save field. Legacy actions without pose time and unknown action profiles retain their prior interpretation. Source assets, geometry/draw budgets, old generation pins and Proving Ground isolation are unchanged. Automated/mock rendering does not establish hosted appearance or phone performance.
+
 ## Release 828: readable settled-corner entry framing
 
 **CODE:** Entry scoring retains its existing best forward view unless that winner has less than the existing one-tile minimum boom. In that case it selects the highest-scoring already-evaluated safe heading with enough reach, preferring arrival facing on equivalent scores. The reproduced Pentagon settled arrival at (25,4) gains a useful body view; raw entry at (25,11) retains its 1.10-tile view. This runs only when initializing the camera.
