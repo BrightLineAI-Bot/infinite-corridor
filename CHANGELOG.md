@@ -3,6 +3,7 @@
 ## Unreleased
 
 
+- Release 830: raise actual primary Echo afterimages into Close View, include Salvage cone strikes, preserve body animation ownership, recover failed GPU frames, and add quiet Echo inspection scenarios.
 - Release 829: preserve the accepted idle/gait clock through Salvage Blade and future-primary fallback attacks; retain legacy poses and current combat rules.
 - Release 828: preserve a useful third-person entry view after tight-corner arrival or respawn, using existing safe camera probes.
 - Release 827: low one-handed Cleaver carry and three cuts, two-handed Pike thrust cycles, and accepted presentation clocks that survive queued Echo and respect newer actions.

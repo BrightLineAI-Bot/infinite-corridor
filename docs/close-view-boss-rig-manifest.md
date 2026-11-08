@@ -108,4 +108,3 @@ After the pilot: stage the two dragons together for skeleton reuse but verify ev
 Completed here: read-only generator/runtime roster audit, source-derived14-kind attack/body inventory, local RPG archive hash/joint/clip checks, official-source licensing/animation research, proposed architecture and acceptance contract. No gameplay tests/build were run because this is a documentation-only change; no production validation is claimed.
 
 Remaining before implementation: coordinator timing/ownership; exact derivative visual design; selected external creature archive/license/topology verification only if needed; independent architecture review of the extra detailed slot; actual Game phase/geometry/budget and hosted acceptance. No user lore question is outstanding. Research does not require those implementation decisions now.
-

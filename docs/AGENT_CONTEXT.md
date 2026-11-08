@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Latest verified publication and next pass — 2026-11-08
+
+Production is `r829-9c21fb237fe9`, commit `9c21fb237fe93bb96b1c549eaed70a3416b808dc`, tree `48fece515eb1c38adb4232c2434857aa37300b88`. Publish42482179727, live identity and actual Options → System match, recent errors none. Fresh Astra828→829 review, exact CI/Preview and hosted Salvage actions/switching passed. Stage3 r830 prepares raised Echo afterimages, Salvage cone support, failed-GPU-frame fallback and three quiet inspection fixtures. The owner additionally chose brief tool startup before physical release, followed by melee-cancelable recovery with cooldown preserved; that distinct stage remains in the ordered tool manifest and has not changed mechanics in this PR. All required regression scope and continued focused publishing are authorized by the current conversation subject to project gates; local loopback remains stopped.
+
 ## Latest verified publication — 2026-11-08
 
 Production is `r828-f15b20b8c54a`, commit `f15b20b8c54a91f5fd3655c71b9c55274e466746`, tree `9ae99a3cff18b881c13b203c6d9426125b2531ca`. Publish42479336328, live identity and actual Options → System match, recent errors none. Fresh Astra827→828 review, exact CI/Preview and hosted settled-corner/raw-entry/movement/orbit checks passed. Manual orbit can still compress against walls; broader camera/environment work remains queued. Next is focused stage2c Salvage/future-primary attack continuity in PR481/r829, then Echo and the remaining ordered manifest. The in-app browser was restored by the owner. Armor recovery29afaa0d preserves the original attempt and passes99 focused checks/build; it remains an unnumbered prepared stage. Publishing authority remains this conversation with every current gate, all necessary regressions are approved, and local loopback remains stopped.
