@@ -12,6 +12,40 @@ export const ATTACK_VISUAL_PROFILES = Object.freeze([
 ]);
 const ATTACK_VISUAL_PROFILE = /^[a-z][a-z0-9-]{0,31}$/;
 export const PRIMARY_VISUAL_KINDS = Object.freeze(["salvage-blade", "cinder-pike", "verge-cleaver"]);
+export const TOOL_VISUAL_KINDS = Object.freeze(["rift-bombard", "great-sweep", "blunderbuss", "lumen-spindle"]);
+export const TOOL_ACTION_TIMING = Object.freeze({
+  "rift-bombard": Object.freeze({ durationMs:720, raiseMs:120, holdMs:520 }),
+  blunderbuss: Object.freeze({ durationMs:640, raiseMs:100, holdMs:460 }),
+  "lumen-spindle": Object.freeze({ durationMs:760, raiseMs:100, holdMs:560 }),
+  "great-sweep": Object.freeze({ durationMs:840, raiseMs:40, holdMs:600 }),
+});
+const smooth = n => { const t=Math.max(0,Math.min(1,n)); return t*t*(3-2*t); };
+// Pure presentation sampler. Repeated accepts save its five numeric controls as the next
+// entry pose, so the renderer never needs frame history and never restarts from neutral.
+function authoredToolPose(profile, elapsedMs, direction=1, continuing=false) {
+  const T=TOOL_ACTION_TIMING[profile]; if(!T)return null;
+  const ms=Math.max(0,Math.min(T.durationMs,Number(elapsedMs)||0)),dir=direction===-1?-1:1;
+  if(profile==='great-sweep'){
+    const q=ms<T.raiseMs&&!continuing?smooth(ms/T.raiseMs):ms<T.holdMs?1:1-smooth((ms-T.holdMs)/(T.durationMs-T.holdMs));
+    const travel=ms<380?smooth(ms/380):1, yaw=dir*(-1.13+2.62*travel);
+    return { yaw, side:Math.sin(yaw)*.22*q, up:(.08-.18*Math.max(0,(ms-380)/460))*q, forward:(.38+Math.cos(yaw)*.13)*q, weight:q };
+  }
+  const q=ms<T.raiseMs&&!continuing?smooth(ms/T.raiseMs):ms<T.holdMs?1:1-smooth((ms-T.holdMs)/(T.durationMs-T.holdMs));
+  const base=profile==='lumen-spindle'?[-.03,.18,.54]:profile==='rift-bombard'?[-.05,-.13,.43]:[-.04,-.08,.50];
+  const recoil=Math.sin(Math.PI*Math.min(1,ms/(profile==='lumen-spindle'?70:profile==='rift-bombard'?120:100)))*(profile==='lumen-spindle'?.025:.055);
+  return { yaw:0, side:base[0]*q, up:base[1]*q+recoil, forward:base[2]*q-recoil, weight:q };
+}
+export function sampleToolActionMotion(record,elapsedMs){
+  const motion=record?.toolMotion;if(!motion||motion.v!==1)return null;
+  const entry=motion.entry,T=TOOL_ACTION_TIMING[record.toolKind];
+  // A held/partly raised entry approaches READY, not a restarted cold draw. Recoil is
+  // still the bounded authored pulse; interpolation preserves the exact prior pose at 0.
+  const pose=authoredToolPose(record.toolKind,elapsedMs,motion.direction,entry[4]>0);
+  if(!pose||!T)return null;
+  const enter=smooth(Math.max(0,Math.min(1,(Number(elapsedMs)||0)/70)));
+  return {yaw:entry[0]+(pose.yaw-entry[0])*enter,side:entry[1]+(pose.side-entry[1])*enter,up:entry[2]+(pose.up-entry[2])*enter,forward:entry[3]+(pose.forward-entry[3])*enter,weight:entry[4]+(pose.weight-entry[4])*enter};
+}
+export function toolActionPose(profile,elapsedMs,direction=1){return sampleToolActionMotion({toolKind:profile,toolMotion:{v:1,entry:[0,0,0,0,0],direction:direction===-1?-1:1}},elapsedMs);}
 
 export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -29,6 +63,15 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (raw.weaponKind != null) {
     if (typeof raw.weaponKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
     copy.weaponKind = raw.weaponKind;
+  }
+  if (raw.toolKind != null) {
+    if (typeof raw.toolKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.toolKind)) return null;
+    copy.toolKind = raw.toolKind;
+  }
+  if(raw.toolMotion!=null){const m=raw.toolMotion;if(!m||typeof m!=='object'||Array.isArray(m)||m.v!==1||!Array.isArray(m.entry)||m.entry.length!==5||m.entry.some(n=>!Number.isFinite(Number(n))||Math.abs(Number(n))>4)||m.direction!==1&&m.direction!==-1)return null;copy.toolMotion={...m,v:1,entry:m.entry.map(Number),direction:m.direction};if(m.baseKind!=null){if(!PRIMARY_VISUAL_KINDS.includes(m.baseKind))return null;copy.toolMotion.baseKind=m.baseKind;}}
+  if (raw.toolShotId != null) {
+    if (typeof raw.toolShotId !== 'string' || raw.toolShotId.length<1 || raw.toolShotId.length>160) return null;
+    copy.toolShotId=raw.toolShotId;
   }
   if (raw.poseMs != null) {
     const poseMs = Number(raw.poseMs);

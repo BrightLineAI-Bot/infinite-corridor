@@ -69,7 +69,7 @@ test('accepted tool producers replace stale sword presentation while keeping rea
   const cases = [
     ['blade-spark-ashling', 'emitter', 180],
     ['blade-hammerfall-brute', 'hammer', 240],
-    ['cleaver-sweep-marshal', 'sweep', 240],
+    ['cleaver-sweep-marshal', 'sweep', 840],
     ['cleaver-mirage-stalker', 'mirage', 200],
     ['blade-orrery-sentinel', 'orrery-tap', 160],
   ];
@@ -91,7 +91,7 @@ test('accepted tool producers replace stale sword presentation while keeping rea
     assert.equal(game.fireSecondary(1010, { x: 0, y: -1 }), true, profile);
     assert.equal(game.player.attackVisual.profile, profile);
     assert.equal(game.player.attackVisual.durationMs, duration);
-    assert.equal(game.player.attackUntil, 1010 + duration);
+    assert.equal(game.player.attackUntil, 1010 + (profile==='sweep'?240:duration));
     assert.equal(game.player.actionVisualUntil, 1010 + duration);
     if (profile !== 'emitter') {
       assert.equal(game.player.meleeUntil, meleeUntil, 'the enemy playerSwinging observation remains unchanged');

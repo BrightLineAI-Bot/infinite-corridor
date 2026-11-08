@@ -107,6 +107,44 @@ const vergeCleaver = [
   part(membrane([[.063,-.260,1.12],[.072,-.260,1.12],[.17,-.260,1.86]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
   part(membrane([[.063,-.240,1.12],[.17,-.240,1.86],[.072,-.240,1.12]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
 ];
+
+// Future Close View tool silhouettes. These are recipe-only until the ordered tool-action pass
+// selects them from accepted production events. All begin at the canonical (.17,-.25,.79) grip.
+const riftBombard = [
+  block(.17,-.25,.91,.055,.065,.14,leather,-2,0,1.19),
+  part(bevel,.17,-.25,1.10,.15,.15,.20,iron,-2,0,1.19),
+  part(bevel,.17,-.25,1.10,.09,.09,.215,brass,-2,0,1.19),
+  block(.17,-.25,1.37,.09,.09,.13,iron,-2,0,1.19),
+  part(flare,.17,-.25,1.53,.085,.085,.055,coal,-2,0,1.19),
+  block(.08,-.25,.91,.13,.055,.055,iron,-2,0,1.19,.38),
+];
+const brokenGreatswordBlade = membrane([
+  [0,-1,-1],[0,1,-1],[0,.88,.50],[0,.30,1],[0,-.72,.72],
+]);
+const greatSweep = [
+  block(.17,-.25,.91,.045,.05,.14,leather,-2,0,1.19),
+  block(.17,-.25,1.08,.20,.055,.045,iron,-2,0,1.19),
+  part(brokenGreatswordBlade,.17,-.25,1.70,1,.30,.68,iron,-2,0,1.19),
+  block(.17,-.25,1.62,.016,.03,.47,bronze,-2,0,1.19),
+  part(frontPatch,.17,-.25,1.13,1,.07,.025,brass,-2,0,1.19),
+];
+const blunderbuss = [
+  block(.17,-.25,.91,.055,.06,.14,leather,-2,0,1.19),
+  block(.17,-.25,1.10,.075,.065,.15,bronze,-2,0,1.19),
+  block(.17,-.25,1.33,.052,.052,.13,iron,-2,0,1.19),
+  part(flare,.17,-.25,1.49,.058,.058,.045,iron,-2,0,1.19),
+  part(ellipsoid(6,1),.17,-.25,1.27,.078,.078,.065,0x58cfe8,-2,0,1.19,0,true),
+  block(.08,-.25,.90,.11,.045,.045,iron,-2,0,1.19,.32),
+];
+const lumenSpindle = [
+  block(.17,-.25,.92,.035,.04,.13,leather,-2,0,1.19),
+  part(taper,.17,-.25,1.20,.034,.034,.22,bronze,-2,0,1.19),
+  part(ellipsoid(6,1),.17,-.25,1.45,.075,.075,.09,visor,-2,0,1.19,0,true),
+  part(frontPatch,.17,-.25,1.55,1,.052,.025,0x8fe8ff,-2,0,1.19),
+];
+const TOOL_EMISSION_LOCAL=Object.freeze({'rift-bombard':Object.freeze([.17,-.25,1.585]),blunderbuss:Object.freeze([.17,-.25,1.535]),'lumen-spindle':Object.freeze([.17,-.25,1.575])});
+// Uses the exact recipe grip, normalized socket axes and .82 conversion used below.
+export function closeViewToolEmissionPoint(out,profile,m){const p=TOOL_EMISSION_LOCAL[profile];if(!out||out.length<3||!p||!m||m.length!==16)return null;const ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);if(Math.min(ax,ay,az)<1e-6)return null;const x=(p[2]-.79)*.82,y=-(p[0]-.17)*.82,z=-(p[1]+.25)*.82;out[0]=m[12]+m[0]/ax*x+m[4]/ay*y+m[8]/az*z;out[1]=m[13]+m[1]/ax*x+m[5]/ay*y+m[9]/az*z;out[2]=m[14]+m[2]/ax*x+m[6]/ay*y+m[10]/az*z;return Number.isFinite(out[0]+out[1]+out[2])?out:null;}
 // Compact tapered cuff and inward thumb/knuckle cover; the final sockets keep each shell on its own hand.
 const fistGauntlet=[part(taper,0,0,.012,.105,.075,.115,0xd7dde2),part(bevel,0,-.058,.028,.058,.034,.045,0xf1f4f5)];
 const playerCinderPike=[...playerUnarmed,...cinderPike],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
@@ -259,7 +297,7 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle});
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null,m=gear?.rightSocket;
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
