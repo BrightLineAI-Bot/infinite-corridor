@@ -1,7 +1,7 @@
 // Release 678: drawing the Stalker (stalker.ts): the six-legged snow leopard, the winged silverback, the silver pool, its
 // afterimages, its copies and decoys, the marks before each blow, and the silver marker at the screen edge while it hunts.
 // Plain canvas paths, no sprites or gradients per frame beyond one shadow, so it stays cheap on a phone.
-import { STALKER, spikeLines } from "./stalker.js?v=r822-1d2ba908e56c";
+import { STALKER, spikeLines } from "./stalker.js?v=r823-a1b23012a5c2";
 
 const OUTLINE = "rgba(140,150,166,.55)", FUR = "#f1f3f6", SHADE = "#b9c0cc", SPOT = "#7d8594", SILVER = "#d8e2ee", WING = "#3a2f44", WING_EDGE = "#c9d4e4";
 const MARK_FILL = "rgba(255,80,190,.18)", MARK_EDGE = "rgba(255,130,210,.78)";

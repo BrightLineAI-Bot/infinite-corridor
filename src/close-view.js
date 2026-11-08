@@ -1,21 +1,21 @@
-import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r822-1d2ba908e56c";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r822-1d2ba908e56c";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.js?v=r822-1d2ba908e56c";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.js?v=r822-1d2ba908e56c";
-import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r822-1d2ba908e56c';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.js?v=r822-1d2ba908e56c";
-import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.js?v=r822-1d2ba908e56c';
-import { fistCharge } from './brawler-spells.js?v=r822-1d2ba908e56c';
-import { dronePos } from "./affixes.js?v=r822-1d2ba908e56c";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r822-1d2ba908e56c";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r822-1d2ba908e56c";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r822-1d2ba908e56c";
-import { knockdownPose } from "./lightning-giant-render.js?v=r822-1d2ba908e56c";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r822-1d2ba908e56c";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r822-1d2ba908e56c";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r822-1d2ba908e56c";
-import { SIGIL_CELLS } from "./watcher.js?v=r822-1d2ba908e56c";
-import { closeViewGLReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r822-1d2ba908e56c"; // version 4: the GPU scene
+import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r823-a1b23012a5c2";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r823-a1b23012a5c2";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.js?v=r823-a1b23012a5c2";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.js?v=r823-a1b23012a5c2";
+import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r823-a1b23012a5c2';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.js?v=r823-a1b23012a5c2";
+import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.js?v=r823-a1b23012a5c2';
+import { fistCharge } from './brawler-spells.js?v=r823-a1b23012a5c2';
+import { dronePos } from "./affixes.js?v=r823-a1b23012a5c2";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r823-a1b23012a5c2";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r823-a1b23012a5c2";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r823-a1b23012a5c2";
+import { knockdownPose } from "./lightning-giant-render.js?v=r823-a1b23012a5c2";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r823-a1b23012a5c2";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r823-a1b23012a5c2";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r823-a1b23012a5c2";
+import { SIGIL_CELLS } from "./watcher.js?v=r823-a1b23012a5c2";
+import { closeViewGLReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r823-a1b23012a5c2"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -230,7 +230,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r822-1d2ba908e56c's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r823-a1b23012a5c2's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -377,7 +377,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r822-1d2ba908e56c's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r823-a1b23012a5c2's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -440,7 +440,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r822-1d2ba908e56c's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r823-a1b23012a5c2's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 
@@ -901,7 +901,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r822-1d2ba908e56c's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r823-a1b23012a5c2's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && interiorTerrain(CAM.map)) return terrainFloorRay(CAM.map, x, y);
@@ -2019,10 +2019,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (!stunned && (attack || winding || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
-    if (!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
+    const importedDodge=who===player&&!form&&now<(player.dodgeUntil||0),dodgeSeed=importedDodge?player.dodgeVisual:null,leavingImportedDodge=!importedDodge&&who===player&&track.dodgeUntil===player.dodgeUntil;
+    if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));if(Number.isFinite(dodgeSeed.facingYaw))track.yaw=dodgeSeed.facingYaw;}
+    else if (!leavingImportedDodge&&!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = !stunned && !watched && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
     if (stunned || watched) track.pace = 0;
-    else track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
+    else if(!importedDodge&&!leavingImportedDodge)track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
+    if(leavingImportedDodge)track.dodgeUntil=null;
     if (who.hp < track.hp) track.hitAt = now;
     const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
     if (winding && !track.winding) track.windAt = now;
@@ -2089,7 +2092,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         else if (now < (player.dodgeUntil || 0)) {
           action.kind = 'dodge'; action.durationMs = 260;
           action.phase = 1 - Math.min(1, (player.dodgeUntil - now) / action.durationMs);
-          if (Math.hypot(player.dodgeX || 0, player.dodgeY || 0) > .01) action.yaw = Math.atan2(player.dodgeY, player.dodgeX);
+          const visual=player.dodgeVisual;if(Number.isFinite(visual?.facingYaw))action.yaw=visual.facingYaw;
+          action.moveX=player.dodgeX||0;action.moveY=player.dodgeY||0;
+          action.poseMs=Number.isFinite(visual?.poseMs)?visual.poseMs:input.nowMs;
+          input.speed=Number.isFinite(visual?.speed)?visual.speed:visual?.moving?2.4:0;input.gaitPhase=Number.isFinite(visual?.gaitPhase)?visual.gaitPhase:0;
         } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
         else if (attack) action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee';
         else if (cast) { action.kind = 'cast'; action.durationMs = MODEL_TIMING.castMs; }
@@ -2100,6 +2106,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           gear.profile = held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           offset = writeCloseViewHeroGear(state.vertices, offset, gear);
+          recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;
         }
       }
