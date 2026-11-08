@@ -1,0 +1,99 @@
+# Bounded spell projection and release plan
+
+Architecture approved for bounded implementation, 2026-11-08. Current source is the combined S/T merge `0e10d84b80a79502f3835b75036af52464aa2511`, joining accepted-source metadata correction `f08c289f9671569b1d96288fe64f4f25e89581f8` and T `457d28c3c30dae35ffe1988b7adf2135f7a67967`. This document is a contract, not runtime delivery, release numbering, publication clearance or GPU evidence. The ordered pass manifest remains authoritative. Spell actions retain **360 ms**; slower tool timing does not apply here.
+
+## Proposed decision
+
+Project the five existing Fire Burst shells and the one existing Orbit flight ball through the existing depth-tested additive decal stream. Use canonical XY and a constant support-relative height of **.66 tile**. Do not add a projectile, actor, timer, Game-state field, shader, texture, draw pass or larger budget. Add one small current-left-hand release flash for eligible accepted manual casts; optionally link only Fire Burst's exact accepted central shell. Defer the Orbit hand-to-ball link because its runtime-only flight has no durable accepted emission token. Keep all gathered orbit bodies, fields, bursts, vortexes and buffs on their existing paths in this stage.
+
+Constant height is deliberate: Fire Burst has real `age` but no immutable `visualFlight.duration`; Orbit flight has neither age nor launch duration. A new render-time launch cache, `life + age` reconstruction, synthetic timestamp, or first-observed position would introduce avoidable assumptions. T's Bombard lob is **not** automatically appropriate to these sources. A later lob proposal requires its own approved immutable producer descriptor; this plan does not create one. No visible head receives a hand-derived XY displacement or the drone `visualLaunch` offset.
+
+## Source inventory and exclusions
+
+| Source | Canonical owner | This stage |
+|---|---|---|
+| Fire Burst shells | Five live `game.projectiles` entries: `fireBomb`, `path:'grenade'`, `glyphSpell:'fire-burst'`, existing IDs/XY/direction/age/life | Explicit family admission. Existing `standardProjectile` excludes `fireBomb`; leave that shared predicate unchanged. |
+| Orbit flying ball | The exact `game.orbit.flight` object in the current `orbit.where` scene | One renderer-owned adapter, one budget slot, one six-vertex head, no trail. Never push it into the projectile array. |
+| Orbit gather | Existing `game.orbit` with no flight; 3–7 balls, charge/perfect window and ring in `drawOrbit` | Retain existing floor drawing and real charge timings. No new gather adapter or extra actor admission. |
+| Fire/Orbit impact, perfect vortex, delayed Echo | Existing canonical effects created by `updateProjectiles`/`tickOrbit` | Retain floor onset, damage and centers. No persistent elevated afterimage/pop beyond source removal. |
+| Cinder Dart, Ember Ring, Grave Sun, Gravity Well, Stillpoint | Immediate placed pulsing effects | No projected shot. Cinder Dart is not a flying projectile at this source. Preserve canonical target onset and delayed Echo ownership. |
+| Clone, wards, buffs, six disciplines | Their existing state/form/traversal owners | No adapter, copied shot, new travel path, or borrowed hand. Preserve native/form precedence and current floor/auxiliary drawing. |
+| Bombard, drone rockets, ordinary shots, Arc Wave, Sunburst shards, Orrery, Mirage | Their established separate families | Preserve current predicates and presentation contracts. Fire admission must not accidentally admit every grenade or special projectile. |
+
+Source references: `game.ts` (`castFireBurst`, `launchOrbit`, `tickOrbit`, `recordCastVisual`, `exportSnapshot`, `resumeRuntime`, `shiftClocks`); `combat-visuals.ts` (`standardProjectile`, `drawRangedEffects`); `tool-forms.ts` (`drawToolForms` fireBomb/fireBurst branches); `orbit-volley.ts` (`drawOrbit`); `close-view.ts` (`selectProjectedShots`, `renderCloseView`, `glScene`); `close-view-gl.ts` (`glEnsure`, `closeViewGLReady`, `drawSceneGL`).
+
+## Exact identity, versioning and read-only adapters
+
+Use an ephemeral, bounded frame plan containing **source references**, not a second simulation collection. A Fire entry's `source` is the existing projectile object; an Orbit entry's `source` is the existing `g.orbit.flight` object and its owner is the current `g.orbit`. Never fabricate an ID for the ball, increment the effect counter, attach fields to either source, or retain a previous frame's flight for drawing. The source reference is stable across ordinary ticks while that flight exists. On a new game, scene, flight, or reload, rebuild the plan from current state; object identity is intentionally not persisted.
+
+Existing ordinary-shot iteration must remain source-type aware. Do not insert an Orbit adapter into the Set that existing code assumes contains projectile objects. Either give the bounded frame plan typed entries plus a separate exact-source mask, or retain the existing projectile Set and add one optional Orbit slot counted in the same total. Floor drawers query exact source identity; renderer scratch entries never escape into Game/saves.
+
+For Fire, validate finite XY/direction/age, nonnegative age, positive finite life, known family flags and a bounded real string ID; require non-hostile, non-dead, non-shadow, non-Echo source for manual hand association. For Orbit, validate current owner/scene, finite XY/target/radius, positive bounded radius and known boolean `perfect` when present. Unknown/malformed candidate family descriptors are uninterpreted and use the floor path. A renderer tag such as `kind:'orbit-flight-v1'` describes the adapter implementation only; it is not a new serialized Game schema.
+
+The Fire metadata patch must provide the true center aim and exact central `sourceId`. Validate the normalized accepted record and source ID when reading it; never derive a sibling ID or select the first remaining pellet. Absent legacy association means **no hand-to-shell link**, while its otherwise valid flying body can still be projected. Unknown fields on source/cast records are read through without mutation. If explicit unknown-version flight/launch metadata is present, leave that source on its existing floor fallback rather than reinterpret it. T's recognized Bombard/drone metadata remains handled by its own path.
+
+## Shared admission and budgets
+
+Retain `SHOT_DRAW.low/balanced/full = 12/20/28`, maximum range 14 tiles, existing discovery and visibility conventions, and existing actor/model caps. Preserve ordinary/T shot priority in their current array order; fill remaining slots with eligible Fire sources in array order; admit Orbit's one ball only if a slot remains. This avoids displacing already-admitted ordinary bodies. No reserve or minimum guaranteed slot for a spell. Rejected bodies keep their exact floor appearance.
+
+| Work | Upper bound inside existing stream |
+|---|---:|
+| All admitted flying bodies combined | 12 / 20 / 28 slots |
+| One Fire head | 6 vertices; orange existing kind-11 projected head, .20-tile half-size |
+| One Fire trail at full motion | At most 6 more vertices; existing .058 s window and .9-tile length cap; skip zero-length trails |
+| One Orbit head | 6 vertices; existing kind-11 head, .22-tile half-size or .32 when `radius > ORBIT.radius`; existing ordinary/perfect violet/gold color distinction |
+| All admitted head/trail vertices | No more than the existing 28 × 12 = 336 full-tier allowance; lower tiers scale with their unchanged slot limits |
+| Current player release lane, shared with T | At most one 6-vertex flash and one 6-vertex connector, **12 total**, never separate simultaneous tool and spell lanes |
+| New actor/model draws, programs, texture uploads | 0 |
+
+Use reusable renderer scratch storage bounded by the existing maximum. This is a glowing projected representation, not a claim that the old floor's painted crack lines survive the current decal shader; hosted review must judge its cinder-shell readability. Do not add a shader or retain a duplicate floor shell to recover those crack lines. The additive pass already exists; no new pass or raised maximum draw-call budget. An otherwise empty existing pass may naturally become nonempty, as it does for ordinary shots today.
+
+For Fire head/trail height, use current support at each canonical head/tail XY plus .66 exactly once. Trail history is analytic from real `age`, direction and speed, with the existing time/length caps; reject an unsafe tail segment rather than extend it through blocked or undiscovered cells. Do not obtain age from cast progress. Orbit has no trail or invented flight age; each frame reads the current canonical flight XY and support only. Reduced motion retains heads, omits trails/connectors and uses a subdued non-pulsing release flash.
+
+## Exclusive body ownership and transactional fallback
+
+The current code computes a projected Set before the floor is drawn. That membership alone does **not** prove a replacement can draw: `renderCloseView` currently ignores `glScene`'s false return, and resource setup does not explicitly reject every null buffer. Do not copy this gap into the spell path.
+
+Implement a two-phase frame transaction without a second GPU pass:
+
+1. **Plan and reserve before masking.** Check current GL/decal program/VAO/VBO readiness. Validate source geometry and reserve the bounded CPU body vertices before adding the source to the admitted mask. Allocation/validation failure leaves that source unmasked. Stage complete finite head/trail data, not a promise to try creating it later. No per-source GPU upload.
+2. **Mask exact bodies only.** `drawToolForms` skips the body/halo/cracks of a `fireBomb` only when the frame's admitted-source mask owns that exact projectile. Its explosion/flame branches are independent and always keep their existing owner. Thread the optional projection context to `drawOrbit`; skip only its live flight ball body/halo when the exact `o.flight` is admitted. Do not suppress gather balls, charge ring, target/impact indicators or vortexes. Non-GL calls with null context remain byte-for-byte behaviorally equivalent.
+3. **Commit one scene.** Copy staged vertices into the existing decal buffer and draw the normal scene once. The successfully presented frame contains either the admitted elevated body plus masked ground, or the unmasked ordinary fallback; never both. Failed source staging is resolved before floor capture. There is no simulation update during this synchronous transaction.
+4. **Propagate whole-frame failure.** A known lost context, missing critical buffer, upload/allocation failure or failed `drawSceneGL` must cause `glScene`/`renderCloseView` to return false **before** copying the GL canvas or setting `CAM.drawn=true`. Clear transient masks/capture state on that path. Existing `closeViewFrame` then yields to ordinary `renderer.render`; `closeViewShowing` stays false so main/PG draws ordinary effects unmasked. This is a failure fallback, not an added successful-frame GPU pass. Check upload status at the actual upload boundary and context state before presentation; do not claim submitted vertices equal a successful draw when the underlying API reported failure.
+
+If implementing this minimal failure propagation is disallowed, exclusive ownership under GL/buffer failure cannot honestly be marked satisfied. Do not replace it with a blanket floor suppression or leave this acceptance case untested. CPU preflight need not depend on the hero asset: flying spell bodies can remain visible with a native player; only hand cues require the imported final socket.
+
+## Current left-hand release lane
+
+Select a spell cue only when the **final selected hero action** is the known accepted manual Fire `fan-release` or Orbit `orbit-launch`, not merely because an old `castVisual` exists. Require current cast clock, `cancelled !== true`, positive player alpha, live normal/imported hero readiness, and no overriding death/hit/dodge/jump/primary/tool/form pose. Clear per-frame readiness before sampling. Use the current frame's final **left socket translation**, optionally a fixed documented palm-local point using that same final basis; never a right-hand/tool point, stored world-space hand, source-asset resampling in Game, or previous rendered frame.
+
+Logical age is `durationMs - clamp(castUntil - logicalNow, 0, durationMs)`, with `logicalNow = pauseStarted` while paused. No new timer. The existing 360 ms cast remains unchanged. Flash lasts at most 58 ms, radius .045, alpha at most .82 (.42 with reduced motion), fading with that age and multiplied by the admitted player's actual alpha. T and S arbitrate this one lane through actual final action priority; a lingering projectile cannot revive it.
+
+Fire flash requires a recognized accepted Fire source association. Its optional connector requires the **exact central source ID**, live/admitted/non-hostile Fire family, no `dead`, `impact`, `returning`, `shadow` or `echo`, and age at most 120 ms. Missing/dead central shell does not authorize a link to a surviving side shell. The head remains at its canonical XY and fixed visual height. A small accepted Fire release flash may finish its own window after immediate impact, as a release cue rather than a replacement projectile.
+
+Orbit manual flash additionally requires a current valid live `orbit.flight`; this conservatively suppresses a phantom release after JSON reload or a point-blank pop. The first version has **no Orbit connector** and no automatic-launch hand flash. A later connector needs a separate accepted-source association proposal; do not infer ownership from equal coordinates or matching target alone. Automatic launch continues to show its real live ball irrespective of the expired gather record or a newer player action.
+
+Both flash and connector use the existing depth-tested stream, never a silhouette/through-wall pass. Require bounded finite XY and explicit map rectangle bounds before tile lookup (avoid negative or row-wrapped indices), traversable discovered endpoints, and clear body-to-hand plus hand-to-head segments. Bound body-to-hand XY to .9 tile and connector full 3D length to .9 tile before testing. Test all touched cells of those short segments with a bounded conservative supercover traversal (at most 8 cells per segment, including corner-touch cells); reject if the bound is exceeded. The final head must be forward of the hand along accepted central aim (`dot > 0`); no backward link while the hand overtakes a low shell. Multiply connector alpha by actor alpha, use T's .014 radius/.45 maximum fade, and omit it with reduced motion. Support/lift is already included in the socket and must not be added again.
+
+## Orbit lifecycle, pause and JSON truth
+
+| State | Renderer behavior | Current simulation/persistence truth |
+|---|---|---|
+| Gather | Existing floor orbit/ring; accepted gather gesture remains its own 360 ms action | Canonical `orbit.start` controls charge; no projection age/timer. |
+| Manual launch | Existing gather ceases; one live ball may enter shared projection budget; eligible manual flash | `launchOrbit(false)` creates `flight` at player center and sets real cooldown/result. |
+| Automatic launch | Same one-ball adapter; no new body animation or hand flash | `tickOrbit` at 3.2 s calls `launchOrbit(true)` without restamping gather `castVisual` or `castUntil`. |
+| Flight | Stable source object, canonical XY on every frame, no renderer history | `tickOrbit` moves/mutates that same flight object; no `age` field. |
+| Pop/blocked/target/near foe | Source disappears immediately; mask/adapter disappear; existing canonical effect owns contact | No new elevated ghost/pop, extra delayed impact, or moved vortex. Point-blank ball may pop on its first 1 ms update. |
+| Pause/resume in same Game | Ball position stays fixed; cue age freezes; fresh plan reads same source | Updates stop. Existing clock shifting rebases `orbit.start`; no adapter clocks participate. |
+| JSON reload | Rebuild solely from restored real sources; never rebuild a ball from `castVisual` | **Orbit gather and flight are not serialized/restored at this source.** The accepted cast descriptor may survive while `back.orbit` is absent. Preserve that existing behavior; adding Orbit persistence is a separate gameplay/save task. |
+
+Private evidence: `.asset-review/spell-projection-state-probe.mjs` and `.json` call actual Game pause/export/migrate/construction. Gather reload kept 260 ms of accepted cast; manual-flight reload kept 340 ms; both had no restored Orbit. Same-session flight source identity survived ticks and pause. Fire's five IDs/XY/age/life survived paused JSON exactly at age .02 s; cast had 340 ms remaining. All Fire shells lacked `visualFlight`, and Orbit flight keys were only `x,y,tx,ty,radius,perfect,damage`. The probe used the S base plus concurrent metadata-only changes, not a combined T/S/H candidate. These observations establish current state, not implemented projection acceptance.
+
+## Implementation and acceptance sequence
+
+1. Freeze/review the source-metadata correction first. Confirm Fire center aim/source ID and clone targets separately; this projection work must not edit or reinterpret clone geometry. Add typed frame admission and exact floor-body ownership with resource preflight/failure propagation, then the existing-stream body writers. Check no Game mutation with frozen/read-only fixtures and before/after gameplay snapshots stripped only of permitted presentation fields.
+2. Add the shared final-action release lane and optional Fire connector. Preserve T behavior and all old primary/Fists/Orrery/cast assertions; no new spell durations or mechanical delays. Test helper geometry separately from production selection, then actual Game → ordinary masked production renderer with real ground-layer hooks and recorded decal uploads/body draws.
+3. Required focused cases: Fire birth/1/28.8/58/120/360 ms, ordinary/center-missing/pellet-survivor/point-blank foe/wall/expired volley; Orbit gather/manual/perfect/automatic/flight/first-tick pop and newer action during flight; standalone and combined scenes filling exactly 12/20/28 slots, overflow and all seven gather balls remaining unclaimed; opposite aim, walking, terrain support, alpha fade, actor/form/readiness fallbacks, unknown/legacy/malformed fields and two instances with equal coordinates but different source references.
+4. Count exact exclusive ownership: one elevated head OR its original floor body per source, unchanged impact/cost/cooldown/count/RNG, no mask for failed staging, no body loss when GL/decal buffer is absent, null resource and upload-failure injection, context loss after floor capture, and successful ordinary fallback in both main/PG call paths. Count total source slots, vertices and maximum existing draw passes. Include JSON tests that expect restored Fire sources but **no restored Orbit**, and ensure the surviving launch descriptor cannot create a phantom hand cue or ball.
+5. Sample fixed logical times with/without previous renders and with a cold asset/context: same current source geometry, no first-frame latch. Pause during the flash/trail/flight and resume without re-firing. Require bounded/discovered rectangle/corner wall cases, safe body-to-hand segment and no backward/through-wall connector; actual GL depth behavior remains a hosted check.
+6. Hosted front/side/rear moving sequences must show distinguishable five-shell Fire flight, one Orbit ball, perfect color/size, real impacts, and correct fallback/occlusion. Judge the existing shader's simplified projected cinder appearance explicitly. CPU/mock-GL assertions do not establish GPU art quality, phone performance or combined integration readiness. Full suite, servers, network/release and armor integration remain outside this architecture task.

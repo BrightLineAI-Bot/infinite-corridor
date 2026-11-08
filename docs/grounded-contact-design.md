@@ -200,3 +200,51 @@ git diff --check
 ```
 
 For the later Block integration, use Block's existing `liftAt` legacy-stone overlay directly. The earlier B-only `legacyInteriorBuildLevel` bridge inside Contact is redundant once Contact calls `liftAt`; do not restore the obsolete logical-level support implementation. Block source is frozen and was not edited during this correction. Hosted visual, crowd-feel and physical-phone acceptance remain outstanding; offline model-envelope and simulation checks do not establish those results.
+
+### Final Echo integration receipt
+
+The complete reviewed Echo candidate `c7b52aa7b7cccf5a724308528b513753530b81e2` was merged by ordinary history-preserving merge as `c688250205638831dd83fb331eba3ac4b8169e88`. The only conflicts were the three release/module lists. Each retains Echo's inherited release 830 list and includes `actor-contact` exactly once. Release 830 remains inherited and unassigned here; this preparation is not a publication claim.
+
+The merge preserves Contact's swept player/enemy separation, world-unit body clearance, legitimate flight exclusions, overlap escape, accepted trace endpoints (including Shadow Boxing pre-dash placement), and old-layout generator pins. It does not adopt the separate Block stone work, Hammerfall, gesture, armor, or startup candidates.
+
+Validation after the merge:
+
+```text
+node --test tests/grounded-contact.test.ts tests/grounded-contact-height.test.ts tests/close-view-offset-clearance.test.ts tests/close-view-gl-transaction.test.ts tests/close-view-primary-echo.test.ts tests/combat-asset-lab.test.ts tests/creature-asset-lab.test.ts tests/native-creature-integration.test.ts tests/remaining-primary-presentation.test.ts tests/interior-terrain.test.ts tests/interior-v4-arrival.test.ts
+# 78/78 passed.
+
+node scripts/build.mjs
+# Passed: static offline PWA release 830 with Proving Ground PG-1.
+
+git diff --check
+# Passed.
+```
+
+No server, browser, network, full suite, prototype/proposal/pages/proving-fixture suite, push, or release action was run. Hosted GPU/phone acceptance remains outside this receipt.
+
+### Spell-gesture and delayed-tool integration receipt
+
+The complete reviewed spell-gesture, Hammerfall, and delayed named-tool stack `57cee7f8c9dbabd4a3644f2ec51ccc73c515118c` was merged by ordinary history-preserving merge as `b28724e219099abeb1dc21a0dbb7a0d6ae5d27e2`. The sole source conflict was in `src/game.ts`: the resolution retains Contact's actor-contact import and accepted movement/contact methods while also retaining the incoming action-motion imports and carried-state cleanup. No Block, armor, or routing candidate was adopted, and the separate Echo practice-target correction is not included.
+
+The mixed production regression moves a player into an ordinary body blocker while Rift Bombard or Great Sweep startup is committed. It establishes that the update first accepts and contact-clamps movement, then releases from that current position with the originally accepted aim. The projectile retains zero newborn age and full life; the sweep retains its single release pulse and damages the blocker once. Neither action releases from the pre-movement point.
+
+Validation after the merge:
+
+```text
+node --test tests/tool-release-transaction.test.ts
+# 13/13 passed.
+
+node --test tests/grounded-contact.test.ts tests/grounded-contact-height.test.ts tests/close-view-combat-contract.test.ts tests/hammerfall-release-guard.test.ts tests/hammerfall-stomp.test.ts tests/close-view-spell-gestures.test.ts tests/close-view-spell-projection.test.ts tests/orrery-spell-integration.test.ts
+# 69/69 passed.
+
+node --test tests/tool-release-presentation.test.ts tests/tool-motion-continuity.test.ts tests/tool-primary-integration.test.ts tests/tool-weaving-interruption.test.ts tests/close-view-gl-transaction.test.ts tests/native-player-forms.test.ts tests/interior-terrain.test.ts tests/interior-v4-arrival.test.ts
+# 54/54 passed.
+
+node scripts/build.mjs
+# Passed: static offline PWA release 830 with Proving Ground PG-1.
+
+git diff --check
+# Passed.
+```
+
+Release 830 remains inherited and unassigned here. No server, browser, network, full suite, prototype/proposal/pages/proving-fixture suite, push, or publication action was run. Hosted GPU/phone acceptance remains outstanding.
