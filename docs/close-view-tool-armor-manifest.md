@@ -53,6 +53,28 @@ The next bounded implementation can admit the imported normal Iron Fists hero wi
 
 The latest owner request also adds room-maze routing, unique branches/loops and less obvious vertical integration to visual planning/construction, preserving roof access and up/down buildings. [The reuse study](close-view-dungeon-routing-study.md) compares three primary-source systems and records the bounded PG-only adaptation recommendation. Research is complete; no generator/library adoption or existing-world change is claimed.
 
+## Read-only tool-emission cohesion audit — 2026-11-08
+
+The accepted-identity/body pass is internally coherent, but the three newly posed shooting tools do **not** yet launch their visible shots from those tools. `fireSecondary` still creates the authoritative shot at the canonical player point `(player.x + .5, player.y + .45) + aim * .35`, and no player-tool producer attaches `visualLaunch`. Close View therefore draws the shot at that same XY and the default `.66` visual height. The reusable presentation-only bridge (`projectileLaunchMetadata` → `projectileVisualPoint`) is presently used only for drone rockets. This is a visual-origin defect; the existing projectile XY, collision, damage, aim, speed, lifetime and explosion origins must not move.
+
+A private production-recipe probe used a player at `(10.5, 10.45, ground 0)`, yaw east, the actual imported hero sampler, actual final right-hand socket and actual gear writer. At committed phase `.10` of the 180 ms accepted action, while standing, the forward-most tool points were:
+
+| Accepted tool | Rendered forward tool point | Canonical shot at birth | Separation at birth | Concurrent shot head after 18 ms |
+|---|---:|---:|---:|---:|
+| Rift Bombard | `(11.433, 10.370, 1.016)` | `(10.850, 10.450, .660)` | `.688` tile | `(10.994, 10.450, .660)`, `.571` from tool |
+| Blunderbuss | `(11.433, 10.344, 1.046)` | `(10.850, 10.450, .660)` | `.707` tile | `(11.102, 10.450, .660)`, `.519` from tool |
+| Lumen Spindle | `(11.490, 10.324, 1.199)` | `(10.850, 10.450, .660)` | `.846` tile | `(11.030, 10.450, .660)`, `.720` from tool |
+
+The same probe with locomotion at 2.4 tiles/s found committed separations of `.699`, `.717` and `.850` tile respectively, so walking does not close the seam. The phase-zero and phase-one endpoints correctly return to the neutral locomotion pose; the disconnect appears as the accepted arm/tool rises while the already-visible projectile starts low and near the old body anchor. These coordinates are CPU/source evidence, not hosted GPU or phone acceptance.
+
+The surrounding state paths do not repair the origin. Accepted `toolKind` and its action clock correctly survive gear switches, pause and schema-14 reload. A queued Echo shot deliberately spawns later from the player's then-current canonical body point and inherits no `visualLaunch`; it neither replays nor owns the original accepted tool pose. Pellet, Arc Wave, awakened fan and Shadow Clone copies likewise clone the base shot without a tool-muzzle bridge. Sunburst shards and Cluster Shell bomblets originate at their canonical wall hit/detonation, so they should not be moved to a hand. Great Sweep itself is a centered melee effect and has no muzzle; Mirage of Blades is a separate accepted `mirage` action whose blades canonically leave player center. Hammerfall/Golem and Orrery retain their separate target/orb systems.
+
+Remaining inventory is therefore still truthful but not newly socketed: Spark Coil and Needle Caster use the generic accepted `emitter` cue and legacy `playerTool` geometry; Hammerfall uses `hammer`; ordinary Great Sweep now latches `great-sweep`, while Mirage keeps `mirage`; Blunderbuss now latches `blunderbuss`, and Arc Wave is its projectile variant; Lumen Spindle now latches `lumen-spindle`, and Sunburst is its wall-hit variant; Aether Orrery keeps `orrery-tap`/`orrery-release`. The unidentified magical-tool remark adds no profile. Do not invent new animations for these queued profiles.
+
+Smallest remedy: extend the existing serializable, age-settled visual-offset contract to the accepted Bombard, Blunderbuss and Spindle base shots and their same-volley copies, using a small presentation-data muzzle table keyed by the already-latched canonical tool identity and aim. Do not import the Close View hero/GPU asset into `Game`, and do not change authoritative projectile coordinates. A delayed Echo needs a fresh visual anchor at its own emission time or no bridge; it must never reuse the original world-space launch offset. Because gameplay emits immediately while the authored pose reaches its committed socket after roughly 18 ms, final implementation must choose and test one honest cue policy (a bounded birth flash/tracer from the accepted muzzle to the canonical shot is the least timing-invasive option) rather than pretending the phase-zero neutral socket is the raised muzzle. This timing/cue choice requires integration review before source changes.
+
+Focused non-server regression evidence: 31/31 actual-Game/render tests passed across accepted tool identity, moving/gear-switch/primary-Echo interaction, paused JSON resume, drone launch metadata, Blunderbuss/Arc Wave/Mirage/Golem/Cluster Shell and Lumen Spindle/Sunburst behavior. No gameplay source, tracked test, asset, balance value or render pass was changed by this audit.
+
 
 ## Sequential execution and latest animation notes
 
