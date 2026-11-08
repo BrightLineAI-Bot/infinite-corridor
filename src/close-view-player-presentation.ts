@@ -24,5 +24,6 @@ export function playerFormPresentation(game) {
   return {...profile,kind,scale,head:profile.head*.82*scale,lift:mech&&game.mechBoosting===true?.22:0,mech,fists,empowered:mech&&save.mech?.empowered===true};
 }
 export function playerFormModelKey(form,held='melee') {
-  return form&&PLAYER_HELD_PROFILES.includes(held)?`${form.kind}:${held}`:form?.kind||null;
+  const profile=['salvage-blade','cinder-pike','verge-cleaver'].includes(held)?'melee':held;
+  return form&&PLAYER_HELD_PROFILES.includes(profile)?`${form.kind}:${profile}`:form?.kind||null;
 }

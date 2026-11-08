@@ -39,6 +39,12 @@ test('attack presentation metadata is additive at schema 14 and validates withou
   for (const invalid of [[], { ...raw, profile: '' }, { ...raw, profile: '../unsafe' }, { ...raw, durationMs: Infinity }, { ...raw, durationMs: 0 }, { ...raw, durationMs: 5001 }, { ...raw, aim: { x: NaN, y: 1 } }, { ...raw, aim: { x: 0, y: 0 } }, { ...raw, aim: [] }]) {
     assert.equal(normalizeAttackVisual(invalid, 120), null);
   }
+  assert.deepEqual(normalizeAttackVisual({ ...raw, weaponKind: 'future-primary' }, 120), { ...raw, weaponKind: 'future-primary' });
+  assert.equal(normalizeAttackVisual({ ...raw, weaponKind: {} }, 120), null);
+  assert.deepEqual(normalizeAttackVisual({ ...raw, poseMs: 1234 }, 120), { ...raw, poseMs: 1234 });
+  for (const poseMs of [-1, Infinity, {}, 1e12 + 1]) assert.equal(normalizeAttackVisual({ ...raw, poseMs }, 120), null);
+  assert.deepEqual(normalizeAttackVisual({ ...raw, facingYaw: -1.2 }, 120), { ...raw, facingYaw: -1.2 });
+  for (const facingYaw of [Infinity, {}, Math.PI * 4 + .01]) assert.equal(normalizeAttackVisual({ ...raw, facingYaw }, 120), null);
   assert.equal(normalizeAttackVisual(raw, 241), null, 'metadata cannot rewrite an incompatible authoritative clock');
   const player = { attackUntil: 240, meleeUntil: 230, meleeStrike: { dx: 1, dy: 0 }, attackReadyAt: 400 };
   const before = copy(player);
@@ -65,6 +71,7 @@ test('accepted tool producers replace stale sword presentation while keeping rea
     game.save.lastAim = { x: 0, y: -1 };
     game.primaryAttack(1000);
     assert.equal(game.player.attackVisual.profile, 'melee');
+    assert.ok(['salvage-blade','cinder-pike','verge-cleaver'].includes(game.player.attackVisual.weaponKind));
     const meleeUntil = game.player.meleeUntil, strike = copy(game.player.meleeStrike), lastAim = copy(game.save.lastAim);
     if (profile === 'emitter') {
       assert.equal(game.fireSecondary(1010, { x: 0, y: -1 }), false, 'standard fire shares the existing melee cooldown');
@@ -85,6 +92,23 @@ test('accepted tool producers replace stale sword presentation while keeping rea
     game.player.attackReadyAt = 0;
     game.primaryAttack(1020);
     assert.equal(game.player.attackVisual.profile, 'melee', 'accepted sword attack replaces tool metadata');
+    assert.ok(game.player.attackVisual.weaponKind);
+  }
+});
+
+test('accepted canonical primary identity survives gear switches, pause and schema-14 round trips', () => {
+  for (const [item, kind] of [
+    [{ id: 'primary-cinder-pike', name: 'Cinder Pike', slot: 'primary', power: 5, property: 'reach' }, 'cinder-pike'],
+    [{ id: 'primary-verge-cleaver', name: 'Verge Cleaver', slot: 'primary', power: 5, property: 'impact' }, 'verge-cleaver'],
+  ]) {
+    const { game } = fixture('blade-spark-ashling'); game.enemies = []; game.save.equipment.primary = item;
+    game.primaryAttack(3000); assert.equal(game.player.attackVisual.weaponKind, kind); assert.equal(game.player.attackVisual.poseMs, 3000);
+    game.save.equipment.primary = kind === 'cinder-pike'
+      ? { id: 'primary-verge-cleaver', name: 'Verge Cleaver', slot: 'primary', power: 5, property: 'impact' }
+      : { id: 'primary-cinder-pike', name: 'Cinder Pike', slot: 'primary', power: 5, property: 'reach' };
+    assert.equal(closeViewPlayerAction(game, 3100).record.weaponKind, kind, 'active action keeps accepted gear, not current gear');
+    game.setPaused(true, 3100); const saved = roundTrip(game, 90000), back = new Game(saved, 100000);
+    assert.equal(saved.version, 14); assert.equal(saved.session.playerRuntime.attackVisual.weaponKind, kind); assert.equal(back.player.attackVisual.weaponKind, kind); assert.equal(back.player.attackVisual.poseMs, 3000);
   }
 });
 

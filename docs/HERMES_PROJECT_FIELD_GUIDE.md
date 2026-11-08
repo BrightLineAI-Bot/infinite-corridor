@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 825: distinct primary weapon presentation
+
+**CODE:** Accepted schema-14 attack presentation retains normalized weapon identity, logical pose time and facing through recovery, gear changes and reload. The imported Wayfarer derives a straight Pike thrust and a shared-frame 105-degree Cleaver cut from the real 240 ms action. Matching idle/native silhouettes and analytic arm grips keep the weapon attached. Existing normal native primary models remain 240 triangles; imported body stays 3,170 triangles with the existing two draws.
+
+**BOUNDARY:** Combat resolves immediately at acceptance as before: no new windup, hit event, damage, reach, arc, aim or cooldown. The short entry blend is visual accommodation. Existing robot/suit/Ember held routes, actor admission, schema 14, generation and Proving Ground isolation remain intact. CPU sheets and focused tests do not establish GPU appearance or physical-phone performance; exact release CI/Preview/hosted verification remain separate gates.
+
 ## Release 824: returnable excavation support
 
 **CODE:** New excavations in supported interior heightfields use the exact approached ramp/floor edge height, including fractional levels, and validate a return crossing before crafting or spending a shovel. Optional schema-14 digging surfaces persist against the existing bounded coordinate list and replay the recorded support without recomputing neighbours. Commit rechecks reject stale or sealed targets, builds and area caps. A quiet production-backed Close View excavation fixture exposes the real DIG-AUDIT0 ramp witness through normal Act and movement controls.
