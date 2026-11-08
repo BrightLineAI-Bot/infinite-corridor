@@ -2,7 +2,7 @@
 
 Updated: 2026-11-08. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r827-ff2d4c13bf18`. Publish42457803577 succeeded; gh-pages identity and actual Options → System match after normal update, with no recent errors. r826 imported Iron Fists and r827 low one-handed Cleaver/three cuts, two-handed Pike/three thrusts and shared accepted presentation clocks are delivered. Later stages remain open.
+Verified live: `r828-f15b20b8c54a`. Source CI42476407465, merged CI42477321804, Preview42477321826 and Publish42479336328 succeeded. Fresh Astra review (827→828): no blockers; live identity and actual Options → System match after normal update with no recent errors. Stages1/2a/2b remain delivered; stage2c r829 is the next focused PR.
 
 ## Single ordered build queue — owner instruction
 
@@ -10,7 +10,7 @@ Verified live: `r827-ff2d4c13bf18`. Publish42457803577 succeeded; gh-pages ident
 
 Earlier native creature/combat/actor passes r813–818 remain delivered; preserve their roster, Foundry and auxiliary-actor work recorded in the release log.
 
-Current checkpoint: r827 is published and verified. **Priority exception: the settled-corner entry camera fix takes r828 before stage3.** A production-backed no-input death/respawn witness returned the player to (25,4), where the old entry choice compressed the camera to .30 tile and a 71.565° overhead view. This concrete playable-view defect warrants a focused fix ahead of the remaining cosmetic passes. After r828, close the remaining stage2c Salvage/future-primary continuity defect in r829, then resume Echo. The stage2c audit reproduced an imported-body entry snap of about .058 tile; the narrow accepted-clock correction leaves mechanics unchanged. No candidate is dropped or silently completed.
+Current checkpoint: r828 is published and verified as `r828-f15b20b8c54a` (Publish42479336328). Hosted settled-corner body framing passed; manual orbit can still compress near walls, so this is the bounded entry fix rather than universal camera acceptance. Stage2c r829 preserves Salvage/future-primary pose continuity, then the ordered queue resumes at Echo. Later prepared stages remain unnumbered and require their own current-main integration, review, CI, Preview, hosted and publication gates.
 
 | Order | Pass | Required owner direction / completion target | State |
 |---|---|---|---|
@@ -280,10 +280,10 @@ Latest block/contact evidence: actual Game.buildAt in building:CONTACT-AUDIT:-4:
 
 ## Prepared-source checkpoint — 2026-11-08
 
-Stages2a/2b are live in827. Camera828 is merged after corrected exact-head CI and fresh Astra review; Preview and actual hosted corner comparison are pending. Stage2c829 fixes the separately reproduced Salvage entry-clock snap before Echo. Its focused audit is [recorded here](remaining-primary-presentation-audit.md). All other candidates remain unnumbered.
+Stages2a/2b are live in827. Camera828 is published after corrected exact-head CI, fresh Astra review, Preview and actual hosted corner comparison; live identity and System are verified. Stage2c829 fixes the separately reproduced Salvage entry-clock snap before Echo. Its focused audit is [recorded here](remaining-primary-presentation-audit.md). All other candidates remain unnumbered.
 
-- Echo source933af35c adds whole-frame GL failure/recovery protection to the raised afterimages; 24 focused checks/build passed. Quiet fixtures and schema14 ownership remain covered.
-- Named tools source968ef1e9 retains readable Bombard720ms/Blunder640ms/Spindle760ms/Sweep840ms motions, continuous repeats, and current hit/cooldown timing. Direct actual-renderer review found an undefined numeric helper in the cue path; this candidate is held for its correction and positive three-tool frame regressions. Hosted readability and fresh release review remain gates.
+- Echo sourceae013434 merges main828 while retaining the raised afterimages, whole-frame GL failure/recovery protection and quiet inspection fixtures. 40 focused checks/build passed; schema14 ownership remains covered. Fresh main829 integration and release gates remain.
+- Named tools source2e2852e5 retains readable Bombard720ms/Blunder640ms/Spindle760ms/Sweep840ms motions, continuous repeats, and current hit/cooldown timing. Actual three-tool renderer regressions caught and repaired an undefined numeric helper. Source checks now cover positive flashes/links, final-action priority, bounded 3D spans and conservative wall/grid/endpoint safety; 12 public checks plus one private renderer witness and build pass. Hosted readability and fresh release review remain gates.
 - Hammerfall source1332f144 has connected imported/native stomp phases and additive logical presentation-clock resume; focused checks/CPU evidence pass, hosted review remains.
 - Spells source d524594d has corrected cast origins/metadata, shared capped Fire/Orbit-flight projection and GPU transaction recovery; gather/fields keep their existing floor owners. Build and focused checks pass; no hosted/device claim.
 - Contact a340306f, Stone blocks56575171 and compact opt-in routing a111603a retain their prepared source coverage. Routing230 checks/build passed with contact integration; defaults4/9 and all old pins remain.

@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Latest verified publication — 2026-11-08
+
+Production is `r828-f15b20b8c54a`, commit `f15b20b8c54a91f5fd3655c71b9c55274e466746`, tree `9ae99a3cff18b881c13b203c6d9426125b2531ca`. Publish42479336328, live identity and actual Options → System match, recent errors none. Fresh Astra827→828 review, exact CI/Preview and hosted settled-corner/raw-entry/movement/orbit checks passed. Manual orbit can still compress against walls; broader camera/environment work remains queued. Next is focused stage2c Salvage/future-primary attack continuity in PR481/r829, then Echo and the remaining ordered manifest. The in-app browser was restored by the owner. Armor recovery29afaa0d preserves the original attempt and passes99 focused checks/build; it remains an unnumbered prepared stage. Publishing authority remains this conversation with every current gate, all necessary regressions are approved, and local loopback remains stopped.
+
 ## Verified checkpoint and priority — 2026-11-08
 
 Production is `r827-ff2d4c13bf18`, commitff2d4c13bf18b261946164fc1a36e348b5fe759d, tree133b20b056c9cbc531d4550aa2e8d5f7b76ae20e. Publish42457803577, live identity and actual Options → System match with no recent errors. Fresh Astra826→827 review, exact CI/Preview and hosted primary actions passed. r828 prioritizes a confirmed settled-corner/respawn camera framing defect; then return to the original queue at Echo. Named tools and Hammerfall remain held for reproduced presentation defects; their existing preparation is preserved. The boss rig program is documentation/research only, queued without changing delivery order. The owner approves any necessary regression tests for all existing queued projects, preserving compatibility assertions/floors; publication authority remains this session and all current project gates. See the master manifest for exact prepared commits and limits.
