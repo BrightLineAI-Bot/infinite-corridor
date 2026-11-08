@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r822 on main, the next game change takes main + 1; this documentation PR takes no number.
+Taken at merge time: main's release + 1. With r822 on main, this PR takes r823.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| — | Codex | `claude/wayfarer-directional-dash` | Approved Wayfarer low directional quickstep and smoother gait | Astra source/pose diagnosis complete; bounded implementation and actual walk/dash transition regression work in progress. No release number reserved. |
+| 823 | Codex | `claude/wayfarer-directional-dash` / #473 | Low directional quickstep and smoother normal-Wayfarer gait | Merged a1b23012a5c2b0ddf8f3492c55803b69fbb36fd8; exact tree78e40296 matches reviewed source ddce37dd. CI42438123052 passed. Fresh Astra full/delta review (822→823) found no remaining blockers after recovery-facing correction. Preview42438743247 and hosted acceptance pending. 55 focused checks/build and CPU pose acceptance passed. |
 | 822 | Codex | `claude/close-view-shoulder-clearance` / #471 | Bounded side camera clearance and semantic target activation | Published as r822-1d2ba908e56c. CI42432626387, merged CI42433819389, Preview42433819396 and Publish42435253843 passed. Fresh Astra review (821→822): no blockers; actual live identity and Options → System verified, no recent errors. Hosted raw entrance, legacy themes, quiet Pentagon traversal and Enter/Space lock acceptance checked; tight legacy framing/physical-phone limits remain documented. |
 | 821 | Codex | `claude/wayfarer-neck-bridge` / #470 | Close the imported hero rear neck gap with source-coherent fabric | Published as r821-c4303ef9b07c. CI42431390795, merged CI42432379946, Preview42432379936 and Publish42433628415 passed. Live identity and actual Options → System verified after updating cached r818. Astra review (818→821): no blockers. Hosted rear/front, attack and roll confirmed fabric continuity, amber eyes and approved proportions; no recent errors. |
 | 820 | Codex | `claude/wayfarer-rogue-asset` / #469 | Imported protective Wayfarer with adult proportions and amber eyes | Merged10672c8568e1c0f30844437754b0083f8b4dce2d. CI42426824705, merged CI42427897135 and Preview42427897177 passed; identity/link verified. Normal browser retry authorized and loaded. Actual GPU/rear topology found missing neck surface; repaired by r821 and published in r821. The r820 candidate was never published independently. |
