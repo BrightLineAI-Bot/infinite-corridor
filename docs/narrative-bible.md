@@ -45,6 +45,14 @@ This is a drift, not a border. A human Glimpse can surface at the edge of the ma
 
 Tone: quiet, grave, sometimes beautiful, sometimes horrifying, sometimes simply incomprehensible. Never jokey.
 
+### The river and its eddies — owner direction (2026-11-07)
+
+The Corridor is immense enough that things persist after their immediate purpose passes. They collect, decay and seep into obscurity; stories may endure beyond those who first lived or told them, and the people met may carry echoes of lives and memories that no longer quite belong to them. Do not turn this into a universal explanation of every person or a reveal that settles the Corridor.
+
+The owner's image is a river: a fresh, fast current alongside eddies where foam, scum, insects, shelter and discarded things gather. The Corridor holds all of these at once: beauty, terror, disgust, fulfillment and absurdity. What has been used or passed is not simply erased; it may accumulate elsewhere, as forgotten things collect in an ocean. This is a design image for reality's interstices, not an instruction to literalize every location as a river or add waste everywhere.
+
+Close View should carry the same depth already expressed by the wider world. Its grit comes through worn surfaces, restrained light, grounded bodies, physical-feeling movement and responsive, readable danger. Keep moments of beauty and wonder; decay need not make every place visually identical, uniformly filthy or difficult to read. Weight must coexist with control, skillful dodging and distinct useful tools. The combat references are complementary strengths, not a request to copy each game's systems wholesale. Lore remains sparse, grave and implied; absurdity is not a license for a jokey tone. No new dialogue, story density, generation or mechanic is introduced by this direction record.
+
 ### The Wayfarer's protective appearance (Tim, 2026-11-07)
 
 The normal Wayfarer is a protected traveller: a face covering and a suit, not someone casually exposed to the Corridor. The suit may be flexible, fabric and flowing; this is a fantasy world in which technology is indistinguishable from magic. Keep the existing muted green/gray, leather and bronze visual identity, with adult rather than cutesy proportions. Protection need not look like a rigid contemporary spacesuit. What it protects against, and how it works, stay unspoken; this appearance adds no oxygen, pressure or toxicity mechanic. The normal protective suit is distinct from the explicitly activated robot or empowered forms. The current asset direction and source provenance are tracked in [the Wayfarer asset manifest](wayfarer-rogue-asset-manifest.md).

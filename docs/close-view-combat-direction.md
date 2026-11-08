@@ -36,3 +36,9 @@ Use actual Game-produced actions, cover/elevation and hit geometry, exact pause/
 Current publication state and exact candidate identities remain in RELEASE_LOG.md. Do not mark this queued work completed merely because an earlier narrower pass was completed.
 
 Detailed queued plans: [weapon presentation](primary-weapon-presentation-manifest.md) and [ordinary grounded body contact](grounded-contact-design.md). Both are preparation records, not completed implementation.
+
+## Atmosphere direction — river and eddies
+
+The owner likes the existing dungeon themes and wants Close View to express the wider Corridor's gritty depth: things persist beyond their use, decay and slip into forgetting; people and stories may endure as echoes. The river image combines fresh current with eddies that collect foam, scum, shelter and forgotten things. Beauty, terror, disgust, fulfillment and absurdity coexist. Preserve this ambiguity rather than explaining the world or treating every NPC as definitively a memory.
+
+Carry this through worn materials, restrained lighting, grounded bodies, concrete tool interactions and responsive, readable danger. Preserve wonder, varied themes and combat visibility; do not make everything equally filthy or obscure. Combine the references' strengths so existing game systems can shine. This adds direction and acceptance criteria, not immediate scope beyond the character/camera work. The compatible narrative record is in [the narrative bible](narrative-bible.md#the-river-and-its-eddies--owner-direction-2026-11-07).
