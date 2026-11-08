@@ -1887,7 +1887,7 @@ const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
 const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkRadians: 5.4, castMs: ACTION_MOTION.castMs, turnRate: 12, strideSpeed: 4, windupMs: 450 });
 const PLAYER_VISUAL_KIND = Object.freeze({
-  melee: "player", fist: "playerUnarmed", emitter: "playerTool", hammer: "playerUnarmed", sweep: "playerSweep",
+  melee: "player", fist: "playerUnarmed", emitter: "playerTool", hammer: "playerHammerStomp", sweep: "playerSweep",
   mirage: "playerMirage", "orrery-tap": "playerOrrery", "orrery-release": "playerOrrery",
 });
 const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);

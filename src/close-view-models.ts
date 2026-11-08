@@ -74,6 +74,16 @@ const playerTool = [
   part(frontPatch, .349, -.25, .783, 1, .033, .032, visor, -2, 0, 1.19),
 ];
 const playerUnarmed = player.slice(0, -2);
+// The source-free fallback keeps the approved body/head/feet and replaces each 20-triangle
+// one-piece limb with two 12-triangle segments. Two 12-triangle fists bring it to 254 triangles.
+const playerHammerStomp = playerUnarmed.filter((_,i)=>![10,12,14,16].includes(i));
+for(const side of [-1,1])playerHammerStomp.push(
+  {...block(-.005,side*.115,.53,.09,.072,.18,coat,side,0,.71),hammerPart:`leg-upper:${side}`},
+  {...block(.015,side*.115,.18,.082,.068,.18,coat,side,0,.36),hammerPart:`leg-lower:${side}`},
+  {...block(-.014,side*.25,1.08,.065,.073,.11,coat,side*2,0,1.19),hammerPart:`arm-upper:${side}`},
+  {...block(.005,side*.25,.86,.060,.068,.12,coat,side*2,0,.97),hammerPart:`arm-lower:${side}`},
+  {...block(.025,side*.25,.70,.074,.068,.06,leather,side*2,0,.76),hammerPart:`fist:${side}`},
+);
 const playerHammer = [
   ...playerUnarmed,
   part(taper, .17, -.25, 1.02, .035, .038, .34, bronze, -2, 0, 1.19),
@@ -275,7 +285,7 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
 } // exact rule cells are the residual panel, never generic bars
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -380,7 +390,11 @@ export function writeCloseViewModel(out, offset, actor) {
   const actionWeight = actionPhase === 'windup' || actionPhase === 'track' || actionPhase === 'lock' || actionPhase === 'travel' || actionPhase === 'strike'
     ? actionProgress : actionPhase === 'active' || actionPhase === 'erupt' ? 1
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
-  for (const { mesh, swing, px, pz, axialSpin, carryingOnly } of models[kind]) {
+  const hammerPrep=kind==='playerHammerStomp'?(progress<160/570?progress/(160/570):1):0;
+  const hammerDrop=kind==='playerHammerStomp'?Math.max(0,Math.min(1,(progress-240/570)/(80/570))):0;
+  const hammerRecover=kind==='playerHammerStomp'?Math.max(0,Math.min(1,(progress-400/570)/(170/570))):0;
+  const hammerWeight=hammerPrep*(1-hammerRecover);
+  for (const { mesh, swing, px, pz, axialSpin, carryingOnly, hammerPart } of models[kind]) {
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
       : swing >= 40 && swing < 60
@@ -419,6 +433,13 @@ export function writeCloseViewModel(out, offset, actor) {
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
+    if(hammerPart){const [role,rawSide]=hammerPart.split(':'),side=Number(rawSide),raised=hammerWeight*(1-hammerDrop),planted=hammerWeight*hammerDrop;
+      if(role==='leg-upper')angle=side>0?-.42*raised:.22*planted;
+      else if(role==='leg-lower')angle=side>0?.72*raised:-.38*planted;
+      else if(role==='arm-upper')angle=side*(.62*raised-.28*planted);
+      else if(role==='arm-lower')angle=side*(-1.05*raised+.72*planted);
+      else angle=0;
+    }
     const c = Math.cos(angle), s = Math.sin(angle);
     const cutYaw = playerLike && !fist && !chargingFist && swing === -2
       ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? primaryStep===2?-1.18:primaryStep===3?.45:1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
@@ -427,11 +448,15 @@ export function writeCloseViewModel(out, offset, actor) {
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
       const localY = axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
       const normalY = axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
-      const forward = mesh[i] * c + localZ * s + px;
-      const lateral = localY + coilSway;
+      let forward = mesh[i] * c + localZ * s + px;
+      let lateral = localY + coilSway;
       const u = forward * cc - (lateral - pivotY) * sc;
       const v = forward * sc + (lateral - pivotY) * cc + pivotY;
-      const w = localZ * c - mesh[i] * s + pz;
+      let w = localZ * c - mesh[i] * s + pz;
+      if(hammerPart){const [role,rawSide]=hammerPart.split(':'),side=Number(rawSide),raised=hammerWeight*(1-hammerDrop),planted=hammerWeight*hammerDrop;
+        if(role.startsWith('arm')||role==='fist'){lateral+=-side*.22*raised+side*.08*planted;w+=(role==='fist'?.43:.22)*raised-.03*planted;forward+=(role==='fist'?.08:.03)*raised+.04*planted;}
+        else {lateral+=side*.10*planted;if(side>0)w+=.22*raised;}
+      }
       const f = u * cp + w * sp + shift;
       const armNormal = mesh[i + 3] * c + normalZ * s;
       const nu = armNormal * cc - normalY * sc;
