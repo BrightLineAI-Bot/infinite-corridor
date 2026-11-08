@@ -44,6 +44,13 @@ test('every form retains its authored body with every known held profile within 
   for(const kind of kinds){const key=kind+':fist',idle=positions(mesh(key)),rush=positions(mesh(key,{pose:'fist',amount:.3,fistStep:1})),jab=positions(mesh(key,{pose:'fist',amount:.3,fistStep:2})),upper=positions(mesh(key,{pose:'fist',amount:.3,fistStep:3}));assert.notDeepEqual(rush,idle);assert.notDeepEqual(jab,rush);assert.notDeepEqual(upper,rush);assert.notDeepEqual(rush,positions(mesh(key,{pose:'attack',amount:.3})),'punches are not blade cuts');assert.notDeepEqual(positions(mesh(key,{pose:'fistCharge',amount:1})),idle);}
 });
 
+test('normal fallback primaries have distinct bounded silhouettes and immediate committed motion',()=>{
+  const pike=mesh('playerCinderPike'),cleaver=mesh('playerVergeCleaver');
+  for(const kind of ['playerCinderPike','playerVergeCleaver']){assert.ok(modelTriangleCount(kind)>0&&modelTriangleCount(kind)<=256);assert.ok(mesh(kind).every(Number.isFinite));const idle=positions(mesh(kind)),contact=positions(mesh(kind,{pose:'attack',amount:.08})),end=positions(mesh(kind,{pose:'attack',amount:1}));assert.notDeepEqual(contact,idle,`${kind} commits by 19.2ms`);assert.deepEqual(end,idle,`${kind} returns to ready hold`);}
+  assert.notDeepEqual(positions(pike),positions(cleaver),'Pike shaft and Cleaver blade are not aliases');
+  assert.notDeepEqual(positions(mesh('playerCinderPike',{pose:'attack',amount:.2})),positions(mesh('playerVergeCleaver',{pose:'attack',amount:.2})),'thrust and broad cut remain distinct');
+});
+
 test('accepted fist combo identity survives pause and schema-14 reload; refusal keeps prior motion',()=>{
   const g=fixture();activate(g,'playerIronFists');
   for(const step of [1,2,3]){const now=100000+step*100;assert.equal(g.fistPress(now,{x:1,y:0}),true);assert.equal(g.player.attackVisual.fistStep,step);assert.equal(g.player.attackVisual.profile,'fist');assert.equal(g.effects.at(-1).kind,step===3?'fist-uppercut':'iron-fist');}

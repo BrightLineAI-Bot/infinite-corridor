@@ -24,6 +24,19 @@ test('sampled source feet keep their independent root hierarchy and animated tra
   assert.equal(meta.nodes[1].parent,38);assert.equal(meta.nodes[36].parent,38);
   const a=sample(input({speed:4,gaitPhase:0})),b=sample(input({speed:4,gaitPhase:Math.PI}));assert.notDeepEqual(a.s.pose.slice(10,13),b.s.pose.slice(10,13));assert.equal(a.s.clip,'Run');
 });
+test('derived primary poses keep two-hand grips bounded across accepted phases and preserve exact endpoints',()=>{
+  const original=Float32Array.from(asset.arrays.positions),s=createHeroPoseState(asset),f=createHeroFrame(asset),idle=createHeroFrame(asset),end=createHeroFrame(asset);
+  let worst=0,worstAt='';
+  for(const profile of ['cinder-pike','verge-cleaver'])for(const gaitPhase of [0,1.2,3,5])for(let step=0;step<=21;step++){
+    const phase=step/21,i=input({nowMs:1234+phase*240,yaw:.7,speed:gaitPhase?2.4:0,gaitPhase,heldProfile:profile,action:{kind:'melee',profile,phase,durationMs:240,poseMs:1234,yaw:.7}});
+    assert.ok(sampleCloseViewHero(asset,s,i,f));assert.ok(f.positionsNormals.every(Number.isFinite));
+    const residual=s.primaryGripResidual*(i.height/s.referenceHeight);if(residual>worst){worst=residual;worstAt=`${profile} gait=${gaitPhase} phase=${phase}`;}
+    if(step===10&&gaitPhase===0)for(let k=3;k<f.positionsNormals.length;k+=6)assert.ok(Math.abs(Math.hypot(f.positionsNormals[k],f.positionsNormals[k+1],f.positionsNormals[k+2])-1)<1e-5);
+    if(step===0){assert.ok(sampleCloseViewHero(asset,s,{...i,action:null,nowMs:1234},idle));assert.deepEqual(f.positionsNormals,idle.positionsNormals);assert.deepEqual(f.leftSocket,idle.leftSocket);assert.deepEqual(f.rightSocket,idle.rightSocket);}
+    if(step===21){assert.ok(sampleCloseViewHero(asset,s,{...i,action:null,nowMs:1474},end));assert.deepEqual(f.positionsNormals,end.positionsNormals);assert.deepEqual(f.leftSocket,end.leftSocket);assert.deepEqual(f.rightSocket,end.rightSocket);}
+  }
+  assert.ok(worst<.01,`world grip residual ${worst} at ${worstAt}`);assert.deepEqual(asset.arrays.positions,original);
+});
 test('gameplay elevation/lift and XY translation apply exactly once to vertices and sockets',()=>{
   const a=sample(input()),b=sample(input({x:5,y:1,groundZ:.7,liftZ:.4}));
   for(let i=0;i<a.f.positionsNormals.length;i+=6){assert.ok(Math.abs(b.f.positionsNormals[i]-a.f.positionsNormals[i]-2)<1e-5);assert.ok(Math.abs(b.f.positionsNormals[i+1]-a.f.positionsNormals[i+1]+3)<1e-5);assert.ok(Math.abs(b.f.positionsNormals[i+2]-a.f.positionsNormals[i+2]-.8)<1e-5);}

@@ -1,6 +1,6 @@
 # Primary weapon presentation manifest
 
-Updated: 2026-11-07. Implementation is intentionally paused until the current character and camera work is published. This document records the completed source audit and a bounded resumption plan; it grants no release or publication authority.
+Updated: 2026-11-07. The bounded Pike/Cleaver implementation is in progress on the published character/camera baseline; this document grants no release or publication authority.
 
 ## Canonical facts and invariants
 
@@ -12,19 +12,27 @@ Updated: 2026-11-07. Implementation is intentionally paused until the current ch
 ## Current behavior and findings
 
 - `Game.primaryAttack` already owns the accepted 240 ms melee clock and writes `attackVisual`; `closeViewPlayerAction` derives presentation progress from that real clock. Adding an optional normalized weapon identity to the accepted record is the narrow path that can retain the original weapon through recovery, pause, save/resume, and an equipment switch without altering combat.
-- Close View currently maps both canonical primaries to generic `melee`, generic blade geometry, and the imported `Dagger_Attack` clip. Idle presentation also lacks Pike/Cleaver silhouette identity.
+- Accepted melee presentation now records a normalized `weaponKind` and logical `poseMs`. Known Pike/Cleaver identities select their accepted silhouette through recovery and save/resume even after an equipment switch. Missing legacy or unknown future identities retain the neutral generic fallback; idle follows current equipment.
+- The bounded procedural geometry now distinguishes the Pike's long shaft and compact head from the Cleaver's broad blade. The normal native fallback uses the same immediate-commit (at most 19.2 ms), followthrough, and recovery policy; it does not add a pre-hit windup or change the already-resolved gameplay hit.
+- The imported source still has no canonical polearm or two-hand clip. Its in-progress derived pose is labeled `derived-polearm-thrust` or `derived-twohand-cleaver`, retains source locomotion/feet, and samples the accepted logical idle clock at both action boundaries. Final two-hand grip calibration remains a required acceptance check, not a completed claim.
 - Iron Fists already preserve actual accepted combo identity in `attackVisual.fistStep`: step 1 dash punch, step 2 opposite-hand jab, step 3 uppercut. The procedural native forms already select distinct poses for all three steps and preserve the step through pause/schema-14 reload. Gameplay creates the corresponding `iron-fist` or `fist-uppercut` effect at the resolved strike point. The follow-up must audit visible windup/contact/recovery and effect origin, without rewriting hit counts, movement, damage, combo window, or recovery timing.
 - Tool/caster presentation remains a separate requirement within the same later visual pass: hand emitters and casting must originate at the correct animated hand/socket, preserve the real accepted aim and clocks, and retain current tool profiles and caps. No spell or tool mechanics should be inferred from desired visuals.
 
 ## Bounded resumption plan
 
-1. Add presentation-only primary identity for an accepted attack, preserving unknown future keys and schema-14 round trips. Refused attacks must not stamp or replace presentation metadata. Idle identity follows equipped gear; an active/recovering action follows its accepted original weapon.
-2. Build bounded, distinct silhouettes from existing procedural primitives: a long Cinder Pike shaft with compact head and a broad Verge Cleaver blade sized for their canonical reach language. Keep gameplay reach exclusively in `PRIMARY_PROFILES`.
-3. Derive Pike anticipation, shaft extension/contact, and retraction from the accepted action phase, with a stable right socket and visible left-hand brace. Derive a broad two-hand Cleaver windup, sweep/contact, and weighted recovery. Preserve reduced-motion attack readability.
+1. Completed in this worktree: presentation-only accepted identity and pose clock, future-key/schema-14 preservation, neutral legacy/future fallback, refusal stability, and accepted gear identity through switching/recovery.
+2. Completed in this worktree: bounded distinct Pike/Cleaver silhouettes built from existing primitives. Gameplay reach remains exclusively authoritative in `PRIMARY_PROFILES`.
+3. In progress: derive a direct committed Pike thrust and broad Cleaver cut with no fake pre-hit anticipation, then return to the identical ready hold within the existing 240 ms. The final right socket must own the weapon frame and the left hand must remain within .01 world tile of its fixed second grip across 21+ phases and gait inputs.
 4. Verify the Iron Fists dash punch, jab, and uppercut at anticipation/contact/recovery samples in actual native-form rendering, including strike-effect origin relative to the Wayfarer after the real dash.
 5. Audit caster and emitter hand origins against the same sockets and accepted aim. Correct only presentation plumbing and geometry; do not alter projectiles, spell/tool timing, or targeting.
 6. Run focused offline tests only: player attack visual/schema round trips, imported hero integration, native player forms/Iron Fists, close-view combat contract, targeted primary geometry/motion tests, and the build. Do not run the full suite, local servers, CI, release bumps, publishing, or network actions in this worktree.
 
 ## Evidence limits
 
-The audit above is source/CPU evidence. No GPU frame was visually inspected, and no physical-phone FPS or hardware multi-touch claim is made. Those remain later acceptance gates after implementation resumes.
+Focused offline evidence on the implementation candidate:
+
+- The imported hero matrix samples both weapons at 22 accepted phases and four gait phases. It checks finite unit normals, exact phase-0/phase-1 body and socket equality against the matching logical idle pose, immutable source positions, and a maximum two-hand socket target error below .01 world tile.
+- Actual `Game` plus production renderer tests cover nonzero logical idle entry/recovery for both canonical weapons; metadata tests cover refusal, equipment switching, pause, schema-14 round trips, malformed optional fields, and future-safe unknown identity fallback.
+- Native fallback tests check distinct silhouettes and motion, the 256-triangle cap, finite geometry, direct commitment by phase .08, and return to the ready endpoint. The existing combat-contract tests remain green, and the offline build remains release 823 in this unnumbered worktree.
+
+These are source/CPU and mock-GL submission checks; no GPU frame was visually inspected. No physical-phone FPS or hardware multi-touch claim is made. Hosted visual review remains a later acceptance gate. Iron Fists, caster/emitter origin, contact readability, and room/body spacing remain the unchanged queued follow-ups in steps 4–5 rather than scope silently absorbed by this pass.
