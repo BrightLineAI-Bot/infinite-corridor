@@ -244,6 +244,8 @@ const CLOSE_VIEW_LAB = [
   { id: "routing-keep-biomechanical-candidate", label: "Routing experiment: biomechanical Old Keep", roomRouting: "keep", candidate: true, biomechanical: true },
   { id: "routing-pentagon-baseline", label: "Routing comparison: Pentagon (current)", roomRouting: "pentagon", candidate: false },
   { id: "routing-pentagon-candidate", label: "Routing experiment: Pentagon (branched rooms)", roomRouting: "pentagon", candidate: true },
+  { id: "routing-adoption-new-keep", label: "Routing adoption: cross into a new standalone keep", routingAdoption: "keep" },
+  { id: "routing-adoption-new-pentagon", label: "Routing adoption: cross into a new Pentagon", routingAdoption: "pentagon" },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
 // GPU scene's lava and pits can be seen without hunting for a room maze's gallery
@@ -277,6 +279,7 @@ function digReturnCandidate(game, preferred = null) {
 }
 function closeViewFixture(scenario, seed, now) {
   const spec = CLOSE_VIEW_LAB.find((q) => q.id === scenario) || CLOSE_VIEW_LAB[0];
+  if (spec.routingAdoption) return routingAdoptionFixture(spec, now);
   if (spec.roomRouting) return roomRoutingFixture(spec, seed, now);
   let id, back;
   if (spec.style) { // release 794: a theme's floor, built from a great building's id near the keep the lab finds (scratch only)
@@ -360,6 +363,28 @@ function closeViewFixture(scenario, seed, now) {
   else if (buildPractice) game.message = "Stone selected. Build raises the block ahead; tap it to stack. Jump onto one, then Jump from one to two. Choose Wood wall in the lab menu to compare. Reset same restores materials.";
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(traversal ? { diagnostics: { traversal } } : {}), ...(buildPractice ? { buildPractice, developerHint: game.message, diagnostics: { buildPractice } } : {}) };
+}
+
+const ROUTING_ADOPTION_SITES = {
+  keep: { start: { rx:-4, ry:-2 }, destination: { rx:-4, ry:-1 }, dy:1, door:{ x:17, y:10 } },
+  pentagon: { start: { rx:-8, ry:18 }, destination: { rx:-8, ry:17 }, centre:{ cx:-8, cy:16 }, dy:-1, door:{ x:7, y:11 } },
+};
+function adoptionBoundaryStart(map, dy) {
+  const edge = dy > 0 ? 31 : 0, inner = dy > 0 ? 30 : 1, candidates = map.tiles.filter((t) => t.y === edge && !t.blocked && !t.hole && !t.environment && !map.tiles[inner * 32 + t.x]?.blocked);
+  const tile = candidates.sort((a,b) => Math.abs(a.x-16)-Math.abs(b.x-16) || a.x-b.x)[0];
+  if (!tile) throw new Error("The routing-adoption start map has no ordinary open boundary passage.");
+  return { x:tile.x, y:dy>0?30.6:.4, edge:{x:tile.x,y:tile.y}, direction:dy>0?"down":"up" };
+}
+function routingAdoptionReceipt(fixture) {
+  const {game,save,adoptionSpec:S}=fixture, key=`${S.destination.rx},${S.destination.ry}`, B=game.map?.greatBuilding, P=game.map?.pentagon, I=game.area==="dungeon"?game.map?.building:null, candidate=I?.base||B?.base||P?.base||null, expected=S.family==="keep"?`building:${fixture.seed}:${S.destination.rx}:${S.destination.ry}:keep:`:`pentagon:${fixture.seed}:${S.centre.cx}:${S.centre.cy}`, base=candidate?.startsWith(expected)?candidate:null, f1=base?`${base}:f1`:null;
+  return { phase:game.area==="dungeon"?"interior":game.rx===S.destination.rx&&game.ry===S.destination.ry?"destination":"start", current:{area:game.area,rx:game.rx,ry:game.ry,mapId:game.map?.id||null}, target:{family:S.family,destination:S.destination,centre:S.centre||null}, actual:{base,version:I?.V??I?.interiorVersion??P?.V??save.consequences?.dungeons?.[f1]?.interiorVersion??null,atlasPin:save.atlas?.[key]?.pentVersion??null,interiorPin:f1?save.consequences?.dungeons?.[f1]?.interiorVersion??null:null,appearance:I?.appearance||B?.appearance||null,door:game.map?.objects?.find(o=>o.buildingDoor||o.pentagonDoor)?.id||null}, protectedRecord:structuredClone(save.consequences.dungeons[fixture.protectedKey]) };
+}
+function routingAdoptionFixture(spec, now) {
+  const seed="ROUTING0", S={...ROUTING_ADOPTION_SITES[spec.routingAdoption],family:spec.routingAdoption}, save=scratchSave(seed);save.closeView=true;ensureCloseView(save);
+  const protectedKey=`proving:routing-adoption:${S.family}`;save.consequences.dungeons[protectedKey]={generatorVersion:77,layoutVersion:66,futureCanary:{kept:true}};
+  Object.assign(save.session,{area:"overworld",...S.start,x:16,y:16});Object.assign(save.position,{area:"overworld",...S.start,x:16,y:16});
+  const game=new Game(save,now);game.installSystems();game.rx=S.start.rx;game.ry=S.start.ry;game.loadArea("overworld",false);const primary=adoptionBoundaryStart(game.map,S.dy);Object.assign(game.player,{x:primary.x,y:primary.y});game.message=`Walk ${primary.direction} through the open section passage. The destination is generated only by the ordinary crossing.`;game.sync();
+  const fixture={lab:"close-view",scenario:spec.id,label:spec.label,seed,variant:0,save,game,production:true,primary,closeView:true,developerHint:game.message,adoptionSpec:S,protectedKey,diagnostics:{routingAdoption:null}};fixture.diagnostics.routingAdoption=routingAdoptionReceipt(fixture);return fixture;
 }
 
 function buildPracticeLane(game) {
@@ -807,6 +832,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
 
 export function labReport(fixture) {
   const {game}=fixture,map=game.map,primary=fixture.primary;
+  if (fixture.adoptionSpec) fixture.diagnostics.routingAdoption=routingAdoptionReceipt(fixture);
   if(fixture.diagnostics?.routing) fixture.diagnostics.routing.floor={id:map.id,grammar:map.building?.routing?.grammar||null,rooms:map.building?.routing?.nodes?.length||0,optional:map.building?.optionalRoute||map.building?.optionalRoutes||null,appearance:map.building?.appearance||map.greatBuilding?.appearance||null};
   if (fixture.buildPractice) {
     const p = game.player;

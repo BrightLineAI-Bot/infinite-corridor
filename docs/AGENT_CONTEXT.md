@@ -4,6 +4,10 @@ For a fresh agent picking up Infinite Corridor. Workflow, commands and the relea
 
 ## Proving Ground interaction chooser r843 packaging gate — 2026-11-08
 
+Production is verified `r843-7cc357e4f592`, commit `7cc357e4f5924ba3320d6f7f76a44e72d6286ee8`, tree `b0baf469a66c521f161b1a8144a17e4a15ef78c2`. Source CI42529952827, merged CI42530923512, Preview42530923499 and Publish42532509502 succeeded; fresh Astra review842→843 found no blockers. Live identity and actual Options → System match, recent errors are none, and the existing paused250KB journey is unchanged. Shared-mover r842 was likewise verified and published (r841 inside it, never independently). Routing adoption r844 is the next focused candidate: conservative post-placement keep5 and ordinary-selector Pentagon10 adoption with finite old-namespace restoration and public scratch crossings. Global keep/Pentagon defaults remain4/9. Merge, Preview, hosted acceptance and publication remain pending; Veil Moth, Grave Lantern, final sweep and boss-rig research stay later. Local servers and the full suite remain stopped.
+
+## Historical r843 preparation checkpoint — 2026-11-08
+
 Production remains verified `r840-402c30d2d636`. Routing r841 passed its representative hosted prototype gate, while public re-entry exposed the separate standalone Proving Ground chooser gap; routing adoption remains held. Shared mover r842 merged as official main `ef8c3947abac2579ee1edad3c81f3690d67c060c`, tree `2c841f2c7ceb806b4da8fbfb66a2da1e462a1ef6`; merged CI42529488956 and Preview42529489023 are running, so r842 is not live or published. Against that fresh main, r843 packages only the canonical Proving Ground interaction chooser, strict stale validation, main-game-controller refusal, generation-safe modal cleanup and same-frame clock barrier. Independent correction review cleared the original lifecycle witnesses and the repeated-canvas timer repro. Hold r843 merge until r842 exact hosted acceptance and publication; routing adoption, Veil Moth and Grave Lantern remain separate later work. Local servers and the full suite remain stopped.
 
 ## Shared mover r842 packaging gate — 2026-11-08
