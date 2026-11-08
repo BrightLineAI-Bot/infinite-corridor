@@ -1,5 +1,9 @@
 # Hammerfall stomp — owner intake and architecture
 
+## Release 834 packaging — candidate prepared, not delivered
+
+The corrected implementation below is packaged against fresh, verified production r833 main as the focused r834 candidate. Release literals, assertions, changelog and field-guide contract are prepared; no merge, Preview, delivery or publication is claimed. Publish42505081135 succeeded for `r833-23e83526084b`; live identity, the actual in-game System label, recent-errors-none and the healthy paused journey were verified after the normal cache update.
+
 ## Corrected implementation — local candidate, not publication clearance
 
 The four f6515231 findings below are corrected. The full solved arm/finger layer blends against the untouched live carry base; crossed chest targets interpolate to hip-side targets instead of switching at contact. The two leg targets and original gait residual are captured before pelvis lowering. Fixed-length IK approaches the original knee plane continuously, then uses the forward pole. Independent foot nodes follow the solved virtual ankles through inverse Root38 and blend toward floor-oriented reference frames. Cached dominant-foot geometry measures the extra downward sag caused by quaternion interpolation; that amount lifts the connected ankle target during entry/recovery, rather than translating an isolated foot after solving. Source mesh data, skeleton scales, proportions, head, neck, materials and archives are unchanged.
