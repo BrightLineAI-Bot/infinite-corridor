@@ -106,16 +106,16 @@ test('final imported left socket owns Fire flash and exact central connector onl
   });}finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
 });
 
-test('actual tool and Fire casts share one final-action release lane without losing live bodies',async()=>{
+test('actual normal and powered heroes share final tool and Fire ownership without losing live bodies',async()=>{
   const names=['window','fetch','createImageBitmap'],old=new Map(names.map(n=>[n,(globalThis as any)[n]]));
   (globalThis as any).window={};(globalThis as any).createImageBitmap=async()=>({width:1024,height:1024});
   (globalThis as any).fetch=async(url:any)=>{const u=new URL(url);assert.equal(u.protocol,'file:');const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};
   const count=(color:number)=>{let n=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++)if(GLB.decal[i*DECAL_FLOATS+7]===color)n++;return n;};
-  try{assert.ok(await loadCloseViewHero());withProjectionGPU({},({screen,log})=>{
+  try{assert.ok(await loadCloseViewHero());for(const powered of [false,true])withProjectionGPU({},({screen,log})=>{
     const g:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:100000}).game;
     g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};g.save.lastAim={x:1,y:0};
-    g.save.perception.aperture=3255;g.save.farArray={listeners:3,gate:3};g.save.consumables.submersible=1;g.save.materials.cinderIron=10;
-    assert.equal(g.useConsumable('submersible',100000),true);assert.equal(g.useConsumable('submersible',100000),true);assert.equal(playerFormPresentation(g)?.kind,'playerPowerSuit');
+    if(powered){g.save.perception.aperture=3255;g.save.farArray={listeners:3,gate:3};g.save.consumables.submersible=1;g.save.materials.cinderIron=10;assert.equal(g.useConsumable('submersible',100000),true);assert.equal(g.useConsumable('submersible',100000),true);assert.equal(playerFormPresentation(g)?.kind,'playerPowerSuit');}
+    else assert.equal(playerFormPresentation(g),null,'original normal imported hero coverage is retained');
     g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};
     const draw=(now:number)=>{resetCloseViewCamera();assert.equal(productionFrame(screen,g,now,log).showing,true);};
     assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);draw(100016);assert.equal(count(0xffc56b),6,'accepted tool owns its positive flash');
