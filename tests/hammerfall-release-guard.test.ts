@@ -40,6 +40,15 @@ test('Hammerfall and named tools share one slot; pulse-plus-filter releases whil
   const hostile=fixture();hostile.brawlerTool('hammerfall',at,{x:1,y:0});hostile.effects[0].hostile=true;assert.deepEqual(hostile.reconcileHammerfallStartup(),{released:false,ended:true});
 });
 
+test('actual update clears buffered tap and captured Fist release when the original Hammerfall disappears before its pulse',()=>{
+  const at=100000,tap:any={...calm,consume:(k:string)=>k==='attack'};
+  const blade=fixture();blade.brawlerTool('hammerfall',at,{x:1,y:0});blade.effects[0].delay=.1;blade.player.attackReadyAt=0;blade.update(0,tap,at+220);assert.ok(blade.attackBufferUntil>=at+320);const bladeVisual=blade.player.attackVisual,bladeReady=blade.player.attackReadyAt,bladeStamina=blade.player.stamina;blade.effects=[];
+  blade.update(0,calm,at+221);assert.equal(blade.hammerfallStartup,null);assert.equal(blade.attackBufferUntil,0);assert.strictEqual(blade.player.attackVisual,bladeVisual);assert.equal(blade.player.attackReadyAt,bladeReady);assert.equal(blade.player.stamina,bladeStamina);assert.equal(blade.effects.length,0);blade.update(0,calm,at+222);assert.strictEqual(blade.player.attackVisual,bladeVisual,'ended tap cannot replay');assert.equal(blade.effects.length,0);
+
+  const fists=fixture();fists.save.equipment.primary={...BRAWLER_GEAR[0].item};fists.brawlerTool('hammerfall',at,{x:1,y:0});fists.effects[0].delay=.1;fists.fistCharge={action:'attack',start:at,direction:{x:1,y:0}};fists.update(0,calm,at+220);assert.ok(fists.fistReleaseIntent);const fistVisual=fists.player.attackVisual,fistReady=fists.player.attackReadyAt,fistRecover=fists.fistRecoverUntil,fistStamina=fists.player.stamina;fists.effects=[];
+  fists.update(0,calm,at+221);assert.equal(fists.hammerfallStartup,null);assert.equal(fists.fistReleaseIntent,null);assert.strictEqual(fists.player.attackVisual,fistVisual);assert.equal(fists.player.attackReadyAt,fistReady);assert.equal(fists.fistRecoverUntil,fistRecover);assert.equal(fists.player.stamina,fistStamina);assert.equal(fists.effects.length,0);fists.update(0,calm,at+222);assert.strictEqual(fists.player.attackVisual,fistVisual,'ended Fist release cannot replay');assert.equal(fists.effects.length,0);
+});
+
 test('schema-14 save resumes the exact original reference, future versions stay opaque, and ended state cannot replay',()=>{
   const g=fixture(),at=100000;g.brawlerTool('hammerfall',at,{x:1,y:0});const id=g.hammerfallStartup.effectId,saved=migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(at+100))));assert.equal(saved.session.playerRuntime.hammerfallStartup.effectId,id);
   const back:any=new Game(saved,200000);assert.equal(back.hammerfallStartup.effectId,id);const main=back.effects.find((e:any)=>e.id===id);assert.ok(main);back.update(main.delay,calm,200100);assert.equal(back.toolUseBlocksPrimary(),true);back.update(0,calm,200101);assert.equal(back.hammerfallStartup,null);assert.equal(back.exportSnapshot(200102).session.playerRuntime.hammerfallStartup,null);
