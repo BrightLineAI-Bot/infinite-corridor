@@ -21,8 +21,9 @@ export function projectileLaunchMetadata(shot, anchor, support=0) {
 }
 export function projectileVisualPoint(shot, support=0, x=shot.x, y=shot.y, age=shot.age) {
   const launch=readProjectileVisualLaunch(shot.visualLaunch),t=Number.isFinite(age)&&age>=0?Math.min(1,age/PLAYER_DRONE_VISUAL.settleSeconds):1,w=launch?1-t*t*(3-2*t):0;
-  return {x:x+(launch?.dx||0)*w,y:y+(launch?.dy||0)*w,z:finite(support,0)+shotVisualHeight(shot)+(launch?.dz||0)*w};
+  return {x:x+(launch?.dx||0)*w,y:y+(launch?.dy||0)*w,z:finite(support,0)+shotVisualHeight(shot,age)+(launch?.dz||0)*w};
 }
+export function readProjectileVisualFlight(raw){const d=Number(raw?.duration);return raw&&typeof raw==='object'&&!Array.isArray(raw)&&raw.v===1&&Number.isFinite(d)&&d>0&&d<=8?{...raw,v:1,duration:d}:null;}
 
 const profile = (bodyLift, head, shot, action, decoration = true, extra = {}) => Object.freeze({ bodyLift, head, shot, action, decoration, ...extra });
 const foundryProfiles = Object.fromEntries(Object.entries(FOUNDRY_BASE_BODIES).map(([kind,body])=>[kind,profile(0,FOUNDRY_MODEL_METADATA[body].headZ,FOUNDRY_MODEL_METADATA[body].actionZ,'foundry')]));
@@ -99,7 +100,9 @@ export function projectileVisualHeight(shooter, source = 'body') {
   const p = actorProfile(shooter);
   return p ? Math.min(8, (p.shot + (shooter.kind === 'cinderSeraph' && shooter.aloft ? .9 : 0)) * presentationScale(shooter)) : DEFAULT_PROJECTILE_VISUAL_HEIGHT;
 }
-export function shotVisualHeight(shot) {
+export function shotVisualHeight(shot,age=shot?.age) {
+  const flight=readProjectileVisualFlight(shot?.visualFlight);
+  if(flight&&shot?.path==='grenade'){const u=Math.max(0,Math.min(1,finite(age,0)/flight.duration));return .66*(1-u)+.08*u+2.4*u*(1-u);}
   return Math.max(.05, Math.min(8, finite(shot?.visualHeight, DEFAULT_PROJECTILE_VISUAL_HEIGHT)));
 }
 export function actorPresentation(actor) {

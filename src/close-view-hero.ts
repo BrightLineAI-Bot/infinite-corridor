@@ -1,4 +1,5 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
+import { toolActionPose } from './action-motion.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -198,16 +199,12 @@ function primaryPose(state,pose,profile,p,step=1){
   state.clipTime=p;state.primaryStep=step;
 }
 
-function toolPose(state,pose,profile,p,weight){
+function toolPose(state,pose,profile,p,weight,action){
   state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
-  let frameYaw=0,side=0,up=-.10,forward=.47;
-  if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
-  else if(profile==='rift-bombard'){side=-.05;up=-.13;forward=.43;}
-  else if(profile==='blunderbuss'){side=-.04;up=-.08;forward=.50;}
-  else if(profile==='great-sweep'){
-    const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;
-    frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;
-  }
+  const duration=Number(action?.durationMs)||180,authored=toolActionPose(profile,p*duration,action?.toolSweepDirection),entry=Array.isArray(action?.toolEntry)&&action.toolEntry.length===5?action.toolEntry:null;
+  const enter=smoothstep(Math.min(1,p*duration/70));
+  let frameYaw=authored?.yaw||0,side=authored?.side||0,up=authored?.up||0,forward=authored?.forward||0;weight=authored?.weight??weight;
+  if(entry){frameYaw=entry[0]+(frameYaw-entry[0])*enter;side=entry[1]+(side-entry[1])*enter;up=entry[2]+(up-entry[2])*enter;forward=entry[3]+(forward-entry[3])*enter;weight=entry[4]+(weight-entry[4])*enter;}
   target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
   solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
   state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
@@ -329,11 +326,11 @@ export function sampleCloseViewHero(asset, state, input, out) {
       if (kind === 'dodge') { build(asset, state, state.other); const b = asset.meta.reference.bodyNode * 16; dx = -(state.global[b + 12] - state.rollX) * weight; dz = -(state.global[b + 14] - state.rollZ) * weight; }
       if(clip){if(profile!=='fist'||weight>0)blend(state.pose, state.other, weight);if(profile!=='fist'){state.clip = clip.name; state.clipTime = time;}}
     } else if (kind === 'melee' && profile === 'great-sweep') {
-      toolPose(state,state.pose,profile,p,weight);
+      toolPose(state,state.pose,profile,p,weight,action);
     } else if (kind === 'ranged' || kind === 'cast' || kind === 'jump') {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.
       const pulse = Math.sin(p * Math.PI) * weight;
-      if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight);
+      if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight,action);
       else if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') { rotateX(state.pose, 12, -.65 * pulse); rotateX(state.pose, 22, -.8 * pulse); }
       else { // Arm brace only: root-parented feet must not be left behind by invented knee IK.

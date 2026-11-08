@@ -1,5 +1,5 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
-import { ACTION_MOTION, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual } from "./action-motion.ts";
+import { ACTION_MOTION, TOOL_ACTION_TIMING, toolActionPose, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
@@ -6294,12 +6294,16 @@ export class Game {
         this.player.facing,
       );
     this.save.lastAim = d;
-    this.player.attackReadyAt = now + 360 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
-    this.player.attackUntil = now + ACTION_MOTION.toolMs;
-    const toolVisual = stampAttackVisual(this.player, "emitter", ACTION_MOTION.toolMs, d);
     const toolKind = weapon.name === "Rift Bombard" ? "rift-bombard"
       : weapon.name === "Blunderbuss" ? "blunderbuss" : weapon.name === "Lumen Spindle" ? "lumen-spindle" : null;
-    if (toolVisual && toolKind) toolVisual.toolKind = toolKind;
+    const priorTool=normalizeAttackVisual(this.player.attackVisual),priorDeadline=attackVisualDeadline(this.player,priorTool);
+    const priorPose=toolKind&&priorTool?.toolKind===toolKind&&priorDeadline>now
+      ?toolActionPose(toolKind,priorTool.durationMs-(priorDeadline-now),priorTool.toolSweepDirection):null;
+    this.player.attackReadyAt = now + 360 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
+    this.player.attackUntil = now + ACTION_MOTION.toolMs;
+    const visualMs=TOOL_ACTION_TIMING[toolKind]?.durationMs||ACTION_MOTION.toolMs;
+    const toolVisual = stampAttackVisual(this.player, "emitter", visualMs, d);
+    if (toolVisual && toolKind) { toolVisual.toolKind = toolKind; this.player.actionVisualUntil=now+visualMs; if(priorPose)toolVisual.toolEntry=[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]; }
     this.player.meleeUntil = 0;
     this.player.meleeStrike = null;
     const derived=characterStats(this.save),reachMultiplier=1+derived.attackReach,projectileLifetime=weapon.lifetime*reachMultiplier;
@@ -6330,6 +6334,7 @@ export class Game {
       pierce: glyphs.mods.pierce,
     });
     const shot = this.projectiles[this.projectiles.length - 1];
+    if(toolVisual&&toolKind){toolVisual.toolShotId=shot.id;if(toolKind==='rift-bombard')shot.visualFlight={v:1,duration:shot.life};}
     shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
     if (weapon.path === "boomerang" && weapon.name === "Lumen Spindle" && fieldOn(this.save, "lumen-sunburst")) { shot.ricochet = SUNBURST.ricochets; shot.sunburst = true; } // Sunburst Ricochet: copies below (fan, Echo, clone) ricochet too
     if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const C = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + C.damage))); shot.scale = C.scale; shot.grow = C.grow; if (shot.blastRadius) shot.blastRadius *= C.blast; } // release 515: Charged Air
@@ -6583,6 +6588,8 @@ export class Game {
     if (this.cursed("tools", now)) return false; // release 737: NO TOOLS (Hammerfall, Great Sweep, Mirage of Blades)
     if (kind === "great-sweep" && fieldOn(this.save, "nanoknives")) return this.mirageThrow(now); // release 533; 649: Mirage of Blades
     const B = BRAWLER[kind], p = this.player, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null; if (!B || now < (this.toolReadyAt || 0)) return false;
+    const priorTool=normalizeAttackVisual(p.attackVisual),priorDeadline=attackVisualDeadline(p,priorTool),sweepDirection=priorTool?.toolKind==='great-sweep'&&priorDeadline>now?-(priorTool.toolSweepDirection||1):1;
+    const priorPose=kind==='great-sweep'&&priorTool?.toolKind==='great-sweep'&&priorDeadline>now?toolActionPose('great-sweep',priorTool.durationMs-(priorDeadline-now),priorTool.toolSweepDirection):null;
     if (boxing && kind === "great-sweep") this.shadowBoxStep(B.radius * .6, now); // release 495: Shadow Boxing carries the sweep to the foe
     const cx = p.x + .5, cy = p.y + .45;
     this.toolReadyAt = now + B.cooldown * 1000 * this.glyphLoadout("tool").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
@@ -6604,8 +6611,9 @@ export class Game {
     { const main = this.effects[this.effects.length - 1], plan = echoPlan(this.glyphLoadout("tool")); if (plan && main) plan.copies.forEach((c, i) => this.effects.push({ ...main, id: main.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, delay: (main.delay || 0) + BRAWLER_ECHO.toolGap * (i + 1), damage: Math.max(1, Math.round(main.damage * c.share)), imbue: (main.imbue || 0) * c.share, echo: true })); } // release 503: Echo in the tool repeats the blow; 507: one more per Echo glyph, bang, bang, boom
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240;
-    const toolVisual = stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", 240, visualAim);
-    if (toolVisual && kind === "great-sweep") toolVisual.toolKind = "great-sweep";
+    const visualMs=kind==='great-sweep'?TOOL_ACTION_TIMING['great-sweep'].durationMs:240;
+    const toolVisual = stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", visualMs, visualAim);
+    if (toolVisual && kind === "great-sweep") { toolVisual.toolKind = "great-sweep";toolVisual.toolSweepDirection=sweepDirection;p.actionVisualUntil=now+visualMs;if(priorPose)toolVisual.toolEntry=[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]; }
     this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
   }
