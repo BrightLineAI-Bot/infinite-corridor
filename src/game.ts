@@ -1,5 +1,5 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
-import { ACTION_MOTION, TOOL_ACTION_TIMING, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual } from "./action-motion.ts";
+import { ACTION_MOTION, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
@@ -150,7 +150,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const PLAYER_CLOCKS = ["castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt"];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
-export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */ };
+export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
@@ -1361,6 +1361,11 @@ export function projectileDirection(x, y, facing = "down") {
   ] || [0, 1];
   return { x: a, y: b };
 }
+export function closeViewActionEligible(game){return !!game?.closeViewActionEligible?.();}
+const PREPARED_SHOT_FIELDS=['dx','dy','speed','life','damage','damageType','path','turnAfter','returning','blastRadius','glyphHost','pierce','ricochet','sunburst','scale','grow','arcWave','visualFlight'];
+function executablePreparedShot(raw){const out={};for(const k of PREPARED_SHOT_FIELDS)if(Object.hasOwn(raw||{},k))out[k]=k==='visualFlight'&&raw[k]?{...raw[k]}:raw[k];return out;}
+const PREPARED_EFFECT_FIELDS=['kind','brawler','life','radius','pulse','damage','glyphHost','healShare','imbue'];
+function executablePreparedEffect(raw){const out={};for(const k of PREPARED_EFFECT_FIELDS)if(Object.hasOwn(raw||{},k))out[k]=raw[k];return out;}
 export function updateProjectiles(
   projectiles,
   enemies,
@@ -1379,7 +1384,8 @@ export function updateProjectiles(
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
-    p.age = (Number(p.age) || 0) + dt;
+    const stepDt=p.toolUseNewborn===true?0:dt;
+    p.age = (Number(p.age) || 0) + stepDt;
     if (
       p.path === "boomerang" &&
       !p.returning &&
@@ -1389,8 +1395,8 @@ export function updateProjectiles(
       p.dx *= -1;
       p.dy *= -1;
     }
-    if (p.seekId && !p.hostile) { const t = enemies.find((e) => e.id === p.seekId && !e.dead); if (t) { const ax = t.x + .5 - p.x, ay = t.y + .5 - p.y, d = Math.hypot(ax, ay) || 1, k = Math.min(1, (p.seekTurn || 6) * dt); p.dx += (ax / d - p.dx) * k; p.dy += (ay / d - p.dy) * k; const n = Math.hypot(p.dx, p.dy) || 1; p.dx /= n; p.dy /= n; } } // release 321: the drone's rockets home
-    const distance = p.speed * dt,
+    if (p.seekId && !p.hostile) { const t = enemies.find((e) => e.id === p.seekId && !e.dead); if (t) { const ax = t.x + .5 - p.x, ay = t.y + .5 - p.y, d = Math.hypot(ax, ay) || 1, k = Math.min(1, (p.seekTurn || 6) * stepDt); p.dx += (ax / d - p.dx) * k; p.dy += (ay / d - p.dy) * k; const n = Math.hypot(p.dx, p.dy) || 1; p.dx /= n; p.dy /= n; } } // release 321: the drone's rockets home
+    const distance = p.speed * stepDt,
       steps = Math.max(1, Math.ceil(distance / 0.2)),
       step = distance / steps;
     for (let i = 0; i < steps && !p.dead; i++) {
@@ -1477,7 +1483,8 @@ export function updateProjectiles(
           mountedPeerId = peer.id;
         }
     }
-    p.life -= dt;
+    if(p.toolUseNewborn===true)delete p.toolUseNewborn;
+    p.life -= stepDt;
     if (!p.dead && p.life <= 0){p.dead=true;if(p.path==="grenade")onDetonate(p)}
   }
   return projectiles.filter((p) => !p.dead);
@@ -1633,9 +1640,10 @@ export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, lev
 }
 export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageFor = (fx) => fx.damage, onHit = () => {}) {
   for (const fx of effects) {
-    if (fx.delay > 0) { fx.delay -= dt; continue; }
-    fx.life -= dt;
-    fx.untilPulse -= dt;
+    const stepDt=fx.toolUseNewborn===true?0:dt;if(fx.toolUseNewborn===true)delete fx.toolUseNewborn;
+    if (fx.delay > 0) { fx.delay -= stepDt; continue; }
+    fx.life -= stepDt;
+    fx.untilPulse -= stepDt;
     if (fx.untilPulse <= 0) {
       fx.untilPulse += fx.pulse;
       fx.pulseIndex = (fx.pulseIndex || 0) + 1;
@@ -2224,6 +2232,7 @@ export class Game {
     this.reticle = null;
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     this.loadArea(this.area, false);
+    this.restorePendingToolUse(s.playerRuntime.pendingToolUse,now);
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
 
@@ -2709,6 +2718,8 @@ export class Game {
     applyDungeonDiscovery(this.map,next,this.map._dungeonRevealMode||"normal");return changed;
   }
   loadArea(area, capture = true) {
+    this.cancelPendingToolUse('area-transition');
+    this.fistReleaseIntent=null;
     this.attackBufferUntil = 0;
     this.season = null; // release 679: set again below for a section of the woods
     this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (snapshotArea ends it too)
@@ -3175,7 +3186,7 @@ export class Game {
     return moved;
   }
   setPaused(v, now = 0) {
-    if (v) this.attackBufferUntil = 0;
+    if (v) { this.attackBufferUntil = 0; this.fistReleaseIntent=null; }
     if (v && !this.paused) {
       this.pauseStarted = now;
       this.recoverPosition();
@@ -3220,8 +3231,9 @@ export class Game {
         heroPresentationTime: Math.max(0, Math.min(1e12, clock - (this.presentationPausedMs || 0))),
         attackCooldown: remaining(this.player.attackReadyAt, clock),
         attackMotion: remaining(this.player.attackUntil, clock),
-        attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(attackVisualDeadline(this.player, this.player.attackVisual, { effects: this.effects, now: clock }), clock)),
-        ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player, this.player.attackVisual, { effects: this.effects, now: clock }), clock) } : {}),
+        attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock)),
+        pendingToolUse:this.savedPendingToolUse(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingToolUse?.v)&&this.save.session.playerRuntime.pendingToolUse.v>1?structuredClone(this.save.session.playerRuntime.pendingToolUse):null),
+        ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         ...(Number.isFinite(this.player.primaryVisualUntil) ? { primaryVisualMotion: remaining(this.player.primaryVisualUntil, clock) } : {}),
         ...(Number.isFinite(this.player.fistVisualUntil) ? { fistVisualMotion: remaining(this.player.fistVisualUntil, clock) } : {}),
         primaryCombo: normalizePrimaryCombo(this.player.primaryCombo),
@@ -3273,6 +3285,8 @@ export class Game {
       curses: cursesOut(p.curses, clock), // release 737: the haunt curses, with what each has left (and the health FRAIL holds back)
     };
   }
+  savedPendingToolUse(clock){const q=this.pendingToolUse;if(!q||q.v!==1)return null;const remainingMs=Math.max(0,Math.min(q.startupMs,q.releaseAt-clock)),elapsedMs=q.startupMs-remainingMs;return normalizePendingToolUse({...q,acceptedAt:undefined,releaseAt:undefined,elapsedMs,remainingMs});}
+  restorePendingToolUse(raw,now){const q=normalizePendingToolUse(raw);if(!q||q.v!==1||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')||!(this.player.hp>0)){this.pendingToolUse=null;return false;}const{elapsedMs,remainingMs,...rest}=q;this.pendingToolUse={...rest,acceptedAt:now-elapsedMs,releaseAt:now+remainingMs};return true;}
   // Release 736 (review F8): lethal ground is judged where the Wayfarer ends up, not where the stick pointed. A step whose end
   // the Wayfarer cannot stand on (a blocked lava or abyss tile: walls stop them first) is tried out on a copy, and the
   // hazard is read where that copy stopped; ground the Wayfarer can enter (open lava, deep water, canyon) is unchanged.
@@ -3284,6 +3298,8 @@ export class Game {
   }
   // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
   clearCarriedStates() {
+    this.cancelPendingToolUse('world-reset');
+    this.fistReleaseIntent=null;
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
@@ -6170,27 +6186,51 @@ export class Game {
   }
   // Release 696: nothing is swung, shot or cast from inside an enclosure (Tim: "you can't attack out of it").
   penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side (items still work)."; } return true; }
+  closeViewActionEligible() {
+    const m=this.map,b=m?.building,p=this.player,interior=!!b&&!b.finale&&(!m.landscape||(interiorTerrain(m)&&m.tiles?.length<=4096&&m.width<=64&&m.height<=64))&&!m.stillworks&&!m.skyCloud&&!m.movers?.length&&!m.canopy;
+    if(this.save.closeView!==true||this.area!=="dungeon"||!interior||!p||!(p.hp>0))return false;
+    const w=Math.max(1,Number(m.width)||32),t=m.tiles?.[Math.floor(p.y+.75)*w+Math.floor(p.x+.5)];return !(t&&(t.courtyard===true||t.openAir===true||t.pentRoof===true||t.pentBalcony===true||t.kind==="yardGrass"));
+  }
   closeViewAttackBufferEligible(now = 0) {
-    const m = this.map, b = m?.building, p = this.player;
-    // Match Close View's pure interiorMap/openAirAt gates without importing its
-    // renderer into the simulation. Landscape floors opt in only within its bounds.
-    const interior = !!b && !b.finale
-      && (!m.landscape || (interiorTerrain(m) && m.tiles?.length <= 4096 && m.width <= 64 && m.height <= 64))
-      && !m.stillworks && !m.skyCloud && !m.movers?.length && !m.canopy;
-    if (this.save.closeView !== true || this.area !== "dungeon" || !interior || !p) return false;
-    const w = Math.max(1, Number(m.width) || 32), t = m.tiles?.[Math.floor(p.y + .75) * w + Math.floor(p.x + .5)];
-    const openAir = !!t && (t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || t.kind === "yardGrass");
-    return !openAir && p.hp > 0 && !this.fistsEquipped() && this.save.activeWeaponSlot !== "secondary"
+    return this.closeViewActionEligible() && !this.fistsEquipped() && this.save.activeWeaponSlot !== "secondary"
       && !this.cursed("attack", now) && !this.penned(now);
   }
-  clearAttackBuffer() { this.attackBufferUntil = 0; }
-  tickAttackBuffer(now = 0) {
+  toolUseBlocksPrimary(){return this.pendingToolUse?.v===1;}
+  cancelPendingToolUse(_reason='cancelled'){const q=this.pendingToolUse;if(!q)return false;this.pendingToolUse=null;const v=this.player?.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id){v.toolUse={...v.toolUse,phase:'cancelled'};delete v.toolUse.releaseOffsetMs;v.presentationCancelled=true;}return true;}
+  releasePendingToolUse(now=this.lastUpdateNow||0){
+    const q=this.pendingToolUse;if(!q||q.v!==1||now<q.releaseAt)return{released:false,cancelled:false};
+    if(this.paused)return{released:false,cancelled:false};
+    if(!(this.player?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')){this.cancelPendingToolUse('invalid-owner');return{released:false,cancelled:true};}
+    this.pendingToolUse=null;const cap=this.area==='dungeon'?32:64;
+    if(q.payload.family==='shot'&&this.projectiles.filter(p=>!p.dead&&!p.shard).length>=cap){const v=this.player?.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id){v.toolUse={...v.toolUse,phase:'cancelled'};delete v.toolUse.releaseOffsetMs;v.presentationCancelled=true;}return{released:false,cancelled:true};}
+    let base=null;
+    if(q.payload.family==='shot'){
+      const members=Array.isArray(q.payload.members)?q.payload.members:[q.payload.shot];
+      for(let i=0;i<members.length;i++){const src=executablePreparedShot(members[i]),p={...src,id:i?`${q.id}-child-${i}`:`${q.id}-base`,x:this.player.x+.5+src.dx*.35,y:this.player.y+.45+src.dy*.35,hits:{},age:0,toolUseNewborn:true};this.projectiles.push(p);if(!i)base=p;}
+      for(const e of q.payload.echoCopies||[])(this.glyphTimers||=[]).push({at:now+e.delayMs,kind:'shot',shot:{...executablePreparedShot(q.payload.shot),id:`${q.id}-echo-${e.index||1}`,hits:{},damage:Math.max(1,Math.round(q.payload.shot.damage*e.share)),echo:true}});
+      if(q.payload.cloneEligible&&this.shadowCloneActive(now)&&!this.shadowClone.charging&&!this.shadowClone.boxing){const at=clonePosition(this.player,this.shadowClone),d=this.cloneAimFrom(at)||q.aim;this.projectiles.push({...executablePreparedShot(q.payload.shot),id:`${q.id}-shadow`,x:at.x+.5+d.x*.35,y:at.y+.45+d.y*.35,dx:d.x,dy:d.y,hits:{},age:0,damage:Math.max(1,Math.round(q.payload.shot.damage*SHADOW_CLONE.share)),glyphHost:null,shadow:true,toolUseNewborn:true});}
+      echoEvent(this,'shot',now,{shot:base});
+    }else{
+      const e=executablePreparedEffect(q.payload.effect),fx={...e,id:`${q.id}-effect`,x:this.player.x+.5,y:this.player.y+.45,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true};this.effects.push(fx);base=fx;
+      for(const c of q.payload.echoCopies||[])this.effects.push({...fx,id:`${q.id}-echo-${c.index||1}`,hits:{},delay:c.delayMs/1000,damage:Math.max(1,Math.round(fx.damage*c.share)),imbue:(fx.imbue||0)*c.share,echo:true,toolUseNewborn:true});
+      if(q.payload.cloneEligible&&q.payload.cloneProfile&&this.shadowCloneActive(now))this.cloneSwing({shape:'arc',range:1.75,arc:160,damage:(Number(q.payload.cloneProfile.damage)||1)-characterStats(this.save).meleeBonus},q.aim,now);
+    }
+    const v=this.player.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id&&v.toolUse.phase==='startup'&&!v.presentationCancelled){v.toolUse={...v.toolUse,phase:'released',releaseOffsetMs:q.startupMs};if(base&&q.payload.family==='shot')v.toolShotId=base.id;this.player.actionVisualUntil=now+(v.durationMs-q.startupMs);}
+    return{released:true,cancelled:false};
+  }
+  clearAttackBuffer() { this.attackBufferUntil = 0; this.attackBufferToolUse=false; }
+  tickAttackBuffer(now = 0, input = null) {
     if (!(this.attackBufferUntil > 0)) return false;
-    if (now > this.attackBufferUntil || !this.closeViewAttackBufferEligible(now)) { this.clearAttackBuffer(); return false; }
+    const eligible=this.attackBufferToolUse?(this.closeViewActionEligible()&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now)):this.closeViewAttackBufferEligible(now);
+    if (now > this.attackBufferUntil || !eligible) { this.clearAttackBuffer(); return false; }
+    if(this.toolUseBlocksPrimary())return false;
     if (now < (this.player.attackReadyAt || 0)) return false;
-    this.clearAttackBuffer(); this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } return true;
+    if(this.fistsEquipped()&&(this.fistCharge||now<(this.fistRecoverUntil||0)))return false;
+    const bufferedToolTap=this.attackBufferToolUse,held=bufferedToolTap&&this.fistsEquipped()&&input?.held?.('attack');
+    this.clearAttackBuffer(); this.attackAction = bufferedToolTap&&this.fistsEquipped()?(held?'attack':null):"attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } return true;
   }
   primaryAttack(now = 0, _direction = null, echo = null) {
+    if(!echo){this.releasePendingToolUse(now);if(this.toolUseBlocksPrimary())return[];}
     if (this.penned(now)) return [];
     if (!echo && this.cursed("attack", now)) return []; // release 737: NO ATTACK (the Iron Fists too)
     if (this.fistsEquipped()) { if (!echo) this.fistPress(now, _direction, this.attackAction || null); return []; } // release 493: the Iron Fists punch instead of swinging
@@ -6273,6 +6313,7 @@ export class Game {
     return hits;
   }
   fireSecondary(now = 0, direction = null, action = null) {
+    if(!this._toolInputUpdate)this.releasePendingToolUse(now);if(this.pendingToolUse)return false;
     if (this.penned(now)) return false;
     { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
@@ -6280,6 +6321,8 @@ export class Game {
     if (this.projectiles.filter(p=>!p.dead&&!p.shard/* Sunburst shards have their own cap (SUNBURST.maxLive) */).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
+    const acceptedToolKind = weapon.name === "Rift Bombard" ? "rift-bombard" : weapon.name === "Blunderbuss" ? "blunderbuss" : weapon.name === "Lumen Spindle" ? "lumen-spindle" : null;
+    if(acceptedToolKind&&this.closeViewActionEligible()){const c=Number(this.save.toolUseCounter);if(!Number.isSafeInteger(c)||c<0||c>=Number.MAX_SAFE_INTEGER)return false;}
     let d, aimedDistance = null;
     if (this.save.pendingAim) {
       aimedDistance = Math.hypot(this.save.pendingAim.x-(this.player.x+.5),this.save.pendingAim.y-(this.player.y+.45));
@@ -6296,12 +6339,14 @@ export class Game {
         this.player.facing,
       );
     this.save.lastAim = d;
-    const toolKind = weapon.name === "Rift Bombard" ? "rift-bombard"
-      : weapon.name === "Blunderbuss" ? "blunderbuss" : weapon.name === "Lumen Spindle" ? "lumen-spindle" : null;
+    const toolKind = acceptedToolKind;
+    const delayed=!!toolKind&&this.closeViewActionEligible(),effectiveCooldown=360*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=delayed?toolUseStartupMs(toolKind,effectiveCooldown):null;
+    if(delayed&&startupMs==null)return false;
+    const preparedProjectiles=delayed?[]:this.projectiles;
     const priorTool=normalizeAttackVisual(this.player.attackVisual),priorDeadline=attackVisualDeadline(this.player,priorTool);
     const priorPose=toolKind&&priorTool?.toolKind===toolKind&&priorTool.toolMotion?.v===1&&!priorTool.presentationCancelled&&priorDeadline>now
       ?sampleToolActionMotion(priorTool,priorTool.durationMs-(priorDeadline-now)):null;
-    this.player.attackReadyAt = now + 360 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
+    this.player.attackReadyAt = now + effectiveCooldown;
     this.player.attackUntil = now + ACTION_MOTION.toolMs;
     const visualMs=TOOL_ACTION_TIMING[toolKind]?.durationMs||ACTION_MOTION.toolMs;
     const toolVisual = stampAttackVisual(this.player, "emitter", visualMs, d);
@@ -6309,7 +6354,7 @@ export class Game {
     this.player.meleeUntil = 0;
     this.player.meleeStrike = null;
     const derived=characterStats(this.save),reachMultiplier=1+derived.attackReach,projectileLifetime=weapon.lifetime*reachMultiplier;
-    this.projectiles.push({
+    preparedProjectiles.push({
       id: `shot-${this.save.dropCounter}-${now}`,
       x: this.player.x + 0.5 + d.x * 0.35,
       y: this.player.y + 0.45 + d.y * 0.35,
@@ -6335,20 +6380,27 @@ export class Game {
       glyphHost: "tool",
       pierce: glyphs.mods.pierce,
     });
-    const shot = this.projectiles[this.projectiles.length - 1];
+    const shot = preparedProjectiles[preparedProjectiles.length - 1];
     if(toolVisual&&toolKind){toolVisual.toolShotId=shot.id;if(toolKind==='rift-bombard')shot.visualFlight={v:1,duration:shot.life};}
     shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
     if (weapon.path === "boomerang" && weapon.name === "Lumen Spindle" && fieldOn(this.save, "lumen-sunburst")) { shot.ricochet = SUNBURST.ricochets; shot.sunburst = true; } // Sunburst Ricochet: copies below (fan, Echo, clone) ricochet too
     if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const C = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + C.damage))); shot.scale = C.scale; shot.grow = C.grow; if (shot.blastRadius) shot.blastRadius *= C.blast; } // release 515: Charged Air
     if (weapon.pellets) { // release 533 (tool-forms.ts): the Blunderbuss's three-pellet cone, or with Arc Wave one wide wave
       if (fieldOn(this.save, "arc-wave")) { shot.arcWave = true; shot.damage = Math.max(1, Math.round(shot.damage * ARC_WAVE.share)); shot.grow = (shot.grow || 0) + ARC_WAVE.grow; shot.pierce = (shot.pierce || 0) + ARC_WAVE.pierce; shot.speed = ARC_WAVE.speed; } // release 549: every pellet becomes a wave, along the same cone
-      for (let i = 1; i < weapon.pellets; i++) { const a = (i % 2 ? 1 : -1) * weapon.spread * Math.ceil(i / 2), c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-pellet${i}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {} }); }
+      for (let i = 1; i < weapon.pellets; i++) { const a = (i % 2 ? 1 : -1) * weapon.spread * Math.ceil(i / 2), c = Math.cos(a), sn = Math.sin(a); preparedProjectiles.push({ ...shot, id: `${shot.id}-pellet${i}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {} }); }
     }
-    if (this.shadowCloneActive(now) && !this.shadowClone.charging && !this.shadowClone.boxing /* release 503: the Shadow Boxing echo only swings */) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d; this.projectiles.push({ ...shot, id: `${shot.id}-shadow`, x: at.x + .5 + cd.x * .35, y: at.y + .45 + cd.y * .35, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // release 365; 387: at the locked target
+    const cloneEligible=this.shadowCloneActive(now)&&!this.shadowClone.charging&&!this.shadowClone.boxing;
+    if (!delayed&&cloneEligible /* release 503: the Shadow Boxing echo only swings */) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d; preparedProjectiles.push({ ...shot, id: `${shot.id}-shadow`, x: at.x + .5 + cd.x * .35, y: at.y + .45 + cd.y * .35, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // release 365; 387: at the locked target
     const plan = echoPlan(glyphs);
-    echoEvent(this, "shot", now, { shot });
-    if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-shot fan
-    if (plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true } })); // release 507: a third shot with two Echo glyphs
+    if(!delayed)echoEvent(this, "shot", now, { shot });
+    if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); preparedProjectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-shot fan
+    if (!delayed&&plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true } })); // release 507: a third shot with two Echo glyphs
+    if(delayed){
+      const counter=Number(this.save.toolUseCounter);if(!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
+      const id=`tool-use-${counter+1}`,members=preparedProjectiles.map(p=>{const{x,y,id:_id,hits,age,toolUseNewborn,...rest}=p;return{...rest};}),echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:c.delay,share:c.share,index:i+1}));
+      this.save.toolUseCounter=counter+1;delete toolVisual.toolShotId;toolVisual.toolUse={v:1,id,startupMs,phase:'startup'};
+      this.pendingToolUse={v:1,id,toolKind,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+startupMs,startupMs,aim:{...d},payload:{v:1,family:'shot',shot:{...members[0]},members,pellets:Math.max(0,(weapon.pellets||1)-1),spread:Number(weapon.spread)||0,awakenedFan:!!this.save.equipment.secondary?.awakened,echoCopies,cloneEligible}};
+    }
     return true;
   }
   // Sunburst Ricochet (tool-forms.ts SUNBURST): a Spindle shot that has just reflected off a wall whose outward face is
@@ -6360,7 +6412,7 @@ export class Game {
     const m = Math.hypot(nx, ny) || 1, base = Math.atan2(ny / m, nx / m), damage = Math.max(1, Math.round((Number(shot.damage) || 0) * S.share)), burst = { hits: {}, cap: S.perEnemy };
     for (let i = 0; i < n; i++) {
       const a = base + S.spread * ((i + .5) / n - .5);
-      this.projectiles.push({ id: `${shot.id}-shard${shot.ricochet}-${i}`, x: shot.x + (nx / m) * S.lift, y: shot.y + (ny / m) * S.lift, dx: Math.cos(a), dy: Math.sin(a), speed: S.speed, life: S.life, damage, damageType: shot.damageType || "magic", path: "straight", age: 0, hits: {}, pierce: S.pierce, shard: true, burst, glyphHost: null });
+      this.projectiles.push({ id: `${shot.id}-shard${shot.ricochet}-${i}`, x: shot.x + (nx / m) * S.lift, y: shot.y + (ny / m) * S.lift, dx: Math.cos(a), dy: Math.sin(a), speed: S.speed, life: S.life, damage, damageType: shot.damageType || "magic", path: "straight", age: 0, hits: {}, pierce: S.pierce, shard: true, burst, glyphHost: null, ...(shot.toolUseNewborn ? { toolUseNewborn: true } : {}) });
     }
     return n;
   }
@@ -6587,9 +6639,11 @@ export class Game {
   // × perPower + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
   toolPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   brawlerTool(kind, now = this.lastUpdateNow || 0, direction = null) {
+    if(!this._toolInputUpdate)this.releasePendingToolUse(now);if(this.pendingToolUse)return false;
     if (this.cursed("tools", now)) return false; // release 737: NO TOOLS (Hammerfall, Great Sweep, Mirage of Blades)
     if (kind === "great-sweep" && fieldOn(this.save, "nanoknives")) return this.mirageThrow(now); // release 533; 649: Mirage of Blades
     const B = BRAWLER[kind], p = this.player, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null; if (!B || now < (this.toolReadyAt || 0)) return false;
+    if(kind==='great-sweep'&&this.closeViewActionEligible()){const counter=Number(this.save.toolUseCounter),effective=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);if(toolUseStartupMs(kind,effective)==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;}
     const priorTool=normalizeAttackVisual(p.attackVisual),priorDeadline=attackVisualDeadline(p,priorTool),continuing=priorTool?.toolKind==='great-sweep'&&priorTool.toolMotion?.v===1&&!priorTool.presentationCancelled&&priorDeadline>now,sweepDirection=continuing?-(priorTool.toolMotion.direction||1):1;
     const priorPose=kind==='great-sweep'&&continuing?sampleToolActionMotion(priorTool,priorTool.durationMs-(priorDeadline-now)):null;
     if (boxing && kind === "great-sweep") this.shadowBoxStep(B.radius * .6, now); // release 495: Shadow Boxing carries the sweep to the foe
@@ -6600,6 +6654,12 @@ export class Game {
     // and Charged Air the Great Sweep alone (more damage, a wider sweep).
     const blade = this.spellbladeOn(now), air = kind === "great-sweep" && fieldOn(this.save, "charged-air") && this.spellRunning(now), SB = FIELD_PASSIVES.spellblade, CA = FIELD_PASSIVES["charged-air"];
     const fieldMult = (blade ? 1 + SB.damage : 1) * (air ? 1 + CA.damage : 1), fieldGrow = (kind === "great-sweep" && blade ? 1 + SB.reach / B.radius : 1) * (air ? CA.blast : 1);
+    if(kind==='great-sweep'&&this.closeViewActionEligible()){
+      const effectiveCooldown=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=toolUseStartupMs(kind,effectiveCooldown),counter=Number(this.save.toolUseCounter);if(startupMs==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
+      const id=`tool-use-${counter+1}`,plan=echoPlan(this.glyphLoadout('tool')),effect={kind,brawler:true,life:B.lifetime,radius:B.radius*fieldGrow,pulse:99,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),glyphHost:'tool',healShare:boxing?.heal||0,imbue:this.imbueBonus(now)},echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1}));
+      this.save.toolUseCounter=counter+1;p.attackUntil=now+240;const toolVisual=stampAttackVisual(p,'sweep',TOOL_ACTION_TIMING[kind].durationMs,null);if(!toolVisual)return false;const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind=kind;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};toolVisual.toolUse={v:1,id,startupMs,phase:'startup'};p.actionVisualUntil=now+toolVisual.durationMs;
+      this.pendingToolUse={v:1,id,toolKind:kind,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+startupMs,startupMs,aim:projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing),payload:{v:1,family:'sweep',effect,pellets:0,spread:0,awakenedFan:false,echoCopies,cloneEligible:this.shadowCloneActive(now)&&!this.shadowClone.charging,cloneProfile:{...BRAWLER_ECHO.cloneArc,damage:primaryProfile(this.save.equipment.primary).damage+characterStats(this.save).meleeBonus}}};this.message='Great Sweep!';return true;
+    }
     let visualAim = null;
     const fx = (x, y, extra = {}) => { const e = { id: `tool-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x, y, life: B.lifetime, radius: B.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.toolPower() * B.share * (1 + (boxing?.damage || 0)) * fieldMult)), pulseIndex: 0, hits: {}, glyphHost: "tool", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), ...extra }; if (fieldGrow !== 1) e.radius *= fieldGrow; /* release 495: boxing damage and heal; 569: Spellblade and Charged Air */ this.effects.push(e); return e; };
     let main;
@@ -7527,7 +7587,7 @@ export class Game {
     const turn = (hashSeed(shot.id) / 4294967296) * Math.PI * 2; // release 539: a fresh line through the burst for every shell (from its id, so a replay matches)
     for (let i = 0; i < CLUSTER.count; i++) { const a = turn + i * Math.PI * 2 / CLUSTER.count, c = Math.cos(a), sn = Math.sin(a); // evenly round it: two at opposite ends
       const r = (shot.blastRadius || 2) * CLUSTER.radius; // release 539: it flies its own blast radius, so that blast's edge meets the first burst's centre
-      this.projectiles.push({ id: `${shot.id}-cluster${i}`, x: shot.x, y: shot.y, dx: c, dy: sn, speed: CLUSTER.speed, life: r / CLUSTER.speed, damage: Math.max(1, Math.round(shot.damage * CLUSTER.share)), damageType: shot.damageType, path: "grenade", age: 0, hits: {}, blastRadius: r, glyphHost: "tool", bomblet: true }); }
+      this.projectiles.push({ id: `${shot.id}-cluster${i}`, x: shot.x, y: shot.y, dx: c, dy: sn, speed: CLUSTER.speed, life: r / CLUSTER.speed, damage: Math.max(1, Math.round(shot.damage * CLUSTER.share)), damageType: shot.damageType, path: "grenade", age: 0, hits: {}, blastRadius: r, glyphHost: "tool", bomblet: true, ...(shot.toolUseNewborn ? { toolUseNewborn: true } : {}) }); }
   }
   // Release 539: what shortens a tool's cooldown (its glyphs, armor's attack speed); Wellspring Ground also runs it down faster.
   toolCooldownScale() { return this.glyphLoadout("tool").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed); }
@@ -7559,6 +7619,7 @@ export class Game {
   fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
   fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
+    if(!this._fistInputUpdate)this.releasePendingToolUse(now);if(this.toolUseBlocksPrimary())return false;
     if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
     const c = this.fistCombo, live = c && now <= c.until && c.step < IRON_FISTS.punches.length;
     if (live) { const next = c.step + 1, P = IRON_FISTS.punches[next - 1]; if (action && P.echoes && hostLoadout(this.save, "melee").count("echo") >= P.echoes) { this.fistCharge = { action, start: now, direction, step: next }; return true; } return this.fistPunch(next, 0, now, direction); } // release 503: Echo glyphs let the jab and uppercut charge
@@ -7567,6 +7628,7 @@ export class Game {
     return this.fistPunch(1, 0, now, direction);
   }
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null) {
+    if(!this._fistInputUpdate)this.releasePendingToolUse(now);if(this.toolUseBlocksPrimary())return false;
     if (this.cursed("attack", now)) { this.fistCombo = null; return false; } // release 737: a charged punch let go under NO ATTACK
     const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
     const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y);
@@ -7592,7 +7654,7 @@ export class Game {
   }
   cancelAttackPresentation(now = this.lastUpdateNow || 0) {
     const p = this.player, record = normalizeAttackVisual(p?.attackVisual);
-    if (record && attackVisualDeadline(p, record, { effects: this.effects, now }) > now) p.attackVisual.presentationCancelled = true;
+    if (record && attackVisualDeadline(p, record,{effects:this.effects,now,pendingToolUse:this.pendingToolUse}) > now) p.attackVisual.presentationCancelled = true;
   }
   cancelFistPresentation(now = this.lastUpdateNow || 0) {
     if (this.player?.attackVisual?.profile === 'fist') this.cancelAttackPresentation(now);
@@ -7913,6 +7975,7 @@ export class Game {
     if (Math.hypot(x, y) > 0.15)
       this.save.lastAim = projectileDirection(x, y, p.facing);
     if (input.consume("tool")) {
+      this._toolInputUpdate=true;
       this.clearAttackBuffer();
       this.save.aimMode = "tool";
       this.save.toolMode = true;
@@ -7920,7 +7983,7 @@ export class Game {
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
         aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale)); // release 343; 347: a locked target first
       this.fireSecondary(now, aim || this.save.lastAim, "tool"); // the Aether Orrery charges while Tool is held
-    } }
+    } }this._toolInputUpdate=false;
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
@@ -7947,7 +8010,7 @@ export class Game {
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
-    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge; this.fistCharge = null; this.fistPunch(c.step || 1, fistCharge(held), now, c.direction); } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
+    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,waiting=this.pendingToolUse?.v===1&&this.pendingToolUse.releaseAt-now<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) { this.clearAttackBuffer(); this.castSlot("a"); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.castSlot("b"); }
     const dodgePressed = input.consume("dodge"); if (dodgePressed) this.clearAttackBuffer();
@@ -8166,12 +8229,15 @@ export class Game {
         this.defeatNotice={title:'UNCLASSIFIED LIFEFORM',detail:`${e.foundryName} · ${e.foundryRole} · journal record added`,kind:e.foundryRole==='passive'?'discovery':'danger'};
       }
     }
-    this.tickAttackBuffer(now);
+    if(p.hp<=0)this.cancelPendingToolUse('death');else this.releasePendingToolUse(now);
+    if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now))this.fistPunch(intent.step,intent.charge,now,intent.direction);}
+    this.tickAttackBuffer(now,input);
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
-      const ready = this.player.attackReadyAt || 0, canBuffer = this.closeViewAttackBufferEligible(now);
-      if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs;
+      const ready = this.player.attackReadyAt || 0,startupWait=this.pendingToolUse?.v===1?Math.max(this.pendingToolUse.releaseAt,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&this.closeViewActionEligible()&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
+      if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;}
+      else if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs;
       else { this.clearAttackBuffer(); this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } } // release 493: the Iron Fists charge while Attack is held
     }
     // Hold Act for BOAT.leaveHold seconds while aboard to leave the skiff (release 158): step ashore if ground is beside
@@ -8206,7 +8272,7 @@ export class Game {
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
-      (shot)=>{this.clusterShell(shot);return this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{},...(!shot.hostile&&shot.glyphHost?{glyphHost:shot.glyphHost}:{})/* release 467 (Codex audit I001): the Bombard's blast keeps its tool glyphs, once per foe */,...(shot.glyphSpell?{glyphSpell:shot.glyphSpell}:{}),...(shot.fireBomb?{fireBurst:true}:{})/* release 547: Fire Burst's own glyphs and its flame */})},
+      (shot)=>{this.clusterShell(shot);return this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{},...(shot.toolUseNewborn?{toolUseNewborn:true}:{}),...(!shot.hostile&&shot.glyphHost?{glyphHost:shot.glyphHost}:{})/* release 467 (Codex audit I001): the Bombard's blast keeps its tool glyphs, once per foe */,...(shot.glyphSpell?{glyphSpell:shot.glyphSpell}:{}),...(shot.fireBomb?{fireBurst:true}:{})/* release 547: Fire Burst's own glyphs and its flame */})},
       p,
       (shot)=>{
         const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;

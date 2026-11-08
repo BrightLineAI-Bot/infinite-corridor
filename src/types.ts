@@ -1,4 +1,4 @@
-import { ACTION_MOTION, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo } from "./action-motion.ts";
+import { ACTION_MOTION, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePendingToolUse, normalizePrimaryCombo } from "./action-motion.ts";
 import{freshEliteState,ensureEliteState}from'./elites.ts';import{ensureRot}from'./water-traversal.ts';import{ensureBoatState,ensureWood}from'./boats.ts';import{ensureSlots}from'./spell-slots.ts';import{ensureWanderer,ensureReciters}from'./travelers.ts';import{ensureQuestingBeast}from'./questing-beast.ts';import{ensureFarArray}from'./far-array.ts';
 import{normalizeMapMarks}from'./atlas-view.ts';import{ensureLattice}from'./transit-lattice.ts';import{ensureHometowns}from'./hometowns.ts';import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.ts';
 import{freshViewportState,ensureViewportState}from'./foundry.ts';
@@ -130,7 +130,9 @@ export function ensureAttackVisualRuntime(save) {
     runtime.attackVisual = normalizeAttackVisual(runtime.attackVisual, attackVisualRemaining(runtime));
     runtime.dodgeVisual = normalizeDodgeVisual(runtime.dodgeVisual);
     runtime.primaryCombo = normalizePrimaryCombo(runtime.primaryCombo);
+    runtime.pendingToolUse = normalizePendingToolUse(runtime.pendingToolUse);
   }
+  if(save)save.toolUseCounter=!Object.hasOwn(save,'toolUseCounter')?0:Number.isSafeInteger(save.toolUseCounter)&&save.toolUseCounter>=0?save.toolUseCounter:Number.MAX_SAFE_INTEGER;
   if (save) save.fistOpeningHand = save.fistOpeningHand === 'left' || save.fistOpeningHand === 'right' ? save.fistOpeningHand : null;
   return save;
 }
