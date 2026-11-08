@@ -5,6 +5,23 @@ import {Game,CAST_GESTURES} from '../src/game.ts';
 import {freshSave,migrateSave} from '../src/types.ts';
 import {ACTION_MOTION,normalizeCastVisual,stampAttackVisual} from '../src/action-motion.ts';
 import {decodeCloseViewHero,createHeroPoseState,createHeroFrame,sampleCloseViewHero} from '../src/close-view-hero.ts';
+import {createLabFixture} from '../src/proving-ground-labs.ts';
+import {closeViewPlayerAction} from '../src/close-view.ts';
+
+test('new accepted spell gestures cancel older real tool poses without changing their effects or clocks',()=>{
+  for(const scenario of ['blade-spark-ashling','blade-hammerfall-brute','cleaver-sweep-marshal','cleaver-mirage-stalker','blade-orrery-sentinel']){
+    const {game:g}=createLabFixture({lab:'combat-assets',scenario,now:1000});g.enemies=[];
+    assert.equal(g.fireSecondary(1000,{x:1,y:0}),true,scenario);
+    const visual=g.player.attackVisual,deadline=g.player.actionVisualUntil,combat=g.player.attackUntil,effects=g.effects.slice();
+    assert.equal(closeViewPlayerAction(g,1010).active,true,scenario);
+    g.lastUpdateNow=1010;assert.equal(g.castSpell('cinder-dart'),true,scenario);
+    assert.equal(g.player.attackVisual.presentationCancelled,true);assert.equal(closeViewPlayerAction(g,1020).active,false);
+    assert.equal(g.player.actionVisualUntil,deadline);assert.equal(g.player.attackUntil,combat);assert.equal(g.player.castVisual.profile,'focus-forward');
+    for(const effect of effects)assert.ok(g.effects.includes(effect),'presentation interruption must not remove pending mechanical effects');
+    g.player.attackUntil=0;assert.equal(closeViewPlayerAction(g,1020).active,false,'production combat-clock mask cannot revive the old tool');
+    assert.equal(g.player.attackVisual.profile,visual.profile);
+  }
+});
 
 function arena(){const s=freshSave();s.seed='CAST-GESTURES';const g=new Game(s,0);g.area='dungeon';g.map={name:'Cast Hall',width:32,height:32,tiles:Array.from({length:1024},(_,i)=>({x:i%32,y:Math.floor(i/32),kind:'ash',blocked:false})),objects:[],enemySpawns:[],exits:null};Object.assign(g.player,{x:10,y:10,facing:'right'});g.save.lastAim={x:1,y:0};g.enemies=[];return g;}
 

@@ -107,6 +107,8 @@ const vergeCleaver = [
   part(membrane([[.063,-.260,1.12],[.072,-.260,1.12],[.17,-.260,1.86]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
   part(membrane([[.063,-.240,1.12],[.17,-.240,1.86],[.072,-.240,1.12]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
 ];
+// Compact tapered cuff and inward thumb/knuckle cover; the final sockets keep each shell on its own hand.
+const fistGauntlet=[part(taper,0,0,.012,.105,.075,.115,0xd7dde2),part(bevel,0,-.058,.028,.058,.034,.045,0xf1f4f5)];
 const playerCinderPike=[...playerUnarmed,...cinderPike],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
 
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
@@ -257,26 +259,28 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null,m=gear?.rightSocket;
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
-  let vertices=0;for(const p of parts)vertices+=p.mesh.length/MESH_FLOATS;
+  const bilateral=gear.profile==='fist'||gear.profile==='fistCharge',left=gear.leftSocket;
+  if(bilateral&&(!left||left.length!==16))return offset;
+  let vertices=0;for(const p of parts)vertices+=p.mesh.length/MESH_FLOATS;vertices*=bilateral?2:1;
   if(vertices>256*3||offset+vertices*MODEL_FLOATS>out.length)return offset;
-  for(let i=0;i<16;i++)if(!Number.isFinite(m[i]))return offset;
-  const ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);if(Math.min(ax,ay,az)<1e-6)return offset;
+  for(let pass=0;pass<(bilateral?2:1);pass++){const socket=bilateral&&pass===0?left:m;for(let i=0;i<16;i++)if(!Number.isFinite(socket[i]))return offset;const ax=Math.hypot(socket[0],socket[1],socket[2]),ay=Math.hypot(socket[4],socket[5],socket[6]),az=Math.hypot(socket[8],socket[9],socket[10]);if(Math.min(ax,ay,az)<1e-6)return offset;}
   const alpha=Number.isFinite(gear.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear.hitFlash)||0));
   const tr=Number.isFinite(gear.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear.tint?.[2])?gear.tint[2]:1;
+  for(let pass=0;pass<(bilateral?2:1);pass++){const m=bilateral&&pass===0?left:gear.rightSocket,ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);
   for(const p of parts)for(let i=0;i<p.mesh.length;i+=MESH_FLOATS){const a=p.mesh;
     // Recipe grip (.17,-.25,.79), canonical blade +Z -> the source weapon socket +X.
-    const x=(a[i+2]+p.pz-.79)*.82,y=-(a[i]+p.px-.17)*.82,z=-(a[i+1]+.25)*.82;
+    const x=bilateral?(a[i]+p.px)*.62:(a[i+2]+p.pz-.79)*.82,y=bilateral?(a[i+1]+(p.py||0))*.62:-(a[i]+p.px-.17)*.82,z=bilateral?(a[i+2]+p.pz)*.62:-(a[i+1]+.25)*.82;
     out[offset++]=m[12]+m[0]/ax*x+m[4]/ay*y+m[8]/az*z;
     out[offset++]=m[13]+m[1]/ax*x+m[5]/ay*y+m[9]/az*z;
     out[offset++]=m[14]+m[2]/ax*x+m[6]/ay*y+m[10]/az*z;
-    const nx=a[i+5],ny=-a[i+3],nz=-a[i+4];let qx=m[0]/ax*nx+m[4]/ay*ny+m[8]/az*nz,qy=m[1]/ax*nx+m[5]/ay*ny+m[9]/az*nz,qz=m[2]/ax*nx+m[6]/ay*ny+m[10]/az*nz;const len=Math.hypot(qx,qy,qz)||1;
+    const nx=bilateral?a[i+3]:a[i+5],ny=bilateral?a[i+4]:-a[i+3],nz=bilateral?a[i+5]:-a[i+4];let qx=m[0]/ax*nx+m[4]/ay*ny+m[8]/az*nz,qy=m[1]/ax*nx+m[5]/ay*ny+m[9]/az*nz,qz=m[2]/ax*nx+m[6]/ay*ny+m[10]/az*nz;const len=Math.hypot(qx,qy,qz)||1;
     out[offset++]=qx/len;out[offset++]=qy/len;out[offset++]=qz/len;
     out[offset++]=a[i+6]*tr*(1-hit*.6)+.96*hit*.6;out[offset++]=a[i+7]*tg*(1-hit*.6)+.34*hit*.6;out[offset++]=a[i+8]*tb*(1-hit*.6)+.23*hit*.6;out[offset++]=alpha;
-  }
+  }}
   return offset;
 }
 

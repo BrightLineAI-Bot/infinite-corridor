@@ -40,6 +40,34 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (!Number.isFinite(facingYaw) || Math.abs(facingYaw) > Math.PI * 4) return null;
     copy.facingYaw = facingYaw;
   }
+  if (raw.fistStep != null) {
+    const fistStep = Number(raw.fistStep);
+    if (!Number.isInteger(fistStep) || fistStep < 1 || fistStep > 3) return null;
+    copy.fistStep = fistStep;
+  }
+  if (raw.fistLead != null) {
+    if (raw.fistLead !== "left" && raw.fistLead !== "right") return null;
+    copy.fistLead = raw.fistLead;
+  }
+  if (raw.fistGaitPhase != null) {
+    const fistGaitPhase = Number(raw.fistGaitPhase);
+    if (!Number.isFinite(fistGaitPhase) || Math.abs(fistGaitPhase) > Math.PI * 8) return null;
+    copy.fistGaitPhase = fistGaitPhase;
+  }
+  if (raw.fistSpeed != null) {
+    const fistSpeed = Number(raw.fistSpeed);
+    if (!Number.isFinite(fistSpeed) || fistSpeed < 0 || fistSpeed > 8) return null;
+    copy.fistSpeed = fistSpeed;
+  }
+  if (raw.fistCharge != null) {
+    const fistCharge = Number(raw.fistCharge);
+    if (!Number.isFinite(fistCharge) || fistCharge < 0 || fistCharge > 1) return null;
+    copy.fistCharge = fistCharge;
+  }
+  if (raw.presentationCancelled != null) {
+    if (typeof raw.presentationCancelled !== "boolean") return null;
+    copy.presentationCancelled = raw.presentationCancelled;
+  }
   if (raw.aim != null) {
     if (typeof raw.aim !== "object" || Array.isArray(raw.aim)) return null;
     const x = Number(raw.aim.x), y = Number(raw.aim.y);
@@ -47,6 +75,30 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     copy.aim = { ...raw.aim, x, y };
   }
   return copy;
+}
+
+// Accepted presentation is independent of combat clocks (which delayed Echo hits still update).
+// Published Fists and the earlier primary candidate retain their optional legacy clocks.
+export function attackVisualDeadline(player, record = player?.attackVisual) {
+  if (Number.isFinite(player?.actionVisualUntil)) return player.actionVisualUntil;
+  if (record?.profile === 'fist' && Number.isFinite(player?.fistVisualUntil)) return player.fistVisualUntil;
+  if (record?.primaryStep && Number.isFinite(player?.primaryVisualUntil)) return player.primaryVisualUntil;
+  return player?.attackUntil;
+}
+
+export function normalizeActionVisualMotion(value, visual) {
+  const record = normalizeAttackVisual(visual);
+  return Number.isFinite(value) && record ? Math.max(0, Math.min(record.durationMs, value)) : 0;
+}
+
+export function attackVisualRemaining(runtime) {
+  return attackVisualDeadline({
+    attackVisual: runtime?.attackVisual,
+    actionVisualUntil: Object.hasOwn(runtime || {}, 'actionVisualMotion') ? normalizeActionVisualMotion(runtime.actionVisualMotion, runtime.attackVisual) : undefined,
+    fistVisualUntil: runtime?.fistVisualMotion,
+    primaryVisualUntil: runtime?.primaryVisualMotion,
+    attackUntil: Number(runtime?.attackMotion) || 0,
+  });
 }
 
 export function stampAttackVisual(player, profile, durationMs, aim = null) {
@@ -57,6 +109,7 @@ export function stampAttackVisual(player, profile, durationMs, aim = null) {
   if (Number.isFinite(length) && length > 0) visual.aim = { x: x / length, y: y / length };
   player.attackVisual = visual;
   if (player.castVisual) player.castVisual = { ...player.castVisual, cancelled: true };
+  player.actionVisualUntil = Number.isFinite(player.attackUntil) ? player.attackUntil : undefined;
   return visual;
 }
 
