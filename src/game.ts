@@ -376,12 +376,12 @@ export function recoverPentagonVersion(save, cx, cy) {
   const atlas = save.atlas || {}; let pinned = CLOSE_VIEW_ROOM_ROUTING.pentagonVersion, hasPin = false;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = atlas[`${cx + dx},${cy + dy}`]?.pentVersion; if (v) { hasPin = true; pinned = Math.min(pinned, v); } }
   if (hasPin) return pinned;
-  const candidates = [], D = save.consequences?.dungeons || {}, prefix = `pentagon:${save.seed}:${cx}:${cy}`, relevant = (id) => String(id || "").startsWith(prefix);
-  for (let V = 1; V <= 10; V++) { const base = `${prefix}${V >= 2 ? `:v${V}` : ""}`; if (D[`${base}:f1`]) candidates.push(V); }
+  const candidates = [], D = save.consequences?.dungeons || {}, prefix = `pentagon:${save.seed}:${cx}:${cy}`; let malformedHistory = false;
+  for (let V = 1; V <= 10; V++) { const base = `${prefix}${V >= 2 ? `:v${V}` : ""}`, key = `${base}:f1`; if (Object.prototype.hasOwnProperty.call(D, key)) { if (D[key] && Object.getPrototypeOf(D[key]) === Object.prototype) candidates.push(V); else malformedHistory = true; } }
   const active = String(save.session?.activeDungeonId || ""), p = parsePentagonId(active) || parsePentagonArenaId(active) || parsePentagonFinaleId(active);
   if (p && p.seed === save.seed && p.cx === cx && p.cy === cy && Number.isInteger(p.V) && p.V >= 1 && p.V <= 10 && p.base === `pentagon:${save.seed}:${cx}:${cy}${p.V >= 2 ? `:v${p.V}` : ""}`) candidates.push(p.V);
-  const malformed = (relevant(active) && !p) || Object.keys(D).some((id) => relevant(id) && id.endsWith(":f1") && !parsePentagonId(id));
-  const versions = [...new Set(candidates)]; return !malformed && versions.length === 1 ? versions[0] : malformed || versions.length ? PENTAGON.version : CLOSE_VIEW_ROOM_ROUTING.pentagonVersion;
+  const activeSite = active.startsWith(`${prefix}:`), malformed = activeSite && (!p || p.seed !== save.seed || p.cx !== cx || p.cy !== cy || !Number.isInteger(p.V) || p.V < 1 || p.V > 10 || p.base !== `${prefix}${p.V >= 2 ? `:v${p.V}` : ""}`);
+  const versions = [...new Set(candidates)]; return !malformed && !malformedHistory && versions.length === 1 ? versions[0] : malformed || malformedHistory || versions.length ? PENTAGON.version : CLOSE_VIEW_ROOM_ROUTING.pentagonVersion;
 }
 export function generatePinnedDungeon(save, id, options = {}) {
   if (isPentagonFinaleId(id) || isPentagonArenaId(id)) { const h = dungeonHistory(save, id); if (h.relayNode === undefined) h.relayNode = false; } // the Pentagon's finale is a quiet place: no relay node (nor bells, pages, threads, margins or wanderers: loadArea)
@@ -2947,7 +2947,7 @@ export class Game {
         ...(prior ? (prior.compoundVersion ? { compoundVersion: prior.compoundVersion } : {}) : { compoundVersion: COMPOUNDS.version }), // and the compounds
         ...(prior ? (prior.labVersion ? { labVersion: prior.labVersion } : {}) : { labVersion: LABYRINTHS.version }), // and the labyrinths
         ...(prior ? (prior.castleVersion ? { castleVersion: prior.castleVersion } : {}) : { castleVersion: CASTLES.version }), // and the Great Castles
-        ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : (() => { const c = pentagonCentre(this.rx, this.ry); return { pentVersion: this.map.pentagon?.V || (c ? this.pentagonVersion(c.cx, c.cy) : PENTAGON.version) }; })()), // and the Pentagons; a placed section records its actual restored/adopted namespace
+        ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : { pentVersion: this.map.pentagon?.V || 9 }), // and the Pentagons; placement stamps its actual namespace, while no placement preserves r843's literal fallback
         ...(prior ? (prior.sigilVersion ? { sigilVersion: prior.sigilVersion } : {}) : { sigilVersion: PENTAGON_FINDING.version }), // and the Pentagon sigils (objects only: ground seen before keeps its objects)
         ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
         ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
