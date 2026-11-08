@@ -239,6 +239,30 @@ export function modelSupported(kind) {
   return Object.hasOwn(models, kind);
 }
 
+// Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
+export function writeCloseViewHeroGear(out,offset,gear) {
+  const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null,m=gear?.rightSocket;
+  if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
+  let vertices=0;for(const p of parts)vertices+=p.mesh.length/MESH_FLOATS;
+  if(vertices>256*3||offset+vertices*MODEL_FLOATS>out.length)return offset;
+  for(let i=0;i<16;i++)if(!Number.isFinite(m[i]))return offset;
+  const ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);if(Math.min(ax,ay,az)<1e-6)return offset;
+  const alpha=Number.isFinite(gear.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear.hitFlash)||0));
+  const tr=Number.isFinite(gear.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear.tint?.[2])?gear.tint[2]:1;
+  for(const p of parts)for(let i=0;i<p.mesh.length;i+=MESH_FLOATS){const a=p.mesh;
+    // Recipe grip (.17,-.25,.79), canonical blade +Z -> the source weapon socket +X.
+    const x=(a[i+2]+p.pz-.79)*.82,y=-(a[i]+p.px-.17)*.82,z=-(a[i+1]+.25)*.82;
+    out[offset++]=m[12]+m[0]/ax*x+m[4]/ay*y+m[8]/az*z;
+    out[offset++]=m[13]+m[1]/ax*x+m[5]/ay*y+m[9]/az*z;
+    out[offset++]=m[14]+m[2]/ax*x+m[6]/ay*y+m[10]/az*z;
+    const nx=a[i+5],ny=-a[i+3],nz=-a[i+4];let qx=m[0]/ax*nx+m[4]/ay*ny+m[8]/az*nz,qy=m[1]/ax*nx+m[5]/ay*ny+m[9]/az*nz,qz=m[2]/ax*nx+m[6]/ay*ny+m[10]/az*nz;const len=Math.hypot(qx,qy,qz)||1;
+    out[offset++]=qx/len;out[offset++]=qy/len;out[offset++]=qz/len;
+    out[offset++]=a[i+6]*tr*(1-hit*.6)+.96*hit*.6;out[offset++]=a[i+7]*tg*(1-hit*.6)+.34*hit*.6;out[offset++]=a[i+8]*tb*(1-hit*.6)+.23*hit*.6;out[offset++]=alpha;
+  }
+  return offset;
+}
+
 export function writeCloseViewModel(out, offset, actor) {
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");

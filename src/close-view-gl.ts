@@ -1,4 +1,5 @@
 import { MODEL_FLOATS } from "./close-view-models.ts";
+import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.ts';
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -590,7 +591,7 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
 // ---------------------------------------------------------------------------------------------- state
 export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0 };
 globalThis.__closeViewGL = closeViewGLStats; // read by the browser harness and the lab's console (diagnostics only)
-const S = { canvas: null, gl: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, vbo: { env: null, wall: null, board: null, decal: null, model: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null },
+const S = { canvas: null, gl: null, hero: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, vbo: { env: null, wall: null, board: null, decal: null, model: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null },
   tex: { ground: null, mask: null, grit: null }, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
 // The dynamic vertex arrays, grown by doubling (never per frame once warm).
 export const WALL_FLOATS = 20, BOARD_FLOATS = 9, DECAL_FLOATS = 9;
@@ -619,8 +620,11 @@ export function closeViewGLReady(makeCanvas) {
     const c = makeCanvas(); const gl = c?.getContext?.("webgl2", { alpha: false, antialias: true, depth: true, stencil: false, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: "default" });
     if (!(gl instanceof WebGL2RenderingContext)) throw new Error("no WebGL2 context");
     c.addEventListener?.("webglcontextlost", (e) => { e.preventDefault?.(); closeViewGLStats.lost = true; });
+    c.addEventListener?.("webglcontextrestored", () => { if(S.canvas===c) resetCloseViewGL(); });
     S.env = compile(gl, ENV_VS, ENV_FS); S.wall = compile(gl, WALL_VS, WALL_FS); S.wallZ = compile(gl, WALL_VS, WALL_DEPTH_FS); S.board = compile(gl, BOARD_VS, BOARD_FS); S.decal = compile(gl, DECAL_VS, DECAL_FS);
     S.model = compile(gl, MODEL_VS, MODEL_FS);
+    // The optional hero program may fail without taking the ordinary renderer down.
+    try { S.hero = createHeroGL(gl, compile, VS_COMMON, FS_COMMON); } catch { S.hero = null; }
     for (const k of ["env", "wall", "board", "decal", "model"]) S.vbo[k] = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.env); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     S.vao.env = layout(gl, S.env, S.vbo.env, 2, [["a_pos", 2]]);
@@ -634,8 +638,10 @@ export function closeViewGLReady(makeCanvas) {
   } catch (err) { closeViewGLStats.failed = true; closeViewGLStats.reason = String(err?.message || err).slice(0, 400); S.gl = null; return false; }
 }
 export const closeViewGLCanvas = () => S.canvas;
+// Call before admitting the imported body; absent decoded images/context keeps the existing presentation.
+export const prepareCloseViewHeroGL = (asset) => !!S.gl && prepareHeroGL(S.gl, S.hero, asset);
 // For tests and the lab: forget the context (the next frame asks again).
-export function resetCloseViewGL() { S.gl = null; S.canvas = null; S.gritReady = false; S.maskMap = null; S.staticKey = null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; }
+export function resetCloseViewGL() { if(S.gl) disposeHeroGL(S.gl,S.hero,true); S.hero = null; S.gl = null; S.canvas = null; S.gritReady = false; S.maskMap = null; S.staticKey = null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
 // r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
@@ -687,7 +693,7 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   fog: new Float32Array(3), haze: new Float32Array(3), fogP: new Float32Array(4), amb: new Float32Array(3), torch: new Float32Array(3), torchP: new Float32Array(4), grade: new Float32Array(4), finish: new Float32Array(4),
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1 };
-export function drawSceneGL(ground, U, models = null) {
+export function drawSceneGL(ground, U, models = null, hero = null) {
   const gl = S.gl; if (!gl) return false; const F = GLF; let calls = 0;
   const c = S.canvas; if (c.width !== F.devW || c.height !== F.devH) { c.width = F.devW; c.height = F.devH; }
   gl.viewport(0, 0, F.devW, F.devH);
@@ -724,7 +730,7 @@ export function drawSceneGL(ground, U, models = null) {
   if (GLB.nDecal > 0) { gl.useProgram(S.decal.p); decalU(); gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.decal); gl.bufferData(gl.ARRAY_BUFFER, GLB.decal.subarray(0, GLB.nDecal * DECAL_FLOATS), gl.DYNAMIC_DRAW); gl.bindVertexArray(S.vao.decal);
     if (GLB.nGlowStart > 0) { gl.drawArrays(gl.TRIANGLES, 0, GLB.nGlowStart); calls++; } }
   // Compare silhouettes against wall depth before the opaque models write actor depth.
-  const model = S.model, hasModels = !!models?.length;
+  const model = S.model, hasModels = !!models?.length, hasHero = uploadHeroFrame(gl,S.hero,hero);
   const useBoards = () => { gl.useProgram(S.board.p); gl.bindVertexArray(S.vao.board); };
   if (GLB.nBoard > 0) { useBoards(); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW);
@@ -735,12 +741,18 @@ export function drawSceneGL(ground, U, models = null) {
     gl.bufferData(gl.ARRAY_BUFFER, models, gl.DYNAMIC_DRAW);
     const vertices = models.length / MODEL_FLOATS;
     gl.depthFunc(gl.GREATER); gl.uniform1f(model.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
+  }
+  if(hasHero) { gl.depthFunc(gl.GREATER); drawHeroGL(gl,S.hero,hero,1,cam,light,F.sil); calls++; }
+  if(hasModels || hasHero) {
     gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
-    gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
+    if(hasModels) { gl.useProgram(model.p); gl.bindVertexArray(S.vao.model); gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, models.length/MODEL_FLOATS); calls++; }
+    if(hasHero) { drawHeroGL(gl,S.hero,hero,0,cam,light,F.sil); calls++; }
     gl.depthMask(false); gl.enable(gl.BLEND);
   }
   if (GLB.nBoard > 0) { useBoards(); gl.uniform1f(S.board.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; }
-  closeViewGLStats.modelTriangles = hasModels ? models.length / (3 * MODEL_FLOATS) : 0;
+  closeViewGLStats.modelTriangles = (hasModels ? models.length / (3 * MODEL_FLOATS) : 0) + (hasHero ? hero.indexCount/3 : 0);
+  closeViewGLStats.heroTriangles = hasHero ? hero.indexCount/3 : 0;
+  closeViewGLStats.heroUploadBytes = hasHero ? S.hero.uploadBytes : 0;
   // 5. flames, halos, motes and wind-up glows, added in light
   if (GLB.nDecal > GLB.nGlowStart) { gl.useProgram(S.decal.p); decalU(); gl.bindVertexArray(S.vao.decal); gl.blendFunc(gl.ONE, gl.ONE); gl.drawArrays(gl.TRIANGLES, GLB.nGlowStart, GLB.nDecal - GLB.nGlowStart); calls++; }
   gl.bindVertexArray(null); gl.depthMask(true); gl.disable(gl.BLEND);

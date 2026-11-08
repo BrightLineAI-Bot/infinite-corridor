@@ -1,7 +1,8 @@
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
 import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.ts";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel } from "./close-view-models.ts";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.ts";
+import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.ts';
 import { fistCharge } from './brawler-spells.ts';
@@ -14,7 +15,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -1136,12 +1137,13 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   insertionSortByDepth(n);
   const turnFacing = relativeFacing(p, closeViewIdleLockAim(g, now)), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
   const models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null;
-  if (models) for (const it of MODEL_STATE.admitted) {
+  const hasNativeModels = useGL && (models || MODEL_STATE.hero);
+  if (hasNativeModels) for (const it of MODEL_STATE.admitted) {
     const d = draws[itemRef[it]]; if (typeof d.nativeFloor !== 'function') continue;
     gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty);
     try { d.nativeFloor(g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now); } finally { gc.restore(); }
   }
-  const packed = packBillboards(g, draws, n, s, turnFacing, models ? MODEL_STATE.admitted : null);
+  const packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null);
   if (useGL) glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots);
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
@@ -1832,6 +1834,10 @@ const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
+  hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
+  heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
+  heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
+  heroGear: { profile: '', leftSocket: null, rightSocket: null, alpha: 1, tint: null, hitFlash: 0 },
 };
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
@@ -1897,8 +1903,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
   const form = playerFormPresentation(g);
   state.admitted.clear();
+  state.hero = null;
+  if (!form && !state.heroRequested && typeof globalThis.Image === 'function') {
+    state.heroRequested = true;
+    loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
+  }
   closeViewGLStats.modelFallbacks = Object.create(null);
-  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; }
+  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; state.heroPose = null; }
   if (!reduce && player.meleeUntil > now) {
     for (let it = 0; it < n; it++) {
       const foe = itemKind[it] === 1 && boardFoe[it], prior = foe && state.tracks.get(foe);
@@ -1997,7 +2008,43 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       poison: who === player && g.save.elites?.status?.poison > 0 };
     track.winding = winding;
     track.attacking = attack;
-    if (!append(actor)) return;
+    let imported = false;
+    if (who === player && !form && count < limit) {
+      const asset = getCloseViewHeroAsset();
+      if (asset && prepareCloseViewHeroGL(asset)) {
+        if (state.heroAsset !== asset || !state.heroPose) {
+          state.heroAsset = asset; state.heroPose = createHeroPoseState(asset); state.heroFrame = createHeroFrame(asset);
+        }
+        const input = state.heroInput, action = state.heroAction;
+        input.nowMs = poseTime - (g.presentationPausedMs || 0); input.reducedMotion = reduce;
+        input.x = actor.x; input.y = actor.y;
+        input.groundZ = interiorSurfaceHeight(g.map, who.x + .5, who.y + .75);
+        input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
+        input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
+        input.alpha = actor.alpha; input.hitFlash = hit;
+        input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
+        action.kind = ''; action.profile = visualProfile || held; action.phase = amount;
+        action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
+        if (stunned) { action.kind = 'hit'; action.profile = 'knockdown'; }
+        else if (now < (player.dodgeUntil || 0)) {
+          action.kind = 'dodge'; action.durationMs = 260;
+          action.phase = 1 - Math.min(1, (player.dodgeUntil - now) / action.durationMs);
+          if (Math.hypot(player.dodgeX || 0, player.dodgeY || 0) > .01) action.yaw = Math.atan2(player.dodgeY, player.dodgeX);
+        } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
+        else if (attack) action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee';
+        else if (cast) { action.kind = 'cast'; action.durationMs = MODEL_TIMING.castMs; }
+        else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
+        input.action = action.kind ? action : null;
+        if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
+          const gear = state.heroGear;
+          gear.profile = held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
+          offset = writeCloseViewHeroGear(state.vertices, offset, gear);
+          state.hero = state.heroFrame; count++; imported = true;
+        }
+      }
+    }
+    if (!imported && !append(actor)) return;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
     state.tracks.set(who, track);
     state.admitted.add(it);
@@ -2211,7 +2258,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   }
   closeViewGLStats.projectedShots = shots?.size || 0;
   GLB.nDecal = dv;
-  if (!drawSceneGL(GROUND.canvas, UNI, models)) return false;
+  if (!drawSceneGL(GROUND.canvas, UNI, models, MODEL_STATE.hero)) return false;
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); ctx.restore();
   return true;
 }

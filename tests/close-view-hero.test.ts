@@ -1,0 +1,109 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {decodeCloseViewHero,createHeroPoseState,createHeroFrame,sampleCloseViewHero,loadCloseViewHero,getCloseViewHeroAsset,HERO_PROPORTIONS} from '../src/close-view-hero.ts';
+import {writeCloseViewHeroGear,MODEL_FLOATS} from '../src/close-view-models.ts';
+import {knockdownPose} from '../src/lightning-giant-render.ts';
+const meta=JSON.parse(fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.json',import.meta.url),'utf8'));
+const file=fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.bin',import.meta.url));
+const bytes=file.buffer.slice(file.byteOffset,file.byteOffset+file.byteLength),asset=decodeCloseViewHero(meta,bytes);
+const input=(extra={})=>({nowMs:100000,reducedMotion:false,x:3,y:4,groundZ:.3,liftZ:0,yaw:0,height:1.3776,speed:0,gaitPhase:0,action:null,alpha:1,tint:[1,1,1],hitFlash:0,...extra});
+function sample(i=input()){const s=createHeroPoseState(asset),f=createHeroFrame(asset);assert.equal(sampleCloseViewHero(asset,s,i,f),true);return{s,f};}
+test('hero imports do not fetch, and pure decoding validates bounded arrays',async()=>{
+  let calls=0;const old=globalThis.fetch;globalThis.fetch=()=>{calls++;throw new Error('unexpected fetch');};try{assert.equal(getCloseViewHeroAsset(),null);assert.equal(await loadCloseViewHero(),null);assert.equal(calls,0);}finally{globalThis.fetch=old;}
+  assert.equal(asset.indexCount/3,3140);assert.throws(()=>decodeCloseViewHero({...meta,indexCount:100000},bytes));assert.throws(()=>decodeCloseViewHero(meta,bytes.slice(0,40)));
+});
+test('hybrid reference has finite normalized normals, exact height and a seated unscaled collar',()=>{
+  const {s,f}=sample(input({nowMs:0,reducedMotion:true,groundZ:0}));let min=Infinity,max=-Infinity;
+  for(let i=0;i<f.positionsNormals.length;i+=6){for(let k=0;k<6;k++)assert.ok(Number.isFinite(f.positionsNormals[i+k]));min=Math.min(min,f.positionsNormals[i+2]);max=Math.max(max,f.positionsNormals[i+2]);assert.ok(Math.abs(Math.hypot(...f.positionsNormals.slice(i+3,i+6))-1)<1e-5);}
+  assert.ok(Math.abs(min)<1e-6);assert.ok(Math.abs(max-1.3776)<1e-5);assert.ok(s.seatY<0&&s.seatY>-.3);assert.equal(s.headScale,.4);
+  let collar=Infinity,head=Infinity;for(const v of meta.headAttachment.collarVertexIndices)collar=Math.min(collar,s.vertices[v*6+1]);for(const m of meta.meshes)if(m.node===41)for(let v=m.firstVertex;v<m.firstVertex+m.vertexCount;v++)head=Math.min(head,s.vertices[v*6+1]);assert.ok(Math.abs(head-(collar-.01))<1e-5);
+  assert.ok(Math.abs(s.pose[3*10+7]-asset.rest[3*10+7])<1e-5,'Rogue Head and collar were not scaled');
+});
+test('sampled source feet keep their independent root hierarchy and animated translation',()=>{
+  assert.equal(meta.nodes[1].parent,38);assert.equal(meta.nodes[36].parent,38);
+  const a=sample(input({speed:4,gaitPhase:0})),b=sample(input({speed:4,gaitPhase:Math.PI}));assert.notDeepEqual(a.s.pose.slice(10,13),b.s.pose.slice(10,13));assert.equal(a.s.clip,'Run');
+});
+test('gameplay elevation/lift and XY translation apply exactly once to vertices and sockets',()=>{
+  const a=sample(input()),b=sample(input({x:5,y:1,groundZ:.7,liftZ:.4}));
+  for(let i=0;i<a.f.positionsNormals.length;i+=6){assert.ok(Math.abs(b.f.positionsNormals[i]-a.f.positionsNormals[i]-2)<1e-5);assert.ok(Math.abs(b.f.positionsNormals[i+1]-a.f.positionsNormals[i+1]+3)<1e-5);assert.ok(Math.abs(b.f.positionsNormals[i+2]-a.f.positionsNormals[i+2]-.8)<1e-5);}
+  assert.ok(Math.abs(b.f.rightSocket[14]-a.f.rightSocket[14]-.8)<1e-5);
+});
+test('pause and exact-resume sampling are independent of render history',()=>{
+  const i=input({action:{kind:'melee',profile:'hammer',phase:.37,durationMs:240,yaw:1}}),{s,f}=sample(i),copy=Float32Array.from(f.positionsNormals);
+  sampleCloseViewHero(asset,s,i,f);assert.deepEqual(f.positionsNormals,copy);const resumed=sample(i);assert.deepEqual(resumed.f.positionsNormals,copy);assert.deepEqual(resumed.f.rightSocket,f.rightSocket);
+});
+test('partial accepted-action blend does not advance with a resumed wall clock',()=>{
+  const action={kind:'melee',profile:'melee',phase:.025,durationMs:240,yaw:0},before=sample(input({nowMs:100006,action})),after=sample(input({nowMs:105006,action}));
+  assert.deepEqual(before.f.positionsNormals,after.f.positionsNormals);assert.deepEqual(before.f.rightSocket,after.f.rightSocket);
+});
+test('actual knockdown clock holds the complete hero down and recovers body and gear together',()=>{
+  const amount=t=>-knockdownPose(t,1000,true).angle/(Math.PI/2),action=p=>({kind:'hit',profile:'knockdown',phase:p,durationMs:1000,yaw:.7});
+  const base=input({nowMs:0,reducedMotion:true,yaw:.7,groundZ:.3,liftZ:.2}),upright=sample(base),down=sample({...base,nowMs:400,action:action(amount(400))});
+  assert.equal(amount(400),1);assert.equal(down.s.clip,'derived-knockdown');
+  let low=Infinity,high=-Infinity,maxDifference=0;for(let i=0;i<down.f.positionsNormals.length;i+=6){low=Math.min(low,down.f.positionsNormals[i+2]);high=Math.max(high,down.f.positionsNormals[i+2]);maxDifference=Math.max(maxDifference,Math.abs(down.f.positionsNormals[i]-upright.f.positionsNormals[i]));assert.ok(Math.abs(Math.hypot(...down.f.positionsNormals.slice(i+3,i+6))-1)<1e-5);}
+  assert.ok(low>=.5-1e-5,'down body remains above its actual elevation and gameplay lift');assert.ok(high<1.05,'held-down hero is horizontal, not standing');assert.ok(maxDifference>.5);
+  const paused=sample({...base,nowMs:500400,action:action(amount(400))});assert.deepEqual(down.f.positionsNormals,paused.f.positionsNormals);assert.deepEqual(down.f.leftSocket,paused.f.leftSocket);
+  const recovered=sample({...base,nowMs:1000,action:action(amount(1000))});assert.deepEqual(recovered.f.positionsNormals,upright.f.positionsNormals);assert.deepEqual(recovered.f.rightSocket,upright.f.rightSocket);
+  const gettingUp=sample({...base,nowMs:950,action:action(amount(950))});assert.ok(amount(950)>0&&amount(950)<1);assert.ok(Math.max(...gettingUp.f.positionsNormals.filter((_,i)=>i%6===2))>high+.5);
+  const a=new Float32Array(256*3*MODEL_FLOATS),b=new Float32Array(a.length),end=writeCloseViewHeroGear(a,0,{profile:'hammer',rightSocket:upright.f.rightSocket}),endDown=writeCloseViewHeroGear(b,0,{profile:'hammer',rightSocket:down.f.rightSocket});assert.equal(end,endDown);
+  const cy=Math.cos(.7),sy=Math.sin(.7),lift=down.s.downClearance*base.height/down.s.referenceHeight;
+  for(let i=0;i<end;i+=MODEL_FLOATS){const x=a[i]-base.x,y=a[i+1]-base.y,z=a[i+2]-.5,f=x*cy+y*sy,l=-x*sy+y*cy;assert.ok(Math.abs(b[i]-(base.x-z*cy-l*sy))<2e-5);assert.ok(Math.abs(b[i+1]-(base.y-z*sy+l*cy))<2e-5);assert.ok(Math.abs(b[i+2]-(.5+f+lift))<2e-5);}
+});
+test('accepted contact phase samples source contact without changing input or emitting events',()=>{
+  const i=input({action:{kind:'melee',profile:'melee',phase:.18,durationMs:240,yaw:.7}}),before=JSON.stringify(i),{s}=sample(i);assert.equal(s.clip,'Dagger_Attack');assert.ok(Math.abs(s.clipTime-asset.clips.Dagger_Attack.duration*.35)<1e-10);assert.equal(JSON.stringify(i),before);
+});
+test('roll compensation preserves local articulation and anchors the global Body horizontally',()=>{
+  const {s,f}=sample(input({action:{kind:'dodge',profile:'dodge',phase:.45,durationMs:260,yaw:.3}}));const o=meta.reference.bodyNode*16;
+  assert.ok(Math.abs(s.global[o+12]+s.rollCompX-s.rollX)<1e-7);assert.ok(Math.abs(s.global[o+14]+s.rollCompZ-s.rollZ)<1e-7);
+  assert.notEqual(s.pose[33*10+2],asset.rest[33*10+2]);
+  const scale=1.3776/s.referenceHeight,cy=Math.cos(.3),sy=Math.sin(.3),g=s.global,k=meta.sockets.right.node*16;
+  assert.ok(Math.abs(f.rightSocket[12]-(3+((g[k+14]+s.rollCompZ)*cy-(g[k+12]+s.rollCompX)*sy)*scale))<1e-6);
+});
+test('unknown future profiles are neutral and missing clips use explicit derived pose labels',()=>{
+  const neutral=sample(input({reducedMotion:true})),unknown=sample(input({action:{kind:'melee',profile:'future-tool',phase:.5,durationMs:240,yaw:0}}));assert.deepEqual(neutral.f.positionsNormals,unknown.f.positionsNormals);
+  for(const kind of ['ranged','cast','jump']){const{s,f}=sample(input({action:{kind,profile:'emitter',phase:.5,durationMs:240,yaw:0}}));assert.equal(s.clip,'derived-'+kind);assert.ok(f.positionsNormals.every(Number.isFinite));}
+});
+test('all source action phases stay finite and bounded without modifying the source asset',()=>{
+  const before=Float32Array.from(asset.arrays.positions),s=createHeroPoseState(asset),f=createHeroFrame(asset),i=input();
+  for(const kind of ['melee','dodge','hit','death','interact','ranged','cast','jump'])for(const phase of [0,.1,.25,.5,.8,1]){i.action={kind,profile:'melee',phase,durationMs:240,yaw:.9};assert.ok(sampleCloseViewHero(asset,s,i,f));assert.ok(f.positionsNormals.every(Number.isFinite));}
+  assert.deepEqual(asset.arrays.positions,before);
+});
+test('held gear is body-free, bounded, transformed by the final socket and future-safe',()=>{
+  const {f}=sample(),out=new Float32Array(256*3*MODEL_FLOATS);const gear={profile:'hammer',rightSocket:f.rightSocket,leftSocket:f.leftSocket,alpha:.5,tint:f.tint,hitFlash:0};
+  const end=writeCloseViewHeroGear(out,0,gear);assert.ok(end>0&&end<=out.length);assert.ok(out.slice(0,end).every(Number.isFinite));for(let i=9;i<end;i+=MODEL_FLOATS)assert.equal(out[i],.5);
+  const translated=Float32Array.from(f.rightSocket);translated[12]+=2;const b=new Float32Array(out.length);assert.equal(writeCloseViewHeroGear(b,0,{...gear,rightSocket:translated}),end);for(let i=0;i<end;i+=MODEL_FLOATS)assert.ok(Math.abs(b[i]-out[i]-2)<1e-5);
+  assert.equal(writeCloseViewHeroGear(out,0,{...gear,profile:'future-tool'}),0);assert.equal(writeCloseViewHeroGear(new Float32Array(10),0,gear),0);
+  assert.equal(writeCloseViewHeroGear(out,0,{...gear,profile:'constructor'}),0);assert.equal(writeCloseViewHeroGear(out,0,{...gear,profile:'toString'}),0);
+});
+test('bind-space slimming preserves original height, intact head geometry, tracks and source buffers',()=>{
+  const originalPositions=Float32Array.from(asset.arrays.positions),originalRest=Float64Array.from(asset.rest),before=createHeroPoseState(asset,{width:1,depth:1,hands:1}),after=createHeroPoseState(asset),a=createHeroFrame(asset),b=createHeroFrame(asset),i=input({nowMs:0,reducedMotion:true,groundZ:0});
+  sampleCloseViewHero(asset,before,i,a);sampleCloseViewHero(asset,after,i,b);
+  assert.deepEqual(after.proportions,HERO_PROPORTIONS);assert.deepEqual(before.pose,after.pose);assert.deepEqual(asset.rest,originalRest);assert.deepEqual(asset.arrays.positions,originalPositions);
+  const body=meta.meshes.find(m=>m.skin>=0&&m.paletteClass==='wayfarer-body'),head=meta.meshes.find(m=>m.node===41);
+  assert.ok(body&&head);for(let v=body.firstVertex;v<body.firstVertex+body.vertexCount;v++){assert.ok(Math.abs(after.fit.positions[v*3]-originalPositions[v*3]*.8)<1e-7);assert.equal(after.fit.positions[v*3+1],originalPositions[v*3+1]);assert.ok(Math.abs(after.fit.positions[v*3+2]-originalPositions[v*3+2]*.82)<1e-7);}
+  for(let v=head.firstVertex*3;v<(head.firstVertex+head.vertexCount)*3;v++)assert.equal(after.fit.positions[v],asset.arrays.positions[v]);
+  for(const f of [a,b]){const heights=f.positionsNormals.filter((_,k)=>k%6===2);assert.ok(Math.abs(Math.max(...heights)-i.height)<1e-5);assert.ok(Math.abs(Math.min(...heights))<1e-5);}
+  const span=(s,axis)=>{let lo=Infinity,hi=-Infinity;for(let v=body.firstVertex;v<body.firstVertex+body.vertexCount;v++){const y=asset.arrays.positions[v*3+1];if(y>.8&&y<1.8){lo=Math.min(lo,s.vertices[v*6+axis]);hi=Math.max(hi,s.vertices[v*6+axis]);}}return hi-lo;};
+  assert.ok(span(after,0)<span(before,0)*.88);assert.ok(span(after,2)<span(before,2)*.9);
+});
+test('hand reduction acts independently around wrists and moves gear grips without shrinking equipment',()=>{
+  const before=createHeroPoseState(asset,{width:.8,depth:.82,hands:1}),after=createHeroPoseState(asset),a=createHeroFrame(asset),b=createHeroFrame(asset),i=input({nowMs:0,reducedMotion:true});sampleCloseViewHero(asset,before,i,a);sampleCloseViewHero(asset,after,i,b);
+  for(const root of [7,9,18,20])for(let k=12;k<15;k++)assert.ok(Math.abs(before.global[root*16+k]-after.global[root*16+k])<1e-8,'wrist pivot stays put');
+  const handNodes=new Set([7,6,5]);let checked=0;
+  for(const m of meta.meshes)if(m.skin>=0)for(let v=m.firstVertex;v<m.firstVertex+m.vertexCount;v++){let weight=0;for(let k=0;k<4;k++)if(handNodes.has(asset.skins[m.skin].joints[asset.arrays.joints[v*4+k]]))weight+=asset.arrays.weights[v*4+k];if(weight<.99999)continue;checked++;const root=7*16;
+    for(let axis=0;axis<3;axis++){const origin=before.global[root+12+axis],delta=before.vertices[v*6+axis]-origin;assert.ok(Math.abs(after.vertices[v*6+axis]-(origin+delta*.62))<1e-6);}
+  }assert.ok(checked>10);
+  const dx=b.rightSocket[12]-a.rightSocket[12],dy=b.rightSocket[13]-a.rightSocket[13],dz=b.rightSocket[14]-a.rightSocket[14];assert.ok(Math.hypot(dx,dy,dz)>.01);
+  for(const profile of ['melee','emitter','hammer']){const oldGear=new Float32Array(256*3*MODEL_FLOATS),newGear=new Float32Array(oldGear.length),end=writeCloseViewHeroGear(oldGear,0,{profile,rightSocket:a.rightSocket});assert.equal(writeCloseViewHeroGear(newGear,0,{profile,rightSocket:b.rightSocket}),end);assert.ok(end>0);
+    for(let k=0;k<end;k+=MODEL_FLOATS){assert.ok(Math.abs(newGear[k]-oldGear[k]-dx)<1e-6);assert.ok(Math.abs(newGear[k+1]-oldGear[k+1]-dy)<1e-6);assert.ok(Math.abs(newGear[k+2]-oldGear[k+2]-dz)<1e-6);}
+  }
+});
+test('fitted feet preserve source locomotion translations and all action rotations',()=>{
+  const original=createHeroPoseState(asset,{width:1,depth:1,hands:1}),fitted=createHeroPoseState(asset),a=createHeroFrame(asset),b=createHeroFrame(asset),i=input({speed:4}),offsets=[];
+  for(const phase of [0,Math.PI/2,Math.PI,Math.PI*1.5]){i.gaitPhase=phase;sampleCloseViewHero(asset,original,i,a);sampleCloseViewHero(asset,fitted,i,b);assert.deepEqual(fitted.pose,original.pose);
+    const delta=[];for(const node of [1,36])for(let axis=0;axis<3;axis++)delta.push(fitted.global[node*16+12+axis]-original.global[node*16+12+axis]);offsets.push(delta);
+  }
+  for(const delta of offsets)for(let k=0;k<delta.length;k++)assert.ok(Math.abs(delta[k]-offsets[0][k])<1e-6,'foot stroke keeps its original amplitude');
+  for(const kind of ['melee','dodge','death','cast']){i.action={kind,profile:'melee',phase:.4,durationMs:240,yaw:0};sampleCloseViewHero(asset,original,i,a);sampleCloseViewHero(asset,fitted,i,b);assert.deepEqual(fitted.pose,original.pose);assert.ok(b.positionsNormals.every(Number.isFinite));}
+});

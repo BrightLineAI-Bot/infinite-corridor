@@ -1,0 +1,24 @@
+{
+  "creator": "Quaternius",
+  "pack": "RPG Character Pack (November 2020)",
+  "license": "CC0-1.0",
+  "sourcePage": "https://quaternius.com/packs/rpgcharacters.html",
+  "sourceFile": "https://drive.google.com/file/d/1mnmoERmMi_342qyS_WPioVU0pmIQvIYa/view",
+  "retrievedDate": "2026-11-07",
+  "sourceSha256": "5a9eaca0871cd69f554747a1d42870b3bca702ba721d941d909fc530cf18afb8",
+  "sourceBytes": 2568479,
+  "sourceFileName": "Rogue.gltf",
+  "scope": "Original licensed Rogue body/rig and Cleric central masked head source retained for reproducible derivative conversion. Preserve Wayfarer palette; reduce exaggerated proportions; protective face covering and flexible fantasy suit. No cape required. Source weapons excluded.",
+  "headSource": {
+    "fileName": "Cleric.gltf",
+    "sourceFile": "https://drive.google.com/file/d/1LlmtVPWTRVbB5rXemboYstI5lor7I8vO/view",
+    "sha256": "6497456a3fa1c151d7a6ab4f7b4c343ee416c23d9454505b950c93ea558e4601",
+    "bytes": 2985183,
+    "license": "CC0-1.0",
+    "archiveFile": "Cleric.gltf.gz",
+    "archiveSha256": "6a0095eacfb5b7616c06b684b2e3691090f050c6c95683b88a02350800e92ae7"
+  },
+  "archiveFile": "Rogue.gltf.gz",
+  "archiveSha256": "c1b26150b5b84cb806f16d4d2baa8a98a867c706e450399b5772507c5c3c65a8",
+  "archiveNote": "Deterministic gzip archives retain original source bytes/SHA-256 independent of checkout newline conversion."
+}

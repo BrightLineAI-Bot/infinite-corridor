@@ -45,6 +45,10 @@ This is a drift, not a border. A human Glimpse can surface at the edge of the ma
 
 Tone: quiet, grave, sometimes beautiful, sometimes horrifying, sometimes simply incomprehensible. Never jokey.
 
+### The Wayfarer's protective appearance (Tim, 2026-11-07)
+
+The normal Wayfarer is a protected traveller: a face covering and a suit, not someone casually exposed to the Corridor. The suit may be flexible, fabric and flowing; this is a fantasy world in which technology is indistinguishable from magic. Keep the existing muted green/gray, leather and bronze visual identity, with adult rather than cutesy proportions. Protection need not look like a rigid contemporary spacesuit. What it protects against, and how it works, stay unspoken; this appearance adds no oxygen, pressure or toxicity mechanic. The normal protective suit is distinct from the explicitly activated robot or empowered forms. The current asset direction and source provenance are tracked in [the Wayfarer asset manifest](wayfarer-rogue-asset-manifest.md).
+
 ### What the Corridor is made of (Tim, 2026-10-29)
 
 Tim's words, lightly edited for reading: "The dungeon water is not water... it's the classic trope of: this is what your mind can perceive them as. The dungeon water is just a very different state of... the composition of the corridor in those places, that we perceive as water... it's more fluid and less concrete than the surrounding sections of the corridor. Some sections of the corridor are more concrete than others. The shovel is just a mental tool... a manifestation of the idea of burrowing and tunneling... into the density of the corridor. All these creatures and all these things are just manifestations in the Wayfarer's viewport. He's jacked in in some way... it doesn't necessarily even matter if he's experiencing it like us, through a game, or if his consciousness is inhabiting the Wayfarer, because that's essentially the same thing: you are dictating motion through consciousness and interacting with literally ones and zeros, or electrical signals, that have been configured in a way to indicate water and land and monsters."

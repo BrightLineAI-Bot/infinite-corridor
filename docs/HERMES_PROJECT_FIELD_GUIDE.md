@@ -2854,6 +2854,14 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 820: imported protective Wayfarer
+
+**CODE:** A reproducible CC0 Quaternius Rogue body/rig with the central Cleric masked head replaces only the normal player when its asset/textures are ready. The original hood is removed and its collar sealed; the head alone is seated/scaled to .40. Bind-space frame width .80/depth .82 and hands .62 retain world height and original feet/animation translations. Green/gray clothing, protected sleeves/gloves, leather and bronze retain original texture detail. Two small amber lenses behind actual mask apertures preserve silver mask and white hair. Existing gait and accepted action clocks drive source animation or explicit missing-clip layers; sampled sockets retain actual tool size. Whole-body knockdown and pause-adjusted idle/action poses preserve both gear sockets.
+
+**CODE:** The hero uses3,140 triangles/3,583 indexed vertices,85,992 dynamic bytes/frame and two original1024 texture layers (~10.67MiB with mips); fitted bind state adds~177KB once. Two indexed draws share existing silhouette/body phases. Source archives, CC0 provenance and deterministic offline converter are documented; both workers precache modules/assets. Unavailable textures/context keep the working procedural model.
+
+**BOUNDARY:** One actual normal player occupies one existing8/14/20 actor slot. Native robot, empowered suit, Iron Fists, Ember, clones, creatures and companions retain actual-state routing. Animation never moves gameplay coordinates, triggers attacks or rewrites accepted aim. Ordinary model format/caps, hit/AI rules, schema14, unknown fields, pins, generators, exact game clocks, reduced motion and Proving Ground isolation remain. CPU diagnostics/tests are not hosted GPU acceptance or physical-phone performance measurements.
+
 ## Release 819: camera clearance and lock comfort
 
 **CODE:** Centered boom and full shoulder-line clearance stop corner pumping; compressed-space framing centers the Wayfarer. Runtime-only Game pause bookkeeping freezes camera turns even without render/input callbacks. Held camera-thumb ownership preserves manual follow grace and the locked-target spring. A reachable52px lock button, visible-first acquisition, bounded forward fallback and one raw-distance switch per gesture improve targeting. Ineligible targets release; brief LOS grace retains identity without tracking hidden motion. Near-target camera follow stays bounded and presentation-only facing follows a visible lock below committed action aim.
