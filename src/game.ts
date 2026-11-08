@@ -1026,6 +1026,7 @@ function moveAxisWithContacts(entity, dx, dy, map, width, allowLethalTerrain, on
     after.x = b; after.y = axis ? b : a; after.t = b;
     const fraction = contacts.clip(entity.x, entity.y, ax, ay); if (!(fraction > 0)) continue;
     const x = entity.x + ax * fraction, y = entity.y + ay * fraction, exiting = contacts.canExit?.(x, y) === true;
+    if (x === entity.x && y === entity.y) continue;
     if (!exiting && (!footprintOpen(map, width, x, y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true)
       || (allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y)) || !canStep(entity, map, width, entity.x, entity.y, x, y))) continue;
     const fromX = entity.x, fromY = entity.y;
