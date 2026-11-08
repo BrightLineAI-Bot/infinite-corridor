@@ -33,3 +33,7 @@ The outer Close View Lab starts at raw(25,11) with a Sunderjaw five tiles away. 
 Local loopback transport is stopped after EACCES; do not retry without operator resolution. Approved plain Git/GitHub commands work; never use proxies, relays or credential transfers. The r820 browser module fetch failure was followed by one expressly approved normal reload, which succeeded. Later previews loaded normally. One extra browser-tab attach timed out; reusing an existing tab through the documented API worked, with no alternate transport.
 
 Keep the build manifest current, retain completed work, and report blockers honestly. Tests/source/render probes are not hardware or exhaustive gameplay acceptance. Focused animation regression approval exists in this conversation; re-read the active instructions before edits beyond the authorized test scope. No framework has been adopted by the reference research.
+
+## Active animation candidate (not yet published)
+
+r823 packages the implemented directional low quickstep/gait pass described in wayfarer-dash-gait-manifest.md. Source55-check/build and unlit CPU phase-sheet acceptance passed; final CI, independent review, Preview/hosted and Publish verification are still pending. Keep the existing character design. New-dig surface repair is independently implemented/reviewed in a separate unnumbered branch; legacy dug geometry remains unchanged. Re-read RELEASE_LOG.md for later verified state.

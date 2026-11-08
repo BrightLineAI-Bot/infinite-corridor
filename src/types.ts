@@ -1,4 +1,4 @@
-import { normalizeAttackVisual } from "./action-motion.ts";
+import { normalizeAttackVisual, normalizeDodgeVisual } from "./action-motion.ts";
 import{freshEliteState,ensureEliteState}from'./elites.ts';import{ensureRot}from'./water-traversal.ts';import{ensureBoatState,ensureWood}from'./boats.ts';import{ensureSlots}from'./spell-slots.ts';import{ensureWanderer,ensureReciters}from'./travelers.ts';import{ensureQuestingBeast}from'./questing-beast.ts';import{ensureFarArray}from'./far-array.ts';
 import{normalizeMapMarks}from'./atlas-view.ts';import{ensureLattice}from'./transit-lattice.ts';import{ensureHometowns}from'./hometowns.ts';import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.ts';
 import{freshViewportState,ensureViewportState}from'./foundry.ts';
@@ -122,6 +122,6 @@ export function ensurePerception(s){const b=perception(),p=s.perception||{};s.pe
 // Schema 14 additive presentation metadata; the existing attackMotion remains the sole clock.
 export function ensureAttackVisualRuntime(save) {
   const runtime = save?.session?.playerRuntime;
-  if (runtime) runtime.attackVisual = normalizeAttackVisual(runtime.attackVisual, Number(runtime.attackMotion) || 0);
+  if (runtime) { runtime.attackVisual = normalizeAttackVisual(runtime.attackVisual, Number(runtime.attackMotion) || 0); runtime.dodgeVisual = normalizeDodgeVisual(runtime.dodgeVisual); }
   return save;
 }
