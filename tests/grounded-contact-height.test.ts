@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { ACTOR_BODY_HEIGHT, ACTOR_CONTACT, actorContactHeight, actorContactSupport, actorContactContext, ordinaryContactEnemy } from '../src/actor-contact.ts';
 import { createCombatant, enemyBodyRadius } from '../src/combat.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
-import { BRAWLER_GEAR, jumpLift } from '../src/game.ts';
+import { BRAWLER_GEAR, Game, jumpLift } from '../src/game.ts';
 import { liftAt, LIFT_PER_LEVEL, tileLiftScale } from '../src/landscape.ts';
+import { freshSave } from '../src/types.ts';
 // Mesh imports are offline calibration only; runtime contact imports combat + landscape.
 import { actorPresentation, actorModelKey } from '../src/actor-presentation.ts';
 import { writeCloseViewModel, MODEL_FLOATS } from '../src/close-view-models.ts';
@@ -122,6 +123,93 @@ test('support uses authoritative canopy and roof world scales, retained launch s
   assert.ok(q.clip() < 1, 'expired jump cannot retain old launch clearance');
   g.map.interiorTerrain = { version: 1, maxLevel: 5 }; t.elev = 2; t.slope = true; t.rampDir = 'east';
   assert.equal(actorContactSupport(g, g.player, 4.2, 5, g.map.width), liftAt(g.map, g.map.width, 4.2, 5));
+});
+
+test('Game supplies authoritative disc, disc-flight and occupied-raft support without blanket ghosting', () => {
+  const width = 12, g = new Game(freshSave(), 1000);
+  g.area = 'overworld';
+  g.map = { width, height: 12, landscape: { kind: 'plains' }, skyDiscs: [{ x: 4.7, y: 5.75, r: 1.15, level: 3 }],
+    tiles: Array.from({ length: width * width }, (_, i) => ({ x: i % width, y: Math.floor(i / width), kind: 'plain', blocked: false, elev: 0 })) };
+  Object.assign(g.player, { x: 4.2, y: 5, hp: 100 });
+  g.skyLevel = 3;
+  assert.equal(actorContactSupport(g, g.player, 4.2, 5, width), 3 * LIFT_PER_LEVEL);
+  assert.equal(actorContactSupport(g, g.player, 7, 5, width), 0, 'stale skyLevel grants nothing off its disc');
+  g.player.jumping = true; g.discAir = 4; g.skyLevel = 0;
+  assert.equal(actorContactSupport(g, g.player, 7, 5, width), 4 * LIFT_PER_LEVEL, 'disc launch persists over its gap');
+  g.player.jumping = false; g.discAir = null; g.map.skyDiscs = [];
+  g.map.tiles[5 * width + 4].chasm = true;
+  g.map.movers = [{ id: 'raised', pts: [{ x: 4, y: 5 }, { x: 4, y: 5 }], amp: 2 }];
+  assert.equal(actorContactSupport(g, g.player, 4, 5, width), 2 * LIFT_PER_LEVEL);
+  assert.equal(actorContactSupport(g, g.player, 7, 5, width), 0, 'raft height follows its current footprint');
+  g.map.movers[0].amp = -1.6;
+  assert.equal(actorContactSupport(g, g.player, 4, 5, width), -1.6 * LIFT_PER_LEVEL, 'sunken support remains signed');
+});
+
+test('actual disc and raised-raft updates clear a low foe both ways while ground and tall controls remain solid', () => {
+  const make = (kind = 'pallidCrawler') => {
+    const g = new Game(freshSave(), 1000), width = 32;
+    g.area = 'overworld';
+    g.map = { width, height: 32, objects: [], landscape: { kind: 'plains' }, skyDiscs: [{ x: 3.5, y: 5.75, r: 1.15, level: 3 }],
+      tiles: Array.from({ length: width * width }, (_, i) => ({ x: i % width, y: Math.floor(i / width), kind: 'plain', blocked: false, elev: 0 })) };
+    Object.assign(g.player, { x: 3, y: 5, hp: 100, invulnerableUntil: 1e9 });
+    const e = Object.assign(createCombatant(kind, 4, 5), { hitStun: 1e9 });
+    g.enemies = [e];
+    return { g, e };
+  };
+  const right = { state: { x: 1, y: 0 }, consume: () => false, held: () => false };
+  const move = (g, frames) => { for (let i = 0; i < frames; i++) g.update(.05, right, 1050 + i * 50); };
+  const disc = make(); disc.g.skyLevel = 3;
+  assert.equal(actorContactContext(disc.g, disc.e, -.45, 0).clip(disc.e.x, disc.e.y, -.45, 0), 1);
+  move(disc.g, 6);
+  const ground = make();
+  assert.ok(actorContactContext(ground.g, ground.e, -.45, 0).clip(ground.e.x, ground.e.y, -.45, 0) < 1);
+  move(ground.g, 6);
+  assert.ok(disc.g.player.x > ground.g.player.x + .3, 'disc rider walks freely above the crawler');
+  const tall = make('rootBrute'); tall.g.skyLevel = 3; move(tall.g, 6);
+  assert.ok(tall.g.player.x < disc.g.player.x - .2, 'raised player still overlaps a tall body');
+  const raft = make(); raft.g.map.skyDiscs = []; raft.g.player.x = 4; raft.e.x = 5;
+  raft.g.map.tiles[5 * 32 + 4].chasm = true;
+  raft.g.map.movers = [{ id: 'raised', pts: [{ x: 4, y: 5 }, { x: 4, y: 5 }], amp: 2 }];
+  move(raft.g, 4);
+  assert.ok(raft.g.player.x > 4.4, 'occupied raised raft clears the crawler');
+});
+
+test('moving raised carrier keeps preflight support through contact and clears it after commit', () => {
+  const run = (kind = null, pts = [{ x: 4, y: 5 }, { x: 6, y: 5 }], state = { x: 0, y: 0 }, startX = 4.16, wall = false) => {
+    const g = new Game(freshSave(), 1000), width = 32;
+    g.area = 'overworld'; g.save.playSeconds = .625; g.save.maxHp = 60;
+    g.map = { width, height: 32, objects: [], landscape: { kind: 'plains' }, movers: [{ id: 'moving', pts, amp: 2, phase: 0 }],
+      tiles: Array.from({ length: width * width }, (_, i) => ({ x: i % width, y: Math.floor(i / width), kind: 'plain', blocked: false, elev: 0 })) };
+    for (let y = 0; y < 32; y++) for (let x = 4; x <= 6; x++) g.map.tiles[y * width + x].chasm = true;
+    if (wall) for (let y = 0; y < 32; y++) Object.assign(g.map.tiles[y * width + 5], { chasm: false, blocked: true, kind: 'wall' });
+    const py = pts[1].y === pts[0].y ? 5 : 5.78;
+    Object.assign(g.player, { x: startX, y: py, hp: 60, invulnerableUntil: 1e9 });
+    g.enemies = kind ? [Object.assign(createCombatant(kind, startX + .69, py), { hitStun: 1e9 })] : [];
+    g.update(.05, { state, consume: () => false, held: () => false }, 1050);
+    return g;
+  };
+  const free = run(), low = run('pallidCrawler');
+  assert.ok(free.player.x > 4.23 && low.player.x > 4.23, 'contact cannot cancel the carrier displacement');
+  assert.equal(low.player.hp, 60); assert.ok(low.raftZ > 1.9, 'accepted endpoint remains aboard at current time');
+  low.save.playSeconds = 2;
+  const reverse = actorContactContext(low, low.enemies[0], -.2, 0);
+  assert.ok(reverse && reverse.clip(low.enemies[0].x, low.enemies[0].y, -.2, 0) < 1, 'later enemy query cannot reuse cleared preflight support');
+  const tall = run('rootBrute');
+  assert.ok(tall.player.x < free.player.x, 'upper support still overlaps a tall body');
+  const diagonal = run('pallidCrawler', [{ x: 4, y: 5 }, { x: 6, y: 7 }]);
+  assert.equal(diagonal.player.hp, 60);
+  assert.ok(diagonal.raftZ > 1.8, 'staged X/Y footprint follows a diagonal carrier corner');
+  const cancelled = run('pallidCrawler', undefined, { x: -2 / 3, y: 0 });
+  assert.equal(cancelled.raftZ, 0, 'opposed input may cancel carry and leave the moving footprint');
+  assert.equal(cancelled.player.hp, 51, 'cancelled carry keeps the existing raised-raft fall consequence');
+  const wall = run('pallidCrawler', undefined, { x: 1, y: 0 }, 4.16, true);
+  assert.equal(wall.raftZ, 0); assert.equal(wall.player.hp, 51, 'a wall-refused carry keeps the existing raised-raft fall consequence');
+  const off = run(null, undefined, { x: 1, y: 0 }, 5.82);
+  assert.equal(off.raftZ, 0, 'final accepted endpoint, not preflight origin, decides raft occupancy');
+  assert.equal(off.player.hp, 51, 'stepping off a raised carrier retains its existing two-level fall consequence');
+  const paused = run(); paused.paused = true; const before = paused.save.playSeconds;
+  paused.update(.05, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, 1100);
+  assert.equal(paused.save.playSeconds, before, 'paused time cannot advance carrier support');
 });
 
 test('Fists and Shadow Boxing cannot use a small platform support difference to pass through the body', () => {
