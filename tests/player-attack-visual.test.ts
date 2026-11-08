@@ -84,6 +84,7 @@ test('accepted tool producers replace stale sword presentation while keeping rea
     assert.equal(game.player.attackVisual.profile, 'melee');
     assert.ok(['salvage-blade','cinder-pike','verge-cleaver'].includes(game.player.attackVisual.weaponKind));
     const meleeUntil = game.player.meleeUntil, strike = copy(game.player.meleeStrike), lastAim = copy(game.save.lastAim);
+    game.save.closeView=false; // Explicit legacy immediate producer compatibility; delayed Close View interruption is covered separately.
     if (profile === 'emitter') {
       assert.equal(game.fireSecondary(1010, { x: 0, y: -1 }), false, 'standard fire shares the existing melee cooldown');
       game.player.attackReadyAt = 0;

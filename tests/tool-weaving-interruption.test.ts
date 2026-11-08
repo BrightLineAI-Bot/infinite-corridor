@@ -17,10 +17,10 @@ const primaries={
   salvage:{id:'salvage-blade',name:'Salvage Blade',slot:'primary',power:5,property:'steady'},
   fists:{id:'primary-iron-fists',name:'Iron Fists',slot:'primary',power:5,property:'brawler'},
 };
-const fixture=(tool,primary='pike')=>{const {game:g}=createLabFixture({lab:'combat-assets',scenario:'blade-spark-ashling',now:100000});g.enemies=[];g.projectiles=[];g.effects=[];g.save.equipment.secondary=structuredClone(tools[tool]);g.save.equipment.primary=structuredClone(primaries[primary]);g.save.activeWeaponSlot='primary';return g;};
+const fixture=(tool,primary='pike')=>{const {game:g}=createLabFixture({lab:'combat-assets',scenario:'blade-spark-ashling',now:100000});g.enemies=[];g.projectiles=[];g.effects=[];g.save.closeView=false;g.save.equipment.secondary=structuredClone(tools[tool]);g.save.equipment.primary=structuredClone(primaries[primary]);g.save.activeWeaponSlot='primary';return g;}; // Explicit legacy immediate path; delayed Close View weaving is covered by tool-release transaction/presentation tests.
 const physical=g=>structuredClone({projectiles:g.projectiles,effects:g.effects,toolReadyAt:g.toolReadyAt,stamina:g.player.stamina,hp:g.player.hp});
 
-test('uninterrupted named tools own their complete authored presentation, independently of the short combat clock',()=>{
+test('legacy immediate named tools own their complete authored presentation independently of the short combat clock',()=>{
   for(const [kind,T] of Object.entries(TOOL_ACTION_TIMING)){
     const g=fixture(kind);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true,kind);const record=g.player.attackVisual;
     assert.ok(closeViewPlayerAction(g,100000+T.durationMs-1).active,kind+' remains visible through recovery');
@@ -29,7 +29,7 @@ test('uninterrupted named tools own their complete authored presentation, indepe
   }
 });
 
-test('an accepted primary immediately replaces every named tool during earliest legal, hold and recovery phases',()=>{
+test('legacy immediate primary acceptance replaces every named tool during earliest legal, hold and recovery phases',()=>{
   for(const kind of Object.keys(tools))for(const primary of Object.keys(primaries))for(const phase of ['earliest','hold','recovery']){
     const g=fixture(kind,primary),start=100000;assert.equal(g.fireSecondary(start,{x:1,y:0}),true);const toolRecord=g.player.attackVisual,T=TOOL_ACTION_TIMING[kind];
     const at=phase==='earliest'?Math.max(start+1,g.player.attackReadyAt||0):phase==='hold'?Math.max(g.player.attackReadyAt||0,start+Math.max(T.raiseMs+1,Math.min(T.holdMs-1,Math.floor(T.durationMs*.55)))):Math.max(g.player.attackReadyAt||0,start+T.holdMs+Math.max(1,Math.floor((T.durationMs-T.holdMs)/2)));
@@ -40,16 +40,16 @@ test('an accepted primary immediately replaces every named tool during earliest 
   }
 });
 
-test('refused and not-yet-begun buffered primaries do not fake cancellation; acceptance does',()=>{
+test('legacy immediate refused and buffered primaries do not fake cancellation; acceptance does',()=>{
   for(const kind of Object.keys(tools)){
-    const g=fixture(kind,'pike'),start=100000;assert.equal(g.fireSecondary(start,{x:1,y:0}),true);const record=g.player.attackVisual,deadline=g.player.actionVisualUntil,ready=Math.max(start+180,g.player.attackReadyAt||0);g.player.attackReadyAt=ready;
+    const g=fixture(kind,'pike'),start=100000;assert.equal(g.fireSecondary(start,{x:1,y:0}),true);g.save.closeView=true;const record=g.player.attackVisual,deadline=g.player.actionVisualUntil,ready=Math.max(start+180,g.player.attackReadyAt||0);g.player.attackReadyAt=ready;
     g.primaryAttack(start+1,{x:1,y:0});assert.strictEqual(g.player.attackVisual,record,kind+' cooldown refusal keeps tool body');assert.equal(g.player.actionVisualUntil,deadline);
     g.attackBufferUntil=ready+500;assert.equal(g.tickAttackBuffer(ready-1),false);assert.strictEqual(g.player.attackVisual,record,kind+' pending buffer keeps tool body');
     assert.equal(g.tickAttackBuffer(ready),true);assert.notStrictEqual(g.player.attackVisual,record,kind+' begun buffered primary replaces tool body');assert.equal(g.player.attackVisual.profile,'melee');
   }
 });
 
-test('rapid repeated shots keep the latest tool pose until an accepted primary, and delayed Echo never cancels it',()=>{
+test('legacy immediate repeats keep the latest tool pose until primary acceptance and Echo never cancels it',()=>{
   for(const kind of Object.keys(tools)){
     const g=fixture(kind,'pike'),start=100000;g.save.equipment.primary=normalizeSockets({...primaries.pike,tier:'relic',affixes:[]});g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
     assert.equal(g.fireSecondary(start,{x:1,y:0}),true);g.player.attackReadyAt=0;g.toolReadyAt=0;assert.equal(g.fireSecondary(start+20,{x:1,y:0}),true);const latest=g.player.attackVisual,deadline=g.player.actionVisualUntil;

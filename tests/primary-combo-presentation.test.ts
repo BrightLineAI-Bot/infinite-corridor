@@ -38,6 +38,7 @@ function queuedTool(kind) {
   if(kind==='orrery-tap')g.save.equipment.secondary={...ORRERY.item};
   else if(kind!=='emitter')g.save.equipment.secondary={...BRAWLER_GEAR.find(q=>q.item.name===(kind==='hammer'?'Hammerfall':'Great Sweep')).item};
   const at=kind==='emitter'?100240:queued.at-80;
+  g.save.closeView=false; // Explicit legacy immediate clock/Echo compatibility; delayed Close View Echo ownership has dedicated coverage.
   assert.equal(g.fireSecondary(at,{x:1,y:0}),true,'real cooldown permits the input');
   assert.equal(g.player.attackVisual.profile,kind);
   return {g,foe,queued,at};
@@ -226,7 +227,7 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
   try{
     globalThis.window={};globalThis.createImageBitmap=async()=>({width:1024,height:1024});globalThis.fetch=async url=>{const u=new URL(url);assert.equal(u.protocol,'file:');const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};await loadCloseViewHero();
     for(const kind of ['sweep','hammer','orrery-tap','emitter']){
-      const {g,queued,foe}=queuedTool(kind);resetCloseViewCamera();
+      const {g,queued,foe}=queuedTool(kind);g.save.closeView=true;resetCloseViewCamera();
       render(screen,g,390,844,queued.at);const accepted=gl.uploads.at(-1),held=gl.modelData,record=clone(g.player.attackVisual),clock=g.player.actionVisualUntil,hp=foe.hp;
       assert.equal(accepted.length,3602*6,'production path uploads the imported adult body');
       baseRender(screen,g,390,844,queued.at);sameGeometry(gl.uploads.at(-1),accepted,'masking combat time cannot suppress accepted '+kind);sameGeometry(gl.modelData,held,'masking combat time retains accepted tool gear');

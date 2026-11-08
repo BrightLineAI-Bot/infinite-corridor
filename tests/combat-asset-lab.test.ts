@@ -41,6 +41,13 @@ test('all combat asset scenarios resolve and emit their production tool and Spel
     assert.equal(diagnostics.resolved.foe.kind, contract.foe, scenario.id);
     const direction = { x: foe.x - game.player.x, y: foe.y - game.player.y };
     assert.equal(game.fireSecondary(2000, direction, 'tool'), true, `${scenario.id}: Tool`);
+    if (game.pendingToolUse) {
+      if (contract.form === 'great-sweep') assert.equal(game.effects.some((q) => q.kind === 'great-sweep'), false, `${scenario.id}: no Sweep before release`);
+      if (contract.form === 'blunderbuss+arc-wave') assert.equal(game.projectiles.some((q) => q.arcWave), false, `${scenario.id}: no Arc Wave before release`);
+      if (contract.form === 'grenade') assert.equal(game.projectiles.some((q) => q.path === 'grenade'), false, `${scenario.id}: no grenade before release`);
+      if (contract.form === 'boomerang') assert.equal(game.projectiles.some((q) => q.path === 'boomerang'), false, `${scenario.id}: no Spindle before release`);
+      game.releasePendingToolUse(game.pendingToolUse.releaseAt);
+    }
     if (contract.form === 'mirage-of-blades') assert.equal(game.projectiles.filter((q) => q.mirage).length, 1);
     if (contract.form === 'great-sweep') { assert.ok(game.effects.some((q) => q.kind === 'great-sweep')); assert.equal(game.projectiles.filter((q) => q.mirage).length, 0); }
     if (contract.form === 'aether-orrery') assert.ok(game.projectiles.some((q) => q.orrery === 'orb'));
