@@ -10,7 +10,7 @@ Owner notes recorded 2026-11-07. This supplements the build manifest, preserves 
 4. Next: retain the imported normal hero for the three accepted Iron Fists stages, preserving native readiness fallback and actual combo/dash/effect mechanics.
 5. Refine tool silhouettes, accepted swaps, firing/casting gestures and hand/muzzle origins according to close-view-tool-armor-manifest.md.
 6. Add grounded player/enemy body contact and refine interaction space as a separate reviewed gameplay pass; these are still queued.
-7. Assess large/multiple-enemy dungeon and Pentagon combat spacing; version any new generator changes and preserve every pinned layout.
+7. Assess large/multiple-enemy dungeon and Pentagon combat spacing. [The routing study](close-view-dungeon-routing-study.md) records reusable deterministic room/maze structure and vertical-connection research; any implementation is versioned and preserves pinned layouts, roof access and existing stair semantics.
 8. Refine robot and powered-suit art using the latest owner references after the action/contact work, with bounded geometry and actual form precedence preserved.
 
 ## Experience target
