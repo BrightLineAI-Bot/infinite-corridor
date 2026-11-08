@@ -45,7 +45,7 @@ Final release verified: PR475 merged0c066edbc1a0, sourcef1e64f61/treea48a9679; C
 
 ## Latest owner refinement — queued after the published r825 baseline
 
-Follow the [single ordered build queue](close-view-pass-manifest.md). New notes are recorded here without redirecting the current implementation stage. r825's first two-hand primary pass is delivered; the following changes are not yet implemented.
+Follow the [single ordered integration/release queue](close-view-pass-manifest.md). The latest owner instruction authorizes parallel isolated specialist candidates for Iron Fists and primary carry/combos. New notes are recorded here without redirecting assigned work. r825's first two-hand primary pass is delivered; the following changes are not yet implemented.
 
 - **Verge Cleaver:** retain its rusty gladius-like front outline and scale, but make the blade thinner from the side with better hilt/blade styling and readable edge detail. Carry it in one hand low by the hip, with its point near the ground without clipping and natural up/down movement while walking. Raise it into three distinct visible slashes across accepted attacks, then reset/repeat. This replaces the desired forward static two-hand ready posture for the later Cleaver pass; keep the existing published baseline until that focused pass.
 - **Cinder Pike:** keep two hands on the polearm. Show three distinct thrust motions in a repeating cycle, with body/arm commitment and recovery. Do not substitute hitbox flashes for actual movement.
