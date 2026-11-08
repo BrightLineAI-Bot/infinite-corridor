@@ -1,5 +1,6 @@
-import { MODEL_FLOATS } from "./close-view-models.js?v=r836-a5d6b9c2484b";
-import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r836-a5d6b9c2484b';
+import { MODEL_FLOATS } from "./close-view-models.js?v=r838-fa829774af3e";
+import { buildVisualRevision } from "./building.js?v=r838-fa829774af3e";
+import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r838-fa829774af3e';
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -680,12 +681,13 @@ export function closeViewMask(map, seen = null, safe = null, out = null, remap =
 }
 export function glMask(map, now, seen, safe, everyMs, remap = null) {
   const gl = S.gl; if (!gl) return;
-  if (S.maskMap === map && (!seen || now - S.maskAt < everyMs)) return;
+  const buildRevision = buildVisualRevision(map);
+  if (S.maskMap === map && S.maskBuildRevision === buildRevision && (!seen || now - S.maskAt < everyMs)) return;
   const m = closeViewMask(map, seen, safe, S.maskData, remap); S.maskData = m.data; S.lavaTiles = m.lava;
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.tex.mask); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   if (S.maskMap !== map || S.maskW !== m.w || S.maskH !== m.h) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8UI, m.w, m.h, 0, gl.RGBA_INTEGER, gl.UNSIGNED_BYTE, m.data.subarray(0, m.w * m.h * 4)); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); }
   else gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, m.w, m.h, gl.RGBA_INTEGER, gl.UNSIGNED_BYTE, m.data.subarray(0, m.w * m.h * 4));
-  S.maskMap = map; S.maskAt = now; S.maskW = m.w; S.maskH = m.h; closeViewGLStats.maskBuilds++;
+  S.maskMap = map; S.maskBuildRevision = buildRevision; S.maskAt = now; S.maskW = m.w; S.maskH = m.h; closeViewGLStats.maskBuilds++;
 }
 export const glLavaTiles = () => S.lavaTiles;
 // The grit atlas: every painted variant side by side (cell = the textures' size), uploaded once.

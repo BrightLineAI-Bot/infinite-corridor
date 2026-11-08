@@ -11,8 +11,8 @@
 // Where (`places`): keeps, arcologies and the courts of the Great Castles on the overworld (`keep`), the floors inside the great buildings, castles and the Pentagon
 // (`interior`), and now and then the fog moors and the Far Sleep (`wild`). Spawns are hashed from the seed and the area, so a
 // haunted place is haunted every visit.
-import { hashSeed } from "./random.js?v=r836-a5d6b9c2484b";
-import { LETHAL_KINDS } from "./landscape.js?v=r836-a5d6b9c2484b";
+import { hashSeed } from "./random.js?v=r838-fa829774af3e";
+import { LETHAL_KINDS } from "./landscape.js?v=r838-fa829774af3e";
 
 export const HAUNT = {
   confuse: { wisp: 3.2, gorge: 5 }, // seconds the Wayfarer's movement is reversed
