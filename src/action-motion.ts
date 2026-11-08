@@ -22,7 +22,7 @@ export const TOOL_ACTION_TIMING = Object.freeze({
 const smooth = n => { const t=Math.max(0,Math.min(1,n)); return t*t*(3-2*t); };
 // Pure presentation sampler. Repeated accepts save its four numeric controls as the next
 // entry pose, so the renderer never needs frame history and never restarts from neutral.
-export function toolActionPose(profile, elapsedMs, direction=1) {
+function authoredToolPose(profile, elapsedMs, direction=1) {
   const T=TOOL_ACTION_TIMING[profile]; if(!T)return null;
   const ms=Math.max(0,Math.min(T.durationMs,Number(elapsedMs)||0)),dir=direction===-1?-1:1;
   if(profile==='great-sweep'){
@@ -35,6 +35,8 @@ export function toolActionPose(profile, elapsedMs, direction=1) {
   const recoil=Math.sin(Math.PI*Math.min(1,ms/(profile==='lumen-spindle'?70:profile==='rift-bombard'?120:100)))*(profile==='lumen-spindle'?.025:.055);
   return { yaw:0, side:base[0]*q, up:base[1]*q+recoil, forward:base[2]*q-recoil, weight:q };
 }
+export function sampleToolActionMotion(record,elapsedMs){const motion=record?.toolMotion;if(!motion||motion.v!==1)return null;const pose=authoredToolPose(record.toolKind,elapsedMs,motion.direction),entry=motion.entry,T=TOOL_ACTION_TIMING[record.toolKind];if(!pose||!T)return null;const enter=smooth(Math.max(0,Math.min(1,(Number(elapsedMs)||0)/70)));return {yaw:entry[0]+(pose.yaw-entry[0])*enter,side:entry[1]+(pose.side-entry[1])*enter,up:entry[2]+(pose.up-entry[2])*enter,forward:entry[3]+(pose.forward-entry[3])*enter,weight:entry[4]+(pose.weight-entry[4])*enter};}
+export function toolActionPose(profile,elapsedMs,direction=1){return sampleToolActionMotion({toolKind:profile,toolMotion:{v:1,entry:[0,0,0,0,0],direction:direction===-1?-1:1}},elapsedMs);}
 
 export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -57,14 +59,7 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (typeof raw.toolKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.toolKind)) return null;
     copy.toolKind = raw.toolKind;
   }
-  if (raw.toolEntry != null) {
-    if (!Array.isArray(raw.toolEntry) || raw.toolEntry.length !== 5 || raw.toolEntry.some(n=>!Number.isFinite(Number(n))||Math.abs(Number(n))>4)) return null;
-    copy.toolEntry=raw.toolEntry.map(Number);
-  }
-  if (raw.toolSweepDirection != null) {
-    if (raw.toolSweepDirection !== 1 && raw.toolSweepDirection !== -1) return null;
-    copy.toolSweepDirection=raw.toolSweepDirection;
-  }
+  if(raw.toolMotion!=null){const m=raw.toolMotion;if(!m||typeof m!=='object'||Array.isArray(m)||m.v!==1||!Array.isArray(m.entry)||m.entry.length!==5||m.entry.some(n=>!Number.isFinite(Number(n))||Math.abs(Number(n))>4)||m.direction!==1&&m.direction!==-1)return null;copy.toolMotion={...m,v:1,entry:m.entry.map(Number),direction:m.direction};if(m.baseKind!=null){if(!PRIMARY_VISUAL_KINDS.includes(m.baseKind))return null;copy.toolMotion.baseKind=m.baseKind;}}
   if (raw.toolShotId != null) {
     if (typeof raw.toolShotId !== 'string' || raw.toolShotId.length<1 || raw.toolShotId.length>160) return null;
     copy.toolShotId=raw.toolShotId;
