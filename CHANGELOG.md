@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Release 838: carry the Verge Cleaver in the anatomical right hand and cycle four accepted full-body cuts up, down, up and down while preserving canonical combat and saved motion compatibility.
+- Release 838: carry the Verge Cleaver in the anatomical right hand and cycle four accepted full-body cuts up, down, up and down while preserving canonical combat and saved motion compatibility; pick visible legacy stone tops correctly when tapping to stack.
 - Release 837: render legacy and current Close View stone builds as physical one- and two-level supports instead of walls.
 - Release 836: keep ordinary Close View actors grounded with shared player/enemy body contact, bounded overlap escape and height-aware movement consequences.
 - Release 835: distinct accepted spell gestures, truthful free-hand launch cues and public manual-cast inspection scenarios.

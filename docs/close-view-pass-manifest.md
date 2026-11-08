@@ -10,7 +10,7 @@ Verified live: `r836-a5d6b9c2484b`, commit a5d6b9c2484b5a265af0b499c030b53e3e18c
 
 Earlier native creature/combat/actor passes r813–818 remain delivered; preserve their roster, Foundry and auxiliary-actor work recorded in the release log.
 
-Current checkpoint: verified live is r836 at the identity above. Traversal-block r837 merged as official main c5344e99 after source CI42512013786 and full Astra834→B review clear; merged CI42514398543 and Preview42514398496 are running, so it is not hosted, live or published. Cleaver r838 packages from that official main and must not merge before actual r837 publication. All later prepared work stays in order and unnumbered. Re-read live identity and fresh main at every release gate.
+Current checkpoint: verified live is r836 at the identity above. Traversal-block r837 merged as official main c5344e99 after source CI42512013786 and its initial review clear. Full836→838 review then found legacy block taps using the flat-floor production picker; r838 corrects the actual picker and adds legacy/current tap-to-stack coverage. Hold r837 from independent publication. Complete its hosted block checks, then corrected r838 review/CI/merge/Preview and combined blocks/Cleaver hosted acceptance before publishing r838 with r837 included. This concrete blocker supersedes the previous B-publication-before-7a-merge gate while preserving integration order. GitHub API transport is stopped pending the user's normal-retry decision; local corrective commits are not yet pushed or CI-verified. All later prepared work stays in order and unnumbered. Re-read live identity and fresh main at every release gate.
 
 | Order | Pass | Required owner direction / completion target | State |
 |---|---|---|---|
