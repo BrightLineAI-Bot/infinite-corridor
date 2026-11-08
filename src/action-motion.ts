@@ -26,6 +26,11 @@ const TOOL_USE_BASE_COOLDOWN = Object.freeze({"rift-bombard":360,blunderbuss:360
 const TOOL_USE_KINDS=Object.freeze(Object.keys(TOOL_USE_STARTUP_MS));
 const finiteObject=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const validUseId=v=>typeof v==='string'&&v.length>0&&v.length<=160;
+export function normalizeHammerfallStartup(raw){
+  if(!finiteObject(raw))return null;const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return structuredClone(raw);
+  if(v!==1||typeof raw.effectId!=='string'||!/^tool-[a-z0-9-]{1,59}$/.test(raw.effectId)||!['area','areaId','levelId'].every(k=>typeof raw[k]==='string'&&raw[k].length<=512))return null;
+  return {...raw,v:1,effectId:raw.effectId,area:raw.area,areaId:raw.areaId,levelId:raw.levelId};
+}
 export function toolUseStartupMs(kind,effectiveCooldownMs){const normal=TOOL_USE_STARTUP_MS[kind],base=TOOL_USE_BASE_COOLDOWN[kind],n=Number(effectiveCooldownMs);return normal&&Number.isFinite(n)?Math.max(1,normal*Math.max(0,Math.min(1,n/base))):null;}
 export function normalizeToolUseVisual(raw,toolKind,durationMs){
   if(!finiteObject(raw))return null;const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return {...raw};
