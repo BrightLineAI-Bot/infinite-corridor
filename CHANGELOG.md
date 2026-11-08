@@ -3,6 +3,9 @@
 ## Unreleased
 
 
+- Release 830: raise actual primary Echo afterimages into Close View, include Salvage cone strikes, preserve body animation ownership, recover failed GPU frames, and add quiet Echo inspection scenarios.
+- Release 829: preserve the accepted idle/gait clock through Salvage Blade and future-primary fallback attacks; retain legacy poses and current combat rules.
+- Release 828: preserve a useful third-person entry view after tight-corner arrival or respawn, using existing safe camera probes.
 - Release 827: low one-handed Cleaver carry and three cuts, two-handed Pike thrust cycles, and accepted presentation clocks that survive queued Echo and respect newer actions.
 - Release 826: keep normal Iron Fists on the adult Wayfarer, alternate accepted opening hands, and show distinct committed punch, jab and uppercut poses with silver gauntlets and smooth charged release.
 - Release 825: distinguish Cinder Pike thrusts and Verge Cleaver cuts with stable two-hand grips, accepted weapon identity and bounded silhouettes; retain existing combat rules and special-form equipment.

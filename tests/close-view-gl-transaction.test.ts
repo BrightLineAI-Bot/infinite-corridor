@@ -117,6 +117,19 @@ test('asset-not-ready native fallback stays valid; admitted imported hero upload
   }finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
 });
 
+test('an actual named release restores ordinary shot ownership across GL failure and recovery',()=>withGPU({},h=>{
+  const g:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:100000}).game;
+  g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};
+  for(const tile of g.map.tiles){tile.blocked=false;tile.environment=false;tile.openAir=false;tile.courtyard=false;}
+  g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};
+  assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);assert.equal(g.projectiles.length,0,'startup has no ordinary or GL shot owner');
+  g.lastUpdateNow=100016;let out=frame(h,g);assert.equal(out.showing,true);assert.equal(closeViewGLStats.projectedShots,0);assert.equal(out.floorPlan?.size||0,0);
+  const releaseAt=g.pendingToolUse.releaseAt;g.releasePendingToolUse(releaseAt);g.lastUpdateNow=releaseAt+16;const shot=g.projectiles[0];
+  out=frame(h,g);assert.equal(out.showing,true);assert.ok(out.floorPlan.has(shot));assert.equal(closeViewGLStats.projectedShots,1);
+  h.gl.fault='draw';out=frame(h,g);assert.equal(out.showing,false);assert.equal(out.copies,0);assert.equal(closeViewCapturing(),false);assert.ok(h.log.some((q:any)=>q[0]==='screen'&&q[1]==='fillStyle'&&q[2]===standardProjectileColor(shot)),'failure restores the actual released shot to the ordinary floor');
+  h.gl.fault='';h.gl.lost=false;h.gl.error=0;out=frame(h,g);assert.equal(out.showing,true);assert.ok(out.floorPlan.has(shot));assert.equal(closeViewGLStats.projectedShots,1);assert.equal(h.gl.unallocatedUpdates,0);
+}));
+
 test('bounded tool supercover rejects corner, gridline, endpoint and rectangle hazards',()=>{
   const open=(width=6,height=6)=>({width,height,tiles:Array.from({length:width*height},()=>({blocked:false,seen:true,discovered:true}))});
   const map:any=open();assert.equal(closeViewCueSegmentOpen(map,.2,.2,2.8,.2),true);
