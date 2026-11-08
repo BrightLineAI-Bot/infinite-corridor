@@ -82,6 +82,9 @@ export function createLabInteractionLifecycle({ resetInput, now, canResume }) {
     get active() { return !!pausedGame; },
   };
 }
+export function labInteractionClockReady(game, requestClock) {
+  return requestClock === null || game.lastUpdateNow !== requestClock;
+}
 
 function roundTripScratch(save) { return migrateSave(JSON.parse(JSON.stringify(save))); }
 

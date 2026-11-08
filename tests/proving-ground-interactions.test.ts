@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLabFixture, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle } from '../src/proving-ground-labs.ts';
+import { createLabFixture, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady } from '../src/proving-ground-labs.ts';
 
 function fixture(actions=['enter']) {
   const object={id:'keep-exit',kind:'exit',name:'Keep threshold',lore:'A road continues beyond.',x:4,y:5,actions};
@@ -76,6 +76,16 @@ test('interaction lifecycle closes exactly once and ignores an old generation af
   now=1100;assert.equal(lifecycle.close(first),true);assert.equal(lifecycle.close(first),false);assert.deepEqual(calls,[[true,40],[false,1100]]);assert.equal(resets,2);
   game.paused=false;const second=lifecycle.begin(game);assert.equal(second,2);assert.equal(lifecycle.close(first),false,'queued close from the old dialog cannot affect the new owner');assert.equal(lifecycle.active,true);
   canResume=false;assert.equal(lifecycle.close(second),true);assert.equal(game.paused,true,'a later user/background pause remains owned by that reason');
+});
+
+test('an immediate canvas request waits for one normal update before a second timer shift',()=>{
+  const fixture=createLabFixture({lab:'close-view',scenario:'routing-keep-baseline',seed:'PG-CLOCK',variant:0,now:10000});
+  const game:any=fixture.game;game.lastUpdateNow=10000;game.player.attackReadyAt=10500;
+  let now=10000;const lifecycle=createLabInteractionLifecycle({resetInput:()=>{},now:()=>now,canResume:()=>true});
+  const first=lifecycle.begin(game);now=18000;lifecycle.close(first);assert.equal(game.player.attackReadyAt,18500);
+  const requestClock=game.lastUpdateNow;assert.equal(labInteractionClockReady(game,requestClock),false,'the immediate canvas poll preserves the request without reopening');
+  game.update(.05,{state:{x:0,y:0},consume:()=>false},18000);assert.equal(labInteractionClockReady(game,requestClock),true);
+  const second=lifecycle.begin(game);now=18100;lifecycle.close(second);assert.equal(game.player.attackReadyAt,18600,'only the elapsed second modal interval shifts the timer');
 });
 
 test('an empty canonical request is validated without acquiring modal pause ownership',()=>{
