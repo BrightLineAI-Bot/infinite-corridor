@@ -90,3 +90,7 @@ r820 passed CI/Preview/source review but was held for a real missing rear neck s
 Queued owner direction, weapon/three-punch Iron Fists actions, body contact, casting, combat spacing, river/decay atmosphere and reuse-first framework evaluation are preserved in close-view-combat-direction.md and its linked plans. Character/camera gates are complete through r822; new playtest feedback remains queued.
 
 Camera follow-up r822 was packaged from fresh main821 and completed all source/CI/Preview/hosted/publication gates. A supposed raw-entry relocation was normal combat death/respawn: guardian damage can kill an idle scratch player in~2.4s, then production arrival settling moves them farther from the guardian. Use quiet scratch fixtures for camera timing studies; do not describe that as an immediate spawn or camera bug.
+
+## Directional dash candidate — r823
+
+Owner-approved character appearance is preserved. The normal hero now uses a four-way grounded quickstep, accepted actual pose/idle-phase continuity, pure ordinary Walk and a closed faster Run loop. Source55-check/build and local unlit CPU phase-sheet acceptance passed; gameplay dodge rules and all source assets remain. This candidate takes823 from fresh main822. Fresh review/CI/Preview/hosted acceptance and publication are pending. The separately reviewed new-dig support repair remains unnumbered on claude/dug-tunnel-return-height; its quiet scratch fixture is being added for hosted verification.

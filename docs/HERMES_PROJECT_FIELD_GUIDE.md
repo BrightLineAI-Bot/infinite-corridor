@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 823: directional quicksteps and coherent Wayfarer gait
+
+**CODE:** The imported normal Wayfarer uses a grounded derivative of the source pre-tumble crouch for forward, backward and lateral quicksteps. Accepted presentation metadata preserves actual prior facing, phase, speed and logical idle phase through pause/reload; a bounded weak pose cache keeps render sampling separate from game state. Ordinary locomotion remains pure Walk, while the derived faster Run sampler closes its loop seam. Idle, partial-speed, diagonal and callback-free pause transitions are regression checked.
+
+**BOUNDARY:** Dodge displacement, stamina, 260 ms movement, 420 ms invulnerability, damage, collision and gameplay facing remain unchanged. Schema 14 adds only optional validated presentation metadata with future-field preservation. Native special forms, geometry, textures, neck, gear size, actor/draw budgets, saved worlds and generation remain. Source CPU pose sheets are not hosted GPU or device FPS evidence; historical ordinary walking reload phase is not newly promised pixel-identical.
+
 ## Release 822: bounded camera side clearance and semantic target activation
 
 **CODE:** Try at most four lateral camera alternatives within existing shoulder reach when a centered boom compresses. Entry heading scoring considers both forward view and safe rig reach; persistent side preference avoids corner flicker. Target controls accept pointer, keyboard and assistive activation once per action, with existing drift rejection and no leaked attack/jump input.
