@@ -34,3 +34,5 @@ Ordinary enemies should look solid and stable, while intentional spectral creatu
 Use actual Game-produced actions, cover/elevation and hit geometry, exact pause/resume and unknown-field compatibility, isolated laboratories, bounded geometry/actor/effect work, focused regressions and full CI. Capture hosted GPU action/grip/range/camera evidence. Automated viewport tests and browser screenshots do not establish physical-phone FPS, thermal behavior or hardware multitouch.
 
 Current publication state and exact candidate identities remain in RELEASE_LOG.md. Do not mark this queued work completed merely because an earlier narrower pass was completed.
+
+Detailed queued plans: [weapon presentation](primary-weapon-presentation-manifest.md) and [ordinary grounded body contact](grounded-contact-design.md). Both are preparation records, not completed implementation.
