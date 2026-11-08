@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Game, PRIMARY_ECHO_VISUAL } from '../src/game.ts';
+import { Game, PRIMARY_ECHO_VISUAL, updateEnemyAI } from '../src/game.ts';
 import { freshSave } from '../src/types.ts';
 import { normalizeSockets } from '../src/glyphs.ts';
 import { render } from '../src/renderer.ts';
@@ -9,7 +9,7 @@ import { createLabFixture } from '../src/proving-ground-labs.ts';
 test('quiet Echo inspection fixtures use the real glyph delay and keep the normal combat scenarios unchanged',()=>{
   for(const scenario of ['pike-echo-inspection','cleaver-echo-inspection']){
     const {game:g}=createLabFixture({lab:'combat-assets',scenario,now:1000});
-    assert.equal(g.save.equipment.primary.glyphs[0],'echo');assert.equal(g.enemies[0].hitStun,1e9);
+    assert.equal(g.save.equipment.primary.glyphs[0],'echo');assert.equal(g.enemies[0].passiveBehavior,'practice');assert.ok(!(g.enemies[0].hitStun>0));
     const acceptedAt=1000;g.primaryAttack(acceptedAt,{x:1,y:0});const accepted=structuredClone(g.player.attackVisual);
     assert.equal(g.glyphTimers.length,1);assert.equal(g.glyphTimers[0].at,1250);
     g.tickGlyphs(.001,1249);assert.equal(g.glyphVisuals.some(v=>v.kind==='primaryEcho'),false);
@@ -17,7 +17,27 @@ test('quiet Echo inspection fixtures use the real glyph delay and keep the norma
     const hp=g.player.hp;g.update(.016,{state:{x:0,y:0},consume:()=>false,held:()=>false},1266);assert.equal(g.player.hp,hp);
   }
   const normal=createLabFixture({lab:'combat-assets',scenario:'pike-spindle-hound',now:1000}).game;
-  assert.equal(normal.save.equipment.primary.glyphs.includes('echo'),false);assert.ok(!(normal.enemies[0].hitStun>1000));assert.ok(normal.enemies[0].maxHp<5000);
+  assert.equal(normal.save.equipment.primary.glyphs.includes('echo'),false);assert.notEqual(normal.enemies[0].passiveBehavior,'practice');assert.ok(normal.enemies[0].maxHp<5000);
+});
+
+test('all quiet Echo fixtures remain attackable, stationary and harmless through real hits and 60 active seconds',()=>{
+  const idle={state:{x:0,y:0},consume:()=>false,held:()=>false},steps=[.017,.031,.05];
+  for(const scenario of ['pike-echo-inspection','cleaver-echo-inspection','salvage-echo-inspection']){
+    const {game:g,diagnostics}=createLabFixture({lab:'combat-assets',scenario,now:1000}),foe=g.enemies[0],d=g.save.lastAim,start={x:foe.x,y:foe.y},playerHp=g.player.hp;
+    assert.equal(foe.passiveBehavior,'practice');assert.equal(foe.hp,5000);assert.deepEqual({x:diagnostics.placement.foe.x,y:diagnostics.placement.foe.y},start);
+    let moveNow=1000,moves=0;const moving={state:{x:d.x,y:d.y},consume:()=>false,held:()=>false};while(Math.hypot(foe.x-g.player.x,foe.y-g.player.y)>1.4&&moves++<100){moveNow+=50;g.update(.05,moving,moveNow);}assert.ok(moves<100,`${scenario} production movement reaches the practice target`);assert.deepEqual({x:foe.x,y:foe.y},start);assert.equal(g.player.hp,playerHp);
+    const acceptedAt=moveNow+1,before=foe.hp;assert.ok(g.primaryAttack(acceptedAt,d).length>0,scenario);const afterPrimary=foe.hp;assert.ok(afterPrimary<before,`${scenario} primary lands`);assert.deepEqual({x:foe.x,y:foe.y},start);
+    g.tickGlyphs(.001,acceptedAt+250);assert.ok(foe.hp<afterPrimary,`${scenario} real Echo lands`);assert.deepEqual({x:foe.x,y:foe.y},start);assert.equal(g.player.hp,playerHp);
+    let elapsed=0,i=0,now=acceptedAt+250;while(elapsed<60){const dt=Math.min(steps[i++%steps.length],60-elapsed);elapsed+=dt;now+=dt*1000;g.update(dt,idle,now);}
+    assert.deepEqual({x:foe.x,y:foe.y},start);assert.equal(g.player.hp,playerHp);assert.equal(foe.passiveBehavior,'practice');assert.equal(foe.telegraph,0);assert.equal(foe.strike,0);assert.equal(foe.meleePhase,null);assert.equal(foe.threatRange,null);assert.equal(foe.hitStun,0);assert.equal(foe.recoil,0);assert.equal(g.projectiles.some(q=>q.hostile),false);assert.equal(g.eliteHazards.length,0);
+    const reset=createLabFixture({lab:'combat-assets',scenario,now:now+1000}).game;assert.equal(reset.player.hp,reset.save.maxHp);assert.equal(reset.enemies[0].hp,5000);assert.equal(reset.enemies[0].passiveBehavior,'practice');
+  }
+});
+
+test('practice behavior survives pause and JSON resume without changing ordinary passive controls',()=>{
+  const {game:g}=createLabFixture({lab:'combat-assets',scenario:'pike-echo-inspection',now:1000}),foe=g.enemies[0],at={x:foe.x,y:foe.y};g.setPaused(true,1200);g.update(10,{state:{x:0,y:0},consume:()=>false,held:()=>false},11200);assert.deepEqual({x:foe.x,y:foe.y},at);assert.equal(g.player.hp,g.save.maxHp);
+  const restored=JSON.parse(JSON.stringify(foe));assert.equal(restored.passiveBehavior,'practice');assert.deepEqual({x:restored.x,y:restored.y},at);assert.equal(updateEnemyAI(restored,g.player,g.map,g.map.width,.05,20050),false);assert.deepEqual({x:restored.x,y:restored.y},at);assert.equal(restored.ai.mode,'idle');
+  for(const mode of ['graze','follow']){const ordinary=JSON.parse(JSON.stringify(foe));Object.assign(ordinary,{passiveBehavior:mode,x:g.player.x+3,y:g.player.y,ai:{homeX:g.player.x+3,homeY:g.player.y,phase:0,facing:'left',mode:'patrol',step:0}});const before={x:ordinary.x,y:ordinary.y};assert.equal(updateEnemyAI(ordinary,g.player,g.map,g.map.width,.1,20100),false);assert.notDeepEqual({x:ordinary.x,y:ordinary.y},before,`${mode} retains its existing motion`);}
 });
 
 const item=kind=>normalizeSockets(kind==='cinder-pike'
