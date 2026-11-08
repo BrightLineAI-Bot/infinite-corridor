@@ -15,13 +15,21 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-With r832 on main, this PR takes r833. Other prepared candidates remain unnumbered; re-read fresh main before packaging each focused PR.
+With r833 on main, the next game change takes r834. Prepared candidates remain unnumbered; re-read fresh main and resolve the current hosted gate before packaging the next focused PR.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 833 | Codex | `claude/close-view-tool-assets` | Named tool assets, accepted startup/release and melee weaving | In flight. Source checks/build and scoped Astra reviews clear, including shared pellet/fan origin correction. Exact CI, Preview, hosted motion/colors and fresh full since-live review/publication remain pending. |
+| — | Codex | `claude/close-view-hammerfall-stomp` | Dedicated stomp, original-pulse guard and logical carry continuity | Prepared with current r833 tools; focused checks/build and component review clear. First in the remaining ordered queue; no number assigned. |
+| — | Codex | `claude/close-view-spell-gestures` | Canonical accepted spell gestures and origins | Prepared; final main/release/hosted gates remain. |
+| — | Codex | `claude/close-view-grounded-contact` | Grounded bodies, overlap escape, accepted movement consequences and items | Prepared; final main/release/hosted gates remain. |
+| — | Codex | `claude/close-view-traversal-blocks` | Legacy/current stone steps, stacking and active lifetime | Prepared; final main/release/hosted gates remain. |
+| — | Codex | `claude/close-view-cleaver-four-strike` | Right-handed Cleaver and four up/down cuts | Prepared with supported legacy/opaque state and unchanged canonical hit rules; scoped Astra clear, hosted gate remains. |
+| — | Codex | `claude/close-view-target-recenter` | Finite centered Target recenter with shared presentation facing | Combined with prior source passes; scoped Astra clear, hosted gate remains. |
+| — | Codex | `claude/close-view-armor-recovery` | Clunky robot and fitted powered armor with atomic equipment | Combined source reviewed clear; final main/release/hosted gates remain. |
+| — | Codex | `claude/close-view-room-routing` | Opt-in versioned Pentagon/overworld-keep routes | Combined source reviewed clear; defaults4/9 unchanged, opt-in5/10 adoption remains gated. |
+| 833 | Codex | `claude/close-view-tool-assets` / #485 | Named tool assets, accepted startup/release and melee weaving | Merged23e83526084bb3f7dcad0cde10a2fa69e18618a8. Exact source CI42494696828 passed after preserving the unchanged old audit assertion with a source property-order correction; fresh full Astra829->833 plus correction review clear. Merge treefc9f84c9 matches source4d077965. Merged CI42495799008 and Preview42495798951 are pending at this checkpoint. Hosted motion/violet acceptance and publication remain held for browser restoration. Production stays r829. |
 | 832 | Codex | `claude/close-view-decal-rgb` / #484 | Exact GPU decal colors | Mergedb3acd5c0aee0693a350f86e5d0b8782981d1043d. Source CI42491119571, merged CI42492299388 and Preview42492299719 succeeded; candidate r832-b3acd5c0aee0 treea80785e1 matches fresh since-live Astra review (829->832): no blockers. Publication held for actual hosted violet acceptance after browser tab creation timed out. Production remains r829; never published independently at this checkpoint. |
 | 831 | Codex | `claude/close-view-echo-inspection` / #483 | Stationary, harmless and attackable Echo practice targets | Mergedb1786f043f879bbbd08cb3f1e34050c62880cc8b. CI42487064216, merged CI42488153172 and Preview42488153087 succeeded; identity r831-b1786f043f87 matches reviewed treed6435fec. Hosted target stability/movement/health passed, but raised Echo ribbons appeared yellow: packed float rounding corrupted violet RGB. Held for r832 correction. Never published independently. |
 | 830 | Codex | `claude/close-view-echo-spells` / #482 | Raised Echo ribbons, cone support, GPU fallback and inspection fixtures | Merged7f0480a8bacd995d96b088fe12c1d89f6c19fe15. CI42484077734, merged CI42485138197 and Preview42485138154 succeeded; candidate r830-7f0480a8bacd matches reviewed tree1073ddfb. Hosted acceptance found new quiet targets resume attacking after the unchanged stagger governor clears oversized stun. Held from production: r831 repairs the fixtures and r832 repairs hosted GPU color corruption. Never published independently. |

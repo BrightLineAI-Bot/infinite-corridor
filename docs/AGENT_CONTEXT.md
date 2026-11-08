@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Main833 and remaining release gates — 2026-11-08
+
+Main is r833 merge23e83526084bb3f7dcad0cde10a2fa69e18618a8; its treefc9f84c9 matches the fresh Astra-reviewed source4d077965. Source CI42494696828 passed; merged CI42495799008 and Preview42495798951 are pending at this checkpoint. Production remains verified r829. In-app browser loading is stopped after a webview-attach timeout; user restoration is pending, so exact hosted violet/tool motion acceptance and publication are held. All later source candidates and the right-hand/four-cut Cleaver plus finite Target corrections remain in the ordered manifest, with combined source review clear and explicit CPU/mock limits. No later release number is reserved. Do not run local servers/full local suite or restart stopped browser transport without restoration. Preserve handoffs/ and historical metadata.
+
 ## Named-tool preparation and browser boundary — 2026-11-08
 
 Production remains r829-9c21fb237fe9. r832 mergedb3acd5c0; source/merged CI and Preview42492299719 passed with reviewed treea80785e1. Hosted violet acceptance is blocked by in-app browser tab creation timeout; no publication claim. r833 prepares the next focused named-tool/startup/release/weaving candidate, including the Astra-cleared canonical shared-origin correction. Preserve the ordered manifest; later Hammerfall/spells/contact/blocks/Cleaver/Target/armor/routes remain separate. User authorizes continued focused work, necessary regressions, Astra review and publication subject to current gates; no new permission is inferred from this document. Local loopback/full local suite and browser loading remain stopped until their boundary is restored.
