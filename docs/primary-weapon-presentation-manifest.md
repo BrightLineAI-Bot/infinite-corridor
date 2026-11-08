@@ -1,6 +1,6 @@
 # Primary weapon presentation manifest
 
-Updated: 2026-11-07. The bounded Pike/Cleaver implementation is in progress on the published character/camera baseline; this document grants no release or publication authority.
+Updated: 2026-11-07. The bounded Pike/Cleaver implementation is published as r825-0c066edbc1a0; this document grants no release or publication authority.
 
 ## Canonical facts and invariants
 
@@ -40,3 +40,5 @@ Focused offline evidence on the implementation candidate:
 These are source/CPU and mock-GL submission checks; no GPU frame was visually inspected. No physical-phone FPS or hardware multi-touch claim is made. Hosted visual review remains a later acceptance gate. Iron Fists, caster/emitter origin, contact readability, and room/body spacing remain the unchanged queued follow-ups in steps 4–5 rather than scope silently absorbed by this pass.
 
 Parent source art acceptance at frozen 12809723: local untracked CPU rasterizer sampled actual body and held-gear writers at phases 0/.08/.30/.65/1 from front-quarter, side and rear-quarter. Inspected attached grips, straight thrust, distinct angular cut, preserved head/neck/proportions/palette and tapered blade. Source hash receipt and PNGs stay outside the repo. This is unlit CPU evidence, not GPU/device acceptance. Component full/delta Astra review cleared the fixed angular path, special-form gear routing, native idle continuity, non-player selection and all 256-triangle caps; independent 38 checks passed. Release825 integrates verified main824; final gates remain pending.
+
+Final release verified: PR475 merged0c066edbc1a0, sourcef1e64f61/treea48a9679; CI42442905038, merged CI42443790003, Preview42443790053 and Publish42444668551 succeeded. Fresh Astra full/delta review found no remaining blockers after action-layer correction; independent18 hero/integration checks plus64 primary-equipped dodge endpoint cases passed. Hosted WebGL Pike and retained gladius-like Cleaver attacks, casting, jumps, locomotion/quickstep, recovery and actual tool-button activation were inspected, with no console warnings/errors. Actual live identity and Options → System match, no recent errors. Hosted capture and CPU SHA receipts stay in the local untracked evidence folder. Physical-phone performance remains unmeasured. The owner withdrew the greataxe idea; keep the current blade.

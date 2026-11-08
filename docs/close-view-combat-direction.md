@@ -1,15 +1,17 @@
-# Close View combat direction — queued after character and camera
+# Close View combat direction — delivery and next passes
 
-Owner notes recorded 2026-11-07. This supplements the build manifest; it does not replace unfinished character/camera work or grant deployment authority.
+Owner notes recorded 2026-11-07. This supplements the build manifest; it preserves delivered character/camera work or grant deployment authority.
 
 ## Delivery order
 
-1. Finish the imported protective Wayfarer: adult proportions, reduced hands, existing green/gray/leather/bronze style, silver mask and hair, amber eyes, coherent neck and animation. Verify actual hosted rendering before publishing.
-2. Finish the preserved camera/lock follow-up and hosted acceptance.
-3. Resume distinct primary-weapon animation and geometry.
-4. Add solid player/enemy body contact as a separate, independently reviewed gameplay pass.
-5. Refine accepted tool/spell actions and ordinary enemy visual solidity.
-6. Assess combat spacing in representative large/multiple-enemy dungeon and Pentagon encounters; version any new generator changes and preserve every pinned layout.
+1. Delivered through r821/r822: imported adult protective Wayfarer, coherent neck, approved proportions/hands/amber eyes and camera/lock follow-up, with hosted acceptance.
+2. Delivered r823/r824: low directional quickstep, smoother gait, and returnable new interior excavation; old saved tunnel geometry remains unchanged.
+3. Delivered r825: distinct Pike thrust and gladius-like Cleaver cut, stable grips and accepted identity, preserved casting/jumping priority and exact recovery. Canonical hit resolution remains immediate.
+4. Next: retain the imported normal hero for the three accepted Iron Fists stages, preserving native readiness fallback and actual combo/dash/effect mechanics.
+5. Refine tool silhouettes, accepted swaps, firing/casting gestures and hand/muzzle origins according to close-view-tool-armor-manifest.md.
+6. Add grounded player/enemy body contact and refine interaction space as a separate reviewed gameplay pass; these are still queued.
+7. Assess large/multiple-enemy dungeon and Pentagon combat spacing; version any new generator changes and preserve every pinned layout.
+8. Refine robot and powered-suit art using the latest owner references after the action/contact work, with bounded geometry and actual form precedence preserved.
 
 ## Experience target
 
@@ -17,7 +19,7 @@ A compact, cohesive combat and exploration engine inside the infinite-world game
 
 ## Weapons and actions
 
-- Verge Cleaver should read as a broad great-blade swing with credible grip, windup and recovery. Canonical gameplay already uses a 1.75-tile, 180-degree arc.
+- Verge Cleaver retains the current gladius-like blade, explicitly approved after the owner withdrew the greataxe suggestion. Its distinct broad cut needs credible grip and recovery; canonical gameplay remains a 1.75-tile, 180-degree arc. Current hits resolve immediately, so r825 does not invent a preparatory gameplay windup. Great Sweep owns the separate broken-greatsword reference in close-view-tool-armor-manifest.md.
 - The owner's dictated “Cinder Pipe” refers to the canonical Cinder Pike: a shaft/polearm with a distinct forward thrust and retraction, not the same generic dagger cut. Existing gameplay uses 2.45 tiles and 32 degrees.
 - Iron Fists must visibly perform its actual three-stage sequence: dash punch, secondary jab, uppercut. Show the correct windup, striking hand and follow-through for each accepted stage. Validate existing combo timing and effects before changing presentation; do not invent extra hits.
 - Tools and spells should visibly originate from the character: distinct casting/firing actions, correct hands or muzzles, recoil/recovery, and projectiles/effects tied to accepted gameplay events. Refused actions must not look successful.
