@@ -29,8 +29,62 @@ import { fieldOn } from "./lattice-fields.ts";
 import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.ts";
 import { AFFIXES, SHAMAN } from "./affixes.ts";
 import { addDungeonReciter, addDungeonElder } from "./travelers.ts";
+import { validActions } from "./interactions.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
+
+const PG_UNSUPPORTED_ACTIONS = new Set(["trade", "upgrade", "attune"]);
+function unsupportedLabInteraction(object, action) {
+  if (PG_UNSUPPORTED_ACTIONS.has(action)) return "Use this action in the main game; its full controller is not available in the Proving Ground.";
+  if (object.kind === "viewport" && action === "inspect") return "Viewport opens its hunt controller only in the main game.";
+  return "";
+}
+export function describeLabInteraction(game, objectId = game?.interactionRequested) {
+  const object = game?.map?.objects?.find((q) => q.id === objectId && game.reachOf(q) < 1.5);
+  if (!object) return null;
+  const actions = validActions(object, game.save);
+  if (!actions.length) return null;
+  return { game, map: game.map, area: game.areaStateId(), objectId: object.id, object,
+    name: object.name || object.label || object.kind || object.id, lore: object.lore || object.line || "Choose an action.",
+    actions: actions.map((id) => ({ id, label: id === "enter" ? "Enter" : id === "exit" ? "Leave" : id.replaceAll(/[-:]/g, " ").replace(/^./, (c) => c.toUpperCase()), unsupported: unsupportedLabInteraction(object, id) })) };
+}
+export function dispatchLabInteraction(token, action) {
+  const game = token?.game, current = game?.map?.objects?.find((q) => q.id === token.objectId);
+  if (!game || game.map !== token.map || game.areaStateId() !== token.area || current !== token.object || game.reachOf(current) >= 1.5) return { ok: false, stale: true, message: "That interaction is no longer available here." };
+  const available = validActions(current, game.save);
+  if (!available.includes(action)) return { ok: false, stale: true, message: "That action is no longer available." };
+  const unsupported = unsupportedLabInteraction(current, action);
+  if (unsupported) return { ok: false, unsupported: true, message: unsupported };
+  const result = game.interact(action, current.id);
+  for (const key of ["shopRequested", "smithyRequested", "kitchenRequested"]) if (game[key]) { game[key] = null; return { ...result, unsupported: true, message: "This main-game controller is not available in the Proving Ground." }; }
+  return result;
+}
+export function createLabInteractionLifecycle({ resetInput, now, canResume }) {
+  let generation = 0, pausedGame = null;
+  return {
+    begin(game) {
+      if (!game || pausedGame || game.paused) return null;
+      const id = ++generation;
+      pausedGame = game;
+      game.setPaused(true, Number.isFinite(game.lastUpdateNow) ? game.lastUpdateNow : now());
+      resetInput();
+      return id;
+    },
+    close(id = generation) {
+      if (id !== generation || !pausedGame) return false;
+      const game = pausedGame;
+      pausedGame = null;
+      resetInput();
+      if (canResume()) game.setPaused(false, now());
+      return true;
+    },
+    get generation() { return generation; },
+    get active() { return !!pausedGame; },
+  };
+}
+export function labInteractionClockReady(game, requestClock) {
+  return requestClock === null || game.lastUpdateNow !== requestClock;
+}
 
 function roundTripScratch(save) { return migrateSave(JSON.parse(JSON.stringify(save))); }
 
