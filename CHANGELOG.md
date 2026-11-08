@@ -3,6 +3,7 @@
 ## Unreleased
 
 
+- Release 824: preserve safe support heights for new interior tunnels and add a quiet excavation-return Proving Ground fixture.
 - Release 823: give the normal Wayfarer a low directional quickstep and smooth Walk/Run and dodge transitions without changing dodge rules.
 - Release 822: use bounded side clearance for cramped Close View cameras and support reliable semantic target activation.
 - Release 821: join the imported Wayfarer head to its collar with a coherent fabric neck bridge, preserving approved proportions and animation.
