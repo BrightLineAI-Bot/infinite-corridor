@@ -2353,8 +2353,8 @@ export function render(ctx, g, w, h, now) {
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
-  const flatCapture = g.map?.interiorTerrain?.version === 1 && closeViewCapturing();
-  const groundLift = (x, y) => (flatCapture ? 0 : g.map?.landscape ? liftAt(g.map, mw, x, y) : 0);
+  const flatCapture = (g.map?.interiorTerrain?.version === 1 || g.map?.building) && closeViewCapturing();
+  const groundLift = (x, y) => (flatCapture ? 0 : g.map?.landscape || g.map?.building ? liftAt(g.map, mw, x, y) : 0);
   const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();

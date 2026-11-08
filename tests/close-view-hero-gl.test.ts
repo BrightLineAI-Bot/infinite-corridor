@@ -26,8 +26,11 @@ test('hero has exactly two indexed draws; all silhouettes precede all actor dept
   const actors=gl.calls.filter(c=>c.hero||c.model);assert.deepEqual(actors.map(c=>[c.hero,c.pass,c.write]),[[false,1,false],[true,1,false],[false,0,true],[true,0,true]]);
   assert.equal(actors[1].depth,gl.GREATER);assert.equal(actors[3].depth,gl.LEQUAL);assert.equal(actors.filter(c=>c.mode==='elements').length,2);assert.deepEqual(gl.dynamic,[a.vertexCount*24]);assert.equal(closeViewGLStats.heroTriangles,3170);
 }));
-test('missing or unready hero leaves ordinary model draws available',()=>gpu(gl=>{
-  const a=asset(),f=frame(a);drawSceneGL({width:16,height:16},U,new Float32Array(30),f);assert.equal(gl.calls.filter(c=>c.hero).length,0);assert.equal(gl.calls.filter(c=>c.model).length,2);
+test('missing admitted hero leaves ordinary model draws available',()=>gpu(gl=>{
+  assert.equal(drawSceneGL({width:16,height:16},U,new Float32Array(30),null),true);assert.equal(gl.calls.filter(c=>c.hero).length,0);assert.equal(gl.calls.filter(c=>c.model).length,2);
+}));
+test('an explicitly admitted but unuploadable hero rejects the whole frame',()=>gpu(gl=>{
+  const a=asset(),f=frame(a);assert.equal(drawSceneGL({width:16,height:16},U,new Float32Array(30),f),false);assert.equal(gl.calls.filter(c=>c.hero||c.model).length,0);
 }));
 test('restored context reuploads hero resources and failure stays bounded',()=>gpu((gl,listeners)=>{
   const a=asset();assert.ok(prepareCloseViewHeroGL(a));listeners.webglcontextrestored();assert.equal(prepareCloseViewHeroGL(a),false);assert.ok(closeViewGLReady(()=>({width:10,height:10,getContext:()=>gl,addEventListener(){}})));assert.ok(prepareCloseViewHeroGL(a));assert.equal(gl.uploads,4);

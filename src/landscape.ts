@@ -1495,6 +1495,10 @@ export function tileUnder(map, width, x, y) {
 // Versioned interior heightfields use one support surface per tile. Coordinates here
 // are world feet (tile edges at integers); legacy landscapes keep their old rules.
 export const interiorTerrain = (map) => map?.interiorTerrain?.version === 1;
+// Only transient player-built stone acquires support on old flat interiors. Never
+// reinterpret an old generated tile's elev as a new heightfield.
+export const legacyInteriorBuildLevel = (map, tile) => map?.building && !interiorTerrain(map) && tile?.build === "stone"
+  ? Math.max(1, Math.min(2, Number(tile.buildLevel) || 1)) : 0;
 const RAMP_DIR = { north: [0, -1], east: [1, 0], south: [0, 1], west: [-1, 0] };
 export function interiorTileLevel(tile, x, y) {
   const e = Number.isFinite(tile?.elev) ? tile.elev : 0;
@@ -1504,10 +1508,11 @@ export function interiorTileLevel(tile, x, y) {
   return e - 1 + ((d[0] || d[1]) > 0 ? u : 1 - u);
 }
 export function interiorSurfaceLevel(map, x, y) {
-  if (!interiorTerrain(map)) return 0;
+  if (!map?.tiles) return 0;
   const w = map.width || 32, tx = Math.floor(x), ty = Math.floor(y);
   if (tx < 0 || ty < 0 || tx >= w || ty >= (map.height || map.tiles.length / w)) return 0;
-  return interiorTileLevel(map.tiles[ty * w + tx], x, y);
+  const tile = map.tiles[ty * w + tx];
+  return interiorTerrain(map) ? interiorTileLevel(tile, x, y) : legacyInteriorBuildLevel(map, tile);
 }
 export const interiorSurfaceHeight = (map, x, y) => interiorSurfaceLevel(map, x, y) * LIFT_PER_LEVEL;
 // Wall faces inherit the adjacent floor, including its ramp edge, so ceilings and
@@ -1539,6 +1544,8 @@ export function interiorTerrainSignature(map) {
   return h >>> 0;
 }
 export function liftAt(map, width, x, y) {
+  const built = legacyInteriorBuildLevel(map, tileUnder(map, width, x, y));
+  if (built) return built * LIFT_PER_LEVEL;
   if (!map?.landscape) return 0;
   if (interiorTerrain(map)) return interiorSurfaceHeight(map, x + .5, y + .75);
   const t = tileUnder(map, width, x, y);
@@ -1546,6 +1553,10 @@ export function liftAt(map, width, x, y) {
 }
 // Elevation rule for one movement step (see header). `entity.isPlayer` and `entity.jumping` are set by the game.
 export function canStep(entity, map, width, fromX, fromY, toX, toY) {
+  if (map?.building && !interiorTerrain(map) && !entity?.flying && !entity?.phases) {
+    const a = legacyInteriorBuildLevel(map, tileUnder(map, width, fromX, fromY)), b = legacyInteriorBuildLevel(map, tileUnder(map, width, toX, toY));
+    if (a || b) { const step = b - a; return step === 0 || !!entity?.isPlayer && (step < 0 || !!entity.jumping && step <= 1); }
+  }
   if (!map?.landscape || entity?.flying || entity?.phases) return true;
   const a = tileUnder(map, width, fromX, fromY), b = tileUnder(map, width, toX, toY);
   if (!a || !b || a === b) return true;
@@ -1568,7 +1579,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   return diff < 0; // dropping off a ledge: the game applies fall damage by height
 }
 export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "arcWall", "clodPlain", "clodGreen", "clodYellow", "clodRed", "craterWall", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo", "moorStone", "canopyTrunk", "thornCrystal", "springVent", "ruleMonolith", ...DOMAIN_BLOCKED, ...PALETTE_BLOCKERS].includes(kind); }
-export function elevationAt(map, width, x, y) { return map?.landscape ? interiorTerrain(map) ? interiorSurfaceLevel(map, x + .5, y + .75) : (tileUnder(map, width, x, y)?.elev || 0) : 0; }
+export function elevationAt(map, width, x, y) { return legacyInteriorBuildLevel(map, tileUnder(map, width, x, y)) || (map?.landscape ? interiorTerrain(map) ? interiorSurfaceLevel(map, x + .5, y + .75) : (tileUnder(map, width, x, y)?.elev || 0) : 0); }
 
 // ---------------------------------------------------------------- the Far Sleep (release 305)
 // docs/narrative-bible.md section 7, step 4: "The Far Sleep made strange". Past the far band of Readings (depth > 35,

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { updateEnemyAI } from '../src/game.ts';
+import { Game, updateEnemyAI } from '../src/game.ts';
+import { freshSave } from '../src/types.ts';
+import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
 import { createCombatant } from '../src/combat.ts';
 import { actorPresentation, nativeCreatureCoverage, projectileVisualHeight, shotVisualHeight } from '../src/actor-presentation.ts';
 import { MODEL_FLOATS, modelTriangleCount, modelSupportsAttachments } from '../src/close-view-models.ts';
@@ -160,8 +162,21 @@ test('actual GPU frames submit bounded raised Echo ribbons without a floor dupli
   const echoData = () => { const out=[]; for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+5]===11&&GLB.decal[b+7]===0xc9a7ff)out.push(...GLB.decal.slice(b,b+DECAL_FLOATS));} return out; };
   game.paused = true; game.pauseStarted = 100116; const paused = echoData();
   render(screen, game, 390, 844, 101116); assert.deepEqual(echoData(), paused, 'pause does not move or age submitted ribbons');
-  game.paused = false; game.glyphVisuals = [{ kind: 'primaryEcho', life: 0, max: .28, actual }, { kind: 'primaryEcho', life: .2, max: .28, actual: { ...actual, dx: NaN } }, { kind: 'futureEcho', life: 1, max: 1, actual }];
+  game.paused = false; game.glyphVisuals = [{ kind: 'primaryEcho', life: 0, max: .28, actual }, { kind: 'primaryEcho', life: .2, max: .28, actual: { ...actual, dx: NaN } }, { kind: 'primaryEcho', life: .2, max: .28, actual: { ...actual, shape: 'future-shape' } }, { kind: 'futureEcho', life: 1, max: 1, actual }];
   render(screen, game, 390, 844, 101132); assert.equal(closeViewGLStats.echoRibbonPaths, 0); assert.equal(closeViewGLStats.echoRibbonVertices, 0, 'expired, malformed and unknown records skip within the same bound');
+}));
+
+test('actual Salvage and future-fallback delayed cone Echoes enter the raised GL owner once',()=>withGPU(({screen})=>{
+  const items=[
+    {id:'salvage-blade',name:'Salvage Blade',slot:'primary',power:6,property:'steady'},
+    {id:'primary-future-relic',name:'Future Relic',slot:'primary',power:17,property:'future',future:{kept:true}},
+  ];
+  for(const item of items){
+    const save=freshSave();save.seed='CONE-ECHO-GL';save.closeView=true;save.activeWeaponSlot='primary';save.equipment.primary=normalizeSockets({...item,tier:'relic',affixes:[]});save.glyphs.echo=1;assert.equal(socketGlyph(save,'melee',0,'echo').ok,true);Object.assign(save.session,{area:'dungeon',activeDungeonId:'building:CONE-ECHO-GL:8:3:keep:3:f1',x:4,y:4});
+    const game=new Game(save,1000);game.enemies=[];game.presentation={effectiveQuality:'full',reduceMotion:false};const floor=game.map.tiles.find(t=>!t.blocked&&!t.hole&&!t.doorway&&!t.openAir&&!t.courtyard&&t.kind!=='yardGrass'&&t.x>2&&t.y>2);assert.ok(floor);Object.assign(game.player,{x:floor.x,y:floor.y,facing:'right'});game.save.lastAim={x:1,y:0};
+    const foe=Object.assign(createCombatant('ashling',game.player.x+1,game.player.y),{id:'cone-target',hp:1000,maxHp:1000,damage:0,cooldown:99});game.enemies=[foe];const before=foe.hp;game.primaryAttack(1000,{x:1,y:0});const afterOriginal=foe.hp,queued=game.glyphTimers.find(q=>q.kind==='strike');assert.ok(afterOriginal<before&&queued);assert.equal(queued.echoVisual,null,'generic primaries do not fabricate Pike/Cleaver memory');game.tickGlyphs(.001,queued.at);const afterEcho=foe.hp,cue=game.glyphVisuals.find(v=>v.kind==='primaryEcho');assert.ok(afterEcho<afterOriginal,'the one canonical delayed hit lands');assert.deepEqual(cue.actual,{x:game.player.meleeStrike.x,y:game.player.meleeStrike.y,dx:game.player.meleeStrike.dx,dy:game.player.meleeStrike.dy,range:1.7,arc:100,shape:'cone'});assert.equal(cue.memory,null);
+    resetCloseViewCamera();render(screen,game,390,844,queued.at);assert.equal(closeViewGLStats.echoRibbonPaths,1);assert.equal(closeViewGLStats.echoRibbonVertices,CLOSE_VIEW.echoRibbon.segments*6);const verts=[];for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+5]===11&&GLB.decal[b+7]===0xc9a7ff)verts.push(Array.from(GLB.decal.slice(b,b+DECAL_FLOATS)));}assert.equal(verts.length,42);assert.ok(verts.every(v=>v[8]===1&&v.every(Number.isFinite)),'cone uses the depth-tested trail owner, not a body replay');assert.equal(foe.hp,afterEcho,'rendering adds no hit');assert.equal(game.player.attackVisual.presentationCancelled,undefined);assert.deepEqual(game.save.equipment.primary.future,item.future);
+  }
 }));
 
 test('native floor and body decorations split without revealing hidden actors; reduced motion freezes decorative stars', () => {
