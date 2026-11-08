@@ -147,7 +147,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
-export const PLAYER_CLOCKS = ["castUntil", "attackReadyAt", "attackUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
+export const PLAYER_CLOCKS = ["castUntil", "attackReadyAt", "attackUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt"];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */ };
@@ -2190,7 +2190,8 @@ export class Game {
       walkPhase: s.playerRuntime.walkPhase || 0,
       attackReadyAt: now + s.playerRuntime.attackCooldown,
       attackUntil: now + (s.playerRuntime.attackMotion || 0),
-      attackVisual: normalizeAttackVisual(s.playerRuntime.attackVisual, Number(s.playerRuntime.attackMotion) || 0),
+      attackVisual: normalizeAttackVisual(s.playerRuntime.attackVisual, s.playerRuntime.attackVisual?.profile==='fist'&&Number.isFinite(s.playerRuntime.fistVisualMotion)?s.playerRuntime.fistVisualMotion:Number(s.playerRuntime.attackMotion)||0),
+      fistVisualUntil: s.playerRuntime.fistVisualMotion==null?undefined:now+(Number.isFinite(s.playerRuntime.fistVisualMotion)?Math.max(0,Math.min(ACTION_MOTION.meleeMs,s.playerRuntime.fistVisualMotion)):0),
       meleeUntil: now + (s.playerRuntime.meleeMotion || 0),
       meleeStrike: s.playerRuntime.meleeStrike
         ? { ...s.playerRuntime.meleeStrike }
@@ -3212,7 +3213,8 @@ export class Game {
         walkPhase: this.player.walkPhase,
         attackCooldown: remaining(this.player.attackReadyAt, clock),
         attackMotion: remaining(this.player.attackUntil, clock),
-        attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(this.player.attackUntil, clock)),
+        attackVisual: normalizeAttackVisual(this.player.attackVisual, this.player.attackVisual?.profile==='fist'&&Number.isFinite(this.player.fistVisualUntil)?remaining(this.player.fistVisualUntil,clock):remaining(this.player.attackUntil, clock)),
+        ...(Number.isFinite(this.player.fistVisualUntil)?{fistVisualMotion:remaining(this.player.fistVisualUntil,clock)}:{}),
         meleeMotion: remaining(this.player.meleeUntil, clock),
         meleeAim: this.player.meleeAim ? { ...this.player.meleeAim } : null,
         meleeStrike: this.player.meleeStrike
@@ -3480,7 +3482,7 @@ export class Game {
       p.meleeUntil =
         0;
     p.meleeStrike = null;
-    p.attackVisual = null;
+    p.attackVisual = null;p.fistVisualUntil=0;
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
@@ -4436,7 +4438,7 @@ export class Game {
       p.meleeUntil =
         0;
     p.meleeStrike = null;
-    p.attackVisual = null;
+    p.attackVisual = null;p.fistVisualUntil=0;
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
@@ -6189,7 +6191,7 @@ export class Game {
         this.player.meleeAim || this.save.lastAim,
       );
     this.player.meleeStrike = { ...geometry };
-    const attackVisual = stampAttackVisual(this.player, "melee", ACTION_MOTION.meleeMs, { x: geometry.dx, y: geometry.dy });
+    const attackVisual = !(echo&&this.player.attackVisual?.profile==='fist')&&stampAttackVisual(this.player, "melee", ACTION_MOTION.meleeMs, { x: geometry.dx, y: geometry.dy });
     if (attackVisual) {
       const primary = this.save.equipment.primary;
       attackVisual.weaponKind = primary?.id === "primary-cinder-pike" || primary?.name === "Cinder Pike" ? "cinder-pike"
@@ -6372,7 +6374,7 @@ export class Game {
   }
   castSpell(spellId = null) {
     const result = this.castSpellEffect(spellId);
-    if (result) this.player.castUntil = (this.lastUpdateNow || 0) + ACTION_MOTION.castMs;
+    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelFistPresentation(now); }
     return result;
   }
   castSpellEffect(spellId = null) {
@@ -7529,6 +7531,8 @@ export class Game {
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null) {
     if (this.cursed("attack", now)) { this.fistCombo = null; return false; } // release 737: a charged punch let go under NO ATTACK
     const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
+    const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y);
+    const fistLead = step === 1 ? (this.save.fistOpeningHand === 'right' ? 'left' : 'right') : this.fistCombo?.lead || this.save.fistOpeningHand || 'right';
     let d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : null, dist = P.dash;
     if (P.rush) { // release 491: the dash punch rushes to the targeted foe in range, else lands in place
       const rush = P.rush + (boxing ? boxing.stick : 0), t = this.lockedTarget(), locked = t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= rush + 1 ? t : null, foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), rush)?.e;
@@ -7540,13 +7544,15 @@ export class Game {
     const at = { x: p.x + .5 + d.x * .7, y: p.y + .45 + d.y * .7 }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
     const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1];
     this.effects.push({ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step === 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * charge) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : P.stun || .3 * charge, finisher: !!finisher });
-    this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, landed] };
+    if (step === 1) this.save.fistOpeningHand = fistLead;
+    this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, landed], lead: fistLead };
     if (step >= F.punches.length) this.fistRecoverUntil = now + F.recover * 1000;
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each punch
-    p.attackUntil = now + 240; p.meleeUntil = now + 240; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) visual.fistStep = step; // accepted combo identity in the existing presentation record
+    p.attackUntil = now + 240; p.meleeUntil = now + 240;p.fistVisualUntil=now+ACTION_MOTION.meleeMs; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) { visual.fistStep = step; visual.fistLead = fistLead; visual.fistCharge = Math.max(0, Math.min(1, Number(charge) || 0)); visual.poseMs = prior?.now ?? Math.max(0, logicalNow); visual.fistGaitPhase = prior?.gaitPhase ?? (Number(p.walkPhase) || 0) * Math.PI; visual.fistSpeed = prior?.speed ?? 0; visual.facingYaw = prior ? Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)) : Math.atan2(d.y, d.x); } // accepted combo identity and pre-dash presentation seed
     this.message = finisher ? "Uppercut! All three landed." : step === 1 ? (charge >= 1 ? "Dash punch, fully charged!" : "Dash punch.") : step === 2 ? "Jab." : "Uppercut.";
     return true;
   }
+  cancelFistPresentation(now=this.lastUpdateNow||0){const p=this.player,v=p?.attackVisual,until=Number.isFinite(p?.fistVisualUntil)?p.fistVisualUntil:p?.attackUntil;if(v?.profile==='fist'&&until>now)v.presentationCancelled=true;}
   // Release 365 (late-spells.ts): the Shadow Clone. A press deploys it; a press while it lasts carries you to it.
   shadowCloneActive(now = this.lastUpdateNow || 0) { return !!this.shadowClone && now < this.shadowClone.until; }
   // Release 515 (lattice-fields.ts): your own spells in play, and the lingering ones (fields) you stand in.
@@ -7923,7 +7929,7 @@ export class Game {
       else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
-      else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; if (this.mountRide()) this.jumpDur *= MOUNT_BEASTS[this.mountRide().beast].jump; /* release 748: a mount jumps farther */ this.jumpStart = now; this.jumpUntil = now + this.jumpDur; }
+      else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; if (this.mountRide()) this.jumpDur *= MOUNT_BEASTS[this.mountRide().beast].jump; /* release 748: a mount jumps farther */ this.jumpStart = now; this.jumpUntil = now + this.jumpDur; this.cancelFistPresentation(now); }
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
