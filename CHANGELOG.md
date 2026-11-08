@@ -3,6 +3,7 @@
 ## Unreleased
 
 
+- Release 827: low one-handed Cleaver carry and three cuts, two-handed Pike thrust cycles, and accepted presentation clocks that survive queued Echo and respect newer actions.
 - Release 826: keep normal Iron Fists on the adult Wayfarer, alternate accepted opening hands, and show distinct committed punch, jab and uppercut poses with silver gauntlets and smooth charged release.
 - Release 825: distinguish Cinder Pike thrusts and Verge Cleaver cuts with stable two-hand grips, accepted weapon identity and bounded silhouettes; retain existing combat rules and special-form equipment.
 - Release 824: preserve safe support heights for new interior tunnels and add a quiet excavation-return Proving Ground fixture.
