@@ -1925,8 +1925,11 @@ const PLAYER_VISUAL_KIND = Object.freeze({
   melee: "player", fist: "playerUnarmed", emitter: "playerTool", hammer: "playerHammer", sweep: "playerSweep",
   mirage: "playerMirage", "orrery-tap": "playerOrrery", "orrery-release": "playerOrrery",
 });
-function toolCuePointOpen(map,x,y){const w=map?.width||0,tile=w&&map.tiles?.[Math.floor(y)*w+Math.floor(x)];return !!tile&&!tile.blocked&&dungeonTileVisibility(map,x,y)!=='unseen';}
-function toolCueSegmentOpen(map,ax,ay,bx,by){if(!toolCuePointOpen(map,ax,ay)||!toolCuePointOpen(map,bx,by))return false;for(let i=1;i<8;i++){const t=i/8;if(!toolCuePointOpen(map,ax+(bx-ax)*t,ay+(by-ay)*t))return false;}return true;}
+function toolCuePointOpen(map,x,y){const w=Number(map?.width)||0,h=Number(map?.height)||0,ix=Math.floor(x),iy=Math.floor(y);if(!Number.isFinite(x)||!Number.isFinite(y)||ix<0||iy<0||ix>=w||iy>=h)return false;const tile=map.tiles?.[iy*w+ix];return !!tile&&!tile.blocked&&dungeonTileVisibility(map,x,y)!=='unseen';}
+// Conservative short-segment supercover. At an exact corner both side cells are included; the bounded lane
+// rejects geometry requiring more than eight cells rather than sampling past a wall.
+export function closeViewCueSegmentOpen(map,ax,ay,bx,by){if(!toolCuePointOpen(map,ax,ay)||!toolCuePointOpen(map,bx,by))return false;const cells=[],add=(x,y)=>{if(cells.some(c=>c[0]===x&&c[1]===y))return true;if(cells.length===8)return false;cells.push([x,y]);return true;},boundary=(x,y)=>Math.abs(ay-by)<1e-10&&Math.abs(ay-Math.round(ay))<1e-10?add(x,y-1):Math.abs(ax-bx)<1e-10&&Math.abs(ax-Math.round(ax))<1e-10?add(x-1,y):true;let x=Math.floor(ax),y=Math.floor(ay),ex=Math.floor(bx),ey=Math.floor(by);const endpoint=(px,py)=>{const ix=Math.floor(px),iy=Math.floor(py);return add(ix,iy)&&(px!==ix||add(ix-1,iy))&&(py!==iy||add(ix,iy-1))&&(px!==ix||py!==iy||add(ix-1,iy-1));};if(!endpoint(ax,ay)||!endpoint(bx,by)||!boundary(x,y))return false;const dx=bx-ax,dy=by-ay,sx=Math.sign(dx),sy=Math.sign(dy),adx=Math.abs(dx),ady=Math.abs(dy);let tx=sx?((sx>0?x+1:x)-ax)/dx:Infinity,ty=sy?((sy>0?y+1:y)-ay)/dy:Infinity,ddx=sx?1/adx:Infinity,ddy=sy?1/ady:Infinity;while(x!==ex||y!==ey){if(Math.abs(tx-ty)<1e-10){if(!add(x+sx,y)||!add(x,y+sy))return false;x+=sx;y+=sy;tx+=ddx;ty+=ddy;}else if(tx<ty){x+=sx;tx+=ddx;}else{y+=sy;ty+=ddy;}if(!add(x,y)||!boundary(x,y))return false;}return cells.every(c=>toolCuePointOpen(map,c[0]+.5,c[1]+.5));}
+const toolCueSegmentOpen=closeViewCueSegmentOpen;
 const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
 const KNOWN_TOOL_VISUAL = new Set(TOOL_VISUAL_KINDS);
 export const closeViewToolCueOwnsAction=(acceptedTool,inputAction,selectedAction)=>!!acceptedTool&&inputAction===selectedAction&&['ranged','melee','cast'].includes(selectedAction?.kind);
@@ -2163,7 +2166,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           offset = writeCloseViewHeroGear(state.vertices, offset, gear);
           const right=state.heroFrame.rightSocket,rx=right?.[12],ry=right?.[13],rz=right?.[14];
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
-          if(closeViewToolCueOwnsAction(acceptedTool,input.action,action)&&finite(rx)&&finite(ry)&&finite(rz)&&Math.hypot(rx-(who.x+.5),ry-(who.y+.45))<=.9&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,right)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
+          if(closeViewToolCueOwnsAction(acceptedTool,input.action,action)&&Number.isFinite(rx)&&Number.isFinite(ry)&&Number.isFinite(rz)&&Math.hypot(rx-(who.x+.5),ry-(who.y+.45))<=.9&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,right)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;
         }
