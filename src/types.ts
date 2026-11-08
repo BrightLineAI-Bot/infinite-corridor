@@ -123,6 +123,7 @@ export function ensurePerception(s){const b=perception(),p=s.perception||{};s.pe
 export function ensureAttackVisualRuntime(save) {
   const runtime = save?.session?.playerRuntime;
   if (runtime) {
+    if (Object.hasOwn(runtime, "heroPresentationTime") && (!Number.isFinite(runtime.heroPresentationTime) || runtime.heroPresentationTime < 0 || runtime.heroPresentationTime > 1e12)) delete runtime.heroPresentationTime;
     if (Object.hasOwn(runtime, "actionVisualMotion")) runtime.actionVisualMotion = normalizeActionVisualMotion(runtime.actionVisualMotion, runtime.attackVisual);
     if (runtime.primaryVisualMotion != null) runtime.primaryVisualMotion = Number.isFinite(Number(runtime.primaryVisualMotion)) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, Number(runtime.primaryVisualMotion))) : 0;
     if (runtime.fistVisualMotion != null) runtime.fistVisualMotion = Number.isFinite(Number(runtime.fistVisualMotion)) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, Number(runtime.fistVisualMotion))) : 0;

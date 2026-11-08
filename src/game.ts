@@ -2177,6 +2177,7 @@ export class Game {
     this.area = s.area;
     this.rx = s.rx || 0;
     this.ry = s.ry || 0;
+    if (Number.isFinite(s.playerRuntime.heroPresentationTime) && s.playerRuntime.heroPresentationTime >= 0 && s.playerRuntime.heroPresentationTime <= 1e12) this.presentationPausedMs = now - s.playerRuntime.heroPresentationTime;
     this.player = {
       isPlayer: true, // release 609: known as the Wayfarer from the first frame (relocateIfStranded)
       x: s.x,
@@ -3182,7 +3183,7 @@ export class Game {
       const pausedMs = Math.max(0, now - this.pauseStarted);
       shiftClocks(this, pausedMs); // release 736 (F5/C12): every timer, from the one list
       // Runtime presentation clocks can observe a pause even when scenes/background suspension skip every render/input callback.
-      // This accumulator is not saved and does not join the gameplay clock lists.
+      // Its logical time is saved separately; this offset never joins the gameplay clock lists.
       this.presentationPausedMs = (this.presentationPausedMs || 0) + pausedMs;
     }
     this.paused = v;
@@ -3214,6 +3215,7 @@ export class Game {
         stamina: this.player.stamina,
         facing: this.player.facing,
         walkPhase: this.player.walkPhase,
+        heroPresentationTime: Math.max(0, Math.min(1e12, clock - (this.presentationPausedMs || 0))),
         attackCooldown: remaining(this.player.attackReadyAt, clock),
         attackMotion: remaining(this.player.attackUntil, clock),
         attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(attackVisualDeadline(this.player, this.player.attackVisual, { effects: this.effects, now: clock }), clock)),
@@ -6596,7 +6598,7 @@ export class Game {
     p.attackUntil = now + 240;
     const hammerDurationMs = B.delay * 1000 + B.lifetime * 1000;
     const toolVisual = stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", kind === "hammerfall" ? hammerDurationMs : 240, visualAim);
-    if (toolVisual && kind === "hammerfall") { Object.assign(toolVisual, { hammerEffectId: main.id, hammerDelayMs: B.delay * 1000, hammerRecoveryMs: B.lifetime * 1000 }); p.actionVisualUntil = now + hammerDurationMs; }
+    if (toolVisual && kind === "hammerfall") { Object.assign(toolVisual, { hammerEffectId: main.id, hammerDelayMs: B.delay * 1000, hammerRecoveryMs: B.lifetime * 1000 }); p.actionVisualUntil = now + hammerDurationMs; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y); if (prior) toolVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)); }
     if (toolVisual && kind === "great-sweep") toolVisual.toolKind = "great-sweep";
     this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;

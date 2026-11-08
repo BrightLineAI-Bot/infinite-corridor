@@ -183,26 +183,71 @@ function alignJointPoint(state,pose,node,point,tx,ty,tz){
   const ux=ax/al,uy=ay/al,uz=az/al,vx=bx/bl,vy=by/bl,vz=bz/bl,cx=uy*vz-uz*vy,cy=uz*vx-ux*vz,cz=ux*vy-uy*vx,cl=Math.hypot(cx,cy,cz),dot=clamp(ux*vx+uy*vy+uz*vz,-1,1);if(cl<1e-8)return;
   const parent=state.asset.meta.nodes[node].parent,pm=parent*16,wx=cx/cl,wy=cy/cl,wz=cz/cl,c0=Math.hypot(state.global[pm],state.global[pm+1],state.global[pm+2])||1,c1=Math.hypot(state.global[pm+4],state.global[pm+5],state.global[pm+6])||1,c2=Math.hypot(state.global[pm+8],state.global[pm+9],state.global[pm+10])||1,lx=(wx*state.global[pm]+wy*state.global[pm+1]+wz*state.global[pm+2])/c0,ly=(wx*state.global[pm+4]+wy*state.global[pm+5]+wz*state.global[pm+6])/c1,lz=(wx*state.global[pm+8]+wy*state.global[pm+9]+wz*state.global[pm+10])/c2,ll=Math.hypot(lx,ly,lz)||1,angle=Math.acos(dot),s=Math.sin(angle/2)/ll,dw=Math.cos(angle/2),dx=lx*s,dy=ly*s,dz=lz*s,o=node*10+3,x=pose[o],y=pose[o+1],z=pose[o+2],w=pose[o+3];pose[o]=dw*x+dx*w+dy*z-dz*y;pose[o+1]=dw*y-dx*z+dy*w+dz*x;pose[o+2]=dw*z+dx*y-dy*x+dz*w;pose[o+3]=dw*w-dx*x-dy*y-dz*z;
 }
-function solveLeg(state,pose,left,target,weight,residual){
-  const upper=left?30:32,lower=left?29:31,foot=left?1:36,root=38,g=state.global,ho=upper*16,ko=lower*16,ankle=state.anklePoint;
-  build(state.asset,state,pose);anklePoint(state,left,ankle);const hx=g[ho+12],hy=g[ho+13],hz=g[ho+14],kx=g[ko+12],ky=g[ko+13],kz=g[ko+14],a=Math.hypot(kx-hx,ky-hy,kz-hz),b=Math.hypot(ankle[0]-kx,ankle[1]-ky,ankle[2]-kz),rx=target[0]-hx,ry=target[1]-hy,rz=target[2]-hz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;
-  let px=0,py=0,pz=1,pdot=pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;const pl=Math.hypot(px,py,pz)||1;px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=hx+dx*along+px*height,jy=hy+dy*along+py*height,jz=hz+dz*along+pz*height;
-  alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);anklePoint(state,left,ankle);alignJointPoint(state,pose,lower,ankle,target[0],target[1],target[2]);build(state.asset,state,pose);
-  const fx=target[0]+residual[0]*(1-weight),fy=target[1]+residual[1]*(1-weight),fz=target[2]+residual[2]*(1-weight),inv=state.primaryScratch;inverseAffine(inv,0,state.global,root*16);const o=foot*10,ox=inv[0]*fx+inv[4]*fy+inv[8]*fz+inv[12],oy=inv[1]*fx+inv[5]*fy+inv[9]*fz+inv[13],oz=inv[2]*fx+inv[6]*fy+inv[10]*fz+inv[14];pose[o]=ox-state.fit.offsets[foot*3];pose[o+1]=oy-state.fit.offsets[foot*3+1];pose[o+2]=oz-state.fit.offsets[foot*3+2];
-  const q=state.fistScratch,side=left?0:1;matrixQuat(q,0,state.global,lower*16);qmul(q,4,q,0,state.footRel,side*4);matrixQuat(q,8,state.global,root*16);qinv(q,12,q,8);qmul(q,16,q,12,q,4);for(let k=0;k<4;k++)pose[o+3+k]=q[16+k];
+function solveLeg(state,pose,left,target,weight,data) {
+  const upper=left?30:32,lower=left?29:31,foot=left?1:36,g=state.global,ho=upper*16,ko=lower*16,ankle=state.anklePoint;
+  build(state.asset,state,pose);anklePoint(state,left,ankle);
+  const hx=g[ho+12],hy=g[ho+13],hz=g[ho+14],kx=g[ko+12],ky=g[ko+13],kz=g[ko+14];
+  const a=Math.hypot(kx-hx,ky-hy,kz-hz),b=Math.hypot(ankle[0]-kx,ankle[1]-ky,ankle[2]-kz),rx=target[0]-hx,ry=target[1]-hy,rz=target[2]-hz;
+  const raw=Math.hypot(rx,ry,rz)||1,d=clamp(raw,Math.abs(a-b)+1e-5,a+b-1e-5),dx=rx/raw,dy=ry/raw,dz=rz/raw;
+  // Approach the source knee plane continuously, then use a forward knee pole at full weight.
+  let px=(kx-hx)*(1-weight),py=(ky-hy)*(1-weight),pz=(kz-hz)*(1-weight)+weight;
+  const dot=px*dx+py*dy+pz*dz;px-=dot*dx;py-=dot*dy;pz-=dot*dz;
+  const plen=Math.hypot(px,py,pz)||1;px/=plen;py/=plen;pz/=plen;
+  const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along));
+  alignJoint(state,pose,upper,lower,hx+dx*along+px*height,hy+dy*along+py*height,hz+dz*along+pz*height);
+  build(state.asset,state,pose);anklePoint(state,left,ankle);alignJointPoint(state,pose,lower,ankle,hx+dx*d,hy+dy*d,hz+dz*d);
+  build(state.asset,state,pose);anklePoint(state,left,ankle);
+  const fx=ankle[0]+data[3]*(1-weight),fy=ankle[1]+data[4]*(1-weight),fz=ankle[2]+data[5]*(1-weight),q=state.primaryScratch;
+  inverseAffine(q,0,g,38*16);const o=foot*10;
+  pose[o]=q[0]*fx+q[4]*fy+q[8]*fz+q[12]-state.fit.offsets[foot*3];
+  pose[o+1]=q[1]*fx+q[5]*fy+q[9]*fz+q[13]-state.fit.offsets[foot*3+1];
+  pose[o+2]=q[2]*fx+q[6]*fy+q[10]*fz+q[14]-state.fit.offsets[foot*3+2];
+  quaternion(q,16,data,6,state.hammerFeet,(left?0:1)*8+3,weight);
+  matrixQuat(q,20,g,38*16);qinv(q,24,q,20);qmul(pose,o+3,q,24,q,16);
 }
-function hammerPose(asset,state,pose,p){
-  const elapsed=p*570,enter=smoothstep(elapsed/160),descent=smoothstep((elapsed-240)/80),recover=smoothstep((elapsed-400)/170),weight=enter*(1-recover);
+function soleMinimum(points,q,o) {
+  const x=q[o],y=q[o+1],z=q[o+2],w=q[o+3],rx=2*(x*y+z*w),ry=1-2*(x*x+z*z),rz=2*(y*z-x*w);let low=Infinity;
+  for(let i=0;i<points.length;i+=3)low=Math.min(low,rx*points[i]+ry*points[i+1]+rz*points[i+2]);
+  return low;
+}
+function hammerPose(asset,state,pose,p) {
+  const elapsed=p*570,descent=smoothstep((elapsed-240)/80),weight=smoothstep(elapsed/160)*(1-smoothstep((elapsed-400)/170));
   if(!(weight>0))return;
-  if(descent>0)pose[33*10+1]-=.07*descent*weight;
-  build(asset,state,pose);const g=state.global,t=state.primaryTarget,leftFoot=[0,0,0],rightFoot=[0,0,0],leftResidual=[0,0,0],rightResidual=[0,0,0];anklePoint(state,true,leftFoot);anklePoint(state,false,rightFoot);for(let k=0;k<3;k++){leftResidual[k]=g[1*16+12+k]-leftFoot[k];rightResidual[k]=g[36*16+12+k]-rightFoot[k];}
-  const lift=.34*(1-descent)*weight,spread=.075*descent*weight;leftFoot[0]+=spread;rightFoot[0]-=spread;rightFoot[1]+=lift;
-  solveLeg(state,pose,true,leftFoot,weight,leftResidual);solveLeg(state,pose,false,rightFoot,weight,rightResidual);
-  clipPose(asset,asset.clips.Punch,asset.clips.Punch.duration*.40,state.fistSource);for(const node of FIST_OWN)for(let k=0;k<4;k++)pose[node*10+3+k]=state.fistSource[node*10+3+k];
-  build(asset,state,pose);const ls=12*16,rs=22*16,leftReach=Math.hypot(g[11*16+12]-g[ls+12],g[11*16+13]-g[ls+13],g[11*16+14]-g[ls+14])+Math.hypot(g[7*16+12]-g[11*16+12],g[7*16+13]-g[11*16+13],g[7*16+14]-g[11*16+14]),rightReach=Math.hypot(g[21*16+12]-g[rs+12],g[21*16+13]-g[rs+13],g[21*16+14]-g[rs+14])+Math.hypot(g[18*16+12]-g[21*16+12],g[18*16+13]-g[21*16+13],g[18*16+14]-g[21*16+14]),reach=.65*Math.min(leftReach,rightReach);
-  const crossed=1-descent,midX=(g[ls+12]+g[rs+12])/2,midY=(g[ls+13]+g[rs+13])/2,midZ=(g[ls+14]+g[rs+14])/2;
-  t[0]=crossed?midX+.07:g[ls+12]-.12;t[1]=crossed?midY-.22:g[ls+13]-reach;t[2]=midZ+.24;solveArmLegacy(state,pose,true,t,0);
-  t[0]=crossed?midX-.07:g[rs+12]+.12;t[1]=crossed?midY-.18:g[rs+13]-reach;t[2]=midZ+.20;solveArmLegacy(state,pose,false,t,0);
+  const layer=state.hammerLayer,data=state.hammerLegData,g=state.global,target=state.primaryTarget;
+  layer.set(pose);build(asset,state,pose);
+  // Read the unmodified gait/sole frame BEFORE the pelvis drops.
+  for(let side=0;side<2;side++){
+    const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);
+    for(let k=0;k<3;k++){data[o+k]=target[k];data[o+3+k]=g[foot*16+12+k]-target[k];}
+    matrixQuat(data,o+6,g,foot*16);
+  }
+  clipPose(asset,asset.clips.Punch,asset.clips.Punch.duration*.40,state.fistSource);
+  for(const node of FIST_OWN)for(let k=0;k<4;k++)layer[node*10+3+k]=state.fistSource[node*10+3+k];
+  build(asset,state,layer);
+  const midX=(g[12*16+12]+g[22*16+12])/2,midY=(g[12*16+13]+g[22*16+13])/2,midZ=(g[12*16+14]+g[22*16+14])/2;
+  for(let side=0;side<2;side++){
+    const left=side===0,sign=left?1:-1,shoulder=left?12:22,elbow=left?11:21,wrist=left?7:18;
+    build(asset,state,layer);const reach=Math.hypot(g[elbow*16+12]-g[shoulder*16+12],g[elbow*16+13]-g[shoulder*16+13],g[elbow*16+14]-g[shoulder*16+14])+Math.hypot(g[wrist*16+12]-g[elbow*16+12],g[wrist*16+13]-g[elbow*16+13],g[wrist*16+14]-g[elbow*16+14]);
+    const crossX=midX-sign*.08,crossY=midY-(left?.20:.15),crossZ=midZ+(left?.34:.23);
+    target[0]=crossX+(g[shoulder*16+12]+sign*.04-crossX)*descent;
+    target[1]=crossY+(g[shoulder*16+13]-.65*reach-crossY)*descent;
+    target[2]=crossZ+(midZ+.16-crossZ)*descent;
+    solveArm(state,layer,left,target,0);
+  }
+  blend(pose,layer,weight);
+  pose[33*10+1]-=.07*descent*weight;
+  for(let side=0;side<2;side++){
+    const left=side===0,o=side*10,r=side*8,sign=left?1:-1;
+    const lift=left?0:.40*(1-descent)+(elapsed<320?.02*descent:0);
+    target[0]=data[o]+(state.hammerFeet[r]+sign*.075*descent-data[o])*weight;
+    target[1]=data[o+1]+(state.hammerFeet[r+1]+lift-data[o+1])*weight;
+    target[2]=data[o+2]+(state.hammerFeet[r+2]-data[o+2])*weight;
+    // A slerped sole can rotate below the linear path of its two endpoint soles. Lift the
+    // ankle target by that geometric sag, so the connected leg follows the corrected foot.
+    const q=state.primaryScratch,sole=state.hammerSoles[side];quaternion(q,0,data,o+6,state.hammerFeet,r+3,weight);
+    target[1]+=Math.max(0,soleMinimum(sole,data,o+6)*(1-weight)+soleMinimum(sole,state.hammerFeet,r+3)*weight-soleMinimum(sole,q,0));
+    solveLeg(state,pose,left,target,weight,state.hammerLegSides[side]);
+  }
   state.clip='derived-hammerfall-stomp';state.clipTime=p;
 }
 function solveArm(state,pose,left,target,frameYaw=0,framePitch=0){const upper=left?12:22,lower=left?11:21,wrist=left?7:18,thumb=left?9:20,grip=left?6:16,side=left?1:-1,q=state.primaryScratch,so=upper*16,eo=lower*16,wo=wrist*16,go=grip*16;build(state.asset,state,pose);matrixQuat(q,0,state.global,wo);matrixQuat(q,4,state.global,go);qinv(q,8,q,0);qmul(q,12,q,8,q,4);qinv(q,16,q,12);const half=(frameYaw-Math.PI/2)/2;const qs=Math.sin(half),qc=Math.cos(half),sp=Math.sin(framePitch/2),cp=Math.cos(framePitch/2);q[20]=qs*sp;q[21]=qs*cp;q[22]=qc*sp;q[23]=qc*cp;qmul(q,24,q,20,q,16);qrot(q,28,q,8,state.global[go+12]-state.global[wo+12],state.global[go+13]-state.global[wo+13],state.global[go+14]-state.global[wo+14]);qrot(q,32,q,24,q[28],q[29],q[30]);const tx=target[0]-q[32],ty=target[1]-q[33],tz=target[2]-q[34],sx=state.global[so+12],sy=state.global[so+13],sz=state.global[so+14],ex=state.global[eo+12],ey=state.global[eo+13],ez=state.global[eo+14],wx=state.global[wo+12],wy=state.global[wo+13],wz=state.global[wo+14],a=Math.hypot(ex-sx,ey-sy,ez-sz),b=Math.hypot(wx-ex,wy-ey,wz-ez),rx=tx-sx,ry=ty-sy,rz=tz-sz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;let px=side,py=-.45,pz=0,pdot=px*dx+py*dy+pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;let pl=Math.hypot(px,py,pz);if(pl<1e-5){px=0;py=-dz;pz=dy;pl=Math.hypot(px,py,pz)||1;}px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=sx+dx*along+px*height,jy=sy+dy*along+py*height,jz=sz+dz*along+pz*height;alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);alignJoint(state,pose,lower,wrist,tx,ty,tz);build(state.asset,state,pose);matrixQuat(q,36,state.global,eo);qinv(q,40,q,36);qmul(q,44,q,40,q,24);const po=wrist*10+3,to=thumb*10+3;qinv(q,48,pose,po);qmul(q,52,q,44,q,48);qmul(q,56,q,52,pose,to);for(let k=0;k<4;k++){pose[po+k]=q[44+k];pose[to+k]=q[56+k];}build(state.asset,state,pose);return Math.hypot(state.global[go+12]-target[0],state.global[go+13]-target[1],state.global[go+14]-target[2]);}
@@ -286,10 +331,11 @@ function deform(asset, state) {
 export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),primaryGripResidual:0,ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),footRel:new Float64Array(8),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),primaryGripResidual:0,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.proportions={width:proportions.width,depth:proportions.depth,hands:proportions.hands};s.fit=fitProportions(asset,s.proportions);
   clipPose(asset, asset.clips.Idle, 0, s.pose); build(asset, s, s.pose); deform(asset, s);
-  {const inv=s.primaryScratch,q=s.fistScratch;for(const [side,lower,foot] of [[0,29,1],[1,31,36]]){inverseAffine(inv,0,s.global,lower*16);const x=s.global[foot*16+12],y=s.global[foot*16+13],z=s.global[foot*16+14],o=side*3;s.ankleLocal[o]=inv[0]*x+inv[4]*y+inv[8]*z+inv[12];s.ankleLocal[o+1]=inv[1]*x+inv[5]*y+inv[9]*z+inv[13];s.ankleLocal[o+2]=inv[2]*x+inv[6]*y+inv[10]*z+inv[14];matrixQuat(q,0,s.global,lower*16);matrixQuat(q,4,s.global,foot*16);qinv(q,8,q,0);qmul(s.footRel,side*4,q,8,q,4);}}
+  {const inv=s.primaryScratch;for(const [side,lower,foot] of [[0,29,1],[1,31,36]]){inverseAffine(inv,0,s.global,lower*16);const x=s.global[foot*16+12],y=s.global[foot*16+13],z=s.global[foot*16+14],o=side*3;s.ankleLocal[o]=inv[0]*x+inv[4]*y+inv[8]*z+inv[12];s.ankleLocal[o+1]=inv[1]*x+inv[5]*y+inv[9]*z+inv[13];s.ankleLocal[o+2]=inv[2]*x+inv[6]*y+inv[10]*z+inv[14];}}
   {const q=s.fistScratch,a=new Float64Array(9),b=new Float64Array(9);for(let node=0;node<n;node++){qmat(s.fistBindLocal,node*9,asset.rest,node*10+3);matrixQuat(q,0,s.global,node*16);qmat(s.fistBindGlobal,node*9,q,0);}for(const [l,r] of FIST_PAIRS)for(const [target,source] of [[l,r],[r,l]]){const tp=asset.meta.nodes[target].parent,sp=asset.meta.nodes[source].parent;m3transpose(a,0,s.fistBindGlobal,tp*9);for(let k=0;k<9;k++)b[k]=s.fistBindGlobal[sp*9+k];b[0]*=-1;b[3]*=-1;b[6]*=-1;m3mul(s.fistMirrorC,(target*n+source)*9,a,0,b,0);}s.fistSource.set(asset.rest);s.other.set(asset.rest);s.fistMirrorRestError=0;for(const [l,r] of FIST_PAIRS)for(const [target,source] of [[l,r],[r,l]]){fistMirroredRotation(s,target,source);const o=target*10+3,d=Math.min(Math.hypot(s.other[o]-asset.rest[o],s.other[o+1]-asset.rest[o+1],s.other[o+2]-asset.rest[o+2],s.other[o+3]-asset.rest[o+3]),Math.hypot(s.other[o]+asset.rest[o],s.other[o+1]+asset.rest[o+1],s.other[o+2]+asset.rest[o+2],s.other[o+3]+asset.rest[o+3]));s.fistMirrorRestError=Math.max(s.fistMirrorRestError,d);}}
   let collar = Infinity, head = Infinity; for (const v of asset.meta.headAttachment.collarVertexIndices) collar = Math.min(collar, s.vertices[v * 6 + 1]);
   for (const m of asset.meta.meshes) if (m.node === asset.meta.headAttachment.node) for (let i = m.firstVertex; i < m.firstVertex + m.vertexCount; i++) head = Math.min(head, s.vertices[i * 6 + 1]);
@@ -299,6 +345,14 @@ export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   // Bounds belong to rendered triangles, never unused source vertices left by extraction.
   for (const v of asset.arrays.indices) { const y=s.vertices[v*6+1]; s.minY = Math.min(s.minY, y); max = Math.max(max, y); s.downClearance=Math.max(s.downClearance,-s.vertices[v*6+2]+.02); }
   s.referenceHeight = max - s.minY; if (!(s.referenceHeight > .1)) throw new Error('Invalid hero height');
+  for(let side=0;side<2;side++){
+    const foot=side===0?1:36,r=side*8,points=[],q=s.primaryScratch;let sole=Infinity;
+    matrixQuat(q,0,s.global,foot*16);qinv(q,4,q,0);
+    for(const mesh of asset.meta.meshes){if(mesh.skin<0)continue;const skin=asset.skins[mesh.skin];for(let v=mesh.firstVertex;v<mesh.firstVertex+mesh.vertexCount;v++){let influence=0;for(let k=0;k<4;k++)if(skin.joints[asset.arrays.joints[v*4+k]]===foot)influence+=asset.arrays.weights[v*4+k];if(influence>.5){sole=Math.min(sole,s.vertices[v*6+1]);qrot(q,8,q,4,s.vertices[v*6]-s.global[foot*16+12],s.vertices[v*6+1]-s.global[foot*16+13],s.vertices[v*6+2]-s.global[foot*16+14]);points.push(q[8],q[9],q[10]);}}}
+    (s.hammerSoles||=[])[side]=Float64Array.from(points);
+    s.hammerFeet[r]=s.global[foot*16+12];s.hammerFeet[r+1]=s.global[foot*16+13]+s.minY-sole+.0045;s.hammerFeet[r+2]=s.global[foot*16+14];matrixQuat(s.hammerFeet,r+3,s.global,foot*16);
+  }
+
   clipPose(asset, asset.clips.Roll, .08, s.other); build(asset, s, s.other); const b = asset.meta.reference.bodyNode * 16; s.rollX = s.global[b + 12]; s.rollZ = s.global[b + 14];
   return s;
 }
@@ -350,9 +404,10 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const speed = Math.max(0,Number(input.speed)||0), phase = ((Number(input.gaitPhase) || 0) / TAU % 1 + 1) % 1;
   const action=input.action,p=clamp(Number(action?.phase)||0),knocked=action?.kind==='hit'&&action.profile==='knockdown';
   // Accepted action progress, not wall-clock idle breathing, owns every action blend.
+  const hammerAction=action?.kind==='melee'&&action.profile==='hammer';
   const timedPrimary=action?.kind==='melee'&&['cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
-  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
+  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null;
   let clip = null, weight = 0, time = 0, dx = 0, dz = 0;
@@ -373,17 +428,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
     else if (clip) { time = kind === 'melee' ? (profile==='fist'?fistSourceTime(p,clip.duration):sourceTime(p, clip.duration)) : p * clip.duration;const fistProfile=profile==='fist'||profile==='fistCharge',lead=action.fistLead==='left'?'left':'right',step=[1,2,3].includes(action.fistStep)?action.fistStep:1,strikeLead=step===2?(lead==='left'?'right':'left'):lead;if(fistProfile)fistPose(asset,state,time,strikeLead);else clipPose(asset,clip,time,state.other);
       if(fistProfile){if(profile==='fistCharge'){fistReadyPose(asset,state,state.pose,p,strikeLead);state.clip='derived-fist-charge';state.clipTime=p;clip=null;}else{const envelope=Math.min(1,p/.08,(1-p)/.16),carry=clamp(Number(action.fistCharge)||0)*(1-p);if(carry>0){fistReadyPose(asset,state,state.pose,carry,strikeLead);fistPose(asset,state,time,strikeLead);}fistLayer(state.other,step,lead,step===3?.9:.65);weight=envelope;state.clip=step===1?'derived-dash-punch':step===2?'derived-opposite-jab':'derived-rising-uppercut';state.clipTime=p;}}
       if (kind === 'dodge') { build(asset, state, state.other); const b = asset.meta.reference.bodyNode * 16; dx = -(state.global[b + 12] - state.rollX) * weight; dz = -(state.global[b + 14] - state.rollZ) * weight; }
-/* retained tool branch blend variant
-      blend(state.pose, state.other, weight); state.clip = clip.name; state.clipTime = time;
-    } else if (kind === 'melee' && profile === 'hammer') {
-      hammerPose(asset,state,state.pose,p);
-    } else if (kind === 'melee' && profile === 'hammer') {
-      hammerPose(asset,state,state.pose,p);
-    } else if (kind === 'melee' && profile === 'hammer') {
-      hammerPose(asset,state,state.pose,p);
-    } else if (kind === 'melee' && profile === 'great-sweep') {
-      toolPose(state,state.pose,profile,p,weight);
-*/
+
       if(clip){if(profile!=='fist'||weight>0)blend(state.pose, state.other, weight);if(profile!=='fist'){state.clip = clip.name; state.clipTime = time;}}
     } else if (kind === 'melee' && profile === 'hammer') {
       hammerPose(asset,state,state.pose,p);
