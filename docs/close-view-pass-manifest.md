@@ -1,22 +1,69 @@
 # Close View development and publication manifest
 
-Updated: 2026-11-07. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
+Updated: 2026-11-08. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r822-1d2ba908e56c`. Publish run `42435253843` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
+Verified live: `r825-0c066edbc1a0`. Publish run `42444668551` succeeded; `gh-pages:release-identity.json` and the actual production Options → System label match the reviewed candidate, with no recent errors. Releases 821–825 deliver the character/camera, quickstep/gait, new excavation return and first distinct-primary baseline; they do not complete the newer goals below.
 
-## Objective and sequence
+## Single ordered build queue — owner instruction
 
-Finish and publish the current animation, spacious-interior, elevation, drone and control-feel candidate. Then complete four independent passes below and publish validated fixes as they become ready. Each pass records evidence, changes, tests, review, preview identity and publication result. Keep PRs focused and choose each game release number from freshly fetched main + 1.
+**This is the authoritative integration and release order.** Linked manifests hold detail and evidence; they are not competing schedules. The owner's latest instruction (2026-11-08) explicitly authorizes parallel specialist implementation, superseding the earlier one-implementation-at-a-time instruction. Independent candidates use isolated worktrees and bounded ownership; one coordinator integrates, reviews and releases them in the queue order below. New notes go into their stage without redirecting an assigned specialist or dropping earlier requirements. Reprioritize integration only on explicit owner direction or a concrete blocker; record why. Keep each PR focused, and choose a game release number from freshly fetched main + 1 only when preparing that PR.
+
+Earlier native creature/combat/actor passes r813–818 remain delivered; preserve their roster, Foundry and auxiliary-actor work recorded in the release log.
+
+Current release/documentation checkpoint: r825 is published and verified; the latest owner intake is being recorded here. **Next integration is stage 1, Iron Fists.** Specialists are preparing isolated candidates for Iron Fists and Cleaver/Pike carry and combos. Future tool geometry has a source-only candidate with visual issues still open; that specialist slot now belongs to Close View Pentagon/overworld-keep routing design. Parallel preparation does not mark any target delivered or permit later candidates to bypass earlier validation. No release numbers are reserved.
+
+| Order | Pass | Required owner direction / completion target | State |
+|---|---|---|---|
+| 1 | Normal Wayfarer Iron Fists | Retain the imported adult hero, protective head/style and small hands; cover both fists with white/silver gauntlets. Exactly three accepted stages: opening/dash punch, jab, uppercut. Owner confirmed that the opening hand alternates between combo cycles. Use convincing full-body movement and preserve actual combo/dash/effect mechanics and special-form precedence. | Candidate in progress; next integration |
+| 2a | Verge Cleaver carry and combo | Keep the rusty gladius-like outline. One-handed low carry, hand near hip and blade point near the floor without clipping; visible walking bob. Raise and perform three distinct readable slashes across accepted attacks, then repeat. Thin the side profile and refine hilt/blade detail without making an axe or a boxy slab. | Parallel candidate in progress; integrate after stage 1 |
+| 2b | Cinder Pike carry and combo | Two-handed polearm carry and three distinct forward thrust motions, then reset/repeat. Show actual body/arm movement, not only an effect or hit shape. | Parallel candidate in progress with 2a |
+| 2c | Remaining primary inventory | Audit every other canonical primary, including Salvage Blade, for coherent carry/attack/recovery and distinct profiles. Do not omit a weapon because it has no new art reference. | Queued |
+| 3 | Echo presentation | Actual Echo events create delayed slash/thrust afterimages along the original weapon path. They must not replay the body attack, advance its combo stage or create extra mechanical hits. Keep the real Echo cadence and damage events. | Queued |
+| 4a | Rift Bombard | RG-6-inspired cylinder/short-barrel launcher; appears on accepted tool use, with readable lobbed grenade/drop/explosion and current or separately validated secondary/bounce behavior. Movement continues. | Source recipe candidate; visual refinement/action integration queued |
+| 4b | Great Sweep | Normal Wayfarer body; swing the large broken greatsword with substantial guard/hilt and broad truncated blade from the supplied reference. No required permanent back carry or tool-induced body transformation. | Source recipe candidate; visual refinement/action integration queued |
+| 4c | Blunderbuss | Compact steampunk firearm, restrained muzzle flare and blue charge accent; distinct firing stance/recoil while moving. This item must not be lost from the queue. | Source recipe candidate; visual refinement/action integration queued |
+| 4d | Lumen Spindle | Forward-held wand; stable casting/firing arm with feedback per accepted shot, no exaggerated repeated left/right waggle. | Source recipe candidate; visual refinement/action integration queued |
+| 4e | Remaining tools and variants | Inventory every canonical tool/profile and retain Spark Coil, Needle Caster/Blunderbuss, Hammerfall/Golem, Great Sweep/Mirage, Blunderbuss/Arc Wave, Aether Orrery and other actual variants. Work one at a time with truthful accepted events, carry/swap and socket origins. The owner's unnamed magical-tool remark does not rename an existing item. | Queued |
+| 5 | Spells | All canonical accepted casts, hand origins, projectiles/impacts and distinct visible gestures; movement, rejection, pause, interruption and resume. Retain current mechanics unless a deliberate reviewed combat change is required. | Queued |
+| 6a | Bodies, collisions, items and interactions | Grounded player/enemy separation, legitimate ghost/flight exceptions, overlap escape, wall/corner/door contact, pickups and Act priority. Do not claim body blocking is already implemented. | Queued |
+| 6b | Traversal blocks in Close View | Readable one-level jumpable blocks and two-level stacks. A two-level stack cannot be jumped onto from ground; an adjacent one-level block provides the step. Maximum five physical blocks, ten active seconds. Verify stone selection and production rendering before diagnosing the reported wall appearance; preserve separate wood-wall behavior and placement restrictions. | Queued |
+| 7 | Camera, environments and combined combat space | Revisit movement/look ownership, target lock/facing, cramped spaces, all themes, Pentagon halls/shafts, large/multiple foes, enemy melee/ranged readability and solid presentation. Assess breathing room and navigation with the completed actions/contact systems. Preserve pinned layouts. | Queued |
+| 8a | Robot | Restore deliberately clunky oversized technology/cockpit character with a large protective viewport, retaining actual modes/controls. | Queued |
+| 8b | Powered suit | Fitted human anatomy with modest structural shoulder/head bulk and normal hands, inspired by the supplied hard-suit reference; omit external wires/projections and extreme forearm/head/shoulder mass. | Queued |
+| 9 | Close View Pentagon and overworld-keep routing | Latest owner clarification limits this pass to Close View inside overworld Pentagons and keeps, not existing dungeon families. Audit branching paths, room connections and usable multi-level/roof routes in those structures. Determine the representation/generation seam before changes; any new layout requires an explicit new revision and isolated Proving Ground preview, preserving old pins and explored content. The earlier Room Maze target is superseded; reusable region/connector research remains reference only. | Dedicated parallel architecture specialist assigned; implementation gated on concrete design |
+| 10 | Final combined visual/interaction/performance passes | Exercise the full toolkit, creatures, collisions, items, all environments, traversal/recovery and offline/pause/save behavior at normal gameplay speed. Record bounded work separately from actual phone FPS/thermals/multitouch; those hardware measurements remain open. | Queued |
+
+### Ordered integration: definition of done
+
+Specialists may prepare independent candidates concurrently; overlapping files are reconciled by the coordinator before release. Tool recipes alone do not complete accepted-use plumbing, animation, projectile or hosted acceptance. For each focused integration pass: reproduce the reported behavior on an exact candidate; implement; run authorized meaningful regressions, release consistency and build; review everything required by current project rules; obtain exact-head CI; merge; follow Preview through completion; verify hosted visuals/interactions; publish only under the current conversation's authority and required approval path; verify workflow, live identity and actual System label; then record evidence and mark that pass delivered. A source-only pose test or a paused screenshot alone cannot establish fluid motion at normal speed. No numerical combat change is hidden inside a cosmetic change, and no existing test assertion is weakened to hide a defect.
+
+Current primary damage resolves immediately with a 240 ms presentation clock. More visible lift/windup and three-stage body motion must remain honest about real contact timing. If visible choreography requires actual startup/contact/recovery changes, make that an explicit data-backed combat pass with its own tests/review; do not show an attack still winding up after an invisible earlier hit. Each accepted press owns its canonical hit; a three-motion cycle does not silently mean three free hits from one press.
+
+### Detail records for the queue
+
+- [Primary and latest combo/carry direction](primary-weapon-presentation-manifest.md): stages 1–3, including the confirmed three-hit alternating-opener decision.
+- [Tool and armor specifications](close-view-tool-armor-manifest.md): all named tool/reference details and stages 4/8.
+- [Grounded contact design](grounded-contact-design.md), [new excavation return](dug-tunnel-return-height-manifest.md), and the block audit below: stage 6.
+- [Combat experience direction](close-view-combat-direction.md) and [routing reuse study](close-view-dungeon-routing-study.md): stage 7/9 reference; latest Pentagon/keep scope supersedes the study's earlier Room Maze target.
+- [Release log](RELEASE_LOG.md) and [Anthropic handoff](anthropic-close-view-handoff.md): identities, evidence and continuation.
+
+### Traversal-block audit: current facts, future visual pass
+
+The owner requests blocks rather than an entire wall in dungeon Close View. A read-only production audit found that `src/building.ts` already defines stone as an unblocked elevated perch: `life:10`, `maxOut:5`, and stack cap 2. Each physical record consumes a slot, including each member of a stack; placing the sixth evicts the oldest under existing safety rules. One-level perches require Jump; ground cannot directly enter two levels, and an adjacent one-level block creates the intended three-record stair arrangement. Shared placement restrictions cover slopes, structures/doors, lethal/water terrain, map edges, blocked ground and occupied enemy tiles.
+
+Ten seconds means active gameplay time; pause freezes it. Builds are runtime-only and currently clear on reload or area change rather than restoring a remaining lifetime. Preserve this contract unless a later owner request changes persistence.
+
+Close View static wall extrusion requires a blocked tile; stone is not deliberately classified that way, while wood is a separate intentional full wall. The next pass must reproduce the actual selected material and view first. Diagnose top/edge/side geometry, height, terrain invalidation after placement/top-break/expiry and control clarity before changing any build mechanics. Verify one block, two-stack direct refusal, adjacent one-to-two jump, five-record cap/eviction, ten active seconds/pause, current reload/area clearing, and unchanged lethal/slope/tower/roof restrictions. The exact visual cause has not yet been demonstrated; no fix is claimed.
 
 ## Owner direction — compact combat and exploration engine (2026-11-07)
 
 Close View must feel like inhabiting a concrete character in a dangerous, marvelous place. The owner cites Elder Scrolls Online for responsive dodges, casting and readable weapon reach; Bloodborne for pacing; Mortal Shell for weight; and Remnant for tool and weapon interactions. These are quality references, not a claim of feature or production parity. The wider infinite-world view remains the exploration layer; Close View adds deliberate embodied combat and discovery while retaining phone budgets.
 
-This direction supplements the completed passes below; their checkmarks do not mean this expanded work is finished. Execute focused, reviewed releases in this order:
+This direction supplements the completed passes below; their checkmarks do not mean this expanded work is finished. The single ordered queue above controls implementation; the following list records the earlier broad goals and first-pass evidence, not a separate schedule:
 
-- [ ] Finish imported Wayfarer acceptance: protective green/gray fabric, silver mask and hair, amber eyes, adult proportions and small hands; close the observed rear neck gap before publication.
-- [ ] Complete preserved camera clearance and accessible target activation follow-up. Verify cramped corners, entry framing, camera recovery, target acquisition/switching and character facing on the actual hosted candidate.
-- [ ] Distinguish weapon motion and grip. The owner describes the Verge Cleaver as a broad great-blade swing and the Cinder Pipe as a thrusting polearm/spear-like action. Verify canonical item definitions and authoritative reach/contact timing before choosing each presentation. Keep anticipation, contact and recovery readable; do not silently alter damage rules to fit an animation.
+- [x] First imported Wayfarer acceptance delivered in r821: protective green/gray fabric, silver mask and hair, amber eyes, adult proportions/small hands and closed rear neck were verified in hosted rendering.
+- [x] First camera clearance and accessible target activation follow-up delivered in r822 with hosted corner/entry/target checks. Combined checks after the new actions/contact systems remain queued in stage 7.
+- [x] First distinct primary geometry/grip/action pass delivered in r825 with canonical reach and damage retained. The latest low one-handed Cleaver carry, three-slash/three-thrust cycles, gauntlets and Echo refinements remain queued above; keep the gladius-like shape.
 - [ ] Audit and implement solid enemy/player separation so ordinary grounded bodies cannot be walked into. Define and test the existing legitimate ghost, flight, dodge, spawn and knockback exceptions before changing collision. Avoid corridor trapping and preserve authoritative rules in both views.
 - [ ] Make ordinary nearby enemies visibly solid and stable while retaining deliberate spectral creatures, wall occlusion and pause/reduced-motion behavior. Investigate whether fade behavior is a stale release or a current defect; record exact candidate evidence.
 - [ ] Audit tool and spell actions against accepted gameplay events: distinct visible casts, firing/recoil, correct hands/muzzles, jumping, dodging and interruption/recovery. Refused actions must not animate a successful cast or shot.
@@ -28,7 +75,7 @@ Do not add artificial input latency or indiscriminate camera shake to imply weig
 ## Invariants
 
 - Save schema stays 14, preserving unknown fields, exact resume, explored/pinned generation, one-time rewards and existing journeys.
-- Building interior versions 1–2 and Pentagon versions 1–8 retain their historical generators. Preserve v3/v9 as well after their publication. New generation uses explicit version pins.
+- Every published generator revision retains its historical output and adoption pins, including building interior versions 1–4 and Pentagon versions 1–9 at this checkpoint. New generation uses an explicit new version; no explored history is regenerated.
 - Proving Ground uses isolated scratch state and its own storage/cache scope.
 - Preserve bounded actors, shots, effects, pathfinding and geometry, all quality tiers, reduced motion and offline behavior. Record physical-phone measurement limits honestly.
 - Movement touch belongs to the left joystick; camera gestures and action buttons retain distinct ownership.
@@ -36,7 +83,7 @@ Do not add artificial input latency or indiscriminate camera shake to imply weig
 - Leave `handoffs/` and operator work untouched. Change-Control stays disabled; preserve its historical metadata.
 - Use the approved plain Git/GitHub commands. Stop blocked transports and report their exact safe error; use no network workarounds or credential transfers.
 
-## Current delivery: releases 806–810
+## Historical delivery: releases 806–810
 
 - [x] Restore Proving Ground's initial idle frame (r806, PR #454).
 - [x] Walking, facing, sword cuts/recovery, successful casting, jumping and enemy windup/strike animation (r807, PR #455).

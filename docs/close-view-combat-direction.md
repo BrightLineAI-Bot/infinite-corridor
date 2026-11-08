@@ -4,14 +4,7 @@ Owner notes recorded 2026-11-07. This supplements the build manifest, preserves 
 
 ## Delivery order
 
-1. Delivered through r821/r822: imported adult protective Wayfarer, coherent neck, approved proportions/hands/amber eyes and camera/lock follow-up, with hosted acceptance.
-2. Delivered r823/r824: low directional quickstep, smoother gait, and returnable new interior excavation; old saved tunnel geometry remains unchanged.
-3. Delivered r825: distinct Pike thrust and gladius-like Cleaver cut, stable grips and accepted identity, preserved casting/jumping priority and exact recovery. Canonical hit resolution remains immediate.
-4. Next: retain the imported normal hero for the three accepted Iron Fists stages, preserving native readiness fallback and actual combo/dash/effect mechanics.
-5. Refine tool silhouettes, accepted swaps, firing/casting gestures and hand/muzzle origins according to close-view-tool-armor-manifest.md.
-6. Add grounded player/enemy body contact and refine interaction space as a separate reviewed gameplay pass; these are still queued.
-7. Assess large/multiple-enemy dungeon and Pentagon combat spacing. [The routing study](close-view-dungeon-routing-study.md) records reusable deterministic room/maze structure and vertical-connection research; any implementation is versioned and preserves pinned layouts, roof access and existing stair semantics.
-8. Refine robot and powered-suit art using the latest owner references after the action/contact work, with bounded geometry and actual form precedence preserved.
+Use the [single ordered integration/release queue](close-view-pass-manifest.md). The latest owner instruction authorizes isolated parallel specialist candidates; preparation may overlap, while integration and publication follow that queue. Character/camera r821–822, quickstep/new excavation r823–824 and the first primary pass r825 are delivered. The newer low carry, three-stage animations, Echo/tool/spell/contact/traversal/armor/construction targets are queued there. Next implementation is normal imported Iron Fists. Do not use older append-only handoff paragraphs as a competing order, and do not jump to the feature mentioned most recently.
 
 ## Experience target
 

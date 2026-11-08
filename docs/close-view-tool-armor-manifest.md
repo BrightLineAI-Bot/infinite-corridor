@@ -46,3 +46,8 @@ The next bounded implementation can admit the imported normal Iron Fists hero wi
 ## Deterministic construction research
 
 The latest owner request also adds room-maze routing, unique branches/loops and less obvious vertical integration to visual planning/construction, preserving roof access and up/down buildings. [The reuse study](close-view-dungeon-routing-study.md) compares three primary-source systems and records the bounded PG-only adaptation recommendation. Research is complete; no generator/library adoption or existing-world change is claimed.
+
+
+## Sequential execution and latest animation notes
+
+Use [close-view-pass-manifest.md](close-view-pass-manifest.md) as the only integration/release order; isolated specialist preparation may run in parallel under the latest owner instruction. This file keeps tool and armor specifications. Rift Bombard, Great Sweep, Blunderbuss and Lumen Spindle each have an explicit queued entry, followed by every remaining canonical tool/variant. The newer low one-handed Cleaver carry, three slashes/thrusts, white/silver gauntlets, confirmed three-hit alternating-opener Iron Fists and Echo afterimage rules are in primary-weapon-presentation-manifest.md. The master also holds the block jump/stack/cap/lifetime requirements. The geometry-only specialist candidate does not complete tool-use animation, selection, projectile behavior or hosted acceptance.
