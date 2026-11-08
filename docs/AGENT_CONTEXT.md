@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Verified Hammerfall publication and spell gate — 2026-11-08
+
+Production is verified `r834-32b9249def93`, commit32b9249def935f4112039ee5383a8759a3ffc196, tree9640ab40fbee158db4e746e6697e8dde6aaf6a6f. Source CI42506353026, merged CI42507220270, Preview42507220259 and Publish42508619787 succeeded; fresh Astra review833→834 plus the missing-original correction found no blockers. Live gh-pages identity and the actual Options -> System label match after Get latest/Update Ready, recent errors are none, and the existing paused250KB journey remains healthy. Hosted1280x720 acceptance covered leg lift, crossed fists, planted bent knees, arms beside torso, recovery, pause/resume, movement/weaving and Spindle/Echo/Dodge/Jump/Spell smoke without errors; no physical-phone claim. Spell candidate r835 is PR487 at source8332e07d with review clear and CI42508742453 pending; it is not merged, live or published. Contact and all later prepared candidates remain unnumbered and ordered. Local loopback/full local suite remains stopped.
+
 ## Spell candidate and current gate — 2026-11-08
 
 Verified publication is r833-23e83526084b (Publish42505081135, live identity and actual Options->System/errors none). Hammerfall r834 merged32b9249def93 with corrected source42914fc2 and clear fresh Astra review/source CI; its Preview42507220259, hosted and publication gates remain separate at this packaging checkpoint. r835 prepares accepted spell gestures/origins and18 public manual-cast inspections, preserving original14 scenarios. It waits for r834's hosted/publication gate before merge. Other candidates remain in the ordered queue. Local loopback/full local suite remains stopped; local checks are restricted to explicit server-free files and full coverage runs on CI. Browser access has recovered through the user's authorized normal retry. No later source work is claimed live or phone-tested.
