@@ -7,7 +7,7 @@ import { canStep, interiorSurfaceHeight, interiorGeometryHeight, elevationAt, li
 import { Game, footprintOpen } from '../src/game.ts';
 import { freshSave } from '../src/types.ts';
 import { serializeSave, deserializeSave } from '../src/persistence.ts';
-import { closeViewStatic, closeViewStaticStats, wallGeometry, CLOSE_VIEW_HOOKS, closeViewStats, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewProject, closeViewFloorRay } from '../src/close-view.ts';
+import { closeViewStatic, closeViewStaticStats, wallGeometry, CLOSE_VIEW_HOOKS, closeViewStats, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewProject, closeViewFloorRay, closeViewScreenToWorld } from '../src/close-view.ts';
 import { closeViewGLStats, resetCloseViewGL, glMask } from '../src/close-view-gl.ts';
 import { render } from '../src/renderer.ts';
 
@@ -141,6 +141,20 @@ class MockGL {
   isContextLost() { return false; } createShader() { return {}; } createProgram() { return {}; } createBuffer() { return {}; } createTexture() { return {}; } createVertexArray() { return {}; }
   getShaderParameter() { return true; } getProgramParameter(p, k) { return k === this.ACTIVE_UNIFORMS || k === this.ACTIVE_ATTRIBUTES ? 0 : true; } getExtension() { return null; }
 }
+test('the production Close View tap ray selects a visible stone top and stacks through Game.buildAt', () => {
+  const previous = globalThis.WebGL2RenderingContext; globalThis.WebGL2RenderingContext = MockGL;
+  const gl = new MockGL(), screen = context2D(), canvas = { width: 390, height: 844, addEventListener() {}, getContext: kind => kind === 'webgl2' ? gl : context2D() }; screen.canvas = canvas;
+  setCloseViewCanvasFactory(() => canvas); CLOSE_VIEW_HOOKS.gl = true; resetCloseViewGL();
+  try {
+    for (const version of [2, 4]) {
+      const f = fixture(version), g = f.game, at = f.buildPractice.lane.one; build(f); resetCloseViewCamera();
+      for (let i = 0; i < 4; i++) render(screen, g, 390, 844, 90000 + i * 16);
+      const top = interiorSurfaceHeight(g.map, at.x + .5, at.y + .5), projected = closeViewProject(at.x + .5, at.y + .5, top); assert.ok(projected);
+      const picked = closeViewScreenToWorld(g, 390, 844, projected.sx, projected.sy); assert.ok(picked); assert.ok(Math.hypot(picked.x - at.x - .5, picked.y - at.y - .5) < .03, `v${version} selects the rendered top instead of the floor behind it`);
+      const stacked = g.buildAt(picked.x, picked.y); assert.equal(stacked.ok, true, stacked.message); assert.equal(g.map.tiles[at.y * g.map.width + at.x].buildLevel, 2); assert.equal(g.save.materials.stone, 90);
+    }
+  } finally { CLOSE_VIEW_HOOKS.gl = null; resetCloseViewGL(); setCloseViewCanvasFactory(null); resetCloseViewCamera(); if (previous === undefined) delete globalThis.WebGL2RenderingContext; else globalThis.WebGL2RenderingContext = previous; }
+});
 test('every quality tier and reduced motion submits legacy stone depth; picking and no-WebGL fallback remain usable', () => {
   const previous = globalThis.WebGL2RenderingContext; globalThis.WebGL2RenderingContext = MockGL;
   const gl = new MockGL(), screen = context2D(), canvas = { width: 390, height: 844, addEventListener() {}, getContext: kind => kind === 'webgl2' ? gl : context2D() }; screen.canvas = canvas;
