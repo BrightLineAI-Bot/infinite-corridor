@@ -4,6 +4,10 @@ Recorded 2026-11-07 against published game commit `0c066edbc1a0dff1f33bf83b71bbd
 
 The owner wants reusable deterministic room-maze routing with distinct branches, loops and less obvious vertical connections. Keep the enjoyable roof access and movement up/down through buildings. Preserve every explored/pinned layout; a new structure experiment belongs behind a new generator revision for new histories, initially in Proving Ground.
 
+## Latest owner scope clarification — 2026-11-08
+
+The owner has now specified Close View inside **overworld Pentagons and keeps**, rather than existing dungeon families. This supersedes the Room Maze-first implementation target below; the earlier research remains a reusable algorithm/reference audit. A dedicated specialist is auditing Pentagon/keep representation, branching and vertical/roof transition contracts before proposing source changes. Preserve explored/pinned structures and dungeon layouts. Any geometry that changes authoritative routes must use the applicable new structure revision, with an isolated Proving Ground comparison before adoption; a view-only change must not invent passages absent from the authoritative map. No routing implementation is claimed by this clarification.
+
 ## Recommendation
 
 Keep Infinite Corridor's engine and map/save contracts. Adapt the **Rooms and Mazes region/connector structure** to the existing Room Maze family; use rot.js as an isolated comparison implementation and Edgar's graph/template vocabulary as design material. Do not adopt a whole dungeon engine or flatten the existing multi-floor families into a generic 2D generator.

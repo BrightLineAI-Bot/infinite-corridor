@@ -4,7 +4,7 @@ Owner notes recorded 2026-11-07. This supplements the build manifest, preserves 
 
 ## Delivery order
 
-Use the [single ordered build queue](close-view-pass-manifest.md). Character/camera r821–822, quickstep/new excavation r823–824 and the first primary pass r825 are delivered. The newer low carry, three-stage animations, Echo/tool/spell/contact/traversal/armor/construction targets are queued there. Next implementation is normal imported Iron Fists. Do not use older append-only handoff paragraphs as a competing order, and do not jump to the feature mentioned most recently.
+Use the [single ordered integration/release queue](close-view-pass-manifest.md). The latest owner instruction authorizes isolated parallel specialist candidates; preparation may overlap, while integration and publication follow that queue. Character/camera r821–822, quickstep/new excavation r823–824 and the first primary pass r825 are delivered. The newer low carry, three-stage animations, Echo/tool/spell/contact/traversal/armor/construction targets are queued there. Next implementation is normal imported Iron Fists. Do not use older append-only handoff paragraphs as a competing order, and do not jump to the feature mentioned most recently.
 
 ## Experience target
 

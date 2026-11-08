@@ -1,6 +1,6 @@
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.ts";
@@ -1887,7 +1887,7 @@ const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
 const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkRadians: 5.4, castMs: ACTION_MOTION.castMs, turnRate: 12, strideSpeed: 4, windupMs: 450 });
 const PLAYER_VISUAL_KIND = Object.freeze({
-  melee: "player", fist: "playerUnarmed", emitter: "playerTool", hammer: "playerHammer", sweep: "playerSweep",
+  melee: "player", fist: "playerUnarmed", emitter: "playerTool", hammer: "playerUnarmed", sweep: "playerSweep",
   mirage: "playerMirage", "orrery-tap": "playerOrrery", "orrery-release": "playerOrrery",
 });
 const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
@@ -1958,18 +1958,21 @@ export function closeViewPlayerAction(g, now) {
   if (!player) return { active: false, legacy: false, record: null, profile: null, amount: 0, aim: null };
   const hasRecord = player.attackVisual != null;
   const record = hasRecord ? normalizeAttackVisual(player.attackVisual) : null;
-  const active = !!record && player.attackUntil > now;
-  const legacy = !hasRecord && player.attackUntil > now;
-  const amount = active ? 1 - Math.min(1, Math.max(0, player.attackUntil - now) / record.durationMs) : 0;
-  return { active, legacy, record, profile: active ? record.profile : null, amount, aim: active ? record.aim || null : null };
+  const until = attackVisualDeadline(player, record, { effects: g.effects, now });
+  const cancelled = record?.presentationCancelled === true;
+  const active = !!record && !cancelled && until > now;
+  const legacy = !hasRecord && !cancelled && player.attackUntil > now;
+  const amount = active ? 1 - Math.min(1, Math.max(0, until - now) / record.durationMs) : 0;
+  return { active, legacy, record, until, profile: active ? record.profile : null, amount, aim: active ? record.aim || null : null };
 }
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
   const form = playerFormPresentation(g);
+  const importedPlayer = !form || form.kind === 'playerIronFists';
   state.admitted.clear();
   state.hero = null;
-  if (!form && !state.heroRequested && typeof globalThis.Image === 'function') {
+  if (importedPlayer && !state.heroRequested && typeof globalThis.Image === 'function') {
     state.heroRequested = true;
     loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
   }
@@ -2007,11 +2010,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const visualProfile = visualAttack ? visualRecord.profile : null;
     const acceptedTool = visualAttack && KNOWN_TOOL_VISUAL.has(visualRecord?.toolKind) ? visualRecord.toolKind : null;
     const fisting = who === player && (visualProfile === 'fist' || playerAction?.legacy && !!g.fistsEquipped?.());
-    const charge = who === player && !attack && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
-    const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
-    const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" || !!acceptedTool : !(player.meleeUntil > now));
     const cast = who === player && player.castUntil > now;
     const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
+    const charge = who === player && !attack && !cast && !jump && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
+    const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
+    const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" || !!acceptedTool : !(player.meleeUntil > now));
     const winding = !!monsterAction?.winding;
     const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
       : who === player ? closeViewIdleLockAim(g, now) : monsterAction?.aim;
@@ -2025,7 +2028,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (!stunned && (attack || winding || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
-    const importedDodge=who===player&&!form&&now<(player.dodgeUntil||0),dodgeSeed=importedDodge?player.dodgeVisual:null,leavingImportedDodge=!importedDodge&&who===player&&track.dodgeUntil===player.dodgeUntil;
+    const importedDodge=who===player&&importedPlayer&&now<(player.dodgeUntil||0),dodgeSeed=importedDodge?player.dodgeVisual:null,leavingImportedDodge=!importedDodge&&who===player&&track.dodgeUntil===player.dodgeUntil;
     if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));if(Number.isFinite(dodgeSeed.facingYaw))track.yaw=dodgeSeed.facingYaw;}
     else if (!leavingImportedDodge&&!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = !stunned && !watched && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
@@ -2039,11 +2042,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const knock = stunned ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
     const profilePose = fisting ? 'fist' : visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
     const pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
-    const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
+    const poseTime = who === player && !visualRecord?.primaryStep && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
     let amount = 0;
     if (winding) amount = monsterAction?.windupAmount ?? Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
     if (attack) {
-      if (visualAttack) amount = poseTime === now ? playerAction.amount : 1 - Math.min(1, (player.attackUntil - poseTime) / visualRecord.durationMs);
+      if (visualAttack) amount = poseTime === now ? playerAction.amount : 1 - Math.min(1, (playerAction.until - poseTime) / visualRecord.durationMs);
       else if (monsterAction?.amount != null) amount = monsterAction.amount;
       else {
         const duration = tool ? MODEL_TIMING.toolMs : who === player ? ACTION_MOTION.meleeMs : MODEL_TIMING.attackMs;
@@ -2058,14 +2061,16 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (stunned) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
-    const held = visualAttack ? visualProfile==='melee'?primaryHeld:acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists ? 'fist' : primaryHeld;
+    const held = visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists ? 'fist' : primaryHeld;
     const activeKind = who===player&&held==='cinder-pike'?'playerCinderPike':who===player&&held==='verge-cleaver'?'playerVergeCleaver':visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
     const formKind = who === player && form ? playerFormModelKey(form, held) : null;
     const actor = { kind: formKind || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      primaryStep: visualRecord?.primaryStep,
       fistStep: charge != null ? g.fistCharge.step || 1 : visualRecord?.fistStep,
+      fistLead: charge != null ? (g.fistCharge.step > 1 ? g.fistCombo?.lead : g.save.fistOpeningHand === 'right' ? 'left' : 'right') : visualRecord?.fistLead,
       effectTime: now,
       palette: presentation?.palette,
       watched,
@@ -2079,7 +2084,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     track.winding = winding;
     track.attacking = attack;
     let imported = false;
-    if (who === player && !form && count < limit) {
+    if (who === player && importedPlayer && count < limit) {
       const asset = getCloseViewHeroAsset();
       if (asset && prepareCloseViewHeroGL(asset)) {
         if (state.heroAsset !== asset || !state.heroPose) {
@@ -2091,10 +2096,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.groundZ = interiorSurfaceHeight(g.map, who.x + .5, who.y + .75);
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
+        if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
         input.heldProfile=held;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
-        action.kind = ''; action.profile = visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held; action.phase = amount; action.poseMs = undefined;
+        action.kind = ''; action.profile = visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : acceptedTool || visualProfile || held; action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined;
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         if (stunned) { action.kind = 'hit'; action.profile = 'knockdown'; }
         else if (now < (player.dodgeUntil || 0)) {
@@ -2105,7 +2111,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           action.poseMs=Number.isFinite(visual?.poseMs)?visual.poseMs:input.nowMs;
           input.speed=Number.isFinite(visual?.speed)?visual.speed:visual?.moving?2.4:0;input.gaitPhase=Number.isFinite(visual?.gaitPhase)?visual.gaitPhase:0;
         } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
-        else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && ['cinder-pike','verge-cleaver'].includes(action.profile)) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (Number.isFinite(visualRecord?.facingYaw)) { const turn=Math.atan2(Math.sin(actor.yaw-visualRecord.facingYaw),Math.cos(actor.yaw-visualRecord.facingYaw)),t=Math.min(1,amount/.08);action.yaw=visualRecord.facingYaw+turn*t*t*(3-2*t); } } }
+        else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) { const turn=Math.atan2(Math.sin(actor.yaw-visualRecord.facingYaw),Math.cos(actor.yaw-visualRecord.facingYaw)),t=Math.min(1,amount/.08);action.yaw=visualRecord.facingYaw+turn*t*t*(3-2*t); } } }
+        else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
         else if (cast) { action.kind = 'cast'; action.durationMs = MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
         input.action = action.kind ? action : null;
