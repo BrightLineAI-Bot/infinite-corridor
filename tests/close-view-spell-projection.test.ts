@@ -11,6 +11,8 @@ import { drawRangedEffects } from '../src/combat-visuals.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { render } from '../src/renderer.ts';
 import { loadCloseViewHero } from '../src/close-view-hero.ts';
+import { projectileVisualPoint } from '../src/actor-presentation.ts';
+import { interiorSurfaceHeight } from '../src/landscape.ts';
 
 const context = (calls:any[]) => new Proxy({ canvas:{width:800,height:600}, globalAlpha:1 }, { get(o:any,k:any) { if (k in o) return o[k]; return (...a:any[]) => { calls.push([k,...a]); return k === 'createRadialGradient' ? { addColorStop(){} } : undefined; }; }, set(o:any,k:any,v:any){o[k]=v;return true;} });
 const openMap = (w=6,h=6) => ({width:w,height:h,tiles:Array.from({length:w*h},()=>({blocked:false,seen:true,discovered:true}))});
@@ -101,4 +103,36 @@ test('final imported left socket owns Fire flash and exact central connector onl
     g.setPaused(true,110116);resetCloseViewCamera();productionFrame(screen,g,120000,log);let paused=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xb48cff)paused++;}assert.equal(paused,12,'pause freezes Orbit cue and flight');const back:any=new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(110116)))),200000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();productionFrame(screen,back,200000,log);let phantom=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xb48cff)phantom++;}assert.equal(phantom,0,'restored launch descriptor creates neither ball nor flash');
     const auto:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:130000}).game;auto.enemies=[];auto.projectiles=[];auto.presentation={effectiveQuality:'full'};auto.save.lastAim={x:1,y:0};auto.lastUpdateNow=130000;assert.equal(auto.castSpell('orbit-volley'),true);const gatherVisual=auto.player.castVisual;auto.tickOrbit(0,133200);assert.ok(auto.orbit?.flight);assert.strictEqual(auto.player.castVisual,gatherVisual,'automatic launch does not restamp manual cue metadata');resetCloseViewCamera();productionFrame(screen,auto,133200,log);let automatic=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xb48cff)automatic++;}assert.equal(automatic,6,'automatic flight has a head and no hand flash');auto.primaryAttack(133201);resetCloseViewCamera();productionFrame(screen,auto,133202,log);assert.equal(closeViewGLStats.projectedShots,1,'newer action does not erase the live automatic ball');auto.orbit.flight.tx=auto.orbit.flight.x;auto.orbit.flight.ty=auto.orbit.flight.y;auto.tickOrbit(.001,133203);assert.equal(auto.orbit,null,'point-blank first tick pop removes source immediately');resetCloseViewCamera();productionFrame(screen,auto,133204,log);assert.equal(closeViewGLStats.projectedShots,0);
   });}finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
+});
+
+test('all three authored tool muzzles flash and forward connectors obey full 3D bounds',async()=>{
+  const names=['window','fetch','createImageBitmap'],old=new Map(names.map(n=>[n,(globalThis as any)[n]]));
+  (globalThis as any).window={};(globalThis as any).createImageBitmap=async()=>({width:1024,height:1024});
+  (globalThis as any).fetch=async(url:any)=>{const b=fs.readFileSync(new URL(url));return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};
+  const vertices=(color:number)=>{const points:number[][]=[];for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===color)points.push(Array.from(GLB.decal.slice(b,b+3)));}return points;};
+  try{
+    assert.ok(await loadCloseViewHero());
+    for(const [kind,name,property] of [['rift-bombard','Rift Bombard','blast'],['blunderbuss','Blunderbuss','quick'],['lumen-spindle','Lumen Spindle','focus']])withProjectionGPU({},({screen,log})=>{
+      const g:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:100000}).game;
+      // This lab starts beside a wall: move within its open lane so the authored barrel is unobstructed.
+      g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};
+      g.save.equipment.secondary={id:`secondary-${kind}`,name,slot:'secondary',power:5,property};g.lastUpdateNow=100000;
+      assert.equal(g.fireSecondary(100000,{x:1,y:0}),true,kind);
+      const draw=(now=100016)=>{resetCloseViewCamera();assert.equal(productionFrame(screen,g,now,log).showing,true,kind);};
+      draw();const flash=vertices(0xffc56b);assert.equal(flash.length,6,`${kind}: normal accepted +16ms muzzle flash`);
+      const at=[0,1,2].map(axis=>flash.reduce((sum,p)=>sum+p[axis],0)/6),shot=g.projectiles.find((p:any)=>p.id===g.player.attackVisual.toolShotId);
+      assert.ok(shot,`${kind}: exact accepted source`);
+      // Move only this test source along its accepted forward ray; canonical production geometry stays untouched.
+      shot.x=at[0]+.1;shot.y=at[1];draw();assert.equal(vertices(0xffd38a).length,6,`${kind}: nearby forward head connects`);
+      shot.x=at[0]+.899;
+      const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),xy=Math.hypot(head.x-at[0],head.y-at[1]),span=Math.hypot(head.x-at[0],head.y-at[1],head.z-at[2]);
+      assert.ok(xy<.9&&span>.9,`${kind}: witness passes XY but exceeds full 3D (${xy}, ${span})`);
+      assert.equal(closeViewCueSegmentOpen(g.map,at[0],at[1],head.x,head.y),true,'the witness is clear and discovered');
+      draw();assert.equal(vertices(0xffd38a).length,0,`${kind}: excessive vertical-inclusive span rejects connector`);
+      shot.x=at[0]+.1;shot.impact=true;draw();assert.equal(vertices(0xffd38a).length,0,`${kind}: impact cannot link`);delete shot.impact;
+      const tile=g.map.tiles[Math.floor(shot.y)*g.map.width+Math.floor(shot.x)],blocked=tile.blocked;
+      try{tile.blocked=true;draw();assert.equal(vertices(0xffd38a).length,0,`${kind}: blocked segment cannot link`);}finally{tile.blocked=blocked;}
+      g.setPaused(true,100016);draw(120000);assert.equal(vertices(0xffc56b).length,6,`${kind}: paused flash retains logical age`);assert.equal(vertices(0xffd38a).length,6,`${kind}: paused positive connector stays bounded`);
+    });
+  }finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
 });
