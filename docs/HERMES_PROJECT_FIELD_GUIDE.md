@@ -2854,6 +2854,18 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 833: named tools and accepted startup
+
+**CODE:** Rift Bombard uses a cylinder launcher, Great Sweep a broken greatsword, Blunderbuss a compact charged firearm, and Lumen Spindle a raised firing wand. Close View accepted uses have brief startup before one canonical release, then complete readable recovery unless a legal accepted melee attack cancels that remaining presentation. Costs and cooldowns begin on acceptance. The bounded pending record freezes accepted aim/configuration, releases at the current legal position and gives newborn effects their full lifetime. Ordinary pellets and awakened fans retain their shared canonical base origin. Existing clones and delayed Echo keep their own origin rules. Imported/native form mapping and GPU failure ownership remain bounded.
+
+**BOUNDARY:** Schema 14 is additive and preserves unknown/future records, pause and exact supported resume; no old pinned layout or Proving Ground namespace changes. Top-down tools remain immediate. No permanent tool carry or tool-induced body transformation; movement continues. Hammerfall, spell gestures, body contact, blocks, four-cut Cleaver, Target recenter, armor and routing remain separate ordered candidates. Full CI, Preview, fresh since-live review and exact hosted motion/color acceptance remain required. Local loopback/full local suite stays stopped; phone hardware performance is unmeasured.
+
+## Release 832: exact GPU decal colors
+
+**CODE:** Colored decals convert their exact 24-bit packed attribute to an unsigned integer in the vertex shader, then carry it as a matching flat high-precision integer into the fragment shader. This removes the floating-point half-unit addition and interpolation that turned C9A7FF/D8C8FF violet into C9A800/D8C900 yellow. Regression checks cover submitted Float32 values, the old corruption and the shader interface. GLSL ES 3.00 defines flat integer transport: https://registry.khronos.org/OpenGL/specs/es/3.0/GLSL_ES_Specification_3.00.pdf.
+
+**BOUNDARY:** The nine-float vertex layout, vertex/actor limits, existing render passes, alpha/fog/masks, non-RGB decal paths and canonical combat remain unchanged. No schema, generator, dependencies or workflow change. r830 and r831 remain unpublished independently; the exact corrected candidate still requires full since-live review, CI, Preview and hosted violet verification.
+
 ## Release 831: stationary Echo inspection targets
 
 **CODE:** The three explicit Echo fixtures use a practice passive behavior that clears offensive state after ordinary hit-feedback and stagger-governor decay, then performs no AI movement or attack. Real primary/Echo damage, targeting, recoil, durability and hall geometry remain intact. Regressions cover all three weapons with movement, hits, sixty active seconds, pause, entity JSON and reset; ordinary enemy and existing passive controls remain covered.

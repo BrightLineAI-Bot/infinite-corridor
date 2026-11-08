@@ -6302,7 +6302,8 @@ export class Game {
     let base=null;
     if(q.payload.family==='shot'){
       const members=Array.isArray(q.payload.members)?q.payload.members:[q.payload.shot];
-      for(let i=0;i<members.length;i++){const src=executablePreparedShot(members[i]),p={...src,id:i?`${q.id}-child-${i}`:`${q.id}-base`,x:this.player.x+.5+src.dx*.35,y:this.player.y+.45+src.dy*.35,hits:{},age:0,toolUseNewborn:true};this.projectiles.push(p);if(!i)base=p;}
+      const originX=this.player.x+.5+q.aim.x*.35,originY=this.player.y+.45+q.aim.y*.35;
+      for(let i=0;i<members.length;i++){const src=executablePreparedShot(members[i]),p={...src,id:i?`${q.id}-child-${i}`:`${q.id}-base`,x:originX,y:originY,hits:{},age:0,toolUseNewborn:true};this.projectiles.push(p);if(!i)base=p;}
       for(const e of q.payload.echoCopies||[])(this.glyphTimers||=[]).push({at:now+e.delayMs,kind:'shot',shot:{...executablePreparedShot(q.payload.shot),id:`${q.id}-echo-${e.index||1}`,hits:{},damage:Math.max(1,Math.round(q.payload.shot.damage*e.share)),echo:true}});
       if(q.payload.cloneEligible&&this.shadowCloneActive(now)&&!this.shadowClone.charging&&!this.shadowClone.boxing){const at=clonePosition(this.player,this.shadowClone),d=this.cloneAimFrom(at)||q.aim;this.projectiles.push({...executablePreparedShot(q.payload.shot),id:`${q.id}-shadow`,x:at.x+.5+d.x*.35,y:at.y+.45+d.y*.35,dx:d.x,dy:d.y,hits:{},age:0,damage:Math.max(1,Math.round(q.payload.shot.damage*SHADOW_CLONE.share)),glyphHost:null,shadow:true,toolUseNewborn:true});}
       echoEvent(this,'shot',now,{shot:base});
@@ -6351,7 +6352,10 @@ export class Game {
       attackVisual.weaponKind = primary?.id === "primary-cinder-pike" || primary?.name === "Cinder Pike" ? "cinder-pike"
         : primary?.id === "primary-verge-cleaver" || primary?.name === "Verge Cleaver" ? "verge-cleaver" : "salvage-blade";
       const primaryStep = advancePrimaryCombo(this.player, attackVisual.weaponKind);
-      if (primaryStep) attackVisual.primaryStep = primaryStep;
+      if (primaryStep) {
+        if (attackVisual.weaponKind === 'verge-cleaver') attackVisual.primaryMotion = { v: 2, step: primaryStep };
+        else attackVisual.primaryStep = primaryStep;
+      }
       const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(this.player, logicalNow, this.player.x, this.player.y);
       attackVisual.poseMs = prior?.now ?? Math.max(0, logicalNow);
       if (prior) attackVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw));
@@ -6401,7 +6405,7 @@ export class Game {
       this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
     const plan = !echo && echoPlan(glyphs);
     if (plan) {
-      const memory=attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,primaryStep:attackVisual.primaryStep||1,support:this.playerLevel()}:null;
+      const memory=attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,...(attackVisual.primaryMotion?{primaryMotion:structuredClone(attackVisual.primaryMotion)}:{primaryStep:attackVisual.primaryStep||1}),support:this.playerLevel()}:null;
       (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share, echoVisual:memory });
     }
     this.reconcileConsequences();

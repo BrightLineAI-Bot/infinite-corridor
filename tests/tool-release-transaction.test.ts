@@ -26,6 +26,19 @@ for(const kind of ['rift-bombard','blunderbuss','lumen-spindle'])test(`${kind} a
   const life=base.life;updateProjectiles(g.projectiles,[],g.map,g.map.width,.6);assert.equal(base.age,0);assert.equal(base.life,life);assert.equal(base.toolUseNewborn,undefined);updateProjectiles(g.projectiles,[],g.map,g.map.width,.01);assert.ok(base.age>0);assert.ok(base.life<life);
 });
 
+test('delayed Blunderbuss members share the base muzzle origin while retaining their prepared fan directions',()=>{
+  const g=fixture('blunderbuss'),at=100000;g.save.equipment.secondary=normalizeSockets({...g.save.equipment.secondary,tier:'relic',affixes:[],awakened:true});g.shadowClone={ox:-2,oy:0,until:200000};
+  g.player.x=25;g.player.y=11;assert.equal(g.fireSecondary(at,{x:1,y:0}),true);const q=structuredClone(g.pendingToolUse),prepared=q.payload.members.map((p:any)=>[p.dx,p.dy]);g.player.x+=.4;g.player.y+=.2;g.releasePendingToolUse(q.releaseAt);
+  const ordinary=g.projectiles.filter((p:any)=>!p.shadow),origin=[g.player.x+.85,g.player.y+.45];assert.equal(ordinary.length,prepared.length);assert.ok(ordinary.every((p:any)=>p.x===origin[0]&&p.y===origin[1]));assert.deepEqual(ordinary.map((p:any)=>[p.dx,p.dy]),prepared,'shared origin cannot flatten the accepted fan flight');
+  const shadow=g.projectiles.find((p:any)=>p.shadow);assert.ok(shadow);assert.notDeepEqual([shadow.x,shadow.y],origin,'clone keeps its own live clone position and aim');
+
+  const wall=fixture('blunderbuss');wall.player.x=25;wall.player.y=11.62;wall.map.tiles[11*wall.map.width+25]={...wall.map.tiles[11*wall.map.width+25],blocked:true};wall.map.tiles[12*wall.map.width+25]={...wall.map.tiles[12*wall.map.width+25],blocked:false,openAir:false,courtyard:false};
+  assert.equal(wall.fireSecondary(at,{x:1,y:0}),true);const accepted=structuredClone(wall.pendingToolUse);wall.releasePendingToolUse(accepted.releaseAt);assert.equal(wall.projectiles.length,3);assert.ok(wall.projectiles.every((p:any)=>Math.abs(p.x-25.85)<1e-9&&Math.abs(p.y-12.07)<1e-9),'every member starts at the accepted base muzzle outside the adjacent wall');
+  updateProjectiles(wall.projectiles,[],wall.map,wall.map.width,.6);updateProjectiles(wall.projectiles,[],wall.map,wall.map.width,.001);assert.equal(wall.projectiles.filter((p:any)=>!p.dead).length,3,'side pellets cannot die at zero distance in the wall behind their base origin');
+
+  const immediate=fixture('blunderbuss');immediate.save.closeView=false;immediate.player.x=25;immediate.player.y=11.62;assert.equal(immediate.fireSecondary(at,{x:1,y:0}),true);assert.ok(immediate.projectiles.every((p:any)=>Math.abs(p.x-25.85)<1e-9&&Math.abs(p.y-12.07)<1e-9));
+});
+
 test('Great Sweep creates no damaging effect before release, fixes release center, and pulses once with full newborn life',()=>{
   const g=fixture('great-sweep'),at=100000;assert.equal(g.fireSecondary(at,{x:1,y:0}),true);const q=structuredClone(g.pendingToolUse);assert.equal(g.effects.length,0);g.player.x+=1;g.player.y+=.5;g.releasePendingToolUse(q.releaseAt);const fx=g.effects[0],life=fx.life;assert.deepEqual([fx.x,fx.y],[g.player.x+.5,g.player.y+.45]);const foe={id:'f',x:fx.x-.5,y:fx.y-.45,hp:100,maxHp:100};updateEffects(g.effects,[foe],.6);assert.equal(fx.life,life);assert.equal(fx.pulseIndex,1);const hp=foe.hp;updateEffects(g.effects,[foe],0);assert.equal(foe.hp,hp);assert.equal(fx.pulseIndex,1);
 });

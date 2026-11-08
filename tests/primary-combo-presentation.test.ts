@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Game, BRAWLER_GEAR, updateEffects } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { normalizeAttackVisual, normalizePrimaryCombo, stampAttackVisual } from '../src/action-motion.ts';
+import { normalizeAttackVisual, normalizePrimaryCombo, primaryVisualStage, stampAttackVisual } from '../src/action-motion.ts';
 import { ORRERY } from '../src/tool-forms.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { closeViewPlayerAction, CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
@@ -158,11 +158,11 @@ test('successful Aperture skills interrupt either accepted action; refusal prese
   }
 });
 
-test('only successful real primary inputs cycle 1/2/3; Echo keeps damage clocks but never replays or advances presentation',()=>{
+test('only successful real primary inputs cycle their supported stages; Echo never replays or advances presentation',()=>{
   for(const kind of ['cinder-pike','verge-cleaver']){
     const g=fixture(kind),steps=[];
     for(let n=0;n<7;n++){
-      const now=100000+n*500;g.primaryAttack(now);steps.push(g.player.attackVisual.primaryStep);
+      const now=100000+n*500;g.primaryAttack(now);steps.push(primaryVisualStage(g.player.attackVisual).step);
       const accepted=clone(g.player.attackVisual),combo=clone(g.player.primaryCombo),until=g.player.actionVisualUntil;
       g.primaryAttack(now+1);assert.deepEqual(g.player.attackVisual,accepted);assert.deepEqual(g.player.primaryCombo,combo,'refusal cannot advance');
       g.primaryStrike(now+80,null,{share:.25});assert.equal(g.player.attackUntil,now+320,'existing Echo shared clock remains');assert.equal(g.player.actionVisualUntil,until);
@@ -170,8 +170,8 @@ test('only successful real primary inputs cycle 1/2/3; Echo keeps damage clocks 
       assert.equal(closeViewPlayerAction(g,now+120).amount,.5,'Echo cannot rewind accepted phase');
       assert.equal(closeViewPlayerAction(g,now+250).active,false,'Echo cannot extend the real body action');
     }
-    assert.deepEqual(steps,[1,2,3,1,2,3,1]);
-    g.save.equipment.primary=item(kind==='cinder-pike'?'verge-cleaver':'cinder-pike');g.primaryAttack(104000);assert.equal(g.player.attackVisual.primaryStep,1,'different primary family restarts its presentation');
+    assert.deepEqual(steps,kind==='verge-cleaver'?[1,2,3,4,1,2,3]:[1,2,3,1,2,3,1]);
+    g.save.equipment.primary=item(kind==='cinder-pike'?'verge-cleaver':'cinder-pike');g.primaryAttack(104000);assert.equal(primaryVisualStage(g.player.attackVisual).step,1,'different primary family restarts its presentation');
     g.player.hp=0;g.update(.01,calm,104010);assert.equal(g.player.primaryCombo,null);assert.equal(g.player.actionVisualUntil,0);
   }
 });
@@ -184,7 +184,7 @@ test('accepted primary stage, visual clock and unknown metadata survive pause/re
   assert.equal(back.player.attackVisual.primaryStep,2);assert.equal(back.player.attackVisual.weaponKind,'cinder-pike');assert.deepEqual(back.player.attackVisual.aim,accepted.aim);
   assert.deepEqual(back.player.primaryCombo.future,{kept:true});assert.deepEqual(back.player.attackVisual.future,{kept:true});
   back.setPaused(false,205000);assert.equal(closeViewPlayerAction(back,205000).amount,.25);assert.equal(back.player.actionVisualUntil,205180);
-  back.player.attackReadyAt=0;back.primaryAttack(205001);assert.equal(back.player.attackVisual.primaryStep,1,'new accepted family starts its own cycle');
+  back.player.attackReadyAt=0;back.primaryAttack(205001);assert.deepEqual(back.player.attackVisual.primaryMotion,{v:2,step:1},'new accepted Cleaver family starts its v2 cycle');
   const legacy=freshSave();legacy.session.playerRuntime.attackMotion=120;legacy.session.playerRuntime.attackVisual={profile:'melee',weaponKind:'cinder-pike',durationMs:240};const old=new Game(migrateSave(legacy),300000);assert.equal(closeViewPlayerAction(old,300000).amount,.5);
   for(const primaryStep of [0,4,1.5,'2',Infinity])assert.equal(normalizeAttackVisual({profile:'melee',durationMs:240,primaryStep}),null);
   for(const raw of [[],{weaponKind:'bad/path',step:1},{weaponKind:'cinder-pike',step:4}])assert.equal(normalizePrimaryCombo(raw),null);
@@ -197,7 +197,7 @@ const input={nowMs:1200,reducedMotion:false,x:0,y:0,groundZ:0,liftZ:0,yaw:0,heig
 test('gladius carries low in one hand with a free arm, visible walking bob and a thin bounded blade',()=>{
   const s=createHeroPoseState(asset),f=createHeroFrame(asset),neutral=createHeroFrame(asset),gear=new Float32Array(256*3*MODEL_FLOATS);let low=Infinity,high=-Infinity;
   for(let n=0;n<=24;n++){
-    const i={...input,nowMs:1200+n*16,speed:2.4,gaitPhase:n/24*Math.PI*2};sampleCloseViewHero(asset,s,i,neutral);sampleCloseViewHero(asset,s,{...i,heldProfile:'verge-cleaver'},f);
+    const i={...input,nowMs:1200+n*16,speed:2.4,gaitPhase:n/24*Math.PI*2};sampleCloseViewHero(asset,s,i,neutral);sampleCloseViewHero(asset,s,{...i,heldProfile:'verge-cleaver',primaryCarryStage:{kind:'legacy',step:1}},f);
     assert.deepEqual(f.leftSocket,neutral.leftSocket,'the free arm retains source walking');low=Math.min(low,f.rightSocket[14]);high=Math.max(high,f.rightSocket[14]);
     const end=writeCloseViewHeroGear(gear,0,{profile:'verge-cleaver',rightSocket:f.rightSocket});let tip=Infinity;for(let k=2;k<end;k+=10)tip=Math.min(tip,gear[k]);assert.ok(tip>.04&&tip<.30,`low point clears ground: ${tip}`);assert.ok(f.rightSocket[14]<.82,'carry stays near hip');
   }
@@ -209,7 +209,7 @@ test('three cuts and three thrusts remain distinct at 30/60fps with no source fo
   for(const profile of ['verge-cleaver','cinder-pike'])for(const hz of [30,60]){
     let distinct=0,moved=0;
     for(let frame=1;frame<=Math.floor(.24*hz);frame++){
-      const phase=frame/hz/.24,i={...input,nowMs:1200+phase*240,speed:.6,gaitPhase:.7,heldProfile:profile};
+      const phase=frame/hz/.24,i={...input,nowMs:1200+phase*240,speed:.6,gaitPhase:.7,heldProfile:profile,...(profile==='verge-cleaver'?{primaryCarryStage:{kind:'legacy',step:1}}:{})};
       sampleCloseViewHero(asset,s,i,frames[0]);const feet=[...s.pose.slice(10,20),...s.pose.slice(360,370)];
       for(let stage=1;stage<=3;stage++){sampleCloseViewHero(asset,s,{...i,action:{kind:'melee',profile,primaryStep:stage,phase,durationMs:240,poseMs:1200,yaw:0}},frames[stage]);assert.deepEqual([...s.pose.slice(10,20),...s.pose.slice(360,370)],feet);}
       const gap=(a,b)=>Math.hypot(...[12,13,14].map(k=>frames[a].rightSocket[k]-frames[b].rightSocket[k]));
@@ -244,16 +244,16 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
     for(const kind of ['verge-cleaver','cinder-pike'])for(const hz of [30,60]){
       const g=fixture(kind);resetCloseViewCamera();let now=100400;render(screen,g,390,844,now);
       for(let n=1;n<=12;n++){now+=1000/hz;g.update(1/hz,{...calm,state:{x:.2,y:0}},now);render(screen,g,390,844,now);}
-      const ready=gl.uploads.at(-1);g.primaryAttack(now);assert.equal(g.player.attackVisual.primaryStep,1);render(screen,g,390,844,now);assert.deepEqual(gl.uploads.at(-1),ready,'same-clock partial walking entry');
+      const ready=gl.uploads.at(-1);g.primaryAttack(now);assert.equal(primaryVisualStage(g.player.attackVisual).step,1);render(screen,g,390,844,now);assert.deepEqual(gl.uploads.at(-1),ready,'same-clock partial walking entry');
       const stageFrames=[];
       for(let stage=1;stage<=4;stage++){
-        if(stage>1){now+=500;g.primaryAttack(now);render(screen,g,390,844,now);}const start=now,accepted=clone(g.player.attackVisual);assert.equal(accepted.primaryStep,(stage-1)%3+1);
+        if(stage>1){now+=500;g.primaryAttack(now);render(screen,g,390,844,now);}const start=now,accepted=clone(g.player.attackVisual);assert.equal(primaryVisualStage(accepted).step,kind==='verge-cleaver'?stage:(stage-1)%3+1);
         for(let frame=1;frame<=Math.floor(.24*hz);frame++){const t=start+frame*1000/hz;render(screen,g,390,844,t);if(frame===Math.round(.10*hz))stageFrames.push(gl.uploads.at(-1));}
         assert.equal(g.player.attackUntil,start+240);assert.deepEqual(g.player.attackVisual,accepted,'rendering never advances gameplay or the stage');
       }
       assert.notDeepEqual(stageFrames[0],stageFrames[1]);assert.notDeepEqual(stageFrames[1],stageFrames[2]);
       now+=500;g.primaryAttack(now);render(screen,g,390,844,now+80);const active=gl.uploads.at(-1);g.save.equipment.primary=item(kind==='verge-cleaver'?'cinder-pike':'verge-cleaver');g.setPaused(true,now+80);render(screen,g,390,844,now+5000);assert.deepEqual(gl.uploads.at(-1),active,'pause and equipment switch retain accepted body');
-      const back=new Game(migrateSave(clone(g.exportSnapshot(now+5000))),200000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();render(screen,back,390,844,200000);assert.equal(back.player.attackVisual.primaryStep,2);assert.equal(back.player.attackVisual.weaponKind,kind);
+      const back=new Game(migrateSave(clone(g.exportSnapshot(now+5000))),200000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();render(screen,back,390,844,200000);assert.equal(primaryVisualStage(back.player.attackVisual).step,kind==='verge-cleaver'?1:2);assert.equal(back.player.attackVisual.weaponKind,kind);
       // Reload must preserve the accepted trajectory/clock; ordinary locomotion reconstruction is a pre-existing separate limitation.
       assert.equal(closeViewPlayerAction(back,200000).amount,closeViewPlayerAction(g,now+80).amount);
     }
