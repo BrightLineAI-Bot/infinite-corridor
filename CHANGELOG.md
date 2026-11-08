@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 844: adopt the reviewed compact routing only for eligible newly placed standalone keeps and genuinely new Pentagons, while preserving explicit pins, old namespaces, failed-placement fallback, rewards, unknown fields, roof/door contracts and legacy defaults; add public scratch crossings that exercise ordinary selectors without preloading a target.
+- Release 843: let the standalone Proving Ground present canonical nearby interaction choices, revalidate the exact live object before dispatch, and preserve pause-clock ownership across modal choices and repeated canvas Act requests.
 - Release 842: reject contact-clipped movement that produces bit-identical coordinates so blocked pack charges report refusal and retain their existing stun transition.
 - Release 841: expose the existing versioned Close View keep and Pentagon routing prototype through isolated Proving Ground scenarios while keeping production defaults and adoption unchanged.
 - Release 840: restore the deliberately clunky walk-in Robot silhouette and keep the empowered suit fitted to the approved adult Wayfarer with atomic armor-plus-equipment admission.
