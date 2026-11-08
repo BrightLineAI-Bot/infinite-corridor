@@ -53,10 +53,11 @@ test('actual knockdown clock holds the complete hero down and recovers body and 
 test('accepted contact phase samples source contact without changing input or emitting events',()=>{
   const i=input({action:{kind:'melee',profile:'melee',phase:.18,durationMs:240,yaw:.7}}),before=JSON.stringify(i),{s}=sample(i);assert.equal(s.clip,'Dagger_Attack');assert.ok(Math.abs(s.clipTime-asset.clips.Dagger_Attack.duration*.35)<1e-10);assert.equal(JSON.stringify(i),before);
 });
-test('roll compensation preserves local articulation and anchors the global Body horizontally',()=>{
-  const {s,f}=sample(input({action:{kind:'dodge',profile:'dodge',phase:.45,durationMs:260,yaw:.3}}));const o=meta.reference.bodyNode*16;
+test('directional quickstep uses the coherent source crouch and anchors Body and socket horizontally',()=>{
+  const {s,f}=sample(input({action:{kind:'dodge',profile:'dodge',phase:.45,durationMs:260,yaw:.3,moveX:1,moveY:0}}));const o=meta.reference.bodyNode*16;
   assert.ok(Math.abs(s.global[o+12]+s.rollCompX-s.rollX)<1e-7);assert.ok(Math.abs(s.global[o+14]+s.rollCompZ-s.rollZ)<1e-7);
   assert.notEqual(s.pose[33*10+2],asset.rest[33*10+2]);
+  assert.equal(s.clip,'derived-quickstep-forward');assert.ok(s.clipTime>=0&&s.clipTime<=1);
   const scale=1.3776/s.referenceHeight,cy=Math.cos(.3),sy=Math.sin(.3),g=s.global,k=meta.sockets.right.node*16;
   assert.ok(Math.abs(f.rightSocket[12]-(3+((g[k+14]+s.rollCompZ)*cy-(g[k+12]+s.rollCompX)*sy)*scale))<1e-6);
 });

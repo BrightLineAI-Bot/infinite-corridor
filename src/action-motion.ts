@@ -39,3 +39,17 @@ export function stampAttackVisual(player, profile, durationMs, aim = null) {
   player.attackVisual = visual;
   return visual;
 }
+
+export function normalizeDodgeVisual(raw) {
+  if (raw == null) return null;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const facingYaw = Number(raw.facingYaw), gaitPhase = Number(raw.gaitPhase);
+  if (!Number.isFinite(facingYaw) || Math.abs(facingYaw) > Math.PI * 4 || !Number.isFinite(gaitPhase) || Math.abs(gaitPhase) > Math.PI * 8 || typeof raw.moving !== "boolean") return null;
+  const speed=raw.speed==null?(raw.moving?2.4:0):Number(raw.speed);
+  if(!Number.isFinite(speed)||speed<0||speed>8)return null;
+  return { ...raw, facingYaw, gaitPhase, moving: raw.moving, speed };
+}
+
+const HERO_PRESENTATION = new WeakMap();
+export function recordHeroPresentation(player,pose){if(player&&typeof player==='object'&&pose&&[pose.gaitPhase,pose.speed,pose.yaw,pose.now,pose.x,pose.y].every(Number.isFinite))HERO_PRESENTATION.set(player,{gaitPhase:pose.gaitPhase,speed:Math.max(0,Math.min(8,pose.speed)),yaw:pose.yaw,now:pose.now,x:pose.x,y:pose.y});}
+export function recentHeroPresentation(player,now,x,y){const q=player&&HERO_PRESENTATION.get(player);return q&&Number.isFinite(now)&&now-q.now>=0&&now-q.now<=250&&Math.hypot(q.x-x,q.y-y)<=.25?{...q}:null;}
