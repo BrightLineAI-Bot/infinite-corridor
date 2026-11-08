@@ -2,6 +2,10 @@
 
 Recorded 2026-11-07. This is a continuity document requested by the owner, not an instruction to contact Anthropic, create another chat or replace existing work. The untracked handoffs/ directory remains untouched. Re-read current AGENTS.md, AGENT_CONTEXT.md and RELEASE_LOG.md, fetch normally, and verify live/main before acting. Publication authority must come from the active user session and project rules; this file grants none.
 
+## Close View checkpoint — 2026-11-08
+
+Verified production is `r826-9a7a39cb18a3`, commit `9a7a39cb18a3ef939a328be3afe645f48ce6b5ae`, tree `d47927068abd08fb6bc8c6c81a5cb1255c2b3064`. Publish42454899297, gh-pages identity and actual Options → System match; no recent errors. Fresh Astra full/delta review, CI, Preview and hosted acceptance passed. Imported adult normal Iron Fists is delivered; primary carry/three-stage combos are next (r827). Other prepared passes remain unnumbered in the ordered manifest. The owner now approves any regression tests required and authorized continued focused publication while away; all project review/CI/Preview/live-verification gates still apply. Preserve old assertions, generation/save compatibility and stopped transport boundaries.
+
 ## Preserve delivered work
 
 The character is approved by the owner: adult, slimmer green/gray protective fabric with leather/bronze accents, small hands, silver mask/white hair and amber eyes. Retain the real Quaternius CC0 sources, rig, textures and source provenance. The r821 fabric neck bridge closes the observed rear opening. Preserve native creature/forms/companions, ceiling/environment work, controls, accepted-action clocks and camera improvements.

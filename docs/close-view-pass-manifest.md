@@ -2,7 +2,7 @@
 
 Updated: 2026-11-08. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r825-0c066edbc1a0`. Publish run `42444668551` succeeded; `gh-pages:release-identity.json` and the actual production Options → System label match the reviewed candidate, with no recent errors. Releases 821–825 deliver the character/camera, quickstep/gait, new excavation return and first distinct-primary baseline; they do not complete the newer goals below.
+Verified live: `r826-9a7a39cb18a3`. Publish42454899297 succeeded; gh-pages identity and actual production Options → System match, with no recent errors. r826 delivers imported normal Iron Fists, alternating accepted hands, three-stage motion and bilateral silver gear. Earlier r821–825 work remains delivered; later stages below remain open.
 
 ## Single ordered build queue — owner instruction
 
@@ -10,11 +10,11 @@ Verified live: `r825-0c066edbc1a0`. Publish run `42444668551` succeeded; `gh-pag
 
 Earlier native creature/combat/actor passes r813–818 remain delivered; preserve their roster, Foundry and auxiliary-actor work recorded in the release log.
 
-Current checkpoint: r825 is published and verified. **Next integration is the corrected Iron Fists candidate r826**, packaged against freshly fetched main825. Cleaver/Pike, named tools and routing have isolated source candidates; powered-suit and grounded-contact specialists continue independently. Fresh review and ordered release gates still apply. Other candidates remain unnumbered.
+Current checkpoint: r826 is published and verified. **Next integration is Cleaver/Pike carry and combo candidate r827**, packaged against freshly fetched main826. Shared accepted presentation clocks also repair queued-Echo/tool/cast priority in production. Other prepared candidates remain unnumbered and retain the ordered release gates.
 
 | Order | Pass | Required owner direction / completion target | State |
 |---|---|---|---|
-| 1 | Normal Wayfarer Iron Fists | Retain the imported adult hero, protective head/style and small hands; cover both fists with white/silver gauntlets. Exactly three accepted stages: opening/dash punch, jab, uppercut. Owner confirmed that the opening hand alternates between combo cycles. Use convincing full-body movement and preserve actual combo/dash/effect mechanics and special-form precedence. | Corrected r826 candidate; independent review/release gates pending |
+| 1 | Normal Wayfarer Iron Fists | Retain the imported adult hero, protective head/style and small hands; cover both fists with white/silver gauntlets. Exactly three accepted stages: opening/dash punch, jab, uppercut. Owner confirmed that the opening hand alternates between combo cycles. Use convincing full-body movement and preserve actual combo/dash/effect mechanics and special-form precedence. | Delivered in r826; fresh full/delta review, CI, hosted and live System verified |
 | 2a | Verge Cleaver carry and combo | Keep the rusty gladius-like outline. One-handed low carry, hand near hip and blade point near the floor without clipping; visible walking bob. Raise and perform three distinct readable slashes across accepted attacks, then repeat. Thin the side profile and refine hilt/blade detail without making an axe or a boxy slab. | Source candidate frozen; integration after corrected stage 1 |
 | 2b | Cinder Pike carry and combo | Two-handed polearm carry and three distinct forward thrust motions, then reset/repeat. Show actual body/arm movement, not only an effect or hit shape. | Source candidate frozen with 2a; hosted acceptance pending |
 | 2c | Remaining primary inventory | Audit every other canonical primary, including Salvage Blade, for coherent carry/attack/recovery and distinct profiles. Do not omit a weapon because it has no new art reference. | Queued |
@@ -33,6 +33,12 @@ Current checkpoint: r825 is published and verified. **Next integration is the co
 | 9 | Close View Pentagon and overworld-keep routing | Latest owner clarification limits this pass to Close View inside overworld Pentagons and keeps, not existing dungeon families. Audit branching paths, room connections and usable multi-level/roof routes in those structures. Determine the representation/generation seam before changes; any new layout requires an explicit new revision and isolated Proving Ground preview, preserving old pins and explored content. The earlier Room Maze target is superseded; reusable region/connector research remains reference only. | PG-only source prototype frozen; source checks passed, pacing/hosted/release acceptance pending |
 | 10 | Final combined visual/interaction/performance passes | Exercise the full toolkit, creatures, collisions, items, all environments, traversal/recovery and offline/pause/save behavior at normal gameplay speed. Record bounded work separately from actual phone FPS/thermals/multitouch; those hardware measurements remain open. | Queued |
 
+### Additional boss-rig program — owner intake 2026-11-08
+
+The owner requests a dedicated monster skeleton, 3D model, animation and boss-fight specialist for all bosses fought in Pentagon arenas, with labyrinth arena bosses audited for relevance. Inventory the actual roster and forms first; existing native creature coverage does not prove that a boss has a detailed articulated rig. Readable windup, committed strike/cast, recovery, hit reaction, movement and defeat must follow the actual canonical combat phases and geometry.
+
+This is an additional staged program after the existing ordered passes, with research/preparation allowed concurrently. Preserve every current weapon/tool/spell/contact/block/camera/armor/routing candidate. Re-run the combined stage10 acceptance after each boss delivery. Research reusable licensed rigged assets and existing RPG-character sources before building bespoke skeletons; humanoid reuse is permitted where anatomically suitable. The dictated name “Boardwalker” is recorded verbatim pending reconciliation with the canonical roster; do not rename lore or replace an unrelated creature by assumption. Preserve creature identity, proportions and world tone, and keep authored attacks truthful to actual damage/reach. No hidden balance change, new engine/dependency, unbounded animation/mesh budget, or regeneration of old content is implied. Each boss family gets a focused implementation/review/preview gate, native/quality fallback, pause/exact-resume checks and hosted motion acceptance. Physical-phone performance remains a separate measurement.
+
 ### Parallel specialist checkpoint — 2026-11-08
 
 The owner explicitly requested tool and robot/suit specialists in addition to routing. Runtime capacity is three specialists alongside the coordinator, so completed candidates are frozen and their slots rotate to the next bounded component; no queued requirement is discarded.
@@ -45,7 +51,15 @@ The owner explicitly requested tool and robot/suit specialists in addition to ro
 | Robot and powered suit | `claude/close-view-robot-suit` | Robot cockpit draft saved4802605b, 17 focused checks/build passed. Powered native draft was rejected for anatomy; specialist now implements the approved adult rig plus at most60 articulated armor triangles. Existing normal-hero worst-case allowance is retained, but powered mode gains two indexed body draws relative to its old native-only baseline. Actual mode/state rules stay unchanged. |
 | Pentagon/overworld Old Keep routing | `claude/close-view-room-routing` | Frozen opt-in PG prototype: candidate 8/8 and legacy 58/58 source checks/build passed; new module registered. Existing defaults/pins remain unchanged. Reachable floor grows 2.7–3.3 times in samples with unchanged enemy totals, so pacing and hosted traversal require review before adoption. |
 
-These are preparation states, not merged releases. Integration remains in the queue order above; only the current focused Iron Fists PR is packaged as r826 against freshly fetched main825. Other candidates remain unnumbered. Remaining Echo, spell, body/contact, item, block, camera/environment, other inventory and final combined passes remain explicit queue entries.
+Iron Fists is delivered in r826. Other rows record preparation evidence, not merged releases; their historical counts are superseded by each final integration check. The focused Cleaver/Pike PR now takes r827 against main826. Other candidates remain unnumbered. Remaining Echo, spell, body/contact, item, block, camera/environment, other inventory and final combined passes remain explicit queue entries.
+
+### Latest owner intake and regression authority — 2026-11-08
+
+The owner is away/asleep and explicitly approves **any regression tests required** for this work. This supersedes earlier per-scope test requests; preserve compatibility assertions, generated-output checks and performance floors. Publishing finished focused work remains authorized by this conversation, subject to fresh review, CI, Preview and actual live verification. This does not reopen stopped local loopback or other blocked transports.
+
+- Stage 4e: Hammerfall uses a dedicated stomp: lift one leg, cross clenched fists in front of the chest, plant into a wide bent-knee stance and drop arms beside the torso with elbows still bent. Keep the real delayed remote effect/damage origin; align presentation with its actual impact rather than inventing a new mechanical delay. Imported leg chains and feet must remain connected.
+- Stages 7/10: a specialist audits the complete combat and integration toolkit, including collisions, items/Act, taking damage, dodging, clones/Shadow Boxing, projectiles and all tools/spells. Record concrete repros and measured startup/contact/recovery; Elden Ring, Remnant and Tower of Fantasy are quality references, not permission for hidden balance changes. Source-only checks and CPU sheets are distinct from hosted motion and hardware proof.
+- Stage 9: compact deterministic branching/loop grammars with meaningful alternate routes, multilevel exploration and escape pockets. New candidate-only keeps may use original decayed biomechanical materials through existing bounded rendering presets. An optional parallel Pentagon stair must preserve identical directed progression guards/effects; old layouts/default pins remain unchanged until explicit candidate adoption.
 
 ### Ordered integration: definition of done
 

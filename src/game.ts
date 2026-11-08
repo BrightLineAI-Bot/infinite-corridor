@@ -720,6 +720,8 @@ export const ORDINARY_THREAT = { rows: [[15, 1, 1], [45, 1.4, 1.3], [100, 1.6, 1
 export const DAMAGE_REDUCTION = { soft: .45, cap: .75, knee: .6 };
 // 4. Spells: each hit is (spell base × base + magic bonus + focus × (Focus − 1)) × scale.
 export const SPELL_POWER = { base: 1.5, focus: 1, scale: 1.15 };
+// Presentation only: one bounded cue rides the existing glyph-visual stream. It never owns a hit or timer.
+export const PRIMARY_ECHO_VISUAL = Object.freeze({ life:.28, cap:6, actualAlpha:.88, memoryAlpha:.18, thrustWidth:.13, sweepWidth:.10, sweepSegments:7 });
 export function reductionCurve(raw) { const D = DAMAGE_REDUCTION, r = Math.max(0, Number(raw) || 0); if (r <= D.soft) return r; const x = r - D.soft; return D.soft + (D.cap - D.soft) * x / (x + D.knee); }
 export function beastRegionalThreat(q) {
   const R = BEAST_REGION_RAMP, t = Math.max(0, Math.min(1, ((Number(q?.ring) || 0) - R.from) / (R.full - R.from))), lerp = (m) => t >= 1 ? m : 1 + ((Number(m) || 1) - 1) * t;
@@ -3396,7 +3398,13 @@ export class Game {
     const due = (this.glyphTimers ||= []).filter((t) => t.at <= now);
     this.glyphTimers = this.glyphTimers.filter((t) => t.at > now);
     for (const t of due) {
-      if (t.kind === "strike" && this.primaryStrike) this.primaryStrike(now, null, { share: t.share });
+      if (t.kind === "strike" && this.primaryStrike) {
+        const priorStrike=this.player.meleeStrike;
+        this.primaryStrike(now, null, { share: t.share });
+        const g=this.player.meleeStrike,p=this.attackProfile;
+        if(g!==priorStrike&&g&&p){const list=(this.glyphVisuals||=[]),first=list.findIndex(v=>v.kind==='primaryEcho');if(list.filter(v=>v.kind==='primaryEcho').length>=PRIMARY_ECHO_VISUAL.cap&&first>=0)list.splice(first,1);
+          list.push({kind:'primaryEcho',life:PRIMARY_ECHO_VISUAL.life,max:PRIMARY_ECHO_VISUAL.life,actual:{x:g.x,y:g.y,dx:g.dx,dy:g.dy,range:p.range,arc:p.arc,shape:p.shape},memory:t.echoVisual||null});}
+      }
       else if (t.kind === "shot") { const p = this.player; this.projectiles.push({ ...t.shot, x: p.x + .5 + t.shot.dx * .35, y: p.y + .45 + t.shot.dy * .35 }); }
     }
     this.glyphVisuals = (this.glyphVisuals || []).filter((v) => (v.life -= dt) > 0);
@@ -6256,7 +6264,10 @@ export class Game {
     if (!echo && this.save.equipment.primary?.awakened && (this.awakenSwings = (this.awakenSwings || 0) + 1) % 3 === 0)
       this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
     const plan = !echo && echoPlan(glyphs);
-    if (plan) (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share });
+    if (plan) {
+      const memory=attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,primaryStep:attackVisual.primaryStep||1,support:this.playerLevel()}:null;
+      (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share, echoVisual:memory });
+    }
     this.reconcileConsequences();
     this.attackProfile = profile;
     return hits;

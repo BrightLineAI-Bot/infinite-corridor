@@ -18,6 +18,8 @@ const expected = {
   'pike-blunder-caster': { form: 'straight', spell: 'stillpoint', foe: 'mireApostle' },
   'blade-arc-wave-wisp': { form: 'blunderbuss+arc-wave', spell: 'fire-burst', foe: 'cinderWisp' },
   'fists-spindle-flying': { form: 'boomerang', spell: 'orbit-volley', foe: 'veilMoth' },
+  'pike-echo-inspection': { form: 'boomerang', spell: 'cinder-dart', foe: 'ashling' },
+  'cleaver-echo-inspection': { form: 'straight', spell: 'ember-ring', foe: 'ashling' },
 };
 
 function assertSpellArtifact(game, id, now) {
@@ -31,7 +33,7 @@ function assertSpellArtifact(game, id, now) {
 
 test('all combat asset scenarios resolve and emit their production tool and Spell A forms', () => {
   const scenarios = scenariosForLab('combat-assets');
-  assert.equal(scenarios.length, 11);
+  assert.equal(scenarios.length, 13);
   assert.deepEqual(scenarios.map((q) => q.id), Object.keys(expected));
   for (const scenario of scenarios) {
     const fixture = createLabFixture({ lab: 'combat-assets', scenario: scenario.id, seed: SEED, now: 1000 });
