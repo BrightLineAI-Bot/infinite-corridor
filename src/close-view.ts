@@ -1,6 +1,6 @@
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear, closeViewToolEmissionPoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.ts";
@@ -2001,7 +2001,7 @@ export function closeViewPlayerAction(g, now) {
   if (!player) return { active: false, legacy: false, record: null, profile: null, amount: 0, aim: null };
   const hasRecord = player.attackVisual != null;
   const record = hasRecord ? normalizeAttackVisual(player.attackVisual) : null;
-  const until = attackVisualDeadline(player, record);
+  const until = attackVisualDeadline(player, record, { now, effects:g.effects, pendingToolUse:g.pendingToolUse });
   const cancelled = record?.presentationCancelled === true;
   const active = !!record && !cancelled && until > now;
   const legacy = !hasRecord && !cancelled && player.attackUntil > now;
@@ -2112,6 +2112,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
       primaryStep: visualRecord?.primaryStep,
+      toolAction: who===player&&visualAttack&&acceptedTool&&visualRecord?.toolUse&&!stunned&&!hit&&now>=(player.dodgeUntil||0)?visualRecord:null,
       fistStep: charge != null ? g.fistCharge.step || 1 : visualRecord?.fistStep,
       fistLead: charge != null ? (g.fistCharge.step > 1 ? g.fistCombo?.lead : g.save.fistOpeningHand === 'right' ? 'left' : 'right') : visualRecord?.fistLead,
       effectTime: now,
@@ -2143,7 +2144,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.heldProfile=acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
-        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;
+        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         if (stunned) { action.kind = 'hit'; action.profile = 'knockdown'; }
         else if (now < (player.dodgeUntil || 0)) {
@@ -2367,9 +2368,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   closeViewGLStats.echoRibbonPaths = echo.paths;
   closeViewGLStats.echoRibbonVertices = echo.vertices;
   // Accepted release cue follows this frame's actual final socket. It never moves the shot.
-  if(MODEL_STATE.toolEmissionReady&&MODEL_STATE.toolRelease){const release=MODEL_STATE.toolRelease,releaseNow=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,age=Math.max(0,release.durationMs-Math.max(0,(g.player.actionVisualUntil||0)-releaseNow));
-    if(age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
-    if(!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
+  if(MODEL_STATE.toolEmissionReady&&MODEL_STATE.toolRelease){const release=MODEL_STATE.toolRelease,releaseNow=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,elapsed=Math.max(0,release.durationMs-Math.max(0,(g.player.actionVisualUntil||0)-releaseNow)),age=toolUseReleaseAge(release,elapsed);
+    if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
+    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
   for (const shot of shots || []) {

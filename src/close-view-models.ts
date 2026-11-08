@@ -6,6 +6,7 @@ import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS } from './close-view-player-presentation.ts';
+import { sampleToolActionMotion } from './action-motion.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -334,6 +335,9 @@ export function writeCloseViewModel(out, offset, actor) {
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
   const moving = Math.max(0, Math.min(1, pace));
   const progress = Math.max(0, Math.min(1, amount));
+  // Only new accepted phase records use this path; legacy/native poses keep their original timing.
+  const phasedTool=playerLike&&actor.toolAction?.toolUse?actor.toolAction:null;
+  const toolMotion=phasedTool?sampleToolActionMotion(phasedTool,progress*phasedTool.durationMs):null;
   const alpha = Number.isFinite(actor.alpha) ? Math.max(0, Math.min(1, actor.alpha)) : 1;
   const stagger = Number.isFinite(actor.stagger) ? Math.max(0, Math.min(1, actor.stagger)) : 0;
   // The Saint is stone while watched. Reduced motion suppresses ambient/gait flourish, never attack readability.
@@ -355,7 +359,8 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (progress < .30) strike = 1;
     else { const t = (progress - .30) / .70; strike = 1 - t * t * (3 - 2 * t); }
   }
-  const tool = pose === "tool" ? Math.sin(Math.PI * progress) : 0;
+  if(phasedTool)strike=0;
+  const tool = phasedTool?toolMotion?.weight||0:pose === "tool" ? Math.sin(Math.PI * progress) : 0;
   const cast = pose === "cast" ? Math.sin(Math.PI * progress) : 0;
   const jump = pose === "jump" ? Math.sin(Math.PI * progress) : 0;
   const jumpSettle = pose === "jump" && progress > .72 ? Math.sin((progress - .72) / .28 * Math.PI) : 0;
@@ -420,11 +425,12 @@ export function writeCloseViewModel(out, offset, actor) {
       // Low one-handed carry plus the same accepted-only rising/outward/descending stage vocabulary.
       angle=1.15+beat*.08+(primaryStep===1?-1.65:primaryStep===2?-1.25:-.90)*strike-.28*cast+.58*jump+.22*flinch;
     } else if(kind==='playerCinderPike'&&swing===-2) angle+=(primaryStep===2?-.22:primaryStep===3?.22:0)*strike;
+    if(toolMotion&&swing===-2){const w=toolMotion.weight,baseUp=phasedTool.toolKind==='lumen-spindle'?.18:phasedTool.toolKind==='rift-bombard'?-.13:-.08;angle=beat*stride*(1-w)-(phasedTool.toolKind==='great-sweep'?.8:1.1)*w-(phasedTool.toolKind==='great-sweep'?0:(toolMotion.up-baseUp*w)*2);}
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
-    const cutYaw = playerLike && !fist && !chargingFist && swing === -2
+    const cutYaw = toolMotion&&swing===-2?toolMotion.yaw*toolMotion.weight:playerLike && !fist && !chargingFist && swing === -2
       ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? primaryStep===2?-1.18:primaryStep===3?.45:1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
