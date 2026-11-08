@@ -55,22 +55,16 @@ test('Pentagon selection keeps atlas first, restores one namespace, adopts ten, 
   future.session.activeDungeonId='pentagon:PENT-ADOPT:20:0:v1:f3';assert.equal(recoverPentagonVersion(future,20,0),9);
   future.session.activeDungeonId='pentagon:PENT-ADOPT:20:80:v11:f1';assert.equal(recoverPentagonVersion(future,20,8),10,'another centre is not relevant by prefix');
   future.session.activeDungeonId=null;future.consequences.dungeons['pentagon:PENT-ADOPT:20:8:v8:f1']=null;assert.equal(recoverPentagonVersion(future,20,8),9,'malformed supported canonical record');
+  const pinned=freshSave();pinned.seed='PENT-ADOPT';pinned.atlas={'8,8':{pentVersion:11}};assert.equal(recoverPentagonVersion(pinned,8,8),9,'future atlas pin preserves the legacy fallback');pinned.atlas['8,9']={pentVersion:6};assert.equal(recoverPentagonVersion(pinned,8,8),6,'a supported older pin remains the minimum');
 });
 
 test('failed or absent Pentagon placement pins literal legacy nine, never the candidate selector', () => {
   const s=freshSave();s.seed='NO-PENTAGON';const g=new Game(s,0);g.loadArea('overworld',false);assert.equal(g.map.pentagon,undefined);assert.equal(s.atlas['0,0'].pentVersion,9);
+  const h=freshSave();let enumerations=0;h.consequences.dungeons=new Proxy(h.consequences.dungeons,{ownKeys(){enumerations++;throw new Error('ALL_HISTORY_SCAN')}});assert.equal(recoverPentagonVersion(h,8,8),10);assert.equal(enumerations,0);
+  const q=freshSave();q.seed='TIM1';const forced=new Game(q,0);assert.equal(forced.pentagonHere(-64,-24),true);const note=forced.noteRegion.bind(forced);let installed=0;forced.noteRegion=(...args)=>{const r=note(...args);if(forced.rx===-64&&forced.ry===-24){forced.map.greatBuilding={id:'fixture-existing-building',style:'keep'};installed++;}return r;};forced.rx=-64;forced.ry=-24;forced.loadArea('overworld',false);assert.equal(installed,1);assert.equal(forced.map.pentagon,undefined);assert.equal(forced.map.greatBuilding.id,'fixture-existing-building');assert.equal(q.atlas['-64,-24'].pentVersion,9);
 });
 
-test('atlas-free v8/v9 active chambers survive ordinary serialization, exit, another section, and re-entry without v10 state', () => {
-  for(const V of [8,9]){
-    const seed=`PENT-RESTORE-${V}`, fixed=V===8?{rx:-33,ry:-25,cx:-32,cy:-24}:{rx:-33,ry:7,cx:-32,cy:8}, centre={cx:fixed.cx,cy:fixed.cy},site={rx:fixed.rx,ry:fixed.ry};
-    assert.ok(centre);const P=pentagonPlan(seed,centre.cx,centre.cy,V),s=freshSave();s.seed=seed;
-    s.consequences.dungeons[`${P.base}:f1`]={discovered:true,visits:2,pentArena:1,pentFinale:1,pentComplete:`${P.base}:complete`,futureCanary:{kept:true}};
-    s.session.activeDungeonId=`${P.base}:f2`;s.session.dungeonReturn={...site,x:16,y:16};
-    let g=new Game(deserializeSave(serializeSave(s)),0);g.loadArea('dungeon',false);assert.equal(g.map.building.base,P.base);assert.equal(g.leaveDungeon(),true);assert.equal(g.map.pentagon.V,V);
-    const first=`${g.rx},${g.ry}`;g.rx=centre.cx+1;g.ry=centre.cy;g.loadArea('overworld',false);assert.equal(g.map.pentagon.V,V);g.rx=centre.cx;g.ry=centre.cy;g.loadArea('overworld',false);
-    const door=g.map.objects.find(o=>o.pentagonDoor);assert.ok(door);g.player.x=door.x;g.player.y=door.y;assert.equal(g.interact('enter',door.id).ok,true);assert.equal(g.map.building.base,P.base);
-    g=new Game(deserializeSave(serializeSave(g.save)),0);assert.equal(g.map.building.base,P.base);assert.deepEqual(g.save.consequences.dungeons[`${P.base}:f1`].futureCanary,{kept:true});
-    assert.ok(!Object.keys(g.save.consequences.dungeons).some(id=>id.startsWith(`pentagon:${seed}:${centre.cx}:${centre.cy}:v10`)));assert.equal(g.save.atlas[first].pentVersion,V);
-  }
+test('atlas-free v8/v9 partial and paid journeys survive real exit, another section, re-entry, and reload', () => {
+  const seed='TIM1',cx=-64,cy=-24,reload=g=>new Game(deserializeSave(serializeSave(g.exportSnapshot(1000))),2000);
+  for(const V of [8,9])for(const paid of [false,true]){const P=pentagonPlan(seed,cx,cy,V),entrance=P.world.find(w=>!w.toGate&&!w.sigil&&!w.exterior&&!w.balcony&&!w.sealed&&!w.gate&&P.nodes.some(n=>n.id===w.node&&n.kind==='outer'&&!n.hall)),n=P.nodes.find(n=>n.id===entrance.node),id=`${P.base}:f${n.n+1}`,rx=cx-1+Math.floor(entrance.door.gx/32),ry=cy-1+Math.floor(entrance.door.gy/32),s=freshSave();s.seed=seed;let g=new Game(s,1000);Object.assign(g,{rx,ry});Object.assign(s.session,{activeDungeonId:id,dungeonReturn:{rx,ry,x:16,y:16}});g.loadArea('dungeon',false);const H=s.consequences.dungeons[`${P.base}:f1`];H.pentRelics=[0];H.pentLevers=[0];if(paid){Object.assign(H,{pentFinale:1,pentArena:1,pentArenaWon:true});g.payPentagonComplete(P.base);}assert.equal(s.tesseracts.owned.length,paid?1:0);const owned=JSON.stringify(s.tesseracts.owned),got=JSON.stringify(s.tesseracts.got);g=reload(g);assert.equal(g.map.building.V,V);const exit=g.map.objects.find(o=>o.id===`building-exit-${entrance.key}`);g.player.x=exit.x;g.player.y=exit.y;assert.equal(g.interact('exit',exit.id).ok,true);assert.equal(g.map.pentagon.V,V);assert.equal(g.save.atlas[`${rx},${ry}`].pentVersion,V);g.rx=cx;g.ry=cy;g.loadArea('overworld',false);assert.equal(g.map.pentagon.V,V);g=reload(g);g.rx=rx;g.ry=ry;g.loadArea('overworld',false);const door=g.map.objects.find(o=>o.id===`pent-${entrance.key}`);g.player.x=door.x;g.player.y=door.y;assert.equal(g.interact('enter',door.id).ok,true);assert.equal(g.areaId(),id);g=reload(g);assert.equal(g.map.building.V,V);assert.equal(JSON.stringify(g.save.tesseracts.owned),owned);assert.equal(JSON.stringify(g.save.tesseracts.got),got);assert.deepEqual(g.save.consequences.dungeons[`${P.base}:f1`].pentLevers,[0]);assert.ok(!Object.keys(g.save.consequences.dungeons).some(k=>k.startsWith(`pentagon:${seed}:${cx}:${cy}:v10:`)));}
 });

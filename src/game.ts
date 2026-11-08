@@ -374,7 +374,7 @@ export function applyRoutingKeepAppearance(save, map) {
 
 export function recoverPentagonVersion(save, cx, cy) {
   const atlas = save.atlas || {}; let pinned = CLOSE_VIEW_ROOM_ROUTING.pentagonVersion, hasPin = false;
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = atlas[`${cx + dx},${cy + dy}`]?.pentVersion; if (v) { hasPin = true; pinned = Math.min(pinned, v); } }
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = atlas[`${cx + dx},${cy + dy}`]?.pentVersion; if (v) { hasPin = true; pinned = Math.min(pinned, Number.isInteger(v) && v >= 1 && v <= 10 ? v : 9); } }
   if (hasPin) return pinned;
   const candidates = [], D = save.consequences?.dungeons || {}, prefix = `pentagon:${save.seed}:${cx}:${cy}`; let malformedHistory = false;
   for (let V = 1; V <= 10; V++) { const base = `${prefix}${V >= 2 ? `:v${V}` : ""}`, key = `${base}:f1`; if (Object.prototype.hasOwnProperty.call(D, key)) { if (D[key] && Object.getPrototypeOf(D[key]) === Object.prototype) candidates.push(V); else malformedHistory = true; } }
