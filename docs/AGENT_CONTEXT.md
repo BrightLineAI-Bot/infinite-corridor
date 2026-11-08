@@ -94,3 +94,7 @@ Camera follow-up r822 was packaged from fresh main821 and completed all source/C
 ## Directional dash candidate — r823
 
 Owner-approved character appearance is preserved. The normal hero now uses a four-way grounded quickstep, accepted actual pose/idle-phase continuity, pure ordinary Walk and a closed faster Run loop. Source55-check/build and local unlit CPU phase-sheet acceptance passed; gameplay dodge rules and all source assets remain. This candidate takes823 from fresh main822. Fresh review/CI/Preview/hosted acceptance and publication are pending. The separately reviewed new-dig support repair remains unnumbered on claude/dug-tunnel-return-height; its quiet scratch fixture is being added for hosted verification.
+
+## New excavation support candidate — r824
+
+The reported ramp-pocket defect is reproduced on untouched generated DIG-AUDIT0 building v4. New digs now preserve approached-edge support with additive bounded surfaces and pre-crafting/commit checks; actual Game/reload/legacy/resource tests passed. Existing coordinate-only tunnels remain unchanged; use the existing I'm stuck recovery for old pockets. Quiet Close View scenario terrain-dig-return uses the real generated ramp, normal Act and an origin teleport, with live surface diagnostics. Core and fixture independent component reviews cleared; r823 is integrated. This candidate takes824 from main823; final integration/CI/Preview/fresh since-live review/hosted and publication gates remain. Production identities are verified separately.

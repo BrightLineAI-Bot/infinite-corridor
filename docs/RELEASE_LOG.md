@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r822 on main, this PR takes r823.
+Taken at merge time: main's release + 1. With r823 on main, this PR takes r824.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 824 | Codex | `claude/dug-tunnel-return-height` | Safe new tunnel support and quiet excavation-return fixture | Core 40 focused checks/build and independent component review passed; fixture checks and independent 21-seed/Act review passed. Integrated merged r823; 54 focused integration/release checks and sequential r824 build passed. Exact-head CI, fresh since-live review, Preview and hosted acceptance pending. Legacy tunnels remain unchanged. |
 | 823 | Codex | `claude/wayfarer-directional-dash` / #473 | Low directional quickstep and smoother normal-Wayfarer gait | Merged a1b23012a5c2b0ddf8f3492c55803b69fbb36fd8; exact tree78e40296 matches reviewed source ddce37dd. CI42438123052 passed. Fresh Astra full/delta review (822→823) found no remaining blockers after recovery-facing correction. Preview42438743247 and hosted acceptance pending. 55 focused checks/build and CPU pose acceptance passed. |
 | 822 | Codex | `claude/close-view-shoulder-clearance` / #471 | Bounded side camera clearance and semantic target activation | Published as r822-1d2ba908e56c. CI42432626387, merged CI42433819389, Preview42433819396 and Publish42435253843 passed. Fresh Astra review (821→822): no blockers; actual live identity and Options → System verified, no recent errors. Hosted raw entrance, legacy themes, quiet Pentagon traversal and Enter/Space lock acceptance checked; tight legacy framing/physical-phone limits remain documented. |
 | 821 | Codex | `claude/wayfarer-neck-bridge` / #470 | Close the imported hero rear neck gap with source-coherent fabric | Published as r821-c4303ef9b07c. CI42431390795, merged CI42432379946, Preview42432379936 and Publish42433628415 passed. Live identity and actual Options → System verified after updating cached r818. Astra review (818→821): no blockers. Hosted rear/front, attack and roll confirmed fabric continuity, amber eyes and approved proportions; no recent errors. |
