@@ -1,5 +1,6 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
+import { sampleToolActionMotion } from './action-motion.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -288,21 +289,6 @@ function primaryPose(state,pose,profile,p,step=1){
   state.clipTime=p;state.primaryStep=step;
 }
 
-function toolPose(state,pose,profile,p,weight){
-  state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
-  let frameYaw=0,side=0,up=-.10,forward=.47;
-  if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
-  else if(profile==='rift-bombard'){side=-.05;up=-.13;forward=.43;}
-  else if(profile==='blunderbuss'){side=-.04;up=-.08;forward=.50;}
-  else if(profile==='great-sweep'){
-    const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;
-    frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;
-  }
-  target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
-  solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
-  state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
-}
-
 // Reachable source-space targets for the free left hand. The weapon hand remains
 // whatever carry/attack layer established; this solver runs last so casting never
 // yanks an accepted weapon socket off its grip.
@@ -323,6 +309,19 @@ function castPose(state,pose,profile,p){
   const desired=[g[s+12]+spec[0],g[s+13]+spec[1]+follow*.035,g[s+14]+spec[2]+follow*.045];
   t[0]=g[grip+12]+(desired[0]-g[grip+12])*commit;t[1]=g[grip+13]+(desired[1]-g[grip+13])*commit;t[2]=g[grip+14]+(desired[2]-g[grip+14])*commit;
   solveArm(state,pose,true,t,spec[3]*commit,spec[4]*commit);
+}
+
+function toolPose(state,pose,profile,p,weight,action){
+  state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
+  const motion=sampleToolActionMotion(action,p*(Number(action?.durationMs)||180));let frameYaw=0,side=0,up=-.10,forward=.47;
+  if(motion){({yaw:frameYaw,side,up,forward,weight}=motion);}
+  else if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
+  else if(profile==='rift-bombard'){side=-.05;up=-.13;forward=.43;}
+  else if(profile==='blunderbuss'){side=-.04;up=-.08;forward=.50;}
+  else if(profile==='great-sweep'){const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;}
+  target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
+  solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
+  state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
 }
 
 function build(asset, state, pose) {
@@ -446,7 +445,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const action=input.action,p=clamp(Number(action?.phase)||0),knocked=action?.kind==='hit'&&action.profile==='knockdown';
   // Accepted action progress, not wall-clock idle breathing, owns every action blend.
   const hammerAction=action?.kind==='melee'&&action.profile==='hammer';
-  const timedPrimary=action?.kind==='melee'&&['cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
+  const timedPrimary=action?.kind==='melee'&&['melee','cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
   clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
@@ -474,11 +473,11 @@ export function sampleCloseViewHero(asset, state, input, out) {
     } else if (kind === 'melee' && profile === 'hammer') {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
-      toolPose(state,state.pose,profile,p,weight);
+      toolPose(state,state.pose,profile,p,weight,action);
     } else if (kind === 'ranged' || kind === 'cast' || kind === 'jump') {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.
       const pulse = Math.sin(p * Math.PI) * weight;
-      if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight);
+      if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight,action);
       else if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') {
         // Orrery tools and pre-descriptor saves retain their established cast layer.

@@ -2854,6 +2854,24 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 830: raised primary Echo afterimages and safe GPU fallback
+
+**CODE:** Newly returned canonical Echo strikes produce depth-tested violet ribbons from their actual due-time origin/profile. A faint immutable original path appears only when it differs; reduced motion omits that memory. Pike thrusts, Cleaver arcs and Salvage/future-primary cones share the bounded path builder. Six cues lasting .28 seconds use at most 504 extra vertices in the existing additive decal batch. Three quiet Combat Asset Lab scenarios use real Echo-equipped weapons and durable stunned practice targets. Critical GPU preflight, failed-frame propagation and cache invalidation restore ordinary drawing instead of copying partial frames or losing masked effects.
+
+**BOUNDARY:** The existing 250 ms Echo delay, hit calculation, damage, cooldowns and combo stages are unchanged; Echo never replays the accepted body action. Iron Fists retain their own existing Echo/charge rules. No new actors, draw pass, dependency or generation revision. Schema14/unknown data, pinned content, Proving Ground isolation, quality/reduced motion and ordinary fallback remain. Source/mock tests do not establish hosted appearance or phone performance; exact CI, Preview and hosted acceptance remain gates.
+
+## Release 829: continuous generic-primary attack endpoints
+
+**CODE:** Accepted generic melee forwards its saved logical pose time to the imported hero, alongside the existing Pike, Cleaver and Fists handling. The source dagger animation now blends from and back into the matching breathing/gait phase. Focused production-renderer coverage includes Salvage Blade, future-item fallback, normal asset-unavailable/native Robot paths, equipment switching, interruption and schema-14 pause/reload.
+
+**BOUNDARY:** No new combat profile, staged Salvage combo, yaw, damage, reach, cooldown or save field. Legacy actions without pose time and unknown action profiles retain their prior interpretation. Source assets, geometry/draw budgets, old generation pins and Proving Ground isolation are unchanged. Automated/mock rendering does not establish hosted appearance or phone performance.
+
+## Release 828: readable settled-corner entry framing
+
+**CODE:** Entry scoring retains its existing best forward view unless that winner has less than the existing one-tile minimum boom. In that case it selects the highest-scoring already-evaluated safe heading with enough reach, preferring arrival facing on equivalent scores. The reproduced Pentagon settled arrival at (25,4) gains a useful body view; raw entry at (25,11) retains its 1.10-tile view. This runs only when initializing the camera.
+
+**BOUNDARY:** No extra camera probes, ordinary-frame rescoring, manual-orbit/lock change, field-of-view change, wall transparency or movement/arrival/generation change. Some corner alternatives face nearby walls while revealing surrounding side floor; hosted review must judge that tradeoff. Schema 14, old pins, rendering budgets and Proving Ground isolation remain unchanged. Source checks do not establish hosted or phone performance.
+
 ## Release 827: primary carry, three-stage motion and accepted presentation clocks
 
 **CODE:** The rusty gladius-like Verge Cleaver carries low in one hand with locomotion bob and three accepted cuts. The Cinder Pike retains a two-handed grip and three distinct accepted thrusts. Optional schema-14 primary stage metadata survives switching and exact resume. A shared accepted-action presentation deadline separates all tool/primary visuals from the canonical clock temporarily masked by production rendering; queued Echo cannot rewind newer actions, and successful casting/jumping cancels older presentation. Published fist-clock compatibility remains.

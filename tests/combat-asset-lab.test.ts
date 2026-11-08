@@ -20,6 +20,7 @@ const expected = {
   'fists-spindle-flying': { form: 'boomerang', spell: 'orbit-volley', foe: 'veilMoth' },
   'pike-echo-inspection': { form: 'boomerang', spell: 'cinder-dart', foe: 'ashling' },
   'cleaver-echo-inspection': { form: 'straight', spell: 'ember-ring', foe: 'ashling' },
+  'salvage-echo-inspection': { form: 'straight', spell: 'ember-ring', foe: 'ashling' },
 };
 
 function assertSpellArtifact(game, id, now) {
@@ -33,7 +34,7 @@ function assertSpellArtifact(game, id, now) {
 
 test('all combat asset scenarios resolve and emit their production tool and Spell A forms', () => {
   const scenarios = scenariosForLab('combat-assets');
-  assert.equal(scenarios.length, 13);
+  assert.equal(scenarios.length, 14);
   assert.deepEqual(scenarios.map((q) => q.id), Object.keys(expected));
   for (const scenario of scenarios) {
     const fixture = createLabFixture({ lab: 'combat-assets', scenario: scenario.id, seed: SEED, now: 1000 });
@@ -57,6 +58,13 @@ test('all combat asset scenarios resolve and emit their production tool and Spel
     assert.equal(game.castSlot('a', castAt), true, `${scenario.id}: Spell A`);
     assertSpellArtifact(game, contract.spell, castAt);
   }
+});
+
+test('the opt-in Salvage inspection uses the real delayed cone Echo and freezes its quiet state',()=>{
+  const {game,save,diagnostics}=createLabFixture({lab:'combat-assets',scenario:'salvage-echo-inspection',seed:SEED,now:1000}),foe=game.enemies[0];
+  assert.equal(save.equipment.primary.name,'Salvage Blade');assert.equal(save.equipment.primary.glyphs[0],'echo');assert.equal(save.glyphCodex.glyphs.echo,true);assert.deepEqual(diagnostics.resolved.primary,{name:'Salvage Blade',shape:'cone',range:1.7,arc:100,damage:7});assert.equal(foe.hp,5000);assert.equal(foe.maxHp,5000);assert.equal(foe.hitStun,1e9);
+  game.primaryAttack(1000,{x:save.lastAim.x,y:save.lastAim.y});const accepted=structuredClone(game.player.attackVisual),timer=game.glyphTimers.find(q=>q.kind==='strike');assert.ok(timer);assert.equal(timer.at,1250);assert.equal(timer.echoVisual,null);game.tickGlyphs(.001,1250);const cue=game.glyphVisuals.find(q=>q.kind==='primaryEcho');assert.ok(cue);assert.deepEqual(cue.actual,{x:game.player.meleeStrike.x,y:game.player.meleeStrike.y,dx:game.player.meleeStrike.dx,dy:game.player.meleeStrike.dy,range:1.7,arc:100,shape:'cone'});assert.equal(cue.memory,null);assert.deepEqual(game.player.attackVisual,accepted,'the delayed Echo never replays the accepted body');assert.equal(foe.hp,5000,'the five-tile inspection lane adds no hidden hit');
+  const life=cue.life,hp=foe.hp;game.setPaused(true,1251);game.update(1,idle,2251);assert.equal(cue.life,life);assert.equal(foe.hp,hp);assert.deepEqual(game.player.attackVisual,accepted);game.setPaused(false,2251);
 });
 
 test('gallery placement is deterministic, clear and level without changing the generated grand hall', () => {

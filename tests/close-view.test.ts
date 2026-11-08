@@ -127,6 +127,10 @@ test('movement follows the view: camera-relative, its basis latched for the whol
 
 test('phase 2 plugs in here: a creature with close-view art draws itself in its billboard', () => {
   const { game: g } = lab('cellar'), seen = []; let t = 20000;
+  CV.resetCloseViewCamera(); render(recorder().ctx, g, W, H, t += 16);
+  const foe = g.enemies[0], yaw = CV.closeViewCamera().yaw; assert.ok(foe, 'the fixture has a creature');
+  foe.x = g.player.x + Math.cos(yaw) * 1.25; foe.y = g.player.y + Math.sin(yaw) * 1.25;
+  assert.ok((foe.x - g.player.x) * Math.cos(yaw) + (foe.y - g.player.y) * Math.sin(yaw) > 1, 'the creature fixture is ahead of the initialized camera');
   for (const e of g.enemies) CV.CLOSE_VIEW_HOOKS.art[e.kind] = (ctx, foe, view) => seen.push({ id: foe.id, view });
   try { for (let i = 0; i < 3; i++) render(recorder().ctx, g, W, H, t += 16); } finally { for (const e of g.enemies) delete CV.CLOSE_VIEW_HOOKS.art[e.kind]; }
   assert.ok(CV.closeViewStats.boards > 1, 'creatures in view'); assert.ok(seen.length >= 1, 'the art hook drew a creature in view');

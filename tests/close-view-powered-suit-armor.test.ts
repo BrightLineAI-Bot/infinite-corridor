@@ -73,3 +73,11 @@ test('native readiness fallback is adult-height, continuous and remains legacy-g
   assert.ok(modelTriangleCount('playerPowerSuit')<=230);assert.ok(modelTriangleCount('playerPowerSuit:emitter')<=256);
   const out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS),end=writeCloseViewModel(out,0,{kind:'playerPowerSuit',x:0,y:0,z:0,yaw:0,phase:0,pace:0,pose:'idle',amount:0,reduceMotion:true});let lo=Infinity,hi=-Infinity;for(let i=2;i<end;i+=MODEL_FLOATS){lo=Math.min(lo,out[i]);hi=Math.max(hi,out[i]);}assert.ok(lo<=.001);assert.ok(hi>=1.67*.82&&hi<=1.72*.82,`${lo}/${hi}`);
 });
+
+test('actual renderer rejects failed powered equipment before tool or spell cue ownership and admission',()=>{
+  const source=fs.readFileSync(new URL('../src/close-view.ts',import.meta.url),'utf8');
+  const write=source.indexOf('const equipped = writeCloseViewHeroEquipment'),fail=source.indexOf('if (state.heroFrame.powerSuit && equipped === offset) return;',write),right=source.indexOf('const right=state.heroFrame.rightSocket',fail),record=source.indexOf('recordHeroPresentation(player',right),admit=source.indexOf('state.hero = state.heroFrame; count++; imported = true;',record);
+  assert.ok(write>=0&&write<fail&&fail<right&&right<record&&record<admit,'atomic armor reservation failure precedes both final-socket cue families and imported admission');
+  const {frame}=sampled({powerSuit:true}),gear={profile:'great-sweep',rightSocket:frame.rightSocket,leftSocket:frame.leftSocket,alpha:1,tint:[1,1,1]},full=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS),end=writeCloseViewHeroEquipment(full,0,gear,frame),short=new Float32Array(end-1);
+  assert.ok(end>0);assert.equal(writeCloseViewHeroEquipment(short,0,gear,frame),0);assert.ok(short.every(v=>v===0),'failed actual powered equipment preflight writes neither armor nor gear');
+});
