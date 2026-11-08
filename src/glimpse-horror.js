@@ -2,8 +2,8 @@
 // some of them should be violent"). Same contract as glimpse-scenes.ts: draw(ctx, t, w, h, state) paints frame
 // t ∈ [0, 1] in first person. Violence is shown the way the rest of the game shows it: silhouette, light and red,
 // never anatomy. Canvas 2D only, no assets.
-import { TAU, clamp, lerp, smooth, seeded, mix, rgba, glow, vignette } from "./glimpse-paint.js?v=r834-32b9249def93";
-import { paintHand } from "./glimpse-hand.js?v=r834-32b9249def93";
+import { TAU, clamp, lerp, smooth, seeded, mix, rgba, glow, vignette } from "./glimpse-paint.js?v=r836-a5d6b9c2484b";
+import { paintHand } from "./glimpse-hand.js?v=r836-a5d6b9c2484b";
 
 // A hard jolt of the view, for impacts: amplitude in pixels at time t around `at`.
 const jolt = (t, at, len, amp) => (t > at && t < at + len ? amp * (1 - (t - at) / len) : 0);

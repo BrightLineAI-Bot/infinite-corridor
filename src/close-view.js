@@ -1,21 +1,21 @@
-import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r834-32b9249def93";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r834-32b9249def93";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge } from "./action-motion.js?v=r834-32b9249def93";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear, closeViewToolEmissionPoint } from "./close-view-models.js?v=r834-32b9249def93";
-import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r834-32b9249def93';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r834-32b9249def93";
-import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.js?v=r834-32b9249def93';
-import { fistCharge } from './brawler-spells.js?v=r834-32b9249def93';
-import { dronePos } from "./affixes.js?v=r834-32b9249def93";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r834-32b9249def93";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r834-32b9249def93";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r834-32b9249def93";
-import { knockdownPose } from "./lightning-giant-render.js?v=r834-32b9249def93";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r834-32b9249def93";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r834-32b9249def93";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r834-32b9249def93";
-import { SIGIL_CELLS } from "./watcher.js?v=r834-32b9249def93";
-import { closeViewGLReady, closeViewGLFrameReady, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r834-32b9249def93"; // version 4: the GPU scene
+import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r836-a5d6b9c2484b";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r836-a5d6b9c2484b";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge } from "./action-motion.js?v=r836-a5d6b9c2484b";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear, closeViewToolEmissionPoint } from "./close-view-models.js?v=r836-a5d6b9c2484b";
+import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r836-a5d6b9c2484b';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r836-a5d6b9c2484b";
+import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.js?v=r836-a5d6b9c2484b';
+import { fistCharge } from './brawler-spells.js?v=r836-a5d6b9c2484b';
+import { dronePos } from "./affixes.js?v=r836-a5d6b9c2484b";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r836-a5d6b9c2484b";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r836-a5d6b9c2484b";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r836-a5d6b9c2484b";
+import { knockdownPose } from "./lightning-giant-render.js?v=r836-a5d6b9c2484b";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r836-a5d6b9c2484b";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r836-a5d6b9c2484b";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r836-a5d6b9c2484b";
+import { SIGIL_CELLS } from "./watcher.js?v=r836-a5d6b9c2484b";
+import { closeViewGLReady, closeViewGLFrameReady, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r836-a5d6b9c2484b"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -230,7 +230,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r834-32b9249def93's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r836-a5d6b9c2484b's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -380,7 +380,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r834-32b9249def93's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r836-a5d6b9c2484b's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -443,7 +443,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r834-32b9249def93's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r836-a5d6b9c2484b's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 
@@ -912,7 +912,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r834-32b9249def93's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r836-a5d6b9c2484b's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && interiorTerrain(CAM.map)) return terrainFloorRay(CAM.map, x, y);
@@ -1001,7 +1001,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (useGL && !closeViewGLFrameReady()) return abortCloseViewGLFrame();
   if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
-  const shots = useGL ? selectProjectedShots(g, Q) : null;
+  const shots = useGL ? selectProjectedShots(g, Q, reduce) : null;
+  if (useGL && !shots) return false;
   // 1. the ground, drawn by the ordinary renderer into the texture, its actors captured.
   // Version 4: the texture is anchored to the world. The renderer puts world (0, 0) at a whole CSS pixel (Tx, Ty); at a
   // texture scale that is not whole (.75, 1.25) that point fell between device pixels, by a different fraction each step, and
@@ -1914,16 +1915,39 @@ const SHOT_DRAW = Object.freeze({ low: 12, balanced: 20, full: 28, maxRange: 14,
   minSize: .075, magicSize: .12, maxTrail: .9, trailSeconds: .058, trailAlpha: .46, headAlpha: .95 });
 const CONTACT_GLINT = Object.freeze({ max: 8, height: .84, radius: .08, spread: .17, front: .28, alpha: .9, color: 0xffbd7e });
 const PROJECTED_SHOTS = new Set();
+const PROJECTED_ENTRIES = [];
 const SHOT_COLORS = new Map();
-function selectProjectedShots(g, q) {
+const finite = Number.isFinite;
+function validFire(p) { return !!p && p.fireBomb === true && p.path === "grenade" && p.glyphSpell === "fire-burst" && !p.hostile && !p.dead && !p.shadow && !p.echo && p.visualLaunch == null &&
+  finite(p.x) && finite(p.y) && finite(p.dx) && finite(p.dy) && finite(p.age) && p.age >= 0 && finite(p.life) && p.life > 0 &&
+  typeof p.id === "string" && p.id.length > 0 && p.id.length <= 160 && p.visualFlight == null; }
+function validOrbit(g, f) { return !!f && f.visualLaunch == null && g.orbit?.flight === f && typeof g.areaId==='function' && g.orbit.where===`${g.area}:${g.areaId()}` && finite(f.x) && finite(f.y) && finite(f.tx) && finite(f.ty) &&
+  finite(f.radius) && f.radius > 0 && f.radius <= 8 && (f.perfect === undefined || typeof f.perfect === "boolean") && f.visualFlight == null; }
+export function selectProjectedShots(g, q, reduce = false) {
   PROJECTED_SHOTS.clear();
+  PROJECTED_ENTRIES.length = 0;
+  if (!closeViewGLFrameReady()) return null;
   const limit = q.glScale === 1 ? SHOT_DRAW.full : q.relief ? SHOT_DRAW.balanced : SHOT_DRAW.low;
+  try { CLOSE_VIEW_HOOKS.reserve?.(limit * 12 + 12); glEnsure("decal", limit * 12 + 12); } catch { return null; }
+  const admit = (kind, source, verts, geom = null) => { if (PROJECTED_ENTRIES.length >= limit) return false; PROJECTED_ENTRIES.push({ kind, source, verts, geom }); PROJECTED_SHOTS.add(source); return true; };
   for (const p of g.projectiles || []) {
     if (PROJECTED_SHOTS.size === limit) break;
     if (!p.dead && standardProjectile(p) && (p.path !== "grenade" || !!readProjectileVisualFlight(p.visualFlight)) &&
         Math.hypot(p.x - g.player.x, p.y - g.player.y) < SHOT_DRAW.maxRange &&
-        dungeonPointDiscovered(g.map, p)) PROJECTED_SHOTS.add(p);
+        dungeonPointDiscovered(g.map, p)) admit("projectile", p, reduce ? 6 : 12);
   }
+  for (const p of g.projectiles || []) {
+    if (PROJECTED_ENTRIES.length === limit) break;
+    if (validFire(p) && Math.hypot(p.x-g.player.x,p.y-g.player.y)<SHOT_DRAW.maxRange && dungeonPointDiscovered(g.map,p)) {
+      const z=interiorSurfaceHeight(g.map,p.x,p.y)+SHOT_DRAW.height;if(!finite(z))continue;const geom={x:p.x,y:p.y,z,tail:null},d=Math.hypot(p.dx,p.dy),trailTime=Math.min(SHOT_DRAW.trailSeconds,p.age),length=Math.min(SHOT_DRAW.maxTrail,p.speed*trailTime);
+      if(!reduce&&d>1e-4&&length>0){const x=p.x-p.dx*length/d,y=p.y-p.dy*length/d,tz=interiorSurfaceHeight(g.map,x,y)+SHOT_DRAW.height;if(finite(x)&&finite(y)&&finite(tz)&&toolCueSegmentOpen(g.map,p.x,p.y,x,y))geom.tail={x,y,z:tz};}
+      admit("fire",p,geom.tail?12:6,geom);
+    }
+  }
+  const orbit=g.orbit?.flight;
+  if(PROJECTED_ENTRIES.length<limit&&validOrbit(g,orbit)&&Math.hypot(orbit.x-g.player.x,orbit.y-g.player.y)<SHOT_DRAW.maxRange&&dungeonPointDiscovered(g.map,orbit)){const z=interiorSurfaceHeight(g.map,orbit.x,orbit.y)+SHOT_DRAW.height;if(finite(z))admit("orbit",orbit,6,{x:orbit.x,y:orbit.y,z});}
+  PROJECTED_SHOTS.entries = PROJECTED_ENTRIES;
+  PROJECTED_SHOTS.orbit = PROJECTED_ENTRIES.some(e=>e.kind==="orbit") ? orbit : null;
   return PROJECTED_SHOTS;
 }
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
@@ -1954,6 +1978,7 @@ const MODEL_STATE = {
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   heroGear: { profile: '', leftSocket: null, rightSocket: null, alpha: 1, tint: null, hitFlash: 0 },
   toolEmission:new Float32Array(3),toolEmissionReady:false,toolRelease:null,toolAlpha:1,
+  spellEmission:new Float32Array(3),spellEmissionReady:false,spellRelease:null,spellAlpha:1,
 };
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
@@ -2022,7 +2047,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const form = playerFormPresentation(g);
   const importedPlayer = !form || form.kind === 'playerIronFists';
   state.admitted.clear();
-  state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;
+  state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;
   if (importedPlayer && !state.heroRequested && typeof globalThis.Image === 'function') {
     state.heroRequested = true;
     loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
@@ -2061,13 +2086,14 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const visualProfile = visualAttack ? visualRecord.profile : null;
     const acceptedTool = visualAttack && KNOWN_TOOL_VISUAL.has(visualRecord?.toolKind) ? visualRecord.toolKind : null;
     const fisting = who === player && (visualProfile === 'fist' || playerAction?.legacy && !!g.fistsEquipped?.());
-    const cast = who === player && player.castUntil > now;
+    const castRecord=who===player?player.castVisual:null;
+    const cast = who === player && player.castUntil > now && (!castRecord||castRecord.cancelled!==true);
     const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
     const charge = who === player && !attack && !cast && !jump && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
     const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
     const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" || !!acceptedTool : !(player.meleeUntil > now));
     const winding = !!monsterAction?.winding;
-    const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
+    const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? castRecord?.aim||g.save.lastAim
       : who === player ? closeViewIdleLockAim(g, now) : monsterAction?.aim;
     let targetYaw = track.yaw;
     if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
@@ -2168,7 +2194,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
         else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist' || action.profile === 'hammer')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) { const turn=Math.atan2(Math.sin(actor.yaw-visualRecord.facingYaw),Math.cos(actor.yaw-visualRecord.facingYaw)),t=Math.min(1,amount/.08);action.yaw=visualRecord.facingYaw+turn*t*t*(3-2*t); } } }
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
-        else if (cast) { action.kind = 'cast'; action.durationMs = MODEL_TIMING.castMs; }
+        else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
         // Generic primaries retain their accepted logical breathing phase at both blend endpoints.
         if (action.kind === 'melee' && action.profile === 'melee' && Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs;
@@ -2181,6 +2207,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           const right=state.heroFrame.rightSocket,rx=right?.[12],ry=right?.[13],rz=right?.[14];
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
           if(closeViewToolCueOwnsAction(acceptedTool,input.action,action)&&Number.isFinite(rx)&&Number.isFinite(ry)&&Number.isFinite(rz)&&Math.hypot(rx-(who.x+.5),ry-(who.y+.45))<=.9&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,right)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
+          const spellProfile=action.kind==='cast'&&cast&&['fan-release','orbit-launch'].includes(action.profile)?action.profile:null,left=state.heroFrame.leftSocket;
+          const lx=left?.[12],ly=left?.[13],lz=left?.[14];
+          if(spellProfile&&left?.length>=16&&finite(lx)&&finite(ly)&&finite(lz)&&actor.alpha>0&&Math.hypot(lx-(who.x+.5),ly-(who.y+.45))<=.9&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,lx,ly)){
+            const fire=spellProfile==='fan-release'&&castRecord?.spellKind==='fire-burst'&&castRecord?.variant==='cast'&&typeof castRecord.sourceId==='string'&&castRecord.sourceId.length<=160&&finite(castRecord.aim?.x)&&finite(castRecord.aim?.y);
+            const orbit=spellProfile==='orbit-launch'&&castRecord?.spellKind==='orbit-volley'&&castRecord?.variant==='launch'&&validOrbit(g,g.orbit?.flight);
+            if(fire||orbit){state.spellEmission[0]=lx;state.spellEmission[1]=ly;state.spellEmission[2]=lz;state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
+          }
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;
         }
@@ -2385,11 +2418,22 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
     if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
+  // Spells arbitrate the same single release lane after final-pose sampling. Fire may link only its
+  // immutable accepted central source; Orbit deliberately has no connector.
+  if(!MODEL_STATE.toolEmissionReady&&MODEL_STATE.spellEmissionReady&&MODEL_STATE.spellRelease){const release=MODEL_STATE.spellRelease,at=MODEL_STATE.spellEmission,releaseNow=g.paused&&finite(g.pauseStarted)?g.pauseStarted:now,duration=release.durationMs||MODEL_TIMING.castMs,age=Math.max(0,duration-Math.max(0,(g.player.castUntil||0)-releaseNow));
+    if(age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.spellAlpha,r=.045;room(6);card(at[0],at[1],at[2]-r,at[2]+r,r,11,a,release.profile==='orbit-launch'?0xb48cff:0xff7a2a,0,true);}
+    if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=interiorSurfaceHeight(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
+  }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
-  for (const shot of shots || []) {
-    const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
-    const size = (magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1));
-    const hue = standardProjectileColor(shot);
+  for (const entry of shots?.entries || []) {
+    const shot=entry.source;
+    if(entry.kind==="orbit"){
+      const X=entry.geom.x,Y=entry.geom.y,z=entry.geom.z,size=shot.radius>1.1?.32:.22,color=shot.perfect?0xffd86a:0xb48cff;
+      room(6);card(X,Y,z-size,z+size,size,11,SHOT_DRAW.headAlpha,color,0,true);continue;
+    }
+    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
+    const size = fire?.2:(magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1));
+    const hue = fire?"#ff7a2a":standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
     const color = SHOT_COLORS.get(hue);
     if (!reduce) {
@@ -2397,19 +2441,19 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       if (d > 1e-4) {
         const trailTime = Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
         const length = Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
-        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d,tail=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tx=tail.x,ty=tail.y,tz=tail.z,r = size * .75;
+        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tx=tail.x,ty=tail.y,tz=tail.z,r = size * .75;
         room(6);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
-        DV(tx, ty, tz + r, -1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
+        DV(tx, ty, tz + r, -1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);}
       }
     }
     card(X, Y, z - size, z + size, size, 11, SHOT_DRAW.headAlpha, color, 0, true);
   }
-  closeViewGLStats.projectedShots = shots?.size || 0;
+  closeViewGLStats.projectedShots = shots?.entries?.length || 0;
   GLB.nDecal = dv;
   if (!drawSceneGL(GROUND.canvas, UNI, models, MODEL_STATE.hero)) return false;
   ctx.save(); try { ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); } finally { ctx.restore(); }

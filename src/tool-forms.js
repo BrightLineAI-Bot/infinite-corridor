@@ -1,4 +1,4 @@
-import { stampAttackVisual } from "./action-motion.js?v=r834-32b9249def93";
+import { stampAttackVisual } from "./action-motion.js?v=r836-a5d6b9c2484b";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -106,7 +106,7 @@ export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
     if (p.dead) continue;
     if (p.mirage) { const [x, y] = toScreen(p), k = MIRAGE.size * (p.scale || 1), spin = (p.age || 0) * MIRAGE.spin; // release 649: a rotor of steel
       ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.arc(0, 0, s * .38, 0, 7); ctx.stroke(); sweepBlade(ctx, 0, 0, spin, s, p.blade || 0, p.age || 0); ctx.restore(); }
-    else if (p.fireBomb) { const [x, y] = toScreen(p), r = s * .2, spin = (p.age || 0) * 9; // release 547: a cinder shell, cracked and glowing
+    else if (p.fireBomb && !capture?.has?.(p)) { const [x, y] = toScreen(p), r = s * .2, spin = (p.age || 0) * 9; // release 547: a cinder shell, cracked and glowing
       ctx.fillStyle = "#ff7a2a33"; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill();
       ctx.fillStyle = "#5a2416"; ctx.strokeStyle = "#2a0e08"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
       ctx.strokeStyle = "#ff8a2a"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.beginPath(); for (const a of [spin - 1.6, spin + .5, spin + 2.6]) { ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r * .8, y + Math.sin(a) * r * .8); } ctx.stroke(); }

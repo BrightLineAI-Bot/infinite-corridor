@@ -9,8 +9,8 @@
 // A cast turns the next share of the section's open floor to lava (cast k of `casts`: k/casts of it), in patches that grow from a few
 // seeded centres. Never raised ground, slopes, water, structures or buildings, and never within `border` tiles of the edge, so there is
 // always ground to arrive on and leave by. The tiles are applied to the section every time it is loaded: they stay lava.
-import { hashSeed } from "./random.js?v=r834-32b9249def93";
-import { DRAGON } from "./monster-pack.js?v=r834-32b9249def93";
+import { hashSeed } from "./random.js?v=r836-a5d6b9c2484b";
+import { DRAGON } from "./monster-pack.js?v=r836-a5d6b9c2484b";
 
 export const DRAGON_LAVA = { maxSections: 24, centres: 4 };
 const KEEP = new Set(["lava", "abyss", "canyon", "river", "dungeonWater", "water", "ocean", "deepOcean", "lakeWater", "shallows", "swampWater", "mireWater", "toxicWater"]);

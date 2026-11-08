@@ -12,7 +12,7 @@
 //   A curl travels from the index to the little finger, as the snake's body follows its head, and with `time` the
 //   fingers keep a slight living sway. The hand is painted on a reused offscreen sheet at reduced scale and drawn back
 //   up smoothly, which softens it into the painting.
-import { TAU, clamp, lerp, seeded, mix, rgba, makeCanvas } from "./glimpse-paint.js?v=r834-32b9249def93";
+import { TAU, clamp, lerp, seeded, mix, rgba, makeCanvas } from "./glimpse-paint.js?v=r836-a5d6b9c2484b";
 
 // Proportions as fractions of the hand size `s` (wrist to knuckles is about .8 s). Fingers: index → little.
 export const HAND = {

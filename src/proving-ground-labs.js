@@ -1,32 +1,32 @@
-import { Game } from "./game.js?v=r834-32b9249def93";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r834-32b9249def93"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r834-32b9249def93";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r834-32b9249def93";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel } from "./landscape.js?v=r834-32b9249def93";
-import { DIG, planDig } from "./digging.js?v=r834-32b9249def93";
-import { freshSave, migrateSave } from "./types.js?v=r834-32b9249def93";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r834-32b9249def93";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r834-32b9249def93";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r834-32b9249def93";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r834-32b9249def93";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r834-32b9249def93";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r834-32b9249def93";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r834-32b9249def93";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r834-32b9249def93";
-import { BIOMES, biomeFor } from "./landscape.js?v=r834-32b9249def93";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r834-32b9249def93";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r834-32b9249def93";
-import { ensureConstellation } from "./constellation.js?v=r834-32b9249def93";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r834-32b9249def93";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r834-32b9249def93";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r834-32b9249def93";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r834-32b9249def93";
-import { ensureLattice } from "./transit-lattice.js?v=r834-32b9249def93";
-import { ensureSlots } from "./spell-slots.js?v=r834-32b9249def93";
-import { fieldOn } from "./lattice-fields.js?v=r834-32b9249def93";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r834-32b9249def93";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r834-32b9249def93";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r834-32b9249def93";
+import { Game } from "./game.js?v=r836-a5d6b9c2484b";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r836-a5d6b9c2484b"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r836-a5d6b9c2484b";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r836-a5d6b9c2484b";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel } from "./landscape.js?v=r836-a5d6b9c2484b";
+import { DIG, planDig } from "./digging.js?v=r836-a5d6b9c2484b";
+import { freshSave, migrateSave } from "./types.js?v=r836-a5d6b9c2484b";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r836-a5d6b9c2484b";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r836-a5d6b9c2484b";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r836-a5d6b9c2484b";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r836-a5d6b9c2484b";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r836-a5d6b9c2484b";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r836-a5d6b9c2484b";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r836-a5d6b9c2484b";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r836-a5d6b9c2484b";
+import { BIOMES, biomeFor } from "./landscape.js?v=r836-a5d6b9c2484b";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r836-a5d6b9c2484b";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r836-a5d6b9c2484b";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r836-a5d6b9c2484b";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r836-a5d6b9c2484b";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r836-a5d6b9c2484b";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r836-a5d6b9c2484b";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r836-a5d6b9c2484b";
+import { ensureLattice } from "./transit-lattice.js?v=r836-a5d6b9c2484b";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r836-a5d6b9c2484b";
+import { fieldOn } from "./lattice-fields.js?v=r836-a5d6b9c2484b";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r836-a5d6b9c2484b";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r836-a5d6b9c2484b";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r836-a5d6b9c2484b";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -91,6 +91,8 @@ const COMBAT_ASSETS = [
   { id: "pike-echo-inspection", label: "Quiet Echo inspection · Cinder Pike", primary: "Cinder Pike", tool: "Lumen Spindle", spell: "cinder-dart", foe: "ashling", echoPrimary: true },
   { id: "cleaver-echo-inspection", label: "Quiet Echo inspection · Verge Cleaver", primary: "Verge Cleaver", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", echoPrimary: true },
   { id: "salvage-echo-inspection", label: "Quiet Echo inspection · Salvage Blade", primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", echoPrimary: true },
+  ...Object.values(SPELLS).map((spell) => ({ id: `cast-spell-${spell.id}`, label: `Cast inspection · ${spell.name}`, primary: "Salvage Blade", tool: "Spark Coil", spell: spell.id, foe: "ashling", castInspection: { kind: "spell", id: spell.id } })),
+  ...Object.values(APERTURE_SKILLS).map((skill) => ({ id: `cast-skill-${skill.id}`, label: `Cast inspection · ${skill.name}`, primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", castInspection: { kind: "skill", id: skill.id } })),
 ];
 const CREATURE_ASSET_KINDS = ["ashling","ashenHound","rootBrute","coilStalker","hollowMarshal","glassMite","sparkWarden","cinderWisp","veilMoth","voidSentinel","weepingSaint","hangedChoir","graveLantern","pallidCrawler","mirrorShade","amalgam","gnawingMaw","cinderSeraph","lumenWraith","veilSpinner","riftLynx","sunderjaw","thunderhorn","siegeBeetle","gloomwisp","gloomgorge","latticeHunter","archiveBehemoth","riftGrazer"];
 const FOUNDRY_BODIES = ["quadruped","floating","segmented","tentacled","geometric","biomechanical"];
@@ -316,15 +318,32 @@ function combatAssetFixture(scenario, seed, now) {
   save.equippedSpell = spec.spell;
   save.magicSkills.slots = { a: `spell:${spec.spell}`, b: spec.spell === "ember-ring" ? "spell:cinder-dart" : "spell:ember-ring" };
   ensureSlots(save);
+  if (spec.castInspection?.kind === "skill") {
+    ensureConstellation(save);
+    if (spec.castInspection.id === "aerial-step") {
+      for (let rank = 0; rank < APERTURE_SKILLS.quickening.maxRank; rank++) {
+        const learned = learnRank(save, "motion"); if (!learned.ok) throw new Error(learned.message);
+      }
+      const modified = learnMod(save, "motion"); if (!modified.ok) throw new Error(modified.message);
+      const crowned = chooseCap(save, "motion", "aerial-step"); if (!crowned.ok) throw new Error(crowned.message);
+    } else {
+      const learned = learnApertureSkill(save, spec.castInspection.id); if (!learned.ok) throw new Error(learned.message);
+    }
+  }
+  if (spec.castInspection) {
+    const slotted = setSlot(save, "a", `${spec.castInspection.kind}:${spec.castInspection.id}`);
+    if (!slotted.ok) throw new Error(slotted.message);
+  }
   ensureLattice(save);
   save.lattice.passives = spec.passive ? [`field:${spec.passive}`] : [];
   Object.assign(game.player, { x: placement.player.x, y: placement.player.y, facing: placement.dx < 0 ? "left" : placement.dx > 0 ? "right" : placement.dy < 0 ? "up" : "down" });
   save.lastAim = { x: placement.dx, y: placement.dy };
   game.enemies = [game.createEnemyFromSpawn({ id: `proving:combat-assets:${spec.id}`, kind: spec.foe, x: placement.foe.x, y: placement.foe.y }, "dungeon")];
-  if (spec.echoPrimary) Object.assign(game.enemies[0], { hp: 5000, maxHp: 5000, passiveBehavior: 'practice' });
+  if (spec.echoPrimary || spec.castInspection) Object.assign(game.enemies[0], { hp: 5000, maxHp: 5000, passiveBehavior: 'practice' });
   game.projectiles = []; game.effects = []; game.eliteHazards = [];
   game.message = `${spec.label}. Attack, Tool, Spell A, and Spell B use production controls; Pause freezes the inspection.`;
   if (spec.echoPrimary) game.message = `${spec.label}. Attack uses the real Echo glyph and its 250 ms repeat. The durable practice foe stays still and harmless; movement, attacks and Pause remain production controls.`;
+  if (spec.castInspection) game.message = `${spec.label}. Spell A casts ${spec.castInspection.id === "shadow-clone" ? "Shadow Clone; hold and release to place it, then press again to swap" : spec.castInspection.id === "orbit-volley" ? "Orbit Volley; press again while the gathered orbs glow gold to launch" : spec.castInspection.kind === "skill" ? APERTURE_SKILLS[spec.castInspection.id].name : SPELLS[spec.castInspection.id].name}. The durable practice foe stays still and harmless; movement, Spell A, and Pause remain production controls.`;
   game.sync();
   const tool = rangedWeapon(save.equipment.secondary), spell = SPELLS[spec.spell];
   const form = tool?.brawlerTool === "great-sweep" && fieldOn(save, "nanoknives") ? "mirage-of-blades" : tool?.brawlerTool === "hammerfall" && fieldOn(save, "corridor-golem") ? "hammerfall+corridor-golem" : tool?.name === "Blunderbuss" && fieldOn(save, "arc-wave") ? "blunderbuss+arc-wave" : tool?.brawlerTool || (tool?.orrery ? "aether-orrery" : tool?.path || null);
