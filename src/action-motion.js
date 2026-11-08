@@ -36,6 +36,34 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (!Number.isFinite(facingYaw) || Math.abs(facingYaw) > Math.PI * 4) return null;
     copy.facingYaw = facingYaw;
   }
+  if (raw.fistStep != null) {
+    const fistStep = Number(raw.fistStep);
+    if (!Number.isInteger(fistStep) || fistStep < 1 || fistStep > 3) return null;
+    copy.fistStep = fistStep;
+  }
+  if (raw.fistLead != null) {
+    if (raw.fistLead !== "left" && raw.fistLead !== "right") return null;
+    copy.fistLead = raw.fistLead;
+  }
+  if (raw.fistGaitPhase != null) {
+    const fistGaitPhase = Number(raw.fistGaitPhase);
+    if (!Number.isFinite(fistGaitPhase) || Math.abs(fistGaitPhase) > Math.PI * 8) return null;
+    copy.fistGaitPhase = fistGaitPhase;
+  }
+  if (raw.fistSpeed != null) {
+    const fistSpeed = Number(raw.fistSpeed);
+    if (!Number.isFinite(fistSpeed) || fistSpeed < 0 || fistSpeed > 8) return null;
+    copy.fistSpeed = fistSpeed;
+  }
+  if (raw.fistCharge != null) {
+    const fistCharge = Number(raw.fistCharge);
+    if (!Number.isFinite(fistCharge) || fistCharge < 0 || fistCharge > 1) return null;
+    copy.fistCharge = fistCharge;
+  }
+  if (raw.presentationCancelled != null) {
+    if (typeof raw.presentationCancelled !== "boolean") return null;
+    copy.presentationCancelled = raw.presentationCancelled;
+  }
   if (raw.aim != null) {
     if (typeof raw.aim !== "object" || Array.isArray(raw.aim)) return null;
     const x = Number(raw.aim.x), y = Number(raw.aim.y);

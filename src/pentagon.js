@@ -12,12 +12,12 @@
 // is built onto its pressure plate, and the Heart itself stays sealed until three trial chambers have been cleared of their
 // ghouls. Relics in the chambers tell what happened to the Fivefold Court. Everything is a hash of the seed and the centre;
 // a Pentagon stands only where all nine sections are new ground (`atlas.pentVersion`).
-import { hashSeed, rng, byHash } from "./random.js?v=r825-0c066edbc1a0";
-import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest } from "./great-buildings.js?v=r825-0c066edbc1a0";
-import { carveMaze } from "./labyrinths.js?v=r825-0c066edbc1a0";
-import { LIFT_PER_LEVEL as LIFT } from "./landscape.js?v=r825-0c066edbc1a0";
-import { grantTesseract } from "./tesseracts.js?v=r825-0c066edbc1a0";
-import { assignPentagonHalls, layPentagonHall, dressPentagonHall, pentagonChamberSigils } from "./pentagon-halls.js?v=r825-0c066edbc1a0";
+import { hashSeed, rng, byHash } from "./random.js?v=r826-9a7a39cb18a3";
+import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest } from "./great-buildings.js?v=r826-9a7a39cb18a3";
+import { carveMaze } from "./labyrinths.js?v=r826-9a7a39cb18a3";
+import { LIFT_PER_LEVEL as LIFT } from "./landscape.js?v=r826-9a7a39cb18a3";
+import { grantTesseract } from "./tesseracts.js?v=r826-9a7a39cb18a3";
+import { assignPentagonHalls, layPentagonHall, dressPentagonHall, pentagonChamberSigils } from "./pentagon-halls.js?v=r826-9a7a39cb18a3";
 
 export const PENTAGON = {
   version: 9, // 9: spacious branching ordinary chambers; 8: grand halls, murals and the Watcher's sigil (pentagon-halls.ts); earlier versions remain pinned
