@@ -1,12 +1,12 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r827-ff2d4c13bf18';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r827-ff2d4c13bf18';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r827-ff2d4c13bf18';
-import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r827-ff2d4c13bf18';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.js?v=r827-ff2d4c13bf18';
-import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.js?v=r827-ff2d4c13bf18';
-import { PLAYER_FORM_HANDS } from './close-view-player-presentation.js?v=r827-ff2d4c13bf18';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r827-ff2d4c13bf18';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r828-f15b20b8c54a';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r828-f15b20b8c54a';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r828-f15b20b8c54a';
+import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r828-f15b20b8c54a';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.js?v=r828-f15b20b8c54a';
+import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.js?v=r828-f15b20b8c54a';
+import { PLAYER_FORM_HANDS } from './close-view-player-presentation.js?v=r828-f15b20b8c54a';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r828-f15b20b8c54a';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
 const ash = 0x87503f, coal = 0x372927, ember = 0xf3a55c;

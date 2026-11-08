@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r827-ff2d4c13bf18";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r828-f15b20b8c54a";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,9 +8,9 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r827-f
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r827-ff2d4c13bf18";
-import { hashSeed, byHash } from "./random.js?v=r827-ff2d4c13bf18";
-import { updateAstralActor } from "./astral-worm.js?v=r827-ff2d4c13bf18";
+import { stageOneBeastReference } from "./stages.js?v=r828-f15b20b8c54a";
+import { hashSeed, byHash } from "./random.js?v=r828-f15b20b8c54a";
+import { updateAstralActor } from "./astral-worm.js?v=r828-f15b20b8c54a";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
