@@ -6207,7 +6207,8 @@ export class Game {
     let base=null;
     if(q.payload.family==='shot'){
       const members=Array.isArray(q.payload.members)?q.payload.members:[q.payload.shot];
-      for(let i=0;i<members.length;i++){const src=executablePreparedShot(members[i]),p={...src,id:i?`${q.id}-child-${i}`:`${q.id}-base`,x:this.player.x+.5+src.dx*.35,y:this.player.y+.45+src.dy*.35,hits:{},age:0,toolUseNewborn:true};this.projectiles.push(p);if(!i)base=p;}
+      const originX=this.player.x+.5+q.aim.x*.35,originY=this.player.y+.45+q.aim.y*.35;
+      for(let i=0;i<members.length;i++){const src=executablePreparedShot(members[i]),p={...src,id:i?`${q.id}-child-${i}`:`${q.id}-base`,x:originX,y:originY,hits:{},age:0,toolUseNewborn:true};this.projectiles.push(p);if(!i)base=p;}
       for(const e of q.payload.echoCopies||[])(this.glyphTimers||=[]).push({at:now+e.delayMs,kind:'shot',shot:{...executablePreparedShot(q.payload.shot),id:`${q.id}-echo-${e.index||1}`,hits:{},damage:Math.max(1,Math.round(q.payload.shot.damage*e.share)),echo:true}});
       if(q.payload.cloneEligible&&this.shadowCloneActive(now)&&!this.shadowClone.charging&&!this.shadowClone.boxing){const at=clonePosition(this.player,this.shadowClone),d=this.cloneAimFrom(at)||q.aim;this.projectiles.push({...executablePreparedShot(q.payload.shot),id:`${q.id}-shadow`,x:at.x+.5+d.x*.35,y:at.y+.45+d.y*.35,dx:d.x,dy:d.y,hits:{},age:0,damage:Math.max(1,Math.round(q.payload.shot.damage*SHADOW_CLONE.share)),glyphHost:null,shadow:true,toolUseNewborn:true});}
       echoEvent(this,'shot',now,{shot:base});
