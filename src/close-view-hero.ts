@@ -1,6 +1,6 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
-import { sampleToolActionMotion } from './action-motion.ts';
+import { sampleToolActionMotion, toolUsePoseTime } from './action-motion.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -312,6 +312,8 @@ function castPose(state,pose,profile,p){
 }
 
 function toolPose(state,pose,profile,p,weight,action){
+  if(action?.toolMotion&&action.toolMotion.v!==1)return;
+  if(action?.toolUse&&['unknown','cancelled'].includes(toolUsePoseTime(action,p*(Number(action?.durationMs)||180)).phase))return;
   state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
   const motion=sampleToolActionMotion(action,p*(Number(action?.durationMs)||180));let frameYaw=0,side=0,up=-.10,forward=.47;
   if(motion){({yaw:frameYaw,side,up,forward,weight}=motion);}

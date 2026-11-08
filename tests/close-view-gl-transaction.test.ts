@@ -51,9 +51,11 @@ function withGPU(options:any,run:(x:any)=>void){
 function game(){
   const g:any=createLabFixture({lab:'combat-assets',scenario:'cleaver-echo-inspection',now:100000}).game;
   g.presentation={effectiveQuality:'full',reduceMotion:false};
+  g.save.equipment.primary.glyphs=['echo'];
   Object.assign(g.enemies[0],{fracRank:'rare',packName:'Transaction Native'});
   g.primaryAttack(100000,{x:1,y:0});g.tickGlyphs(.001,100250);
   assert.equal(g.glyphVisuals.filter((v:any)=>v.kind==='primaryEcho').length,1);
+  g.glyphVisuals.find((v:any)=>v.kind==='primaryEcho').actual.shape='arc';
   const ready=Math.max(100250,g.player.attackReadyAt||0);assert.equal(g.fireSecondary(ready,{x:1,y:0}),true);assert.equal(g.projectiles.length,1);g.lastUpdateNow=ready+16;
   return g;
 }
@@ -115,6 +117,19 @@ test('asset-not-ready native fallback stays valid; admitted imported hero upload
   }finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
 });
 
+test('an actual named release restores ordinary shot ownership across GL failure and recovery',()=>withGPU({},h=>{
+  const g:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:100000}).game;
+  g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};
+  for(const tile of g.map.tiles){tile.blocked=false;tile.environment=false;tile.openAir=false;tile.courtyard=false;}
+  g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};
+  assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);assert.equal(g.projectiles.length,0,'startup has no ordinary or GL shot owner');
+  g.lastUpdateNow=100016;let out=frame(h,g);assert.equal(out.showing,true);assert.equal(closeViewGLStats.projectedShots,0);assert.equal(out.floorPlan?.size||0,0);
+  const releaseAt=g.pendingToolUse.releaseAt;g.releasePendingToolUse(releaseAt);g.lastUpdateNow=releaseAt+16;const shot=g.projectiles[0];
+  out=frame(h,g);assert.equal(out.showing,true);assert.ok(out.floorPlan.has(shot));assert.equal(closeViewGLStats.projectedShots,1);
+  h.gl.fault='draw';out=frame(h,g);assert.equal(out.showing,false);assert.equal(out.copies,0);assert.equal(closeViewCapturing(),false);assert.ok(h.log.some((q:any)=>q[0]==='screen'&&q[1]==='fillStyle'&&q[2]===standardProjectileColor(shot)),'failure restores the actual released shot to the ordinary floor');
+  h.gl.fault='';h.gl.lost=false;h.gl.error=0;out=frame(h,g);assert.equal(out.showing,true);assert.ok(out.floorPlan.has(shot));assert.equal(closeViewGLStats.projectedShots,1);assert.equal(h.gl.unallocatedUpdates,0);
+}));
+
 test('bounded tool supercover rejects corner, gridline, endpoint and rectangle hazards',()=>{
   const open=(width=6,height=6)=>({width,height,tiles:Array.from({length:width*height},()=>({blocked:false,seen:true,discovered:true}))});
   const map:any=open();assert.equal(closeViewCueSegmentOpen(map,.2,.2,2.8,.2),true);
@@ -152,8 +167,9 @@ test('actual named tools retain muzzle cues and yield to final hit, dodge and kn
       const g:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:100000}).game;
       // The lab starts beside a wall; keep the full authored barrel in the open lane.
       g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};
+      for(const tile of g.map.tiles){tile.blocked=false;tile.environment=false;tile.openAir=false;tile.courtyard=false;}
       g.save.equipment.secondary={id:`secondary-${kind}`,name,slot:'secondary',power:5,property};
-      assert.equal(g.fireSecondary(100000,{x:1,y:0}),true,kind);g.lastUpdateNow=100016;
+      assert.equal(g.fireSecondary(100000,{x:1,y:0}),true,kind);assert.equal(g.projectiles.length,0,kind+' startup is physical absence');const releasedAt=g.pendingToolUse.releaseAt;g.releasePendingToolUse(releasedAt);g.lastUpdateNow=releasedAt+16;
       const draw=()=>{resetCloseViewCamera();const out=frame(h,g);assert.equal(out.showing,true,kind+' keeps Close View');assert.equal(out.copies,1);};
       draw();const flash=vertices(0xffc56b);assert.equal(flash.length,6,kind+' accepted +16ms flash');
       const at=[0,1,2].map(k=>flash.reduce((sum,v)=>sum+v[k],0)/6),shot=g.projectiles.find((p:any)=>p.id===g.player.attackVisual.toolShotId);
@@ -161,7 +177,7 @@ test('actual named tools retain muzzle cues and yield to final hit, dodge and kn
       shot.x=at[0]+.1;shot.y=at[1];draw();assert.equal(vertices(0xffd38a).length,6,kind+' nearby forward connector');
       const accepted=structuredClone(g.player.attackVisual),heads=closeViewGLStats.projectedShots;
       for(const [label,patch] of [['hit',{hitFlash:.18}],['dodge',{dodgeUntil:100276,dodgeX:1,dodgeY:0}],['knockdown',{stunnedAt:100000,stunnedUntil:101000}]] as const){
-        const prior=Object.fromEntries(Object.keys(patch).map(k=>[k,g.player[k]]));Object.assign(g.player,patch);
+        const shifted=Object.fromEntries(Object.entries(patch).map(([k,v])=>[k,typeof v==='number'&&v>=100000?v+(releasedAt-100000):v]));const prior=Object.fromEntries(Object.keys(shifted).map(k=>[k,g.player[k]]));Object.assign(g.player,shifted);
         draw();assert.equal(vertices(0xffc56b).length,0,kind+' '+label+' suppresses flash');assert.equal(vertices(0xffd38a).length,0,kind+' '+label+' suppresses connector');
         assert.equal(closeViewGLStats.projectedShots,heads,'pose priority cannot delete live shots');assert.deepEqual(g.player.attackVisual,accepted,'renderer cannot cancel canonical metadata');
         Object.assign(g.player,prior);
@@ -175,7 +191,7 @@ test('actual named tools retain muzzle cues and yield to final hit, dodge and kn
       draw();assert.equal(vertices(0xffd38a).length,0,kind+' excessive 3D span');shot.x=at[0]+.1;
       const tile=g.map.tiles[Math.floor(shot.y)*g.map.width+Math.floor(shot.x)],blocked=tile.blocked;
       try{tile.blocked=true;draw();assert.equal(vertices(0xffd38a).length,0,kind+' blocked endpoint');}finally{tile.blocked=blocked;}
-      g.setPaused(true,100016);g.lastUpdateNow=120000;draw();
+      g.setPaused(true,releasedAt+16);g.lastUpdateNow=120000;draw();
       assert.equal(vertices(0xffc56b).length,6,kind+' paused flash');assert.equal(vertices(0xffd38a).length,6,kind+' paused positive connector');
     });
   }finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}

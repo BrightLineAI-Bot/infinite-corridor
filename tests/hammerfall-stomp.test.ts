@@ -173,13 +173,14 @@ test('Hammerfall and accepted spells/tools retain final body ownership, pause me
       const hammer=clone(g.player.attackVisual),fx=g.effects.find(e=>e.id===hammer.hammerEffectId),original=clone(fx),at=Math.max(100700,g.toolReadyAt||0);
       assert.equal(hammer.hammerDelayMs,320);assert.equal(hammer.durationMs,570);assert.equal(g.player.attackUntil,100240);assert.ok(closeViewPlayerAction(g,at).active,'effect-relative Hammerfall stays active beyond its nominal deadline');
       g.lastUpdateNow=at;
-      if(next==='rift-bombard'){g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};assert.equal(g.fireSecondary(at,{x:1,y:0}),true);assert.equal(g.player.attackVisual.toolKind,next);}
+      let expectedEffect=original;
+      if(next==='rift-bombard'){g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};assert.equal(g.fireSecondary(at,{x:1,y:0}),false,'the original Hammerfall pulse owns the one logical startup slot');assert.equal(g.player.attackVisual.profile,'hammer');updateEffects([fx],[],fx.delay);updateEffects([fx],[],.001);assert.deepEqual(g.reconcileHammerfallStartup(),{released:true,ended:false});expectedEffect=clone(fx);assert.equal(g.fireSecondary(at,{x:1,y:0}),true);assert.equal(g.player.attackVisual.toolKind,next);}
       else{assert.equal(g.castSpell(next),true);assert.equal(g.player.attackVisual.presentationCancelled,true,'accepted spell cancels even a lagged effect-linked gesture');assert.equal(closeViewPlayerAction(g,at).active,false);assert.equal(g.player.castVisual.spellKind,next);g.player.castVisual.futureSpell={kept:true};}
-      assert.deepEqual(fx,original,'new body ownership cannot mutate or remove the accepted remote effect');draw(g,at+16);
-      const back=reload(g,at+16),restored=back.effects.find(e=>e.id===hammer.hammerEffectId);assert.deepEqual(restored,original);assert.ok(restored);
+      assert.deepEqual(fx,expectedEffect,'new body ownership cannot mutate or remove the accepted remote effect');draw(g,at+16);
+      const back=reload(g,at+16),restored=back.effects.find(e=>e.id===hammer.hammerEffectId);assert.deepEqual(restored,expectedEffect);assert.ok(restored);
       if(next==='rift-bombard')assert.equal(closeViewPlayerAction(back,2000).record.toolKind,next);
       else{assert.equal(closeViewPlayerAction(back,2000).active,false);assert.equal(back.player.castVisual.spellKind,next);assert.deepEqual(back.player.castVisual.futureSpell,{kept:true});assert.equal(back.projectiles.filter(p=>p.fireBomb).length,next==='fire-burst'?5:0,'Cinder Dart stays an immediate field, never a flying dart');}
-      pulse(restored);
+      if(next!=='rift-bombard')pulse(restored);else assert.equal(restored.pulseIndex,1);
     }
     const g=fixture();resetCloseViewCamera();g.lastUpdateNow=101000;assert.equal(g.castSpell('fire-burst'),true);draw(g,101016);const accepted=clone(g.player.castVisual),fire=g.projectiles.slice();
     assert.equal(g.fireSecondary(101016,{x:1,y:0}),true);assert.equal(g.player.castVisual.cancelled,true);assert.equal(g.player.castVisual.sourceId,accepted.sourceId);assert.equal(g.player.attackVisual.profile,'hammer');assert.equal(g.player.attackUntil,101256);

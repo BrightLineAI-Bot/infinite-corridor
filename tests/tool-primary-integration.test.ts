@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Game, BRAWLER_GEAR } from '../src/game.ts';
 import { migrateSave } from '../src/types.ts';
-import { createLabFixture } from '../src/proving-ground-labs.ts';
+import { createLabFixture as createBaseLabFixture } from '../src/proving-ground-labs.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
 import { loadCloseViewHero } from '../src/close-view-hero.ts';
 import { render } from '../src/renderer.ts';
@@ -25,7 +25,8 @@ const items={
   blunderbuss:{id:'secondary-blunderbuss',name:'Blunderbuss',slot:'secondary',power:11,basePower:5,upgradeRank:6,property:'quick'},
   'lumen-spindle':{id:'secondary-lumen-spindle',name:'Lumen Spindle',slot:'secondary',power:5,property:'focus'},
 };
-test('named tools keep canonical combat clocks while readable visual clocks and repeated entry poses remain bounded',()=>{
+const createLabFixture=(options)=>{const result=createBaseLabFixture(options);result.game.save.closeView=false;return result;};
+test('legacy immediate named records keep canonical combat clocks while readable visual clocks and repeated entry poses remain bounded',()=>{
   for(const kind of ['rift-bombard','blunderbuss','lumen-spindle']){const {game:g}=createLabFixture({lab:'combat-assets',scenario:'blade-spark-ashling',now:100000});g.enemies=[];g.save.equipment.secondary=structuredClone(items[kind]);const before=g.projectiles.length;assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);assert.equal(g.player.attackUntil,100180);assert.equal(g.player.actionVisualUntil,100000+TOOL_ACTION_TIMING[kind].durationMs);assert.equal(g.player.attackVisual.toolMotion.v,1);assert.equal(g.projectiles.length-before,kind==='blunderbuss'?3:1);g.player.attackReadyAt=0;assert.equal(g.fireSecondary(100151,{x:1,y:0}),true);assert.equal(g.player.attackUntil,100331);assert.equal(g.player.attackVisual.toolMotion.entry.length,5);assert.ok(g.player.attackVisual.toolMotion.entry.every(Number.isFinite));}
   const {game:g}=createLabFixture({lab:'combat-assets',scenario:'cleaver-sweep-marshal',now:100000});g.enemies=[];g.save.equipment.secondary=structuredClone(items['great-sweep']);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);assert.equal(g.player.attackUntil,100240);assert.equal(g.player.actionVisualUntil,100840);g.toolReadyAt=0;assert.equal(g.fireSecondary(100422,{x:1,y:0}),true);assert.equal(g.player.attackVisual.toolMotion.direction,-1);assert.equal(g.player.attackVisual.toolMotion.entry.length,5);
   for(const [kind,T] of Object.entries(TOOL_ACTION_TIMING)){for(const hz of [30,60])for(let ms=0;ms<=T.durationMs;ms+=1000/hz){const pose=toolActionPose(kind,ms,1);assert.ok(Object.values(pose).every(Number.isFinite));}}
@@ -42,6 +43,7 @@ test('production masked renderer keeps accepted tool poses across primary Echo, 
     globalThis.window={};globalThis.createImageBitmap=async()=>({width:1024,height:1024});globalThis.fetch=async url=>{const u=new URL(url);assert.equal(u.protocol,'file:');const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};await loadCloseViewHero();
     for(const [kind,item] of Object.entries(items)){
       const {game:g}=createLabFixture({lab:'combat-assets',scenario:'blade-spark-ashling',now:100000});g.enemies=[];g.presentation={effectiveQuality:'full',reduceMotion:false};
+      g.save.closeView=true;
       g.save.equipment.primary=normalizeSockets({id:'primary-cinder-pike',name:'Cinder Pike',slot:'primary',power:5,property:'reach',tier:'relic',affixes:[]});g.save.glyphs.echo=1;g.save.glyphs.swift=2;
       for(const [slot,glyph] of [[0,'echo'],[1,'swift'],[2,'swift']])assert.equal(socketGlyph(g.save,'melee',slot,glyph).ok,true);
       resetCloseViewCamera();draw(g,100000);g.primaryAttack(100000);const queued=g.glyphTimers.find(q=>q.kind==='strike');assert.ok(queued);
@@ -54,7 +56,7 @@ test('production masked renderer keeps accepted tool poses across primary Echo, 
       assert.equal(closeViewGLStats.heroTriangles,3170);assert.ok(closeViewGLStats.modelTriangles<=3170+256);assert.ok(acceptedGear.every(Number.isFinite));
       g.setPaused(true,sampleAt);assert.deepEqual(draw(g,110000),accepted);const saved=migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(110000)))),back=new Game(saved,200000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();
       assert.deepEqual(draw(back,200000),accepted,kind+' exact paused reload body');assert.deepEqual(gl.modelData,acceptedGear,kind+' exact paused reload gear');
-      back.setPaused(false,201000);assert.equal(back.fistPunch(1,0,201001,{x:1,y:0}),true);draw(back,201040);assert.equal(closeViewGLStats.modelTriangles,3170+64,'new Fists replace tool gear with bilateral gauntlets');
+      back.setPaused(false,201000);const releaseAt=back.pendingToolUse.releaseAt;back.releasePendingToolUse(releaseAt);const fistAt=Math.max(201001,releaseAt+1);assert.equal(back.fistPunch(1,0,fistAt,{x:1,y:0}),true);draw(back,fistAt+39);assert.equal(closeViewGLStats.modelTriangles,3170+64,'new Fists replace tool gear with bilateral gauntlets');
       delete g.player.attackVisual.toolKind;assert.notDeepEqual(draw(g,sampleAt),accepted,kind+' accepted identity selects its distinct body pose');g.player.attackVisual=structuredClone(record);
     }
   }finally{CLOSE_VIEW_HOOKS.gl=null;resetCloseViewGL();setCloseViewCanvasFactory(null);for(const n of names){if(old.get(n)===undefined)delete globalThis[n];else globalThis[n]=old.get(n);}}

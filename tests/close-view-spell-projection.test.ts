@@ -116,15 +116,16 @@ test('actual normal and powered heroes share final tool and Fire ownership witho
     g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};g.save.lastAim={x:1,y:0};
     if(powered){g.save.perception.aperture=3255;g.save.farArray={listeners:3,gate:3};g.save.consumables.submersible=1;g.save.materials.cinderIron=10;assert.equal(g.useConsumable('submersible',100000),true);assert.equal(g.useConsumable('submersible',100000),true);assert.equal(playerFormPresentation(g)?.kind,'playerPowerSuit');}
     else assert.equal(playerFormPresentation(g),null,'original normal imported hero coverage is retained');
+    for(const tile of g.map.tiles){tile.blocked=false;tile.environment=false;tile.openAir=false;tile.courtyard=false;}
     g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};
     const draw=(now:number)=>{resetCloseViewCamera();assert.equal(productionFrame(screen,g,now,log).showing,true);};
-    assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);draw(100016);assert.equal(count(0xffc56b),6,'accepted tool owns its positive flash');
-    g.lastUpdateNow=100450;assert.equal(g.castSpell('fire-burst'),true);draw(100466);
+    assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);draw(100016);assert.equal(g.projectiles.length,0);assert.equal(count(0xffc56b),0,'startup has no physical source or release flash');const firstRelease=g.pendingToolUse.releaseAt;g.releasePendingToolUse(firstRelease);draw(firstRelease+16);assert.equal(count(0xffc56b),6,'actual tool release owns its positive flash');
+    const castAt=firstRelease+450;g.lastUpdateNow=castAt;assert.equal(g.castSpell('fire-burst'),true);draw(castAt+16);
     assert.equal(closeViewGLStats.projectedShots,6,'the older Bombard shell and five Fire sources all remain admitted');
     assert.equal(count(0xffc56b),0,'Fire owns the final pose instead of the old tool flash');assert.equal(count(0xffd38a),0,'old tool cannot borrow the spell hand');
     assert.equal(count(0xff7a2a),36,'five Fire heads plus exactly one positive left-hand flash');
     const accepted=structuredClone(g.player.castVisual),fire=g.projectiles.filter((p:any)=>p.fireBomb&&p.glyphSpell==='fire-burst');assert.equal(fire.length,5);
-    assert.equal(g.fireSecondary(100466,{x:1,y:0}),true);draw(100482);
+    const secondAt=castAt+16;g.player.attackReadyAt=0;assert.equal(g.fireSecondary(secondAt,{x:1,y:0}),true);draw(secondAt+16);assert.equal(count(0xffc56b),0,'new tool startup cannot preflash over Fire');const secondRelease=g.pendingToolUse.releaseAt;g.releasePendingToolUse(secondRelease);draw(secondRelease+16);
     assert.equal(closeViewGLStats.projectedShots,7,'new tool adds one canonical source without replacing either older family');
     assert.equal(count(0xffc56b),6,'new tool owns the sole positive release flash');assert.equal(count(0xff7a2a),30,'all five Fire heads survive without a stale hand flash');assert.equal(count(0xff9a4a),0,'cancelled Fire cannot retain a connector');
     assert.equal(g.player.castVisual.cancelled,true);assert.equal(g.player.castVisual.sourceId,accepted.sourceId);assert.ok(fire.every((p:any)=>g.projectiles.includes(p)),'drawing preserves the exact Fire source objects');
@@ -142,10 +143,11 @@ test('all three authored tool muzzles flash and forward connectors obey full 3D 
       const g:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:100000}).game;
       // This lab starts beside a wall: move within its open lane so the authored barrel is unobstructed.
       g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};
+      for(const tile of g.map.tiles){tile.blocked=false;tile.environment=false;tile.openAir=false;tile.courtyard=false;}
       g.save.equipment.secondary={id:`secondary-${kind}`,name,slot:'secondary',power:5,property};g.lastUpdateNow=100000;
       assert.equal(g.fireSecondary(100000,{x:1,y:0}),true,kind);
-      const draw=(now=100016)=>{resetCloseViewCamera();assert.equal(productionFrame(screen,g,now,log).showing,true,kind);};
-      draw();const flash=vertices(0xffc56b);assert.equal(flash.length,6,`${kind}: normal accepted +16ms muzzle flash`);
+      const releaseAt=g.pendingToolUse.releaseAt,draw=(now=releaseAt+16)=>{resetCloseViewCamera();assert.equal(productionFrame(screen,g,now,log).showing,true,kind);};
+      draw(100016);assert.equal(g.projectiles.length,0,`${kind}: startup physical absence`);assert.equal(vertices(0xffc56b).length,0,`${kind}: startup has no muzzle flash`);g.releasePendingToolUse(releaseAt);draw();const flash=vertices(0xffc56b);assert.equal(flash.length,6,`${kind}: actual release +16ms muzzle flash`);
       const at=[0,1,2].map(axis=>flash.reduce((sum,p)=>sum+p[axis],0)/6),shot=g.projectiles.find((p:any)=>p.id===g.player.attackVisual.toolShotId);
       assert.ok(shot,`${kind}: exact accepted source`);
       // Move only this test source along its accepted forward ray; canonical production geometry stays untouched.
@@ -158,7 +160,7 @@ test('all three authored tool muzzles flash and forward connectors obey full 3D 
       shot.x=at[0]+.1;shot.impact=true;draw();assert.equal(vertices(0xffd38a).length,0,`${kind}: impact cannot link`);delete shot.impact;
       const tile=g.map.tiles[Math.floor(shot.y)*g.map.width+Math.floor(shot.x)],blocked=tile.blocked;
       try{tile.blocked=true;draw();assert.equal(vertices(0xffd38a).length,0,`${kind}: blocked segment cannot link`);}finally{tile.blocked=blocked;}
-      g.setPaused(true,100016);draw(120000);assert.equal(vertices(0xffc56b).length,6,`${kind}: paused flash retains logical age`);assert.equal(vertices(0xffd38a).length,6,`${kind}: paused positive connector stays bounded`);
+      g.setPaused(true,releaseAt+16);draw(120000);assert.equal(vertices(0xffc56b).length,6,`${kind}: paused flash retains logical age`);assert.equal(vertices(0xffd38a).length,6,`${kind}: paused positive connector stays bounded`);
     });
   }finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
 });
