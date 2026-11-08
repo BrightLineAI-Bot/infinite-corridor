@@ -57,7 +57,7 @@ export function actorContactHeight(body, game) {
     ? H.foundry[body.foundryBody] : Object.hasOwn(H.kinds, body?.kind) ? H.kinds[body.kind] : 0;
   return unit ? unit * scale : H.fallback * Math.max(1, scale, Math.min(4, (Number(body?.bodyRadius) || .4) * 2.2));
 }
-export function actorContactSupport(game, body, x, y, width) {
+export function actorContactSupport(game, body, x, y, width, phase = null, carrier = null) {
   const ground = liftAt(game.map, width, x, y);
   // Retained platform launch support is physical height over a gap. The ordinary jump arc
   // never grants clearance. Probe scale mirrors commit; later enemy queries use Game's
@@ -66,7 +66,7 @@ export function actorContactSupport(game, body, x, y, width) {
   const scale = Number.isFinite(body?.airElevScale) ? body.airElevScale : game.skyAirScale || 1;
   if (game.map?.landscape && body?.isPlayer && body.jumping && Number.isFinite(air))
     return Math.max(ground, air * LIFT_PER_LEVEL * scale);
-  const platform = body?.isPlayer ? game.actorContactPlatformSupport?.(body, x, y, ground) : null;
+  const platform = body?.isPlayer ? game.actorContactPlatformSupport?.(body, x, y, ground, phase, carrier) : null;
   return Number.isFinite(platform) ? platform : ground;
 }
 
@@ -77,11 +77,11 @@ export function actorContactContext(game, subject, dx, dy) {
   if (!ordinaryContactPlayer(game) || (subject !== game.player && !ordinaryContactEnemy(subject))) return null;
   let c = contexts.get(game);
   if (!c) {
-    c = { game, candidates: [], probe: {}, trace: new Float64Array(ACTOR_CONTACT.maxSteps * 8), count: 0, checks: 0, queries: 0, budgetStops: 0, canExit: null };
+    c = { game, candidates: [], probe: {}, phaseBefore: {}, phaseAfter: {}, trace: new Float64Array(ACTOR_CONTACT.maxSteps * 8), count: 0, checks: 0, queries: 0, budgetStops: 0, canExit: null };
     c.clip = (x, y, ax, ay) => clipActorSegment(c, x, y, ax, ay);
     contexts.set(game, c);
   }
-  c.subject = subject; c.supportSubject = subject; c.width = Math.max(1, Number(game.map.width) || (game.area === "dungeon" ? 24 : 32)); c.map = game.map; c.canExit = null; c.record = false; c.count = 0; c.candidates.length = 0; c.queries++;
+  c.subject = subject; c.supportSubject = subject; c.width = Math.max(1, Number(game.map.width) || (game.area === "dungeon" ? 24 : 32)); c.map = game.map; c.canExit = null; c.carrier = null; c.phaseBefore ||= {}; c.phaseAfter ||= {}; c.record = false; c.count = 0; c.candidates.length = 0; c.queries++;
   c.subjectHeight = actorContactHeight(subject, game); c.playerHeight = actorContactHeight(game.player, game);
   c.radius = subject === game.player ? ACTOR_CONTACT.playerRadius : enemyBodyRadius(subject);
   const add = (other, radius) => {
@@ -102,7 +102,8 @@ export function actorContactStats(game) {
 // relocation, persistent allowance or load-time mutation is required.
 function clipActorSegment(c, x, y, dx, dy) {
   const length2 = dx * dx + dy * dy; if (!length2) return 1;
-  const before = actorContactSupport(c.game, c.supportSubject, x, y, c.width), after = actorContactSupport(c.game, c.supportSubject, x + dx, y + dy, c.width);
+  const before = actorContactSupport(c.game, c.supportSubject, x, y, c.width, c.phaseBefore, c.carrier),
+    after = actorContactSupport(c.game, c.supportSubject, x + dx, y + dy, c.width, c.phaseAfter, c.carrier);
   let fraction = 1;
   for (const other of c.candidates) {
     c.checks++;

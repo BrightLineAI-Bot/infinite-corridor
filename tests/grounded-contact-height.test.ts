@@ -174,6 +174,44 @@ test('actual disc and raised-raft updates clear a low foe both ways while ground
   assert.ok(raft.g.player.x > 4.4, 'occupied raised raft clears the crawler');
 });
 
+test('moving raised carrier keeps preflight support through contact and clears it after commit', () => {
+  const run = (kind = null, pts = [{ x: 4, y: 5 }, { x: 6, y: 5 }], state = { x: 0, y: 0 }, startX = 4.16, wall = false) => {
+    const g = new Game(freshSave(), 1000), width = 32;
+    g.area = 'overworld'; g.save.playSeconds = .625; g.save.maxHp = 60;
+    g.map = { width, height: 32, objects: [], landscape: { kind: 'plains' }, movers: [{ id: 'moving', pts, amp: 2, phase: 0 }],
+      tiles: Array.from({ length: width * width }, (_, i) => ({ x: i % width, y: Math.floor(i / width), kind: 'plain', blocked: false, elev: 0 })) };
+    for (let y = 0; y < 32; y++) for (let x = 4; x <= 6; x++) g.map.tiles[y * width + x].chasm = true;
+    if (wall) for (let y = 0; y < 32; y++) Object.assign(g.map.tiles[y * width + 5], { chasm: false, blocked: true, kind: 'wall' });
+    const py = pts[1].y === pts[0].y ? 5 : 5.78;
+    Object.assign(g.player, { x: startX, y: py, hp: 60, invulnerableUntil: 1e9 });
+    g.enemies = kind ? [Object.assign(createCombatant(kind, startX + .69, py), { hitStun: 1e9 })] : [];
+    g.update(.05, { state, consume: () => false, held: () => false }, 1050);
+    return g;
+  };
+  const free = run(), low = run('pallidCrawler');
+  assert.ok(free.player.x > 4.23 && low.player.x > 4.23, 'contact cannot cancel the carrier displacement');
+  assert.equal(low.player.hp, 60); assert.ok(low.raftZ > 1.9, 'accepted endpoint remains aboard at current time');
+  low.save.playSeconds = 2;
+  const reverse = actorContactContext(low, low.enemies[0], -.2, 0);
+  assert.ok(reverse && reverse.clip(low.enemies[0].x, low.enemies[0].y, -.2, 0) < 1, 'later enemy query cannot reuse cleared preflight support');
+  const tall = run('rootBrute');
+  assert.ok(tall.player.x < free.player.x, 'upper support still overlaps a tall body');
+  const diagonal = run('pallidCrawler', [{ x: 4, y: 5 }, { x: 6, y: 7 }]);
+  assert.equal(diagonal.player.hp, 60);
+  assert.ok(diagonal.raftZ > 1.8, 'staged X/Y footprint follows a diagonal carrier corner');
+  const cancelled = run('pallidCrawler', undefined, { x: -2 / 3, y: 0 });
+  assert.equal(cancelled.raftZ, 0, 'opposed input may cancel carry and leave the moving footprint');
+  assert.equal(cancelled.player.hp, 51, 'cancelled carry keeps the existing raised-raft fall consequence');
+  const wall = run('pallidCrawler', undefined, { x: 1, y: 0 }, 4.16, true);
+  assert.equal(wall.raftZ, 0); assert.equal(wall.player.hp, 51, 'a wall-refused carry keeps the existing raised-raft fall consequence');
+  const off = run(null, undefined, { x: 1, y: 0 }, 5.82);
+  assert.equal(off.raftZ, 0, 'final accepted endpoint, not preflight origin, decides raft occupancy');
+  assert.equal(off.player.hp, 51, 'stepping off a raised carrier retains its existing two-level fall consequence');
+  const paused = run(); paused.paused = true; const before = paused.save.playSeconds;
+  paused.update(.05, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, 1100);
+  assert.equal(paused.save.playSeconds, before, 'paused time cannot advance carrier support');
+});
+
 test('Fists and Shadow Boxing cannot use a small platform support difference to pass through the body', () => {
   for (const action of ['fist', 'boxing']) {
     const g = platform(false, 'fists'), e = g.enemies[0]; g.lockTarget(e.id);

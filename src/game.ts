@@ -1021,6 +1021,9 @@ function moveAxisWithContacts(entity, dx, dy, map, width, allowLethalTerrain, on
   let moved = false;
   for (let i = 0; i < limit; i++) for (let axis = 0; axis < 2; axis++) {
     const ax = axis ? 0 : sx, ay = axis ? sy : 0; if (!ax && !ay) continue;
+    const a = i / steps, b = (i + 1) / steps, before = contacts.phaseBefore, after = contacts.phaseAfter;
+    before.x = axis ? b : a; before.y = a; before.t = axis ? b : a;
+    after.x = b; after.y = axis ? b : a; after.t = b;
     const fraction = contacts.clip(entity.x, entity.y, ax, ay); if (!(fraction > 0)) continue;
     const x = entity.x + ax * fraction, y = entity.y + ay * fraction, exiting = contacts.canExit?.(x, y) === true;
     if (!exiting && (!footprintOpen(map, width, x, y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true)
@@ -3335,12 +3338,20 @@ export class Game {
     moveAxis(probe, dx, dy, this.map, width, true);
     return footprintHazard(this.map, width, probe.x, probe.y);
   }
-  actorContactPlatformSupport(body, x, y, ground) {
+  actorContactPlatformSupport(body, x, y, ground, phase = null, carrier = null) {
     if (!body?.isPlayer) return null;
     if (body.jumping && Number.isFinite(this.discAir))
       return ground + this.discAir * LIFT_PER_LEVEL;
     if (this.skyLevel > 0 && discAt(this.map, x + .5, y + .75, { level: this.skyLevel }))
       return ground + this.skyLevel * LIFT_PER_LEVEL;
+    if (carrier?.raft) {
+      const px = Math.max(0, Math.min(1, Number(phase?.x) || 0)), py = Math.max(0, Math.min(1, Number(phase?.y) || 0)),
+        pt = Math.max(0, Math.min(1, Number(phase?.t) || 0)), a = carrier.old, b = carrier.current,
+        cx = a.x + (b.x - a.x) * px, cy = a.y + (b.y - a.y) * py,
+        fx = x + .5, fy = y + .72, tile = this.map?.tiles?.[Math.floor(fy) * (this.map.width || 32) + Math.floor(fx)];
+      if (tile?.chasm && Math.abs(fx - cx) <= STARFIELD_PLATFORMS.half && Math.abs(fy - cy) <= STARFIELD_PLATFORMS.half)
+        return ground + (a.z + (b.z - a.z) * pt) * LIFT_PER_LEVEL;
+    }
     const time = Number(this.save.playSeconds) || 0, raft = platformUnder(this.map, x, y, time);
     return raft ? ground + platformPos(raft, time).z * LIFT_PER_LEVEL : null;
   }
@@ -3359,7 +3370,7 @@ export class Game {
     if (!contacts || contacts.clip(p.x, p.y, dx, dy) === 1) { p.x = x; p.y = y; return true; }
     return moveAxis(p, dx, dy, this.map, mapWidth(this.map, this.area), false, null, false, contacts);
   }
-  planGroundedPlayerMove(dx, dy, width, now) {
+  planGroundedPlayerMove(dx, dy, width, now, carrier = null) {
     const contacts = actorContactContext(this, this.player, dx, dy); if (!contacts) return null;
     const probe = contacts.probe, p = this.player, from = tileUnder(this.map, width, p.x, p.y), jumping = now < (this.jumpUntil || 0);
     // Simulation flags match the commit path, without mutating the player, lift or action clocks.
@@ -3368,6 +3379,7 @@ export class Game {
     probe.airElev = jumping ? (launch ? Math.max(this.skyAir ?? -1, from.elev || 0) : this.skyAir ?? undefined) : undefined;
     probe.airElevScale = launch ? tileLiftScale(from) : this.skyAirScale || 1;
     contacts.supportSubject = probe;
+    contacts.carrier = carrier;
     contacts.record = true;
     // A valid section exit is an intent, not terrain beyond this map. Bodies before that exit
     // still clip its trace. The ordinary transition code consumes the accepted endpoint below.
@@ -3381,7 +3393,7 @@ export class Game {
         || (y + .88 >= SECTION_SIZE - .02 && (near(p.x, exits.south) || seam(0, 1)));
     };
     moveAxis(probe, dx, dy, this.map, width, true, null, false, contacts);
-    contacts.record = false; contacts.canExit = null; contacts.endX = probe.x; contacts.endY = probe.y;
+    contacts.record = false; contacts.canExit = null; contacts.carrier = null; contacts.endX = probe.x; contacts.endY = probe.y;
     return contacts;
   }
   // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
@@ -8197,7 +8209,9 @@ export class Game {
       dy = y * speed * dt;
     // Sailing has momentum: velocity eases toward the stick; a dodge is an oar burst.
     if (sailing) { p.sailVx = dodging ? x * speed : steer(p.sailVx || 0, x * speed, dt); p.sailVy = dodging ? y * speed : steer(p.sailVy || 0, y * speed, dt); dx = p.sailVx * dt; dy = p.sailVy * dt; }
-    const ps = Number(this.save.playSeconds) || 0, raft = this.map?.movers?.length ? platformUnder(this.map, p.x, p.y, ps - dt) : null, carried = raft ? (() => { const a = platformPos(raft, ps - dt), b = platformPos(raft, ps); return { x: b.x - a.x, y: b.y - a.y }; })() : { x: 0, y: 0 }; // release 613: a raft carries whoever stands on it
+    const ps = Number(this.save.playSeconds) || 0, raft = this.map?.movers?.length ? platformUnder(this.map, p.x, p.y, ps - dt) : null,
+      carrier = raft ? { raft, old: platformPos(raft, ps - dt), current: platformPos(raft, ps) } : null,
+      carried = carrier ? { x: carrier.current.x - carrier.old.x, y: carrier.current.y - carrier.old.y } : { x: 0, y: 0 }; // release 613: a raft carries whoever stands on it
     dx += carried.x; dy += carried.y;
     let
       nx = p.x + dx,
@@ -8217,7 +8231,7 @@ export class Game {
     const gliding = !!this.glide && this.area === "overworld";
     if (gliding) { if (this.glideStep(x, y, dt, now) === "crossed") return; nx = p.x; ny = p.y; dx = 0; dy = 0; }
     { const h = this.edgeHold; if (h && this.edgeHeld(h.dx, h.dy, now)) { if (h.dx < 0) nx = Math.max(nx, 0); else if (h.dx > 0) nx = Math.min(nx, SECTION_SIZE - .78 - 1e-3); else if (h.dy < 0) ny = Math.max(ny, 0); else ny = Math.min(ny, SECTION_SIZE - .9 - 1e-3); } } // perf pack (P6): the edge just crossed holds for a moment
-    const groundedMotion = !sailing && !gliding ? this.planGroundedPlayerMove(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now) : null;
+    const groundedMotion = !sailing && !gliding ? this.planGroundedPlayerMove(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now, carrier) : null;
     if (groundedMotion) { nx = groundedMotion.endX; ny = groundedMotion.endY; }
     if ((sailing || (this.area === "overworld" && this.wading())) && (nx < 0 || ny < 0 || nx + .76 >= SECTION_SIZE - .02 || ny + .88 >= SECTION_SIZE - .02)) { /* release 507: the robot wading crosses anywhere, like a skiff */
       this.transitionSection(nx < 0 ? -1 : nx + .76 >= SECTION_SIZE - .02 ? 1 : 0, nx < 0 || nx + .76 >= SECTION_SIZE - .02 ? 0 : ny < 0 ? -1 : 1);
