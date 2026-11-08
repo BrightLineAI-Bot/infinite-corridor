@@ -5,10 +5,12 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here=dirname(fileURLToPath(import.meta.url));
-const root=resolve(here,'../../..'),outDir=resolve(root,'assets/wayfarer');
+const root=resolve(here,'../../..');
 const provenance=JSON.parse(readFileSync(resolve(here,'provenance.json'),'utf8'));
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const expect=(condition,message)=>{if(!condition)throw new Error(message);};
+const args=process.argv.slice(2);let outDir=resolve(root,'assets/wayfarer');
+if(args.length){expect(args.length===2&&args[0]==='--out'&&args[1],'Usage: node convert.mjs [--out <directory>]');outDir=resolve(args[1]);}
 
 function source(name,archiveSha,rawSha){
   const archive=readFileSync(resolve(here,name));
@@ -39,6 +41,14 @@ function accessor(src,index){
 function image(src,index){const im=src.gltf.images[index],v=src.gltf.bufferViews[im.bufferView];return src.buffer.subarray(v.byteOffset||0,(v.byteOffset||0)+v.byteLength);}
 function parents(nodes){const out=new Int16Array(nodes.length).fill(-1);nodes.forEach((n,i)=>(n.children||[]).forEach(c=>{expect(out[c]===-1,`Node ${c} has multiple parents`);out[c]=i;}));return out;}
 const rogueParents=parents(rogue.gltf.nodes);
+const inverseBind=accessor(rogue,rogue.gltf.skins[0].inverseBindMatrices);
+
+function invertMat4(m){
+  const a=Array.from({length:4},(_,row)=>Array.from({length:8},(_,column)=>column<4?m[column*4+row]:+(column-4===row)));
+  for(let column=0;column<4;column++){let pivot=column;for(let row=column+1;row<4;row++)if(Math.abs(a[row][column])>Math.abs(a[pivot][column]))pivot=row;expect(Math.abs(a[pivot][column])>1e-10,'Singular inverse bind matrix');[a[column],a[pivot]]=[a[pivot],a[column]];const scale=a[column][column];for(let q=0;q<8;q++)a[column][q]/=scale;for(let row=0;row<4;row++)if(row!==column){const factor=a[row][column];for(let q=0;q<8;q++)a[row][q]-=factor*a[column][q];}}
+  return Array.from({length:16},(_,index)=>a[index%4][4+Math.floor(index/4)]);
+}
+const transformPoint=(m,p)=>[m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]];
 
 const positions=[],normals=[],uvs=[],joints=[],weights=[],indices=[],materialLayers=[],paletteClasses=[],meshes=[];
 const paletteNames=['source','wayfarer-body','collar-seal','protected-body-skin-region','warm-amber-eyes'];
@@ -92,6 +102,21 @@ copy(positions,center.p);const nl=Math.hypot(...center.n)||1;copy(normals,center
 const collarSealFirstIndex=indices.length;for(let i=0;i<6;i++)indices.push(sealFirstVertex+i,sealFirstVertex+(i+1)%6,sealFirstVertex+6);
 meshes.push({name:'CollarSeal',node:39,skin:0,firstVertex:sealFirstVertex,vertexCount:7,firstIndex:collarSealFirstIndex,indexCount:18,materialLayer:0,paletteClass:'collar-seal'});
 
+const bridgeFirstVertex=positions.length/3,bridgeFirstIndex=indices.length,headBind= invertMat4(inverseBind.subarray(headJoint*16,headJoint*16+16));
+const bridgeRings=[loop.map(i=>Array.from(body.p.subarray(i*3,i*3+3)))];
+for(const [radius,y,zCenter,zRadius] of [[.13,-.045,-.075,.14],[.105,.080,-.075,.11]])bridgeRings.push(loop.map((_,i)=>{const theta=i*Math.PI/3;return transformPoint(headBind,[radius*Math.sin(theta),y,zCenter-zRadius*Math.cos(theta)]);}));
+const bridgeFabricUv=[.3451729516,.5624372562],bridgeUvs=loop.map(()=>bridgeFabricUv),bridgeCenterUv=bridgeFabricUv;
+for(let ring=0;ring<3;ring++)for(let i=0;i<6;i++){
+  const p=bridgeRings[ring][i],previous=bridgeRings[ring][(i+5)%6],nextPoint=bridgeRings[ring][(i+1)%6],tangent=[nextPoint[0]-previous[0],nextPoint[1]-previous[1],nextPoint[2]-previous[2]],vertical=ring===0?bridgeRings[1][i].map((v,q)=>v-p[q]):p.map((v,q)=>v-bridgeRings[ring-1][i][q]),normal=[tangent[1]*vertical[2]-tangent[2]*vertical[1],tangent[2]*vertical[0]-tangent[0]*vertical[2],tangent[0]*vertical[1]-tangent[1]*vertical[0]],length=Math.hypot(...normal)||1;
+  copy(positions,p);copy(normals,normal.map(v=>v/length));copy(uvs,bridgeUvs[i]);
+  if(ring===0){const source=loop[i];copy(joints,body.j.subarray(source*4,source*4+4));copy(weights,body.w.subarray(source*4,source*4+4));}else{copy(joints,[headJoint,0,0,0]);copy(weights,[1,0,0,0]);}
+  materialLayers.push(0);paletteClasses.push(1);
+}
+const bridgeTopCenter=transformPoint(headBind,[0,.080,-.075]);copy(positions,bridgeTopCenter);copy(normals,[0,1,0]);copy(uvs,bridgeCenterUv);copy(joints,[headJoint,0,0,0]);copy(weights,[1,0,0,0]);materialLayers.push(0);paletteClasses.push(1);
+for(let ring=0;ring<2;ring++)for(let i=0;i<6;i++){const lower=bridgeFirstVertex+ring*6+i,lowerNext=bridgeFirstVertex+ring*6+(i+1)%6,upper=bridgeFirstVertex+(ring+1)*6+i,upperNext=bridgeFirstVertex+(ring+1)*6+(i+1)%6;indices.push(lower,upperNext,lowerNext,lower,upper,upperNext);}
+const bridgeTopCenterIndex=bridgeFirstVertex+18;for(let i=0;i<6;i++)indices.push(bridgeTopCenterIndex,bridgeFirstVertex+12+(i+1)%6,bridgeFirstVertex+12+i);
+meshes.push({name:'NeckBridge',node:39,skin:0,firstVertex:bridgeFirstVertex,vertexCount:19,firstIndex:bridgeFirstIndex,indexCount:90,materialLayer:0,paletteClass:'wayfarer-body'});
+
 for(const node of [0,10,25,26,35]){const sourceNode=rogue.gltf.nodes[node];addMesh({src:rogue,meshIndex:sourceNode.mesh,node,skin:-1,layer:0,palette:1,name:sourceNode.name});}
 const head=addMesh({src:cleric,meshIndex:1,node:41,skin:-1,layer:1,palette:0,name:'ClericHead'});
 expect(head.ix.length/3===1816&&head.p.length/3===2254,'Cleric head source counts mismatch');
@@ -99,7 +124,7 @@ const eyeLensFirstVertex=positions.length/3,eyeLensFirstIndex=indices.length,eye
 for(const [x,y,z] of eyeCenters)for(const [dx,dy] of [[-eyeHalfWidth,-eyeHalfHeight],[eyeHalfWidth,-eyeHalfHeight],[eyeHalfWidth,eyeHalfHeight],[-eyeHalfWidth,eyeHalfHeight]]){copy(positions,[x+dx,y+dy,z]);copy(normals,[0,0,1]);copy(uvs,eyeUv);copy(joints,[0,0,0,0]);copy(weights,[0,0,0,0]);materialLayers.push(1);paletteClasses.push(4);}
 for(let eye=0;eye<2;eye++){const base=eyeLensFirstVertex+eye*4;indices.push(base,base+1,base+2,base,base+2,base+3);}
 meshes.push({name:'ClericEyeLenses',node:41,skin:-1,firstVertex:eyeLensFirstVertex,vertexCount:8,firstIndex:eyeLensFirstIndex,indexCount:12,materialLayer:1,paletteClass:'warm-amber-eyes'});
-expect(indices.length/3===3140,`Expected 3140 total triangles with eye lenses, got ${indices.length/3}`);
+expect(indices.length/3===3170,`Expected 3170 total triangles with neck bridge and eye lenses, got ${indices.length/3}`);
 expect(positions.length/3<=65535&&Math.max(...indices)<positions.length/3,'Global indices are not legal u16');
 
 for(let i=0;i<weights.length;i+=4){const total=weights[i]+weights[i+1]+weights[i+2]+weights[i+3];expect(Number.isFinite(total),`Non-finite weights at vertex ${i/4}`);if(total>0)expect(Math.abs(total-1)<2e-4,`Unnormalized weights at vertex ${i/4}: ${total}`);}
@@ -111,7 +136,7 @@ const clericHeadNode=cleric.gltf.nodes[1];nodes.push({name:'ClericHead',parent:3
 const packed=[],arrays={};let binaryLength=0;
 function pack(key,typed,componentType){const bytes=Buffer.from(typed.buffer,typed.byteOffset,typed.byteLength),padding=(4-binaryLength%4)%4;if(padding){packed.push(Buffer.alloc(padding));binaryLength+=padding;}arrays[key]={byteOffset:binaryLength,count:typed.length,componentType};packed.push(bytes);binaryLength+=bytes.length;}
 pack('positions',Float32Array.from(positions),'f32');pack('normals',Float32Array.from(normals),'f32');pack('uvs',Float32Array.from(uvs),'f32');pack('joints',Uint16Array.from(joints),'u16');pack('weights',Float32Array.from(weights),'f32');pack('indices',Uint16Array.from(indices),'u16');pack('materialLayers',Uint8Array.from(materialLayers),'u8');pack('paletteClasses',Uint8Array.from(paletteClasses),'u8');
-const inverseBind=accessor(rogue,rogue.gltf.skins[0].inverseBindMatrices);pack('inverseBindMatrices',Float32Array.from(inverseBind),'f32');
+pack('inverseBindMatrices',Float32Array.from(inverseBind),'f32');
 const clips=rogue.gltf.animations.map((animation,clipIndex)=>{let duration=0;const channels=animation.channels.map((channel,channelIndex)=>{const sampler=animation.samplers[channel.sampler],times=accessor(rogue,sampler.input),values=accessor(rogue,sampler.output),base=`clip${clipIndex}Channel${channelIndex}`;expect((sampler.interpolation||'LINEAR')==='LINEAR',`Non-LINEAR animation in ${animation.name}`);duration=Math.max(duration,...times);pack(`${base}Times`,Float32Array.from(times),'f32');pack(`${base}Values`,Float32Array.from(values),'f32');return {node:channel.target.node,path:channel.target.path,times:`${base}Times`,values:`${base}Values`,interpolation:'LINEAR'};});return {name:animation.name,duration,channels};});
 expect(clips.length===12,'Expected 12 Rogue clips');
 const footTranslationChannels=clips.flatMap(c=>c.channels.map(ch=>({clip:c.name,...ch}))).filter(ch=>ch.path==='translation'&&[4,5,14,24,34,36].includes(ch.node));
@@ -121,6 +146,6 @@ const bodyTexture=image(rogue,0),headTexture=image(cleric,0);
 expect(bodyTexture.length>24&&headTexture.length>24&&bodyTexture.readUInt32BE(16)===1024&&bodyTexture.readUInt32BE(20)===1024&&headTexture.readUInt32BE(16)===1024&&headTexture.readUInt32BE(20)===1024,'Expected original 1024-square PNG textures');
 const binary=Buffer.concat(packed,binaryLength);mkdirSync(outDir,{recursive:true});
 writeFileSync(resolve(outDir,'rogue-v2.bin'),binary);writeFileSync(resolve(outDir,'rogue-body.png'),bodyTexture);writeFileSync(resolve(outDir,'cleric-head.png'),headTexture);
-const metadata={version:2,sources:[{id:'rogue',sha256:rogue.rawSha,license:'CC0-1.0'},{id:'cleric',sha256:cleric.rawSha,license:'CC0-1.0'}],binary:'rogue-v2.bin',binarySha256:sha(binary),textures:[{layer:0,file:'rogue-body.png',width:1024,height:1024,sha256:sha(bodyTexture)},{layer:1,file:'cleric-head.png',width:1024,height:1024,sha256:sha(headTexture)}],vertexCount:positions.length/3,indexCount:indices.length,arrays,nodes,skins:[{joints:rogue.gltf.skins[0].joints,inverseBindMatrices:'inverseBindMatrices'}],meshes,clips,sockets:{right:{node:16},left:{node:6}},reference:{clip:'Idle',time:0,headNode:3,bodyNode:33,rootNode:38},headAttachment:{node:41,parent:3,source:'cleric',sourceNode:1,defaultScale:.40,seatOverlap:.01,collarVertexIndices},derivatives:{removedRogueHoodTriangles:body.removed,collarSealFirstIndex,collarSealIndexCount:18},diagnostics:{bodyTriangles:indices.length/3,removedHoodTriangles:body.removed.length,removedMinHeadInfluence,retainedMaxHeadInfluence,protectedBodyTriangles,protectedRegionSourceNodes:[...protectedNodes],eyeLensTriangles:4,eyeLensCenters:eyeCenters,eyeLensSize:[eyeHalfWidth*2,eyeHalfHeight*2],eyeLensNormal:[0,0,1],eyeLensUv:eyeUv,eyeMaskMethod:'two head-local quads immediately behind the source mask apertures; original Cleric head remains class 0',collarBoundaryEdges:seamEdges.length,collarBounds:{min:[Math.min(...loop.map(i=>body.p[i*3])),Math.min(...loop.map(i=>body.p[i*3+1])),Math.min(...loop.map(i=>body.p[i*3+2]))],max:[Math.max(...loop.map(i=>body.p[i*3])),Math.max(...loop.map(i=>body.p[i*3+1])),Math.max(...loop.map(i=>body.p[i*3+2]))]},originalRogueNodes:41,sourceJoints:rogue.gltf.skins[0].joints.length,clips:clips.length,footTranslationChannels:footTranslationChannels.length,textureBytes:[bodyTexture.length,headTexture.length],archiveSha256:[rogue.archiveSha,cleric.archiveSha],rawSourceBytes:[rogue.rawBytes,cleric.rawBytes],paletteClassification:'Palette classes: source 0; wayfarer-body 1; collar-seal 2; protected-body-skin-region 3; warm-amber-eyes 4. Class 4 is two explicit aperture-backed lens quads; original source head and raster pixels are unchanged.'}};
+const metadata={version:2,sources:[{id:'rogue',sha256:rogue.rawSha,license:'CC0-1.0'},{id:'cleric',sha256:cleric.rawSha,license:'CC0-1.0'}],binary:'rogue-v2.bin',binarySha256:sha(binary),textures:[{layer:0,file:'rogue-body.png',width:1024,height:1024,sha256:sha(bodyTexture)},{layer:1,file:'cleric-head.png',width:1024,height:1024,sha256:sha(headTexture)}],vertexCount:positions.length/3,indexCount:indices.length,arrays,nodes,skins:[{joints:rogue.gltf.skins[0].joints,inverseBindMatrices:'inverseBindMatrices'}],meshes,clips,sockets:{right:{node:16},left:{node:6}},reference:{clip:'Idle',time:0,headNode:3,bodyNode:33,rootNode:38},headAttachment:{node:41,parent:3,source:'cleric',sourceNode:1,defaultScale:.40,seatOverlap:.01,collarVertexIndices},derivatives:{removedRogueHoodTriangles:body.removed,collarSealFirstIndex,collarSealIndexCount:18,neckBridgeFirstVertex:bridgeFirstVertex,neckBridgeVertexCount:19,neckBridgeFirstIndex:bridgeFirstIndex,neckBridgeIndexCount:90,neckBridgeLowerRingVertexIndices:Array.from({length:6},(_,i)=>bridgeFirstVertex+i)},diagnostics:{bodyTriangles:indices.length/3,removedHoodTriangles:body.removed.length,removedMinHeadInfluence,retainedMaxHeadInfluence,protectedBodyTriangles,protectedRegionSourceNodes:[...protectedNodes],neckBridgeTriangles:30,neckBridgeBottomSourceVertices:loop,neckBridgeHeadJoint:headJoint,neckBridgeFabricUv:bridgeFabricUv,neckBridgeFabricSourceTriangle:284,neckBridgeHeadLocalRings:{middle:{radius:.13,y:-.045,zCenter:-.075,zRadius:.14},top:{radius:.105,y:.080,zCenter:-.075,zRadius:.11}},eyeLensTriangles:4,eyeLensCenters:eyeCenters,eyeLensSize:[eyeHalfWidth*2,eyeHalfHeight*2],eyeLensNormal:[0,0,1],eyeLensUv:eyeUv,eyeMaskMethod:'two head-local quads immediately behind the source mask apertures; original Cleric head remains class 0',collarBoundaryEdges:seamEdges.length,collarBounds:{min:[Math.min(...loop.map(i=>body.p[i*3])),Math.min(...loop.map(i=>body.p[i*3+1])),Math.min(...loop.map(i=>body.p[i*3+2]))],max:[Math.max(...loop.map(i=>body.p[i*3])),Math.max(...loop.map(i=>body.p[i*3+1])),Math.max(...loop.map(i=>body.p[i*3+2]))]},originalRogueNodes:41,sourceJoints:rogue.gltf.skins[0].joints.length,clips:clips.length,footTranslationChannels:footTranslationChannels.length,textureBytes:[bodyTexture.length,headTexture.length],archiveSha256:[rogue.archiveSha,cleric.archiveSha],rawSourceBytes:[rogue.rawBytes,cleric.rawBytes],paletteClassification:'Palette classes: source 0; wayfarer-body 1; collar-seal 2; protected-body-skin-region 3; warm-amber-eyes 4. Neck bridge uses existing wayfarer-body class 1 with a source outer-coat fabric texel; class 4 is two explicit aperture-backed lens quads; original source head and raster pixels are unchanged.'}};
 writeFileSync(resolve(outDir,'rogue-v2.json'),`${JSON.stringify(metadata,null,2)}\n`);
 console.log(JSON.stringify({vertexCount:metadata.vertexCount,indexCount:metadata.indexCount,triangles:metadata.indexCount/3,binaryBytes:binary.length,binarySha256:metadata.binarySha256,textures:metadata.textures,removedHoodTriangles:body.removed.length,collarBoundaryEdges:seamEdges.length,clips:clips.length}));
