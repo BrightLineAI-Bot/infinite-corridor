@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 842 — representable contact movement progress
+
+**CODE:** The shared contact-aware axis mover now accepts a positive clipped fraction as movement only when the resulting numeric coordinates differ from the actor's current coordinates. A fraction that rounds back to bit-identical X/Y is refused before assignment, trace recording, `onStep`, and the returned movement flag. Existing pack actions such as Ram Charge therefore receive the real blocked result and enter their existing stun path instead of spending active frames on false progress.
+
+**BOUNDARY:** Contact radii, sweep fractions, substep count, terrain checks, X/Y order, carrier phases, accepted trace layout, damage, cooldowns and pack attack state machines are unchanged. Any representable movement, however small, remains accepted with its normal trace and callback. Release 841's keep5/Pentagon10 routing remains an opt-in Proving Ground prototype; production defaults stay4/9 and adoption remains separate. Server-free checks and a static build do not establish hosted routing, GPU behavior or physical-device performance.
+
 ## Release 841 — opt-in Close View room-routing prototype
 
 **CODE:** The isolated Close View Proving Ground can select version 5 overworld-keep rooms and version 10 Pentagon sections to exercise the prepared compact routing grammar: connected leaves, bounded optional loops, directed stair and roof links, deterministic room identities, and the existing production movement/contact path. The prototype keeps its explicit scenario diagnostics and preserves the already prepared reconstruction, roof-return, guardian and exploration witnesses.
