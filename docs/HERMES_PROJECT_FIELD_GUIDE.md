@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 837 — Close View traversal blocks
+
+**CODE:** Transient stone builds use the same production build records in legacy and current Close View interiors. One stone record contributes a physical `.34` support prism; a second record on that tile contributes the `.68` two-level stack. The renderer submits the matching bounded stone geometry and invalidates it when a build is placed, stacked, broken or expires. One level is reachable with Jump; two levels require an adjacent one-level step. At most five physical build records stand, and each retains its own ten active-second lifetime, including pause-safe lifetime behavior.
+
+**BOUNDARY:** Stone support is transient and does not rewrite pinned generation, old journeys, ceilings, decoration or schema 14. A stone block is not a wood wall: wood keeps its full blocking geometry, placement restrictions, one-hit behavior and non-stackability. Existing stone costs, two-hit durability, two-level cap, build refusal rules, attacks and contact/body envelopes remain unchanged. Source and server-free rendering checks do not establish hosted GPU or physical-device performance.
+
 ## Release 836 — grounded ordinary actor contact
 
 **CODE:** `src/actor-contact.ts` supplies the shared grounded-body contact path used by both production views. Ordinary player/enemy approaches, hops and committed lunges trace against the same finite body footprints and height bands; accepted displacement carries the existing movement consequence instead of allowing bodies to phase through one another. A bounded overlap-escape rule lets actors separate from already coincident or resumed positions without opening a route farther through the other body. Contact height follows the accepted ground/support height, and the existing actor caps bound the work.

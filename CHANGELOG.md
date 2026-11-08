@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 837: render legacy and current Close View stone builds as physical one- and two-level supports instead of walls.
 - Release 836: keep ordinary Close View actors grounded with shared player/enemy body contact, bounded overlap escape and height-aware movement consequences.
 - Release 835: distinct accepted spell gestures, truthful free-hand launch cues and public manual-cast inspection scenarios.
 - Release 834: give accepted Close View Hammerfall its dedicated effect-linked stomp, preserve the original first-pulse guard and keep logical hero presentation continuous across pause and reload.
