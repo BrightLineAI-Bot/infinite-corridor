@@ -2,11 +2,28 @@
 
 Updated: 2026-11-07. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r812-1f4b36dd0279`. Publish run `42394194802` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
+Verified live: `r818-791b1eff716d`. Publish run `42424762364` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
 
 ## Objective and sequence
 
 Finish and publish the current animation, spacious-interior, elevation, drone and control-feel candidate. Then complete four independent passes below and publish validated fixes as they become ready. Each pass records evidence, changes, tests, review, preview identity and publication result. Keep PRs focused and choose each game release number from freshly fetched main + 1.
+
+## Owner direction — compact combat and exploration engine (2026-11-07)
+
+Close View must feel like inhabiting a concrete character in a dangerous, marvelous place. The owner cites Elder Scrolls Online for responsive dodges, casting and readable weapon reach; Bloodborne for pacing; Mortal Shell for weight; and Remnant for tool and weapon interactions. These are quality references, not a claim of feature or production parity. The wider infinite-world view remains the exploration layer; Close View adds deliberate embodied combat and discovery while retaining phone budgets.
+
+This direction supplements the completed passes below; their checkmarks do not mean this expanded work is finished. Execute focused, reviewed releases in this order:
+
+- [ ] Finish imported Wayfarer acceptance: protective green/gray fabric, silver mask and hair, amber eyes, adult proportions and small hands; close the observed rear neck gap before publication.
+- [ ] Complete preserved camera clearance and accessible target activation follow-up. Verify cramped corners, entry framing, camera recovery, target acquisition/switching and character facing on the actual hosted candidate.
+- [ ] Distinguish weapon motion and grip. The owner describes the Verge Cleaver as a broad great-blade swing and the Cinder Pipe as a thrusting polearm/spear-like action. Verify canonical item definitions and authoritative reach/contact timing before choosing each presentation. Keep anticipation, contact and recovery readable; do not silently alter damage rules to fit an animation.
+- [ ] Audit and implement solid enemy/player separation so ordinary grounded bodies cannot be walked into. Define and test the existing legitimate ghost, flight, dodge, spawn and knockback exceptions before changing collision. Avoid corridor trapping and preserve authoritative rules in both views.
+- [ ] Make ordinary nearby enemies visibly solid and stable while retaining deliberate spectral creatures, wall occlusion and pause/reduced-motion behavior. Investigate whether fade behavior is a stale release or a current defect; record exact candidate evidence.
+- [ ] Audit tool and spell actions against accepted gameplay events: distinct visible casts, firing/recoil, correct hands/muzzles, jumping, dodging and interruption/recovery. Refused actions must not animate a successful cast or shot.
+- [ ] Assess combat breathing room with representative large and clustered enemies. Prefer camera fixes where sufficient; any larger new layouts need new generator versions and regression digests so explored/pinned dungeons remain unchanged.
+- [ ] Validate combined exploration/combat with representative dungeon and Pentagon encounters, range/cover, dodge survival, multiple foes and tool/spell switching; report measured frame/work budgets separately from physical-phone FPS, which remains unmeasured.
+
+Do not add artificial input latency or indiscriminate camera shake to imply weight. Animation and effect reach should communicate the real hit rules. Retain a high skill ceiling through readable danger and responsive control. Record reproducible shortcomings and actual fixes; do not describe a source-only or automated pass as hosted or on-device acceptance.
 
 ## Invariants
 
