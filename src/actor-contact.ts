@@ -6,15 +6,32 @@ export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSt
 const SPECIAL = new Set(["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant", "mountainTurtle", "briarStag", "ashenMoth", "crimsonDragon", "doomChaser"]);
 const AIRBORNE_LEGACY = new Set(["cinderWisp"]);
 const VEIL_MOTH_ENVELOPE = Object.freeze({ bottom: .35, top: 1.48 });
+const GRAVE_LANTERN_ENVELOPE = Object.freeze({ bottom: .33, top: 2.33 });
+const LANTERN_SOLID_ATTACKS = new Set(["stillnessCurse", "sigilScatter", "bite", "clawSweep", "longStab", "mortarVolley", "webSpit", "shockwave", "groundRupture", "firefall", "sweepBeam", "blinkStrike", "ramCharge"]);
+const LANTERN_VERTICAL_ATTACKS = new Set(["phaseCharge", "leapSlam", "diveBomb"]);
+const LANTERN_SOLID_PHASES = new Set(["windup", "active", "strike", "stunned", "recover"]);
 const veilMothScale = (e) => Math.max(.25, Math.min(4, Number.isFinite(e?.scale) ? e.scale : 1));
 export function materialVeilMoth(e) {
   return e?.kind === "veilMoth" && !e.packKind && !e.aloft
     && !(Number.isFinite(e.hopLift) && Math.abs(e.hopLift) > ACTOR_CONTACT.epsilon)
     && !(Number(e.poiseBreak) > 0);
 }
+export function materialGraveLantern(e) {
+  if (e?.kind !== "graveLantern" || !e.packKind) return false;
+  if (e.aloft || e.phasing || (Number.isFinite(e.hopLift) && Math.abs(e.hopLift) > ACTOR_CONTACT.epsilon)) return false;
+  const attack = e.pack?.attack, phase = e.pack?.phase;
+  if (!attack) return true;
+  if (LANTERN_SOLID_ATTACKS.has(attack)) return LANTERN_SOLID_PHASES.has(phase);
+  if (!LANTERN_VERTICAL_ATTACKS.has(attack)) return false;
+  if (attack === "phaseCharge") return phase === "windup" || phase === "recover";
+  if (attack === "leapSlam") return phase === "windup" || phase === "recover";
+  // Dive preparation deliberately becomes intangible when its real windup starts; recovery
+  // is admitted only after the landing path clears aloft/untargetable in the pack runtime.
+  return phase === "recover";
+}
 export function ordinaryContactEnemy(e) {
   return !!e && Number.isFinite(e.x) && Number.isFinite(e.y) && !e.dead && !(e.hp <= 0)
-    && !e.flying && !e.aloft && !e.phasing && !e.phases && !e.hidden && !e.mist
+    && (!e.flying || materialGraveLantern(e)) && !e.aloft && !e.phasing && !e.phases && !e.hidden && !e.mist
     && !e.ambient && !e.passiveBehavior && e.foundryRole !== "passive" && !e.friendly && !e.astralCompanionOf && !e.astralAllyOf
     && !e.retreating && !e.passingBeast && !e.playing && !e.blobRemnant && e.kind !== "npc"
     && !(e.skirmishId && !e.skirmishProvoked) && !e.worldBeast && !e.questingBeast && !e.stalker
@@ -65,8 +82,8 @@ export function actorContactHeight(body, game) {
     ? H.foundry[body.foundryBody] : Object.hasOwn(H.kinds, body?.kind) ? H.kinds[body.kind] : 0;
   return unit ? unit * scale : H.fallback * Math.max(1, scale, Math.min(4, (Number(body?.bodyRadius) || .4) * 2.2));
 }
-export function actorContactBottom(body) { return materialVeilMoth(body) ? VEIL_MOTH_ENVELOPE.bottom * veilMothScale(body) : 0; }
-export function actorContactTop(body, game) { return materialVeilMoth(body) ? VEIL_MOTH_ENVELOPE.top * veilMothScale(body) : actorContactHeight(body, game); }
+export function actorContactBottom(body) { return materialVeilMoth(body) ? VEIL_MOTH_ENVELOPE.bottom * veilMothScale(body) : materialGraveLantern(body) ? GRAVE_LANTERN_ENVELOPE.bottom * veilMothScale(body) : 0; }
+export function actorContactTop(body, game) { return materialVeilMoth(body) ? VEIL_MOTH_ENVELOPE.top * veilMothScale(body) : materialGraveLantern(body) ? GRAVE_LANTERN_ENVELOPE.top * veilMothScale(body) : actorContactHeight(body, game); }
 export function actorContactSupport(game, body, x, y, width, phase = null, carrier = null) {
   const ground = liftAt(game.map, width, x, y);
   // Retained platform launch support is physical height over a gap. The ordinary jump arc

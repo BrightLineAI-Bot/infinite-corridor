@@ -1,6 +1,6 @@
 # Close View material-contact family inventory
 
-Status: **planning only**. This inventory preserves the airborne-contact design findings after the ordinary Veil Moth pilot. It does not implement or calibrate another family, allocate a release, change combat, or claim GPU/boss delivery.
+Status: **source pilot prepared, not integrated or delivered**. This inventory preserves the airborne-contact design findings after the ordinary Veil Moth pilot. The separate Grave Lantern branch now carries the reviewed low-hover interval and active-phase admission only; it allocates no release and claims no hosted GPU, phone, full-flight-family or boss delivery.
 
 ## Existing ordinary contact routes
 
@@ -19,7 +19,7 @@ Direct movement modules require behavior-specific treatment rather than a kit-na
 
 ## Material-family queue
 
-The next bounded ordinary-family study after Veil Moth is **Grave Lantern**. Its flying material cage, chains and censers make it a plausible solid family, but it requires new authored numeric bottom/top calibration. The existing `2.35` body height is not a sufficient physical envelope. Relevant presentation evidence includes the actor-presentation scale addition (`+0.3`) and the cage/chain construction around `src/close-view-pentagon-models.ts` lines 32–39. Do not infer physics from the visual height or calibrate it in this planning pass.
+The next bounded ordinary-family study after Veil Moth is **Grave Lantern**. Its flying material cage, chains and censers use the independently reviewed fixed authored interval `support + [.33 * scale, 2.33 * scale]`, with scale clamped to `.25…4`; the older `2.35` body-height fallback is not used as the physical interval. The source pilot admits only the ordinary current physical phase. Idle, chase, patrol, hit/stun and supported ground-height attacks stay solid; actual phase-charge/leap/dive travel remains excluded, while blink destinations, ram blocking/stun and landed recovery retain ordinary contact. Unknown active states and nonzero physical lift fail closed. Runtime physics does not import or sample presentation geometry.
 
 Choir and Seraph are materially rendered but their dive behavior and multi-body presentation make them a larger later scope. Wraith, Maw and Strata Eel phase; Gloom is ghostlike. Preserve their ethereal/non-solid behavior. Cinder Wisp's legacy airborne exclusion is not evidence that every visually material flyer should remain excluded, nor permission to admit Cinder Wisp without its own study.
 
@@ -33,12 +33,12 @@ Every later family must preserve ordinary terrain permission, existing contact/r
 
 A focused family PR must use actual `Game` witnesses for ordinary walk and player dodge approaches in both directions, reverse enemy movement, blocked `ramCharge` and its stun, teleport placement plus overlap escape, phase passage, continuous leap height, dive airborne clearance, landing solidity and resumed/loaded overlap. It must also cover terrain, cooldown/damage, pause, schema, bounds, scale, reduced-motion and native-fallback controls.
 
-For Grave Lantern specifically, first author and review a numeric physical bottom/top interval from bounded source geometry and living poses. Source tests must distinguish cage/chains/censers from empty air and from transient bob. Hosted texture-lit GPU inspection remains a later acceptance gate; source geometry alone is not delivery or a physical-device claim.
+For Grave Lantern specifically, the fixed interval has been reviewed against bounded cage/chain/censer source geometry and living poses, and focused source tests distinguish its occupied band from empty air without reading transient bob. Hosted texture-lit GPU inspection, integration after routing adoption, and dedicated leap/dive clearance work remain later acceptance gates; source geometry and CPU contact checks are not delivery or a physical-device claim.
 
 ## Order
 
 1. Complete the existing ordinary Veil Moth pilot and its integration gates after routing.
-2. Calibrate Grave Lantern in a separate source/design pass; do not reuse `2.35` as a physics interval.
+2. Review and integrate the prepared Grave Lantern low-hover pilot only after the Veil Moth and routing/adoption hosted gates; do not broaden it to leap/dive travel or reuse `2.35` as a physics interval.
 3. Consider Choir/Seraph only as a separate dive/multi-body scope.
 4. Preserve Wraith/Maw/Strata Eel/Gloom phase/ghost behavior unless a new owner-approved design proves otherwise.
 
