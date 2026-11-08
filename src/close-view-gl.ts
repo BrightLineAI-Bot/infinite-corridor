@@ -653,7 +653,7 @@ export const closeViewGLCanvas = () => S.canvas;
 // Call before admitting the imported body; absent decoded images/context keeps the existing presentation.
 export const prepareCloseViewHeroGL = (asset) => !!S.gl && prepareHeroGL(S.gl, S.hero, asset);
 // For tests and the lab: forget the context (the next frame asks again).
-export function resetCloseViewGL() { if(S.gl) disposeHeroGL(S.gl,S.hero,true); S.hero = null; S.gl = null; S.canvas = null; S.gritReady = false; S.maskMap = null; S.staticKey = null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; }
+export function resetCloseViewGL() { if(S.gl) disposeHeroGL(S.gl,S.hero,true); S.hero = null; S.gl = null; S.canvas = null; S.gritReady = false; S.maskMap = null; S.staticKey = null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
 // r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
@@ -769,7 +769,8 @@ export function drawSceneGL(ground, U, models = null, hero = null) {
   // 5. flames, halos, motes and wind-up glows, added in light
   if (GLB.nDecal > GLB.nGlowStart) { gl.useProgram(S.decal.p); decalU(); gl.bindVertexArray(S.vao.decal); gl.blendFunc(gl.ONE, gl.ONE); gl.drawArrays(gl.TRIANGLES, GLB.nGlowStart, GLB.nDecal - GLB.nGlowStart); calls++; }
   gl.bindVertexArray(null); gl.depthMask(true); gl.disable(gl.BLEND);
-  if (gl.isContextLost?.() || (typeof gl.getError === "function" && gl.getError() !== gl.NO_ERROR)) return false;
+  const error=typeof gl.getError === "function"?gl.getError():undefined;
+  if (gl.isContextLost?.() || (Number.isFinite(error) && error !== gl.NO_ERROR)) return false;
   closeViewGLStats.frames++; closeViewGLStats.drawCalls = calls; closeViewGLStats.walls = S.staticVerts / 6; closeViewGLStats.boards = GLB.nBoard / 6; closeViewGLStats.decals = GLB.nDecal / 6; closeViewGLStats.lights = F.nl;
   return true;
   } catch (err) {

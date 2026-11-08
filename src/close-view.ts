@@ -1909,7 +1909,7 @@ export function selectProjectedShots(g, q, reduce = false) {
   PROJECTED_ENTRIES.length = 0;
   if (!closeViewGLFrameReady()) return null;
   const limit = q.glScale === 1 ? SHOT_DRAW.full : q.relief ? SHOT_DRAW.balanced : SHOT_DRAW.low;
-  try { glEnsure("decal", limit * 12 + 12); } catch { return null; }
+  try { CLOSE_VIEW_HOOKS.reserve?.(limit * 12 + 12); glEnsure("decal", limit * 12 + 12); } catch { return null; }
   const admit = (kind, source, verts, geom = null) => { if (PROJECTED_ENTRIES.length >= limit) return false; PROJECTED_ENTRIES.push({ kind, source, verts, geom }); PROJECTED_SHOTS.add(source); return true; };
   for (const p of g.projectiles || []) {
     if (PROJECTED_SHOTS.size === limit) break;
@@ -2179,10 +2179,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           offset = writeCloseViewHeroGear(state.vertices, offset, gear);
           if(acceptedTool&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,state.heroFrame.rightSocket)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
           const spellProfile=action.kind==='cast'&&cast&&['fan-release','orbit-launch'].includes(action.profile)?action.profile:null,left=state.heroFrame.leftSocket;
-          if(spellProfile&&left&&left.length>=3&&finite(left[0])&&finite(left[1])&&finite(left[2])&&actor.alpha>0&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,left[0],left[1])){
+          const lx=left?.[12],ly=left?.[13],lz=left?.[14];
+          if(spellProfile&&left?.length>=16&&finite(lx)&&finite(ly)&&finite(lz)&&actor.alpha>0&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,lx,ly)){
             const fire=spellProfile==='fan-release'&&castRecord?.spellKind==='fire-burst'&&castRecord?.variant==='cast'&&typeof castRecord.sourceId==='string'&&castRecord.sourceId.length<=160&&finite(castRecord.aim?.x)&&finite(castRecord.aim?.y);
             const orbit=spellProfile==='orbit-launch'&&castRecord?.spellKind==='orbit-volley'&&castRecord?.variant==='launch'&&validOrbit(g,g.orbit?.flight);
-            if(fire||orbit){state.spellEmission.set(left);state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
+            if(fire||orbit){state.spellEmission[0]=lx;state.spellEmission[1]=ly;state.spellEmission[2]=lz;state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
           }
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;

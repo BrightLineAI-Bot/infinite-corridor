@@ -1,10 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { closeViewCueSegmentOpen } from '../src/close-view.ts';
+import { CLOSE_VIEW_HOOKS, closeViewCueSegmentOpen, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { closeViewGLStats, GLB, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
 import { drawToolForms } from '../src/tool-forms.ts';
 import { drawOrbit, ORBIT } from '../src/orbit-volley.ts';
+import { drawRangedEffects } from '../src/combat-visuals.ts';
+import { createLabFixture } from '../src/proving-ground-labs.ts';
+import { render } from '../src/renderer.ts';
+import { loadCloseViewHero } from '../src/close-view-hero.ts';
 
 const context = (calls:any[]) => new Proxy({ canvas:{width:800,height:600}, globalAlpha:1 }, { get(o:any,k:any) { if (k in o) return o[k]; return (...a:any[]) => { calls.push([k,...a]); return k === 'createRadialGradient' ? { addColorStop(){} } : undefined; }; }, set(o:any,k:any,v:any){o[k]=v;return true;} });
 const openMap = (w=6,h=6) => ({width:w,height:h,tiles:Array.from({length:w*h},()=>({blocked:false,seen:true,discovered:true}))});
@@ -37,4 +43,53 @@ test('Fire survives JSON while Orbit gather and flight remain intentionally abse
   g.orbit={start:900,flight:{x:10.5,y:10.45,tx:14,y2:10.45,radius:ORBIT.radius,perfect:false,damage:1}};
   g.setPaused(true,1010);const back:any=new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(1010)))),9000);
   assert.equal(back.projectiles.filter((p:any)=>p.fireBomb).length,5);assert.equal(back.orbit==null,true);
+});
+
+class ProjectionGL {
+  lost=false;error=0;failUpload=false;loseOnUpload=false;nullKind='';created:any={program:0,buffer:0,vao:0,texture:0};program:any=null;
+  constructor(){let n=1;const constants=new Map();return new Proxy(this,{get:(o:any,k:any)=>{if(k in o)return o[k];if(typeof k==='string'&&/^[A-Z][A-Z0-9_]+$/.test(k)){if(!constants.has(k))constants.set(k,n++);return constants.get(k);}return()=>{};}});}
+  isContextLost(){return this.lost;}getError(){return this.error||this.NO_ERROR;}getExtension(){return null;}
+  createShader(){return{};}shaderSource(s:any,text:string){s.text=text;}getShaderParameter(){return true;}
+  createProgram(){this.created.program++;return this.nullKind==='program'&&this.created.program===1?null:{shaders:[]};}attachShader(p:any,s:any){p.shaders.push(s);}getProgramParameter(p:any,k:any){return k===this.ACTIVE_UNIFORMS||k===this.ACTIVE_ATTRIBUTES?0:true;}useProgram(p:any){this.program=p;}
+  createBuffer(){this.created.buffer++;return this.nullKind==='buffer'&&this.created.buffer===4?null:{};}createVertexArray(){this.created.vao++;return this.nullKind==='vao'&&this.created.vao===5?null:{};}createTexture(){this.created.texture++;return this.nullKind==='texture'&&this.created.texture===1?null:{};}
+  bufferData(_t:any,data:any){if(this.failUpload&&data instanceof Float32Array)throw new Error('mock upload');if(this.loseOnUpload&&data instanceof Float32Array)this.lost=true;}
+}
+const gpuContext=(log:any[])=>new Proxy({canvas:null as any,globalAlpha:1,measureText:()=>({width:10}),getTransform:()=>({a:1,b:0,c:0,d:1,e:0,f:0}),createRadialGradient:()=>({addColorStop(){}}),createLinearGradient:()=>({addColorStop(){}}),createPattern:()=>({})},{get:(o:any,k:any)=>k in o?o[k]:(...a:any[])=>log.push([k,...a]),set:(o:any,k:any,v:any)=>(o[k]=v,true)});
+function withProjectionGPU(options:any,run:(x:any)=>void){const old=(globalThis as any).WebGL2RenderingContext,gl:any=new ProjectionGL();Object.assign(gl,options);const log:any[]=[],screen:any=gpuContext(log),canvas:any={width:390,height:844,addEventListener(){},getContext:(k:string)=>k==='webgl2'?gl:gpuContext(log)};screen.canvas=canvas;(globalThis as any).WebGL2RenderingContext=ProjectionGL;setCloseViewCanvasFactory(()=>canvas);CLOSE_VIEW_HOOKS.gl=true;resetCloseViewGL();resetCloseViewCamera();try{run({gl,log,screen,canvas});}finally{delete (CLOSE_VIEW_HOOKS as any).reserve;CLOSE_VIEW_HOOKS.groundLayers.length=0;CLOSE_VIEW_HOOKS.gl=null;resetCloseViewGL();setCloseViewCanvasFactory(null);if(old===undefined)delete (globalThis as any).WebGL2RenderingContext;else (globalThis as any).WebGL2RenderingContext=old;}}
+function spellGame(now=100000){const {game:g}:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now});g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};g.save.lastAim={x:1,y:0};g.lastUpdateNow=now;assert.equal(g.castSpell('fire-burst'),true);return g;}
+function productionFrame(screen:any,g:any,now:number,log:any[]){const layer=(c:any,w:number,h:number,p:any)=>drawRangedEffects(c,g,w,h,p);CLOSE_VIEW_HOOKS.groundLayers.push(layer);try{render(screen,g,390,844,now);if(!closeViewShowing(g))drawRangedEffects(screen,g,390,844);}finally{CLOSE_VIEW_HOOKS.groundLayers.splice(CLOSE_VIEW_HOOKS.groundLayers.indexOf(layer),1);}return {showing:closeViewShowing(g),copies:log.filter(q=>q[0]==='drawImage').length,arcs:log.filter(q=>q[0]==='arc').length};}
+
+test('actual Game production renderer owns five Fire bodies once and keeps Game immutable',()=>withProjectionGPU({},({screen,log})=>{
+  const g:any=spellGame();for(const p of g.projectiles)p.age=.02;const before=structuredClone({player:g.player,projectiles:g.projectiles,orbit:g.orbit});const out=productionFrame(screen,g,100016,log);
+  assert.equal(out.showing,true);assert.equal(closeViewGLStats.projectedShots,5);assert.equal(g.projectiles.filter((p:any)=>p.fireBomb).length,5);
+  const fireVerts=[];for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+5]===11&&GLB.decal[b+7]===0xff7a2a)fireVerts.push(i);}assert.equal(fireVerts.length,60,'five heads and five bounded trails share the additive stream');
+  assert.deepEqual({player:g.player,projectiles:g.projectiles,orbit:g.orbit},before);
+}));
+
+test('critical null resources and CPU reservation failure leave ordinary Fire unmasked',()=>{
+  for(const fault of ['program','buffer','vao','texture','reserve'])withProjectionGPU(fault==='reserve'?{}:{nullKind:fault},({screen,log})=>{const g:any=spellGame();if(fault==='reserve')(CLOSE_VIEW_HOOKS as any).reserve=()=>{throw new RangeError('reserve');};const out=productionFrame(screen,g,100016,log);assert.equal(out.showing,false,fault);assert.ok(out.arcs>=10,`${fault}: ordinary five-shell bodies remain`);assert.equal(closeViewGLStats.projectedShots??0,0,fault);});
+});
+
+test('upload exception and context loss after floor capture fall back before GL canvas copy',()=>{
+  for(const fault of ['upload','loss'])withProjectionGPU(fault==='upload'?{failUpload:true}:{loseOnUpload:true},({screen,log,canvas})=>{const g:any=spellGame(),before=structuredClone(g.projectiles);const out=productionFrame(screen,g,100016,log);assert.equal(out.showing,false,fault);assert.ok(out.arcs>=10,`${fault}: ordinary fallback bodies`);assert.equal(log.some(q=>q[0]==='drawImage'&&q[1]===canvas),false,'failed GL canvas is never presented');assert.deepEqual(g.projectiles,before);});
+});
+
+test('shared caps preserve ordinary priority, then Fire, then exact Orbit reference',()=>withProjectionGPU({},({screen,log})=>{
+  const g:any=spellGame();const ordinary=Array.from({length:28},(_,i)=>({id:`o${i}`,x:g.player.x+.5+i*.01,y:g.player.y+.6,dx:1,dy:0,age:.02,speed:2,life:1,damage:1,hostile:true}));g.projectiles=[...ordinary,...g.projectiles];g.orbit={start:99900,where:`${g.area}:${g.areaId()}`,flight:{x:g.player.x+.5,y:g.player.y+.45,tx:g.player.x+4,ty:g.player.y+.45,radius:ORBIT.radius,perfect:false,damage:1}};productionFrame(screen,g,100016,log);assert.equal(closeViewGLStats.projectedShots,28);assert.ok(ordinary.every((p:any)=>p===ordinary.find((q:any)=>q.id===p.id)));assert.equal(GLB.nDecal<=28*12+12+400*6,true);
+}));
+
+test('actual quality caps are 12/20/28 and reduced motion retains heads without trails',()=>withProjectionGPU({},({screen,log})=>{
+  for(const [quality,cap] of [['low',12],['balanced',20],['full',28]] as const){const g:any=spellGame();g.presentation.effectiveQuality=quality;g.projectiles=[...Array.from({length:40},(_,i)=>({id:`${quality}-${i}`,x:g.player.x+.5+i*.005,y:g.player.y+.6,dx:1,dy:0,age:.02,speed:2,life:1,damage:1,hostile:true})),...g.projectiles];resetCloseViewCamera();productionFrame(screen,g,100016,log);assert.equal(closeViewGLStats.projectedShots,cap,quality);}
+  const g:any=spellGame();for(const p of g.projectiles)p.age=.02;g.presentation.reduceMotion=true;resetCloseViewCamera();productionFrame(screen,g,100016,log);let n=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+5]===11&&GLB.decal[b+7]===0xff7a2a)n++;}assert.equal(n,30,'five heads, no trails');
+}));
+
+test('final imported left socket owns Fire flash and exact central connector only',async()=>{
+  const names=['window','fetch','createImageBitmap'],old=new Map(names.map(n=>[n,(globalThis as any)[n]]));
+  (globalThis as any).window={};(globalThis as any).createImageBitmap=async()=>({width:1024,height:1024});(globalThis as any).fetch=async(url:any)=>{const b=fs.readFileSync(new URL(url));return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};
+  try{assert.ok(await loadCloseViewHero());withProjectionGPU({},({screen,log})=>{const g:any=spellGame(),record=g.player.castVisual;resetCloseViewCamera();productionFrame(screen,g,100016,log);let flash=0,link=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xff7a2a)flash++;if(GLB.decal[b+7]===0xff9a4a)link++;}assert.equal(flash,36,'five heads plus one left-socket flash');assert.equal(link,6,'exact central accepted shell only');assert.ok(Array.from(GLB.decal.slice(0,GLB.nDecal*DECAL_FLOATS)).every(Number.isFinite),'non-origin socket geometry is finite');
+    g.projectiles=g.projectiles.filter((p:any)=>p.id!==record.sourceId);resetCloseViewCamera();productionFrame(screen,g,100032,log);link=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xff9a4a)link++;}assert.equal(link,0,'missing center cannot borrow a side pellet');
+    g.primaryAttack(100032);resetCloseViewCamera();productionFrame(screen,g,100048,log);flash=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xff7a2a)flash++;}assert.equal(flash,24,'final primary action cancels the stale Fire cue while four heads remain');
+  });withProjectionGPU({},({screen,log})=>{const {game:g}:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:110000});g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};g.save.lastAim={x:1,y:0};g.lastUpdateNow=110000;assert.equal(g.castSpell('orbit-volley'),true);g.lastUpdateNow=110100;assert.equal(g.castSpell('orbit-volley'),true);assert.ok(g.orbit?.flight);resetCloseViewCamera();productionFrame(screen,g,110116,log);let violet=0,connector=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xb48cff)violet++;if(GLB.decal[b+7]===0xff9a4a)connector++;}assert.equal(violet,12,'one Orbit head and one left-socket flash');assert.equal(connector,0,'Orbit has no connector');assert.ok(Array.from(GLB.decal.slice(0,GLB.nDecal*DECAL_FLOATS)).every(Number.isFinite));
+    g.setPaused(true,110116);resetCloseViewCamera();productionFrame(screen,g,120000,log);let paused=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xb48cff)paused++;}assert.equal(paused,12,'pause freezes Orbit cue and flight');const back:any=new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(110116)))),200000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();productionFrame(screen,back,200000,log);let phantom=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++){const b=i*DECAL_FLOATS;if(GLB.decal[b+7]===0xb48cff)phantom++;}assert.equal(phantom,0,'restored launch descriptor creates neither ball nor flash');
+  });}finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
 });
