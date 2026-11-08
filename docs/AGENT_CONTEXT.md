@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Grounded-contact r836 packaging gate — 2026-11-08
+
+Production remains verified `r834-32b9249def93` with the publication evidence below. Spell r835 merged as official main e5bcb04a after source CI42508742453 and full/delta Astra review clear; merged CI42509441233 and Preview42509441237 are running, so r835 is not yet hosted, live or published. Grounded-contact r836 is packaged from that official main, preserving the required S-before-C order. It shares finite, height-aware ordinary player/enemy contact across both Close View paths, retains bounded overlap escape and existing movement consequences, and does not change attacks, legitimate ghost/flight exceptions, saves, generation or renderer budgets. C must not merge before the r835 Preview/hosted/publication gate. Local servers and the full local suite remain stopped.
+
 ## Verified Hammerfall publication and spell gate — 2026-11-08
 
 Production is verified `r834-32b9249def93`, commit32b9249def935f4112039ee5383a8759a3ffc196, tree9640ab40fbee158db4e746e6697e8dde6aaf6a6f. Source CI42506353026, merged CI42507220270, Preview42507220259 and Publish42508619787 succeeded; fresh Astra review833→834 plus the missing-original correction found no blockers. Live gh-pages identity and the actual Options -> System label match after Get latest/Update Ready, recent errors are none, and the existing paused250KB journey remains healthy. Hosted1280x720 acceptance covered leg lift, crossed fists, planted bent knees, arms beside torso, recovery, pause/resume, movement/weaving and Spindle/Echo/Dodge/Jump/Spell smoke without errors; no physical-phone claim. Spell candidate r835 is PR487 at source8332e07d with review clear and CI42508742453 pending; it is not merged, live or published. Contact and all later prepared candidates remain unnumbered and ordered. Local loopback/full local suite remains stopped.

@@ -15,14 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Release r835 is assigned to spell PR487 against published r834 main. No later release number is assigned; re-read fresh main after r835 merges before packaging the next focused PR.
+Release r836 is assigned to the grounded-contact candidate against official r835 main. No later release number is assigned; re-read fresh main after r836 merges before packaging the next focused PR.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 835 | Codex | `claude/close-view-spell-gestures` / #487 | Accepted spell gestures, free-hand origins and public manual cast inspections | Source8332e07d/tree4283822d; scoped review clear and CI42508742453 pending. Not merged, previewed, hosted, live or published. |
-| — | Codex | `claude/close-view-grounded-contact` | Grounded bodies, overlap escape, accepted movement consequences and items | Prepared; final main/release/hosted gates remain. |
+| 836 | Codex | `claude/close-view-grounded-contact` | Grounded ordinary bodies, overlap escape and height-aware accepted movement consequences | Packaging against official r835 main e5bcb04a; focused checks/build and PR gates pending. Merge is held behind r835 Preview/hosted/publication sequencing. |
+| 835 | Codex | `claude/close-view-spell-gestures` / #487 | Accepted spell gestures, free-hand origins and public manual cast inspections | Merged e5bcb04a after source CI42508742453 and full/delta Astra review clear. Merged CI42509441233 and Preview42509441237 are running; not hosted, live or published. |
 | — | Codex | `claude/close-view-traversal-blocks` | Legacy/current stone steps, stacking and active lifetime | Prepared; final main/release/hosted gates remain. |
 | — | Codex | `claude/close-view-cleaver-four-strike` | Right-handed Cleaver and four up/down cuts | Prepared with supported legacy/opaque state and unchanged canonical hit rules; scoped Astra clear, hosted gate remains. |
 | — | Codex | `claude/close-view-target-recenter` | Finite centered Target recenter with shared presentation facing | Combined with prior source passes; scoped Astra clear, hosted gate remains. |
