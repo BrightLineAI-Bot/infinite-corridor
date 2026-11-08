@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 824: returnable excavation support
+
+**CODE:** New excavations in supported interior heightfields use the exact approached ramp/floor edge height, including fractional levels, and validate a return crossing before crafting or spending a shovel. Optional schema-14 digging surfaces persist against the existing bounded coordinate list and replay the recorded support without recomputing neighbours. Commit rechecks reject stale or sealed targets, builds and area caps. A quiet production-backed Close View excavation fixture exposes the real DIG-AUDIT0 ramp witness through normal Act and movement controls.
+
+**BOUNDARY:** Existing coordinate-only tunnels retain their historical geometry; existing trapped pockets keep the ordinary I'm stuck recovery. No generator or treasure namespace bump, no regeneration of explored/pinned content, and no relaxation of building, tower/sealed-wall, movement or lethal-terrain rules. Unknown valid/future metadata remains bounded and compatible; temporary places receive no persistent dig record. Hosted checks and physical-phone performance remain separate evidence gates.
+
 ## Release 823: directional quicksteps and coherent Wayfarer gait
 
 **CODE:** The imported normal Wayfarer uses a grounded derivative of the source pre-tumble crouch for forward, backward and lateral quicksteps. Accepted presentation metadata preserves actual prior facing, phase, speed and logical idle phase through pause/reload; a bounded weak pose cache keeps render sampling separate from game state. Ordinary locomotion remains pure Walk, while the derived faster Run sampler closes its loop seam. Idle, partial-speed, diagonal and callback-free pause transitions are regression checked.
