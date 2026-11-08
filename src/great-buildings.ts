@@ -13,6 +13,7 @@
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
 import { hashSeed, rng, byHash } from "./random.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms } from "./close-view-room-routing.ts";
 
 export const BUILDINGS = {
   version: 3, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
@@ -232,7 +233,7 @@ export function buildingPlan(base, V = 1) {
   const breach = (hashSeed(`${P.seed}:great-building:v1:${P.rx}:${P.ry}:breach`) % 1000) / 1000 < BUILDINGS.breach ? { x: 3 + h("breach") % (W - 6), y: 0 } : null;
   let arrive = entry;
   for (let f = 1; f <= P.floors; f++) {
-    const layout = V >= 4 ? layFloorV4 : V === 3 ? layFloorV3 : layFloor;
+    const layout = V === CLOSE_VIEW_ROOM_ROUTING.keepVersion && P.style === "keep" ? layCloseViewRooms : V >= 4 ? layFloorV4 : V === 3 ? layFloorV3 : layFloor;
     const L = layout(base, f, W, H, S, arrive, f === 1 ? [{ ...door, v: 2 }, { ...entry, v: 2 }, ...(breach ? [{ ...breach, v: 3 }, { x: breach.x, y: 1, v: 3 }] : [])] : []);
     const top = f === P.floors, far = farthest(L, arrive, (x, y) => true);
     const up = top ? null : far[h(`up${f}`) % Math.max(1, Math.ceil(far.length * .12))];

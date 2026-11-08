@@ -13,6 +13,7 @@
 // ghouls. Relics in the chambers tell what happened to the Fivefold Court. Everything is a hash of the seed and the centre;
 // a Pentagon stands only where all nine sections are new ground (`atlas.pentVersion`).
 import { hashSeed, rng, byHash } from "./random.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms } from "./close-view-room-routing.ts";
 import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest } from "./great-buildings.ts";
 import { carveMaze } from "./labyrinths.ts";
 import { LIFT_PER_LEVEL as LIFT } from "./landscape.ts";
@@ -524,7 +525,8 @@ export function generatePentagonChamber(seed, id) {
   let grid, room = null, mat = null;
   if (q.hall) grid = null; // v8: a grand hall lays its own floor plan (pentagon-halls.ts), below; its size is its own (q.W, q.H)
   else if (q.floorKind === "cellar" && plan.V < 9) grid = carveMaze(laid, { n: q.n }, W, H, open);
-  else { const F = (plan.V >= 9 ? layFloorV3 : layFloor)(plan.V >= 9 ? base : laid, 1, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; }
+  else { const layout = plan.V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion ? layCloseViewRooms : plan.V >= 9 ? layFloorV3 : layFloor;
+    const F = layout(plan.V >= 9 ? base : laid, 1, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; }
   const tiles = q.hall ? layPentagonHall(base, q.hall.type, W, H, open, arrive, S.wall) : [];
   if (!q.hall) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, v = grid[k], cellar = q.floorKind === "cellar";
     if (v === 1 || v === 4) tiles.push({ x, y, kind: v === 4 ? "rubbleFloor" : cellar ? "cellarWall" : S.wall, blocked: true, detail: (x * 3 + y) % 4 });

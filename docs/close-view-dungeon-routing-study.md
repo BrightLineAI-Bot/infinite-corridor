@@ -56,3 +56,133 @@ The dungeon family owns a reproducible floor/transition graph with stable semant
 - Schema 14 malformed/future/unknown fields, exact resume and production/Proving Ground isolation retain their current contracts.
 
 Sol performed the primary-source and repository audit; Astra reviewed the bounded adaptation recommendation. No automatic adoption or publication authority follows from either the study or its review. The next product choices are revision versus a new family, dependency versus internal adaptation, and desired branch/loop/floor distributions; the recommendation is a versioned internal adaptation first, with ranges tuned from matched layouts rather than guessed here.
+
+
+## Close View Old Keep / Pentagon prototype — 2026-11-08
+
+Owner correction supersedes the initial Room Maze recommendation above: this experiment targets Close View inside enterable overworld **Old Keeps** and Pentagon chambers. It does not change the Room Maze family or ordinary dungeons. The current `great-buildings.ts` Old Keep has three or four separately generated floors and an exterior door. The historical `keeps.ts` Great Keep is an outdoor heightfield structure, generated only on already-pinned `keepVersion` sections; it has no Close View interior. Castle Great Keep parts and compound towers are not included.
+
+### Implementation and isolation
+
+The original internal `src/close-view-room-routing.ts` helper partitions the existing 44×40 keep / 45×39 ordinary Pentagon floor into nine separated room regions. A locally shuffled twelve-edge adjacency graph supplies an eight-edge spanning tree and one or two extra connectors; two-tile corridors link the rooms. Independent room, connector, reserved-port and material RNG streams derive from family identity, floor and experiment revision 1. No upstream code, dependency, global RNG, time cutoff or engine replacement is introduced.
+
+Only exact keep interior version **5** (standalone keep style) and Pentagon version **10** select the candidate. Production defaults remain **4 / 9**. Existing dispatches and every earlier generator remain unchanged. Existing semantic ports, up/down destinations, roof return metadata, trial/boss/shard/lever gates and the Pentagon macro graph are retained. Keeps recompute their paired stair positions coherently from their newly versioned floor plans. True multi-floor routes remain separate maps. No fake stacked surface or additional semantic floor edge is introduced.
+
+Pentagon grand halls keep their existing generator and templates. The new site namespace can change their dressing/placement hashes; the complete v10 site is not claimed byte-identical to v9 outside ordinary chambers. All candidate hall ports and usable objects are included in the walking sweep.
+
+Four accessible Close View scenarios compare matched seeds: `routing-keep-baseline`, `routing-keep-candidate`, `routing-pentagon-baseline`, `routing-pentagon-candidate`. They enter actual generated exterior doors through normal Game interactions. Keep discovery is bounded to 24 actual section loads and rings below 48. Pentagon candidates override version selection only on their scratch Game instance and chosen site, because production's selector caps adoption at v9. Restart/reconstruction reinstalls the override. These fixtures are **not supported production exports**. Diagnostics state this scope. No prototype/global override or save-schema change exists. Existing lab defaults are unchanged. Guardian/trial actors remain, so opening a roof or passing a boss gate still requires normal progression. Roofs and courts retain the ordinary outdoor view.
+
+### Matched layout evidence
+
+Metrics below use cardinal flood fill with `canStep` for an ordinary walking actor, excluding holes. “Farthest use” is the longest shortest route from entry to an interactable tile; “farthest tile” also includes optional floor exploration. These are navigation diagnostics, not combat quality, human legibility, phone performance or product acceptance. More distance is not automatically better. The initial layout has five room leaves; the candidate has nine. Candidate design graph has 1–2 independent loops; these graph edges must not be confused with tile-graph cycles inside open rooms.
+
+| Matched site | Walkable reached tiles (current → candidate) | Farthest use (steps) | Farthest tile (steps) | Ramp tiles |
+|---|---:|---:|---:|---:|
+| Old Keep AUDIT0, floor 4 | 390 → 1046 | 66 → 69 | 67 → 78 | 10 → 62 |
+| Old Keep DIG-AUDIT0, floor 4 | 319 → 1065 | 52 → 61 | 67 → 62 | 28 → 41 |
+| Old Keep ROUTING0, floor 4 | 338 → 1017 | 41 → 55 | 42 → 56 | 34 → 18 |
+| Pentagon ROUTING0 (8,-8), o0 | 373 → 1138 | 59 → 59 | 59 → 61 | 6 → 62 |
+
+AUDIT0 previously exposed the v3 wall-hosted down-ladder; DIG-AUDIT0 exposed the earlier excavation support defect. They remain fixed-version comparison seeds, not omitted outliers. These samples show longer optional/required walking distances as well as more separated rooms; encounter pacing still needs hosted play.
+
+The usable-floor increase is substantial, roughly 2.7–3.3 times the baseline in these keep samples. Generated enemy totals are unchanged (AUDIT0: 6/6; DIG-AUDIT0: 4/4; ROUTING0: 6/6), distributed across nine rooms instead of five. More clearance gives room to move and more route choices, but it also lowers encounter density and may produce empty-feeling travel, repetitive room silhouettes or extra backtracking. The candidate uses compact two-tile connector passages between broad rooms; doorway camera comfort and the transition from broad combat space to those passages need actual Close View review. The room graph and longer routes establish neither visual variety nor improved pacing. No enemy count, balance or art tuning is included.
+
+Matched tile diagrams (`#` wall, `.` floor, `~` ramp, `o` hole, `@` entry, `D` down, `U` up, `E` exit, `R` roof ladder, `C` cache):
+
+Old Keep AUDIT0, floor 4: current on the left, candidate on the right.
+
+```text
+############################################    ############################################
+####################....####################    ############################################
+#####......~~...........####################    ##....D....~~.#################...........##
+###........~~.oo........####################    ##....@....~~.##............###...........##
+###...@#############....####################    ##.........~~.##............###...........##
+###..#D#############....####################    ##.........~~.##............###...........##
+###..################..#####################    ##.........~~.##............###...........##
+###..################..#####################    ##.........~~...............###...........##
+###..################..#####################    ##.........~~.............oo###...........##
+###..################..#####################    ##.........~~.##..........oo###...........##
+###..################..#####################    ##.........~~.##...oo.....o.###...........##
+###..################..#####################    ##.........~~.##...oo.......###....oo.....##
+###..################..#####################    #######..############..#############..######
+###..################..#####################    #######..############..#############..######
+###..################..#####################    ###........~~.##............########..######
+###..###########....oo......################    ###........~~.##....oo......###....oo.....##
+###..###########....oo......################    ###........~~.##....oo......###....oo.....##
+###..###########....o.......################    ###........~~.##....oo......###....oo.....##
+##.....#########............##########...###    ###........~~.##....o.......###....o.oo...##
+##.........~~........................oo..###    ###........~~........................oo...##
+##.........~~............................###    ###........~~........................o....##
+##.........~~...............##########...###    ###........~~.##............###...........##
+################............##########...###    ###........~~.##............###...........##
+################............##########...###    ###........~~.##............###...........##
+################............##########...###    ###........~~.##............###...........##
+#####################..###############...###    ######################..############..######
+#####################..###############...###    ######################..############..######
+#####################..###############...###    ######################..############..######
+#####################..###############...###    ##C........~~.###.........oo###...........##
+#####################..###############...###    ##.........~~.###.........oo###...........##
+#####################..###############...###    ##.........~~.###.........oo###...........##
+#####################..###############...###    ##.........~~.###.........oo###...........##
+####################....................C###    ##.........~~.............o...............##
+####################.....................###    ##.........~~.............................##
+####################...................#####    ##.........~~.###..........o###...........##
+############################################    ##.........~~.###..........o###...........##
+############################################    ##.........~~.###...........###...........##
+############################################    ##.........~~.###...........###...........##
+############################################    ############################################
+############################################    ############################################
+```
+
+Pentagon ROUTING0 (8,-8), o0: current on the left, candidate on the right.
+
+```text
+#########E###################################    #########E###################################
+#########............########################    #########..##################################
+########.................####################    ###...........###...........##.~~..........##
+####################.....####################    ###...........###...........##.~~..........##
+####################.....####################    ###...........###...........##.~~..........##
+####################.....####################    ###...........###...........##.~~..........##
+####################.....####################    ###...........###..............~~..........##
+#####################..######################    ###...........###..............~~..........##
+#####################..######################    ###...........###...........##.~~..........##
+#####################..######################    ###...........###...........##.~~..........##
+#####################..######################    ###...........###...........##.~~..........##
+#####################..######################    ###...........###...........##.~~..........##
+#####################..######################    ########..############..############..#######
+#####################..######################    ########..############..############..#######
+###############..............################    ###...........###...........###~~..........##
+###############..............##############@.    ###...........###...........###~~..........@.
+###############..............############...#    ###...........###...........###~~...........#
+##....#########..............#########......#    ###...........###...........###~~..........##
+##.............................~~.........###    ###............................~~..........##
+##.............................~~.........###    ###............................~~..........##
+##.............................~~.........###    ###...........###...........###~~..........##
+#.....#########..............#########....###    ###...........###...........###~~..........##
+#.#############..............################    ###...........###...........###~~..........##
+#.#############..............################    ###...........###...........###~~..........##
+#.#############..............################    ########..###########..#############..#######
+#.###################...#####################    ########..###########..#############..#######
+#.###################...#####################    ###...........##............##.~~..........##
+#.###################...#####################    ###...........##............##.~~..........##
+#.###################...#####################    ###...........##............##.~~..........##
+#.###################...#####################    ###...........##............##.~~..........##
+#.###################...#####################    ###...........##............##.~~..........##
+..###################...#####################    ............................##.~~..........##
+#####################...#####################    #...........................##.~~..........##
+####################.....####################    ###...........##............##.~~..........##
+####################.....####################    ###...........##............##.~~..........##
+####################.....####################    ###...........##............##.~~..........##
+##################.......####################    ###...........##............##.~~..........##
+###################.#########################    ###################..########################
+###################E#########################    ###################E#########################
+```
+
+### Validation and remaining gates
+
+- Existing offline baseline: 23/23 passed (interior-v4-arrival, interior-terrain, pentagon-balconies). After implementation, the new routing suite plus unchanged arrival/terrain suites passed 19/19; the expanded final routing suite passed 8/8. Final unchanged legacy suites passed 58/58: `node --test tests/great-buildings.test.ts tests/pentagon.test.ts tests/pentagon-grand-halls.test.ts tests/interior-v4-arrival.test.ts tests/interior-terrain.test.ts`. Final candidate command: `node --test tests/close-view-room-routing.test.ts`.
+- The final source regression covers 1,000 deterministic/order-independent room layouts with material-stream isolation; 128 complete keep/Pentagon sites (512 keep floor checks plus 3328 Pentagon chamber checks including grand halls); usable-object approaches, actual stairs/landings, roof ladder presence, exact macro/progression plan equivalence to v9, and real fixture enter/exit/reconstruction and keep roof travel. Legacy v1–3/Pentagon1–9 golden tests are unchanged. A new independent v4 digest covers all three standalone styles, four floors and PIN/AUDIT0/DIG-AUDIT0/ROUTING0.
+- Living keep guardians still refuse the roof exit; defeat then permits a real elevation-5 roof landing. Living Pentagon Heart keepers still refuse downward travel. Unknown schema-14 canaries survive the unchanged save path. Existing exact-resume tests remain unchanged. No candidate production-export compatibility is claimed.
+- Mock-WebGL source execution submits geometry for both candidates at low/balanced/full tiers. This is not a real GPU screenshot or hardware measurement. Hosted traversal, actual GPU visual review and physical-phone timing remain pending. Local loopback/server/full npm checks were not retried after the established EACCES stop.
+- New helper work is bounded: nine room regions, twelve candidate edges, at most ten selected connectors, at most 32 reserved points and 4096 tiles; each corridor advances only along cardinal coordinate differences. No retry loop or wall-clock termination exists. The existing inherited terrain/decoration passes retain their existing bounds. No per-frame generation is added.
+- The coordinator registered `close-view-room-routing.ts` in the explicit build module list and both service workers; the final sequential `npm run build` passed at the unchanged release 825. No release number is reserved and neither experimental revision is adopted into production. Integration stays at the construction stage after the earlier character/tool/camera passes. Full Linux CI and hosted acceptance remain separate gates.
