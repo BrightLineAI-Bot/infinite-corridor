@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 822: bounded camera side clearance and semantic target activation
+
+**CODE:** Try at most four lateral camera alternatives within existing shoulder reach when a centered boom compresses. Entry heading scoring considers both forward view and safe rig reach; persistent side preference avoids corner flicker. Target controls accept pointer, keyboard and assistive activation once per action, with existing drift rejection and no leaked attack/jump input.
+
+**BOUNDARY:** No FOV, world layout, collision, damage, save or generator change. Walls and arches retain final authority; some cramped rooms still cannot fit a full body. Probe counts are bounded, not measured phone FPS. The queued combat and atmosphere direction records add no new mechanics.
+
 ## Release 821: continuous imported Wayfarer neck
 
 **CODE:** A source-derived six-sided fabric bridge closes the rear/side gap left when the Rogue hood was replaced by the Cleric head. Its lower ring exactly copies the retained collar positions and weights; upper rings follow Rogue Head3 and extend into the hair, with a concealed cap. Existing outer-coat fabric UV/palette supplies the garment. The derivative adds19vertices/30triangles, for3602vertices/3170triangles and86448dynamicbytes/frame, within the existing3328-body cap. Converter and actual sampled regressions cover189 poses with zero lower-seam distance.

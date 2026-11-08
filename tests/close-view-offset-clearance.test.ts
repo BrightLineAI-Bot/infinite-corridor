@@ -140,7 +140,7 @@ test('actual submitted outer player and loaded hero vertices retain readable hoo
     globalThis.window = {}; globalThis.createImageBitmap = async () => ({ width: 1024, height: 1024 });
     globalThis.fetch = async url => { const u = new URL(url); assert.equal(u.protocol, 'file:'); const b = fs.readFileSync(u); return { ok: true, json: async () => JSON.parse(b.toString()), arrayBuffer: async () => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), blob: async () => new Blob([b]) }; };
     const asset = await loadCloseViewHero(); assert.ok(asset); render(screen, g, 1280, 720, now += 16);
-    assert.equal(closeViewGLStats.heroTriangles, 3140, 'real imported hero admission stays intact'); assert.ok(gl.hero?.length > 0);
+    assert.equal(closeViewGLStats.heroTriangles, 3170, 'real imported hero admission stays intact'); assert.ok(gl.hero?.length > 0);
     const imported = projectedBounds(gl.hero, 6, gl.hero.length), headMesh = asset.meta.meshes.find(m => m.node === asset.meta.headAttachment.node);
     assert.ok(headMesh); const headVertices = gl.hero.subarray(headMesh.firstVertex * 6, (headMesh.firstVertex + headMesh.vertexCount) * 6);
     const head = projectedBounds(headVertices, 6, headVertices.length);

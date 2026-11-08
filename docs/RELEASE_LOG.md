@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r821 on main, the next game change takes main+1 at merge preparation.
+Taken at merge time: main's release + 1. With r821 on main, this PR takes r822.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| — | Codex | `claude/close-view-shoulder-clearance` | Safe side camera clearance and semantic lock activation | 219 focused checks, local build and independent 2880-frame component review passed; number assigned during final packaging. Owner weapon/combat/atmosphere/reuse notes preserved as queued follow-ups. |
+| 822 | Codex | `claude/close-view-shoulder-clearance` | Bounded side camera clearance and semantic target activation | 219 focused checks/build and independent 2880-frame component review passed. Integrated repaired Wayfarer; final asset/release checks, exact-head CI and Preview/hosted acceptance pending. Queued owner combat/atmosphere/reuse direction preserved. |
 | 821 | Codex | `claude/wayfarer-neck-bridge` / #470 | Close the imported hero rear neck gap with source-coherent fabric | Merged c4303ef9b07cea2a4934ec439ee02d3102649b35. Exact-head CI42431390795 passed; fresh Astra full review (818→821 source5a020acb): no blockers. Preview42432379936 and repaired hosted acceptance pending. 34 focused checks/build/freeze and 189-frame seam/art acceptance passed. |
 | 820 | Codex | `claude/wayfarer-rogue-asset` / #469 | Imported protective Wayfarer with adult proportions and amber eyes | Merged10672c8568e1c0f30844437754b0083f8b4dce2d. CI42426824705, merged CI42427897135 and Preview42427897177 passed; identity/link verified. Normal browser retry authorized and loaded. Actual GPU/rear topology found missing neck surface; held for focused bridge repair before publication. |
 | 819 | Codex | `claude/mobile-close-view-camera` / #468 | Cramped-space camera, pause ownership and reachable target lock | Merged6d227b4301b4e8fabaa2437250274e913fad2eb8. CI42425201941, merged CI42426204013 and Preview42426203941 passed; candidate identity/link verified. Held for inclusion in repaired-character publication; inherited extreme entrance framing and semantic activation are tracked in a preserved follow-on branch. |
