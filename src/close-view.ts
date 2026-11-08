@@ -2177,10 +2177,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           gear.profile = held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           offset = writeCloseViewHeroGear(state.vertices, offset, gear);
-          if(acceptedTool&&input.action===action&&['ranged','melee','cast'].includes(action.kind)&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,state.heroFrame.rightSocket)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
+          const right=state.heroFrame.rightSocket,rx=right?.[12],ry=right?.[13],rz=right?.[14];
+          if(acceptedTool&&input.action===action&&['ranged','melee','cast'].includes(action.kind)&&finite(rx)&&finite(ry)&&finite(rz)&&Math.hypot(rx-(who.x+.5),ry-(who.y+.45))<=.9&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,right)&&Math.hypot(state.toolEmission[0]-rx,state.toolEmission[1]-ry,state.toolEmission[2]-rz)<=.4&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
           const spellProfile=action.kind==='cast'&&cast&&['fan-release','orbit-launch'].includes(action.profile)?action.profile:null,left=state.heroFrame.leftSocket;
           const lx=left?.[12],ly=left?.[13],lz=left?.[14];
-          if(spellProfile&&left?.length>=16&&finite(lx)&&finite(ly)&&finite(lz)&&actor.alpha>0&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,lx,ly)){
+          if(spellProfile&&left?.length>=16&&finite(lx)&&finite(ly)&&finite(lz)&&actor.alpha>0&&Math.hypot(lx-(who.x+.5),ly-(who.y+.45))<=.9&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,lx,ly)){
             const fire=spellProfile==='fan-release'&&castRecord?.spellKind==='fire-burst'&&castRecord?.variant==='cast'&&typeof castRecord.sourceId==='string'&&castRecord.sourceId.length<=160&&finite(castRecord.aim?.x)&&finite(castRecord.aim?.y);
             const orbit=spellProfile==='orbit-launch'&&castRecord?.spellKind==='orbit-volley'&&castRecord?.variant==='launch'&&validOrbit(g,g.orbit?.flight);
             if(fire||orbit){state.spellEmission[0]=lx;state.spellEmission[1]=ly;state.spellEmission[2]=lz;state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
