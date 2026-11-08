@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Hosted Echo correction and current queue — 2026-11-08
+
+Production remains verified r829-9c21fb237fe9 (Publish42482179727, live identity and actual Options -> System match). r830 merged7f0480a8bacd; CI42484077734/42485138197 and Preview42485138154 succeeded, but hosted acceptance found the new quiet targets resume attacking after the normal governor clears oversized stun. Do not publish r830 independently. Corrective r831 uses an attackable stationary practice behavior and sixty-second combat/pause/JSON regressions. Original scenarios, production AI, damage/governor rules, schema14 and old pins remain unchanged. Prepared T18dd/Hfb789/Sfb2/C3c76/Bf9/A27/Rb428 work is preserved in the ordered manifest; later unions/gates remain explicit. Astra, required regressions and continued focused publication are authorized in this conversation subject to all gates. Local loopback/full local suite remains stopped; full suite runs in CI.
+
 ## Latest verified publication and next pass — 2026-11-08
 
 Production is `r829-9c21fb237fe9`, commit `9c21fb237fe93bb96b1c549eaed70a3416b808dc`, tree `48fece515eb1c38adb4232c2434857aa37300b88`. Publish42482179727, live identity and actual Options → System match, recent errors none. Fresh Astra828→829 review, exact CI/Preview and hosted Salvage actions/switching passed. Stage3 r830 prepares raised Echo afterimages, Salvage cone support, failed-GPU-frame fallback and three quiet inspection fixtures. The owner additionally chose brief tool startup before physical release, followed by melee-cancelable recovery with cooldown preserved; that distinct stage remains in the ordered tool manifest and has not changed mechanics in this PR. All required regression scope and continued focused publishing are authorized by the current conversation subject to project gates; local loopback remains stopped.
