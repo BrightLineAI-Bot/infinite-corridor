@@ -2121,6 +2121,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
         else if (cast) { action.kind = 'cast'; action.durationMs = MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
+        // Generic primaries retain their accepted logical breathing phase at both blend endpoints.
+        if (action.kind === 'melee' && action.profile === 'melee' && Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs;
         input.action = action.kind ? action : null;
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           const gear = state.heroGear;
