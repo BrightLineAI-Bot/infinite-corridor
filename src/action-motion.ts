@@ -295,9 +295,8 @@ export function primaryVisualStage(record) {
     ? { kind: 'legacy', step: record.primaryStep }
     : null;
 }
-export function primaryCarryStage(record, combo) {
-  const active = primaryVisualStage(record);
-  if (active) return active;
+export function primaryCarryStage(record, combo, active = false) {
+  if (active) return primaryVisualStage(record);
   const saved = normalizePrimaryCombo(combo);
   if (!saved || saved.weaponKind !== 'verge-cleaver') return null;
   if (Number.isInteger(saved.v) && saved.v > 2) return { kind: 'opaque' };

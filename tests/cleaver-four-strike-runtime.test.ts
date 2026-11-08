@@ -24,6 +24,8 @@ test('pure v2 motion, stage and carry helpers preserve legacy and opaque provena
   assert.deepEqual(primaryVisualStage({primaryMotion:{v:2,step:4}}),{kind:'cleaver-four',step:4,direction:-1});
   assert.deepEqual(primaryVisualStage({primaryStep:3}),{kind:'legacy',step:3});
   assert.deepEqual(primaryVisualStage({primaryMotion:{v:9,future:true}}),{kind:'opaque'});
+  assert.deepEqual(primaryCarryStage({primaryMotion:{v:2,step:4}},null,true),{kind:'cleaver-four',step:4,direction:-1});
+  assert.equal(primaryCarryStage({primaryMotion:{v:2,step:4}},null),null,'inactive records cannot invent carry provenance');
   assert.deepEqual(primaryCarryStage(null,{weaponKind:'verge-cleaver',step:2,future:8}),{kind:'legacy',step:2});
   assert.deepEqual(primaryCarryStage(null,{weaponKind:'verge-cleaver',v:2,step:3}),{kind:'cleaver-four',step:3,direction:1});
   assert.deepEqual(primaryCarryStage(null,{weaponKind:'verge-cleaver',v:5,step:99}),{kind:'opaque'});
