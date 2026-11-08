@@ -44,14 +44,14 @@ for (const side of [-1, 1]) robot.push(
   block(.15,side*.23,.08,.17,.11,.07,hullRust,side,-.03,.68),
 );
 
-// Empowered: fitted human anatomy under tapered graphite/green-grey plates. The reference contributes
-// only its layered hard-suit language: restrained shoulder/head framing, normal hands and no cables.
+// Readiness fallback only. The normal path skins the approved imported adult and the bounded overlay
+// below. This body matches that 1.68 source-height envelope without the old pelvis gap or diamond head.
 const powerSuit = [
-  part(verticalLoft([[0,.12,-.27],[.005,.185,-.07],[-.012,.155,.19],[-.035,.105,.29]],6),0,0,1.0,1,1,1,suitGreen,0,0,1,0,true),
-  part(ellipsoid(6,1),.12,0,1.20,.17,.18,.205,ironEdge,0,.12,1.20,0,true),
-  block(.284,0,1.20,.016,.125,.052,glass),
-  block(-.13,0,1.01,.07,.135,.20,iron),
-  ...legs(suitLeather,.92),
+  part(verticalLoft([[0,.145,-.36],[.005,.20,-.12],[-.012,.175,.18],[-.035,.115,.34]],6),0,0,1.08,1,1,1,suitGreen,0,0,1.08,0,true),
+  part(ellipsoid(6,2),.11,0,1.49,.17,.18,.19,ironEdge,0,.11,1.49,0,true),
+  block(.278,0,1.49,.016,.125,.052,glass),
+  block(-.13,0,1.12,.07,.135,.22,iron),
+  ...legs(suitLeather,1),
 ];
 // The source suit's two-armed amber spiral is body geometry, so it stays on the chest and occludes correctly.
 const sigil = [];
@@ -62,9 +62,47 @@ for(const arm of [0,Math.PI])for(let i=0;i<4;i++){
 for(let i=0;i<4;i++){const a=i*Math.PI/2,b=(i+1)*Math.PI/2;sigil.push([[0,0,0],[0,Math.cos(a)*.012,Math.sin(a)*.012],[0,Math.cos(b)*.012,Math.sin(b)*.012]]);}
 powerSuit.push({...part(sigil,.314,0,1.05,1,1,1,0xb9925f),axialSpin:true});
 for (const side of [-1,1]) powerSuit.push(
-  part(curvedTube([[-.015,side*.20,1.17,.07],[.035,side*.265,.96,.055],[.12,side*.27,.77,.042]],4),0,0,0,1,1,1,suitGreen,side*2,0,1.18),
-  part(bevel,.14,side*.27,.82,.082,.068,.13,bronze,side*2,0,1.18,0,true),
+  part(curvedTube([[-.015,side*.21,1.30,.07],[.035,side*.275,1.05,.055],[.12,side*.28,.80,.042]],3),0,0,0,1,1,1,suitGreen,side*2,0,1.30),
+  part(bevel,.14,side*.28,.82,.082,.068,.13,bronze,side*2,0,1.30,0,true),
 );
+
+// Bind-space outer-surface armor for the imported adult rig. Each triangle has one deliberate bone
+// binding so flexion creases remain clear. Coordinates are measured from the shipped fitted source;
+// their .014-.03 source-unit stand-off becomes roughly .008-.018 tile at the approved height.
+const armor = [];
+const armorQuad = (node,color,a,b,c,d) => armor.push({node,color,vertices:[a,b,c,a,c,d]});
+const G=0x35423b,L=0x493d34,B=0x9b7950,A=0xd39a58;
+// Torso: four front facets, three back facets.
+armorQuad(24,G,[-.18,1.58,.235],[0,1.56,.255],[0,1.78,.255],[-.17,1.82,.235]);
+armorQuad(24,G,[0,1.56,.255],[.18,1.58,.235],[.17,1.82,.235],[0,1.78,.255]);
+armorQuad(24,G,[-.17,1.82,.235],[0,1.78,.255],[0,2.00,.225],[-.12,1.98,.215]);
+armorQuad(24,G,[0,1.78,.255],[.17,1.82,.235],[.12,1.98,.215],[0,2.00,.225]);
+armorQuad(24,L,[-.17,1.60,-.19],[.17,1.60,-.19],[.15,1.78,-.205],[-.15,1.78,-.205]);
+armorQuad(24,L,[-.15,1.78,-.205],[0,1.76,-.22],[0,1.99,-.19],[-.12,1.97,-.18]);
+armorQuad(24,L,[0,1.76,-.22],[.15,1.78,-.205],[.12,1.97,-.18],[0,1.99,-.19]);
+// Collar, clear of the neck flexion ring.
+armorQuad(4,B,[-.13,1.94,.15],[0,1.91,.20],[0,2.01,.19],[-.10,2.03,.14]);
+armorQuad(4,B,[0,1.91,.20],[.13,1.94,.15],[.10,2.03,.14],[0,2.01,.19]);
+armorQuad(4,L,[-.10,2.03,-.08],[.10,2.03,-.08],[.09,2.07,.05],[-.09,2.07,.05]);
+for(const [side,node] of [[1,12],[-1,22]]){
+  const x=.34*side,outer=.47*side;
+  armorQuad(node,G,[x,1.84,.16],[outer,1.80,.10],[outer,1.67,.08],[x,1.70,.17]);
+  armorQuad(node,G,[outer,1.80,.10],[.45*side,1.82,-.10],[.44*side,1.68,-.11],[outer,1.67,.08]);
+  armorQuad(node,B,[.45*side,1.82,-.10],[x,1.83,-.13],[x,1.69,-.14],[.44*side,1.68,-.11]);
+}
+for(const [side,thigh,shin] of [[1,30,29],[-1,32,31]]){
+  armorQuad(thigh,G,[.07*side,1.21,.205],[.28*side,1.19,.205],[.25*side,.88,.215],[.08*side,.90,.215]);
+  armorQuad(thigh,L,[.28*side,1.19,.205],[.30*side,1.16,-.02],[.27*side,.88,-.02],[.25*side,.88,.215]);
+  armorQuad(shin,G,[.09*side,.62,.205],[.29*side,.61,.205],[.26*side,.30,.205],[.10*side,.31,.205]);
+  armorQuad(shin,B,[.29*side,.61,.205],[.31*side,.58,-.01],[.28*side,.31,-.01],[.26*side,.30,.205]);
+}
+// Compact two-arm amber chest sigil: six quads / twelve triangles, no independent oscillator.
+for(const side of [-1,1])for(let i=0;i<3;i++){
+  const y0=1.73+i*.065,y1=y0+.052,x0=side*(.018+i*.025),x1=side*(.035+(i+1)*.025);
+  armorQuad(24,A,[x0,y0,.270],[x1,y0+.018,.272],[x1,y1+.018,.272],[x0,y1,.270]);
+}
+export const CLOSE_VIEW_POWER_SUIT_ARMOR = Object.freeze(armor);
+export const CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES = armor.reduce((n,p)=>n+p.vertices.length/3,0);
 
 // Ember Form grows into a guarded striking form. Curved cinder plates and flame crests change its
 // outline; the hot seams remain readable when reduced motion suppresses secondary sway.

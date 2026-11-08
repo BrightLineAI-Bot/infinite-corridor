@@ -2,7 +2,7 @@
 export const CLOSE_VIEW_PLAYER_FORM_PROFILES = Object.freeze({
   playerIronFists: Object.freeze({ head: 1.68, lift: 0, pose: 'fist' }),
   playerRobot: Object.freeze({ head: 1.49, lift: 0, pose: 'robot' }),
-  playerPowerSuit: Object.freeze({ head: 1.40, lift: 0, pose: 'suit' }),
+  playerPowerSuit: Object.freeze({ head: 1.68, lift: 0, pose: 'suit' }),
   playerEmberForm: Object.freeze({ head: 1.91, lift: 0, pose: 'ember' }),
 });
 

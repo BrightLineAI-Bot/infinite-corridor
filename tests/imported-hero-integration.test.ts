@@ -47,9 +47,10 @@ test('actual renderer gates imported normal player on readiness, preserves forms
     const active=gl.uploads.at(-1),remaining=g.player.attackUntil-110046;
     g.setPaused(true,110046);g.setPaused(false,115046);render(screen,g,390,844,115046);
     assert.equal(g.player.attackUntil-115046,remaining);assert.deepEqual(gl.uploads.at(-1),active,'real Game pause shift preserves partial accepted-action geometry');
-    for(const id of ['wayfarer-iron-fists','wayfarer-active-robot','wayfarer-empowered-suit','wayfarer-ember-form']){
+    for(const id of ['wayfarer-iron-fists','wayfarer-active-robot','wayfarer-ember-form']){
       const form=fixture(id);resetCloseViewCamera();render(screen,form,390,844,100000);assert.equal(closeViewGLStats.heroTriangles,0,id+' keeps actual native special form');
     }
+    const powered=fixture('wayfarer-empowered-suit');resetCloseViewCamera();render(screen,powered,390,844,100000);assert.equal(closeViewGLStats.heroTriangles,3170,'empowered state keeps the approved imported adult body');assert.ok(closeViewGLStats.modelTriangles>=3230,'bounded armor shares the existing native equipment stream');const poweredBody=gl.uploads.at(-1);powered.setPaused(true,100000);render(screen,powered,390,844,110000);assert.deepEqual(gl.uploads.at(-1),poweredBody,'powered body freezes on the logical pause clock');resetCloseViewGL();render(screen,powered,390,844,110000);assert.equal(closeViewGLStats.heroTriangles,3170,'powered imported admission survives renderer context recreation');assert.deepEqual(gl.uploads.at(-1),poweredBody);
     assert.equal(requested.length,4,'all subsequent frames reuse the one loaded asset');
   } finally {CLOSE_VIEW_HOOKS.gl=null;resetCloseViewGL();setCloseViewCanvasFactory(null);for(const n of names){if(old.get(n)===undefined)delete globalThis[n];else globalThis[n]=old.get(n);}}
 });

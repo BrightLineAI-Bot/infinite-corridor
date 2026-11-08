@@ -1,7 +1,7 @@
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
 import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.ts";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.ts';
@@ -1966,9 +1966,12 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
   const form = playerFormPresentation(g);
+  // The Iron Fists candidate adds its own imported admission on integration; this branch adds the
+  // powered state beside the already imported normal path without prematurely bypassing native fists.
+  const importedPlayer = !form || form.kind === 'playerPowerSuit';
   state.admitted.clear();
   state.hero = null;
-  if (!form && !state.heroRequested && typeof globalThis.Image === 'function') {
+  if (importedPlayer && !state.heroRequested && typeof globalThis.Image === 'function') {
     state.heroRequested = true;
     loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
   }
@@ -2023,7 +2026,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (!stunned && (attack || winding || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
-    const importedDodge=who===player&&!form&&now<(player.dodgeUntil||0),dodgeSeed=importedDodge?player.dodgeVisual:null,leavingImportedDodge=!importedDodge&&who===player&&track.dodgeUntil===player.dodgeUntil;
+    const importedDodge=who===player&&importedPlayer&&now<(player.dodgeUntil||0),dodgeSeed=importedDodge?player.dodgeVisual:null,leavingImportedDodge=!importedDodge&&who===player&&track.dodgeUntil===player.dodgeUntil;
     if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));if(Number.isFinite(dodgeSeed.facingYaw))track.yaw=dodgeSeed.facingYaw;}
     else if (!leavingImportedDodge&&!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = !stunned && !watched && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
@@ -2056,7 +2059,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (stunned) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
-    const held = visualAttack ? visualProfile==='melee'?primaryHeld:knownProfile ? visualProfile : 'fist' : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists ? 'fist' : primaryHeld;
+    const held = visualAttack ? visualProfile==='melee'?primaryHeld:knownProfile ? visualProfile : 'fist' : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
     const activeKind = who===player&&held==='cinder-pike'?'playerCinderPike':who===player&&held==='verge-cleaver'?'playerVergeCleaver':visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
     const formKind = who === player && form ? playerFormModelKey(form, held) : null;
     const actor = { kind: formKind || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
@@ -2077,7 +2080,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     track.winding = winding;
     track.attacking = attack;
     let imported = false;
-    if (who === player && !form && count < limit) {
+    if (who === player && importedPlayer && count < limit) {
       const asset = getCloseViewHeroAsset();
       if (asset && prepareCloseViewHeroGL(asset)) {
         if (state.heroAsset !== asset || !state.heroPose) {
@@ -2089,6 +2092,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.groundZ = interiorSurfaceHeight(g.map, who.x + .5, who.y + .75);
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
+        input.powerSuit = form?.kind === 'playerPowerSuit';
         input.heldProfile=held;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
@@ -2109,9 +2113,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.action = action.kind ? action : null;
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           const gear = state.heroGear;
-          gear.profile = held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = form?.empowered && held === 'fist' ? '' : held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
-          offset = writeCloseViewHeroGear(state.vertices, offset, gear);
+          const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);
+          if (state.heroFrame.powerSuit && equipped === offset) return;
+          offset = equipped;
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;
         }
