@@ -2,9 +2,9 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
-## Grounded-contact r836 packaging gate — 2026-11-08
+## Grounded-contact r836 correction and publication gate — 2026-11-08
 
-Production remains verified `r834-32b9249def93` with the publication evidence below. Spell r835 merged as official main e5bcb04a after source CI42508742453 and full/delta Astra review clear; merged CI42509441233 and Preview42509441237 are running, so r835 is not yet hosted, live or published. Grounded-contact r836 is packaged from that official main, preserving the required S-before-C order. It shares finite, height-aware ordinary player/enemy contact across both Close View paths, retains bounded overlap escape and existing movement consequences, and does not change attacks, legitimate ghost/flight exceptions, saves, generation or renderer budgets. C must not merge before the r835 Preview/hosted/publication gate. Local servers and the full local suite remain stopped.
+Production remains verified `r834-32b9249def93` with the publication evidence below. Spell r835 merged as official main e5bcb04a after source CI42508742453 and full/delta Astra review clear; merged CI42509441233 and Preview42509441237 are running, so r835 is not yet hosted, live or published. Grounded-contact r836 is PR488. Fresh since-live review reproduced erroneous contact between elevated disc/raft players and creatures beneath them; the physical-support correction and regression review are required before merge. It also caught an inherited jump assertion relaxed when its fixture changed: restore the original full-motion >.05 witness separately from reduced-motion casting coverage. Do not publish r835 independently with that weakened assertion. Complete r835 hosted spell acceptance, then corrected r836 review/CI, merge, Preview and combined contact/spell hosted acceptance before publishing r836 with r835 included. This concrete blocker supersedes the earlier requirement to publish S before merging C, while preserving integration order. All later passes remain separate. Local servers and the full local suite remain stopped.
 
 ## Verified Hammerfall publication and spell gate — 2026-11-08
 
