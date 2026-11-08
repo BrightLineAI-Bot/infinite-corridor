@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 821: continuous imported Wayfarer neck
+
+**CODE:** A source-derived six-sided fabric bridge closes the rear/side gap left when the Rogue hood was replaced by the Cleric head. Its lower ring exactly copies the retained collar positions and weights; upper rings follow Rogue Head3 and extend into the hair, with a concealed cap. Existing outer-coat fabric UV/palette supplies the garment. The derivative adds19vertices/30triangles, for3602vertices/3170triangles and86448dynamicbytes/frame, within the existing3328-body cap. Converter and actual sampled regressions cover189 poses with zero lower-seam distance.
+
+**BOUNDARY:** Approved silver mask/white hair/amber eyes, head.40scale/seating, slim frame/small hands, original source meshes/textures/clips and world height remain. The source open mask retains slight chin stand-off. No runtime/shader, extra material/pass/texture, gameplay/save/schema14/generator/pin/storage-isolation change. r820 is held rather than published with its known rear gap; repaired hosted torchlight/GPU acceptance remains a distinct gate. Physical-phone performance is unmeasured.
+
 ## Release 820: imported protective Wayfarer
 
 **CODE:** A reproducible CC0 Quaternius Rogue body/rig with the central Cleric masked head replaces only the normal player when its asset/textures are ready. The original hood is removed and its collar sealed; the head alone is seated/scaled to .40. Bind-space frame width .80/depth .82 and hands .62 retain world height and original feet/animation translations. Green/gray clothing, protected sleeves/gloves, leather and bronze retain original texture detail. Two small amber lenses behind actual mask apertures preserve silver mask and white hair. Existing gait and accepted action clocks drive source animation or explicit missing-clip layers; sampled sockets retain actual tool size. Whole-body knockdown and pause-adjusted idle/action poses preserve both gear sockets.

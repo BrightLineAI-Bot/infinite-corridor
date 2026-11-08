@@ -11,7 +11,7 @@ const input=(extra={})=>({nowMs:100000,reducedMotion:false,x:3,y:4,groundZ:.3,li
 function sample(i=input()){const s=createHeroPoseState(asset),f=createHeroFrame(asset);assert.equal(sampleCloseViewHero(asset,s,i,f),true);return{s,f};}
 test('hero imports do not fetch, and pure decoding validates bounded arrays',async()=>{
   let calls=0;const old=globalThis.fetch;globalThis.fetch=()=>{calls++;throw new Error('unexpected fetch');};try{assert.equal(getCloseViewHeroAsset(),null);assert.equal(await loadCloseViewHero(),null);assert.equal(calls,0);}finally{globalThis.fetch=old;}
-  assert.equal(asset.indexCount/3,3140);assert.throws(()=>decodeCloseViewHero({...meta,indexCount:100000},bytes));assert.throws(()=>decodeCloseViewHero(meta,bytes.slice(0,40)));
+  assert.equal(asset.indexCount/3,3170);assert.throws(()=>decodeCloseViewHero({...meta,indexCount:100000},bytes));assert.throws(()=>decodeCloseViewHero(meta,bytes.slice(0,40)));
 });
 test('hybrid reference has finite normalized normals, exact height and a seated unscaled collar',()=>{
   const {s,f}=sample(input({nowMs:0,reducedMotion:true,groundZ:0}));let min=Infinity,max=-Infinity;
