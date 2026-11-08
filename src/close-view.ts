@@ -907,7 +907,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
     if (x < q.sx - hw || x > q.sx + hw || y < top || y > bottom) continue;
     const d = Math.hypot(x - q.sx, y - cy); if (d < bestD) { best = e; bestD = d; } }
   if (best) return { x: best.x + .5, y: best.y + .4, enemyId: best.id };
-  if (interiorTerrain(g.map)) return terrainFloorRay(g.map, x, y) || { x: footX(g.player), y: footY(g.player) };
+  if (interiorTerrain(g.map) || hasStoneBuilds(g.map)) return terrainFloorRay(g.map, x, y) || { x: footX(g.player), y: footY(g.player) };
   let a = (CAM.ppy - y) / CAM.F; const horizon = CAM.sinP / CAM.cosP; if (a > horizon - .02) a = horizon - .02;
   const v = Math.min(CLOSE_VIEW.fog.far, CAM.hc * (CAM.cosP + a * CAM.sinP) / (CAM.sinP - a * CAM.cosP)), depth = v * CAM.cosP + CAM.hc * CAM.sinP, u = (x - CAM.ppx) * depth / CAM.F;
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
