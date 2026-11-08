@@ -4,7 +4,7 @@ For a fresh agent picking up Infinite Corridor. Workflow, commands and the relea
 
 ## Veil Moth r845 packaging gate — 2026-11-08
 
-Production remains verified `r843-7cc357e4f592`, commit `7cc357e4f5924ba3320d6f7f76a44e72d6286ee8`, tree `b0baf469a66c521f161b1a8144a17e4a15ef78c2`. Routing adoption r844 merged as official main `0ec3fe866c64d6b5e1e9083aa55e08de22840054`, tree `d92fedd7c9a4302256584490170125158e6dba31`, after source CI42534525705 and fresh Astra review clear; merged CI42535658461 and Preview42535658314 are running, so r844 is not live or published. Against that complete source, r845 packages only the reviewed ordinary non-pack Veil Moth material interval and remains merge-held until r844 exact hosted acceptance and publication. Grave Lantern, the final sweep and boss-rig research remain later separate work. Local servers and the full suite remain stopped.
+Production is verified `r844-0ec3fe866c64`, commit `0ec3fe866c64d6b5e1e9083aa55e08de22840054`, tree `d92fedd7c9a4302256584490170125158e6dba31`. CI, Preview and Publish42537266204 succeeded after a clear Astra review and ordinary hosted Keep 5/Pentagon 10 boundary crossing and door round trips. Live Options → System matches, recent errors are none, and the paused 250 KB journey is unchanged. PR #497 packages ordinary non-pack Veil Moth contact separately. Its required fresh review returned no verdict because the reviewer hit a usage limit; keep r845 held. Grave Lantern, the final sweep and boss-rig research remain later work. Local servers and the full suite remain stopped.
 
 ## Proving Ground interaction chooser r843 packaging gate — 2026-11-08
 
