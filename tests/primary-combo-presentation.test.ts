@@ -87,7 +87,7 @@ test('shared accepted clocks preserve legacy Fists/primary fallbacks and normali
 
 test('successful newer casts, Aperture skills and jumps cancel tools; refusals and expired actions do not',()=>{
   for(const kind of ['sweep','hammer','orrery-tap','emitter'])for(const gesture of ['cast','aperture','jump']){
-    const {g,at}=queuedTool(kind),now=at+1,record=clone(g.player.attackVisual),until=g.player.attackUntil;
+    const {g,at}=queuedTool(kind),now=at+1,record=clone(g.player.attackVisual),until=g.player.attackUntil,visualUntil=g.player.actionVisualUntil;
     g.enemies=[];g.lastUpdateNow=now;
     if(gesture==='cast'){
       const key='spell:'+g.save.equippedSpell;g.save.magicSkills.cooldowns[key]=1;assert.equal(g.castSpell(g.save.equippedSpell),false);assert.deepEqual(g.player.attackVisual,record);
@@ -99,7 +99,7 @@ test('successful newer casts, Aperture skills and jumps cancel tools; refusals a
       g.jumpUntil=now+100;g.update(0,{...calm,consume:k=>k==='jump'},now);assert.deepEqual(g.player.attackVisual,record,'already airborne refuses a new ordinary jump');
       g.jumpUntil=0;g.update(0,{...calm,consume:k=>k==='jump'},now);assert.ok(g.jumpUntil>now);
     }
-    assert.equal(g.player.attackUntil,until);assert.equal(g.player.actionVisualUntil,kind==='hammer'?at+570:until);assert.deepEqual(g.player.attackVisual,{...record,presentationCancelled:true});assert.equal(closeViewPlayerAction(g,now).active,false);
+    assert.equal(g.player.attackUntil,until);assert.equal(g.player.actionVisualUntil,visualUntil);assert.deepEqual(g.player.attackVisual,{...record,presentationCancelled:true});assert.equal(closeViewPlayerAction(g,now).active,false);
     const next=Math.max(now+1,g.player.attackReadyAt);g.primaryAttack(next);
     assert.equal(g.player.attackVisual.profile,'melee');assert.equal(g.player.attackVisual.presentationCancelled,undefined);assert.equal(closeViewPlayerAction(g,next).active,true);
     if(gesture!=='jump')assert.ok(g.player.castUntil>next,'normal primary cooldown ends before the older cast presentation');

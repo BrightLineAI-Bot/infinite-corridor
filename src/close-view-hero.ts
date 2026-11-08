@@ -1,4 +1,5 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
+import { sampleToolActionMotion } from './action-motion.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -287,16 +288,14 @@ function primaryPose(state,pose,profile,p,step=1){
   state.clipTime=p;state.primaryStep=step;
 }
 
-function toolPose(state,pose,profile,p,weight){
+function toolPose(state,pose,profile,p,weight,action){
   state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
-  let frameYaw=0,side=0,up=-.10,forward=.47;
-  if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
+  const motion=sampleToolActionMotion(action,p*(Number(action?.durationMs)||180));let frameYaw=0,side=0,up=-.10,forward=.47;
+  if(motion){({yaw:frameYaw,side,up,forward,weight}=motion);}
+  else if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
   else if(profile==='rift-bombard'){side=-.05;up=-.13;forward=.43;}
   else if(profile==='blunderbuss'){side=-.04;up=-.08;forward=.50;}
-  else if(profile==='great-sweep'){
-    const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;
-    frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;
-  }
+  else if(profile==='great-sweep'){const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;}
   target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
   solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
   state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
@@ -433,11 +432,11 @@ export function sampleCloseViewHero(asset, state, input, out) {
     } else if (kind === 'melee' && profile === 'hammer') {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
-      toolPose(state,state.pose,profile,p,weight);
+      toolPose(state,state.pose,profile,p,weight,action);
     } else if (kind === 'ranged' || kind === 'cast' || kind === 'jump') {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.
       const pulse = Math.sin(p * Math.PI) * weight;
-      if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight);
+      if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight,action);
       else if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') { rotateX(state.pose, 12, -.65 * pulse); rotateX(state.pose, 22, -.8 * pulse); }
       else { // Arm brace only: root-parented feet must not be left behind by invented knee IK.
