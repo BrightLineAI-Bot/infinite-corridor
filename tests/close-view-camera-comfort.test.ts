@@ -228,6 +228,69 @@ test('locked visual facing respects committed action aim and never rewrites game
   assert.equal(g.player.facing, facing); assert.equal(JSON.stringify(g.save), saved);
 });
 
+test('Target requests an exact open-ground rear center while preserving accepted aim and held movement basis', () => {
+  const g = fixture(); frame(g, 40); const originalXY = [g.player.x, g.player.y];
+  for (const [facing, x, y] of [['right', 1, 0], ['down', 0, 1], ['left', -1, 0], ['up', 0, -1]]) {
+    g.player.facing = facing; frame(g, 90); const yaw = CV.closeViewPlayerFacingYaw(g, now); assert.ok(Number.isFinite(yaw));
+    CV.closeViewPan(37, 0, now); assert.equal(CV.closeViewTargetActivate(g, now), null);
+    frame(g, 90, () => { const neutral = { x: 0, y: 0 }; CV.closeViewSteer(g, neutral); g.update(.016, { state: neutral, consume: () => false, held: () => false }, now); CV.closeViewUnsteer(neutral); });
+    const c = CV.closeViewCamera(), px = g.player.x + .5, py = g.player.y + .75, rx = -Math.sin(yaw), ry = Math.cos(yaw);
+    assert.ok(Math.abs(wrap(c.yaw - yaw)) < .01); assert.ok(Math.abs((c.x - px) * rx + (c.y - py) * ry) < 1e-5, 'open-ground eye is centered laterally');
+    assert.ok(Math.abs(c.shoulder) < 1e-6 && Math.abs(c.rigOffset) < 1e-6); assert.equal(c.centeredRear, true);
+  }
+  g.save.lastAim = { x: 1, y: 0 }; g.player.attackReadyAt = 0; g.primaryAttack(now); const accepted = structuredClone(g.player.attackVisual), saved = structuredClone(g.save.lastAim); assert.ok(accepted);
+  CV.closeViewPan(45, 0, now); CV.closeViewTargetActivate(g, now); const beforeActionTurn = Math.abs(wrap(CV.closeViewCamera().yaw - Math.atan2(accepted.aim.y, accepted.aim.x))); frame(g, 5);
+  assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - Math.atan2(accepted.aim.y, accepted.aim.x))) < beforeActionTurn, 'committed accepted aim owns the early body-facing recenter');
+  frame(g, 100); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - CV.closeViewCamera().bodyYaw)) < .01); assert.equal(CV.closeViewCamera().targetRecentre, false, `transaction finishes only after action expiry and body settlement ${JSON.stringify(CV.closeViewCamera())}`);
+  assert.deepEqual(g.player.attackVisual, accepted); assert.deepEqual(g.save.lastAim, saved); assert.deepEqual([g.player.x, g.player.y], originalXY);
+  const stick = { x: 0, y: -1 }; assert.equal(CV.closeViewSteer(g, stick), true); const held = { ...stick }, inputYaw = CV.closeViewCamera().inputYaw;
+  CV.closeViewTargetActivate(g, now); frame(g, 8); assert.equal(CV.closeViewCamera().inputYaw, inputYaw, 'held movement basis stays latched during recenter'); assert.deepEqual(stick, held); CV.closeViewUnsteer(stick);
+  CV.closeViewPan(20, 0, now); assert.equal(CV.closeViewCamera().centeredRear, false, 'later manual orbit immediately exits centered rear');
+});
+
+test('shared facing distinguishes native fallback from the nonzero imported entry blend', () => {
+  const g = fixture(); frame(g, 40); g.player.attackReadyAt = 0; g.save.lastAim = { x: 0, y: -1 }; g.primaryAttack(now);
+  const v = g.player.attackVisual; assert.ok(v); Object.assign(v, { profile: 'melee', weaponKind: 'cinder-pike', facingYaw: 0, aim: { x: 0, y: -1 }, durationMs: 240 });
+  const phase = .04, remaining = v.durationMs * (1 - phase); g.player.attackUntil = g.player.actionVisualUntil = now + remaining;
+  const blend = Math.min(1, phase / .08), smooth = blend * blend * (3 - 2 * blend), expected = -Math.PI / 2 * smooth;
+  assert.ok(Math.abs(wrap(CV.closeViewPlayerFacingYaw(g, now) + Math.PI / 2)) < 1e-9, 'native fallback retains the full accepted aim');
+  assert.ok(Math.abs(wrap(CV.closeViewPlayerFacingYaw(g, now, 0, { phase, importedReady: true }) - expected)) < 1e-9, 'ready imported renderer includes the first-eight-percent blend');
+  for (const profile of ['fist', 'hammer']) { v.profile = profile; assert.ok(Math.abs(wrap(CV.closeViewPlayerFacingYaw(g, now, 0, { phase, importedReady: true }) - expected)) < 1e-9, `${profile} retains its existing entry blend`); }
+  v.profile = 'melee';
+  CV.closeViewPan(35, 0, now); CV.closeViewTargetActivate(g, now); frame(g, 120); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - CV.closeViewCamera().bodyYaw)) < .01, 'Target follows native fallback through expiry to its settled body');
+  assert.deepEqual(v.aim, { x: 0, y: -1 }); assert.equal(v.facingYaw, 0);
+});
+
+test('no-target activation follows the actual idle body instead of neutral camera aim feedback', () => {
+  const g = fixture(); frame(g, 40); CV.closeViewPan((Math.PI / 2 - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, now);
+  for (let i = 0; i < 32; i++) {
+    const stick = { x: 0, y: -1 }; assert.equal(CV.closeViewSteer(g, stick), true); g.update(.016, { state: stick, consume: () => false, held: () => false }, now + 16); CV.closeViewUnsteer(stick); frame(g);
+  }
+  frame(g, 20); const bodyYaw = CV.closeViewPlayerFacingYaw(g, now); assert.ok(Math.abs(wrap(bodyYaw - Math.PI / 2)) < .08, 'production movement/render tracks the downward idle body');
+  CV.closeViewPan((Math.PI - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, now);
+  const neutral = { x: 0, y: 0 }; CV.closeViewSteer(g, neutral); g.update(.016, { state: neutral, consume: () => false, held: () => false }, now + 16); CV.closeViewUnsteer(neutral); frame(g);
+  assert.ok(Math.abs(wrap(Math.atan2(g.save.lastAim.y, g.save.lastAim.x) - Math.PI)) < .02, 'neutral production steer writes the panned camera aim');
+  const displayed = CV.closeViewPlayerFacingYaw(g, now), xy = [g.player.x, g.player.y], pose = structuredClone(g.player.attackVisual);
+  assert.ok(Math.abs(wrap(displayed - Math.PI / 2)) < .12, `shared resolver still reads the displayed idle body (${displayed})`);
+  assert.equal(CV.closeViewTargetActivate(g, now), null); frame(g, 120); const c = CV.closeViewCamera(), px = g.player.x + .5, py = g.player.y + .75, rx = -Math.sin(displayed), ry = Math.cos(displayed);
+  assert.ok(Math.abs(wrap(c.yaw - displayed)) < .01); assert.ok(Math.abs((c.x - px) * rx + (c.y - py) * ry) < 1e-5); assert.deepEqual([g.player.x, g.player.y], xy); assert.deepEqual(g.player.attackVisual, pose);
+});
+
+test('centered Target keeps the existing obstruction escape and camera safety', () => {
+  const g = fixture('cellar'); g.player.x = 11; g.player.y = 5; g.save.lastAim = { x: 0, y: -1 }; CV.resetCloseViewCamera(); frame(g, 2);
+  CV.closeViewTargetActivate(g, now); frame(g, 240); const c = CV.closeViewCamera(); assert.equal(c.centeredRear, true); clearEye(g);
+  assert.ok(c.distance > 0 && c.distance <= CV.closeViewPreset(g).distance); assert.ok(Math.abs(c.rigOffset) <= CV.closeViewPreset(g).shoulder + 1e-9, 'bounded existing lateral rig is retained under obstruction');
+});
+
+test('Target acquires from the pre-recenter view, recenters on acquire and unlock, and rejects hidden input', () => {
+  const g = fixture(); frame(g, 40); CV.closeViewPan(-CV.closeViewCamera().yaw / CV.CLOSE_VIEW.crescent.yaw, 0, now); const e = foe(g, 'target-command', 2, 0); assert.equal(CV.closeViewLockCandidate(g)?.id, e.id);
+  assert.equal(CV.closeViewTargetActivate(g, now)?.id, e.id); frame(g, 240); assert.equal(g.lockedTarget()?.id, e.id); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw)) < .01, JSON.stringify(CV.closeViewCamera()));
+  assert.equal(CV.closeViewTargetActivate(g, now), null); frame(g, 160); const unlocked = CV.closeViewCamera(); assert.equal(g.lockedTarget(), null); assert.ok(Math.abs(wrap(unlocked.yaw - unlocked.bodyYaw)) < .01, 'unlock activation follows the body return to idle'); assert.equal(unlocked.targetRecentre, false);
+  const before = CV.closeViewCamera(); g.paused = true; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.deepEqual(CV.closeViewCamera(), before); g.paused = false;
+  g.save.closeView = false; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.equal(g.lockedTarget(), null, 'hidden controls cannot queue a Target command'); g.save.closeView = true;
+  CV.resetCloseViewCamera(); g.player.facing = 'left'; frame(g, 110); g.presentation = { reduceMotion: true }; const reducedYaw = CV.closeViewPlayerFacingYaw(g, now); CV.closeViewTargetActivate(g, now); frame(g, 110); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - reducedYaw)) < .01, 'reduced motion retains exact centered destination');
+});
+
 test('one raw-distance switch per gesture is independent of camera sensitivity and acceleration', () => {
   for (const mode of ['drag', 'crescent']) for (const sensitivity of [.4, 2.5]) {
     const g = fixture(); frame(g, 40); g.save.closeViewSensitivity = sensitivity; g.save.closeViewCamera = mode;
@@ -275,6 +338,7 @@ test('lock button accepts semantic activation and handles each pointer sequence 
     return e;
   };
   const locked = () => g.lockedTarget()?.id === 'semantic';
+  assert.match(button.attrs['aria-label'], /Target and recenter/);
   const click = () => send('click', { detail: 0 }); // HTMLElement.click() / AT, no pointer provenance
   click(); assert.equal(locked(), true, 'programmatic and AT semantic click activates');
   // Native buttons produce a click for Enter and for Space release. Handlers must
