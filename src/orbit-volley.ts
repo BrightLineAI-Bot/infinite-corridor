@@ -24,7 +24,7 @@ export function orbitLaunch(held, timedOut = false) {
   return { share: perfect ? ORBIT.perfect : 1 + ORBIT.chargeBonus * k, radius: k >= .5 ? ORBIT.bigRadius : ORBIT.radius, perfect };
 }
 
-export function drawOrbit(ctx, game, toScreen, s, t) {
+export function drawOrbit(ctx, game, toScreen, s, t, projection = null) {
   const o = game.orbit, now = game.lastUpdateNow || 0;
   if (o && !o.flight) {
     const held = (now - o.start) / 1000, n = orbitCount(held), gold = orbitPerfect(held), [cx, cy] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), R = ORBIT.orbitRadius * s;
@@ -34,5 +34,5 @@ export function drawOrbit(ctx, game, toScreen, s, t) {
     const left = Math.max(0, ORBIT.window - held) / ORBIT.window; ctx.strokeStyle = gold ? "#ffd86a" : "#b48cff88"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R * 1.35, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); ctx.stroke(); // the time left
   }
   const f = o?.flight;
-  if (f) { const [x, y] = toScreen(f), r = s * (f.radius > ORBIT.radius ? .32 : .22); ctx.fillStyle = f.perfect ? "#ffd86a66" : "#b48cff55"; ctx.beginPath(); ctx.arc(x, y, r * 2, 0, 7); ctx.fill(); ctx.fillStyle = f.perfect ? "#fff1b8" : "#efe6ff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+  if (f && projection?.orbit !== f) { const [x, y] = toScreen(f), r = s * (f.radius > ORBIT.radius ? .32 : .22); ctx.fillStyle = f.perfect ? "#ffd86a66" : "#b48cff55"; ctx.beginPath(); ctx.arc(x, y, r * 2, 0, 7); ctx.fill(); ctx.fillStyle = f.perfect ? "#fff1b8" : "#efe6ff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
 }

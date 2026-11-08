@@ -15,7 +15,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLFrameReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -984,7 +984,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
   if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
-  const shots = useGL ? selectProjectedShots(g, Q) : null;
+  const shots = useGL ? selectProjectedShots(g, Q, reduce) : null;
+  if (useGL && !shots) return false;
   // 1. the ground, drawn by the ordinary renderer into the texture, its actors captured.
   // Version 4: the texture is anchored to the world. The renderer puts world (0, 0) at a whole CSS pixel (Tx, Ty); at a
   // texture scale that is not whole (.75, 1.25) that point fell between device pixels, by a different fraction each step, and
@@ -1207,7 +1208,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     try { d.nativeFloor(g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now); } finally { gc.restore(); }
   }
   const packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null);
-  if (useGL) glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots);
+  if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots)) { captured = capturedPlayer = null; GLB.nBoard = GLB.nDecal = GLB.nGlowStart = 0; return false; } }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
     if (itemKind[it] === 0) { const fo = it * 8, st = faceStyle[it], lv = faceLevel[it], al = faceAlpha[it]; if (al < 1) ctx.globalAlpha = al;
@@ -1895,16 +1896,39 @@ const SHOT_DRAW = Object.freeze({ low: 12, balanced: 20, full: 28, maxRange: 14,
   minSize: .075, magicSize: .12, maxTrail: .9, trailSeconds: .058, trailAlpha: .46, headAlpha: .95 });
 const CONTACT_GLINT = Object.freeze({ max: 8, height: .84, radius: .08, spread: .17, front: .28, alpha: .9, color: 0xffbd7e });
 const PROJECTED_SHOTS = new Set();
+const PROJECTED_ENTRIES = [];
 const SHOT_COLORS = new Map();
-function selectProjectedShots(g, q) {
+const finite = Number.isFinite;
+function validFire(p) { return !!p && p.fireBomb === true && p.path === "grenade" && p.glyphSpell === "fire-burst" && !p.hostile && !p.dead && !p.shadow && !p.echo &&
+  finite(p.x) && finite(p.y) && finite(p.dx) && finite(p.dy) && finite(p.age) && p.age >= 0 && finite(p.life) && p.life > 0 &&
+  typeof p.id === "string" && p.id.length > 0 && p.id.length <= 160 && p.visualFlight == null; }
+function validOrbit(g, f) { return !!f && g.orbit?.flight === f && typeof g.areaId==='function' && g.orbit.where===`${g.area}:${g.areaId()}` && finite(f.x) && finite(f.y) && finite(f.tx) && finite(f.ty) &&
+  finite(f.radius) && f.radius > 0 && f.radius <= 8 && (f.perfect === undefined || typeof f.perfect === "boolean") && f.visualFlight == null; }
+export function selectProjectedShots(g, q, reduce = false) {
   PROJECTED_SHOTS.clear();
+  PROJECTED_ENTRIES.length = 0;
+  if (!closeViewGLFrameReady()) return null;
   const limit = q.glScale === 1 ? SHOT_DRAW.full : q.relief ? SHOT_DRAW.balanced : SHOT_DRAW.low;
+  try { glEnsure("decal", limit * 12 + 12); } catch { return null; }
+  const admit = (kind, source, verts, geom = null) => { if (PROJECTED_ENTRIES.length >= limit) return false; PROJECTED_ENTRIES.push({ kind, source, verts, geom }); PROJECTED_SHOTS.add(source); return true; };
   for (const p of g.projectiles || []) {
     if (PROJECTED_SHOTS.size === limit) break;
     if (!p.dead && standardProjectile(p) && (p.path !== "grenade" || !!readProjectileVisualFlight(p.visualFlight)) &&
         Math.hypot(p.x - g.player.x, p.y - g.player.y) < SHOT_DRAW.maxRange &&
-        dungeonPointDiscovered(g.map, p)) PROJECTED_SHOTS.add(p);
+        dungeonPointDiscovered(g.map, p)) admit("projectile", p, reduce ? 6 : 12);
   }
+  for (const p of g.projectiles || []) {
+    if (PROJECTED_ENTRIES.length === limit) break;
+    if (validFire(p) && Math.hypot(p.x-g.player.x,p.y-g.player.y)<SHOT_DRAW.maxRange && dungeonPointDiscovered(g.map,p)) {
+      const z=interiorSurfaceHeight(g.map,p.x,p.y)+SHOT_DRAW.height;if(!finite(z))continue;const geom={x:p.x,y:p.y,z,tail:null},d=Math.hypot(p.dx,p.dy),trailTime=Math.min(SHOT_DRAW.trailSeconds,p.age),length=Math.min(SHOT_DRAW.maxTrail,p.speed*trailTime);
+      if(!reduce&&d>1e-4&&length>0){const x=p.x-p.dx*length/d,y=p.y-p.dy*length/d,tz=interiorSurfaceHeight(g.map,x,y)+SHOT_DRAW.height;if(finite(x)&&finite(y)&&finite(tz)&&toolCueSegmentOpen(g.map,p.x,p.y,x,y))geom.tail={x,y,z:tz};}
+      admit("fire",p,geom.tail?12:6,geom);
+    }
+  }
+  const orbit=g.orbit?.flight;
+  if(PROJECTED_ENTRIES.length<limit&&validOrbit(g,orbit)&&Math.hypot(orbit.x-g.player.x,orbit.y-g.player.y)<SHOT_DRAW.maxRange&&dungeonPointDiscovered(g.map,orbit)){const z=interiorSurfaceHeight(g.map,orbit.x,orbit.y)+SHOT_DRAW.height;if(finite(z))admit("orbit",orbit,6,{x:orbit.x,y:orbit.y,z});}
+  PROJECTED_SHOTS.entries = PROJECTED_ENTRIES;
+  PROJECTED_SHOTS.orbit = PROJECTED_ENTRIES.some(e=>e.kind==="orbit") ? orbit : null;
   return PROJECTED_SHOTS;
 }
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
@@ -1914,8 +1938,11 @@ const PLAYER_VISUAL_KIND = Object.freeze({
   melee: "player", fist: "playerUnarmed", emitter: "playerTool", hammer: "playerHammer", sweep: "playerSweep",
   mirage: "playerMirage", "orrery-tap": "playerOrrery", "orrery-release": "playerOrrery",
 });
-function toolCuePointOpen(map,x,y){const w=map?.width||0,tile=w&&map.tiles?.[Math.floor(y)*w+Math.floor(x)];return !!tile&&!tile.blocked&&dungeonTileVisibility(map,x,y)!=='unseen';}
-function toolCueSegmentOpen(map,ax,ay,bx,by){if(!toolCuePointOpen(map,ax,ay)||!toolCuePointOpen(map,bx,by))return false;for(let i=1;i<8;i++){const t=i/8;if(!toolCuePointOpen(map,ax+(bx-ax)*t,ay+(by-ay)*t))return false;}return true;}
+function toolCuePointOpen(map,x,y){const w=Number(map?.width)||0,h=Number(map?.height)||0,ix=Math.floor(x),iy=Math.floor(y);if(!finite(x)||!finite(y)||ix<0||iy<0||ix>=w||iy>=h)return false;const tile=map.tiles?.[iy*w+ix];return !!tile&&!tile.blocked&&dungeonTileVisibility(map,x,y)!=='unseen';}
+// Conservative short-segment supercover. At an exact corner both side cells are included; the bounded lane
+// rejects geometry requiring more than eight cells rather than sampling past a wall.
+export function closeViewCueSegmentOpen(map,ax,ay,bx,by){if(!toolCuePointOpen(map,ax,ay)||!toolCuePointOpen(map,bx,by))return false;const cells=[],add=(x,y)=>{if(cells.some(c=>c[0]===x&&c[1]===y))return true;if(cells.length===8)return false;cells.push([x,y]);return true;};let x=Math.floor(ax),y=Math.floor(ay),ex=Math.floor(bx),ey=Math.floor(by);if(!add(x,y))return false;const dx=bx-ax,dy=by-ay,sx=Math.sign(dx),sy=Math.sign(dy),adx=Math.abs(dx),ady=Math.abs(dy);let tx=sx?((sx>0?x+1:x)-ax)/dx:Infinity,ty=sy?((sy>0?y+1:y)-ay)/dy:Infinity,ddx=sx?1/adx:Infinity,ddy=sy?1/ady:Infinity;while(x!==ex||y!==ey){if(Math.abs(tx-ty)<1e-10){if(!add(x+sx,y)||!add(x,y+sy))return false;x+=sx;y+=sy;tx+=ddx;ty+=ddy;}else if(tx<ty){x+=sx;tx+=ddx;}else{y+=sy;ty+=ddy;}if(!add(x,y))return false;}return cells.every(c=>toolCuePointOpen(map,c[0]+.5,c[1]+.5));}
+const toolCueSegmentOpen=closeViewCueSegmentOpen;
 const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
 const KNOWN_TOOL_VISUAL = new Set(TOOL_VISUAL_KINDS);
 export function closeViewPrimaryWeaponKind(item) {
@@ -1930,6 +1957,7 @@ const MODEL_STATE = {
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   heroGear: { profile: '', leftSocket: null, rightSocket: null, alpha: 1, tint: null, hitFlash: 0 },
   toolEmission:new Float32Array(3),toolEmissionReady:false,toolRelease:null,toolAlpha:1,
+  spellEmission:new Float32Array(3),spellEmissionReady:false,spellRelease:null,spellAlpha:1,
 };
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
@@ -1998,7 +2026,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const form = playerFormPresentation(g);
   const importedPlayer = !form || form.kind === 'playerIronFists';
   state.admitted.clear();
-  state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;
+  state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;
   if (importedPlayer && !state.heroRequested && typeof globalThis.Image === 'function') {
     state.heroRequested = true;
     loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
@@ -2150,6 +2178,12 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           offset = writeCloseViewHeroGear(state.vertices, offset, gear);
           if(acceptedTool&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,state.heroFrame.rightSocket)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
+          const spellProfile=action.kind==='cast'&&cast&&['fan-release','orbit-launch'].includes(action.profile)?action.profile:null,left=state.heroFrame.leftSocket;
+          if(spellProfile&&left&&left.length>=3&&finite(left[0])&&finite(left[1])&&finite(left[2])&&actor.alpha>0&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,left[0],left[1])){
+            const fire=spellProfile==='fan-release'&&castRecord?.spellKind==='fire-burst'&&castRecord?.variant==='cast'&&typeof castRecord.sourceId==='string'&&castRecord.sourceId.length<=160&&finite(castRecord.aim?.x)&&finite(castRecord.aim?.y);
+            const orbit=spellProfile==='orbit-launch'&&castRecord?.spellKind==='orbit-volley'&&castRecord?.variant==='launch'&&validOrbit(g,g.orbit?.flight);
+            if(fire||orbit){state.spellEmission.set(left);state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
+          }
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;
         }
@@ -2353,11 +2387,22 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if(age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
     if(!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),dx=head.x-MODEL_STATE.toolEmission[0],dy=head.y-MODEL_STATE.toolEmission[1],forward=dx*(release.aim?.x||0)+dy*(release.aim?.y||0),distance=Math.hypot(dx,dy);if(forward>0&&distance<=.9&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
+  // Spells arbitrate the same single release lane after final-pose sampling. Fire may link only its
+  // immutable accepted central source; Orbit deliberately has no connector.
+  if(!MODEL_STATE.toolEmissionReady&&MODEL_STATE.spellEmissionReady&&MODEL_STATE.spellRelease){const release=MODEL_STATE.spellRelease,at=MODEL_STATE.spellEmission,releaseNow=g.paused&&finite(g.pauseStarted)?g.pauseStarted:now,duration=release.durationMs||MODEL_TIMING.castMs,age=Math.max(0,duration-Math.max(0,(g.player.castUntil||0)-releaseNow));
+    if(age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.spellAlpha,r=.045;room(6);card(at[0],at[1],at[2]-r,at[2]+r,r,11,a,release.profile==='orbit-launch'?0xb48cff:0xff7a2a,0,true);}
+    if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=interiorSurfaceHeight(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
+  }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
-  for (const shot of shots || []) {
-    const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
-    const size = (magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1));
-    const hue = standardProjectileColor(shot);
+  for (const entry of shots?.entries || []) {
+    const shot=entry.source;
+    if(entry.kind==="orbit"){
+      const X=entry.geom.x,Y=entry.geom.y,z=entry.geom.z,size=shot.radius>1.1?.32:.22,color=shot.perfect?0xffd86a:0xb48cff;
+      room(6);card(X,Y,z-size,z+size,size,11,SHOT_DRAW.headAlpha,color,0,true);continue;
+    }
+    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
+    const size = fire?.2:(magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1));
+    const hue = fire?"#ff7a2a":standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
     const color = SHOT_COLORS.get(hue);
     if (!reduce) {
@@ -2365,19 +2410,19 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       if (d > 1e-4) {
         const trailTime = Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
         const length = Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
-        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d,tail=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tx=tail.x,ty=tail.y,tz=tail.z,r = size * .75;
+        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tx=tail.x,ty=tail.y,tz=tail.z,r = size * .75;
         room(6);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z + r, 1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
-        DV(tx, ty, tz + r, -1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
+        DV(tx, ty, tz + r, -1, 1, 11, SHOT_DRAW.trailAlpha, color, 1, true);}
       }
     }
     card(X, Y, z - size, z + size, size, 11, SHOT_DRAW.headAlpha, color, 0, true);
   }
-  closeViewGLStats.projectedShots = shots?.size || 0;
+  closeViewGLStats.projectedShots = shots?.entries?.length || 0;
   GLB.nDecal = dv;
   if (!drawSceneGL(GROUND.canvas, UNI, models, MODEL_STATE.hero)) return false;
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); ctx.restore();

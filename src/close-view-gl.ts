@@ -637,6 +637,18 @@ export function closeViewGLReady(makeCanvas) {
     S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true; return true;
   } catch (err) { closeViewGLStats.failed = true; closeViewGLStats.reason = String(err?.message || err).slice(0, 400); S.gl = null; return false; }
 }
+// Critical resources for a frame that will suppress ordinary floor bodies. Optional uniforms may be
+// optimized out; programs, buffers, vertex arrays and textures may not. This check is deliberately
+// side-effect free so callers can complete admission before the ordinary renderer captures the floor.
+export function closeViewGLFrameReady() {
+  const gl = S.gl;
+  if (!gl || gl.isContextLost?.()) return false;
+  for (const k of ["env", "wall", "wallZ", "board", "decal", "model"]) if (!S[k]?.p) return false;
+  for (const k of ["env", "wall", "board", "decal", "model"]) if (!S.vbo[k]) return false;
+  for (const k of ["env", "wall", "wallZ", "board", "decal", "model"]) if (!S.vao[k]) return false;
+  for (const k of ["ground", "mask", "grit"]) if (!S.tex[k]) return false;
+  return true;
+}
 export const closeViewGLCanvas = () => S.canvas;
 // Call before admitting the imported body; absent decoded images/context keeps the existing presentation.
 export const prepareCloseViewHeroGL = (asset) => !!S.gl && prepareHeroGL(S.gl, S.hero, asset);
@@ -694,7 +706,8 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1 };
 export function drawSceneGL(ground, U, models = null, hero = null) {
-  const gl = S.gl; if (!gl) return false; const F = GLF; let calls = 0;
+  const gl = S.gl; if (!closeViewGLFrameReady()) return false; const F = GLF; let calls = 0;
+  try {
   const c = S.canvas; if (c.width !== F.devW || c.height !== F.devH) { c.width = F.devW; c.height = F.devH; }
   gl.viewport(0, 0, F.devW, F.devH);
   // what lies on the floor (and the billboards' atlas below it): copied up once a frame
@@ -756,6 +769,11 @@ export function drawSceneGL(ground, U, models = null, hero = null) {
   // 5. flames, halos, motes and wind-up glows, added in light
   if (GLB.nDecal > GLB.nGlowStart) { gl.useProgram(S.decal.p); decalU(); gl.bindVertexArray(S.vao.decal); gl.blendFunc(gl.ONE, gl.ONE); gl.drawArrays(gl.TRIANGLES, GLB.nGlowStart, GLB.nDecal - GLB.nGlowStart); calls++; }
   gl.bindVertexArray(null); gl.depthMask(true); gl.disable(gl.BLEND);
+  if (gl.isContextLost?.() || (typeof gl.getError === "function" && gl.getError() !== gl.NO_ERROR)) return false;
   closeViewGLStats.frames++; closeViewGLStats.drawCalls = calls; closeViewGLStats.walls = S.staticVerts / 6; closeViewGLStats.boards = GLB.nBoard / 6; closeViewGLStats.decals = GLB.nDecal / 6; closeViewGLStats.lights = F.nl;
   return true;
+  } catch (err) {
+    closeViewGLStats.reason = String(err?.message || err).slice(0, 400);
+    return false;
+  }
 }
