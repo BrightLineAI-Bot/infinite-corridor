@@ -127,6 +127,11 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (!Number.isInteger(raw.primaryStep) || raw.primaryStep < 1 || raw.primaryStep > 3) return null;
     copy.primaryStep = raw.primaryStep;
   }
+  if (raw.primaryMotion != null) {
+    const primaryMotion = normalizePrimaryMotion(raw.primaryMotion);
+    if (!primaryMotion) return null;
+    copy.primaryMotion = primaryMotion;
+  }
   if (raw.weaponKind != null) {
     if (typeof raw.weaponKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
     copy.weaponKind = raw.weaponKind;
@@ -212,7 +217,7 @@ export function attackVisualDeadline(player, record = player?.attackVisual, cont
   const pending=context?.pendingToolUse,u=record?.toolUse,now=Number(context?.now);if(u?.v===1&&u.phase==='startup'&&pending?.v===1&&pending.id===u.id&&Number.isFinite(now)&&Number.isFinite(pending.acceptedAt)){const age=Math.max(0,Math.min(u.startupMs,now-pending.acceptedAt));return now+record.durationMs-age;}
   if (Number.isFinite(player?.actionVisualUntil)) return player.actionVisualUntil;
   if (record?.profile === 'fist' && Number.isFinite(player?.fistVisualUntil)) return player.fistVisualUntil;
-  if (record?.primaryStep && Number.isFinite(player?.primaryVisualUntil)) return player.primaryVisualUntil;
+  if (primaryVisualStage(record) && Number.isFinite(player?.primaryVisualUntil)) return player.primaryVisualUntil;
   return player?.attackUntil;
 }
 
@@ -272,16 +277,51 @@ export function recordHeroPresentation(player,pose){if(!player||typeof player!==
 export function recentHeroPresentation(player,now,x,y){const q=player&&HERO_PRESENTATION.get(player);return q&&Number.isFinite(now)&&now-q.now>=0&&now-q.now<=250&&Math.hypot(q.x-x,q.y-y)<=.25?{...q}:null;}
 
 // Accepted primary presentation cycles; no timing, hits or movement are owned here.
+export function normalizePrimaryMotion(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !Number.isInteger(raw.v) || raw.v < 2) return null;
+  if (raw.v > 2) return { ...raw };
+  if (!Number.isInteger(raw.step) || raw.step < 1 || raw.step > 4) return null;
+  return { ...raw, v: 2, step: raw.step };
+}
+export function primaryVisualStage(record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+  if (record.primaryMotion != null) {
+    const motion = normalizePrimaryMotion(record.primaryMotion);
+    if (!motion) return null;
+    if (motion.v > 2) return { kind: 'opaque' };
+    return { kind: 'cleaver-four', step: motion.step, direction: motion.step === 1 || motion.step === 3 ? 1 : -1 };
+  }
+  return Number.isInteger(record.primaryStep) && record.primaryStep >= 1 && record.primaryStep <= 3
+    ? { kind: 'legacy', step: record.primaryStep }
+    : null;
+}
+export function primaryCarryStage(record, combo) {
+  const active = primaryVisualStage(record);
+  if (active) return active;
+  const saved = normalizePrimaryCombo(combo);
+  if (!saved || saved.weaponKind !== 'verge-cleaver') return null;
+  if (Number.isInteger(saved.v) && saved.v > 2) return { kind: 'opaque' };
+  if (saved.v === 2) return { kind: 'cleaver-four', step: saved.step, direction: saved.step === 1 || saved.step === 3 ? 1 : -1 };
+  return { kind: 'legacy', step: saved.step };
+}
 export function normalizePrimaryCombo(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
-      typeof raw.weaponKind !== 'string' || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind) ||
-      !Number.isInteger(raw.step) || raw.step < 1 || raw.step > 3) return null;
+      typeof raw.weaponKind !== 'string' || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
+  if (raw.v != null && (!Number.isInteger(raw.v) || raw.v < 1)) return null;
+  if (Number.isInteger(raw.v) && raw.v > 2) return { ...raw, weaponKind: raw.weaponKind };
+  if (raw.v === 2) {
+    if (raw.weaponKind !== 'verge-cleaver' || !Number.isInteger(raw.step) || raw.step < 1 || raw.step > 4) return null;
+    return { ...raw, weaponKind: raw.weaponKind, v: 2, step: raw.step };
+  }
+  if (!Number.isInteger(raw.step) || raw.step < 1 || raw.step > 3) return null;
   return { ...raw, weaponKind: raw.weaponKind, step: raw.step };
 }
 export function advancePrimaryCombo(player, weaponKind) {
   if (weaponKind !== 'cinder-pike' && weaponKind !== 'verge-cleaver') { player.primaryCombo = null; return null; }
   const prior = normalizePrimaryCombo(player.primaryCombo);
-  const step = prior?.weaponKind === weaponKind ? prior.step % 3 + 1 : 1;
-  player.primaryCombo = { ...(prior || {}), weaponKind, step };
+  const four = weaponKind === 'verge-cleaver';
+  const continuing = prior?.weaponKind === weaponKind && (four ? prior.v === 2 : prior.v == null || prior.v === 1);
+  const step = continuing ? prior.step % (four ? 4 : 3) + 1 : 1;
+  player.primaryCombo = { ...(prior || {}), weaponKind, ...(four ? { v: 2 } : {}), step };
   return step;
 }
