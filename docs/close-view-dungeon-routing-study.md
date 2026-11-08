@@ -186,3 +186,137 @@ Pentagon ROUTING0 (8,-8), o0: current on the left, candidate on the right.
 - Mock-WebGL source execution submits geometry for both candidates at low/balanced/full tiers. This is not a real GPU screenshot or hardware measurement. Hosted traversal, actual GPU visual review and physical-phone timing remain pending. Local loopback/server/full npm checks were not retried after the established EACCES stop.
 - New helper work is bounded: nine room regions, twelve candidate edges, at most ten selected connectors, at most 32 reserved points and 4096 tiles; each corridor advances only along cardinal coordinate differences. No retry loop or wall-clock termination exists. The existing inherited terrain/decoration passes retain their existing bounds. No per-frame generation is added.
 - The coordinator registered `close-view-room-routing.ts` in the explicit build module list and both service workers; the final sequential `npm run build` passed at the unchanged release 825. No release number is reserved and neither experimental revision is adopted into production. Integration stays at the construction stage after the earlier character/tool/camera passes. Full Linux CI and hosted acceptance remain separate gates.
+
+
+## Phase B design proposal — compact exploration and architectural appearance
+
+**Approved design record; implementation evidence follows below.** Existing prototype revisions keep5/Pentagon10 remain explicitly selected scratch experiments, with production defaults4/9 unchanged. The second experiment revision refines these unpublished candidates; restarting its fixture reconstructs the new recipe. Existing/explored production pins are never regenerated. No new save schema or production-export support is proposed.
+
+### Recommendation and alternatives
+
+Choose compact, varied room grammars plus a maximum of one parallel vertical pair per site. Keep-only stairs are the lowest-risk first slice. The recommended next slice adds at most one **gate-equivalent adjacent Heart pair** for Pentagon, after verifying its complete directed transition contract. Reject novel ring-to-Heart/court-to-Heart links, hall-spine bypasses, nonadjacent floors and new intermediate floor identities in this phase.
+
+The current nine-room grid is too expansive to count as a finished exploration design. A fresh matched source probe used roofed IDs `building:{seed}:1:1:keep:4r`, four floors, unchanged guard counts:
+
+| Seed | Open tiles, v4 → frozen v5 (sum4 floors) | Enemies (both) | Peak static vertices, v4 → frozen v5 |
+|---|---:|---:|---:|
+| AUDIT0 | 1345 → 4368 | 19 | 20574 → 51036 |
+| DIG-AUDIT0 | 1601 → 4407 | 19 | 25950 → 49428 |
+| ROUTING0 | 1223 → 4357 | 20 | 18930 → 50046 |
+
+These roofed IDs intentionally differ from the preceding non-roof sample table. The new proposal aims for roughly400–650 open cells per44×40 floor, not another increase. This is an experiment target, not a reason to silently reject inconvenient seeds or change encounter totals.
+
+Use three original bounded grammars: a staggered spine with side chambers and a reconnecting service route; an offset ring with a short chord and one legible optional branch; and unequal paired wings joining a common landmark room. Select5–7 rooms from a fixed finite slot catalogue, vary dimensions/orientation, and allow chamfered/apsidal or short L-shaped footprints where inherited terrain decoration remains valid. Retain a continuous solid margin, existing semantic ports and two-tile connectors; use three-tile junction/landing/escape pockets. Preserve encounter/reward totals and family identity. Prefer route choices that return to useful landmarks, not long empty branches. This phase adds no invisible mandatory route, new secret-door mechanic or reward economy; optional branch entrances remain visually legible.
+
+Geometry, connector choice, port attachment, optional stair placement and appearance each get a local deterministic stream. Maximum7 room nodes, a fixed bounded edge catalogue, at most2 additional horizontal loop edges, existing32 reserved-port/4096-cell limits and no retry/time-based termination. Node roles and measured route lengths are diagnostics, not per-frame navigation. Existing ceiling/light/prop/actor caps remain.
+
+### Vertical routes and progression proof
+
+For a keep, choose at most one adjacent floor pair. Keep original `arrive`/`up` stairs. Scan common candidate coordinates after floor layout but before holes/objects, using bounded distance maps from the original stairs on both floors. Require separated useful approaches and a clear landing/step-off on both maps. Reserve both ends from holes, terrain blocking and object/foe placement; emit both endpoints or neither. If no safe useful pair exists, omit it deterministically and expose the reason. Revalidate normal `canStep` and footprint access after terrain decoration. The intended circuit is ordinary stair up → upper walking route → optional stair down → lower walking route; separate floor maps perform the actual vertical traversal.
+
+For Pentagon, duplicate only an existing adjacent Heart transition, preferably away from the finale. Preserve original nodes/edges/world/links/trials/levers/ledges and IDs; store at most one optional route separately. The current `pp.to === q.id` counterpart lookup and `lab-pass-${destination.n}` IDs assume one edge per pair, so optional routes require stable `routeId`, unique endpoint IDs and explicit counterpart references. Do not append ambiguous ordinary ports. Downward copies retain `labyrinth:true`, the original `bossGate`, and all original ordered guards/effects. Never substitute `pentShortcut`, whose far-side opener has different guard semantics.
+
+`Game.goBuildingFloor` selects its destination through `toId/toX/toY`; `toFloor` is metadata. Keep destinations must identify the existing adjacent floor of the same building. Pentagon area `:fN` encodes chamber n+1, not Heart visual depth. Validate actual `buildingArrival`, both counterpart identities and a real return. Existing roof/hatch/roofExit and living-guardian rules remain exact.
+
+The progression validator must prove complete state equivalence for the restricted extension, not flood-fill with all doors open. Collapse geometry into safe semantic components, preserve every original action/pickup/combat trigger, and require each added directed action to match an existing action's source/destination component and **ordered guard/effect contract**. Include labKeys/labOpen, pentLevers, pentTrials, pentBosses, pentSigil/pentOpened, plate latch state, guardian/finale state and active shortcuts. Sigil first-use opens without travel; deep-side shortcut opening and trial-guard clearance are distinct effects. Exact duplication proves no new reachable macro progression state for every valuation of these fields. Fail closed on any unmatched guard/effect or component. This proof does not authorize novel cross-node edges.
+
+Executable witnesses must check fresh/partial/full progression, blocked Heart descent before its keeper and permitted descent afterwards at both stair pairs, upstairs return, unchanged key/trial/lever/sigil/plate/shortcut semantics, required cache/finale/roof routes, and the complete walking vertical circuit. Geometry-only connectivity is insufficient. Test normal scratch reconstruction and export/migrate/resume through the harness that reinstalls the candidate Pentagon selector; retain exact location, counterpart IDs, enemy/guardian state, dungeonReturn and unknown schema14 fields. Standalone experimental exports remain unsupported.
+
+### Biomechanical keep appearance
+
+The narrative bible was read first. Its ambiguous keep/Pentagon seam-life, reciprocal assimilation and accumulated decay support this appearance without naming a new civilization, adding exposition or establishing new metaphysics. Keep the player-facing Old Keep identity. Original ribbed chitin, worn metal, restrained conduits and small warm lights imply the variation; no copied creatures/assets or new gameplay family.
+
+Proposed generated metadata is `building.appearance = {version:1, kind:'biomechanical-keep'}`, present only on a deterministic minority of **standalone candidate keep5** sites (initial proposal one in four). Derive it from building base plus an appearance-specific salt; share it across that site's floors and never consume navigation/loot RNG. Do not change `style:'keep'`, tile gameplay kinds, enemies, loot, dungeon IDs or old theme hashes. The candidate interior version freezes the appearance rule at eventual adoption; generated metadata adds no durable save field and requires no schema migration. Castle/compound keeps, Hive/apartment families, the legacy outdoor Great Keep and ordinary dungeon families are excluded.
+
+A single Close View theme preset can already combine organic wall material2, ribbed ceiling2, machinery floor10, aged neutral metal/chitin colors and bounded existing vent/root decoration. `keepWall` follows the selected theme, unlike hard-coded Hive/apartment tile materials. Keep the existing light budget and at least the current keep's actor readability; use no shader change, atlas addition, image asset, dependency or draw pass. Existing ceiling ribs and wall/ceiling/floor palettes provide coherent architecture. No new combat collision follows decorative ribs.
+
+The proposed optional exterior complement is equally narrow: the selected scratch site's regenerated `greatBuilding` record gets the same **runtime-only appearance tag** from its fixture reconstruction wrapper; `renderer.ts` uses it only to select facade/roof palette and existing line motifs. No roof tile height, footprint, hole, door or path changes. This makes the experimental site's exterior/roof appearance coherent while retaining ordinary outdoor rendering. Production adoption later needs explicit history-aware attachment of that derived tag; do not pretend the PG wrapper is production adoption. If this complement is deferred, report that the experimental interior is biomechanical while the outdoor facade/roof remains ordinary stone.
+
+### Bounded ownership and acceptance plan
+
+Proposed owned sources: `close-view-room-routing.ts` (grammar/route/appearance policy), `great-buildings.ts` (optional stair reservation/pairs and candidate appearance), `pentagon.ts` (separate candidate optional pair/counterparts), narrowly necessary `game.ts` counterpart routing only if existing explicit destinations are insufficient, `close-view.ts` (one theme), `proving-ground-labs.ts` (matched fixtures/diagnostics/reconstruction), and `renderer.ts` only for approved exterior palette complement. No config/build/SW edit or new module is planned. Add focused new routing/progression/theme tests; update only candidate-specific assertions that deliberately encoded9 rooms or one counterpart. Preserve every published generator golden digest and existing compatibility assertion.
+
+Compare baseline/frozen-phaseA/refined-phaseB on AUDIT0, DIG-AUDIT0, ROUTING0, PIN and an unchanged fixed seed corpus. Report diagrams with distinct original/optional stairs, room graph degree/dead ends/cycle rank, useful circuit length, route savings, required/optional walking distances, clearance and open-area/foe ratios, usable object approaches, rejected optional-pair reasons, work counters, static vertex/light/prop counts and theme parity across tiers/reduced motion. Add ordinary body-contact-sized passage/retreat and landing clearance probes without claiming graph metrics establish combat feel. Maximum one extra vertical pair means two new objects per selected site, bounded floor-area scans/BFS and no per-frame generation or all-pairs actors.
+
+Offline tests/build remain allowed; local server/browser/fullnpm remain stopped. Hosted Close View exploration, actual material readability/occlusion and phone frame time remain separate acceptance gates. This design record does not authorize production adoption.
+
+
+## Phase B implementation evidence — experiment revision 2
+
+The approved design is now implemented in the isolated candidate. Production defaults remain4/9; keep5/Pentagon10 stay PG-only. No Game transition change was necessary. The historical phase-A prototype is preserved at e9a88656.
+
+The three-way table uses identical roofed four-floor sites (current v4 / frozen phase A / refined phase B). Far-use distance is the largest shortest ordinary walk to an interactable across the site's floors, not a pacing acceptance score.
+
+| Seed | Open tiles (sum4 floors) | Enemies (sum4 floors) | Peak static vertices | Farthest use, v4 / B |
+|---|---:|---:|---:|---:|
+| AUDIT0 | 1345 / 4368 / 1386 | 19 / 19 / 19 | 20574 / 51036 / 21714 | 35 / 51 |
+| DIG-AUDIT0 | 1601 / 4407 / 1465 | 19 / 19 / 19 | 25950 / 49428 / 23496 | 62 / 63 |
+| ROUTING0 | 1223 / 4357 / 1432 | 20 / 20 / 20 | 18930 / 50046 / 23742 | 46 / 55 |
+
+Across the fixed128-site COMPACT corpus (512 keep floors), open floor cells range286–484, mean352.9. This is smaller than the design's initial400–650 target and close to the original floor-area budget; added route variety comes from reconnections and real floor transitions, not empty expansion. Keep optional pairs were omitted3/128 times; accepted raw walking circuits span36–120 steps including2 transitions. Heart pairs were omitted0/64 times in the independent HEART-PAIR corpus. Omission reasons remain explicit and deterministic; no retry or seed filtering repairs them.
+
+Matched AUDIT0 ground-floor footprints: current v4, frozen phase A, refined phase B. # wall, . floor, o hole, @ arrival, E exterior exit, U original up stair, S paired optional side stair. The frozen phase-A panel reconstructs its exact raw layout/up placement from e9a88656; height shading and decorative objects are omitted consistently.
+
+```text
+############################################    ############################################    ############################################
+###################....#####################    ############################################    ############################################
+###################....#####################    ################............###...........##    ############################################
+###################....#####################    ##............##............###...........##    ############################################
+###################....#####################    ##............##............###...........##    ############################################
+####################..######################    ##............##............###........U..##    ############################################
+####################..######################    ##........................................##    ###################......###################
+####################..######################    ##........................................##    #####.....U########......###################
+####################..######################    ##............##............###...........##    #####................................#######
+####################..######################    ##............##............###...........##    #####................................#######
+####################..######################    ##............##............###...........##    #####......########......######......#######
+####################..######################    ##............##............###...........##    #####......###########..#######....S.#######
+####################..######################    ########..############..############..######    #####......###########..#######......#######
+####################..######################    ########..############..############..######    ########..############..###########..#######
+##############...............###############    ########..############..############..######    ########..############..###########..#######
+##############...............###############    ###...........###...........###...........##    ########..############..###########..#######
+##############...............###############    ###...........###...........###...........##    ########..############..###########..#######
+####....######...............######...######    ###...........###...........###...........##    ########..############..###########..#######
+####..................................######    ###...........###...........###...........##    ########..############..###########..#######
+####..U...............................######    ###.......................................##    ########..############..###########..#######
+####....######...............######...######    ###.......................................##    ########..############..###########..#######
+##############...............######...######    ###...........###...........###...........##    ########..############..###########..#######
+##############...............######...######    ###...........###...........###...........##    ########..############..###########..#######
+##############...............######...######    ###...........###...........###...........##    ########..############..###########..#######
+##############...............######...######    ###...........###...........###...........##    ########..############..###########..#######
+####################..#############...######    ######################..####################    #######...############..##########...#######
+####################..#############...######    ######################..####################    #######....###########..##########....######
+####################..#############...######    ##............########..#######...........##    ######.....###########..#########.....######
+####################..#############...######    ##............##............###...........##    ######.....########.......#######.....######
+####################..#############...######    ##............##............###...........##    #######...#########.......#######.....######
+####################..#############...######    ##............##............###...........##    ########..............................######
+####################..#############...######    ##............##............###...........##    ########.............................#######
+####################..#############...######    ##........................................##    ###################.......##################
+###################.....###########...######    ##........................................##    ######################..####################
+###################...................######    ##............##............###...........##    ######################..####################
+###################...................######    ##............##............###...........##    ######################..####################
+###################.................########    ##............##............###...........##    ######################..####################
+#####################..#####################    ##............##............###...........##    #####################...####################
+######################@#####################    ######################@.####################    #####################.@.####################
+######################E#####################    ######################E#####################    ######################E#####################
+```
+
+A small cached floor inlay marks a recurring junction room (at most24 added vertices, existing static pass). It is a visual cue only, not a lock, reward, hazard or physics surface. The biomechanical preset reuses current material2 walls, material10 floors and organic ceiling ribs; matched PG baseline/candidate scenarios select the same ordinary enterable Old Keep site. ROUTING0's explicit biomechanical comparison is at section(3,-3), door(25,15). Runtime-only exterior tagging survives fixture loads and changes both block-structure facade and roof palettes without touching terrain.
+
+The room graphs in the same512-floor corpus have maximum degree3, zero or two degree1 chambers, and cycle rank1 or2. These are grammar graph measurements; crossing/overlapping carved corridors can alter the physical graph, so these numbers are not a claim about perceived route complexity. Actual ordinary-footprint paths and real walking circuits are checked separately. Static geometry peaks at27402 vertices,32 placed light candidates and46 prop-card candidates. Existing tier selection still limits submitted lights to3/5/8 and cards to10/20/28. One offline warm-process probe generated these floors and static meshes in6098ms; its slowest individual floor-generation call was15.32ms. These source CPU measurements are descriptive, not timing thresholds or device/GPU acceptance.
+
+Work is bounded structurally:6–7 room nodes, at most8 connector edges, at most32 reserved ports, at most4096 floor cells, exactly two distance maps and one cell scan per optional pair, and zero regeneration attempts. The finite pairs add at most two stair objects per site. All generation uses local deterministic streams; there is no frame-time stopping condition, dependency, new shader/pass or persistent cache. Optional stair landings reserve a flat3×3 footprint from holes, other objects and spawns; tests require normal footprint/canStep access and an escape pocket. This branch predates the separate actor-contact integration, so a live foe blocking/retreat playtest is still required after that candidate merges.
+
+The optional Heart action is a complete clone of its existing directed action. Only identity, label and position/destination coordinates differ. Tests compare every original transition's full guard/effect payload withv9, and each extra transition with its original, while requiring both endpoints to occupy the same ordinarily connected semantic chambers. With identical action ordering in unchanged Game code, this establishes progression-state equivalence for every guard valuation of this restricted parallel-edge extension. Executable Game witnesses additionally cover partial keeper histories, keys, first-use Seal opening without travel, a real stone-held plate, actual lever pulls, real trial-clear consequences and deep-side shortcut opening. The witnesses deliberately clear enemies to exercise travel; they do not validate encounter pacing or actual combat difficulty.
+
+An endpoint audit found inherited shortcut-placement omissions:21 missing ends across16 v9 HEART-PAIR sites, versus6 in the initial v10 candidate. Pinnedv9 is unchanged. Candidatev10 now permits existing planned link ends in safe flat pockets anywhere inside their original semantic chamber. It changes no planned link ID, guard, effect or macro connection. Regression coverage requires every planned near/deep end across64 sites, a walkable approach, near-side refusal, deep-side opening, scratch reload and counterpart return.
+
+`restoreRoomRoutingFixture` is an explicit interior-only scratch test harness: it validates the seed/site/revision, runs the normal snapshot migration and Game reconstruction, then reinstalls the selected-site experiment selector/appearance wrapper. Exact position, dungeonReturn, counterpart identity, keeper/shortcut histories and an unknown schema14 canary survive. No production save import/export support is introduced. Cross-experiment-revision snapshots are unsupported; reset the fixture when changing prototype revisions. Production adoption would require a separately reviewed generation/history decision and exterior appearance attachment.
+
+Validation completed offline at release825:
+
+- `node --test tests/close-view-room-routing.test.ts tests/close-view-routing-exploration.test.ts` —15/15 passed. Includes1000-seed order-independent determinism, unchanged v4 golden,128-site keep/Pentagon reachability,64-site transition equivalence and all endpoint checks, real progression/travel/resume witnesses, matched biomechanical exterior identity, and mock GPU execution at all three quality tiers with reduced motion on/off.
+- `node --test tests/great-buildings.test.ts tests/pentagon.test.ts tests/pentagon-grand-halls.test.ts tests/interior-v4-arrival.test.ts tests/interior-terrain.test.ts tests/close-view.test.ts tests/close-view-v4.test.ts tests/close-view-terrain-render.test.ts tests/release-consistency.test.ts` —82/82 passed, unchanged assertions and legacy digests.
+- `node --test tests/close-view-atmosphere-794.test.ts tests/pentagon-shortcuts.test.ts tests/pentagon-balconies.test.ts tests/pentagon-finale.test.ts` —48/48 passed, unchanged assertions.
+- `npm run build` —passed; static offline PWA release825 and PG-1. No release/configuration/module-registration change in this phase.
+
+Hosted cases remain: explore both real stair circuits with ordinary enemy contact active; compare room recognition, encounter density and retreat options; inspect biomechanical wall/floor/ceiling cohesion and actor readability across phone tiers and reduced motion; verify outdoor roof/facade palette and return visually. Courts and roofs intentionally retain the ordinary outdoor view. CPU and mock GL checks cannot establish hardware rendering, art acceptance or exploration quality. The candidate is ready for that explicit PG comparison, not production adoption.

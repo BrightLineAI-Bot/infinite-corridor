@@ -1,3 +1,4 @@
+import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
 import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
@@ -336,6 +337,16 @@ export const CLOSE_VIEW = Object.freeze({
       fog: Object.freeze({ rgb: Object.freeze([5, 6, 7]), near: 2.2, far: 10.5, haze: Object.freeze([.12, .7]), hazeRGB: Object.freeze([10, 16, 16]) }),
       grade: Object.freeze([.92, 1.02, 1, 1.12]), vignette: .62, deco1: Object.freeze([40, 30, 30]), deco2: Object.freeze([80, 60, 50]), glow: Object.freeze([70, 230, 190]),
       decor: Object.freeze({ pods: .16 }), props: Object.freeze({ bones: .05, rubble: .03, web: .3 }) }),
+    biomechanicalKeep: Object.freeze({ label: "Old Keep: ribbed metal and chitin",
+      wall: Object.freeze({ kind: 2, rgb: Object.freeze([68, 72, 66]), mortar: Object.freeze([16, 18, 17]), stone: Object.freeze([.3, .65, .05, .6]), damp: Object.freeze([.8, .55]), dampRGB: Object.freeze([140, 145, 126]), topFall: .3 }),
+      floor: Object.freeze({ kind: 10, rgb: Object.freeze([62, 65, 58]), joint: Object.freeze([15, 17, 16]), rug: Object.freeze([42, 43, 37]), size: .6, wear: .55, wet: .3, sewer: false, remap: Object.freeze({ 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 }) }),
+      ceiling: Object.freeze({ kind: 2, rgb: Object.freeze([48, 52, 47]), bay: 2, rib: .1, dark: .7 }),
+      arch: Object.freeze({ spring: 1.9, radius: .45, band: .16 }), pilaster: 0, plinth: Object.freeze([.12, .04]), cornice: Object.freeze([.10, .04]),
+      light: Object.freeze({ torch: Object.freeze([245, 190, 132]), reach: 5.4, strength: 1.7, height: 1.15, ambient: Object.freeze([12, 13, 12]),
+        sources: Object.freeze({ share: .09, spacing: 5, reach: 4.2, strength: 1.5, hue: 3, ghost: 0, candles: 0 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([6, 8, 7]), near: 2.6, far: 12, haze: Object.freeze([.08, .7]), hazeRGB: Object.freeze([15, 18, 15]) }),
+      grade: Object.freeze([.98, 1.02, .95, 1.1]), vignette: .5, deco1: Object.freeze([42, 46, 40]), deco2: Object.freeze([112, 110, 86]), glow: Object.freeze([170, 205, 140]),
+      decor: Object.freeze({ vent: .07, roots: .05 }), props: Object.freeze({ rubble: .03, chain: .02, web: .15 }) }),
     arcology: Object.freeze({ label: "Arcology: an old machine, failing",
       wall: Object.freeze({ kind: 3, rgb: Object.freeze([70, 76, 74]), mortar: Object.freeze([14, 15, 15]), stone: Object.freeze([.34, .8, .04, .4]), damp: Object.freeze([.6, .45]), dampRGB: Object.freeze([152, 158, 142]), topFall: .4 }),
       floor: Object.freeze({ kind: 10, rgb: Object.freeze([60, 64, 62]), joint: Object.freeze([12, 13, 13]), rug: Object.freeze([40, 40, 46]), size: .6, wear: .5, wet: .2, sewer: false }),
@@ -406,6 +417,7 @@ export function openAirAt(map, x, y) { const w = Math.max(1, Number(map?.width) 
 const themeRoll = (key, salt) => (strHash(`${CLOSE_VIEW.themes.salt}:${CLOSE_VIEW.themes.version}:${key}:${salt}`) % 10000) / 10000;
 export function closeViewThemeId(b) {
   const T = CLOSE_VIEW.themes; if (!b || typeof b !== "object") return "keep"; const key = String(b.base || "");
+  if (b.interiorVersion === 5 && b.style === "keep" && !b.pentagon && biomechanicalKeep(b.appearance)) return "biomechanicalKeep";
   if (b.pentagon) return b.kind === "cellar" || themeRoll(key, `root:${b.floor}:${b.node}`) < T.rootCellarShare ? "rootCellar" : "pentagon";
   if (b.style === "hive") return "hive";
   if (b.style === "apartment") return "arcology";
@@ -1601,6 +1613,14 @@ function buildStatic(map, geo, th) {
       surface.rect(dx / 12, (dy - 1) / 16, .043, .033, color, depth);
     }
   };
+  // One small floor inlay identifies the recurring junction room. It uses the existing
+  // cached static pass (at most 24 vertices), follows the floor and never blocks a body.
+  const landmark=map.building?.routing?.nodes?.find(n=>n.role==="landmark");
+  if(landmark && free(landmark.x,landmark.y)) {
+    const face=paint(landmark.x+.5,landmark.y+.5,.025,0,0,.8,.8), color=tg.wall.map(v=>Math.min(.7,v+.14));
+    const grammar=map.building.routing.grammar;
+    face.path(grammar==="offset-ring"?[[-.4,0],[0,-.4],[.4,0],[0,.4],[-.4,0]]:grammar==="paired-wings"?[[-.4,-.3],[0,0],[.4,-.3],[0,0],[0,.4]]:[[-.4,-.3],[0,-.3],[0,.4],[.4,.4]],color,.045);
+  }
   for (const m of map.murals || []) {
     const art = PENTAGON_MURALS.find(({ id }) => id === m.muralId);
     if (!art) continue;

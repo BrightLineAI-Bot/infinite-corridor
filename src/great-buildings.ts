@@ -13,7 +13,7 @@
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
 import { hashSeed, rng, byHash } from "./random.ts";
-import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms } from "./close-view-room-routing.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms, routingStairPair, routingNearLanding, routingKeepAppearance } from "./close-view-room-routing.ts";
 
 export const BUILDINGS = {
   version: 3, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
@@ -240,9 +240,16 @@ export function buildingPlan(base, V = 1) {
     floors.push({ ...L, floor: f, arrive, up, top, far });
     if (up) arrive = up;
   }
+  let optionalRoute = null;
+  if (V === CLOSE_VIEW_ROOM_ROUTING.keepVersion && P.style === "keep" && floors.length > 1) {
+    const f = hashSeed(`${base}:optional-floor-pair:v2`) % (floors.length - 1), a = floors[f], b = floors[f+1];
+    const point = routingStairPair(base, a, b, a.up, b.arrive, [a.arrive,a.up], [b.arrive,b.up], base);
+    optionalRoute = { id:`keep-${f+1}-${f+2}`, from:f+1, to:f+2, ...point };
+    if (!point.reason) { a.optionalStairs=[{...point,toFloor:f+2,dir:"up",routeId:optionalRoute.id}]; b.optionalStairs=[{...point,toFloor:f+1,dir:"down",routeId:optionalRoute.id}]; }
+  }
   // holes above the ground floor, over open ground on the floor below, clear of the stairs and never cutting the way up
   for (const F of floors) if (F.floor > 1) addHoles(base, F, floors[F.floor - 2], W, H, V);
-  const plan = { base, ...P, W, H, door, entry, breach, floors };
+  const plan = { base, ...P, W, H, door, entry, breach, floors, ...(optionalRoute ? { optionalRoute } : {}) };
   if (memo.size > 24) memo.clear(); memo.set(key, plan); return plan;
 }
 
@@ -532,7 +539,7 @@ export function farthest(L, from, ok) {
 export function addHoles(base, F, below, W, H, V = 1) {
   const B = BUILDINGS.holes, at = (x, y) => y * W + x, near = (p, x, y) => p && Math.abs(p.x - x) + Math.abs(p.y - y) <= B.clear;
   const belowHole = V >= 2 ? new Set((below.holes || []).map(([x, y]) => at(x, y))) : null; // interior v2: never over a hole below
-  const ok = (x, y) => F.grid[at(x, y)] === 0 && below.grid[at(x, y)] === 0 && !near(F.arrive, x, y) && !near(F.up, x, y) && !near(below.up, x, y) && !near(below.arrive, x, y) && !(belowHole && belowHole.has(at(x, y)));
+  const ok = (x, y) => F.grid[at(x, y)] === 0 && below.grid[at(x, y)] === 0 && !near(F.arrive, x, y) && !near(F.up, x, y) && !near(below.up, x, y) && !near(below.arrive, x, y) && !routingNearLanding(F.optionalStairs,x,y) && !routingNearLanding(below.optionalStairs,x,y) && !(belowHole && belowHole.has(at(x, y)));
   const cand = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (ok(x, y)) cand.push([x, y]);
   cand.sort(byHash((a) => `${base}:hole:${F.floor}:${a}`));
   const want = Math.round(cand.length * B.share), holes = [];
@@ -577,9 +584,12 @@ export function generateBuildingFloor(seed, id, V = 1) {
     if (plan.breach) objects.push({ id: "building-breach", kind: "exit", name: "Broken wall", x: plan.breach.x, y: plan.breach.y, state: "open", actions: ["exit"] }); }
   else objects.push({ id: "building-stair-down", kind: "buildingStair", name: `Ladder down · ${S.floorNames[P.floor - 2] || `floor ${P.floor - 1}`}`, x: F.arrive.x, y: F.arrive.y, state: "open", actions: ["descend"], toId: buildingFloorId(P.base, P.floor - 1), toX: F.arrive.x, toY: F.arrive.y, toFloor: P.floor - 1, dir: "down" });
   if (F.up) objects.push({ id: "building-stair-up", kind: "buildingStair", name: `Ladder up · ${S.floorNames[P.floor] || `floor ${P.floor + 1}`}`, x: F.up.x, y: F.up.y, state: "open", actions: ["climb"], toId: buildingFloorId(P.base, P.floor + 1), toX: F.up.x, toY: F.up.y, toFloor: P.floor + 1, dir: "up" });
+  for(const stair of F.optionalStairs || []) objects.push({ id:`routing-${stair.routeId}-${stair.dir}`, counterpartId:`routing-${stair.routeId}-${stair.dir === "up" ? "down" : "up"}`, routeId:stair.routeId,
+    kind:"buildingStair", name:`Side ladder ${stair.dir} · floor ${stair.toFloor}`, x:stair.x,y:stair.y,state:"open",actions:[stair.dir === "up" ? "climb" : "descend"],
+    dir:stair.dir,toId:buildingFloorId(P.base,stair.toFloor),toFloor:stair.toFloor,toX:stair.x,toY:stair.y });
   // creatures: one a room, the rooms farthest from where you come in first; the top floor's guardian by its cache
   const C = BUILDINGS.creatures, h = (k) => hashSeed(`${P.base}:f${P.floor}:${k}`), n = C.perFloor[0] + h("n") % (C.perFloor[1] - C.perFloor[0] + 1);
-  const taken = new Set(objects.map((o) => o.y * W + o.x)), free = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.hole && !t.doorway && !taken.has(y * W + x); };
+  const taken = new Set(objects.map((o) => o.y * W + o.x)), free = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.hole && !t.doorway && !taken.has(y * W + x) && !routingNearLanding(F.optionalStairs,x,y); };
   const spots = F.far.filter((p) => p.d >= C.far && free(p.x, p.y)), used = new Set();
   for (const p of spots) { if (enemySpawns.length >= n) break; const rm = F.room[p.y * W + p.x]; if (used.has(rm)) continue; used.add(rm); taken.add(p.y * W + p.x);
     enemySpawns.push({ id: `${id}:g${enemySpawns.length}`, kind: S.guards[h(`k${enemySpawns.length}`) % S.guards.length], x: p.x, y: p.y, buildingGuard: true }); }
@@ -591,7 +601,7 @@ export function generateBuildingFloor(seed, id, V = 1) {
       const q = F.far.find((p) => free(p.x, p.y) && clear(p) && Math.abs(p.x - F.arrive.x) + Math.abs(p.y - F.arrive.y) > 3 && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => taken.has((p.y + dy) * W + p.x + dx))) || [...F.far].reverse().find((p) => free(p.x, p.y) && clear(p)) || F.far.find((p) => free(p.x, p.y));
       if (q) { objects.push({ id: "building-roof-ladder", kind: "buildingStair", name: "Ladder up · the roof", x: q.x, y: q.y, state: "open", actions: ["climb"], dir: "roof" }); taken.add(q.y * W + q.x); } } }
   return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${S.name}, ${P.floor === 1 ? "the ground floor" : `floor ${P.floor}`} of ${P.floors}`, danger: "falling floors", width: W, height: H, tiles, entry, exit: P.floor === 1 ? { ...plan.door } : null, objects, enemySpawns,
-    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, ...(V >= 2 ? { interiorVersion: V } : {}), breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }, P.base, V); // layoutVersion 1: dungeon-variation leaves it as laid
+    building: { base: P.base, style: P.style, ...(F.routing ? { routing:F.routing, optionalRoute:plan.optionalRoute, ...(routingKeepAppearance(P.base,V) ? {appearance:routingKeepAppearance(P.base,V)} : {}) } : {}), floor: P.floor, floors: P.floors, roof: P.roof, ...(V >= 2 ? { interiorVersion: V } : {}), breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }, P.base, V); // layoutVersion 1: dungeon-variation leaves it as laid
 }
 
 // The nearest open floor beside `p` (not on a stair or a hole), to stand on when you arrive by it.

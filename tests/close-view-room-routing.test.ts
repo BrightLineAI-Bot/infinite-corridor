@@ -61,9 +61,9 @@ test('room regions have bounded trees, loops and independent deterministic stage
   const hashes = new Map();
   for (const seed of seeds) {
     const floor = layCloseViewRooms(seed, 1, 44, 40, BUILDINGS.styles.keep, { x: 22, y: 38 }, [{ x: 22, y: 39, v: 2 }]);
-    assert.equal(floor.leaves.length, 9); assert.equal(floor.routing.edges.filter((e) => !e.loop).length, 8);
-    assert.ok(floor.routing.edges.length >= 9 && floor.routing.edges.length <= 10);
-    const degree = new Array(9).fill(0); for (const edge of floor.routing.edges) { degree[edge.a]++; degree[edge.b]++; }
+    assert.ok(floor.leaves.length >= 5 && floor.leaves.length <= 7); assert.equal(floor.routing.edges.filter((e) => !e.loop).length, floor.leaves.length - 1);
+    assert.ok(floor.routing.edges.length >= floor.leaves.length && floor.routing.edges.length <= floor.leaves.length + 1);
+    const degree = new Array(floor.leaves.length).fill(0); for (const edge of floor.routing.edges) { degree[edge.a]++; degree[edge.b]++; }
     assert.ok(Math.max(...degree) >= 3, `${seed}: genuine branching region`);
     hashes.set(seed, digest(floor));
     const otherStyle = { ...BUILDINGS.styles.keep, rooms: ['flagFloor'] };
@@ -79,7 +79,7 @@ test('candidate keeps and all Pentagon chambers preserve walkable uses and seman
     for (let f = 1; f <= 4; f++) {
       const map = generateBuildingFloor(seed, `${base}:f${f}`, 5); assertUsesReachable(map);
       for (const stair of map.objects.filter((o) => o.toId)) {
-        const there = generateBuildingFloor(seed, stair.toId, 5), counterpart = there.objects.find((o) => o.toId === map.id);
+        const there = generateBuildingFloor(seed, stair.toId, 5), counterpart = there.objects.find((o) => stair.counterpartId ? o.id === stair.counterpartId : o.toId === map.id && !o.routeId);
         assert.ok(counterpart); assert.deepEqual([counterpart.x, counterpart.y], [stair.toX, stair.toY]);
       }
       if (f === 4) assert.ok(map.objects.some((o) => o.dir === 'roof'), `${map.id}: roof retained`);
@@ -161,10 +161,10 @@ test('both experimental interiors submit GPU geometry at low, balanced and full 
   const gl = new MockGL(), screen = context(), canvas = { width: 390, height: 844, addEventListener() {}, getContext: (kind) => kind === 'webgl2' ? gl : context() }; screen.canvas = canvas;
   setCloseViewCanvasFactory(() => canvas); CLOSE_VIEW_HOOKS.gl = true; resetCloseViewGL();
   try {
-    for (const family of ['keep', 'pentagon']) {
+    for (const family of ['keep', 'pentagon', 'keep-biomechanical']) {
       const { game } = createLabFixture({ lab: 'close-view', scenario: `routing-${family}-candidate`, seed: 'ROUTING0', now: 1000 });
-      for (const tier of ['low', 'balanced', 'full']) {
-        game.presentation = { effectiveQuality: tier }; resetCloseViewCamera();
+      for (const tier of ['low', 'balanced', 'full']) for (const reduceMotion of [false, true]) {
+        game.presentation = { effectiveQuality: tier, reduceMotion }; resetCloseViewCamera();
         const before = closeViewGLStats.frames; render(screen, game, 390, 844, 1000);
         assert.ok(closeViewGLStats.frames > before, `${family}/${tier}: GPU frame submitted`); assert.equal(closeViewStats.gl, 1); assert.ok(closeViewGLStats.drawCalls > 0);
       }

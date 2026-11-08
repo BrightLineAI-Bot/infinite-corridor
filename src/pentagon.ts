@@ -13,7 +13,7 @@
 // ghouls. Relics in the chambers tell what happened to the Fivefold Court. Everything is a hash of the seed and the centre;
 // a Pentagon stands only where all nine sections are new ground (`atlas.pentVersion`).
 import { hashSeed, rng, byHash } from "./random.ts";
-import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms } from "./close-view-room-routing.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms, routingStairPair, routingNearLanding } from "./close-view-room-routing.ts";
 import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest } from "./great-buildings.ts";
 import { carveMaze } from "./labyrinths.ts";
 import { LIFT_PER_LEVEL as LIFT } from "./landscape.ts";
@@ -406,6 +406,15 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
     for (const d of order) { const k = links.length - (nh - 1); if (k >= want) break; const near = [...entries.slice(k % entries.length), ...entries.slice(0, k % entries.length)].find((e) => (far.get(e).get(d.id) ?? 0) >= S.minHops); if (!near) continue;
       links.push({ id: `link${k}`, kind: S.ringKinds[hashSeed(`${key}:link-kind:${d.id}`) % S.ringKinds.length], near, deep: d.id }); } }
   const plan = { key, seed, cx, cy, V, base: `pentagon:${seed}:${cx}:${cy}${V >= 2 ? `:v${V}` : ""}`, nodes, edges, world, W: W0, H: H0, trials, keyNode, plateE, lockW, gate: first, sealNode, levers: leverAt, nh, links, ...(ledges ? { ledges } : {}) };
+  if(V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion && nh > 2) {
+    const hi=hashSeed(`${plan.base}:optional-heart-pair:v2`)%Math.max(1,nh-2), a=nodes.find(n=>n.id===`h${hi}`), b=nodes.find(n=>n.id===`h${hi+1}`);
+    const ap=a.ports.find(p=>p.to===b.id),bp=b.ports.find(p=>p.to===a.id);
+    const layout=n=>layCloseViewRooms(`${plan.base}:${n.id}`,1,n.W||W0,n.H||H0,BUILDINGS.styles.keep,n.ports[0]?.inner||{x:W0>>1,y:H0>>1},n.ports.flatMap(p=>[{x:p.x,y:p.y,v:2},{...p.inner,v:2}]));
+    if(ap&&bp&&!a.hall&&!b.hall) {
+      const point=routingStairPair(plan.base,layout(a),layout(b),ap.inner,bp.inner,a.ports,b.ports,plan.base);
+      plan.optionalRoutes=[{id:`heart-${hi}-${hi+1}`,a:a.id,b:b.id,...point}];
+    } else plan.optionalRoutes=[{id:`heart-${hi}-${hi+1}`,reason:"no equivalent ordinary Heart pair"}];
+  }
   if (memo.size > 8) memo.clear(); memo.set(mkey, plan); return plan;
 }
 const chamberId = (plan, q) => `${plan.base}:f${q.n + 1}`;
@@ -522,11 +531,11 @@ export function generatePentagonChamber(seed, id) {
   // v8 changes only the halls: every other chamber is laid out as v7 lays it (the floor plan keyed on the v7 base), so the floors
   // played and tuned under v7 stand as they were; what is placed on them is still keyed on the chamber's own id
   const laid = plan.V >= 8 ? `${Pp.base.replace(/:v\d+$/, ":v7")}:${q.id}` : base;
-  let grid, room = null, mat = null;
+  let grid, room = null, mat = null, routing = null;
   if (q.hall) grid = null; // v8: a grand hall lays its own floor plan (pentagon-halls.ts), below; its size is its own (q.W, q.H)
   else if (q.floorKind === "cellar" && plan.V < 9) grid = carveMaze(laid, { n: q.n }, W, H, open);
   else { const layout = plan.V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion ? layCloseViewRooms : plan.V >= 9 ? layFloorV3 : layFloor;
-    const F = layout(plan.V >= 9 ? base : laid, 1, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; }
+    const F = layout(plan.V >= 9 ? base : laid, 1, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; routing = F.routing || null; }
   const tiles = q.hall ? layPentagonHall(base, q.hall.type, W, H, open, arrive, S.wall) : [];
   if (!q.hall) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, v = grid[k], cellar = q.floorKind === "cellar";
     if (v === 1 || v === 4) tiles.push({ x, y, kind: v === 4 ? "rubbleFloor" : cellar ? "cellarWall" : S.wall, blocked: true, detail: (x * 3 + y) % 4 });
@@ -547,7 +556,15 @@ export function generatePentagonChamber(seed, id) {
     const o = plan.nodes.find((n) => n.id === p.to), there = o.ports.find((pp) => pp.kind === "pass" && pp.to === q.id), heart = q.kind === "heart", dir = heart ? (o.n > q.n ? "down" : "up") : "door";
     objects.push({ id: `lab-pass-${o.n}`, kind: "buildingStair", name: `${dir === "door" ? "Door" : dir === "down" ? "Ladder down" : "Ladder up"} · ${o.name}`, x: p.x, y: p.y, state: "open", actions: [dir === "down" ? "descend" : "climb"], toId: chamberId(plan, o), toX: there.inner.x, toY: there.inner.y, dir, labyrinth: true, ...(plateSpot && p === plateSpot ? { plateLock: true } : {}), ...(p.edge.sigil ? { sigil: true } : {}), ...(dir === "down" && q.boss && (plan.V === 2 || plan.V >= 4) ? { bossGate: true } : {}), ...(p.edge.sigil && plan.V >= 4 ? { sigilKey: `e:${p.edge.a}-${p.edge.b}` } : {}),
       ...(p.edge.shortcut ? (p.edge.far === q.id ? { shortcutOpens: p.edge.shortcut } : { barred: true, shortcutKey: p.edge.shortcut }) : {}), ...(p.edge.secret && o.kind === "secret" ? { lock: p.edge.secret, lockName: p.edge.shardName, secretDoor: true } : {}) }); }
-  const pid = plan.V >= 8 && !q.hall ? `${laid.slice(0, -q.id.length - 1)}:f${q.n + 1}` : id, h = (k) => hashSeed(`${pid}:${k}`), taken = new Set(objects.map((o) => o.y * W + o.x)), ok = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.doorway && !t.pentFinaleClear && !taken.has(y * W + x); };
+  const route=plan.optionalRoutes?.find(r=>!r.reason&&(r.a===q.id||r.b===q.id)), optionalLandings=route?[route]:[];
+  if(route) {
+    const other=plan.nodes.find(n=>n.id===(route.a===q.id?route.b:route.a)), original=objects.find(o=>o.id===`lab-pass-${other.n}`);
+    // Clone the complete directed transition, including every ordered Game guard/effect field.
+    // Coordinates/identity alone differ; existing ports and macro edges remain untouched.
+    objects.push({...original,id:`routing-${route.id}-${q.id}`,counterpartId:`routing-${route.id}-${other.id}`,routeId:route.id,equivalentId:original.id,
+      name:`Side ${original.name.toLowerCase()}`,x:route.x,y:route.y,toX:route.x,toY:route.y,toFloor:other.n+1});
+  }
+  const pid = plan.V >= 8 && !q.hall ? `${laid.slice(0, -q.id.length - 1)}:f${q.n + 1}` : id, h = (k) => hashSeed(`${pid}:${k}`), taken = new Set(objects.map((o) => o.y * W + o.x)), ok = (x, y) => { const t = tiles[y * W + x]; return t && !t.blocked && !t.doorway && !t.pentFinaleClear && !taken.has(y * W + x) && !routingNearLanding(optionalLandings,x,y); };
   const reach = new Set([arrive.y * W + arrive.x]), st = [arrive]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, k = y * W + x, t = tiles[k]; if (!t || t.blocked || reach.has(k)) continue; reach.add(k); st.push({ x, y }); } }
   const cells = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (ok(x, y) && reach.has(y * W + x) && Math.abs(x - arrive.x) + Math.abs(y - arrive.y) >= 5) cells.push({ x, y });
   cells.sort(byHash((a) => `${pid}:c:${a.x},${a.y}`)); /* v8: an ordinary chamber places as v7 does (`pid`, the v7 id) */ const take = () => { const c = cells.find((p) => !taken.has(p.y * W + p.x)); if (c) taken.add(c.y * W + c.x); return c; };
@@ -577,7 +594,7 @@ export function generatePentagonChamber(seed, id) {
   // (pentagon-halls.ts; data for Close View). Laid last, so nothing placed above moves; older versions get none of it.
   const dress = q.hall ? dressPentagonHall({ W, H, tiles, objects, enemySpawns }, Pp.base, q, plan.V) : plan.V >= 8 ? { sigils: pentagonChamberSigils(Pp.base, q, W, H, plan.V) } : null;
   const chamber = { seed, id, recipe: "greatBuilding", name: `${P.name} · ${q.name}${q.trial ? " · a trial" : ""}`, identity: `${P.name}: ${q.name}`, danger: "ghouls", width: W, height: H, tiles, entry: { ...arrive }, exit: null, objects, enemySpawns,
-    building: { base: Pp.base, style: "keep", floor: depth, floors: V2 ? 3 + plan.nh - 1 : 5, labyrinth: true, pentagon: true, node: q.n, kind: q.floorKind, of: plan.nodes.length, keys: plan.keyNode ? [{ id: "key0", name: "Regent's Key" }] : plan.V >= 3 ? P.shardNames.slice(0, P.secrets).map((name, k) => ({ id: `shard${k}`, name })) : [], trial: !!q.trial, trials: plan.trials.length, entries, exitsTo, vault: V2 ? vault : q.id === "h2", ...(V2 ? { V: plan.V, dread, boss: !!boss, levers: plan.levers.length, champions: plan.trials.length + plan.nh - 1, heartFloor: q.kind === "heart" ? hi : -1 } : {}), breachEntry: null, roofLadder: null, fallTo: null }, layoutVersion: 1, themePool: 0, ...(dress || {}) };
+    building: { base: Pp.base, style: "keep", ...(routing ? {routing,optionalRoutes:plan.optionalRoutes} : {}), floor: depth, floors: V2 ? 3 + plan.nh - 1 : 5, labyrinth: true, pentagon: true, node: q.n, kind: q.floorKind, of: plan.nodes.length, keys: plan.keyNode ? [{ id: "key0", name: "Regent's Key" }] : plan.V >= 3 ? P.shardNames.slice(0, P.secrets).map((name, k) => ({ id: `shard${k}`, name })) : [], trial: !!q.trial, trials: plan.trials.length, entries, exitsTo, vault: V2 ? vault : q.id === "h2", ...(V2 ? { V: plan.V, dread, boss: !!boss, levers: plan.levers.length, champions: plan.trials.length + plan.nh - 1, heartFloor: q.kind === "heart" ? hi : -1 } : {}), breachEntry: null, roofLadder: null, fallTo: null }, layoutVersion: 1, themePool: 0, ...(dress || {}) };
   // The temporary reservation makes optional platform placement prove a walking
   // route to the alcove too. It is never an interactable in the returned chamber.
   const terrain = addInteriorTerrain(finaleAlcove ? { ...chamber, objects: [...objects, { ...finaleAlcove.inner }] } : chamber, Pp.base, plan.V >= 9 ? 3 : 1);
@@ -667,7 +684,9 @@ export function pentagonLinkEnds(plan, map) {
   const ports = (map.objects || []).filter((o) => o.kind === "exit" || o.kind === "buildingStair");
   const seen = new Set([e.y * W + e.x]), st = [e]; while (st.length) { const c = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c.x + dx, y = c.y + dy, k = y * W + x, t = map.tiles[k]; if (x < 0 || y < 0 || x >= W || y >= H || !t || t.blocked || seen.has(k)) continue; seen.add(k); st.push({ x, y }); } }
   const cand = map.tiles.filter((t) => seen.has(t.y * W + t.x) && !t.pentFinaleClear && !t.doorway && !t.plate && !t.hole && !t.environment && !/water|lava|pit|chasm|void|Gate/i.test(String(t.kind)) && !taken.has(`${t.x},${t.y}`) && (t.x !== e.x || t.y !== e.y)
-    && (t.x <= 1 || t.x >= W - 2 || Math.hypot(t.x - e.x, t.y - e.y) < S.nearEntry) && !ports.some((o) => Math.abs(o.x - t.x) <= 1 && Math.abs(o.y - t.y) <= 1))
+    && (plan.V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion
+      ? !t.interiorPlatform && !t.slope && [[0,0],[-1,0],[1,0],[0,-1],[0,1]].every(([dx,dy])=>{const q=map.tiles[(t.y+dy)*W+t.x+dx];return q&&!q.blocked&&!q.hole&&!q.interiorPlatform&&(q.elev||0)===(t.elev||0);})
+      : (t.x <= 1 || t.x >= W - 2 || Math.hypot(t.x - e.x, t.y - e.y) < S.nearEntry)) && !ports.some((o) => Math.abs(o.x - t.x) <= 1 && Math.abs(o.y - t.y) <= 1))
     .map((t) => ({ t, d: Math.hypot(t.x - e.x, t.y - e.y), h: hashSeed(`${map.id}:link-spot:${t.x},${t.y}`) })).sort((a, b) => a.d - b.d || a.h - b.h);
   const out = [], picked = [];
   for (const { L, end, other } of ends) { const c = cand.find(({ t }) => picked.every((p) => Math.max(Math.abs(p.x - t.x), Math.abs(p.y - t.y)) >= S.spacing)); if (!c) continue; picked.push(c.t);
