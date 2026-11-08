@@ -11,7 +11,7 @@ import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
 import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.ts"; // 613: Starfield rafts
+import { jumpLift, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.ts"; // 613: Starfield rafts
 import { SEASONS, treeSeason } from "./seasons.ts";
 import { setTreeSeason } from "./landscape-render.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.ts";
@@ -3132,6 +3132,12 @@ function drawGlyphStatus(ctx,g,s,now,visible){
     else if(v.kind==="heal"){const rise=(1-a)*s*.6;ctx.font=`bold ${Math.max(10,Math.round(s*.32))}px system-ui,sans-serif`;ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle=`rgba(0,0,0,${a*.8})`;ctx.fillStyle=`rgba(120,240,140,${a})`;ctx.strokeText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.fillText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.textAlign="start"}
     else if(v.kind==="mist"){const r=s*(.35+(1-a)*.5),gr=ctx.createRadialGradient(v.x*s,v.y*s,0,v.x*s,v.y*s,r);gr.addColorStop(0,`rgba(214,226,240,${.55*a})`);gr.addColorStop(1,"rgba(150,172,200,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(v.x*s,v.y*s,r,0,7);ctx.fill()}/* release 699: Stalker's Mist rots a foe */
     else if(v.kind==="steam"){const f=1-a;ctx.fillStyle=`rgba(236,248,250,${.42*a})`;for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(v.x*s+(k-1)*s*.2+Math.sin(f*5+k*2)*s*.06,v.y*s-f*s*(.5+k*.12),s*(.06+.07*f),0,7);ctx.fill()}}/* the healing hot springs (HOT_SPRINGS): a wisp of steam */
+    else if(v.kind==="primaryEcho"){
+      const draw=(q,alpha,memory=false)=>{if(!q)return;const d=Math.hypot(q.dx,q.dy)||1,dx=q.dx/d,dy=q.dy/d,angle=Math.atan2(dy,dx),shape=q.shape==='thrust'?'thrust':'sweep';ctx.save();ctx.globalAlpha=Math.max(0,a*alpha);ctx.strokeStyle=memory?'#d8c8ff':'#c9a7ff';ctx.fillStyle=memory?'#d8c8ff':'#c9a7ff';ctx.lineCap='round';ctx.lineJoin='round';
+        if(shape==='thrust'){const nx=-dy,ny=dx,x0=q.x+dx*.18,y0=q.y+dy*.18,x1=q.x+dx*q.range,y1=q.y+dy*q.range,w=PRIMARY_ECHO_VISUAL.thrustWidth*(memory?.72:1);ctx.beginPath();ctx.moveTo((x0+nx*w)*s,(y0+ny*w)*s);ctx.lineTo(x1*s,y1*s);ctx.lineTo((x0-nx*w)*s,(y0-ny*w)*s);ctx.closePath();ctx.fill();}
+        else {const half=(Number(q.arc)||100)*Math.PI/360,step=memory?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0,offset=step===1?-.28:step===2?.28:0,start=angle-half+offset,end=angle+half+offset,r=Math.max(.2,Number(q.range)||1.7)*s;ctx.lineWidth=Math.max(2,s*PRIMARY_ECHO_VISUAL.sweepWidth*(memory?.65:1));ctx.beginPath();for(let i=0;i<=PRIMARY_ECHO_VISUAL.sweepSegments;i++){const t=i/PRIMARY_ECHO_VISUAL.sweepSegments,b=start+(end-start)*t,x=q.x*s+Math.cos(b)*r,y=q.y*s+Math.sin(b)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();}ctx.restore();};
+      const m=v.memory,q=v.actual,different=m&&(Math.hypot(m.x-q.x,m.y-q.y)>.08||Math.hypot(m.dx-q.dx,m.dy-q.dy)>.08||m.shape!==q.shape||Math.abs(m.range-q.range)>.08||m.weaponKind==='verge-cleaver'&&m.primaryStep!==3);draw(q,PRIMARY_ECHO_VISUAL.actualAlpha);if(different&&!g.presentation?.reduceMotion&&!g.presentation?.safeMode)draw(m,PRIMARY_ECHO_VISUAL.memoryAlpha,true);
+    }
     else if(v.kind==="burst"){ctx.strokeStyle=`rgba(255,210,92,${a})`;ctx.lineWidth=Math.max(2,s*.08);ctx.beginPath();ctx.arc(v.x*s,v.y*s,v.radius*s*(1.1-a*.6),0,7);ctx.stroke();ctx.fillStyle=`rgba(255,180,70,${a*.25})`;ctx.fill()}}
 }
 
