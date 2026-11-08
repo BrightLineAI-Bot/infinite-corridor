@@ -2020,7 +2020,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
     const importedDodge=who===player&&!form&&now<(player.dodgeUntil||0),dodgeSeed=importedDodge?player.dodgeVisual:null,leavingImportedDodge=!importedDodge&&who===player&&track.dodgeUntil===player.dodgeUntil;
-    if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));}
+    if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));if(Number.isFinite(dodgeSeed.facingYaw))track.yaw=dodgeSeed.facingYaw;}
     else if (!leavingImportedDodge&&!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = !stunned && !watched && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
     if (stunned || watched) track.pace = 0;
