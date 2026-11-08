@@ -1,7 +1,7 @@
 import { enemyBodyRadius } from "./combat.ts";
-import { interiorTerrain, interiorTileLevel, legacyInteriorBuildLevel, tileUnder } from "./landscape.ts";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.ts";
 
-export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSteps: 256, supportGap: 1, epsilon: 1e-7 });
+export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSteps: 256, epsilon: 1e-7 });
 // These controllers own teleportation, roaming, mounting or large-body movement outside ordinary AI.
 const SPECIAL = new Set(["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant", "mountainTurtle", "briarStag", "ashenMoth", "crimsonDragon", "doomChaser"]);
 const AIRBORNE_LEGACY = new Set(["veilMoth", "cinderWisp"]);
@@ -20,14 +20,52 @@ export function ordinaryContactPlayer(game) {
     && !game.glide && !game.droneLift && !game.mechBoosting && !game.mountRide?.()
     && !game.save?.boat?.aboard && !game.wading?.();
 }
-function support(map, width, x, y, body) {
-  const tile = tileUnder(map, width, x, y);
-  const built = legacyInteriorBuildLevel(map, tile);
-  if (!map?.landscape && !built) return 0;
-  const ground = built || (interiorTerrain(map) ? interiorTileLevel(tile, x + .5, y + .75) : (tile?.elev || 0) - (tile?.slope ? .5 : 0));
-  // A platform jump retains a real launch level over a lower gap. Ordinary visual hops
-  // do not have airElev and never become a body-phasing capability.
-  return body?.isPlayer && body.jumping && Number.isFinite(body.airElev) ? Math.max(ground, body.airElev) : ground;
+// Canonical conservative support-to-body-top envelopes, in world/tile units at authored
+// scale 1. Calibrated offline against current idle/walk native bodies (including bob and
+// structural crests, not weapon reach). Runtime physics never imports mesh/presentation code.
+// Future body art must fit this policy or explicitly update it; unknown bodies use the bounded
+// fallback. These are clearance envelopes, not hitboxes, attack reach or crouch/dodge states.
+export const ACTOR_BODY_HEIGHT = Object.freeze({
+  player: 1.44, robot: 1.45, powered: 1.44, ember: 1.64, fallback: 3,
+  kinds: Object.freeze({
+    ashling: 1.45, rootBrute: 1.90, pallidCrawler: .80, hollowMarshal: 2.30,
+    ashenHound: .95, coilStalker: 1, glassMite: .65, sparkWarden: 1.75, voidSentinel: 1.40,
+    weepingSaint: 1.80, hangedChoir: 2.15, graveLantern: 2.35, mirrorShade: 1.60,
+    amalgam: 1.30, gnawingMaw: 1.35, cinderSeraph: 2.15, lumenWraith: 2.15,
+    veilSpinner: .90, riftLynx: 1.30, sunderjaw: .95, thunderhorn: 1.20,
+    siegeBeetle: 1.30, gloomwisp: 1.35, gloomgorge: 1.55,
+    latticeHunter: 1.55, archiveBehemoth: 1.55, riftGrazer: 1.05,
+  }),
+  foundry: Object.freeze({ quadruped: 1.05, floating: 1.45, segmented: .80,
+    tentacled: 1.40, geometric: 1.35, biomechanical: 1.55 }),
+});
+export function actorContactHeight(body, game) {
+  const H = ACTOR_BODY_HEIGHT;
+  if (body && (body.isPlayer || body === game?.player)) {
+    const save = game?.save;
+    if (save?.mech?.active === true && save.mech.mode !== "drone" && !save.boat?.aboard)
+      return save.mech.empowered === true ? H.powered : H.robot;
+    const form = save?.magicSkills?.active;
+    if (form?.id === "ember-form" && form.remaining > 0)
+      return H.ember * (1.25 + .05 * Math.max(1, Math.min(3, Number(form.rank) || 1))) * 1.68 / 1.91;
+    return H.player;
+  }
+  // Same authored scale range as current native creature admission; radius does not scale
+  // known native meshes. The unknown fallback also covers their capped billboard scale.
+  const scale = Math.max(.25, Math.min(4, Number.isFinite(body?.scale) ? body.scale : 1));
+  const unit = body?.foundryValidated === true && Object.hasOwn(H.foundry, body.foundryBody)
+    ? H.foundry[body.foundryBody] : Object.hasOwn(H.kinds, body?.kind) ? H.kinds[body.kind] : 0;
+  return unit ? unit * scale : H.fallback * Math.max(1, scale, Math.min(4, (Number(body?.bodyRadius) || .4) * 2.2));
+}
+export function actorContactSupport(game, body, x, y, width) {
+  const ground = liftAt(game.map, width, x, y);
+  // Retained platform launch support is physical height over a gap. The ordinary jump arc
+  // never grants clearance. Probe scale mirrors commit; later enemy queries use Game's
+  // retained launch support because the player's transient airElev is cleared after commit.
+  const air = Number.isFinite(body?.airElev) ? body.airElev : game.skyAir;
+  const scale = Number.isFinite(body?.airElevScale) ? body.airElevScale : game.skyAirScale || 1;
+  return game.map?.landscape && body?.isPlayer && body.jumping && Number.isFinite(air)
+    ? Math.max(ground, air * LIFT_PER_LEVEL * scale) : ground;
 }
 
 // A cache per Game, never a shared current-world context. Buffers, the candidate list and the
@@ -42,6 +80,7 @@ export function actorContactContext(game, subject, dx, dy) {
     contexts.set(game, c);
   }
   c.subject = subject; c.supportSubject = subject; c.width = Math.max(1, Number(game.map.width) || (game.area === "dungeon" ? 24 : 32)); c.map = game.map; c.canExit = null; c.record = false; c.count = 0; c.candidates.length = 0; c.queries++;
+  c.subjectHeight = actorContactHeight(subject, game); c.playerHeight = actorContactHeight(game.player, game);
   c.radius = subject === game.player ? ACTOR_CONTACT.playerRadius : enemyBodyRadius(subject);
   const add = (other, radius) => {
     const r = c.radius + radius;
@@ -61,12 +100,16 @@ export function actorContactStats(game) {
 // relocation, persistent allowance or load-time mutation is required.
 function clipActorSegment(c, x, y, dx, dy) {
   const length2 = dx * dx + dy * dy; if (!length2) return 1;
-  const before = support(c.map, c.width, x, y, c.supportSubject), after = support(c.map, c.width, x + dx, y + dy, c.supportSubject);
+  const before = actorContactSupport(c.game, c.supportSubject, x, y, c.width), after = actorContactSupport(c.game, c.supportSubject, x + dx, y + dy, c.width);
   let fraction = 1;
   for (const other of c.candidates) {
     c.checks++;
-    const level = support(c.map, c.width, other.x, other.y, other);
-    if (Math.min(Math.abs(before - level), Math.abs(after - level)) >= ACTOR_CONTACT.supportGap) continue;
+    const level = actorContactSupport(c.game, other, other.x, other.y, c.width);
+    const otherHeight = other === c.game.player ? c.playerHeight : actorContactHeight(other, c.game);
+    // Both ends must remain on the same clear side of the lower body's full envelope.
+    // Small steps and ordinary jumps stay solid; genuinely high support can pass above.
+    if (Math.min(before, after) >= level + otherHeight
+      || Math.max(before, after) + c.subjectHeight <= level) continue;
     const radius = c.radius + (other === c.game.player ? ACTOR_CONTACT.playerRadius : enemyBodyRadius(other));
     const x0 = x - other.x, y0 = y - other.y, dot = x0 * dx + y0 * dy, distance2 = x0 * x0 + y0 * y0;
     if (distance2 < radius * radius - ACTOR_CONTACT.epsilon) {

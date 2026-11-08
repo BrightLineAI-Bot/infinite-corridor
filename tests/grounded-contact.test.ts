@@ -80,16 +80,20 @@ test('physical exclusions are explicit; shield, stun, untargetability and hostil
   g.wading = () => true; assert.equal(ordinaryContactPlayer(g), false);
 });
 
-test('separate support levels bypass bodies, while a same-level ordinary jump remains solid', () => {
+test('small support differences and ordinary jumps stay solid; genuinely high support clears bodies', () => {
   const g = harness(); g.map.landscape = { interior: true }; g.map.interiorTerrain = { version: 1, maxLevel: 5 };
   g.map.tiles[5 * g.map.width + 5].elev = 2;
   const c = actorContactContext(g, g.player, 3, 0);
-  assert.equal(c.clip(4, 5, .16, 0), 1, 'foe is two support levels above this approach');
+  assert.equal(c.clip(4.2, 5, .16, 0) < 1, true, 'two levels are only .68 world units; bodies still overlap');
   g.map.tiles[5 * g.map.width + 5].elev = 0;
   g.player.jumping = true; move(g, g.player, 5, 0);
   assert.ok(gap(g) >= radius(g.enemies[0]) - 1e-7);
   g.player.x = 3; g.player.airElev = 2; move(g, g.player, 4, 0);
-  assert.ok(g.player.x > 6, 'a real platform launch level carries above actors on the lower floor');
+  assert.ok(gap(g) >= radius(g.enemies[0]) - 1e-7, 'a .68-high launch does not clear an upright brute');
+  g.player.x = 3; g.player.airElev = 3; g.player.airElevScale = 3;
+  delete g.map.interiorTerrain; g.map.landscape = { kind: 'hills' };
+  move(g, g.player, 4, 0);
+  assert.ok(g.player.x > 6, 'a retained roof launch at 3.06 world units clears the brute envelope');
 });
 
 test('bounded contact work never enlarges substeps or silently omits a nearby blocker', () => {
