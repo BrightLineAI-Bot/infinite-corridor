@@ -1481,7 +1481,7 @@ function drawMap() {
         ? record?.color || landscapeAtlasColor(landscape) || { ash: "#51464a", glass: "#315b62", ember: "#794735" }[
             terrain
           ]
-        : signal ? "#241f31" : "#202834";
+        : signal ? "#241f31" : "#202833";
       mctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
       mctx.strokeStyle = frontier ? "#596675" : "#9eb9b2";
       mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
