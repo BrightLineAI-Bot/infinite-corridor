@@ -95,6 +95,7 @@ import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
 import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
@@ -350,6 +351,37 @@ function interiorVersion(save, id, history, fresh) {
   // Otherwise visiting floor one would downgrade every unseen sibling to version one.
   if (!explicitlyPinned && v !== 1 && Object.keys(A).some(sibling)) v = 1;
   history.interiorVersion = v; return v;
+}
+
+const INERT_KEEP_HISTORY = new Map([["discovered", false], ["bypassed", false], ["guardianDefeated", false], ["resolved", false], ["visitOpen", false], ["visits", 0], ["abandoned", 0]]);
+export function adoptRoutingKeep(save, map, rx, ry, prior) {
+  const B = map?.greatBuilding, parsed = B?.base && parseBuildingId(`${B.base}:f1`);
+  if (prior || B?.style !== "keep" || !parsed || parsed.seed !== save.seed || parsed.rx !== rx || parsed.ry !== ry || parsed.floors < 3 || parsed.floors > 4) return false;
+  const D = save.consequences?.dungeons || {}, A = save.session?.areas || {}, base = B.base, f1 = `${base}:f1`, keys = Array.from({ length: parsed.floors }, (_, i) => `${base}:f${i + 1}`);
+  if (A[`overworld:${rx}:${ry}:g${save.worldGeneration}`] || keys.some((id) => A[id] || String(save.session?.activeDungeonId || "") === id) || keys.slice(1).some((id) => D[id])) return false;
+  const h = D[f1];
+  if (h && (Object.getPrototypeOf(h) !== Object.prototype || Object.entries(h).some(([k, v]) => !INERT_KEEP_HISTORY.has(k) || INERT_KEEP_HISTORY.get(k) !== v))) return false;
+  ((save.consequences ||= {}).dungeons ||= {})[f1] = { ...(h || {}), interiorVersion: 5 };
+  return true;
+}
+export function applyRoutingKeepAppearance(save, map) {
+  const B = map?.greatBuilding, h = B?.base && save.consequences?.dungeons?.[`${B.base}:f1`];
+  if (B?.style !== "keep" || h?.interiorVersion !== 5) return null;
+  const appearance = routingKeepAppearance(B.base, 5); if (!appearance) return null;
+  B.appearance = appearance; const exterior = map.objects?.find((o) => o.kind === "greatBuilding" && o.id === B.id); if (exterior) exterior.appearance = appearance;
+  return appearance;
+}
+
+export function recoverPentagonVersion(save, cx, cy) {
+  const atlas = save.atlas || {}; let pinned = CLOSE_VIEW_ROOM_ROUTING.pentagonVersion, hasPin = false;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = atlas[`${cx + dx},${cy + dy}`]?.pentVersion; if (v) { hasPin = true; pinned = Math.min(pinned, v); } }
+  if (hasPin) return pinned;
+  const candidates = [], D = save.consequences?.dungeons || {}, prefix = `pentagon:${save.seed}:${cx}:${cy}`, relevant = (id) => String(id || "").startsWith(prefix);
+  for (let V = 1; V <= 10; V++) { const base = `${prefix}${V >= 2 ? `:v${V}` : ""}`; if (D[`${base}:f1`]) candidates.push(V); }
+  const active = String(save.session?.activeDungeonId || ""), p = parsePentagonId(active) || parsePentagonArenaId(active) || parsePentagonFinaleId(active);
+  if (p && p.seed === save.seed && p.cx === cx && p.cy === cy && Number.isInteger(p.V) && p.V >= 1 && p.V <= 10 && p.base === `pentagon:${save.seed}:${cx}:${cy}${p.V >= 2 ? `:v${p.V}` : ""}`) candidates.push(p.V);
+  const malformed = (relevant(active) && !p) || Object.keys(D).some((id) => relevant(id) && id.endsWith(":f1") && !parsePentagonId(id));
+  const versions = [...new Set(candidates)]; return !malformed && versions.length === 1 ? versions[0] : malformed || versions.length ? PENTAGON.version : CLOSE_VIEW_ROOM_ROUTING.pentagonVersion;
 }
 export function generatePinnedDungeon(save, id, options = {}) {
   if (isPentagonFinaleId(id) || isPentagonArenaId(id)) { const h = dungeonHistory(save, id); if (h.relayNode === undefined) h.relayNode = false; } // the Pentagon's finale is a quiet place: no relay node (nor bells, pages, threads, margins or wanderers: loadArea)
@@ -2886,7 +2918,7 @@ export class Game {
       if ((prior ? prior.labVersion : LABYRINTHS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = labyrinthHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeLabyrinth(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, this.coherentDoor(), prior ? prior.labVersion : LABYRINTHS.version) && !this.message) this.message = LABYRINTHS.messages.arrive; } // labyrinths: only in sections first seen from now on
       if ((prior ? prior.compoundVersion : COMPOUNDS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = compoundHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeCompound(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, this.coherentDoor(), prior ? prior.compoundVersion : COMPOUNDS.version) && !this.message) this.message = COMPOUNDS.messages.arrive; }
       if (this.map.greatBuilding?.seal) for (const o of this.map.objects) if (o.kind === "towerLever" && towerUnsealed(this.save, o.towerSeal)) this.leverOver(o); // TOWER_SEAL: a lever already pulled (or its tower's key taken) stays over // compounds: only in sections first seen from now on
-      if ((prior ? prior.buildingVersion : BUILDINGS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, bv = prior ? prior.buildingVersion : BUILDINGS.version, region = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null, plan = bv >= 2 ? buildingHereV2(this.save.seed, this.rx, this.ry, region) : buildingHere(this.save.seed, this.rx, this.ry, region); if (plan && (bv >= 2 ? placeBuildingV2 : placeBuilding)(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, bv >= 2 ? this.coherentDoor() : null, bv) && !this.message) this.message = BUILDINGS.messages.arrive; } // version 1 (711) as it was; 2: shapes and hives // great buildings: only in sections first seen from now on (in place of the keeps and arcologies)
+      if ((prior ? prior.buildingVersion : BUILDINGS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, bv = prior ? prior.buildingVersion : BUILDINGS.version, region = v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null, plan = bv >= 2 ? buildingHereV2(this.save.seed, this.rx, this.ry, region) : buildingHere(this.save.seed, this.rx, this.ry, region); if (plan && (bv >= 2 ? placeBuildingV2 : placeBuilding)(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, bv >= 2 ? this.coherentDoor() : null, bv)) { adoptRoutingKeep(this.save, this.map, this.rx, this.ry, prior); applyRoutingKeepAppearance(this.save, this.map); if (!this.message) this.message = BUILDINGS.messages.arrive; } } // version 1 (711) as it was; 2: shapes and hives // great buildings: only in sections first seen from now on (in place of the keeps and arcologies)
       if (this.map.mushrooms && this._coherence && !this.save.narrative.journal.some((j) => j.recordId === "great-mushrooms")) { journalOnce(this.save, "great-mushrooms", `${GREAT_MUSHROOMS.text} (${this.rx},${this.ry})`, "The great mushrooms"); if (!this.message) this.message = GREAT_MUSHROOMS.text; } // release 721; on new ground, after a castle or Pentagon may have taken the caps (WG-10)
       if (this._coherence && !this.map.farDomain) cohereSection(this.map, { spots: coherenceSpots(this.map) }); // WG-02/05/06/07: the exits, the plaza, the great doors and the cairns join; no pits
       if (this._coherence && this.map.pentagon) for (const o of this.map.objects) if (o.pentLand) o.joined = joinToLand(this.map, o); // the Pentagon v6: each side entrance stands on land joined to the section's exits
@@ -2915,7 +2947,7 @@ export class Game {
         ...(prior ? (prior.compoundVersion ? { compoundVersion: prior.compoundVersion } : {}) : { compoundVersion: COMPOUNDS.version }), // and the compounds
         ...(prior ? (prior.labVersion ? { labVersion: prior.labVersion } : {}) : { labVersion: LABYRINTHS.version }), // and the labyrinths
         ...(prior ? (prior.castleVersion ? { castleVersion: prior.castleVersion } : {}) : { castleVersion: CASTLES.version }), // and the Great Castles
-        ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : { pentVersion: PENTAGON.version }), // and the Pentagons
+        ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : (() => { const c = pentagonCentre(this.rx, this.ry); return { pentVersion: this.map.pentagon?.V || (c ? this.pentagonVersion(c.cx, c.cy) : PENTAGON.version) }; })()), // and the Pentagons; a placed section records its actual restored/adopted namespace
         ...(prior ? (prior.sigilVersion ? { sigilVersion: prior.sigilVersion } : {}) : { sigilVersion: PENTAGON_FINDING.version }), // and the Pentagon sigils (objects only: ground seen before keeps its objects)
         ...(prior ? (prior.canyonVersion ? { canyonVersion: prior.canyonVersion } : {}) : { canyonVersion: CANYON.version }), // and the Canyon craters
         ...(prior ? (prior.ascendVersion ? { ascendVersion: prior.ascendVersion } : {}) : { ascendVersion: ASCENDANCY.version }), // and the Sapling Daises // release 677: Deep Shafts likewise
@@ -7089,7 +7121,7 @@ export class Game {
   }
   // WG-05: on new ground (world coherence) a great building's door must join the section's exits, or the spot is passed over.
   coherentDoor() { return this._coherence ? Object.assign((map, at) => joinsCore(map, at), { tries: COHERENCE.doorTries }) : null; }
-  pentagonVersion(cx, cy) { const atlas = this.save.atlas || {}; let v = PENTAGON.version; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const a = atlas[`${cx + dx},${cy + dy}`]; if (a?.pentVersion) v = Math.min(v, a.pentVersion); } return v; }
+  pentagonVersion(cx, cy) { return recoverPentagonVersion(this.save, cx, cy); }
   pentagonHere(cx, cy) {
     const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = this.settleMemo();
     const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
