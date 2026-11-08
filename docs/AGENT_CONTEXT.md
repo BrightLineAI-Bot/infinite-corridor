@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Veil Moth r845 packaging gate — 2026-11-08
+
+Production remains verified `r843-7cc357e4f592`, commit `7cc357e4f5924ba3320d6f7f76a44e72d6286ee8`, tree `b0baf469a66c521f161b1a8144a17e4a15ef78c2`. Routing adoption r844 merged as official main `0ec3fe866c64d6b5e1e9083aa55e08de22840054`, tree `d92fedd7c9a4302256584490170125158e6dba31`, after source CI42534525705 and fresh Astra review clear; merged CI42535658461 and Preview42535658314 are running, so r844 is not live or published. Against that complete source, r845 packages only the reviewed ordinary non-pack Veil Moth material interval and remains merge-held until r844 exact hosted acceptance and publication. Grave Lantern, the final sweep and boss-rig research remain later separate work. Local servers and the full suite remain stopped.
+
 ## Proving Ground interaction chooser r843 packaging gate — 2026-11-08
 
 Production is verified `r843-7cc357e4f592`, commit `7cc357e4f5924ba3320d6f7f76a44e72d6286ee8`, tree `b0baf469a66c521f161b1a8144a17e4a15ef78c2`. Source CI42529952827, merged CI42530923512, Preview42530923499 and Publish42532509502 succeeded; fresh Astra review842→843 found no blockers. Live identity and actual Options → System match, recent errors are none, and the existing paused250KB journey is unchanged. Shared-mover r842 was likewise verified and published (r841 inside it, never independently). Routing adoption r844 is the next focused candidate: conservative post-placement keep5 and ordinary-selector Pentagon10 adoption with finite old-namespace restoration and public scratch crossings. Global keep/Pentagon defaults remain4/9. Merge, Preview, hosted acceptance and publication remain pending; Veil Moth, Grave Lantern, final sweep and boss-rig research stay later. Local servers and the full suite remain stopped.
