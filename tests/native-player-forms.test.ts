@@ -44,12 +44,24 @@ test('every form retains its authored body with every known held profile within 
   for(const kind of kinds){const key=kind+':fist',idle=positions(mesh(key)),rush=positions(mesh(key,{pose:'fist',amount:.3,fistStep:1})),jab=positions(mesh(key,{pose:'fist',amount:.3,fistStep:2})),upper=positions(mesh(key,{pose:'fist',amount:.3,fistStep:3}));assert.notDeepEqual(rush,idle);assert.notDeepEqual(jab,rush);assert.notDeepEqual(upper,rush);assert.notDeepEqual(rush,positions(mesh(key,{pose:'attack',amount:.3})),'punches are not blade cuts');assert.notDeepEqual(positions(mesh(key,{pose:'fistCharge',amount:1})),idle);}
 });
 
+test('canonical primaries retain each special form existing melee-held recipe without expanding caps',()=>{
+  for(const kind of kinds)for(const held of ['salvage-blade','cinder-pike','verge-cleaver']){const form={kind},key=playerFormModelKey(form,held);assert.equal(key,`${kind}:melee`);assert.equal(modelTriangleCount(key),modelTriangleCount(`${kind}:melee`));assert.ok(modelTriangleCount(key)<=256);assert.deepEqual(mesh(key),mesh(`${kind}:melee`));}
+});
+
 test('normal fallback primaries have distinct bounded silhouettes and immediate committed motion',()=>{
   const pike=mesh('playerCinderPike'),cleaver=mesh('playerVergeCleaver');
   for(const kind of ['playerCinderPike','playerVergeCleaver']){assert.ok(modelTriangleCount(kind)>0&&modelTriangleCount(kind)<=256);assert.ok(mesh(kind).every(Number.isFinite));const idle=positions(mesh(kind)),contact=positions(mesh(kind,{pose:'attack',amount:.08})),end=positions(mesh(kind,{pose:'attack',amount:1}));assert.notDeepEqual(contact,idle,`${kind} commits by 19.2ms`);assert.deepEqual(end,idle,`${kind} returns to ready hold`);}
   assert.notDeepEqual(positions(pike),positions(cleaver),'Pike shaft and Cleaver blade are not aliases');
   assert.notDeepEqual(positions(mesh('playerCinderPike',{pose:'attack',amount:.2})),positions(mesh('playerVergeCleaver',{pose:'attack',amount:.2})),'thrust and broad cut remain distinct');
 });
+
+test('normal native fallback keeps the canonical silhouette from idle through accepted recovery',()=>gpu(({screen})=>{
+  for(const [scenario,kind] of [['pike-spindle-hound','playerCinderPike'],['cleaver-bombard-crawler','playerVergeCleaver']]){const g=fixture(scenario,'combat-assets');resetCloseViewCamera();render(screen,g,390,844,100000);assert.equal(closeViewGLStats.modelTriangles,modelTriangleCount(kind),`${kind} idle`);g.primaryAttack(100000);render(screen,g,390,844,100000);assert.equal(closeViewGLStats.modelTriangles,modelTriangleCount(kind),`${kind} accepted`);g.update(.24,idle,100240);render(screen,g,390,844,100240);assert.equal(closeViewGLStats.modelTriangles,modelTriangleCount(kind),`${kind} recovered`);}
+}));
+
+test('canonical player gear never replaces a live nonplayer model',()=>gpu(({screen})=>{
+  for(const [item,playerKind] of [[{id:'primary-cinder-pike',name:'Cinder Pike',slot:'primary'},'playerCinderPike'],[{id:'primary-verge-cleaver',name:'Verge Cleaver',slot:'primary'},'playerVergeCleaver']]){const {game:g}=createLabFixture({lab:'combat-assets',scenario:'pike-spindle-hound',now:100000});g.save.equipment.primary=item;g.presentation={effectiveQuality:'full',reduceMotion:true};assert.ok(g.enemies.length>0);const enemyKind=g.enemies[0].kind;resetCloseViewCamera();render(screen,g,390,844,100000);assert.equal(closeViewGLStats.models,2,item.name);assert.equal(closeViewGLStats.modelTriangles,modelTriangleCount(playerKind)+modelTriangleCount(enemyKind),`${item.name} retains ${enemyKind}`);}
+}));
 
 test('accepted fist combo identity survives pause and schema-14 reload; refusal keeps prior motion',()=>{
   const g=fixture();activate(g,'playerIronFists');

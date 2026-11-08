@@ -102,7 +102,7 @@ const cinderPike = [
 const vergeCleaver = [
   block(.17,-.25,.91,.043,.052,.14,leather,-2,0,1.19),
   part(frontPatch,.17,-.25,1.06,1,.125,.04,bronze,-2,0,1.19),
-  block(.17,-.25,1.48,.105,.025,.39,iron,-2,0,1.19),
+  part(taper,.17,-.25,1.48,.112,.025,.39,iron,-2,0,1.19),
 ];
 const playerCinderPike=[...playerUnarmed,...cinderPike],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
 
