@@ -59,7 +59,7 @@ test('attack presentation metadata is additive at schema 14 and validates withou
 });
 
 test('a newer accepted cast or jump cancels only the older fist presentation',()=>{
-  const cast=fixture('wayfarer-iron-fists').game;cast.enemies=[];cast.lastUpdateNow=1000;assert.equal(cast.fistPunch(1,0,1000,{x:1,y:0}),true);const attackUntil=cast.player.attackUntil;assert.equal(cast.castSpell(cast.save.equippedSpell),true);assert.equal(cast.player.attackUntil,attackUntil);assert.equal(cast.player.attackVisual.presentationCancelled,true);assert.deepEqual(closeViewPlayerAction(cast,1000),{active:false,legacy:false,record:cast.player.attackVisual,until:attackUntil,profile:null,amount:0,aim:null});
+  const cast=fixture('wayfarer-iron-fists').game;cast.enemies=[];cast.lastUpdateNow=1000;assert.equal(cast.fistPunch(1,0,1000,{x:1,y:0}),true);const attackUntil=cast.player.attackUntil;assert.equal(cast.castSpell(cast.save.equippedSpell),true);assert.equal(cast.player.attackUntil,attackUntil);assert.equal(cast.player.attackVisual.presentationCancelled,true);assert.equal(cast.player.fistVisualUntil,attackUntil);assert.deepEqual(closeViewPlayerAction(cast,1000),{active:false,legacy:false,record:cast.player.attackVisual,until:cast.player.fistVisualUntil,profile:null,amount:0,aim:null});
   const jump=fixture('wayfarer-iron-fists').game;jump.enemies=[];assert.equal(jump.fistPunch(1,0,1000,{x:1,y:0}),true);jump.update(0,{state:{x:0,y:0},consume:k=>k==='jump',held:()=>false},1010);assert.ok(jump.jumpUntil>1010);assert.equal(jump.player.attackVisual.presentationCancelled,true);assert.equal(closeViewPlayerAction(jump,1010).active,false);
 });
 
