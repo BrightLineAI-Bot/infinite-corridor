@@ -4,6 +4,7 @@ import { bevel, block, curvedTube, ellipsoid, membrane, part, ringLoft, vertical
 
 const coat = 0x303934, hem = 0x28312e, leather = 0x302b29, amber = 0xf3a55c;
 const iron = 0x34383d, ironEdge = 0x171a1d, worn = 0x747a80, glass = 0x31505b;
+const hullGreen = 0x4b554d, hullRust = 0x765545, suitGreen = 0x48534b, suitLeather = 0x493d34, bronze = 0x9b7950;
 const ember = 0xf07839, emberHot = 0xffc06a, emberDark = 0x542d25;
 
 const hood = (color = coat, scale = 1) => [
@@ -28,29 +29,29 @@ for (const side of [-1, 1]) ironFists.push(
   part(bevel,.22,side*.35,.76,.17,.14,.18,iron,side*2,0,1.2,-.08,true),
 );
 
-// The unempowered robot follows the original submersible-robot brief: large viewport, short legs,
-// extending arms and a compact booster pack. It is intentionally larger than the Wayfarer.
+// The unempowered robot is a crude walk-in cockpit, not a swollen humanoid. Its dominant forward
+// viewport sits inside a battered hull collar; short plated struts keep the weight low and clumsy.
 const robot = [
-  part(ellipsoid(8, 2),0,0,1.03,.48,.42,.47,iron,0,0,1.03,0,true),
-  part(ellipsoid(8, 2),.30,0,1.18,.31,.32,.30,glass,0,.30,1.18,0,true),
-  part(ellipsoid(7, 1),.40,0,1.20,.19,.23,.18,0x8bc6d2,0,.40,1.20,0,true),
-  part(ringLoft([[-.26,.28,-.18],[-.36,.25,.02],[-.30,.18,.2]],6),0,0,1.03,1,1,1,ironEdge,0,0,1.03,0,true),
+  part(ellipsoid(8, 2),-.04,0,1.02,.51,.45,.44,hullGreen,0,-.04,1.02,0,true),
+  part(ellipsoid(8, 2),.31,0,1.19,.33,.36,.31,ironEdge,0,.31,1.19,0,true),
+  part(ellipsoid(7, 2),.43,0,1.20,.20,.29,.21,0x79acb3,0,.43,1.20,0,true),
+  part(ringLoft([[-.30,.29,-.20],[-.40,.27,.01],[-.31,.20,.22]],4),-.04,0,1.02,1,1,1,hullRust,0,-.04,1.02,0,true),
 ];
 for (const side of [-1, 1]) robot.push(
-  part(curvedTube([[-.04,side*.31,1.14,.10],[.06,side*.52,.91,.085],[.25,side*.60,.75,.065]],4),0,0,0,1,1,1,iron,side*2,-.03,1.18),
-  part(bevel,.31,side*.61,.72,.12,.11,.12,worn,side*2,-.03,1.18,0,true),
-  part(curvedTube([[0,side*.18,.65,.10],[.01,side*.19,.34,.09],[.09,side*.2,.10,.07]],4),0,0,0,1,1,1,iron,side,0,.67),
-  block(.17,side*.2,.07,.16,.10,.07,ironEdge,side,0,.67),
+  part(curvedTube([[-.06,side*.35,1.13,.11],[-.01,side*.54,.94,.095],[.22,side*.62,.73,.065]],3),0,0,0,1,1,1,ironEdge,side*2,-.04,1.17),
+  part(bevel,.29,side*.63,.70,.13,.12,.11,worn,side*2,-.04,1.17,0,true),
+  part(curvedTube([[-.05,side*.21,.66,.11],[-.01,side*.22,.36,.09],[.08,side*.23,.11,.065]],3),0,0,0,1,1,1,iron,side,-.03,.68),
+  block(.15,side*.23,.08,.17,.11,.07,hullRust,side,-.03,.68),
 );
 
-// Empowered: the established understated graphite pressure suit, with low segmented plates,
-// smoked visor, compact life-support pack and the tiny amber chest sigil.
+// Empowered: fitted human anatomy under tapered graphite/green-grey plates. The reference contributes
+// only its layered hard-suit language: restrained shoulder/head framing, normal hands and no cables.
 const powerSuit = [
-  part(verticalLoft([[0,.13,-.26],[0,.18,-.06],[-.015,.16,.19],[-.035,.11,.28]],6),0,0,1.0,1,1,1,ironEdge,0,0,1,0,true),
-  part(bevel,.13,0,1.18,.18,.19,.21,iron,0,.13,1.18,0,true),
-  block(.305,0,1.19,.018,.14,.055,glass),
-  block(-.14,0,1.00,.08,.15,.23,iron),
-  ...legs(ironEdge,.92),
+  part(verticalLoft([[0,.12,-.27],[.005,.185,-.07],[-.012,.155,.19],[-.035,.105,.29]],6),0,0,1.0,1,1,1,suitGreen,0,0,1,0,true),
+  part(ellipsoid(6,1),.12,0,1.20,.17,.18,.205,ironEdge,0,.12,1.20,0,true),
+  block(.284,0,1.20,.016,.125,.052,glass),
+  block(-.13,0,1.01,.07,.135,.20,iron),
+  ...legs(suitLeather,.92),
 ];
 // The source suit's two-armed amber spiral is body geometry, so it stays on the chest and occludes correctly.
 const sigil = [];
@@ -61,8 +62,8 @@ for(const arm of [0,Math.PI])for(let i=0;i<4;i++){
 for(let i=0;i<4;i++){const a=i*Math.PI/2,b=(i+1)*Math.PI/2;sigil.push([[0,0,0],[0,Math.cos(a)*.012,Math.sin(a)*.012],[0,Math.cos(b)*.012,Math.sin(b)*.012]]);}
 powerSuit.push({...part(sigil,.314,0,1.05,1,1,1,0xb9925f),axialSpin:true});
 for (const side of [-1,1]) powerSuit.push(
-  part(curvedTube([[0,side*.19,1.17,.065],[.04,side*.26,.94,.055],[.12,side*.27,.77,.045]],4),0,0,0,1,1,1,ironEdge,side*2,0,1.18),
-  part(bevel,.14,side*.27,.82,.09,.075,.14,iron,side*2,0,1.18,0,true),
+  part(curvedTube([[-.015,side*.20,1.17,.07],[.035,side*.265,.96,.055],[.12,side*.27,.77,.042]],4),0,0,0,1,1,1,suitGreen,side*2,0,1.18),
+  part(bevel,.14,side*.27,.82,.082,.068,.13,bronze,side*2,0,1.18,0,true),
 );
 
 // Ember Form grows into a guarded striking form. Curved cinder plates and flame crests change its
