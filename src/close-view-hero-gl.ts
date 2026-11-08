@@ -9,12 +9,16 @@ export const HERO_FRAGMENT_BODY = `
 precision highp sampler2DArray;
 in vec3 v_pos; in vec3 v_nrm; in vec2 v_uv; in float v_depth;
 flat in int v_layer; flat in int v_class;
-uniform sampler2DArray u_hero; uniform float u_pass; uniform float u_alpha;
+uniform sampler2DArray u_hero; uniform float u_pass; uniform float u_alpha; uniform float u_powerSuit;
 uniform vec3 u_tint; uniform float u_hit; uniform vec3 u_sil;
 vec3 wayfarerPalette(vec3 c) {
   // Only the two added aperture lenses: all original mask/hair triangles remain source-painted.
   if (v_class==4) return vec3(.952941,.647059,.360784)*clamp(dot(c,vec3(.2126,.7152,.0722))/.7,0.0,1.0);
   if (v_layer==1 || v_class==0) return c; // silver mask and white hair remain source-painted
+  if (u_powerSuit>.5) { // fitted under-suit only; mask, hair and amber lenses bypass above
+    float l=dot(c,vec3(.2126,.7152,.0722));
+    return mix(vec3(.12,.14,.13),vec3(.29,.34,.30),smoothstep(.04,.48,l))*clamp(.65+l*1.45,.55,1.25);
+  }
   if (v_class==2) return vec3(.157,.192,.180); // bounded derivative collar seal
   // Red fabric has nearly equal green/blue channels; warm leather, skin and bronze do not.
   // Relative chroma keeps the same hue selection in the source's painted shadows.
@@ -90,6 +94,6 @@ export function uploadHeroFrame(gl,s,frame) {
 }
 export function drawHeroGL(gl,s,frame,pass,cam,light,silhouette) {
   const p=s.program,u=p.U;gl.useProgram(p.p);gl.bindVertexArray(s.vao);cam(p);light(p);
-  gl.uniform1i(u.u_hero,3);gl.uniform1f(u.u_pass,pass);gl.uniform1f(u.u_alpha,frame.alpha);gl.uniform3fv(u.u_tint,frame.tint);gl.uniform1f(u.u_hit,frame.hitFlash);gl.uniform3fv(u.u_sil,silhouette);
+  gl.uniform1i(u.u_hero,3);gl.uniform1f(u.u_pass,pass);gl.uniform1f(u.u_alpha,frame.alpha);gl.uniform1f(u.u_powerSuit,frame.powerSuit?1:0);gl.uniform3fv(u.u_tint,frame.tint);gl.uniform1f(u.u_hit,frame.hitFlash);gl.uniform3fv(u.u_sil,silhouette);
   gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D_ARRAY,s.texture);gl.drawElements(gl.TRIANGLES,frame.indexCount,gl.UNSIGNED_SHORT,0);gl.activeTexture(gl.TEXTURE0);
 }

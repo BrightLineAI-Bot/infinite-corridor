@@ -13,6 +13,7 @@ import { render } from '../src/renderer.ts';
 import { loadCloseViewHero } from '../src/close-view-hero.ts';
 import { projectileVisualPoint } from '../src/actor-presentation.ts';
 import { interiorSurfaceHeight } from '../src/landscape.ts';
+import { playerFormPresentation } from '../src/close-view-player-presentation.ts';
 
 const context = (calls:any[]) => new Proxy({ canvas:{width:800,height:600}, globalAlpha:1 }, { get(o:any,k:any) { if (k in o) return o[k]; return (...a:any[]) => { calls.push([k,...a]); return k === 'createRadialGradient' ? { addColorStop(){} } : undefined; }; }, set(o:any,k:any,v:any){o[k]=v;return true;} });
 const openMap = (w=6,h=6) => ({width:w,height:h,tiles:Array.from({length:w*h},()=>({blocked:false,seen:true,discovered:true}))});
@@ -105,14 +106,16 @@ test('final imported left socket owns Fire flash and exact central connector onl
   });}finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
 });
 
-test('actual tool and Fire casts share one final-action release lane without losing live bodies',async()=>{
+test('actual normal and powered heroes share final tool and Fire ownership without losing live bodies',async()=>{
   const names=['window','fetch','createImageBitmap'],old=new Map(names.map(n=>[n,(globalThis as any)[n]]));
   (globalThis as any).window={};(globalThis as any).createImageBitmap=async()=>({width:1024,height:1024});
   (globalThis as any).fetch=async(url:any)=>{const u=new URL(url);assert.equal(u.protocol,'file:');const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};
   const count=(color:number)=>{let n=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++)if(GLB.decal[i*DECAL_FLOATS+7]===color)n++;return n;};
-  try{assert.ok(await loadCloseViewHero());withProjectionGPU({},({screen,log})=>{
+  try{assert.ok(await loadCloseViewHero());for(const powered of [false,true])withProjectionGPU({},({screen,log})=>{
     const g:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:100000}).game;
     g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};g.save.lastAim={x:1,y:0};
+    if(powered){g.save.perception.aperture=3255;g.save.farArray={listeners:3,gate:3};g.save.consumables.submersible=1;g.save.materials.cinderIron=10;assert.equal(g.useConsumable('submersible',100000),true);assert.equal(g.useConsumable('submersible',100000),true);assert.equal(playerFormPresentation(g)?.kind,'playerPowerSuit');}
+    else assert.equal(playerFormPresentation(g),null,'original normal imported hero coverage is retained');
     for(const tile of g.map.tiles){tile.blocked=false;tile.environment=false;tile.openAir=false;tile.courtyard=false;}
     g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};
     const draw=(now:number)=>{resetCloseViewCamera();assert.equal(productionFrame(screen,g,now,log).showing,true);};

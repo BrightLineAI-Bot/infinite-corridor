@@ -3,7 +3,7 @@ import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, vert
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.ts';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.ts';
 import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
@@ -309,6 +309,7 @@ export function modelSupported(kind) {
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
 const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle});
+export const HERO_EQUIPMENT_MAX_TRIANGLES = 156;
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null;
   // Legacy callers supplied only rightSocket. Explicit new roles require their real grip.
@@ -333,6 +334,18 @@ export function writeCloseViewHeroGear(out,offset,gear) {
     out[offset++]=a[i+6]*tr*(1-hit*.6)+.96*hit*.6;out[offset++]=a[i+7]*tg*(1-hit*.6)+.34*hit*.6;out[offset++]=a[i+8]*tb*(1-hit*.6)+.23*hit*.6;out[offset++]=alpha;
   }}
   return offset;
+}
+
+export function writeCloseViewHeroEquipment(out,offset,gear,frame) {
+  const armored=frame?.powerSuit===true,armorVertices=armored?frame.suitVertexCount:0,parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null;
+  let gearVertices=0;if(parts)for(const p of parts)gearVertices+=p.mesh.length/MESH_FLOATS;
+  if(gear?.profile==='fist'||gear?.profile==='fistCharge')gearVertices*=2;
+  if(!Number.isSafeInteger(offset)||offset<0||armorVertices!==(armored?CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES*3:0)||(armorVertices+gearVertices)/3>HERO_EQUIPMENT_MAX_TRIANGLES||offset+(armorVertices+gearVertices)*MODEL_FLOATS>out.length)return offset;
+  const start=offset,alpha=Number.isFinite(gear?.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear?.hitFlash)||0)),tr=Number.isFinite(gear?.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear?.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear?.tint?.[2])?gear.tint[2]:1;
+  if(armored){let v=0;for(const part of CLOSE_VIEW_POWER_SUIT_ARMOR)for(let i=0;i<part.vertices.length;i++,v++){const s=v*6;for(let k=0;k<6;k++)out[offset++]=frame.suitPositionsNormals[s+k];const c=part.color,r=(c>>16)/255,g=((c>>8)&255)/255,b=(c&255)/255;out[offset++]=r*tr*(1-hit*.6)+.96*hit*.6;out[offset++]=g*tg*(1-hit*.6)+.34*hit*.6;out[offset++]=b*tb*(1-hit*.6)+.23*hit*.6;out[offset++]=alpha;}}
+  const end=writeCloseViewHeroGear(out,offset,gear);
+  if(parts&&end===offset)return start;
+  return end;
 }
 
 // Reused actor-local segment frames: columns X/Y, scaled Z, then origin. No per-vertex allocation.
