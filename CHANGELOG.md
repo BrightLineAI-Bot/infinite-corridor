@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 834: give accepted Close View Hammerfall its dedicated effect-linked stomp, preserve the original first-pulse guard and keep logical hero presentation continuous across pause and reload.
 
 - Release 833: readable named tools, brief accepted startup/release and melee-cancelable recovery with preserved cooldowns.
 - Release 832: preserve exact packed RGB on the GPU so Echo afterimages and colored cues keep their intended colors.
