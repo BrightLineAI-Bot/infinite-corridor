@@ -105,6 +105,29 @@ test('final imported left socket owns Fire flash and exact central connector onl
   });}finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
 });
 
+test('actual tool and Fire casts share one final-action release lane without losing live bodies',async()=>{
+  const names=['window','fetch','createImageBitmap'],old=new Map(names.map(n=>[n,(globalThis as any)[n]]));
+  (globalThis as any).window={};(globalThis as any).createImageBitmap=async()=>({width:1024,height:1024});
+  (globalThis as any).fetch=async(url:any)=>{const u=new URL(url);assert.equal(u.protocol,'file:');const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};
+  const count=(color:number)=>{let n=0;for(let i=GLB.nGlowStart;i<GLB.nDecal;i++)if(GLB.decal[i*DECAL_FLOATS+7]===color)n++;return n;};
+  try{assert.ok(await loadCloseViewHero());withProjectionGPU({},({screen,log})=>{
+    const g:any=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:100000}).game;
+    g.player.x+=.75;g.enemies=[];g.projectiles=[];g.presentation={effectiveQuality:'full',reduceMotion:false};g.save.lastAim={x:1,y:0};
+    g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};
+    const draw=(now:number)=>{resetCloseViewCamera();assert.equal(productionFrame(screen,g,now,log).showing,true);};
+    assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);draw(100016);assert.equal(count(0xffc56b),6,'accepted tool owns its positive flash');
+    g.lastUpdateNow=100450;assert.equal(g.castSpell('fire-burst'),true);draw(100466);
+    assert.equal(closeViewGLStats.projectedShots,6,'the older Bombard shell and five Fire sources all remain admitted');
+    assert.equal(count(0xffc56b),0,'Fire owns the final pose instead of the old tool flash');assert.equal(count(0xffd38a),0,'old tool cannot borrow the spell hand');
+    assert.equal(count(0xff7a2a),36,'five Fire heads plus exactly one positive left-hand flash');
+    const accepted=structuredClone(g.player.castVisual),fire=g.projectiles.filter((p:any)=>p.fireBomb&&p.glyphSpell==='fire-burst');assert.equal(fire.length,5);
+    assert.equal(g.fireSecondary(100466,{x:1,y:0}),true);draw(100482);
+    assert.equal(closeViewGLStats.projectedShots,7,'new tool adds one canonical source without replacing either older family');
+    assert.equal(count(0xffc56b),6,'new tool owns the sole positive release flash');assert.equal(count(0xff7a2a),30,'all five Fire heads survive without a stale hand flash');assert.equal(count(0xff9a4a),0,'cancelled Fire cannot retain a connector');
+    assert.equal(g.player.castVisual.cancelled,true);assert.equal(g.player.castVisual.sourceId,accepted.sourceId);assert.ok(fire.every((p:any)=>g.projectiles.includes(p)),'drawing preserves the exact Fire source objects');
+  });}finally{for(const n of names){if(old.get(n)===undefined)delete (globalThis as any)[n];else (globalThis as any)[n]=old.get(n);}}
+});
+
 test('all three authored tool muzzles flash and forward connectors obey full 3D bounds',async()=>{
   const names=['window','fetch','createImageBitmap'],old=new Map(names.map(n=>[n,(globalThis as any)[n]]));
   (globalThis as any).window={};(globalThis as any).createImageBitmap=async()=>({width:1024,height:1024});
