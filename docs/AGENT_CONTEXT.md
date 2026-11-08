@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Verified checkpoint and priority — 2026-11-08
+
+Production is `r827-ff2d4c13bf18`, commitff2d4c13bf18b261946164fc1a36e348b5fe759d, tree133b20b056c9cbc531d4550aa2e8d5f7b76ae20e. Publish42457803577, live identity and actual Options → System match with no recent errors. Fresh Astra826→827 review, exact CI/Preview and hosted primary actions passed. r828 prioritizes a confirmed settled-corner/respawn camera framing defect; then return to the original queue at Echo. Named tools and Hammerfall remain held for reproduced presentation defects; their existing preparation is preserved. The boss rig program is documentation/research only, queued without changing delivery order. The owner approves any necessary regression tests for all existing queued projects, preserving compatibility assertions/floors; publication authority remains this session and all current project gates. See the master manifest for exact prepared commits and limits.
+
 ## Close View checkpoint — 2026-11-08
 
 Verified production is `r826-9a7a39cb18a3`, commit `9a7a39cb18a3ef939a328be3afe645f48ce6b5ae`, tree `d47927068abd08fb6bc8c6c81a5cb1255c2b3064`. Publish42454899297, gh-pages identity and actual Options → System match; no recent errors. Fresh Astra full/delta review, CI, Preview and hosted acceptance passed. Imported adult normal Iron Fists is delivered; primary carry/three-stage combos are next (r827). Other prepared passes remain unnumbered in the ordered manifest. The owner now approves any regression tests required and authorized continued focused publication while away; all project review/CI/Preview/live-verification gates still apply. Preserve old assertions, generation/save compatibility and stopped transport boundaries.
