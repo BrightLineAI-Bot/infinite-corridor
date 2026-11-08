@@ -38,7 +38,7 @@ Reproductions on the existing source before this pass:
 - A pending recenter from north toward east advanced from âˆ’Ï€/2 to zero over 20 paused renders. Camera springs and absolute quick-turn/manual-grace clocks were not suspended. The ordinary main loop also skips rendering during pause, so render-only pause handling is insufficient.
 - The pointer handlers retained a captured camera thumb but only refreshed manual suppression on movement or queued pan. Holding that thumb still beyond the grace period allowed travel-follow to take over.
 
-## Implemented behavior
+## Initial stabilization behavior (r819)
 
 - Compute the centered boom's requested clearance before applying its spring. Test the entire player-to-shoulder line, not only the shoulder endpoint. Obstructed shoulder clearance contracts immediately; expansion waits for 0.25 seconds of clear space and then uses the existing recovery spring. No side switching or camera yaw avoidance is introduced.
 - Center shoulder and transverse positional lag when boom clearance falls below 55% of the saved preset distance; restore them continuously up to 90%. This prevents a small boom from turning ordinary sideways follow lag into an off-screen hood in portrait. Longitudinal follow, the bounded crane, arch/ceiling/terrain checks and final hard collision checks remain active.
@@ -79,3 +79,40 @@ CI on candidate `4352b0a9` exposed two further integration issues. The cohesion 
 - Hosted portrait and landscape camera feel, mouse/WASD navigation, real GPU rendering, long stair/platform traversal, large-actor obstruction and close melee readability remain **pending visual acceptance**. Physical-phone FPS, thermal behavior and real multi-touch also remain pending. No local transport retry or browser session was used for this pass.
 
 Status: focused camera stabilization, lock comfort and source regressions complete; integration, hosted/device acceptance (including lock reach and visual facing on the imported hero) and the parent-owned release gates remain pending. No release bump, commit or push was made in this camera pass.
+
+
+## Shoulder-clearance and semantic-lock follow-on (r820 base, no number reserved)
+
+Worktree `close-view-shoulder-clearance`, based on main merge `10672c8568e1c0f30844437754b0083f8b4dce2d`. This follow-on owns camera/control code, focused tests and this manifest only. Imported hero admission/runtime, assets, world generation, pinned geometry, physics, hit rules, schema, package/scripts/workflows and release metadata are unchanged by this work.
+
+### Exact entrance diagnosis
+
+The production Close View Lab `outer`, seed `CINDER-VERGE-47`, variant 0, uses map `pentagon:CINDER-VERGE-47:0:24:v8:f1` and player `(25, 11)`. The r818 and r819 camera sources both selected northwest solely from forward openness, then settled at a **0.30-tile boom and about 71.56 degrees down-pitch**. This is an existing cramped-rig limitation, not a regression introduced by r819. At 1280×720, actual submitted fallback-player hood vertices occupied approximately **371 pixels vertically**. The old centered clearance probe encountered the south wall before an available lateral rig could be considered. A legal eye around `(26.6, 11.5)` existed within the current shoulder reach while looking west into the room.
+
+### Bounded implementation
+
+- Before shortening a compressed centered boom, try only **four fixed lateral alternatives**: half/full existing preset shoulder reach on either side. No lateral reach, preset distance, FOV, sensitivity or ordinary yaw-follow rate is increased. A candidate must clear the existing boom-pad square at bounded backward samples and the padded player-to-eye line. The current interpolated offset is independently checked before use. Existing hard wall, line, terrain and ceiling checks still have final authority.
+- Require a **0.25-tile improvement** to choose a competing candidate and **0.30 seconds of persistent preference** to change candidates. Retain the current useful side, retract on lost clearance, and spring toward the chosen offset. Once active and safe, retain that lateral rig through recovery toward center instead of flickering between two rendered positions at a tiny gain threshold. The ordinary shoulder is disabled while the alternative rig is active, so they cannot add together beyond preset shoulder reach.
+- On floor entry only, retain the facing direction when both its forward view and rear clearance are useful. Otherwise score the eight existing headings by bounded forward openness and achievable safe horizontal rig reach, including lateral candidates. A full boom facing directly into stone cannot win merely because it has room behind it. This search never re-runs to redirect a manual camera, a held movement basis or an active lock.
+- All extra evolving state and candidate storage are preallocated runtime data. A steady frame performs at most **five offset probes / 160 radius samples** (four corner tile checks per sample), plus their bounded existing padded line checks. The entry search adds at most nine headings × four candidates: **41 total probes** including that frame's live solver. Open centered views skip the four alternatives. Diagnostic `rigProbes`/`rigSamples` expose this work without timing-dependent assertions. Tests exercise the widest preset and preserve existing draw-budget checks.
+- Normal Enter/Space, assistive-technology activation and `button.click()` now reach the lock action. Native activation key events stop propagation to the game's bubbling keyboard bindings without preventing default button behavior. Pointer release still owns a valid pointer tap; its compatibility click cannot toggle again. Moved-out-and-back, cancelled, lost-capture and rejected second-pointer sequences cannot activate through a later pointer-derived click. Pointer provenance (positive click detail / nonnegative pointer id) distinguishes those from an independent semantic click; no timer can leave assistive activation temporarily disabled. The original 18-pixel release-drift rule remains, with maximum observed drift also rejecting an out-and-back drag.
+
+### Measured results and honest limits
+
+At the exact outer entrance and standard preset, the settled view looks west with a **+0.21-tile offset, 1.10-tile boom and 42.71-degree pitch**. In actual production renderer uploads at 1280×720:
+
+| Submitted geometry | Horizontal bounds | Vertical bounds | Head / hood vertical span |
+| --- | --- | --- | --- |
+| Fallback Wayfarer including held geometry | 347.45–574.54 | 224.14–745.83 | 224.01 px (vertices above height 1) |
+| Loaded shipped imported hero body | 373.06–582.98 | 232.28–739.82 | 129.81 px (actual attached-head mesh) |
+
+These are projected submitted vertices from mock WebGL, not rasterized GPU screenshots. No submitted body vertex crosses the near plane. The fallback body/held geometry still extends about **26 pixels below** this desktop viewport; the imported body about **20 pixels below**. Thus this is reduced head obstruction and a useful forward view, not a claim that every complete model/weapon fits. The two head measurements use different authored geometry and are not a like-for-like model-size comparison.
+
+Space is still finite. Deliberately aiming northwest at this entrance or backing directly into its wall still requires a very short boom. The default cellar entry remains about **0.24 tiles / 75.07 degrees**, where these bounded offsets cannot provide a useful alternative; hive settles around **1.98 tiles / 28.06 degrees**, and arcology **0.98 tiles / 46.87 degrees**. The follow-on does not rotate the camera away from the player's manual request, pass through stone, expand the FOV or resize the hero to conceal those cases. Low arches and other impossible full-body fits continue to use the existing safe framing fallback.
+
+### Validation and remaining gates
+
+- New `tests/close-view-offset-clearance.test.ts`: **5/5 pass**. Exact untouched outer fixture; all three presets across outer/cellar/hive/arcology; radius/probe budget; stable corners and small corner movement without alternating sides; manual yaw and held movement; callback-free pause/recovery; actual fallback renderer uploads; actual local shipped-asset load and imported-hero uploads. The loader test intercepts file URLs only and never accesses a network.
+- `tests/close-view-camera-comfort.test.ts`: **13/13 pass**, adding real pointer/semantic event sequences and the production `createInput` listeners to prove Enter/Space do not latch attack/jump/dodge. Original thumb drift, gesture ownership, lock targeting, accepted-action aim, pause and follow assertions are retained.
+- Focused integration run: **219/219 pass** across every `close-view*.test.ts`, every `native-*.test.ts`, imported-hero integration, input, player-attack-visual and player-resume-fixes. Existing framing, terrain/arch safety, narrow-maze traversal, actor FX ownership, imported-hero readiness/pose/action clocks, schema-14 unknown-field preservation and exact resume checks all pass unchanged. No assertion/threshold was relaxed and no test was skipped.
+- Hosted preview inspection, real GPU rasterization, actual keyboard/AT activation in the browser, phone-shaped viewport feel, physical-phone FPS/thermals and real multi-touch remain pending. Source probe counts establish bounded work, not a device frame-rate measurement. Parent owns integration, independent review, full exact-head Linux CI, preview and release gates. No build/release bump, commit, push or transport retry was performed by this follow-on.

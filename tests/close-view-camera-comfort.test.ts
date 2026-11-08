@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import * as CV from '../src/close-view.ts';
+import { createInput } from '../src/input.ts';
 
 // Exercise the production camera and controls without a GPU or actor capture. Geometry/body projection
 // and heightfields are additionally covered by close-view-framing and close-view-terrain-render.
@@ -257,4 +258,45 @@ test('lock touch target is reachable, clear of buttons and accepts thumb drift i
     ui.lock.listeners.pointerdown[0](event(left + size / 2)); ui.lock.listeners.pointerup[0](event(left + size / 2 + 14));
     assert.equal(g.lockedTarget()?.id, 'tap', '14 px of thumb drift still activates lock');
   }
+});
+
+
+test('lock button accepts semantic activation and handles each pointer sequence at most once', () => {
+  const g = fixture(); frame(g, 40); foe(g, 'semantic', 2, 0);
+  const { ui } = controls(g), button = ui.lock, hostListeners = {};
+  const input = createInput({ querySelector: () => ({}), querySelectorAll: () => [], addEventListener() {} }, {
+    addEventListener(type, fn) { (hostListeners[type] ||= []).push(fn); },
+  });
+  const send = (type, values = {}) => {
+    const e = { type, defaultPrevented: false, stopped: false, preventDefault() { this.defaultPrevented = true; }, stopPropagation() { this.stopped = true; }, ...values };
+    for (const fn of button.listeners[type] || []) fn(e);
+    if (!e.stopped) for (const fn of hostListeners[type] || []) fn(e);
+    if (type === 'keydown' || type === 'keyup') { assert.equal(e.stopped, true, 'activation key stays with the button'); assert.equal(e.defaultPrevented, false, 'native semantic click remains enabled'); }
+    return e;
+  };
+  const locked = () => g.lockedTarget()?.id === 'semantic';
+  const click = () => send('click', { detail: 0 }); // HTMLElement.click() / AT, no pointer provenance
+  click(); assert.equal(locked(), true, 'programmatic and AT semantic click activates');
+  // Native buttons produce a click for Enter and for Space release. Handlers must
+  // consume that click once, without inventing a second keyboard activation.
+  send('keydown', { key: 'Enter' }); send('click', { detail: 0, pointerId: -1 }); send('keyup', { key: 'Enter' });
+  assert.equal(locked(), false, 'Enter semantic click releases exactly once');
+  send('keydown', { key: ' ' }); send('keyup', { key: ' ' }); send('click', { detail: 0, pointerId: -1 });
+  assert.equal(locked(), true, 'Space semantic click acquires exactly once'); click();
+  input.update(); for (const action of ['attack', 'jump', 'dodge']) { assert.equal(input.held(action), false); assert.equal(input.consume(action), false, `keyboard lock never triggers global ${action}`); }
+  const pointer = (type, x = 100, id = 99) => send(type, { pointerId: id, pointerType: 'touch', clientX: x, clientY: 100 });
+  pointer('pointerdown'); pointer('pointerup', 114);
+  assert.equal(locked(), true, 'original 14px drift allowance');
+  send('click', { detail: 1, pointerId: 99 }); assert.equal(locked(), true, 'compatibility click cannot undo pointer tap');
+  click(); assert.equal(locked(), false, 'semantic activation remains usable immediately after a pointer tap');
+  for (const ending of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    pointer('pointerdown'); pointer('pointermove', 130); pointer('pointermove', 100); pointer(ending);
+    if (ending !== 'pointerup') pointer('pointerup');
+    send('click', { detail: 1, pointerId: 99 });
+    assert.equal(locked(), false, `${ending}: moved/cancelled capture cannot later click-toggle`);
+    click(); assert.equal(locked(), true, `${ending}: no stale suppression of the next AT activation`); click();
+  }
+  pointer('pointerdown'); pointer('pointerdown', 100, 100); pointer('pointerup', 100, 100);
+  send('click', { detail: 1, pointerId: 100 }); assert.equal(locked(), false, 'rejected second pointer cannot activate');
+  pointer('pointerup'); send('click', { detail: 1, pointerId: 99 }); assert.equal(locked(), true, 'owning pointer still activates once');
 });

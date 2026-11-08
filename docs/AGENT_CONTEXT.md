@@ -76,3 +76,16 @@ Verified publication 2026-11-07: r818-791b1eff716d is live (Publish42424762364).
 ## Imported Wayfarer candidate — 2026-11-07
 
 The focused r820 branch imports licensed Rogue motion/body with the approved central Cleric silver-mask/white-hair head, muted green/gray/leather/bronze protective fabric and warm amber eyes. The owner-requested thinner frame and smaller hands retain actual tool size. Reproducible conversion, proportion derivation, source facts and acceptance gates are in the Wayfarer asset manifest/contract. Source animation is presentation-only; actual forms and all game/save/isolation rules remain. Main r819 camera work is merged; its Preview and hosted acceptance are separate. r820 exact CI, review and GPU acceptance are pending; no publication claim is made.
+
+
+## Measured camera follow-on — 2026-11-07
+
+Main is r820; production remains verified r818 until the imported-character GPU preview passes and is published. The r819 preview is verified and is planned for inclusion in that publication. Hosted desktop checks exposed a pre-existing outer-entrance camera case: both r818/r819 settle at .3-tile boom and about71.5 degrees downward pitch, with the old hood occupying about52% of viewport height. Read-only geometry review found a legal offset eye with about1.13 tiles of separation; the current centered solver rejects it prematurely. An isolated branch is implementing bounded lateral rig candidates and entry view scoring plus standard keyboard/AT lock-button activation. No world, FOV, save or hit-rule change is authorized by this paragraph. Browser viewport override did not apply (actual1280x720), so hosted phone sizing is unverified; automated portrait/landscape regressions passed.
+
+
+## Preview transport hold — 2026-11-07
+
+r820 Preview42427897177 succeeded and its identity/link match the reviewed merge. Hosted startup stopped with TypeError: Failed to fetch dynamically imported module for the candidate-scoped src/proving-ground-mobile.js entry. Browser loading was stopped under the owner network boundary; no HTTP, alternate-host or browser retry was attempted. An offline audit of the exact already-fetched gh-pages tree parsed all152 JavaScript files, resolved557 relative imports and linked the whole graph without evaluating it. No artifact defect was found; fetch-layer cause remains unverified. Production remains r818. Operator decision on one normal browser retry is pending while r821 source/CI preparation continues independently. No production dispatch is authorized by this paragraph.
+
+
+The operator approved one normal browser retry; r820 then loaded and its imported WebGL model rendered. GPU/rear geometry inspection found a genuine missing neck bridge behind the mask/hair. Publication remains held for that focused asset repair. Camera/control source is preserved and reviewed in its separate branch, with its temporary release stamping removed; assign its number only after the neck repair reaches main.

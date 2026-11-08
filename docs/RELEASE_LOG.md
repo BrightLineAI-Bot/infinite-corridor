@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r819 on main, this PR takes r820.
+Taken at merge time: main's release + 1. With r820 on main, the next game change takes main+1 at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 820 | Codex | `claude/wayfarer-rogue-asset` | Imported protective masked Wayfarer, source rig, adult proportions and amber eyes | Source art and25 focused checks passed; final consistency/build/CI, independent review and hosted GPU acceptance pending. |
-| 819 | Codex | `claude/mobile-close-view-camera` / #468 | Cramped-space camera, pause ownership and reachable target lock | Merged as6d227b4301b4e8fabaa2437250274e913fad2eb8. Exact CI42425201941 passed; fresh Astra review cleared ce5ae998/treeadbe681794bab916676c153f6184d5985fd978ba. Preview42426203941 running; not yet published. |
+| — | Codex | `claude/close-view-shoulder-clearance` | Safe side camera clearance and semantic lock activation |219 focused checks and independent2880-frame component review passed; no release number reserved. Held behind the imported-hero neck bridge repair found in GPU acceptance. |
+| 820 | Codex | `claude/wayfarer-rogue-asset` / #469 | Imported protective Wayfarer with adult proportions, source rig and amber eyes | Merged10672c8568e1c0f30844437754b0083f8b4dce2d. Exact/merged CI and Preview42427897177 passed; identity/link verified. The authorized normal browser retry loaded the imported GPU model. Rear inspection confirmed a missing neck surface; held for focused bridge repair before production. |
+| 819 | Codex | `claude/mobile-close-view-camera` / #468 | Cramped-space follow, pause ownership and reachable target lock | Merged6d227b4301b4e8fabaa2437250274e913fad2eb8. CI42425201941, merged CI42426204013 and Preview42426203941 passed; candidate r819-6d227b4301b4 identity/link verified. Source review cleared. Held for inclusion in the imported-character publication; inherited extreme entrance framing and semantic activation are tracked in the follow-on. |
 | 818 | Codex | `claude/close-view-character-forms` / #467 | Actual player forms, companions, travelers, launch ports and startup readiness | Published as r818-791b1eff716d. CI42422197065, Preview42423282390 and Publish42424762364 succeeded; live identity and actual Options → System verified. Astra review (816→818): no blockers. |
 | 817 | Codex | `claude/close-view-foundry-assets` | Six native Foundry morphologies with exact palette, appendage and attack contracts | Merged (#466) as f75cc54ad71cfa3d6c7e06c1c7dabd113600956c. Approved runner isolation preserves every assertion/threshold/output and workflows. Exact-head CI42420980003 passed at3f63019b; Astra delta review cleared. Preview42422053055 succeeded as r817-f75cc54ad71c; nine hosted Foundry cases reviewed without console errors. Published in r818; r817 was not published independently. |
 | 816 | Codex | `claude/close-view-pentagon-assets` | Complete non-Foundry native creature roster and authored attack readability | Merged (#465). Published as r816-093cff214c39. CI42412608347, Preview42413362028 and Publish42416350924 succeeded; live identity and Options → System verified. Astra review (814→816): no blockers after torso/tube corrections. A cold-launch UI initialization race was observed and corrected in the following character candidate. |
@@ -315,3 +316,6 @@ Taken at merge time: main's release + 1. With r819 on main, this PR takes r820.
 | 239 | `r239-0a2af28b4090` | 2026-10-20 | |
 
 The full history is in `CHANGELOG.md`, in `git log origin/gh-pages` ("Promote r…") and in `docs/HERMES_PROJECT_FIELD_GUIDE.md`.
+
+
+GPU acceptance update: the operator-authorized normal browser retry loaded r820. The normal imported character renders with intended frame/hands/mask/amber eyes, but rear inspection and a flat-material topology diagnostic confirmed a .065–.095-tile missing neck surface. Publication remains held for a focused fabric neck bridge repair; the independent camera/control pass is preserved without a release number.
