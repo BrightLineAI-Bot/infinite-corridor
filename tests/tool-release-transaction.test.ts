@@ -5,6 +5,7 @@ import { freshSave, migrateSave } from '../src/types.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { normalizePendingToolUse, sampleToolActionMotion, toolUseStartupMs } from '../src/action-motion.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
+import { createCombatant } from '../src/combat.ts';
 
 const items:any={
   'rift-bombard':{id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'},
@@ -40,6 +41,12 @@ test('delayed Blunderbuss members share the base muzzle origin while retaining t
 
 test('Great Sweep creates no damaging effect before release, fixes release center, and pulses once with full newborn life',()=>{
   const g=fixture('great-sweep'),at=100000;assert.equal(g.fireSecondary(at,{x:1,y:0}),true);const q=structuredClone(g.pendingToolUse);assert.equal(g.effects.length,0);g.player.x+=1;g.player.y+=.5;g.releasePendingToolUse(q.releaseAt);const fx=g.effects[0],life=fx.life;assert.deepEqual([fx.x,fx.y],[g.player.x+.5,g.player.y+.45]);const foe={id:'f',x:fx.x-.5,y:fx.y-.45,hp:100,maxHp:100};updateEffects(g.effects,[foe],.6);assert.equal(fx.life,life);assert.equal(fx.pulseIndex,1);const hp=foe.hp;updateEffects(g.effects,[foe],0);assert.equal(foe.hp,hp);assert.equal(fx.pulseIndex,1);
+});
+
+test('contact-clamped movement commits before a due named-tool release without changing accepted aim or newborn ownership',()=>{
+  const moving=(kind:string)=>{const g=fixture(kind),p=g.player,start={x:p.x,y:p.y},blocker=createCombatant('ashling',p.x+.8,p.y);blocker.hitStun=1e9;g.enemies=[blocker];g.save.lastAim={x:0,y:-1};assert.equal(g.fireSecondary(100000,{x:0,y:-1}),true);const pending=structuredClone(g.pendingToolUse);assert.ok(pending);assert.equal(g.projectiles.length,0);assert.equal(g.effects.length,0);g.update(pending.startupMs/1000,{state:{x:1,y:0},consume:()=>false,held:()=>false},pending.releaseAt);assert.ok(p.x>start.x&&p.x<start.x+2.4*pending.startupMs/1000,'body contact clips the accepted movement');assert.ok(Math.abs(blocker.x-p.x-.64)<2e-6,'canonical body separation is retained');return{g,p,start,blocker,pending};};
+  const shot=moving('rift-bombard'),base=shot.g.projectiles[0];assert.ok(base);assert.equal(shot.g.pendingToolUse,null);assert.ok(Math.abs(base.x-(shot.p.x+.5+shot.pending.aim.x*.35))<1e-9);assert.ok(Math.abs(base.y-(shot.p.y+.45+shot.pending.aim.y*.35))<1e-9);assert.deepEqual([base.dx,base.dy],[shot.pending.aim.x,shot.pending.aim.y]);assert.deepEqual([base.dx,base.dy],[0,-1],'movement input cannot replace accepted aim');assert.equal(base.age,0);assert.equal(base.life,shot.pending.payload.shot.life);assert.equal(base.toolUseNewborn,undefined,'the release frame consumes zero projectile time exactly once');assert.notEqual(base.x,shot.start.x+.5+shot.pending.aim.x*.35,'release cannot use the pre-movement body point');
+  const sweep=moving('great-sweep'),fx=sweep.g.effects[0];assert.ok(fx);assert.equal(sweep.g.pendingToolUse,null);assert.deepEqual([fx.x,fx.y],[sweep.p.x+.5,sweep.p.y+.45]);assert.equal(fx.life,sweep.pending.payload.effect.life);assert.equal(fx.pulseIndex,1);assert.equal(fx.toolUseNewborn,undefined);assert.ok(sweep.blocker.hp<sweep.blocker.maxHp,'the newborn effect owns exactly its release pulse');assert.equal(Object.keys(fx.hits).length,1);
 });
 
 test('accepted payload freezes pellets, Arc Wave, awakened fan, Tool Echo and clone permission; released Spindle keeps return and Bombard keeps cluster callbacks',()=>{

@@ -1,4 +1,5 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
+import { ACTOR_CONTACT, actorContactContext } from "./actor-contact.ts";
 import { ACTION_MOTION, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
@@ -987,7 +988,8 @@ export function footprintVoid(map, width, x, y) {
   for (let ty = Math.floor(top); ty <= Math.floor(bottom - 1e-6); ty++) for (let tx = Math.floor(left); tx <= Math.floor(right - 1e-6); tx++) if (tx >= 0 && tx < width && isDreamVoid(map?.tiles?.[ty * width + tx])) return true;
   return false;
 }
-export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null, allowMarineTerrain=false) {
+export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, onStep=null, allowMarineTerrain=false, contacts=null) {
+  if (contacts) return moveAxisWithContacts(entity, dx, dy, map, width, allowLethalTerrain, onStep, allowMarineTerrain, contacts);
   if (entity?.riderShift) { const sh = entity.riderShift; entity.riderShift = 0; entity.y += sh; try { return moveAxis(entity, dx, dy, map, width, allowLethalTerrain, onStep, allowMarineTerrain); } finally { entity.y -= sh; entity.riderShift = sh; } } // release 748: a knock on a rider moves the mount's feet
   let moved = false,
     steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.16)),
@@ -1008,6 +1010,28 @@ export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, o
       onStep?.(entity.x, fromY, entity.x, entity.y);
       moved = true;
     }
+  }
+  return moved;
+}
+function moveAxisWithContacts(entity, dx, dy, map, width, allowLethalTerrain, onStep, allowMarineTerrain, contacts) {
+  if (![dx, dy, entity.x, entity.y].every(Number.isFinite)) return false;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / ACTOR_CONTACT.step));
+  const limit = Math.min(steps, ACTOR_CONTACT.maxSteps), sx = dx / steps, sy = dy / steps;
+  if (limit < steps) contacts.budgetStops++;
+  let moved = false;
+  for (let i = 0; i < limit; i++) for (let axis = 0; axis < 2; axis++) {
+    const ax = axis ? 0 : sx, ay = axis ? sy : 0; if (!ax && !ay) continue;
+    const a = i / steps, b = (i + 1) / steps, before = contacts.phaseBefore, after = contacts.phaseAfter;
+    before.x = axis ? b : a; before.y = a; before.t = axis ? b : a;
+    after.x = b; after.y = axis ? b : a; after.t = b;
+    const fraction = contacts.clip(entity.x, entity.y, ax, ay); if (!(fraction > 0)) continue;
+    const x = entity.x + ax * fraction, y = entity.y + ay * fraction, exiting = contacts.canExit?.(x, y) === true;
+    if (!exiting && (!footprintOpen(map, width, x, y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true)
+      || (allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y)) || !canStep(entity, map, width, entity.x, entity.y, x, y))) continue;
+    const fromX = entity.x, fromY = entity.y;
+    entity.x = x; entity.y = y; moved = true;
+    if (contacts.record) { const n = contacts.count; contacts.trace[n] = fromX; contacts.trace[n + 1] = fromY; contacts.trace[n + 2] = x; contacts.trace[n + 3] = y; contacts.count += 4; }
+    onStep?.(fromX, fromY, x, y);
   }
   return moved;
 }
@@ -2058,7 +2082,8 @@ export function alertEnemy(e) {
 export function enemyProjectilePattern(shooter,aim,now=0,options={}) {
   return buildEnemyProjectilePattern(shooter,aim,now,options);
 }
-export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}) {
+export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}, move=null) {
+  const displace = move || ((subject, dx, dy) => moveAxis(subject, dx, dy, map, width));
   if(sanctuary){enforceSanctuary(e,sanctuary);if(Math.hypot(player.x-sanctuary.x,player.y-sanctuary.y)<sanctuary.radius){e.telegraph=0;return false}}
   const ai = ensureAI(e),
     toPlayer = Math.hypot(player.x - e.x, player.y - e.y),
@@ -2083,7 +2108,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     if(e.passiveBehavior==="vanish"&&toPlayer<2.4){e.dead=true;e.vanished=true;return false}
     let tx,ty,speed=.16;
     if(e.passiveBehavior==="follow"&&toPlayer<6&&toPlayer>1.35){tx=player.x-e.x;ty=player.y-e.y;speed=.28}else{ai.phase=(ai.phase+dt/(e.passiveBehavior==="graze"?3.8:2.8))%(Math.PI*2);tx=Math.cos(ai.phase);ty=Math.sin(ai.phase*.73)}
-    const m=Math.hypot(tx,ty)||1;moveAxis(e,tx/m*speed*dt,ty/m*speed*dt,map,width);ai.step=(ai.step+speed*dt)%2;return false;
+    const m=Math.hypot(tx,ty)||1;displace(e,tx/m*speed*dt,ty/m*speed*dt);ai.step=(ai.step+speed*dt)%2;return false;
   }
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
@@ -2091,7 +2116,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
       e.windupStagger = null; // release 561: the next windup may be held again
       const pattern=e.meleePhase&&MELEE_PATTERNS[e.meleePhase.id], geometry=pattern?enemyMeleeGeometry(e):null;
       e.strikeGeometry = geometry;
-      if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!moveAxis(e,dx/steps,dy/steps,map,width))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
+      if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!displace(e,dx/steps,dy/steps))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
       e.cooldown = (pattern?.recovery|| (e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9))*(e.attackCooldownScale||1)*(bossPaced(e)?BOSS_PACE.cooldown:1); // release 421
       e.strike = 0.24;
       const ranged=!pattern&&e.range>=2.5&&!e.instantStrike,clear=(geometry?pointInEnemyMelee(geometry,player):attackInRange(e,player))&&hasLineOfSight(e,player,map,width,ranged)&&(!geometry||hasLineOfSight({x:geometry.x-.5,y:geometry.y-.45},player,map,width));
@@ -2131,10 +2156,10 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if (Math.abs(tx) > Math.abs(ty)) ai.facing = tx < 0 ? "left" : "right";
   else ai.facing = ty < 0 ? "up" : "down";
   ai.step = (ai.step + Math.hypot(dx, dy)) % 2;
-  if(!moveAxis(e, dx, dy, map, width)&&ai.mode==="chase"&&now>=(ai.pathRetryAt||0)){
+  if(!displace(e, dx, dy)&&ai.mode==="chase"&&now>=(ai.pathRetryAt||0)){
     ai.pathRetryAt=now+350;
     const step=boundedChaseStep(e,player,map,width);
-    if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;const px=step[0]-e.x,py=step[1]-e.y,pm=Math.hypot(px,py)||1;moveAxis(e,px/pm*speed*dt,py/pm*speed*dt,map,width)}
+    if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;const px=step[0]-e.x,py=step[1]-e.y,pm=Math.hypot(px,py)||1;displace(e,px/pm*speed*dt,py/pm*speed*dt)}
   }
   if(sanctuary)enforceSanctuary(e,sanctuary);
   const patternStartRange=e.range<2.5&&e.meleePatterns?.length?Math.max(...e.meleePatterns.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
@@ -2334,7 +2359,7 @@ export class Game {
       }
       update(dt, input, now);
       updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil, this.save.maxHp, this.save.level);
-      if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, maxHp: this.save.maxHp, airborne: now < (this.jumpUntil || 0) || this.mechBoosting === true || (this.save.magicSkills?.active?.id === 'aerial-step' && this.save.magicSkills.active.remaining > 0) /* release 527 */, pull: (dx, dy) => moveAxis(this.player, dx, dy, this.map, mapWidth(this.map, this.area)), fall: () => { if (this.player.hp > 0 && now > (this.player.invulnerableUntil || 0)) { this.player.hp = 0; this.message = "The floor gives way, and the Wayfarer falls into the dark."; } }, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
+      if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, maxHp: this.save.maxHp, airborne: now < (this.jumpUntil || 0) || this.mechBoosting === true || (this.save.magicSkills?.active?.id === 'aerial-step' && this.save.magicSkills.active.remaining > 0) /* release 527 */, pull: (dx, dy) => this.moveGrounded(this.player, dx, dy), fall: () => { if (this.player.hp > 0 && now > (this.player.invulnerableUntil || 0)) { this.player.hp = 0; this.message = "The floor gives way, and the Wayfarer falls into the dark."; } }, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
       if (this.player.hp <= 0 || this.area !== "dungeon") this.traversal = null;
     };
   }
@@ -3313,6 +3338,64 @@ export class Game {
     moveAxis(probe, dx, dy, this.map, width, true);
     return footprintHazard(this.map, width, probe.x, probe.y);
   }
+  actorContactPlatformSupport(body, x, y, ground, phase = null, carrier = null) {
+    if (!body?.isPlayer) return null;
+    if (body.jumping && Number.isFinite(this.discAir))
+      return ground + this.discAir * LIFT_PER_LEVEL;
+    if (this.skyLevel > 0 && discAt(this.map, x + .5, y + .75, { level: this.skyLevel }))
+      return ground + this.skyLevel * LIFT_PER_LEVEL;
+    if (carrier?.raft) {
+      const px = Math.max(0, Math.min(1, Number(phase?.x) || 0)), py = Math.max(0, Math.min(1, Number(phase?.y) || 0)),
+        pt = Math.max(0, Math.min(1, Number(phase?.t) || 0)), a = carrier.old, b = carrier.current,
+        cx = a.x + (b.x - a.x) * px, cy = a.y + (b.y - a.y) * py,
+        fx = x + .5, fy = y + .72, tile = this.map?.tiles?.[Math.floor(fy) * (this.map.width || 32) + Math.floor(fx)];
+      if (tile?.chasm && Math.abs(fx - cx) <= STARFIELD_PLATFORMS.half && Math.abs(fy - cy) <= STARFIELD_PLATFORMS.half)
+        return ground + (a.z + (b.z - a.z) * pt) * LIFT_PER_LEVEL;
+    }
+    const time = Number(this.save.playSeconds) || 0, raft = platformUnder(this.map, x, y, time);
+    return raft ? ground + platformPos(raft, time).z * LIFT_PER_LEVEL : null;
+  }
+  // The shared ordinary-displacement adapter also serves pulls, knockback and enemy lunges.
+  // Specialized boat/mount/world-beast controllers retain their explicit movement paths.
+  moveGrounded(entity, dx, dy, allowLethalTerrain = false, onStep = null, allowMarineTerrain = false) {
+    const contacts = actorContactContext(this, entity, dx, dy);
+    if (contacts) contacts.record = false;
+    return moveAxis(entity, dx, dy, this.map, mapWidth(this.map, this.area), allowLethalTerrain, onStep, allowMarineTerrain, contacts);
+  }
+  // Combat's quarter-tile steps already have their own endpoint canStand guard. Keep
+  // their exact arithmetic when the swept segment clears bodies; only a real contact
+  // enters the terrain/contact solver. Damage and action clocks stay with the caller.
+  moveGuardedCombatStep(x, y) {
+    const p = this.player, dx = x - p.x, dy = y - p.y, contacts = actorContactContext(this, p, dx, dy);
+    if (!contacts || contacts.clip(p.x, p.y, dx, dy) === 1) { p.x = x; p.y = y; return true; }
+    return moveAxis(p, dx, dy, this.map, mapWidth(this.map, this.area), false, null, false, contacts);
+  }
+  planGroundedPlayerMove(dx, dy, width, now, carrier = null) {
+    const contacts = actorContactContext(this, this.player, dx, dy); if (!contacts) return null;
+    const probe = contacts.probe, p = this.player, from = tileUnder(this.map, width, p.x, p.y), jumping = now < (this.jumpUntil || 0);
+    // Simulation flags match the commit path, without mutating the player, lift or action clocks.
+    probe.x = p.x; probe.y = p.y; probe.isPlayer = true; probe.jumping = jumping; probe.voidSuit = this.mechUp() && this.area !== "dungeon";
+    const launch = jumping && (from?.skyPlatform || (interiorTerrain(this.map) && from?.interiorPlatform));
+    probe.airElev = jumping ? (launch ? Math.max(this.skyAir ?? -1, from.elev || 0) : this.skyAir ?? undefined) : undefined;
+    probe.airElevScale = launch ? tileLiftScale(from) : this.skyAirScale || 1;
+    contacts.supportSubject = probe;
+    contacts.carrier = carrier;
+    contacts.record = true;
+    // A valid section exit is an intent, not terrain beyond this map. Bodies before that exit
+    // still clip its trace. The ordinary transition code consumes the accepted endpoint below.
+    contacts.canExit = (x, y) => {
+      if (this.area !== "overworld") return false;
+      const exits = this.map.exits || {}, near = (v, opening) => Math.abs(v - opening) <= 1.45;
+      const seam = (sx, sy) => !!this.map.pentagon && this.pentagonSeam(p, sx, sy);
+      return (x < 0 && (near(p.y, exits.west) || seam(-1, 0)))
+        || (x + .76 >= SECTION_SIZE - .02 && (near(p.y, exits.east) || seam(1, 0)))
+        || (y < 0 && (near(p.x, exits.north) || seam(0, -1)))
+        || (y + .88 >= SECTION_SIZE - .02 && (near(p.x, exits.south) || seam(0, 1)));
+    };
+    moveAxis(probe, dx, dy, this.map, width, true, null, false, contacts);
+    contacts.record = false; contacts.canExit = null; contacts.carrier = null; contacts.endX = probe.x; contacts.endY = probe.y;
+    return contacts;
+  }
   // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
   clearCarriedStates() {
     this.cancelPendingToolUse('world-reset');
@@ -3422,7 +3505,11 @@ export class Game {
       },
       arc(from, to, color) { (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: to.x + .5, ty: to.y + .45, color, life: .22, max: .22 }); },
       canStand(x, y) { const w = mapWidth(game.map, game.area); return footprintOpen(game.map, w, x, y) && !footprintHazard(game.map, w, x, y); },
-      nudge(e, dx, dy) { if (game.astralRiderHeld(e)) return; const w = mapWidth(game.map, game.area); if (footprintOpen(game.map, w, e.x + dx, e.y + dy)) { e.x += dx; e.y += dy; } },
+      nudge(e, dx, dy) { if (game.astralRiderHeld(e)) return; const w = mapWidth(game.map, game.area); if (footprintOpen(game.map, w, e.x + dx, e.y + dy)) {
+        const contacts = actorContactContext(game, e, dx, dy);
+        if (contacts) { contacts.record = false; moveAxis(e, dx, dy, game.map, w, false, null, false, contacts); }
+        else { e.x += dx; e.y += dy; }
+      } },
     };
   }
   tickGlyphs(dt, now) {
@@ -5124,7 +5211,7 @@ export class Game {
     navTick(); // perf (2026-11-04): made once a frame, before the creatures move: this frame's way-round searches start again
     const map = this.map, width = mapWidth(map, this.area), height = mapHeight(map, this.area), p = this.player, last = this._packLastPlayer || p, game = this;
     const displacePlayer = (dx, dy) => {
-      if (game.area !== "overworld" || !aboard(game.save)) return moveAxis(p, dx, dy, map, width, true);
+      if (game.area !== "overworld" || !aboard(game.save)) return game.moveGrounded(p, dx, dy, true);
       // A hostile force moves the occupied skiff, not an on-foot body. Sweep the same full water/iceberg
       // footprint as sailing; never leave a partly stranded hull for sail() to disembark over deep water.
       // Deliberate player-directed shore landing remains sail()'s job. On-foot forces are unchanged above.
@@ -5177,7 +5264,7 @@ export class Game {
         if (e.kind === "voidWalker") { const moved = moveWalkerGround(e, dx, dy, map, width); refreshMarineBeast(e, map, width, game.area); return moved; }
         if (e.kind === "psychicCrystal" && isDungeonRoamer(e, game.area) && !opts.phase && e.aggro) { /* release 437 (Tim: "the psychic crystal keeps staying in the squares where I can't attack him"): fighting you it never settles in rock. Out in the open with you in sight it walks (release 401); inside rock it keeps moving through (it cannot attack from there: monster-pack holds its attacks while e.inRock), and out of sight it still phases to reach you */ const inRock = !footprintOpen(map, width, e.x, e.y, true, marine); if (!inRock && hasLineOfSight(e, p, map, width)) { const moved = moveAxis(e, dx, dy, map, width, true, null, marine); e.inRock = false; refreshMarineBeast(e, map, width, game.area); return moved; } const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)); if (game.builds?.length && tallBuildAt(map, width, nx, ny) && !tallBuildAt(map, width, e.x, e.y)) return false; const moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; e.inRock = !footprintOpen(map, width, e.x, e.y, true, marine); if (e.inRock && !moved) { const out = nearestOpenFootprint(map, width, e); if (out) { const d = Math.hypot(out.x - e.x, out.y - e.y) || 1, st = Math.min(d, .08); e.x += (out.x - e.x) / d * st; e.y += (out.y - e.y) / d * st; } } return moved || e.inRock; }
         if (isDungeonRoamer(e, game.area) || opts.phase && !["psychicCrystal", "lightningGiant", "mountainTurtle"].includes(e.kind)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)); if (game.builds?.length && tallBuildAt(map, width, nx, ny) && !tallBuildAt(map, width, e.x, e.y)) return false; /* release 287: it drifts through stone, not through the Wayfarer's builds */ const moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
-        const moved = moveAxis(e, dx, dy, map, width, !!e.flying, null, marine); refreshMarineBeast(e, map, width, game.area); return moved;
+        const moved = game.moveGrounded(e, dx, dy, !!e.flying, null, marine); refreshMarineBeast(e, map, width, game.area); return moved;
       },
       gateChase(e, step) {
         const ai = ensureAI(e), blockedSight = !hasLineOfSight(e, p, map, width);
@@ -5186,7 +5273,7 @@ export class Game {
         const target=ai.gateStep?{x:ai.gateStep[0],y:ai.gateStep[1]}:p;
         const dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy);
         if (d<.01) return false;
-        const travel=Math.min(step,d),moved=moveAxis(e,dx/d*travel,dy/d*travel,map,width);
+        const travel=Math.min(step,d),moved=game.moveGrounded(e,dx/d*travel,dy/d*travel);
         // Point LOS can clear a corner that the actor footprint cannot. Cache a bounded detour on collision too.
         if (!moved && !(ai.gatePathRetry>now)) { ai.gatePathRetry=now+350; ai.gateStep=boundedChaseStep(e,p,map,width); }
         return moved;
@@ -6626,7 +6713,7 @@ export class Game {
     if (!foe) return false;
     const gap = () => Math.hypot(foe.x - p.x, foe.y - p.y), stop = Math.max(.8, reach * .7);
     if (gap() <= reach * .9 || gap() > reach + B.stick + 1) return false;
-    for (let i = 0; i < 40 && gap() > stop; i++) { const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny)) break; p.x = nx; p.y = ny; }
+    for (let i = 0; i < 40 && gap() > stop; i++) { const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
     p.meleeAim = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     return true;
   }
@@ -7685,7 +7772,7 @@ export class Game {
       else d ||= projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
     } else { if (boxing && !d) this.shadowBoxStep(P.radius + .4, now); d ||= this.brawlerAim(reach).d; } // release 493: boxing carries the jab and uppercut to the foe
     if (step === 1) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs);
-    for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny)) break; p.x = nx; p.y = ny; }
+    for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
     const at = { x: p.x + .5 + d.x * .7, y: p.y + .45 + d.y * .7 }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
     const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1];
     this.effects.push({ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step === 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * charge) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : P.stun || .3 * charge, finisher: !!finisher });
@@ -8122,7 +8209,9 @@ export class Game {
       dy = y * speed * dt;
     // Sailing has momentum: velocity eases toward the stick; a dodge is an oar burst.
     if (sailing) { p.sailVx = dodging ? x * speed : steer(p.sailVx || 0, x * speed, dt); p.sailVy = dodging ? y * speed : steer(p.sailVy || 0, y * speed, dt); dx = p.sailVx * dt; dy = p.sailVy * dt; }
-    const ps = Number(this.save.playSeconds) || 0, raft = this.map?.movers?.length ? platformUnder(this.map, p.x, p.y, ps - dt) : null, carried = raft ? (() => { const a = platformPos(raft, ps - dt), b = platformPos(raft, ps); return { x: b.x - a.x, y: b.y - a.y }; })() : { x: 0, y: 0 }; // release 613: a raft carries whoever stands on it
+    const ps = Number(this.save.playSeconds) || 0, raft = this.map?.movers?.length ? platformUnder(this.map, p.x, p.y, ps - dt) : null,
+      carrier = raft ? { raft, old: platformPos(raft, ps - dt), current: platformPos(raft, ps) } : null,
+      carried = carrier ? { x: carrier.current.x - carrier.old.x, y: carrier.current.y - carrier.old.y } : { x: 0, y: 0 }; // release 613: a raft carries whoever stands on it
     dx += carried.x; dy += carried.y;
     let
       nx = p.x + dx,
@@ -8142,6 +8231,8 @@ export class Game {
     const gliding = !!this.glide && this.area === "overworld";
     if (gliding) { if (this.glideStep(x, y, dt, now) === "crossed") return; nx = p.x; ny = p.y; dx = 0; dy = 0; }
     { const h = this.edgeHold; if (h && this.edgeHeld(h.dx, h.dy, now)) { if (h.dx < 0) nx = Math.max(nx, 0); else if (h.dx > 0) nx = Math.min(nx, SECTION_SIZE - .78 - 1e-3); else if (h.dy < 0) ny = Math.max(ny, 0); else ny = Math.min(ny, SECTION_SIZE - .9 - 1e-3); } } // perf pack (P6): the edge just crossed holds for a moment
+    const groundedMotion = !sailing && !gliding ? this.planGroundedPlayerMove(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now, carrier) : null;
+    if (groundedMotion) { nx = groundedMotion.endX; ny = groundedMotion.endY; }
     if ((sailing || (this.area === "overworld" && this.wading())) && (nx < 0 || ny < 0 || nx + .76 >= SECTION_SIZE - .02 || ny + .88 >= SECTION_SIZE - .02)) { /* release 507: the robot wading crosses anywhere, like a skiff */
       this.transitionSection(nx < 0 ? -1 : nx + .76 >= SECTION_SIZE - .02 ? 1 : 0, nx < 0 || nx + .76 >= SECTION_SIZE - .02 ? 0 : ny < 0 ? -1 : 1);
       return;
@@ -8205,13 +8296,20 @@ export class Game {
       // Evaluate the actual X-then-Y substeps, not just frame endpoints: a diagonal can enter and
       // leave a scar in one frame. A safe scar edge ends one ordinary fall segment; it must not
       // erase a real ordinary cliff crossed before or after it. Non-scar movement keeps its net-drop rule.
-      moveAxis(p, dx, dy, this.map, width, true, (ax, ay, bx, by) => {
+      const movedStep = (ax, ay, bx, by) => {
         if (this.droneLift && interiorTerrain(this.map) && Math.max(this.droneLift.z,elevationAt(this.map,width,bx,by)) > this.interiorLiftCeiling(bx,by) + 1e-6) { p.x=ax; p.y=ay; this.droneLift.vz=Math.min(0,this.droneLift.vz); return; }
         if (safeVoidScarTransition(tileUnder(this.map, width, ax, ay), tileUnder(this.map, width, bx, by))) {
           finishFall(elevationAt(this.map, width, ax, ay));
           fallStart = elevationAt(this.map, width, bx, by);
         }
-      });
+      };
+      if (groundedMotion) {
+        for (let i = 0; i < groundedMotion.count; i += 4) {
+          const trace = groundedMotion.trace;
+          p.x = trace[i + 2]; p.y = trace[i + 3];
+          movedStep(trace[i], trace[i + 1], trace[i + 2], trace[i + 3]);
+        }
+      } else moveAxis(p, dx, dy, this.map, width, true, movedStep);
       if (this.area === "dungeon" && this.map.canyon) this.drillAhead(x, y, dt, now); // Canyon craters: push into a clod to drill it
       const landed = elevationAt(this.map, width, p.x, p.y);
       if(interiorTerrain(this.map) && this.droneLift) {
@@ -8363,7 +8461,7 @@ export class Game {
     const activeEnemySet=new Set(this.area==="dungeon"?activeDungeonEnemies(this.enemies,p,this.map):this.enemies.filter(e=>shouldSimulateEnemy(e,p,this.area)));
     this.riderDown(); // the ground under the mount from here: elite trails, ooze pools and root eruptions lie at the mount's feet, as on foot (a hazard skip at the rider's drawn height, fixed 2026-11-04)
     const eliteStatus=eliteStateInPlace(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
-    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>moveAxis(p,dx,dy,this.map,mapWidth(this.map,this.area)))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
+    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
@@ -8450,7 +8548,7 @@ export class Game {
       if (
         !fellIntoHazard&&
         !e.dead &&
-        updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}) &&
+        updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}, (subject, dx, dy) => this.moveGrounded(subject, dx, dy)) &&
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden" || !!this.mountRide()) && // Tim (2026-11-05): a mount's leap dodges nothing (on foot a jump still clears these blows; jumpable ground attacks pass under either)
         this.bodyReach(e) && // Tim (2026-11-04): a ground creature's blow does not reach the Wayfarer on a roof (ELEVATION_REACH)

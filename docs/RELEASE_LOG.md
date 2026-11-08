@@ -15,15 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Release r834 is assigned to the prepared Hammerfall candidate against fresh r833 main. The next game change takes r835; re-read fresh main and resolve all current hosted gates before packaging it.
+Release r836 is assigned to the grounded-contact candidate against official r835 main. No later release number is assigned; re-read fresh main after r836 merges before packaging the next focused PR.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 835 | Codex | `claude/close-view-spell-gestures` | Accepted spell gestures, free-hand origins and public manual cast inspections | In flight. Focused source/fixture checks and build passed; exact CI, fresh since-live review, Preview, hosted casting and publication gates pending. Merge remains held behind r834's hosted/publication gate. |
-| 834 | Codex | `claude/close-view-hammerfall-stomp` / #486 | Dedicated stomp, original-pulse guard and logical carry continuity | Merged32b9249def935f4112039ee5383a8759a3ffc196. Corrected source42914fc2/tree9640ab40 passed source CI42506353026 and fresh Astra33->834 full/correction review with no blockers. Missing-original queued-intent regression is covered through actual Game.update. Merged CI42507220270 and Preview42507220259 are pending at this packaging checkpoint; hosted stomp and publication gates remain. |
-| — | Codex | `claude/close-view-grounded-contact` | Grounded bodies, overlap escape, accepted movement consequences and items | Prepared; final main/release/hosted gates remain. |
+| 836 | Codex | `claude/close-view-grounded-contact` / #488 | Grounded ordinary bodies, overlap escape and height-aware accepted movement consequences | Review found elevated disc/raft support clipping against creatures below; correction, exact-head review and CI required. Restores the inherited original full-motion jump assertion separately from reduced-motion cast coverage. Merge waits for r835 hosted spell acceptance; publication will cover both after exact r836 Preview and combined hosted acceptance. Not live. |
+| 835 | Codex | `claude/close-view-spell-gestures` / #487 | Accepted spell gestures, free-hand origins and public manual cast inspections | Merged e5bcb04a after source CI42508742453 and full/delta Astra review clear. Merged CI42509441233 and Preview42509441237 are running; not hosted, live or published. Independent publication held because subsequent review found an inherited relaxed jump-test assertion; r836 restores that witness before combined publication. |
 | — | Codex | `claude/close-view-traversal-blocks` | Legacy/current stone steps, stacking and active lifetime | Prepared; final main/release/hosted gates remain. |
 | — | Codex | `claude/close-view-cleaver-four-strike` | Right-handed Cleaver and four up/down cuts | Prepared with supported legacy/opaque state and unchanged canonical hit rules; scoped Astra clear, hosted gate remains. |
 | — | Codex | `claude/close-view-target-recenter` | Finite centered Target recenter with shared presentation facing | Combined with prior source passes; scoped Astra clear, hosted gate remains. |
@@ -222,6 +221,7 @@ Release r834 is assigned to the prepared Hammerfall candidate against fresh r833
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 834 | `r834-32b9249def93` | 2026-11-08 | Astra review (833→834): no blockers, including the missing-original correction. Source CI42506353026, merged CI42507220270, Preview42507220259 and Publish42508619787 succeeded. Live identity commit32b9249def935f4112039ee5383a8759a3ffc196/tree9640ab40fbee158db4e746e6697e8dde6aaf6a6f and actual Options → System match after Get latest/Update Ready, recent errors none; paused250KB journey healthy. Hosted1280×720 stomp, pause/resume, movement/weaving and Spindle/Echo/Dodge/Jump/Spell smoke passed. Phone hardware remains unmeasured. |
 | 833 | `r833-23e83526084b` | 2026-11-08 | Astra review (829→833): no blockers; the4d correction delta is clear. Source CI42494696828, merged CI42495799008, Preview42495798951 and Publish42505081135 succeeded. Live identity commit23e83526084bb3f7dcad0cde10a2fa69e18618a8/treefc9f84c98be3ef96d124e7e3ad1dcdd7fc74d861 and actual Options → System match, recent errors none; existing paused250KB journey healthy. Hosted1280×720 violet Echo, four named poses, startup/release/recovery, movement/weaving and variant smoke checks passed. Phone hardware remains unmeasured. |
 | 832 | Published in r833 | 2026-11-08 | Exact GPU decal-color correction delivered with r833; r832 was never published independently. |
 | 831 | Published in r833 | 2026-11-08 | Stationary harmless attackable Echo inspection targets delivered with r833; r831 was never published independently. |
