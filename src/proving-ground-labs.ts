@@ -16,13 +16,13 @@ import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.ts";
 import { BIOMES, biomeFor } from "./landscape.ts";
 import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.ts";
 import { ECHO_IDS, ensureEchoState } from "./echoes.ts";
-import { ensureConstellation } from "./constellation.ts";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.ts";
 import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.ts";
 import { placeRelayNode, ensureRelayNetwork } from "./relay-network.ts";
 import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.ts";
 import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.ts";
 import { ensureLattice } from "./transit-lattice.ts";
-import { ensureSlots } from "./spell-slots.ts";
+import { ensureSlots, setSlot } from "./spell-slots.ts";
 import { fieldOn } from "./lattice-fields.ts";
 import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.ts";
 import { AFFIXES, SHAMAN } from "./affixes.ts";
@@ -91,6 +91,8 @@ const COMBAT_ASSETS = [
   { id: "pike-echo-inspection", label: "Quiet Echo inspection · Cinder Pike", primary: "Cinder Pike", tool: "Lumen Spindle", spell: "cinder-dart", foe: "ashling", echoPrimary: true },
   { id: "cleaver-echo-inspection", label: "Quiet Echo inspection · Verge Cleaver", primary: "Verge Cleaver", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", echoPrimary: true },
   { id: "salvage-echo-inspection", label: "Quiet Echo inspection · Salvage Blade", primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", echoPrimary: true },
+  ...Object.values(SPELLS).map((spell) => ({ id: `cast-spell-${spell.id}`, label: `Cast inspection · ${spell.name}`, primary: "Salvage Blade", tool: "Spark Coil", spell: spell.id, foe: "ashling", castInspection: { kind: "spell", id: spell.id } })),
+  ...Object.values(APERTURE_SKILLS).map((skill) => ({ id: `cast-skill-${skill.id}`, label: `Cast inspection · ${skill.name}`, primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", castInspection: { kind: "skill", id: skill.id } })),
 ];
 const CREATURE_ASSET_KINDS = ["ashling","ashenHound","rootBrute","coilStalker","hollowMarshal","glassMite","sparkWarden","cinderWisp","veilMoth","voidSentinel","weepingSaint","hangedChoir","graveLantern","pallidCrawler","mirrorShade","amalgam","gnawingMaw","cinderSeraph","lumenWraith","veilSpinner","riftLynx","sunderjaw","thunderhorn","siegeBeetle","gloomwisp","gloomgorge","latticeHunter","archiveBehemoth","riftGrazer"];
 const FOUNDRY_BODIES = ["quadruped","floating","segmented","tentacled","geometric","biomechanical"];
@@ -316,15 +318,32 @@ function combatAssetFixture(scenario, seed, now) {
   save.equippedSpell = spec.spell;
   save.magicSkills.slots = { a: `spell:${spec.spell}`, b: spec.spell === "ember-ring" ? "spell:cinder-dart" : "spell:ember-ring" };
   ensureSlots(save);
+  if (spec.castInspection?.kind === "skill") {
+    ensureConstellation(save);
+    if (spec.castInspection.id === "aerial-step") {
+      for (let rank = 0; rank < APERTURE_SKILLS.quickening.maxRank; rank++) {
+        const learned = learnRank(save, "motion"); if (!learned.ok) throw new Error(learned.message);
+      }
+      const modified = learnMod(save, "motion"); if (!modified.ok) throw new Error(modified.message);
+      const crowned = chooseCap(save, "motion", "aerial-step"); if (!crowned.ok) throw new Error(crowned.message);
+    } else {
+      const learned = learnApertureSkill(save, spec.castInspection.id); if (!learned.ok) throw new Error(learned.message);
+    }
+  }
+  if (spec.castInspection) {
+    const slotted = setSlot(save, "a", `${spec.castInspection.kind}:${spec.castInspection.id}`);
+    if (!slotted.ok) throw new Error(slotted.message);
+  }
   ensureLattice(save);
   save.lattice.passives = spec.passive ? [`field:${spec.passive}`] : [];
   Object.assign(game.player, { x: placement.player.x, y: placement.player.y, facing: placement.dx < 0 ? "left" : placement.dx > 0 ? "right" : placement.dy < 0 ? "up" : "down" });
   save.lastAim = { x: placement.dx, y: placement.dy };
   game.enemies = [game.createEnemyFromSpawn({ id: `proving:combat-assets:${spec.id}`, kind: spec.foe, x: placement.foe.x, y: placement.foe.y }, "dungeon")];
-  if (spec.echoPrimary) Object.assign(game.enemies[0], { hp: 5000, maxHp: 5000, passiveBehavior: 'practice' });
+  if (spec.echoPrimary || spec.castInspection) Object.assign(game.enemies[0], { hp: 5000, maxHp: 5000, passiveBehavior: 'practice' });
   game.projectiles = []; game.effects = []; game.eliteHazards = [];
   game.message = `${spec.label}. Attack, Tool, Spell A, and Spell B use production controls; Pause freezes the inspection.`;
   if (spec.echoPrimary) game.message = `${spec.label}. Attack uses the real Echo glyph and its 250 ms repeat. The durable practice foe stays still and harmless; movement, attacks and Pause remain production controls.`;
+  if (spec.castInspection) game.message = `${spec.label}. Spell A casts ${spec.castInspection.id === "shadow-clone" ? "Shadow Clone; hold and release to place it, then press again to swap" : spec.castInspection.id === "orbit-volley" ? "Orbit Volley; press again while the gathered orbs glow gold to launch" : spec.castInspection.kind === "skill" ? APERTURE_SKILLS[spec.castInspection.id].name : SPELLS[spec.castInspection.id].name}. The durable practice foe stays still and harmless; movement, Spell A, and Pause remain production controls.`;
   game.sync();
   const tool = rangedWeapon(save.equipment.secondary), spell = SPELLS[spec.spell];
   const form = tool?.brawlerTool === "great-sweep" && fieldOn(save, "nanoknives") ? "mirage-of-blades" : tool?.brawlerTool === "hammerfall" && fieldOn(save, "corridor-golem") ? "hammerfall+corridor-golem" : tool?.name === "Blunderbuss" && fieldOn(save, "arc-wave") ? "blunderbuss+arc-wave" : tool?.brawlerTool || (tool?.orrery ? "aether-orrery" : tool?.path || null);
