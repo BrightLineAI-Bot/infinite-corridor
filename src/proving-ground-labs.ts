@@ -778,3 +778,15 @@ export function teleportTargets(fixture) {
   for(const o of map.objects||[])if(o.actions?.length&&!targets.some(q=>q.id===o.id))targets.push({id:o.id,label:o.name||o.semanticRole||o.kind,x:o.x,y:o.y});
   return targets.filter(q=>Number.isFinite(q.x)&&Number.isFinite(q.y));
 }
+
+export function refreshTeleportOptions(select,targets,previousSignature="",makeOption=(label,value)=>new Option(label,value)){
+  const signature=targets.map(q=>`${q.id}\u0000${q.label}`).join("\u0001");
+  if(signature===previousSignature)return previousSignature;
+  const selected=select.value;
+  select.replaceChildren(makeOption("Select target…",""));
+  for(const q of targets)select.add(makeOption(q.label,q.id));
+  select.value=targets.some(q=>q.id===selected)?selected:"";
+  return signature;
+}
+
+export function resolveTeleportTarget(targets,id){return targets.find(q=>q.id===id)||null}
