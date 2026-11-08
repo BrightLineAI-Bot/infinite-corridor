@@ -12,6 +12,102 @@ export const ATTACK_VISUAL_PROFILES = Object.freeze([
 ]);
 const ATTACK_VISUAL_PROFILE = /^[a-z][a-z0-9-]{0,31}$/;
 export const PRIMARY_VISUAL_KINDS = Object.freeze(["salvage-blade", "cinder-pike", "verge-cleaver"]);
+export const TOOL_VISUAL_KINDS = Object.freeze(["rift-bombard", "great-sweep", "blunderbuss", "lumen-spindle"]);
+export const TOOL_ACTION_TIMING = Object.freeze({
+  "rift-bombard": Object.freeze({ durationMs:720, raiseMs:120, holdMs:520 }),
+  blunderbuss: Object.freeze({ durationMs:640, raiseMs:100, holdMs:460 }),
+  "lumen-spindle": Object.freeze({ durationMs:760, raiseMs:100, holdMs:560 }),
+  "great-sweep": Object.freeze({ durationMs:840, raiseMs:40, holdMs:600 }),
+});
+export const TOOL_USE_STARTUP_MS = Object.freeze({
+  "rift-bombard":120, blunderbuss:100, "lumen-spindle":100, "great-sweep":160,
+});
+const TOOL_USE_BASE_COOLDOWN = Object.freeze({"rift-bombard":360,blunderbuss:360,"lumen-spindle":360,"great-sweep":1000});
+const TOOL_USE_KINDS=Object.freeze(Object.keys(TOOL_USE_STARTUP_MS));
+const finiteObject=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+const validUseId=v=>typeof v==='string'&&v.length>0&&v.length<=160;
+export function toolUseStartupMs(kind,effectiveCooldownMs){const normal=TOOL_USE_STARTUP_MS[kind],base=TOOL_USE_BASE_COOLDOWN[kind],n=Number(effectiveCooldownMs);return normal&&Number.isFinite(n)?Math.max(1,normal*Math.max(0,Math.min(1,n/base))):null;}
+export function normalizeToolUseVisual(raw,toolKind,durationMs){
+  if(!finiteObject(raw))return null;const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return {...raw};
+  const startupMs=Number(raw.startupMs),normal=TOOL_USE_STARTUP_MS[toolKind],duration=Number(durationMs);
+  if(v!==1||!normal||!validUseId(raw.id)||!Number.isFinite(duration)||duration<=0||!Number.isFinite(startupMs)||startupMs<1||startupMs>normal||startupMs>duration||!['startup','released','cancelled'].includes(raw.phase))return null;
+  if(raw.phase==='released'){if(!Number.isFinite(Number(raw.releaseOffsetMs))||Math.abs(Number(raw.releaseOffsetMs)-startupMs)>1e-6)return null;}
+  else if(raw.releaseOffsetMs!=null)return null;
+  return {...raw,v:1,id:raw.id,startupMs,phase:raw.phase,...(raw.phase==='released'?{releaseOffsetMs:startupMs}:{})};
+}
+const boundedNumber=(v,min,max)=>Number.isFinite(Number(v))&&Number(v)>=min&&Number(v)<=max;
+const validPreparedShot=m=>{if(!finiteObject(m)||!['straight','grenade','boomerang'].includes(m.path)||!['physical','magic'].includes(m.damageType)||!boundedNumber(m.dx,-1,1)||!boundedNumber(m.dy,-1,1)||Math.abs(Math.hypot(Number(m.dx),Number(m.dy))-1)>1e-5||!boundedNumber(m.speed,.001,50)||!boundedNumber(m.life,.001,60)||!boundedNumber(m.damage,1,1e9))return false;for(const [k,min,max] of [['turnAfter',0,60],['blastRadius',0,20],['pierce',0,64],['scale',0,20],['grow',0,20],['ricochet',0,32]])if(k in m&&!boundedNumber(m[k],min,max))return false;if(('pierce'in m&&!Number.isInteger(Number(m.pierce)))||('ricochet'in m&&!Number.isInteger(Number(m.ricochet)))||('returning'in m&&m.returning!==false)||('glyphHost'in m&&m.glyphHost!=='tool')||('arcWave'in m&&typeof m.arcWave!=='boolean')||('sunburst'in m&&typeof m.sunburst!=='boolean'))return false;if('visualFlight'in m&&(!finiteObject(m.visualFlight)||m.visualFlight.v!==1||!boundedNumber(m.visualFlight.duration,.001,60)))return false;return true;};
+function normalizePreparedPayload(raw){
+  if(!finiteObject(raw)||raw.v!==1||!['shot','sweep'].includes(raw.family))return null;
+  const key=raw.family==='shot'?'shot':'effect',body=raw[key];if(!finiteObject(body))return null;
+  const numeric=raw.family==='shot'?['speed','life','damage','turnAfter','blastRadius','pierce']:['life','radius','damage','imbue','healShare'];
+  if(numeric.some(k=>k in body&&!boundedNumber(body[k],k==='damage'?1:0,1e6)))return null;
+  if(raw.family==='shot'&&(!['straight','grenade','boomerang'].includes(body.path)||!['physical','magic'].includes(body.damageType)))return null;
+  const pellets=Number(raw.pellets??0),spread=Number(raw.spread??0);if(!Number.isInteger(pellets)||pellets<0||pellets>16||!boundedNumber(spread,0,Math.PI))return null;
+  const echoCopies=Array.isArray(raw.echoCopies)?raw.echoCopies:null;if(!echoCopies||echoCopies.length>4||echoCopies.some(c=>!finiteObject(c)||!boundedNumber(c.delayMs,0,60000)||!boundedNumber(c.share,0,4)))return null;
+  if(typeof raw.awakenedFan!=='boolean'||typeof raw.cloneEligible!=='boolean')return null;
+  let members;
+  if(raw.family==='shot'){
+    if(!Array.isArray(raw.members)||raw.members.length<1||raw.members.length>16)return null;
+    members=raw.members.map(m=>finiteObject(m)?{...m}:null);if(!validPreparedShot(body)||members.some(m=>!validPreparedShot(m)))return null;
+  }else if(body.kind!=='great-sweep'||body.brawler!==true||body.glyphHost!=='tool'||body.pulse!==99||!boundedNumber(body.life,.001,60)||!boundedNumber(body.radius,0,20)||!boundedNumber(body.damage,1,1e9)||!boundedNumber(body.imbue??0,0,1e9)||!boundedNumber(body.healShare??0,0,4))return null;
+  if(echoCopies.length>2||new Set(echoCopies.map(c=>c.index)).size!==echoCopies.length||echoCopies.some((c,i)=>c.index!==i+1))return null;
+  if(raw.cloneEligible&&raw.cloneProfile!=null&&(!finiteObject(raw.cloneProfile)||raw.cloneProfile.shape!=='arc'||raw.cloneProfile.range!==1.75||raw.cloneProfile.arc!==160||!boundedNumber(raw.cloneProfile.damage,1,1e9)))return null;
+  return {...raw,v:1,family:raw.family,[key]:{...body},...(members?{members}:{}),pellets,spread,awakenedFan:raw.awakenedFan,echoCopies:echoCopies.map(c=>({...c,delayMs:Number(c.delayMs),share:Number(c.share)})),cloneEligible:raw.cloneEligible,...(finiteObject(raw.cloneProfile)?{cloneProfile:{...raw.cloneProfile}}:{})};
+}
+export function normalizePendingToolUse(raw){
+  if(!finiteObject(raw))return null;const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return structuredClone(raw);if(v!==1||!TOOL_USE_KINDS.includes(raw.toolKind)||!validUseId(raw.id)||!['area','areaId','levelId'].every(k=>typeof raw[k]==='string'&&raw[k].length<=512)||!finiteObject(raw.aim))return null;
+  const ax=Number(raw.aim.x),ay=Number(raw.aim.y),mag=Math.hypot(ax,ay),startupMs=Number(raw.startupMs),elapsedMs=Number(raw.elapsedMs),remainingMs=Number(raw.remainingMs),normal=TOOL_USE_STARTUP_MS[raw.toolKind],payload=normalizePreparedPayload(raw.payload);
+  if(!Number.isFinite(mag)||Math.abs(mag-1)>1e-5||!boundedNumber(startupMs,1,normal)||!boundedNumber(elapsedMs,0,startupMs)||!boundedNumber(remainingMs,0,startupMs)||Math.abs(elapsedMs+remainingMs-startupMs)>1e-5||!payload||(raw.toolKind==='great-sweep')!==(payload.family==='sweep'))return null;
+  if(payload.family==='shot'){const spec=raw.toolKind==='rift-bombard'?['grenade','physical',8,[1,3]]:raw.toolKind==='blunderbuss'?['straight','physical',null,[3,5]]:['boomerang','magic',10,[1,3]],members=payload.members,executed=[payload.shot,...members];if(!spec[3].includes(members.length)||executed.some(m=>m.path!==spec[0]||m.damageType!==spec[1]||(spec[2]!=null&&m.speed!==spec[2])||(raw.toolKind==='blunderbuss'&&m.speed!==14&&m.speed!==11)))return null;}
+  return {...raw,v:1,id:raw.id,toolKind:raw.toolKind,startupMs,elapsedMs,remainingMs,aim:{...raw.aim,x:ax,y:ay},payload};
+}
+export function toolUsePoseTime(record,elapsedMs){
+  const duration=Math.max(0,Number(record?.durationMs)||0),elapsed=Math.max(0,Math.min(duration,Number.isFinite(Number(elapsedMs))?Number(elapsedMs):0)),u=record?.toolUse;
+  if(u==null)return{phase:'legacy',elapsedMs:elapsed,startupMs:0,releaseAgeMs:null};const n=normalizeToolUseVisual(u,record?.toolKind,duration);if(!n||n.v!==1)return{phase:'unknown',elapsedMs:elapsed,startupMs:0,releaseAgeMs:null};
+  if(n.phase==='startup')return{phase:'startup',elapsedMs:Math.min(elapsed,n.startupMs),startupMs:n.startupMs,releaseAgeMs:null};
+  if(n.phase==='released'){const at=Math.max(n.startupMs,elapsed);return{phase:'released',elapsedMs:at,startupMs:n.startupMs,releaseAgeMs:Math.max(0,at-n.releaseOffsetMs)};}
+  return{phase:'cancelled',elapsedMs:Math.min(elapsed,n.startupMs),startupMs:n.startupMs,releaseAgeMs:null};
+}
+export function toolUseReleaseAge(record,elapsedMs){const q=toolUsePoseTime(record,elapsedMs);return q.phase==='legacy'?q.elapsedMs:q.phase==='released'?q.releaseAgeMs:null;}
+const smooth = n => { const t=Math.max(0,Math.min(1,n)); return t*t*(3-2*t); };
+// Pure presentation sampler. Repeated accepts save its five numeric controls as the next
+// entry pose, so the renderer never needs frame history and never restarts from neutral.
+function authoredToolPose(profile, elapsedMs, direction=1, continuing=false) {
+  const T=TOOL_ACTION_TIMING[profile]; if(!T)return null;
+  const ms=Math.max(0,Math.min(T.durationMs,Number(elapsedMs)||0)),dir=direction===-1?-1:1;
+  if(profile==='great-sweep'){
+    const q=ms<T.raiseMs&&!continuing?smooth(ms/T.raiseMs):ms<T.holdMs?1:1-smooth((ms-T.holdMs)/(T.durationMs-T.holdMs));
+    const travel=ms<380?smooth(ms/380):1, yaw=dir*(-1.13+2.62*travel);
+    return { yaw, side:Math.sin(yaw)*.22*q, up:(.08-.18*Math.max(0,(ms-380)/460))*q, forward:(.38+Math.cos(yaw)*.13)*q, weight:q };
+  }
+  const q=ms<T.raiseMs&&!continuing?smooth(ms/T.raiseMs):ms<T.holdMs?1:1-smooth((ms-T.holdMs)/(T.durationMs-T.holdMs));
+  const base=profile==='lumen-spindle'?[-.03,.18,.54]:profile==='rift-bombard'?[-.05,-.13,.43]:[-.04,-.08,.50];
+  const recoil=Math.sin(Math.PI*Math.min(1,ms/(profile==='lumen-spindle'?70:profile==='rift-bombard'?120:100)))*(profile==='lumen-spindle'?.025:.055);
+  return { yaw:0, side:base[0]*q, up:base[1]*q+recoil, forward:base[2]*q-recoil, weight:q };
+}
+function phasedToolPose(profile,phase,direction=1,continuing=false){
+  const T=TOOL_ACTION_TIMING[profile];if(!T)return null;const dir=direction===-1?-1:1;
+  if(profile==='great-sweep'){
+    if(phase.phase==='startup'){const q=continuing?1:smooth(phase.elapsedMs/phase.startupMs),yaw=dir*-1.13;return{yaw,side:Math.sin(yaw)*.22*q,up:.08*q,forward:(.38+Math.cos(yaw)*.13)*q,weight:q};}
+    const age=phase.releaseAgeMs,tail=Math.max(1,T.durationMs-phase.startupMs),u=Math.max(0,Math.min(1,age/tail)),travel=smooth(Math.min(1,u/.42)),recover=u<.72?1:1-smooth((u-.72)/.28),yaw=dir*(-1.13+2.62*travel);return{yaw,side:Math.sin(yaw)*.22*recover,up:(.08-.18*u)*recover,forward:(.38+Math.cos(yaw)*.13)*recover,weight:recover};
+  }
+  const base=profile==='lumen-spindle'?[-.03,.18,.54]:profile==='rift-bombard'?[-.05,-.13,.43]:[-.04,-.08,.50];
+  if(phase.phase==='startup'){const q=continuing?1:smooth(phase.elapsedMs/phase.startupMs);return{yaw:0,side:base[0]*q,up:base[1]*q,forward:base[2]*q,weight:q};}
+  const age=phase.releaseAgeMs,tail=Math.max(1,T.durationMs-phase.startupMs),u=Math.max(0,Math.min(1,age/tail)),recover=u<.72?1:1-smooth((u-.72)/.28),recoilMs=profile==='lumen-spindle'?70:profile==='rift-bombard'?120:100,recoil=Math.sin(Math.PI*Math.min(1,age/recoilMs))*(profile==='lumen-spindle'?.025:.055);return{yaw:0,side:base[0]*recover,up:base[1]*recover+recoil,forward:base[2]*recover-recoil,weight:recover};
+}
+export function sampleToolActionMotion(record,elapsedMs){
+  const motion=record?.toolMotion;if(!motion||motion.v!==1)return null;
+  const entry=motion.entry,T=TOOL_ACTION_TIMING[record.toolKind];
+  // A held/partly raised entry approaches READY, not a restarted cold draw. Recoil is
+  // still the bounded authored pulse; interpolation preserves the exact prior pose at 0.
+  if(!T)return null;const phase=toolUsePoseTime(record,elapsedMs);if(phase.phase==='cancelled'||phase.phase==='unknown')return null;
+  const poseMs=phase.phase==='legacy'?elapsedMs:phase.elapsedMs,pose=phase.phase==='legacy'?authoredToolPose(record.toolKind,elapsedMs,motion.direction,entry[4]>0):phasedToolPose(record.toolKind,phase,motion.direction,entry[4]>0);
+  if(!pose||!T)return null;
+  const enter=smooth(Math.max(0,Math.min(1,(Number(poseMs)||0)/Math.min(70,phase.startupMs||70))));
+  return {yaw:entry[0]+(pose.yaw-entry[0])*enter,side:entry[1]+(pose.side-entry[1])*enter,up:entry[2]+(pose.up-entry[2])*enter,forward:entry[3]+(pose.forward-entry[3])*enter,weight:entry[4]+(pose.weight-entry[4])*enter};
+}
+export function toolActionPose(profile,elapsedMs,direction=1){return sampleToolActionMotion({toolKind:profile,toolMotion:{v:1,entry:[0,0,0,0,0],direction:direction===-1?-1:1}},elapsedMs);}
 
 export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -29,6 +125,16 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (raw.weaponKind != null) {
     if (typeof raw.weaponKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
     copy.weaponKind = raw.weaponKind;
+  }
+  if (raw.toolKind != null) {
+    if (typeof raw.toolKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.toolKind)) return null;
+    copy.toolKind = raw.toolKind;
+  }
+  if(raw.toolMotion!=null){const m=raw.toolMotion;if(!m||typeof m!=='object'||Array.isArray(m))return null;if(Number.isInteger(m.v)&&m.v>1)copy.toolMotion={...m};else{if(m.v!==1||!Array.isArray(m.entry)||m.entry.length!==5||m.entry.some(n=>!Number.isFinite(Number(n))||Math.abs(Number(n))>4)||m.direction!==1&&m.direction!==-1)return null;copy.toolMotion={...m,v:1,entry:m.entry.map(Number),direction:m.direction};if(m.baseKind!=null){if(!PRIMARY_VISUAL_KINDS.includes(m.baseKind))return null;copy.toolMotion.baseKind=m.baseKind;}}}
+  if(raw.toolUse!=null){const u=normalizeToolUseVisual(raw.toolUse,copy.toolKind,durationMs);copy.toolUse=u||{v:1,id:validUseId(raw.toolUse?.id)?raw.toolUse.id:'invalid-tool-use',startupMs:boundedNumber(raw.toolUse?.startupMs,1,TOOL_USE_STARTUP_MS[copy.toolKind]||1)?Number(raw.toolUse.startupMs):1,phase:'cancelled'};}
+  if (raw.toolShotId != null) {
+    if (typeof raw.toolShotId !== 'string' || raw.toolShotId.length<1 || raw.toolShotId.length>160) return null;
+    copy.toolShotId=raw.toolShotId;
   }
   if (raw.poseMs != null) {
     const poseMs = Number(raw.poseMs);
@@ -79,7 +185,8 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
 
 // Accepted presentation is independent of combat clocks (which delayed Echo hits still update).
 // Published Fists and the earlier primary candidate retain their optional legacy clocks.
-export function attackVisualDeadline(player, record = player?.attackVisual) {
+export function attackVisualDeadline(player, record = player?.attackVisual, context = null) {
+  const pending=context?.pendingToolUse,u=record?.toolUse,now=Number(context?.now);if(u?.v===1&&u.phase==='startup'&&pending?.v===1&&pending.id===u.id&&Number.isFinite(now)&&Number.isFinite(pending.acceptedAt)){const age=Math.max(0,Math.min(u.startupMs,now-pending.acceptedAt));return now+record.durationMs-age;}
   if (Number.isFinite(player?.actionVisualUntil)) return player.actionVisualUntil;
   if (record?.profile === 'fist' && Number.isFinite(player?.fistVisualUntil)) return player.fistVisualUntil;
   if (record?.primaryStep && Number.isFinite(player?.primaryVisualUntil)) return player.primaryVisualUntil;

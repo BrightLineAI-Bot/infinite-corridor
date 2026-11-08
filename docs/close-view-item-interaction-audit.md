@@ -1,7 +1,7 @@
 # Close View item and interaction audit
 
-Audit date: 2026-11-08  
-Audited base: `5657517168b62f4d3d27d60b8686fb8d293bd27a`  
+Audit date: 2026-11-08
+Audited base: `5657517168b62f4d3d27d60b8686fb8d293bd27a`
 Scope: read-only source and focused pure-test audit of production `Game` interaction, transient builds, grounded contact, and excavation return behavior. This is not a hosted, GPU, or physical-phone validation.
 
 ## Result

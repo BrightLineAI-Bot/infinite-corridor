@@ -1,9 +1,9 @@
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.ts";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge } from "./action-motion.ts";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear, closeViewToolEmissionPoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.ts";
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.ts';
 import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
@@ -1920,7 +1920,7 @@ function selectProjectedShots(g, q) {
   const limit = q.glScale === 1 ? SHOT_DRAW.full : q.relief ? SHOT_DRAW.balanced : SHOT_DRAW.low;
   for (const p of g.projectiles || []) {
     if (PROJECTED_SHOTS.size === limit) break;
-    if (!p.dead && standardProjectile(p) && p.path !== "grenade" &&
+    if (!p.dead && standardProjectile(p) && (p.path !== "grenade" || !!readProjectileVisualFlight(p.visualFlight)) &&
         Math.hypot(p.x - g.player.x, p.y - g.player.y) < SHOT_DRAW.maxRange &&
         dungeonPointDiscovered(g.map, p)) PROJECTED_SHOTS.add(p);
   }
@@ -1933,7 +1933,15 @@ const PLAYER_VISUAL_KIND = Object.freeze({
   melee: "player", fist: "playerUnarmed", emitter: "playerTool", hammer: "playerHammer", sweep: "playerSweep",
   mirage: "playerMirage", "orrery-tap": "playerOrrery", "orrery-release": "playerOrrery",
 });
+function toolCuePointOpen(map,x,y){const w=Number(map?.width)||0,h=Number(map?.height)||0,ix=Math.floor(x),iy=Math.floor(y);if(!Number.isFinite(x)||!Number.isFinite(y)||ix<0||iy<0||ix>=w||iy>=h)return false;const tile=map.tiles?.[iy*w+ix];return !!tile&&!tile.blocked&&dungeonTileVisibility(map,x,y)!=='unseen';}
+// Conservative short-segment supercover. At an exact corner both side cells are included; the bounded lane
+// rejects geometry requiring more than eight cells rather than sampling past a wall.
+export function closeViewCueSegmentOpen(map,ax,ay,bx,by){if(!toolCuePointOpen(map,ax,ay)||!toolCuePointOpen(map,bx,by))return false;const cells=[],add=(x,y)=>{if(cells.some(c=>c[0]===x&&c[1]===y))return true;if(cells.length===8)return false;cells.push([x,y]);return true;},boundary=(x,y)=>Math.abs(ay-by)<1e-10&&Math.abs(ay-Math.round(ay))<1e-10?add(x,y-1):Math.abs(ax-bx)<1e-10&&Math.abs(ax-Math.round(ax))<1e-10?add(x-1,y):true;let x=Math.floor(ax),y=Math.floor(ay),ex=Math.floor(bx),ey=Math.floor(by);const endpoint=(px,py)=>{const ix=Math.floor(px),iy=Math.floor(py);return add(ix,iy)&&(px!==ix||add(ix-1,iy))&&(py!==iy||add(ix,iy-1))&&(px!==ix||py!==iy||add(ix-1,iy-1));};if(!endpoint(ax,ay)||!endpoint(bx,by)||!boundary(x,y))return false;const dx=bx-ax,dy=by-ay,sx=Math.sign(dx),sy=Math.sign(dy),adx=Math.abs(dx),ady=Math.abs(dy);let tx=sx?((sx>0?x+1:x)-ax)/dx:Infinity,ty=sy?((sy>0?y+1:y)-ay)/dy:Infinity,ddx=sx?1/adx:Infinity,ddy=sy?1/ady:Infinity;while(x!==ex||y!==ey){if(Math.abs(tx-ty)<1e-10){if(!add(x+sx,y)||!add(x,y+sy))return false;x+=sx;y+=sy;tx+=ddx;ty+=ddy;}else if(tx<ty){x+=sx;tx+=ddx;}else{y+=sy;ty+=ddy;}if(!add(x,y)||!boundary(x,y))return false;}return cells.every(c=>toolCuePointOpen(map,c[0]+.5,c[1]+.5));}
+const toolCueSegmentOpen=closeViewCueSegmentOpen;
 const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
+const KNOWN_TOOL_VISUAL = new Set(TOOL_VISUAL_KINDS);
+export const closeViewToolCueOwnsAction=(acceptedTool,inputAction,selectedAction)=>!!acceptedTool&&inputAction===selectedAction&&['ranged','melee','cast'].includes(selectedAction?.kind);
+export function closeViewToolConnectorWithin(muzzle,head,aim){const dx=head.x-muzzle[0],dy=head.y-muzzle[1],dz=head.z-muzzle[2];return dx*(aim?.x||0)+dy*(aim?.y||0)>0&&Math.hypot(dx,dy,dz)<=.9;}
 export function closeViewPrimaryWeaponKind(item) {
   return item?.id === 'primary-cinder-pike' || item?.name === 'Cinder Pike' ? 'cinder-pike'
     : item?.id === 'primary-verge-cleaver' || item?.name === 'Verge Cleaver' ? 'verge-cleaver' : 'salvage-blade';
@@ -1945,6 +1953,7 @@ const MODEL_STATE = {
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   heroGear: { profile: '', leftSocket: null, rightSocket: null, alpha: 1, tint: null, hitFlash: 0 },
+  toolEmission:new Float32Array(3),toolEmissionReady:false,toolRelease:null,toolAlpha:1,
 };
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
@@ -2000,7 +2009,7 @@ export function closeViewPlayerAction(g, now) {
   if (!player) return { active: false, legacy: false, record: null, profile: null, amount: 0, aim: null };
   const hasRecord = player.attackVisual != null;
   const record = hasRecord ? normalizeAttackVisual(player.attackVisual) : null;
-  const until = attackVisualDeadline(player, record);
+  const until = attackVisualDeadline(player, record, { now, effects:g.effects, pendingToolUse:g.pendingToolUse });
   const cancelled = record?.presentationCancelled === true;
   const active = !!record && !cancelled && until > now;
   const legacy = !hasRecord && !cancelled && player.attackUntil > now;
@@ -2013,7 +2022,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const form = playerFormPresentation(g);
   const importedPlayer = !form || form.kind === 'playerIronFists';
   state.admitted.clear();
-  state.hero = null;
+  state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;
   if (importedPlayer && !state.heroRequested && typeof globalThis.Image === 'function') {
     state.heroRequested = true;
     loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
@@ -2050,12 +2059,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const dx = who.x - track.x, dy = who.y - track.y, dist = Math.hypot(dx, dy);
     const elapsed = Math.max(0, Math.min(.1, (now - track.at) / 1000));
     const visualProfile = visualAttack ? visualRecord.profile : null;
+    const acceptedTool = visualAttack && KNOWN_TOOL_VISUAL.has(visualRecord?.toolKind) ? visualRecord.toolKind : null;
     const fisting = who === player && (visualProfile === 'fist' || playerAction?.legacy && !!g.fistsEquipped?.());
     const cast = who === player && player.castUntil > now;
     const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
     const charge = who === player && !attack && !cast && !jump && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
     const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
-    const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" : !(player.meleeUntil > now));
+    const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" || !!acceptedTool : !(player.meleeUntil > now));
     const winding = !!monsterAction?.winding;
     const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
       : who === player ? closeViewIdleLockAim(g, now) : monsterAction?.aim;
@@ -2102,7 +2112,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (stunned) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
-    const held = visualAttack ? visualProfile==='melee'?primaryHeld:knownProfile ? visualProfile : 'fist' : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists ? 'fist' : primaryHeld;
+    const held = visualAttack ? visualProfile==='melee'?primaryHeld:acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists ? 'fist' : primaryHeld;
     const activeKind = who===player&&held==='cinder-pike'?'playerCinderPike':who===player&&held==='verge-cleaver'?'playerVergeCleaver':visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
     const formKind = who === player && form ? playerFormModelKey(form, held) : null;
     const actor = { kind: formKind || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
@@ -2110,6 +2120,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
       primaryStep: visualRecord?.primaryStep,
+      toolAction: who===player&&visualAttack&&acceptedTool&&visualRecord?.toolUse&&!stunned&&!hit&&now>=(player.dodgeUntil||0)?visualRecord:null,
       fistStep: charge != null ? g.fistCharge.step || 1 : visualRecord?.fistStep,
       fistLead: charge != null ? (g.fistCharge.step > 1 ? g.fistCombo?.lead : g.save.fistOpeningHand === 'right' ? 'left' : 'right') : visualRecord?.fistLead,
       effectTime: now,
@@ -2138,10 +2149,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
-        input.heldProfile=held;
+        input.heldProfile=acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
-        action.kind = ''; action.profile = visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held; action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined;
+        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         if (stunned) { action.kind = 'hit'; action.profile = 'knockdown'; }
         else if (now < (player.dodgeUntil || 0)) {
@@ -2152,7 +2163,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           action.poseMs=Number.isFinite(visual?.poseMs)?visual.poseMs:input.nowMs;
           input.speed=Number.isFinite(visual?.speed)?visual.speed:visual?.moving?2.4:0;input.gaitPhase=Number.isFinite(visual?.gaitPhase)?visual.gaitPhase:0;
         } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
-        else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) { const turn=Math.atan2(Math.sin(actor.yaw-visualRecord.facingYaw),Math.cos(actor.yaw-visualRecord.facingYaw)),t=Math.min(1,amount/.08);action.yaw=visualRecord.facingYaw+turn*t*t*(3-2*t); } } }
+        else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) { const turn=Math.atan2(Math.sin(actor.yaw-visualRecord.facingYaw),Math.cos(actor.yaw-visualRecord.facingYaw)),t=Math.min(1,amount/.08);action.yaw=visualRecord.facingYaw+turn*t*t*(3-2*t); } } }
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
         else if (cast) { action.kind = 'cast'; action.durationMs = MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
@@ -2164,6 +2175,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           gear.profile = held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           offset = writeCloseViewHeroGear(state.vertices, offset, gear);
+          const right=state.heroFrame.rightSocket,rx=right?.[12],ry=right?.[13],rz=right?.[14];
+          // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
+          if(closeViewToolCueOwnsAction(acceptedTool,input.action,action)&&Number.isFinite(rx)&&Number.isFinite(ry)&&Number.isFinite(rz)&&Math.hypot(rx-(who.x+.5),ry-(who.y+.45))<=.9&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,right)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;
         }
@@ -2363,6 +2377,11 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   });
   closeViewGLStats.echoRibbonPaths = echo.paths;
   closeViewGLStats.echoRibbonVertices = echo.vertices;
+  // Accepted release cue follows this frame's actual final socket. It never moves the shot.
+  if(MODEL_STATE.toolEmissionReady&&MODEL_STATE.toolRelease){const release=MODEL_STATE.toolRelease,releaseNow=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,elapsed=Math.max(0,release.durationMs-Math.max(0,(g.player.actionVisualUntil||0)-releaseNow)),age=toolUseReleaseAge(release,elapsed);
+    if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
+    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
+  }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
   for (const shot of shots || []) {
     const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";

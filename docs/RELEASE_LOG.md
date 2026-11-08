@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-With r831 on main, this PR takes r832. Other prepared candidates remain unnumbered; re-read fresh main before packaging each focused PR.
+With r832 on main, this PR takes r833. Other prepared candidates remain unnumbered; re-read fresh main before packaging each focused PR.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 832 | Codex | `claude/close-view-decal-rgb` | Preserve packed GPU RGB for Echo trails and colored cues | In flight. Forty-four focused renderer/GL/Echo checks and static build passed; scoped Astra shader review clear. Full since-live review, release consistency, CI, Preview, hosted colors and publication pending. |
+| 833 | Codex | `claude/close-view-tool-assets` | Named tool assets, accepted startup/release and melee weaving | In flight. Source checks/build and scoped Astra reviews clear, including shared pellet/fan origin correction. Exact CI, Preview, hosted motion/colors and fresh full since-live review/publication remain pending. |
+| 832 | Codex | `claude/close-view-decal-rgb` / #484 | Exact GPU decal colors | Mergedb3acd5c0aee0693a350f86e5d0b8782981d1043d. Source CI42491119571, merged CI42492299388 and Preview42492299719 succeeded; candidate r832-b3acd5c0aee0 treea80785e1 matches fresh since-live Astra review (829->832): no blockers. Publication held for actual hosted violet acceptance after browser tab creation timed out. Production remains r829; never published independently at this checkpoint. |
 | 831 | Codex | `claude/close-view-echo-inspection` / #483 | Stationary, harmless and attackable Echo practice targets | Mergedb1786f043f879bbbd08cb3f1e34050c62880cc8b. CI42487064216, merged CI42488153172 and Preview42488153087 succeeded; identity r831-b1786f043f87 matches reviewed treed6435fec. Hosted target stability/movement/health passed, but raised Echo ribbons appeared yellow: packed float rounding corrupted violet RGB. Held for r832 correction. Never published independently. |
 | 830 | Codex | `claude/close-view-echo-spells` / #482 | Raised Echo ribbons, cone support, GPU fallback and inspection fixtures | Merged7f0480a8bacd995d96b088fe12c1d89f6c19fe15. CI42484077734, merged CI42485138197 and Preview42485138154 succeeded; candidate r830-7f0480a8bacd matches reviewed tree1073ddfb. Hosted acceptance found new quiet targets resume attacking after the unchanged stagger governor clears oversized stun. Held from production: r831 repairs the fixtures and r832 repairs hosted GPU color corruption. Never published independently. |
 | 829 | Codex | `claude/salvage-action-continuity` / #481 | Preserve generic-primary accepted pose continuity | Published as r829-9c21fb237fe9. Exact source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; merge tree matches reviewed source95d11c03. Hosted Salvage idle/swing/recovery, movement and tool/cast/dodge/jump switching checked without console/diagnostic errors. Live identity and actual Options → System verified after normal cache update, recent errors none. |
