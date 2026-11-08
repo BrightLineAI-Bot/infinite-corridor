@@ -8,6 +8,7 @@ import { render } from '../src/renderer.ts';
 const item=kind=>normalizeSockets(kind==='cinder-pike'
   ? {id:'primary-cinder-pike',name:'Cinder Pike',slot:'primary',power:5,property:'reach',tier:'rare',affixes:[],glyphs:['echo',null]}
   : {id:'primary-verge-cleaver',name:'Verge Cleaver',slot:'primary',power:5,property:'impact',tier:'rare',affixes:[],glyphs:[]});
+const fists=()=>normalizeSockets({id:'primary-iron-fists',name:'Iron Fists',slot:'primary',power:5,property:'brawler',tier:'rare',affixes:[],glyphs:[]});
 function arena(){const save=freshSave();save.seed='PRIMARY-ECHO-VISUAL';save.equipment.primary=item('cinder-pike');save.glyphs.echo=0;const g=new Game(save,0);g.area='dungeon';g.map={name:'Echo Chamber',width:32,height:32,tiles:Array.from({length:1024},(_,i)=>({x:i%32,y:Math.floor(i/32),kind:'ash',blocked:false})),objects:[],enemySpawns:[],exits:null};Object.assign(g.player,{x:10,y:10,facing:'right'});g.save.lastAim={x:1,y:0};g.enemies=[{id:'actual',kind:'ashling',x:16,y:10,hp:100,maxHp:100,damage:1,range:1,attackCooldown:1,dead:false,aggro:true}];return g;}
 const ctxStyles=(g,reduce=false)=>{g.presentation={...(g.presentation||{}),reduceMotion:reduce,safeMode:false,effectiveQuality:'low',weather:false};const styles=new Set(),ctx=new Proxy({canvas:null,measureText:()=>({width:10}),getTransform:()=>({a:1,b:0,c:0,d:1,e:0,f:0}),createRadialGradient:()=>({addColorStop(){}}),createLinearGradient:()=>({addColorStop(){}}),createPattern:()=>({})},{get:(o,k)=>k in o?o[k]:()=>{},set:(o,k,v)=>{if(k==='fillStyle'||k==='strokeStyle')styles.add(v);o[k]=v;return true;}});render(ctx,g,390,844,1250);return styles;};
 
@@ -29,4 +30,16 @@ test('primary Echo visuals expire and evict only their oldest visual without tou
   g.glyphTimers=[{at:100,kind:'strike',share:.5,echoVisual:null},{at:200,kind:'shot',shot:{id:'kept'}}];g.tickGlyphs(.01,100);
   assert.equal(g.glyphVisuals.filter(v=>v.kind==='primaryEcho').length,PRIMARY_ECHO_VISUAL.cap);assert.equal(g.glyphVisuals.includes(other),true);assert.equal(g.glyphVisuals.some(v=>v.tag===0),false);assert.equal(g.glyphTimers.length,1);assert.equal(g.glyphTimers[0].kind,'shot');
   g.tickGlyphs(PRIMARY_ECHO_VISUAL.life+1,101);assert.equal(g.glyphVisuals.some(v=>v.kind==='primaryEcho'),false);
+});
+
+test('primary Echo cues require a newly accepted canonical strike, including accepted empty air',()=>{
+  const equipped=arena();equipped.enemies[0].x=12;equipped.primaryAttack(1000,{x:1,y:0});const equippedHp=equipped.enemies[0].hp,oldEquippedStrike=equipped.player.meleeStrike;
+  equipped.save.equipment.primary=fists();equipped.tickGlyphs(.001,1250);
+  assert.strictEqual(equipped.player.meleeStrike,oldEquippedStrike,'Fists refusal leaves the prior strike untouched');assert.equal(equipped.enemies[0].hp,equippedHp,'refused Echo adds no hit');assert.equal(equipped.glyphVisuals?.some(v=>v.kind==='primaryEcho')||false,false,'refused Echo adds no stale cue');assert.equal(equipped.glyphTimers.length,0,'the due mechanical timer is still consumed');
+
+  const penned=arena();penned.primaryAttack(1000,{x:1,y:0});const oldPennedStrike=penned.player.meleeStrike;penned.penned=()=>true;penned.tickGlyphs(.001,1250);
+  assert.strictEqual(penned.player.meleeStrike,oldPennedStrike);assert.equal(penned.glyphVisuals?.some(v=>v.kind==='primaryEcho')||false,false,'pen refusal adds no stale cue');assert.equal(penned.glyphTimers.length,0);
+
+  const empty=arena();empty.enemies=[];empty.primaryAttack(1000,{x:1,y:0});const oldEmptyStrike=empty.player.meleeStrike;empty.tickGlyphs(.001,1250);
+  assert.notStrictEqual(empty.player.meleeStrike,oldEmptyStrike,'accepted empty-air strike still produces fresh canonical geometry');assert.equal(empty.glyphVisuals.some(v=>v.kind==='primaryEcho'),true,'accepted empty-air strike retains its readable cue');assert.equal(empty.glyphTimers.length,0);
 });

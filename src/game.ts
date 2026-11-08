@@ -3393,9 +3393,10 @@ export class Game {
     this.glyphTimers = this.glyphTimers.filter((t) => t.at > now);
     for (const t of due) {
       if (t.kind === "strike" && this.primaryStrike) {
+        const priorStrike=this.player.meleeStrike;
         this.primaryStrike(now, null, { share: t.share });
         const g=this.player.meleeStrike,p=this.attackProfile;
-        if(g&&p){const list=(this.glyphVisuals||=[]),first=list.findIndex(v=>v.kind==='primaryEcho');if(list.filter(v=>v.kind==='primaryEcho').length>=PRIMARY_ECHO_VISUAL.cap&&first>=0)list.splice(first,1);
+        if(g!==priorStrike&&g&&p){const list=(this.glyphVisuals||=[]),first=list.findIndex(v=>v.kind==='primaryEcho');if(list.filter(v=>v.kind==='primaryEcho').length>=PRIMARY_ECHO_VISUAL.cap&&first>=0)list.splice(first,1);
           list.push({kind:'primaryEcho',life:PRIMARY_ECHO_VISUAL.life,max:PRIMARY_ECHO_VISUAL.life,actual:{x:g.x,y:g.y,dx:g.dx,dy:g.dy,range:p.range,arc:p.arc,shape:p.shape},memory:t.echoVisual||null});}
       }
       else if (t.kind === "shot") { const p = this.player; this.projectiles.push({ ...t.shot, x: p.x + .5 + t.shot.dx * .35, y: p.y + .45 + t.shot.dy * .35 }); }
