@@ -2,7 +2,7 @@
 
 Updated: 2026-11-07. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r818-791b1eff716d`. Publish run `42424762364` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
+Verified live: `r821-c4303ef9b07c`. Publish run `42433628415` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
 
 ## Objective and sequence
 
@@ -174,3 +174,7 @@ The owner reports unreliable following and cramped-space navigation while liking
 ## Additional owner combat direction — queued
 
 See [the preserved combat direction](close-view-combat-direction.md) for weapon identity, the Iron Fists dash punch/jab/uppercut, visible casting, solid bodies, combat spacing and evidence gates. Finish current character and camera work before this expanded pass.
+
+## Imported Wayfarer publication — r821
+
+PR470, CI42431390795, merged CI42432379946, Preview42432379936 and Publish42433628415 succeeded. Fresh Astra full review (live818 through source5a020acb; mergec4303ef9 has the exact reviewed tree1ce4265c): no blockers. Hosted1280×720 quiet-ramp checks show the corrected fabric neck in rear idle, melee and inverted roll poses, approved front proportions, small hands and amber eyes. Updated cached production818 with the normal Get latest release control; Options → System now namesr821-c4303ef9b07c and reports no recent errors. Journey stayed paused; displayed storage remained250KB. This includes819/820; neither candidate was published separately. Camera822 is merged and awaiting Preview/hosted acceptance. Phone FPS/multitouch remain unmeasured.
