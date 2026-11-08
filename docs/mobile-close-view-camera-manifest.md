@@ -85,9 +85,9 @@ Status: focused camera stabilization, lock comfort and source regressions comple
 
 Worktree `close-view-shoulder-clearance`, based on main merge `10672c8568e1c0f30844437754b0083f8b4dce2d`. This follow-on owns camera/control code, focused tests and this manifest only. Imported hero admission/runtime, assets, world generation, pinned geometry, physics, hit rules, schema, package/scripts/workflows and release metadata are unchanged by this work.
 
-### Exact entrance diagnosis
+### Exact raw map-entry fixture diagnosis
 
-The production Close View Lab `outer`, seed `CINDER-VERGE-47`, variant 0, uses map `pentagon:CINDER-VERGE-47:0:24:v8:f1` and player `(25, 11)`. The r818 and r819 camera sources both selected northwest solely from forward openness, then settled at a **0.30-tile boom and about 71.56 degrees down-pitch**. This is an existing cramped-rig limitation, not a regression introduced by r819. At 1280×720, actual submitted fallback-player hood vertices occupied approximately **371 pixels vertically**. The old centered clearance probe encountered the south wall before an available lateral rig could be considered. A legal eye around `(26.6, 11.5)` existed within the current shoulder reach while looking west into the room.
+The production-backed Close View Lab `outer` starts directly at the raw map entry, before normal production arrival settling. This fixture, seed `CINDER-VERGE-47`, variant 0, uses map `pentagon:CINDER-VERGE-47:0:24:v8:f1` and player `(25, 11)`. The r818 and r819 camera sources both selected northwest solely from forward openness, then settled at a **0.30-tile boom and about 71.56 degrees down-pitch**. This is an existing cramped-rig limitation, not a regression introduced by r819. At 1280×720, actual submitted fallback-player hood vertices occupied approximately **371 pixels vertically**. The old centered clearance probe encountered the south wall before an available lateral rig could be considered. A legal eye around `(26.6, 11.5)` existed within the current shoulder reach while looking west into the room.
 
 ### Bounded implementation
 
@@ -120,3 +120,15 @@ Space is still finite. Deliberately aiming northwest at this entrance or backing
 ### Repaired-character integration
 
 Integrated merged r821 neck bridge. The loaded-hero assertion now checks the actual 3170-triangle asset (previously3140); all existing framing, near-plane and budget assertions remain. The combined asset/camera/release selection passed after that exact count update, with 5/5 offset checks including actual submitted3602hero vertices; prior219 integration checks and build passed. Release822 build passed after the integration. No camera threshold, geometry or hit rule was relaxed. Hosted acceptance and exact-head CI remain separate gates.
+
+## Hosted r822 acceptance and respawn diagnosis
+
+Candidate r822-1d2ba908e56c (PR471, merge1d2ba908; tree8667848f matches reviewed sourced7a0b7d7) passed exact-head CI42432626387, merged CI42433819389 and Preview42433819396. Fresh Astra review of the complete current live821→822 diff found no blockers. Hosted actual1280×720 inspection checked the raw outer fixture before death, hive, ruined arcology, cellar and current quiet Pentagon traversal. Movement and manual drag stayed rendered without captured console errors. Legacy narrow passages still produce close overhead views; this is not full-body fit or universal camera-room acceptance. Browser phone viewport override had failed and was reset; no physical-phone FPS or hardware multitouch claim is made.
+
+Actual keyboard activation in the outer fixture set the target checkbox from0 to1 with Enter and back to0 with Space. Existing actual-input regression tests independently verify no attack/jump/dodge key leakage and no duplicate pointer activation; hosted inspection did not instrument those action clocks. Hosted checks do not certify every target-switch or enemy combination.
+
+An apparent runtime relocation from(25,11) to(25,4) initially held publication. Independent neutral actual-input→steering→Game.update→render diagnosis resolved it as combat death/respawn, not blocked spawn or camera movement. At dt1/60, frames1–60 retain(25,11) and yield1.10boom/+0.21offset/~42.7°pitch; affix damage lowers HP at frame69 and death at frame143 restores HP before normal arrival settling moves the player. The Sunderjaw is five tiles from the raw entry; normal arrival clearance requires eight. Hosted inspection before death confirmed(25,11), HP15 and the improved view. Prior screenshots at HP60/position(25,4) were respawn views, not original entrance views. No speculative code repair was made.
+
+Queued inspection improvement: provide an explicitly quiet scratch camera fixture, or inspect the production-settled arrival separately, rather than assuming a lethal guardian fixture remains stationary. Preserve combat fixtures, pinned layouts and production rules. Further camera/room breathing space belongs with the owner's queued combat-spacing work, not a claim that legacy rooms have been widened.
+
+Publication complete: Publish42435253843 succeeded for r822-1d2ba908e56c. Live identity and actual Options → System match; no recent errors. Verification updated cachedr821 normally and closed the production tab with Options still paused. Queued broader combat/camera-room work is not part of this completion claim.

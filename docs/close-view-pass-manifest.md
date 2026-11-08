@@ -2,7 +2,7 @@
 
 Updated: 2026-11-07. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r821-c4303ef9b07c`. Publish run `42433628415` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
+Verified live: `r822-1d2ba908e56c`. Publish run `42435253843` succeeded; `gh-pages:release-identity.json` and the production Options → System label match the reviewed merge.
 
 ## Objective and sequence
 
@@ -178,3 +178,11 @@ See [the preserved combat direction](close-view-combat-direction.md) for weapon 
 ## Imported Wayfarer publication — r821
 
 PR470, CI42431390795, merged CI42432379946, Preview42432379936 and Publish42433628415 succeeded. Fresh Astra full review (live818 through source5a020acb; mergec4303ef9 has the exact reviewed tree1ce4265c): no blockers. Hosted1280×720 quiet-ramp checks show the corrected fabric neck in rear idle, melee and inverted roll poses, approved front proportions, small hands and amber eyes. Updated cached production818 with the normal Get latest release control; Options → System now namesr821-c4303ef9b07c and reports no recent errors. Journey stayed paused; displayed storage remained250KB. This includes819/820; neither candidate was published separately. Camera822 is merged and awaiting Preview/hosted acceptance. Phone FPS/multitouch remain unmeasured.
+
+## Post-publication owner feedback — queued
+
+Preserve the approved character. Next: low directional dash instead of somersault, smoother gait, and reproduction of digging/denied-block escape traps. Elden Ring fine combat analysis, reuse-first frameworks and Tower of Fantasy combat/world/traversal systems are research directions. Full notes, acceptance boundaries and priorities are in close-view-combat-direction.md; evidence in close-view-combat-references.md; future Anthropic continuity in anthropic-close-view-handoff.md. None of these new runtime changes is claimed complete.
+
+## Camera follow-up publication — r822
+
+PR471 source/merge trees match8667848f6de0eb42ad749b8a85e27cc09f6b607d. CI42432626387, merged CI42433819389, Preview42433819396 and Publish42435253843 passed. Fresh Astra current-live821→822 review: no blockers. Hosted1280×720 checks covered raw outer fixture before death, hive, arcology, cellar and quiet current Pentagon traversal, plus actual Enter acquisition/Space release. No captured console errors. Suspected relocation was resolved as normal guardian death/respawn, not a camera bug. Live identity and Options → System name r822-1d2ba908e56c; updated cached821 through normal Get latest release. Production remained paused when the verification tab closed; displayed journey storage250KB. Legacy narrow rooms still require close overhead views; phone FPS/thermals/multitouch remain unmeasured. This documents completed character/camera scope, not the queued dash/gait/dig/weapon/body/cast/spacing changes.
