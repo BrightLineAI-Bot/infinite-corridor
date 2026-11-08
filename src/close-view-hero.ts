@@ -1,5 +1,6 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { sampleToolActionMotion, toolUsePoseTime } from './action-motion.ts';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.ts';
+import { cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -288,7 +289,21 @@ function primaryPose(state,pose,profile,p,step=1){
   state.clipTime=p;state.primaryStep=step;
 }
 
-// Reachable source-space targets for the free left hand. The weapon hand remains
+function cleaverFourPose(state,pose,p,stage){
+  const cut=cleaverCutMotion(stage,p),w=cut.weight;
+  if(w>0){rotateY(pose,27,cut.twist);rotateX(pose,24,(.10-.05*cut.rise)*w);rotateX(pose,4,-.045*w);rotateX(pose,22,-.28*w);rotateZ(pose,22,cut.twist*.4);}
+  build(state.asset,state,pose);
+  const g=state.global,s=12*16,e=11*16,h=7*16,grip=6*16,t=state.primaryTarget;
+  const reach=Math.hypot(g[e+12]-g[s+12],g[e+13]-g[s+13],g[e+14]-g[s+14])+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);
+  const carryX=g[s+12]+.08,carryY=Math.max(g[s+13]-reach*.80,state.minY+state.referenceHeight*.52),carryZ=g[s+14]+.06+.04*Math.tanh((g[grip+14]-g[s+14])*3);
+  t[0]=carryX+(g[s+12]+cut.side-carryX)*w;
+  t[1]=carryY+(g[s+13]-reach*(.58-.36*cut.rise)-carryY)*w;
+  t[2]=carryZ+(g[s+14]+reach*.48-carryZ)*w;
+  state.primaryGripResidual=solveArm(state,pose,true,t,.20+(cut.yaw-.20)*w,-.70+(cut.pitch+.70)*w);
+  state.clip='derived-right-cleaver-four';state.clipTime=p;state.primaryStep=stage?.step||1;
+}
+
+// Reachable source-space targets for the resolved free hand. The weapon hand remains
 // whatever carry/attack layer established; this solver runs last so casting never
 // yanks an accepted weapon socket off its grip.
 const CAST_HAND_TARGETS=Object.freeze({
@@ -301,13 +316,13 @@ const CAST_HAND_TARGETS=Object.freeze({
   'flow-forward':Object.freeze([.12,-.02,.40,-.22,.16]),acceleration:Object.freeze([.18,-.06,.38,-.30,.18]),'orbit-launch':Object.freeze([.10,.08,.44,-.18,.20]),
   'traversal-brace':Object.freeze([.20,.12,.30,-.32,-.05]),
 });
-function castPose(state,pose,profile,p){
+function castPose(state,pose,profile,p,sourceLeft=true){
   const spec=CAST_HAND_TARGETS[profile];if(!spec)return;
   const commit=p<=.08?smoothstep(p/.08):p<.62?1:1-smoothstep((p-.62)/.38);if(!(commit>0))return;
-  build(state.asset,state,pose);const g=state.global,s=12*16,grip=6*16,t=state.primaryTarget,follow=Math.sin(Math.PI*clamp((p-.08)/.54));
-  const desired=[g[s+12]+spec[0],g[s+13]+spec[1]+follow*.035,g[s+14]+spec[2]+follow*.045];
+  build(state.asset,state,pose);const g=state.global,s=(sourceLeft?12:22)*16,grip=(sourceLeft?6:16)*16,t=state.primaryTarget,follow=Math.sin(Math.PI*clamp((p-.08)/.54)),side=sourceLeft?1:-1;
+  const desired=[g[s+12]+spec[0]*side,g[s+13]+spec[1]+follow*.035,g[s+14]+spec[2]+follow*.045];
   t[0]=g[grip+12]+(desired[0]-g[grip+12])*commit;t[1]=g[grip+13]+(desired[1]-g[grip+13])*commit;t[2]=g[grip+14]+(desired[2]-g[grip+14])*commit;
-  solveArm(state,pose,true,t,spec[3]*commit,spec[4]*commit);
+  solveArm(state,pose,sourceLeft,t,spec[3]*commit*side,spec[4]*commit);
 }
 
 function toolPose(state,pose,profile,p,weight,action){
@@ -435,7 +450,13 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null;
   let clip = null, weight = 0, time = 0, dx = 0, dz = 0;
   state.clip = speed > 2.8 ? 'Run' : speed > 0 ? 'Walk' : 'Idle'; state.clipTime = phase;
-  if(primaryAction)primaryPose(state,state.pose,primaryAction,p,action.primaryStep);else if(heldPrimary)primaryPose(state,state.pose,heldPrimary,0);else state.primaryGripResidual=0;
+  const primaryStage=primaryAction?(primaryVisualStage(action)||(action.primaryMotion?{kind:'opaque'}:{kind:'legacy',step:1})):input.primaryCarryStage,
+    carryProfile=primaryAction||heldPrimary,roles=cleaverHandRoles(input.handProfile??carryProfile,primaryStage);
+  if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;
+  else if(carryProfile==='verge-cleaver'&&(!primaryStage||primaryStage.kind==='cleaver-four'))cleaverFourPose(state,state.pose,primaryAction?p:0,primaryStage);
+  else if(primaryAction)primaryPose(state,state.pose,primaryAction,p,action.primaryStep);
+  else if(heldPrimary)primaryPose(state,state.pose,heldPrimary,0);
+  else state.primaryGripResidual=0;
   if (action) {
     const kind = action.kind, profile = action.profile;
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
@@ -466,7 +487,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
         // Orrery tools and pre-descriptor saves retain their established cast layer.
         // Unknown future spell profiles remain neutral until they have a recipe.
         if(profile==='cast'||profile==='orrery-tap'||profile==='orrery-release'){rotateX(state.pose,12,-.65*pulse);rotateX(state.pose,22,-.8*pulse);}
-        else castPose(state,state.pose,profile,p);
+        else castPose(state,state.pose,profile,p,roles.free==='leftSocket');
       }
       else { // Arm brace only: root-parented feet must not be left behind by invented knee IK.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);

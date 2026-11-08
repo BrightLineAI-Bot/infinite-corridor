@@ -1,4 +1,20 @@
 // Pure player form facts and read-only selection. No mesh, Game or renderer dependencies.
+const CLEAVER_RIGHT = Object.freeze({ grip: 'leftSocket', free: 'rightSocket' });
+const LEGACY_HANDS = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
+// Source labels are retained. In the existing projection source-left is the
+// displayed anatomical right. Resolve from the FINAL held owner, never equipment.
+export function cleaverHandRoles(finalProfile, stage = null) {
+  return finalProfile === 'verge-cleaver' && (!stage || stage.kind === 'cleaver-four') ? CLEAVER_RIGHT : LEGACY_HANDS;
+}
+const cutSmooth = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
+export function cleaverCutMotion(stage, phase = 0) {
+  const p = Math.max(0, Math.min(1, Number(phase)||0)), step = stage?.kind === 'cleaver-four' ? stage.step : 1;
+  const weight = p < .12 ? cutSmooth(p/.12) : p <= .40 ? 1 : 1-cutSmooth((p-.40)/.60);
+  const travel = cutSmooth((p-.12)/.28), up = step === 1 || step === 3, variant = step > 2 ? -1 : 1;
+  return { weight, travel, pitch: (up ? -.62+1.40*travel : .78-1.40*travel),
+    yaw: variant*(.28-.56*travel), rise: up ? travel : 1-travel,
+    side: variant*(.12-.24*travel), twist: variant*(.18-.36*travel)*weight };
+}
 export const CLOSE_VIEW_PLAYER_FORM_PROFILES = Object.freeze({
   playerIronFists: Object.freeze({ head: 1.68, lift: 0, pose: 'fist' }),
   playerRobot: Object.freeze({ head: 1.48, lift: 0, pose: 'robot' }),
