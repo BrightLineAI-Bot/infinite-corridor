@@ -532,12 +532,12 @@ void main() {
 // 4 cobweb (a corner triangle), 5 chain, 7 spike (a small metal spike, a card), 8 bones; added in light: 2 wind-up glow,
 // 3 flame, 6 dust mote, 9 a flame's halo.
 const DECAL_VS = VS_COMMON + `
-in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; out float v_depth; out vec2 v_world;
-void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; v_world = a_pos.xy; }`;
+in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; out float v_depth; out vec2 v_world; flat out highp uint v_rgb;
+void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; v_world = a_pos.xy; v_rgb = a_meta.x > 10.5 && a_meta.x < 11.5 ? uint(a_meta.z) : 0u; }`;
 const DECAL_FS = `#version 300 es
 precision highp float;
 precision highp int;
-uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; out vec4 outColor;
+uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; flat in highp uint v_rgb; out vec4 outColor;
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : vec3(1.0, 0.75, 0.35); } // warm, bioluminescent, ghost-light, a failing lamp
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -570,7 +570,7 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
     ivec2 tile = ivec2(floor(v_world));
     if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize)) ||
         (texelFetch(u_mask, tile, 0).r & 2u) != 0u) discard;
-    uint rgb = uint(floor(v_meta.z + 0.5));
+    uint rgb = v_rgb;
     vec3 tint = vec3(float(rgb >> 16u), float((rgb >> 8u) & 255u), float(rgb & 255u)) / 255.0;
     float shape = v_meta.w > 0.5 ? (1.0 - abs(v_loc.y)) * smoothstep(-1.0, 1.0, v_loc.x)
       : 1.0 - smoothstep(0.08, 1.0, r);

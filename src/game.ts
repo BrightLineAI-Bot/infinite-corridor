@@ -2091,6 +2091,9 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.recoil = Math.max(0, (e.recoil || 0) - dt);
   e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   staggerGovernor(e, dt); // release 377: bosses and elites cannot be stagger-locked
+  if(e.passiveBehavior==='practice'){
+    ai.mode='idle';e.telegraph=0;e.strike=0;e.meleePhase=null;e.threatRange=null;return false;
+  }
   // Release 561: a blow during a windup holds it (WINDUP_STAGGER.max s per attack at most); then the attack lands.
   if (e.hitStun > 0 && e.telegraph > 0 && !windupHeld(e, e.windupStagger ||= {}, dt)) { /* shrugged off: the windup runs on */ }
   else if (e.hitStun > 0) {

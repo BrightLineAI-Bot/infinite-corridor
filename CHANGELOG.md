@@ -3,6 +3,8 @@
 ## Unreleased
 
 
+- Release 832: preserve exact packed RGB on the GPU so Echo afterimages and colored cues keep their intended colors.
+- Release 831: keep all three Echo inspection targets stationary, harmless and attackable through real combat and long sessions.
 - Release 830: raise actual primary Echo afterimages into Close View, include Salvage cone strikes, preserve body animation ownership, recover failed GPU frames, and add quiet Echo inspection scenarios.
 - Release 829: preserve the accepted idle/gait clock through Salvage Blade and future-primary fallback attacks; retain legacy poses and current combat rules.
 - Release 828: preserve a useful third-person entry view after tight-corner arrival or respawn, using existing safe camera probes.
