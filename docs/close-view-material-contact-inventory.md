@@ -41,4 +41,3 @@ For Grave Lantern specifically, first author and review a numeric physical botto
 2. Calibrate Grave Lantern in a separate source/design pass; do not reuse `2.35` as a physics interval.
 3. Consider Choir/Seraph only as a separate dive/multi-body scope.
 4. Preserve Wraith/Maw/Strata Eel/Gloom phase/ghost behavior unless a new owner-approved design proves otherwise.
-
