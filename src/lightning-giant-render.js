@@ -1,7 +1,7 @@
 // The Lightning Giant (release 257, Tim 2026-10-21): a big armoured, Armored Core-style robot that has lost one arm. It
 // fights with a Tesla mace in the other, and boosts around on an energy eruption from the empty shoulder socket. Also its
 // lightning effects and the knocked-down Wayfarer. Native Canvas 2D, drawn by code.
-import { DANGER } from "./monster-pack.js?v=r840-402c30d2d636"; // release 397
+import { DANGER } from "./monster-pack.js?v=r842-ef8c3947abac"; // release 397
 const TAU = Math.PI * 2;
 
 // Body proportions in body units (u = tile size x actor scale); club poses as angles from straight ahead (0),

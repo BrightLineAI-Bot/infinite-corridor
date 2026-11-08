@@ -1,22 +1,23 @@
-import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r840-402c30d2d636";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r840-402c30d2d636";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r840-402c30d2d636";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage } from "./action-motion.js?v=r840-402c30d2d636";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r840-402c30d2d636";
-import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r840-402c30d2d636';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r840-402c30d2d636";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles } from './close-view-player-presentation.js?v=r840-402c30d2d636';
-import { fistCharge } from './brawler-spells.js?v=r840-402c30d2d636';
-import { dronePos } from "./affixes.js?v=r840-402c30d2d636";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r840-402c30d2d636";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r840-402c30d2d636";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r840-402c30d2d636";
-import { knockdownPose } from "./lightning-giant-render.js?v=r840-402c30d2d636";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r840-402c30d2d636";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r840-402c30d2d636";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r840-402c30d2d636";
-import { SIGIL_CELLS } from "./watcher.js?v=r840-402c30d2d636";
-import { closeViewGLReady, closeViewGLFrameReady, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r840-402c30d2d636"; // version 4: the GPU scene
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r842-ef8c3947abac";
+import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r842-ef8c3947abac";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r842-ef8c3947abac";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r842-ef8c3947abac";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage } from "./action-motion.js?v=r842-ef8c3947abac";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r842-ef8c3947abac";
+import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r842-ef8c3947abac';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r842-ef8c3947abac";
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles } from './close-view-player-presentation.js?v=r842-ef8c3947abac';
+import { fistCharge } from './brawler-spells.js?v=r842-ef8c3947abac';
+import { dronePos } from "./affixes.js?v=r842-ef8c3947abac";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r842-ef8c3947abac";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r842-ef8c3947abac";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r842-ef8c3947abac";
+import { knockdownPose } from "./lightning-giant-render.js?v=r842-ef8c3947abac";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r842-ef8c3947abac";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r842-ef8c3947abac";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r842-ef8c3947abac";
+import { SIGIL_CELLS } from "./watcher.js?v=r842-ef8c3947abac";
+import { closeViewGLReady, closeViewGLFrameReady, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r842-ef8c3947abac"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -231,7 +232,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r840-402c30d2d636's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r842-ef8c3947abac's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -340,6 +341,16 @@ export const CLOSE_VIEW = Object.freeze({
       fog: Object.freeze({ rgb: Object.freeze([5, 6, 7]), near: 2.2, far: 10.5, haze: Object.freeze([.12, .7]), hazeRGB: Object.freeze([10, 16, 16]) }),
       grade: Object.freeze([.92, 1.02, 1, 1.12]), vignette: .62, deco1: Object.freeze([40, 30, 30]), deco2: Object.freeze([80, 60, 50]), glow: Object.freeze([70, 230, 190]),
       decor: Object.freeze({ pods: .16 }), props: Object.freeze({ bones: .05, rubble: .03, web: .3 }) }),
+    biomechanicalKeep: Object.freeze({ label: "Old Keep: ribbed metal and chitin",
+      wall: Object.freeze({ kind: 2, rgb: Object.freeze([68, 72, 66]), mortar: Object.freeze([16, 18, 17]), stone: Object.freeze([.3, .65, .05, .6]), damp: Object.freeze([.8, .55]), dampRGB: Object.freeze([140, 145, 126]), topFall: .3 }),
+      floor: Object.freeze({ kind: 10, rgb: Object.freeze([62, 65, 58]), joint: Object.freeze([15, 17, 16]), rug: Object.freeze([42, 43, 37]), size: .6, wear: .55, wet: .3, sewer: false, remap: Object.freeze({ 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 }) }),
+      ceiling: Object.freeze({ kind: 2, rgb: Object.freeze([48, 52, 47]), bay: 2, rib: .1, dark: .7 }),
+      arch: Object.freeze({ spring: 1.9, radius: .45, band: .16 }), pilaster: 0, plinth: Object.freeze([.12, .04]), cornice: Object.freeze([.10, .04]),
+      light: Object.freeze({ torch: Object.freeze([245, 190, 132]), reach: 5.4, strength: 1.7, height: 1.15, ambient: Object.freeze([12, 13, 12]),
+        sources: Object.freeze({ share: .09, spacing: 5, reach: 4.2, strength: 1.5, hue: 3, ghost: 0, candles: 0 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([6, 8, 7]), near: 2.6, far: 12, haze: Object.freeze([.08, .7]), hazeRGB: Object.freeze([15, 18, 15]) }),
+      grade: Object.freeze([.98, 1.02, .95, 1.1]), vignette: .5, deco1: Object.freeze([42, 46, 40]), deco2: Object.freeze([112, 110, 86]), glow: Object.freeze([170, 205, 140]),
+      decor: Object.freeze({ vent: .07, roots: .05 }), props: Object.freeze({ rubble: .03, chain: .02, web: .15 }) }),
     arcology: Object.freeze({ label: "Arcology: an old machine, failing",
       wall: Object.freeze({ kind: 3, rgb: Object.freeze([70, 76, 74]), mortar: Object.freeze([14, 15, 15]), stone: Object.freeze([.34, .8, .04, .4]), damp: Object.freeze([.6, .45]), dampRGB: Object.freeze([152, 158, 142]), topFall: .4 }),
       floor: Object.freeze({ kind: 10, rgb: Object.freeze([60, 64, 62]), joint: Object.freeze([12, 13, 13]), rug: Object.freeze([40, 40, 46]), size: .6, wear: .5, wet: .2, sewer: false }),
@@ -381,7 +392,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r840-402c30d2d636's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r842-ef8c3947abac's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -410,6 +421,7 @@ export function openAirAt(map, x, y) { const w = Math.max(1, Number(map?.width) 
 const themeRoll = (key, salt) => (strHash(`${CLOSE_VIEW.themes.salt}:${CLOSE_VIEW.themes.version}:${key}:${salt}`) % 10000) / 10000;
 export function closeViewThemeId(b) {
   const T = CLOSE_VIEW.themes; if (!b || typeof b !== "object") return "keep"; const key = String(b.base || "");
+  if (b.interiorVersion === 5 && b.style === "keep" && !b.pentagon && biomechanicalKeep(b.appearance)) return "biomechanicalKeep";
   if (b.pentagon) return b.kind === "cellar" || themeRoll(key, `root:${b.floor}:${b.node}`) < T.rootCellarShare ? "rootCellar" : "pentagon";
   if (b.style === "hive") return "hive";
   if (b.style === "apartment") return "arcology";
@@ -444,7 +456,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r840-402c30d2d636's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r842-ef8c3947abac's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 
@@ -951,7 +963,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r840-402c30d2d636's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r842-ef8c3947abac's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
@@ -1687,6 +1699,14 @@ function buildStatic(map, geo, th) {
       surface.rect(dx / 12, (dy - 1) / 16, .043, .033, color, depth);
     }
   };
+  // One small floor inlay identifies the recurring junction room. It uses the existing
+  // cached static pass (at most 24 vertices), follows the floor and never blocks a body.
+  const landmark=map.building?.routing?.nodes?.find(n=>n.role==="landmark");
+  if(landmark && free(landmark.x,landmark.y)) {
+    const face=paint(landmark.x+.5,landmark.y+.5,.025,0,0,.8,.8), color=tg.wall.map(v=>Math.min(.7,v+.14));
+    const grammar=map.building.routing.grammar;
+    face.path(grammar==="offset-ring"?[[-.4,0],[0,-.4],[.4,0],[0,.4],[-.4,0]]:grammar==="paired-wings"?[[-.4,-.3],[0,0],[.4,-.3],[0,0],[0,.4]]:[[-.4,-.3],[0,-.3],[0,.4],[.4,.4]],color,.045);
+  }
   for (const m of map.murals || []) {
     const art = PENTAGON_MURALS.find(({ id }) => id === m.muralId);
     if (!art) continue;
