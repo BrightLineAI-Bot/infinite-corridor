@@ -2,7 +2,7 @@
 
 Updated: 2026-11-08. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r828-f15b20b8c54a`. Source CI42476407465, merged CI42477321804, Preview42477321826 and Publish42479336328 succeeded. Fresh Astra review (827→828): no blockers; live identity and actual Options → System match after normal update with no recent errors. Stages1/2a/2b remain delivered; stage2c r829 is the next focused PR.
+Verified live: `r829-9c21fb237fe9`. Source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; live identity and actual Options → System match after normal update, no recent errors. Earlier delivered character/camera/primary work remains; stage3 takes r830 next.
 
 ## Single ordered build queue — owner instruction
 
@@ -10,7 +10,7 @@ Verified live: `r828-f15b20b8c54a`. Source CI42476407465, merged CI42477321804, 
 
 Earlier native creature/combat/actor passes r813–818 remain delivered; preserve their roster, Foundry and auxiliary-actor work recorded in the release log.
 
-Current checkpoint: r828 is published and verified as `r828-f15b20b8c54a` (Publish42479336328). Hosted settled-corner body framing passed; manual orbit can still compress near walls, so this is the bounded entry fix rather than universal camera acceptance. Stage2c r829 preserves Salvage/future-primary pose continuity, then the ordered queue resumes at Echo. Later prepared stages remain unnumbered and require their own current-main integration, review, CI, Preview, hosted and publication gates.
+Current checkpoint: r829 is published and verified. Stage2c's imported Salvage/future-primary clock correction is delivered. Stage3 r830 prepares raised Echo afterimages, canonical cone support, whole-frame GPU fallback/recovery and three quiet real-Echo inspection cases. Continue afterward with the ordered tool/Hammerfall/spell/contact/block/camera/armor/routing queue; no candidate is dropped. New tool startup/weaving direction is preserved below and does not change this Echo PR's mechanics.
 
 | Order | Pass | Required owner direction / completion target | State |
 |---|---|---|---|
@@ -30,7 +30,7 @@ Current checkpoint: r828 is published and verified as `r828-f15b20b8c54a` (Publi
 | 7 | Camera, environments and combined combat space | Revisit movement/look ownership, target lock/facing, cramped spaces, all themes, Pentagon halls/shafts, large/multiple foes, enemy melee/ranged readability and solid presentation. Assess breathing room and navigation with the completed actions/contact systems. Preserve pinned layouts. | Queued |
 | 8a | Robot | Restore deliberately clunky oversized technology/cockpit character with a large protective viewport, retaining actual modes/controls. | Dedicated robot/suit asset candidate in progress |
 | 8b | Powered suit | Fitted human anatomy with modest structural shoulder/head bulk and normal hands, inspired by the supplied hard-suit reference; omit external wires/projections and extreme forearm/head/shoulder mass. | Dedicated robot/suit asset candidate in progress |
-| 9 | Close View Pentagon and overworld-keep routing | Latest owner clarification limits this pass to Close View inside overworld Pentagons and keeps, not existing dungeon families. Audit branching paths, room connections and usable multi-level/roof routes in those structures. Determine the representation/generation seam before changes; any new layout requires an explicit new revision and isolated Proving Ground preview, preserving old pins and explored content. The earlier Room Maze target is superseded; reusable region/connector research remains reference only. | Compact opt-in phase-B candidate d39df5b1 prepared; 145 checks/build passed, defaults4/9 and all old pins unchanged; hosted/contact/adoption gates pending |
+| 9 | Close View Pentagon and overworld-keep routing | Latest owner clarification limits this pass to Close View inside overworld Pentagons and keeps, not existing dungeon families. Audit branching paths, room connections and usable multi-level/roof routes in those structures. Determine the representation/generation seam before changes; any new layout requires an explicit new revision and isolated Proving Ground preview, preserving old pins and explored content. The earlier Room Maze target is superseded; reusable region/connector research remains reference only. | Compact opt-in phase-B/contact candidate a111603a prepared; 230 checks/build passed, defaults4/9 and all old pins unchanged; hosted/contact/adoption gates pending |
 | 10 | Final combined visual/interaction/performance passes | Exercise the full toolkit, creatures, collisions, items, all environments, traversal/recovery and offline/pause/save behavior at normal gameplay speed. Record bounded work separately from actual phone FPS/thermals/multitouch; those hardware measurements remain open. | Queued |
 
 ### Additional boss-rig program — owner intake 2026-11-08
@@ -289,3 +289,10 @@ Stages2a/2b are live in827. Camera828 is published after corrected exact-head CI
 - Contact a340306f, Stone blocks56575171 and compact opt-in routing a111603a retain their prepared source coverage. Routing230 checks/build passed with contact integration; defaults4/9 and all old pins remain.
 - Armor recovery29afaa0d on claude/close-view-armor-recovery merges the three explicitly approved complete histories, passes99 focused checks/build, and preserves the original failed attempt. Ordered-main integration, fresh review, CI and hosted checks remain.
 - The read-only item audit found no concrete defect; boss rigs remain queued research only. No physical-phone FPS, thermals or hardware multitouch has been measured.
+
+
+## Approved tool startup and melee weaving — 2026-11-08
+
+The owner explicitly selected brief visible startup → physical release → melee may cancel the remaining body animation, with cooldown enforced. Pressing Tool must begin its draw/windup immediately; a gun/wand releases after its brief startup, Great Sweep swings through release, and Hammerfall retains its original delayed impact without doubling that delay. If no interrupting accepted action begins, the complete authored presentation finishes. A legal accepted melee may end recovery; refused attacks do not fake cancellation, and a cancel never refunds the spent tool cooldown or duplicates shots/hits.
+
+The existing T5d76c7eb baseline already replaces tool presentation on accepted melee and passes the 48-combination weaving matrix plus refusal/buffer/repeat/Echo checks. It still physically releases the four base tools immediately; the newly requested startup transaction is an additional implementation stage, not delivered by that baseline. Preserve longer readable holds, movement and all passive/clone/Echo/child ownership while implementing it. Exact phase/save/buffer/capacity contracts are being finalized before runtime work; no new engine or dependency is planned. Old supported saves/effects must retain their interpretation, pending uses must survive pause/reload exactly once, and no renderer asset readiness may decide physical release. New physical timing requires focused regression, fresh review and actual hosted acceptance before publication.
