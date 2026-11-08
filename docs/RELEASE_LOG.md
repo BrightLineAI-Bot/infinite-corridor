@@ -15,12 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. With r821 on main, this PR takes r822.
+Taken at merge time: main's release + 1. With r822 on main, new game work takes main + 1 only at final merge preparation; no number reserved.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| — | Codex | `claude/wayfarer-directional-dash` | Approved Wayfarer low directional quickstep and smoother gait | Astra source/pose design complete; bounded implementation and focused animation regression work in progress. No release number reserved. |
+| — | Codex | `claude/dug-tunnel-return-height` | Safe support heights for newly excavated interior tunnels | Actual generated ramp-pocket softlock reproduced; Astra additive replay design complete. Focused dig regression tests explicitly approved; implementation in progress. Legacy dug geometry and build/lethal rules remain protected. No number reserved. |
 | 822 | Codex | `claude/close-view-shoulder-clearance` | Bounded side camera clearance and semantic target activation | 219 focused checks/build and independent 2880-frame component review passed. Integrated repaired Wayfarer; asset/camera/release checks and r822 build passed. Exact-head CI and Preview/hosted acceptance pending. Queued owner combat/atmosphere/reuse direction preserved. |
 | 821 | Codex | `claude/wayfarer-neck-bridge` / #470 | Close the imported hero rear neck gap with source-coherent fabric | Merged c4303ef9b07cea2a4934ec439ee02d3102649b35. Exact-head CI42431390795 passed; fresh Astra full review (818→821 source5a020acb): no blockers. Preview42432379936 and repaired hosted acceptance pending. 34 focused checks/build/freeze and 189-frame seam/art acceptance passed. |
 | 820 | Codex | `claude/wayfarer-rogue-asset` / #469 | Imported protective Wayfarer with adult proportions and amber eyes | Merged10672c8568e1c0f30844437754b0083f8b4dce2d. CI42426824705, merged CI42427897135 and Preview42427897177 passed; identity/link verified. Normal browser retry authorized and loaded. Actual GPU/rear topology found missing neck surface; held for focused bridge repair before publication. |

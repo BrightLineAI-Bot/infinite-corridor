@@ -9,7 +9,7 @@
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
 import { hashSeed } from "./random.ts";
-import { LETHAL_KINDS } from "./landscape.ts";
+import { LETHAL_KINDS, interiorTerrain, interiorTileLevel, canStep } from "./landscape.ts";
 import { APERTURE_BANDS, apertureBand } from "./items.ts";
 
 // Balance (data, not literals in the logic).
@@ -33,6 +33,7 @@ export const DIG = {
   glintShare: .4,                // share of those whose glint shows on an exposed face
   spotChance: .03, spotMinDepth: 2,
   maxTunnelsPerArea: 60,         // bounds what a save may hold for one area
+  surface: { version: 1, minElev: 0, maxElev: 5 }, // durable interior tunnel support metadata
   // Release 387 (Tim approved "glints and buried treasure could scale with Aperture tier"): every `every` Aperture tiers a
   // wall is `chance` likelier to hold something, and marks and materials come `more` times as plentiful (spheres stay one).
   tierScale: { every: 4, chance: .02, more: .5 },
@@ -89,8 +90,19 @@ const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 export function ensureDigging(save) {
   const d = save.digging && typeof save.digging === "object" ? save.digging : {}, dug = {};
   for (const [k, list] of Object.entries(d.dug || {})) if (typeof k === "string" && Array.isArray(list)) dug[k] = [...new Set(list.filter((p) => typeof p === "string" && /^-?\d+,-?\d+$/.test(p)))].slice(0, DIG.maxTunnelsPerArea);
+  const surfaces = {};
+  for (const [areaKey, records] of Object.entries(d.surfaces || {})) {
+    if (!records || typeof records !== "object" || Array.isArray(records) || !dug[areaKey]) continue;
+    const kept = {}, coordinates = new Set(dug[areaKey]);
+    for (const [coord, record] of Object.entries(records)) {
+      if (!coordinates.has(coord) || !record || typeof record !== "object" || Array.isArray(record)) continue;
+      if (record.version === DIG.surface.version) { if (Number.isFinite(record.elev) && record.elev >= DIG.surface.minElev && record.elev <= DIG.surface.maxElev) kept[coord] = { ...record, version: DIG.surface.version, elev: record.elev }; }
+      else if (Number.isFinite(record.version)) kept[coord] = { ...record };
+    }
+    if (Object.keys(kept).length) surfaces[areaKey] = kept;
+  }
   const spots = {}; for (const [k, v] of Object.entries(d.spots || {})) if (v === true && /^-?\d+,-?\d+$/.test(k)) spots[k] = true;
-  save.digging = { ...d, shovel: Math.max(0, Math.min(DIG.heldUses, Math.floor(Number(d.shovel) || 0))), ...(Number(d.iron) > 0 ? { iron: Math.min(DIG.iron.uses, Math.floor(Number(d.iron))) } : {}), dug, spots };
+  save.digging = { ...d, shovel: Math.max(0, Math.min(DIG.heldUses, Math.floor(Number(d.shovel) || 0))), ...(Number(d.iron) > 0 ? { iron: Math.min(DIG.iron.uses, Math.floor(Number(d.iron))) } : {}), dug, ...(d.surfaces !== undefined ? { surfaces } : {}), spots };
   if (!(save.digging.iron > 0)) delete save.digging.iron;
   save.materials ||= {}; save.materials.stone = Math.max(0, Math.floor(Number(save.materials.stone) || 0));
   return save;
@@ -210,13 +222,31 @@ export function planDig(map, px, py, facing, areaKey, { iron = false, overworld 
     if (!mine.has(ny * w + nx)) { if (interior) return { ok: false, sealed: true, reason: DIG_GATES.messages.sealed }; if (!iron) return { ok: false, resists: true, reason: "The rock beyond rings hollow and sealed. Something keeps that side; the shovel will not open it." }; }
     else if (interior && walked && !walked[ny * w + nx] && !(burrow && burrow(x, y))) return { ok: false, unwalked: true, reason: DIG_GATES.messages.unwalked }; }
   const through = Object.values(DIRS).some(([ex, ey]) => { const n = at(map, x + ex, y + ey); return (x + ex !== px || y + ey !== py) && walkable(n) && !n.tunnel; });
-  return { ok: true, x, y, through, depth, cut: isObstacle(at(map, x, y)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}), ...(burrow && burrow(x, y) ? { burrow: true } : {}) };
+  const surface = interiorTerrain(map) ? planTunnelSurface(map, px, py, x, y) : null;
+  if (surface && !surface.ok) return surface;
+  return { ok: true, x, y, ...(surface?.surface ? { from: { x: px, y: py }, surface: surface.surface } : {}), through, depth, cut: isObstacle(at(map, x, y)) ? "obstacle" : "wall", ...(iron ? { iron: true } : {}), ...(burrow && burrow(x, y) ? { burrow: true } : {}) };
+}
+const supportKnown = (n) => Number.isFinite(n) && n >= DIG.surface.minElev && n <= DIG.surface.maxElev;
+// A new interior tunnel keeps the exact support height at the edge approached from stable floor. It is deliberately
+// coordinate-bound and flat: chains inherit the preceding tunnel's real surface instead of searching for a low neighbour.
+export function planTunnelSurface(map, px, py, x, y) {
+  const dx = x - px, dy = y - py, source = at(map, px, py), target = at(map, x, y);
+  if (!interiorTerrain(map) || Math.abs(dx) + Math.abs(dy) !== 1 || !source || !target || source.blocked || source.build || target.build || LETHAL_KINDS.has(source.kind) || /hole|void/i.test(String(source.kind || ""))) return { ok: false, surfaceBlocked: true, reason: "Dig from stable floor, clear of anything built there." };
+  const edgeX = px + .5 + dx * .5, edgeY = py + .5 + dy * .5, elev = interiorTileLevel(source, edgeX, edgeY);
+  if (!supportKnown(elev)) return { ok: false, surfaceBlocked: true, reason: "The ground here gives no stable support for a tunnel." };
+  const opened = { ...target, kind: "tunnel", wallKind: target.kind, blocked: false, tunnel: true, elev, slope: false };
+  delete opened.rampDir;
+  if (LETHAL_KINDS.has(opened.kind) || opened.openAir) return { ok: false, surfaceBlocked: true, reason: "The ground here gives no stable support for a tunnel." };
+  const copy = { ...map, tiles: map.tiles.slice() }; copy.tiles[y * W(map) + x] = opened;
+  const entity = { isPlayer: true, jumping: true }, sx = px, sy = py - .25, tx = x, ty = y - .25;
+  if (!canStep(entity, copy, W(map), sx, sy, tx, ty) || !canStep(entity, copy, W(map), tx, ty, sx, sy)) return { ok: false, surfaceBlocked: true, reason: "The cut would leave an impassable lip." };
+  return { ok: true, surface: { version: DIG.surface.version, elev } };
 }
 // Turns a wall block into tunnel floor on this map.
-export function openTunnel(map, x, y, overworld = false) { const i = y * W(map) + x, t = map.tiles[i], level = overworld ? { elev: settleElev(map, x, y), slope: false } : {}; map.tiles[i] = { ...t, kind: "tunnel", wallKind: t.kind, blocked: false, tunnel: true, ...level }; return map.tiles[i]; }
+export function openTunnel(map, x, y, overworld = false, surface = null) { const i = y * W(map) + x, t = map.tiles[i], supported = !overworld && surface?.version === DIG.surface.version && supportKnown(surface.elev) && interiorTerrain(map), level = overworld ? { elev: settleElev(map, x, y), slope: false } : supported ? { elev: surface.elev, slope: false } : {}; map.tiles[i] = { ...t, kind: "tunnel", wallKind: t.kind, blocked: false, tunnel: true, ...level }; if (supported) delete map.tiles[i].rampDir; return map.tiles[i]; }
 // Re-applies an area's dug tunnels after it is generated (generation itself never changes).
 export function applyTunnels(map, save, areaKey, overworld = false) {
-  for (const p of save.digging?.dug?.[areaKey] || []) { const [x, y] = p.split(",").map(Number), t = at(map, x, y); if (t && t.blocked && !t.tunnel && t.kind !== "sealedGate" && t.kind !== "void") openTunnel(map, x, y, overworld); }
+  for (const p of save.digging?.dug?.[areaKey] || []) { const [x, y] = p.split(",").map(Number), t = at(map, x, y), surface = save.digging?.surfaces?.[areaKey]?.[p]; if (t && t.blocked && !t.tunnel && t.kind !== "sealedGate" && t.kind !== "void") openTunnel(map, x, y, overworld, surface); }
   return map;
 }
 // What a wall block hides, decided by the seed and the block's place: null, or { id, n, label, glint }.
@@ -255,17 +285,33 @@ export function creditFind(save, find) {
 // Digs the planned block: opens it, records it, wears the shovel, yields stone and any treasure.
 // Returns { ok, message, broke, find }.
 export function dig(save, map, plan, areaKey) {
+  const valid = validateDigPlan(save, map, plan, areaKey); if (!valid.ok) return valid;
   ensureDigging(save);
   const tool = plan.iron ? "iron" : "shovel", name = plan.iron ? "Iron shovel" : "Shovel";
   if (!(save.digging[tool] > 0)) return { ok: false, message: plan.iron ? "You have no iron shovel." : "You have no shovel." };
   const kept = canDigArea(areaKey), list = kept ? (save.digging.dug[areaKey] ||= []) : []; // release 433: a temporary place's tunnels are not saved
   if (list.length >= DIG.maxTunnelsPerArea) return { ok: false, message: "This place has been dug enough; the rock is unsound." };
-  openTunnel(map, plan.x, plan.y, !!plan.overworld); if (kept) list.push(`${plan.x},${plan.y}`);
+  openTunnel(map, plan.x, plan.y, !!plan.overworld, valid.surface); if (kept) { const coord = `${plan.x},${plan.y}`; list.push(coord); if (valid.surface) ((save.digging.surfaces ||= {})[areaKey] ||= {})[coord] = valid.surface; }
   save.digging[tool] = Math.max(0, save.digging[tool] - (plan.iron ? DIG.iron.cost[plan.hard ? "hard" : plan.cut] || 1 : plan.cut === "obstacle" && DIG.obstacleTakesShovel ? save.digging[tool] : 1)); if (DIG.stone.wall) addStone(save, DIG.stone.wall); // release 411: the iron shovel spends by what it cuts; 413: an obstacle takes a whole standard shovel, and no stone comes back
   const left = save.digging[tool], find = kept ? wallTreasure(save.seed, areaKey, plan.x, plan.y, saveTier(save)) : null, got = find ? creditFind(save, find) : null, broke = left === 0;
   if (plan.iron && broke) delete save.digging.iron;
   const parts = [plan.cut === "obstacle" ? "You break it down." : plan.through ? "You break through into the passage beyond." : "You dig a block into the wall.", got ? `Something in the rock: ${got}.` : null, broke ? `The ${name.toLowerCase()} snaps.` : `${name}: ${left} dig${left === 1 ? "" : "s"} left.`];
   return { ok: true, message: parts.filter(Boolean).join(" "), broke, find };
+}
+
+// Pure atomic preflight. Callers may safely run this before crafting; dig runs it again immediately before commit.
+export function validateDigPlan(save, map, plan, areaKey) {
+  if (!plan?.ok || !Number.isInteger(plan.x) || !Number.isInteger(plan.y)) return { ok: false, message: plan?.reason || "That tunnel is no longer sound." };
+  const coord = `${plan.x},${plan.y}`, list = save?.digging?.dug?.[areaKey];
+  if (canDigArea(areaKey) && (Array.isArray(list) && (list.includes(coord) || list.length >= DIG.maxTunnelsPerArea))) return { ok: false, message: list?.includes(coord) ? "That block is already dug." : "This place has been dug enough; the rock is unsound." };
+  const target = at(map, plan.x, plan.y); if (!(plan.overworld ? overworldDiggable(map, plan.x, plan.y) : diggable(map, plan.x, plan.y)) || target?.build) return { ok: false, message: "That tunnel is no longer sound." };
+  if (interiorTerrain(map) && !plan.overworld) {
+    const from = plan.from; if (!from || !Number.isInteger(from.x) || !Number.isInteger(from.y)) return { ok: false, message: "That tunnel plan has no stable origin." };
+    const current = planTunnelSurface(map, from.x, from.y, plan.x, plan.y);
+    if (!current.ok || plan.surface?.version !== DIG.surface.version || current.surface.elev !== plan.surface.elev) return { ok: false, message: current.reason || "The tunnel height has changed; face the wall and try again." };
+    return { ok: true, surface: { ...plan.surface } };
+  }
+  return { ok: true, surface: null };
 }
 
 // --- the overworld: disturbed earth ----------------------------------------------------------------------------------
