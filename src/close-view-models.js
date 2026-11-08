@@ -1,12 +1,12 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r824-2329dc4c0b06';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r824-2329dc4c0b06';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r824-2329dc4c0b06';
-import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r824-2329dc4c0b06';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.js?v=r824-2329dc4c0b06';
-import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.js?v=r824-2329dc4c0b06';
-import { PLAYER_FORM_HANDS } from './close-view-player-presentation.js?v=r824-2329dc4c0b06';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r824-2329dc4c0b06';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r825-0c066edbc1a0';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r825-0c066edbc1a0';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r825-0c066edbc1a0';
+import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r825-0c066edbc1a0';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.js?v=r825-0c066edbc1a0';
+import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.js?v=r825-0c066edbc1a0';
+import { PLAYER_FORM_HANDS } from './close-view-player-presentation.js?v=r825-0c066edbc1a0';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r825-0c066edbc1a0';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
 const ash = 0x87503f, coal = 0x372927, ember = 0xf3a55c;
@@ -91,6 +91,20 @@ const playerOrrery = [
   part(frontPatch, .22, -.25, 1.03, 1, .035, .035, visor, -2, 0, 1.19),
   part(frontPatch, .10, -.34, 1.07, 1, .022, .022, amber, -2, 0, 1.19),
 ];
+
+// Presentation silhouettes only. Gameplay reach remains PRIMARY_PROFILES in items.ts.
+// Both recipes begin at the existing right-hand grip (.17,-.25,.79).
+const cinderPike = [
+  block(.17,-.25,1.43,.026,.026,.66,bronze,-2,0,1.19),
+  part(taper,.17,-.25,2.19,.068,.052,.16,visor,-2,0,1.19),
+  part(frontPatch,.17,-.25,2.04,1,.085,.03,ember,-2,0,1.19),
+];
+const vergeCleaver = [
+  block(.17,-.25,.91,.043,.052,.14,leather,-2,0,1.19),
+  part(frontPatch,.17,-.25,1.06,1,.125,.04,bronze,-2,0,1.19),
+  part(taper,.17,-.25,1.48,.112,.025,.39,iron,-2,0,1.19),
+];
+const playerCinderPike=[...playerUnarmed,...cinderPike],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
 
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
 const ashling = [
@@ -222,7 +236,7 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
 } // exact rule cells are the residual panel, never generic bars
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery,
+const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -240,7 +254,7 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null,m=gear?.rightSocket;
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
@@ -291,6 +305,11 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (progress < .52) strike = 1;
     else { const t = (progress - .52) / .48; strike = 1 - t * t * (3 - 2 * t); }
   }
+  if ((kind === 'playerCinderPike' || kind === 'playerVergeCleaver') && pose === 'attack') {
+    if (progress < .08) { const t = progress / .08; strike = t * t * (3 - 2 * t); }
+    else if (progress < .30) strike = 1;
+    else { const t = (progress - .30) / .70; strike = 1 - t * t * (3 - 2 * t); }
+  }
   const tool = pose === "tool" ? Math.sin(Math.PI * progress) : 0;
   const cast = pose === "cast" ? Math.sin(Math.PI * progress) : 0;
   const jump = pose === "jump" ? Math.sin(Math.PI * progress) : 0;
@@ -307,7 +326,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
     * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
-  const shift = .14 * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
+  const shift = (kind === 'playerCinderPike' ? .22 : .14) * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
   const foundry = kind.startsWith('foundry-');
@@ -355,7 +374,8 @@ export function writeCloseViewModel(out, offset, actor) {
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
-    const cutYaw = playerLike && !fist && !chargingFist && swing === -2 ? .95 * Math.sin(progress * Math.PI * 2) * strike : 0;
+    const cutYaw = playerLike && !fist && !chargingFist && swing === -2
+      ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? 1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {

@@ -7,7 +7,7 @@
 // borders wavered by noise. Each cell rolls one number u in [0, 1) on its own hash; each version of this table gives a realm to a
 // further band of u (`bands`), always carved out of what was still `ordinary`, so a cell keeps its realm in every later version.
 // Only sections first seen with a version hold a realm (the atlas pins `farVersion`); ground seen before keeps none. Pure.
-import { hashSeed, byHash } from "./random.js?v=r824-2329dc4c0b06";
+import { hashSeed, byHash } from "./random.js?v=r825-0c066edbc1a0";
 
 export const FAR_REALMS = {
   version: 6, start: 1000, cell: 40, warp: 9, // 5 (719): the Ink Wastes; 6 (720): the folk realms; // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people

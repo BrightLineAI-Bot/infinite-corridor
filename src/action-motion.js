@@ -11,6 +11,7 @@ export const ATTACK_VISUAL_PROFILES = Object.freeze([
   "melee", "fist", "emitter", "hammer", "sweep", "mirage", "orrery-tap", "orrery-release",
 ]);
 const ATTACK_VISUAL_PROFILE = /^[a-z][a-z0-9-]{0,31}$/;
+export const PRIMARY_VISUAL_KINDS = Object.freeze(["salvage-blade", "cinder-pike", "verge-cleaver"]);
 
 export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -21,6 +22,20 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (typeof raw.profile !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.profile)) return null;
   const profile = raw.profile;
   const copy = { ...raw, profile, durationMs };
+  if (raw.weaponKind != null) {
+    if (typeof raw.weaponKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
+    copy.weaponKind = raw.weaponKind;
+  }
+  if (raw.poseMs != null) {
+    const poseMs = Number(raw.poseMs);
+    if (!Number.isFinite(poseMs) || poseMs < 0 || poseMs > 1e12) return null;
+    copy.poseMs = poseMs;
+  }
+  if (raw.facingYaw != null) {
+    const facingYaw = Number(raw.facingYaw);
+    if (!Number.isFinite(facingYaw) || Math.abs(facingYaw) > Math.PI * 4) return null;
+    copy.facingYaw = facingYaw;
+  }
   if (raw.aim != null) {
     if (typeof raw.aim !== "object" || Array.isArray(raw.aim)) return null;
     const x = Number(raw.aim.x), y = Number(raw.aim.y);
