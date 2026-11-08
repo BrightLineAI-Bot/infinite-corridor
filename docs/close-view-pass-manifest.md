@@ -153,3 +153,7 @@ All four independent passes are complete. Actionable findings were fixed in focu
 ## Additional approved mobile camera pass — 2026-11-07
 
 The owner reports unreliable following and cramped-space navigation while liking the environment feel. Research, design inferences, work items and acceptance gates are tracked in [the mobile camera manifest](mobile-close-view-camera-manifest.md). Preserve prior assets, controls and generated/pinned interiors; no new release number is reserved. This pass is additional work, not a claim that the earlier feel pass covered the newly reported issue.
+
+## Additional owner combat direction — queued
+
+See [the preserved combat direction](close-view-combat-direction.md) for weapon identity, the Iron Fists dash punch/jab/uppercut, visible casting, solid bodies, combat spacing and evidence gates. Finish current character and camera work before this expanded pass.
