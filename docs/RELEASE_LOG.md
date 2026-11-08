@@ -21,8 +21,8 @@ Release r834 is assigned to the prepared Hammerfall candidate against fresh r833
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 834 | Codex | `claude/close-view-hammerfall-stomp` | Dedicated stomp, original-pulse guard and logical carry continuity | Candidate prepared against verified r833 main; focused server-free checks/build and component review clear. Not merged, previewed, delivered or published. |
-| — | Codex | `claude/close-view-spell-gestures` | Canonical accepted spell gestures and origins | Prepared; final main/release/hosted gates remain. |
+| 835 | Codex | `claude/close-view-spell-gestures` | Accepted spell gestures, free-hand origins and public manual cast inspections | In flight. Focused source/fixture checks and build passed; exact CI, fresh since-live review, Preview, hosted casting and publication gates pending. Merge remains held behind r834's hosted/publication gate. |
+| 834 | Codex | `claude/close-view-hammerfall-stomp` / #486 | Dedicated stomp, original-pulse guard and logical carry continuity | Merged32b9249def935f4112039ee5383a8759a3ffc196. Corrected source42914fc2/tree9640ab40 passed source CI42506353026 and fresh Astra33->834 full/correction review with no blockers. Missing-original queued-intent regression is covered through actual Game.update. Merged CI42507220270 and Preview42507220259 are pending at this packaging checkpoint; hosted stomp and publication gates remain. |
 | — | Codex | `claude/close-view-grounded-contact` | Grounded bodies, overlap escape, accepted movement consequences and items | Prepared; final main/release/hosted gates remain. |
 | — | Codex | `claude/close-view-traversal-blocks` | Legacy/current stone steps, stacking and active lifetime | Prepared; final main/release/hosted gates remain. |
 | — | Codex | `claude/close-view-cleaver-four-strike` | Right-handed Cleaver and four up/down cuts | Prepared with supported legacy/opaque state and unchanged canonical hit rules; scoped Astra clear, hosted gate remains. |
