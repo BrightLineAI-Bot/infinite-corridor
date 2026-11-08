@@ -26,6 +26,11 @@ const TOOL_USE_BASE_COOLDOWN = Object.freeze({"rift-bombard":360,blunderbuss:360
 const TOOL_USE_KINDS=Object.freeze(Object.keys(TOOL_USE_STARTUP_MS));
 const finiteObject=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const validUseId=v=>typeof v==='string'&&v.length>0&&v.length<=160;
+export function normalizeHammerfallStartup(raw){
+  if(!finiteObject(raw))return null;const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return structuredClone(raw);
+  if(v!==1||typeof raw.effectId!=='string'||!/^tool-[a-z0-9-]{1,59}$/.test(raw.effectId)||!['area','areaId','levelId'].every(k=>typeof raw[k]==='string'&&raw[k].length<=512))return null;
+  return {...raw,v:1,effectId:raw.effectId,area:raw.area,areaId:raw.areaId,levelId:raw.levelId};
+}
 export function toolUseStartupMs(kind,effectiveCooldownMs){const normal=TOOL_USE_STARTUP_MS[kind],base=TOOL_USE_BASE_COOLDOWN[kind],n=Number(effectiveCooldownMs);return normal&&Number.isFinite(n)?Math.max(1,normal*Math.max(0,Math.min(1,n/base))):null;}
 export function normalizeToolUseVisual(raw,toolKind,durationMs){
   if(!finiteObject(raw))return null;const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return {...raw};
@@ -170,6 +175,13 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (!Number.isFinite(fistCharge) || fistCharge < 0 || fistCharge > 1) return null;
     copy.fistCharge = fistCharge;
   }
+  if (raw.hammerEffectId != null) {
+    if (typeof raw.hammerEffectId !== "string" || !/^[a-z0-9-]{1,64}$/.test(raw.hammerEffectId)) return null;
+    copy.hammerEffectId = raw.hammerEffectId;
+    const delay = Number(raw.hammerDelayMs), recovery = Number(raw.hammerRecoveryMs);
+    if (!Number.isFinite(delay) || delay <= 0 || delay > durationMs || !Number.isFinite(recovery) || recovery <= 0 || delay + recovery !== durationMs) return null;
+    copy.hammerDelayMs = delay; copy.hammerRecoveryMs = recovery;
+  } else if (raw.hammerDelayMs != null || raw.hammerRecoveryMs != null) return null;
   if (raw.presentationCancelled != null) {
     if (typeof raw.presentationCancelled !== "boolean") return null;
     copy.presentationCancelled = raw.presentationCancelled;
@@ -186,6 +198,17 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
 // Accepted presentation is independent of combat clocks (which delayed Echo hits still update).
 // Published Fists and the earlier primary candidate retain their optional legacy clocks.
 export function attackVisualDeadline(player, record = player?.attackVisual, context = null) {
+  if (record?.hammerEffectId && context && Number.isFinite(context.now) && Array.isArray(context.effects)) {
+    const effect = context.effects.find((candidate) => candidate?.id === record.hammerEffectId);
+    if (!effect) return context.now;
+    const delayMs = record.hammerDelayMs, recoveryMs = record.hammerRecoveryMs;
+    let elapsed;
+    if (effect.delay > 0) elapsed = delayMs - Math.min(delayMs, effect.delay * 1000);
+    else if (!(effect.pulseIndex > 0)) elapsed = Math.max(0, delayMs - .001);
+    else elapsed = delayMs + Math.max(0, recoveryMs - Math.max(0, effect.life) * 1000);
+    elapsed = Math.max(0, Math.min(record.durationMs, elapsed));
+    return context.now + record.durationMs - elapsed;
+  }
   const pending=context?.pendingToolUse,u=record?.toolUse,now=Number(context?.now);if(u?.v===1&&u.phase==='startup'&&pending?.v===1&&pending.id===u.id&&Number.isFinite(now)&&Number.isFinite(pending.acceptedAt)){const age=Math.max(0,Math.min(u.startupMs,now-pending.acceptedAt));return now+record.durationMs-age;}
   if (Number.isFinite(player?.actionVisualUntil)) return player.actionVisualUntil;
   if (record?.profile === 'fist' && Number.isFinite(player?.fistVisualUntil)) return player.fistVisualUntil;

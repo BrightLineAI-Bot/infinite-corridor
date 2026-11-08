@@ -1,5 +1,5 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { sampleToolActionMotion, toolUsePoseTime } from './action-motion.js?v=r833-23e83526084b';
+import { sampleToolActionMotion, toolUsePoseTime } from './action-motion.js?v=r834-32b9249def93';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -162,6 +162,95 @@ function qmul(out,o,a,x,b,y){const ax=a[x],ay=a[x+1],az=a[x+2],aw=a[x+3],bx=b[y]
 function qinv(out,o,a,x){out[o]=-a[x];out[o+1]=-a[x+1];out[o+2]=-a[x+2];out[o+3]=a[x+3];}
 function qrot(out,o,q,x,vx,vy,vz){const qx=q[x],qy=q[x+1],qz=q[x+2],qw=q[x+3],tx=2*(qy*vz-qz*vy),ty=2*(qz*vx-qx*vz),tz=2*(qx*vy-qy*vx);out[o]=vx+qw*tx+qy*tz-qz*ty;out[o+1]=vy+qw*ty+qz*tx-qx*tz;out[o+2]=vz+qw*tz+qx*ty-qy*tx;}
 function matrixQuat(out,o,m,x){const l0=Math.hypot(m[x],m[x+1],m[x+2])||1,l1=Math.hypot(m[x+4],m[x+5],m[x+6])||1,l2=Math.hypot(m[x+8],m[x+9],m[x+10])||1,a=m[x]/l0,b=m[x+1]/l0,c=m[x+2]/l0,d=m[x+4]/l1,e=m[x+5]/l1,f=m[x+6]/l1,g=m[x+8]/l2,h=m[x+9]/l2,i=m[x+10]/l2,trace=a+e+i;let qx,qy,qz,qw;if(trace>0){const s=Math.sqrt(trace+1)*2;qw=s/4;qx=(f-h)/s;qy=(g-c)/s;qz=(b-d)/s;}else if(a>e&&a>i){const s=Math.sqrt(1+a-e-i)*2;qw=(f-h)/s;qx=s/4;qy=(d+b)/s;qz=(g+c)/s;}else if(e>i){const s=Math.sqrt(1+e-a-i)*2;qw=(g-c)/s;qx=(d+b)/s;qy=s/4;qz=(h+f)/s;}else{const s=Math.sqrt(1+i-a-e)*2;qw=(b-d)/s;qx=(g+c)/s;qy=(h+f)/s;qz=s/4;}const l=Math.hypot(qx,qy,qz,qw)||1;out[o]=qx/l;out[o+1]=qy/l;out[o+2]=qz/l;out[o+3]=qw/l;}
+function solveArmLegacy(state,pose,left,target,frameYaw=0){const upper=left?12:22,lower=left?11:21,wrist=left?7:18,thumb=left?9:20,grip=left?6:16,side=left?1:-1,q=state.primaryScratch,so=upper*16,eo=lower*16,wo=wrist*16,go=grip*16;build(state.asset,state,pose);matrixQuat(q,0,state.global,wo);matrixQuat(q,4,state.global,go);qinv(q,8,q,0);qmul(q,12,q,8,q,4);qinv(q,16,q,12);const half=(frameYaw-Math.PI/2)/2;q[20]=0;q[21]=Math.sin(half);q[22]=0;q[23]=Math.cos(half);qmul(q,24,q,20,q,16);qrot(q,28,q,8,state.global[go+12]-state.global[wo+12],state.global[go+13]-state.global[wo+13],state.global[go+14]-state.global[wo+14]);qrot(q,32,q,24,q[28],q[29],q[30]);const tx=target[0]-q[32],ty=target[1]-q[33],tz=target[2]-q[34],sx=state.global[so+12],sy=state.global[so+13],sz=state.global[so+14],ex=state.global[eo+12],ey=state.global[eo+13],ez=state.global[eo+14],wx=state.global[wo+12],wy=state.global[wo+13],wz=state.global[wo+14],a=Math.hypot(ex-sx,ey-sy,ez-sz),b=Math.hypot(wx-ex,wy-ey,wz-ez),rx=tx-sx,ry=ty-sy,rz=tz-sz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;let px=side,py=-.45,pz=0,pdot=px*dx+py*dy+pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;let pl=Math.hypot(px,py,pz);if(pl<1e-5){px=0;py=-dz;pz=dy;pl=Math.hypot(px,py,pz)||1;}px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=sx+dx*along+px*height,jy=sy+dy*along+py*height,jz=sz+dz*along+pz*height;alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);alignJoint(state,pose,lower,wrist,tx,ty,tz);build(state.asset,state,pose);matrixQuat(q,36,state.global,eo);qinv(q,40,q,36);qmul(q,44,q,40,q,24);const po=wrist*10+3,to=thumb*10+3;qinv(q,48,pose,po);qmul(q,52,q,44,q,48);qmul(q,56,q,52,pose,to);for(let k=0;k<4;k++){pose[po+k]=q[44+k];pose[to+k]=q[56+k];}build(state.asset,state,pose);return Math.hypot(state.global[go+12]-target[0],state.global[go+13]-target[1],state.global[go+14]-target[2]);}
+function primaryPoseLegacy(state,pose,profile,p){return profile&&p;}
+function toolPoseLegacy(state,pose,profile,p,weight){
+  state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
+  let frameYaw=0,side=0,up=-.10,forward=.47;
+  if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
+  else if(profile==='rift-bombard'){side=-.05;up=-.13;forward=.43;}
+  else if(profile==='blunderbuss'){side=-.04;up=-.08;forward=.50;}
+  else if(profile==='great-sweep'){
+    const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;
+    frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;
+  }
+  target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
+  solveArmLegacy(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
+  state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
+}
+function anklePoint(state,left,out){const lower=left?29:31,o=lower*16,k=left?0:3,g=state.global,a=state.ankleLocal,x=a[k],y=a[k+1],z=a[k+2];out[0]=g[o]*x+g[o+4]*y+g[o+8]*z+g[o+12];out[1]=g[o+1]*x+g[o+5]*y+g[o+9]*z+g[o+13];out[2]=g[o+2]*x+g[o+6]*y+g[o+10]*z+g[o+14];return out;}
+function alignJointPoint(state,pose,node,point,tx,ty,tz){
+  const j=node*16,jx=state.global[j+12],jy=state.global[j+13],jz=state.global[j+14],ax=point[0]-jx,ay=point[1]-jy,az=point[2]-jz,bx=tx-jx,by=ty-jy,bz=tz-jz,al=Math.hypot(ax,ay,az),bl=Math.hypot(bx,by,bz);if(al<1e-7||bl<1e-7)return;
+  const ux=ax/al,uy=ay/al,uz=az/al,vx=bx/bl,vy=by/bl,vz=bz/bl,cx=uy*vz-uz*vy,cy=uz*vx-ux*vz,cz=ux*vy-uy*vx,cl=Math.hypot(cx,cy,cz),dot=clamp(ux*vx+uy*vy+uz*vz,-1,1);if(cl<1e-8)return;
+  const parent=state.asset.meta.nodes[node].parent,pm=parent*16,wx=cx/cl,wy=cy/cl,wz=cz/cl,c0=Math.hypot(state.global[pm],state.global[pm+1],state.global[pm+2])||1,c1=Math.hypot(state.global[pm+4],state.global[pm+5],state.global[pm+6])||1,c2=Math.hypot(state.global[pm+8],state.global[pm+9],state.global[pm+10])||1,lx=(wx*state.global[pm]+wy*state.global[pm+1]+wz*state.global[pm+2])/c0,ly=(wx*state.global[pm+4]+wy*state.global[pm+5]+wz*state.global[pm+6])/c1,lz=(wx*state.global[pm+8]+wy*state.global[pm+9]+wz*state.global[pm+10])/c2,ll=Math.hypot(lx,ly,lz)||1,angle=Math.acos(dot),s=Math.sin(angle/2)/ll,dw=Math.cos(angle/2),dx=lx*s,dy=ly*s,dz=lz*s,o=node*10+3,x=pose[o],y=pose[o+1],z=pose[o+2],w=pose[o+3];pose[o]=dw*x+dx*w+dy*z-dz*y;pose[o+1]=dw*y-dx*z+dy*w+dz*x;pose[o+2]=dw*z+dx*y-dy*x+dz*w;pose[o+3]=dw*w-dx*x-dy*y-dz*z;
+}
+function solveLeg(state,pose,left,target,weight,data) {
+  const upper=left?30:32,lower=left?29:31,foot=left?1:36,g=state.global,ho=upper*16,ko=lower*16,ankle=state.anklePoint;
+  build(state.asset,state,pose);anklePoint(state,left,ankle);
+  const hx=g[ho+12],hy=g[ho+13],hz=g[ho+14],kx=g[ko+12],ky=g[ko+13],kz=g[ko+14];
+  const a=Math.hypot(kx-hx,ky-hy,kz-hz),b=Math.hypot(ankle[0]-kx,ankle[1]-ky,ankle[2]-kz),rx=target[0]-hx,ry=target[1]-hy,rz=target[2]-hz;
+  const raw=Math.hypot(rx,ry,rz)||1,d=clamp(raw,Math.abs(a-b)+1e-5,a+b-1e-5),dx=rx/raw,dy=ry/raw,dz=rz/raw;
+  // Approach the source knee plane continuously, then use a forward knee pole at full weight.
+  let px=(kx-hx)*(1-weight),py=(ky-hy)*(1-weight),pz=(kz-hz)*(1-weight)+weight;
+  const dot=px*dx+py*dy+pz*dz;px-=dot*dx;py-=dot*dy;pz-=dot*dz;
+  const plen=Math.hypot(px,py,pz)||1;px/=plen;py/=plen;pz/=plen;
+  const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along));
+  alignJoint(state,pose,upper,lower,hx+dx*along+px*height,hy+dy*along+py*height,hz+dz*along+pz*height);
+  build(state.asset,state,pose);anklePoint(state,left,ankle);alignJointPoint(state,pose,lower,ankle,hx+dx*d,hy+dy*d,hz+dz*d);
+  build(state.asset,state,pose);anklePoint(state,left,ankle);
+  const fx=ankle[0]+data[3]*(1-weight),fy=ankle[1]+data[4]*(1-weight),fz=ankle[2]+data[5]*(1-weight),q=state.primaryScratch;
+  inverseAffine(q,0,g,38*16);const o=foot*10;
+  pose[o]=q[0]*fx+q[4]*fy+q[8]*fz+q[12]-state.fit.offsets[foot*3];
+  pose[o+1]=q[1]*fx+q[5]*fy+q[9]*fz+q[13]-state.fit.offsets[foot*3+1];
+  pose[o+2]=q[2]*fx+q[6]*fy+q[10]*fz+q[14]-state.fit.offsets[foot*3+2];
+  quaternion(q,16,data,6,state.hammerFeet,(left?0:1)*8+3,weight);
+  matrixQuat(q,20,g,38*16);qinv(q,24,q,20);qmul(pose,o+3,q,24,q,16);
+}
+function soleMinimum(points,q,o) {
+  const x=q[o],y=q[o+1],z=q[o+2],w=q[o+3],rx=2*(x*y+z*w),ry=1-2*(x*x+z*z),rz=2*(y*z-x*w);let low=Infinity;
+  for(let i=0;i<points.length;i+=3)low=Math.min(low,rx*points[i]+ry*points[i+1]+rz*points[i+2]);
+  return low;
+}
+function hammerPose(asset,state,pose,p) {
+  const elapsed=p*570,descent=smoothstep((elapsed-240)/80),weight=smoothstep(elapsed/160)*(1-smoothstep((elapsed-400)/170));
+  if(!(weight>0))return;
+  const layer=state.hammerLayer,data=state.hammerLegData,g=state.global,target=state.primaryTarget;
+  layer.set(pose);build(asset,state,pose);
+  // Read the unmodified gait/sole frame BEFORE the pelvis drops.
+  for(let side=0;side<2;side++){
+    const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);
+    for(let k=0;k<3;k++){data[o+k]=target[k];data[o+3+k]=g[foot*16+12+k]-target[k];}
+    matrixQuat(data,o+6,g,foot*16);
+  }
+  clipPose(asset,asset.clips.Punch,asset.clips.Punch.duration*.40,state.fistSource);
+  for(const node of FIST_OWN)for(let k=0;k<4;k++)layer[node*10+3+k]=state.fistSource[node*10+3+k];
+  build(asset,state,layer);
+  const midX=(g[12*16+12]+g[22*16+12])/2,midY=(g[12*16+13]+g[22*16+13])/2,midZ=(g[12*16+14]+g[22*16+14])/2;
+  for(let side=0;side<2;side++){
+    const left=side===0,sign=left?1:-1,shoulder=left?12:22,elbow=left?11:21,wrist=left?7:18;
+    build(asset,state,layer);const reach=Math.hypot(g[elbow*16+12]-g[shoulder*16+12],g[elbow*16+13]-g[shoulder*16+13],g[elbow*16+14]-g[shoulder*16+14])+Math.hypot(g[wrist*16+12]-g[elbow*16+12],g[wrist*16+13]-g[elbow*16+13],g[wrist*16+14]-g[elbow*16+14]);
+    const crossX=midX-sign*.08,crossY=midY-(left?.20:.15),crossZ=midZ+(left?.34:.23);
+    target[0]=crossX+(g[shoulder*16+12]+sign*.04-crossX)*descent;
+    target[1]=crossY+(g[shoulder*16+13]-.65*reach-crossY)*descent;
+    target[2]=crossZ+(midZ+.16-crossZ)*descent;
+    solveArm(state,layer,left,target,0);
+  }
+  blend(pose,layer,weight);
+  pose[33*10+1]-=.07*descent*weight;
+  for(let side=0;side<2;side++){
+    const left=side===0,o=side*10,r=side*8,sign=left?1:-1;
+    const lift=left?0:.40*(1-descent)+(elapsed<320?.02*descent:0);
+    target[0]=data[o]+(state.hammerFeet[r]+sign*.075*descent-data[o])*weight;
+    target[1]=data[o+1]+(state.hammerFeet[r+1]+lift-data[o+1])*weight;
+    target[2]=data[o+2]+(state.hammerFeet[r+2]-data[o+2])*weight;
+    // A slerped sole can rotate below the linear path of its two endpoint soles. Lift the
+    // ankle target by that geometric sag, so the connected leg follows the corrected foot.
+    const q=state.primaryScratch,sole=state.hammerSoles[side];quaternion(q,0,data,o+6,state.hammerFeet,r+3,weight);
+    target[1]+=Math.max(0,soleMinimum(sole,data,o+6)*(1-weight)+soleMinimum(sole,state.hammerFeet,r+3)*weight-soleMinimum(sole,q,0));
+    solveLeg(state,pose,left,target,weight,state.hammerLegSides[side]);
+  }
+  state.clip='derived-hammerfall-stomp';state.clipTime=p;
+}
 function solveArm(state,pose,left,target,frameYaw=0,framePitch=0){const upper=left?12:22,lower=left?11:21,wrist=left?7:18,thumb=left?9:20,grip=left?6:16,side=left?1:-1,q=state.primaryScratch,so=upper*16,eo=lower*16,wo=wrist*16,go=grip*16;build(state.asset,state,pose);matrixQuat(q,0,state.global,wo);matrixQuat(q,4,state.global,go);qinv(q,8,q,0);qmul(q,12,q,8,q,4);qinv(q,16,q,12);const half=(frameYaw-Math.PI/2)/2;const qs=Math.sin(half),qc=Math.cos(half),sp=Math.sin(framePitch/2),cp=Math.cos(framePitch/2);q[20]=qs*sp;q[21]=qs*cp;q[22]=qc*sp;q[23]=qc*cp;qmul(q,24,q,20,q,16);qrot(q,28,q,8,state.global[go+12]-state.global[wo+12],state.global[go+13]-state.global[wo+13],state.global[go+14]-state.global[wo+14]);qrot(q,32,q,24,q[28],q[29],q[30]);const tx=target[0]-q[32],ty=target[1]-q[33],tz=target[2]-q[34],sx=state.global[so+12],sy=state.global[so+13],sz=state.global[so+14],ex=state.global[eo+12],ey=state.global[eo+13],ez=state.global[eo+14],wx=state.global[wo+12],wy=state.global[wo+13],wz=state.global[wo+14],a=Math.hypot(ex-sx,ey-sy,ez-sz),b=Math.hypot(wx-ex,wy-ey,wz-ez),rx=tx-sx,ry=ty-sy,rz=tz-sz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;let px=side,py=-.45,pz=0,pdot=px*dx+py*dy+pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;let pl=Math.hypot(px,py,pz);if(pl<1e-5){px=0;py=-dz;pz=dy;pl=Math.hypot(px,py,pz)||1;}px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=sx+dx*along+px*height,jy=sy+dy*along+py*height,jz=sz+dz*along+pz*height;alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);alignJoint(state,pose,lower,wrist,tx,ty,tz);build(state.asset,state,pose);matrixQuat(q,36,state.global,eo);qinv(q,40,q,36);qmul(q,44,q,40,q,24);const po=wrist*10+3,to=thumb*10+3;qinv(q,48,pose,po);qmul(q,52,q,44,q,48);qmul(q,56,q,52,pose,to);for(let k=0;k<4;k++){pose[po+k]=q[44+k];pose[to+k]=q[56+k];}build(state.asset,state,pose);return Math.hypot(state.global[go+12]-target[0],state.global[go+13]-target[1],state.global[go+14]-target[2]);}
 // Presentation stages never own hit events. All three return to the same carry pose.
 const PRIMARY_CUTS = Object.freeze([
@@ -213,6 +302,7 @@ function toolPose(state,pose,profile,p,weight,action){
   solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
   state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
 }
+
 function build(asset, state, pose) {
   const head = asset.meta.headAttachment;
   for (const i of asset.order) {
@@ -242,9 +332,11 @@ function deform(asset, state) {
 export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),primaryGripResidual:0,local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),primaryGripResidual:0,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.proportions={width:proportions.width,depth:proportions.depth,hands:proportions.hands};s.fit=fitProportions(asset,s.proportions);
   clipPose(asset, asset.clips.Idle, 0, s.pose); build(asset, s, s.pose); deform(asset, s);
+  {const inv=s.primaryScratch;for(const [side,lower,foot] of [[0,29,1],[1,31,36]]){inverseAffine(inv,0,s.global,lower*16);const x=s.global[foot*16+12],y=s.global[foot*16+13],z=s.global[foot*16+14],o=side*3;s.ankleLocal[o]=inv[0]*x+inv[4]*y+inv[8]*z+inv[12];s.ankleLocal[o+1]=inv[1]*x+inv[5]*y+inv[9]*z+inv[13];s.ankleLocal[o+2]=inv[2]*x+inv[6]*y+inv[10]*z+inv[14];}}
   {const q=s.fistScratch,a=new Float64Array(9),b=new Float64Array(9);for(let node=0;node<n;node++){qmat(s.fistBindLocal,node*9,asset.rest,node*10+3);matrixQuat(q,0,s.global,node*16);qmat(s.fistBindGlobal,node*9,q,0);}for(const [l,r] of FIST_PAIRS)for(const [target,source] of [[l,r],[r,l]]){const tp=asset.meta.nodes[target].parent,sp=asset.meta.nodes[source].parent;m3transpose(a,0,s.fistBindGlobal,tp*9);for(let k=0;k<9;k++)b[k]=s.fistBindGlobal[sp*9+k];b[0]*=-1;b[3]*=-1;b[6]*=-1;m3mul(s.fistMirrorC,(target*n+source)*9,a,0,b,0);}s.fistSource.set(asset.rest);s.other.set(asset.rest);s.fistMirrorRestError=0;for(const [l,r] of FIST_PAIRS)for(const [target,source] of [[l,r],[r,l]]){fistMirroredRotation(s,target,source);const o=target*10+3,d=Math.min(Math.hypot(s.other[o]-asset.rest[o],s.other[o+1]-asset.rest[o+1],s.other[o+2]-asset.rest[o+2],s.other[o+3]-asset.rest[o+3]),Math.hypot(s.other[o]+asset.rest[o],s.other[o+1]+asset.rest[o+1],s.other[o+2]+asset.rest[o+2],s.other[o+3]+asset.rest[o+3]));s.fistMirrorRestError=Math.max(s.fistMirrorRestError,d);}}
   let collar = Infinity, head = Infinity; for (const v of asset.meta.headAttachment.collarVertexIndices) collar = Math.min(collar, s.vertices[v * 6 + 1]);
   for (const m of asset.meta.meshes) if (m.node === asset.meta.headAttachment.node) for (let i = m.firstVertex; i < m.firstVertex + m.vertexCount; i++) head = Math.min(head, s.vertices[i * 6 + 1]);
@@ -254,6 +346,14 @@ export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   // Bounds belong to rendered triangles, never unused source vertices left by extraction.
   for (const v of asset.arrays.indices) { const y=s.vertices[v*6+1]; s.minY = Math.min(s.minY, y); max = Math.max(max, y); s.downClearance=Math.max(s.downClearance,-s.vertices[v*6+2]+.02); }
   s.referenceHeight = max - s.minY; if (!(s.referenceHeight > .1)) throw new Error('Invalid hero height');
+  for(let side=0;side<2;side++){
+    const foot=side===0?1:36,r=side*8,points=[],q=s.primaryScratch;let sole=Infinity;
+    matrixQuat(q,0,s.global,foot*16);qinv(q,4,q,0);
+    for(const mesh of asset.meta.meshes){if(mesh.skin<0)continue;const skin=asset.skins[mesh.skin];for(let v=mesh.firstVertex;v<mesh.firstVertex+mesh.vertexCount;v++){let influence=0;for(let k=0;k<4;k++)if(skin.joints[asset.arrays.joints[v*4+k]]===foot)influence+=asset.arrays.weights[v*4+k];if(influence>.5){sole=Math.min(sole,s.vertices[v*6+1]);qrot(q,8,q,4,s.vertices[v*6]-s.global[foot*16+12],s.vertices[v*6+1]-s.global[foot*16+13],s.vertices[v*6+2]-s.global[foot*16+14]);points.push(q[8],q[9],q[10]);}}}
+    (s.hammerSoles||=[])[side]=Float64Array.from(points);
+    s.hammerFeet[r]=s.global[foot*16+12];s.hammerFeet[r+1]=s.global[foot*16+13]+s.minY-sole+.0045;s.hammerFeet[r+2]=s.global[foot*16+14];matrixQuat(s.hammerFeet,r+3,s.global,foot*16);
+  }
+
   clipPose(asset, asset.clips.Roll, .08, s.other); build(asset, s, s.other); const b = asset.meta.reference.bodyNode * 16; s.rollX = s.global[b + 12]; s.rollZ = s.global[b + 14];
   return s;
 }
@@ -305,9 +405,10 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const speed = Math.max(0,Number(input.speed)||0), phase = ((Number(input.gaitPhase) || 0) / TAU % 1 + 1) % 1;
   const action=input.action,p=clamp(Number(action?.phase)||0),knocked=action?.kind==='hit'&&action.profile==='knockdown';
   // Accepted action progress, not wall-clock idle breathing, owns every action blend.
+  const hammerAction=action?.kind==='melee'&&action.profile==='hammer';
   const timedPrimary=action?.kind==='melee'&&['melee','cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
-  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
+  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null;
   let clip = null, weight = 0, time = 0, dx = 0, dz = 0;
@@ -315,7 +416,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   if(primaryAction)primaryPose(state,state.pose,primaryAction,p,action.primaryStep);else if(heldPrimary)primaryPose(state,state.pose,heldPrimary,0);else state.primaryGripResidual=0;
   if (action) {
     const kind = action.kind, profile = action.profile;
-    if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'hammer') clip = asset.clips.Dagger_Attack2; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
+    if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
     else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact') clip = asset.clips.PickUp;
     weight = kind === 'death' ? 1 : Math.min(1, p / .08, (1 - p) / .12);
     if(kind==='dodge') {
@@ -328,7 +429,10 @@ export function sampleCloseViewHero(asset, state, input, out) {
     else if (clip) { time = kind === 'melee' ? (profile==='fist'?fistSourceTime(p,clip.duration):sourceTime(p, clip.duration)) : p * clip.duration;const fistProfile=profile==='fist'||profile==='fistCharge',lead=action.fistLead==='left'?'left':'right',step=[1,2,3].includes(action.fistStep)?action.fistStep:1,strikeLead=step===2?(lead==='left'?'right':'left'):lead;if(fistProfile)fistPose(asset,state,time,strikeLead);else clipPose(asset,clip,time,state.other);
       if(fistProfile){if(profile==='fistCharge'){fistReadyPose(asset,state,state.pose,p,strikeLead);state.clip='derived-fist-charge';state.clipTime=p;clip=null;}else{const envelope=Math.min(1,p/.08,(1-p)/.16),carry=clamp(Number(action.fistCharge)||0)*(1-p);if(carry>0){fistReadyPose(asset,state,state.pose,carry,strikeLead);fistPose(asset,state,time,strikeLead);}fistLayer(state.other,step,lead,step===3?.9:.65);weight=envelope;state.clip=step===1?'derived-dash-punch':step===2?'derived-opposite-jab':'derived-rising-uppercut';state.clipTime=p;}}
       if (kind === 'dodge') { build(asset, state, state.other); const b = asset.meta.reference.bodyNode * 16; dx = -(state.global[b + 12] - state.rollX) * weight; dz = -(state.global[b + 14] - state.rollZ) * weight; }
+
       if(clip){if(profile!=='fist'||weight>0)blend(state.pose, state.other, weight);if(profile!=='fist'){state.clip = clip.name; state.clipTime = time;}}
+    } else if (kind === 'melee' && profile === 'hammer') {
+      hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
       toolPose(state,state.pose,profile,p,weight,action);
     } else if (kind === 'ranged' || kind === 'cast' || kind === 'jump') {
