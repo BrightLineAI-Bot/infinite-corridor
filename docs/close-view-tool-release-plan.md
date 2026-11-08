@@ -230,3 +230,30 @@ The Fists source correction above supersedes the earlier inner-method-only infer
 The reviewed tool-release history through `9a8d6b0e66b9c74dd51def150172dac00cc7c0e0` was merged with official main release 830 at `7f0480a8bacd995d96b088fe12c1d89f6c19fe15`, preserving both histories. The union retains release 828 camera work, release 829 Salvage presentation, release 830 Echo/cone/GPU-fallback work and the delayed physical transaction for the four named Close View tools. Fresh top-down/ineligible uses remain immediate; eligible Close View uses retain startup absence, actual release-relative phase/cues, validated persistence and consume-first dispatch.
 
 The production/UI primary wrapper's shared `attackReadyAt` gate remains authoritative for Fists. A startup-buffered held Fist begins charging at its actual legal dispatch time, while a released tap follows the uncharged path; direct Fist entry points keep their independent recovery/charge gates. Release-830 combat-gallery fixtures drain recognized pending named tools at their actual due time, and the GL transaction now proves a real Rift Bombard has no startup shot owner, restores its released ordinary-floor owner after failure, and regains the same exclusive GL ownership after recovery. This integration receipt is limited to the inspected server-free focused matrix, static build and diff review; it does not claim hosted, full-suite, phone or publication clearance.
+
+## Official release 831 integration receipt — 2026-11-08
+
+Official main release 831 `b1786f043f879bbbd08cb3f1e34050c62880cc8b` was merged by ordinary history-preserving merge as `1dffc155fe5c2892d79a7ac7f7ccfc2fdc1f7efa`. The automatic semantic union retains the complete delayed named-tool transaction, schema normalization, native-form mappings and reviewed probes while adding release 831's isolated `practice` AI mode, quiet Echo fixture property, 60-active-second harmless-target coverage, pause/JSON preservation, fourteen-scenario combat registry, current Salvage camera fixture and Echo GL behavior.
+
+The combat-gallery fixture still proves that delayed named tools have no physical shot/effect before release and drains a recognized pending use at its due clock. Its release 831 assertions also retain the 5000-HP attackable practice target and canonical Echo equipment. No assertions, scenario counts, Close View eligibility, or registry coverage were weakened.
+
+Validation on the merged tree:
+
+```text
+node --test tests/tool-release-transaction.test.ts tests/tool-release-presentation.test.ts tests/tool-motion-continuity.test.ts tests/tool-primary-integration.test.ts tests/tool-weaving-interruption.test.ts tests/player-attack-visual.test.ts tests/primary-combo-presentation.test.ts
+# 50/50 passed.
+
+node --test tests/native-player-forms.test.ts tests/close-view-tool-geometry.test.ts tests/close-view-tool-presentation.test.ts tests/close-view-gl-transaction.test.ts tests/close-view-primary-echo.test.ts tests/combat-asset-lab.test.ts tests/close-view-hero.test.ts
+# 59/59 passed.
+
+node --test tests/save-split-555.test.ts tests/native-player-presentation.test.ts tests/fallen-pause-329.test.ts
+# 9/9 passed.
+
+node scripts/build.mjs
+# Passed: static offline PWA release 831 with Proving Ground PG-1.
+
+git diff --check
+# Passed.
+```
+
+This preparation does not assign a later release number or claim publication, hosted Preview, GPU, phone, or full-suite acceptance. No server, network, push, prototype/proposal/pages/proving-fixture suite, or release action was run.
