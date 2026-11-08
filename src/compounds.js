@@ -12,9 +12,9 @@
 // wing with an outer door has a courtyard door: you go in, up its ladders and out onto the wall walk, across it, and down
 // through another wing's hatch and floors to reach the courtyard, and from the courtyard the tower climbs to the boss and the
 // treasure room (and, sometimes, the tower's own roof). Everything is pinned per section (`atlas.compoundVersion`).
-import { hashSeed } from "./random.js?v=r818-791b1eff716d";
-import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.js?v=r818-791b1eff716d";
-import { canStep } from "./landscape.js?v=r818-791b1eff716d";
+import { hashSeed } from "./random.js?v=r821-c4303ef9b07c";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.js?v=r821-c4303ef9b07c";
+import { canStep } from "./landscape.js?v=r821-c4303ef9b07c";
 
 export const COMPOUNDS = {
   version: 2, // 2 (Tim, 2026-11-06; great-buildings.ts TOWER_SEAL): the tower is sealed until its key, which lies deep in the wing the

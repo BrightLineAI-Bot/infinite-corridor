@@ -1,20 +1,21 @@
-import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r818-791b1eff716d";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r818-791b1eff716d";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.js?v=r818-791b1eff716d";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel } from "./close-view-models.js?v=r818-791b1eff716d";
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.js?v=r818-791b1eff716d";
-import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.js?v=r818-791b1eff716d';
-import { fistCharge } from './brawler-spells.js?v=r818-791b1eff716d';
-import { dronePos } from "./affixes.js?v=r818-791b1eff716d";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r818-791b1eff716d";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r818-791b1eff716d";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r818-791b1eff716d";
-import { knockdownPose } from "./lightning-giant-render.js?v=r818-791b1eff716d";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r818-791b1eff716d";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r818-791b1eff716d";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r818-791b1eff716d";
-import { SIGIL_CELLS } from "./watcher.js?v=r818-791b1eff716d";
-import { closeViewGLReady, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r818-791b1eff716d"; // version 4: the GPU scene
+import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.js?v=r821-c4303ef9b07c";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.js?v=r821-c4303ef9b07c";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual } from "./action-motion.js?v=r821-c4303ef9b07c";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.js?v=r821-c4303ef9b07c";
+import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r821-c4303ef9b07c';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.js?v=r821-c4303ef9b07c";
+import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.js?v=r821-c4303ef9b07c';
+import { fistCharge } from './brawler-spells.js?v=r821-c4303ef9b07c';
+import { dronePos } from "./affixes.js?v=r821-c4303ef9b07c";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r821-c4303ef9b07c";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r821-c4303ef9b07c";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r821-c4303ef9b07c";
+import { knockdownPose } from "./lightning-giant-render.js?v=r821-c4303ef9b07c";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r821-c4303ef9b07c";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r821-c4303ef9b07c";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r821-c4303ef9b07c";
+import { SIGIL_CELLS } from "./watcher.js?v=r821-c4303ef9b07c";
+import { closeViewGLReady, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r821-c4303ef9b07c"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -67,6 +68,8 @@ export const CLOSE_VIEW = Object.freeze({
     // line clears before any wall can come between. `hardPad`: nearer a wall than this the camera is never put (cut at once;
     // it sits under the spring's target, so it is seldom reached). Nothing is ever faded to show the Wayfarer.
     sightStep: .1, sightPad: .26, hardPad: .14,
+    shoulderRecover: .25, // clear space must persist before an obstructed shoulder expands again
+    shoulderCenter: .55, shoulderFull: .9, // center a compressed boom; regain the preset offset in open space
     // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
     // bound encloses the Wayfarer's .82-scale, 1.68-tile hood, including its walking bob.
     framing: Object.freeze({ bodyHeight: 1.45, margin: .05, pitchMin: -1.2, pitchMax: 1.35 }),
@@ -101,7 +104,7 @@ export const CLOSE_VIEW = Object.freeze({
   // game's own lock). A swipe along the crescent of `switchSwipe` px moves the lock to the next foe that way, within
   // `switchCone` degrees. It breaks when the foe dies (then it moves to the best foe within `rehop` tiles of where it fell, if
   // any), goes beyond range + `slack`, or stays out of sight `lostSec` seconds.
-  lock: Object.freeze({ near: 1.5 /* within this the framing swing fades out */, range: 11, cone: 70, wAngle: .6, wDist: .4, rate: 4.5, switchSwipe: 26, switchCone: 120, rehop: 4.5, slack: 1.5, lostSec: 1.2 }),
+  lock: Object.freeze({ near: 1.5 /* nearby framing slows, but never stops */, range: 11, cone: 70, wAngle: .6, wDist: .4, rate: 4.5, maxRate: 120, nearScale: .35, fallbackRange: 6, fallbackCone: 100, switchSwipe: 26, switchCone: 120, rehop: 4.5, slack: 1.5, lostSec: 1.2 }),
   // crescent: the pan rail, a thin arc round the outside of the action cluster, `gap` px beyond the cluster's half width, from
   // `from` degrees (screen angles: 0 is right, -90 up, 180 left) round over the top and down the left side to `to` degrees.
   // It is drawn `width` px wide at `idle` opacity (`active` while touched) and answers within `band` px of the arc; it sits
@@ -117,7 +120,7 @@ export const CLOSE_VIEW = Object.freeze({
   // (the lock button too) and `edge` px inside the screen; never shorter than `minSpan` degrees each side of `mid`.
   crescent: Object.freeze({ gap: 24, band: 16, width: 7, from: -32, to: 162, idle: .22, active: .62, yaw: .012, radialPitch: .5, pitch: .0035, pitchRange: Object.freeze([-.22, .32]),
     doubleTapMs: 340, tapMs: 260, tapMove: 10, recentreRate: 7,
-    lockSize: 46, lockEdge: 6, lockGap: 16, mid: -90, // lockSize: the touch target (Tim: easy to hit on purpose); its disc is drawn 36 px (styles.css .close-lock::before)
+    lockSize: 52, lockTapMove: 18, lockEdge: 6, lockGap: 16, mid: -90, // a forgiving lock touch target, independent of camera-drag slop
     clear: 6, edge: 4, step: 2, minSpan: 24,
     // version 4 (Tim: "larger/higher sensitivity... your finger should be able to be positioned a little bit farther out from
     // the buttons and still swipe"): beyond the drawn arc the crescent also answers `reach` px further out (a second, wider band,
@@ -226,7 +229,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r818-791b1eff716d's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r821-c4303ef9b07c's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -373,7 +376,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r818-791b1eff716d's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r821-c4303ef9b07c's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -417,7 +420,7 @@ export function closeViewWanted(g) { return g?.save?.closeView === true && g.are
 export function closeViewApplies(g) { return closeViewWanted(g) && !openAirAt(g.map, g.player.x, g.player.y); }
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
-const CAM = { sightLimit: Infinity, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+const CAM = { shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
@@ -436,7 +439,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r818-791b1eff716d's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r821-c4303ef9b07c's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 
@@ -604,7 +607,8 @@ const footX = (p) => p.x + .5, footY = (p) => p.y + .75;
 // open line of the eight headings (so stepping through a door you look into the room, not at the door's frame).
 function ensureCam(g) {
   if (CAM.map === g.map) return;
-  CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.sightLimit = Infinity;
+  CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.shoulderRoom = CAM.shoulderClearFor = 0; CAM.pausedAt = NaN;
+  CAM.pausedTotal = Number(g.presentationPausedMs) || 0;
   const facing = FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
   let yaw = facing, best = open(facing);
   if (best < closeViewPreset(g).distance + 1) for (let i = 0; i < 8; i++) { const a = wrap(i * Math.PI / 4), t = open(a); if (t > best + .01) { best = t; yaw = a; } }
@@ -612,6 +616,15 @@ function ensureCam(g) {
 }
 function wallAt(map, x, y) { const w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Math.floor(map.tiles.length / w)), tx = Math.floor(x), ty = Math.floor(y); return tx < 0 || ty < 0 || tx >= w || ty >= h || isWall(map.tiles[ty * w + tx]); }
 function turnCamera(g, now) {
+  // The Game lifecycle records elapsed pause time even if no camera/input callback ran during it.
+  // Consume it once before the direct-paused fallback, so observed pauses cannot shift clocks twice.
+  const pausedTotal = Number(g.presentationPausedMs) || 0, held = Math.max(0, pausedTotal - CAM.pausedTotal);
+  CAM.pausedTotal = pausedTotal;
+  if (held > 0) { CAM.panAt += held; CAM.qtAt += held; if (CAM.qtT0 >= 0) CAM.qtT0 += held; CAM.pausedAt = NaN; CAM.lastNow = now; }
+  // Camera time stops with the game, including a pending quick turn and the manual-look grace period.
+  // Keep the wall clock current so unpausing cannot fast-forward a spring or infer a burst of travel.
+  if (g.paused) { if (!Number.isFinite(CAM.pausedAt)) CAM.pausedAt = CAM.lastNow || now; CAM.lastNow = now; CAM.dt = 0; return; }
+  if (Number.isFinite(CAM.pausedAt)) { const held = Math.max(0, now - CAM.pausedAt); CAM.panAt += held; CAM.qtAt += held; if (CAM.qtT0 >= 0) CAM.qtT0 += held; CAM.pausedAt = NaN; CAM.lastNow = now; }
   const P = CLOSE_VIEW.crescent, p = g.player, dt = CAM.lastNow ? Math.max(0, Math.min(.1, (now - CAM.lastNow) / 1000)) : 0, dx = p.x - CAM.lastX, dy = p.y - CAM.lastY;
   CAM.lastNow = now; CAM.lastX = p.x; CAM.lastY = p.y; CAM.dt = dt;
   if (dt <= 0) return;
@@ -624,8 +637,10 @@ function turnCamera(g, now) {
   const target = lockTick(g, dt);
   if (target) { // locked: the view swings to keep the foe framed beyond the Wayfarer
     // within `near` tiles the swing fades out, so a foe at arm's length (or slipping past) never whips the view round
-    const L = CLOSE_VIEW.lock, d = Math.hypot(target.x - p.x, target.y - p.y), near = Math.max(0, Math.min(1, (d - L.near * .5) / (L.near * .5)));
-    CAM.recentre = NaN; if (near > 0) yawSpring(Math.atan2(target.y - p.y, target.x - p.x), L.rate * slow * near, Infinity, dt); else CAM.yawV = 0; return; }
+    const L = CLOSE_VIEW.lock, d = Math.hypot(target.x - p.x, target.y - p.y), near = Math.max(L.nearScale, Math.min(1, (d - L.near * .5) / (L.near * .5)));
+    if (d < .05) { CAM.yawV = 0; return; } // overlapping feet have no useful bearing; retain the lock without choosing an arbitrary yaw
+    CAM.recentre = NaN; yawSpring(Math.atan2(target.y - p.y, target.x - p.x), L.rate * slow * near, L.maxRate * DEG * slow, dt); return; }
+  if (CAM.lockId && CAM.lostFor > 0) { CAM.yawV = 0; return; } // keep the brief LOS grace, not knowledge of movement through a wall
   if (Number.isFinite(CAM.recentre)) { // a double tap on the crescent: swing round behind the Wayfarer (the walk's basis turns with it)
     const diff = wrap(CAM.recentre - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
     CAM.yaw = wrap(CAM.yaw + step); CAM.inputYaw = wrap(CAM.inputYaw + step); CAM.yawV = 0; CAM.pitchUser *= Math.exp(-6 * dt); if (Math.abs(diff) < .01) CAM.recentre = NaN; return; }
@@ -675,13 +690,21 @@ export const closeViewTurning = () => CAM.qtT0 >= 0;
 // Can the Wayfarer see (x, y)? No wall tile on the straight line between (a tile walk in quarter-tile steps).
 function sightTo(map, ax, ay, bx, by) { const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d * 4); for (let i = 1; i < n; i++) { const t = i / n; if (wallAt(map, ax + (bx - ax) * t, ay + (by - ay) * t)) return false; } return true; }
 const lockable = (e) => !!e && !e.dead && !e.hidden && !e.ambient && !e.astralAllyOf && !e.untargetable && !e.gloomVeil;
-// The best foe to lock: in front of the camera (within `cone` degrees of `yaw`), within `range` of (ox, oy), in sight; the
-// lowest wAngle x angle/cone + wDist x distance/range. `skip`: an id to leave out.
-export function closeViewLockCandidate(g, { yaw = CAM.yaw, cone = CLOSE_VIEW.lock.cone, range = CLOSE_VIEW.lock.range, ox = null, oy = null, skip = null } = {}) {
-  const L = CLOSE_VIEW.lock, p = g.player, px = footX(p), py = footY(p), cx = ox ?? px, cy = oy ?? py; let best = null, bestS = Infinity;
+// Prefer a visible, unobstructed foe in front; otherwise allow a nearby forward target just outside the viewport.
+// Within each group, weigh angle and distance. Explicit rehop searches use their own center/cone without screen ranking.
+function lockOnScreen(g, e) {
+  if (!CAM.valid || CAM.map !== g.map) return false;
+  const q = project(e.x + .5, e.y + .75, interiorSurfaceHeight(g.map, e.x + .5, e.y + .75) + .7 * actorScale(e));
+  return !!q && q.sx >= 0 && q.sx <= CAM.w && q.sy >= 0 && q.sy <= CAM.h;
+}
+export function closeViewLockCandidate(g, { yaw = CAM.yaw, cone = CLOSE_VIEW.lock.cone, range = CLOSE_VIEW.lock.range, ox = null, oy = null, skip = null, screen = true } = {}) {
+  const L = CLOSE_VIEW.lock, p = g.player, px = footX(p), py = footY(p), cx = ox ?? px, cy = oy ?? py; let best = null, bestS = Infinity, bestVisible = false;
   for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - cx, ey - cy); if (d > range) continue;
-    const a = Math.abs(wrap(Math.atan2(ey - py, ex - px) - yaw)) / DEG; if (a > cone) continue; if (!sightTo(g.map, px, py, ex, ey)) continue;
-    const sc = L.wAngle * a / cone + L.wDist * d / range; if (sc < bestS) { bestS = sc; best = e; } }
+    const a = Math.abs(wrap(Math.atan2(ey - py, ex - px) - yaw)) / DEG, visible = screen && lockOnScreen(g, e);
+    if (a > (screen ? Math.max(cone, L.fallbackCone) : cone)) continue;
+    if (screen && !visible && (a > L.fallbackCone || Math.hypot(ex - px, ey - py) > L.fallbackRange)) continue;
+    if (!sightTo(g.map, px, py, ex, ey)) continue;
+    const sc = L.wAngle * a / cone + L.wDist * d / range; if ((visible && !bestVisible) || (visible === bestVisible && sc < bestS)) { bestS = sc; best = e; bestVisible = visible; } }
   return best;
 }
 // The lock button: lock the best foe in front of the camera, or release the lock. Returns the foe locked, or null.
@@ -692,10 +715,11 @@ export function closeViewLockToggle(g) {
 }
 // A swipe along the crescent while locked: the next foe to the right (dir 1) or left (-1) of the locked one, as the camera sees them.
 export function closeViewLockSwitch(g, dir) {
-  const t = g?.lockedTarget?.(); if (!t) return null; const L = CLOSE_VIEW.lock, p = g.player, px = footX(p), py = footY(p), bt = Math.atan2(t.y + .75 - py, t.x + .5 - px); let best = null, bestA = Infinity;
+  const t = g?.lockedTarget?.(); if (!t) return null; const L = CLOSE_VIEW.lock, p = g.player, px = footX(p), py = footY(p), bt = Math.atan2(t.y + .75 - py, t.x + .5 - px); let best = null, bestA = Infinity, bestVisible = false;
   for (const e of g.enemies || []) { if (!lockable(e) || e.id === t.id) continue; const ex = e.x + .5, ey = e.y + .75; if (Math.hypot(ex - px, ey - py) > L.range) continue;
     const be = Math.atan2(ey - py, ex - px); if (Math.abs(wrap(be - CAM.yaw)) > L.switchCone * DEG) continue; const rel = wrap(be - bt) * Math.sign(dir || 1); if (rel <= 0) continue; if (!sightTo(g.map, px, py, ex, ey)) continue;
-    if (rel < bestA) { bestA = rel; best = e; } }
+    const visible = lockOnScreen(g, e); if (!visible && Math.hypot(ex - px, ey - py) > L.fallbackRange) continue;
+    if ((visible && !bestVisible) || (visible === bestVisible && rel < bestA)) { bestA = rel; best = e; bestVisible = visible; } }
   if (best) { g.lockTarget(best.id); CAM.lockId = best.id; CAM.lostFor = 0; } return best;
 }
 // Each frame while locked: follow a lock made by a tap too; on the foe's fall move to the best foe near where it fell, or
@@ -703,12 +727,20 @@ export function closeViewLockSwitch(g, dir) {
 function lockTick(g, dt) {
   const L = CLOSE_VIEW.lock; let t = g.lockedTarget?.() || null;
   if (CAM.lockId && (!t || t.id !== CAM.lockId)) { const old = (g.enemies || []).find((e) => e.id === CAM.lockId);
-    if (!t && old && old.dead) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75 }); if (next) { g.lockTarget(next.id); t = next; } } }
+    if (!t && old && old.dead) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75, screen: false }); if (next) { g.lockTarget(next.id); t = next; } } }
+  if (t && !lockable(t)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
   CAM.lockId = t ? t.id : null; if (!t) { CAM.lostFor = 0; return null; }
   const p = g.player, px = footX(p), py = footY(p), ex = t.x + .5, ey = t.y + .75;
   if (Math.hypot(ex - px, ey - py) > L.range + L.slack) { g.lockTarget(null); CAM.lockId = null; return null; }
   CAM.lostFor = sightTo(g.map, px, py, ex, ey) ? 0 : CAM.lostFor + dt; if (CAM.lostFor > L.lostSec) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
-  return t;
+  return CAM.lostFor > 0 ? null : t;
+}
+const LOCK_LOOK = { x: 0, y: 0 }; // presentation scratch, never a saved or committed action direction
+export function closeViewIdleLockAim(g, now) {
+  const p = g?.player, clock = g?.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (!p || p.attackUntil > clock || p.castUntil > clock || p.stunnedUntil > clock || g.fistCharge) return null;
+  const t = g.lockedTarget?.(); if (!lockable(t) || !sightTo(g.map, footX(p), footY(p), t.x + .5, t.y + .75)) return null;
+  LOCK_LOOK.x = t.x - p.x; LOCK_LOOK.y = t.y - p.y; return LOCK_LOOK;
 }
 // Version 5: how much of the line from (ax, ay) to (bx, by) is clear of walls, `pad` tiles to either side (sampled every
 // `step` tiles): 1 all of it, else the share up to `pad` short of the first wall.
@@ -737,6 +769,9 @@ function boomLength(g, fx, fy, ox = footX(g.player), oy = footY(g.player)) {
 export function closeViewSteer(g, state) {
   CAM.steered = false; if (!state || !closeViewApplies(g) || MODE.cur !== 1) return false;
   ensureCam(g);
+  // main keeps sampling input during pause but skips rendering. Remember that pause here too, so the
+  // first resumed render can preserve the camera's timers even when there were no paused frames.
+  if (g.paused) { if (!Number.isFinite(CAM.pausedAt)) CAM.pausedAt = Number.isFinite(g.pauseStarted) ? g.pauseStarted : CAM.lastNow; CAM.dt = 0; return false; }
   const sx = Number(state.x) || 0, sy = Number(state.y) || 0;
   if (Math.hypot(sx, sy) < CLOSE_VIEW.input.idle && !g.lockedTarget?.()) { CAM.inputYaw = CAM.yaw;
     // Standing still, a swing or a shot goes the way the camera looks (a locked target still wins: Game.update aims at it).
@@ -744,7 +779,7 @@ export function closeViewSteer(g, state) {
     const a = g.save.lastAim, fx = Math.cos(CAM.yaw), fy = Math.sin(CAM.yaw);
     if (a && typeof a === "object") { a.x = fx; a.y = fy; } else g.save.lastAim = { x: fx, y: fy }; }
   // locked: the stick is target-relative (up walks at the foe, sideways circles it)
-  { const t = CAM.lockId && g.lockedTarget?.(); if (t) CAM.inputYaw = Math.atan2(t.y + .75 - footY(g.player), t.x + .5 - footX(g.player)); }
+  { const t = CAM.lockId && g.lockedTarget?.(); if (lockable(t) && CAM.lostFor === 0) CAM.inputYaw = Math.atan2(t.y + .75 - footY(g.player), t.x + .5 - footX(g.player)); }
   const fx = Math.cos(CAM.inputYaw), fy = Math.sin(CAM.inputYaw), rx = -fy, ry = fx;
   CAM.sx = sx; CAM.sy = sy; state.x = rx * sx - fx * sy; state.y = ry * sx - fy * sy; CAM.steered = true; return true;
 }
@@ -809,7 +844,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r818-791b1eff716d's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r821-c4303ef9b07c's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && interiorTerrain(CAM.map)) return terrainFloorRay(CAM.map, x, y);
@@ -933,17 +968,31 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (!Number.isFinite(off) || off > C.followSnap || !CAM.valid) { CAM.fpx = tx; CAM.fpy = ty; CAM.fvx = CAM.fvy = 0; }
     else if (CAM.dt > 0) { spring(CAM, "fpx", "fvx", tx, C.follow, CAM.dt); spring(CAM, "fpy", "fvy", ty, C.follow, CAM.dt); const ex = CAM.fpx - tx, ey = CAM.fpy - ty, el = Math.hypot(ex, ey); if (el > C.followMax) { CAM.fpx = tx + ex / el * C.followMax; CAM.fpy = ty + ey / el * C.followMax; } }
     if (wallAt(g.map, CAM.fpx, CAM.fpy) || !sightTo(g.map, tx, ty, CAM.fpx, CAM.fpy)) { CAM.fpx = tx; CAM.fpy = ty; CAM.fvx = CAM.fvy = 0; } }
-  const ax = CAM.fpx, ay = CAM.fpy, want = Math.min(camD, boomLength(g, fx, fy, ax, ay), boomLength(g, fx, fy) + Math.hypot(ax - footX(p), ay - footY(p)), CAM.sightLimit); // version 5: from the feet too, and short of a wall near the line of sight
+  const feetBoom = boomLength(g, fx, fy);
+  const followShare = Math.max(0, Math.min(1, (feetBoom / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter)));
+  // At a short boom, sideways spring lag is effectively an extra shoulder: it can put the hood outside a
+  // portrait viewport. Center that component with compression, retaining the longitudinal follow spring.
+  const sideLag = ((CAM.fpx - footX(p)) * rx + (CAM.fpy - footY(p)) * ry) * (1 - followShare);
+  const ax = CAM.fpx - rx * sideLag, ay = CAM.fpy - ry * sideLag;
+  let want = Math.min(camD, boomLength(g, fx, fy, ax, ay), feetBoom + Math.hypot(ax - footX(p), ay - footY(p)));
+  // Probe the requested centered rig, not last frame's shortened eye. Feedback from the latter alternated
+  // between "clear" and "blocked" at stationary corners, repeatedly extending and cutting the boom.
+  want *= sightClear(g.map, footX(p), footY(p), ax - fx * want, ay - fy * want, C.sightStep, C.sightPad);
+  want = Math.max(.03, want);
   // critically damped springs (stable at any frame rate, never overshooting); a boom that would leave the camera inside a
   // wall is cut at once, the only snap there is
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && wallAt(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
   const craneUp = CAM.crane, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
-  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = Cp.shoulder * mix * Math.min(1, CAM.dist / camD); let room = sh;
+  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = Cp.shoulder * mix * Math.max(0, Math.min(1, (CAM.dist / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter))); let room = sh;
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (wallAt(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
-  spring(CAM, "shoulder", "shoulderV", room, room < CAM.shoulder ? C.pullIn : C.letOut, dt);
-  if (CAM.shoulder > sh) { CAM.shoulder = sh; CAM.shoulderV = 0; } // collision compression cannot leave a full-width shoulder beside a tiny boom
+  // An open endpoint alone does not clear a concave corner between the shoulder and the player.
+  if (sightClear(g.map, footX(p), footY(p), bx + rx * room, by + ry * room, C.sightStep, C.sightPad) < 1) room = 0;
+  if (room <= CAM.shoulderRoom) { CAM.shoulderRoom = room; CAM.shoulderClearFor = 0; }
+  else { CAM.shoulderClearFor += dt; if (CAM.shoulderClearFor >= C.shoulderRecover) CAM.shoulderRoom = room; }
+  spring(CAM, "shoulder", "shoulderV", CAM.shoulderRoom, room < CAM.shoulder ? C.pullIn : C.letOut, dt);
+  if (CAM.shoulder > room) { CAM.shoulder = room; CAM.shoulderV = 0; } // clearance takes precedence over recovery damping
   CAM.cx = bx + rx * CAM.shoulder; CAM.cy = by + ry * CAM.shoulder;
   // the hard rule under the springs: the camera is never inside a wall. If a spring still lags there (the view turning in a
   // narrow way), the shoulder goes and the boom shortens at once until it is clear.
@@ -954,8 +1003,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // way), the camera is drawn in along that line at once, to where it clears by `hardPad`.
   { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
     if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
-    // and with the wider `sightPad`, next frame's spring aims short of where this line comes near a wall, so the cut above is seldom needed
-    const ks = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.sightPad); CAM.sightLimit = ks < 1 ? Math.max(C.closest, CAM.dist * ks) : Infinity; }
+  }
   const playerZ = interiorSurfaceHeight(g.map, footX(p), footY(p)) +
     Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // Sample the final eye, not the previous frame's position. Arches and the roof
@@ -1085,16 +1133,17 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (d !== capturedPlayer && q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2) boardB[n] = Math.min(boardB[n], A.cutAlpha); // on the line from the camera to the Wayfarer: a ghost
     boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
-  occludeBillboards(n, faces);
+  occludeBillboards(n, faces, g.paused);
   insertionSortByDepth(n);
-  const turnFacing = relativeFacing(p), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
+  const turnFacing = relativeFacing(p, closeViewIdleLockAim(g, now)), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
   const models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null;
-  if (models) for (const it of MODEL_STATE.admitted) {
+  const hasNativeModels = useGL && (models || MODEL_STATE.hero);
+  if (hasNativeModels) for (const it of MODEL_STATE.admitted) {
     const d = draws[itemRef[it]]; if (typeof d.nativeFloor !== 'function') continue;
     gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty);
     try { d.nativeFloor(g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now); } finally { gc.restore(); }
   }
-  const packed = packBillboards(g, draws, n, s, turnFacing, models ? MODEL_STATE.admitted : null);
+  const packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null);
   if (useGL) glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots);
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
@@ -1218,7 +1267,7 @@ function aimChevron(gc, g, s, ts, W, H, gox = 0, goy = 0) {
 }
 // The locked target's brackets, round its billboard on the screen (combat-visuals draws them flat on the floor, under it).
 function lockBrackets(ctx, g, now) {
-  const t = g.lockedTarget?.(); if (!t || t.gloomVeil || t.dead) return; const q = project(t.x + .5, t.y + .82, interiorSurfaceHeight(g.map, t.x + .5, t.y + .75)); if (!q) return;
+  const t = g.lockedTarget?.(); if (!lockable(t) || CAM.lostFor > 0) return; const q = project(t.x + .5, t.y + .82, interiorSurfaceHeight(g.map, t.x + .5, t.y + .75)); if (!q) return;
   const k = CAM.F / q.depth, sc = actorScale(t), r = Math.min(Math.min(CAM.w, CAM.h) * .22, Math.max(.45, (Number(t.bodyRadius) || .4) + .2, sc * .4) * k), cx = q.sx, cy = q.sy - Math.min(.55 * sc * k, r * 1.1), e = r * .45; // never larger than a fifth of the screen, however near
   ctx.save(); ctx.lineJoin = "round"; ctx.globalAlpha = .8 + .2 * Math.sin(now / 200);
   ctx.beginPath(); for (let i = 0; i < 4; i++) { const sx = i === 0 || i === 3 ? -1 : 1, sy = i < 2 ? -1 : 1; ctx.moveTo(cx + sx * r, cy + sy * (r - e)); ctx.lineTo(cx + sx * r, cy + sy * r); ctx.lineTo(cx + sx * (r - e), cy + sy * r); }
@@ -1227,9 +1276,10 @@ function lockBrackets(ctx, g, now) {
   const py = cy - r - Math.max(6, r * .25), pr = Math.max(4, r * .12); ctx.beginPath(); ctx.moveTo(cx, py - pr); ctx.lineTo(cx + pr, py); ctx.lineTo(cx, py + pr); ctx.lineTo(cx - pr, py); ctx.closePath();
   ctx.fillStyle = "#ff6a5a"; ctx.fill(); ctx.strokeStyle = "#000a"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
 }
-function relativeFacing(p) {
-  const v = FACING_VEC[p.facing]; if (!v) return p.facing;
-  const fwd = v[0] * CAM.fx + v[1] * CAM.fy, side = v[0] * CAM.rx + v[1] * CAM.ry;
+function relativeFacing(p, aim = null) {
+  const v = FACING_VEC[p.facing]; if (!v && !aim) return p.facing;
+  const x = aim ? aim.x : v[0], y = aim ? aim.y : v[1];
+  const fwd = x * CAM.fx + y * CAM.fy, side = x * CAM.rx + y * CAM.ry;
   return Math.abs(fwd) >= Math.abs(side) ? (fwd >= 0 ? "up" : "down") : side >= 0 ? "right" : "left";
 }
 // One billboard: the captured closure draws the existing sprite into the ground canvas's corner at the billboard's own scale
@@ -1282,7 +1332,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
 // it is marked hidden. Its opacity, and how hidden it is, ease per creature (CLOSE_VIEW.cues.fade), so a creature walking
 // round a corner fades to a ghost and back, and one coming into sight fades in. At most actors x faces in view (64 x 200).
 const FOE_FADE = new WeakMap(); // creature -> { a: its eased opacity, o: how far a wall hides it, eased } (one small object a creature, kept with it)
-function occludeBillboards(n, faces) {
+function occludeBillboards(n, faces, paused = false) {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, k = 1 - Math.exp(-Cu.fade * CAM.dt /* version 4: a repeat of the same instant changes nothing */);
   for (let j = 0; j < n; j++) { if (itemKind[j] !== 1) continue;
     const sc = boardScale[j], kk = boardK[j], hw = CLOSE_VIEW.pick.bodyWidth * .5 * sc * kk, bx0 = boardX[j] - hw, bx1 = boardX[j] + hw, by1 = boardY[j], by0 = by1 - A.height * .8 * sc * kk, wx = boardWX[j], wy = boardWY[j];
@@ -1293,7 +1343,11 @@ function occludeBillboards(n, faces) {
       if (side > 0) { if (itemDepth[i] < upper) upper = itemDepth[i]; } else { if (itemDepth[i] > lower) lower = itemDepth[i]; if (faceAlpha[i] > .5) occ = 1; } }
     let key = itemDepth[j]; if (key >= upper) key = upper - 2e-3; if (key <= lower) key = lower + 2e-3; itemDepth[j] = key; // a wall it is behind wins
     const foe = boardFoe[j]; boardOcc[j] = occ;
-    if (foe && typeof foe === "object") { let st = FOE_FADE.get(foe); if (!st) { st = { a: 0, o: occ }; FOE_FADE.set(foe, st); } st.a += (boardB[j] - st.a) * k; st.o += (occ - st.o) * k; boardB[j] = st.a; boardOcc[j] = st.o; } }
+    if (foe && typeof foe === "object") { let st = FOE_FADE.get(foe);
+      // A first paused render (including a restored scene) has no prior fade to freeze. Initialize
+      // from current visibility, not zero forever; established fades and active-play fade-in are unchanged.
+      if (!st) { st = { a: paused ? boardB[j] : 0, o: occ }; FOE_FADE.set(foe, st); }
+      st.a += (boardB[j] - st.a) * k; st.o += (occ - st.o) * k; boardB[j] = st.a; boardOcc[j] = st.o; } }
 }
 // Attack cues (CLOSE_VIEW.cues): winding up (its pattern's windup, or the plain telegraph), a creature glows and rings the floor.
 const foeWindingUp = (e) => e.telegraph > 0 || e.pack?.phase === "windup" || e.gateAttack?.phase === "windup";
@@ -1780,6 +1834,10 @@ const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
+  hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
+  heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
+  heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
+  heroGear: { profile: '', leftSocket: null, rightSocket: null, alpha: 1, tint: null, hitFlash: 0 },
 };
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
@@ -1845,8 +1903,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
   const form = playerFormPresentation(g);
   state.admitted.clear();
+  state.hero = null;
+  if (!form && !state.heroRequested && typeof globalThis.Image === 'function') {
+    state.heroRequested = true;
+    loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
+  }
   closeViewGLStats.modelFallbacks = Object.create(null);
-  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; }
+  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; state.heroPose = null; }
   if (!reduce && player.meleeUntil > now) {
     for (let it = 0; it < n; it++) {
       const foe = itemKind[it] === 1 && boardFoe[it], prior = foe && state.tracks.get(foe);
@@ -1885,7 +1948,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
     const winding = !!monsterAction?.winding;
     const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
-      : monsterAction?.aim;
+      : who === player ? closeViewIdleLockAim(g, now) : monsterAction?.aim;
     let targetYaw = track.yaw;
     if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
     else if (!stunned && facing) targetYaw = Math.atan2(facing[1], facing[0]);
@@ -1945,7 +2008,43 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       poison: who === player && g.save.elites?.status?.poison > 0 };
     track.winding = winding;
     track.attacking = attack;
-    if (!append(actor)) return;
+    let imported = false;
+    if (who === player && !form && count < limit) {
+      const asset = getCloseViewHeroAsset();
+      if (asset && prepareCloseViewHeroGL(asset)) {
+        if (state.heroAsset !== asset || !state.heroPose) {
+          state.heroAsset = asset; state.heroPose = createHeroPoseState(asset); state.heroFrame = createHeroFrame(asset);
+        }
+        const input = state.heroInput, action = state.heroAction;
+        input.nowMs = poseTime - (g.presentationPausedMs || 0); input.reducedMotion = reduce;
+        input.x = actor.x; input.y = actor.y;
+        input.groundZ = interiorSurfaceHeight(g.map, who.x + .5, who.y + .75);
+        input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
+        input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
+        input.alpha = actor.alpha; input.hitFlash = hit;
+        input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
+        action.kind = ''; action.profile = visualProfile || held; action.phase = amount;
+        action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
+        if (stunned) { action.kind = 'hit'; action.profile = 'knockdown'; }
+        else if (now < (player.dodgeUntil || 0)) {
+          action.kind = 'dodge'; action.durationMs = 260;
+          action.phase = 1 - Math.min(1, (player.dodgeUntil - now) / action.durationMs);
+          if (Math.hypot(player.dodgeX || 0, player.dodgeY || 0) > .01) action.yaw = Math.atan2(player.dodgeY, player.dodgeX);
+        } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
+        else if (attack) action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee';
+        else if (cast) { action.kind = 'cast'; action.durationMs = MODEL_TIMING.castMs; }
+        else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
+        input.action = action.kind ? action : null;
+        if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
+          const gear = state.heroGear;
+          gear.profile = held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
+          offset = writeCloseViewHeroGear(state.vertices, offset, gear);
+          state.hero = state.heroFrame; count++; imported = true;
+        }
+      }
+    }
+    if (!imported && !append(actor)) return;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
     state.tracks.set(who, track);
     state.admitted.add(it);
@@ -2159,7 +2258,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   }
   closeViewGLStats.projectedShots = shots?.size || 0;
   GLB.nDecal = dv;
-  if (!drawSceneGL(GROUND.canvas, UNI, models)) return false;
+  if (!drawSceneGL(GROUND.canvas, UNI, models, MODEL_STATE.hero)) return false;
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); ctx.restore();
   return true;
 }
@@ -2179,7 +2278,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   // version 4: `outer`, the wider band beyond the arc (never drawn), where it is clear of everything else
   outer.setAttribute("fill", "none"); outer.setAttribute("stroke", "transparent"); outer.setAttribute("stroke-width", String(K.reach)); outer.setAttribute("stroke-linecap", "butt"); outer.style.pointerEvents = "stroke"; outer.style.touchAction = "none"; outer.style.cursor = "ew-resize";
   svg.append(rail, hit, outer); actions.insertBefore(svg, cluster); // before the cluster: beneath its buttons
-  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Lock on: tap to lock the foe in view, tap again to release"); lock.setAttribute("aria-pressed", "false");
+  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Lock nearby foe: tap again to release; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false");
   // version 3 (Tim): a bullseye, concentric rings and a centre dot; locked, the inner ring fills (styles.css .close-lock)
   lock.innerHTML = '<svg class="bullseye" viewBox="0 0 24 24" width="52%" height="52%" aria-hidden="true" style="pointer-events:none;position:relative"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle class="bull-ring" cx="12" cy="12" r="6.2" fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg>';
   Object.assign(lock.style, { position: "absolute", width: `${K.lockSize}px`, height: `${K.lockSize}px`, padding: "0", borderRadius: "50%", border: "0", background: "none", color: "#ddd5c4", display: "none", placeItems: "center", pointerEvents: "auto", touchAction: "manipulation", zIndex: "2" });
@@ -2192,17 +2291,36 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   const touchDevice = () => !!(host.navigator?.maxTouchPoints || host.matchMedia?.("(any-pointer: coarse)")?.matches);
   let moveId = null;
   const clearMovePad = () => { moveId = null; movePad.setAttribute("data-active", "false"); };
-  let cx = 0, cy = 0, R = 0, laidAt = -1e9, shown = false, locked = false, id = null, lastA = 0, lastR = 0, downAt = 0, moved = 0, lastTap = -1e9, swipe = 0, lastMoveAt = 0, mode = "drag";
+  let cx = 0, cy = 0, R = 0, laidAt = -1e9, shown = false, locked = false, id = null, lastA = 0, lastR = 0, downAt = 0, moved = 0, lastTap = -1e9, swipe = 0, switched = false, lastMoveAt = 0, mode = "drag";
   const now = () => (host.performance || performance).now();
   // version 4: the turn is fed in, then eased onto the view by sync() (once a frame); a release applies what is left
   const PEND = { dx: 0, dy: 0, at: -1 };
   const flush = (t) => { if (PEND.dx || PEND.dy) closeViewPan(PEND.dx, PEND.dy, t); PEND.dx = PEND.dy = 0; };
   const sens = () => { const k = Number(getGame()?.save?.closeViewSensitivity); return Number.isFinite(k) && k > 0 ? k : 1; };
   const accelOf = (dist, ms, A, from, to) => { const v = ms > 0 ? dist / ms * 1000 : to; return 1 + A * Math.max(0, Math.min(1, (v - from) / (to - from))); };
-  // a turn by `px` of finger travel and `py` of tilt, in the crescent's own units (closeViewPan's px of arc), or a lock switch while locked
-  const turn = (g, px, py, t) => { if (g.lockedTarget?.()) { swipe += px; if (Math.abs(swipe) >= CLOSE_VIEW.lock.switchSwipe) { closeViewLockSwitch(g, Math.sign(swipe)); swipe = 0; } CAM.panAt = t; return; } PEND.dx += px; PEND.dy += py; CAM.panAt = t; };
-  // The lock button's place on the screen (a rect): the right edge, above the crescent's band.
-  const lockRect = (scx, scy, vw) => { const s = K.lockSize, right = Number.isFinite(vw) ? vw - K.lockEdge : scx + R + K.band, top = scy - R - K.band - K.lockGap - s; return { left: right - s, top, right, bottom: top + s }; };
+  // Pan uses the player's sensitivity; a lock switch uses raw finger travel and fires once per captured gesture.
+  const turn = (g, px, py, t, switchPx) => { if (g.lockedTarget?.()) { swipe += switchPx; if (!switched && Math.abs(swipe) >= CLOSE_VIEW.lock.switchSwipe) { closeViewLockSwitch(g, Math.sign(swipe)); switched = true; } CAM.panAt = t; return; } PEND.dx += px; PEND.dy += py; CAM.panAt = t; };
+  // The lock button's screen rect: beside Tool in drag mode; outside the visible rail in crescent mode.
+  const lockRect = (scx, scy, vw) => {
+    const s = K.lockSize, right = Number.isFinite(vw) ? vw - K.lockEdge : scx + R + K.band;
+    let top = scy - R - K.band - K.lockGap - s;
+    if (mode === "drag") {
+      // The hidden crescent need not push the default lock far above the thumb. Prefer the empty
+      // upper-right cell beside Tool, then move up in a bounded search if another control occupies it.
+      const bounds = cluster.getBoundingClientRect(), vh = host.innerHeight || 1e9;
+      top = Math.max(K.edge, Math.min(vh - s - K.edge, bounds.top));
+      const boxes = [];
+      for (const el of actions.querySelectorAll?.("button, .nav-compass") || []) {
+        if (el === lock || el.hidden || el.offsetParent === null) continue;
+        const b = el.getBoundingClientRect(); if (b.width > 0 && b.height > 0) boxes.push(b);
+      }
+      for (let step = 0; step < 32; step++) {
+        if (!boxes.some((b) => right > b.left - K.clear && right - s < b.right + K.clear && top + s > b.top - K.clear && top < b.bottom + K.clear)) break;
+        top = Math.max(K.edge, top - 8);
+      }
+    }
+    return { left: right - s, top, right, bottom: top + s };
+  };
   // The arc's two ends (degrees, A0 > A1, drawn from A0 down over the top to A1): K.from and K.to, each drawn back until the
   // arc clears every other control in #actions (Spell A and B, Map, Pack, the lock button) and stays on the screen.
   const crescentSpan = () => { const A0 = K.from, A1 = K.to - 360, lockA = K.mid; if (!cluster.getBoundingClientRect) return [A0, A1];
@@ -2230,10 +2348,10 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
   // version 4: the finger's own travel round the cluster (at its own radius, never less than the arc's) turns the view, faster
   // for a quick swipe; both bands (the arc's and the wider one beyond it) answer the same way
-  const down = (el) => (e) => { stop(e); if (id !== null) return; id = e.pointerId; [lastA, lastR] = polar(e); downAt = lastMoveAt = now(); moved = 0; swipe = 0; el.setPointerCapture?.(id); rail.setAttribute("stroke-opacity", String(K.active)); rail.setAttribute("stroke-dasharray", ""); };
+  const down = (el) => (e) => { stop(e); if (id !== null) return; id = e.pointerId; [lastA, lastR] = polar(e); downAt = lastMoveAt = now(); CAM.panAt = downAt; moved = 0; swipe = 0; switched = false; el.setPointerCapture?.(id); rail.setAttribute("stroke-opacity", String(K.active)); rail.setAttribute("stroke-dasharray", ""); };
   const drag = (e) => { if (e.pointerId !== id) return; stop(e); const [a, r] = polar(e), da = wrap(a - lastA), dr = r - lastR, travel = da * Math.max(R, Math.min(r, R + K.band + K.reach)); lastA = a; lastR = r; moved += Math.abs(travel) + Math.abs(dr);
     const g = getGame(); if (!g) return; const t = now(), k = K.gain * sens() * accelOf(Math.abs(travel), t - lastMoveAt, K.accel, K.accelFrom, K.accelTo); lastMoveAt = t;
-    turn(g, travel * k, -dr * K.radialPitch, t); };
+    turn(g, travel * k, -dr * K.radialPitch, t, travel); };
   const end = (e) => { if (e.pointerId !== id) return; stop(e); id = null; rail.setAttribute("stroke-opacity", String(K.idle)); rail.setAttribute("stroke-dasharray", "2 7"); const t = now(); flush(t);
     if (t - downAt < K.tapMs && moved < K.tapMove) { if (t - lastTap < K.doubleTapMs) { const g = getGame(); if (g) closeViewRecentre(g, t); lastTap = -1e9; } else lastTap = t; } else CAM.panAt = t; };
   for (const el of [hit, outer]) { el.addEventListener("pointerdown", down(el)); el.addEventListener("pointermove", drag); el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", (e) => { if (e.pointerId === id) end(e); }); }
@@ -2265,11 +2383,11 @@ export function mountCloseViewControls(getGame, host = globalThis) {
       e.stopImmediatePropagation?.(); e.preventDefault?.();
       // A non-joystick touch never reaches movement, even when a camera gesture is already active.
       if (dragId !== null) return;
-      dragId = e.pointerId; dragX = dragX0 = strokeX = e.clientX; dragY = dragY0 = strokeY = e.clientY; dragAt = dragDown = strokeAt = now(); dragMoved = 0; swipe = 0; try { canvas.setPointerCapture?.(dragId); } catch { /* a synthetic pointer has nothing to capture */ } }, { capture: true });
+      dragId = e.pointerId; dragX = dragX0 = strokeX = e.clientX; dragY = dragY0 = strokeY = e.clientY; dragAt = dragDown = strokeAt = now(); if (mode === "drag") CAM.panAt = dragAt; dragMoved = 0; swipe = 0; switched = false; try { canvas.setPointerCapture?.(dragId); } catch { /* a synthetic pointer has nothing to capture */ } }, { capture: true });
     canvas.addEventListener("pointermove", (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); const dx = e.clientX - dragX, dy = e.clientY - dragY, t = now(); dragX = e.clientX; dragY = e.clientY; dragMoved = Math.max(dragMoved, Math.hypot(e.clientX - dragX0, e.clientY - dragY0));
       const g = getGame(); if (!g || mode !== "drag") return; const k = sens() * accelOf(Math.hypot(dx, dy), t - dragAt, D.accel, D.accelFrom, D.accelTo); dragAt = t;
       if (stroke(g, e.clientX, e.clientY, t, dy) || closeViewTurning()) return; // the turnaround owns the view while it swings
-      turn(g, dx * k * D.yaw / K.yaw, dy * k * D.pitch / K.pitch, t); }, { capture: true });
+      turn(g, dx * k * D.yaw / K.yaw, dy * k * D.pitch / K.pitch, t, dx); }, { capture: true });
     const dragEnd = (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); dragId = null; const t = now(); flush(t);
       if (e.type === "pointerup" && dragMoved < D.tapMove && t - dragDown < D.tapMs && typeof CustomEvent === "function") canvas.dispatchEvent?.(new CustomEvent("worldtap", { detail: { clientX: e.clientX, clientY: e.clientY, pointerType: e.pointerType } }));
       else CAM.panAt = t; };
@@ -2290,7 +2408,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   // the lock: a tap that starts on it (press, release within tapMove px); a pointer already panning the crescent never counts
   let lockId = null, lockX = 0, lockY = 0;
   lock.addEventListener("pointerdown", (e) => { stop(e); if (e.pointerId === id || lockId !== null) return; lockId = e.pointerId; lockX = e.clientX; lockY = e.clientY; lock.setPointerCapture?.(lockId); });
-  lock.addEventListener("pointerup", (e) => { if (e.pointerId !== lockId) return; stop(e); lockId = null; if (Math.hypot(e.clientX - lockX, e.clientY - lockY) > K.tapMove) return; const g = getGame(); if (g) closeViewLockToggle(g); });
+  lock.addEventListener("pointerup", (e) => { if (e.pointerId !== lockId) return; stop(e); lockId = null; if (Math.hypot(e.clientX - lockX, e.clientY - lockY) > K.lockTapMove) return; const g = getGame(); if (g) closeViewLockToggle(g); });
   lock.addEventListener("pointercancel", (e) => { if (e.pointerId === lockId) lockId = null; });
   for (const el of [hit, lock]) for (const t of ["click", "dblclick", "contextmenu"]) el.addEventListener(t, (e) => { e.preventDefault(); e.stopPropagation(); });
   host.addEventListener?.("resize", () => { laidAt = -1e9; }, { passive: true });
@@ -2298,6 +2416,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
     if (want !== shown || m !== mode) { shown = want; mode = m; svg.style.display = want && mode === "crescent" ? "block" : "none"; lock.style.display = want ? "grid" : "none"; movePad.hidden = !want || !touchDevice(); if (!want) { id = null; dragId = null; PEND.dx = PEND.dy = 0; clearMovePad(); } else laidAt = -1e9; }
     if (!want) return; if (now() - laidAt > 1000) layout();
     { const t = now(), dt = PEND.at >= 0 ? Math.max(0, Math.min(.1, (t - PEND.at) / 1000)) : 1 / 60; PEND.at = t; // ease the fed turn onto the view
+      if (id !== null || (mode === "drag" && dragId !== null)) { CAM.panAt = t; if (!g.lockedTarget?.()) CAM.yawV = 0; } // suppress unlocked assist, never erase the selected-target spring's velocity
       if (closeViewTurning()) PEND.dx = PEND.dy = 0;
       if (PEND.dx || PEND.dy) { const sm = mode === "drag" ? D.smooth : K.smooth, take = 1 - Math.exp(-sm * dt), ex = PEND.dx * take, ey = PEND.dy * take; PEND.dx -= ex; PEND.dy -= ey; if (Math.abs(PEND.dx) < .01) PEND.dx = 0; if (Math.abs(PEND.dy) < .01) PEND.dy = 0; closeViewPan(ex, ey, t); } }
     const on = !!g.lockedTarget?.(); if (on !== locked) { locked = on; lock.setAttribute("aria-pressed", String(on)); lock.style.color = on ? "#ff8a78" : "#ddd5c4"; } } };
