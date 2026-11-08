@@ -15,15 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Release r836 is assigned to the grounded-contact candidate against official r835 main. No later release number is assigned; re-read fresh main after r836 merges before packaging the next focused PR.
+Release r837 is assigned to the traversal-block candidate against official r836 main. No later release number is assigned; re-read fresh main after r837 merges before packaging the next focused PR.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 836 | Codex | `claude/close-view-grounded-contact` / #488 | Grounded ordinary bodies, overlap escape and height-aware accepted movement consequences | Review found elevated disc/raft support clipping against creatures below; correction, exact-head review and CI required. Restores the inherited original full-motion jump assertion separately from reduced-motion cast coverage. Merge waits for r835 hosted spell acceptance; publication will cover both after exact r836 Preview and combined hosted acceptance. Not live. |
-| 835 | Codex | `claude/close-view-spell-gestures` / #487 | Accepted spell gestures, free-hand origins and public manual cast inspections | Merged e5bcb04a after source CI42508742453 and full/delta Astra review clear. Merged CI42509441233 and Preview42509441237 are running; not hosted, live or published. Independent publication held because subsequent review found an inherited relaxed jump-test assertion; r836 restores that witness before combined publication. |
-| — | Codex | `claude/close-view-traversal-blocks` | Legacy/current stone steps, stacking and active lifetime | Prepared; final main/release/hosted gates remain. |
+| 837 | Codex | `claude/close-view-traversal-blocks` | Legacy/current stone steps, stacking, bounded rendering and active lifetime | Packaging against official r836 main a5d6b9c2; merge is held until r836 is actually published. PR, review, CI, Preview and hosted block gates remain. |
+| 836 | Codex | `claude/close-view-grounded-contact` / #488 | Grounded ordinary bodies, overlap escape and height-aware accepted movement consequences | Merged a5d6b9c2 after source CI42510840104 and full Astra834→C review clear. Merged CI42511673346 and Preview42511673395 are running; not hosted, live or published. |
+| 835 | Codex | `claude/close-view-spell-gestures` / #487 | Accepted spell gestures, free-hand origins and public manual cast inspections | Merged e5bcb04a after source CI42508742453 and full/delta Astra review clear. Actual hosted acceptance passed all18 casts, Clone, manual/automatic Orbit, normal damage and shared smoke without errors. Independent publication remains held; r835 will publish with r836 after C Preview/hosted gates. |
 | — | Codex | `claude/close-view-cleaver-four-strike` | Right-handed Cleaver and four up/down cuts | Prepared with supported legacy/opaque state and unchanged canonical hit rules; scoped Astra clear, hosted gate remains. |
 | — | Codex | `claude/close-view-target-recenter` | Finite centered Target recenter with shared presentation facing | Combined with prior source passes; scoped Astra clear, hosted gate remains. |
 | — | Codex | `claude/close-view-armor-recovery` | Clunky robot and fitted powered armor with atomic equipment | Combined source reviewed clear; final main/release/hosted gates remain. |
