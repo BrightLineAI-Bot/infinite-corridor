@@ -101,8 +101,11 @@ const cinderPike = [
 ];
 const vergeCleaver = [
   block(.17,-.25,.91,.043,.052,.14,leather,-2,0,1.19),
-  part(frontPatch,.17,-.25,1.06,1,.125,.04,bronze,-2,0,1.19),
-  part(taper,.17,-.25,1.48,.112,.025,.39,iron,-2,0,1.19),
+  block(.17,-.25,1.06,.125,.025,.025,bronze,-2,0,1.19),
+  part(taper,.17,-.25,1.48,.112,.009,.39,0x795c48,-2,0,1.19),
+  // Narrow forged edge on both broad faces; keep the gladius outline, never an axe head.
+  part(membrane([[.063,-.260,1.12],[.072,-.260,1.12],[.17,-.260,1.86]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
+  part(membrane([[.063,-.240,1.12],[.17,-.240,1.86],[.072,-.240,1.12]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
 ];
 // Compact tapered cuff and inward thumb/knuckle cover; the final sockets keep each shell on its own hand.
 const fistGauntlet=[part(taper,0,0,.012,.105,.075,.115,0xd7dde2),part(bevel,0,-.058,.028,.058,.034,.045,0xf1f4f5)];
@@ -323,14 +326,15 @@ export function writeCloseViewModel(out, offset, actor) {
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
   const fist = pose === "fist", chargingFist = pose === "fistCharge", fistStep = [1,2,3].includes(actor.fistStep) ? actor.fistStep : 1;
-  const turn = (fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
+  const primaryStep=[1,2,3].includes(actor.primaryStep)?actor.primaryStep:1,canonicalPrimary=kind==='playerCinderPike'||kind==='playerVergeCleaver';
+  const turn = (canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
     * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
-  const shift = (kind === 'playerCinderPike' ? .22 : .14) * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
+  const shift = (kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14) * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
   const foundry = kind.startsWith('foundry-');
@@ -374,12 +378,16 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (swing === 2) angle = -beat * stride + .35 * windup - .43 * strike
       + (playerLike ? 1.02 : .18) * cast - .18 * flinch + .58 * jump - .22 * jumpSettle;
     else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
+    if(kind==='playerVergeCleaver'&&swing===-2){
+      // Low one-handed carry plus the same accepted-only rising/outward/descending stage vocabulary.
+      angle=1.15+beat*.08+(primaryStep===1?-1.65:primaryStep===2?-1.25:-.90)*strike-.28*cast+.58*jump+.22*flinch;
+    } else if(kind==='playerCinderPike'&&swing===-2) angle+=(primaryStep===2?-.22:primaryStep===3?.22:0)*strike;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
     const cutYaw = playerLike && !fist && !chargingFist && swing === -2
-      ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? 1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
+      ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? primaryStep===2?-1.18:primaryStep===3?.45:1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {

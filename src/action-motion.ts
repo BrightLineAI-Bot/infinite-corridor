@@ -22,6 +22,10 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (typeof raw.profile !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.profile)) return null;
   const profile = raw.profile;
   const copy = { ...raw, profile, durationMs };
+  if (raw.primaryStep != null) {
+    if (!Number.isInteger(raw.primaryStep) || raw.primaryStep < 1 || raw.primaryStep > 3) return null;
+    copy.primaryStep = raw.primaryStep;
+  }
   if (raw.weaponKind != null) {
     if (typeof raw.weaponKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
     copy.weaponKind = raw.weaponKind;
@@ -73,6 +77,30 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   return copy;
 }
 
+// Accepted presentation is independent of combat clocks (which delayed Echo hits still update).
+// Published Fists and the earlier primary candidate retain their optional legacy clocks.
+export function attackVisualDeadline(player, record = player?.attackVisual) {
+  if (Number.isFinite(player?.actionVisualUntil)) return player.actionVisualUntil;
+  if (record?.profile === 'fist' && Number.isFinite(player?.fistVisualUntil)) return player.fistVisualUntil;
+  if (record?.primaryStep && Number.isFinite(player?.primaryVisualUntil)) return player.primaryVisualUntil;
+  return player?.attackUntil;
+}
+
+export function normalizeActionVisualMotion(value, visual) {
+  const record = normalizeAttackVisual(visual);
+  return Number.isFinite(value) && record ? Math.max(0, Math.min(record.durationMs, value)) : 0;
+}
+
+export function attackVisualRemaining(runtime) {
+  return attackVisualDeadline({
+    attackVisual: runtime?.attackVisual,
+    actionVisualUntil: Object.hasOwn(runtime || {}, 'actionVisualMotion') ? normalizeActionVisualMotion(runtime.actionVisualMotion, runtime.attackVisual) : undefined,
+    fistVisualUntil: runtime?.fistVisualMotion,
+    primaryVisualUntil: runtime?.primaryVisualMotion,
+    attackUntil: Number(runtime?.attackMotion) || 0,
+  });
+}
+
 export function stampAttackVisual(player, profile, durationMs, aim = null) {
   if (!player || typeof player !== "object") return null;
   const visual = normalizeAttackVisual({ profile, durationMs });
@@ -80,6 +108,7 @@ export function stampAttackVisual(player, profile, durationMs, aim = null) {
   const x = Number(aim?.x ?? aim?.dx), y = Number(aim?.y ?? aim?.dy), length = Math.hypot(x, y);
   if (Number.isFinite(length) && length > 0) visual.aim = { x: x / length, y: y / length };
   player.attackVisual = visual;
+  player.actionVisualUntil = Number.isFinite(player.attackUntil) ? player.attackUntil : undefined;
   return visual;
 }
 
@@ -96,3 +125,18 @@ export function normalizeDodgeVisual(raw) {
 const HERO_PRESENTATION = new WeakMap();
 export function recordHeroPresentation(player,pose){if(!player||typeof player!=='object'||!pose||!Number.isFinite(pose.gaitPhase)||!Number.isFinite(pose.speed)||!Number.isFinite(pose.yaw)||!Number.isFinite(pose.now)||!Number.isFinite(pose.x)||!Number.isFinite(pose.y))return;let q=HERO_PRESENTATION.get(player);if(!q){q={gaitPhase:0,speed:0,yaw:0,now:0,x:0,y:0};HERO_PRESENTATION.set(player,q);}q.gaitPhase=pose.gaitPhase;q.speed=Math.max(0,Math.min(8,pose.speed));q.yaw=pose.yaw;q.now=pose.now;q.x=pose.x;q.y=pose.y;}
 export function recentHeroPresentation(player,now,x,y){const q=player&&HERO_PRESENTATION.get(player);return q&&Number.isFinite(now)&&now-q.now>=0&&now-q.now<=250&&Math.hypot(q.x-x,q.y-y)<=.25?{...q}:null;}
+
+// Accepted primary presentation cycles; no timing, hits or movement are owned here.
+export function normalizePrimaryCombo(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+      typeof raw.weaponKind !== 'string' || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind) ||
+      !Number.isInteger(raw.step) || raw.step < 1 || raw.step > 3) return null;
+  return { ...raw, weaponKind: raw.weaponKind, step: raw.step };
+}
+export function advancePrimaryCombo(player, weaponKind) {
+  if (weaponKind !== 'cinder-pike' && weaponKind !== 'verge-cleaver') { player.primaryCombo = null; return null; }
+  const prior = normalizePrimaryCombo(player.primaryCombo);
+  const step = prior?.weaponKind === weaponKind ? prior.step % 3 + 1 : 1;
+  player.primaryCombo = { ...(prior || {}), weaponKind, step };
+  return step;
+}
