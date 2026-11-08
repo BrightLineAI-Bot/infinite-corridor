@@ -1,6 +1,6 @@
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, LIFT_PER_LEVEL } from "./landscape.ts";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroGear } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint } from "./actor-presentation.ts";
@@ -1957,7 +1957,7 @@ export function closeViewPlayerAction(g, now) {
   if (!player) return { active: false, legacy: false, record: null, profile: null, amount: 0, aim: null };
   const hasRecord = player.attackVisual != null;
   const record = hasRecord ? normalizeAttackVisual(player.attackVisual) : null;
-  const until = record?.profile === 'fist' && Number.isFinite(player.fistVisualUntil) ? player.fistVisualUntil : record?.primaryStep && Number.isFinite(player.primaryVisualUntil) ? player.primaryVisualUntil : player.attackUntil;
+  const until = attackVisualDeadline(player, record);
   const cancelled = record?.presentationCancelled === true;
   const active = !!record && !cancelled && until > now;
   const legacy = !hasRecord && !cancelled && player.attackUntil > now;

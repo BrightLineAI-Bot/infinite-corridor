@@ -1,4 +1,4 @@
-import { ACTION_MOTION, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo } from "./action-motion.ts";
+import { ACTION_MOTION, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo } from "./action-motion.ts";
 import{freshEliteState,ensureEliteState}from'./elites.ts';import{ensureRot}from'./water-traversal.ts';import{ensureBoatState,ensureWood}from'./boats.ts';import{ensureSlots}from'./spell-slots.ts';import{ensureWanderer,ensureReciters}from'./travelers.ts';import{ensureQuestingBeast}from'./questing-beast.ts';import{ensureFarArray}from'./far-array.ts';
 import{normalizeMapMarks}from'./atlas-view.ts';import{ensureLattice}from'./transit-lattice.ts';import{ensureHometowns}from'./hometowns.ts';import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.ts';
 import{freshViewportState,ensureViewportState}from'./foundry.ts';
@@ -119,13 +119,14 @@ function compactAreas(areas,held){if(!areas||typeof areas!=='object')return;for(
 export function ensurePerceptionInPlace(s){const p=s?.perception;if(plainObject(p)&&p.schema===1&&plainObject(p.awarded)&&plainObject(p.discoveries)&&Number.isFinite(p.aperture)&&p.aperture>=0&&Number.isFinite(p.passiveSeconds)&&p.passiveSeconds>=0&&'announcedTier' in p&&Number.isFinite(p.relicCarry)&&p.relicCarry>=0&&p.relicCarry<1/* balance pack */&&['memories','doors','relics'].every((k)=>k in p.discoveries)){if(s.session&&s.session.veilReturn===undefined)s.session.veilReturn=null;return s}return ensurePerception(s)}
 export function ensurePerception(s){const b=perception(),p=s.perception||{};s.perception={...b,...p,aperture:Math.max(0,Number(p.aperture)||0),passiveSeconds:Math.max(0,Number(p.passiveSeconds)||0),relicCarry:Math.max(0,Math.min(.999999,Number(p.relicCarry)||0))/* balance pack: a relic's fractional stat point carried */,awarded:{...p.awarded},discoveries:{...b.discoveries,...p.discoveries}};if(s.session&&s.session.veilReturn===undefined)s.session.veilReturn=null;return s}
 
-// Schema 14 additive metadata; primaryVisualMotion isolates body presentation from Echo's shared combat clock.
+// Schema 14 additive metadata; accepted action clocks are independent of Echo combat clocks.
 export function ensureAttackVisualRuntime(save) {
   const runtime = save?.session?.playerRuntime;
   if (runtime) {
+    if (Object.hasOwn(runtime, "actionVisualMotion")) runtime.actionVisualMotion = normalizeActionVisualMotion(runtime.actionVisualMotion, runtime.attackVisual);
     if (runtime.primaryVisualMotion != null) runtime.primaryVisualMotion = Number.isFinite(Number(runtime.primaryVisualMotion)) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, Number(runtime.primaryVisualMotion))) : 0;
     if (runtime.fistVisualMotion != null) runtime.fistVisualMotion = Number.isFinite(Number(runtime.fistVisualMotion)) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, Number(runtime.fistVisualMotion))) : 0;
-    runtime.attackVisual = normalizeAttackVisual(runtime.attackVisual, runtime.attackVisual?.profile === 'fist' && runtime.fistVisualMotion != null ? runtime.fistVisualMotion : runtime.attackVisual?.primaryStep && runtime.primaryVisualMotion != null ? runtime.primaryVisualMotion : Number(runtime.attackMotion) || 0);
+    runtime.attackVisual = normalizeAttackVisual(runtime.attackVisual, attackVisualRemaining(runtime));
     runtime.dodgeVisual = normalizeDodgeVisual(runtime.dodgeVisual);
     runtime.primaryCombo = normalizePrimaryCombo(runtime.primaryCombo);
   }

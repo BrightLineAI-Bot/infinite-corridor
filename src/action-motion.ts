@@ -77,6 +77,30 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   return copy;
 }
 
+// Accepted presentation is independent of combat clocks (which delayed Echo hits still update).
+// Published Fists and the earlier primary candidate retain their optional legacy clocks.
+export function attackVisualDeadline(player, record = player?.attackVisual) {
+  if (Number.isFinite(player?.actionVisualUntil)) return player.actionVisualUntil;
+  if (record?.profile === 'fist' && Number.isFinite(player?.fistVisualUntil)) return player.fistVisualUntil;
+  if (record?.primaryStep && Number.isFinite(player?.primaryVisualUntil)) return player.primaryVisualUntil;
+  return player?.attackUntil;
+}
+
+export function normalizeActionVisualMotion(value, visual) {
+  const record = normalizeAttackVisual(visual);
+  return Number.isFinite(value) && record ? Math.max(0, Math.min(record.durationMs, value)) : 0;
+}
+
+export function attackVisualRemaining(runtime) {
+  return attackVisualDeadline({
+    attackVisual: runtime?.attackVisual,
+    actionVisualUntil: Object.hasOwn(runtime || {}, 'actionVisualMotion') ? normalizeActionVisualMotion(runtime.actionVisualMotion, runtime.attackVisual) : undefined,
+    fistVisualUntil: runtime?.fistVisualMotion,
+    primaryVisualUntil: runtime?.primaryVisualMotion,
+    attackUntil: Number(runtime?.attackMotion) || 0,
+  });
+}
+
 export function stampAttackVisual(player, profile, durationMs, aim = null) {
   if (!player || typeof player !== "object") return null;
   const visual = normalizeAttackVisual({ profile, durationMs });
@@ -84,6 +108,7 @@ export function stampAttackVisual(player, profile, durationMs, aim = null) {
   const x = Number(aim?.x ?? aim?.dx), y = Number(aim?.y ?? aim?.dy), length = Math.hypot(x, y);
   if (Number.isFinite(length) && length > 0) visual.aim = { x: x / length, y: y / length };
   player.attackVisual = visual;
+  player.actionVisualUntil = Number.isFinite(player.attackUntil) ? player.attackUntil : undefined;
   return visual;
 }
 
