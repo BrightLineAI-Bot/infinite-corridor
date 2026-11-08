@@ -3,9 +3,9 @@
 // dive generator 1 for dive histories made before (pinned in `history.diveGenerator`). A grotto is a longer cave
 // with currents that push back along the climb, air pockets within one breath, grotto beasts on the sea-creature
 // runtime and an Elder Wyrm coiled in the final chamber, guarding the sunken cache. Data and pure generation.
-import { hashSeed, rng } from "./random.js?v=r826-9a7a39cb18a3";
-import { annotateDungeon } from "./dungeon-framework.js?v=r826-9a7a39cb18a3";
-import { DIVE } from "./diving.js?v=r826-9a7a39cb18a3";
+import { hashSeed, rng } from "./random.js?v=r827-ff2d4c13bf18";
+import { annotateDungeon } from "./dungeon-framework.js?v=r827-ff2d4c13bf18";
+import { DIVE } from "./diving.js?v=r827-ff2d4c13bf18";
 
 export const DIVE_GENERATOR = 2;
 export const GROTTO_THEMES = {
