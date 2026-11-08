@@ -2,6 +2,7 @@ import { Game } from "./game.ts";
 import { PENTAGON, pentagonPlan } from "./pentagon.ts"; // the Close View lab
 import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.ts";
 import { BUILDINGS, buildingHere } from "./great-buildings.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.ts";
 import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.ts";
 import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.ts";
 import { DIG, planDig } from "./digging.ts";
@@ -183,6 +184,12 @@ const CLOSE_VIEW_LAB = [
   { id: "lived-in", label: "Theme: a lived-in keep (a household of ghosts)", style: "keep", lived: true },
   { id: "hive", label: "Theme: an alien hive's Second Gallery (chitin and resin)", style: "hive", floor: 2 },
   { id: "arcology", label: "Theme: a ruined arcology (an old machine, failing)", style: "apartment" },
+  { id: "routing-keep-baseline", label: "Routing comparison: enterable keep (current)", roomRouting: "keep", candidate: false },
+  { id: "routing-keep-candidate", label: "Routing experiment: enterable keep (branched rooms)", roomRouting: "keep", candidate: true },
+  { id: "routing-keep-biomechanical-baseline", label: "Routing comparison: ribbed keep site (current stone)", roomRouting: "keep", candidate: false, biomechanical: true },
+  { id: "routing-keep-biomechanical-candidate", label: "Routing experiment: biomechanical Old Keep", roomRouting: "keep", candidate: true, biomechanical: true },
+  { id: "routing-pentagon-baseline", label: "Routing comparison: Pentagon (current)", roomRouting: "pentagon", candidate: false },
+  { id: "routing-pentagon-candidate", label: "Routing experiment: Pentagon (branched rooms)", roomRouting: "pentagon", candidate: true },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
 // GPU scene's lava and pits can be seen without hunting for a room maze's gallery
@@ -216,6 +223,7 @@ function digReturnCandidate(game, preferred = null) {
 }
 function closeViewFixture(scenario, seed, now) {
   const spec = CLOSE_VIEW_LAB.find((q) => q.id === scenario) || CLOSE_VIEW_LAB[0];
+  if (spec.roomRouting) return roomRoutingFixture(spec, seed, now);
   let id, back;
   if (spec.style) { // release 794: a theme's floor, built from a great building's id near the keep the lab finds (scratch only)
     const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); const floors = 3; let rx = b.rx;
@@ -318,6 +326,85 @@ function buildPracticeLane(game) {
 export function selectLabBuildMaterial(fixture, kind) {
   if (!fixture?.buildPractice || !fixture.buildPractice.materials.includes(kind)) return false;
   setBuildKind(fixture.game.save, kind); fixture.game.save.build.continuous = false; return true;
+}
+
+// Real exterior doors and production interactions, on a fresh scratch save. The experimental
+// Pentagon selector belongs only to this instance/site: production's adoption cap stays at v9.
+function roomRoutingFixture(spec, seed, now) {
+  const save = scratchSave(seed); save.closeView = true;
+  if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET;
+  if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL;
+  ensureCloseView(save);
+  const game = new Game(save, now); game.installSystems();
+  let door = null, site = null;
+  const version = spec.roomRouting === "keep" ? (spec.candidate ? CLOSE_VIEW_ROOM_ROUTING.keepVersion : 4) : (spec.candidate ? CLOSE_VIEW_ROOM_ROUTING.pentagonVersion : 9);
+  if (spec.roomRouting === "pentagon") {
+    site = findLabPentagon(seed, now);
+    if (!site) throw new Error(`No Pentagon near the origin for seed ${seed}.`);
+    const selectVersion = game.pentagonVersion.bind(game);
+    game.pentagonVersion = (cx, cy) => cx === site.cx && cy === site.cy ? version : selectVersion(cx, cy);
+    const plan = pentagonPlan(seed, site.cx, site.cy, version);
+    const entrance = plan.world.find((w) => !w.toGate && !w.sigil && !w.exterior && !w.balcony && !w.sealed && !w.gate && plan.nodes.some((n) => n.id === w.node && n.kind === "outer" && !n.hall));
+    if (!entrance) throw new Error(`No ordinary outer Pentagon entrance for seed ${seed}.`);
+    game.rx = site.cx - 1 + Math.floor(entrance.door.gx / 32); game.ry = site.cy - 1 + Math.floor(entrance.door.gy / 32);
+    game.loadArea("overworld", false);
+    door = game.map.objects.find((o) => o.id === `pent-${entrance.key}`);
+  } else {
+    // At most 24 actual section loads; rejected sites (a larger structure occupying the site,
+    // or no legal footprint) are skipped identically in the baseline and candidate.
+    let probes = 0;
+    search: for (let d = BUILDINGS.minRing; d < 48; d++) for (let x = -d; x <= d; x++) for (const y of [d - Math.abs(x), Math.abs(x) - d]) {
+      if (buildingHere(seed, x, y, sectionRegion(seed, x, y, LANDSCAPE_VERSION))?.style !== "keep") continue;
+      game.rx = x; game.ry = y; game.loadArea("overworld", false); probes++;
+      door = game.map.objects.find((o) => o.kind === "dungeon" && o.buildingDoor && !o.roofHatch && !o.enterAt && /^building:.*:keep:/.test(o.dungeonId || ""));
+      if (door && (!spec.biomechanical || routingKeepAppearance(door.dungeonId.replace(/:f\d+$/,""), CLOSE_VIEW_ROOM_ROUTING.keepVersion))) { site = { rx: x, ry: y }; break search; }
+      door = null;
+      if (probes >= 24) break search;
+    }
+  }
+  if (!door) throw new Error(`No usable ${spec.roomRouting} entrance for seed ${seed}.`);
+  if (spec.roomRouting === "keep") save.consequences.dungeons[door.dungeonId] = { interiorVersion: version };
+  const keepBase = spec.roomRouting === "keep" ? door.dungeonId.replace(/:f\d+$/, "") : null;
+  const appearance = spec.candidate && keepBase ? routingKeepAppearance(keepBase, version) : null;
+  if (appearance) {
+    // Scratch-site visual metadata only. Reapplied after every exterior/roof reconstruction;
+    // no production history attachment, tile mutation, storage or prototype override.
+    const load=game.loadArea.bind(game), tag=()=>{ if(game.map?.greatBuilding?.base===keepBase) {
+      game.map.greatBuilding.appearance={...appearance};
+      const exterior=game.map.objects.find(o=>o.kind==="greatBuilding"&&o.id===game.map.greatBuilding.id);
+      if(exterior)exterior.appearance={...appearance};
+    }};
+    game.loadArea=(...args)=>{const result=load(...args);tag();return result;};tag();
+  }
+  const entranceId = door.id, outside = { rx: game.rx, ry: game.ry, x: door.x, y: door.y };
+  // Keep guardian/trial actors: removing them would bypass the progression this lab measures.
+  // Pausing is available through the ordinary lab controls; this fixture grants no keys or kills.
+  game.player.x = door.x; game.player.y = door.y;
+  const entered = game.interact("enter", door.id);
+  if (!entered.ok) throw new Error(`Routing fixture entrance failed: ${entered.message}`);
+  const entry = { x: game.player.x, y: game.player.y };
+  if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY };
+  game.message = spec.candidate ? "Explore the compact rooms and side ladders. The roof and courts use the ordinary outdoor view." : "Explore the current rooms and stairs. The roof and courts use the ordinary outdoor view.";
+  game.sync();
+  return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true,
+    diagnostics: { routing: { experiment: spec.candidate, family: spec.roomRouting, version, base:game.map.building.base, experimentRevision:CLOSE_VIEW_ROOM_ROUTING.revision, appearance, site, entranceId, outside, scratchOnly: true, productionExportSupported: false, selectorScope: spec.roomRouting === "pentagon" ? "this fixture and Pentagon site only" : null } } };
+}
+
+// Explicit scratch reconstruction only; never a production import/export path.
+export function restoreRoomRoutingFixture(fixture, snapshot, now = 0) {
+  const routing=fixture?.diagnostics?.routing;
+  if(!routing?.scratchOnly || snapshot?.seed!==fixture.seed || snapshot?.session?.area!=="dungeon") throw new Error("Routing scratch resume requires the same seed and an interior snapshot.");
+  const active=String(snapshot.session.activeDungeonId||"");
+  if(!active.startsWith(`${routing.base}:f`))throw new Error("Routing snapshot belongs to another site.");
+  if(routing.family === "keep" && (snapshot.consequences?.dungeons?.[`${routing.base}:f1`]?.interiorVersion ?? snapshot.consequences?.dungeons?.[active]?.interiorVersion) !== routing.version)
+    throw new Error("Routing snapshot has another interior revision.");
+  const game=new Game(migrateSave(structuredClone(snapshot)),now);game.installSystems();
+  if(routing.family==="pentagon") { const select=game.pentagonVersion.bind(game);game.pentagonVersion=(cx,cy)=>cx===routing.site.cx&&cy===routing.site.cy?routing.version:select(cx,cy); }
+  if(routing.appearance) {
+    const base=game.map.building.base,load=game.loadArea.bind(game);
+    game.loadArea=(...args)=>{const result=load(...args);if(game.map?.greatBuilding?.base===base){game.map.greatBuilding.appearance={...routing.appearance};const exterior=game.map.objects.find(o=>o.kind==="greatBuilding"&&o.id===game.map.greatBuilding.id);if(exterior)exterior.appearance={...routing.appearance};}return result;};
+  }
+  return {...fixture,game,save:game.save,primary:{x:game.player.x,y:game.player.y},diagnostics:{...fixture.diagnostics,routing:{...routing,reconstructed:true}}};
 }
 
 function combatAssetGear(slot, name) {
@@ -666,6 +753,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
 
 export function labReport(fixture) {
   const {game}=fixture,map=game.map,primary=fixture.primary;
+  if(fixture.diagnostics?.routing) fixture.diagnostics.routing.floor={id:map.id,grammar:map.building?.routing?.grammar||null,rooms:map.building?.routing?.nodes?.length||0,optional:map.building?.optionalRoute||map.building?.optionalRoutes||null,appearance:map.building?.appearance||map.greatBuilding?.appearance||null};
   if (fixture.buildPractice) {
     const p = game.player;
     fixture.diagnostics.buildState = { selected: game.save.build.kind, available: activeBuildKind(game.save), materials: { wood: game.save.materials.wood, stone: game.save.materials.stone },
