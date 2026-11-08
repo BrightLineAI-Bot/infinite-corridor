@@ -1,4 +1,4 @@
-import { ACTION_MOTION, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo } from "./action-motion.ts";
+import { ACTION_MOTION, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo } from "./action-motion.ts";
 import{freshEliteState,ensureEliteState}from'./elites.ts';import{ensureRot}from'./water-traversal.ts';import{ensureBoatState,ensureWood}from'./boats.ts';import{ensureSlots}from'./spell-slots.ts';import{ensureWanderer,ensureReciters}from'./travelers.ts';import{ensureQuestingBeast}from'./questing-beast.ts';import{ensureFarArray}from'./far-array.ts';
 import{normalizeMapMarks}from'./atlas-view.ts';import{ensureLattice}from'./transit-lattice.ts';import{ensureHometowns}from'./hometowns.ts';import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.ts';
 import{freshViewportState,ensureViewportState}from'./foundry.ts';
@@ -125,6 +125,7 @@ export function ensureAttackVisualRuntime(save) {
   if (runtime) {
     if (runtime.primaryVisualMotion != null) runtime.primaryVisualMotion = Number.isFinite(Number(runtime.primaryVisualMotion)) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, Number(runtime.primaryVisualMotion))) : 0;
     runtime.attackVisual = normalizeAttackVisual(runtime.attackVisual, runtime.attackVisual?.primaryStep && runtime.primaryVisualMotion != null ? runtime.primaryVisualMotion : Number(runtime.attackMotion) || 0);
+    runtime.castVisual = normalizeCastVisual(runtime.castVisual, Number(runtime.clocks?.castUntil) || 0);
     runtime.dodgeVisual = normalizeDodgeVisual(runtime.dodgeVisual);
     runtime.primaryCombo = normalizePrimaryCombo(runtime.primaryCombo);
   }
