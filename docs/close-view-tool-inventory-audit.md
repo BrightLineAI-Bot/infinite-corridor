@@ -91,3 +91,25 @@ Smallest follow-up: map the three exact emitter identities to each form's existi
 Inspected sources include `items.ts`, actual `Game.fireSecondary` / `brawlerTool` / Mirage / Golem / clone / drone producers, `tool-forms.ts`, action-motion normalization, Close View action selection, form selection, hero gear recipes, and the existing combat/tool manifests. Existing focused tests establish production behavior on this exact source lineage but were not broadly rerun merely to duplicate the reviewed 154-test baseline.
 
 This document proves source identities, branches, numeric caps, accepted profile routing, and the pure transformed-form selection defect. It does not prove GPU output, shader ownership, socket visibility, screen-space cohesion, hardware input, frame rate, or physical-device acceptance. No server, full suite, prototype/proposal/pages/proving fixture, network, push, release bump, asset, dependency, workflow, or runtime change was performed.
+
+## T fallback regression resolution receipt
+
+The `8411f956` observations above remain the historical baseline. The narrow T follow-up resolves the transformed-form selection regression without adding geometry or redesigning Robot, powered suit, or Ember form. `playerFormModelKey` now maps accepted Rift Bombard, Blunderbuss, and Lumen Spindle identities to each form's existing generic `emitter` equipment family, and accepted Great Sweep to its existing `sweep` family. The accepted canonical `attackVisual.toolKind` remains unchanged; normal imported-hero selection, drone mode, legacy generic profiles, form precedence, and gameplay mechanics are unchanged.
+
+The focused actual-producer renderer witness covers all four canonical identities across Robot, powered suit, and Ember form. Each render retains one native form body, selects the intended existing equipment family, and submits finite data. Exact existing family budgets are: Iron Fists 248 emitter / 222 sweep triangles, Robot 256 / 230, powered suit 254 / 228, and Ember form 230 / 204. Nothing exceeds or raises the existing 256-triangle native-model cap; Robot emitter remains exactly at it. The emitter family retains visible generic equipment. Great Sweep remains the established native sweep family; this mapping-only fix does not claim a newly authored exact Great Sweep tool or exact named emitter silhouettes for special forms.
+
+```text
+node --test tests/native-player-forms.test.ts
+# 14/14 passed.
+
+node --test tests/close-view-tool-presentation.test.ts tests/tool-primary-integration.test.ts
+# 9/9 passed; normal imported-hero identity, clocks, sockets, cues, interruption and resume remain unchanged.
+
+node scripts/build.mjs
+# Passed: static offline PWA release 830 with Proving Ground PG-1.
+
+git diff --check
+# Passed.
+```
+
+Hosted GPU and physical-phone validation remain pending. No server, full suite, prototype/proposal/pages/proving fixture, network, push, release, asset, dependency, configuration, or unrelated worktree action was performed.
