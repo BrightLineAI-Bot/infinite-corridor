@@ -2,11 +2,11 @@ import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { interiorCeilingHeight, interiorArchAt } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge } from "./action-motion.ts";
+import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.ts";
-import { playerFormPresentation, playerFormModelKey } from './close-view-player-presentation.ts';
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles } from './close-view-player-presentation.ts';
 import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
@@ -437,7 +437,7 @@ export function closeViewWanted(g) { return g?.save?.closeView === true && g.are
 export function closeViewApplies(g) { return closeViewWanted(g) && !openAirAt(g.map, g.player.x, g.player.y); }
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
-const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
@@ -624,10 +624,10 @@ const footX = (p) => p.x + .5, footY = (p) => p.y + .75;
 // Later clearance changes never steer yaw or the movement basis.
 function ensureCam(g) {
   if (CAM.map === g.map) return;
-  CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.shoulderRoom = CAM.shoulderClearFor = 0; CAM.pausedAt = NaN;
+  CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.bodyYaw = CAM.bodyDesiredYaw = FACING_YAW[g.player.facing] ?? NaN; CAM.bodyTransient = false; CAM.bodyRevision = CAM.targetRevision = 0; CAM.targetRecentre = false; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.shoulderRoom = CAM.shoulderClearFor = 0; CAM.pausedAt = NaN;
   CAM.pausedTotal = Number(g.presentationPausedMs) || 0;
   const facing = FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
-  CAM.rigActive = false; CAM.rigIndex = CAM.rigPending = CAM.rigHold = CAM.rigOffset = CAM.rigOffsetV = 0;
+  CAM.rigActive = false; CAM.rigIndex = CAM.rigPending = CAM.rigHold = CAM.rigOffset = CAM.rigOffsetV = 0; CAM.centeredRear = false; CAM.recentre = NaN;
   const preset = closeViewPreset(g), evaluate = (angle) => {
     const fx = Math.cos(angle), fy = Math.sin(angle), forward = Math.min(6, open(angle));
     let reach = boomLength(g, fx, fy), index = 0;
@@ -673,6 +673,14 @@ function turnCamera(g, now) {
     const t = Math.max(0, (now - CAM.qtT0) / 1000), w = 5 / CAM.qtDur, k = t >= CAM.qtDur * 1.4 ? 1 : 1 - (1 + w * t) * Math.exp(-w * t);
     CAM.yaw = wrap(CAM.qtFrom + wrap(CAM.qtTo - CAM.qtFrom) * k); CAM.yawV = 0; CAM.pitchUser *= Math.exp(-12 * dt); if (k >= 1) { CAM.qtT0 = -1; CAM.yaw = CAM.qtTo; CAM.pitchUser = 0; } return; }
   const target = lockTick(g, dt);
+  if (CAM.targetRecentre) {
+    const goal = Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : CAM.recentre, diff = wrap(goal - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
+    CAM.yaw = wrap(CAM.yaw + step); if (Math.hypot(CAM.sx, CAM.sy) < CLOSE_VIEW.input.idle) CAM.inputYaw = CAM.yaw;
+    CAM.yawV = 0; CAM.pitchUser *= Math.exp(-6 * dt);
+    const bodySettled = Number.isFinite(CAM.bodyDesiredYaw) && Math.abs(wrap(CAM.bodyYaw - CAM.bodyDesiredYaw)) < .01;
+    if (CAM.bodyRevision > CAM.targetRevision && Math.abs(diff) < .01 && bodySettled && !CAM.bodyTransient) { CAM.targetRecentre = false; CAM.recentre = NaN; }
+    return;
+  }
   if (target) { // locked: the view swings to keep the foe framed beyond the Wayfarer
     // within `near` tiles the swing fades out, so a foe at arm's length (or slipping past) never whips the view round
     const L = CLOSE_VIEW.lock, d = Math.hypot(target.x - p.x, target.y - p.y), near = Math.max(L.nearScale, Math.min(1, (d - L.near * .5) / (L.near * .5)));
@@ -700,14 +708,39 @@ function yawSpring(goal, w, cap, dt) {
 // with the view at once, as a gamepad's right stick does: turn the view round and push up, and you walk the new way.
 export function closeViewPan(dx, dy, now = 0) {
   if (CAM.qtT0 >= 0) return; // the quick turnaround owns the view until it settles
-  const P = CLOSE_VIEW.crescent, a = (Number(dx) || 0) * P.yaw; CAM.recentre = NaN; CAM.yawV = 0;
+  const P = CLOSE_VIEW.crescent, a = (Number(dx) || 0) * P.yaw; CAM.recentre = NaN; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.yawV = 0;
   CAM.yaw = wrap(CAM.yaw + a); CAM.inputYaw = wrap(CAM.inputYaw + a);
   CAM.pitchUser = Math.max(P.pitchRange[0], Math.min(P.pitchRange[1], CAM.pitchUser + (Number(dy) || 0) * P.pitch)); CAM.panAt = now;
 }
 // A double tap on the crescent: the camera goes back behind the Wayfarer (the way they last faced or walked).
-export function closeViewRecentre(g, now = 0) {
-  const a = g?.save?.lastAim, yaw = a && (a.x || a.y) ? Math.atan2(a.y, a.x) : FACING_YAW[g?.player?.facing] ?? CAM.yaw;
-  CAM.recentre = yaw; CAM.panAt = now;
+export function closeViewPlayerFacingYaw(g, now = 0, baseYaw = NaN, { phase = null, importedReady = null } = {}) {
+  const p = g?.player, clock = g?.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (!p) return CAM.yaw;
+  const trackYaw = Number.isFinite(baseYaw) ? baseYaw : Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : MODEL_STATE.tracks.get(p)?.yaw;
+  if (p.stunnedUntil > clock) return Number.isFinite(trackYaw) ? trackYaw : FACING_YAW[p.facing] ?? CAM.yaw;
+  if (p.dodgeUntil > clock && Number.isFinite(p.dodgeVisual?.facingYaw)) return p.dodgeVisual.facingYaw;
+  if (g.fistCharge) { const d = g.fistCharge.direction; if (d && (d.x || d.y)) return Math.atan2(d.y, d.x); }
+  const action = closeViewPlayerAction(g, clock), v = action.record;
+  if (action.active || action.legacy) {
+    const d = v?.aim || g.pendingToolUse?.aim || p.meleeStrike, aimYaw = d && (d.x || d.y) ? Math.atan2(d.y, d.x) : Number.isFinite(trackYaw) ? trackYaw : FACING_YAW[p.facing] ?? CAM.yaw;
+    const form = playerFormPresentation(g), importedForm = !form || form.kind === 'playerIronFists', imported = importedReady ?? (importedForm && !!MODEL_STATE.hero && !!getCloseViewHeroAsset()), profile = action.active ? v?.profile : null;
+    const blendsEntry = profile === 'fist' || profile === 'hammer' || profile === 'melee' && ['cinder-pike','verge-cleaver'].includes(v?.weaponKind);
+    if (imported && blendsEntry && Number.isFinite(v?.facingYaw)) {
+      let amount = Number.isFinite(phase) ? phase : action.amount;
+      if (!Number.isFinite(phase) && action.active && !v?.primaryStep && now - MODEL_STATE.lastMeleeHit < MODEL_TIMING.contactHoldMs)
+        amount = 1 - Math.min(1, (action.until - MODEL_STATE.lastMeleeHit) / v.durationMs);
+      const t = Math.min(1, amount / .08), blend = t * t * (3 - 2 * t); return wrap(v.facingYaw + wrap(aimYaw - v.facingYaw) * blend);
+    }
+    return aimYaw;
+  }
+  if (p.castUntil > clock) return Number.isFinite(trackYaw) ? trackYaw : FACING_YAW[p.facing] ?? CAM.yaw;
+  const look = closeViewIdleLockAim(g, clock); if (look && (look.x || look.y)) return Math.atan2(look.y, look.x);
+  if (Number.isFinite(trackYaw)) return trackYaw;
+  const a = g.save?.lastAim; return a && (a.x || a.y) ? Math.atan2(a.y, a.x) : FACING_YAW[p.facing] ?? CAM.yaw;
+}
+export function closeViewRecentre(g, now = 0, { centered = false } = {}) {
+  CAM.centeredRear = !!centered; CAM.targetRecentre = !!centered; CAM.targetRevision = CAM.bodyRevision; CAM.recentre = centered ? closeViewPlayerFacingYaw(g, now) : (() => { const a = g?.save?.lastAim; return a && (a.x || a.y) ? Math.atan2(a.y, a.x) : FACING_YAW[g?.player?.facing] ?? CAM.yaw; })(); CAM.panAt = now;
+  if (centered) { CAM.qtT0 = -1; CAM.yawV = 0; CAM.pitchUser = 0; }
 }
 // The quick turnaround (CLOSE_VIEW.quickTurn). Armed while the stick (as last read by closeViewSteer) is held clearly back,
 // toward the camera. closeViewQuickTurn starts the swing: the view goes round to face the way the Wayfarer is being walked
@@ -718,7 +751,7 @@ export function closeViewQuickTurn(g, now = 0) {
   const Q = CLOSE_VIEW.quickTurn; if (!g?.player || CAM.qtT0 >= 0 || now - CAM.qtAt < Q.cooldown * 1000) return false;
   if (g.lockedTarget?.()) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; } // locked: the turn breaks the lock
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), to = wrap(CAM.yaw + Math.PI);
-  CAM.qtFrom = CAM.yaw; CAM.qtTo = to; CAM.qtT0 = now; CAM.qtAt = now; CAM.qtDur = reduce ? Q.reducedSeconds : Q.seconds; CAM.recentre = NaN; CAM.yawV = 0; CAM.panAt = now + CAM.qtDur * 1000;
+  CAM.qtFrom = CAM.yaw; CAM.qtTo = to; CAM.qtT0 = now; CAM.qtAt = now; CAM.qtDur = reduce ? Q.reducedSeconds : Q.seconds; CAM.recentre = NaN; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.yawV = 0; CAM.panAt = now + CAM.qtDur * 1000;
   const fx = Math.cos(to), fy = Math.sin(to); g.player.facing = Math.abs(fx) >= Math.abs(fy) ? (fx >= 0 ? "right" : "left") : (fy >= 0 ? "down" : "up");
   const a = g.save?.lastAim; if (a && typeof a === "object") { a.x = fx; a.y = fy; } else if (g.save) g.save.lastAim = { x: fx, y: fy };
   return true;
@@ -750,6 +783,11 @@ export function closeViewLockToggle(g) {
   if (!g) return null; if (g.lockedTarget?.()) { g.lockTarget(null); CAM.lockId = null; return null; }
   const e = closeViewLockCandidate(g); if (!e) { g.message = "Nothing to lock on to in view."; return null; }
   g.lockTarget(e.id); CAM.lockId = e.id; CAM.lostFor = 0; return e;
+}
+// The mounted Target command preserves the existing pre-recenter acquisition/toggle, then requests an open-ground centered rear view.
+export function closeViewTargetActivate(g, now = 0) {
+  if (!g || g.paused || !closeViewShowing(g)) return null;
+  const target = closeViewLockToggle(g); closeViewRecentre(g, now, { centered: true }); return target;
 }
 // A swipe along the crescent while locked: the next foe to the right (dir 1) or left (-1) of the locked one, as the camera sees them.
 export function closeViewLockSwitch(g, dir) {
@@ -865,9 +903,9 @@ export function closeViewSteer(g, state) {
   CAM.sx = sx; CAM.sy = sy; state.x = rx * sx - fx * sy; state.y = ry * sx - fy * sy; CAM.steered = true; return true;
 }
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
-export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.dist, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, valid: CAM.valid, drawn: CAM.drawn }; }
+export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.dist, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
-export function resetCloseViewCamera() { CAM.map = null; CAM.valid = false; CAM.drawn = false; }
+export function resetCloseViewCamera() { CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; }
 globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats }; // read by the browser harness and the lab's console (diagnostics only)
 // Close View drew the last frame of this area: the host then leaves out its own top-down overlays (they were drawn onto the
 // ground texture through CLOSE_VIEW_HOOKS.groundLayers).
@@ -1065,7 +1103,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const followShare = Math.max(0, Math.min(1, (feetBoom / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter)));
   // At a short boom, sideways spring lag is effectively an extra shoulder: it can put the hood outside a
   // portrait viewport. Center that component with compression, retaining the longitudinal follow spring.
-  const sideLag = ((CAM.fpx - footX(p)) * rx + (CAM.fpy - footY(p)) * ry) * (1 - followShare);
+  const sideLag = ((CAM.fpx - footX(p)) * rx + (CAM.fpy - footY(p)) * ry) * (CAM.centeredRear ? 1 : 1 - followShare);
   let ax = CAM.fpx - rx * sideLag, ay = CAM.fpy - ry * sideLag;
   let want = Math.min(camD, boomLength(g, fx, fy, ax, ay), feetBoom + Math.hypot(ax - footX(p), ay - footY(p)));
   // Probe the requested centered rig, not last frame's shortened eye. Feedback from the latter alternated
@@ -1080,7 +1118,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
   const craneUp = CAM.crane, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
-  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = (offsetWant ? 0 : Cp.shoulder * mix) * Math.max(0, Math.min(1, (CAM.dist / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter))); let room = sh;
+  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = CAM.centeredRear ? 0 : (offsetWant ? 0 : Cp.shoulder * mix) * Math.max(0, Math.min(1, (CAM.dist / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter))); let room = sh;
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (wallAt(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
   // An open endpoint alone does not clear a concave corner between the shoulder and the player.
   if (sightClear(g.map, footX(p), footY(p), bx + rx * room, by + ry * room, C.sightStep, C.sightPad) < 1) room = 0;
@@ -1230,6 +1268,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
   occludeBillboards(n, faces, g.paused);
   insertionSortByDepth(n);
+  const fallbackAction = closeViewPlayerAction(g, now), fallbackYaw = closeViewPlayerFacingYaw(g, now, FACING_YAW[p.facing] ?? CAM.yaw, { importedReady: false });
+  CAM.bodyYaw = CAM.bodyDesiredYaw = fallbackYaw; CAM.bodyTransient = !!(fallbackAction.active || fallbackAction.legacy || p.dodgeUntil > now || p.castUntil > now || p.stunnedUntil > now || g.fistCharge || g.jumpUntil > now); CAM.bodyRevision++;
   const turnFacing = relativeFacing(p, closeViewIdleLockAim(g, now)), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
   let models;
   try { models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null; } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; }
@@ -1521,11 +1561,11 @@ export function closeViewEchoRibbons(g, map, quality = "balanced", reduce = fals
   const K = CLOSE_VIEW.echoRibbon, cap = K.cap[quality] || K.cap.balanced, list = (g?.glyphVisuals || []).filter(v => v?.kind === "primaryEcho" && Number(v.life) > 0 && Number(v.max) > 0).slice(-cap);
   let paths = 0, vertices = 0;
   const valid = q => q && [q.x,q.y,q.dx,q.dy,q.range].every(Number.isFinite) && q.range > 0 && Math.hypot(q.dx,q.dy) > 1e-4 && (q.shape === "thrust" || q.shape === "arc" || q.shape === "cone");
-  const different = (m,q) => valid(m) && (Math.hypot(m.x-q.x,m.y-q.y)>.08 || Math.hypot(m.dx-q.dx,m.dy-q.dy)>.08 || m.shape!==q.shape || Math.abs(m.range-q.range)>.08 || (m.weaponKind==='verge-cleaver'&&m.primaryStep!==3));
+  const different = (m,q) => valid(m) && (Math.hypot(m.x-q.x,m.y-q.y)>.08 || Math.hypot(m.dx-q.dx,m.dy-q.dy)>.08 || m.shape!==q.shape || Math.abs(m.range-q.range)>.08 || (m.weaponKind==='verge-cleaver'&&(primaryVisualStage(m)?.kind==='cleaver-four'||m.primaryStep!==3)));
   const path = (q, memory, fade) => {
     if (!valid(q)) return;
     const d=Math.hypot(q.dx,q.dy),dx=q.dx/d,dy=q.dy/d,n=K.segments,shape=q.shape==='thrust'?'thrust':'sweep',half=(Number(q.arc)||100)*Math.PI/360;
-    const step=memory?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0,offset=step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
+    const stage=memory?primaryVisualStage(q):null,step=stage?.step||(memory&&q.primaryMotion==null?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0),offset=stage?.kind==='cleaver-four'?(stage.direction>0?-.28:.28):step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
     const ground=Number.isFinite(q.support)?q.support*LIFT_PER_LEVEL:interiorSurfaceHeight(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
     const point = i => { const t=i/n,b=shape==='thrust'?angle:start+(end-start)*t,r=shape==='thrust'?.18+(q.range-.18)*t:q.range,x=q.x+Math.cos(b)*r,y=q.y+Math.sin(b)*r,z=ground+K.height[0]+(K.height[1]-K.height[0])*Math.sin(Math.PI*t),tx=shape==='thrust'?dx:-Math.sin(b),ty=shape==='thrust'?dy:Math.cos(b),w=width*(shape==='thrust'?(1-t*.82):(.72+.28*Math.sin(Math.PI*t))); return {x,y,z,nx:-ty*w,ny:tx*w}; };
     let a=point(0); for(let i=1;i<=n;i++){const b=point(i),alpha=Math.max(0,Math.min(1,fade))*spec.alpha; emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x+b.nx,b.y+b.ny,b.z,1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x-a.nx,a.y-a.ny,a.z,-1,1,alpha,spec.color,1);vertices+=6;a=b;} paths++;
@@ -2071,6 +2111,12 @@ export function closeViewPlayerAction(g, now) {
   const amount = active ? 1 - Math.min(1, Math.max(0, until - now) / record.durationMs) : 0;
   return { active, legacy, record, until, profile: active ? record.profile : null, amount, aim: active ? record.aim || null : null };
 }
+export function resolveCloseViewPlayerFacing(trackYaw, desiredYaw, { elapsed = 0, snap = false, stunned = false, overrideYaw = NaN, transient = false } = {}) {
+  let displayedYaw = trackYaw;
+  if (!stunned) displayedYaw = snap ? desiredYaw : wrap(trackYaw + wrap(desiredYaw - trackYaw) * (1 - Math.exp(-Math.max(0, elapsed) * MODEL_TIMING.turnRate)));
+  if (Number.isFinite(overrideYaw)) displayedYaw = overrideYaw;
+  return { desiredYaw: wrap(desiredYaw), displayedYaw: wrap(displayedYaw), transient: !!transient };
+}
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
@@ -2125,6 +2171,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const winding = !!monsterAction?.winding;
     const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? castRecord?.aim||g.save.lastAim
       : who === player ? closeViewIdleLockAim(g, now) : monsterAction?.aim;
+    const importedDodge=who===player&&importedPlayer&&now<(player.dodgeUntil||0),dodgeSeed=importedDodge?player.dodgeVisual:null,leavingImportedDodge=!importedDodge&&who===player&&track.dodgeUntil===player.dodgeUntil;
     let targetYaw = track.yaw;
     if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
     else if (!stunned && facing) targetYaw = Math.atan2(facing[1], facing[0]);
@@ -2132,11 +2179,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (!stunned && Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
     const yawDelta = Math.atan2(Math.sin(targetYaw - track.yaw), Math.cos(targetYaw - track.yaw));
     const turn = Math.max(-1, Math.min(1, yawDelta));
-    if (!stunned && (attack || winding || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
+    if (who === player) {
+      const resolved = resolveCloseViewPlayerFacing(track.yaw, targetYaw, { elapsed, snap: attack || charge != null || dist > 3, stunned, overrideYaw: importedDodge && Number.isFinite(dodgeSeed?.facingYaw) ? dodgeSeed.facingYaw : NaN, transient: stunned || attack || cast || jump || charge != null || importedDodge });
+      targetYaw = resolved.desiredYaw; track.yaw = resolved.displayedYaw;
+    } else if (!stunned && (attack || winding || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
-    const importedDodge=who===player&&importedPlayer&&now<(player.dodgeUntil||0),dodgeSeed=importedDodge?player.dodgeVisual:null,leavingImportedDodge=!importedDodge&&who===player&&track.dodgeUntil===player.dodgeUntil;
-    if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));if(Number.isFinite(dodgeSeed.facingYaw))track.yaw=dodgeSeed.facingYaw;}
+    if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));}
     else if (!leavingImportedDodge&&!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = !stunned && !watched && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
     if (stunned || watched) track.pace = 0;
@@ -2149,7 +2198,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const knock = stunned ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
     const profilePose = fisting ? 'fist' : visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
     const pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
-    const poseTime = who === player && !visualRecord?.primaryStep && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
+    const poseTime = who === player && !primaryVisualStage(visualRecord) && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
     let amount = 0;
     if (winding) amount = monsterAction?.windupAmount ?? Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
     if (attack) {
@@ -2169,6 +2218,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
     const held = visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
+    const primaryStage=who===player?primaryCarryStage(visualRecord,player.primaryCombo,visualAttack&&acceptedPrimary==='verge-cleaver'):null;
     const activeKind = who===player&&held==='cinder-pike'?'playerCinderPike':who===player&&held==='verge-cleaver'?'playerVergeCleaver':visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
     // Special native forms retain their existing tool recipe. Only the normal imported
     // stomp (and its normal native fallback) has empty held gear in this pass.
@@ -2177,7 +2227,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
-      primaryStep: visualRecord?.primaryStep,
+      primaryStep: visualRecord?.primaryStep, primaryMotion: visualRecord?.primaryMotion, primaryStage,
       toolAction: who===player&&visualAttack&&acceptedTool&&visualRecord?.toolUse&&!stunned&&!hit&&now>=(player.dodgeUntil||0)?visualRecord:null,
       fistStep: charge != null ? g.fistCharge.step || 1 : visualRecord?.fistStep,
       fistLead: charge != null ? (g.fistCharge.step > 1 ? g.fistCombo?.lead : g.save.fistOpeningHand === 'right' ? 'left' : 'right') : visualRecord?.fistLead,
@@ -2191,6 +2241,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (presentation?.alpha ?? 1) * (who === player ? 1 : boardB[it]))),
       attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: interiorSurfaceHeight(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
       poison: who === player && g.save.elites?.status?.poison > 0 };
+    if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
     track.winding = winding;
     track.attacking = attack;
     let imported = false;
@@ -2210,9 +2261,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
         // Empty gear retains Hammerfall carry; accepted tools retain their flattened base pose.
         input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
+        input.primaryCarryStage=primaryStage;input.handProfile=held;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
-        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;
+        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         if (stunned) { action.kind = 'hit'; action.profile = 'knockdown'; }
         else if (now < (player.dodgeUntil || 0)) {
@@ -2223,7 +2275,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           action.poseMs=Number.isFinite(visual?.poseMs)?visual.poseMs:input.nowMs;
           input.speed=Number.isFinite(visual?.speed)?visual.speed:visual?.moving?2.4:0;input.gaitPhase=Number.isFinite(visual?.gaitPhase)?visual.gaitPhase:0;
         } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
-        else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist' || action.profile === 'hammer')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) { const turn=Math.atan2(Math.sin(actor.yaw-visualRecord.facingYaw),Math.cos(actor.yaw-visualRecord.facingYaw)),t=Math.min(1,amount/.08);action.yaw=visualRecord.facingYaw+turn*t*t*(3-2*t); } } }
+        else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist' || action.profile === 'hammer')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) action.yaw=closeViewPlayerFacingYaw(g,now,actor.yaw,{phase:amount,importedReady:true}); } }
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
         else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
@@ -2231,8 +2283,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (action.kind === 'melee' && action.profile === 'melee' && Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs;
         input.action = action.kind ? action : null;
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
+          CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
-          gear.profile = form?.empowered && held === 'fist' ? '' : held; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = form?.empowered && held === 'fist' ? '' : held; gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);
           if (state.heroFrame.powerSuit && equipped === offset) return;
@@ -2240,7 +2293,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           const right=state.heroFrame.rightSocket,rx=right?.[12],ry=right?.[13],rz=right?.[14];
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
           if(closeViewToolCueOwnsAction(acceptedTool,input.action,action)&&Number.isFinite(rx)&&Number.isFinite(ry)&&Number.isFinite(rz)&&Math.hypot(rx-(who.x+.5),ry-(who.y+.45))<=.9&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,right)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
-          const spellProfile=action.kind==='cast'&&cast&&['fan-release','orbit-launch'].includes(action.profile)?action.profile:null,left=state.heroFrame.leftSocket;
+          const spellProfile=action.kind==='cast'&&cast&&['fan-release','orbit-launch'].includes(action.profile)?action.profile:null,left=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           const lx=left?.[12],ly=left?.[13],lz=left?.[14];
           if(spellProfile&&left?.length>=16&&finite(lx)&&finite(ly)&&finite(lz)&&actor.alpha>0&&Math.hypot(lx-(who.x+.5),ly-(who.y+.45))<=.9&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,lx,ly)){
             const fire=spellProfile==='fan-release'&&castRecord?.spellKind==='fire-burst'&&castRecord?.variant==='cast'&&typeof castRecord.sourceId==='string'&&castRecord.sourceId.length<=160&&finite(castRecord.aim?.x)&&finite(castRecord.aim?.y);
@@ -2253,6 +2306,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       }
     }
     if (!imported && !append(actor)) return;
+    if (who === player) CAM.bodyRevision++;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
     state.tracks.set(who, track);
     state.admitted.add(it);
@@ -2508,7 +2562,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   // version 4: `outer`, the wider band beyond the arc (never drawn), where it is clear of everything else
   outer.setAttribute("fill", "none"); outer.setAttribute("stroke", "transparent"); outer.setAttribute("stroke-width", String(K.reach)); outer.setAttribute("stroke-linecap", "butt"); outer.style.pointerEvents = "stroke"; outer.style.touchAction = "none"; outer.style.cursor = "ew-resize";
   svg.append(rail, hit, outer); actions.insertBefore(svg, cluster); // before the cluster: beneath its buttons
-  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Lock nearby foe: tap again to release; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false");
+  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Target and recenter behind the Wayfarer: tap again to release; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false");
   // version 3 (Tim): a bullseye, concentric rings and a centre dot; locked, the inner ring fills (styles.css .close-lock)
   lock.innerHTML = '<svg class="bullseye" viewBox="0 0 24 24" width="52%" height="52%" aria-hidden="true" style="pointer-events:none;position:relative"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle class="bull-ring" cx="12" cy="12" r="6.2" fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg>';
   Object.assign(lock.style, { position: "absolute", width: `${K.lockSize}px`, height: `${K.lockSize}px`, padding: "0", borderRadius: "50%", border: "0", background: "none", color: "#ddd5c4", display: "none", placeItems: "center", pointerEvents: "auto", touchAction: "manipulation", zIndex: "2" });
@@ -2637,7 +2691,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   }
   // the lock: a tap that starts on it (press, release within tapMove px); a pointer already panning the crescent never counts
   let lockId = null, lockX = 0, lockY = 0, lockMoved = false, lockPointerHandled = false;
-  const activateLock = () => { const g = getGame(); if (g) closeViewLockToggle(g); };
+  const activateLock = () => { const g = getGame(); if (g) { PEND.dx = PEND.dy = 0; closeViewTargetActivate(g, now()); } };
   lock.addEventListener("pointerdown", (e) => {
     stop(e); lockPointerHandled = true;
     if (e.pointerId === id || lockId !== null) return;

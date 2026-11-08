@@ -6352,7 +6352,10 @@ export class Game {
       attackVisual.weaponKind = primary?.id === "primary-cinder-pike" || primary?.name === "Cinder Pike" ? "cinder-pike"
         : primary?.id === "primary-verge-cleaver" || primary?.name === "Verge Cleaver" ? "verge-cleaver" : "salvage-blade";
       const primaryStep = advancePrimaryCombo(this.player, attackVisual.weaponKind);
-      if (primaryStep) attackVisual.primaryStep = primaryStep;
+      if (primaryStep) {
+        if (attackVisual.weaponKind === 'verge-cleaver') attackVisual.primaryMotion = { v: 2, step: primaryStep };
+        else attackVisual.primaryStep = primaryStep;
+      }
       const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(this.player, logicalNow, this.player.x, this.player.y);
       attackVisual.poseMs = prior?.now ?? Math.max(0, logicalNow);
       if (prior) attackVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw));
@@ -6402,7 +6405,7 @@ export class Game {
       this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
     const plan = !echo && echoPlan(glyphs);
     if (plan) {
-      const memory=attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,primaryStep:attackVisual.primaryStep||1,support:this.playerLevel()}:null;
+      const memory=attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,...(attackVisual.primaryMotion?{primaryMotion:structuredClone(attackVisual.primaryMotion)}:{primaryStep:attackVisual.primaryStep||1}),support:this.playerLevel()}:null;
       (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share, echoVisual:memory });
     }
     this.reconcileConsequences();
