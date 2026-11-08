@@ -321,10 +321,10 @@ function combatAssetFixture(scenario, seed, now) {
   Object.assign(game.player, { x: placement.player.x, y: placement.player.y, facing: placement.dx < 0 ? "left" : placement.dx > 0 ? "right" : placement.dy < 0 ? "up" : "down" });
   save.lastAim = { x: placement.dx, y: placement.dy };
   game.enemies = [game.createEnemyFromSpawn({ id: `proving:combat-assets:${spec.id}`, kind: spec.foe, x: placement.foe.x, y: placement.foe.y }, "dungeon")];
-  if (spec.echoPrimary) Object.assign(game.enemies[0], { hp: 5000, maxHp: 5000, hitStun: 1e9 });
+  if (spec.echoPrimary) Object.assign(game.enemies[0], { hp: 5000, maxHp: 5000, passiveBehavior: 'practice' });
   game.projectiles = []; game.effects = []; game.eliteHazards = [];
   game.message = `${spec.label}. Attack, Tool, Spell A, and Spell B use production controls; Pause freezes the inspection.`;
-  if (spec.echoPrimary) game.message = `${spec.label}. Attack uses the real Echo glyph and its 250 ms repeat. The durable practice foe is stunned; movement, attacks and Pause remain production controls.`;
+  if (spec.echoPrimary) game.message = `${spec.label}. Attack uses the real Echo glyph and its 250 ms repeat. The durable practice foe stays still and harmless; movement, attacks and Pause remain production controls.`;
   game.sync();
   const tool = rangedWeapon(save.equipment.secondary), spell = SPELLS[spec.spell];
   const form = tool?.brawlerTool === "great-sweep" && fieldOn(save, "nanoknives") ? "mirage-of-blades" : tool?.brawlerTool === "hammerfall" && fieldOn(save, "corridor-golem") ? "hammerfall+corridor-golem" : tool?.name === "Blunderbuss" && fieldOn(save, "arc-wave") ? "blunderbuss+arc-wave" : tool?.brawlerTool || (tool?.orrery ? "aether-orrery" : tool?.path || null);
