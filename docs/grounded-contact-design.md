@@ -108,7 +108,7 @@ Prepared on `claude/close-view-grounded-contact`, base `a2685814`. Source owners
 
 The pure helper performs swept circle contact using the shared ground-center offset `(.5,.69)`, player radius `.26`, and existing `enemyBodyRadius`. The common offset cancels in pair distances. It retains X then Y terrain substeps of at most `.16`, clips each to earliest body contact, then validates terrain at the clipped position. It never pushes or relocates either actor. Equal contacts take the minimum scalar fraction, independent of enemy array order. Partial old overlaps permit nondecreasing separation; exact coincidences allow the requested escape direction. No load-time change or saved allowance is needed.
 
-Player locomotion records accepted substeps in a reusable trace **before** section, hazard, swimming and raft consequences. Commit executes that same trace and invokes the existing scar/fall callbacks once. Lifted drone motion is excluded and continues through its original ceiling callback; the contact preflight never mutates lift state or runs that callback speculatively. Grounded mech walking is included, with its overworld `voidSuit` permission mirrored in the probe. Actual boost, drone lift, gliding, riding, occupied skiff and mech wading retain their separate controllers. Ordinary Jump does not phase through bodies. A real `airElev` platform launch is physical support above the gap and clears lower actors.
+Player locomotion records accepted substeps in a reusable trace **before** section, hazard, swimming and raft consequences. Commit executes that same trace and invokes the existing scar/fall callbacks once. Lifted drone motion is excluded and continues through its original ceiling callback; the contact preflight never mutates lift state or runs that callback speculatively. Grounded mech walking is included, with its overworld `voidSuit` permission mirrored in the probe. Actual boost, drone lift, gliding, riding, occupied skiff and mech wading retain their separate controllers. Ordinary Jump does not phase through bodies. A real `airElev` platform launch retains physical support above a gap; it clears a lower actor only when that world-space support is above the lower body's complete canonical envelope (see the vertical correction below).
 
 Ordinary AI patrol/chase/detour/lunge, grounded pack movement, pack push/pull, trap pull, elite gravity and glyph nudge use contact. The two direct combat loops, Fists and Shadow Boxing, retain their original quarter-tile `canStand` guards. A pure sweep-clear combat step assigns the exact original endpoint, preserving numeric clear-path motion. Only a body intersection invokes the terrain/contact solver. Strike origins remain computed from the accepted post-dash position; damage, charge, rush distance, hit predicates, combo clocks and invulnerability formulas were not edited. The coordinator must preserve the separate Fists candidate's pre-dash presentation capture and metadata when merging these two small loop changes.
 
@@ -157,3 +157,46 @@ Disposable source probes used actual `Game.buildAt` and `closeViewStatic`, not a
 | Same v4 tile, wood | `blocked=true` | Wall z 1.02–3.42: intentional 2.4-height wall. |
 
 The v4 stone probe also raises the generic local ceiling by `.34`; its treatment needs deliberate review in a separate rendering candidate. The source diagnosis does **not** establish that the owner's report was merely wood selection. Hosted PG currently lacks the production Pack/Supplies material selector and resources, so an honest stone-versus-wood interactive comparison requires an explicit quiet block fixture. Production selection is Pack → Supplies → Build with → Stone block / Wood wall, then Build. The coordinator owns any actual hosted CUA reproduction; no source probe is presented as such.
+
+
+### Vertical clearance correction before Contact release
+
+The integration audit found a real defect in the original candidate's `supportGap: 1` logical-level test. With the unchanged generated `platform-chain` map, seed `CONTACT-AUDIT`, platform `(21,4)` is level 1 and adjacent floor `(21,5)` is level 0. A player starting at `(21,4)` and making an ordinary southward Jump at 1000 ms crossed a stationary Root Brute at `(21,5.15)`: y=4.48 at1150 ms gave center gap .67 (inside the canonical .736 radius), and y=5.20 at1450 ms passed the body. One terrain level is .34 world units; the .42 jump arc cannot clear the upright creature. The earlier source probe's 1.858 top used billboard scale1.0472. Actual native admission uses `actorPresentation.scale`1.32, giving idle/walk maximum2.445939. This correction strengthens the witness; the original one-level assumption was invalid.
+
+`ACTOR_BODY_HEIGHT` now declares conservative support-to-body-top clearance envelopes in **world units**, separately from circular radii and combat hit/reach data. Known native kinds have explicit scale-1 values, multiplied by the existing native authored scale clamp .25–4. Foundry's validated body shape selects its explicit shape envelope. Unknown kinds use a conservative3-unit base times the greater bounded authored/billboard scale (maximum4, so maximum12). That fallback covers current unlisted silhouettes; unknown future art still requires review rather than a claim that arbitrary future geometry is automatically correct. No renderer, mesh or presentation module is imported by runtime contact. No durable actor/save field, narrowphase mesh collision, enemy-enemy solver or frame allocation was added.
+
+Offline calibration samples idle/walk, reduced motion on/off, and32 gait phases for all28 explicit native kinds at normal/vital/plated authored scales, plus all6 Foundry bodies at .25 and4 scale. Measured maxima and policy examples:
+
+| Body at current displayed scale | Sampled body top | Canonical envelope |
+|---|---:|---:|
+| Adult native fallback / Iron Fists | 1.431720 | 1.44 (also covers imported adult height1.3776) |
+| Grounded robot, scale1.12 | 1.438214 | 1.45 |
+| Current empowered suit | 1.193920 | 1.44 (retains adult-height allowance for the separately proposed suit) |
+| Rank3 Ember Form | 1.995284 | 2.019518 |
+| Root Brute, scale1.32 | 2.445939 | 2.508 |
+| Pallid Crawler, scale.62 | .489634 | .496 |
+| Hollow Marshal, scale1.62 | 3.644148 | 3.726 |
+
+Calibration includes structural crests, normal body bob and conservative appendage coverage. Player measurements use unarmed/form bodies, not long held weapon tips. These envelopes are not pose-fitting capsules: ducking, attack lean and dodge animation do not grant new passage. Native model changes must retain this envelope or deliberately update the policy/calibration. Hovering silhouettes that remain eligible retain conservative ground-to-top coverage; explicit flight/phase/controller exclusions are unchanged.
+
+Ground support now comes from authoritative `liftAt`, including current interior ramp sampling and overworld canopy/roof `tileLiftScale`. Retained player platform support uses `airElev * .34 * launchScale`; the normal jump arc is excluded. Preflight records the same launch scale as commit in its reusable private probe, and later enemy queries can read Game's retained `skyAir/skyAirScale` after transient player `airElev` clears. Both segment endpoints must remain above the lower body's entire envelope, or below the other body's support by the subject's envelope, before contact is skipped. Thus .68-supported feet may clear a .496-high crawler but cannot pass through a2.508-high Root Brute; a3.06-high retained roof launch can clear that Brute. Separate floor maps never compare actors across floors.
+
+The old new-candidate test accepting `airElev:2` passage was corrected, not weakened: small elevation differences now remain solid, and the positive case uses a physically sufficient scaled roof support. Six added tests cover calibrated native/trait/body scales, player forms, actual generated v4 same-floor and one-level Jump in both views for ordinary/Fists/robot/powered bodies, asymmetric lower-body clearance, canopy/roof/ramp/retained support, and platform-adjacent Fists/Shadow Boxing. The original clear dash arithmetic, damage, clocks, exclusions, overlap escape and bounded work assertions still pass. The actual reproduction now maintains at least the canonical .736 center separation; no jump duration or boost behavior changed.
+
+Executed after correction:
+
+```text
+node --test tests/grounded-contact-height.test.ts tests/grounded-contact.test.ts tests/building.test.ts tests/interior-terrain.test.ts tests/interior-v4-arrival.test.ts tests/close-view-combat-contract.test.ts tests/iron-fists-489.test.ts tests/brawler-485.test.ts tests/void-walker-terrain.test.ts tests/release-consistency.test.ts
+# 92/92 passed:26 Contact cases +66 unchanged checks, including old generation digests.
+
+node --test --test-name-pattern="movement transition supports negative|ordinary movement crosses|sprite-footprint movement slides|game defensively caps movement|stationary dodge uses movement" tests/prototype.test.ts
+# 5/5 existing movement contracts passed; no server tests selected.
+
+npm run build
+# Passed: static offline PWA release825 + Proving Ground PG-1.
+
+git diff --check
+# Passed.
+```
+
+For the later Block integration, use Block's existing `liftAt` legacy-stone overlay directly. The earlier B-only `legacyInteriorBuildLevel` bridge inside Contact is redundant once Contact calls `liftAt`; do not restore the obsolete logical-level support implementation. Block source is frozen and was not edited during this correction. Hosted visual, crowd-feel and physical-phone acceptance remain outstanding; offline model-envelope and simulation checks do not establish those results.

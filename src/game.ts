@@ -3314,6 +3314,7 @@ export class Game {
     probe.x = p.x; probe.y = p.y; probe.isPlayer = true; probe.jumping = jumping; probe.voidSuit = this.mechUp() && this.area !== "dungeon";
     const launch = jumping && (from?.skyPlatform || (interiorTerrain(this.map) && from?.interiorPlatform));
     probe.airElev = jumping ? (launch ? Math.max(this.skyAir ?? -1, from.elev || 0) : this.skyAir ?? undefined) : undefined;
+    probe.airElevScale = launch ? tileLiftScale(from) : this.skyAirScale || 1;
     contacts.supportSubject = probe;
     contacts.record = true;
     // A valid section exit is an intent, not terrain beyond this map. Bodies before that exit
