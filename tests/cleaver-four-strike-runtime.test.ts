@@ -51,11 +51,11 @@ test('Pike remains three-stage and family switches restart without changing Fist
   const player:any={primaryCombo:{weaponKind:'verge-cleaver',v:2,step:4,future:9}};assert.equal(advancePrimaryCombo(player,'verge-cleaver'),1);assert.deepEqual(player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step:1,future:9});
 });
 
-test('all four Cleaver stages and phases round-trip through both runtime writers with unknown fields',()=>{
-  for(const step of [1,2,3,4])for(const paused of [false,true]){
+test('all four Cleaver stages and committed phases round-trip through both runtime writers with unknown fields',()=>{
+  for(const step of [1,2,3,4])for(const phase of [0,60,120,239])for(const paused of [false,true]){
     const g=fixture();for(let n=1;n<=step;n++)g.primaryAttack(100000+(n-1)*500);
     g.player.attackVisual.future={kept:step};g.player.attackVisual.primaryMotion.futureMotion={kept:true};g.player.primaryCombo.futureCombo={kept:true};
-    const at=100000+(step-1)*500+60;if(paused)g.setPaused(true,at);
+    const at=100000+(step-1)*500+phase;if(paused)g.setPaused(true,at);
     const saved=migrateSave(clone(g.exportSnapshot(at))),back:any=new Game(saved,200000);
     assert.deepEqual(back.player.attackVisual.primaryMotion,{v:2,step,futureMotion:{kept:true}});assert.equal(back.player.attackVisual.future.kept,step);
     assert.deepEqual(back.player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step,futureCombo:{kept:true}});assert.equal(back.paused,paused);
@@ -69,6 +69,8 @@ test('legacy three-stage Cleaver carries until the next accepted v2 cut; future 
   back.player.attackReadyAt=0;back.primaryAttack(200001);assert.deepEqual(back.player.attackVisual.primaryMotion,{v:2,step:1});assert.equal(back.player.attackVisual.primaryStep,undefined);assert.equal(back.player.primaryCombo.legacyUnknown,7);
   const futureVisual={profile:'melee',durationMs:240,weaponKind:'verge-cleaver',primaryMotion:{v:7,step:99,future:true}};assert.deepEqual(normalizeAttackVisual(futureVisual),futureVisual);
   assert.deepEqual(normalizePrimaryCombo({weaponKind:'verge-cleaver',v:7,step:99,future:true}),{weaponKind:'verge-cleaver',v:7,step:99,future:true});
+  const opaque:any=fixture();opaque.player.attackVisual=futureVisual;opaque.player.actionVisualUntil=100240;opaque.player.primaryCombo={weaponKind:'verge-cleaver',v:7,step:99,futureCombo:{kept:true}};
+  const opaqueSave=migrateSave(clone(opaque.exportSnapshot(100120))),opaqueBack:any=new Game(opaqueSave,300000);assert.deepEqual(opaqueBack.player.attackVisual,futureVisual);assert.deepEqual(opaqueBack.player.primaryCombo,opaque.player.primaryCombo);assert.deepEqual(opaqueBack.exportSnapshot(300001).session.playerRuntime.primaryCombo,opaque.player.primaryCombo);
 });
 
 test('queued Echo freezes v2 motion metadata and never advances the live combo or body',()=>{
