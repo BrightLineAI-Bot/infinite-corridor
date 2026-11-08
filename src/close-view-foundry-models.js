@@ -1,9 +1,9 @@
 // Authored Foundry morphology recipes. These registry assets do not admit a creature to Close View;
 // presentation integration selects one only after the production Foundry candidate has been validated.
-import { bevel, taper, ellipsoid, ringLoft, curvedTube, membrane, part } from './close-view-mesh.js?v=r842-ef8c3947abac';
+import { bevel, taper, ellipsoid, ringLoft, curvedTube, membrane, part } from './close-view-mesh.js?v=r843-7cc357e4f592';
 
-import { FOUNDRY_MODEL_KEYS, FOUNDRY_PALETTES } from './close-view-foundry-presentation.js?v=r842-ef8c3947abac';
-export { FOUNDRY_MODEL_KEYS, FOUNDRY_MODEL_METADATA, FOUNDRY_PALETTES, foundryPaletteIndex, foundryPaletteColor } from './close-view-foundry-presentation.js?v=r842-ef8c3947abac';
+import { FOUNDRY_MODEL_KEYS, FOUNDRY_PALETTES } from './close-view-foundry-presentation.js?v=r843-7cc357e4f592';
+export { FOUNDRY_MODEL_KEYS, FOUNDRY_MODEL_METADATA, FOUNDRY_PALETTES, foundryPaletteIndex, foundryPaletteColor } from './close-view-foundry-presentation.js?v=r843-7cc357e4f592';
 const [primary, shadow, accent] = FOUNDRY_PALETTES[0];
 
 // Low, muscular quadruped: arched body, wedge head, four jointed legs, tail and paired brow prongs.

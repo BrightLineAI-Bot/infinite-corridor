@@ -13,8 +13,8 @@
 // Decisions are fixed per dungeon: ordinary crossings record the tier they were first generated at (history.ladder), and
 // deep and arena entrances record theirs when first entered (release 323: they never seal; below their tier they open as tastes, 325: whole, with weaker creatures). Histories pinned before this release have no
 // `ladder` and keep today's rules.
-import { hashSeed } from "./random.js?v=r842-ef8c3947abac";
-import { apertureTier } from "./world.js?v=r842-ef8c3947abac";
+import { hashSeed } from "./random.js?v=r843-7cc357e4f592";
+import { apertureTier } from "./world.js?v=r843-7cc357e4f592";
 
 export const DUNGEON_LADDER = {
   version: 1,

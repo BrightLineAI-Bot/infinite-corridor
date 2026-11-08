@@ -1,36 +1,90 @@
-import { Game } from "./game.js?v=r842-ef8c3947abac";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r842-ef8c3947abac"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r842-ef8c3947abac";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r842-ef8c3947abac";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.js?v=r842-ef8c3947abac";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r842-ef8c3947abac";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r842-ef8c3947abac";
-import { DIG, planDig } from "./digging.js?v=r842-ef8c3947abac";
-import { freshSave, migrateSave } from "./types.js?v=r842-ef8c3947abac";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r842-ef8c3947abac";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r842-ef8c3947abac";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r842-ef8c3947abac";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r842-ef8c3947abac";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r842-ef8c3947abac";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r842-ef8c3947abac";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r842-ef8c3947abac";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r842-ef8c3947abac";
-import { BIOMES, biomeFor } from "./landscape.js?v=r842-ef8c3947abac";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r842-ef8c3947abac";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r842-ef8c3947abac";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r842-ef8c3947abac";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r842-ef8c3947abac";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r842-ef8c3947abac";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r842-ef8c3947abac";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r842-ef8c3947abac";
-import { ensureLattice } from "./transit-lattice.js?v=r842-ef8c3947abac";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r842-ef8c3947abac";
-import { fieldOn } from "./lattice-fields.js?v=r842-ef8c3947abac";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r842-ef8c3947abac";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r842-ef8c3947abac";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r842-ef8c3947abac";
+import { Game } from "./game.js?v=r843-7cc357e4f592";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r843-7cc357e4f592"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r843-7cc357e4f592";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r843-7cc357e4f592";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.js?v=r843-7cc357e4f592";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r843-7cc357e4f592";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r843-7cc357e4f592";
+import { DIG, planDig } from "./digging.js?v=r843-7cc357e4f592";
+import { freshSave, migrateSave } from "./types.js?v=r843-7cc357e4f592";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r843-7cc357e4f592";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r843-7cc357e4f592";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r843-7cc357e4f592";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r843-7cc357e4f592";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r843-7cc357e4f592";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r843-7cc357e4f592";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r843-7cc357e4f592";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r843-7cc357e4f592";
+import { BIOMES, biomeFor } from "./landscape.js?v=r843-7cc357e4f592";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r843-7cc357e4f592";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r843-7cc357e4f592";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r843-7cc357e4f592";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r843-7cc357e4f592";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r843-7cc357e4f592";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r843-7cc357e4f592";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r843-7cc357e4f592";
+import { ensureLattice } from "./transit-lattice.js?v=r843-7cc357e4f592";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r843-7cc357e4f592";
+import { fieldOn } from "./lattice-fields.js?v=r843-7cc357e4f592";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r843-7cc357e4f592";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r843-7cc357e4f592";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r843-7cc357e4f592";
+import { validActions } from "./interactions.js?v=r843-7cc357e4f592";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
+
+const PG_UNSUPPORTED_ACTIONS = new Set(["trade", "upgrade", "attune"]);
+function unsupportedLabInteraction(object, action) {
+  if (PG_UNSUPPORTED_ACTIONS.has(action)) return "Use this action in the main game; its full controller is not available in the Proving Ground.";
+  if (object.kind === "viewport" && action === "inspect") return "Viewport opens its hunt controller only in the main game.";
+  return "";
+}
+export function describeLabInteraction(game, objectId = game?.interactionRequested) {
+  const object = game?.map?.objects?.find((q) => q.id === objectId && game.reachOf(q) < 1.5);
+  if (!object) return null;
+  const actions = validActions(object, game.save);
+  if (!actions.length) return null;
+  return { game, map: game.map, area: game.areaStateId(), objectId: object.id, object,
+    name: object.name || object.label || object.kind || object.id, lore: object.lore || object.line || "Choose an action.",
+    actions: actions.map((id) => ({ id, label: id === "enter" ? "Enter" : id === "exit" ? "Leave" : id.replaceAll(/[-:]/g, " ").replace(/^./, (c) => c.toUpperCase()), unsupported: unsupportedLabInteraction(object, id) })) };
+}
+export function dispatchLabInteraction(token, action) {
+  const game = token?.game, current = game?.map?.objects?.find((q) => q.id === token.objectId);
+  if (!game || game.map !== token.map || game.areaStateId() !== token.area || current !== token.object || game.reachOf(current) >= 1.5) return { ok: false, stale: true, message: "That interaction is no longer available here." };
+  const available = validActions(current, game.save);
+  if (!available.includes(action)) return { ok: false, stale: true, message: "That action is no longer available." };
+  const unsupported = unsupportedLabInteraction(current, action);
+  if (unsupported) return { ok: false, unsupported: true, message: unsupported };
+  const result = game.interact(action, current.id);
+  for (const key of ["shopRequested", "smithyRequested", "kitchenRequested"]) if (game[key]) { game[key] = null; return { ...result, unsupported: true, message: "This main-game controller is not available in the Proving Ground." }; }
+  return result;
+}
+export function createLabInteractionLifecycle({ resetInput, now, canResume }) {
+  let generation = 0, pausedGame = null;
+  return {
+    begin(game) {
+      if (!game || pausedGame || game.paused) return null;
+      const id = ++generation;
+      pausedGame = game;
+      game.setPaused(true, Number.isFinite(game.lastUpdateNow) ? game.lastUpdateNow : now());
+      resetInput();
+      return id;
+    },
+    close(id = generation) {
+      if (id !== generation || !pausedGame) return false;
+      const game = pausedGame;
+      pausedGame = null;
+      resetInput();
+      if (canResume()) game.setPaused(false, now());
+      return true;
+    },
+    get generation() { return generation; },
+    get active() { return !!pausedGame; },
+  };
+}
+export function labInteractionClockReady(game, requestClock) {
+  return requestClock === null || game.lastUpdateNow !== requestClock;
+}
 
 function roundTripScratch(save) { return migrateSave(JSON.parse(JSON.stringify(save))); }
 
