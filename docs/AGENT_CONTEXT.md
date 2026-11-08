@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Cleaver r838 packaging gate — 2026-11-08
+
+Production is verified `r836-a5d6b9c2484b`, commit a5d6b9c2484b5a265af0b499c030b53e3e18c42d, tree27a748d688367806599a57bc5340c59ed0cc7577. Source CI42510840104, merged CI42511673346, Preview42511673395 and Publish42513938673 succeeded; fresh Astra review834→836 plus corrections found no blockers. Live identity and actual Options → System match, recent errors are none, and the paused250KB journey remains healthy. Hosted1280×720 contact/floor-transition and spell/shared-smoke acceptance passed; no physical-phone claim. Spell r835 published in r836 and was never independent. Traversal-block r837 merged as official main c5344e99 after source CI42512013786 and full Astra review clear; merged CI42514398543 and Preview42514398496 are running, so it is not hosted, live or published. Cleaver r838 packages the anatomical right-hand four-cut cycle from that official main and must not merge until r837's hosted/publication gate. The material-airborne study remains Stage10 planning only. Local servers and the full local suite remain stopped.
+
 ## Traversal-block r837 packaging gate — 2026-11-08
 
 Production remains verified `r834-32b9249def93`. Spell r835 passed actual hosted acceptance for all18 casts, Clone, manual/automatic Orbit, normal damage and shared smoke without errors, but remains held for combined publication. Grounded-contact r836 merged as official main a5d6b9c2 after source CI42510840104 and full Astra834→C review clear; merged CI42511673346 and Preview42511673395 are running, so r836 is not hosted, live or published. Traversal-block r837 is packaged from that official main with legacy/current `.34/.68` stone support, five physical records and ten active seconds; wood remains a distinct full wall. B must not merge until r836 is actually published. Local servers and the full local suite remain stopped.

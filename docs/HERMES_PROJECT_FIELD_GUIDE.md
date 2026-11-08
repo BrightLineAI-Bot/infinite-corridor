@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 838 — right-handed four-cut Cleaver
+
+**CODE:** The normal Wayfarer carries the Verge Cleaver low in the anatomical right hand and advances four accepted full-body cuts: up, down, up, down, then repeats. The v2 presentation record stores the supported four-stage motion and carry provenance. Existing legacy three-stage records retain their exact legacy pose, and unknown future records remain opaque rather than being rewritten or replayed. Queued Echoes freeze their accepted cut metadata without replaying the body or advancing the live combo.
+
+**BOUNDARY:** Each accepted press still owns one canonical hit with unchanged damage, reach, cooldown and refusal rules. Echoes do not create an extra body attack or free hit. Pike and Iron Fists remain three-stage families, family switches retain their supported restart behavior, and saved schema 14, old journeys, special-form priority and equipment ownership are unchanged. Source checks and static builds do not establish hosted GPU motion or physical-device performance. The airborne-contact study is planning only and is not implemented by this release.
+
 ## Release 837 — Close View traversal blocks
 
 **CODE:** Transient stone builds use the same production build records in legacy and current Close View interiors. One stone record contributes a physical `.34` support prism; a second record on that tile contributes the `.68` two-level stack. The renderer submits the matching bounded stone geometry and invalidates it when a build is placed, stacked, broken or expires. One level is reachable with Jump; two levels require an adjacent one-level step. At most five physical build records stand, and each retains its own ten active-second lifetime, including pause-safe lifetime behavior.
