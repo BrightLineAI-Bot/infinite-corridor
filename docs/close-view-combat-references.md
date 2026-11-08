@@ -1,0 +1,40 @@
+# Close View combat reference study — direction only
+
+Research recorded 2026-11-07. This is a future implementation handoff, not permission to install a dependency, import proprietary assets, change combat, or publish. The current character/camera work is delivered through r822; the research below informs subsequent focused passes. Preserve the native WebGL2 renderer, CPU-skinned 3,170-triangle/two-draw hero budget, offline operation, additive schema-14 saves, pinned generation history, and production/Proving Ground isolation.
+
+## Evidence boundary
+
+Bandai Namco's official *Elden Ring* guide describes lock-on, light/strong and charged attacks, guard counters, jump attacks, and two-handing as ways to break an opponent's guard or stance. Its combat guide explicitly frames success as reading openings, using dodge invulnerability, sidestepping some thrusts, and applying greater stance damage with guard counters and charged/jumping heavies ([starter guide](https://en.bandainamcoent.eu/elden-ring/news/elden-ring-starter-guide-tips-know-playing-the-game), [combat guide](https://www.bandainamcoent.com/pt_br/news/elden-ring-introduction-part-4-combat-guide)). These sources support a qualitative model of commitment, contact, recovery, spatial evasion, and stagger pressure; they do **not** publish per-animation frames, hitbox volumes, or exact motion values.
+
+For measurement vocabulary, the community-owned [Elden Ring Frame Data Explorer dataset](https://github.com/sovietspaceship/elden-ring-frame-data-explorer-data) says its versioned data is generated from game data and maintained spreadsheets, while [ERDB](https://github.com/EldenRingDatabase/erdb) documents a parser that converts a user's installed game data into JSON. Treat both as research instruments with version/provenance labels, never as official balance specifications. Do not redistribute extracted game data, animations, meshes, textures, or sounds. “Motion value” is useful here only as the idea that individual moves can apply different damage/stagger multipliers; Infinite Corridor must retain its own authored tables and tuning.
+
+The required [Tower of Fantasy official site](https://www.toweroffantasy-global.com/en-us/index.html) was opened, but its presently indexed English page exposes no detailed mechanics. An official PlayStation product page verifies solo-or-friends exploration, puzzles, and real-time combat ([PlayStation](https://www.playstation.com/en-us/games/tower-of-fantasy/)). Therefore weapon switching, multi-monster groups, spawn rhythms, traversal quests, challenges, and reward loops below are **owner-observed reference targets**, not facts established by the available official pages.
+
+## Reference-to-Corridor mapping
+
+| Reference idea | Adaptation, not imitation | Acceptance signal |
+|---|---|---|
+| *Elden Ring*: readable commitment/openings | Give each accepted melee action explicit startup, active/contact, and recovery phases. Animation follows the canonical hit event and aim; it never creates an extra hit. | Frame-step diagnostics identify all three phases, one damage event, and a visible recovery before neutral locomotion. |
+| Reach and hit shape | Debug the existing Cleaver 1.75-tile/180° arc and Pike 2.45-tile/32° thrust against rendered hand/tool paths. Adjust presentation first; gameplay changes require a separate balance decision. | Near-edge hit/miss fixtures agree with canonical geometry across facing, elevation, pause, and resume. |
+| Stagger/stance pressure | Keep Corridor-owned damage and recoil tables; expose a small, deterministic impact class per move (light/heavy/launch) rather than importing ER values. | Same seed/action yields the same reaction; bosses and intentional unstoppable states retain authored exceptions. |
+| ToF-like weapon/action flow (owner observation) | Allow distinct accepted weapon, tool, and cast actions to chain through explicit cancel gates; refused casts never animate as successes. Do not add gacha, MMO, or live-service progression. | Switch/cast tests cover accepted, rejected, paused, resumed, and mid-recovery equipment changes. |
+| Multi-monster groups and spawn rhythm (owner observation) | Compose bounded roles—pressure, flank, ranged, support—using current encounter producers and actor caps. Spawn only on valid reachable ground with breathing room and recover overlaps safely. | Group fixtures stay readable under lock/camera, never trap the player at arrival, and remain deterministic. |
+| Traversal quests/challenges/rewards (owner observation) | Reuse existing Corridor traversal, dungeon, relay, quest, one-time-reward, and world-beast systems. Challenges should connect travel skill to authored encounters without a parallel world/progression stack. | Exact-resume and one-time reward tests prove no duplication; old pinned worlds/digests remain unchanged. |
+
+The latest owner feedback remains queued, not researched fact: prefer a low dash rather than a roll while preserving the current 260 ms dodge and 420 ms invulnerability unless a later canonical decision changes them; smooth the gait; and resolve the dig/trap blocked-block escape defect as its own reproducible gameplay issue.
+
+## Reuse candidates (evaluate; do not adopt yet)
+
+1. **Yuka** — engine-independent JavaScript game AI with state/goal agents, steering, navigation, perception, triggers, and JSON serialization; MIT licensed ([official repository](https://github.com/Mugen87/yuka)). Best fit is a narrow offline-vendored evaluation for bounded group steering or spawn validation while retaining Corridor combat, saves, and rendering. Risks: duplicated entity/state ownership, allocation/CPU cost, and deterministic serialization drift.
+2. **bitECS** — a flexible data-oriented ECS whose official introduction imposes no formal system model and recommends structure-of-arrays data ([official documentation](https://github.com/NateTheGreatt/bitECS/blob/main/docs/Intro.md)). It could inform bounded transient combat/cast phase storage, but migrating established Game/save objects would be high risk. Prefer borrowing the data layout pattern; consider library adoption only after a measured isolated spike and license verification.
+3. **PlayCanvas Engine** — MIT, WebGL2/WebGPU browser engine with an animation state-graph model ([official organization/repository listing](https://github.com/playcanvas), [animation tutorial](https://github.com/playcanvas/developer-site/blob/main/docs/tutorials/importing-first-model-and-animation.md)). Its animation concepts are useful references, but adopting the engine would overlap the working native renderer, CPU skinning, asset pipeline, offline cache, and input/camera stack. Current recommendation: no runtime adoption; borrow only state-graph terminology and test structure.
+
+## Future Anthropic implementation handoff
+
+- Re-read `AGENTS.md`, `docs/AGENT_CONTEXT.md`, the combat direction and weapon/contact manifests; verify the live/candidate identities before attributing screenshots.
+- Inventory canonical hit windows, aim, cooldowns, accepted cast events, actor caps, spawn constructors, and exact-resume fields before proposing code.
+- Produce a phase table per weapon/action: startup, active/contact, recovery, locomotion/cancel rules, authored hit shape, impact class, and presentation clip/pose. Cite code, not recollection.
+- Build quiet isolated fixtures for one-on-one reach, mixed-role groups, valid spawns, blocked movement/hazards, pause/resume, and reward idempotence. Keep production scratch namespaces separate.
+- If evaluating reuse, pin source version/license, measure bundle/CPU/memory on representative mobile hardware, prove offline caching and determinism, and compare against a no-dependency baseline. No dependency enters the release merely because the spike looks promising.
+- Require hosted GPU evidence for action grip/contact/recovery and separately record physical-phone FPS, thermal behavior, and hardware multitouch; automated tests cannot establish those results.
+
