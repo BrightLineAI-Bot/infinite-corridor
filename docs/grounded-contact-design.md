@@ -200,3 +200,24 @@ git diff --check
 ```
 
 For the later Block integration, use Block's existing `liftAt` legacy-stone overlay directly. The earlier B-only `legacyInteriorBuildLevel` bridge inside Contact is redundant once Contact calls `liftAt`; do not restore the obsolete logical-level support implementation. Block source is frozen and was not edited during this correction. Hosted visual, crowd-feel and physical-phone acceptance remain outstanding; offline model-envelope and simulation checks do not establish those results.
+
+### Final Echo integration receipt
+
+The complete reviewed Echo candidate `c7b52aa7b7cccf5a724308528b513753530b81e2` was merged by ordinary history-preserving merge as `c688250205638831dd83fb331eba3ac4b8169e88`. The only conflicts were the three release/module lists. Each retains Echo's inherited release 830 list and includes `actor-contact` exactly once. Release 830 remains inherited and unassigned here; this preparation is not a publication claim.
+
+The merge preserves Contact's swept player/enemy separation, world-unit body clearance, legitimate flight exclusions, overlap escape, accepted trace endpoints (including Shadow Boxing pre-dash placement), and old-layout generator pins. It does not adopt the separate Block stone work, Hammerfall, gesture, armor, or startup candidates.
+
+Validation after the merge:
+
+```text
+node --test tests/grounded-contact.test.ts tests/grounded-contact-height.test.ts tests/close-view-offset-clearance.test.ts tests/close-view-gl-transaction.test.ts tests/close-view-primary-echo.test.ts tests/combat-asset-lab.test.ts tests/creature-asset-lab.test.ts tests/native-creature-integration.test.ts tests/remaining-primary-presentation.test.ts tests/interior-terrain.test.ts tests/interior-v4-arrival.test.ts
+# 78/78 passed.
+
+node scripts/build.mjs
+# Passed: static offline PWA release 830 with Proving Ground PG-1.
+
+git diff --check
+# Passed.
+```
+
+No server, browser, network, full suite, prototype/proposal/pages/proving-fixture suite, push, or release action was run. Hosted GPU/phone acceptance remains outside this receipt.
