@@ -2034,13 +2034,14 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const visualProfile = visualAttack ? visualRecord.profile : null;
     const acceptedTool = visualAttack && KNOWN_TOOL_VISUAL.has(visualRecord?.toolKind) ? visualRecord.toolKind : null;
     const fisting = who === player && (visualProfile === 'fist' || playerAction?.legacy && !!g.fistsEquipped?.());
-    const cast = who === player && player.castUntil > now;
+    const castRecord=who===player?player.castVisual:null;
+    const cast = who === player && player.castUntil > now && (!castRecord||castRecord.cancelled!==true);
     const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
     const charge = who === player && !attack && !cast && !jump && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
     const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
     const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" || !!acceptedTool : !(player.meleeUntil > now));
     const winding = !!monsterAction?.winding;
-    const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? g.save.lastAim
+    const aim = charge != null ? g.fistCharge.direction || g.save.lastAim : who === player && attack ? visualRecord?.aim || (tool ? g.save.lastAim : player.meleeStrike) : cast ? castRecord?.aim||g.save.lastAim
       : who === player ? closeViewIdleLockAim(g, now) : monsterAction?.aim;
     let targetYaw = track.yaw;
     if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
@@ -2141,7 +2142,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
         else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist' || action.profile === 'hammer')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) { const turn=Math.atan2(Math.sin(actor.yaw-visualRecord.facingYaw),Math.cos(actor.yaw-visualRecord.facingYaw)),t=Math.min(1,amount/.08);action.yaw=visualRecord.facingYaw+turn*t*t*(3-2*t); } } }
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
-        else if (cast) { action.kind = 'cast'; action.durationMs = MODEL_TIMING.castMs; }
+        else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
         input.action = action.kind ? action : null;
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {

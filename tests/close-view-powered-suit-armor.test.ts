@@ -25,7 +25,10 @@ test('all accepted body phases keep the fitted armor skinned and bounded',()=>{
   const cases=[
     ['idle',{}],['walk',{speed:1.2,gaitPhase:1.1}],
     ['attack',{action:{kind:'melee',profile:'melee',phase:.25,durationMs:240}}],
-    ['cast',{action:{kind:'cast',profile:'mirage',phase:.5,durationMs:360}}],
+    ['cast',{action:{kind:'cast',profile:'fan-release',phase:.5,durationMs:360}}],
+    ['legacy-cast',{action:{kind:'cast',profile:'cast',phase:.5,durationMs:360}}],
+    ['orrery-cast',{action:{kind:'cast',profile:'orrery-release',phase:.5,durationMs:240}}],
+    ['hammerfall',{action:{kind:'melee',profile:'hammer',phase:.5,durationMs:570}}],
     ['hit',{action:{kind:'hit',profile:'hit',phase:.35,durationMs:200}}],
     ['dodge',{action:{kind:'dodge',profile:'dodge',phase:.45,durationMs:260,yaw:.4,moveX:1,moveY:0,poseMs:100000}}],
     ['boost',{liftZ:.22}],['knockdown',{action:{kind:'hit',profile:'knockdown',phase:.7,durationMs:1000}}],
@@ -39,6 +42,27 @@ test('armor and held gear share one atomic bounded equipment reservation',()=>{
   const {frame}=sampled({powerSuit:true}),gear={profile:'emitter',rightSocket:frame.rightSocket,alpha:.8,tint:base.tint,hitFlash:.25};
   const out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS),end=writeCloseViewHeroEquipment(out,0,gear,frame);assert.equal(end/MODEL_FLOATS/3,86);assert.ok(end/30<=156);assert.ok(out.slice(0,end).every(Number.isFinite));for(let i=9;i<60*3*MODEL_FLOATS;i+=MODEL_FLOATS)assert.ok(Math.abs(out[i]-.8)<1e-6,'armor alpha composes');const plain=new Float32Array(out.length),plainEnd=writeCloseViewHeroEquipment(plain,0,{...gear,tint:[1,1,1],hitFlash:0},frame);assert.equal(plainEnd,end);assert.notDeepEqual(Array.from(out.slice(6,60*3*MODEL_FLOATS)).filter((_,i)=>i%MODEL_FLOATS<3),Array.from(plain.slice(6,60*3*MODEL_FLOATS)).filter((_,i)=>i%MODEL_FLOATS<3),'real poison tint and hit flash compose on armor color');
   const short=new Float32Array(end-1);assert.equal(writeCloseViewHeroEquipment(short,0,gear,frame),0,'preflight is atomic');assert.ok(short.every(v=>v===0));
+});
+
+test('integrated bilateral fists and named tools preserve the fixed armor equipment budget atomically',()=>{
+  const {frame}=sampled({powerSuit:true});
+  for(const profile of ['fist','fistCharge','rift-bombard','great-sweep','blunderbuss','lumen-spindle','cinder-pike','verge-cleaver']){
+    const gear={profile,rightSocket:frame.rightSocket,leftSocket:frame.leftSocket,alpha:1,tint:[1,1,1]},out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS);
+    const end=writeCloseViewHeroEquipment(out,0,gear,frame);assert.ok(end>60*3*MODEL_FLOATS,profile+' retains armor and gear');assert.ok(end/30<=156,profile+' keeps the existing budget');assert.ok(out.slice(0,end).every(Number.isFinite));
+    const short=new Float32Array(end-1);assert.equal(writeCloseViewHeroEquipment(short,0,gear,frame),0,profile+' rejects one-float-short storage');assert.ok(short.every(v=>v===0),profile+' preflight cannot partly write armor');
+  }
+});
+
+test('unknown cast recipes remain neutral on the powered suit while approved spell and stomp layers deform armor',()=>{
+  const neutral=sampled({powerSuit:true,reducedMotion:true}).frame;
+  for(const profile of ['mirage','future-spell']){
+    const frame=sampled({powerSuit:true,reducedMotion:true,action:{kind:'cast',profile,phase:.5,durationMs:360}}).frame;
+    assert.deepEqual(frame.positionsNormals,neutral.positionsNormals);assert.deepEqual(frame.suitPositionsNormals,neutral.suitPositionsNormals);
+  }
+  for(const action of [{kind:'cast',profile:'fan-release',phase:.5,durationMs:360},{kind:'melee',profile:'hammer',phase:.5,durationMs:570}]){
+    const armored=sampled({powerSuit:true,action}).frame,normal=sampled({powerSuit:false,action}).frame;
+    assert.deepEqual(armored.positionsNormals,normal.positionsNormals,'armor cannot change the integrated action body');assert.notDeepEqual(armored.suitPositionsNormals,neutral.suitPositionsNormals);assert.equal(armored.suitVertexCount,180);
+  }
 });
 
 test('powered palette leaves source mask, hair and amber lenses ahead of its under-suit branch',()=>{

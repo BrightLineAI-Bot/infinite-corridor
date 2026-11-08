@@ -303,6 +303,28 @@ function toolPose(state,pose,profile,p,weight){
   state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
 }
 
+// Reachable source-space targets for the free left hand. The weapon hand remains
+// whatever carry/attack layer established; this solver runs last so casting never
+// yanks an accepted weapon socket off its grip.
+const CAST_HAND_TARGETS=Object.freeze({
+  'focus-forward':Object.freeze([.05,.02,.42,-.10,.10]),'fan-release':Object.freeze([.18,.05,.38,-.30,.18]),
+  'outward-ring':Object.freeze([.48,-.04,.22,-.65,.05]),'raised-orb':Object.freeze([.12,.38,.18,-.15,-.45]),'form-rise':Object.freeze([.18,.34,.14,-.25,-.38]),
+  compression:Object.freeze([-.12,-.13,.30,.35,.08]),'orbit-gather':Object.freeze([-.08,-.08,.34,.25,.15]),
+  'time-ward':Object.freeze([-.10,-.10,.34,.42,-.05]),'crossed-ward':Object.freeze([-.16,-.16,.30,.55,-.10]),'body-ward':Object.freeze([-.20,-.04,.28,.62,-.05]),
+  'dusk-split':Object.freeze([.46,-.08,.20,-.75,.02]),'dusk-swap':Object.freeze([.34,.02,.35,-.55,.14]),'rift-fold':Object.freeze([.36,.04,.38,-.58,.18]),
+  'fighting-stance':Object.freeze([.06,-.12,.35,-.12,.22]),'weapon-imbue':Object.freeze([-.12,-.22,.24,.38,.12]),'power-draw':Object.freeze([-.08,-.12,.28,.30,.05]),
+  'flow-forward':Object.freeze([.12,-.02,.40,-.22,.16]),acceleration:Object.freeze([.18,-.06,.38,-.30,.18]),'orbit-launch':Object.freeze([.10,.08,.44,-.18,.20]),
+  'traversal-brace':Object.freeze([.20,.12,.30,-.32,-.05]),
+});
+function castPose(state,pose,profile,p){
+  const spec=CAST_HAND_TARGETS[profile];if(!spec)return;
+  const commit=p<=.08?smoothstep(p/.08):p<.62?1:1-smoothstep((p-.62)/.38);if(!(commit>0))return;
+  build(state.asset,state,pose);const g=state.global,s=12*16,grip=6*16,t=state.primaryTarget,follow=Math.sin(Math.PI*clamp((p-.08)/.54));
+  const desired=[g[s+12]+spec[0],g[s+13]+spec[1]+follow*.035,g[s+14]+spec[2]+follow*.045];
+  t[0]=g[grip+12]+(desired[0]-g[grip+12])*commit;t[1]=g[grip+13]+(desired[1]-g[grip+13])*commit;t[2]=g[grip+14]+(desired[2]-g[grip+14])*commit;
+  solveArm(state,pose,true,t,spec[3]*commit,spec[4]*commit);
+}
+
 function build(asset, state, pose) {
   const head = asset.meta.headAttachment;
   for (const i of asset.order) {
@@ -458,7 +480,12 @@ export function sampleCloseViewHero(asset, state, input, out) {
       const pulse = Math.sin(p * Math.PI) * weight;
       if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight);
       else if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
-      else if (kind === 'cast') { rotateX(state.pose, 12, -.65 * pulse); rotateX(state.pose, 22, -.8 * pulse); }
+      else if (kind === 'cast') {
+        // Orrery tools and pre-descriptor saves retain their established cast layer.
+        // Unknown future spell profiles remain neutral until they have a recipe.
+        if(profile==='cast'||profile==='orrery-tap'||profile==='orrery-release'){rotateX(state.pose,12,-.65*pulse);rotateX(state.pose,22,-.8*pulse);}
+        else castPose(state,state.pose,profile,p);
+      }
       else { // Arm brace only: root-parented feet must not be left behind by invented knee IK.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
       }
