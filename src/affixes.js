@@ -15,8 +15,8 @@
 // - Shaman (`SHAMAN`): now and then a pack has a shaman standing apart, channelling; while it lives, its packmates within `radius` of
 //   it cannot be harmed (a ward shimmers round them, a ring round the shaman). Kill the shaman first.
 // Runtime state on the creatures (`affixClock`, `inAura`, `wardedBy`) and in game.affixHazards (never saved; at most `maxHazards`).
-import { hashSeed, byHash } from "./random.js?v=r839-ca60fa41fc60";
-import { projectileVisualHeight } from "./actor-presentation.js?v=r839-ca60fa41fc60";
+import { hashSeed, byHash } from "./random.js?v=r840-402c30d2d636";
+import { projectileVisualHeight } from "./actor-presentation.js?v=r840-402c30d2d636";
 
 export const AFFIXES = {
   volcanic: { name: "Volcanic", color: "#ff6a2a", every: 3.2, arm: .8, radius: 1.15, life: 4, dps: .35 },

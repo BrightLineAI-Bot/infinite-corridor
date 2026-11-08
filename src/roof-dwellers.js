@@ -19,9 +19,9 @@
 //   roofAt(map, x, y)  -> is the tile (x, y) of this overworld section the Pentagon's roof (walkable roof the Wayfarer can stand on)?
 //   roofSpots(map)     -> the roof tiles of this section, [{ x, y }], in a stable order.
 // Until wired, a tile flagged `pentRoof` counts as roof (no tile has that flag today, so nothing spawns).
-import { hashSeed } from "./random.js?v=r839-ca60fa41fc60";
-import { LETHAL_KINDS } from "./landscape.js?v=r839-ca60fa41fc60";
-import { MONSTER_PACK, MOVEMENT_MODES, ATTACK_MODULES } from "./monster-pack.js?v=r839-ca60fa41fc60";
+import { hashSeed } from "./random.js?v=r840-402c30d2d636";
+import { LETHAL_KINDS } from "./landscape.js?v=r840-402c30d2d636";
+import { MONSTER_PACK, MOVEMENT_MODES, ATTACK_MODULES } from "./monster-pack.js?v=r840-402c30d2d636";
 
 export const ROOF_DWELLERS = {
   version: 1, // the plan's hash namespace; a new plan takes a new version (Pentagons already walked keep theirs)

@@ -1,6 +1,7 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r839-ca60fa41fc60';
-import { cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.js?v=r839-ca60fa41fc60';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r840-402c30d2d636';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r840-402c30d2d636';
+import { cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.js?v=r840-402c30d2d636';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -394,7 +395,7 @@ export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   clipPose(asset, asset.clips.Roll, .08, s.other); build(asset, s, s.other); const b = asset.meta.reference.bodyNode * 16; s.rollX = s.global[b + 12]; s.rollZ = s.global[b + 14];
   return s;
 }
-export function createHeroFrame(asset) { return { asset, positionsNormals: new Float32Array(asset.vertexCount * 6), vertexCount: asset.vertexCount, indexCount: asset.indexCount, alpha: 1, tint: new Float32Array([1, 1, 1]), hitFlash: 0, leftSocket: new Float32Array(16), rightSocket: new Float32Array(16), ready: false }; }
+export function createHeroFrame(asset) { return { asset, positionsNormals: new Float32Array(asset.vertexCount * 6), vertexCount: asset.vertexCount, indexCount: asset.indexCount, alpha: 1, tint: new Float32Array([1, 1, 1]), hitFlash: 0, leftSocket: new Float32Array(16), rightSocket: new Float32Array(16), powerSuit: false, suitPositionsNormals: new Float32Array(CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES * 3 * 6), suitVertexCount: 0, ready: false }; }
 
 // Source action intervals/contact markers are visual only; no event is emitted here.
 export const HERO_CLIP_POLICY = Object.freeze({ melee: 'Dagger_Attack', hammer: 'Dagger_Attack2', punch: 'Punch', dodge: 'Roll', hit: 'RecieveHit', death: 'Death', interact: 'PickUp', contact: .18, sourceContact: .35 });
@@ -435,8 +436,26 @@ function applyKnockdown(out,input,cy,sy,amount,clearance) {
   }
   knockdownSocket(out.leftSocket,input,cy,sy,c,s,lift);knockdownSocket(out.rightSocket,input,cy,sy,c,s,lift);
 }
+function samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p) {
+  const skin=asset.skins[0],matrices=state.skinMatrices[0],normals=state.skinNormals[0],dst=out.suitPositionsNormals;
+  let o=0;
+  for(const part of CLOSE_VIEW_POWER_SUIT_ARMOR) {
+    const joint=skin.joints.indexOf(part.node);if(joint<0)return false;const m=joint*16,n=joint*9;
+    for(const v of part.vertices){const x=v[0],y=v[1],z=v[2],px=matrices[m]*x+matrices[m+4]*y+matrices[m+8]*z+matrices[m+12]+dx,py=matrices[m+1]*x+matrices[m+5]*y+matrices[m+9]*z+matrices[m+13],pz=matrices[m+2]*x+matrices[m+6]*y+matrices[m+10]*z+matrices[m+14]+dz;
+      // Recipe faces are deliberately outward-wound; transform their bind-space face normal below.
+      dst[o++]=input.x+(pz*cy-px*sy)*scale;dst[o++]=input.y+(pz*sy+px*cy)*scale;dst[o++]=input.groundZ+input.liftZ+(py-state.minY)*scale;
+      // Filled after each triangle so the same skinned face normal is shared by its three vertices.
+      dst[o++]=normals[n+6]*cy-normals[n]*sy;dst[o++]=normals[n+6]*sy+normals[n]*cy;dst[o++]=normals[n+3];
+    }
+  }
+  // Recompute geometric normals after skinning; this also validates every authored plate face.
+  for(let i=0;i<o;i+=18){const ax=dst[i],ay=dst[i+1],az=dst[i+2],ux=dst[i+6]-ax,uy=dst[i+7]-ay,uz=dst[i+8]-az,vx=dst[i+12]-ax,vy=dst[i+13]-ay,vz=dst[i+14]-az,nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,len=Math.hypot(nx,ny,nz);if(!(len>1e-8))return false;for(let k=0;k<3;k++){dst[i+k*6+3]=nx/len;dst[i+k*6+4]=ny/len;dst[i+k*6+5]=nz/len;}}
+  out.suitVertexCount=o/6;
+  if(knocked&&p>0){const c=Math.cos(p*Math.PI/2),s=Math.sin(p*Math.PI/2),lift=state.downClearance*scale*s;for(let i=0;i<o;i+=6){const x=dst[i]-input.x,y=dst[i+1]-input.y,z=dst[i+2]-input.groundZ-input.liftZ,f=x*cy+y*sy,l=-x*sy+y*cy,forward=f*c-z*s;dst[i]=input.x+forward*cy-l*sy;dst[i+1]=input.y+forward*sy+l*cy;dst[i+2]=input.groundZ+input.liftZ+z*c+f*s+lift;const nf=dst[i+3]*cy+dst[i+4]*sy,nl=-dst[i+3]*sy+dst[i+4]*cy,nz=dst[i+5],ff=nf*c-nz*s;dst[i+3]=ff*cy-nl*sy;dst[i+4]=ff*sy+nl*cy;dst[i+5]=nz*c+nf*s;}}
+  return true;
+}
 export function sampleCloseViewHero(asset, state, input, out) {
-  out.ready = false;
+  out.ready = false;out.powerSuit=false;out.suitVertexCount=0;
   if (out.asset !== asset || !Number.isFinite(input.nowMs) || !Number.isFinite(input.x) || !Number.isFinite(input.y) || !Number.isFinite(input.groundZ) || !Number.isFinite(input.liftZ) || !Number.isFinite(input.yaw) || !(input.height > 0) || !Number.isFinite(input.height)) return false;
   // Input speed is tiles/second; the existing gait phase is already distance-driven radians.
   const speed = Math.max(0,Number(input.speed)||0), phase = ((Number(input.gaitPhase) || 0) / TAU % 1 + 1) % 1;
@@ -500,6 +519,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.
   for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - state.minY, z = v[i + 2] + dz; dst[i] = input.x + (z * cy - x * sy) * scale; dst[i + 1] = input.y + (z * sy + x * cy) * scale; dst[i + 2] = input.groundZ + input.liftZ + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
   socket(out.leftSocket, state.global, asset.meta.sockets.left.node * 16, scale, cy, sy, input, dx, dz, state.minY); socket(out.rightSocket, state.global, asset.meta.sockets.right.node * 16, scale, cy, sy, input, dx, dz, state.minY);
+  if(input.powerSuit===true){if(!samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p))return false;out.powerSuit=true;}
   if(knocked&&p>0)applyKnockdown(out,input,cy,sy,p,state.downClearance*scale);
   out.alpha = clamp(Number.isFinite(input.alpha) ? input.alpha : 1); out.hitFlash = clamp(Number(input.hitFlash) || 0); for (let k = 0; k < 3; k++) out.tint[k] = Number.isFinite(input.tint?.[k]) ? input.tint[k] : 1;
   out.ready = true; return true;

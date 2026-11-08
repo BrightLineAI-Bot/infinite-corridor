@@ -17,14 +17,14 @@ export function cleaverCutMotion(stage, phase = 0) {
 }
 export const CLOSE_VIEW_PLAYER_FORM_PROFILES = Object.freeze({
   playerIronFists: Object.freeze({ head: 1.68, lift: 0, pose: 'fist' }),
-  playerRobot: Object.freeze({ head: 1.48, lift: 0, pose: 'robot' }),
-  playerPowerSuit: Object.freeze({ head: 1.39, lift: 0, pose: 'suit' }),
+  playerRobot: Object.freeze({ head: 1.49, lift: 0, pose: 'robot' }),
+  playerPowerSuit: Object.freeze({ head: 1.68, lift: 0, pose: 'suit' }),
   playerEmberForm: Object.freeze({ head: 1.91, lift: 0, pose: 'ember' }),
 });
 
 export const PLAYER_FORM_HANDS = Object.freeze({
   playerIronFists: Object.freeze({ x:.22,y:-.35,z:.76,px:0,pz:1.20 }),
-  playerRobot: Object.freeze({ x:.31,y:-.61,z:.72,px:-.03,pz:1.18 }),
+  playerRobot: Object.freeze({ x:.29,y:-.63,z:.70,px:-.04,pz:1.17 }),
   playerPowerSuit: Object.freeze({ x:.14,y:-.27,z:.82,px:0,pz:1.18 }),
   playerEmberForm: Object.freeze({ x:.24,y:-.46,z:.84,px:0,pz:1.48 }),
 });
