@@ -341,7 +341,10 @@ export function sampleCloseViewHero(asset, state, input, out) {
       const pulse = Math.sin(p * Math.PI) * weight;
       if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') {
-        castPose(state,state.pose,profile,p);
+        // Orrery tools and pre-descriptor saves retain their established cast layer.
+        // Unknown future spell profiles remain neutral until they have a recipe.
+        if(profile==='cast'||profile==='orrery-tap'||profile==='orrery-release'){rotateX(state.pose,12,-.65*pulse);rotateX(state.pose,22,-.8*pulse);}
+        else castPose(state,state.pose,profile,p);
       }
       else { // Arm brace only: root-parented feet must not be left behind by invented knee IK.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
