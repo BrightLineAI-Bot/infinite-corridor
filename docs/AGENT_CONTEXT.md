@@ -78,6 +78,15 @@ Verified publication 2026-11-07: r818-791b1eff716d is live (Publish42424762364).
 The focused r820 branch imports licensed Rogue motion/body with the approved central Cleric silver-mask/white-hair head, muted green/gray/leather/bronze protective fabric and warm amber eyes. The owner-requested thinner frame and smaller hands retain actual tool size. Reproducible conversion, proportion derivation, source facts and acceptance gates are in the Wayfarer asset manifest/contract. Source animation is presentation-only; actual forms and all game/save/isolation rules remain. Main r819 camera work is merged; its Preview and hosted acceptance are separate. r820 exact CI, review and GPU acceptance are pending; no publication claim is made.
 
 
+## Measured camera follow-on — 2026-11-07
+
+Main is r821; production remains verified r818 until the imported-character GPU preview passes and is published. The r819 preview is verified and is planned for inclusion in that publication. Hosted desktop checks exposed a pre-existing outer-entrance camera case: both r818/r819 settle at .3-tile boom and about71.5 degrees downward pitch, with the old hood occupying about52% of viewport height. Read-only geometry review found a legal offset eye with about1.13 tiles of separation; the current centered solver rejects it prematurely. An isolated branch is implementing bounded lateral rig candidates and entry view scoring plus standard keyboard/AT lock-button activation. No world, FOV, save or hit-rule change is authorized by this paragraph. Browser viewport override did not apply (actual1280x720), so hosted phone sizing is unverified; automated portrait/landscape regressions passed.
+
+
 ## Imported neck repair — 2026-11-07
 
 r820 passed full CI/Preview/source review but is held from production. Its initial browser module fetch failed; Tim authorized one normal retry, which loaded successfully. Exact published-module audit found152 parsed/linked modules and557 resolved imports, without evaluating the app or using a network relay. Actual WebGL inspection then found the missing rear neck surface; a focused fabric bridge repairs it with19vertices/30triangles, unchanged approved head/frame/hands/eyes and source animation. Source/CPU validation and189-frame exact seam regression pass. Camera side-clearance and semantic-lock work is separately preserved on claude/close-view-shoulder-clearance, without a number, to follow this repair. Production remains verifiedr818 until repaired hosted acceptance and authorized Publish.
+
+Queued owner direction, weapon/three-punch Iron Fists actions, body contact, casting, combat spacing, river/decay atmosphere and reuse-first framework evaluation are preserved in close-view-combat-direction.md and its linked plans. Finish current character/camera gates first.
+
+Camera follow-up packaging takes r822 from freshly fetched main r821. Bounded offset/entry and semantic lock source passed 219 focused checks plus independent component review; integrated neck asset, exact-head CI, hosted acceptance and publication remain separate gates.

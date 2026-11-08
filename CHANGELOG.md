@@ -3,6 +3,7 @@
 ## Unreleased
 
 
+- Release 822: use bounded side clearance for cramped Close View cameras and support reliable semantic target activation.
 - Release 821: join the imported Wayfarer head to its collar with a coherent fabric neck bridge, preserving approved proportions and animation.
 - Release 820: import a rigged, textured Wayfarer with a protective silver mask, amber eyes, adult proportions, coherent source motion and actual equipped-tool sockets.
 - Release 819: stabilize cramped-space camera follow, preserve pause/manual-thumb ownership, and improve reachable lock-on acquisition, switching and target facing.
