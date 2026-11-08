@@ -1,12 +1,13 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r829-9c21fb237fe9';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r829-9c21fb237fe9';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r829-9c21fb237fe9';
-import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r829-9c21fb237fe9';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.js?v=r829-9c21fb237fe9';
-import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.js?v=r829-9c21fb237fe9';
-import { PLAYER_FORM_HANDS } from './close-view-player-presentation.js?v=r829-9c21fb237fe9';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r829-9c21fb237fe9';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r833-23e83526084b';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r833-23e83526084b';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r833-23e83526084b';
+import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r833-23e83526084b';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS } from './close-view-player-forms.js?v=r833-23e83526084b';
+import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.js?v=r833-23e83526084b';
+import { PLAYER_FORM_HANDS } from './close-view-player-presentation.js?v=r833-23e83526084b';
+import { sampleToolActionMotion } from './action-motion.js?v=r833-23e83526084b';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r833-23e83526084b';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
 const ash = 0x87503f, coal = 0x372927, ember = 0xf3a55c;
@@ -107,6 +108,44 @@ const vergeCleaver = [
   part(membrane([[.063,-.260,1.12],[.072,-.260,1.12],[.17,-.260,1.86]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
   part(membrane([[.063,-.240,1.12],[.17,-.240,1.86],[.072,-.240,1.12]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
 ];
+
+// Future Close View tool silhouettes. These are recipe-only until the ordered tool-action pass
+// selects them from accepted production events. All begin at the canonical (.17,-.25,.79) grip.
+const riftBombard = [
+  block(.17,-.25,.91,.055,.065,.14,leather,-2,0,1.19),
+  part(bevel,.17,-.25,1.10,.15,.15,.20,iron,-2,0,1.19),
+  part(bevel,.17,-.25,1.10,.09,.09,.215,brass,-2,0,1.19),
+  block(.17,-.25,1.37,.09,.09,.13,iron,-2,0,1.19),
+  part(flare,.17,-.25,1.53,.085,.085,.055,coal,-2,0,1.19),
+  block(.08,-.25,.91,.13,.055,.055,iron,-2,0,1.19,.38),
+];
+const brokenGreatswordBlade = membrane([
+  [0,-1,-1],[0,1,-1],[0,.88,.50],[0,.30,1],[0,-.72,.72],
+]);
+const greatSweep = [
+  block(.17,-.25,.91,.045,.05,.14,leather,-2,0,1.19),
+  block(.17,-.25,1.08,.20,.055,.045,iron,-2,0,1.19),
+  part(brokenGreatswordBlade,.17,-.25,1.70,1,.30,.68,iron,-2,0,1.19),
+  block(.17,-.25,1.62,.016,.03,.47,bronze,-2,0,1.19),
+  part(frontPatch,.17,-.25,1.13,1,.07,.025,brass,-2,0,1.19),
+];
+const blunderbuss = [
+  block(.17,-.25,.91,.055,.06,.14,leather,-2,0,1.19),
+  block(.17,-.25,1.10,.075,.065,.15,bronze,-2,0,1.19),
+  block(.17,-.25,1.33,.052,.052,.13,iron,-2,0,1.19),
+  part(flare,.17,-.25,1.49,.058,.058,.045,iron,-2,0,1.19),
+  part(ellipsoid(6,1),.17,-.25,1.27,.078,.078,.065,0x58cfe8,-2,0,1.19,0,true),
+  block(.08,-.25,.90,.11,.045,.045,iron,-2,0,1.19,.32),
+];
+const lumenSpindle = [
+  block(.17,-.25,.92,.035,.04,.13,leather,-2,0,1.19),
+  part(taper,.17,-.25,1.20,.034,.034,.22,bronze,-2,0,1.19),
+  part(ellipsoid(6,1),.17,-.25,1.45,.075,.075,.09,visor,-2,0,1.19,0,true),
+  part(frontPatch,.17,-.25,1.55,1,.052,.025,0x8fe8ff,-2,0,1.19),
+];
+const TOOL_EMISSION_LOCAL=Object.freeze({'rift-bombard':Object.freeze([.17,-.25,1.585]),blunderbuss:Object.freeze([.17,-.25,1.535]),'lumen-spindle':Object.freeze([.17,-.25,1.575])});
+// Uses the exact recipe grip, normalized socket axes and .82 conversion used below.
+export function closeViewToolEmissionPoint(out,profile,m){const p=TOOL_EMISSION_LOCAL[profile];if(!out||out.length<3||!p||!m||m.length!==16)return null;const ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);if(Math.min(ax,ay,az)<1e-6)return null;const x=(p[2]-.79)*.82,y=-(p[0]-.17)*.82,z=-(p[1]+.25)*.82;out[0]=m[12]+m[0]/ax*x+m[4]/ay*y+m[8]/az*z;out[1]=m[13]+m[1]/ax*x+m[5]/ay*y+m[9]/az*z;out[2]=m[14]+m[2]/ax*x+m[6]/ay*y+m[10]/az*z;return Number.isFinite(out[0]+out[1]+out[2])?out:null;}
 // Compact tapered cuff and inward thumb/knuckle cover; the final sockets keep each shell on its own hand.
 const fistGauntlet=[part(taper,0,0,.012,.105,.075,.115,0xd7dde2),part(bevel,0,-.058,.028,.058,.034,.045,0xf1f4f5)];
 const playerCinderPike=[...playerUnarmed,...cinderPike],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
@@ -259,7 +298,7 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle});
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null,m=gear?.rightSocket;
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
@@ -296,6 +335,9 @@ export function writeCloseViewModel(out, offset, actor) {
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
   const moving = Math.max(0, Math.min(1, pace));
   const progress = Math.max(0, Math.min(1, amount));
+  // Only new accepted phase records use this path; legacy/native poses keep their original timing.
+  const phasedTool=playerLike&&actor.toolAction?.toolUse?actor.toolAction:null;
+  const toolMotion=phasedTool?sampleToolActionMotion(phasedTool,progress*phasedTool.durationMs):null;
   const alpha = Number.isFinite(actor.alpha) ? Math.max(0, Math.min(1, actor.alpha)) : 1;
   const stagger = Number.isFinite(actor.stagger) ? Math.max(0, Math.min(1, actor.stagger)) : 0;
   // The Saint is stone while watched. Reduced motion suppresses ambient/gait flourish, never attack readability.
@@ -317,7 +359,8 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (progress < .30) strike = 1;
     else { const t = (progress - .30) / .70; strike = 1 - t * t * (3 - 2 * t); }
   }
-  const tool = pose === "tool" ? Math.sin(Math.PI * progress) : 0;
+  if(phasedTool)strike=0;
+  const tool = phasedTool?toolMotion?.weight||0:pose === "tool" ? Math.sin(Math.PI * progress) : 0;
   const cast = pose === "cast" ? Math.sin(Math.PI * progress) : 0;
   const jump = pose === "jump" ? Math.sin(Math.PI * progress) : 0;
   const jumpSettle = pose === "jump" && progress > .72 ? Math.sin((progress - .72) / .28 * Math.PI) : 0;
@@ -382,11 +425,12 @@ export function writeCloseViewModel(out, offset, actor) {
       // Low one-handed carry plus the same accepted-only rising/outward/descending stage vocabulary.
       angle=1.15+beat*.08+(primaryStep===1?-1.65:primaryStep===2?-1.25:-.90)*strike-.28*cast+.58*jump+.22*flinch;
     } else if(kind==='playerCinderPike'&&swing===-2) angle+=(primaryStep===2?-.22:primaryStep===3?.22:0)*strike;
+    if(toolMotion&&swing===-2){const w=toolMotion.weight,baseUp=phasedTool.toolKind==='lumen-spindle'?.18:phasedTool.toolKind==='rift-bombard'?-.13:-.08;angle=beat*stride*(1-w)-(phasedTool.toolKind==='great-sweep'?.8:1.1)*w-(phasedTool.toolKind==='great-sweep'?0:(toolMotion.up-baseUp*w)*2);}
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
-    const cutYaw = playerLike && !fist && !chargingFist && swing === -2
+    const cutYaw = toolMotion&&swing===-2?toolMotion.yaw*toolMotion.weight:playerLike && !fist && !chargingFist && swing === -2
       ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? primaryStep===2?-1.18:primaryStep===3?.45:1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;

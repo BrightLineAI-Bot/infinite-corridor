@@ -1,39 +1,39 @@
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r829-9c21fb237fe9"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r829-9c21fb237fe9";
-import { astralBeamAnchors } from "./astral-worm.js?v=r829-9c21fb237fe9";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r829-9c21fb237fe9";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r829-9c21fb237fe9";
-import { playerFormPresentation } from './close-view-player-presentation.js?v=r829-9c21fb237fe9';
-import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r829-9c21fb237fe9";
-import { enemyPatternWindup } from "./enemy-patterns.js?v=r829-9c21fb237fe9";
-import { ruleRows } from "./elders.js?v=r829-9c21fb237fe9";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r829-9c21fb237fe9";
-import { BOAT } from "./boats.js?v=r829-9c21fb237fe9";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r829-9c21fb237fe9";
-import { isMarineTile } from "./world-beasts.js?v=r829-9c21fb237fe9";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos } from "./game.js?v=r829-9c21fb237fe9"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r829-9c21fb237fe9";
-import { setTreeSeason } from "./landscape-render.js?v=r829-9c21fb237fe9";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r829-9c21fb237fe9";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r829-9c21fb237fe9";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r829-9c21fb237fe9";
-import { TREES } from "./trees.js?v=r829-9c21fb237fe9";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r829-9c21fb237fe9";
-import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r829-9c21fb237fe9";
-import { KIT_MOVES } from "./boss-kit.js?v=r829-9c21fb237fe9";
-import { SKY_DISCS } from "./skylands.js?v=r829-9c21fb237fe9"; // release 587
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r829-9c21fb237fe9";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r829-9c21fb237fe9"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r829-9c21fb237fe9"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r829-9c21fb237fe9"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r829-9c21fb237fe9"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r829-9c21fb237fe9"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced } from "./monster-pack.js?v=r829-9c21fb237fe9";
-import { drawRelayNode } from "./relay-network.js?v=r829-9c21fb237fe9";
-import { structureOccupancy } from "./world.js?v=r829-9c21fb237fe9";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r829-9c21fb237fe9";
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r829-9c21fb237fe9";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r829-9c21fb237fe9"; // Close View: three hooks below, marked CLOSE VIEW
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r833-23e83526084b"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r833-23e83526084b";
+import { astralBeamAnchors } from "./astral-worm.js?v=r833-23e83526084b";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r833-23e83526084b";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r833-23e83526084b";
+import { playerFormPresentation } from './close-view-player-presentation.js?v=r833-23e83526084b';
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r833-23e83526084b";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r833-23e83526084b";
+import { ruleRows } from "./elders.js?v=r833-23e83526084b";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r833-23e83526084b";
+import { BOAT } from "./boats.js?v=r833-23e83526084b";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r833-23e83526084b";
+import { isMarineTile } from "./world-beasts.js?v=r833-23e83526084b";
+import { jumpLift, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r833-23e83526084b"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r833-23e83526084b";
+import { setTreeSeason } from "./landscape-render.js?v=r833-23e83526084b";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r833-23e83526084b";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r833-23e83526084b";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r833-23e83526084b";
+import { TREES } from "./trees.js?v=r833-23e83526084b";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r833-23e83526084b";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r833-23e83526084b";
+import { KIT_MOVES } from "./boss-kit.js?v=r833-23e83526084b";
+import { SKY_DISCS } from "./skylands.js?v=r833-23e83526084b"; // release 587
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r833-23e83526084b";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r833-23e83526084b"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r833-23e83526084b"; // release 678
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r833-23e83526084b"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r833-23e83526084b"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r833-23e83526084b"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced } from "./monster-pack.js?v=r833-23e83526084b";
+import { drawRelayNode } from "./relay-network.js?v=r833-23e83526084b";
+import { structureOccupancy } from "./world.js?v=r833-23e83526084b";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r833-23e83526084b";
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r833-23e83526084b";
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.js?v=r833-23e83526084b"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -2909,7 +2909,7 @@ export function render(ctx, g, w, h, now) {
       ctx.fillRect(e.x * s, barY * s, (s * e.hp) / e.maxHp, 3);
     }
   drawEchoPatches(ctx,g,s,now);
-  drawGlyphStatus(ctx,g,s,now,(e)=>shownInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2));
+  drawGlyphStatus(ctx,g,s,now,(e)=>shownInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2),bareFloor);
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&shownInDungeon(g,q)&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
@@ -3121,7 +3121,7 @@ function drawDamageNumbers(ctx,g,s,now){const list=g.damageFloaters;if(!list?.le
   for(const f of list){const k=Math.min(1,Math.max(0,(now-f.born)/900));if(k>=1)continue;const taken=f.kind==="taken",size=Math.max(11,Math.round(s*(taken?.36:.32))),x=(f.x+f.jitter)*s,y=(f.y-k*.9)*s;
     ctx.globalAlpha=k<.7?1:1-(k-.7)/.3;ctx.font=`bold ${size}px system-ui,sans-serif`;ctx.lineWidth=3;ctx.strokeStyle="rgba(0,0,0,.85)";ctx.strokeText(taken?`-${f.text}`:f.text,x,y);ctx.fillStyle=taken?"#ff6b6b":"#ffd970";ctx.fillText(taken?`-${f.text}`:f.text,x,y)}
   ctx.restore()}
-function drawGlyphStatus(ctx,g,s,now,visible){
+function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
   const t=now/1000;
   for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;
     if((e.glyphBurn?.until||0)>now){for(let k=0;k<3;k++){const f=(t*2.2+k/3)%1;ctx.fillStyle=`rgba(255,${140+k*30},60,${.75*(1-f)})`;ctx.beginPath();ctx.arc(cx+(k-1)*s*.18,cy-s*.1-f*s*.45,s*(.09-.05*f),0,7);ctx.fill()}}
@@ -3132,6 +3132,12 @@ function drawGlyphStatus(ctx,g,s,now,visible){
     else if(v.kind==="heal"){const rise=(1-a)*s*.6;ctx.font=`bold ${Math.max(10,Math.round(s*.32))}px system-ui,sans-serif`;ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle=`rgba(0,0,0,${a*.8})`;ctx.fillStyle=`rgba(120,240,140,${a})`;ctx.strokeText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.fillText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.textAlign="start"}
     else if(v.kind==="mist"){const r=s*(.35+(1-a)*.5),gr=ctx.createRadialGradient(v.x*s,v.y*s,0,v.x*s,v.y*s,r);gr.addColorStop(0,`rgba(214,226,240,${.55*a})`);gr.addColorStop(1,"rgba(150,172,200,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(v.x*s,v.y*s,r,0,7);ctx.fill()}/* release 699: Stalker's Mist rots a foe */
     else if(v.kind==="steam"){const f=1-a;ctx.fillStyle=`rgba(236,248,250,${.42*a})`;for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(v.x*s+(k-1)*s*.2+Math.sin(f*5+k*2)*s*.06,v.y*s-f*s*(.5+k*.12),s*(.06+.07*f),0,7);ctx.fill()}}/* the healing hot springs (HOT_SPRINGS): a wisp of steam */
+    else if(v.kind==="primaryEcho"&&!bareFloor){
+      const draw=(q,alpha,memory=false)=>{if(!q)return;const d=Math.hypot(q.dx,q.dy)||1,dx=q.dx/d,dy=q.dy/d,angle=Math.atan2(dy,dx),shape=q.shape==='thrust'?'thrust':'sweep';ctx.save();ctx.globalAlpha=Math.max(0,a*alpha);ctx.strokeStyle=memory?'#d8c8ff':'#c9a7ff';ctx.fillStyle=memory?'#d8c8ff':'#c9a7ff';ctx.lineCap='round';ctx.lineJoin='round';
+        if(shape==='thrust'){const nx=-dy,ny=dx,x0=q.x+dx*.18,y0=q.y+dy*.18,x1=q.x+dx*q.range,y1=q.y+dy*q.range,w=PRIMARY_ECHO_VISUAL.thrustWidth*(memory?.72:1);ctx.beginPath();ctx.moveTo((x0+nx*w)*s,(y0+ny*w)*s);ctx.lineTo(x1*s,y1*s);ctx.lineTo((x0-nx*w)*s,(y0-ny*w)*s);ctx.closePath();ctx.fill();}
+        else {const half=(Number(q.arc)||100)*Math.PI/360,step=memory?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0,offset=step===1?-.28:step===2?.28:0,start=angle-half+offset,end=angle+half+offset,r=Math.max(.2,Number(q.range)||1.7)*s;ctx.lineWidth=Math.max(2,s*PRIMARY_ECHO_VISUAL.sweepWidth*(memory?.65:1));ctx.beginPath();for(let i=0;i<=PRIMARY_ECHO_VISUAL.sweepSegments;i++){const t=i/PRIMARY_ECHO_VISUAL.sweepSegments,b=start+(end-start)*t,x=q.x*s+Math.cos(b)*r,y=q.y*s+Math.sin(b)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();}ctx.restore();};
+      const m=v.memory,q=v.actual,different=m&&(Math.hypot(m.x-q.x,m.y-q.y)>.08||Math.hypot(m.dx-q.dx,m.dy-q.dy)>.08||m.shape!==q.shape||Math.abs(m.range-q.range)>.08||m.weaponKind==='verge-cleaver'&&m.primaryStep!==3);draw(q,PRIMARY_ECHO_VISUAL.actualAlpha);if(different&&!g.presentation?.reduceMotion&&!g.presentation?.safeMode)draw(m,PRIMARY_ECHO_VISUAL.memoryAlpha,true);
+    }
     else if(v.kind==="burst"){ctx.strokeStyle=`rgba(255,210,92,${a})`;ctx.lineWidth=Math.max(2,s*.08);ctx.beginPath();ctx.arc(v.x*s,v.y*s,v.radius*s*(1.1-a*.6),0,7);ctx.stroke();ctx.fillStyle=`rgba(255,180,70,${a*.25})`;ctx.fill()}}
 }
 

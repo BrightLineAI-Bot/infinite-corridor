@@ -1,6 +1,6 @@
 // Authored Close View bodies for the Pentagon, its dungeon grotesques and its blue haunts.
 // Geometry follows the original monster-render silhouettes; presentation metadata controls admission.
-import { bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r829-9c21fb237fe9';
+import { bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r833-23e83526084b';
 
 const E5 = ellipsoid(5, 1), E6 = ellipsoid(6, 2), E8 = ellipsoid(8, 3);
 const limb = (points, color, swing, px, pz, sides = 4) => part(curvedTube(points, sides), 0, 0, 0, 1, 1, 1, color, swing, px, pz);

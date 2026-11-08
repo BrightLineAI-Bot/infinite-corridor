@@ -1,4 +1,5 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
+import { sampleToolActionMotion, toolUsePoseTime } from './action-motion.js?v=r833-23e83526084b';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -198,6 +199,20 @@ function primaryPose(state,pose,profile,p,step=1){
   state.clipTime=p;state.primaryStep=step;
 }
 
+function toolPose(state,pose,profile,p,weight,action){
+  if(action?.toolMotion&&action.toolMotion.v!==1)return;
+  if(action?.toolUse&&['unknown','cancelled'].includes(toolUsePoseTime(action,p*(Number(action?.durationMs)||180)).phase))return;
+  state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
+  const motion=sampleToolActionMotion(action,p*(Number(action?.durationMs)||180));let frameYaw=0,side=0,up=-.10,forward=.47;
+  if(motion){({yaw:frameYaw,side,up,forward,weight}=motion);}
+  else if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
+  else if(profile==='rift-bombard'){side=-.05;up=-.13;forward=.43;}
+  else if(profile==='blunderbuss'){side=-.04;up=-.08;forward=.50;}
+  else if(profile==='great-sweep'){const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;}
+  target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
+  solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
+  state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
+}
 function build(asset, state, pose) {
   const head = asset.meta.headAttachment;
   for (const i of asset.order) {
@@ -314,15 +329,18 @@ export function sampleCloseViewHero(asset, state, input, out) {
       if(fistProfile){if(profile==='fistCharge'){fistReadyPose(asset,state,state.pose,p,strikeLead);state.clip='derived-fist-charge';state.clipTime=p;clip=null;}else{const envelope=Math.min(1,p/.08,(1-p)/.16),carry=clamp(Number(action.fistCharge)||0)*(1-p);if(carry>0){fistReadyPose(asset,state,state.pose,carry,strikeLead);fistPose(asset,state,time,strikeLead);}fistLayer(state.other,step,lead,step===3?.9:.65);weight=envelope;state.clip=step===1?'derived-dash-punch':step===2?'derived-opposite-jab':'derived-rising-uppercut';state.clipTime=p;}}
       if (kind === 'dodge') { build(asset, state, state.other); const b = asset.meta.reference.bodyNode * 16; dx = -(state.global[b + 12] - state.rollX) * weight; dz = -(state.global[b + 14] - state.rollZ) * weight; }
       if(clip){if(profile!=='fist'||weight>0)blend(state.pose, state.other, weight);if(profile!=='fist'){state.clip = clip.name; state.clipTime = time;}}
+    } else if (kind === 'melee' && profile === 'great-sweep') {
+      toolPose(state,state.pose,profile,p,weight,action);
     } else if (kind === 'ranged' || kind === 'cast' || kind === 'jump') {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.
       const pulse = Math.sin(p * Math.PI) * weight;
-      if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
+      if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight,action);
+      else if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') { rotateX(state.pose, 12, -.65 * pulse); rotateX(state.pose, 22, -.8 * pulse); }
       else { // Arm brace only: root-parented feet must not be left behind by invented knee IK.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
       }
-      state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
+      if(!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
     }
   }
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;

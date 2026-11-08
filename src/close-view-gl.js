@@ -1,5 +1,5 @@
-import { MODEL_FLOATS } from "./close-view-models.js?v=r829-9c21fb237fe9";
-import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r829-9c21fb237fe9';
+import { MODEL_FLOATS } from "./close-view-models.js?v=r833-23e83526084b";
+import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r833-23e83526084b';
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -531,12 +531,12 @@ void main() {
 // 4 cobweb (a corner triangle), 5 chain, 7 spike (a small metal spike, a card), 8 bones; added in light: 2 wind-up glow,
 // 3 flame, 6 dust mote, 9 a flame's halo.
 const DECAL_VS = VS_COMMON + `
-in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; out float v_depth; out vec2 v_world;
-void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; v_world = a_pos.xy; }`;
+in vec3 a_pos; in vec2 a_loc; in vec4 a_meta; out vec2 v_loc; out vec4 v_meta; out float v_depth; out vec2 v_world; flat out highp uint v_rgb;
+void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_loc = a_loc; v_meta = a_meta; v_world = a_pos.xy; v_rgb = a_meta.x > 10.5 && a_meta.x < 11.5 ? uint(a_meta.z) : 0u; }`;
 const DECAL_FS = `#version 300 es
 precision highp float;
 precision highp int;
-uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; out vec4 outColor;
+uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; flat in highp uint v_rgb; out vec4 outColor;
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : vec3(1.0, 0.75, 0.35); } // warm, bioluminescent, ghost-light, a failing lamp
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -569,7 +569,7 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
     ivec2 tile = ivec2(floor(v_world));
     if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize)) ||
         (texelFetch(u_mask, tile, 0).r & 2u) != 0u) discard;
-    uint rgb = uint(floor(v_meta.z + 0.5));
+    uint rgb = v_rgb;
     vec3 tint = vec3(float(rgb >> 16u), float((rgb >> 8u) & 255u), float(rgb & 255u)) / 255.0;
     float shape = v_meta.w > 0.5 ? (1.0 - abs(v_loc.y)) * smoothstep(-1.0, 1.0, v_loc.x)
       : 1.0 - smoothstep(0.08, 1.0, r);
@@ -637,11 +637,23 @@ export function closeViewGLReady(makeCanvas) {
     S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true; return true;
   } catch (err) { closeViewGLStats.failed = true; closeViewGLStats.reason = String(err?.message || err).slice(0, 400); S.gl = null; return false; }
 }
+// Critical resources for a frame that will suppress ordinary floor bodies. Optional uniforms may be
+// optimized out; programs, buffers, vertex arrays and textures may not. This check is deliberately
+// side-effect free so callers can complete admission before the ordinary renderer captures the floor.
+export function closeViewGLFrameReady() {
+  const gl = S.gl;
+  if (!gl || gl.isContextLost?.()) return false;
+  for (const k of ["env", "wall", "wallZ", "board", "decal", "model"]) if (!S[k]?.p) return false;
+  for (const k of ["env", "wall", "board", "decal", "model"]) if (!S.vbo[k]) return false;
+  for (const k of ["env", "wall", "wallZ", "board", "decal", "model"]) if (!S.vao[k]) return false;
+  for (const k of ["ground", "mask", "grit"]) if (!S.tex[k]) return false;
+  return true;
+}
 export const closeViewGLCanvas = () => S.canvas;
 // Call before admitting the imported body; absent decoded images/context keeps the existing presentation.
 export const prepareCloseViewHeroGL = (asset) => !!S.gl && prepareHeroGL(S.gl, S.hero, asset);
 // For tests and the lab: forget the context (the next frame asks again).
-export function resetCloseViewGL() { if(S.gl) disposeHeroGL(S.gl,S.hero,true); S.hero = null; S.gl = null; S.canvas = null; S.gritReady = false; S.maskMap = null; S.staticKey = null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; }
+export function resetCloseViewGL() { if(S.gl) disposeHeroGL(S.gl,S.hero,true); S.hero = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit"])S.tex[k]=null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
 // r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
@@ -694,7 +706,8 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1 };
 export function drawSceneGL(ground, U, models = null, hero = null) {
-  const gl = S.gl; if (!gl) return false; const F = GLF; let calls = 0;
+  const gl = S.gl; if (!closeViewGLFrameReady()) return false; const F = GLF; let calls = 0;
+  try {
   const c = S.canvas; if (c.width !== F.devW || c.height !== F.devH) { c.width = F.devW; c.height = F.devH; }
   gl.viewport(0, 0, F.devW, F.devH);
   // what lies on the floor (and the billboards' atlas below it): copied up once a frame
@@ -731,6 +744,7 @@ export function drawSceneGL(ground, U, models = null, hero = null) {
     if (GLB.nGlowStart > 0) { gl.drawArrays(gl.TRIANGLES, 0, GLB.nGlowStart); calls++; } }
   // Compare silhouettes against wall depth before the opaque models write actor depth.
   const model = S.model, hasModels = !!models?.length, hasHero = uploadHeroFrame(gl,S.hero,hero);
+  if (hero && !hasHero) return false;
   const useBoards = () => { gl.useProgram(S.board.p); gl.bindVertexArray(S.vao.board); };
   if (GLB.nBoard > 0) { useBoards(); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW);
@@ -756,6 +770,12 @@ export function drawSceneGL(ground, U, models = null, hero = null) {
   // 5. flames, halos, motes and wind-up glows, added in light
   if (GLB.nDecal > GLB.nGlowStart) { gl.useProgram(S.decal.p); decalU(); gl.bindVertexArray(S.vao.decal); gl.blendFunc(gl.ONE, gl.ONE); gl.drawArrays(gl.TRIANGLES, GLB.nGlowStart, GLB.nDecal - GLB.nGlowStart); calls++; }
   gl.bindVertexArray(null); gl.depthMask(true); gl.disable(gl.BLEND);
+  const error=typeof gl.getError === "function"?gl.getError():undefined;
+  if (gl.isContextLost?.() || (Number.isFinite(error) && error !== gl.NO_ERROR)) return false;
   closeViewGLStats.frames++; closeViewGLStats.drawCalls = calls; closeViewGLStats.walls = S.staticVerts / 6; closeViewGLStats.boards = GLB.nBoard / 6; closeViewGLStats.decals = GLB.nDecal / 6; closeViewGLStats.lights = F.nl;
   return true;
+  } catch (err) {
+    closeViewGLStats.reason = String(err?.message || err).slice(0, 400);
+    return false;
+  }
 }
