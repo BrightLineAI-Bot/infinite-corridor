@@ -230,10 +230,11 @@ test('locked visual facing respects committed action aim and never rewrites game
 
 test('Target requests an exact open-ground rear center while preserving accepted aim and held movement basis', () => {
   const g = fixture(); frame(g, 40); const originalXY = [g.player.x, g.player.y];
-  for (const [x, y] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
-    g.save.lastAim = { x, y }; CV.closeViewPan(37, 0, now); assert.equal(CV.closeViewTargetActivate(g, now), null);
+  for (const [facing, x, y] of [['right', 1, 0], ['down', 0, 1], ['left', -1, 0], ['up', 0, -1]]) {
+    g.player.facing = facing; frame(g, 90); const yaw = CV.closeViewPlayerFacingYaw(g, now); assert.ok(Number.isFinite(yaw));
+    CV.closeViewPan(37, 0, now); assert.equal(CV.closeViewTargetActivate(g, now), null);
     frame(g, 90, () => { const neutral = { x: 0, y: 0 }; CV.closeViewSteer(g, neutral); g.update(.016, { state: neutral, consume: () => false, held: () => false }, now); CV.closeViewUnsteer(neutral); });
-    const c = CV.closeViewCamera(), yaw = Math.atan2(y, x), px = g.player.x + .5, py = g.player.y + .75, rx = -Math.sin(yaw), ry = Math.cos(yaw);
+    const c = CV.closeViewCamera(), px = g.player.x + .5, py = g.player.y + .75, rx = -Math.sin(yaw), ry = Math.cos(yaw);
     assert.ok(Math.abs(wrap(c.yaw - yaw)) < .01); assert.ok(Math.abs((c.x - px) * rx + (c.y - py) * ry) < 1e-5, 'open-ground eye is centered laterally');
     assert.ok(Math.abs(c.shoulder) < 1e-6 && Math.abs(c.rigOffset) < 1e-6); assert.equal(c.centeredRear, true);
   }
@@ -259,6 +260,21 @@ test('shared facing distinguishes native fallback from the nonzero imported entr
   assert.deepEqual(v.aim, { x: 0, y: -1 }); assert.equal(v.facingYaw, 0);
 });
 
+test('no-target activation follows the actual idle body instead of neutral camera aim feedback', () => {
+  const g = fixture(); frame(g, 40); CV.closeViewPan((Math.PI / 2 - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, now);
+  for (let i = 0; i < 32; i++) {
+    const stick = { x: 0, y: -1 }; assert.equal(CV.closeViewSteer(g, stick), true); g.update(.016, { state: stick, consume: () => false, held: () => false }, now + 16); CV.closeViewUnsteer(stick); frame(g);
+  }
+  frame(g, 20); const bodyYaw = CV.closeViewPlayerFacingYaw(g, now); assert.ok(Math.abs(wrap(bodyYaw - Math.PI / 2)) < .08, 'production movement/render tracks the downward idle body');
+  CV.closeViewPan((Math.PI - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, now);
+  const neutral = { x: 0, y: 0 }; CV.closeViewSteer(g, neutral); g.update(.016, { state: neutral, consume: () => false, held: () => false }, now + 16); CV.closeViewUnsteer(neutral); frame(g);
+  assert.ok(Math.abs(wrap(Math.atan2(g.save.lastAim.y, g.save.lastAim.x) - Math.PI)) < .02, 'neutral production steer writes the panned camera aim');
+  const displayed = CV.closeViewPlayerFacingYaw(g, now), xy = [g.player.x, g.player.y], pose = structuredClone(g.player.attackVisual);
+  assert.ok(Math.abs(wrap(displayed - Math.PI / 2)) < .12, `shared resolver still reads the displayed idle body (${displayed})`);
+  assert.equal(CV.closeViewTargetActivate(g, now), null); frame(g, 120); const c = CV.closeViewCamera(), px = g.player.x + .5, py = g.player.y + .75, rx = -Math.sin(displayed), ry = Math.cos(displayed);
+  assert.ok(Math.abs(wrap(c.yaw - displayed)) < .01); assert.ok(Math.abs((c.x - px) * rx + (c.y - py) * ry) < 1e-5); assert.deepEqual([g.player.x, g.player.y], xy); assert.deepEqual(g.player.attackVisual, pose);
+});
+
 test('centered Target keeps the existing obstruction escape and camera safety', () => {
   const g = fixture('cellar'); g.player.x = 11; g.player.y = 5; g.save.lastAim = { x: 0, y: -1 }; CV.resetCloseViewCamera(); frame(g, 2);
   CV.closeViewTargetActivate(g, now); frame(g, 240); const c = CV.closeViewCamera(); assert.equal(c.centeredRear, true); clearEye(g);
@@ -268,10 +284,10 @@ test('centered Target keeps the existing obstruction escape and camera safety', 
 test('Target acquires from the pre-recenter view, recenters on acquire and unlock, and rejects hidden input', () => {
   const g = fixture(); frame(g, 40); CV.closeViewPan(-CV.closeViewCamera().yaw / CV.CLOSE_VIEW.crescent.yaw, 0, now); const e = foe(g, 'target-command', 2, 0); assert.equal(CV.closeViewLockCandidate(g)?.id, e.id);
   assert.equal(CV.closeViewTargetActivate(g, now)?.id, e.id); frame(g, 90); assert.equal(g.lockedTarget()?.id, e.id); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw)) < .01);
-  g.save.lastAim = { x: 0, y: -1 }; assert.equal(CV.closeViewTargetActivate(g, now), null); frame(g, 90); assert.equal(g.lockedTarget(), null); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw + Math.PI / 2)) < .01, 'unlock activation still recenters');
+  assert.equal(CV.closeViewTargetActivate(g, now), null); const unlockYaw = CV.closeViewPlayerFacingYaw(g, now); frame(g, 160); assert.equal(g.lockedTarget(), null); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - unlockYaw)) < .01, 'unlock activation still recenters behind the displayed body');
   const before = CV.closeViewCamera(); g.paused = true; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.deepEqual(CV.closeViewCamera(), before); g.paused = false;
   g.save.closeView = false; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.equal(g.lockedTarget(), null, 'hidden controls cannot queue a Target command'); g.save.closeView = true;
-  CV.resetCloseViewCamera(); frame(g, 2); g.presentation = { reduceMotion: true }; g.save.lastAim = { x: -1, y: 0 }; CV.closeViewTargetActivate(g, now); frame(g, 110); assert.ok(Math.abs(Math.abs(CV.closeViewCamera().yaw) - Math.PI) < .01, 'reduced motion retains exact centered destination');
+  CV.resetCloseViewCamera(); g.player.facing = 'left'; frame(g, 110); g.presentation = { reduceMotion: true }; const reducedYaw = CV.closeViewPlayerFacingYaw(g, now); CV.closeViewTargetActivate(g, now); frame(g, 110); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - reducedYaw)) < .01, 'reduced motion retains exact centered destination');
 });
 
 test('one raw-distance switch per gesture is independent of camera sensitivity and acceleration', () => {
