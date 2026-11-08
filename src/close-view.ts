@@ -2094,6 +2094,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           action.phase = 1 - Math.min(1, (player.dodgeUntil - now) / action.durationMs);
           const visual=player.dodgeVisual;if(Number.isFinite(visual?.facingYaw))action.yaw=visual.facingYaw;
           action.moveX=player.dodgeX||0;action.moveY=player.dodgeY||0;
+          action.poseMs=Number.isFinite(visual?.poseMs)?visual.poseMs:input.nowMs;
           input.speed=Number.isFinite(visual?.speed)?visual.speed:visual?.moving?2.4:0;input.gaitPhase=Number.isFinite(visual?.gaitPhase)?visual.gaitPhase:0;
         } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
         else if (attack) action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee';

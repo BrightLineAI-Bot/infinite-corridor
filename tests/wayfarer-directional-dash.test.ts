@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { decodeCloseViewHero, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from '../src/close-view-hero.ts';
-import { normalizeDodgeVisual } from '../src/action-motion.ts';
+import { normalizeDodgeVisual, recordHeroPresentation } from '../src/action-motion.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { Game } from '../src/game.ts';
 import { migrateSave } from '../src/types.ts';
@@ -24,7 +24,7 @@ test('four-way quicksteps stay grounded, upright, continuous and return exactly 
       const {low,high}=lowHigh(out);assert.ok(low>=-.0121,`${label} boot ${low}`);peak=Math.min(peak,high);assert.ok(state.global[3*16+5]>.65,'head remains upright');
       if(prior){let max=0;for(let k=0;k<out.positionsNormals.length;k+=6)max=Math.max(max,Math.hypot(out.positionsNormals[k]-prior.positionsNormals[k],out.positionsNormals[k+1]-prior.positionsNormals[k+1],out.positionsNormals[k+2]-prior.positionsNormals[k+2]));assert.ok(max<.25,`${label} phase continuity ${max}`);}prior=out;
     }
-    const end=frame(base({speed,gaitPhase,action:{kind:'dodge',profile:'dodge',phase:1,durationMs:260,yaw:0,moveX:x,moveY:y}}));assert.deepEqual(end.out.positionsNormals,start.out.positionsNormals);assert.deepEqual(end.out.leftSocket,start.out.leftSocket);assert.deepEqual(end.out.rightSocket,start.out.rightSocket);
+    const end=frame(base({nowMs:260,speed,gaitPhase,action:{kind:'dodge',profile:'dodge',phase:1,durationMs:260,poseMs:0,yaw:0,moveX:x,moveY:y}})),recovered=frame(base({nowMs:260,speed,gaitPhase}));assert.deepEqual(end.out.positionsNormals,recovered.out.positionsNormals);assert.deepEqual(end.out.leftSocket,recovered.out.leftSocket);assert.deepEqual(end.out.rightSocket,recovered.out.rightSocket);
     const height=lowHigh(start.out).high;assert.ok(peak<=height*.90&&peak>=height*.75,`${label} crouch ${peak}/${height}`);
   }
 });
@@ -42,9 +42,14 @@ test('accepted Game dodge captures facing without changing authoritative movemen
   const accepted=structuredClone(game.player.dodgeVisual),until=game.player.dodgeUntil;game.player.stamina=0;game.update(.01,input,100010);assert.deepEqual(game.player.dodgeVisual,accepted);assert.equal(game.player.dodgeUntil,until);assert.ok(game.player.stamina>=0&&game.player.stamina<1,'refusal only receives ordinary frame recovery');
 });
 
+test('accepted cache yaw is canonical and remains valid through serialized many-turn presentation',()=>{
+  const {game}=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:300000});game.enemies=[];recordHeroPresentation(game.player,{gaitPhase:1.2,speed:.7,yaw:Math.PI*20+.43,now:300000,x:game.player.x,y:game.player.y});game.update(0,{state:{x:1,y:0},consume:k=>k==='dodge',held:()=>false},300000);
+  assert.ok(Math.abs(game.player.dodgeVisual.facingYaw-.43)<1e-10);assert.equal(game.player.dodgeVisual.poseMs,300000);const saved=migrateSave(JSON.parse(JSON.stringify(game.exportSnapshot(300010))));assert.ok(saved.session.playerRuntime.dodgeVisual);assert.ok(Math.abs(saved.session.playerRuntime.dodgeVisual.facingYaw-.43)<1e-10);
+});
+
 test('dodge presentation metadata is future-safe, invalid-safe and stable through pause/reload',()=>{
   const future={later:['kept']},raw={facingYaw:.7,gaitPhase:2.2,moving:true,future};assert.deepEqual(normalizeDodgeVisual(raw),{...raw,speed:2.4});
-  for(const bad of [[],{}, {facingYaw:Infinity,gaitPhase:0,moving:true},{facingYaw:0,gaitPhase:Infinity,moving:true},{facingYaw:0,gaitPhase:0,moving:'yes'}])assert.equal(normalizeDodgeVisual(bad),null);
+  for(const bad of [[],{}, {facingYaw:Infinity,gaitPhase:0,moving:true},{facingYaw:0,gaitPhase:Infinity,moving:true},{facingYaw:0,gaitPhase:0,moving:'yes'},{facingYaw:0,gaitPhase:0,moving:true,poseMs:-1},{facingYaw:0,gaitPhase:0,moving:true,poseMs:Infinity}])assert.equal(normalizeDodgeVisual(bad),null);
   const {game}=createLabFixture({lab:'close-view',scenario:'terrain-ramps',now:200000});game.enemies=[];game.player.facing='up';game.update(.01,{state:{x:0,y:1},consume:k=>k==='dodge',held:()=>false},200000);game.player.dodgeVisual.future=future;game.setPaused(true,200080);
   const visual=structuredClone(game.player.dodgeVisual),saved=migrateSave(JSON.parse(JSON.stringify(game.exportSnapshot(900000)))),back=new Game(saved,1000000);assert.deepEqual(saved.session.playerRuntime.dodgeVisual,visual);assert.deepEqual(back.player.dodgeVisual,visual);assert.equal(back.player.dodgeUntil-back.pauseStarted,180);back.setPaused(false,1100000);assert.equal(back.player.dodgeUntil-1100000,180);
 });
