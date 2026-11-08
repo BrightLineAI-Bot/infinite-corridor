@@ -6273,7 +6273,10 @@ export class Game {
     this.save.lastAim = d;
     this.player.attackReadyAt = now + 360 * glyphs.mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed);
     this.player.attackUntil = now + ACTION_MOTION.toolMs;
-    stampAttackVisual(this.player, "emitter", ACTION_MOTION.toolMs, d);
+    const toolVisual = stampAttackVisual(this.player, "emitter", ACTION_MOTION.toolMs, d);
+    const toolKind = weapon.name === "Rift Bombard" ? "rift-bombard"
+      : weapon.name === "Blunderbuss" ? "blunderbuss" : weapon.name === "Lumen Spindle" ? "lumen-spindle" : null;
+    if (toolVisual && toolKind) toolVisual.toolKind = toolKind;
     this.player.meleeUntil = 0;
     this.player.meleeStrike = null;
     const derived=characterStats(this.save),reachMultiplier=1+derived.attackReach,projectileLifetime=weapon.lifetime*reachMultiplier;
@@ -6578,7 +6581,8 @@ export class Game {
     { const main = this.effects[this.effects.length - 1], plan = echoPlan(this.glyphLoadout("tool")); if (plan && main) plan.copies.forEach((c, i) => this.effects.push({ ...main, id: main.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, delay: (main.delay || 0) + BRAWLER_ECHO.toolGap * (i + 1), damage: Math.max(1, Math.round(main.damage * c.share)), imbue: (main.imbue || 0) * c.share, echo: true })); } // release 503: Echo in the tool repeats the blow; 507: one more per Echo glyph, bang, bang, boom
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240;
-    stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", 240, visualAim);
+    const toolVisual = stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", 240, visualAim);
+    if (toolVisual && kind === "great-sweep") toolVisual.toolKind = "great-sweep";
     this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
   }

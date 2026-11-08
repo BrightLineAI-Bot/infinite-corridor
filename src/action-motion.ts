@@ -12,6 +12,7 @@ export const ATTACK_VISUAL_PROFILES = Object.freeze([
 ]);
 const ATTACK_VISUAL_PROFILE = /^[a-z][a-z0-9-]{0,31}$/;
 export const PRIMARY_VISUAL_KINDS = Object.freeze(["salvage-blade", "cinder-pike", "verge-cleaver"]);
+export const TOOL_VISUAL_KINDS = Object.freeze(["rift-bombard", "great-sweep", "blunderbuss", "lumen-spindle"]);
 
 export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -25,6 +26,10 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   if (raw.weaponKind != null) {
     if (typeof raw.weaponKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
     copy.weaponKind = raw.weaponKind;
+  }
+  if (raw.toolKind != null) {
+    if (typeof raw.toolKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.toolKind)) return null;
+    copy.toolKind = raw.toolKind;
   }
   if (raw.poseMs != null) {
     const poseMs = Number(raw.poseMs);

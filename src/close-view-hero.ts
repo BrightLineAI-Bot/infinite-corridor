@@ -163,6 +163,20 @@ function qrot(out,o,q,x,vx,vy,vz){const qx=q[x],qy=q[x+1],qz=q[x+2],qw=q[x+3],tx
 function matrixQuat(out,o,m,x){const l0=Math.hypot(m[x],m[x+1],m[x+2])||1,l1=Math.hypot(m[x+4],m[x+5],m[x+6])||1,l2=Math.hypot(m[x+8],m[x+9],m[x+10])||1,a=m[x]/l0,b=m[x+1]/l0,c=m[x+2]/l0,d=m[x+4]/l1,e=m[x+5]/l1,f=m[x+6]/l1,g=m[x+8]/l2,h=m[x+9]/l2,i=m[x+10]/l2,trace=a+e+i;let qx,qy,qz,qw;if(trace>0){const s=Math.sqrt(trace+1)*2;qw=s/4;qx=(f-h)/s;qy=(g-c)/s;qz=(b-d)/s;}else if(a>e&&a>i){const s=Math.sqrt(1+a-e-i)*2;qw=(f-h)/s;qx=s/4;qy=(d+b)/s;qz=(g+c)/s;}else if(e>i){const s=Math.sqrt(1+e-a-i)*2;qw=(g-c)/s;qx=(d+b)/s;qy=s/4;qz=(h+f)/s;}else{const s=Math.sqrt(1+i-a-e)*2;qw=(b-d)/s;qx=(g+c)/s;qy=(h+f)/s;qz=s/4;}const l=Math.hypot(qx,qy,qz,qw)||1;out[o]=qx/l;out[o+1]=qy/l;out[o+2]=qz/l;out[o+3]=qw/l;}
 function solveArm(state,pose,left,target,frameYaw=0){const upper=left?12:22,lower=left?11:21,wrist=left?7:18,thumb=left?9:20,grip=left?6:16,side=left?1:-1,q=state.primaryScratch,so=upper*16,eo=lower*16,wo=wrist*16,go=grip*16;build(state.asset,state,pose);matrixQuat(q,0,state.global,wo);matrixQuat(q,4,state.global,go);qinv(q,8,q,0);qmul(q,12,q,8,q,4);qinv(q,16,q,12);const half=(frameYaw-Math.PI/2)/2;q[20]=0;q[21]=Math.sin(half);q[22]=0;q[23]=Math.cos(half);qmul(q,24,q,20,q,16);qrot(q,28,q,8,state.global[go+12]-state.global[wo+12],state.global[go+13]-state.global[wo+13],state.global[go+14]-state.global[wo+14]);qrot(q,32,q,24,q[28],q[29],q[30]);const tx=target[0]-q[32],ty=target[1]-q[33],tz=target[2]-q[34],sx=state.global[so+12],sy=state.global[so+13],sz=state.global[so+14],ex=state.global[eo+12],ey=state.global[eo+13],ez=state.global[eo+14],wx=state.global[wo+12],wy=state.global[wo+13],wz=state.global[wo+14],a=Math.hypot(ex-sx,ey-sy,ez-sz),b=Math.hypot(wx-ex,wy-ey,wz-ez),rx=tx-sx,ry=ty-sy,rz=tz-sz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;let px=side,py=-.45,pz=0,pdot=px*dx+py*dy+pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;let pl=Math.hypot(px,py,pz);if(pl<1e-5){px=0;py=-dz;pz=dy;pl=Math.hypot(px,py,pz)||1;}px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=sx+dx*along+px*height,jy=sy+dy*along+py*height,jz=sz+dz*along+pz*height;alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);alignJoint(state,pose,lower,wrist,tx,ty,tz);build(state.asset,state,pose);matrixQuat(q,36,state.global,eo);qinv(q,40,q,36);qmul(q,44,q,40,q,24);const po=wrist*10+3,to=thumb*10+3;qinv(q,48,pose,po);qmul(q,52,q,44,q,48);qmul(q,56,q,52,pose,to);for(let k=0;k<4;k++){pose[po+k]=q[44+k];pose[to+k]=q[56+k];}build(state.asset,state,pose);return Math.hypot(state.global[go+12]-target[0],state.global[go+13]-target[1],state.global[go+14]-target[2]);}
 function primaryPose(state,pose,profile,p){build(state.asset,state,pose);const t=state.primaryTarget,ls=12*16,le=11*16,lw=7*16,rs=22*16,re=21*16,rw=18*16,leftReach=Math.hypot(state.global[le+12]-state.global[ls+12],state.global[le+13]-state.global[ls+13],state.global[le+14]-state.global[ls+14])+Math.hypot(state.global[lw+12]-state.global[le+12],state.global[lw+13]-state.global[le+13],state.global[lw+14]-state.global[le+14]),rightReach=Math.hypot(state.global[re+12]-state.global[rs+12],state.global[re+13]-state.global[rs+13],state.global[re+14]-state.global[rs+14])+Math.hypot(state.global[rw+12]-state.global[re+12],state.global[rw+13]-state.global[re+13],state.global[rw+14]-state.global[re+14]),reach=Math.min(leftReach,rightReach),midX=(state.global[ls+12]+state.global[rs+12])/2,midY=(state.global[ls+13]+state.global[rs+13])/2-reach*.45,midZ=(state.global[ls+14]+state.global[rs+14])/2+reach*.35,commit=p<=.08?smoothstep(p/.08):p<=.30?1:1-smoothstep((p-.30)/.70);let frameYaw=0;if(profile==='verge-cleaver'){const a=-50*Math.PI/180,b=15*Math.PI/180,c=55*Math.PI/180;frameYaw=p<=.08?a+(b-a)*smoothstep(p/.08):p<=.30?b+(c-b)*smoothstep((p-.08)/.22):a+(c-a)*(1-smoothstep((p-.30)/.70));}const nx=Math.sin(frameYaw),nz=Math.cos(frameYaw),half=reach/6,thrust=profile==='cinder-pike'?.16*commit:0;t[0]=midX-nx*half;t[1]=midY;t[2]=midZ-nz*half+thrust;const rr=solveArm(state,pose,false,t,frameYaw);t[0]=midX+nx*half;t[1]=midY;t[2]=midZ+nz*half+thrust;const lr=solveArm(state,pose,true,t,frameYaw);state.primaryGripResidual=Math.max(rr,lr);state.clip=profile==='cinder-pike'?'derived-polearm-thrust':'derived-twohand-cleaver';state.clipTime=p;}
+function toolPose(state,pose,profile,p,weight){
+  state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
+  let frameYaw=0,side=0,up=-.10,forward=.47;
+  if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
+  else if(profile==='rift-bombard'){side=-.05;up=-.13;forward=.43;}
+  else if(profile==='blunderbuss'){side=-.04;up=-.08;forward=.50;}
+  else if(profile==='great-sweep'){
+    const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;
+    frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;
+  }
+  target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
+  solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
+  state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
+}
 function build(asset, state, pose) {
   const head = asset.meta.headAttachment;
   for (const i of asset.order) {
@@ -264,15 +278,18 @@ export function sampleCloseViewHero(asset, state, input, out) {
     else if (clip) { time = kind === 'melee' ? sourceTime(p, clip.duration) : p * clip.duration; clipPose(asset, clip, time, state.other);
       if (kind === 'dodge') { build(asset, state, state.other); const b = asset.meta.reference.bodyNode * 16; dx = -(state.global[b + 12] - state.rollX) * weight; dz = -(state.global[b + 14] - state.rollZ) * weight; }
       blend(state.pose, state.other, weight); state.clip = clip.name; state.clipTime = time;
+    } else if (kind === 'melee' && profile === 'great-sweep') {
+      toolPose(state,state.pose,profile,p,weight);
     } else if (kind === 'ranged' || kind === 'cast' || kind === 'jump') {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.
       const pulse = Math.sin(p * Math.PI) * weight;
-      if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
+      if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight);
+      else if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') { rotateX(state.pose, 12, -.65 * pulse); rotateX(state.pose, 22, -.8 * pulse); }
       else { // Arm brace only: root-parented feet must not be left behind by invented knee IK.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
       }
-      state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
+      if(!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
     }
   }
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;

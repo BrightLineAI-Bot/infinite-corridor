@@ -16,6 +16,12 @@ The owner considered several carry options and finally allowed the equipped prim
 | Lumen Spindle | A wand, held forward in a casting/firing posture. Repeated accepted presses produce the corresponding shots; the arm need not waggle left/right with every press. | A stable forward hold with small firing feedback is preferred to exaggerated repetitive motion. Hand/wand origin and accepted shot count agree; no invented extra projectiles or arbitrary delays. |
 | Other magical tool | Owner could not recall its name and will refine it after seeing spell gestures. | Preserve the existing Aether Orrery and other canonical tool identities/behaviors; the unidentified remark does not authorize renaming or replacing them. |
 
+### Tool candidate implementation
+
+The four named stage-4 tools have bounded, original low-poly hero-gear recipes under the profile keys `rift-bombard`, `great-sweep`, `blunderbuss` and `lumen-spindle`. Accepted production actions latch the exact canonical tool identity into the existing additive presentation record only after gameplay accepts the press; Close View keeps that identity through its authoritative action clock, gear changes, pause and reload, then returns to the equipped primary. The source hero derives a braced Bombard/Blunderbuss hold, a broad Great Sweep gesture and a distinctly raised forward Spindle hold from the actual final hand socket while retaining locomotion underneath. Mirage remains its separately activated canonical form. No damage, shot count, projectile origin, aim, cooldown, charge, physics or effect rule changes.
+
+The recipes use the existing socket writer and primitives and add no texture, shader, dependency or draw path. Focused source tests cover geometry budgets, finite unit normals, socket transforms, atomic buffer refusal, accepted/refused actions, immutable identity, schema-14 round trips, smooth pose endpoints and neutral unknown-profile fallback. Offline unlit CPU sheets are authoring evidence only; ordered integration, hosted GPU review and physical-phone acceptance remain outstanding, so this candidate is not marked delivered here.
+
 ## Primary clarification affecting the current candidate
 
 - **Verge Cleaver keeps the current gladius-like blade.** The owner explicitly withdrew the greataxe suggestion after seeing the current result: leave this silhouette as it is. Preserve the accepted two-hand cut, source character, 1.75-tile/180-degree gameplay profile and geometry caps; no greataxe replacement.

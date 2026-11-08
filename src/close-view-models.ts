@@ -104,6 +104,41 @@ const vergeCleaver = [
   part(frontPatch,.17,-.25,1.06,1,.125,.04,bronze,-2,0,1.19),
   part(taper,.17,-.25,1.48,.112,.025,.39,iron,-2,0,1.19),
 ];
+
+// Future Close View tool silhouettes. These are recipe-only until the ordered tool-action pass
+// selects them from accepted production events. All begin at the canonical (.17,-.25,.79) grip.
+const riftBombard = [
+  block(.17,-.25,.91,.055,.065,.14,leather,-2,0,1.19),
+  part(bevel,.17,-.25,1.10,.15,.15,.20,iron,-2,0,1.19),
+  part(bevel,.17,-.25,1.10,.09,.09,.215,brass,-2,0,1.19),
+  block(.17,-.25,1.37,.09,.09,.13,iron,-2,0,1.19),
+  part(flare,.17,-.25,1.53,.085,.085,.055,coal,-2,0,1.19),
+  block(.08,-.25,.91,.13,.055,.055,iron,-2,0,1.19,.38),
+];
+const brokenGreatswordBlade = membrane([
+  [0,-1,-1],[0,1,-1],[0,.88,.50],[0,.30,1],[0,-.72,.72],
+]);
+const greatSweep = [
+  block(.17,-.25,.91,.045,.05,.14,leather,-2,0,1.19),
+  block(.17,-.25,1.08,.20,.055,.045,iron,-2,0,1.19),
+  part(brokenGreatswordBlade,.17,-.25,1.70,1,.30,.68,iron,-2,0,1.19),
+  block(.17,-.25,1.62,.016,.03,.47,bronze,-2,0,1.19),
+  part(frontPatch,.17,-.25,1.13,1,.07,.025,brass,-2,0,1.19),
+];
+const blunderbuss = [
+  block(.17,-.25,.91,.055,.06,.14,leather,-2,0,1.19),
+  block(.17,-.25,1.10,.075,.065,.15,bronze,-2,0,1.19),
+  block(.17,-.25,1.33,.052,.052,.13,iron,-2,0,1.19),
+  part(flare,.17,-.25,1.49,.058,.058,.045,iron,-2,0,1.19),
+  part(ellipsoid(6,1),.17,-.25,1.27,.078,.078,.065,0x58cfe8,-2,0,1.19,0,true),
+  block(.08,-.25,.90,.11,.045,.045,iron,-2,0,1.19,.32),
+];
+const lumenSpindle = [
+  block(.17,-.25,.92,.035,.04,.13,leather,-2,0,1.19),
+  part(taper,.17,-.25,1.20,.034,.034,.22,bronze,-2,0,1.19),
+  part(ellipsoid(6,1),.17,-.25,1.45,.075,.075,.09,visor,-2,0,1.19,0,true),
+  part(frontPatch,.17,-.25,1.55,1,.052,.025,0x8fe8ff,-2,0,1.19),
+];
 const playerCinderPike=[...playerUnarmed,...cinderPike],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
 
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
@@ -254,7 +289,7 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle});
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null,m=gear?.rightSocket;
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
