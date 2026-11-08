@@ -2,7 +2,7 @@
 
 Updated: 2026-11-08. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r829-9c21fb237fe9`. Source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; live identity and actual Options → System match after normal update, no recent errors. Earlier delivered character/camera/primary work remains; corrective stage3 r832 is next.
+Verified live: `r829-9c21fb237fe9`. Source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; live identity and actual Options → System match after normal update, no recent errors. Earlier delivered character/camera/primary work remains; r832 awaits hosted colors and named tools r833 are next.
 
 ## Single ordered build queue — owner instruction
 
@@ -10,7 +10,7 @@ Verified live: `r829-9c21fb237fe9`. Source CI42479713134, merged CI42480707039, 
 
 Earlier native creature/combat/actor passes r813–818 remain delivered; preserve their roster, Foundry and auxiliary-actor work recorded in the release log.
 
-Current checkpoint: production remains verified r829. r830/831 merged and Preview passed, but publication is held: r831 repaired the practice targets, then hosted side-view attack frames exposed packed GPU violet colors decoding yellow. Corrective r832 uses exact flat-integer color transport. Do not publish r830 or r831 independently. Full since-live review and corrected hosted acceptance remain required; all other queued work is preserved.
+Current checkpoint: production remains verified r829. Corrective r832 is merged and its exact CI/Preview/full since-live Astra review passed; browser tab creation timed out before actual hosted violet verification, so publication is held. r833 prepares the next focused named-tool/startup pass while browser access is restored. The exact latest candidate still needs full since-live review and hosted acceptance before Publish. r830/831 are never published independently. All ordered work is preserved.
 
 | Order | Pass | Required owner direction / completion target | State |
 |---|---|---|---|
@@ -313,3 +313,7 @@ These are queued follow-ups within stage7 after the existing tools/Hammerfall/sp
 ## Hosted packed-color correction — 2026-11-08
 
 Actual side-view frames show raised Echo geometry but yellow color. Float32 addition of 0.5 carries C9A7FF/D8C8FF into C9A800/D8C900. r832 removes that arithmetic and packed-float interpolation through a flat integer varying. Source/interface/buffer regressions pass; actual hosted violet is still a release gate. Production remains r829; r830/831 are never published independently.
+
+## Named-tool release preparation — 2026-11-08
+
+T eadbb8b1695de36c988247d0b0db83686008d366 integrates official main832 and the scoped Astra-cleared shared pellet/fan origin correction. Root post-main57 checks/build and correction41+13 checks/build pass. r833 packages only named tools and accepted startup/release/weaving; Hammerfall/spells/contact/blocks/7a/7b/armor/routes remain later. The new right-hand/four-cut Cleaver source b1bb1dcf passed focused checks and scoped Astra correction review; Target source remains under lifecycle review. These are preparation receipts, not hosted or publication claims. Browser loading stopped on a webview-attach timeout; other GitHub/local work continues.
