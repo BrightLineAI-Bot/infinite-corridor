@@ -74,6 +74,16 @@ const playerTool = [
   part(frontPatch, .349, -.25, .783, 1, .033, .032, visor, -2, 0, 1.19),
 ];
 const playerUnarmed = player.slice(0, -2);
+// The source-free fallback keeps the approved body/head/feet and replaces each 20-triangle
+// one-piece limb with two 12-triangle segments. Two 12-triangle fists bring it to 254 triangles.
+const playerHammerStomp = playerUnarmed.filter((_,i)=>![10,12,14,16].includes(i)).map(p=>Math.abs(p.swing)===1?{...block(0,0,0,.12,.077,.076,leather),hammerPart:p.swing<0?0:1}:p);
+for(let side=0;side<2;side++)playerHammerStomp.push(
+  {...block(0,0,0,.09,.072,.5,coat),hammerPart:2+side*5},
+  {...block(0,0,0,.082,.068,.5,coat),hammerPart:3+side*5},
+  {...block(0,0,0,.065,.073,.5,coat),hammerPart:4+side*5},
+  {...block(0,0,0,.060,.068,.5,coat),hammerPart:5+side*5},
+  {...block(0,0,0,.074,.068,.06,leather),hammerPart:6+side*5},
+);
 const playerHammer = [
   ...playerUnarmed,
   part(taper, .17, -.25, 1.02, .035, .038, .34, bronze, -2, 0, 1.19),
@@ -101,9 +111,48 @@ const cinderPike = [
 ];
 const vergeCleaver = [
   block(.17,-.25,.91,.043,.052,.14,leather,-2,0,1.19),
-  part(frontPatch,.17,-.25,1.06,1,.125,.04,bronze,-2,0,1.19),
-  part(taper,.17,-.25,1.48,.112,.025,.39,iron,-2,0,1.19),
+  block(.17,-.25,1.06,.125,.025,.025,bronze,-2,0,1.19),
+  part(taper,.17,-.25,1.48,.112,.009,.39,0x795c48,-2,0,1.19),
+  // Narrow forged edge on both broad faces; keep the gladius outline, never an axe head.
+  part(membrane([[.063,-.260,1.12],[.072,-.260,1.12],[.17,-.260,1.86]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
+  part(membrane([[.063,-.240,1.12],[.17,-.240,1.86],[.072,-.240,1.12]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
 ];
+// Future Close View tool silhouettes. These are recipe-only until the ordered tool-action pass
+// selects them from accepted production events. All begin at the canonical (.17,-.25,.79) grip.
+const riftBombard = [
+  block(.17,-.25,.91,.055,.065,.14,leather,-2,0,1.19),
+  part(bevel,.17,-.25,1.10,.15,.15,.20,iron,-2,0,1.19),
+  part(bevel,.17,-.25,1.10,.09,.09,.215,brass,-2,0,1.19),
+  block(.17,-.25,1.37,.09,.09,.13,iron,-2,0,1.19),
+  part(flare,.17,-.25,1.53,.085,.085,.055,coal,-2,0,1.19),
+  block(.08,-.25,.91,.13,.055,.055,iron,-2,0,1.19,.38),
+];
+const brokenGreatswordBlade = membrane([
+  [0,-1,-1],[0,1,-1],[0,.88,.50],[0,.30,1],[0,-.72,.72],
+]);
+const greatSweep = [
+  block(.17,-.25,.91,.045,.05,.14,leather,-2,0,1.19),
+  block(.17,-.25,1.08,.20,.055,.045,iron,-2,0,1.19),
+  part(brokenGreatswordBlade,.17,-.25,1.70,1,.30,.68,iron,-2,0,1.19),
+  block(.17,-.25,1.62,.016,.03,.47,bronze,-2,0,1.19),
+  part(frontPatch,.17,-.25,1.13,1,.07,.025,brass,-2,0,1.19),
+];
+const blunderbuss = [
+  block(.17,-.25,.91,.055,.06,.14,leather,-2,0,1.19),
+  block(.17,-.25,1.10,.075,.065,.15,bronze,-2,0,1.19),
+  block(.17,-.25,1.33,.052,.052,.13,iron,-2,0,1.19),
+  part(flare,.17,-.25,1.49,.058,.058,.045,iron,-2,0,1.19),
+  part(ellipsoid(6,1),.17,-.25,1.27,.078,.078,.065,0x58cfe8,-2,0,1.19,0,true),
+  block(.08,-.25,.90,.11,.045,.045,iron,-2,0,1.19,.32),
+];
+const lumenSpindle = [
+  block(.17,-.25,.92,.035,.04,.13,leather,-2,0,1.19),
+  part(taper,.17,-.25,1.20,.034,.034,.22,bronze,-2,0,1.19),
+  part(ellipsoid(6,1),.17,-.25,1.45,.075,.075,.09,visor,-2,0,1.19,0,true),
+  part(frontPatch,.17,-.25,1.55,1,.052,.025,0x8fe8ff,-2,0,1.19),
+];
+// Compact tapered cuff and inward thumb/knuckle cover; the final sockets keep each shell on its own hand.
+const fistGauntlet=[part(taper,0,0,.012,.105,.075,.115,0xd7dde2),part(bevel,0,-.058,.028,.058,.034,.045,0xf1f4f5)];
 const playerCinderPike=[...playerUnarmed,...cinderPike],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
 
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
@@ -236,7 +285,7 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
 } // exact rule cells are the residual panel, never generic bars
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -254,39 +303,72 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3)});
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle});
 export const HERO_EQUIPMENT_MAX_TRIANGLES = 156;
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null,m=gear?.rightSocket;
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
-  let vertices=0;for(const p of parts)vertices+=p.mesh.length/MESH_FLOATS;
+  const bilateral=gear.profile==='fist'||gear.profile==='fistCharge',left=gear.leftSocket;
+  if(bilateral&&(!left||left.length!==16))return offset;
+  let vertices=0;for(const p of parts)vertices+=p.mesh.length/MESH_FLOATS;vertices*=bilateral?2:1;
   if(vertices>256*3||offset+vertices*MODEL_FLOATS>out.length)return offset;
-  for(let i=0;i<16;i++)if(!Number.isFinite(m[i]))return offset;
-  const ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);if(Math.min(ax,ay,az)<1e-6)return offset;
+  for(let pass=0;pass<(bilateral?2:1);pass++){const socket=bilateral&&pass===0?left:m;for(let i=0;i<16;i++)if(!Number.isFinite(socket[i]))return offset;const ax=Math.hypot(socket[0],socket[1],socket[2]),ay=Math.hypot(socket[4],socket[5],socket[6]),az=Math.hypot(socket[8],socket[9],socket[10]);if(Math.min(ax,ay,az)<1e-6)return offset;}
   const alpha=Number.isFinite(gear.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear.hitFlash)||0));
   const tr=Number.isFinite(gear.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear.tint?.[2])?gear.tint[2]:1;
+  for(let pass=0;pass<(bilateral?2:1);pass++){const m=bilateral&&pass===0?left:gear.rightSocket,ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);
   for(const p of parts)for(let i=0;i<p.mesh.length;i+=MESH_FLOATS){const a=p.mesh;
     // Recipe grip (.17,-.25,.79), canonical blade +Z -> the source weapon socket +X.
-    const x=(a[i+2]+p.pz-.79)*.82,y=-(a[i]+p.px-.17)*.82,z=-(a[i+1]+.25)*.82;
+    const x=bilateral?(a[i]+p.px)*.62:(a[i+2]+p.pz-.79)*.82,y=bilateral?(a[i+1]+(p.py||0))*.62:-(a[i]+p.px-.17)*.82,z=bilateral?(a[i+2]+p.pz)*.62:-(a[i+1]+.25)*.82;
     out[offset++]=m[12]+m[0]/ax*x+m[4]/ay*y+m[8]/az*z;
     out[offset++]=m[13]+m[1]/ax*x+m[5]/ay*y+m[9]/az*z;
     out[offset++]=m[14]+m[2]/ax*x+m[6]/ay*y+m[10]/az*z;
-    const nx=a[i+5],ny=-a[i+3],nz=-a[i+4];let qx=m[0]/ax*nx+m[4]/ay*ny+m[8]/az*nz,qy=m[1]/ax*nx+m[5]/ay*ny+m[9]/az*nz,qz=m[2]/ax*nx+m[6]/ay*ny+m[10]/az*nz;const len=Math.hypot(qx,qy,qz)||1;
+    const nx=bilateral?a[i+3]:a[i+5],ny=bilateral?a[i+4]:-a[i+3],nz=bilateral?a[i+5]:-a[i+4];let qx=m[0]/ax*nx+m[4]/ay*ny+m[8]/az*nz,qy=m[1]/ax*nx+m[5]/ay*ny+m[9]/az*nz,qz=m[2]/ax*nx+m[6]/ay*ny+m[10]/az*nz;const len=Math.hypot(qx,qy,qz)||1;
     out[offset++]=qx/len;out[offset++]=qy/len;out[offset++]=qz/len;
     out[offset++]=a[i+6]*tr*(1-hit*.6)+.96*hit*.6;out[offset++]=a[i+7]*tg*(1-hit*.6)+.34*hit*.6;out[offset++]=a[i+8]*tb*(1-hit*.6)+.23*hit*.6;out[offset++]=alpha;
-  }
+  }}
   return offset;
 }
 
 export function writeCloseViewHeroEquipment(out,offset,gear,frame) {
   const armored=frame?.powerSuit===true,armorVertices=armored?frame.suitVertexCount:0,parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null;
   let gearVertices=0;if(parts)for(const p of parts)gearVertices+=p.mesh.length/MESH_FLOATS;
+  if(gear?.profile==='fist'||gear?.profile==='fistCharge')gearVertices*=2;
   if(!Number.isSafeInteger(offset)||offset<0||armorVertices!==(armored?CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES*3:0)||(armorVertices+gearVertices)/3>HERO_EQUIPMENT_MAX_TRIANGLES||offset+(armorVertices+gearVertices)*MODEL_FLOATS>out.length)return offset;
   const start=offset,alpha=Number.isFinite(gear?.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear?.hitFlash)||0)),tr=Number.isFinite(gear?.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear?.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear?.tint?.[2])?gear.tint[2]:1;
   if(armored){let v=0;for(const part of CLOSE_VIEW_POWER_SUIT_ARMOR)for(let i=0;i<part.vertices.length;i++,v++){const s=v*6;for(let k=0;k<6;k++)out[offset++]=frame.suitPositionsNormals[s+k];const c=part.color,r=(c>>16)/255,g=((c>>8)&255)/255,b=(c&255)/255;out[offset++]=r*tr*(1-hit*.6)+.96*hit*.6;out[offset++]=g*tg*(1-hit*.6)+.34*hit*.6;out[offset++]=b*tb*(1-hit*.6)+.23*hit*.6;out[offset++]=alpha;}}
   const end=writeCloseViewHeroGear(out,offset,gear);
   if(parts&&end===offset)return start;
   return end;
+}
+
+// Reused actor-local segment frames: columns X/Y, scaled Z, then origin. No per-vertex allocation.
+const HAMMER_FRAMES=new Float64Array(12*12),HAMMER_JOINTS=new Float64Array(18);
+const hammerSmooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+function hammerJoint(out,o,ax,ay,az,bx,by,bz,length,poleX,poleY,poleZ){
+  const rx=bx-ax,ry=by-ay,rz=bz-az,raw=Math.hypot(rx,ry,rz)||1,d=Math.min(length*2-1e-6,raw),dx=rx/raw,dy=ry/raw,dz=rz/raw;
+  const dot=poleX*dx+poleY*dy+poleZ*dz;let px=poleX-dot*dx,py=poleY-dot*dy,pz=poleZ-dot*dz,l=Math.hypot(px,py,pz)||1;
+  const h=Math.sqrt(Math.max(0,length*length-d*d/4));out[o]=ax+dx*d/2+px/l*h;out[o+1]=ay+dy*d/2+py/l*h;out[o+2]=az+dz*d/2+pz/l*h;
+}
+function hammerSegment(i,ax,ay,az,bx,by,bz){
+  const o=i*12,rx=bx-ax,ry=by-ay,rz=bz-az,l=Math.hypot(rx,ry,rz)||1,zx=rx/l,zy=ry/l,zz=rz/l;
+  let xx=1-zx*zx,xy=-zx*zy,xz=-zx*zz,xl=Math.hypot(xx,xy,xz);if(xl<1e-6){xx=0;xy=zz;xz=-zy;xl=1;}
+  xx/=xl;xy/=xl;xz/=xl;HAMMER_FRAMES[o]=xx;HAMMER_FRAMES[o+1]=xy;HAMMER_FRAMES[o+2]=xz;HAMMER_FRAMES[o+3]=zy*xz-zz*xy;HAMMER_FRAMES[o+4]=zz*xx-zx*xz;HAMMER_FRAMES[o+5]=zx*xy-zy*xx;HAMMER_FRAMES[o+6]=rx;HAMMER_FRAMES[o+7]=ry;HAMMER_FRAMES[o+8]=rz;HAMMER_FRAMES[o+9]=(ax+bx)/2;HAMMER_FRAMES[o+10]=(ay+by)/2;HAMMER_FRAMES[o+11]=(az+bz)/2;
+}
+function hammerBox(i,x,y,z){const o=i*12;HAMMER_FRAMES.fill(0,o,o+12);HAMMER_FRAMES[o]=HAMMER_FRAMES[o+4]=HAMMER_FRAMES[o+8]=1;HAMMER_FRAMES[o+9]=x;HAMMER_FRAMES[o+10]=y;HAMMER_FRAMES[o+11]=z;}
+function hammerFrames(progress){
+  const ms=progress*570,drop=hammerSmooth((ms-240)/80),weight=hammerSmooth(ms/160)*(1-hammerSmooth((ms-400)/170));
+  const q=HAMMER_JOINTS;
+  for(let side=0;side<2;side++){
+    const sign=side?1:-1,hipY=sign*.115,hipZ=.71-.04*drop*weight,footY=hipY+sign*.05*drop*weight;
+    const lift=side?(.24*(1-drop)+(ms<320?.013*drop:0))*weight:0,ankleZ=.14+lift;
+    hammerJoint(q,0,0,hipY,hipZ,0,footY,ankleZ,.285,1,0,0);
+    hammerSegment(2+side*5,0,hipY,hipZ,q[0],q[1],q[2]);hammerSegment(3+side*5,q[0],q[1],q[2],0,footY,ankleZ);hammerBox(side,.044,footY,.076+lift);
+    const sy=sign*.20,sz=1.19-.04*drop*weight,crossY=-sign*.06,crossZ=side?1.04:.99;
+    const wx=.025+(.28+(.12-.28)*drop-.025)*weight,wy=sy+(crossY+(sign*.30-crossY)*drop-sy)*weight,wz=.76+(crossZ+(.80-crossZ)*drop-.76)*weight-.04*drop*weight;
+    hammerJoint(q,3,0,sy,sz,wx,wy,wz,.24,0,sign,-.3);
+    hammerSegment(4+side*5,0,sy,sz,q[3],q[4],q[5]);hammerSegment(5+side*5,q[3],q[4],q[5],wx,wy,wz);hammerBox(6+side*5,wx,wy,wz);
+  }
+  return weight;
 }
 
 export function writeCloseViewModel(out, offset, actor) {
@@ -322,6 +404,7 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (progress < .30) strike = 1;
     else { const t = (progress - .30) / .70; strike = 1 - t * t * (3 - 2 * t); }
   }
+  if(kind==='playerHammerStomp')strike=0;
   const tool = pose === "tool" ? Math.sin(Math.PI * progress) : 0;
   const cast = pose === "cast" ? Math.sin(Math.PI * progress) : 0;
   const jump = pose === "jump" ? Math.sin(Math.PI * progress) : 0;
@@ -331,14 +414,15 @@ export function writeCloseViewModel(out, offset, actor) {
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
   const fist = pose === "fist", chargingFist = pose === "fistCharge", fistStep = [1,2,3].includes(actor.fistStep) ? actor.fistStep : 1;
-  const turn = (fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
+  const primaryStep=[1,2,3].includes(actor.primaryStep)?actor.primaryStep:1,canonicalPrimary=kind==='playerCinderPike'||kind==='playerVergeCleaver';
+  const turn = (canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
     * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
-  const shift = (kind === 'playerCinderPike' ? .22 : .14) * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
+  const shift = (kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14) * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
   const foundry = kind.startsWith('foundry-');
@@ -350,7 +434,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const actionWeight = actionPhase === 'windup' || actionPhase === 'track' || actionPhase === 'lock' || actionPhase === 'travel' || actionPhase === 'strike'
     ? actionProgress : actionPhase === 'active' || actionPhase === 'erupt' ? 1
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
-  for (const { mesh, swing, px, pz, axialSpin, carryingOnly } of models[kind]) {
+  const hammerWeight=kind==='playerHammerStomp'?hammerFrames(progress):0;
+  for (const { mesh, swing, px, pz, axialSpin, carryingOnly, hammerPart } of models[kind]) {
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
       : swing >= 40 && swing < 60
@@ -382,34 +467,37 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (swing === 2) angle = -beat * stride + .35 * windup - .43 * strike
       + (playerLike ? 1.02 : .18) * cast - .18 * flinch + .58 * jump - .22 * jumpSettle;
     else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
+    if(kind==='playerVergeCleaver'&&swing===-2){
+      // Low one-handed carry plus the same accepted-only rising/outward/descending stage vocabulary.
+      angle=1.15+beat*.08+(primaryStep===1?-1.65:primaryStep===2?-1.25:-.90)*strike-.28*cast+.58*jump+.22*flinch;
+    } else if(kind==='playerCinderPike'&&swing===-2) angle+=(primaryStep===2?-.22:primaryStep===3?.22:0)*strike;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
     const cutYaw = playerLike && !fist && !chargingFist && swing === -2
-      ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? 1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
+      ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? primaryStep===2?-1.18:primaryStep===3?.45:1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
       const localY = axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
       const normalY = axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
-      const forward = mesh[i] * c + localZ * s + px;
-      const lateral = localY + coilSway;
+      let forward = mesh[i] * c + localZ * s + px;
+      let lateral = localY + coilSway;
       const u = forward * cc - (lateral - pivotY) * sc;
       const v = forward * sc + (lateral - pivotY) * cc + pivotY;
-      const w = localZ * c - mesh[i] * s + pz;
-      const f = u * cp + w * sp + shift;
-      const armNormal = mesh[i + 3] * c + normalZ * s;
-      const nu = armNormal * cc - normalY * sc;
-      const nv = armNormal * sc + normalY * cc;
-      const nw = normalZ * c - mesh[i + 3] * s;
-      const nf = nu * cp + nw * sp;
-      out[offset++] = x + (f * cy - v * sy) * size;
-      out[offset++] = y + (f * sy + v * cy) * size;
-      out[offset++] = z + (base + w * cp - u * sp) * size;
-      out[offset++] = nf * cy - nv * sy;
-      out[offset++] = nf * sy + nv * cy;
-      out[offset++] = nw * cp - nu * sp;
+      let w = localZ * c - mesh[i] * s + pz;
+      let f=u*cp+w*sp+shift,worldY=v,worldZ=base+w*cp-u*sp;
+      const armNormal=mesh[i+3]*c+normalZ*s;
+      let nu=armNormal*cc-normalY*sc,nv=armNormal*sc+normalY*cc,nw=normalZ*c-mesh[i+3]*s;
+      let nf=nu*cp+nw*sp;nw=nw*cp-nu*sp;
+      if(hammerPart!==undefined){
+        const o=hammerPart*12,m=HAMMER_FRAMES,mx=mesh[i],my=mesh[i+1],mz=mesh[i+2],nx=mesh[i+3],ny=mesh[i+4],nz=mesh[i+5],zl=Math.hypot(m[o+6],m[o+7],m[o+8])||1;
+        f=m[o]*mx+m[o+3]*my+m[o+6]*mz+m[o+9];worldY=m[o+1]*mx+m[o+4]*my+m[o+7]*mz+m[o+10];worldZ=m[o+2]*mx+m[o+5]*my+m[o+8]*mz+m[o+11];
+        nf=m[o]*nx+m[o+3]*ny+m[o+6]/zl*nz;nv=m[o+1]*nx+m[o+4]*ny+m[o+7]/zl*nz;nw=m[o+2]*nx+m[o+5]*ny+m[o+8]/zl*nz;
+      }else if(kind==='playerHammerStomp')worldZ-=.04*hammerSmooth((progress*570-240)/80)*hammerWeight+base*hammerWeight;
+      out[offset++]=x+(f*cy-worldY*sy)*size;out[offset++]=y+(f*sy+worldY*cy)*size;out[offset++]=z+worldZ*size;
+      out[offset++]=nf*cy-nv*sy;out[offset++]=nf*sy+nv*cy;out[offset++]=nw;
       const poison = actor.poison ? .55 : 0;
       let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
       if(foundry){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=foundryPaletteColor(rgb,actor.palette);sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}
