@@ -29,8 +29,30 @@ import { fieldOn } from "./lattice-fields.ts";
 import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.ts";
 import { AFFIXES, SHAMAN } from "./affixes.ts";
 import { addDungeonReciter, addDungeonElder } from "./travelers.ts";
+import { validActions } from "./interactions.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
+
+const PG_UNSUPPORTED_ACTIONS = new Set(["trade", "upgrade", "attune"]);
+export function describeLabInteraction(game, objectId = game?.interactionRequested) {
+  const object = game?.map?.objects?.find((q) => q.id === objectId && game.reachOf(q) < 1.5);
+  if (!object) return null;
+  const actions = validActions(object, game.save);
+  if (!actions.length) return null;
+  return { game, map: game.map, area: game.areaStateId(), objectId: object.id, object,
+    name: object.name || object.label || object.kind || object.id, lore: object.lore || object.line || "Choose an action.",
+    actions: actions.map((id) => ({ id, label: id === "enter" ? "Enter" : id === "exit" ? "Leave" : id.replaceAll(/[-:]/g, " ").replace(/^./, (c) => c.toUpperCase()), unsupported: PG_UNSUPPORTED_ACTIONS.has(id) })) };
+}
+export function dispatchLabInteraction(token, action) {
+  const game = token?.game, current = game?.map?.objects?.find((q) => q.id === token.objectId);
+  if (!game || game.map !== token.map || game.areaStateId() !== token.area || current !== token.object || game.reachOf(current) >= 1.5) return { ok: false, stale: true, message: "That interaction is no longer available here." };
+  const available = validActions(current, game.save);
+  if (!available.includes(action)) return { ok: false, stale: true, message: "That action is no longer available." };
+  if (PG_UNSUPPORTED_ACTIONS.has(action)) return { ok: false, unsupported: true, message: "Use this action in the main game; its full controller is not available in the Proving Ground." };
+  const result = game.interact(action, current.id);
+  for (const key of ["shopRequested", "smithyRequested", "kitchenRequested"]) if (game[key]) { game[key] = null; return { ...result, unsupported: true, message: "This main-game controller is not available in the Proving Ground." }; }
+  return result;
+}
 
 function roundTripScratch(save) { return migrateSave(JSON.parse(JSON.stringify(save))); }
 
