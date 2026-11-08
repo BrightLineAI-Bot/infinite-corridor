@@ -109,7 +109,7 @@ test('scratch experiments use actual matched exteriors and survive exit, entry a
     assert.ok(door); assert.ok(act(game, door, 'enter').ok); assert.equal(game.areaId(), id); assert.equal(digest(game.map.tiles), signature);
     game.loadArea('dungeon', false); assert.equal(digest(game.map.tiles), signature);
     const rebuilt = createLabFixture({ ...options, scenario: fixture.scenario }); assert.equal(digest(rebuilt.game.map.tiles), signature);
-    if (family === 'pentagon') assert.equal(game.pentagonVersion(0, 0), CLOSE_VIEW_ROOM_ROUTING.pentagonVersion);
+    if (family === 'pentagon') assert.equal(game.pentagonVersion(0, 0), 9, 'the isolated prototype does not rewrite the legacy production pin');
     const ordinary = freshSave(); assert.equal(Object.values(ordinary.consequences.dungeons).some((h) => h.interiorVersion === 5), false);
   }
 });
