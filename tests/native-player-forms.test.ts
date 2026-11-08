@@ -48,6 +48,11 @@ test('canonical primaries retain each special form existing melee-held recipe wi
   for(const kind of kinds)for(const held of ['salvage-blade','cinder-pike','verge-cleaver']){const form={kind},key=playerFormModelKey(form,held);assert.equal(key,`${kind}:melee`);assert.equal(modelTriangleCount(key),modelTriangleCount(`${kind}:melee`));assert.ok(modelTriangleCount(key)<=256);assert.deepEqual(mesh(key),mesh(`${kind}:melee`));}
 });
 
+test('canonical named tools retain each special form through its existing native equipment family',()=>{
+  const tools={'rift-bombard':'emitter',blunderbuss:'emitter','lumen-spindle':'emitter','great-sweep':'sweep'};
+  for(const kind of kinds)for(const [tool,family] of Object.entries(tools)){const key=playerFormModelKey({kind},tool),expected=`${kind}:${family}`,body=mesh(kind),data=mesh(key);assert.equal(key,expected,`${kind}/${tool}`);assert.equal(modelTriangleCount(key),modelTriangleCount(expected));assert.ok(modelTriangleCount(key)>0&&modelTriangleCount(key)<=256,`${key}: ${modelTriangleCount(key)}`);assert.deepEqual(Array.from(data.slice(0,body.length)),Array.from(body),`${key} retains the authored form body`);if(family==='emitter')assert.ok(data.length>body.length,`${key} retains visible generic emitter equipment`);}
+});
+
 test('normal fallback primaries have distinct bounded silhouettes and immediate committed motion',()=>{
   const pike=mesh('playerCinderPike'),cleaver=mesh('playerVergeCleaver');
   for(const kind of ['playerCinderPike','playerVergeCleaver']){assert.ok(modelTriangleCount(kind)>0&&modelTriangleCount(kind)<=256);assert.ok(mesh(kind).every(Number.isFinite));const idle=positions(mesh(kind)),contact=positions(mesh(kind,{pose:'attack',amount:.08})),end=positions(mesh(kind,{pose:'attack',amount:1}));assert.notDeepEqual(contact,idle,`${kind} commits by 19.2ms`);assert.deepEqual(end,idle,`${kind} returns to ready hold`);}
@@ -80,6 +85,11 @@ test('actual accepted tool producers keep every native form and use existing mod
     render(screen,g,390,844,100050);assert.equal(closeViewGLStats.models,1,`${kind}/${held}`);assert.equal(closeViewGLStats.modelTriangles,modelTriangleCount(kind+':'+held),`${kind}/${held} exact body plus held part`);assert.ok(gl.uploads.at(-1).every(Number.isFinite));assert.equal(g.map,map);assert.equal(g.player,p);assert.equal(g.save,save);assert.deepEqual([p.x,p.y],xy);assert.deepEqual(save.mech,mech);assert.deepEqual(save.magicSkills.active,active);if(!calls)calls=closeViewGLStats.drawCalls;assert.ok(closeViewGLStats.drawCalls<=calls+2,'only the existing residual board/glow passes may become nonempty');
     if(held==='orrery-tap'){assert.equal(orreryPress(g,100060,{x:1,y:0},'tool'),true);tickOrrery(g,.25,100070,true);tickOrrery(g,.01,100080,false);assert.equal(g.player.attackVisual.profile,'orrery-release');render(screen,g,390,844,100090);assert.equal(closeViewGLStats.modelTriangles,modelTriangleCount(kind+':orrery-release'));}
   }
+}));
+
+test('actual accepted named tools select the mapped native form family without changing their identity',()=>gpu(({gl,screen})=>{
+  const cases=[['cleaver-bombard-crawler','rift-bombard','emitter'],['blade-arc-wave-wisp','blunderbuss','emitter'],['pike-spindle-hound','lumen-spindle','emitter'],['cleaver-sweep-marshal','great-sweep','sweep']];
+  for(const kind of ['playerRobot','playerPowerSuit','playerEmberForm'])for(const [scenario,tool,family] of cases){const g=fixture(scenario,'combat-assets');activate(g,kind);resetCloseViewCamera();g.player.attackReadyAt=0;g.toolReadyAt=0;assert.equal(g.fireSecondary(100010,{x:0,y:-1}),true,`${kind}/${tool}`);assert.equal(g.player.attackVisual.toolKind,tool);render(screen,g,390,844,100050);const key=`${kind}:${family}`,body=mesh(kind),data=mesh(key);assert.equal(closeViewGLStats.models,1,`${kind}/${tool}`);assert.equal(closeViewGLStats.modelTriangles,modelTriangleCount(key),`${kind}/${tool} keeps ${family}`);assert.ok(closeViewGLStats.modelTriangles<=256);assert.ok(gl.uploads.at(-1).every(Number.isFinite));assert.deepEqual(Array.from(data.slice(0,body.length)),Array.from(body),`${kind}/${tool} retains body`);}
 }));
 
 test('native forms retain burn, poison, knockdown and exact paused geometry without fake Ember flames',()=>gpu(({gl,screen})=>{
