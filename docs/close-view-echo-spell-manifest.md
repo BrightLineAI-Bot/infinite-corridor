@@ -15,6 +15,8 @@ Pike reads as a narrow forward spike/thrust. Cleaver reads as a broad stage-spec
 
 Acceptance must cover the exact existing delay, no pre-due art/damage, one repeat only, movement and gear switching during the delay, immutable original metadata, actual-path dominance, misses and kills, pause behavior as currently implemented, expiry/caps, reduced motion, 30/60 fps sampling, normal/native/imported rendering, and unchanged schema-14/unknown-field behavior. CPU/source evidence is not GPU or phone acceptance.
 
+Implementation detail: the GPU Close View turns the transient stream into bounded, depth-tested kind-11 additive ribbons at waist height (seven curve segments; three/four/six admitted cues on low/balanced/full). The dominant path uses the authoritative delayed strike origin/profile and current terrain support. A differing accepted memory uses its immutable origin, weapon path, pose step and accepted support; reduced motion omits only that subordinate path. During the GPU bare-floor capture the 2D ground mark is suppressed, preventing a floor stamp plus air ribbon. The existing decal mask rejects unseen tiles and wall depth occludes the geometry. This is CPU/source validation of submitted GPU geometry; hosted rendering and physical-phone performance remain separate acceptance limits.
+
 ## Stage 5 inventory: all canonical spell casts
 
 Every entry below needs an accepted-event identity latched only after the real producer succeeds. Refused cooldown/cost/curse presses show nothing. Gestures use final sampled hand sockets and accepted aim while movement continues; projectile/effect origins, damage, counts, costs, cooldowns, charge state, automatic releases, Echo recasts and caps remain canonical.

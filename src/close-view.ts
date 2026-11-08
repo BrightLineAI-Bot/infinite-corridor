@@ -236,6 +236,9 @@ export const CLOSE_VIEW = Object.freeze({
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
   // war has revealed. `ringWidth`: a wind-up ring's line, a share of its radius.
   gl: Object.freeze({ maskMs: 250, ringWidth: .14 }),
+  // Delayed primary Echoes are short-lived geometry in the existing additive decal batch. `segments` is the
+  // maximum curve subdivision; `cap` bounds admitted cues by quality (each cue has at most actual + memory).
+  echoRibbon: Object.freeze({ segments: 7, cap: Object.freeze({ low: 3, balanced: 4, full: 6 }), height: Object.freeze([.72, .96]), width: Object.freeze({ thrust: .13, sweep: .1 }), actual: Object.freeze({ alpha: .88, color: 0xc9a7ff }), memory: Object.freeze({ alpha: .18, color: 0xd8c8ff }) }),
   // The ceiling (version 4, Tim: "there should be a ceiling... you should feel like you're enclosed"): a plane at the walls'
   // tops, the one material taken down to `dim`, with a seam round every tile, a beam every `beamEvery` tiles each way
   // (`beamHalf` tiles each side of its line, `beamDark` as bright, its edges lit `beamEdge`), lit from the torch below and faded
@@ -1476,6 +1479,27 @@ function flatPass(g, draws, gc, s, ts, gox, goy, Tx, Ty) {
 }
 export const closeViewFlatObject = flatObject; // for tests
 
+// Pure admission/geometry seam used by the GPU frame and focused regression tests. Echo ribbons are raised through
+// the air; unlike the 2D fallback they never enter the floor overlay. The callback receives one depth-tested kind-11
+// triangle vertex at a time: X, Y, absolute Z, local X/Y, alpha, packed RGB and trail flag.
+export function closeViewEchoRibbons(g, map, quality = "balanced", reduce = false, emit = null) {
+  if (typeof emit !== "function") return { paths: 0, vertices: 0 };
+  const K = CLOSE_VIEW.echoRibbon, cap = K.cap[quality] || K.cap.balanced, list = (g?.glyphVisuals || []).filter(v => v?.kind === "primaryEcho" && Number(v.life) > 0 && Number(v.max) > 0).slice(-cap);
+  let paths = 0, vertices = 0;
+  const valid = q => q && [q.x,q.y,q.dx,q.dy,q.range].every(Number.isFinite) && q.range > 0 && Math.hypot(q.dx,q.dy) > 1e-4 && (q.shape === "thrust" || q.shape === "arc");
+  const different = (m,q) => valid(m) && (Math.hypot(m.x-q.x,m.y-q.y)>.08 || Math.hypot(m.dx-q.dx,m.dy-q.dy)>.08 || m.shape!==q.shape || Math.abs(m.range-q.range)>.08 || (m.weaponKind==='verge-cleaver'&&m.primaryStep!==3));
+  const path = (q, memory, fade) => {
+    if (!valid(q)) return;
+    const d=Math.hypot(q.dx,q.dy),dx=q.dx/d,dy=q.dy/d,n=K.segments,shape=q.shape==='thrust'?'thrust':'sweep',half=(Number(q.arc)||100)*Math.PI/360;
+    const step=memory?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0,offset=step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
+    const ground=Number.isFinite(q.support)?q.support*LIFT_PER_LEVEL:interiorSurfaceHeight(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
+    const point = i => { const t=i/n,b=shape==='thrust'?angle:start+(end-start)*t,r=shape==='thrust'?.18+(q.range-.18)*t:q.range,x=q.x+Math.cos(b)*r,y=q.y+Math.sin(b)*r,z=ground+K.height[0]+(K.height[1]-K.height[0])*Math.sin(Math.PI*t),tx=shape==='thrust'?dx:-Math.sin(b),ty=shape==='thrust'?dy:Math.cos(b),w=width*(shape==='thrust'?(1-t*.82):(.72+.28*Math.sin(Math.PI*t))); return {x,y,z,nx:-ty*w,ny:tx*w}; };
+    let a=point(0); for(let i=1;i<=n;i++){const b=point(i),alpha=Math.max(0,Math.min(1,fade))*spec.alpha; emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x+b.nx,b.y+b.ny,b.z,1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x-a.nx,a.y-a.ny,a.z,-1,1,alpha,spec.color,1);vertices+=6;a=b;} paths++;
+  };
+  for(const v of list){if(!valid(v.actual))continue;const fade=Math.max(0,Number(v.life)/Number(v.max));path(v.actual,false,fade);if(!reduce&&different(v.memory,v.actual))path(v.memory,true,fade);}
+  return { paths, vertices };
+}
+
 // ------------------------------------------------------------------------------------------------ the GPU scene (versions 4 and 5)
 // Version 5: the walls, their trim, the arches and the props of a floor are built once into a static buffer (buildStatic),
 // with the floor's placed lights and card props; each frame picks the nearest lights, fills the cards, creatures and decals,
@@ -2312,6 +2336,11 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     impacts++;
   }
   closeViewGLStats.impactGlints = impacts;
+  const echo = closeViewEchoRibbons(g, g.map, g.presentation?.effectiveQuality || "balanced", reduce, (X,Y,Z,lx,ly,a,color,trail) => {
+    room(1); DV(X,Y,Z,lx,ly,11,a,color,trail,true);
+  });
+  closeViewGLStats.echoRibbonPaths = echo.paths;
+  closeViewGLStats.echoRibbonVertices = echo.vertices;
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
   for (const shot of shots || []) {
     const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
