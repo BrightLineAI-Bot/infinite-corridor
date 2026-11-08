@@ -4,7 +4,7 @@ Recorded 2026-11-07 from the owner's current chat and two attached visual refere
 
 ## Carry and action presentation
 
-**Latest owner direction, 2026-11-08:** the current tool animations are too quick to see the guns being held/fired or the Great Sweep swing. The owner retracts the earlier preference for quick presentation and requests much slower, readable motions. This supersedes the short 180/240 ms presentation preference, not automatically the mechanical cooldowns or damage timing. The final timing proposal below specifies longer family holds/follow-through and continuous repeated shots; it requires coordinator approval before implementation.
+**Latest owner direction, 2026-11-08:** the current tool animations are too quick to see the guns being held/fired or the Great Sweep swing. The owner retracts the earlier preference for quick presentation and requests much slower, readable motions. This supersedes the short 180/240 ms presentation preference, not the mechanical cooldowns or damage timing. The longer family holds/follow-through and continuous repeated-shot presentation below are now implemented in the frozen source checkpoint; the separate mechanical Sweep-startup alternative remains unselected.
 
 The owner considered several carry options and finally allowed the equipped primary to remain in the Wayfarer's hands. Use that as the working default. Tools are not permanently carried in view: when an accepted tool action occurs, show its model in the appropriate hand(s), perform its distinct action, then recover to the equipped primary. An immediate model swap is acceptable, with smooth pose accommodation; locomotion must continue while firing. Retain current cooldowns first. A separate mechanical cooldown is optional only if a concrete interaction defect requires it; do not add delay merely to hide a bad pose. Refused presses must not display a successful fire/cast. Pause, accepted aim, active original tool identity, gear changes, reload and action priority remain authoritative.
 
@@ -22,7 +22,7 @@ The owner considered several carry options and finally allowed the equipped prim
 
 The four named stage-4 tools have bounded, original low-poly hero-gear recipes under the profile keys `rift-bombard`, `great-sweep`, `blunderbuss` and `lumen-spindle`. Accepted production actions latch the exact canonical tool identity into the existing additive presentation record only after gameplay accepts the press; Close View keeps that identity through its authoritative action clock, gear changes, pause and reload, then returns to the equipped primary. The source hero derives a braced Bombard/Blunderbuss hold, a broad Great Sweep gesture and a distinctly raised forward Spindle hold from the actual final hand socket while retaining locomotion underneath. Mirage remains its separately activated canonical form. No damage, shot count, projectile origin, aim, cooldown, charge, physics or effect rule changes.
 
-The recipes use the existing socket writer and primitives and add no texture, shader, dependency or draw path. Focused source tests cover geometry budgets, finite unit normals, socket transforms, atomic buffer refusal, accepted/refused actions, immutable identity, schema-14 round trips, smooth pose endpoints and neutral unknown-profile fallback. Offline unlit CPU sheets are authoring evidence only; ordered integration, hosted GPU review and physical-phone acceptance remain outstanding, so this candidate is not marked delivered here.
+The recipes use the existing socket writer and primitives and add no texture, shader, dependency or draw path. Focused source tests cover geometry budgets, finite unit normals, socket transforms, atomic buffer refusal, accepted/refused actions, immutable identity, schema-14 round trips, smooth pose endpoints and neutral unknown-profile fallback. The presentation timing and repeat-continuity source are implemented, but offline unlit CPU sheets and source tests are authoring evidence only; hosted GPU review and physical-phone acceptance remain outstanding, so this manifest does not claim final visual or device acceptance.
 
 ## Primary clarification affecting the current candidate
 
@@ -133,9 +133,11 @@ Admit only recognized Bombard shells to the existing projected-shot selection, w
 
 The private timing probe passed all three immediate-hit cases; this is architecture evidence only. No new implementation tests, source build, hosted GPU result, phone result or release clearance is claimed by this proposal.
 
-## Slower tool timing and repeat continuity — revised proposal, 2026-11-08
+## Slower tool timing and repeat continuity — implemented presentation contract, 2026-11-08
 
-Audited integration head: `f99280a904985eae6b5720ae44f10317c56e20fe` (the preceding launch architecture is now committed in the branch). This revision replaces the assumption that the entire shooting-tool presentation ends after 180 ms or Sweep after 240 ms. It retains the explicit muzzle helper, point-blank constraints, Bombard visual-flight ownership and capped existing decal path above. No runtime edit has been made.
+Historical design checkpoint: `f99280a904985eae6b5720ae44f10317c56e20fe` (the preceding launch architecture had been committed in the branch, while this timing work was still a proposal). The proposal replaced the assumption that the entire shooting-tool presentation ends after 180 ms or Sweep after 240 ms and retained the explicit muzzle helper, point-blank constraints, Bombard visual-flight ownership and capped existing decal path above.
+
+**Verified source checkpoint:** frozen runtime `457d28c3c30dae35ffe1988b7adf2135f7a67967` implements presentation-only durations of 720 ms for Rift Bombard, 640 ms for Blunderbuss, 760 ms for Lumen Spindle and 840 ms for Great Sweep. The pure versioned `toolMotion` sampler flattens the current bounded pose into each newly accepted same-tool action, so rapid accepted shots retain the held gun/wand or alternating Sweep continuity instead of resetting to neutral. The canonical 180/240 ms combat clocks, cooldowns, costs, shot counts, damage, effect timing and projectile physics remain unchanged. This is source/test and CPU evidence only: no hosted/GPU or physical-phone visual/performance acceptance is claimed.
 
 ### Actual contact and cadence
 
@@ -143,9 +145,9 @@ The private `.asset-review/tool-readable-timing-probe.mjs` exercised actual `fir
 
 Cooldowns are multiplied by actual glyph and armor modifiers. Three tool Swift glyphs alone give `360*.75^3 = 151.875` ms for guns and `1000*.75^3 = 421.875` ms for Sweep, before armor modifiers. Therefore merely extending `durationMs` while reusing the old phase-zero pose on every accepted press will visibly snap the arms back down. The new design must cover a press during raise, hold, recoil, follow-through and lowering, not only the ordinary 360/1000 ms cadence.
 
-### Recommended first implementation: immediate contact, longer presentation
+### Implemented presentation behavior: immediate contact, longer presentation
 
-All times below are **milliseconds since the latest accepted press**, not percentages of a generic action window. They are concrete initial authoring values for hosted review. Preserve `attackUntil` (180/240 ms), `attackReadyAt`, `toolReadyAt`, costs, shot counts, damage and effect timing. Set only the common `actionVisualUntil` and the accepted record's `durationMs` to the new presentation length; do not globally enlarge `ACTION_MOTION.toolMs` or generic melee/cast durations. Hammerfall retains its separately designed actual 320 ms impact and 570 ms presentation; Orrery, Mirage, primary, Fists and spells retain their own contracts.
+All times below are **milliseconds since the latest accepted press**, not percentages of a generic action window. They are the implemented initial authoring values awaiting hosted review. The source preserves `attackUntil` (180/240 ms), `attackReadyAt`, `toolReadyAt`, costs, shot counts, damage and effect timing; only the accepted presentation clock and record duration use the longer family value. Hammerfall retains its separately designed actual 320 ms impact and 570 ms presentation; Orrery, Mirage, primary, Fists and spells retain their own contracts.
 
 | Family | Immediate release/contact | Readable action and hold | Recovery | Total presentation |
 |---|---|---|---|---:|
@@ -158,7 +160,7 @@ The first gun shot is explicitly a draw/hip shot, followed by raising into a use
 
 ### Deterministic entry pose, without render history
 
-Introduce a small versioned optional `toolMotion` descriptor inside the accepted presentation record, and one pure sampler in the existing presentation module shared by `Game` and hero rendering. The sampler takes accepted tool identity, this descriptor and elapsed presentation milliseconds, and returns only bounded numeric pose controls: arm blend, local grip offsets, grip yaw, recoil amount and (if used) the previous accepted aim yaw. It never samples a skeleton, reads GPU state, draws, runs physics or consumes RNG.
+The accepted presentation record now carries a small versioned optional `toolMotion` descriptor, evaluated by a pure sampler in the presentation module shared by `Game` and hero rendering. The sampler takes accepted tool identity, this descriptor and elapsed presentation milliseconds, and returns only bounded numeric pose controls: arm blend, local grip offsets, grip yaw, recoil amount and (if used) the previous accepted aim yaw. It never samples a skeleton, reads GPU state, draws, runs physics or consumes RNG.
 
 Before replacing an active, uncancelled accepted tool record, `Game` evaluates that pure sampler at its old logical age (`durationMs - remaining`). Store the resulting **flattened scalar entry state** on the new record; never embed the old record or a chain of previous events. Only recognized descriptors are evaluated. Absent/legacy descriptors use the documented legacy analytic pose or a safe cold entry; unknown versions remain uninterpreted and preserved. Reject nonfinite/out-of-range known controls. The record remains bounded through arbitrarily many repeated shots and JSON resumes.
 
@@ -180,7 +182,7 @@ The mechanical consequences are real: targets have an additional opportunity to 
 
 Implementation of this option must gate the old Sweep drawing while `fx.delay>0` so it shows preparation rather than a full damaging sweep before contact, preserve already-saved undelayed effects, retain/refine the old immediate-hit test as a legacy-effect assertion, and add new-action delay, target-movement, Echo, Shadow Boxing, clone, pause/reload and interruption checks. The known assertion in `tests/brawler-tools-493.test.ts` expects a new Sweep hit after 50 ms; it would require an explicitly documented timing expectation update, not deletion or blanket weakening. No such assertion or mechanic has been changed for this architecture task.
 
-### Bounded verification plan
+### Bounded verification record and remaining acceptance
 
 - Actual Game acceptance/refusal at default, Swift/armor-shortened and Heavy cadence; physical projectiles/effects, combat clocks, damage and RNG identical under the recommended presentation-only plan. Confirm the only changed clocks are the accepted presentation clocks.
 - Pure entry sampler plus actual hero/model renderer before and at each repeated press: equal age-zero grip/arm pose, no neutral reset, then finite smooth continuation. Cover rapid sequences during raise, recoil, hold and lowering, changed aim, Sweep direction alternation, movement and walking cadence. Compare fixed logical-time renders with/without any prior renderer call to expose cache dependence.
@@ -189,4 +191,4 @@ Implementation of this option must gate the old Sweep drawing while `fx.delay>0`
 - Pause and split/JSON reload during raise, ready hold, recoil and recovery, including a continued second shot. Validate malformed/future descriptor handling, bounded record size after hundreds of accepted shots and unknown-field retention. Successful newer actions cancel the hold; refusals and delayed Echo do not refresh it.
 - Hosted front/side moving sequences must show a substantial readable gun hold, stable repeated wand fire and broad Sweep follow-through. CPU and source assertions establish continuity and timing, not final visual acceptance or phone performance.
 
-Architecture evidence completed: four actual producer/cooldown boundary cases, the 1 ms Sweep hit and the private 160 ms delayed-effect comparison passed. Source remains frozen pending approval of the presentation-only timeline and, separately if desired, the mechanical Sweep option.
+Source verification covers pure motion continuity and production primary/tool integration, including accepted/refused cadence boundaries, exact flattened pose entry, rapid repeated shots, alternating Sweep direction, unchanged combat clocks and the longer presentation deadlines. The earlier architecture evidence also covered four actual producer/cooldown boundary cases, the 1 ms immediate Sweep hit and the private 160 ms delayed-effect comparison. The presentation-only timeline is implemented in the frozen checkpoint; the mechanical Sweep-startup option above is still only an alternative requiring explicit approval. Hosted/GPU review and physical-phone acceptance remain outstanding.
