@@ -232,7 +232,8 @@ test('Target requests an exact open-ground rear center while preserving accepted
   const g = fixture(); frame(g, 40); const originalXY = [g.player.x, g.player.y];
   for (const [x, y] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
     g.save.lastAim = { x, y }; CV.closeViewPan(37, 0, now); assert.equal(CV.closeViewTargetActivate(g, now), null);
-    frame(g, 90); const c = CV.closeViewCamera(), yaw = Math.atan2(y, x), px = g.player.x + .5, py = g.player.y + .75, rx = -Math.sin(yaw), ry = Math.cos(yaw);
+    frame(g, 90, () => { const neutral = { x: 0, y: 0 }; CV.closeViewSteer(g, neutral); g.update(.016, { state: neutral, consume: () => false, held: () => false }, now); CV.closeViewUnsteer(neutral); });
+    const c = CV.closeViewCamera(), yaw = Math.atan2(y, x), px = g.player.x + .5, py = g.player.y + .75, rx = -Math.sin(yaw), ry = Math.cos(yaw);
     assert.ok(Math.abs(wrap(c.yaw - yaw)) < .01); assert.ok(Math.abs((c.x - px) * rx + (c.y - py) * ry) < 1e-5, 'open-ground eye is centered laterally');
     assert.ok(Math.abs(c.shoulder) < 1e-6 && Math.abs(c.rigOffset) < 1e-6); assert.equal(c.centeredRear, true);
   }
@@ -243,6 +244,19 @@ test('Target requests an exact open-ground rear center while preserving accepted
   const stick = { x: 0, y: -1 }; assert.equal(CV.closeViewSteer(g, stick), true); const held = { ...stick }, inputYaw = CV.closeViewCamera().inputYaw;
   CV.closeViewTargetActivate(g, now); frame(g, 8); assert.equal(CV.closeViewCamera().inputYaw, inputYaw, 'held movement basis stays latched during recenter'); assert.deepEqual(stick, held); CV.closeViewUnsteer(stick);
   CV.closeViewPan(20, 0, now); assert.equal(CV.closeViewCamera().centeredRear, false, 'later manual orbit immediately exits centered rear');
+});
+
+test('shared facing distinguishes native fallback from the nonzero imported entry blend', () => {
+  const g = fixture(); frame(g, 40); g.player.attackReadyAt = 0; g.save.lastAim = { x: 0, y: -1 }; g.primaryAttack(now);
+  const v = g.player.attackVisual; assert.ok(v); Object.assign(v, { profile: 'melee', weaponKind: 'cinder-pike', facingYaw: 0, aim: { x: 0, y: -1 }, durationMs: 240 });
+  const phase = .04, remaining = v.durationMs * (1 - phase); g.player.attackUntil = g.player.actionVisualUntil = now + remaining;
+  const blend = Math.min(1, phase / .08), smooth = blend * blend * (3 - 2 * blend), expected = -Math.PI / 2 * smooth;
+  assert.ok(Math.abs(wrap(CV.closeViewPlayerFacingYaw(g, now) + Math.PI / 2)) < 1e-9, 'native fallback retains the full accepted aim');
+  assert.ok(Math.abs(wrap(CV.closeViewPlayerFacingYaw(g, now, 0, { phase, importedReady: true }) - expected)) < 1e-9, 'ready imported renderer includes the first-eight-percent blend');
+  for (const profile of ['fist', 'hammer']) { v.profile = profile; assert.ok(Math.abs(wrap(CV.closeViewPlayerFacingYaw(g, now, 0, { phase, importedReady: true }) - expected)) < 1e-9, `${profile} retains its existing entry blend`); }
+  v.profile = 'melee';
+  CV.closeViewPan(35, 0, now); CV.closeViewTargetActivate(g, now); frame(g, 90); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw + Math.PI / 2)) < .01, 'Target follows the actually active native fallback');
+  assert.deepEqual(v.aim, { x: 0, y: -1 }); assert.equal(v.facingYaw, 0);
 });
 
 test('centered Target keeps the existing obstruction escape and camera safety', () => {

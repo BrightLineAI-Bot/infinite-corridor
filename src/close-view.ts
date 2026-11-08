@@ -662,7 +662,6 @@ function turnCamera(g, now) {
     CAM.yaw = wrap(CAM.qtFrom + wrap(CAM.qtTo - CAM.qtFrom) * k); CAM.yawV = 0; CAM.pitchUser *= Math.exp(-12 * dt); if (k >= 1) { CAM.qtT0 = -1; CAM.yaw = CAM.qtTo; CAM.pitchUser = 0; } return; }
   const target = lockTick(g, dt);
   if (CAM.centeredRear && Number.isFinite(CAM.recentre)) {
-    CAM.recentre = closeViewBodyFacingYaw(g, now);
     const diff = wrap(CAM.recentre - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
     CAM.yaw = wrap(CAM.yaw + step); if (Math.hypot(CAM.sx, CAM.sy) < CLOSE_VIEW.input.idle) CAM.inputYaw = CAM.yaw;
     CAM.yawV = 0; CAM.pitchUser *= Math.exp(-6 * dt); if (Math.abs(diff) < .01) CAM.recentre = NaN; return;
@@ -699,20 +698,32 @@ export function closeViewPan(dx, dy, now = 0) {
   CAM.pitchUser = Math.max(P.pitchRange[0], Math.min(P.pitchRange[1], CAM.pitchUser + (Number(dy) || 0) * P.pitch)); CAM.panAt = now;
 }
 // A double tap on the crescent: the camera goes back behind the Wayfarer (the way they last faced or walked).
-function closeViewBodyFacingYaw(g, now = 0) {
+export function closeViewPlayerFacingYaw(g, now = 0, baseYaw = NaN, { phase = null, importedReady = null } = {}) {
   const p = g?.player, clock = g?.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   if (!p) return CAM.yaw;
-  if (p.stunnedUntil > clock) return FACING_YAW[p.facing] ?? CAM.yaw;
+  const trackYaw = Number.isFinite(baseYaw) ? baseYaw : MODEL_STATE.tracks.get(p)?.yaw;
+  if (p.stunnedUntil > clock) return Number.isFinite(trackYaw) ? trackYaw : FACING_YAW[p.facing] ?? CAM.yaw;
   if (p.dodgeUntil > clock && Number.isFinite(p.dodgeVisual?.facingYaw)) return p.dodgeVisual.facingYaw;
   if (g.fistCharge) { const d = g.fistCharge.direction; if (d && (d.x || d.y)) return Math.atan2(d.y, d.x); }
-  const v = p.attackVisual, active = p.attackUntil > clock || (v && attackVisualDeadline(p, v, { now: clock, effects: g.effects, pendingToolUse: g.pendingToolUse }) > clock);
-  if (active) { if (Number.isFinite(v?.facingYaw)) return v.facingYaw; const d = v?.aim || g.pendingToolUse?.aim || p.meleeStrike; if (d && (d.x || d.y)) return Math.atan2(d.y, d.x); }
-  if (p.castUntil > clock) { const d = p.castVisual?.aim || g.save?.lastAim; if (d && (d.x || d.y)) return Math.atan2(d.y, d.x); }
+  const action = closeViewPlayerAction(g, clock), v = action.record;
+  if (action.active || action.legacy) {
+    const d = v?.aim || g.pendingToolUse?.aim || p.meleeStrike, aimYaw = d && (d.x || d.y) ? Math.atan2(d.y, d.x) : Number.isFinite(trackYaw) ? trackYaw : FACING_YAW[p.facing] ?? CAM.yaw;
+    const form = playerFormPresentation(g), importedForm = !form || form.kind === 'playerIronFists', imported = importedReady ?? (importedForm && !!MODEL_STATE.hero && !!getCloseViewHeroAsset()), profile = action.active ? v?.profile : null;
+    const blendsEntry = profile === 'fist' || profile === 'hammer' || profile === 'melee' && ['cinder-pike','verge-cleaver'].includes(v?.weaponKind);
+    if (imported && blendsEntry && Number.isFinite(v?.facingYaw)) {
+      let amount = Number.isFinite(phase) ? phase : action.amount;
+      if (!Number.isFinite(phase) && action.active && !v?.primaryStep && now - MODEL_STATE.lastMeleeHit < MODEL_TIMING.contactHoldMs)
+        amount = 1 - Math.min(1, (action.until - MODEL_STATE.lastMeleeHit) / v.durationMs);
+      const t = Math.min(1, amount / .08), blend = t * t * (3 - 2 * t); return wrap(v.facingYaw + wrap(aimYaw - v.facingYaw) * blend);
+    }
+    return aimYaw;
+  }
+  if (p.castUntil > clock) return Number.isFinite(trackYaw) ? trackYaw : FACING_YAW[p.facing] ?? CAM.yaw;
   const look = closeViewIdleLockAim(g, clock); if (look && (look.x || look.y)) return Math.atan2(look.y, look.x);
   const a = g.save?.lastAim; return a && (a.x || a.y) ? Math.atan2(a.y, a.x) : FACING_YAW[p.facing] ?? CAM.yaw;
 }
 export function closeViewRecentre(g, now = 0, { centered = false } = {}) {
-  CAM.centeredRear = !!centered; CAM.recentre = centered ? closeViewBodyFacingYaw(g, now) : (() => { const a = g?.save?.lastAim; return a && (a.x || a.y) ? Math.atan2(a.y, a.x) : FACING_YAW[g?.player?.facing] ?? CAM.yaw; })(); CAM.panAt = now;
+  CAM.centeredRear = !!centered; CAM.recentre = centered ? closeViewPlayerFacingYaw(g, now) : (() => { const a = g?.save?.lastAim; return a && (a.x || a.y) ? Math.atan2(a.y, a.x) : FACING_YAW[g?.player?.facing] ?? CAM.yaw; })(); CAM.panAt = now;
   if (centered) { CAM.qtT0 = -1; CAM.yawV = 0; CAM.pitchUser = 0; }
 }
 // The quick turnaround (CLOSE_VIEW.quickTurn). Armed while the stick (as last read by closeViewSteer) is held clearly back,
@@ -2225,7 +2236,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           action.poseMs=Number.isFinite(visual?.poseMs)?visual.poseMs:input.nowMs;
           input.speed=Number.isFinite(visual?.speed)?visual.speed:visual?.moving?2.4:0;input.gaitPhase=Number.isFinite(visual?.gaitPhase)?visual.gaitPhase:0;
         } else if (hit > 0) { action.kind = 'hit'; action.phase = 1 - hit; action.durationMs = MODEL_TIMING.hitSec * 1000; }
-        else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist' || action.profile === 'hammer')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) { const turn=Math.atan2(Math.sin(actor.yaw-visualRecord.facingYaw),Math.cos(actor.yaw-visualRecord.facingYaw)),t=Math.min(1,amount/.08);action.yaw=visualRecord.facingYaw+turn*t*t*(3-2*t); } } }
+        else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist' || action.profile === 'hammer')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) action.yaw=closeViewPlayerFacingYaw(g,now,actor.yaw,{phase:amount,importedReady:true}); } }
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
         else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; }
