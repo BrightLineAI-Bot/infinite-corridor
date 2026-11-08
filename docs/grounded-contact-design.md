@@ -1,6 +1,6 @@
 # Grounded actor contact design
 
-Status: **queued after character and camera work; not implemented**. Read-only architecture findings recorded 2026-11-07 against the r820/neck-repair source. This document does not reserve a release, claim test acceptance, or authorize publication. Re-read current source and project instructions before implementation. Preserve concurrent character, weapon and camera work.
+Status: **isolated source candidate; not integrated or published**. Original read-only architecture findings were recorded 2026-11-07 against the r820/neck-repair source. The 2026-11-08 implementation and offline evidence are recorded below. This document does not reserve a release or authorize publication. Preserve concurrent character, weapon and camera work.
 
 ## Objective and bounded scope
 
@@ -101,3 +101,59 @@ Add focused tests, retaining existing `tests/prototype.test.ts` wall-slide/tunne
 12. Instrument contact work under the existing maximum encounter fixture; assert no all-pairs growth or unbounded retries.
 
 No product question is necessary for these defaults. The implementation must clearly call this ordinary grounded contact, with the excluded special controllers recorded as remaining work. The preceding audit was source-only. This document records design and acceptance criteria; it is not implementation, executed-test evidence or physical-phone performance evidence.
+
+## Isolated contact candidate, 2026-11-08
+
+Prepared on `claude/close-view-grounded-contact`, base `a2685814`. Source ownership is `src/actor-contact.ts`, the movement seams in `src/game.ts`, this appendix and the new `tests/grounded-contact.test.ts`. The coordinator owns build/service-worker registration and integration. No save, generation, release, configuration, existing test or balance table was changed by the specialist. The block-rendering work below is a separate candidate and is not implemented here.
+
+The pure helper performs swept circle contact using the shared ground-center offset `(.5,.69)`, player radius `.26`, and existing `enemyBodyRadius`. The common offset cancels in pair distances. It retains X then Y terrain substeps of at most `.16`, clips each to earliest body contact, then validates terrain at the clipped position. It never pushes or relocates either actor. Equal contacts take the minimum scalar fraction, independent of enemy array order. Partial old overlaps permit nondecreasing separation; exact coincidences allow the requested escape direction. No load-time change or saved allowance is needed.
+
+Player locomotion records accepted substeps in a reusable trace **before** section, hazard, swimming and raft consequences. Commit executes that same trace and invokes the existing scar/fall callbacks once. Lifted drone motion is excluded and continues through its original ceiling callback; the contact preflight never mutates lift state or runs that callback speculatively. Grounded mech walking is included, with its overworld `voidSuit` permission mirrored in the probe. Actual boost, drone lift, gliding, riding, occupied skiff and mech wading retain their separate controllers. Ordinary Jump does not phase through bodies. A real `airElev` platform launch is physical support above the gap and clears lower actors.
+
+Ordinary AI patrol/chase/detour/lunge, grounded pack movement, pack push/pull, trap pull, elite gravity and glyph nudge use contact. The two direct combat loops, Fists and Shadow Boxing, retain their original quarter-tile `canStand` guards. A pure sweep-clear combat step assigns the exact original endpoint, preserving numeric clear-path motion. Only a body intersection invokes the terrain/contact solver. Strike origins remain computed from the accepted post-dash position; damage, charge, rush distance, hit predicates, combo clocks and invulnerability formulas were not edited. The coordinator must preserve the separate Fists candidate's pre-dash presentation capture and metadata when merging these two small loop changes.
+
+Eligibility is explicit: dead, friendly/companion, NPC, passive/ambient, unprovoked skirmish, hidden-burrow, mist, flying/aloft and phase states do not block. Merely shielded, recovering, stunned or `untargetable` grounded actors and ordinary hostile summons do block. Large ordinary grounded bodies use their existing radius. Major world-beast, Questing Beast, Stalker, sea and astral controllers are excluded, including their dedicated movement/teleport routes. The special `voidWalker`, `psychicCrystal`, `astralWorm`, `astralMirage`, `lightningGiant`, `mountainTurtle`, `briarStag`, `ashenMoth`, `crimsonDragon` and `doomChaser` kind routes remain outside this pass. Legacy Veil Moths and Cinder Wisps are airborne exclusions. There is no enemy-enemy separation or new navigation search. A living enemy can still deliberately obstruct a narrow passage; retreat, combat and existing Act/stair interactions remain available. This is not a guarantee against every possible crowd trap.
+
+New work is bounded per movement request: at most 256 X/Y substep pairs, no enlarged step when the request exceeds that budget, a 2,048-double (16 KiB) trace per Game, and one reusable candidate list. Player broadphase scans its existing enemy list once and retains every eligible intersecting candidate; it never silently drops a nearby blocker to meet a cap. With E candidates the narrowphase has at most 512E circle checks; an enemy query checks only the player. This is not all-pairs separation. Runtime counters expose queries, checks and budget stops. A 300-body test verifies inclusion and the one-player enemy query. Those operation counts are not a phone performance measurement.
+
+Both real frame drivers (`main.ts` and `proving-ground.ts`) cap dt at `.05`. The 40.96-tile per-axis budget is above the existing ordinary requests: melee pattern lunges are at most 1.7 total and already subdivided, Fists/Shadow Boxing submit .25 steps, glyph Tether is .35 and Maelstrom at most 1.2, trap pull is 5 tiles/s, elite gravity 1.65 tiles/s, and pack forces include Crystal 9 tiles/s and fixed Doom push 2.5. Ordinary pack dash/charge movement is submitted in frame-sized steps; specialized long-range phase/teleport/world-beast controllers retain their own routes. The budget protects malformed/extreme contact requests; no general Game dt clamp or legacy terrain-only mover cap was added. Future movement producers must remain below the contact request budget or receive an explicit reviewed adaptation.
+
+### Offline witnesses and verification
+
+An actual `Game.update` probe using seed `CONTACT-AUDIT`, a quiet lab instance with an open floor, player `(3,5)` and Root Brute `(5,5)`, moving right for 60 × .04 s, reproduced body overlap in both views before the change: minimum center distance `.0472`. The contact candidate held minimum distance `.73600000312`, matching `.26 + .476`. This is simulation evidence, not hosted visual acceptance.
+
+The new 20-case regression file covers two-way blocking, grazing/high-speed sweeps, diagonal wall slide, narrow-door retreat, old/coincident overlap escape, order independence and per-Game isolation, exclusions/untargetability/summons, separated support/high platform jump versus ordinary Jump, work bounds, exact clear terrain traces, actual Game walk/dodge view parity and clocks, actual ordinary AI/pack attack reach, prevented false lava death, four section exits, below-level raft occupancy, schema-14 overlap resume/pins, grounded mech/void permission, push/nudge dodge immunity, legal stair Act destinations, and clear/blocked Fists and Shadow Boxing with canonical post-dash effect origins.
+
+Executed offline commands:
+
+```text
+node --test tests/grounded-contact.test.ts tests/building.test.ts tests/dungeon-traps-523.test.ts tests/glyphs.test.ts tests/interior-terrain.test.ts tests/interior-v4-arrival.test.ts tests/great-buildings.test.ts tests/fallen-pause-329.test.ts tests/close-view-combat-contract.test.ts
+# 76/76 passed before adding the two combat-loop cases (18 new + 58 existing).
+
+node --test --test-name-pattern="movement transition supports negative|ordinary movement crosses|sprite-footprint movement slides|game defensively caps movement|stationary dodge uses movement" tests/prototype.test.ts
+# 5/5 existing movement contracts passed; the server tests were not selected.
+
+node --test tests/grounded-contact.test.ts tests/iron-fists-489.test.ts tests/brawler-485.test.ts tests/void-walker-terrain.test.ts
+# 61/61 passed after combat-loop and physical airElev integration (20 new + 41 existing).
+
+npm run build
+# Passed: static offline PWA release 825 + Proving Ground PG-1; actor-contact.js
+# registered by the coordinator in build and both service-worker module lists.
+```
+
+Every existing assertion and digest remains untouched; `git diff --check` passed. No local server, browser automation or full `npm test` was run because of the established local network stop. Hosted/GPU/phone acceptance remains outstanding. In particular, supported graph/physics tests cannot establish Close View silhouette clearance or crowd feel on hardware.
+
+### Separate traversal-block diagnosis, no fix in this candidate
+
+The canonical build mechanics already distinguish **stone perch** from **wood wall**: stone is unblocked, one physical level, two stack; wood is intentionally a blocked wall. The existing limit is five physical records and ten active seconds. Fresh save material selection is wood. Rebuilding those mechanics would not address the reported visual issue.
+
+Disposable source probes used actual `Game.buildAt` and `closeViewStatic`, not a mock build implementation:
+
+| Matched site / material | Simulation result | Native static geometry witness |
+|---|---|---|
+| `CONTACT-AUDIT`, PG `keep`, `building:CONTACT-AUDIT:-4:0:keep:3:f1`, tile `(8,4)`, stone | `blocked=false`, `buildLevel=1`, `elev=1` | Neither live nor rebuilt legacy-v2 static geometry emitted raised block vertices: a genuine legacy rendering gap. |
+| Same legacy-v2 site, wood | `blocked=true` | Rebuilt wall geometry spans z 0–2.4; live legacy wall-cache refresh can lag up to 500 ms. |
+| Same seed, PG `terrain-ramps` current v4, tile `(19,13)`, stone | Base elev 3, stone elev 4 | Top z 1.36 above ground 1.02: one `.34` level, not a whole wall. |
+| Same v4 tile, wood | `blocked=true` | Wall z 1.02–3.42: intentional 2.4-height wall. |
+
+The v4 stone probe also raises the generic local ceiling by `.34`; its treatment needs deliberate review in a separate rendering candidate. The source diagnosis does **not** establish that the owner's report was merely wood selection. Hosted PG currently lacks the production Pack/Supplies material selector and resources, so an honest stone-versus-wood interactive comparison requires an explicit quiet block fixture. Production selection is Pack → Supplies → Build with → Stone block / Wood wall, then Build. The coordinator owns any actual hosted CUA reproduction; no source probe is presented as such.
