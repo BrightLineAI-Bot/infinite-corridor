@@ -65,6 +65,28 @@ test('all four Cleaver stages and committed phases round-trip through both runti
   }
 });
 
+test('accepted Pike replaces inherited Cleaver or opaque versions with its supported three-stage counter',()=>{
+  for(const prior of [{weaponKind:'verge-cleaver',v:2,step:4,future:{kept:true}},{weaponKind:'cinder-pike',v:7,step:99,future:{kept:true}}]){
+    const g=fixture('pike');g.player.primaryCombo=clone(prior);const steps=[];
+    for(let n=0;n<5;n++){g.primaryAttack(100000+n*500);steps.push(g.player.attackVisual.primaryStep);assert.equal(g.player.primaryCombo.v,undefined);assert.deepEqual(g.player.primaryCombo.future,{kept:true});}
+    assert.deepEqual(steps,[1,2,3,1,2]);
+  }
+});
+
+test('old Cleaver descriptors retain legacy carry after expiry without a combo counter until new acceptance',()=>{
+  for(const primaryStep of [undefined,1,3]){
+    const g=fixture();g.player.primaryCombo=null;g.player.attackVisual={profile:'melee',durationMs:240,weaponKind:'verge-cleaver',...(primaryStep==null?{}:{primaryStep})};g.player.actionVisualUntil=100240;
+    const saved=migrateSave(clone(g.exportSnapshot(100120))),back:any=new Game(saved,200000);
+    const expected={kind:'legacy',step:primaryStep||1};
+    assert.deepEqual(primaryCarryStage(back.player.attackVisual,back.player.primaryCombo,true),expected);
+    assert.deepEqual(primaryCarryStage(back.player.attackVisual,back.player.primaryCombo,false),expected);
+    const resumed:any=new Game(migrateSave(clone(back.exportSnapshot(200121))),300000);
+    assert.deepEqual(primaryCarryStage(resumed.player.attackVisual,resumed.player.primaryCombo,false),expected);
+    resumed.player.attackReadyAt=0;resumed.primaryAttack(300001);
+    assert.deepEqual(primaryCarryStage(resumed.player.attackVisual,resumed.player.primaryCombo,false),{kind:'cleaver-four',step:1,direction:1});
+  }
+});
+
 test('legacy three-stage Cleaver carries until the next accepted v2 cut; future records stay opaque',()=>{
   const old:any=fixture();old.player.primaryCombo={weaponKind:'verge-cleaver',step:3,legacyUnknown:7};old.player.attackVisual={profile:'melee',durationMs:240,weaponKind:'verge-cleaver',primaryStep:3};old.player.actionVisualUntil=100240;
   const saved=migrateSave(clone(old.exportSnapshot(100120))),back:any=new Game(saved,200000);assert.deepEqual(primaryCarryStage(back.player.attackVisual,back.player.primaryCombo),{kind:'legacy',step:3});

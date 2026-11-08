@@ -302,7 +302,14 @@ export function primaryCarryStage(record, combo, active = false) {
     return record?.weaponKind === 'verge-cleaver' && record.primaryMotion == null && record.primaryStep == null ? { kind: 'legacy', step: 1 } : null;
   }
   const saved = normalizePrimaryCombo(combo);
-  if (!saved || saved.weaponKind !== 'verge-cleaver') return null;
+  if (!saved || saved.weaponKind !== 'verge-cleaver') {
+    // Old supported attacks did not always save a combo counter. Their retained
+    // descriptor still owns carry until a newly accepted action replaces it.
+    if (record?.weaponKind === 'verge-cleaver' && record.primaryMotion == null) {
+      return primaryVisualStage(record) || (record.primaryStep == null ? { kind: 'legacy', step: 1 } : null);
+    }
+    return null;
+  }
   if (Number.isInteger(saved.v) && saved.v > 2) return { kind: 'opaque' };
   if (saved.v === 2) return { kind: 'cleaver-four', step: saved.step, direction: saved.step === 1 || saved.step === 3 ? 1 : -1 };
   return { kind: 'legacy', step: saved.step };
@@ -325,6 +332,9 @@ export function advancePrimaryCombo(player, weaponKind) {
   const four = weaponKind === 'verge-cleaver';
   const continuing = prior?.weaponKind === weaponKind && (four ? prior.v === 2 : prior.v == null || prior.v === 1);
   const step = continuing ? prior.step % (four ? 4 : 3) + 1 : 1;
-  player.primaryCombo = { ...(prior || {}), weaponKind, ...(four ? { v: 2 } : {}), step };
+  const next = { ...(prior || {}), weaponKind, step };
+  if (four) next.v = 2;
+  else delete next.v;
+  player.primaryCombo = next;
   return step;
 }
