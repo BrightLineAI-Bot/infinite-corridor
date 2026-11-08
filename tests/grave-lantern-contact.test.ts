@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { ACTOR_CONTACT, actorContactBottom, actorContactContext, actorContactTop, materialGraveLantern, ordinaryContactEnemy } from '../src/actor-contact.ts';
 import { Game, moveAxis } from '../src/game.ts';
 import { createCombatant, enemyBodyRadius } from '../src/combat.ts';
+import { freshPackState, updatePackMonster } from '../src/monster-pack.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { deserializeSave, serializeSave } from '../src/persistence.ts';
 
@@ -57,8 +58,18 @@ test('blink destination is solid, phase/leap/dive travel is clear, and landing r
   ]){const e=lantern(5,5,{pack:state,aloft:state.phase==='active'&&state.attack==='leapSlam'});g.enemies=[e];g.player.x=3;move(g,g.player,4,0);const solid=state.attack==='blinkStrike'||state.phase==='recover';assert.equal(g.player.x<e.x,solid,`${state.attack}/${state.phase}`)}
 });
 
-test('ram admission preserves accepted contact and a wall refusal can still own its stun state',()=>{
-  const g=harness(lantern(5,5,{pack:{attack:'ramCharge',phase:'active'}})),e=g.enemies[0];move(g,e,-4,0);assert.ok(gap(g)>=radius(e)-1e-7);e.pack.phase='stunned';e.stunnedUntil=2400;assert.equal(ordinaryContactEnemy(e),true);assert.equal(e.pack.phase,'stunned');assert.equal(e.stunnedUntil,2400);
+function actualRam(playerX,wall=false){
+  const g=actualGame();Object.assign(g.player,{x:playerX,y:5,hp:g.save.maxHp,invulnerableUntil:1e9});const e=lantern(playerX+1.4,5);e.aggro=true;e.pack={...freshPackState(),state:'attack',attack:'ramCharge',phase:'active',t:1,tele:{type:'lane'},data:{aim:{x:-1,y:0}},hitOnce:false};g.enemies=[e];
+  if(wall)g.map.tiles[5*g.map.width+Math.floor(e.x-.5)]={...g.map.tiles[5*g.map.width+Math.floor(e.x-.5)],kind:'wall',blocked:true};
+  const phases=[];for(let i=0;i<20;i++){updatePackMonster(e,g.packWorld(.05,1000+i*50));phases.push(e.pack.phase);if(e.pack.phase==='stunned')break}return{g,e,phases};
+}
+
+test('actual Game Lantern ram hits once, reports blocked contact, and enters stun across map positions',()=>{
+  for(const playerX of [8,12,17]){const {g,e,phases}=actualRam(playerX);assert.ok(phases.includes('stunned'),`x=${playerX} phases=${phases.join(',')}`);assert.equal(e.pack.hitOnce,true);assert.ok(e.stunnedUntil>=2400);assert.ok(gap(g,e)>=radius(e)-1e-7);assert.equal(g.packEffects.some(q=>q.kind==='shock'),false)}
+});
+
+test('actual Game Lantern wall refusal still enters stun without the expiry shockwave',()=>{
+  const {g,e,phases}=actualRam(8,true);assert.ok(phases.includes('stunned'));assert.ok(e.stunnedUntil>=2400);assert.equal(g.packEffects.some(q=>q.kind==='shock'),false);
 });
 
 test('pause and JSON boundaries add no state and restore conservative ordinary admission',()=>{

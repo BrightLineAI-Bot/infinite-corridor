@@ -19,7 +19,7 @@ Direct movement modules require behavior-specific treatment rather than a kit-na
 
 ## Material-family queue
 
-The next bounded ordinary-family study after Veil Moth is **Grave Lantern**. Its flying material cage, chains and censers use the independently reviewed fixed authored interval `support + [.33 * scale, 2.33 * scale]`, with scale clamped to `.25…4`; the older `2.35` body-height fallback is not used as the physical interval. The source pilot admits only the ordinary current physical phase. Idle, chase, patrol, hit/stun and supported ground-height attacks stay solid; actual phase-charge/leap/dive travel remains excluded, while blink destinations, ram blocking/stun and landed recovery retain ordinary contact. Unknown active states and nonzero physical lift fail closed. Runtime physics does not import or sample presentation geometry.
+The next bounded ordinary-family study after Veil Moth is **Grave Lantern**. Its flying material cage, chains and censers use the independently reviewed fixed authored interval `support + [.33 * scale, 2.33 * scale]`, with scale clamped to `.25…4`; the older `2.35` body-height fallback is not used as the physical interval. The source pilot admits only the ordinary current physical phase. Idle, chase, patrol, hit/stun and supported ground-height attacks stay solid; actual phase-charge/leap/dive travel remains excluded, while blink destinations, ram blocking/stun and landed recovery retain ordinary contact. Unknown active states and nonzero physical lift fail closed. The r842 shared-mover prerequisite is integrated in this source branch, and actual pack-world Lantern ram witnesses now reach the existing blocked-stun path; neither change is claimed published here. Runtime physics does not import or sample presentation geometry.
 
 Choir and Seraph are materially rendered but their dive behavior and multi-body presentation make them a larger later scope. Wraith, Maw and Strata Eel phase; Gloom is ghostlike. Preserve their ethereal/non-solid behavior. Cinder Wisp's legacy airborne exclusion is not evidence that every visually material flyer should remain excluded, nor permission to admit Cinder Wisp without its own study.
 
@@ -41,4 +41,3 @@ For Grave Lantern specifically, the fixed interval has been reviewed against bou
 2. Review and integrate the prepared Grave Lantern low-hover pilot only after the Veil Moth and routing/adoption hosted gates; do not broaden it to leap/dive travel or reuse `2.35` as a physics interval.
 3. Consider Choir/Seraph only as a separate dive/multi-body scope.
 4. Preserve Wraith/Maw/Strata Eel/Gloom phase/ghost behavior unless a new owner-approved design proves otherwise.
-
