@@ -2,7 +2,7 @@
 
 Updated: 2026-11-08. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live: `r829-9c21fb237fe9`. Source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; live identity and actual Options → System match after normal update, no recent errors. Earlier delivered character/camera/primary work remains; corrective stage3 r831 is next.
+Verified live: `r829-9c21fb237fe9`. Source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; live identity and actual Options → System match after normal update, no recent errors. Earlier delivered character/camera/primary work remains; corrective stage3 r832 is next.
 
 ## Single ordered build queue — owner instruction
 
@@ -10,7 +10,7 @@ Verified live: `r829-9c21fb237fe9`. Source CI42479713134, merged CI42480707039, 
 
 Earlier native creature/combat/actor passes r813–818 remain delivered; preserve their roster, Foundry and auxiliary-actor work recorded in the release log.
 
-Current checkpoint: production remains verified r829. r830 merged and Preview succeeded, but hosted acceptance exposed a new quiet-fixture defect: oversized stun expires under the intentional stagger governor and the practice enemy attacks. r831 repairs all three using an attackable stationary practice behavior and long-session regressions. Do not publish r830 independently. Continue the ordered queue after corrected Echo acceptance; all prepared work remains local and unnumbered.
+Current checkpoint: production remains verified r829. r830/831 merged and Preview passed, but publication is held: r831 repaired the practice targets, then hosted side-view attack frames exposed packed GPU violet colors decoding yellow. Corrective r832 uses exact flat-integer color transport. Do not publish r830 or r831 independently. Full since-live review and corrected hosted acceptance remain required; all other queued work is preserved.
 
 | Order | Pass | Required owner direction / completion target | State |
 |---|---|---|---|
@@ -18,7 +18,7 @@ Current checkpoint: production remains verified r829. r830 merged and Preview su
 | 2a | Verge Cleaver carry and combo | Keep the rusty gladius style, thin side profile, refined hilt and low one-handed carry. Latest owner follow-up requires the right hand and four up/down/up/down swings; the original three-hit r827 version is historical. | Original presentation delivered r827; new right-hand/four-swing correction queued at7a |
 | 2b | Cinder Pike carry and combo | Two-handed polearm carry and three distinct forward thrust motions, then reset/repeat. Show actual body/arm movement, not only an effect or hit shape. | Delivered in r827 with 2a; hosted carry, thrust and recovery checked |
 | 2c | Remaining primary inventory | Audit every other canonical primary, including Salvage Blade, for coherent carry/attack/recovery and distinct profiles. Do not omit a weapon because it has no new art reference. | Delivered in r829; Salvage/future-primary continuity passed source, review, CI, hosted and live checks |
-| 3 | Echo presentation | Actual Echo events create delayed slash/thrust afterimages along the original weapon path. They must not replay the body attack, advance its combo stage or create extra mechanical hits. Keep the real Echo cadence and damage events. | r830 merged/previewed; hosted fixture blocker held publication. Corrective r831 pending review/CI/Preview/hosted/publication gates |
+| 3 | Echo presentation | Actual Echo events create delayed slash/thrust afterimages along the original weapon path. They must not replay the body attack, advance its combo stage or create extra mechanical hits. Keep the real Echo cadence and damage events. | Corrective r832: r830/831 held after hosted fixture/color blockers; exact integer RGB fix awaits release gates |
 | 4a | Rift Bombard | RG-6-inspired cylinder/short-barrel launcher; appears on accepted tool use, with readable lobbed grenade/drop/explosion and current or separately validated secondary/bounce behavior. Movement continues. | Prepared locally T18dd7f8b: launcher/lob, startup/release/weaving; 154 integration plus 23 form/tool checks/build; release gates pending |
 | 4b | Great Sweep | Normal Wayfarer body; swing the large broken greatsword with substantial guard/hilt and broad truncated blade from the supplied reference. No required permanent back carry or tool-induced body transformation. | Prepared with 4a: readable broken-greatsword startup/sweep/recovery and legal melee weaving; gates pending |
 | 4c | Blunderbuss | Compact steampunk firearm, restrained muzzle flare and blue charge accent; distinct firing stance/recoil while moving. This item must not be lost from the queue. | Prepared with 4a: compact charged firearm and actual-release feedback; gates pending |
@@ -309,3 +309,7 @@ The latest owner instruction supersedes the earlier three-hit Cleaver presentati
 Target activation should recenter directly behind the Wayfarer on his facing direction, with a centered rear view rather than a lateral shoulder view. Coordinator assumption preserves the earlier requested enemy acquisition/switching/lock behavior: every Target activation recenters even without an eligible enemy; an acquired target turns the Wayfarer and the camera recenters behind that resulting facing. Preserve wall/ceiling clearance, pause/input ownership, accessibility and committed tool aim. Do not teleport the player or disable collision to force an obstructed camera position.
 
 These are queued follow-ups within stage7 after the existing tools/Hammerfall/spell/contact/block order. Parallel preparation is authorized; current Echo correction and prior prepared candidates stay in order. Necessary regression scope is already approved. Neither change is delivered or published by this intake.
+
+## Hosted packed-color correction — 2026-11-08
+
+Actual side-view frames show raised Echo geometry but yellow color. Float32 addition of 0.5 carries C9A7FF/D8C8FF into C9A800/D8C900. r832 removes that arithmetic and packed-float interpolation through a flat integer varying. Source/interface/buffer regressions pass; actual hosted violet is still a release gate. Production remains r829; r830/831 are never published independently.
