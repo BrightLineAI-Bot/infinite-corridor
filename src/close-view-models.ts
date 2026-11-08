@@ -5,8 +5,8 @@ import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteC
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.ts';
-import { PLAYER_FORM_HANDS } from './close-view-player-presentation.ts';
-import { sampleToolActionMotion } from './action-motion.ts';
+import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.ts';
+import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -311,7 +311,9 @@ export function modelSupported(kind) {
 const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle});
 export const HERO_EQUIPMENT_MAX_TRIANGLES = 156;
 export function writeCloseViewHeroGear(out,offset,gear) {
-  const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null,m=gear?.rightSocket;
+  const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null;
+  // Legacy callers supplied only rightSocket. Explicit new roles require their real grip.
+  const gripKey=gear?.primaryStage===undefined&&!gear?.leftSocket?'rightSocket':cleaverHandRoles(gear?.profile,gear?.primaryStage).grip,m=gear?.[gripKey];
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
   const bilateral=gear.profile==='fist'||gear.profile==='fistCharge',left=gear.leftSocket;
   if(bilateral&&(!left||left.length!==16))return offset;
@@ -320,7 +322,7 @@ export function writeCloseViewHeroGear(out,offset,gear) {
   for(let pass=0;pass<(bilateral?2:1);pass++){const socket=bilateral&&pass===0?left:m;for(let i=0;i<16;i++)if(!Number.isFinite(socket[i]))return offset;const ax=Math.hypot(socket[0],socket[1],socket[2]),ay=Math.hypot(socket[4],socket[5],socket[6]),az=Math.hypot(socket[8],socket[9],socket[10]);if(Math.min(ax,ay,az)<1e-6)return offset;}
   const alpha=Number.isFinite(gear.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear.hitFlash)||0));
   const tr=Number.isFinite(gear.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear.tint?.[2])?gear.tint[2]:1;
-  for(let pass=0;pass<(bilateral?2:1);pass++){const m=bilateral&&pass===0?left:gear.rightSocket,ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);
+  for(let pass=0;pass<(bilateral?2:1);pass++){const m=bilateral&&pass===0?left:gear[gripKey],ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);
   for(const p of parts)for(let i=0;i<p.mesh.length;i+=MESH_FLOATS){const a=p.mesh;
     // Recipe grip (.17,-.25,.79), canonical blade +Z -> the source weapon socket +X.
     const x=bilateral?(a[i]+p.px)*.62:(a[i+2]+p.pz-.79)*.82,y=bilateral?(a[i+1]+(p.py||0))*.62:-(a[i]+p.px-.17)*.82,z=bilateral?(a[i+2]+p.pz)*.62:-(a[i+1]+.25)*.82;
@@ -422,8 +424,10 @@ export function writeCloseViewModel(out, offset, actor) {
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
   const fist = pose === "fist", chargingFist = pose === "fistCharge", fistStep = [1,2,3].includes(actor.fistStep) ? actor.fistStep : 1;
+  const stage=actor.primaryStage??primaryVisualStage(actor),newCleaver=kind==='playerVergeCleaver'&&cleaverHandRoles('verge-cleaver',stage).grip==='leftSocket',opaqueCleaver=kind==='playerVergeCleaver'&&stage?.kind==='opaque',cut=newCleaver?cleaverCutMotion(stage,pose==='attack'?progress:0):null;
+  if(newCleaver)strike=cut.weight;if(opaqueCleaver)strike=0;
   const primaryStep=[1,2,3].includes(actor.primaryStep)?actor.primaryStep:1,canonicalPrimary=kind==='playerCinderPike'||kind==='playerVergeCleaver';
-  const turn = (canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
+  const turn = newCleaver?cut.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
@@ -443,7 +447,8 @@ export function writeCloseViewModel(out, offset, actor) {
     ? actionProgress : actionPhase === 'active' || actionPhase === 'erupt' ? 1
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
   const hammerWeight=kind==='playerHammerStomp'?hammerFrames(progress):0;
-  for (const { mesh, swing, px, pz, axialSpin, carryingOnly, hammerPart } of models[kind]) {
+  for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart } of models[kind]) {
+    const mirroredArm=newCleaver&&Math.abs(sourceSwing)===2,swing=mirroredArm?-sourceSwing:sourceSwing;
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
       : swing >= 40 && swing < 60
@@ -475,7 +480,9 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (swing === 2) angle = -beat * stride + .35 * windup - .43 * strike
       + (playerLike ? 1.02 : .18) * cast - .18 * flinch + .58 * jump - .22 * jumpSettle;
     else angle = -swing * beat * stride - Math.sign(swing) * .64 * jump + Math.sign(swing) * .28 * jumpSettle;
-    if(kind==='playerVergeCleaver'&&swing===-2){
+    if(newCleaver&&swing===2){
+      angle=Math.PI/2+.70+(-.70-cut.pitch)*cut.weight+beat*.08-.28*cast+.58*jump+.22*flinch;
+    }else if(kind==='playerVergeCleaver'&&!newCleaver&&swing===-2){
       // Low one-handed carry plus the same accepted-only rising/outward/descending stage vocabulary.
       angle=1.15+beat*.08+(primaryStep===1?-1.65:primaryStep===2?-1.25:-.90)*strike-.28*cast+.58*jump+.22*flinch;
     } else if(kind==='playerCinderPike'&&swing===-2) angle+=(primaryStep===2?-.22:primaryStep===3?.22:0)*strike;
@@ -484,13 +491,13 @@ export function writeCloseViewModel(out, offset, actor) {
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
-    const cutYaw = toolMotion&&swing===-2?toolMotion.yaw*toolMotion.weight:playerLike && !fist && !chargingFist && swing === -2
+    const cutYaw = newCleaver&&swing===2?cut.yaw*cut.weight:toolMotion&&swing===-2?toolMotion.yaw*toolMotion.weight:playerLike && !fist && !chargingFist && swing === -2
       ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? primaryStep===2?-1.18:primaryStep===3?.45:1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
-    const pivotY = playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
+    const pivotY = newCleaver&&swing===2?.25:playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
-      const localY = axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
-      const normalY = axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
+      const localY = mirroredArm?-mesh[i+1]:axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
+      const normalY = mirroredArm?-mesh[i+4]:axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
       let forward = mesh[i] * c + localZ * s + px;
       let lateral = localY + coilSway;
       const u = forward * cc - (lateral - pivotY) * sc;
