@@ -3335,6 +3335,15 @@ export class Game {
     moveAxis(probe, dx, dy, this.map, width, true);
     return footprintHazard(this.map, width, probe.x, probe.y);
   }
+  actorContactPlatformSupport(body, x, y, ground) {
+    if (!body?.isPlayer) return null;
+    if (body.jumping && Number.isFinite(this.discAir))
+      return ground + this.discAir * LIFT_PER_LEVEL;
+    if (this.skyLevel > 0 && discAt(this.map, x + .5, y + .75, { level: this.skyLevel }))
+      return ground + this.skyLevel * LIFT_PER_LEVEL;
+    const time = Number(this.save.playSeconds) || 0, raft = platformUnder(this.map, x, y, time);
+    return raft ? ground + platformPos(raft, time).z * LIFT_PER_LEVEL : null;
+  }
   // The shared ordinary-displacement adapter also serves pulls, knockback and enemy lunges.
   // Specialized boat/mount/world-beast controllers retain their explicit movement paths.
   moveGrounded(entity, dx, dy, allowLethalTerrain = false, onStep = null, allowMarineTerrain = false) {

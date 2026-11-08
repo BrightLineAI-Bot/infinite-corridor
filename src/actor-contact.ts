@@ -64,8 +64,10 @@ export function actorContactSupport(game, body, x, y, width) {
   // retained launch support because the player's transient airElev is cleared after commit.
   const air = Number.isFinite(body?.airElev) ? body.airElev : game.skyAir;
   const scale = Number.isFinite(body?.airElevScale) ? body.airElevScale : game.skyAirScale || 1;
-  return game.map?.landscape && body?.isPlayer && body.jumping && Number.isFinite(air)
-    ? Math.max(ground, air * LIFT_PER_LEVEL * scale) : ground;
+  if (game.map?.landscape && body?.isPlayer && body.jumping && Number.isFinite(air))
+    return Math.max(ground, air * LIFT_PER_LEVEL * scale);
+  const platform = body?.isPlayer ? game.actorContactPlatformSupport?.(body, x, y, ground) : null;
+  return Number.isFinite(platform) ? platform : ground;
 }
 
 // A cache per Game, never a shared current-world context. Buffers, the candidate list and the

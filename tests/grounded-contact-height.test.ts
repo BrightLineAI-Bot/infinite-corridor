@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { ACTOR_BODY_HEIGHT, ACTOR_CONTACT, actorContactHeight, actorContactSupport, actorContactContext, ordinaryContactEnemy } from '../src/actor-contact.ts';
 import { createCombatant, enemyBodyRadius } from '../src/combat.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
-import { BRAWLER_GEAR, jumpLift } from '../src/game.ts';
+import { BRAWLER_GEAR, Game, jumpLift } from '../src/game.ts';
 import { liftAt, LIFT_PER_LEVEL, tileLiftScale } from '../src/landscape.ts';
+import { freshSave } from '../src/types.ts';
 // Mesh imports are offline calibration only; runtime contact imports combat + landscape.
 import { actorPresentation, actorModelKey } from '../src/actor-presentation.ts';
 import { writeCloseViewModel, MODEL_FLOATS } from '../src/close-view-models.ts';
@@ -122,6 +123,55 @@ test('support uses authoritative canopy and roof world scales, retained launch s
   assert.ok(q.clip() < 1, 'expired jump cannot retain old launch clearance');
   g.map.interiorTerrain = { version: 1, maxLevel: 5 }; t.elev = 2; t.slope = true; t.rampDir = 'east';
   assert.equal(actorContactSupport(g, g.player, 4.2, 5, g.map.width), liftAt(g.map, g.map.width, 4.2, 5));
+});
+
+test('Game supplies authoritative disc, disc-flight and occupied-raft support without blanket ghosting', () => {
+  const width = 12, g = new Game(freshSave(), 1000);
+  g.area = 'overworld';
+  g.map = { width, height: 12, landscape: { kind: 'plains' }, skyDiscs: [{ x: 4.7, y: 5.75, r: 1.15, level: 3 }],
+    tiles: Array.from({ length: width * width }, (_, i) => ({ x: i % width, y: Math.floor(i / width), kind: 'plain', blocked: false, elev: 0 })) };
+  Object.assign(g.player, { x: 4.2, y: 5, hp: 100 });
+  g.skyLevel = 3;
+  assert.equal(actorContactSupport(g, g.player, 4.2, 5, width), 3 * LIFT_PER_LEVEL);
+  assert.equal(actorContactSupport(g, g.player, 7, 5, width), 0, 'stale skyLevel grants nothing off its disc');
+  g.player.jumping = true; g.discAir = 4; g.skyLevel = 0;
+  assert.equal(actorContactSupport(g, g.player, 7, 5, width), 4 * LIFT_PER_LEVEL, 'disc launch persists over its gap');
+  g.player.jumping = false; g.discAir = null; g.map.skyDiscs = [];
+  g.map.tiles[5 * width + 4].chasm = true;
+  g.map.movers = [{ id: 'raised', pts: [{ x: 4, y: 5 }, { x: 4, y: 5 }], amp: 2 }];
+  assert.equal(actorContactSupport(g, g.player, 4, 5, width), 2 * LIFT_PER_LEVEL);
+  assert.equal(actorContactSupport(g, g.player, 7, 5, width), 0, 'raft height follows its current footprint');
+  g.map.movers[0].amp = -1.6;
+  assert.equal(actorContactSupport(g, g.player, 4, 5, width), -1.6 * LIFT_PER_LEVEL, 'sunken support remains signed');
+});
+
+test('actual disc and raised-raft updates clear a low foe both ways while ground and tall controls remain solid', () => {
+  const make = (kind = 'pallidCrawler') => {
+    const g = new Game(freshSave(), 1000), width = 32;
+    g.area = 'overworld';
+    g.map = { width, height: 32, objects: [], landscape: { kind: 'plains' }, skyDiscs: [{ x: 3.5, y: 5.75, r: 1.15, level: 3 }],
+      tiles: Array.from({ length: width * width }, (_, i) => ({ x: i % width, y: Math.floor(i / width), kind: 'plain', blocked: false, elev: 0 })) };
+    Object.assign(g.player, { x: 3, y: 5, hp: 100, invulnerableUntil: 1e9 });
+    const e = Object.assign(createCombatant(kind, 4, 5), { hitStun: 1e9 });
+    g.enemies = [e];
+    return { g, e };
+  };
+  const right = { state: { x: 1, y: 0 }, consume: () => false, held: () => false };
+  const move = (g, frames) => { for (let i = 0; i < frames; i++) g.update(.05, right, 1050 + i * 50); };
+  const disc = make(); disc.g.skyLevel = 3;
+  assert.equal(actorContactContext(disc.g, disc.e, -.45, 0).clip(disc.e.x, disc.e.y, -.45, 0), 1);
+  move(disc.g, 6);
+  const ground = make();
+  assert.ok(actorContactContext(ground.g, ground.e, -.45, 0).clip(ground.e.x, ground.e.y, -.45, 0) < 1);
+  move(ground.g, 6);
+  assert.ok(disc.g.player.x > ground.g.player.x + .3, 'disc rider walks freely above the crawler');
+  const tall = make('rootBrute'); tall.g.skyLevel = 3; move(tall.g, 6);
+  assert.ok(tall.g.player.x < disc.g.player.x - .2, 'raised player still overlaps a tall body');
+  const raft = make(); raft.g.map.skyDiscs = []; raft.g.player.x = 4; raft.e.x = 5;
+  raft.g.map.tiles[5 * 32 + 4].chasm = true;
+  raft.g.map.movers = [{ id: 'raised', pts: [{ x: 4, y: 5 }, { x: 4, y: 5 }], amp: 2 }];
+  move(raft.g, 4);
+  assert.ok(raft.g.player.x > 4.4, 'occupied raised raft clears the crawler');
 });
 
 test('Fists and Shadow Boxing cannot use a small platform support difference to pass through the body', () => {
