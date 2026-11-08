@@ -36,6 +36,27 @@ test('clone and orbit manual follow-ups have distinct variants while a newer att
   const record=orbit.player.castVisual;stampAttackVisual(orbit.player,'melee',240,{x:1,y:0});assert.equal(orbit.player.castVisual.cancelled,true);assert.equal(orbit.player.castVisual.spellKind,record.spellKind);assert.equal(orbit.player.castUntil,1460,'presentation cancellation cannot change the canonical cast clock');
 });
 
+test('Fire Burst latches the accepted fan centre and exact centre shell despite older shots and later aim changes',()=>{
+  const g=arena();g.projectiles.push({id:'older-unrelated',x:2,y:3,dx:0,dy:1,life:9});g.save.lastAim={x:0,y:-1};g.lastUpdateNow=1000;
+  assert.equal(g.castSpell('fire-burst'),true);const v=g.player.castVisual,shells=g.projectiles.filter(p=>p.fireBomb),centre=shells[Math.floor(shells.length/2)];
+  assert.deepEqual(v.aim,{x:0,y:-1});assert.deepEqual(v.origin,{x:centre.x,y:centre.y});assert.deepEqual(v.target,v.origin);assert.equal(v.sourceId,centre.id);assert.equal(centre.dx,0);assert.equal(centre.dy,-1);
+  g.save.lastAim={x:1,y:0};g.projectiles.unshift({id:'new-unrelated',x:30,y:30,dx:-1,dy:0,life:1});
+  assert.deepEqual(g.player.castVisual,v,'accepted source facts are immutable after aim and projectile-list changes');
+});
+
+test('Shadow Clone create, held west placement, release, and swap retain canonical accepted endpoints',()=>{
+  const g=arena();g.castAction='spell';g.movingNow=true;g.player.lastMoveVector={x:1,y:0};g.lastUpdateNow=1000;
+  assert.equal(g.castSpell('shadow-clone'),true);const origin={x:10.5,y:10.45};assert.deepEqual(g.player.castVisual.origin,origin);assert.ok(g.player.castVisual.target.x<origin.x);const sourceUntil=g.player.castVisual.sourceUntil;
+  g.tickCloneCharge(true,1500);const heldTarget={x:g.player.x+g.shadowClone.ox+.5,y:g.player.y+g.shadowClone.oy+.45};assert.deepEqual(g.player.castVisual.target,heldTarget);assert.deepEqual(g.player.castVisual.origin,origin);assert.equal(g.player.castVisual.sourceUntil,sourceUntil);assert.ok(g.player.castVisual.aim.x<-.999);
+  g.tickCloneCharge(false,1516);const settled={...g.player.castVisual.target};g.player.x+=1;g.save.lastAim={x:1,y:0};assert.deepEqual(g.player.castVisual.target,settled,'settled evidence cannot follow a moved player');
+  g.lastUpdateNow=1600;const swapOrigin={x:g.player.x+.5,y:g.player.y+.45},destination={x:g.player.x+g.shadowClone.ox+.5,y:g.player.y+g.shadowClone.oy+.45};assert.equal(g.castSpell('shadow-clone'),true);assert.equal(g.player.castVisual.variant,'swap');assert.deepEqual(g.player.castVisual.origin,swapOrigin);assert.deepEqual(g.player.castVisual.target,destination);assert.ok(g.player.castVisual.aim.x<-.999);
+});
+
+test('blocked clone swap is a refusal and Fire Burst metadata survives pause and JSON exactly',()=>{
+  const clone=arena();clone.lastUpdateNow=1000;assert.equal(clone.castSpell('shadow-clone'),true);const accepted=clone.player.castVisual,at={x:clone.player.x+clone.shadowClone.ox,y:clone.player.y+clone.shadowClone.oy};clone.map.tiles[Math.floor(at.y)*clone.map.width+Math.floor(at.x)].blocked=true;clone.lastUpdateNow=1100;assert.equal(clone.castSpell('shadow-clone'),false);assert.strictEqual(clone.player.castVisual,accepted);
+  const g=arena();g.save.lastAim={x:-1,y:0};g.lastUpdateNow=2000;assert.equal(g.castSpell('fire-burst'),true);g.player.castVisual.future={schema:15};const exact=JSON.parse(JSON.stringify(g.player.castVisual));g.setPaused(true,2010);const back=new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(2010)))),9000);assert.deepEqual(back.player.castVisual,exact);assert.equal(back.player.castUntil,9350);
+});
+
 test('all six accepted Aperture disciplines own their truthful manual gesture identity',()=>{
   for(const id of ['ember-form','quickening','veil-guard','force-channel','aerial-step','rift-step']){const g=arena();g.save.magicSkills.learned[id]=1;g.save.magicSkills.cooldowns[id]=0;g.lastUpdateNow=2000;assert.equal(g.activateApertureSkill(id),true,id);assert.equal(g.player.castVisual.spellKind,id);assert.equal(g.player.castVisual.variant,'activate');assert.equal(g.player.castVisual.profile,CAST_GESTURES[id]);assert.equal(g.player.castUntil,2000+ACTION_MOTION.castMs);}
 });

@@ -6408,14 +6408,14 @@ export class Game {
     if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelAttackPresentation(now);if(this.player.castVisual===priorVisual)this.recordCastVisual(id,before); }
     return result;
   }
-  recordCastVisual(spellKind,before={},variant='cast'){
-    const p=this.player;let origin={x:(before.x??p.x)+.5,y:(before.y??p.y)+.45},target=null,aim=null;
+  recordCastVisual(spellKind,before={},variant='cast',accepted=null){
+    const p=this.player;let origin=accepted?.origin||{x:(before.x??p.x)+.5,y:(before.y??p.y)+.45},target=accepted?.target||null,aim=accepted?.aim||null;
     const shot=this.projectiles[before.shots],fx=this.effects[before.effects];
-    if(shot)target={x:shot.x,y:shot.y};else if(fx)target={x:fx.x,y:fx.y};else if(spellKind==='orbit-volley'&&before.orbit&&this.orbit?.flight){origin={x:this.orbit.flight.x,y:this.orbit.flight.y};target={x:this.orbit.flight.tx,y:this.orbit.flight.ty};}else if(spellKind==='rift-step')target={x:p.x+.5,y:p.y+.45};
-    if(shot&&Math.hypot(shot.dx||0,shot.dy||0)>.001)aim={x:shot.dx,y:shot.dy};else if(target&&Math.hypot(target.x-origin.x,target.y-origin.y)>.001)aim={x:target.x-origin.x,y:target.y-origin.y};else aim=projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing);
-    if(spellKind==='shadow-clone')variant=before.clone?'swap':'create';else if(spellKind==='orbit-volley')variant=before.orbit?'launch':'gather';
+    if(!target){if(shot)target={x:shot.x,y:shot.y};else if(fx)target={x:fx.x,y:fx.y};else if(spellKind==='orbit-volley'&&before.orbit&&this.orbit?.flight){origin={x:this.orbit.flight.x,y:this.orbit.flight.y};target={x:this.orbit.flight.tx,y:this.orbit.flight.ty};}else if(spellKind==='rift-step')target={x:p.x+.5,y:p.y+.45};}
+    if(!aim){if(shot&&Math.hypot(shot.dx||0,shot.dy||0)>.001)aim={x:shot.dx,y:shot.dy};else if(target&&Math.hypot(target.x-origin.x,target.y-origin.y)>.001)aim={x:target.x-origin.x,y:target.y-origin.y};else aim=projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing);}
+    if(spellKind==='shadow-clone'&&variant==='cast')variant=before.clone?'swap':'create';else if(spellKind==='orbit-volley')variant=before.orbit?'launch':'gather';
     let profile=CAST_GESTURES[spellKind]||'neutral-cast';if(spellKind==='shadow-clone'&&variant==='swap')profile='dusk-swap';if(spellKind==='orbit-volley'&&variant==='launch')profile='orbit-launch';
-    return stampCastVisual(p,{spellKind,variant,profile,aim,origin,...(target?{target}:{})});
+    return stampCastVisual(p,{spellKind,variant,profile,aim,origin,...(target?{target}:{}),...(accepted?.sourceId?{sourceId:accepted.sourceId}:{}),...(Number.isFinite(accepted?.sourceUntil)?{sourceUntil:accepted.sourceUntil}:{})});
   }
   castSpellEffect(spellId = null) {
     if (this.cursed("spells")) return false; // release 737: NO SPELLS
@@ -6488,9 +6488,12 @@ export class Game {
     const d = foe ? projectileDirection(foe.x + .5 - cx, foe.y + .45 - cy, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), glyphs = this.glyphLoadout("spell", spell.id), F = FIRE_BURST;
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     const damage = Math.max(1, Math.round(this.spellPower(spell) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage)));
+    let centerShell=null;
     for (let i = 0; i < F.count; i++) { const a = (F.count > 1 ? i / (F.count - 1) - .5 : 0) * F.spread, c = Math.cos(a), sn = Math.sin(a);
       this.projectiles.push({ id: `fire-burst-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x: cx + d.x * .3, y: cy + d.y * .3, dx: d.x * c - d.y * sn, dy: d.x * sn + d.y * c, speed: F.speed, life: F.reach * glyphs.mods.range / F.speed, damage, damageType: "magic", path: "grenade", age: 0, hits: {}, blastRadius: spell.radius * glyphs.mods.radius, glyphHost: "spell", glyphSpell: spell.id, fireBomb: true }); }
+    centerShell=this.projectiles[this.projectiles.length-Math.ceil(F.count/2)];
     cds[key] = spell.cooldown * glyphs.mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    this.recordCastVisual(spell.id,{},'cast',{origin:{x:centerShell.x,y:centerShell.y},target:{x:centerShell.x,y:centerShell.y},aim:d,sourceId:centerShell.id});
     echoEvent(this, "spell", now); this.message = `${spell.name}!`;
     return true;
   }
@@ -7652,10 +7655,11 @@ export class Game {
   castShadowClone(spell, cds, key, now = this.lastUpdateNow || 0) {
     if (this.shadowCloneActive(now) && !this.shadowClone.boxing) { // release 503: a Shadow Boxing echo is replaced, not stepped into
       if (this.shadowClone.charging) this.tickCloneCharge(false, now); // release 417
-      const at = clonePosition(this.player, this.shadowClone), w = this.glyphWorld(now);
+      const origin={x:this.player.x+.5,y:this.player.y+.45},sourceUntil=this.shadowClone.until,at = clonePosition(this.player, this.shadowClone), w = this.glyphWorld(now);
       if (!w.canStand(at.x, at.y)) { this.shadowClone.blockedUntil = now + SHADOW_CLONE.blockedFor * 1000; this.message = "Blocked: you cannot stand where your shadow is."; return false; }
       (this.glyphVisuals ||= []).push({ kind: "arc", x: this.player.x + .5, y: this.player.y + .45, tx: at.x + .5, ty: at.y + .45, color: "#7a5fc0", life: .3, max: .3 });
       this.player.x = at.x; this.player.y = at.y; this.player.invulnerableUntil = Math.max(this.player.invulnerableUntil || 0, now + 150);
+      this.recordCastVisual(spell.id,{},'swap',{origin,target:{x:at.x+.5,y:at.y+.45},aim:{x:at.x+.5-origin.x,y:at.y+.45-origin.y},sourceUntil});
       this.shadowClone = null; this.cloneAim = false; this.message = "You step into your shadow."; this.sync(); return true;
     }
     if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
@@ -7663,6 +7667,7 @@ export class Game {
     this.shadowClone = { ox: o.x, oy: o.y, until: now + spell.lifetime * 1000 }; this.cloneAim = false;
     if (this.castAction) this.shadowClone.charging = { action: this.castAction, start: now, dir: { x: o.x / SHADOW_CLONE.near, y: o.y / SHADOW_CLONE.near } };
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown /* release 467 (Codex audit I002): Heavy and Swift count */ * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    {const origin={x:this.player.x+.5,y:this.player.y+.45},at=clonePosition(this.player,this.shadowClone);this.recordCastVisual(spell.id,{},'create',{origin,target:{x:at.x+.5,y:at.y+.45},aim:{x:at.x+.5-origin.x,y:at.y+.45-origin.y},sourceUntil:this.shadowClone.until});}
     echoEvent(this, "spell", now);
     this.message = this.shadowClone.charging ? "Hold to send your shadow farther; let go to set it." : "Your shadow stands beside you. Cast again to step into it.";
     return true;
@@ -7673,8 +7678,10 @@ export class Game {
     const c = this.shadowClone?.charging; if (!c) return;
     if (held) {
       if (this.movingNow && this.player.lastMoveVector) { const v = this.player.lastMoveVector, m = Math.hypot(v.x, v.y) || 1; c.dir = { x: -v.x / m, y: -v.y / m }; }
-      const d = chargeDistance((now - c.start) / 1000); this.shadowClone.ox = c.dir.x * d; this.shadowClone.oy = c.dir.y * d; return;
+      const d = chargeDistance((now - c.start) / 1000); this.shadowClone.ox = c.dir.x * d; this.shadowClone.oy = c.dir.y * d;
+      const v=this.player.castVisual;if(v?.spellKind==='shadow-clone'&&v.variant==='create'&&v.sourceUntil===this.shadowClone.until){const at=clonePosition(this.player,this.shadowClone),target={x:at.x+.5,y:at.y+.45},dx=target.x-v.origin.x,dy=target.y-v.origin.y,m=Math.hypot(dx,dy)||1;this.player.castVisual={...v,target,aim:{...v.aim,x:dx/m,y:dy/m}};}return;
     }
+    {const v=this.player.castVisual;if(v?.spellKind==='shadow-clone'&&v.variant==='create'&&v.sourceUntil===this.shadowClone.until){const at=clonePosition(this.player,this.shadowClone),target={x:at.x+.5,y:at.y+.45},dx=target.x-v.origin.x,dy=target.y-v.origin.y,m=Math.hypot(dx,dy)||1;this.player.castVisual={...v,target,aim:{...v.aim,x:dx/m,y:dy/m}};}}
     delete this.shadowClone.charging; this.shadowClone.until += now - c.start; this.message = "Your shadow settles there. Cast again to step into it.";
   }
   // A tap while the clone waits to be set places it there (up to SHADOW_CLONE.placeRange away). True when it took the tap.
