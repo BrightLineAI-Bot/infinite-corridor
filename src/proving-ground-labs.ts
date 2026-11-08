@@ -89,6 +89,9 @@ const COMBAT_ASSETS = [
   { id: "pike-blunder-caster", label: "Cinder Pike + Blunderbuss · Mire Apostle", primary: "Cinder Pike", tool: "Blunderbuss", spell: "stillpoint", foe: "mireApostle" },
   { id: "blade-arc-wave-wisp", label: "Salvage Blade + Blunderbuss/Arc Wave · Cinder Wisp", primary: "Salvage Blade", tool: "Blunderbuss", spell: "fire-burst", foe: "cinderWisp", passive: "arc-wave" },
   { id: "fists-spindle-flying", label: "Iron Fists + Lumen Spindle · Veil Moth", primary: "Iron Fists", tool: "Lumen Spindle", spell: "orbit-volley", foe: "veilMoth" },
+  { id: "pike-echo-inspection", label: "Quiet Echo inspection · Cinder Pike", primary: "Cinder Pike", tool: "Lumen Spindle", spell: "cinder-dart", foe: "ashling", echoPrimary: true },
+  { id: "cleaver-echo-inspection", label: "Quiet Echo inspection · Verge Cleaver", primary: "Verge Cleaver", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", echoPrimary: true },
+  { id: "salvage-echo-inspection", label: "Quiet Echo inspection · Salvage Blade", primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", echoPrimary: true },
 ];
 const CREATURE_ASSET_KINDS = ["ashling","ashenHound","rootBrute","coilStalker","hollowMarshal","glassMite","sparkWarden","cinderWisp","veilMoth","voidSentinel","weepingSaint","hangedChoir","graveLantern","pallidCrawler","mirrorShade","amalgam","gnawingMaw","cinderSeraph","lumenWraith","veilSpinner","riftLynx","sunderjaw","thunderhorn","siegeBeetle","gloomwisp","gloomgorge","latticeHunter","archiveBehemoth","riftGrazer"];
 const FOUNDRY_BODIES = ["quadruped","floating","segmented","tentacled","geometric","biomechanical"];
@@ -338,6 +341,7 @@ function combatAssetFixture(scenario, seed, now) {
   const spec = COMBAT_ASSETS.find((q) => q.id === scenario) || COMBAT_ASSETS[0], fixture = closeViewFixture("grand-hall", seed, now), { game, save } = fixture, map = game.map;
   const placement=assetLane(game);
   save.equipment.primary = combatAssetGear("primary", spec.primary);
+  if (spec.echoPrimary) { save.equipment.primary.glyphs[0] = "echo"; save.glyphCodex.glyphs.echo = true; }
   save.equipment.secondary = combatAssetGear("secondary", spec.tool);
   save.perception.aperture = APERTURE_BANDS[13].threshold;
   save.farArray.listeners = Math.max(1, Number(save.farArray.listeners) || 0);
@@ -349,8 +353,10 @@ function combatAssetFixture(scenario, seed, now) {
   Object.assign(game.player, { x: placement.player.x, y: placement.player.y, facing: placement.dx < 0 ? "left" : placement.dx > 0 ? "right" : placement.dy < 0 ? "up" : "down" });
   save.lastAim = { x: placement.dx, y: placement.dy };
   game.enemies = [game.createEnemyFromSpawn({ id: `proving:combat-assets:${spec.id}`, kind: spec.foe, x: placement.foe.x, y: placement.foe.y }, "dungeon")];
+  if (spec.echoPrimary) Object.assign(game.enemies[0], { hp: 5000, maxHp: 5000, hitStun: 1e9 });
   game.projectiles = []; game.effects = []; game.eliteHazards = [];
   game.message = `${spec.label}. Attack, Tool, Spell A, and Spell B use production controls; Pause freezes the inspection.`;
+  if (spec.echoPrimary) game.message = `${spec.label}. Attack uses the real Echo glyph and its 250 ms repeat. The durable practice foe is stunned; movement, attacks and Pause remain production controls.`;
   game.sync();
   const tool = rangedWeapon(save.equipment.secondary), spell = SPELLS[spec.spell];
   const form = tool?.brawlerTool === "great-sweep" && fieldOn(save, "nanoknives") ? "mirage-of-blades" : tool?.brawlerTool === "hammerfall" && fieldOn(save, "corridor-golem") ? "hammerfall+corridor-golem" : tool?.name === "Blunderbuss" && fieldOn(save, "arc-wave") ? "blunderbuss+arc-wave" : tool?.brawlerTool || (tool?.orrery ? "aether-orrery" : tool?.path || null);

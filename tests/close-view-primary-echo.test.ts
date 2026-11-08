@@ -4,6 +4,21 @@ import { Game, PRIMARY_ECHO_VISUAL } from '../src/game.ts';
 import { freshSave } from '../src/types.ts';
 import { normalizeSockets } from '../src/glyphs.ts';
 import { render } from '../src/renderer.ts';
+import { createLabFixture } from '../src/proving-ground-labs.ts';
+
+test('quiet Echo inspection fixtures use the real glyph delay and keep the normal combat scenarios unchanged',()=>{
+  for(const scenario of ['pike-echo-inspection','cleaver-echo-inspection']){
+    const {game:g}=createLabFixture({lab:'combat-assets',scenario,now:1000});
+    assert.equal(g.save.equipment.primary.glyphs[0],'echo');assert.equal(g.enemies[0].hitStun,1e9);
+    const acceptedAt=1000;g.primaryAttack(acceptedAt,{x:1,y:0});const accepted=structuredClone(g.player.attackVisual);
+    assert.equal(g.glyphTimers.length,1);assert.equal(g.glyphTimers[0].at,1250);
+    g.tickGlyphs(.001,1249);assert.equal(g.glyphVisuals.some(v=>v.kind==='primaryEcho'),false);
+    g.tickGlyphs(.001,1250);assert.equal(g.glyphVisuals.filter(v=>v.kind==='primaryEcho').length,1);assert.deepEqual(g.player.attackVisual,accepted);
+    const hp=g.player.hp;g.update(.016,{state:{x:0,y:0},consume:()=>false,held:()=>false},1266);assert.equal(g.player.hp,hp);
+  }
+  const normal=createLabFixture({lab:'combat-assets',scenario:'pike-spindle-hound',now:1000}).game;
+  assert.equal(normal.save.equipment.primary.glyphs.includes('echo'),false);assert.ok(!(normal.enemies[0].hitStun>1000));assert.ok(normal.enemies[0].maxHp<5000);
+});
 
 const item=kind=>normalizeSockets(kind==='cinder-pike'
   ? {id:'primary-cinder-pike',name:'Cinder Pike',slot:'primary',power:5,property:'reach',tier:'rare',affixes:[],glyphs:['echo',null]}
