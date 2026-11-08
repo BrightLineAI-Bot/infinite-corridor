@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { Game, updateEnemyAI } from '../src/game.ts';
 import { freshSave } from '../src/types.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
@@ -150,6 +151,10 @@ test('actual GPU frames submit bounded raised Echo ribbons without a floor dupli
   assert.equal(verts.length, 84, 'actual + differing immutable memory share the existing additive kind-11 batch');
   assert.ok(verts.every(v => Number.isFinite(v[0]) && Number.isFinite(v[1]) && v[2] >= .72 && v[2] <= 2 * .34 + .97));
   assert.ok(verts.some(v => v[7] === 0xc9a7ff) && verts.some(v => v[7] === 0xd8c8ff));
+  for (const rgb of [0xc9a7ff, 0xd8c8ff]) {
+    assert.equal(new Float32Array([rgb])[0], rgb, `packed RGB ${rgb.toString(16)} stays an exact vertex float`);
+    assert.equal(Math.fround(Math.fround(rgb) + 0.5), rgb + 1, 'the removed float rounding step corrupts an adversarial low byte');
+  }
   assert.ok(verts.every(v => v[8] === 1), 'ribbons use trail geometry, not a body/model replay or floor stamp');
   assert.ok(verts.some(v => Math.abs(v[0] - actual.x) > 1.5), 'world positions follow the authoritative delayed arc');
   assert.deepEqual(game.glyphVisuals[0].memory, memory, 'rendering does not mutate accepted memory metadata');
@@ -165,6 +170,16 @@ test('actual GPU frames submit bounded raised Echo ribbons without a floor dupli
   game.paused = false; game.glyphVisuals = [{ kind: 'primaryEcho', life: 0, max: .28, actual }, { kind: 'primaryEcho', life: .2, max: .28, actual: { ...actual, dx: NaN } }, { kind: 'primaryEcho', life: .2, max: .28, actual: { ...actual, shape: 'future-shape' } }, { kind: 'futureEcho', life: 1, max: 1, actual }];
   render(screen, game, 390, 844, 101132); assert.equal(closeViewGLStats.echoRibbonPaths, 0); assert.equal(closeViewGLStats.echoRibbonVertices, 0, 'expired, malformed and unknown records skip within the same bound');
 }));
+
+test('kind-11 packed RGB crosses the production decal shader as a flat highp uint', () => {
+  const source = readFileSync(new URL('../src/close-view-gl.ts', import.meta.url), 'utf8');
+  assert.match(source, /flat out highp uint v_rgb;/);
+  assert.match(source, /a_meta\.x > 10\.5 && a_meta\.x < 11\.5 \? uint\(a_meta\.z\) : 0u/);
+  assert.match(source, /flat in highp uint v_rgb;/);
+  assert.match(source, /uint rgb = v_rgb;/);
+  assert.doesNotMatch(source, /uint\(floor\(v_meta\.z \+ 0\.5\)\)/);
+  assert.equal(DECAL_FLOATS, 9, 'the existing nine-float production vertex layout is unchanged');
+});
 
 test('actual Salvage and future-fallback delayed cone Echoes enter the raised GL owner once',()=>withGPU(({screen})=>{
   const items=[

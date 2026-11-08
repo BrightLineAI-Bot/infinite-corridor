@@ -2854,6 +2854,18 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 832: exact GPU decal colors
+
+**CODE:** Colored decals convert their exact 24-bit packed attribute to an unsigned integer in the vertex shader, then carry it as a matching flat high-precision integer into the fragment shader. This removes the floating-point half-unit addition and interpolation that turned C9A7FF/D8C8FF violet into C9A800/D8C900 yellow. Regression checks cover submitted Float32 values, the old corruption and the shader interface. GLSL ES 3.00 defines flat integer transport: https://registry.khronos.org/OpenGL/specs/es/3.0/GLSL_ES_Specification_3.00.pdf.
+
+**BOUNDARY:** The nine-float vertex layout, vertex/actor limits, existing render passes, alpha/fog/masks, non-RGB decal paths and canonical combat remain unchanged. No schema, generator, dependencies or workflow change. r830 and r831 remain unpublished independently; the exact corrected candidate still requires full since-live review, CI, Preview and hosted violet verification.
+
+## Release 831: stationary Echo inspection targets
+
+**CODE:** The three explicit Echo fixtures use a practice passive behavior that clears offensive state after ordinary hit-feedback and stagger-governor decay, then performs no AI movement or attack. Real primary/Echo damage, targeting, recoil, durability and hall geometry remain intact. Regressions cover all three weapons with movement, hits, sixty active seconds, pause, entity JSON and reset; ordinary enemy and existing passive controls remain covered.
+
+**BOUNDARY:** This repairs a hosted r830 blocker: oversized stun is intentionally cleared by the anti-stunlock governor. Only these three scratch fixtures produce the new behavior. The original eleven combat scenarios, production foes, governor thresholds, damage, cooldowns, schema14, old pins, budgets, dependencies and workflows remain unchanged. Publication still requires exact review, CI, Preview and hosted acceptance.
+
 ## Release 830: raised primary Echo afterimages and safe GPU fallback
 
 **CODE:** Newly returned canonical Echo strikes produce depth-tested violet ribbons from their actual due-time origin/profile. A faint immutable original path appears only when it differs; reduced motion omits that memory. Pike thrusts, Cleaver arcs and Salvage/future-primary cones share the bounded path builder. Six cues lasting .28 seconds use at most 504 extra vertices in the existing additive decal batch. Three quiet Combat Asset Lab scenarios use real Echo-equipped weapons and durable stunned practice targets. Critical GPU preflight, failed-frame propagation and cache invalidation restore ordinary drawing instead of copying partial frames or losing masked effects.
