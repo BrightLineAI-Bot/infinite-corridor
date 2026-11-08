@@ -1957,11 +1957,11 @@ export function closeViewPlayerAction(g, now) {
   if (!player) return { active: false, legacy: false, record: null, profile: null, amount: 0, aim: null };
   const hasRecord = player.attackVisual != null;
   const record = hasRecord ? normalizeAttackVisual(player.attackVisual) : null;
-  const cancelled = record?.presentationCancelled === true;
-  const active = !!record && !cancelled && player.attackUntil > now;
+  const until=record?.profile==='fist'&&Number.isFinite(player.fistVisualUntil)?player.fistVisualUntil:player.attackUntil,cancelled = record?.presentationCancelled === true;
+  const active = !!record && !cancelled && until > now;
   const legacy = !hasRecord && !cancelled && player.attackUntil > now;
-  const amount = active ? 1 - Math.min(1, Math.max(0, player.attackUntil - now) / record.durationMs) : 0;
-  return { active, legacy, record, profile: active ? record.profile : null, amount, aim: active ? record.aim || null : null };
+  const amount = active ? 1 - Math.min(1, Math.max(0, until - now) / record.durationMs) : 0;
+  return { active, legacy, record, until, profile: active ? record.profile : null, amount, aim: active ? record.aim || null : null };
 }
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
@@ -2043,7 +2043,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     let amount = 0;
     if (winding) amount = monsterAction?.windupAmount ?? Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
     if (attack) {
-      if (visualAttack) amount = poseTime === now ? playerAction.amount : 1 - Math.min(1, (player.attackUntil - poseTime) / visualRecord.durationMs);
+      if (visualAttack) amount = poseTime === now ? playerAction.amount : 1 - Math.min(1, (playerAction.until - poseTime) / visualRecord.durationMs);
       else if (monsterAction?.amount != null) amount = monsterAction.amount;
       else {
         const duration = tool ? MODEL_TIMING.toolMs : who === player ? ACTION_MOTION.meleeMs : MODEL_TIMING.attackMs;
