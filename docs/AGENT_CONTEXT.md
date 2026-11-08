@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Close View checkpoint — 2026-11-08
+
+Verified production is `r826-9a7a39cb18a3`, commit `9a7a39cb18a3ef939a328be3afe645f48ce6b5ae`, tree `d47927068abd08fb6bc8c6c81a5cb1255c2b3064`. Publish42454899297, gh-pages identity and actual Options → System match; no recent errors. Fresh Astra full/delta review, CI, Preview and hosted acceptance passed. Imported adult normal Iron Fists is delivered; primary carry/three-stage combos are next (r827). Other prepared passes remain unnumbered in the ordered manifest. The owner now approves any regression tests required and authorized continued focused publication while away; all project review/CI/Preview/live-verification gates still apply. Preserve old assertions, generation/save compatibility and stopped transport boundaries.
+
 ## Close View delivery and independent passes — 2026-11-07
 
 Read [the pass manifest](close-view-pass-manifest.md) and [release log](RELEASE_LOG.md) for current release identities, completed scope, evidence and limits. Releases 806–810 delivered action animation, versioned spacious interiors/elevation/drone traversal, control feel and the hosted GPU repair. Release 811 opens new v4 stair arrivals and quiets traversal labs; it is published and verified. Release 812 preserves valid nested drone metadata while retaining runtime/identity validation, and clarifies lab movement/look help; it is published and verified as `r812-1f4b36dd0279` (Publish run `42394194802`; live identity and Options → System match). Independent item/tool and monster passes found no additional actionable defect. Physical-phone FPS and hardware multi-touch were not measured. This paragraph grants no deployment authority; follow current AGENTS.md and re-read live identity before publishing.
