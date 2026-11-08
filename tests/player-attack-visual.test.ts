@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { createLabFixture, scenariosForLab } from '../src/proving-ground-labs.ts';
-import { normalizeAttackVisual, stampAttackVisual } from '../src/action-motion.ts';
+import { attackVisualDeadline, normalizeAttackVisual, stampAttackVisual } from '../src/action-motion.ts';
 import { closeViewPlayerAction } from '../src/close-view.ts';
 import { orreryPress, tickOrrery } from '../src/tool-forms.ts';
 import { snapshotSave, splitSnapshot, assembleSave, validateJourney } from '../src/persistence.ts';
@@ -68,7 +68,7 @@ test('a newer accepted cast or jump cancels only the older fist presentation',()
 test('accepted tool producers replace stale sword presentation while keeping real melee and targeting state', () => {
   const cases = [
     ['blade-spark-ashling', 'emitter', 180],
-    ['blade-hammerfall-brute', 'hammer', 240],
+    ['blade-hammerfall-brute', 'hammer', 570],
     ['cleaver-sweep-marshal', 'sweep', 840],
     ['cleaver-mirage-stalker', 'mirage', 200],
     ['blade-orrery-sentinel', 'orrery-tap', 160],
@@ -91,7 +91,7 @@ test('accepted tool producers replace stale sword presentation while keeping rea
     assert.equal(game.fireSecondary(1010, { x: 0, y: -1 }), true, profile);
     assert.equal(game.player.attackVisual.profile, profile);
     assert.equal(game.player.attackVisual.durationMs, duration);
-    assert.equal(game.player.attackUntil, 1010 + (profile==='sweep'?240:duration));
+    assert.equal(game.player.attackUntil, 1010 + ((profile === 'hammer' || profile === 'sweep') ? 240 : duration));
     assert.equal(game.player.actionVisualUntil, 1010 + duration);
     if (profile !== 'emitter') {
       assert.equal(game.player.meleeUntil, meleeUntil, 'the enemy playerSwinging observation remains unchanged');
@@ -162,16 +162,16 @@ test('accepted and combat clocks both survive pause and the real split-save roun
   game.setPaused(true, 1050);
   const pausedSave = roundTrip(game, 90000);
   assert.equal(pausedSave.session.playerRuntime.attackMotion, 200);
-  assert.equal(pausedSave.session.playerRuntime.actionVisualMotion, 200);
+  assert.equal(pausedSave.session.playerRuntime.actionVisualMotion, 570);
   assert.deepEqual(pausedSave.session.playerRuntime.attackVisual, visual);
   assert.deepEqual(pausedSave.session.playerRuntime.meleeStrike, melee);
   const resumed = new Game(pausedSave, 200000);
   assert.equal(resumed.player.attackUntil - resumed.pauseStarted, 200);
-  assert.equal(resumed.player.actionVisualUntil - resumed.pauseStarted, 200);
+  assert.equal(resumed.player.actionVisualUntil - resumed.pauseStarted, 570);
   assert.deepEqual(resumed.player.attackVisual, visual);
   resumed.setPaused(false, 260000);
   assert.equal(resumed.player.attackUntil - 260000, 200);
-  assert.equal(resumed.player.actionVisualUntil - 260000, 200);
+  assert.equal(resumed.player.actionVisualUntil - 260000, 570);
   assert.deepEqual(resumed.player.attackVisual, visual);
   const death = new Game(freshSave(), 0); death.enemies = [];
   death.primaryAttack(1000); death.player.hp = 0; death.update(.05, idle, 1010);
@@ -194,4 +194,17 @@ test('Hammerfall latches resolved target direction and fists stamp their actual 
   assert.equal(fists.fistPunch(1, 0, 1000, { x: .6, y: .8 }), true);
   assert.equal(fists.player.attackVisual.profile, 'fist');
   assert.deepEqual(fists.player.attackVisual.aim, { x: .6, y: .8 });
+});
+
+test('Hammerfall presentation follows only its original pulse and legacy records keep their old clock', () => {
+  const record={profile:'hammer',durationMs:570,hammerEffectId:'tool-7',hammerDelayMs:320,hammerRecoveryMs:250};
+  const player={attackVisual:record,actionVisualUntil:9999,attackUntil:1240};
+  const original={id:'tool-7',delay:.32,life:.25,pulseIndex:0},echo={id:'tool-7-echo',delay:.54,life:.25,pulseIndex:0};
+  assert.equal(attackVisualDeadline(player,record,{effects:[original,echo],now:1000}),1570);
+  original.delay=.08;assert.equal(attackVisualDeadline(player,record,{effects:[original,echo],now:1240}),1570);
+  original.delay=-.01;assert.ok(attackVisualDeadline(player,record,{effects:[original,echo],now:1320})>1570-1e-3,'last pre-pulse sample stays before contact');
+  original.pulseIndex=1;original.life=.25;assert.equal(attackVisualDeadline(player,record,{effects:[original,echo],now:1320}),1570);
+  original.life=.17;assert.equal(attackVisualDeadline(player,record,{effects:[original,echo],now:1400}),1570);
+  assert.equal(attackVisualDeadline(player,record,{effects:[echo],now:1400}),1400,'missing original ends the gesture even when Echo remains');
+  assert.equal(attackVisualDeadline({actionVisualUntil:1300},{profile:'hammer',durationMs:240}),1300);
 });

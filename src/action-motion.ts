@@ -107,6 +107,13 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (!Number.isFinite(fistCharge) || fistCharge < 0 || fistCharge > 1) return null;
     copy.fistCharge = fistCharge;
   }
+  if (raw.hammerEffectId != null) {
+    if (typeof raw.hammerEffectId !== "string" || !/^[a-z0-9-]{1,64}$/.test(raw.hammerEffectId)) return null;
+    copy.hammerEffectId = raw.hammerEffectId;
+    const delay = Number(raw.hammerDelayMs), recovery = Number(raw.hammerRecoveryMs);
+    if (!Number.isFinite(delay) || delay <= 0 || delay > durationMs || !Number.isFinite(recovery) || recovery <= 0 || delay + recovery !== durationMs) return null;
+    copy.hammerDelayMs = delay; copy.hammerRecoveryMs = recovery;
+  } else if (raw.hammerDelayMs != null || raw.hammerRecoveryMs != null) return null;
   if (raw.presentationCancelled != null) {
     if (typeof raw.presentationCancelled !== "boolean") return null;
     copy.presentationCancelled = raw.presentationCancelled;
@@ -122,7 +129,18 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
 
 // Accepted presentation is independent of combat clocks (which delayed Echo hits still update).
 // Published Fists and the earlier primary candidate retain their optional legacy clocks.
-export function attackVisualDeadline(player, record = player?.attackVisual) {
+export function attackVisualDeadline(player, record = player?.attackVisual, context = null) {
+  if (record?.hammerEffectId && context && Number.isFinite(context.now) && Array.isArray(context.effects)) {
+    const effect = context.effects.find((candidate) => candidate?.id === record.hammerEffectId);
+    if (!effect) return context.now;
+    const delayMs = record.hammerDelayMs, recoveryMs = record.hammerRecoveryMs;
+    let elapsed;
+    if (effect.delay > 0) elapsed = delayMs - Math.min(delayMs, effect.delay * 1000);
+    else if (!(effect.pulseIndex > 0)) elapsed = Math.max(0, delayMs - .001);
+    else elapsed = delayMs + Math.max(0, recoveryMs - Math.max(0, effect.life) * 1000);
+    elapsed = Math.max(0, Math.min(record.durationMs, elapsed));
+    return context.now + record.durationMs - elapsed;
+  }
   if (Number.isFinite(player?.actionVisualUntil)) return player.actionVisualUntil;
   if (record?.profile === 'fist' && Number.isFinite(player?.fistVisualUntil)) return player.fistVisualUntil;
   if (record?.primaryStep && Number.isFinite(player?.primaryVisualUntil)) return player.primaryVisualUntil;
