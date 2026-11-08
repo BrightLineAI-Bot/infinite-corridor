@@ -54,6 +54,32 @@ test('actual outer entrance chooses a useful forward view with safe lateral rig 
   assert.equal(JSON.stringify(g.map.tiles), tiles); assert.equal(JSON.stringify(g.save), save);
 });
 
+test('guardian-safe settled arrival uses an already-probed full-boom entry heading', () => {
+  const g = fixture(), tiles = JSON.stringify(g.map.tiles), save = JSON.stringify(g.save);
+  g.settleArrival();
+  assert.deepEqual([g.player.x, g.player.y, g.player.facing], [25, 4, 'down']);
+  CV.resetCloseViewCamera();
+  const first = frame(g); safe(g);
+  assert.ok(CV.closeViewStats.rigProbes <= 41, 'fallback adds no entry probes');
+  assert.ok(Math.abs(first.yaw - Math.PI / 2) < 1e-8, 'equivalent safe headings retain the arrival facing');
+  const settled = frame(g, 300); safe(g);
+  assert.ok(settled.distance > 2.6, `useful safe boom: ${settled.distance}`);
+  for (const [width, height] of [[1280, 720], [390, 844]]) {
+    frame(g, 1, width, height); const p = g.player, z = interiorSurfaceHeight(g.map, p.x + .5, p.y + .75);
+    const foot = CV.closeViewProject(p.x + .5, p.y + .82, z), head = CV.closeViewProject(p.x + .5, p.y + .82, z + CV.CLOSE_VIEW.camera.framing.bodyHeight);
+    for (const q of [foot, head]) { assert.ok(q && q.sx >= 0 && q.sx <= width && q.sy >= 0 && q.sy <= height, `${width}x${height}: body endpoint in frame`); }
+  }
+  assert.equal(JSON.stringify(g.map.tiles), tiles); assert.equal(JSON.stringify(g.save), save, 'camera selection does not mutate save state');
+});
+
+test('entry keeps the honest compressed facing when no evaluated heading reaches the safety floor', () => {
+  const g = fixture(); g.map.width = 1; g.map.height = 1; g.map.tiles = [{ x: 0, y: 0, blocked: false, kind: 'floor', elev: 0 }]; Object.assign(g.player, { x: 0, y: 0, facing: 'left' });
+  CV.resetCloseViewCamera(); const first = frame(g); safe(g); const settled = frame(g, 300); safe(g);
+  assert.ok(Math.abs(first.yaw - Math.PI) < 1e-8, 'original arrival facing remains the fallback');
+  assert.ok(settled.distance < CV.CLOSE_VIEW.camera.minDistance, `impossible clearance stays honestly compressed: ${settled.distance}`);
+  assert.ok(CV.closeViewStats.rigProbes <= 41, 'no extra fallback probes');
+});
+
 test('bounded probes and persistent sides settle at actual outer, cellar, hive and arcology entries', () => {
   for (const scenario of ['outer', 'cellar', 'hive', 'arcology']) for (const preset of ['standard', 'close', 'wide']) {
     const g = fixture(scenario, preset), tiles = JSON.stringify(g.map.tiles);

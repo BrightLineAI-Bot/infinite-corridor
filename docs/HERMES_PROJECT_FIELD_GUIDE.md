@@ -2854,6 +2854,12 @@ die".
 - Bounded: one building a section, at most 260 spots for each footprint and 6 rejected layouts; floors are at most 28×22.
 - Tests: `tests/great-buildings.test.ts`. `tests/great-keeps.test.ts` and `tests/arcologies.test.ts` now pin their sections as
   first seen in 683 / 685.
+## Release 828: readable settled-corner entry framing
+
+**CODE:** Entry scoring retains its existing best forward view unless that winner has less than the existing one-tile minimum boom. In that case it selects the highest-scoring already-evaluated safe heading with enough reach, preferring arrival facing on equivalent scores. The reproduced Pentagon settled arrival at (25,4) gains a useful body view; raw entry at (25,11) retains its 1.10-tile view. This runs only when initializing the camera.
+
+**BOUNDARY:** No extra camera probes, ordinary-frame rescoring, manual-orbit/lock change, field-of-view change, wall transparency or movement/arrival/generation change. Some corner alternatives face nearby walls while revealing surrounding side floor; hosted review must judge that tradeoff. Schema 14, old pins, rendering budgets and Proving Ground isolation remain unchanged. Source checks do not establish hosted or phone performance.
+
 ## Release 827: primary carry, three-stage motion and accepted presentation clocks
 
 **CODE:** The rusty gladius-like Verge Cleaver carries low in one hand with locomotion bob and three accepted cuts. The Cinder Pike retains a two-handed grip and three distinct accepted thrusts. Optional schema-14 primary stage metadata survives switching and exact resume. A shared accepted-action presentation deadline separates all tool/primary visuals from the canonical clock temporarily masked by production rendering; queued Echo cannot rewind newer actions, and successful casting/jumping cancels older presentation. Published fist-clock compatibility remains.
