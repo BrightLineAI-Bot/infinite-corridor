@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { Game, BRAWLER_GEAR } from '../src/game.ts';
+import { Game, BRAWLER_GEAR, updateEffects } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { normalizeAttackVisual, normalizePrimaryCombo, stampAttackVisual } from '../src/action-motion.ts';
 import { ORRERY } from '../src/tool-forms.ts';
@@ -38,13 +38,14 @@ function queuedTool(kind) {
   if(kind==='orrery-tap')g.save.equipment.secondary={...ORRERY.item};
   else if(kind!=='emitter')g.save.equipment.secondary={...BRAWLER_GEAR.find(q=>q.item.name===(kind==='hammer'?'Hammerfall':'Great Sweep')).item};
   const at=kind==='emitter'?100240:queued.at-80;
+  g.save.closeView=false; // Explicit legacy immediate clock/Echo compatibility; delayed Close View Echo ownership has dedicated coverage.
   assert.equal(g.fireSecondary(at,{x:1,y:0}),true,'real cooldown permits the input');
   assert.equal(g.player.attackVisual.profile,kind);
   return {g,foe,queued,at};
 }
 
 test('real queued primary Echo preserves every accepted tool clock, damage, exact expiry and paused JSON resume',()=>{
-  for(const kind of ['sweep','hammer','orrery-tap','emitter']){
+  for(const kind of ['sweep','orrery-tap','emitter']){
     const {g,foe,queued,at}=queuedTool(kind),p=g.player;
     p.attackVisual.future={kept:true};p.attackVisual.aim={x:1,y:0,futureAim:7};g.save.session.playerRuntime.futureRuntime={kept:8};
     const record=clone(p.attackVisual),until=p.actionVisualUntil,cooldown=p.attackReadyAt,hp=foe.hp,before=closeViewPlayerAction(g,queued.at);
@@ -87,7 +88,7 @@ test('shared accepted clocks preserve legacy Fists/primary fallbacks and normali
 
 test('successful newer casts, Aperture skills and jumps cancel tools; refusals and expired actions do not',()=>{
   for(const kind of ['sweep','hammer','orrery-tap','emitter'])for(const gesture of ['cast','aperture','jump']){
-    const {g,at}=queuedTool(kind),now=at+1,record=clone(g.player.attackVisual),until=g.player.attackUntil;
+    const {g,at}=queuedTool(kind),now=at+1,record=clone(g.player.attackVisual),until=g.player.attackUntil,visualUntil=g.player.actionVisualUntil;
     g.enemies=[];g.lastUpdateNow=now;
     if(gesture==='cast'){
       const key='spell:'+g.save.equippedSpell;g.save.magicSkills.cooldowns[key]=1;assert.equal(g.castSpell(g.save.equippedSpell),false);assert.deepEqual(g.player.attackVisual,record);
@@ -99,7 +100,7 @@ test('successful newer casts, Aperture skills and jumps cancel tools; refusals a
       g.jumpUntil=now+100;g.update(0,{...calm,consume:k=>k==='jump'},now);assert.deepEqual(g.player.attackVisual,record,'already airborne refuses a new ordinary jump');
       g.jumpUntil=0;g.update(0,{...calm,consume:k=>k==='jump'},now);assert.ok(g.jumpUntil>now);
     }
-    assert.equal(g.player.attackUntil,until);assert.equal(g.player.actionVisualUntil,until);assert.deepEqual(g.player.attackVisual,{...record,presentationCancelled:true});assert.equal(closeViewPlayerAction(g,now).active,false);
+    assert.equal(g.player.attackUntil,until);assert.equal(g.player.actionVisualUntil,visualUntil);assert.deepEqual(g.player.attackVisual,{...record,presentationCancelled:true});assert.equal(closeViewPlayerAction(g,now).active,false);
     const next=Math.max(now+1,g.player.attackReadyAt);g.primaryAttack(next);
     assert.equal(g.player.attackVisual.profile,'melee');assert.equal(g.player.attackVisual.presentationCancelled,undefined);assert.equal(closeViewPlayerAction(g,next).active,true);
     if(gesture!=='jump')assert.ok(g.player.castUntil>next,'normal primary cooldown ends before the older cast presentation');
@@ -226,7 +227,10 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
   try{
     globalThis.window={};globalThis.createImageBitmap=async()=>({width:1024,height:1024});globalThis.fetch=async url=>{const u=new URL(url);assert.equal(u.protocol,'file:');const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};await loadCloseViewHero();
     for(const kind of ['sweep','hammer','orrery-tap','emitter']){
-      const {g,queued,foe}=queuedTool(kind);resetCloseViewCamera();
+      const {g,queued,foe}=queuedTool(kind);g.save.closeView=true;resetCloseViewCamera();
+      // Hammerfall's exact entry now equals carry; advance its real effect into preparation
+      // before retaining the existing positive action-versus-idle renderer assertion.
+      if(kind==='hammer')g.effects=updateEffects(g.effects,g.enemies,.08);
       render(screen,g,390,844,queued.at);const accepted=gl.uploads.at(-1),held=gl.modelData,record=clone(g.player.attackVisual),clock=g.player.actionVisualUntil,hp=foe.hp;
       assert.equal(accepted.length,3602*6,'production path uploads the imported adult body');
       baseRender(screen,g,390,844,queued.at);sameGeometry(gl.uploads.at(-1),accepted,'masking combat time cannot suppress accepted '+kind);sameGeometry(gl.modelData,held,'masking combat time retains accepted tool gear');
