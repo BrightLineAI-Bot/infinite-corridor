@@ -1,6 +1,6 @@
 # Close View combat direction — delivery and next passes
 
-Owner notes recorded 2026-11-07. This supplements the build manifest; it preserves delivered character/camera work or grant deployment authority.
+Owner notes recorded 2026-11-07. This supplements the build manifest, preserves delivered character/camera work, and does not grant deployment authority.
 
 ## Delivery order
 
