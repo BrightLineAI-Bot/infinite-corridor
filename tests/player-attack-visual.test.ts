@@ -45,6 +45,10 @@ test('attack presentation metadata is additive at schema 14 and validates withou
   for (const poseMs of [-1, Infinity, {}, 1e12 + 1]) assert.equal(normalizeAttackVisual({ ...raw, poseMs }, 120), null);
   assert.deepEqual(normalizeAttackVisual({ ...raw, facingYaw: -1.2 }, 120), { ...raw, facingYaw: -1.2 });
   for (const facingYaw of [Infinity, {}, Math.PI * 4 + .01]) assert.equal(normalizeAttackVisual({ ...raw, facingYaw }, 120), null);
+  const fist={...raw,fistStep:2,fistLead:'left',fistCharge:.75,fistGaitPhase:1.25,fistSpeed:.8,presentationCancelled:false};assert.deepEqual(normalizeAttackVisual(fist,120),fist);
+  assert.equal(normalizeAttackVisual({...raw,presentationCancelled:'false'},120),null);
+  for(const bad of [{fistStep:0},{fistStep:4},{fistLead:'future'},{fistCharge:1.1},{fistGaitPhase:99},{fistSpeed:-1}])assert.equal(normalizeAttackVisual({...raw,...bad},120),null);
+  const handed=freshSave();handed.fistOpeningHand='left';handed.futureTop=future;assert.equal(migrateSave(copy(handed)).fistOpeningHand,'left');handed.fistOpeningHand='malformed';const cleaned=migrateSave(copy(handed));assert.equal(cleaned.fistOpeningHand,null);assert.deepEqual(cleaned.futureTop,future);
   assert.equal(normalizeAttackVisual(raw, 241), null, 'metadata cannot rewrite an incompatible authoritative clock');
   const player = { attackUntil: 240, meleeUntil: 230, meleeStrike: { dx: 1, dy: 0 }, attackReadyAt: 400 };
   const before = copy(player);
@@ -52,6 +56,11 @@ test('attack presentation metadata is additive at schema 14 and validates withou
   assert.deepEqual(player.attackVisual.aim, { x: .6, y: .8 });
   delete player.attackVisual;
   assert.deepEqual(player, before, 'stamping affects presentation metadata only');
+});
+
+test('a newer accepted cast or jump cancels only the older fist presentation',()=>{
+  const cast=fixture('wayfarer-iron-fists').game;cast.enemies=[];cast.lastUpdateNow=1000;assert.equal(cast.fistPunch(1,0,1000,{x:1,y:0}),true);const attackUntil=cast.player.attackUntil;assert.equal(cast.castSpell(cast.save.equippedSpell),true);assert.equal(cast.player.attackUntil,attackUntil);assert.equal(cast.player.attackVisual.presentationCancelled,true);assert.deepEqual(closeViewPlayerAction(cast,1000),{active:false,legacy:false,record:cast.player.attackVisual,until:attackUntil,profile:null,amount:0,aim:null});
+  const jump=fixture('wayfarer-iron-fists').game;jump.enemies=[];assert.equal(jump.fistPunch(1,0,1000,{x:1,y:0}),true);jump.update(0,{state:{x:0,y:0},consume:k=>k==='jump',held:()=>false},1010);assert.ok(jump.jumpUntil>1010);assert.equal(jump.player.attackVisual.presentationCancelled,true);assert.equal(closeViewPlayerAction(jump,1010).active,false);
 });
 
 test('accepted tool producers replace stale sword presentation while keeping real melee and targeting state', () => {

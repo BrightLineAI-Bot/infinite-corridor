@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Taken at merge time: main's release + 1. Main is r825; the next game change takes r826. This publication/manifest documentation PR takes no number.
+With r825 on main, this PR takes r826. Other prepared candidates remain unnumbered; re-read fresh main before packaging each focused PR.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 826 | Codex | `claude/wayfarer-iron-fists` | Imported normal Iron Fists, alternating accepted hand, bind-aware three-stage motion and silver gauntlets | In flight. Corrected source53/53 focused checks/build and fixed-origin 30/60fps CPU evidence passed. Fresh independent review, exact-head CI, Preview, hosted acceptance and Publish verification remain required. |
 | 825 | Codex | `claude/close-view-primary-weapon-poses` / #475 | Distinct Pike/Cleaver silhouettes and accepted two-hand motion | Published as r825-0c066edbc1a0. CI42442905038, merged CI42443790003, Preview42443790053 and Publish42444668551 passed. Astra review (824→825) plus exact action-priority correction delta: no remaining blockers; independent18 integration/hero checks plus64 dodge endpoint cases. Hosted Pike/Cleaver attack, cast, jump, movement/quickstep and tool activation checked with no console errors. Live identity and actual Options → System verified after normal cache update, no recent errors. Owner retains the current gladius-like Cleaver. |
 | 824 | Codex | `claude/dug-tunnel-return-height` / #474 | Safe new tunnel support and quiet excavation-return fixture | Published as r824-2329dc4c0b06. Corrected source CI42440026816, merged CI42440583126, Preview42440583069 and Publish42441709905 passed. Astra review (823→824) plus exact legacy-shovel correction delta: no remaining blockers. Hosted Act opened elevation2/stored support; walked into (18,26.12) and returned (18.27,25.01), HP60 unchanged, no console errors. Live identity and actual Options → System verified after normal cache update; no recent errors. Existing tunnels retain geometry. |
 | 823 | Codex | `claude/wayfarer-directional-dash` / #473 | Low directional quickstep and smoother normal-Wayfarer gait | Published as r823-a1b23012a5c2. Source CI42438123052, merged CI42438743283, Preview42438743247 and Publish42439751394 passed. Fresh Astra review (822→823): no remaining blockers after backward recovery-facing fix. Hosted imported hero forward/reverse/lateral quickstep and walking recovery checked; live identity and actual Options → System verified after updating cached r822, no recent errors. |
