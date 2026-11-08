@@ -1957,10 +1957,11 @@ export function closeViewPlayerAction(g, now) {
   if (!player) return { active: false, legacy: false, record: null, profile: null, amount: 0, aim: null };
   const hasRecord = player.attackVisual != null;
   const record = hasRecord ? normalizeAttackVisual(player.attackVisual) : null;
-  const active = !!record && player.attackUntil > now;
+  const until = record?.primaryStep && Number.isFinite(player.primaryVisualUntil) ? player.primaryVisualUntil : player.attackUntil;
+  const active = !!record && until > now;
   const legacy = !hasRecord && player.attackUntil > now;
-  const amount = active ? 1 - Math.min(1, Math.max(0, player.attackUntil - now) / record.durationMs) : 0;
-  return { active, legacy, record, profile: active ? record.profile : null, amount, aim: active ? record.aim || null : null };
+  const amount = active ? 1 - Math.min(1, Math.max(0, until - now) / record.durationMs) : 0;
+  return { active, legacy, record, until, profile: active ? record.profile : null, amount, aim: active ? record.aim || null : null };
 }
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
@@ -2037,11 +2038,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const knock = stunned ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
     const profilePose = fisting ? 'fist' : visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
     const pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
-    const poseTime = who === player && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
+    const poseTime = who === player && !visualRecord?.primaryStep && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
     let amount = 0;
     if (winding) amount = monsterAction?.windupAmount ?? Math.min(1, (now - track.windAt) / MODEL_TIMING.windupMs);
     if (attack) {
-      if (visualAttack) amount = poseTime === now ? playerAction.amount : 1 - Math.min(1, (player.attackUntil - poseTime) / visualRecord.durationMs);
+      if (visualAttack) amount = poseTime === now ? playerAction.amount : 1 - Math.min(1, (playerAction.until - poseTime) / visualRecord.durationMs);
       else if (monsterAction?.amount != null) amount = monsterAction.amount;
       else {
         const duration = tool ? MODEL_TIMING.toolMs : who === player ? ACTION_MOTION.meleeMs : MODEL_TIMING.attackMs;
@@ -2063,6 +2064,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      primaryStep: visualRecord?.primaryStep,
       fistStep: charge != null ? g.fistCharge.step || 1 : visualRecord?.fistStep,
       effectTime: now,
       palette: presentation?.palette,
@@ -2092,7 +2094,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.heldProfile=held;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
-        action.kind = ''; action.profile = visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held; action.phase = amount; action.poseMs = undefined;
+        action.kind = ''; action.profile = visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held; action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep;
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         if (stunned) { action.kind = 'hit'; action.profile = 'knockdown'; }
         else if (now < (player.dodgeUntil || 0)) {
