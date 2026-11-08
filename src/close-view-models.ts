@@ -75,6 +75,16 @@ const playerTool = [
   part(frontPatch, .349, -.25, .783, 1, .033, .032, visor, -2, 0, 1.19),
 ];
 const playerUnarmed = player.slice(0, -2);
+// The source-free fallback keeps the approved body/head/feet and replaces each 20-triangle
+// one-piece limb with two 12-triangle segments. Two 12-triangle fists bring it to 254 triangles.
+const playerHammerStomp = playerUnarmed.filter((_,i)=>![10,12,14,16].includes(i)).map(p=>Math.abs(p.swing)===1?{...block(0,0,0,.12,.077,.076,leather),hammerPart:p.swing<0?0:1}:p);
+for(let side=0;side<2;side++)playerHammerStomp.push(
+  {...block(0,0,0,.09,.072,.5,coat),hammerPart:2+side*5},
+  {...block(0,0,0,.082,.068,.5,coat),hammerPart:3+side*5},
+  {...block(0,0,0,.065,.073,.5,coat),hammerPart:4+side*5},
+  {...block(0,0,0,.060,.068,.5,coat),hammerPart:5+side*5},
+  {...block(0,0,0,.074,.068,.06,leather),hammerPart:6+side*5},
+);
 const playerHammer = [
   ...playerUnarmed,
   part(taper, .17, -.25, 1.02, .035, .038, .34, bronze, -2, 0, 1.19),
@@ -280,7 +290,7 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
 } // exact rule cells are the residual panel, never generic bars
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -323,6 +333,36 @@ export function writeCloseViewHeroGear(out,offset,gear) {
   return offset;
 }
 
+// Reused actor-local segment frames: columns X/Y, scaled Z, then origin. No per-vertex allocation.
+const HAMMER_FRAMES=new Float64Array(12*12),HAMMER_JOINTS=new Float64Array(18);
+const hammerSmooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+function hammerJoint(out,o,ax,ay,az,bx,by,bz,length,poleX,poleY,poleZ){
+  const rx=bx-ax,ry=by-ay,rz=bz-az,raw=Math.hypot(rx,ry,rz)||1,d=Math.min(length*2-1e-6,raw),dx=rx/raw,dy=ry/raw,dz=rz/raw;
+  const dot=poleX*dx+poleY*dy+poleZ*dz;let px=poleX-dot*dx,py=poleY-dot*dy,pz=poleZ-dot*dz,l=Math.hypot(px,py,pz)||1;
+  const h=Math.sqrt(Math.max(0,length*length-d*d/4));out[o]=ax+dx*d/2+px/l*h;out[o+1]=ay+dy*d/2+py/l*h;out[o+2]=az+dz*d/2+pz/l*h;
+}
+function hammerSegment(i,ax,ay,az,bx,by,bz){
+  const o=i*12,rx=bx-ax,ry=by-ay,rz=bz-az,l=Math.hypot(rx,ry,rz)||1,zx=rx/l,zy=ry/l,zz=rz/l;
+  let xx=1-zx*zx,xy=-zx*zy,xz=-zx*zz,xl=Math.hypot(xx,xy,xz);if(xl<1e-6){xx=0;xy=zz;xz=-zy;xl=1;}
+  xx/=xl;xy/=xl;xz/=xl;HAMMER_FRAMES[o]=xx;HAMMER_FRAMES[o+1]=xy;HAMMER_FRAMES[o+2]=xz;HAMMER_FRAMES[o+3]=zy*xz-zz*xy;HAMMER_FRAMES[o+4]=zz*xx-zx*xz;HAMMER_FRAMES[o+5]=zx*xy-zy*xx;HAMMER_FRAMES[o+6]=rx;HAMMER_FRAMES[o+7]=ry;HAMMER_FRAMES[o+8]=rz;HAMMER_FRAMES[o+9]=(ax+bx)/2;HAMMER_FRAMES[o+10]=(ay+by)/2;HAMMER_FRAMES[o+11]=(az+bz)/2;
+}
+function hammerBox(i,x,y,z){const o=i*12;HAMMER_FRAMES.fill(0,o,o+12);HAMMER_FRAMES[o]=HAMMER_FRAMES[o+4]=HAMMER_FRAMES[o+8]=1;HAMMER_FRAMES[o+9]=x;HAMMER_FRAMES[o+10]=y;HAMMER_FRAMES[o+11]=z;}
+function hammerFrames(progress){
+  const ms=progress*570,drop=hammerSmooth((ms-240)/80),weight=hammerSmooth(ms/160)*(1-hammerSmooth((ms-400)/170));
+  const q=HAMMER_JOINTS;
+  for(let side=0;side<2;side++){
+    const sign=side?1:-1,hipY=sign*.115,hipZ=.71-.04*drop*weight,footY=hipY+sign*.05*drop*weight;
+    const lift=side?(.24*(1-drop)+(ms<320?.013*drop:0))*weight:0,ankleZ=.14+lift;
+    hammerJoint(q,0,0,hipY,hipZ,0,footY,ankleZ,.285,1,0,0);
+    hammerSegment(2+side*5,0,hipY,hipZ,q[0],q[1],q[2]);hammerSegment(3+side*5,q[0],q[1],q[2],0,footY,ankleZ);hammerBox(side,.044,footY,.076+lift);
+    const sy=sign*.20,sz=1.19-.04*drop*weight,crossY=-sign*.06,crossZ=side?1.04:.99;
+    const wx=.025+(.28+(.12-.28)*drop-.025)*weight,wy=sy+(crossY+(sign*.30-crossY)*drop-sy)*weight,wz=.76+(crossZ+(.80-crossZ)*drop-.76)*weight-.04*drop*weight;
+    hammerJoint(q,3,0,sy,sz,wx,wy,wz,.24,0,sign,-.3);
+    hammerSegment(4+side*5,0,sy,sz,q[3],q[4],q[5]);hammerSegment(5+side*5,q[3],q[4],q[5],wx,wy,wz);hammerBox(6+side*5,wx,wy,wz);
+  }
+  return weight;
+}
+
 export function writeCloseViewModel(out, offset, actor) {
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
@@ -359,7 +399,7 @@ export function writeCloseViewModel(out, offset, actor) {
     else if (progress < .30) strike = 1;
     else { const t = (progress - .30) / .70; strike = 1 - t * t * (3 - 2 * t); }
   }
-  if(phasedTool)strike=0;
+  if(kind==='playerHammerStomp'||phasedTool)strike=0;
   const tool = phasedTool?toolMotion?.weight||0:pose === "tool" ? Math.sin(Math.PI * progress) : 0;
   const cast = pose === "cast" ? Math.sin(Math.PI * progress) : 0;
   const jump = pose === "jump" ? Math.sin(Math.PI * progress) : 0;
@@ -389,7 +429,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const actionWeight = actionPhase === 'windup' || actionPhase === 'track' || actionPhase === 'lock' || actionPhase === 'travel' || actionPhase === 'strike'
     ? actionProgress : actionPhase === 'active' || actionPhase === 'erupt' ? 1
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
-  for (const { mesh, swing, px, pz, axialSpin, carryingOnly } of models[kind]) {
+  const hammerWeight=kind==='playerHammerStomp'?hammerFrames(progress):0;
+  for (const { mesh, swing, px, pz, axialSpin, carryingOnly, hammerPart } of models[kind]) {
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
       : swing >= 40 && swing < 60
@@ -437,23 +478,22 @@ export function writeCloseViewModel(out, offset, actor) {
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
       const localY = axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
       const normalY = axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
-      const forward = mesh[i] * c + localZ * s + px;
-      const lateral = localY + coilSway;
+      let forward = mesh[i] * c + localZ * s + px;
+      let lateral = localY + coilSway;
       const u = forward * cc - (lateral - pivotY) * sc;
       const v = forward * sc + (lateral - pivotY) * cc + pivotY;
-      const w = localZ * c - mesh[i] * s + pz;
-      const f = u * cp + w * sp + shift;
-      const armNormal = mesh[i + 3] * c + normalZ * s;
-      const nu = armNormal * cc - normalY * sc;
-      const nv = armNormal * sc + normalY * cc;
-      const nw = normalZ * c - mesh[i + 3] * s;
-      const nf = nu * cp + nw * sp;
-      out[offset++] = x + (f * cy - v * sy) * size;
-      out[offset++] = y + (f * sy + v * cy) * size;
-      out[offset++] = z + (base + w * cp - u * sp) * size;
-      out[offset++] = nf * cy - nv * sy;
-      out[offset++] = nf * sy + nv * cy;
-      out[offset++] = nw * cp - nu * sp;
+      let w = localZ * c - mesh[i] * s + pz;
+      let f=u*cp+w*sp+shift,worldY=v,worldZ=base+w*cp-u*sp;
+      const armNormal=mesh[i+3]*c+normalZ*s;
+      let nu=armNormal*cc-normalY*sc,nv=armNormal*sc+normalY*cc,nw=normalZ*c-mesh[i+3]*s;
+      let nf=nu*cp+nw*sp;nw=nw*cp-nu*sp;
+      if(hammerPart!==undefined){
+        const o=hammerPart*12,m=HAMMER_FRAMES,mx=mesh[i],my=mesh[i+1],mz=mesh[i+2],nx=mesh[i+3],ny=mesh[i+4],nz=mesh[i+5],zl=Math.hypot(m[o+6],m[o+7],m[o+8])||1;
+        f=m[o]*mx+m[o+3]*my+m[o+6]*mz+m[o+9];worldY=m[o+1]*mx+m[o+4]*my+m[o+7]*mz+m[o+10];worldZ=m[o+2]*mx+m[o+5]*my+m[o+8]*mz+m[o+11];
+        nf=m[o]*nx+m[o+3]*ny+m[o+6]/zl*nz;nv=m[o+1]*nx+m[o+4]*ny+m[o+7]/zl*nz;nw=m[o+2]*nx+m[o+5]*ny+m[o+8]/zl*nz;
+      }else if(kind==='playerHammerStomp')worldZ-=.04*hammerSmooth((progress*570-240)/80)*hammerWeight+base*hammerWeight;
+      out[offset++]=x+(f*cy-worldY*sy)*size;out[offset++]=y+(f*sy+worldY*cy)*size;out[offset++]=z+worldZ*size;
+      out[offset++]=nf*cy-nv*sy;out[offset++]=nf*sy+nv*cy;out[offset++]=nw;
       const poison = actor.poison ? .55 : 0;
       let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
       if(foundry){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=foundryPaletteColor(rgb,actor.palette);sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}

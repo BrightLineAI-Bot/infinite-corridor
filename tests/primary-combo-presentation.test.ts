@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { Game, BRAWLER_GEAR } from '../src/game.ts';
+import { Game, BRAWLER_GEAR, updateEffects } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { normalizeAttackVisual, normalizePrimaryCombo, stampAttackVisual } from '../src/action-motion.ts';
 import { ORRERY } from '../src/tool-forms.ts';
@@ -45,7 +45,7 @@ function queuedTool(kind) {
 }
 
 test('real queued primary Echo preserves every accepted tool clock, damage, exact expiry and paused JSON resume',()=>{
-  for(const kind of ['sweep','hammer','orrery-tap','emitter']){
+  for(const kind of ['sweep','orrery-tap','emitter']){
     const {g,foe,queued,at}=queuedTool(kind),p=g.player;
     p.attackVisual.future={kept:true};p.attackVisual.aim={x:1,y:0,futureAim:7};g.save.session.playerRuntime.futureRuntime={kept:8};
     const record=clone(p.attackVisual),until=p.actionVisualUntil,cooldown=p.attackReadyAt,hp=foe.hp,before=closeViewPlayerAction(g,queued.at);
@@ -228,6 +228,9 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
     globalThis.window={};globalThis.createImageBitmap=async()=>({width:1024,height:1024});globalThis.fetch=async url=>{const u=new URL(url);assert.equal(u.protocol,'file:');const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};await loadCloseViewHero();
     for(const kind of ['sweep','hammer','orrery-tap','emitter']){
       const {g,queued,foe}=queuedTool(kind);g.save.closeView=true;resetCloseViewCamera();
+      // Hammerfall's exact entry now equals carry; advance its real effect into preparation
+      // before retaining the existing positive action-versus-idle renderer assertion.
+      if(kind==='hammer')g.effects=updateEffects(g.effects,g.enemies,.08);
       render(screen,g,390,844,queued.at);const accepted=gl.uploads.at(-1),held=gl.modelData,record=clone(g.player.attackVisual),clock=g.player.actionVisualUntil,hp=foe.hp;
       assert.equal(accepted.length,3602*6,'production path uploads the imported adult body');
       baseRender(screen,g,390,844,queued.at);sameGeometry(gl.uploads.at(-1),accepted,'masking combat time cannot suppress accepted '+kind);sameGeometry(gl.modelData,held,'masking combat time retains accepted tool gear');

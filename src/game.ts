@@ -1,5 +1,5 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
-import { ACTION_MOTION, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual } from "./action-motion.ts";
+import { ACTION_MOTION, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
@@ -2190,6 +2190,7 @@ export class Game {
     this.area = s.area;
     this.rx = s.rx || 0;
     this.ry = s.ry || 0;
+    if (Number.isFinite(s.playerRuntime.heroPresentationTime) && s.playerRuntime.heroPresentationTime >= 0 && s.playerRuntime.heroPresentationTime <= 1e12) this.presentationPausedMs = now - s.playerRuntime.heroPresentationTime;
     this.player = {
       isPlayer: true, // release 609: known as the Wayfarer from the first frame (relocateIfStranded)
       x: s.x,
@@ -2235,6 +2236,7 @@ export class Game {
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     this.loadArea(this.area, false);
     this.restorePendingToolUse(s.playerRuntime.pendingToolUse,now);
+    this.restoreHammerfallStartup(s.playerRuntime.hammerfallStartup);
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
 
@@ -2252,6 +2254,7 @@ export class Game {
     const attack = this.primaryAttack.bind(this);
     this.primaryStrike = attack; // the swing itself, without aim selection (Echo repeats call it)
     this.primaryAttack = (now, explicitDirection = null) => {
+      this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return[];
       if (now < (this.player.attackReadyAt || 0)) return [];
       const baseProfile = primaryProfile(this.save.equipment.primary),
         profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) * this.glyphLoadout("melee").mods.range },
@@ -2721,6 +2724,7 @@ export class Game {
   }
   loadArea(area, capture = true) {
     this.cancelPendingToolUse('area-transition');
+    this.clearHammerfallStartup('area-transition');
     this.fistReleaseIntent=null;
     this.attackBufferUntil = 0;
     this.season = null; // release 679: set again below for a section of the woods
@@ -3198,7 +3202,7 @@ export class Game {
       const pausedMs = Math.max(0, now - this.pauseStarted);
       shiftClocks(this, pausedMs); // release 736 (F5/C12): every timer, from the one list
       // Runtime presentation clocks can observe a pause even when scenes/background suspension skip every render/input callback.
-      // This accumulator is not saved and does not join the gameplay clock lists.
+      // Its logical time is saved separately; this offset never joins the gameplay clock lists.
       this.presentationPausedMs = (this.presentationPausedMs || 0) + pausedMs;
     }
     this.paused = v;
@@ -3208,6 +3212,7 @@ export class Game {
   exportSnapshot(now = 0) {
     const clock =
       this.paused && this.pauseStarted !== null ? this.pauseStarted : now;
+    this.reconcileHammerfallStartup();
     this.sync();
     this.snapshotArea(false); // a save in place, not a leaving
     Object.assign(this.save.session, {
@@ -3230,11 +3235,13 @@ export class Game {
         stamina: this.player.stamina,
         facing: this.player.facing,
         walkPhase: this.player.walkPhase,
+        heroPresentationTime: Math.max(0, Math.min(1e12, clock - (this.presentationPausedMs || 0))),
         attackCooldown: remaining(this.player.attackReadyAt, clock),
         attackMotion: remaining(this.player.attackUntil, clock),
-        attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(attackVisualDeadline(this.player,this.player.attackVisual,{now:clock,pendingToolUse:this.pendingToolUse}), clock)),
+        attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock)),
         pendingToolUse:this.savedPendingToolUse(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingToolUse?.v)&&this.save.session.playerRuntime.pendingToolUse.v>1?structuredClone(this.save.session.playerRuntime.pendingToolUse):null),
-        ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(this.player.actionVisualUntil, clock) } : {}),
+        hammerfallStartup:this.savedHammerfallStartup(),
+        ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         ...(Number.isFinite(this.player.primaryVisualUntil) ? { primaryVisualMotion: remaining(this.player.primaryVisualUntil, clock) } : {}),
         ...(Number.isFinite(this.player.fistVisualUntil) ? { fistVisualMotion: remaining(this.player.fistVisualUntil, clock) } : {}),
         primaryCombo: normalizePrimaryCombo(this.player.primaryCombo),
@@ -3288,6 +3295,8 @@ export class Game {
   }
   savedPendingToolUse(clock){const q=this.pendingToolUse;if(!q||q.v!==1)return null;const remainingMs=Math.max(0,Math.min(q.startupMs,q.releaseAt-clock)),elapsedMs=q.startupMs-remainingMs;return normalizePendingToolUse({...q,acceptedAt:undefined,releaseAt:undefined,elapsedMs,remainingMs});}
   restorePendingToolUse(raw,now){const q=normalizePendingToolUse(raw);if(!q||q.v!==1||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')||!(this.player.hp>0)){this.pendingToolUse=null;return false;}const{elapsedMs,remainingMs,...rest}=q;this.pendingToolUse={...rest,acceptedAt:now-elapsedMs,releaseAt:now+remainingMs};return true;}
+  savedHammerfallStartup(){const q=this.hammerfallStartup;if(q?.v===1)return normalizeHammerfallStartup(q);const old=this.save.session.playerRuntime.hammerfallStartup;return Number.isInteger(old?.v)&&old.v>1?structuredClone(old):null;}
+  restoreHammerfallStartup(raw){const q=normalizeHammerfallStartup(raw);this.hammerfallStartup=q?.v===1?q:null;if(this.hammerfallStartup&&this.resolveHammerfallStartup().status!=='pending')this.hammerfallStartup=null;if(this.hammerfallStartup&&this.pendingToolUse)this.cancelPendingToolUse('dual-startup-restore');return !!this.hammerfallStartup;}
   // Release 736 (review F8): lethal ground is judged where the Wayfarer ends up, not where the stick pointed. A step whose end
   // the Wayfarer cannot stand on (a blocked lava or abyss tile: walls stop them first) is tried out on a copy, and the
   // hazard is read where that copy stopped; ground the Wayfarer can enter (open lava, deep water, canyon) is unchanged.
@@ -3300,6 +3309,7 @@ export class Game {
   // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
   clearCarriedStates() {
     this.cancelPendingToolUse('world-reset');
+    this.clearHammerfallStartup('world-reset');
     this.fistReleaseIntent=null;
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
@@ -6196,7 +6206,17 @@ export class Game {
     return this.closeViewActionEligible() && !this.fistsEquipped() && this.save.activeWeaponSlot !== "secondary"
       && !this.cursed("attack", now) && !this.penned(now);
   }
-  toolUseBlocksPrimary(){return this.pendingToolUse?.v===1;}
+  resolveHammerfallStartup(observedOriginal=null){
+    const q=this.hammerfallStartup;if(!q||q.v!==1)return{status:'none',effect:null};
+    if(!(this.player?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root'))return{status:'ended',effect:null};
+    const observed=observedOriginal===this._hammerfallObserved&&observedOriginal?.id===q.effectId,effect=observed?observedOriginal:(this.effects||[]).find(e=>e?.id===q.effectId),valid=effect?.id===q.effectId&&effect.kind==='hammerfall'&&effect.brawler===true&&effect.glyphHost==='tool'&&!effect.echo&&!effect.hostile&&Number.isFinite(effect.delay)&&effect.delay<=BRAWLER.hammerfall.delay&&Number.isFinite(effect.life)&&(observed&&effect.pulseIndex>0||effect.life>=0&&effect.life<=BRAWLER.hammerfall.lifetime)&&effect.pulse===99&&Number.isInteger(effect.pulseIndex)&&effect.pulseIndex>=0;
+    if(!valid)return{status:'ended',effect:null};
+    return{status:effect.pulseIndex>0?'released':'pending',effect};
+  }
+  reconcileHammerfallStartup(observedOriginal=null){const q=this.hammerfallStartup;if(!q||q.v!==1)return{released:false,ended:false};const r=this.resolveHammerfallStartup(observedOriginal);if(r.status==='pending')return{released:false,ended:false};this.hammerfallStartup=null;if(r.status==='released')return{released:true,ended:false};this.clearAttackBuffer();this.fistReleaseIntent=null;return{released:false,ended:true};}
+  clearHammerfallStartup(_reason='cancelled'){if(!this.hammerfallStartup)return false;this.hammerfallStartup=null;this.clearAttackBuffer?.();this.fistReleaseIntent=null;return true;}
+  startupGuardWait(now=0){if(this.pendingToolUse?.v===1)return Math.max(0,this.pendingToolUse.releaseAt-now);const r=this.resolveHammerfallStartup();return r.status==='pending'?Math.max(0,(Number(r.effect.delay)||0)*1000):Infinity;}
+  toolUseBlocksPrimary(){return this.pendingToolUse?.v===1||this.resolveHammerfallStartup().status==='pending';}
   cancelPendingToolUse(_reason='cancelled'){const q=this.pendingToolUse;if(!q)return false;this.pendingToolUse=null;const v=this.player?.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id){v.toolUse={...v.toolUse,phase:'cancelled'};delete v.toolUse.releaseOffsetMs;v.presentationCancelled=true;}return true;}
   releasePendingToolUse(now=this.lastUpdateNow||0){
     const q=this.pendingToolUse;if(!q||q.v!==1||now<q.releaseAt)return{released:false,cancelled:false};
@@ -6232,7 +6252,7 @@ export class Game {
     this.clearAttackBuffer(); this.attackAction = bufferedToolTap&&this.fistsEquipped()?(held?'attack':null):"attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } return true;
   }
   primaryAttack(now = 0, _direction = null, echo = null) {
-    if(!echo){this.releasePendingToolUse(now);if(this.toolUseBlocksPrimary())return[];}
+    if(!echo){this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return[];}
     if (this.penned(now)) return [];
     if (!echo && this.cursed("attack", now)) return []; // release 737: NO ATTACK (the Iron Fists too)
     if (this.fistsEquipped()) { if (!echo) this.fistPress(now, _direction, this.attackAction || null); return []; } // release 493: the Iron Fists punch instead of swinging
@@ -6315,7 +6335,7 @@ export class Game {
     return hits;
   }
   fireSecondary(now = 0, direction = null, action = null) {
-    if(!this._toolInputUpdate)this.releasePendingToolUse(now);if(this.pendingToolUse)return false;
+    if(!this._toolInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.penned(now)) return false;
     { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
@@ -6641,7 +6661,7 @@ export class Game {
   // × perPower + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
   toolPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   brawlerTool(kind, now = this.lastUpdateNow || 0, direction = null) {
-    if(!this._toolInputUpdate)this.releasePendingToolUse(now);if(this.pendingToolUse)return false;
+    if(!this._toolInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.cursed("tools", now)) return false; // release 737: NO TOOLS (Hammerfall, Great Sweep, Mirage of Blades)
     if (kind === "great-sweep" && fieldOn(this.save, "nanoknives")) return this.mirageThrow(now); // release 533; 649: Mirage of Blades
     const B = BRAWLER[kind], p = this.player, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null; if (!B || now < (this.toolReadyAt || 0)) return false;
@@ -6664,19 +6684,23 @@ export class Game {
     }
     let visualAim = null;
     const fx = (x, y, extra = {}) => { const e = { id: `tool-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x, y, life: B.lifetime, radius: B.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.toolPower() * B.share * (1 + (boxing?.damage || 0)) * fieldMult)), pulseIndex: 0, hits: {}, glyphHost: "tool", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), ...extra }; if (fieldGrow !== 1) e.radius *= fieldGrow; /* release 495: boxing damage and heal; 569: Spellblade and Charged Air */ this.effects.push(e); return e; };
+    let main;
     if (kind === "hammerfall") {
       const reach = B.reach + (boxing ? boxing.stick : 0) + (blade ? SB.reach : 0); // release 495: with Shadow Boxing the hammer reaches farther; 569: Spellblade too
       let { d, foe } = this.brawlerAim(reach + 1); if (!foe && direction && Math.hypot(direction.x, direction.y) > .01) d = projectileDirection(direction.x, direction.y, p.facing);
       const fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
       visualAim = d;
-      fx(at.x, at.y, { delay: B.delay, stun: B.stun });
+      main = fx(at.x, at.y, { delay: B.delay, stun: B.stun });
       if (fieldOn(this.save, "corridor-golem")) this.raiseGolem(at, now + B.delay * 1000); // release 535
-    } else fx(cx, cy); // Great Sweep: all round you
-    { const main = this.effects[this.effects.length - 1], plan = echoPlan(this.glyphLoadout("tool")); if (plan && main) plan.copies.forEach((c, i) => this.effects.push({ ...main, id: main.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, delay: (main.delay || 0) + BRAWLER_ECHO.toolGap * (i + 1), damage: Math.max(1, Math.round(main.damage * c.share)), imbue: (main.imbue || 0) * c.share, echo: true })); } // release 503: Echo in the tool repeats the blow; 507: one more per Echo glyph, bang, bang, boom
+    } else main = fx(cx, cy); // Great Sweep: all round you
+    { const plan = echoPlan(this.glyphLoadout("tool")); if (plan && main) plan.copies.forEach((c, i) => this.effects.push({ ...main, id: main.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, delay: (main.delay || 0) + BRAWLER_ECHO.toolGap * (i + 1), damage: Math.max(1, Math.round(main.damage * c.share)), imbue: (main.imbue || 0) * c.share, echo: true })); } // release 503: Echo in the tool repeats the blow; 507: one more per Echo glyph, bang, bang, boom
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240;
-    const visualMs=kind==='great-sweep'?TOOL_ACTION_TIMING['great-sweep'].durationMs:240;
+    const hammerDurationMs=B.delay*1000+B.lifetime*1000;
+    const visualMs=kind==='great-sweep'?TOOL_ACTION_TIMING['great-sweep'].durationMs:hammerDurationMs;
     const toolVisual = stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", visualMs, visualAim);
+    if (toolVisual && kind === "hammerfall") { Object.assign(toolVisual, { hammerEffectId: main.id, hammerDelayMs: B.delay * 1000, hammerRecoveryMs: B.lifetime * 1000 }); p.actionVisualUntil = now + hammerDurationMs; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y); if (prior) toolVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)); }
+    if(kind==='hammerfall'&&this.closeViewActionEligible())this.hammerfallStartup={v:1,effectId:main.id,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root')};
     if (toolVisual && kind === "great-sweep") { const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind = "great-sweep";toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};p.actionVisualUntil=now+visualMs; }
     this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
@@ -7618,16 +7642,16 @@ export class Game {
   fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
   fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
-    if(!this._fistInputUpdate)this.releasePendingToolUse(now);if(this.toolUseBlocksPrimary())return false;
+    if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
     const c = this.fistCombo, live = c && now <= c.until && c.step < IRON_FISTS.punches.length;
-    if (live) { const next = c.step + 1, P = IRON_FISTS.punches[next - 1]; if (action && P.echoes && hostLoadout(this.save, "melee").count("echo") >= P.echoes) { this.fistCharge = { action, start: now, direction, step: next }; return true; } return this.fistPunch(next, 0, now, direction); } // release 503: Echo glyphs let the jab and uppercut charge
+    if (live) { const next = c.step + 1, P = IRON_FISTS.punches[next - 1]; if (action && P.echoes && hostLoadout(this.save, "melee").count("echo") >= P.echoes) { this.fistCharge = { action, start: now, direction, step: next };if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } return this.fistPunch(next, 0, now, direction); } // release 503: Echo glyphs let the jab and uppercut charge
     this.fistCombo = null;
-    if (action) { this.fistCharge = { action, start: now, direction }; return true; }
+    if (action) { this.fistCharge = { action, start: now, direction };if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; }
     return this.fistPunch(1, 0, now, direction);
   }
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null) {
-    if(!this._fistInputUpdate)this.releasePendingToolUse(now);if(this.toolUseBlocksPrimary())return false;
+    if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.cursed("attack", now)) { this.fistCombo = null; return false; } // release 737: a charged punch let go under NO ATTACK
     const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
     const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y);
@@ -7653,7 +7677,7 @@ export class Game {
   }
   cancelAttackPresentation(now = this.lastUpdateNow || 0) {
     const p = this.player, record = normalizeAttackVisual(p?.attackVisual);
-    if (record && attackVisualDeadline(p, record,{now,pendingToolUse:this.pendingToolUse}) > now) p.attackVisual.presentationCancelled = true;
+    if (record && attackVisualDeadline(p, record,{effects:this.effects,now,pendingToolUse:this.pendingToolUse}) > now) p.attackVisual.presentationCancelled = true;
   }
   cancelFistPresentation(now = this.lastUpdateNow || 0) {
     if (this.player?.attackVisual?.profile === 'fist') this.cancelAttackPresentation(now);
@@ -8009,7 +8033,7 @@ export class Game {
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
-    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,waiting=this.pendingToolUse?.v===1&&this.pendingToolUse.releaseAt-now<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
+    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) { this.clearAttackBuffer(); this.castSlot("a"); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.castSlot("b"); }
     const dodgePressed = input.consume("dodge"); if (dodgePressed) this.clearAttackBuffer();
@@ -8228,13 +8252,13 @@ export class Game {
         this.defeatNotice={title:'UNCLASSIFIED LIFEFORM',detail:`${e.foundryName} · ${e.foundryRole} · journal record added`,kind:e.foundryRole==='passive'?'discovery':'danger'};
       }
     }
-    if(p.hp<=0)this.cancelPendingToolUse('death');else this.releasePendingToolUse(now);
+    if(p.hp<=0){this.cancelPendingToolUse('death');this.clearHammerfallStartup('death');}else{this.reconcileHammerfallStartup();this.releasePendingToolUse(now);}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now))this.fistPunch(intent.step,intent.charge,now,intent.direction);}
     this.tickAttackBuffer(now,input);
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
-      const ready = this.player.attackReadyAt || 0,startupWait=this.pendingToolUse?.v===1?Math.max(this.pendingToolUse.releaseAt,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&this.closeViewActionEligible()&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
+      const ready = this.player.attackReadyAt || 0,guardWait=this.startupGuardWait(now),startupWait=Number.isFinite(guardWait)?Math.max(now+guardWait,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&this.closeViewActionEligible()&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
       if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;}
       else if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs;
       else { this.clearAttackBuffer(); this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } } // release 493: the Iron Fists charge while Attack is held
@@ -8289,6 +8313,7 @@ export class Game {
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
     for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));p.invulnerableUntil=now+700}}
+    const hammerState=this.resolveHammerfallStartup(),hammerObserved=hammerState.status==='pending'?hammerState.effect:null;this._hammerfallObserved=hammerObserved;
     if(this.effects.length)tickSpellFields(this.effects,this.enemies,this.projectiles,dt,now,(x,y)=>{const t=this.map.tiles[Math.floor(y+.6)*width+Math.floor(x+.5)];return !!t&&!t.blocked&&!t.environment});/* release 365: Gravity Well, Stillpoint */
     if(this.effects.length)this.effects = updateEffects(
       this.effects,
@@ -8300,6 +8325,8 @@ export class Game {
       (fx, e) => (fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage) + (fx.imbue > 0 && e.kind !== "npc" ? (imbueSpark(this, e.x + .5, e.y + .45, now), Math.round(fx.imbue)) : 0), // release 335: a spell's pulses keep the glyphs it was cast with; Imbue Weapon: a punch's or tool blow's magic share
       (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + actual * fx.healShare); /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now); } },
     );
+    const hammerTransition=this.reconcileHammerfallStartup(hammerObserved);this._hammerfallObserved=null;
+    if(hammerTransition.released&&p.hp>0&&!this.paused){let accepted=false;if(this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now))accepted=this.fistPunch(intent.step,intent.charge,now,intent.direction)===true;}if(!accepted)this.tickAttackBuffer(now,input);}
     for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);
     this.tickGlyphs(dt, now);
     tickEchoes(this, dt, now, { x, y });
