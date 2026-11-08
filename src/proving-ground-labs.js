@@ -1,33 +1,33 @@
-import { Game } from "./game.js?v=r838-fa829774af3e";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r838-fa829774af3e"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r838-fa829774af3e";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r838-fa829774af3e";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r838-fa829774af3e";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r838-fa829774af3e";
-import { DIG, planDig } from "./digging.js?v=r838-fa829774af3e";
-import { freshSave, migrateSave } from "./types.js?v=r838-fa829774af3e";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r838-fa829774af3e";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r838-fa829774af3e";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r838-fa829774af3e";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r838-fa829774af3e";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r838-fa829774af3e";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r838-fa829774af3e";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r838-fa829774af3e";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r838-fa829774af3e";
-import { BIOMES, biomeFor } from "./landscape.js?v=r838-fa829774af3e";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r838-fa829774af3e";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r838-fa829774af3e";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r838-fa829774af3e";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r838-fa829774af3e";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r838-fa829774af3e";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r838-fa829774af3e";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r838-fa829774af3e";
-import { ensureLattice } from "./transit-lattice.js?v=r838-fa829774af3e";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r838-fa829774af3e";
-import { fieldOn } from "./lattice-fields.js?v=r838-fa829774af3e";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r838-fa829774af3e";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r838-fa829774af3e";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r838-fa829774af3e";
+import { Game } from "./game.js?v=r839-ca60fa41fc60";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r839-ca60fa41fc60"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r839-ca60fa41fc60";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r839-ca60fa41fc60";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r839-ca60fa41fc60";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r839-ca60fa41fc60";
+import { DIG, planDig } from "./digging.js?v=r839-ca60fa41fc60";
+import { freshSave, migrateSave } from "./types.js?v=r839-ca60fa41fc60";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r839-ca60fa41fc60";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r839-ca60fa41fc60";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r839-ca60fa41fc60";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r839-ca60fa41fc60";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r839-ca60fa41fc60";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r839-ca60fa41fc60";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r839-ca60fa41fc60";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r839-ca60fa41fc60";
+import { BIOMES, biomeFor } from "./landscape.js?v=r839-ca60fa41fc60";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r839-ca60fa41fc60";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r839-ca60fa41fc60";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r839-ca60fa41fc60";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r839-ca60fa41fc60";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r839-ca60fa41fc60";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r839-ca60fa41fc60";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r839-ca60fa41fc60";
+import { ensureLattice } from "./transit-lattice.js?v=r839-ca60fa41fc60";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r839-ca60fa41fc60";
+import { fieldOn } from "./lattice-fields.js?v=r839-ca60fa41fc60";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r839-ca60fa41fc60";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r839-ca60fa41fc60";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r839-ca60fa41fc60";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -690,3 +690,15 @@ export function teleportTargets(fixture) {
   for(const o of map.objects||[])if(o.actions?.length&&!targets.some(q=>q.id===o.id))targets.push({id:o.id,label:o.name||o.semanticRole||o.kind,x:o.x,y:o.y});
   return targets.filter(q=>Number.isFinite(q.x)&&Number.isFinite(q.y));
 }
+
+export function refreshTeleportOptions(select,targets,previousSignature="",makeOption=(label,value)=>new Option(label,value)){
+  const signature=targets.map(q=>`${q.id}\u0000${q.label}`).join("\u0001");
+  if(signature===previousSignature)return previousSignature;
+  const selected=select.value;
+  select.replaceChildren(makeOption("Select target…",""));
+  for(const q of targets)select.add(makeOption(q.label,q.id));
+  select.value=targets.some(q=>q.id===selected)?selected:"";
+  return signature;
+}
+
+export function resolveTeleportTarget(targets,id){return targets.find(q=>q.id===id)||null}

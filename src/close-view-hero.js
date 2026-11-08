@@ -1,6 +1,6 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r838-fa829774af3e';
-import { cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.js?v=r838-fa829774af3e';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r839-ca60fa41fc60';
+import { cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.js?v=r839-ca60fa41fc60';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
