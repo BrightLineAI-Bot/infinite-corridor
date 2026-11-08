@@ -49,9 +49,11 @@ function withGPU(options:any,run:(x:any)=>void){
 function game(){
   const g:any=createLabFixture({lab:'combat-assets',scenario:'cleaver-echo-inspection',now:100000}).game;
   g.presentation={effectiveQuality:'full',reduceMotion:false};
+  g.save.equipment.primary.glyphs=['echo'];
   Object.assign(g.enemies[0],{fracRank:'rare',packName:'Transaction Native'});
   g.primaryAttack(100000,{x:1,y:0});g.tickGlyphs(.001,100250);
   assert.equal(g.glyphVisuals.filter((v:any)=>v.kind==='primaryEcho').length,1);
+  g.glyphVisuals.find((v:any)=>v.kind==='primaryEcho').actual.shape='arc';
   const ready=Math.max(100250,g.player.attackReadyAt||0);assert.equal(g.fireSecondary(ready,{x:1,y:0}),true);assert.equal(g.projectiles.length,1);g.lastUpdateNow=ready+16;
   return g;
 }
