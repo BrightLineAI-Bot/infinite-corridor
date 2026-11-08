@@ -238,9 +238,24 @@ export function stampAttackVisual(player, profile, durationMs, aim = null) {
   const x = Number(aim?.x ?? aim?.dx), y = Number(aim?.y ?? aim?.dy), length = Math.hypot(x, y);
   if (Number.isFinite(length) && length > 0) visual.aim = { x: x / length, y: y / length };
   player.attackVisual = visual;
+  if (player.castVisual) player.castVisual = { ...player.castVisual, cancelled: true };
   player.actionVisualUntil = Number.isFinite(player.attackUntil) ? player.attackUntil : undefined;
   return visual;
 }
+
+const CAST_TOKEN=/^[a-z][a-z0-9-]{0,31}$/;
+export function normalizeCastVisual(raw,remainingMs=0){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const durationMs=Number(raw.durationMs),remaining=Number(remainingMs);
+  if(!Number.isFinite(durationMs)||durationMs<=0||durationMs>5000||!Number.isFinite(remaining)||remaining<0||remaining>durationMs+1e-6)return null;
+  if(!CAST_TOKEN.test(raw.spellKind)||!CAST_TOKEN.test(raw.variant)||!CAST_TOKEN.test(raw.profile))return null;
+  const copy={...raw,spellKind:raw.spellKind,variant:raw.variant,profile:raw.profile,durationMs,cancelled:raw.cancelled===true};
+  for(const key of ['aim','origin','target'])if(raw[key]!=null){const q=raw[key],x=Number(q?.x),y=Number(q?.y);if(!q||typeof q!=='object'||Array.isArray(q)||!Number.isFinite(x)||!Number.isFinite(y)||Math.abs(x)>1e6||Math.abs(y)>1e6)return null;copy[key]={...q,x,y};}
+  if(copy.aim){const m=Math.hypot(copy.aim.x,copy.aim.y);if(!(m>.0001))return null;copy.aim={...copy.aim,x:copy.aim.x/m,y:copy.aim.y/m};}
+  return copy;
+}
+export function stampCastVisual(player,record,durationMs=ACTION_MOTION.castMs){const visual=normalizeCastVisual({...record,durationMs},durationMs);if(!player||!visual)return null;player.castVisual=visual;return visual;}
+export function cancelCastVisual(player){if(player?.castVisual&&!player.castVisual.cancelled)player.castVisual={...player.castVisual,cancelled:true};}
 
 export function normalizeDodgeVisual(raw) {
   if (raw == null) return null;

@@ -64,7 +64,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   {const t = performance.now() / 1000;
   drawBrawler(ctx, game, toScreen, s, t); // release 483: Hammerfall, Great Sweep, Iron Fist
   drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
-  drawOrbit(ctx, game, toScreen, s, t); // release 487: Orbit Volley
+  drawOrbit(ctx, game, toScreen, s, t, projectedShots); // release 487: Orbit Volley
   drawToolForms(ctx, game, toScreen, s, t, projectedShots); // release 533: Nanoknives and the Arc Wave
   drawOrrery(ctx, game, toScreen, s, t, projectedShots); // the Aether Orrery
   if (game.rite && game.area === "overworld") drawRiteFire(ctx, toScreen, s, t); // the Rite of Ascendancy: fire round the section's edges

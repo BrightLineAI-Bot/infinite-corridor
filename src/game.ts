@@ -1,5 +1,5 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
-import { ACTION_MOTION, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual } from "./action-motion.ts";
+import { ACTION_MOTION, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
@@ -171,6 +171,11 @@ export function shiftClocks(game, d) {
 // take the cost below zero, so a dodge gave stamina back. It never costs less than DODGE_COST.min (at the glyph cap it is 6).
 // Tim, 2026-11-05 ("I need infinite dodge"): `min` 0 (was 1.5): enough reduction makes a dodge free, never a refund.
 export const DODGE_COST = { base: 15, min: 0 };
+export const CAST_GESTURES=Object.freeze({
+  'cinder-dart':'focus-forward','ember-ring':'outward-ring','grave-sun':'raised-orb','shadow-clone':'dusk-split','gravity-well':'compression','stillpoint':'time-ward',
+  aegis:'crossed-ward','shadow-boxing':'fighting-stance','fire-burst':'fan-release','imbue-weapon':'weapon-imbue','essence-walk':'flow-forward','orbit-volley':'orbit-gather',
+  'ember-form':'form-rise',quickening:'acceleration','veil-guard':'body-ward','force-channel':'power-draw','aerial-step':'traversal-brace','rift-step':'rift-fold',
+});
 export const RIFT_FLASH = .6; // release 519: seconds an instant Rift Step lights its button
 export const EQUIPMENT_CAPACITY = 60;
 // Release 571 (skylands.ts): the arena becomes a Skyland: its own boss waits for the last wave, the first wave is placed.
@@ -2206,6 +2211,7 @@ export class Game {
       attackUntil: now + (s.playerRuntime.attackMotion || 0),
       attackVisual: normalizeAttackVisual(s.playerRuntime.attackVisual, attackVisualRemaining(s.playerRuntime)),
       actionVisualUntil: Object.hasOwn(s.playerRuntime, 'actionVisualMotion') ? now + normalizeActionVisualMotion(s.playerRuntime.actionVisualMotion, s.playerRuntime.attackVisual) : undefined,
+      castVisual: normalizeCastVisual(s.playerRuntime.castVisual, Number(s.playerRuntime.clocks?.castUntil)||0),
       primaryVisualUntil: s.playerRuntime.primaryVisualMotion == null ? undefined : now + (Number.isFinite(s.playerRuntime.primaryVisualMotion) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, s.playerRuntime.primaryVisualMotion)) : 0),
       fistVisualUntil: s.playerRuntime.fistVisualMotion == null ? undefined : now + (Number.isFinite(s.playerRuntime.fistVisualMotion) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, s.playerRuntime.fistVisualMotion)) : 0),
       primaryCombo: normalizePrimaryCombo(s.playerRuntime.primaryCombo),
@@ -3242,6 +3248,7 @@ export class Game {
         pendingToolUse:this.savedPendingToolUse(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingToolUse?.v)&&this.save.session.playerRuntime.pendingToolUse.v>1?structuredClone(this.save.session.playerRuntime.pendingToolUse):null),
         hammerfallStartup:this.savedHammerfallStartup(),
         ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
+        castVisual: normalizeCastVisual(this.player.castVisual, remaining(this.player.castUntil,clock)),
         ...(Number.isFinite(this.player.primaryVisualUntil) ? { primaryVisualMotion: remaining(this.player.primaryVisualUntil, clock) } : {}),
         ...(Number.isFinite(this.player.fistVisualUntil) ? { fistVisualMotion: remaining(this.player.fistVisualUntil, clock) } : {}),
         primaryCombo: normalizePrimaryCombo(this.player.primaryCombo),
@@ -3526,6 +3533,7 @@ export class Game {
         0;
     p.meleeStrike = null;
     p.attackVisual = null;
+    p.castVisual = null;
     p.primaryCombo = null; p.actionVisualUntil = 0; p.primaryVisualUntil = 0; p.fistVisualUntil = 0;
     this.jumpUntil = 0;
     this.projectiles = [];
@@ -4483,6 +4491,7 @@ export class Game {
         0;
     p.meleeStrike = null;
     p.attackVisual = null;
+    p.castVisual = null;
     p.primaryCombo = null; p.actionVisualUntil = 0; p.primaryVisualUntil = 0; p.fistVisualUntil = 0;
     this.jumpUntil = 0;
     this.projectiles = [];
@@ -6478,9 +6487,19 @@ export class Game {
     return this.useConsumable(item, now);
   }
   castSpell(spellId = null) {
+    const id=spellId&&SPELLS[spellId]?spellId:(this.save.equippedSpell||'ember-ring'),priorVisual=this.player.castVisual,before={effects:this.effects.length,shots:this.projectiles.length,clone:!!this.shadowCloneActive(this.lastUpdateNow||0),orbit:!!this.orbit&&!this.orbit.flight,x:this.player.x,y:this.player.y};
     const result = this.castSpellEffect(spellId);
-    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelAttackPresentation(now); }
+    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelAttackPresentation(now);if(this.player.castVisual===priorVisual)this.recordCastVisual(id,before); }
     return result;
+  }
+  recordCastVisual(spellKind,before={},variant='cast',accepted=null){
+    const p=this.player;let origin=accepted?.origin||{x:(before.x??p.x)+.5,y:(before.y??p.y)+.45},target=accepted?.target||null,aim=accepted?.aim||null;
+    const shot=this.projectiles[before.shots],fx=this.effects[before.effects];
+    if(!target){if(shot)target={x:shot.x,y:shot.y};else if(fx)target={x:fx.x,y:fx.y};else if(spellKind==='orbit-volley'&&before.orbit&&this.orbit?.flight){origin={x:this.orbit.flight.x,y:this.orbit.flight.y};target={x:this.orbit.flight.tx,y:this.orbit.flight.ty};}else if(spellKind==='rift-step')target={x:p.x+.5,y:p.y+.45};}
+    if(!aim){if(shot&&Math.hypot(shot.dx||0,shot.dy||0)>.001)aim={x:shot.dx,y:shot.dy};else if(target&&Math.hypot(target.x-origin.x,target.y-origin.y)>.001)aim={x:target.x-origin.x,y:target.y-origin.y};else aim=projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing);}
+    if(spellKind==='shadow-clone'&&variant==='cast')variant=before.clone?'swap':'create';else if(spellKind==='orbit-volley')variant=before.orbit?'launch':'gather';
+    let profile=CAST_GESTURES[spellKind]||'neutral-cast';if(spellKind==='shadow-clone'&&variant==='swap')profile='dusk-swap';if(spellKind==='orbit-volley'&&variant==='launch')profile='orbit-launch';
+    return stampCastVisual(p,{spellKind,variant,profile,aim,origin,...(target?{target}:{}),...(accepted?.sourceId?{sourceId:accepted.sourceId}:{}),...(Number.isFinite(accepted?.sourceUntil)?{sourceUntil:accepted.sourceUntil}:{})});
   }
   castSpellEffect(spellId = null) {
     if (this.cursed("spells")) return false; // release 737: NO SPELLS
@@ -6553,9 +6572,12 @@ export class Game {
     const d = foe ? projectileDirection(foe.x + .5 - cx, foe.y + .45 - cy, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), glyphs = this.glyphLoadout("spell", spell.id), F = FIRE_BURST;
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     const damage = Math.max(1, Math.round(this.spellPower(spell) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage)));
+    let centerShell=null;
     for (let i = 0; i < F.count; i++) { const a = (F.count > 1 ? i / (F.count - 1) - .5 : 0) * F.spread, c = Math.cos(a), sn = Math.sin(a);
       this.projectiles.push({ id: `fire-burst-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x: cx + d.x * .3, y: cy + d.y * .3, dx: d.x * c - d.y * sn, dy: d.x * sn + d.y * c, speed: F.speed, life: F.reach * glyphs.mods.range / F.speed, damage, damageType: "magic", path: "grenade", age: 0, hits: {}, blastRadius: spell.radius * glyphs.mods.radius, glyphHost: "spell", glyphSpell: spell.id, fireBomb: true }); }
+    centerShell=this.projectiles[this.projectiles.length-Math.ceil(F.count/2)];
     cds[key] = spell.cooldown * glyphs.mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    this.recordCastVisual(spell.id,{},'cast',{origin:{x:centerShell.x,y:centerShell.y},target:{x:centerShell.x,y:centerShell.y},aim:d,sourceId:centerShell.id});
     echoEvent(this, "spell", now); this.message = `${spell.name}!`;
     return true;
   }
@@ -7735,10 +7757,11 @@ export class Game {
   castShadowClone(spell, cds, key, now = this.lastUpdateNow || 0) {
     if (this.shadowCloneActive(now) && !this.shadowClone.boxing) { // release 503: a Shadow Boxing echo is replaced, not stepped into
       if (this.shadowClone.charging) this.tickCloneCharge(false, now); // release 417
-      const at = clonePosition(this.player, this.shadowClone), w = this.glyphWorld(now);
+      const origin={x:this.player.x+.5,y:this.player.y+.45},sourceUntil=this.shadowClone.until,at = clonePosition(this.player, this.shadowClone), w = this.glyphWorld(now);
       if (!w.canStand(at.x, at.y)) { this.shadowClone.blockedUntil = now + SHADOW_CLONE.blockedFor * 1000; this.message = "Blocked: you cannot stand where your shadow is."; return false; }
       (this.glyphVisuals ||= []).push({ kind: "arc", x: this.player.x + .5, y: this.player.y + .45, tx: at.x + .5, ty: at.y + .45, color: "#7a5fc0", life: .3, max: .3 });
       this.player.x = at.x; this.player.y = at.y; this.player.invulnerableUntil = Math.max(this.player.invulnerableUntil || 0, now + 150);
+      this.recordCastVisual(spell.id,{},'swap',{origin,target:{x:at.x+.5,y:at.y+.45},aim:{x:at.x+.5-origin.x,y:at.y+.45-origin.y},sourceUntil});
       this.shadowClone = null; this.cloneAim = false; this.message = "You step into your shadow."; this.sync(); return true;
     }
     if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
@@ -7746,6 +7769,7 @@ export class Game {
     this.shadowClone = { ox: o.x, oy: o.y, until: now + spell.lifetime * 1000 }; this.cloneAim = false;
     if (this.castAction) this.shadowClone.charging = { action: this.castAction, start: now, dir: { x: o.x / SHADOW_CLONE.near, y: o.y / SHADOW_CLONE.near } };
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown /* release 467 (Codex audit I002): Heavy and Swift count */ * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
+    {const origin={x:this.player.x+.5,y:this.player.y+.45},at=clonePosition(this.player,this.shadowClone);this.recordCastVisual(spell.id,{},'create',{origin,target:{x:at.x+.5,y:at.y+.45},aim:{x:at.x+.5-origin.x,y:at.y+.45-origin.y},sourceUntil:this.shadowClone.until});}
     echoEvent(this, "spell", now);
     this.message = this.shadowClone.charging ? "Hold to send your shadow farther; let go to set it." : "Your shadow stands beside you. Cast again to step into it.";
     return true;
@@ -7756,8 +7780,10 @@ export class Game {
     const c = this.shadowClone?.charging; if (!c) return;
     if (held) {
       if (this.movingNow && this.player.lastMoveVector) { const v = this.player.lastMoveVector, m = Math.hypot(v.x, v.y) || 1; c.dir = { x: -v.x / m, y: -v.y / m }; }
-      const d = chargeDistance((now - c.start) / 1000); this.shadowClone.ox = c.dir.x * d; this.shadowClone.oy = c.dir.y * d; return;
+      const d = chargeDistance((now - c.start) / 1000); this.shadowClone.ox = c.dir.x * d; this.shadowClone.oy = c.dir.y * d;
+      const v=this.player.castVisual;if(v?.spellKind==='shadow-clone'&&v.variant==='create'&&v.sourceUntil===this.shadowClone.until){const at=clonePosition(this.player,this.shadowClone),target={x:at.x+.5,y:at.y+.45},dx=target.x-v.origin.x,dy=target.y-v.origin.y,m=Math.hypot(dx,dy)||1;this.player.castVisual={...v,target,aim:{...v.aim,x:dx/m,y:dy/m}};}return;
     }
+    {const v=this.player.castVisual;if(v?.spellKind==='shadow-clone'&&v.variant==='create'&&v.sourceUntil===this.shadowClone.until){const at=clonePosition(this.player,this.shadowClone),target={x:at.x+.5,y:at.y+.45},dx=target.x-v.origin.x,dy=target.y-v.origin.y,m=Math.hypot(dx,dy)||1;this.player.castVisual={...v,target,aim:{...v.aim,x:dx/m,y:dy/m}};}}
     delete this.shadowClone.charging; this.shadowClone.until += now - c.start; this.message = "Your shadow settles there. Cast again to step into it.";
   }
   // A tap while the clone waits to be set places it there (up to SHADOW_CLONE.placeRange away). True when it took the tap.
@@ -7859,8 +7885,9 @@ export class Game {
   useUpgradeSphere(kind){const key=kind==='armor'?'armorSphere':'weaponSphere',armor=kind==='armor'?this.save.equipment.armor:null,cap=armor?8:12,now=armor?(armor.power||0):(this.save.weaponLevel||0);if(!(this.save.materials[key]>0)||(kind==='armor'&&!armor))return false;if(now>=cap){this.message=`The ${armor?'armor':'weapon'} is already past what a sphere can add.`;return false}/* release 736 (review F12): a sphere never lowers gear (it capped a +12 weapon at +8) and is kept when it cannot help */this.save.materials[key]--;if(armor)armor.power=now+1;else{this.save.weaponLevel=now+1;this.player.weaponLevel=this.save.weaponLevel}this.message=`${kind==='armor'?'Armor':'Weapon'} sphere fused. The upgrade is permanent.`;this.sync();return true}
   upgradeEquipmentSlot(slot){const result=upgradeEquipment(this.save,slot);this.message=result.message;if(result.ok){syncCharacterStats(this.save);this.player.maxStamina=this.save.maxStamina;this.sync()}return result}
   activateApertureSkill(id = this.save.magicSkills?.selected) {
+    const before={x:this.player.x,y:this.player.y,shots:this.projectiles.length,effects:this.effects.length};
     const result = this.activateApertureSkillEffect(id);
-    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelAttackPresentation(now); }
+    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelAttackPresentation(now);this.recordCastVisual(id,before,'activate'); }
     return result;
   }
   activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const ok=riftStep(this,this.lastUpdateNow||0);if(ok)this.riftFlashAt=this.lastUpdateNow||0;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
@@ -8059,7 +8086,7 @@ export class Game {
       else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
-      else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; if (this.mountRide()) this.jumpDur *= MOUNT_BEASTS[this.mountRide().beast].jump; /* release 748: a mount jumps farther */ this.jumpStart = now; this.jumpUntil = now + this.jumpDur; this.cancelAttackPresentation(now); }
+      else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; if (this.mountRide()) this.jumpDur *= MOUNT_BEASTS[this.mountRide().beast].jump; /* release 748: a mount jumps farther */ this.jumpStart = now; this.jumpUntil = now + this.jumpDur; this.cancelAttackPresentation(now); cancelCastVisual(p); }
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again

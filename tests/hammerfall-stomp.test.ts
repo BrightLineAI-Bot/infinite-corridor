@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { Game, BRAWLER_GEAR } from '../src/game.ts';
+import { Game, BRAWLER_GEAR, updateEffects } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { createLabFixture, scenariosForLab } from '../src/proving-ground-labs.ts';
 import { closeViewPlayerAction, CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
@@ -157,6 +157,36 @@ test('logical idle save metadata is additive, finite and independent of accepted
   for(const bad of [null,'100',{},[],true,-1,NaN,Infinity,1e12+1]){const s=freshSave();s.session.playerRuntime.heroPresentationTime=bad;s.session.playerRuntime.future={kept:7};const normalized=migrateSave(s);assert.equal(Object.hasOwn(normalized.session.playerRuntime,'heroPresentationTime'),false);const g=new Game(normalized,1234);assert.equal(g.presentationPausedMs,undefined);assert.deepEqual(normalized.session.playerRuntime.future,{kept:7});assert.equal(closeViewPlayerAction(g,1234).active,false);}
   const legacy=migrateSave(freshSave());assert.equal(Object.hasOwn(legacy.session.playerRuntime,'heroPresentationTime'),false);
   for(const logical of [0,1801,1e12]){const s=freshSave();s.session.playerRuntime.heroPresentationTime=logical;const g=new Game(migrateSave(s),100);assert.equal(g.presentationPausedMs,100-logical);assert.equal(g.exportSnapshot(100).session.playerRuntime.heroPresentationTime,logical);}
+});
+
+test('Hammerfall and accepted spells/tools retain final body ownership, pause metadata and the original delayed pulse',async()=>{
+  const names=['window','fetch','createImageBitmap','WebGL2RenderingContext'],old=new Map(names.map(k=>[k,globalThis[k]]));
+  const gl=new GL(),screen=context(),canvas={width:390,height:844,addEventListener(){},getContext:k=>k==='webgl2'?gl:context()};screen.canvas=canvas;
+  globalThis.WebGL2RenderingContext=GL;setCloseViewCanvasFactory(()=>canvas);CLOSE_VIEW_HOOKS.gl=true;resetCloseViewGL();
+  const draw=(g,now)=>{const canonical=g.player.attackUntil;try{g.player.attackUntil=0;baseRender(screen,g,390,844,now);}finally{g.player.attackUntil=canonical;}assert.equal(g.player.attackUntil,canonical);assert.equal(closeViewGLStats.heroTriangles,3170);const body=gl.uploads.at(-1);assert.ok(body?.length&&body.every(Number.isFinite));return body;};
+  const reload=(g,now)=>{g.setPaused(true,now);const paused=draw(g,now+9000),saved=migrateSave(clone(g.exportSnapshot(now+9000))),back=new Game(saved,2000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();assert.equal(delta(paused,draw(back,2000)),0,'final selected body survives paused JSON exactly');assert.equal(saved.version,14);assert.equal(saved.session.playerRuntime.heroPresentationTime,now);return back;};
+  const pulse=(fx)=>{const at={x:fx.x,y:fx.y,radius:fx.radius,damage:fx.damage},delay=fx.delay;assert.ok(delay>0);updateEffects([fx],[],delay);assert.equal(fx.pulseIndex,0,'delay expiry alone retains the pre-contact frame');updateEffects([fx],[],.001);assert.equal(fx.pulseIndex,1,'the original effect still emits its one canonical pulse');assert.deepEqual({x:fx.x,y:fx.y,radius:fx.radius,damage:fx.damage},at);};
+  try{
+    globalThis.window={};globalThis.createImageBitmap=async()=>({width:1024,height:1024});globalThis.fetch=async url=>{const u=new URL(url);assert.equal(u.protocol,'file:');const b=fs.readFileSync(u);return{ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};assert.ok(await loadCloseViewHero());
+    for(const next of ['cinder-dart','fire-burst','rift-bombard']){
+      const g=fixture();resetCloseViewCamera();draw(g,100000);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);
+      const hammer=clone(g.player.attackVisual),fx=g.effects.find(e=>e.id===hammer.hammerEffectId),original=clone(fx),at=Math.max(100700,g.toolReadyAt||0);
+      assert.equal(hammer.hammerDelayMs,320);assert.equal(hammer.durationMs,570);assert.equal(g.player.attackUntil,100240);assert.ok(closeViewPlayerAction(g,at).active,'effect-relative Hammerfall stays active beyond its nominal deadline');
+      g.lastUpdateNow=at;
+      let expectedEffect=original;
+      if(next==='rift-bombard'){g.save.equipment.secondary={id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'};assert.equal(g.fireSecondary(at,{x:1,y:0}),false,'the original Hammerfall pulse owns the one logical startup slot');assert.equal(g.player.attackVisual.profile,'hammer');updateEffects([fx],[],fx.delay);updateEffects([fx],[],.001);assert.deepEqual(g.reconcileHammerfallStartup(),{released:true,ended:false});expectedEffect=clone(fx);assert.equal(g.fireSecondary(at,{x:1,y:0}),true);assert.equal(g.player.attackVisual.toolKind,next);}
+      else{assert.equal(g.castSpell(next),true);assert.equal(g.player.attackVisual.presentationCancelled,true,'accepted spell cancels even a lagged effect-linked gesture');assert.equal(closeViewPlayerAction(g,at).active,false);assert.equal(g.player.castVisual.spellKind,next);g.player.castVisual.futureSpell={kept:true};}
+      assert.deepEqual(fx,expectedEffect,'new body ownership cannot mutate or remove the accepted remote effect');draw(g,at+16);
+      const back=reload(g,at+16),restored=back.effects.find(e=>e.id===hammer.hammerEffectId);assert.deepEqual(restored,expectedEffect);assert.ok(restored);
+      if(next==='rift-bombard')assert.equal(closeViewPlayerAction(back,2000).record.toolKind,next);
+      else{assert.equal(closeViewPlayerAction(back,2000).active,false);assert.equal(back.player.castVisual.spellKind,next);assert.deepEqual(back.player.castVisual.futureSpell,{kept:true});assert.equal(back.projectiles.filter(p=>p.fireBomb).length,next==='fire-burst'?5:0,'Cinder Dart stays an immediate field, never a flying dart');}
+      if(next!=='rift-bombard')pulse(restored);else assert.equal(restored.pulseIndex,1);
+    }
+    const g=fixture();resetCloseViewCamera();g.lastUpdateNow=101000;assert.equal(g.castSpell('fire-burst'),true);draw(g,101016);const accepted=clone(g.player.castVisual),fire=g.projectiles.slice();
+    assert.equal(g.fireSecondary(101016,{x:1,y:0}),true);assert.equal(g.player.castVisual.cancelled,true);assert.equal(g.player.castVisual.sourceId,accepted.sourceId);assert.equal(g.player.attackVisual.profile,'hammer');assert.equal(g.player.attackUntil,101256);
+    const fx=g.effects.find(e=>e.id===g.player.attackVisual.hammerEffectId);updateEffects([fx],[],.16);draw(g,101176);assert.equal(closeViewGLStats.modelTriangles,3170,'stomp holds no weapon or spell gear');assert.ok(fire.every(p=>g.projectiles.includes(p)),'new stomp retains all five actual Fire sources');
+    const back=reload(g,101176);assert.equal(back.player.castVisual.cancelled,true);assert.equal(closeViewPlayerAction(back,2000).record.profile,'hammer');assert.equal(back.projectiles.filter(p=>p.fireBomb).length,5);pulse(back.effects.find(e=>e.id===back.player.attackVisual.hammerEffectId));
+  }finally{CLOSE_VIEW_HOOKS.gl=null;setCloseViewCanvasFactory(null);resetCloseViewGL();resetCloseViewCamera();for(const k of names){if(old.get(k)===undefined)delete globalThis[k];else globalThis[k]=old.get(k);}}
 });
 
 test('actual Hammerfall damage remains remote and effect-timed at 30/60/uneven frames; refusal, Echo and cleanup cannot replay the body',()=>{
