@@ -12,6 +12,7 @@ const asset=decodeCloseViewHero(meta,raw.buffer.slice(raw.byteOffset,raw.byteOff
 const tools={'rift-bombard':['Rift Bombard','blast'],blunderbuss:['Blunderbuss','quick'],'lumen-spindle':['Lumen Spindle','focus'],'great-sweep':['Great Sweep','brawler']};
 function fixture(kind,swift=false){
   const {game:g}=createLabFixture({lab:'combat-assets',scenario:'blade-spark-ashling',now:100000});g.enemies=[];g.projectiles=[];
+  g.save.closeView=false; // Explicit legacy/top-down motion path; delayed Close View phases have their own transaction/presentation matrix.
   g.save.equipment.secondary=normalizeSockets({id:'secondary-'+kind,name:tools[kind][0],slot:'secondary',power:5,property:tools[kind][1],tier:'relic'});
   g.save.equipment.primary={id:'primary-cinder-pike',name:'Cinder Pike',slot:'primary',power:5};
   if(swift){g.save.glyphs.swift=3;for(let i=0;i<3;i++)assert.equal(socketGlyph(g.save,'tool',i,'swift').ok,true);}
@@ -24,7 +25,7 @@ function socket(record,age){
   return Array.from(frame.rightSocket.slice(12,15));
 }
 
-test('ordinary and Swift gun repeats retain the ready hold through the whole recoil trajectory',()=>{
+test('legacy top-down ordinary and Swift gun repeats retain the ready hold through the whole recoil trajectory',()=>{
   for(const kind of Object.keys(tools).filter(k=>k!=='great-sweep'))for(const swift of [false,true]){
     const g=fixture(kind,swift);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);
     let acceptedAt=100000;
@@ -44,7 +45,7 @@ test('ordinary and Swift gun repeats retain the ready hold through the whole rec
   }
 });
 
-test('an early third accept and a repeat during lowering continue their exact partial poses without a second cold draw',()=>{
+test('legacy top-down early accepts and lowering repeats continue exact partial poses without a second cold draw',()=>{
   for(const kind of Object.keys(tools)){
     const g=fixture(kind);let now=100000;assert.equal(g.fireSecondary(now,{x:1,y:0}),true);
     for(const gap of [20,20,TOOL_ACTION_TIMING[kind].holdMs+30]){
@@ -58,7 +59,7 @@ test('an early third accept and a repeat during lowering continue their exact pa
   }
 });
 
-test('cold v1 draw stays cold while rapid Sweep continuation retains its raised blend',()=>{
+test('legacy top-down cold v1 draw stays cold while rapid Sweep continuation retains its raised blend',()=>{
   for(const kind of Object.keys(tools)){
     const g=fixture(kind,true);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);
     const cold=g.player.attackVisual;assert.deepEqual(cold.toolMotion.entry,[0,0,0,0,0]);assert.equal(sampleToolActionMotion(cold,0).weight,0);assert.ok(sampleToolActionMotion(cold,20).weight<1);
