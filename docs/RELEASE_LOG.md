@@ -15,14 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main remains release r852 after the documentation merge 94fdbc27f9f905704451201dad799ca1e72a70d5. Local Codex owns gameplay integration and release numbers. Draft #507 carries provisional r853. Recheck main and ownership before integration.
+Main is at game release r853, followed by tooling-only merge fded909176ef45ea9355573a2173ab46ab22ed91. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 853 | Codex | claude/simple-tool-appearance-release-cloud / #507 | Imported Spark Coil and Needle Caster appearance plus rank-zero scratch fixture | Reconciled with merged ownership and r851 release records. Seven focused checks and static build passed. Fresh exact CI and review and hosted visual verification pending. |
-| 852 | Codex | claude/close-view-diagnostics-release-cloud / #506 | Read-only Proving Ground renderer diagnostics | Merged as b635f4b34336. CI 42627941926 and Preview 42627941960 passed. Cloud hosted diagnostics verified the 2D fallback lifecycle. Production publication is open. |
+| 854 | Codex | claude/close-view-healing-drink | Wayfarer healing-drink gesture and isolated Potion lab | Prepared from r853 main after tooling-only #508. CI and Preview pending. |
+| 852 | Codex | claude/close-view-diagnostics-release-cloud / #506 | Read-only Proving Ground renderer diagnostics | Merged as b635f4b34336. CI 42627941926 and Preview 42627941960 passed. Diagnostics were verified on the r853 desktop preview. Published in r853. |
 | 850 | Codex | claude/pg-lantern-recovery-cloud / #504 | Candidate-scoped natural Lantern recovery | Merged as e789c26f7d71. CI and Preview passed. Cloud natural capture, browser reload and damage witness completed. Published in r851. |
 | 849 | Codex | claude/close-view-refinement-release-cloud / #503 | Coordinated Wayfarer, equipment, Hammer Fall/Golem and spell-light refinement | Merged as 01bc5b39039a. CI and Preview passed. Published in r851 with the local desktop motion witness. |
 | 848 | Codex | claude/grave-lantern-reload-lift / #500 | Clear discarded Grave Lantern leap lift on reload | Merged as a553e1a5c. CI and Preview passed. Published in r851. The natural persisted-reload witness ran separately in the r850 lab. |
@@ -221,6 +221,7 @@ Main remains release r852 after the documentation merge 94fdbc27f9f905704451201d
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 853 | r853-a53725ea58a7 | 2026-11-09 | Astra review (851→853): no blockers. Source CI 42643703674, merged CI 42646218531, Preview 42646218711 and Publish 42649614970 passed. Spark Coil, rank-zero Needle Caster and the Blunderbuss comparison were checked in the desktop preview. Tim accepted desktop for r853. Live identity and Options → System matched. Phone verification remains open. Includes r852. |
 | 851 | r851-1a2c35ae7ab9 | 2026-11-09 | Astra review (847→851): no blockers. Source CI 42614947720, merged CI 42620144417, Preview 42620144042, dry run 42638086622 and Publish 42638198273 passed. Tim accepted the exact desktop textured pass for this release. Live identity and Options → System matched. Phone validation remains open. Includes r848–r850. |
 | 847 | r847-6be077b9239e | 2026-11-08 | Astra review (846→847): no blockers after the knockdown correction. Source CI42542299944, merged CI42543235774, Preview42543235734 and Publish42544780650 succeeded. Hosted Cleaver and Fists, target/orbit, tool/dodge and pause/resume checked. Live identity and Options → System matched; recent errors none. |
 | 846 | r846-672941fdd677 | 2026-11-08 | Astra review (845→846): no blockers. Source CI42540306774, merged CI42541303428, Preview42541303547 and Publish42542694852 succeeded. Hosted ordinary Lantern approach showed separation and took damage; live identity and Options → System matched. Borrowed-leap reload has a separate correction in draft PR #500. |

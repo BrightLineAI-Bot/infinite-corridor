@@ -8,6 +8,7 @@ import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachme
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation } from './close-view-player-presentation.ts';
+import { sampleConsumeVisual } from './consume-visual.ts';
 import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
@@ -2081,7 +2082,8 @@ const MODEL_STATE = {
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
-  heroGear: { profile: '', leftSocket: null, rightSocket: null, alpha: 1, tint: null, hitFlash: 0 },
+  consumeCurrent:{area:'overworld',areaId:'',levelId:'root'},consumeSample:{active:false,kind:'',itemKind:'',phase:0,elapsedMs:0,remainingMs:0,durationMs:0},
+  heroGear: { profile: '', leftSocket: null, rightSocket: null, vialSocket:null,drinkVial:false,vialWeight:0,alpha: 1, tint: null, hitFlash: 0 },
   cleaverTrail: { owner: null, samples: new Float64Array(21), count: 0, visible: false, alpha: 1 },
   toolEmission:new Float32Array(3),toolEmissionReady:false,toolRelease:null,toolAlpha:1,
   spellEmission:new Float32Array(3),spellEmissionReady:false,spellRelease:null,spellAlpha:1,
@@ -2275,7 +2277,21 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (attack && !track.attacking) track.attackAt = now;
     const knock = stunned ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
     const profilePose = fisting ? 'fist' : visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
-    const pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
+    let pose = stunned ? "knockdown" : presentation?.stagger ? "idle" : hit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
+    let drink=null;
+    if (who === player && (!form || form.kind === 'playerIronFists') &&
+        (pose === 'idle' || pose === 'walk') && player.consumeVisual?.v === 1 && !player.consumeVisual.cancelled) {
+      const receipt = player.consumeVisual;
+      const logicalNow = (g.paused && finite(g.pauseStarted) ? g.pauseStarted : now) - (g.presentationPausedMs || 0);
+      if (logicalNow >= receipt.acceptedLogicalMs && logicalNow < receipt.acceptedLogicalMs + receipt.durationMs) {
+        const current = state.consumeCurrent;
+        current.area = g.area;
+        current.areaId = g.areaId();
+        current.levelId = String(g.map?.levelId || 'root');
+        drink = sampleConsumeVisual(receipt, logicalNow, current, state.consumeSample);
+        if (drink?.active) pose = 'drink';
+      }
+    }
     const meleeAction = visualAttack && visualRecord.meleeAction?.v === 1 ? visualRecord.meleeAction : null;
     const poseTime = who === player && !meleeAction && !primaryVisualStage(visualRecord) && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
     let amount = 0;
@@ -2292,6 +2308,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       ? monsterAction.leapAmount
       : 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
     if (hit) amount = hit;
+    if(drink?.active)amount=drink.phase;
     if (charge != null && !hit) amount = charge;
     if (stunned) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
@@ -2360,6 +2377,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
         else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; action.jumpAir = ordinaryJumpPresentation(g, now, d.jumpLift, d.jumpBaseMs); }
+        else if(drink?.active){action.kind='drink';action.profile=drink.itemKind;action.phase=drink.phase;action.durationMs=drink.durationMs;}
         action.meleeAction = action.kind === 'melee' && attack ? meleeAction : null;
         // Generic primaries retain their accepted logical breathing phase at both blend endpoints.
         if (action.kind === 'melee' && action.profile === 'melee' && Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs;
@@ -2368,6 +2386,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
           gear.profile = form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.drinkVial=action.kind==='drink'&&!state.heroFrame.powerSuit;gear.vialWeight=gear.drinkVial?state.heroPose.weight:0;gear.vialSocket=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);
           if (state.heroFrame.powerSuit && equipped === offset) return;

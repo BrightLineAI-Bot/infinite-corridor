@@ -3,7 +3,11 @@
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
 
-## Spark Coil and Needle Caster r853 draft — 2026-11-09
+## Verified r853 production and cloud preflight — 2026-11-09
+
+Production is verified at r853-a53725ea58a7 after Publish 42649614970. The desktop scratch witness showed both imported tool appearances with active WebGL2, and Astra cleared the exact r851→r853 diff. Options → System matched with the journey paused and no recent errors. Main is the tooling-only #508 merge fded90917 after r853. The manual Frozen candidate render preflight is available for cloud evidence, with dispatch and production ownership kept separate. The next gameplay branch is the accepted healing-drink presentation.
+
+## Historical Spark Coil and Needle Caster r853 draft — 2026-11-09
 
 Draft PR #507 preserves the original imported Spark Coil and Needle Caster routing and the existing native generic fallback. A new isolated Combat Asset Lab fixture equips rank-zero Needle Caster and verifies its canonical accepted shot. The local coordinator reconciled the draft after PR #502 without changing the published r851 identity. New exact-head review and CI are required before merge, with hosted visual verification on its own preview.
 

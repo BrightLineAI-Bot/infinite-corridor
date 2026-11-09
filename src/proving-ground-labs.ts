@@ -249,6 +249,7 @@ const CLOSE_VIEW_LAB = [
   { id: "routing-pentagon-candidate", label: "Routing experiment: Pentagon (branched rooms)", roomRouting: "pentagon", candidate: true },
   { id: "routing-adoption-new-keep", label: "Routing adoption: cross into a new standalone keep", routingAdoption: "keep" },
   { id: "routing-adoption-new-pentagon", label: "Routing adoption: cross into a new Pentagon", routingAdoption: "pentagon" },
+  { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
 // GPU scene's lava and pits can be seen without hunting for a room maze's gallery
@@ -364,6 +365,16 @@ function closeViewFixture(scenario, seed, now) {
   else if (spec.buildingFeature === "drone") game.message = traversal?.found ? "Close View drone lab: Jump, then press Jump again and hold to boost over the indoor platform chain." : traversal?.note;
   else if (spec.latestPentagon) game.message = "Close View Pentagon terrain lab: explore the current mixed rooms, side cells, broad corridors, and ramps.";
   else if (buildPractice) game.message = "Stone selected. Build raises the block ahead; tap it to stack. Jump onto one, then Jump from one to two. Choose Wood wall in the lab menu to compare. Reset same restores materials.";
+  if (spec.drinkInspection) {
+    entry = assetLane(game).player;
+    game.player.x = entry.x;
+    game.player.y = entry.y;
+    game.enemies = [];
+    game.player.hp = Math.ceil(save.maxHp * .45);
+    save.potionChoice = "restorativeDraught";
+    save.consumables.restorativeDraught = 1;
+    game.message = "Use Potion to drink the Restorative Draught. Reset same restores health and supplies for another test.";
+  }
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(traversal ? { diagnostics: { traversal } } : {}), ...(buildPractice ? { buildPractice, developerHint: game.message, diagnostics: { buildPractice } } : {}) };
 }
