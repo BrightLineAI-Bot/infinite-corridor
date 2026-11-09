@@ -4,6 +4,22 @@ Updated: 2026-11-09. This is the work record for the owner's Close View notes an
 
 Verified live: r847-6be077b9239e, commit 6be077b9239eae5e32733b2be720da2e9b65d60f, tree ada3107ed8c64c6d6edfab75e5cd4d1b3ebccbaa. Source CI42542299944, merged CI42543235774, Preview42543235734 and Publish42544780650 succeeded. Fresh Astra review (846→847) cleared the exact corrected tree. Live identity and Options → System match, the journey is paused at 250 KB, and recent errors are empty.
 
+## r850 Astra cleared / Cleaver durable checkpoint — 2026-11-09 11:54 UTC
+
+Parent supplied fresh Astra re-review clearance for exact #504 head `afd2590253c2672bc75095a632e9f9244391d640`, tree `1bf2ca098629088b8ad5bac947054f1bd838aeb2`, base `01bc5b39039acbe22f7a6ae06ba33e7343a2abf5`. Both prior P2s are fixed; independent regressions fail the old source and pass this one. Astra passed groups25 lifecycle,22 storage,20 artifact/build/isolation and11 preservation (overlap), plus fresh build and whitespace; no new blocker or production-isolation regression. This supersedes the failed old-head review and pending-review status in earlier checkpoint snapshots. Source clearance does not establish hosted persistence.
+
+Exact-head CI42611677696 remains in progress; its preview rehearsal succeeded. Root will recheck exact head/tree/base, main/release baton and all checks before using Tim's standing automatic merge authority. The actual merged Preview, real browser durability/full reload, normal-control hosted contact and physical-device gates remain open. No merge or Publish yet; main849 and live847 remain verified.
+
+Cleaver's reviewed corrected rehearsal is now durable on non-protected remote `claude/cleaver-recovery-rehearsal-cloud`, commit `6d471eaf003237027b5b49bfddbf9fa8a28a47ca`, tree `fb81d3087c2588ec454e44a5d16497645072378a`, parent exact corrected recoveryafd25902. Remote tree matches clean localfd346850. Its only delta is the reviewed original76fb four-file reset patch;106 author/41 independent checks pass (overlap). Fresh branch lookup found no competing source. No release bump/PR/merge was assigned; keep #504 frozen and reconcile again with actual merged recovery before packaging Cleaver.
+
+### Future Cleaver hosted witness packet — prepared, not executed
+
+This applies only to a later package containing the reset checkpoint, not current #504. Use Combat Asset Lab / cleaver-echo-inspection, CINDER-VERGE-47, variant0, Start test: Relic Verge Cleaver with real Echo, Spark Coil, Ember Ring; harmless stationary5000HP Ashling at(30,11), player(25,11), pentagon:CINDER-VERGE-47:0:24:v8:f9. Public J/Attack, Space/Dodge, Q/R/Tool, WASD and Pause/Resume suffice. Reset same between independent cases; Gallery start changes position without resetting combo.
+
+First useful normal-speed textured clip: one opening up-cut, roughly0.6s accepted-input gap, next down-cut; Reset same; one up-cut, clearly longer roughly1.5s gap, opening up-cut again. Then test optional1/2/3-cut stops, all4cuts, stage2/4 carry continuity, moving/dodging, Tool not refreshing the primary window, and several paused seconds with total unpaused gap below1s retaining continuation. Echo repeats must not advance body motion. Waiting only aftercut4 cannot prove expiry because the sequence already wraps. Exact999/1000/1001ms boundaries remain source evidence, not browser precision claims.
+
+Gallery reload regenerates the fixture; natural-Lantern recovery deliberately refuses gallery context. Therefore this packet cannot establish canonical Cleaver gallery reload acceptance. Public diagnostics do not expose live combo stage/timestamp. Great Sweep in cleaver-sweep-marshal and Bombard in cleaver-bombard-crawler offer alternate accepted Tool interruption witnesses, but their actors are active; do not call them quiet fixtures. Record exact future candidate, seed/scenario, viewport, motion capture and errors, keeping textured rendering and physical-phone evidence separate.
+
 ## Corrected r850 Astra handoff — 2026-11-09 11:47 UTC
 
 **Current draft #504:** exact head `afd2590253c2672bc75095a632e9f9244391d640`, tree `1bf2ca098629088b8ad5bac947054f1bd838aeb2`, base/main `01bc5b39039acbe22f7a6ae06ba33e7343a2abf5`. Remote tree exactly matches clean local correction `d92ae6cd7bdf33111831f2c8c79ae83c70b7bc2d`. Exact-head CI42611677696 is in progress. No release renumber, merge or Publish; r850 remains provisional, main849/live847 unchanged.
