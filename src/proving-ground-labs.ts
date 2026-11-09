@@ -136,7 +136,6 @@ const DEEP = [{id:"legacy-v1",label:"Legacy v1 Threefold expedition"},...DEEP_AR
 const CREATURES = [...Object.keys(CREATURE_FORMS).filter(id=>!MONSTER_PACK[id]?.prototypeOnly), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers",...PACK_KINDS.map(id=>`pack-boss-${id}`)].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
 const COMBAT_ASSETS = [
   { id: "blade-spark-ashling", label: "Salvage Blade + Spark Coil · Ashling", primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling" },
-  { id: "blade-needle-ashling", label: "Salvage Blade + Needle Caster · Ashling", primary: "Salvage Blade", tool: "Needle Caster", spell: "ember-ring", foe: "ashling" },
   { id: "pike-spindle-hound", label: "Cinder Pike + Lumen Spindle · Ashen Hound", primary: "Cinder Pike", tool: "Lumen Spindle", spell: "cinder-dart", foe: "ashenHound" },
   { id: "cleaver-bombard-crawler", label: "Verge Cleaver + Rift Bombard · Glass Mite", primary: "Verge Cleaver", tool: "Rift Bombard", spell: "fire-burst", foe: "glassMite" },
   { id: "blade-bombard-pallid-crawler", label: "Salvage Blade + Rift Bombard · Pallid Crawler", primary: "Salvage Blade", tool: "Rift Bombard", spell: "grave-sun", foe: "pallidCrawler" },
@@ -152,6 +151,7 @@ const COMBAT_ASSETS = [
   { id: "salvage-echo-inspection", label: "Quiet Echo inspection · Salvage Blade", primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", echoPrimary: true },
   ...Object.values(SPELLS).map((spell) => ({ id: `cast-spell-${spell.id}`, label: `Cast inspection · ${spell.name}`, primary: "Salvage Blade", tool: "Spark Coil", spell: spell.id, foe: "ashling", castInspection: { kind: "spell", id: spell.id } })),
   ...Object.values(APERTURE_SKILLS).map((skill) => ({ id: `cast-skill-${skill.id}`, label: `Cast inspection · ${skill.name}`, primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", castInspection: { kind: "skill", id: skill.id } })),
+  { id: "blade-needle-ashling", label: "Salvage Blade + Needle Caster · Ashling", primary: "Salvage Blade", tool: "Needle Caster", spell: "ember-ring", foe: "ashling" },
 ];
 const CREATURE_ASSET_KINDS = ["ashling","ashenHound","rootBrute","coilStalker","hollowMarshal","glassMite","sparkWarden","cinderWisp","veilMoth","voidSentinel","weepingSaint","hangedChoir","graveLantern","pallidCrawler","mirrorShade","amalgam","gnawingMaw","cinderSeraph","lumenWraith","veilSpinner","riftLynx","sunderjaw","thunderhorn","siegeBeetle","gloomwisp","gloomgorge","latticeHunter","archiveBehemoth","riftGrazer"];
 const FOUNDRY_BODIES = ["quadruped","floating","segmented","tentacled","geometric","biomechanical"];
