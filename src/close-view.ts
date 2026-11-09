@@ -8,7 +8,7 @@ import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachme
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.ts';
-import { HURT_VISUAL_MS, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
+import { CACHE_PICKUP_VISUAL_MS, HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
@@ -2311,6 +2311,12 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (drink?.active) pose = 'drink';
       }
     }
+    let pickupPhase=null;
+    if(ordinary&&(pose==='idle'||pose==='walk')&&player.cachePickupVisual?.v===1&&!(now<(player.dodgeUntil||0))){
+      const logicalNow=(g.paused&&finite(g.pauseStarted)?g.pauseStarted:now)-(g.presentationPausedMs||0);
+      pickupPhase=sampleCachePickupVisual(player.cachePickupVisual,logicalNow,g.areaId(),String(g.map?.levelId||'root'));
+      if(pickupPhase!==null)pose='collect';
+    }
     const meleeAction = visualAttack && visualRecord.meleeAction?.v === 1 ? visualRecord.meleeAction : null;
     const poseTime = who === player && !meleeAction && !primaryVisualStage(visualRecord) && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
     let amount = 0;
@@ -2329,6 +2335,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (hurtPhase !== null) amount = Math.sin(Math.PI * hurtPhase) * (reduce ? .65 : 1);
     else if (bodyHit) amount = hit;
     if(drink?.active)amount=drink.phase;
+    if(pickupPhase!==null)amount=pickupPhase;
     if (charge != null && !bodyHit) amount = charge;
     if (stunned && !defeat) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     if (defeat) amount = defeat.amount;
@@ -2405,6 +2412,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; action.jumpAir = ordinaryJumpPresentation(g, now, d.jumpLift, d.jumpBaseMs); }
         else if(drink?.active){action.kind='drink';action.profile=drink.itemKind;action.phase=drink.phase;action.durationMs=drink.durationMs;}
+        else if(pickupPhase!==null){action.kind='interact';action.profile='cache-pickup';action.phase=pickupPhase;action.durationMs=CACHE_PICKUP_VISUAL_MS;}
         action.meleeAction = action.kind === 'melee' && attack ? meleeAction : null;
         // Generic primaries retain their accepted logical breathing phase at both blend endpoints.
         if (action.kind === 'melee' && action.profile === 'melee' && Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs;

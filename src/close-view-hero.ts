@@ -1,7 +1,7 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.ts';
-import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose } from './close-view-player-presentation.ts';
+import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -567,7 +567,8 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const hammerAction=action?.kind==='melee'&&action.profile==='hammer';
   const timedPrimary=action?.kind==='melee'&&['melee','cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
-  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction&&action.kind!=='drink' ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
+  const locomotionLayer=action?.kind==='drink'||(action?.kind==='interact'&&action.profile==='cache-pickup');
+  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction&&!locomotionLayer ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
     meleeMotion=action?.kind==='melee'?sampleMeleeActionPose(action.meleeAction,p,action?.primaryStage?.step??action?.primaryMotion?.step??action?.primaryStep??action?.fistStep,action?.fistLead):null;
@@ -589,7 +590,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   if (action&&!meleeMotion) {
     const kind = action.kind, profile = action.profile;
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
-    else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact') clip = asset.clips.PickUp;
+    else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact'&&profile!=='cache-pickup') clip = asset.clips.PickUp;
     weight = kind === 'death' ? 1 : Math.min(1, p / .08, (1 - p) / .12);
     if (kind === 'hit' && profile === 'hurt' && input.reducedMotion) weight *= .65;
     if(kind==='dodge') {
@@ -608,6 +609,19 @@ export function sampleCloseViewHero(asset, state, input, out) {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
       toolPose(state,state.pose,profile,p,weight,action);
+    } else if(kind==='interact'&&profile==='cache-pickup') {
+      const reach=cacheReachWeight(p,input.reducedMotion);
+      if(reach>0){
+        // Leave the gait and occupied hand alone. A two-handed carry gets a brief head cue.
+        if(heldPrimary!=='cinder-pike'){
+          const freeLeft=roles.free==='leftSocket';
+          rotateX(state.pose,freeLeft?12:22,-.64*reach);
+          rotateX(state.pose,freeLeft?11:21,.29*reach);
+          rotateX(state.pose,freeLeft?7:18,.16*reach);
+        }
+        rotateX(state.pose,4,.21*reach);
+      }
+      state.clip='derived-cache-pickup';state.clipTime=p;
     } else if(kind==='drink') {
       const drink=sampleDrinkPose(p,input.reducedMotion,state),freeLeft=roles.free==='leftSocket',t=state.primaryTarget;
       if(drink.weight>0){state.other.set(state.pose);build(asset,state,state.other);const shoulder=(freeLeft?12:22)*16;

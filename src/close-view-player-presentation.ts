@@ -13,6 +13,11 @@ export function sampleDrinkPose(phase=0,reducedMotion=false,out={}) {
   out.weight=lift;out.sip=p>=.34&&p<=.66?cutSmooth((p-.34)/.12)*(1-cutSmooth((p-.54)/.12)):0;
   out.arm=lift*(reducedMotion?.72:1);out.head=lift*(reducedMotion?.55:1);return out;
 }
+export function cacheReachWeight(phase, reducedMotion = false) {
+  const p = unit(phase);
+  const reach = p < .38 ? cutSmooth(p / .38) : p < .57 ? 1 : 1 - cutSmooth((p - .57) / .43);
+  return reach * (reducedMotion ? .6 : 1);
+}
 // Accepted Stage 10b descriptors share one contact clock across native, imported and
 // reduced-motion presentation.  This sampler is deliberately geometry-only so the
 // renderer can also use it for a bounded weapon trail without inventing another timer.

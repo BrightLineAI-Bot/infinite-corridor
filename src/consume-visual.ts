@@ -1,6 +1,8 @@
 export const CONSUME_VISUAL_MS = 360;
 export const HURT_VISUAL_MS = 300;
+export const CACHE_PICKUP_VISUAL_MS = 400;
 const ITEMS=Object.freeze(['restorativeDraught','highPotion','maxPotion']),REASONS=Object.freeze(['attack','tool','cast','charge','dodge','jump','hurt','knockdown','death','area-transition','form-change','equipment-switch','busy']),CONTROL=/[\u0000-\u001f\u007f]/;
+const PICKUP_REASONS=Object.freeze([...REASONS,'drink']);
 const object=q=>!!q&&typeof q==='object'&&!Array.isArray(q),time=q=>typeof q==='number'&&Number.isFinite(q)&&q>=0&&q<=1e12,token=q=>typeof q==='string'&&q.length>0&&q.length<=512&&!CONTROL.test(q);
 function context(q){return object(q)&&(q.area==='overworld'||q.area==='dungeon')&&token(q.areaId)&&token(q.levelId)}
 function known(q){return object(q)&&q.v===1&&q.kind==='drink'&&ITEMS.includes(q.itemKind)&&time(q.acceptedLogicalMs)&&q.durationMs===CONSUME_VISUAL_MS&&context(q)&&(q.cancelled===undefined||typeof q.cancelled==='boolean')&&(q.cancelReason===undefined||REASONS.includes(q.cancelReason))}
@@ -19,4 +21,28 @@ export function sampleHurtVisual(raw, logicalNow, areaId, levelId) {
   if (!knownHurt(raw) || !time(logicalNow) || raw.areaId !== areaId || raw.levelId !== levelId) return null;
   const elapsed = logicalNow - raw.acceptedLogicalMs;
   return elapsed >= 0 && elapsed < HURT_VISUAL_MS ? elapsed / HURT_VISUAL_MS : null;
+}
+
+const knownCachePickup = raw => object(raw) && raw.v === 1 && raw.kind === 'cachePickup' &&
+  (raw.cacheKind === 'supplyCache' || raw.cacheKind === 'weaponCache') &&
+  time(raw.acceptedLogicalMs) && raw.durationMs === CACHE_PICKUP_VISUAL_MS &&
+  token(raw.areaId) && token(raw.levelId) &&
+  (raw.cancelled === undefined || typeof raw.cancelled === 'boolean') &&
+  (raw.cancelReason === undefined || PICKUP_REASONS.includes(raw.cancelReason));
+
+export function normalizeCachePickupVisual(raw) {
+  if (!object(raw) || !Number.isSafeInteger(raw.v) || raw.v < 1) return null;
+  if (raw.v > 1) return { ...raw };
+  return knownCachePickup(raw) ? { ...raw, cancelled: raw.cancelled === true } : null;
+}
+
+export function cancelCachePickupVisual(raw, reason) {
+  if (!knownCachePickup(raw) || raw.cancelled === true || !PICKUP_REASONS.includes(reason)) return raw;
+  return { ...raw, cancelled: true, cancelReason: reason };
+}
+
+export function sampleCachePickupVisual(raw, logicalNow, areaId, levelId) {
+  if (!knownCachePickup(raw) || raw.cancelled === true || !time(logicalNow) || raw.areaId !== areaId || raw.levelId !== levelId) return null;
+  const elapsed = logicalNow - raw.acceptedLogicalMs;
+  return elapsed >= 0 && elapsed < CACHE_PICKUP_VISUAL_MS ? elapsed / CACHE_PICKUP_VISUAL_MS : null;
 }

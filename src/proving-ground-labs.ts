@@ -251,6 +251,8 @@ const CLOSE_VIEW_LAB = [
   { id: "routing-adoption-new-keep", label: "Routing adoption: cross into a new standalone keep", routingAdoption: "keep" },
   { id: "routing-adoption-new-pentagon", label: "Routing adoption: cross into a new Pentagon", routingAdoption: "pentagon" },
   { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "cache-pickup-supply", label: "Cache pickup: supply cache", cachePickup: "supplyCache", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "cache-pickup-weapon", label: "Cache pickup: weapon cache", cachePickup: "weaponCache", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "padding-keep-reference", label: "Room clearance: keep reference", roomRouting: "keep", candidate: true, roomPadding: "reference" },
   { id: "padding-keep-pilot", label: "Room clearance: keep widened edge", roomRouting: "keep", candidate: true, roomPadding: "pilot" },
   { id: "padding-pentagon-reference", label: "Room clearance: Pentagon reference", roomRouting: "pentagon", candidate: true, roomPadding: "reference" },
@@ -381,6 +383,19 @@ function closeViewFixture(scenario, seed, now) {
     save.potionChoice = "restorativeDraught";
     save.consumables.restorativeDraught = 1;
     game.message = "Use Potion to drink the Restorative Draught. Reset same restores health and supplies for another test.";
+  }
+  if(spec.cachePickup){
+    const {player,dx,dy}=assetLane(game);
+    entry=player;
+    const facing=dx>0?"right":dx<0?"left":dy>0?"down":"up";
+    Object.assign(game.player,{x:player.x,y:player.y,facing});
+    save.lastAim={x:dx,y:dy};
+    game.enemies=[];
+    const x=player.x+dx,y=player.y+dy;
+    // Clear competing Act targets only in this scratch room.
+    game.map.objects=game.map.objects.filter(o=>Math.hypot(o.x-player.x,o.y-player.y)>=2);
+    game.map.objects.push({id:"lab-cache-pickup",kind:spec.cachePickup,supplyType:spec.cachePickup==="weaponCache"?"secondary":"restorativeDraught",x,y,state:"ready",actions:["collect"]});
+    game.message="Use Act to collect the nearby cache. Reset same restores it.";
   }
   if (spec.reactionInspection) {
     const { player, foe, dx, dy } = assetLane(game);
