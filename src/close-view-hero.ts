@@ -1,6 +1,6 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.ts';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
 import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
@@ -336,12 +336,19 @@ function choreographedCleaverPose(state, pose, frame, reducedMotion) {
   rotateY(pose, 4, -frame.twist * .32 * load);
   rotateX(pose, 22, -frame.lean * .65 * load);
   build(state.asset, state, pose);
-  const g = state.global, shoulder = 12 * 16, elbow = 11 * 16, wrist = 7 * 16, target = state.primaryTarget;
+  const g = state.global, shoulder = 12 * 16, elbow = 11 * 16, wrist = 7 * 16, grip = 6 * 16, target = state.primaryTarget;
   const reach = Math.hypot(g[elbow+12]-g[shoulder+12],g[elbow+13]-g[shoulder+13],g[elbow+14]-g[shoulder+14]) +
     Math.hypot(g[wrist+12]-g[elbow+12],g[wrist+13]-g[elbow+13],g[wrist+14]-g[elbow+14]);
-  target[0] = g[shoulder+12] + frame.side * reach;
-  target[1] = g[shoulder+13] + frame.up * reach;
-  target[2] = g[shoulder+14] + frame.forward * reach;
+  // Start at the existing gait-driven carry. Blend the rig-specific offset away
+  // as the hand leaves the hip, so the authored endpoints keep their full reach.
+  const carry = cleaverCarryFrame();
+  const leaveCarry = smoothstep(Math.hypot(frame.side - carry.side, frame.up - carry.up, frame.forward - carry.forward) / .45);
+  const carryX = g[shoulder+12] + .08;
+  const carryY = Math.max(g[shoulder+13] - reach * .80, state.minY + state.referenceHeight * .52);
+  const carryZ = g[shoulder+14] + .06 + .04 * Math.tanh((g[grip+14] - g[shoulder+14]) * 3);
+  target[0] = carryX + (g[shoulder+12] + frame.side * reach - carryX) * leaveCarry;
+  target[1] = carryY + (g[shoulder+13] + frame.up * reach - carryY) * leaveCarry;
+  target[2] = carryZ + (g[shoulder+14] + frame.forward * reach - carryZ) * leaveCarry;
   state.primaryGripResidual = solveArm(state, pose, true, target, frame.yaw, frame.pitch);
   state.clip = 'derived-choreographed-cleaver';
 }
