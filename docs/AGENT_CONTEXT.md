@@ -2,6 +2,14 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Coordinated Close View r849 packaging candidate — 2026-11-09
+
+Prepared branch `claude/close-view-refinement-release-cloud` preserves rehearsal `c0010d34`, tree `6be5433310b794bc4dfc20a339be484c3d7a8e3e`, and reconciles actual main r848 `a553e1a5c684afc3975a4280f5d1b410a89a3a7d`. Scope: character-front aiming, enemy opacity, seven-strike/named-tool body load, imported/native Pike and jump, known cast/equipment refinement, Hammerfall/Golem and bounded placed-spell light. Spark/Needle recipes remain unwired; combo reset, rooms, bosses and other gestures remain separate. The rehearsal passed 107 focused checks/build plus independent interaction checks; packaged Astra/CI/Preview/hosted gates remain pending. Root owns integration. This is a draft review package. Tim authorized automatic queue merges/publication subject to required gates; no merge or publication is claimed here. PR #502 separately owns pass/boss manifests; this package leaves them untouched.
+
+## Grave Lantern r848 merged checkpoint — 2026-11-09
+
+Tim approved exact PR #500; root merged `a553e1a5c684afc3975a4280f5d1b410a89a3a7d`, tree `6e4170e51f48420a943fb195a3d88a77e03b58f4`, matching Astra-reviewed source. Merged CI42598043317 and Preview42598043388 were in progress at this checkpoint. Hosted acceptance and publication remain separate; preserve r847 live receipts below.
+
 ## Grave Lantern r848 packaging candidate — 2026-11-09
 
 PR #500's reviewed source `0fd6e17db01194a529480606bbd0e636e8d879c5` is reconciled with documentation-only main `4359abc880b2116f3de2f5ed7640c4c1ab0554a1` and locally packaged as provisional r848. The only gameplay correction clears discarded Grave Lantern `hopLift` during canonical runtime reset; the natural borrowed-leap regression preserves position, HP, cooldowns and unknown fields. Prior exact source Astra review cleared the fix; the final packaging delta, exact-head CI, Preview and hosted acceptance remain separate gates. No merge or publication is implied. Recheck main and the release baton before integration. Production remains verified r847; preserve the separate refinement worktrees.

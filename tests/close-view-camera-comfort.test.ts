@@ -269,7 +269,7 @@ test('no-target activation follows the actual idle body instead of neutral camer
   frame(g, 20); const bodyYaw = CV.closeViewPlayerFacingYaw(g, now); assert.ok(Math.abs(wrap(bodyYaw - Math.PI / 2)) < .08, 'production movement/render tracks the downward idle body');
   CV.closeViewPan((Math.PI - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, now);
   const neutral = { x: 0, y: 0 }; CV.closeViewSteer(g, neutral); g.update(.016, { state: neutral, consume: () => false, held: () => false }, now + 16); CV.closeViewUnsteer(neutral); frame(g);
-  assert.ok(Math.abs(wrap(Math.atan2(g.save.lastAim.y, g.save.lastAim.x) - Math.PI)) < .02, 'neutral production steer writes the panned camera aim');
+  assert.ok(Math.abs(wrap(Math.atan2(g.save.lastAim.y, g.save.lastAim.x) - bodyYaw)) < .02, 'neutral production steer preserves character-front aim while the camera orbits');
   const displayed = CV.closeViewPlayerFacingYaw(g, now), xy = [g.player.x, g.player.y], pose = structuredClone(g.player.attackVisual);
   assert.ok(Math.abs(wrap(displayed - Math.PI / 2)) < .12, `shared resolver still reads the displayed idle body (${displayed})`);
   assert.equal(CV.closeViewTargetActivate(g, now), null); frame(g, 120); const c = CV.closeViewCamera(), px = g.player.x + .5, py = g.player.y + .75, rx = -Math.sin(displayed), ry = Math.cos(displayed);
