@@ -21,6 +21,7 @@ const expected = {
   'pike-echo-inspection': { form: 'boomerang', spell: 'cinder-dart', foe: 'ashling' },
   'cleaver-echo-inspection': { form: 'straight', spell: 'ember-ring', foe: 'ashling' },
   'salvage-echo-inspection': { form: 'straight', spell: 'ember-ring', foe: 'ashling' },
+  'blade-needle-ashling': { form: 'straight', spell: 'ember-ring', foe: 'ashling' },
 };
 
 function assertSpellArtifact(game, id, now) {
@@ -34,9 +35,10 @@ function assertSpellArtifact(game, id, now) {
 
 test('all combat asset scenarios resolve and emit their production tool and Spell A forms', () => {
   const scenarios = scenariosForLab('combat-assets');
-  assert.equal(scenarios.length, 32);
-  assert.deepEqual(scenarios.slice(0,14).map((q) => q.id), Object.keys(expected));
-  for (const scenario of scenarios.slice(0,14)) {
+  assert.equal(scenarios.length, 33);
+  const toolCases = [...scenarios.slice(0,14), scenarios[32]];
+  assert.deepEqual(toolCases.map((q) => q.id), Object.keys(expected));
+  for (const scenario of toolCases) {
     const fixture = createLabFixture({ lab: 'combat-assets', scenario: scenario.id, seed: SEED, now: 1000 });
     const { game, diagnostics } = fixture, contract = expected[scenario.id], foe = game.enemies[0];
     assert.equal(diagnostics.resolved.tool.form, contract.form, scenario.id);

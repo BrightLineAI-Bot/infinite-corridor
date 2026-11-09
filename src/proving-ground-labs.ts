@@ -151,6 +151,7 @@ const COMBAT_ASSETS = [
   { id: "salvage-echo-inspection", label: "Quiet Echo inspection · Salvage Blade", primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", echoPrimary: true },
   ...Object.values(SPELLS).map((spell) => ({ id: `cast-spell-${spell.id}`, label: `Cast inspection · ${spell.name}`, primary: "Salvage Blade", tool: "Spark Coil", spell: spell.id, foe: "ashling", castInspection: { kind: "spell", id: spell.id } })),
   ...Object.values(APERTURE_SKILLS).map((skill) => ({ id: `cast-skill-${skill.id}`, label: `Cast inspection · ${skill.name}`, primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling", castInspection: { kind: "skill", id: skill.id } })),
+  { id: "blade-needle-ashling", label: "Salvage Blade + Needle Caster · Ashling", primary: "Salvage Blade", tool: "Needle Caster", spell: "ember-ring", foe: "ashling" },
 ];
 const CREATURE_ASSET_KINDS = ["ashling","ashenHound","rootBrute","coilStalker","hollowMarshal","glassMite","sparkWarden","cinderWisp","veilMoth","voidSentinel","weepingSaint","hangedChoir","graveLantern","pallidCrawler","mirrorShade","amalgam","gnawingMaw","cinderSeraph","lumenWraith","veilSpinner","riftLynx","sunderjaw","thunderhorn","siegeBeetle","gloomwisp","gloomgorge","latticeHunter","archiveBehemoth","riftGrazer"];
 const FOUNDRY_BODIES = ["quadruped","floating","segmented","tentacled","geometric","biomechanical"];

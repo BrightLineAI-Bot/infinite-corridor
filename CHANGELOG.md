@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Provisional Release 852: expose read-only PG diagnostics for completed Close View rendering, native admission, hero asset loading and coarse GPU failure history; preserve existing fallback and loading behavior.
+- Provisional Release 853: route the existing Spark Coil and Needle Caster recipes through imported-player idle and accepted-use equipment, preserving native fallback, shot origins, timing and ownership.
+
+- Release 852: expose read-only PG diagnostics for completed Close View rendering, native admission, hero asset loading and coarse GPU failure history; preserve existing fallback and loading behavior.
 
 - Release 851: restart the four-cut Verge Cleaver presentation after 1,000 ms without an accepted primary attack, preserving pause, canonical reload, old saves and combat mechanics.
 

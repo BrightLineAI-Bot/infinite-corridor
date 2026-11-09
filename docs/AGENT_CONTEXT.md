@@ -3,6 +3,10 @@
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
 
+## Spark Coil and Needle Caster r853 draft — 2026-11-09
+
+Draft PR #507 preserves the original imported Spark Coil and Needle Caster routing and the existing native generic fallback. A new isolated Combat Asset Lab fixture equips rank-zero Needle Caster and verifies its canonical accepted shot. The local coordinator reconciled the draft after PR #502 without changing the published r851 identity. New exact-head review and CI are required before merge, with hosted visual verification on its own preview.
+
 ## Local ownership and verified r851 production — 2026-11-09
 
 The local Codex coordinator owns gameplay development, integration, merges, numbering and production publication under the handoff from Tim. The separate cloud pipeline effort remains limited to infrastructure. Production is verified at r851-1a2c35ae7ab9 after Publish 42638198273, with matching Pages identity and Options → System. Main at takeover is merged r852 b635f4b34336. Draft #507 remains isolated at 18ea3372fd96. Its exact CI passed and its hosted textured and phone checks remain open. The pass manifest records local visual evidence and the ordered continuation.

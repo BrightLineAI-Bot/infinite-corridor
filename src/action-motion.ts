@@ -37,6 +37,17 @@ export const ATTACK_VISUAL_PROFILES = Object.freeze([
 ]);
 const ATTACK_VISUAL_PROFILE = /^[a-z][a-z0-9-]{0,31}$/;
 export const PRIMARY_VISUAL_KINDS = Object.freeze(["salvage-blade", "cinder-pike", "verge-cleaver"]);
+// Geometry identity only: these immediate tools do not join delayed startup,
+// action motion, muzzle ownership or native form recipe membership.
+export function simpleToolAppearanceKind(weapon) {
+  return weapon?.name==='Spark Coil'?'spark-coil':weapon?.name==='Needle Caster'?'needle-caster':null;
+}
+export function importedEmitterAppearance(record, weapon, active = false) {
+  if(!active)return simpleToolAppearanceKind(weapon)||'emitter';
+  const appearance=record?.toolAppearance;
+  return record?.profile==='emitter'&&record.toolKind==null&&appearance&&typeof appearance==='object'&&!Array.isArray(appearance)&&
+    appearance.v===1&&(appearance.kind==='spark-coil'||appearance.kind==='needle-caster')?appearance.kind:'emitter';
+}
 export const TOOL_VISUAL_KINDS = Object.freeze(["rift-bombard", "great-sweep", "blunderbuss", "lumen-spindle"]);
 export const TOOL_ACTION_TIMING = Object.freeze({
   "rift-bombard": Object.freeze({ durationMs:720, raiseMs:120, holdMs:520 }),

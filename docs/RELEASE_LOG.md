@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Official main at takeover is merged r852 b635f4b34336b3bad89054919ed699070ab8bdaa. Local Codex owns gameplay integration and release numbers. Draft #507 carries provisional r853. Recheck remote main and ownership before assigning a subsequent number.
+Main remains release r852 after the documentation merge 94fdbc27f9f905704451201dad799ca1e72a70d5. Local Codex owns gameplay integration and release numbers. Draft #507 carries provisional r853. Recheck main and ownership before integration.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 853 | Codex | claude/simple-tool-appearance-release-cloud / #507 | Imported Spark Coil and Needle Caster appearance plus rank-zero scratch fixture | Reconciled with merged ownership and r851 release records. Seven focused checks and static build passed. Fresh exact CI and review and hosted visual verification pending. |
 | 852 | Codex | claude/close-view-diagnostics-release-cloud / #506 | Read-only Proving Ground renderer diagnostics | Merged as b635f4b34336. CI 42627941926 and Preview 42627941960 passed. Cloud hosted diagnostics verified the 2D fallback lifecycle. Production publication is open. |
 | 850 | Codex | claude/pg-lantern-recovery-cloud / #504 | Candidate-scoped natural Lantern recovery | Merged as e789c26f7d71. CI and Preview passed. Cloud natural capture, browser reload and damage witness completed. Published in r851. |
 | 849 | Codex | claude/close-view-refinement-release-cloud / #503 | Coordinated Wayfarer, equipment, Hammer Fall/Golem and spell-light refinement | Merged as 01bc5b39039a. CI and Preview passed. Published in r851 with the local desktop motion witness. |
