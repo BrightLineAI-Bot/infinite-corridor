@@ -1,23 +1,24 @@
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r851-1a2c35ae7ab9";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r851-1a2c35ae7ab9";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r851-1a2c35ae7ab9";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r851-1a2c35ae7ab9";
-import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage } from "./action-motion.js?v=r851-1a2c35ae7ab9";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r851-1a2c35ae7ab9";
-import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r851-1a2c35ae7ab9';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r851-1a2c35ae7ab9";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation } from './close-view-player-presentation.js?v=r851-1a2c35ae7ab9';
-import { fistCharge } from './brawler-spells.js?v=r851-1a2c35ae7ab9';
-import { dronePos } from "./affixes.js?v=r851-1a2c35ae7ab9";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r851-1a2c35ae7ab9";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r851-1a2c35ae7ab9";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r851-1a2c35ae7ab9";
-import { knockdownPose } from "./lightning-giant-render.js?v=r851-1a2c35ae7ab9";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r851-1a2c35ae7ab9";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r851-1a2c35ae7ab9";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r851-1a2c35ae7ab9";
-import { SIGIL_CELLS } from "./watcher.js?v=r851-1a2c35ae7ab9";
-import { closeViewGLReady, closeViewGLFrameReady, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r851-1a2c35ae7ab9"; // version 4: the GPU scene
+import { rangedWeapon } from './items.js?v=r853-a53725ea58a7';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r853-a53725ea58a7";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r853-a53725ea58a7";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r853-a53725ea58a7";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r853-a53725ea58a7";
+import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage } from "./action-motion.js?v=r853-a53725ea58a7";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r853-a53725ea58a7";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r853-a53725ea58a7';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r853-a53725ea58a7";
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation } from './close-view-player-presentation.js?v=r853-a53725ea58a7';
+import { fistCharge } from './brawler-spells.js?v=r853-a53725ea58a7';
+import { dronePos } from "./affixes.js?v=r853-a53725ea58a7";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r853-a53725ea58a7";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r853-a53725ea58a7";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r853-a53725ea58a7";
+import { knockdownPose } from "./lightning-giant-render.js?v=r853-a53725ea58a7";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r853-a53725ea58a7";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r853-a53725ea58a7";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r853-a53725ea58a7";
+import { SIGIL_CELLS } from "./watcher.js?v=r853-a53725ea58a7";
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r853-a53725ea58a7"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -232,7 +233,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r851-1a2c35ae7ab9's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r853-a53725ea58a7's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -392,7 +393,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r851-1a2c35ae7ab9's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r853-a53725ea58a7's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -456,9 +457,20 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r851-1a2c35ae7ab9's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r853-a53725ea58a7's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
+// Last completed scene, not the most recent GPU attempt. Reuse existing fallback
+// objects on commit; allocate detached display snapshots only when requested.
+const RENDER_DIAGNOSTICS={activityValid:false,frame:0,backend:'none',player:'absent',actors:0,nativeActors:0,fallbacks:null};
+const DIAGNOSTIC_FALLBACKS=new Set(['custom-art','body','capture','visibility','special-form','foundry-role','foundry-action','foundry-movement','morphology','pack-effects','pack-action','pack-phase','elite-action','decorations','affix','attachment-budget']);
+// Visible-canvas owners may retire activity without touching camera/input state.
+export function invalidateCloseViewDiagnostics(){RENDER_DIAGNOSTICS.activityValid=false;}
+export function closeViewRenderDiagnostics(){
+  const fallbacks={};for(const [reason,count] of Object.entries(RENDER_DIAGNOSTICS.fallbacks||{}))if(DIAGNOSTIC_FALLBACKS.has(reason)&&Number.isSafeInteger(count)&&count>0)fallbacks[reason]=Math.min(999,count);
+  return {active:RENDER_DIAGNOSTICS.activityValid&&CAM.drawn,frame:RENDER_DIAGNOSTICS.frame,backend:RENDER_DIAGNOSTICS.backend,player:RENDER_DIAGNOSTICS.player,actors:RENDER_DIAGNOSTICS.actors,nativeActors:RENDER_DIAGNOSTICS.nativeActors,fallbacks,asset:closeViewHeroAssetStatus(),gpu:closeViewGLDiagnostics()};
+}
+
 
 // ------------------------------------------------------------------------------------------------ colours, built once
 const STYLE_NAMES = Object.keys(CLOSE_VIEW.styles), STYLE_INDEX = Object.fromEntries(STYLE_NAMES.map((k, i) => [k, i]));
@@ -975,7 +987,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r851-1a2c35ae7ab9's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r853-a53725ea58a7's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
@@ -1045,6 +1057,7 @@ function insertionSortByDepth(n) { for (let i = 1; i < n; i++) { const o = order
 // draws its ordinary view.
 // A failed GPU frame never commits its captured floor/actor ownership to the screen.
 function abortCloseViewGLFrame() {
+  noteCloseViewGLFrameAbort();
   captured = capturedPlayer = null; capturing = bareFloor = false; CAM.drawn = false;
   GLB.nBoard = GLB.nDecal = GLB.nGlowStart = 0;
   closeViewGLStats.echoRibbonPaths = closeViewGLStats.echoRibbonVertices = 0;
@@ -1342,6 +1355,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     ctx.fillStyle = SCREEN.vignette; ctx.fillRect(0, 0, w, h); }
   drawPlaceLabel(ctx, g, w, h);
   if (tm) { const t5 = performance.now(); T.ground = t1 - t0; T.torch = t2 - t1; T.floor = t3 - t2; T.scene = t4 - t3; T.overlay = t5 - t4; }
+  RENDER_DIAGNOSTICS.activityValid=true;RENDER_DIAGNOSTICS.frame=closeViewStats.frames+1;RENDER_DIAGNOSTICS.backend=useGL?'webgl2':'2d';RENDER_DIAGNOSTICS.player=useGL?MODEL_STATE.playerRepresentation:capturedPlayer?'billboard':'absent';
+  RENDER_DIAGNOSTICS.actors=useGL?closeViewGLStats.models:0;RENDER_DIAGNOSTICS.nativeActors=useGL?closeViewGLStats.models-(MODEL_STATE.hero?1:0):0;RENDER_DIAGNOSTICS.fallbacks=useGL?closeViewGLStats.modelFallbacks:null;
   captured = null; capturedPlayer = null; closeViewStats.frames++; CAM.drawn = true;
   return true;
 }
@@ -2063,7 +2078,7 @@ export function closeViewPrimaryWeaponKind(item) {
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
-  hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
+  playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   heroGear: { profile: '', leftSocket: null, rightSocket: null, alpha: 1, tint: null, hitFlash: 0 },
@@ -2184,7 +2199,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const form = playerFormPresentation(g);
   const importedPlayer = !form || form.kind === 'playerIronFists' || form.kind === 'playerPowerSuit';
   state.admitted.clear();
-  state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;
+  state.playerRepresentation=capturedPlayer?'billboard':'absent';state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;
   state.cleaverTrail.visible = false;
   if (importedPlayer && !state.heroRequested && typeof globalThis.Image === 'function') {
     state.heroRequested = true;
@@ -2352,7 +2367,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
-          gear.profile = form?.empowered && held === 'fist' ? '' : held; gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);
           if (state.heroFrame.powerSuit && equipped === offset) return;
@@ -2375,11 +2390,12 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             if(fire||orbit){state.spellEmission[0]=lx;state.spellEmission[1]=ly;state.spellEmission[2]=lz;state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
           }
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
-          state.hero = state.heroFrame; count++; imported = true;
+          state.hero = state.heroFrame; count++; imported = true;state.playerRepresentation='imported';
         }
       }
     }
     if (!imported && !append(actor)) return;
+    if(who===player&&!imported)state.playerRepresentation='native';
     if (who === player) CAM.bodyRevision++;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
     state.tracks.set(who, track);

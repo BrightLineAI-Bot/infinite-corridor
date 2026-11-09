@@ -1,11 +1,13 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r851-1a2c35ae7ab9';
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r851-1a2c35ae7ab9';
-import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose } from './close-view-player-presentation.js?v=r851-1a2c35ae7ab9';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r853-a53725ea58a7';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r853-a53725ea58a7';
+import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose } from './close-view-player-presentation.js?v=r853-a53725ea58a7';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
-let loaded = null, loading = null;
+let loaded = null, loading = null, assetStatus = 'not-requested';
+// Observation only: reading status never starts or retries asset loading.
+export const closeViewHeroAssetStatus = () => assetStatus;
 export const getCloseViewHeroAsset = () => loaded;
 
 export function closeViewHeroAssetUrl(moduleUrl = import.meta.url) {
@@ -65,10 +67,11 @@ export function loadCloseViewHero() {
   if (loaded) return Promise.resolve(loaded);
   if (loading) return loading;
   if (typeof window === 'undefined' || typeof fetch !== 'function') return Promise.resolve(null);
+  assetStatus = 'loading';
   loading = (async () => {
     try {
-      const url = closeViewHeroAssetUrl(), r = await fetch(url); if (!r.ok) return null;
-      const meta = await r.json(), b = await fetch(new URL(meta.binary, url)); if (!b.ok) return null;
+      const url = closeViewHeroAssetUrl(), r = await fetch(url); if (!r.ok) { assetStatus = 'unavailable'; return null; }
+      const meta = await r.json(), b = await fetch(new URL(meta.binary, url)); if (!b.ok) { assetStatus = 'unavailable'; return null; }
       const bytes = await b.arrayBuffer(), images = [];
       for (const t of meta.textures) { const r = await fetch(new URL(t.file, url)); if (!r.ok) throw new Error('Hero texture unavailable'); const blob = await r.blob(); let image;
         if (typeof createImageBitmap === 'function') image = await createImageBitmap(blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none', imageOrientation: 'none' });
@@ -76,8 +79,8 @@ export function loadCloseViewHero() {
         if (image.width !== 1024 || image.height !== 1024) throw new Error('Hero texture size'); images[t.layer] = image;
       }
       if (images.length !== 2 || !images[0] || !images[1]) throw new Error('Hero texture layers');
-      loaded = decodeCloseViewHero(meta, bytes, images); return loaded;
-    } catch { return null; }
+      loaded = decodeCloseViewHero(meta, bytes, images); assetStatus = 'ready'; return loaded;
+    } catch { assetStatus = 'unavailable'; return null; }
   })();
   return loading;
 }

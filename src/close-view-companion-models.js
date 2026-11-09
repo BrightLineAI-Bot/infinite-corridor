@@ -1,6 +1,6 @@
 // Data-only native geometry for Close View-visible companions and wandering speakers.
 // Admission, actor routing and lifecycle clocks remain with their existing production producers.
-import { ellipsoid, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r851-1a2c35ae7ab9';
+import { ellipsoid, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r853-a53725ea58a7';
 
 const E6=ellipsoid(6,2),E8=ellipsoid(8,3);
 const tube=(points,color,swing,px,pz,sides=4)=>part(curvedTube(points,sides),0,0,0,1,1,1,color,swing,px,pz);

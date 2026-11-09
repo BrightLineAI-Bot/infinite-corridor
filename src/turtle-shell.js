@@ -11,9 +11,9 @@
 // loading its section lays the shell over the generated tiles at runtime. A section with no record is exactly as generated.
 // One shell stands at a time (`keep`): the next Turtle's fall fades the old one (its labyrinth's state is dropped), and the next
 // visit to where it lay says so.
-import { hashSeed } from "./random.js?v=r851-1a2c35ae7ab9";
-import { LABYRINTHS } from "./labyrinths.js?v=r851-1a2c35ae7ab9";
-import { coherenceCore, coherenceHub, joinsCore, LETHAL_KINDS } from "./landscape.js?v=r851-1a2c35ae7ab9";
+import { hashSeed } from "./random.js?v=r853-a53725ea58a7";
+import { LABYRINTHS } from "./labyrinths.js?v=r853-a53725ea58a7";
+import { coherenceCore, coherenceHub, joinsCore, LETHAL_KINDS } from "./landscape.js?v=r853-a53725ea58a7";
 
 export const TURTLE_SHELL = {
   version: 1,
