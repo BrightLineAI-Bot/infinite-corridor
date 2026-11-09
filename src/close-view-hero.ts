@@ -208,6 +208,22 @@ function solveLeg(state,pose,left,target,weight,data) {
   quaternion(q,16,data,6,state.hammerFeet,(left?0:1)*8+3,weight);
   matrixQuat(q,20,g,38*16);qinv(q,24,q,20);qmul(pose,o+3,q,24,q,16);
 }
+// Ordinary-air articulation consumes captured physical clocks; it never supplies world lift.
+function ordinaryAirPose(asset,state,pose,air,reducedMotion){
+  if(air?.v!==1)return;
+  const elapsed=Number(air.elapsedMs),remaining=Number(air.remainingMs),duration=Number(air.durationMs),rise=Number(air.rise),fall=Number(air.fall),lift=Number(air.lift);
+  if(!Number.isFinite(elapsed)||!Number.isFinite(remaining)||!Number.isFinite(duration)||!Number.isFinite(rise)||!Number.isFinite(fall)||!Number.isFinite(lift)||elapsed<0||remaining<0||duration<=0||elapsed>duration||remaining>duration||rise<0||rise>1||fall<0||fall>1||lift<0)return;
+  const connection=smoothstep(elapsed/60)*smoothstep(remaining/60);if(!(connection>0))return;
+  const fold=smoothstep(rise/.65)*(1-smoothstep(fall/.8));
+  const takeoff=smoothstep(elapsed/18)*(1-smoothstep(elapsed/70)),flourish=reducedMotion?.55:1;
+  const layer=state.hammerLayer,data=state.hammerLegData,g=state.global,target=state.primaryTarget;
+  layer.set(pose);build(asset,state,pose);
+  // Preserve each current source sole/ankle frame before solving the independent foot roots.
+  for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);for(let k=0;k<3;k++){data[o+k]=target[k];data[o+3+k]=g[foot*16+12+k]-target[k];}matrixQuat(data,o+6,g,foot*16);}
+  rotateX(layer,27,.07*takeoff*flourish);rotateX(layer,24,.045*takeoff*flourish);rotateX(layer,4,-.03*takeoff*flourish);
+  for(let side=0;side<2;side++){const left=side===0,o=side*10;target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+.14*fold;target[2]=data[o+2]-.055*fold;solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
+  pose.set(layer);state.clip='derived-ordinary-jump';state.clipTime=elapsed/duration;
+}
 function soleMinimum(points,q,o) {
   const x=q[o],y=q[o+1],z=q[o+2],w=q[o+3],rx=2*(x*y+z*w),ry=1-2*(x*x+z*z),rz=2*(y*z-x*w);let low=Infinity;
   for(let i=0;i<points.length;i+=3)low=Math.min(low,rx*points[i]+ry*points[i+1]+rz*points[i+2]);
@@ -273,10 +289,15 @@ function primaryPose(state,pose,profile,p,step=1){
   const rightReach=Math.hypot(g[re+12]-g[rs+12],g[re+13]-g[rs+13],g[re+14]-g[rs+14])+Math.hypot(g[rw+12]-g[re+12],g[rw+13]-g[re+13],g[rw+14]-g[re+14]);
   const reach=Math.min(leftReach,rightReach),cx=(g[ls+12]+g[rs+12])/2,cy=(g[ls+13]+g[rs+13])/2,cz=(g[ls+14]+g[rs+14])/2;
   if(pike){
-    const pitch=(step===2?.20:step===3?-.20:0)*commit,ny=Math.sin(pitch),nz=Math.cos(pitch),half=reach/6;
-    const y=cy-reach*.38+(step===2?.10:step===3?-.10:0)*commit,z=cz+reach*.20+.16*commit;
-    t[0]=cx;t[1]=y-ny*half;t[2]=z-nz*half;const rr=solveArm(state,pose,false,t,0,pitch);
-    t[0]=cx;t[1]=y+ny*half;t[2]=z+nz*half;const lr=solveArm(state,pose,true,t,0,pitch);
+    // A single raised diagonal shaft joins both hands across the torso. Every optional
+    // accepted thrust lowers that same frame, then returns to the same common carry.
+    const yaw=.60*(1-commit)+(step===2?-.06:step===3?.06:0)*commit;
+    const pitch=.60*(1-commit)+(step===2?-.08:step===3?.08:.04)*commit;
+    const nx=Math.sin(yaw)*Math.cos(pitch),ny=Math.sin(pitch),nz=Math.cos(yaw)*Math.cos(pitch),half=reach*.23;
+    const x=cx+(step===2?-.025:step===3?.025:0)*commit;
+    const y=cy-reach*.36+(step===2?-.10:step===3?.10:0)*commit,z=cz+reach*.22+(step===2?.15:step===3?.17:.13)*commit;
+    t[0]=x-nx*half;t[1]=y-ny*half;t[2]=z-nz*half;const rr=solveArm(state,pose,false,t,yaw,pitch);
+    t[0]=x+nx*half;t[1]=y+ny*half;t[2]=z+nz*half;const lr=solveArm(state,pose,true,t,yaw,pitch);
     state.primaryGripResidual=Math.max(rr,lr);state.clip='derived-polearm-thrust';
   }else{
     // Low one-hand hip carry. Source hand travel supplies the walking bob; the floor bound
@@ -308,24 +329,53 @@ function cleaverFourPose(state,pose,p,stage){
 // whatever carry/attack layer established; this solver runs last so casting never
 // yanks an accepted weapon socket off its grip.
 const CAST_HAND_TARGETS=Object.freeze({
-  'focus-forward':Object.freeze([.05,.02,.42,-.10,.10]),'fan-release':Object.freeze([.18,.05,.38,-.30,.18]),
-  'outward-ring':Object.freeze([.48,-.04,.22,-.65,.05]),'raised-orb':Object.freeze([.12,.38,.18,-.15,-.45]),'form-rise':Object.freeze([.18,.34,.14,-.25,-.38]),
-  compression:Object.freeze([-.12,-.13,.30,.35,.08]),'orbit-gather':Object.freeze([-.08,-.08,.34,.25,.15]),
-  'time-ward':Object.freeze([-.10,-.10,.34,.42,-.05]),'crossed-ward':Object.freeze([-.16,-.16,.30,.55,-.10]),'body-ward':Object.freeze([-.20,-.04,.28,.62,-.05]),
-  'dusk-split':Object.freeze([.46,-.08,.20,-.75,.02]),'dusk-swap':Object.freeze([.34,.02,.35,-.55,.14]),'rift-fold':Object.freeze([.36,.04,.38,-.58,.18]),
-  'fighting-stance':Object.freeze([.06,-.12,.35,-.12,.22]),'weapon-imbue':Object.freeze([-.12,-.22,.24,.38,.12]),'power-draw':Object.freeze([-.08,-.12,.28,.30,.05]),
-  'flow-forward':Object.freeze([.12,-.02,.40,-.22,.16]),acceleration:Object.freeze([.18,-.06,.38,-.30,.18]),'orbit-launch':Object.freeze([.10,.08,.44,-.18,.20]),
-  'traversal-brace':Object.freeze([.20,.12,.30,-.32,-.05]),
+  'focus-forward':Object.freeze([.05,.02,.42,-.10,.10,0.025,0.005,0.07]),'fan-release':Object.freeze([.18,.05,.38,-.30,.18,0.065,0.015,0.045]),
+  'outward-ring':Object.freeze([.48,-.04,.22,-.65,.05,0.075,-0.01,0.02]),'raised-orb':Object.freeze([.12,.38,.18,-.15,-.45,0.02,0.06,-0.025]),'form-rise':Object.freeze([.18,.34,.14,-.25,-.38,0.015,0.055,0.005]),
+  compression:Object.freeze([-.12,-.13,.30,.35,.08,-0.045,-0.035,0.015]),'orbit-gather':Object.freeze([-.08,-.08,.34,.25,.15,-0.03,0.025,0.035]),
+  'time-ward':Object.freeze([-.10,-.10,.34,.42,-.05,-0.025,0.015,0.03]),'crossed-ward':Object.freeze([-.16,-.16,.30,.55,-.10,-0.04,0.02,0.025]),'body-ward':Object.freeze([-.20,-.04,.28,.62,-.05,-0.025,0.025,0.02]),
+  'dusk-split':Object.freeze([.46,-.08,.20,-.75,.02,0.075,-0.01,0.025]),'dusk-swap':Object.freeze([.34,.02,.35,-.55,.14,0.055,0.02,0.035]),'rift-fold':Object.freeze([.36,.04,.38,-.58,.18,0.06,0.015,0.04]),
+  'fighting-stance':Object.freeze([.06,-.12,.35,-.12,.22,0.015,-0.015,0.05]),'weapon-imbue':Object.freeze([-.12,-.22,.24,.38,.12,-0.025,-0.025,0.035]),'power-draw':Object.freeze([-.08,-.12,.28,.30,.05,-0.035,-0.02,0.03]),
+  'flow-forward':Object.freeze([.12,-.02,.40,-.22,.16,0.035,-0.005,0.06]),acceleration:Object.freeze([.18,-.06,.38,-.30,.18,0.05,0.005,0.05]),'orbit-launch':Object.freeze([.10,.08,.44,-.18,.20,0.03,0.04,0.065]),
+  'traversal-brace':Object.freeze([.20,.12,.30,-.32,-.05,0.035,0.04,0.025]),
 });
 function castPose(state,pose,profile,p,sourceLeft=true){
   const spec=CAST_HAND_TARGETS[profile];if(!spec)return;
   const commit=p<=.08?smoothstep(p/.08):p<.62?1:1-smoothstep((p-.62)/.38);if(!(commit>0))return;
   build(state.asset,state,pose);const g=state.global,s=(sourceLeft?12:22)*16,grip=(sourceLeft?6:16)*16,t=state.primaryTarget,follow=Math.sin(Math.PI*clamp((p-.08)/.54)),side=sourceLeft?1:-1;
-  const desired=[g[s+12]+spec[0]*side,g[s+13]+spec[1]+follow*.035,g[s+14]+spec[2]+follow*.045];
-  t[0]=g[grip+12]+(desired[0]-g[grip+12])*commit;t[1]=g[grip+13]+(desired[1]-g[grip+13])*commit;t[2]=g[grip+14]+(desired[2]-g[grip+14])*commit;
+  // Immediate spell release remains authoritative. Only the free arm follows through,
+  // then retracts; its shoulder and neck counterbalance never move the held grip.
+  const tail=1-p,flow=16*p*p*tail*tail;
+  const x=g[s+12]+(spec[0]+spec[5]*flow)*side,y=g[s+13]+spec[1]+follow*.035+spec[6]*flow,z=g[s+14]+spec[2]+follow*.045+spec[7]*flow;
+  t[0]=g[grip+12]+(x-g[grip+12])*commit;t[1]=g[grip+13]+(y-g[grip+13])*commit;t[2]=g[grip+14]+(z-g[grip+14])*commit;
+  rotateX(pose,sourceLeft?13:23,-.05*flow*commit);rotateZ(pose,sourceLeft?13:23,-side*.07*flow*commit);rotateY(pose,4,-side*.025*flow*commit);
   solveArm(state,pose,sourceLeft,t,spec[3]*commit*side,spec[4]*commit);
 }
 
+// Added body loading belongs only to accepted phased tools, never legacy or opaque records.
+const TOOL_BODY_LOAD=Object.freeze({
+  'rift-bombard':Object.freeze({twist:.055,brace:.085,guard:.10}),
+  blunderbuss:Object.freeze({twist:.035,brace:.055,guard:.08}),
+  'lumen-spindle':Object.freeze({twist:.018,brace:.025,guard:.035}),
+  'great-sweep':Object.freeze({twist:.13,brace:.07,guard:.12}),
+});
+function phasedToolBodyLoad(pose,profile,p,action){
+  const recipe=TOOL_BODY_LOAD[profile];if(!recipe||action?.toolMotion?.v!==1||action?.toolUse?.v!==1)return;
+  // toolPose already validates the receipt. Reuse its scalar clock fields without another phase object.
+  const use=action.toolUse,duration=Number(action.durationMs),startup=Number(use.startupMs),before=use.phase==='startup';
+  if(!before&&use.phase!=='released')return;
+  if(!Number.isFinite(startup)||!(startup>0&&startup<=duration))return;
+  const elapsed=Math.max(0,p*duration),age=before?Math.min(elapsed,startup):Math.max(0,Math.max(startup,elapsed)-Number(use.releaseOffsetMs));
+  // Settle within two stored startup intervals, before the earliest legal repeat.
+  const settle=Math.max(1,Math.min(duration-startup,2*startup));
+  const u=clamp(before?age/startup:age/settle);
+  if(!(u>0&&u<1))return;
+  const tail=1-u,pulse=before?16*u*u*tail*tail:(729/16)*u*u*tail*tail*tail*tail;
+  const direction=profile==='great-sweep'&&action.toolMotion.direction===-1?-1:1,twist=recipe.twist*pulse*direction*(before?-1:1),brace=recipe.brace*pulse*(before?.65:-1);
+  // The independent leg hierarchy and both grip solutions are unchanged at entry/release/expiry.
+  rotateY(pose,28,twist*.35);rotateY(pose,27,twist);rotateY(pose,24,twist*.65);
+  rotateX(pose,27,brace*.4);rotateX(pose,24,brace);rotateY(pose,4,-twist*.6);
+  rotateX(pose,12,-recipe.guard*pulse);rotateZ(pose,12,twist*.3);
+}
 function toolPose(state,pose,profile,p,weight,action){
   if(action?.toolMotion&&action.toolMotion.v!==1)return;
   if(action?.toolUse&&['unknown','cancelled'].includes(toolUsePoseTime(action,p*(Number(action?.durationMs)||180)).phase))return;
@@ -338,6 +388,7 @@ function toolPose(state,pose,profile,p,weight,action){
   else if(profile==='great-sweep'){const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;}
   target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
   solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
+  phasedToolBodyLoad(pose,profile,p,action);
   state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
 }
 
@@ -446,6 +497,24 @@ function weightedMeleePose(asset,state,pose,motion) {
   state.primaryGripResidual=solveArm(state,state.other,true,t,motion.yaw,motion.pitch);blend(pose,state.other,w);
   state.clip='derived-weighted-cleaver-'+motion.cutIndex;state.clipTime=motion.progress;
 }
+// Descriptor-owned counter-load and settling around the canonical contact pose.
+// Endpoints and contact are exact zeros: no new clock, root travel, leg solver or grip pass.
+function weightedMeleeLoad(pose, motion) {
+  const p=motion.progress,c=motion.contact;
+  if(!(p>0&&p<1)||p===c)return;
+  const before=p<c,u=clamp(before?p/Math.max(1e-6,c):(p-c)/Math.max(1e-6,1-c));
+  // A flat-ended pulse gives acceleration into the load and deceleration out of follow-through.
+  const pulse=16*u*u*(1-u)*(1-u),fist=motion.kind==='iron-fists',jab=motion.move==='jab',upper=motion.move==='uppercut';
+  const direction=fist?motion.lead:(motion.cutIndex<=2?-1:1),load=direction*pulse*(before?-1:1);
+  const scale=jab?.55:upper?1.10:1;
+  // Hips are a torso parent; the independent thigh/foot hierarchy is intentionally untouched.
+  rotateY(pose,28,.045*load*scale);rotateY(pose,27,.085*load*scale);rotateY(pose,24,.065*load*scale);
+  rotateX(pose,27,(before?(upper?-.055:.035):.025)*pulse*scale);
+  rotateX(pose,24,(before?.055:-.025)*pulse*scale);rotateY(pose,4,-.065*load*scale);
+  const guard=fist?(motion.lead<0?22:12):22;
+  rotateX(pose,guard,-(before?.11:.055)*pulse*scale);
+  rotateZ(pose,guard,.055*load*scale);
+}
 function socket(out, g, o, scale, cy, sy, input, dx, dz, floor) {
   for (let c = 0; c < 4; c++) { const k = o + c * 4, x = g[k] + (c === 3 ? dx : 0), y = g[k + 1] - (c === 3 ? floor : 0), z = g[k + 2] + (c === 3 ? dz : 0); out[c * 4] = (z * cy - x * sy) * scale + (c === 3 ? input.x : 0); out[c * 4 + 1] = (z * sy + x * cy) * scale + (c === 3 ? input.y : 0); out[c * 4 + 2] = y * scale + (c === 3 ? input.groundZ + input.liftZ : 0); out[c * 4 + 3] = c === 3 ? 1 : 0; }
 }
@@ -507,6 +576,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
     if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:meleeMotion.cutIndex});
     else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,meleeMotion.lead<0?'left':'right');}
     weightedMeleePose(asset,state,state.pose,meleeMotion);
+    weightedMeleeLoad(state.pose,meleeMotion);
   }
   else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;
   else if(carryProfile==='verge-cleaver'&&(!primaryStage||primaryStage.kind==='cleaver-four'))cleaverFourPose(state,state.pose,primaryAction?p:0,primaryStage);
@@ -545,10 +615,11 @@ export function sampleCloseViewHero(asset, state, input, out) {
         if(profile==='cast'||profile==='orrery-tap'||profile==='orrery-release'){rotateX(state.pose,12,-.65*pulse);rotateX(state.pose,22,-.8*pulse);}
         else castPose(state,state.pose,profile,p,roles.free==='leftSocket');
       }
-      else { // Arm brace only: root-parented feet must not be left behind by invented knee IK.
+      else { // Legacy jumps keep their brace; reviewed ordinary-air records add connected legs.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
+        ordinaryAirPose(asset,state,state.pose,action.jumpAir,input.reducedMotion);
       }
-      if(!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
+      if(state.clip!=='derived-ordinary-jump'&&!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
     }
   }
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;

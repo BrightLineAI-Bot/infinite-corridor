@@ -12,7 +12,7 @@ import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
 import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
-import { jumpLift, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.ts"; // 613: Starfield rafts
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.ts"; // 613: Starfield rafts
 import { SEASONS, treeSeason } from "./seasons.ts";
 import { setTreeSeason } from "./landscape-render.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.ts";
@@ -2709,6 +2709,7 @@ export function render(ctx, g, w, h, now) {
     nativeLift: playerFormPresentation(g)?.lift || 0,
     nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
     nativeDecorations: () => drawNativePlayerDecorations(ctx,g,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
+    jumpBaseMs: JUMP.base,
     jumpLift: jumpLift(g, g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
     y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && interior
       ? Math.max(0, g.droneLift.z - supportLevel) * LIFT_PER_LEVEL

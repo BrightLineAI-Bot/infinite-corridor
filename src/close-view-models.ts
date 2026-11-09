@@ -4,7 +4,7 @@ import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
-import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.ts';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose } from './close-view-player-presentation.ts';
 import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
@@ -121,44 +121,97 @@ const vergeCleaver = [
 
 // Future Close View tool silhouettes. These are recipe-only until the ordered tool-action pass
 // selects them from accepted production events. All begin at the canonical (.17,-.25,.79) grip.
+// Six chamber mouths sit on the cylinder face; the brass collar reuses the
+// previous nested-cylinder budget rather than adding another equipment pass.
+const bombardChambers=[];
+for(let i=0;i<6;i++){
+  const a=(i+.5)*Math.PI/3,cx=Math.cos(a)*.083,cy=Math.sin(a)*.083,r=.016,z=1.301;
+  bombardChambers.push([[cx-r,cy,z],[cx,cy-r,z],[cx+r,cy,z]],
+    [[cx-r,cy,z],[cx+r,cy,z],[cx,cy+r,z]]);
+}
 const riftBombard = [
   block(.17,-.25,.91,.055,.065,.14,leather,-2,0,1.19),
   part(bevel,.17,-.25,1.10,.15,.15,.20,iron,-2,0,1.19),
-  part(bevel,.17,-.25,1.10,.09,.09,.215,brass,-2,0,1.19),
-  block(.17,-.25,1.37,.09,.09,.13,iron,-2,0,1.19),
+  part(bombardChambers,.17,-.25,0,1,1,1,0x171a20,-2,0,1.19),
+  part(detailPrism,.17,-.25,1.37,.065,.065,.04,brass,-2,0,1.19),
+  block(.17,-.25,1.37,.045,.045,.13,iron,-2,0,1.19),
   part(flare,.17,-.25,1.53,.085,.085,.055,coal,-2,0,1.19),
   block(.08,-.25,.91,.13,.055,.055,iron,-2,0,1.19,.38),
 ];
-const brokenGreatswordBlade = membrane([
-  [0,-1,-1],[0,1,-1],[0,.88,.50],[0,.30,1],[0,-.72,.72],
-]);
+// Closed forged blade: the sharp outer ring retains the original broken outline;
+// inset front/back faces provide readable thickness without changing length or reach.
+const brokenGreatswordOutline = [[-1,-1],[1,-1],[.88,.50],[.30,1],[-.72,.72]];
+const brokenGreatswordBlade = { face: [], edge: [] };
+{
+  const edge=brokenGreatswordOutline.map(([y,z])=>[0,y,z]),
+    front=brokenGreatswordOutline.map(([y,z])=>[.018,y*.93,z*.93]),
+    back=brokenGreatswordOutline.map(([y,z])=>[-.018,y*.93,z*.93]);
+  for(let i=1;i<edge.length-1;i++)brokenGreatswordBlade.face.push([front[0],front[i],front[i+1]],[back[0],back[i+1],back[i]]);
+  for(let i=0;i<edge.length;i++){const j=(i+1)%edge.length;
+    brokenGreatswordBlade.edge.push([front[i],edge[i],edge[j]],[front[i],edge[j],front[j]],
+      [back[i],back[j],edge[j]],[back[i],edge[j],edge[i]]);
+  }
+}
 const greatSweep = [
   block(.17,-.25,.91,.045,.05,.14,leather,-2,0,1.19),
   block(.17,-.25,1.08,.20,.055,.045,iron,-2,0,1.19),
-  part(brokenGreatswordBlade,.17,-.25,1.70,1,.30,.68,iron,-2,0,1.19),
+  part(brokenGreatswordBlade.face,.17,-.25,1.70,1,.30,.68,0x65656b,-2,0,1.19),
+  part(brokenGreatswordBlade.edge,.17,-.25,1.70,1,.30,.68,0xa6a397,-2,0,1.19),
   block(.17,-.25,1.62,.016,.03,.47,bronze,-2,0,1.19),
   part(frontPatch,.17,-.25,1.13,1,.07,.025,brass,-2,0,1.19),
 ];
+// Six-sided continuous barrel with a recessed bore and a narrow brass lip. Meshes
+// are baked once; the muzzle remains at the established local Z=1.535 anchor.
+const blunderbussBore = { shell: [], lip: [], inner: [], cap: [] };
+{
+  const ring=(radius,z)=>Array.from({length:6},(_,i)=>{const a=(i+.5)*Math.PI/3;return[Math.cos(a)*radius,Math.sin(a)*radius,z];}),
+    rear=ring(.052,1.20),front=ring(.082,1.535),inside=ring(.052,1.535),deep=ring(.041,1.43);
+  for(let i=0;i<6;i++){const j=(i+1)%6;
+    blunderbussBore.shell.push([rear[i],rear[j],front[j]],[rear[i],front[j],front[i]]);
+    blunderbussBore.lip.push([front[i],front[j],inside[j]],[front[i],inside[j],inside[i]]);
+    blunderbussBore.inner.push([inside[i],inside[j],deep[j]],[inside[i],deep[j],deep[i]]);
+  }
+  for(let i=1;i<5;i++)blunderbussBore.cap.push([deep[0],deep[i],deep[i+1]]);
+}
 const blunderbuss = [
   block(.17,-.25,.91,.055,.06,.14,leather,-2,0,1.19),
-  block(.17,-.25,1.10,.075,.065,.15,bronze,-2,0,1.19),
-  block(.17,-.25,1.33,.052,.052,.13,iron,-2,0,1.19),
-  part(flare,.17,-.25,1.49,.058,.058,.045,iron,-2,0,1.19),
-  part(ellipsoid(6,1),.17,-.25,1.27,.078,.078,.065,0x58cfe8,-2,0,1.19,0,true),
-  block(.08,-.25,.90,.11,.045,.045,iron,-2,0,1.19,.32),
+  part(bevel,.17,-.25,1.10,.087,.065,.15,0x9b8059,-2,0,1.19),
+  part(blunderbussBore.shell,.17,-.25,0,1,1,1,iron,-2,0,1.19),
+  part(blunderbussBore.lip,.17,-.25,0,1,1,1,brass,-2,0,1.19),
+  part(blunderbussBore.inner,.17,-.25,0,1,1,1,0x29252a,-2,0,1.19),
+  part(blunderbussBore.cap,.17,-.25,0,1,1,1,0x11151b,-2,0,1.19),
+  part(ellipsoid(4,1),.17,-.315,1.16,.04,.018,.07,0x58cfe8,-2,0,1.19,0,true),
+  part(taper,.08,-.25,.90,.11*Math.SQRT2,.045*Math.SQRT2,.045,0x46392e,-2,0,1.19,.32),
 ];
 const lumenSpindle = [
   block(.17,-.25,.92,.035,.04,.13,leather,-2,0,1.19),
   part(taper,.17,-.25,1.20,.034,.034,.22,bronze,-2,0,1.19),
+  part(bevel,.17,-.25,1.36,.045,.045,.035,brass,-2,0,1.19),
   part(ellipsoid(6,1),.17,-.25,1.45,.075,.075,.09,visor,-2,0,1.19,0,true),
+  part(bevel,.17,-.25,1.43,.068,.068,.018,bronze,-2,0,1.19),
   part(frontPatch,.17,-.25,1.55,1,.052,.025,0x8fe8ff,-2,0,1.19),
+];
+// Prepared visual-only recipes. Production still selects the generic emitter;
+// these names do not join delayed startup, emission anchors or native form maps.
+const sparkCoil = [
+  block(.17,-.25,.91,.042,.05,.12,leather,-2,0,1.19),
+  part(bevel,.17,-.25,1.08,.06,.06,.10,iron,-2,0,1.19),
+  part(detailPrism,.17,-.25,1.15,.068,.068,.018,bronze,-2,0,1.19),
+  part(detailPrism,.17,-.25,1.25,.060,.060,.018,brass,-2,0,1.19),
+  part(ellipsoid(4,1),.17,-.25,1.22,.042,.042,.075,visor,-2,0,1.19,0,true),
+];
+const needleCaster = [
+  block(.17,-.25,.91,.042,.05,.12,leather,-2,0,1.19),
+  part(bevel,.17,-.25,1.08,.062,.045,.10,iron,-2,0,1.19),
+  part(prism(6),.17,-.25,1.28,.025,.025,.13,0x717579,-2,0,1.19),
+  part(detailPrism,.17,-.25,1.18,.050,.050,.026,bronze,-2,0,1.19),
 ];
 const TOOL_EMISSION_LOCAL=Object.freeze({'rift-bombard':Object.freeze([.17,-.25,1.585]),blunderbuss:Object.freeze([.17,-.25,1.535]),'lumen-spindle':Object.freeze([.17,-.25,1.575])});
 // Uses the exact recipe grip, normalized socket axes and .82 conversion used below.
 export function closeViewToolEmissionPoint(out,profile,m){const p=TOOL_EMISSION_LOCAL[profile];if(!out||out.length<3||!p||!m||m.length!==16)return null;const ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);if(Math.min(ax,ay,az)<1e-6)return null;const x=(p[2]-.79)*.82,y=-(p[0]-.17)*.82,z=-(p[1]+.25)*.82;out[0]=m[12]+m[0]/ax*x+m[4]/ay*y+m[8]/az*z;out[1]=m[13]+m[1]/ax*x+m[5]/ay*y+m[9]/az*z;out[2]=m[14]+m[2]/ax*x+m[6]/ay*y+m[10]/az*z;return Number.isFinite(out[0]+out[1]+out[2])?out:null;}
 // Compact tapered cuff and inward thumb/knuckle cover; the final sockets keep each shell on its own hand.
 const fistGauntlet=[part(taper,0,0,.012,.105,.075,.115,0xd7dde2),part(bevel,0,-.058,.028,.058,.034,.045,0xf1f4f5)];
-const playerCinderPike=[...playerUnarmed,...cinderPike],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
+const playerCinderPike=[...playerUnarmed.map(p=>Math.abs(p.swing)===2?{...p,pikeArm:p.swing<0?0:1}:p),...cinderPike.map(p=>({...p,pikeWeapon:true}))],playerVergeCleaver=[...playerUnarmed,...vergeCleaver];
 
 // Ashling: compact cinder body, a glowing crack and two broken crown spikes.
 const ashling = [
@@ -290,7 +343,7 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
 } // exact rule cells are the residual panel, never generic bars
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -308,7 +361,7 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle});
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle,'spark-coil':sparkCoil,'needle-caster':needleCaster});
 export const HERO_EQUIPMENT_MAX_TRIANGLES = 156;
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null;
@@ -376,6 +429,82 @@ function hammerFrames(progress){
     hammerSegment(4+side*5,0,sy,sz,q[3],q[4],q[5]);hammerSegment(5+side*5,q[3],q[4],q[5],wx,wy,wz);hammerBox(6+side*5,wx,wy,wz);
   }
   return weight;
+}
+
+// Pike-only actor-local frame and 20-triangle elbow lofts. Scratch is reused once
+// per synchronous actor write; no gameplay state, socket ownership or extra draw.
+const PIKE_FRAME=new Float64Array(15),PIKE_ARMS=new Float64Array(2*60*6),PIKE_RINGS=new Float64Array(36),PIKE_ELBOW=new Float64Array(3);
+function pikeTriangle(offset,a,b,c){
+  const r=PIKE_RINGS,o=PIKE_ARMS,ax=r[b]-r[a],ay=r[b+1]-r[a+1],az=r[b+2]-r[a+2],bx=r[c]-r[a],by=r[c+1]-r[a+1],bz=r[c+2]-r[a+2];
+  let nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx,l=Math.hypot(nx,ny,nz)||1;nx/=l;ny/=l;nz/=l;
+  for(let k=0;k<3;k++){const v=k===0?a:k===1?b:c;o[offset++]=r[v];o[offset++]=r[v+1];o[offset++]=r[v+2];o[offset++]=nx;o[offset++]=ny;o[offset++]=nz;}return offset;
+}
+function pikeArmRing(ring,x,y,z,dx,dy,dz,radius){
+  const l=Math.hypot(dx,dy,dz)||1;dx/=l;dy/=l;dz/=l;
+  let xx=1-dx*dx,xy=-dx*dy,xz=-dx*dz,xl=Math.hypot(xx,xy,xz);if(xl<1e-6){xx=0;xy=dz;xz=-dy;xl=1;}xx/=xl;xy/=xl;xz/=xl;
+  const yx=dy*xz-dz*xy,yy=dz*xx-dx*xz,yz=dx*xy-dy*xx;
+  for(let i=0;i<4;i++){const a=(i+.5)*Math.PI/2,c=Math.cos(a)*radius,s=Math.sin(a)*radius,o=ring*12+i*3;PIKE_RINGS[o]=x+xx*c+yx*s;PIKE_RINGS[o+1]=y+xy*c+yy*s;PIKE_RINGS[o+2]=z+xz*c+yz*s;}
+}
+function nativePikeFrame(progress,step){
+  const commit=progress<.12?hammerSmooth(progress/.12):progress<=.40?1:1-hammerSmooth((progress-.40)/.60),yaw=.60*(1-commit)+(step===2?-.06:step===3?.06:0)*commit,pitch=.60*(1-commit)+(step===2?-.08:step===3?.08:.04)*commit;
+  const f=PIKE_FRAME,half=.1834/.82/2,nx=Math.cos(yaw)*Math.cos(pitch),ny=Math.sin(yaw)*Math.cos(pitch),nz=Math.sin(pitch),cx=.16+(step===2?-.025:step===3?.025:0)*commit,cy=0,cz=.95+(step===2?-.10:step===3?.10:0)*commit;
+  f[0]=nx;f[1]=ny;f[2]=nz;f[3]=-Math.sin(yaw);f[4]=Math.cos(yaw);f[5]=0;f[6]=Math.cos(yaw)*Math.sin(pitch);f[7]=Math.sin(yaw)*Math.sin(pitch);f[8]=-Math.cos(pitch);
+  f[9]=cx-nx*half+(step===2?.15:step===3?.17:.13)*commit;f[10]=cy-ny*half;f[11]=cz-nz*half;
+  f[12]=f[9]+nx*half*2;f[13]=f[10]+ny*half*2;f[14]=f[11]+nz*half*2;
+  for(let side=0;side<2;side++){
+    const sign=side?1:-1,sy=sign*.25,sz=1.19,o=side?12:9,wx=f[o],wy=f[o+1],wz=f[o+2];
+    hammerJoint(PIKE_ELBOW,0,-.014,sy,sz,wx,wy,wz,.255,0,sign,-.4);
+    const ex=PIKE_ELBOW[0],ey=PIKE_ELBOW[1],ez=PIKE_ELBOW[2];
+    pikeArmRing(0,-.014,sy,sz,ex+.014,ey-sy,ez-sz,.082);
+    pikeArmRing(1,ex,ey,ez,wx+.014,wy-sy,wz-sz,.067);
+    pikeArmRing(2,wx,wy,wz,wx-ex,wy-ey,wz-ez,.050);
+    let v=side*360;
+    for(let ring=0;ring<2;ring++)for(let i=0;i<4;i++){const a=ring*12+i*3,b=ring*12+(i+1)%4*3,c=b+12,d=a+12;v=pikeTriangle(v,a,b,c);v=pikeTriangle(v,a,c,d);}
+    v=pikeTriangle(v,0,6,3);v=pikeTriangle(v,0,9,6);v=pikeTriangle(v,24,27,30);pikeTriangle(v,24,30,33);
+  }
+}
+
+// Ordinary jump only: reuse each existing limb's vertex reservation. Normal legs
+// use a jump-only closed20-triangle baseline; Fists retain their16-triangle loft.
+// The normal baseline also owns legacy/opaque jumps, so v1 deforms identical
+// topology instead of morphing old bevel triangles into differently joined faces.
+// The source boot frame translates with its solved ankle. World lift stays in actor.z.
+const JUMP_PARTS=new Map(),JUMP_LEGS=new Float64Array(720),JUMP_DELTA=new Float64Array(6),JUMP_RING=new Float64Array(36),JUMP_KNEE=new Float64Array(3);
+for(let side=0;side<2;side++){JUMP_PARTS.set(playerUnarmed[side?14:10].mesh,{side,foot:false,capped:true});JUMP_PARTS.set(playerUnarmed[side?15:11].mesh,{side,foot:true,capped:true});}
+for(const p of CLOSE_VIEW_PLAYER_FORM_MODELS.playerIronFists)if(Math.abs(p.swing)===1)JUMP_PARTS.set(p.mesh,{side:p.swing<0?0:1,foot:p.mesh.length/MESH_FLOATS===36,capped:false});
+function ordinaryJumpKind(k){return k==='player'||k==='wayfarer'||['playerUnarmed','playerTool','playerHammer','playerSweep','playerMirage','playerOrrery','playerCinderPike','playerVergeCleaver','playerIronFists'].includes(k)||k.startsWith('playerIronFists:');}
+function ordinaryNativeJump(actor){
+  const a=actor.jumpAir,k=actor.kind;
+  if(actor.pose!=='jump'||!ordinaryJumpKind(k)||a?.v!==1)return 0;
+  const {elapsedMs:e,remainingMs:r,durationMs:d,rise,fall,lift}=a;
+  if(![e,r,d,rise,fall,lift].every(Number.isFinite)||e<0||r<0||d<=0||e>d||r>d||Math.abs(e+r-d)>1e-5||rise<0||rise>1||fall<0||fall>1||lift<0)return 0;
+  return hammerSmooth(e/60)*hammerSmooth(r/60);
+}
+function jumpTriangle(offset,a,b,c){
+  const r=JUMP_RING,o=JUMP_LEGS,ax=r[b]-r[a],ay=r[b+1]-r[a+1],az=r[b+2]-r[a+2],bx=r[c]-r[a],by=r[c+1]-r[a+1],bz=r[c+2]-r[a+2];
+  let nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx,l=Math.hypot(nx,ny,nz)||1;nx/=l;ny/=l;nz/=l;
+  for(let k=0;k<3;k++){const v=k===0?a:k===1?b:c;o[offset++]=r[v];o[offset++]=r[v+1];o[offset++]=r[v+2];o[offset++]=nx;o[offset++]=ny;o[offset++]=nz;}return offset;
+}
+function jumpRing(ring,x,y,z,dx,dy,dz,radius){
+  const l=Math.hypot(dx,dy,dz)||1;dx/=l;dy/=l;dz/=l;
+  let xx=1-dx*dx,xy=-dx*dy,xz=-dx*dz,xl=Math.hypot(xx,xy,xz);if(xl<1e-6){xx=0;xy=dz;xz=-dy;xl=1;}xx/=xl;xy/=xl;xz/=xl;
+  const yx=dy*xz-dz*xy,yy=dz*xx-dx*xz,yz=dx*xy-dy*xx;
+  for(let i=0;i<4;i++){const a=(i+.5)*Math.PI/2,c=Math.cos(a)*radius,s=Math.sin(a)*radius,o=ring*12+i*3;JUMP_RING[o]=x+xx*c+yx*s;JUMP_RING[o+1]=y+xy*c+yy*s;JUMP_RING[o+2]=z+xz*c+yz*s;}
+}
+function nativeJumpFrames(actor,beat,stride,jump,settle,connection){
+  const a=actor.jumpAir,fold=connection?hammerSmooth(a.rise/.65)*(1-hammerSmooth(a.fall/.8)):0,fists=actor.kind.startsWith('playerIronFists'),hz=fists?.68:.71;
+  for(let side=0;side<2;side++){
+    const sign=side?1:-1,hy=sign*.115,angle=-sign*beat*stride-sign*.64*jump+sign*.28*settle,c=Math.cos(angle),s=Math.sin(angle),lx=fists?.045:0,ly=sign*(fists?.12:.115),lz=(fists?.13:.152)-hz;
+    const ax=lx*c+lz*s,ay=ly,az=lz*c-lx*s+hz,dx=-.055/.82*fold,dy=sign*.015/.82*fold,dz=.14/.82*fold;
+    JUMP_DELTA[side*3]=dx;JUMP_DELTA[side*3+1]=dy;JUMP_DELTA[side*3+2]=dz;
+    let tx=ax+dx,ty=ay+dy,tz=az+dz;const length=fists?.28:.285;
+    hammerJoint(JUMP_KNEE,0,0,hy,hz,tx,ty,tz,length,1,0,0);
+    let ex=JUMP_KNEE[0],ey=JUMP_KNEE[1],ez=JUMP_KNEE[2];
+    if(!fists){ex=ax/2+(ex-ax/2)*connection;ey=(hy+ay)/2+(ey-(hy+ay)/2)*connection;ez=(hz+az)/2+(ez-(hz+az)/2)*connection;tx=ax+dx*connection;ty=ay+dy*connection;tz=az+dz*connection;}
+    jumpRing(0,0,hy,hz,ex,ey-hy,ez-hz,.085);jumpRing(1,ex,ey,ez,tx,ty-hy,tz-hz,.072);jumpRing(2,tx,ty,tz,tx-ex,ty-ey,tz-ez,.055);
+    let v=side*360;for(let ring=0;ring<2;ring++)for(let i=0;i<4;i++){const p=ring*12+i*3,q=ring*12+(i+1)%4*3;v=jumpTriangle(v,p,q,q+12);v=jumpTriangle(v,p,q+12,p+12);}
+    if(!fists){v=jumpTriangle(v,0,6,3);v=jumpTriangle(v,0,9,6);v=jumpTriangle(v,24,27,30);jumpTriangle(v,24,30,33);}
+  }
 }
 
 export function writeCloseViewModel(out, offset, actor) {
@@ -449,7 +578,10 @@ export function writeCloseViewModel(out, offset, actor) {
     ? actionProgress : actionPhase === 'active' || actionPhase === 'erupt' ? 1
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
   const hammerWeight=kind==='playerHammerStomp'?hammerFrames(progress):0;
-  for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart } of models[kind]) {
+  const nativeJump=ordinaryNativeJump(actor),nativeJumpBaseline=pose==='jump'&&ordinaryJumpKind(kind)&&!kind.startsWith('playerIronFists');if(nativeJump||nativeJumpBaseline)nativeJumpFrames(actor,beat,stride,jump,jumpSettle,nativeJump);
+  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
+  for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon } of models[kind]) {
+    const jumpPart=nativeJump||nativeJumpBaseline?JUMP_PARTS.get(mesh):null;
     const mirroredArm=newCleaver&&Math.abs(sourceSwing)===2,swing=mirroredArm?-sourceSwing:sourceSwing;
     const coilSway = swing === 4 || swing === 5
       ? Math.sin(phase - (swing - 4) * .92) * (.028 + .065 * moving) * (1 - fall)
@@ -463,7 +595,12 @@ export function writeCloseViewModel(out, offset, actor) {
     } else if(playerLike&&weightedFists&&Math.abs(swing)===1) {
       // Rear-foot drive and the opposite planted lead foot survive even with ambient motion suppressed.
       const rear=swing===(meleePose.lead>0?1:-1);angle=(rear?-.44:.24)*meleePose.drive+(rear?.18:-.10)*meleePose.recovery;
-    } else if ((playerLike || kind === "corridorGolem") && Math.abs(swing) === 2 && (fist || chargingFist)) {
+    } else if (kind === "corridorGolem" && Math.abs(swing) === 2 && fist) {
+      // The producer has already hit: extend at contact, then recover continuously
+      // through its actual inter-punch gap, ending at the ordinary neutral arm.
+      const lead=swing===(fistStep===2?2:-2),drive=(1-progress)*(1-progress);
+      angle=-(lead?1.35:.22)*drive;
+    } else if (playerLike && Math.abs(swing) === 2 && (fist || chargingFist)) {
       const lead=swing===(fistStep===2?2:-2);
       angle=chargingFist?-.65-.35*progress:lead?-.65-(fistStep===3?1.75:.95)*strike:-.55-.18*strike;
     } else if (angle !== null) { /* authored action-family joint */ }
@@ -515,6 +652,21 @@ export function writeCloseViewModel(out, offset, actor) {
       const armNormal=mesh[i+3]*c+normalZ*s;
       let nu=armNormal*cc-normalY*sc,nv=armNormal*sc+normalY*cc,nw=normalZ*c-mesh[i+3]*s;
       let nf=nu*cp+nw*sp;nw=nw*cp-nu*sp;
+      if(jumpPart){
+        let a=u,b=v,d=w,na=nu,nb=nv,nd=normalZ*c-mesh[i+3]*s;
+        if(jumpPart.foot){const k=jumpPart.side*3;a+=JUMP_DELTA[k]*nativeJump;b+=JUMP_DELTA[k+1]*nativeJump;d+=JUMP_DELTA[k+2]*nativeJump;}
+        else if(nativeJumpBaseline){const k=jumpPart.side*360+i/MESH_FLOATS*6;a=JUMP_LEGS[k];b=JUMP_LEGS[k+1];d=JUMP_LEGS[k+2];na=JUMP_LEGS[k+3];nb=JUMP_LEGS[k+4];nd=JUMP_LEGS[k+5];}
+        else{const k=jumpPart.side*360+i/MESH_FLOATS*6;a+=(JUMP_LEGS[k]-a)*nativeJump;b+=(JUMP_LEGS[k+1]-b)*nativeJump;d+=(JUMP_LEGS[k+2]-d)*nativeJump;na+=(JUMP_LEGS[k+3]-na)*nativeJump;nb+=(JUMP_LEGS[k+4]-nb)*nativeJump;nd+=(JUMP_LEGS[k+5]-nd)*nativeJump;const nl=Math.hypot(na,nb,nd)||1;na/=nl;nb/=nl;nd/=nl;}
+        f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;
+      }
+      if(nativePike&&(pikeArm!==undefined||pikeWeapon)){
+        let a,b,d,na,nb,nd;
+        if(pikeArm!==undefined){const k=pikeArm*360+i/MESH_FLOATS*6;a=PIKE_ARMS[k];b=PIKE_ARMS[k+1];d=PIKE_ARMS[k+2];na=PIKE_ARMS[k+3];nb=PIKE_ARMS[k+4];nd=PIKE_ARMS[k+5];}
+        else{const m=PIKE_FRAME,along=mesh[i+2]+pz-.79,across=mesh[i+1]+.25,up=mesh[i]+px-.17;
+          a=m[9]+m[0]*along+m[3]*across+m[6]*up;b=m[10]+m[1]*along+m[4]*across+m[7]*up;d=m[11]+m[2]*along+m[5]*across+m[8]*up;
+          na=m[0]*mesh[i+5]+m[3]*mesh[i+4]+m[6]*mesh[i+3];nb=m[1]*mesh[i+5]+m[4]*mesh[i+4]+m[7]*mesh[i+3];nd=m[2]*mesh[i+5]+m[5]*mesh[i+4]+m[8]*mesh[i+3];}
+        f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;
+      }
       if(hammerPart!==undefined){
         const o=hammerPart*12,m=HAMMER_FRAMES,mx=mesh[i],my=mesh[i+1],mz=mesh[i+2],nx=mesh[i+3],ny=mesh[i+4],nz=mesh[i+5],zl=Math.hypot(m[o+6],m[o+7],m[o+8])||1;
         f=m[o]*mx+m[o+3]*my+m[o+6]*mz+m[o+9];worldY=m[o+1]*mx+m[o+4]*my+m[o+7]*mz+m[o+10];worldZ=m[o+2]*mx+m[o+5]*my+m[o+8]*mz+m[o+11];

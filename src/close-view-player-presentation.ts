@@ -72,3 +72,19 @@ export function playerFormModelKey(form,held='melee') {
   const profile=['salvage-blade','cinder-pike','verge-cleaver'].includes(held)?'melee':CANONICAL_TOOL_FORM_PROFILE[held]||held;
   return form&&PLAYER_HELD_PROFILES.includes(profile)?`${form.kind}:${profile}`:form?.kind||null;
 }
+
+// Read-only ordinary-air handoff. Lift is supplied by the existing capture producer;
+// this descriptor neither lifts the body nor changes traversal/support clocks.
+export function ordinaryJumpPresentation(game, now, lift, baseMs) {
+  const g=game,p=g?.player,clock=g?.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now;
+  if(!p||!(p.hp>0)||!Number.isFinite(clock)||!Number.isFinite(g.jumpUntil)||!(g.jumpUntil>clock)||!Number.isFinite(lift)||lift<0||!Number.isFinite(baseMs)||baseMs<=0)return null;
+  if(g.droneLift||g.mechBoosting||g.glide||g.swimming||g.save?.boat?.aboard||g.mountRide?.()||g.mechUp?.()||g.droneUp?.())return null;
+  const form=playerFormPresentation(g);if(form&&form.kind!=='playerIronFists')return null;
+  if(clock<(p.stunnedUntil||0)||clock<(p.dodgeUntil||0))return null;
+  const durationMs=Number.isFinite(g.jumpDur)&&g.jumpDur>0?g.jumpDur:baseMs;
+  if(g.jumpStart!=null&&(!Number.isFinite(g.jumpStart)||g.jumpStart>clock))return null;
+  const start=Number.isFinite(g.jumpStart)?g.jumpStart:g.jumpUntil-durationMs;
+  const elapsedMs=clock-start,remainingMs=g.jumpUntil-clock;
+  if(elapsedMs<0||remainingMs>durationMs+1e-6)return null;
+  return {v:1,elapsedMs,remainingMs,durationMs,lift,rise:Math.min(1,elapsedMs/(baseMs*.5)),fall:Math.max(0,1-remainingMs/(baseMs*.5))};
+}
