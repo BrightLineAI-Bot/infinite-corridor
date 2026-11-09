@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Grave Lantern reload correction preparation — 2026-11-09
+
+The isolated unnumbered `claude/grave-lantern-reload-lift` correction is based on merged r846 `672941fdd6770f45ae0273ddf385e8e04cb20593`. Natural borrowed-leap Game reload reproduced stale `hopLift` `.39049536520580214` after the canonical attack/aloft reset, preventing ordinary material contact. The scoped correction clears discarded lift only for Grave Lantern; 77 relevant checks/build and independent Codex source review pass. The final regression uses real `game.presentation.reduceMotion` settings and claims physics/reload invariance only. This is draft preparation, with no release number claimed, merge or publication. Recheck active work/main and complete final release packaging, required review/CI/Preview and hosted gates before delivery. Do not duplicate this fix or overwrite the separate larger cloud preparation worktree.
+
 ## Grave Lantern r846 packaging gate — 2026-11-08
 
 Production remains verified `r844-0ec3fe866c64`. Veil Moth r845 merged as official main `715a280c35cbb1c3ac8d8474865ee5631445401e`; merged CI42539736647 and Preview42539736648 were running at merge, so r845 was not yet hosted, live or published at this checkpoint. Against that complete history, r846 packages only the reviewed ordinary Grave Lantern low-hover material interval and known physical-phase admission. Hold r846 until r845 exact hosted acceptance and publication. Leap/dive travel, other airborne families, boss rigs, melee motion and the final combined sweep remain later. Local servers and the full suite remain stopped.

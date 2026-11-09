@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Unnumbered preparation: restore ordinary Grave Lantern material contact after reloading a saved borrowed leap, clearing only the lift discarded with its transient attack.
+
 - Release 846: give the ordinary Grave Lantern a bounded low-hover material interval in known physical phases while preserving phase-charge, leap and dive travel clearance and failing unknown attack states closed.
 - Release 845: give the ordinary non-pack Veil Moth a bounded material body interval while preserving genuine above/below clearance and every existing flight, phase and special-movement exclusion.
 - Release 844: adopt the reviewed compact routing only for eligible newly placed standalone keeps and genuinely new Pentagons, while preserving explicit pins, old namespaces, failed-placement fallback, rewards, unknown fields, roof/door contracts and legacy defaults; add public scratch crossings that exercise ordinary selectors without preloading a target.
