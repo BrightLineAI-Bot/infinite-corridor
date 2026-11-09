@@ -1,6 +1,6 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
 import { ACTOR_CONTACT, actorContactContext } from "./actor-contact.ts";
-import { simpleToolAppearanceKind, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
+import { simpleToolAppearanceKind, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
@@ -2345,7 +2345,9 @@ export class Game {
     this.packEffects=[];
     this.reticle = null;
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
+    const savedCleaverCue = this.player.attackVisual?.cleaverChoreography;
     this.loadArea(this.area, false);
+    if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
     this.player.cachePickupVisual = normalizeCachePickupVisual(s.playerRuntime.cachePickupVisual);
     this.player.hurtVisual = normalizeHurtVisual(s.playerRuntime.hurtVisual);
@@ -2831,6 +2833,7 @@ export class Game {
   }
   loadArea(area, capture = true) {
     if (this.player?.consumeVisual) this.cancelConsumeVisual('area-transition');
+    this.retireCleaverChoreography();
     if (this.player?.cachePickupVisual?.v === 1) this.player.cachePickupVisual = null;
     if (this.player?.hurtVisual?.v === 1) this.player.hurtVisual = null;
     this.cancelPendingToolUse('area-transition');
@@ -6448,7 +6451,13 @@ export class Game {
     const primary=this.save.equipment.primary,compatible=q.action.kind==='verge-cleaver'?(primary?.id==='primary-verge-cleaver'||primary?.name==='Verge Cleaver'):this.fistsEquipped();
     if(!compatible){this.cancelPendingMeleeContact('equipment-switch');return{released:false,cancelled:true};}
     this.pendingMeleeContact=null;
-    const visual=this.player.attackVisual;if(visual?.meleeAction?.v===1&&!visual.presentationCancelled&&visual.meleeAction.kind===q.action.kind)this.player.actionVisualUntil=now+(visual.durationMs-q.contactMs);
+    const visual=this.player.attackVisual;
+    if(visual?.meleeAction?.v===1&&!visual.presentationCancelled&&visual.meleeAction.kind===q.action.kind){
+      this.player.actionVisualUntil=now+(visual.durationMs-q.contactMs);
+      const cue=visual.cleaverChoreography;
+      if(q.payload.kind==='cleaver'&&cue?.v===1&&!cue.retired)
+        visual.cleaverChoreography={...cue,contactLogicalMs:this.consumeLogicalNow(now)};
+    }
     if(q.payload.kind==='cleaver'){
       const hits=this.primaryStrike(now,q.aim,{committed:q.payload});
       this.recordPrimaryConsequences(hits);
@@ -6490,6 +6499,7 @@ export class Game {
         this.player.meleeAim || this.save.lastAim,
       );
     this.player.meleeStrike = { ...geometry };
+    const priorAttackVisual = this.player.attackVisual;
     const attackVisual = !echo && stampAttackVisual(this.player, "melee", ACTION_MOTION.meleeMs, { x: geometry.dx, y: geometry.dy });
     if (attackVisual) {
       const primary = this.save.equipment.primary;
@@ -6508,6 +6518,9 @@ export class Game {
       if (prior) attackVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw));
     }
     const cleaverAccepted=!echo&&this.attackAction==='attack'&&attackVisual?.weaponKind==='verge-cleaver'&&this.closeViewActionEligible();
+    if (cleaverAccepted && this.ordinaryCloseViewBody()) {
+      attackVisual.cleaverChoreography = acceptCleaverChoreography(priorAttackVisual, this.consumeLogicalNow(now));
+    }
     if(cleaverAccepted){const T=CLOSE_VIEW_MELEE_TIMING.cleaver,contactMs=Math.max(1,Math.min(T.contactMs,acceptedCooldown)),id=`melee-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`,stats=characterStats(this.save),armor=armorGlyphBonus(this.save),boxing=now<(this.boxingUntil||0)?BRAWLER['shadow-boxing']:null;attackVisual.durationMs=T.durationMs;attackVisual.meleeAction={v:1,kind:'verge-cleaver',move:'cleaver',contactMs,durationMs:T.durationMs};this.player.actionVisualUntil=now+T.durationMs;this.pendingMeleeContact={v:1,id,action:{...attackVisual.meleeAction},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{x:geometry.dx,y:geometry.dy},payload:{kind:'cleaver',profile:structuredClone(profile),meleeBonus:stats.meleeBonus,attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:this.save.equipment.primary?.awakened===true,primaryMotion:structuredClone(attackVisual.primaryMotion),support:this.playerLevel()}};return[];}
     const hits = primaryAttackHits(
       this.player,
@@ -8150,6 +8163,13 @@ export class Game {
   cancelConsumeVisual(reason) {
     this.player.consumeVisual = cancelConsumeVisual(this.player.consumeVisual, reason);
     this.player.cachePickupVisual = cancelCachePickupVisual(this.player.cachePickupVisual, reason);
+    if (reason === 'dodge' || reason === 'jump' || reason === 'cast' || reason === 'tool' ||
+        reason === 'form-change' || reason === 'equipment-switch' || reason === 'death' || reason === 'knockdown')
+      this.retireCleaverChoreography();
+  }
+  retireCleaverChoreography() {
+    const attack = this.player?.attackVisual, cue = attack?.cleaverChoreography;
+    if (cue?.v === 1 && !cue.retired) attack.cleaverChoreography = { ...cue, retired: true };
   }
   stampCachePickupVisual(cacheKind, now = this.lastUpdateNow || 0) {
     const p=this.player;
@@ -8161,6 +8181,7 @@ export class Game {
       sampleHurtVisual(p.hurtVisual,logicalNow,areaId,levelId)!==null||
       !!sampleConsumeVisual(p.consumeVisual,logicalNow,{area:this.area,areaId,levelId},{})?.active;
     p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs: CACHE_PICKUP_VISUAL_MS, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
+    if (!busy) this.retireCleaverChoreography();
   }
   stampConsumeVisual(itemKind, now) {
     if (Number.isSafeInteger(this.player.consumeVisual?.v) && this.player.consumeVisual.v > 1) return;
@@ -8169,6 +8190,7 @@ export class Game {
     this._consumeVisualAcceptedHp=this.player.hp;
     const p=this.player,busy=acceptedNow<(this.jumpUntil||0)||this.mechUp()||this.swimming||acceptedNow<(p.actionVisualUntil||0)||acceptedNow<(p.attackUntil||0)||acceptedNow<(p.castUntil||0)||acceptedNow<(p.dodgeUntil||0)||acceptedNow<(p.stunnedUntil||0)||acceptedNow<(p.heldUntil||0)||!!this.fistCharge||!!this.pendingToolUse||!!this.pendingMeleeContact;
     if(busy)this.cancelConsumeVisual('busy');
+    else this.retireCleaverChoreography();
   }
   useConsumable(type, now = 0) {
     if (this.cursed("items", now || this.lastUpdateNow || 0)) return false; // release 737: NO ITEMS (potions too)
@@ -8839,7 +8861,10 @@ export class Game {
     if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && !this.save.session.holeDeath && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
     if (hurtVisualAccepted && p.hp < hpStart && this.ordinaryCloseViewBody() && !(p.hurtVisual?.v > 1)) {
       const acceptedLogicalMs = this.consumeLogicalNow(now), areaId = this.areaId(), levelId = String(this.map?.levelId || 'root');
-      if (sampleHurtVisual(p.hurtVisual, acceptedLogicalMs, areaId, levelId) === null) p.hurtVisual = { v: 1, kind: 'hurt', acceptedLogicalMs, areaId, levelId };
+      if (sampleHurtVisual(p.hurtVisual, acceptedLogicalMs, areaId, levelId) === null) {
+        p.hurtVisual = { v: 1, kind: 'hurt', acceptedLogicalMs, areaId, levelId };
+        if (now >= (p.actionVisualUntil || 0) && now >= (p.attackUntil || 0)) this.retireCleaverChoreography();
+      }
     }
     if ((p.hp <= 0 || now < (p.stunnedUntil || 0)) && p.hurtVisual?.v === 1) p.hurtVisual = null;
     if (p.hp <= 0 && this.rite) this.riteFailed(); // the Rite of Ascendancy: a death breaks it

@@ -193,6 +193,12 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (!primaryMotion) return null;
     copy.primaryMotion = primaryMotion;
   }
+  if (raw.cleaverChoreography != null) {
+    const cue = raw.cleaverChoreography;
+    if (validCleaverCue(cue)) copy.cleaverChoreography = { ...cue, entry: { ...cue.entry } };
+    else if (finiteObject(cue) && Number.isInteger(cue.v) && cue.v > 1) copy.cleaverChoreography = { ...cue };
+    else delete copy.cleaverChoreography;
+  }
   if (raw.weaponKind != null) {
     if (typeof raw.weaponKind !== "string" || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
     copy.weaponKind = raw.weaponKind;
@@ -389,6 +395,83 @@ export function normalizePrimaryCombo(raw) {
   return { ...raw, weaponKind: raw.weaponKind, step: raw.step };
 }
 export const CLEAVER_COMBO_IDLE_MS = 1000;
+
+// Arm reach is measured from the anatomical right shoulder. Side is positive
+// to the Wayfarer's right. Angles describe the blade and upper-body follow-through.
+const CLEAVER_KEYS = ['side', 'up', 'forward', 'yaw', 'pitch', 'twist', 'lean'];
+const cleaverKey = (side, up, forward, yaw, pitch, twist = 0, lean = 0) =>
+  Object.freeze({ side, up, forward, yaw, pitch, twist, lean });
+const CLEAVER_CARRY = cleaverKey(.10, -.79, .10, .20, -.70);
+const CLEAVER_ENDS = Object.freeze([
+  cleaverKey(-.67, -.04, .46, -.85, .10, -.20, .06),
+  cleaverKey(.81, -.04, .43, .86, .07, .24, .08),
+  cleaverKey(-.55, -.68, .42, -.82, -.09, -.22, .12),
+  cleaverKey(.57, -.68, .34, .92, -.08, .22, .07),
+]);
+const CLEAVER_FOLLOW_MS = 105;
+const CLEAVER_READY_MS = 475;
+const CLEAVER_SETTLE_MS = 820;
+export const cleaverCarryFrame = () => CLEAVER_CARRY;
+
+function mixCleaverFrame(from, to, blend) {
+  if (blend === 0) return { ...from };
+  if (blend === 1) return { ...to };
+  const out = {};
+  for (const key of CLEAVER_KEYS) out[key] = from[key] + (to[key] - from[key]) * blend;
+  return out;
+}
+
+function validCleaverFrame(frame) {
+  return finiteObject(frame) && CLEAVER_KEYS.every(key =>
+    typeof frame[key] === 'number' && Number.isFinite(frame[key]) && Math.abs(frame[key]) <= 2);
+}
+
+function validCleaverCue(cue) {
+  return finiteObject(cue) && cue.v === 1 && validCleaverFrame(cue.entry) &&
+    Number.isFinite(cue.acceptedLogicalMs) && cue.acceptedLogicalMs >= 0 &&
+    cue.acceptedLogicalMs <= 1e12 && (cue.retired === undefined || typeof cue.retired === 'boolean') &&
+    (cue.contactLogicalMs === undefined || (Number.isFinite(cue.contactLogicalMs) &&
+      cue.contactLogicalMs >= cue.acceptedLogicalMs && cue.contactLogicalMs <= 1e12));
+}
+
+export function sampleCleaverChoreography(record, logicalNow) {
+  const cue = record?.cleaverChoreography, step = record?.primaryMotion?.step;
+  const action = record?.meleeAction;
+  if (record?.weaponKind !== 'verge-cleaver' || record.presentationCancelled ||
+      record.primaryMotion?.v !== 2 || !Number.isInteger(step) || step < 1 || step > 4 ||
+      !validCleaverCue(cue) || cue.retired === true || !Number.isFinite(logicalNow) ||
+      action?.v !== 1 || action.kind !== 'verge-cleaver' || action.move !== 'cleaver' ||
+      action.durationMs !== CLOSE_VIEW_MELEE_TIMING.cleaver.durationMs ||
+      !Number.isFinite(action.contactMs) || action.contactMs < 1 || action.contactMs > CLOSE_VIEW_MELEE_TIMING.cleaver.contactMs)
+    return null;
+  const sinceAcceptance = logicalNow - cue.acceptedLogicalMs;
+  const elapsed = cue.contactLogicalMs !== undefined && logicalNow >= cue.contactLogicalMs
+    ? action.contactMs + logicalNow - cue.contactLogicalMs
+    : Math.min(action.contactMs, sinceAcceptance);
+  if (elapsed < 0) return null;
+  if (elapsed >= CLEAVER_COMBO_IDLE_MS) return CLEAVER_CARRY;
+  const end = CLEAVER_ENDS[step - 1], followEnd = action.contactMs + CLEAVER_FOLLOW_MS;
+  if (elapsed >= followEnd) {
+    const start = step === 4 ? followEnd : CLEAVER_READY_MS;
+    const finish = step === 4 ? action.durationMs : CLEAVER_SETTLE_MS;
+    return mixCleaverFrame(end, CLEAVER_CARRY, smooth((elapsed - start) / (finish - start)));
+  }
+  // The hand accelerates into the existing contact and carries through it.
+  const before = elapsed <= action.contactMs;
+  const fraction = before ? elapsed / action.contactMs : (elapsed - action.contactMs) / CLEAVER_FOLLOW_MS;
+  const travel = before ? .5 * fraction ** 2 : 1 - .5 * (1 - fraction) ** 2;
+  const frame = mixCleaverFrame(cue.entry, end, travel);
+  const arc = Math.sin(Math.PI * travel);
+  frame.forward += .24 * arc;
+  if (step === 1 || step === 3) frame.pitch += (step === 1 ? .30 : -.30) * arc;
+  frame.lean += .11 * arc;
+  return frame;
+}
+
+export function acceptCleaverChoreography(prior, logicalNow) {
+  return { v: 1, acceptedLogicalMs: logicalNow, entry: sampleCleaverChoreography(prior, logicalNow) ?? { ...CLEAVER_CARRY } };
+}
+
 export function advancePrimaryCombo(player, weaponKind, logicalNow) {
   if (weaponKind !== 'cinder-pike' && weaponKind !== 'verge-cleaver') { player.primaryCombo = null; return null; }
   const prior = normalizePrimaryCombo(player.primaryCombo);
