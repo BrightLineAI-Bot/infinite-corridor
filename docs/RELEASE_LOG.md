@@ -21,6 +21,7 @@ Main is at game release r854, followed by test-fixture-only merge 2f10f51c7bbf39
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 855 | Codex | claude/close-view-room-padding-lab | Matched keep and Pentagon room-clearance comparisons in Proving Ground | CI and Preview pending. Production layout adoption is a later pass. |
 | 854 | Codex | claude/close-view-healing-drink / #509 | Wayfarer healing-drink gesture and isolated Potion lab | Merged as 467e9d974308. CI 42651541179 and 42653990562 passed. Preview 42653990710 succeeded for r854-467e9d974308. Desktop scratch verified the sip and visible vial in WebGL2. Physical-phone validation remains open. |
 | 852 | Codex | claude/close-view-diagnostics-release-cloud / #506 | Read-only Proving Ground renderer diagnostics | Merged as b635f4b34336. CI 42627941926 and Preview 42627941960 passed. Diagnostics were verified on the r853 desktop preview. Published in r853. |
 | 850 | Codex | claude/pg-lantern-recovery-cloud / #504 | Candidate-scoped natural Lantern recovery | Merged as e789c26f7d71. CI and Preview passed. Cloud natural capture, browser reload and damage witness completed. Published in r851. |
