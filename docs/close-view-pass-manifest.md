@@ -4,6 +4,12 @@ Updated: 2026-11-09. This is the work record for the owner's Close View notes an
 
 Verified live: r847-6be077b9239e, commit 6be077b9239eae5e32733b2be720da2e9b65d60f, tree ada3107ed8c64c6d6edfab75e5cd4d1b3ebccbaa. Source CI42542299944, merged CI42543235774, Preview42543235734 and Publish42544780650 succeeded. Fresh Astra review (846→847) cleared the exact corrected tree. Live identity and Options → System match, the journey is paused at 250 KB, and recent errors are empty.
 
+## r850 merged checkpoint — 2026-11-09 12:01 UTC
+
+Exact source CI42611677696 completed SUCCESS forafd25902:10 isolated+3333 main tests (3343 total), zero failures/skips/cancellations, build and preview rehearsal. Rechecked PRhead/base/main, reviewed tree1bf2ca09 and mergeability; marked ready, then merged #504 once through the normal PR process under Tim's standing automatic authority. Official main is `e789c26f7d7171afefcb016481d323518b4a5d90`, tree `1bf2ca098629088b8ad5bac947054f1bd838aeb2`, EXACTLY matching fresh Astra clearance. Merged CI42613606537 and Preview42613606635 are in progress. Production remains r847; no Publish dispatched. Hosted persistence/full reload/contact, textured action and physical-device gates remain open.
+
+Root alone provisionally takes main+1 r851 for independent Cleaver packaging on a new branch, after verifying actual merged850 and no competing runtime PR. Preparation may run while850 Preview builds; do not integrate Cleaver ahead of850 acceptance. Reconcile reviewed source6d471eaf/fb81d308 with actual e789 main and keep its original four-file delta, accepted-input clocks, exact resume, unknown records, contact/Echo/cooldowns and geometry continuity. No Cleaver PR/head is claimed yet; recheck baton/main at final packaging. PR502 remains the separate durable manifest owner.
+
 ## r850 Astra cleared / Cleaver durable checkpoint — 2026-11-09 11:54 UTC
 
 Parent supplied fresh Astra re-review clearance for exact #504 head `afd2590253c2672bc75095a632e9f9244391d640`, tree `1bf2ca098629088b8ad5bac947054f1bd838aeb2`, base `01bc5b39039acbe22f7a6ae06ba33e7343a2abf5`. Both prior P2s are fixed; independent regressions fail the old source and pass this one. Astra passed groups25 lifecycle,22 storage,20 artifact/build/isolation and11 preservation (overlap), plus fresh build and whitespace; no new blocker or production-isolation regression. This supersedes the failed old-head review and pending-review status in earlier checkpoint snapshots. Source clearance does not establish hosted persistence.
