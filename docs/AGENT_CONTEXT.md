@@ -2,6 +2,14 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Cleaver idle reset r851 preparation — 2026-11-09
+
+Actual main is merged r850 `e789c26f7d7171afefcb016481d323518b4a5d90`, tree `1bf2ca098629088b8ad5bac947054f1bd838aeb2`, matching the corrected Astra-reviewed recovery source. Source CI passed all 3343 checks. Merged CI42613606537 and Preview42613606635 are pending at this preparation checkpoint; the natural persisted-reload/manual-contact hosted gate remains OPEN. Production remains verified r847-6be077b9239e; no Publish was dispatched.
+
+Root holds provisional r851 only for `claude/cleaver-reset-release-cloud`, prepared from that actual main plus the identical four-file Cleaver source `76fb70a09421b72981000c9b33de0850918262ba`. The source was reconciled with corrected recovery in rehearsal `fd346850` and passed 106 focused server-free checks; counts are source preparation, not packaged or hosted acceptance. The sole gameplay change is the Cleaver-only 1000 ms accepted logical-input inactivity window. Pike, Fists, contact, damage, reach, cooldowns, Echo, save schema14, unknown fields and pinned generation remain unchanged. Independent source reviews cleared the reset and reconciliations; the final r851 packaging delta, exact-head CI, merged Preview and normal-speed hosted reset/carry acceptance remain required.
+
+Do not integrate r851 before r850 hosted acceptance. No other worker or PR claims this number; no r851 push, PR, merge or publication is claimed here. Root must recheck remote main and the release baton before a draft is published. PR502 owns the separate pass/boss manifests; held work and those manifests are untouched.
+
 ## r850 Astra correction checkpoint — 2026-11-09
 
 Astra found two P2 blockers on draft504 head4a2d45f6/tree0d9c4bea, superseding earlier source clearance for those missing cases. Both reproduced against that frozen source: initialization could resume after a newer background pause, and stored null/undefined could be mistaken for key absence and overwritten. The current correction keeps fresh Recovery initialization paused until explicit Resume, including hide-and-return during identity/storage awaits; it reads key count and value within the same IndexedDB transaction so present corrupt values survive read, replacement and reset. Production saves are not exposed. Canonical codec bodies, runtime mechanics and release850 markers are unchanged. New regressions fail on the old source. Fresh exact corrected-tree Astra/CI/Preview and actual hosted persistence/reload/contact remain required; do not reuse the old clearance or claim hosted acceptance.
