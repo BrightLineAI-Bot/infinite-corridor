@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 856 adds room-edge clearance to newly discovered routed keeps and Pentagons and eases the Close View lens in their tight corners.
+
 - Release 855 adds matched room-clearance comparisons for a keep and a Pentagon chamber in Close View Lab.
 
 - Release 854 gives the Wayfarer a short healing-drink gesture in Close View and an isolated Potion test in Proving Ground.

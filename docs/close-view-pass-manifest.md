@@ -18,7 +18,7 @@ Verified live on 2026-11-09: r855-96d7069b1622, commit 96d7069b162241db099c844a8
 
 ## Remaining Close View work
 
-- Room clearance comes first. The r855 Proving Ground pilot compares the same Keep 5 and Pentagon 10 entrance floors with a three-tile recess and their original edges. Hosted camera and combat-space checks come before any generation version or new-site adoption decision. Ceiling and drone clearance stay on the geometry review.
+- The r855 room comparisons are live. The r856 candidate pins clearance for new standalone keeps and Pentagons and widens the lens during tight corner compression. Local checks cover production site entry, old-site exclusion, original placement, exact resume, and portrait framing. The hosted r856 check is pending.
 - Finish the Wayfarer action pass with hurt, defeat and the remaining interaction gestures. Follow up on camera heading at low movement speeds and any tool pose or variant gaps found in the combined pass.
 - Run the combined traversal, combat, environment, recovery and offline checks. Physical-phone touch, frame rate and thermals require device evidence.
 - Start the articulated boss program with the Walker pilot after the player and room passes. Then work through the other Pentagon arena bosses and relevant labyrinth arenas using the roster and attack clocks in the boss manifest.
