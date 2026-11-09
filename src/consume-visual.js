@@ -1,6 +1,9 @@
 export const CONSUME_VISUAL_MS = 360;
 export const HURT_VISUAL_MS = 300;
 export const CACHE_PICKUP_VISUAL_MS = 400;
+export const CHEST_OPEN_VISUAL_MS = 510;
+export const SHOVEL_DIG_VISUAL_MS = 620;
+export const STONE_PLACE_VISUAL_MS = 440;
 const ITEMS=Object.freeze(['restorativeDraught','highPotion','maxPotion']),REASONS=Object.freeze(['attack','tool','cast','charge','dodge','jump','hurt','knockdown','death','area-transition','form-change','equipment-switch','busy']),CONTROL=/[\u0000-\u001f\u007f]/;
 const PICKUP_REASONS=Object.freeze([...REASONS,'drink']);
 const object=q=>!!q&&typeof q==='object'&&!Array.isArray(q),time=q=>typeof q==='number'&&Number.isFinite(q)&&q>=0&&q<=1e12,token=q=>typeof q==='string'&&q.length>0&&q.length<=512&&!CONTROL.test(q);
@@ -24,8 +27,8 @@ export function sampleHurtVisual(raw, logicalNow, areaId, levelId) {
 }
 
 const knownCachePickup = raw => object(raw) && raw.v === 1 && raw.kind === 'cachePickup' &&
-  (raw.cacheKind === 'supplyCache' || raw.cacheKind === 'weaponCache') &&
-  time(raw.acceptedLogicalMs) && raw.durationMs === CACHE_PICKUP_VISUAL_MS &&
+  (raw.cacheKind === 'supplyCache' || raw.cacheKind === 'weaponCache' || raw.cacheKind === 'chest' || raw.cacheKind === 'shovelDig' || raw.cacheKind === 'ironShovelDig' || raw.cacheKind === 'stonePlace') &&
+  time(raw.acceptedLogicalMs) && raw.durationMs === (raw.cacheKind === 'chest' ? CHEST_OPEN_VISUAL_MS : raw.cacheKind === 'shovelDig' || raw.cacheKind === 'ironShovelDig' ? SHOVEL_DIG_VISUAL_MS : raw.cacheKind === 'stonePlace' ? STONE_PLACE_VISUAL_MS : CACHE_PICKUP_VISUAL_MS) &&
   token(raw.areaId) && token(raw.levelId) &&
   (raw.cancelled === undefined || typeof raw.cancelled === 'boolean') &&
   (raw.cancelReason === undefined || PICKUP_REASONS.includes(raw.cancelReason));
@@ -36,6 +39,11 @@ export function normalizeCachePickupVisual(raw) {
   return knownCachePickup(raw) ? { ...raw, cancelled: raw.cancelled === true } : null;
 }
 
+// A placed stone is transient. Future receipts keep their own persistence contract.
+export function normalizePersistentCachePickupVisual(raw) {
+  return raw?.v === 1 && raw.cacheKind === 'stonePlace' ? null : normalizeCachePickupVisual(raw);
+}
+
 export function cancelCachePickupVisual(raw, reason) {
   if (!knownCachePickup(raw) || raw.cancelled === true || !PICKUP_REASONS.includes(reason)) return raw;
   return { ...raw, cancelled: true, cancelReason: reason };
@@ -44,5 +52,5 @@ export function cancelCachePickupVisual(raw, reason) {
 export function sampleCachePickupVisual(raw, logicalNow, areaId, levelId) {
   if (!knownCachePickup(raw) || raw.cancelled === true || !time(logicalNow) || raw.areaId !== areaId || raw.levelId !== levelId) return null;
   const elapsed = logicalNow - raw.acceptedLogicalMs;
-  return elapsed >= 0 && elapsed < CACHE_PICKUP_VISUAL_MS ? elapsed / CACHE_PICKUP_VISUAL_MS : null;
+  return elapsed >= 0 && elapsed < raw.durationMs ? elapsed / raw.durationMs : null;
 }

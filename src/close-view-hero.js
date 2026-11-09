@@ -1,7 +1,7 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r857-6ce7028f514c';
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r857-6ce7028f514c';
-import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight } from './close-view-player-presentation.js?v=r857-6ce7028f514c';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r860-7df1ae3e3e1b';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.js?v=r860-7df1ae3e3e1b';
+import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r860-7df1ae3e3e1b';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -328,6 +328,31 @@ function cleaverFourPose(state,pose,p,stage){
   state.clip='derived-right-cleaver-four';state.clipTime=p;state.primaryStep=stage?.step||1;
 }
 
+function choreographedCleaverPose(state, pose, frame, reducedMotion) {
+  const load = reducedMotion ? .55 : 1;
+  rotateY(pose, 28, frame.twist * .36 * load);
+  rotateY(pose, 27, frame.twist * .64 * load);
+  rotateX(pose, 24, frame.lean * load);
+  rotateY(pose, 4, -frame.twist * .32 * load);
+  rotateX(pose, 22, -frame.lean * .65 * load);
+  build(state.asset, state, pose);
+  const g = state.global, shoulder = 12 * 16, elbow = 11 * 16, wrist = 7 * 16, grip = 6 * 16, target = state.primaryTarget;
+  const reach = Math.hypot(g[elbow+12]-g[shoulder+12],g[elbow+13]-g[shoulder+13],g[elbow+14]-g[shoulder+14]) +
+    Math.hypot(g[wrist+12]-g[elbow+12],g[wrist+13]-g[elbow+13],g[wrist+14]-g[elbow+14]);
+  // Start at the existing gait-driven carry. Blend the rig-specific offset away
+  // as the hand leaves the hip, so the authored endpoints keep their full reach.
+  const carry = cleaverCarryFrame();
+  const leaveCarry = smoothstep(Math.hypot(frame.side - carry.side, frame.up - carry.up, frame.forward - carry.forward) / .45);
+  const carryX = g[shoulder+12] + .08;
+  const carryY = Math.max(g[shoulder+13] - reach * .80, state.minY + state.referenceHeight * .52);
+  const carryZ = g[shoulder+14] + .06 + .04 * Math.tanh((g[grip+14] - g[shoulder+14]) * 3);
+  target[0] = carryX + (g[shoulder+12] + frame.side * reach - carryX) * leaveCarry;
+  target[1] = carryY + (g[shoulder+13] + frame.up * reach - carryY) * leaveCarry;
+  target[2] = carryZ + (g[shoulder+14] + frame.forward * reach - carryZ) * leaveCarry;
+  state.primaryGripResidual = solveArm(state, pose, true, target, frame.yaw, frame.pitch);
+  state.clip = 'derived-choreographed-cleaver';
+}
+
 // Reachable source-space targets for the resolved free hand. The weapon hand remains
 // whatever carry/attack layer established; this solver runs last so casting never
 // yanks an accepted weapon socket off its grip.
@@ -567,7 +592,10 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const hammerAction=action?.kind==='melee'&&action.profile==='hammer';
   const timedPrimary=action?.kind==='melee'&&['melee','cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
-  const locomotionLayer=action?.kind==='drink'||(action?.kind==='interact'&&action.profile==='cache-pickup');
+  const chestOpening=action?.kind==='interact'&&action.profile==='chest-open';
+  const shovelDigging=action?.kind==='interact'&&(action.profile==='shovel-dig'||action.profile==='iron-shovel-dig');
+  const placingStone=action?.kind==='interact'&&action.profile==='stone-place';
+  const locomotionLayer=action?.kind==='drink'||(action?.kind==='interact'&&(action.profile==='cache-pickup'||chestOpening||shovelDigging||placingStone));
   clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction&&!locomotionLayer ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
@@ -576,7 +604,12 @@ export function sampleCloseViewHero(asset, state, input, out) {
   state.clip = speed > 2.8 ? 'Run' : speed > 0 ? 'Walk' : 'Idle'; state.clipTime = phase;
   const primaryStage=primaryAction?(primaryVisualStage(action)||(action.primaryMotion?{kind:'opaque'}:{kind:'legacy',step:1})):input.primaryCarryStage,
     carryProfile=primaryAction||heldPrimary,roles=cleaverHandRoles(input.handProfile??carryProfile,primaryStage);
-  if(meleeMotion){
+  if(carryProfile==='verge-cleaver'&&input.cleaverFrame){
+    choreographedCleaverPose(state,state.pose,input.cleaverFrame,input.reducedMotion);
+    state.clipTime=p;
+    state.primaryStep=primaryStage?.step||1;
+  }
+  else if(meleeMotion){
     if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:meleeMotion.cutIndex});
     else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,meleeMotion.lead<0?'left':'right');}
     weightedMeleePose(asset,state,state.pose,meleeMotion);
@@ -590,7 +623,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   if (action&&!meleeMotion) {
     const kind = action.kind, profile = action.profile;
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
-    else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact'&&profile!=='cache-pickup') clip = asset.clips.PickUp;
+    else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact'&&profile!=='cache-pickup'&&!chestOpening&&!shovelDigging&&!placingStone) clip = asset.clips.PickUp;
     weight = kind === 'death' ? 1 : Math.min(1, p / .08, (1 - p) / .12);
     if (kind === 'hit' && profile === 'hurt' && input.reducedMotion) weight *= .65;
     if(kind==='dodge') {
@@ -609,19 +642,28 @@ export function sampleCloseViewHero(asset, state, input, out) {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
       toolPose(state,state.pose,profile,p,weight,action);
-    } else if(kind==='interact'&&profile==='cache-pickup') {
-      const reach=cacheReachWeight(p,input.reducedMotion);
+    } else if(shovelDigging) {
+      const dig=sampleShovelDigPose(p,input.reducedMotion,state);
+      if(dig.weight>0){rotateX(state.pose,22,-1.08*dig.down+.34*dig.lever);rotateX(state.pose,21,-.48*dig.down-.30*dig.lever);rotateX(state.pose,18,.18*dig.down-.28*dig.lever);rotateX(state.pose,12,-.42*dig.down-.24*dig.lever);rotateX(state.pose,11,.22*dig.down);rotateX(state.pose,4,.34*dig.down-.16*dig.lever);}
+      state.clip=profile==='iron-shovel-dig'?'derived-iron-shovel-dig':'derived-shovel-dig';state.clipTime=p;
+    } else if(placingStone) {
+      const place=stonePlaceWeight(p,input.reducedMotion);
+      if(place>0){if(heldPrimary!=='cinder-pike'){const freeLeft=roles.free==='leftSocket';rotateX(state.pose,freeLeft?12:22,-.88*place);rotateX(state.pose,freeLeft?11:21,.40*place);rotateX(state.pose,freeLeft?7:18,.24*place);}rotateX(state.pose,4,.28*place);rotateX(state.pose,27,.09*place);}
+      state.clip='derived-stone-place';state.clipTime=p;
+    } else if(kind==='interact'&&(profile==='cache-pickup'||chestOpening)) {
+      const reach=chestOpening?chestOpenWeight(p,input.reducedMotion):cacheReachWeight(p,input.reducedMotion);
+      const lift=chestOpening?smoothstep(clamp((p-.32)/.25)):0;
       if(reach>0){
         // Leave the gait and occupied hand alone. A two-handed carry gets a brief head cue.
         if(heldPrimary!=='cinder-pike'){
           const freeLeft=roles.free==='leftSocket';
-          rotateX(state.pose,freeLeft?12:22,-.64*reach);
-          rotateX(state.pose,freeLeft?11:21,.29*reach);
-          rotateX(state.pose,freeLeft?7:18,.16*reach);
+          rotateX(state.pose,freeLeft?12:22,-(chestOpening ? .49+.64*lift : .64)*reach);
+          rotateX(state.pose,freeLeft?11:21,(chestOpening ? .18+.44*lift : .29)*reach);
+          rotateX(state.pose,freeLeft?7:18,(chestOpening ? -.22+.48*lift : .16)*reach);
         }
-        rotateX(state.pose,4,.21*reach);
+        rotateX(state.pose,4,(chestOpening ? .28-.12*lift : .21)*reach);
       }
-      state.clip='derived-cache-pickup';state.clipTime=p;
+      state.clip=chestOpening?'derived-chest-open':'derived-cache-pickup';state.clipTime=p;
     } else if(kind==='drink') {
       const drink=sampleDrinkPose(p,input.reducedMotion,state),freeLeft=roles.free==='leftSocket',t=state.primaryTarget;
       if(drink.weight>0){state.other.set(state.pose);build(asset,state,state.other);const shoulder=(freeLeft?12:22)*16;

@@ -1,4 +1,4 @@
-import { DOMAIN_ATLAS } from "./domain-looks.js?v=r857-6ce7028f514c";
+import { DOMAIN_ATLAS } from "./domain-looks.js?v=r860-7df1ae3e3e1b";
 // Atlas colours (release 559; Tim, 2026-10-29: "the colors on the atlas. When you zoom out, they don't correspond to the
 // tiles that you actually visited... I want to see the world that I actually am exploring not like some fake picture...
 // those places will actually look like what they actually look like").
