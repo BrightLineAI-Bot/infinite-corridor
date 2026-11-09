@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Provisional Release 852: expose read-only PG diagnostics for completed Close View rendering, native admission, hero asset loading and coarse GPU failure history; preserve existing fallback and loading behavior.
+
 - Release 851: restart the four-cut Verge Cleaver presentation after 1,000 ms without an accepted primary attack, preserving pause, canonical reload, old saves and combat mechanics.
 
 - Release 850: expose natural Grave Lantern borrowed-leap capture and real page-reload reconstruction through candidate-bound scratch storage, with canonical save transport, exact-state diagnostics and guarded reset.

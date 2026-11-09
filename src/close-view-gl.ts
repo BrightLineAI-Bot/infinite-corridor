@@ -591,6 +591,15 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
 
 // ---------------------------------------------------------------------------------------------- state
 export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0 };
+// Coarse observational history only; never expose driver logs or probe hardware.
+const GPU_DIAGNOSTICS={attempted:false,contextLost:false,lastFailure:'none',frameFailure:'none',lastHeroFailure:'none'};
+export function closeViewGLDiagnostics(){return {
+  state:!GPU_DIAGNOSTICS.attempted?'not-attempted':GPU_DIAGNOSTICS.contextLost?'context-lost':S.gl&&closeViewGLStats.ready?'ready':closeViewGLStats.failed?'unavailable':'not-ready',
+  lastFailure:GPU_DIAGNOSTICS.lastFailure,
+  heroState:!S.gl||GPU_DIAGNOSTICS.contextLost?'not-prepared':!S.hero?'program-unavailable':S.hero.failed?'upload-failed':S.hero.ready?'ready':'not-prepared',
+  lastHeroFailure:GPU_DIAGNOSTICS.lastHeroFailure,
+};}
+export function noteCloseViewGLFrameAbort(){GPU_DIAGNOSTICS.lastFailure=GPU_DIAGNOSTICS.frameFailure==='none'?'frame-aborted':GPU_DIAGNOSTICS.frameFailure;}
 globalThis.__closeViewGL = closeViewGLStats; // read by the browser harness and the lab's console (diagnostics only)
 const S = { canvas: null, gl: null, hero: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, vbo: { env: null, wall: null, board: null, decal: null, model: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null },
   tex: { ground: null, mask: null, grit: null }, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
@@ -614,18 +623,19 @@ function layout(gl, prog, vbo, stride, attrs) {
 }
 // Ready to draw with the GPU? Creates the context once (from the host's canvas factory); false without WebGL2.
 export function closeViewGLReady(makeCanvas) {
-  if (S.gl) { if (S.gl.isContextLost()) { closeViewGLStats.lost = true; closeViewGLStats.ready = false; closeViewGLStats.failed = true; closeViewGLStats.reason = "context lost"; S.gl = null; return false; } return true; }
+  GPU_DIAGNOSTICS.attempted=true;
+  if (S.gl) { if (S.gl.isContextLost()) { closeViewGLStats.lost = true; closeViewGLStats.ready = false; closeViewGLStats.failed = true; closeViewGLStats.reason = "context lost"; GPU_DIAGNOSTICS.lastFailure='context-lost';GPU_DIAGNOSTICS.contextLost=true; S.gl = null; return false; } return true; }
   if (closeViewGLStats.failed) return false;
   try {
     if (typeof WebGL2RenderingContext === "undefined") throw new Error("no WebGL2");
     const c = makeCanvas(); const gl = c?.getContext?.("webgl2", { alpha: false, antialias: true, depth: true, stencil: false, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: "default" });
     if (!(gl instanceof WebGL2RenderingContext)) throw new Error("no WebGL2 context");
-    c.addEventListener?.("webglcontextlost", (e) => { e.preventDefault?.(); closeViewGLStats.lost = true; });
+    c.addEventListener?.("webglcontextlost", (e) => { e.preventDefault?.(); closeViewGLStats.lost = true; GPU_DIAGNOSTICS.lastFailure='context-lost';if(S.canvas===c)GPU_DIAGNOSTICS.contextLost=true; });
     c.addEventListener?.("webglcontextrestored", () => { if(S.canvas===c) resetCloseViewGL(); });
     S.env = compile(gl, ENV_VS, ENV_FS); S.wall = compile(gl, WALL_VS, WALL_FS); S.wallZ = compile(gl, WALL_VS, WALL_DEPTH_FS); S.board = compile(gl, BOARD_VS, BOARD_FS); S.decal = compile(gl, DECAL_VS, DECAL_FS);
     S.model = compile(gl, MODEL_VS, MODEL_FS);
     // The optional hero program may fail without taking the ordinary renderer down.
-    try { S.hero = createHeroGL(gl, compile, VS_COMMON, FS_COMMON); } catch { S.hero = null; }
+    try { S.hero = createHeroGL(gl, compile, VS_COMMON, FS_COMMON); } catch { S.hero = null; GPU_DIAGNOSTICS.lastHeroFailure='program-unavailable'; }
     for (const k of ["env", "wall", "board", "decal", "model"]) S.vbo[k] = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.env); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     S.vao.env = layout(gl, S.env, S.vbo.env, 2, [["a_pos", 2]]);
@@ -635,26 +645,28 @@ export function closeViewGLReady(makeCanvas) {
     S.vao.model = layout(gl, S.model, S.vbo.model, MODEL_FLOATS, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3], ["a_alpha", 1]]);
     for (const k of ["ground", "mask", "grit"]) S.tex[k] = gl.createTexture();
     S.aniso = gl.getExtension("EXT_texture_filter_anisotropic");
-    S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true; return true;
-  } catch (err) { closeViewGLStats.failed = true; closeViewGLStats.reason = String(err?.message || err).slice(0, 400); S.gl = null; return false; }
+    S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true;GPU_DIAGNOSTICS.contextLost=false; return true;
+  } catch (err) { const message=String(err?.message||err);GPU_DIAGNOSTICS.lastFailure=message==='no WebGL2'?'no-webgl2':message==='no WebGL2 context'?'no-context':'initialization-failed';closeViewGLStats.failed = true; closeViewGLStats.reason = message.slice(0, 400); S.gl = null; return false; }
 }
 // Critical resources for a frame that will suppress ordinary floor bodies. Optional uniforms may be
 // optimized out; programs, buffers, vertex arrays and textures may not. This check is deliberately
-// side-effect free so callers can complete admission before the ordinary renderer captures the floor.
+// free of GPU commands beyond the existing context-loss check; coarse diagnostic
+// recording does not change admission before the ordinary renderer captures the floor.
 export function closeViewGLFrameReady() {
+  GPU_DIAGNOSTICS.frameFailure='none';
   const gl = S.gl;
-  if (!gl || gl.isContextLost?.()) return false;
-  for (const k of ["env", "wall", "wallZ", "board", "decal", "model"]) if (!S[k]?.p) return false;
-  for (const k of ["env", "wall", "board", "decal", "model"]) if (!S.vbo[k]) return false;
-  for (const k of ["env", "wall", "wallZ", "board", "decal", "model"]) if (!S.vao[k]) return false;
-  for (const k of ["ground", "mask", "grit"]) if (!S.tex[k]) return false;
+  if (!gl || gl.isContextLost?.()) {GPU_DIAGNOSTICS.frameFailure=gl?'context-lost':'frame-unavailable';return false;}
+  for (const k of ["env", "wall", "wallZ", "board", "decal", "model"]) if (!S[k]?.p) {GPU_DIAGNOSTICS.frameFailure='frame-resources';return false;}
+  for (const k of ["env", "wall", "board", "decal", "model"]) if (!S.vbo[k]) {GPU_DIAGNOSTICS.frameFailure='frame-resources';return false;}
+  for (const k of ["env", "wall", "wallZ", "board", "decal", "model"]) if (!S.vao[k]) {GPU_DIAGNOSTICS.frameFailure='frame-resources';return false;}
+  for (const k of ["ground", "mask", "grit"]) if (!S.tex[k]) {GPU_DIAGNOSTICS.frameFailure='frame-resources';return false;}
   return true;
 }
 export const closeViewGLCanvas = () => S.canvas;
 // Call before admitting the imported body; absent decoded images/context keeps the existing presentation.
-export const prepareCloseViewHeroGL = (asset) => !!S.gl && prepareHeroGL(S.gl, S.hero, asset);
+export const prepareCloseViewHeroGL = (asset) => {const ready=!!S.gl&&prepareHeroGL(S.gl,S.hero,asset);if(S.hero?.failed)GPU_DIAGNOSTICS.lastHeroFailure='upload-failed';return ready;};
 // For tests and the lab: forget the context (the next frame asks again).
-export function resetCloseViewGL() { if(S.gl) disposeHeroGL(S.gl,S.hero,true); S.hero = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit"])S.tex[k]=null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
+export function resetCloseViewGL() { GPU_DIAGNOSTICS.contextLost=false;if(S.gl) disposeHeroGL(S.gl,S.hero,true); S.hero = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit"])S.tex[k]=null; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
 // r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
@@ -773,10 +785,11 @@ export function drawSceneGL(ground, U, models = null, hero = null) {
   if (GLB.nDecal > GLB.nGlowStart) { gl.useProgram(S.decal.p); decalU(); gl.bindVertexArray(S.vao.decal); gl.blendFunc(gl.ONE, gl.ONE); gl.drawArrays(gl.TRIANGLES, GLB.nGlowStart, GLB.nDecal - GLB.nGlowStart); calls++; }
   gl.bindVertexArray(null); gl.depthMask(true); gl.disable(gl.BLEND);
   const error=typeof gl.getError === "function"?gl.getError():undefined;
-  if (gl.isContextLost?.() || (Number.isFinite(error) && error !== gl.NO_ERROR)) return false;
+  const lost=gl.isContextLost?.();if (lost || (Number.isFinite(error) && error !== gl.NO_ERROR)) {GPU_DIAGNOSTICS.frameFailure=lost?'context-lost':'frame-error';return false;}
   closeViewGLStats.frames++; closeViewGLStats.drawCalls = calls; closeViewGLStats.walls = S.staticVerts / 6; closeViewGLStats.boards = GLB.nBoard / 6; closeViewGLStats.decals = GLB.nDecal / 6; closeViewGLStats.lights = F.nl;
   return true;
   } catch (err) {
+    GPU_DIAGNOSTICS.frameFailure='frame-error';
     closeViewGLStats.reason = String(err?.message || err).slice(0, 400);
     return false;
   }

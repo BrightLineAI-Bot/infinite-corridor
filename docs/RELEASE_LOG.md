@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Official main is r850 (`e789c26f7d7171afefcb016481d323518b4a5d90`), reviewed tree `1bf2ca098629088b8ad5bac947054f1bd838aeb2`. Root holds provisional r851 for the isolated Cleaver-only idle-reset preparation, with integration held until r850 hosted acceptance. No other worker claims 851. Recheck remote main, main + 1 and the integration baton before any r851 draft or merge.
+Actual main is merged r851 `1a2c35ae7ab984a069c0e4e68732cb6df28dcdf6`, tree `58c42b238884588d79ffecb3c0a5cf0c09f5e0d3`. Remote main and open PRs were rechecked before this local preparation: only documentation PRs #502 and #214 were open, with no competing r852 candidate. Root holds the integration baton; this branch prepares provisional r852 locally and does not claim a merge-time reservation. Recheck remote main and all release ownership immediately before any push or merge. Production publication remains held on textured/device acceptance.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 851 (provisional local preparation) | Codex / root | `claude/cleaver-reset-release-cloud` | Cleaver-only 1000 ms accepted logical-input inactivity reset | Identical reviewed source 76fb70a0 reconciled with corrected recovery (rehearsal fd346850,106 focused checks). Prepared on actual main850 e789c26f; final packaging review/CI/Preview/hosted gates pending. Hold integration until 850 hosted acceptance; no push, PR, merge or publication. |
+| 852 (provisional local preparation) | Codex / root | `claude/close-view-diagnostics-release-cloud` | Read-only PG rendering diagnostics on dialog open | Diagnostics source b5b3cea9 / tree a4632622; focused source checks and final build passed. Local packaging only; independent review, exact packaged CI/Preview and hosted diagnostic acceptance remain required. No push, merge or publication. |
+| 851 | Codex / root | `claude/cleaver-reset-release-cloud` / #505 | Cleaver-only 1000 ms accepted logical-input inactivity reset | Merged as 1a2c35ae, tree 58c42b23. Root reports exact merged CI/Preview success; hosted Cleaver reset and textured/device publication gates remain open. Not published. |
 | 850 | Codex / root | `claude/pg-lantern-recovery-cloud` / #504 | Natural Lantern live capture, candidate-bound scratch persistence, canonical reload and reset isolation | Merged once as e789c26f, tree 1bf2ca09 matching corrected Astra clearance. Source CI passed 3343 checks; merged CI42613606537 and Preview42613606635 pending at this checkpoint. Hosted persisted reload/manual contact remains OPEN; not published. |
 | 849 | Codex | `claude/close-view-refinement-release-cloud` / #503 | Coordinated action, equipment, Hammerfall/Golem and placed-light refinement | Merged once as `01bc5b39`, reviewed tree `ccd8f462`; source CI42602789320, merged CI42604342929 and Preview42604342965 passed. Isolated identity/startup smoke only; full hosted gates remain. Not published. |
 | 848 | Codex | `claude/grave-lantern-reload-lift` / #500 | Clear discarded Grave Lantern leap lift on canonical reload reset | Merged as `a553e1a5`, reviewed tree `6e4170e5`; source CI42549164434, merged CI42598043317 and Preview42598043388 passed. Exact natural persisted-reload hosted gate remains open; not published. |

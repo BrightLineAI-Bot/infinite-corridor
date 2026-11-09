@@ -4,7 +4,7 @@ import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorT
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.ts";
-import { loadCloseViewHero, getCloseViewHeroAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation } from './close-view-player-presentation.ts';
 import { fistCharge } from './brawler-spells.ts';
@@ -17,7 +17,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLFrameReady, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -459,6 +459,17 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
 // Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.ts's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
+// Last completed scene, not the most recent GPU attempt. Reuse existing fallback
+// objects on commit; allocate detached display snapshots only when requested.
+const RENDER_DIAGNOSTICS={activityValid:false,frame:0,backend:'none',player:'absent',actors:0,nativeActors:0,fallbacks:null};
+const DIAGNOSTIC_FALLBACKS=new Set(['custom-art','body','capture','visibility','special-form','foundry-role','foundry-action','foundry-movement','morphology','pack-effects','pack-action','pack-phase','elite-action','decorations','affix','attachment-budget']);
+// Visible-canvas owners may retire activity without touching camera/input state.
+export function invalidateCloseViewDiagnostics(){RENDER_DIAGNOSTICS.activityValid=false;}
+export function closeViewRenderDiagnostics(){
+  const fallbacks={};for(const [reason,count] of Object.entries(RENDER_DIAGNOSTICS.fallbacks||{}))if(DIAGNOSTIC_FALLBACKS.has(reason)&&Number.isSafeInteger(count)&&count>0)fallbacks[reason]=Math.min(999,count);
+  return {active:RENDER_DIAGNOSTICS.activityValid&&CAM.drawn,frame:RENDER_DIAGNOSTICS.frame,backend:RENDER_DIAGNOSTICS.backend,player:RENDER_DIAGNOSTICS.player,actors:RENDER_DIAGNOSTICS.actors,nativeActors:RENDER_DIAGNOSTICS.nativeActors,fallbacks,asset:closeViewHeroAssetStatus(),gpu:closeViewGLDiagnostics()};
+}
+
 
 // ------------------------------------------------------------------------------------------------ colours, built once
 const STYLE_NAMES = Object.keys(CLOSE_VIEW.styles), STYLE_INDEX = Object.fromEntries(STYLE_NAMES.map((k, i) => [k, i]));
@@ -1045,6 +1056,7 @@ function insertionSortByDepth(n) { for (let i = 1; i < n; i++) { const o = order
 // draws its ordinary view.
 // A failed GPU frame never commits its captured floor/actor ownership to the screen.
 function abortCloseViewGLFrame() {
+  noteCloseViewGLFrameAbort();
   captured = capturedPlayer = null; capturing = bareFloor = false; CAM.drawn = false;
   GLB.nBoard = GLB.nDecal = GLB.nGlowStart = 0;
   closeViewGLStats.echoRibbonPaths = closeViewGLStats.echoRibbonVertices = 0;
@@ -1342,6 +1354,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     ctx.fillStyle = SCREEN.vignette; ctx.fillRect(0, 0, w, h); }
   drawPlaceLabel(ctx, g, w, h);
   if (tm) { const t5 = performance.now(); T.ground = t1 - t0; T.torch = t2 - t1; T.floor = t3 - t2; T.scene = t4 - t3; T.overlay = t5 - t4; }
+  RENDER_DIAGNOSTICS.activityValid=true;RENDER_DIAGNOSTICS.frame=closeViewStats.frames+1;RENDER_DIAGNOSTICS.backend=useGL?'webgl2':'2d';RENDER_DIAGNOSTICS.player=useGL?MODEL_STATE.playerRepresentation:capturedPlayer?'billboard':'absent';
+  RENDER_DIAGNOSTICS.actors=useGL?closeViewGLStats.models:0;RENDER_DIAGNOSTICS.nativeActors=useGL?closeViewGLStats.models-(MODEL_STATE.hero?1:0):0;RENDER_DIAGNOSTICS.fallbacks=useGL?closeViewGLStats.modelFallbacks:null;
   captured = null; capturedPlayer = null; closeViewStats.frames++; CAM.drawn = true;
   return true;
 }
@@ -2063,7 +2077,7 @@ export function closeViewPrimaryWeaponKind(item) {
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
-  hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
+  playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   heroGear: { profile: '', leftSocket: null, rightSocket: null, alpha: 1, tint: null, hitFlash: 0 },
@@ -2184,7 +2198,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const form = playerFormPresentation(g);
   const importedPlayer = !form || form.kind === 'playerIronFists' || form.kind === 'playerPowerSuit';
   state.admitted.clear();
-  state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;
+  state.playerRepresentation=capturedPlayer?'billboard':'absent';state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;
   state.cleaverTrail.visible = false;
   if (importedPlayer && !state.heroRequested && typeof globalThis.Image === 'function') {
     state.heroRequested = true;
@@ -2375,11 +2389,12 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             if(fire||orbit){state.spellEmission[0]=lx;state.spellEmission[1]=ly;state.spellEmission[2]=lz;state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
           }
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
-          state.hero = state.heroFrame; count++; imported = true;
+          state.hero = state.heroFrame; count++; imported = true;state.playerRepresentation='imported';
         }
       }
     }
     if (!imported && !append(actor)) return;
+    if(who===player&&!imported)state.playerRepresentation='native';
     if (who === player) CAM.bodyRevision++;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
     state.tracks.set(who, track);
