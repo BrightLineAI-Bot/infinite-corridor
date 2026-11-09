@@ -4,6 +4,14 @@ Updated: 2026-11-09. This is the work record for the owner's Close View notes an
 
 Verified live on 2026-11-09: r857-6ce7028f514c, commit 6ce7028f514c6a2bcab228e8a2a0c5624f64ef00, tree ec76875dc390bdde939fdb480e3318de9b9e23ce. Astra found no blockers from r856. Publish 42695170879 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
 
+## r860 batch candidate — 2026-11-09
+
+- Live identity is still r857-6ce7028f514c. r858 (#514), r859 (#515) and r860 (#516) merged, and their merged CI passed. r858 Preview 42700331564 failed its Pages wait with HTTP 404 after 15 minutes. r859 Preview 42702713650 and r860 Preview 42705201998 succeeded.
+- The exact batch is r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855cbef6623a7fab26, tree ebf51648774c496840596c9ce8aa70c525894ce2. Pages identity matched. Fresh Astra review of the complete live r857 to r860 diff found no blockers and passed 69 focused checks. Merged CI 42705200519 passed.
+- Hosted acceptance still needs the four Cleaver cuts from rear, side and front, chest opening through Act, the excavation and stone gestures through the usual controls, and the combined traversal and recovery pass. Browser control stopped after Runtime.evaluate timed out for tab 16. Resume through the normal browser path once Tim restores it or authorizes a retry. No production Publish was dispatched. Phone performance remains unmeasured.
+
+[Exact r860 preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r860-7df1ae3e3e1b/) · [Preview workflow](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42705201998)
+
 ## r853 tool appearance acceptance and tooling availability — 2026-11-09
 
 - Exact PR #507 head e342398aca79c8ce56007daaebf3c5077637c240 and merged a53725ea share the Astra-cleared tree. Source CI 42643703674, merged CI 42646218531 and Preview 42646218711 passed. Fresh Astra review of r851→r853 found no blockers.
