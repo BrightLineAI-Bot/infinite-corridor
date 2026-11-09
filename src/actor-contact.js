@@ -1,10 +1,17 @@
-import { enemyBodyRadius } from "./combat.js?v=r844-0ec3fe866c64";
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r844-0ec3fe866c64";
+import { enemyBodyRadius } from "./combat.js?v=r845-715a280c35cb";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r845-715a280c35cb";
 
 export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSteps: 256, epsilon: 1e-7 });
 // These controllers own teleportation, roaming, mounting or large-body movement outside ordinary AI.
 const SPECIAL = new Set(["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant", "mountainTurtle", "briarStag", "ashenMoth", "crimsonDragon", "doomChaser"]);
-const AIRBORNE_LEGACY = new Set(["veilMoth", "cinderWisp"]);
+const AIRBORNE_LEGACY = new Set(["cinderWisp"]);
+const VEIL_MOTH_ENVELOPE = Object.freeze({ bottom: .35, top: 1.48 });
+const veilMothScale = (e) => Math.max(.25, Math.min(4, Number.isFinite(e?.scale) ? e.scale : 1));
+export function materialVeilMoth(e) {
+  return e?.kind === "veilMoth" && !e.packKind && !e.aloft
+    && !(Number.isFinite(e.hopLift) && Math.abs(e.hopLift) > ACTOR_CONTACT.epsilon)
+    && !(Number(e.poiseBreak) > 0);
+}
 export function ordinaryContactEnemy(e) {
   return !!e && Number.isFinite(e.x) && Number.isFinite(e.y) && !e.dead && !(e.hp <= 0)
     && !e.flying && !e.aloft && !e.phasing && !e.phases && !e.hidden && !e.mist
@@ -12,6 +19,7 @@ export function ordinaryContactEnemy(e) {
     && !e.retreating && !e.passingBeast && !e.playing && !e.blobRemnant && e.kind !== "npc"
     && !(e.skirmishId && !e.skirmishProvoked) && !e.worldBeast && !e.questingBeast && !e.stalker
     && !e.gatePredator && !e.seaKind && !e.astralOwner && !e.astralMount && !SPECIAL.has(e.kind) && !AIRBORNE_LEGACY.has(e.kind)
+    && (e.kind !== "veilMoth" || materialVeilMoth(e))
     && Number.isFinite(enemyBodyRadius(e));
 }
 export function ordinaryContactPlayer(game) {
@@ -57,6 +65,8 @@ export function actorContactHeight(body, game) {
     ? H.foundry[body.foundryBody] : Object.hasOwn(H.kinds, body?.kind) ? H.kinds[body.kind] : 0;
   return unit ? unit * scale : H.fallback * Math.max(1, scale, Math.min(4, (Number(body?.bodyRadius) || .4) * 2.2));
 }
+export function actorContactBottom(body) { return materialVeilMoth(body) ? VEIL_MOTH_ENVELOPE.bottom * veilMothScale(body) : 0; }
+export function actorContactTop(body, game) { return materialVeilMoth(body) ? VEIL_MOTH_ENVELOPE.top * veilMothScale(body) : actorContactHeight(body, game); }
 export function actorContactSupport(game, body, x, y, width, phase = null, carrier = null) {
   const ground = liftAt(game.map, width, x, y);
   // Retained platform launch support is physical height over a gap. The ordinary jump arc
@@ -77,18 +87,18 @@ export function actorContactContext(game, subject, dx, dy) {
   if (!ordinaryContactPlayer(game) || (subject !== game.player && !ordinaryContactEnemy(subject))) return null;
   let c = contexts.get(game);
   if (!c) {
-    c = { game, candidates: [], probe: {}, phaseBefore: {}, phaseAfter: {}, trace: new Float64Array(ACTOR_CONTACT.maxSteps * 8), count: 0, checks: 0, queries: 0, budgetStops: 0, canExit: null };
+    c = { game, candidates: [], candidateBottoms: [], candidateTops: [], probe: {}, phaseBefore: {}, phaseAfter: {}, trace: new Float64Array(ACTOR_CONTACT.maxSteps * 8), count: 0, checks: 0, queries: 0, budgetStops: 0, canExit: null };
     c.clip = (x, y, ax, ay) => clipActorSegment(c, x, y, ax, ay);
     contexts.set(game, c);
   }
-  c.subject = subject; c.supportSubject = subject; c.width = Math.max(1, Number(game.map.width) || (game.area === "dungeon" ? 24 : 32)); c.map = game.map; c.canExit = null; c.carrier = null; c.phaseBefore ||= {}; c.phaseAfter ||= {}; c.record = false; c.count = 0; c.candidates.length = 0; c.queries++;
-  c.subjectHeight = actorContactHeight(subject, game); c.playerHeight = actorContactHeight(game.player, game);
+  c.subject = subject; c.supportSubject = subject; c.width = Math.max(1, Number(game.map.width) || (game.area === "dungeon" ? 24 : 32)); c.map = game.map; c.canExit = null; c.carrier = null; c.phaseBefore ||= {}; c.phaseAfter ||= {}; c.record = false; c.count = 0; c.candidates.length = 0; c.candidateBottoms.length = 0; c.candidateTops.length = 0; c.queries++;
+  c.subjectBottom = actorContactBottom(subject); c.subjectTop = actorContactTop(subject, game);
   c.radius = subject === game.player ? ACTOR_CONTACT.playerRadius : enemyBodyRadius(subject);
   const add = (other, radius) => {
     const r = c.radius + radius;
     if (other.x + r < Math.min(subject.x, subject.x + dx) || other.x - r > Math.max(subject.x, subject.x + dx)
       || other.y + r < Math.min(subject.y, subject.y + dy) || other.y - r > Math.max(subject.y, subject.y + dy)) return;
-    c.candidates.push(other);
+    c.candidates.push(other); c.candidateBottoms.push(actorContactBottom(other)); c.candidateTops.push(actorContactTop(other, game));
   };
   if (subject === game.player) { for (const e of game.enemies || []) if (ordinaryContactEnemy(e)) add(e, enemyBodyRadius(e)); }
   else add(game.player, ACTOR_CONTACT.playerRadius);
@@ -105,14 +115,13 @@ function clipActorSegment(c, x, y, dx, dy) {
   const before = actorContactSupport(c.game, c.supportSubject, x, y, c.width, c.phaseBefore, c.carrier),
     after = actorContactSupport(c.game, c.supportSubject, x + dx, y + dy, c.width, c.phaseAfter, c.carrier);
   let fraction = 1;
-  for (const other of c.candidates) {
+  for (let i=0;i<c.candidates.length;i++) { const other=c.candidates[i];
     c.checks++;
     const level = actorContactSupport(c.game, other, other.x, other.y, c.width);
-    const otherHeight = other === c.game.player ? c.playerHeight : actorContactHeight(other, c.game);
     // Both ends must remain on the same clear side of the lower body's full envelope.
     // Small steps and ordinary jumps stay solid; genuinely high support can pass above.
-    if (Math.min(before, after) >= level + otherHeight
-      || Math.max(before, after) + c.subjectHeight <= level) continue;
+    if (Math.min(before, after) + c.subjectBottom >= level + c.candidateTops[i]
+      || Math.max(before, after) + c.subjectTop <= level + c.candidateBottoms[i]) continue;
     const radius = c.radius + (other === c.game.player ? ACTOR_CONTACT.playerRadius : enemyBodyRadius(other));
     const x0 = x - other.x, y0 = y - other.y, dot = x0 * dx + y0 * dy, distance2 = x0 * x0 + y0 * y0;
     if (distance2 < radius * radius - ACTOR_CONTACT.epsilon) {
