@@ -18,8 +18,8 @@ Verified live on 2026-11-09: r853-a53725ea58a7, commit a53725ea58a7b4d1fc93da2c2
 
 ## Remaining Close View work
 
-- Room clearance comes first. The r855 Proving Ground pilot compares the same Keep 5 and Pentagon 10 entrance floors with a three-tile recess and their original edges. Hosted camera and combat-space checks come before any generation version or new-site adoption decision. Ceiling and drone clearance stay on the geometry review.
-- Finish the Wayfarer action pass with hurt, defeat and the remaining interaction gestures. Follow up on camera heading at low movement speeds and any tool pose or variant gaps found in the combined pass.
+- Room clearance comes first. The r855 Proving Ground pilot compares the same Keep 5 and Pentagon 10 entrance floors with a three-tile recess and their original edges. PR #511 merged and Preview r855-96d7069b1622 passed. Desktop WebGL2 showed both recesses and the ordinary movement input reached farther in each widened room. The keep still compressed the camera when orbiting close to the far corner. Production generation adoption, ceiling and drone clearance stay on the geometry review.
+- The ordinary Wayfarer defeat pose and natural Ashling witness are prepared locally on claude/close-view-wayfarer-defeat. Focused checks cover the real death beat, pause and single recovery. Hosted animation, ordinary hurt and the remaining interaction gestures are still open. Follow up on camera heading at low movement speeds and any tool pose or variant gaps found in the combined pass.
 - Run the combined traversal, combat, environment, recovery and offline checks. Physical-phone touch, frame rate and thermals require device evidence.
 - Start the articulated boss program with the Walker pilot after the player and room passes. Then work through the other Pentagon arena bosses and relevant labyrinth arenas using the roster and attack clocks in the boss manifest.
 
