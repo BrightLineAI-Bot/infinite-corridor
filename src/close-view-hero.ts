@@ -591,6 +591,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
     else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact') clip = asset.clips.PickUp;
     weight = kind === 'death' ? 1 : Math.min(1, p / .08, (1 - p) / .12);
+    if (kind === 'hit' && profile === 'hurt' && input.reducedMotion) weight *= .65;
     if(kind==='dodge') {
       const yaw=Number.isFinite(action.yaw)?action.yaw:input.yaw,mx=Number(action.moveX)||0,my=Number(action.moveY)||0,ml=Math.hypot(mx,my)||1,forward=(mx*Math.cos(yaw)+my*Math.sin(yaw))/ml,side=(-mx*Math.sin(yaw)+my*Math.cos(yaw))/ml;
       const envelope=p<.18?smoothstep(p/.18):p<.68?1:1-smoothstep((p-.68)/.32),drive=p<.34?smoothstep(p/.34):p<.68?1:1-smoothstep((p-.68)/.32),source=forward<-.35?.18-drive*.01:.08+drive*.10,forwardLean=forward<0?-forward*.5:forward;

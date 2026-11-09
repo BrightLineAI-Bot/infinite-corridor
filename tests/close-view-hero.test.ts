@@ -9,6 +9,22 @@ const file=fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.bin',import.meta
 const bytes=file.buffer.slice(file.byteOffset,file.byteOffset+file.byteLength),asset=decodeCloseViewHero(meta,bytes);
 const input=(extra={})=>({nowMs:100000,reducedMotion:false,x:3,y:4,groundZ:.3,liftZ:0,yaw:0,height:1.3776,speed:0,gaitPhase:0,action:null,alpha:1,tint:[1,1,1],hitFlash:0,...extra});
 function sample(i=input()){const s=createHeroPoseState(asset),f=createHeroFrame(asset);assert.equal(sampleCloseViewHero(asset,s,i,f),true);return{s,f};}
+test('ordinary hurt has neutral endpoints and a smaller reduced-motion recoil', () => {
+  const neutral = sample(input({nowMs:0})).f;
+  const hurt = (phase, reducedMotion = false) => sample(input({
+    nowMs:0, reducedMotion, action:{kind:'hit', profile:'hurt', phase, durationMs:240},
+  }));
+  for (const endpoint of [0,1]) {
+    let delta = 0;
+    hurt(endpoint).f.positionsNormals.forEach((value, i) => { delta = Math.max(delta, Math.abs(value-neutral.positionsNormals[i])); });
+    assert.ok(delta < 1e-6, `endpoint ${endpoint} position/normal drift ${delta}`);
+  }
+  const full = hurt(.35), reduced = hurt(.35, true);
+  const shift = frame => Math.hypot(...[12,13,14].map(i => frame.rightSocket[i]-neutral.rightSocket[i]));
+  assert.equal(full.s.clip, 'RecieveHit');
+  assert.ok(shift(full.f) > .02);
+  assert.ok(shift(reduced.f) > 0 && shift(reduced.f) < shift(full.f));
+});
 test('hero imports do not fetch, and pure decoding validates bounded arrays',async()=>{
   let calls=0;const old=globalThis.fetch;globalThis.fetch=()=>{calls++;throw new Error('unexpected fetch');};try{assert.equal(getCloseViewHeroAsset(),null);assert.equal(await loadCloseViewHero(),null);assert.equal(calls,0);}finally{globalThis.fetch=old;}
   assert.equal(asset.indexCount/3,3170);assert.throws(()=>decodeCloseViewHero({...meta,indexCount:100000},bytes));assert.throws(()=>decodeCloseViewHero(meta,bytes.slice(0,40)));

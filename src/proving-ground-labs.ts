@@ -255,7 +255,8 @@ const CLOSE_VIEW_LAB = [
   { id: "padding-keep-pilot", label: "Room clearance: keep widened edge", roomRouting: "keep", candidate: true, roomPadding: "pilot" },
   { id: "padding-pentagon-reference", label: "Room clearance: Pentagon reference", roomRouting: "pentagon", candidate: true, roomPadding: "reference" },
   { id: "padding-pentagon-pilot", label: "Room clearance: Pentagon widened edge", roomRouting: "pentagon", candidate: true, roomPadding: "pilot" },
-  { id: "wayfarer-defeat", label: "Wayfarer defeat: Ashling encounter", defeatInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "wayfarer-defeat", label: "Wayfarer defeat: Ashling encounter", reactionInspection: "defeat", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "wayfarer-hurt", label: "Wayfarer hurt: Ashling encounter", reactionInspection: "hurt", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
 // GPU scene's lava and pits can be seen without hunting for a room maze's gallery
@@ -381,13 +382,14 @@ function closeViewFixture(scenario, seed, now) {
     save.consumables.restorativeDraught = 1;
     game.message = "Use Potion to drink the Restorative Draught. Reset same restores health and supplies for another test.";
   }
-  if (spec.defeatInspection) {
+  if (spec.reactionInspection) {
     const { player, foe, dx, dy } = assetLane(game);
     entry = player;
     const facing = dx > 0 ? "right" : dx < 0 ? "left" : dy > 0 ? "down" : "up";
-    Object.assign(game.player, { x: player.x, y: player.y, facing, hp: 1, invulnerableUntil: now });
+    const fatal = spec.reactionInspection === "defeat";
+    Object.assign(game.player, { x: player.x, y: player.y, facing, hp: fatal ? 1 : save.maxHp, invulnerableUntil: now });
     const ashling = createCombatant("ashling", foe.x, foe.y, false, []);
-    ashling.id = "lab-wayfarer-defeat-ashling";
+    ashling.id = `lab-wayfarer-${spec.reactionInspection}-ashling`;
     game.enemies = [ashling];
     game.deathBeat = VIEWPORT_CLOSED.fall;
     game.message = "Stand still and let the Ashling land a hit. Reset same restarts the encounter.";
