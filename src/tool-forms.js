@@ -1,4 +1,4 @@
-import { stampAttackVisual } from "./action-motion.js?v=r847-6be077b9239e";
+import { stampAttackVisual } from "./action-motion.js?v=r851-1a2c35ae7ab9";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -71,6 +71,17 @@ function sweepBlade(ctx, x, y, a, s, i, spinAt) {
 }
 // A rounded rectangle drawn with arcs, so it works where ctx.roundRect is missing (older Safari and Chrome).
 function rounded(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+// Pure presentation from actual producer events. Repositioning remains instantaneous;
+// a punch is already resolved at punchAt, so its visible motion starts extended.
+export function golemPresentation(g, now) {
+  if (!g || now < g.start) return null;
+  const up=g.sinkAt?Math.max(0,1-(now-g.sinkAt)/(GOLEM.sink*1000)):Math.max(0,Math.min(1,(now-g.start)/(GOLEM.rise*1000)));
+  const age=now-(g.punchAt??-1e9),recover=age>=0&&age<GOLEM.gap*1000;
+  return {kind:'corridorGolem',x:g.x,y:g.y+.32,supportX:g.x,supportY:g.y,
+    scale:1.05/1.49,lift:(up-1)*1.05,yaw:(g.face||1)<0?Math.PI:0,
+    pose:recover?'fist':'idle',amount:recover?age/(GOLEM.gap*1000):0,
+    fistStep:(GOLEM.punches-g.punches)%2===0?2:1,pace:0,alpha:up>0?1:0};
+}
 // The golem: a squat stone figure with yellow sigil eyes, rising out of the floor and sinking back.
 export function drawGolem(ctx, game, toScreen, s, clock = game.lastUpdateNow || 0, shadow = true) {
   const g = game.golem, now = clock; if (!g || now < g.start) return;
@@ -78,9 +89,11 @@ export function drawGolem(ctx, game, toScreen, s, clock = game.lastUpdateNow || 
   if(shadow){ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(x, y + s * .3, W * .7, s * .16, 0, 0, 7); ctx.fill();}
   ctx.save(); try { ctx.beginPath(); ctx.rect(x - s, y + s * .32 - s * 1.6, s * 2, s * 1.6); ctx.clip(); // below the floor line it is still in the ground
   const top = y + s * .32 - H; ctx.fillStyle = "#857a68"; ctx.strokeStyle = "#3f382e"; ctx.lineWidth = 2;
+  for(const side of [-1,1]){ctx.beginPath();rounded(ctx,x+side*s*.19-s*.15,y+s*.32-s*.18*up,s*.3,s*.18*up,s*.035);ctx.fill();ctx.stroke();}
   ctx.beginPath(); rounded(ctx, x - W / 2, top + s * .22, W, H, s * .12); ctx.fill(); ctx.stroke(); // body
   ctx.beginPath(); rounded(ctx, x - W * .3, top, W * .6, s * .3, s * .08); ctx.fill(); ctx.stroke(); // head
-  const punching = now - (g.punchAt || -1e9) < 160, fx = x + f * (W / 2 + (punching ? s * .32 : s * .08)); ctx.beginPath(); ctx.arc(fx, top + s * .5, s * .17, 0, 7); ctx.fill(); ctx.stroke(); // the fist
+  const pose=golemPresentation(g,now),drive=pose.pose==='fist'?(1-pose.amount)*(1-pose.amount):0;
+  const fx = x + f * (W / 2 + s * (.08 + .24 * drive)); ctx.beginPath(); ctx.arc(fx, top + s * .5, s * .17, 0, 7); ctx.fill(); ctx.stroke(); // the fist
   ctx.fillStyle = "#ffd23f"; ctx.fillRect(x - W * .18, top + s * .1, s * .07, s * .06); ctx.fillRect(x + W * .18 - s * .07, top + s * .1, s * .07, s * .06); // sigil eyes
   } finally { ctx.restore(); } // the clip never outlives the golem, whatever happens while drawing it
 }
@@ -89,7 +102,7 @@ export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
   const g=game.golem,clock=capture?.now??game.lastUpdateNow??0;
   const captured=g&&clock>=g.start&&capture?.captureActor?.({source:g,x:g.x,y:g.y+.32,height:1.5,
     draw:(c,unit)=>drawGolem(c,game,q=>[q.x*unit,q.y*unit],unit,clock,false),
-    sample:(now)=>{const up=g.sinkAt?Math.max(0,1-(now-g.sinkAt)/(GOLEM.sink*1000)):Math.max(0,Math.min(1,(now-g.start)/(GOLEM.rise*1000))),punch=now-(g.punchAt??-1e9);return {kind:'corridorGolem',x:g.x,y:g.y+.32,supportX:g.x,supportY:g.y,scale:1.05/1.49,lift:(up-1)*1.05,yaw:(g.face||1)<0?Math.PI:0,pose:punch>=0&&punch<160?'fist':'idle',amount:Math.max(0,Math.min(1,punch/160)),fistStep:1,alpha:up>0?1:0};}});
+    sample:(now)=>golemPresentation(g,now)});
   if(captured){const [x,y]=toScreen(g);ctx.fillStyle='#00000033';ctx.beginPath();ctx.ellipse(x,y+s*.3,s*.75*.7,s*.16,0,0,7);ctx.fill();}
   else drawGolem(ctx, game, toScreen, s);
   for (const fx of game.effects) if (fx.fireBurst && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / .32, R = fx.radius * s * (.5 + .6 * k); const g = ctx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, `rgba(255,236,160,${.9 * (1 - k)})`); g.addColorStop(.5, `rgba(255,128,40,${.7 * (1 - k)})`); g.addColorStop(1, "rgba(160,40,10,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); } // release 547: Fire Burst's flame

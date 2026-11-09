@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r847-6be077b9239e";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r851-1a2c35ae7ab9";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,9 +8,9 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r847-6
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r847-6be077b9239e";
-import { hashSeed, byHash } from "./random.js?v=r847-6be077b9239e";
-import { updateAstralActor } from "./astral-worm.js?v=r847-6be077b9239e";
+import { stageOneBeastReference } from "./stages.js?v=r851-1a2c35ae7ab9";
+import { hashSeed, byHash } from "./random.js?v=r851-1a2c35ae7ab9";
+import { updateAstralActor } from "./astral-worm.js?v=r851-1a2c35ae7ab9";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -764,6 +764,8 @@ export function resetPackRuntime(enemy) {
   if (!enemy?.packKind) return enemy;
   const cd = enemy.pack?.cd || {};
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
+  // A reset Lantern returns to material hover; its discarded leap cannot retain lift.
+  if (enemy.kind === "graveLantern") enemy.hopLift = 0;
   if (enemy.kind === "psychicCrystal") enemy.crystalFall = 0; // release 259: a poise break does not survive a reload
   if (enemy.kind === "gloomvast") { enemy.gloomReel = 0; enemy.gloomFade = 0; enemy.poiseBreak = 0; if (!(enemy.gloomDark?.left > 0)) { enemy.gloomDark = null; enemy.gloomVeil = false; enemy.brain = MONSTER_PACK.gloomvast.brain; enemy.packAttacks = [...MONSTER_PACK.gloomvast.attacks, ...(enemy.hybridAttack ? [enemy.hybridAttack] : [])]; } else enemy.gloomDark.laid = false; } // the Gloomvast's Dark carries over a reload (Game.gloomResume lays its decoys again); nothing else of it does
   // Snapshots retain attack lists. Move the sky attack for existing journeys too, without retuning their beasts.

@@ -1,35 +1,37 @@
-import { Game } from "./game.js?v=r847-6be077b9239e";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r847-6be077b9239e"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r847-6be077b9239e";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r847-6be077b9239e";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.js?v=r847-6be077b9239e";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r847-6be077b9239e";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r847-6be077b9239e";
-import { DIG, planDig } from "./digging.js?v=r847-6be077b9239e";
-import { freshSave, migrateSave } from "./types.js?v=r847-6be077b9239e";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r847-6be077b9239e";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r847-6be077b9239e";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r847-6be077b9239e";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r847-6be077b9239e";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r847-6be077b9239e";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r847-6be077b9239e";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r847-6be077b9239e";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r847-6be077b9239e";
-import { BIOMES, biomeFor } from "./landscape.js?v=r847-6be077b9239e";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r847-6be077b9239e";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r847-6be077b9239e";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r847-6be077b9239e";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r847-6be077b9239e";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r847-6be077b9239e";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r847-6be077b9239e";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r847-6be077b9239e";
-import { ensureLattice } from "./transit-lattice.js?v=r847-6be077b9239e";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r847-6be077b9239e";
-import { fieldOn } from "./lattice-fields.js?v=r847-6be077b9239e";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r847-6be077b9239e";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r847-6be077b9239e";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r847-6be077b9239e";
-import { validActions } from "./interactions.js?v=r847-6be077b9239e";
+import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r851-1a2c35ae7ab9';
+import { ordinaryContactEnemy } from './actor-contact.js?v=r851-1a2c35ae7ab9';
+import { Game, footprintOpen } from "./game.js?v=r851-1a2c35ae7ab9";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r851-1a2c35ae7ab9"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r851-1a2c35ae7ab9";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r851-1a2c35ae7ab9";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.js?v=r851-1a2c35ae7ab9";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r851-1a2c35ae7ab9";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r851-1a2c35ae7ab9";
+import { DIG, planDig } from "./digging.js?v=r851-1a2c35ae7ab9";
+import { freshSave, migrateSave } from "./types.js?v=r851-1a2c35ae7ab9";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r851-1a2c35ae7ab9";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r851-1a2c35ae7ab9";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r851-1a2c35ae7ab9";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r851-1a2c35ae7ab9";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r851-1a2c35ae7ab9";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r851-1a2c35ae7ab9";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r851-1a2c35ae7ab9";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r851-1a2c35ae7ab9";
+import { BIOMES, biomeFor } from "./landscape.js?v=r851-1a2c35ae7ab9";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r851-1a2c35ae7ab9";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r851-1a2c35ae7ab9";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r851-1a2c35ae7ab9";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r851-1a2c35ae7ab9";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r851-1a2c35ae7ab9";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r851-1a2c35ae7ab9";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r851-1a2c35ae7ab9";
+import { ensureLattice } from "./transit-lattice.js?v=r851-1a2c35ae7ab9";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r851-1a2c35ae7ab9";
+import { fieldOn } from "./lattice-fields.js?v=r851-1a2c35ae7ab9";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r851-1a2c35ae7ab9";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r851-1a2c35ae7ab9";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r851-1a2c35ae7ab9";
+import { validActions } from "./interactions.js?v=r851-1a2c35ae7ab9";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -106,7 +108,7 @@ export const LABORATORIES = [
   { id: "inventory", label: "Inventory, Equipment & Reward Lab", status: "implemented", description: "Production item, tier, affix, capacity, vendor, and progression states." },
   { id: "magic", label: "Magic & Aperture Progression Lab", status: "implemented", description: "Aperture bands, learnable buffs, traversal safety, cooldowns, and renewal fixtures." },
   { id: "performance", label: "Performance & Stress Lab", status: "implemented", description: "Controlled production overworld and dungeon workload presets." },
-  { id: "recovery", label: "Save, Death & Recovery Lab", status: "implemented", description: "Memory-only death, checkpoint, serialization, migration, and damaged-state fixtures." },
+  { id: "recovery", label: "Save, Death & Recovery Lab", status: "implemented", description: "Memory-only recovery fixtures and an explicit candidate-scoped natural Lantern checkpoint." },
   { id: "scenes", label: "Narrative Scene Lab", status: "implemented", description: "Consequence-free production scene-state and ritual fixtures." },
   { id: "records", label: "Atlas, Journal, Bestiary & Symbols Lab", status: "implemented", description: "Dense Atlas, death marker, codex grouping, symbols, and place records." },
   { id: "close-view", label: "Close View Lab (prototype)", status: "implemented", description: "A Pentagon floor, or a great building's, seen through Close View: the low third-person camera of interiors, on a scratch save with Close View on." },
@@ -175,7 +177,7 @@ const ENVIRONMENTS=[...SHELTERS.filter(q=>q.id.endsWith("district")),...ARENA_FA
 const HUNTS=["empty-viewport","tracking-hunt","located-hunt","completed-hunt","failed-hunt","elite-attributes","projectile-patterns","aggro-pursuit","guardian-boss","foundry-review","temporary-arena","persistent-arena"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const INVENTORY=["comparison-arrows","mixed-comparison","empty-slot","weapon-upgrade","armor-upgrade","upgraded-equipment","insufficient-currency","insufficient-spheres","all-slots","tier-affixes","sorting-salvage","salvage-upgraded","ordinary-vendor","vela-stock","dungeon-broker","sold-stock","full-pack","progression-scaling"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const MAGIC=[...Object.keys(APERTURE_SKILLS).flatMap(id=>Array.from({length:APERTURE_SKILLS[id].maxRank},(_,i)=>({id:`${id}-rank-${i+1}`,label:`${APERTURE_SKILLS[id].name} rank ${i+1}`}))),...['enlargement-wall','enlargement-reversion','speed-buff','extended-leap','aerial-water','aerial-pit','invalid-landing','buff-expiration','active-buff-save','band-dormant','band-stirring','band-open','band-resonant'].map(id=>({id,label:id.replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}))];
-const SIMPLE={performance:["overworld-baseline","overworld-stress","dungeon-baseline","projectile-stress"],recovery:["active-rest-point","active-wayglass","overworld-death","dungeon-death","serialized","legacy-migration","corrupted-state"],scenes:["idle","exceptional-arrival","deep-resolution","relay-transformation","aperture-ritual","interrupted"],records:["dense-atlas","all-symbols","navigation-symbols","death-marker","dungeon-map","journal-features","bestiary-groups","elite-vocabulary","creature-image","place-records"]};
+const SIMPLE={performance:["overworld-baseline","overworld-stress","dungeon-baseline","projectile-stress"],recovery:["natural-lantern-leap-reload","active-rest-point","active-wayglass","overworld-death","dungeon-death","serialized","legacy-migration","corrupted-state"],scenes:["idle","exceptional-arrival","deep-resolution","relay-transformation","aperture-ritual","interrupted"],records:["dense-atlas","all-symbols","navigation-symbols","death-marker","dungeon-map","journal-features","bestiary-groups","elite-vocabulary","creature-image","place-records"]};
 
 export function scenariosForLab(lab) {
   if (lab === "test-tile") return [{ id: "standard", label: "Standard test tile" }];
@@ -806,10 +808,69 @@ function navigationFixture(scenario,seed,now){const kind=scenario.includes("rest
 
 function environmentFixture(scenario,seed,variant,now){if(scenario.startsWith("arena-")||scenario.includes("arena")||scenario.includes("domain")){const family=scenario.startsWith("arena-")?scenario.slice(6):scenario.startsWith("rootbound")?"rootbound-crown":"sentinel-manufactory",id=`proving:environment:${scenario}:${variant}`,map=generateBespokeArena(seed,id,{kind:scenario.startsWith("temporary")?"temporary":"persistent",family});const base=gameForMap(seed,id,map,now);return{lab:"environment",scenario,label:map.name,seed,variant,production:true,diagnostics:{arenaFamily:map.arenaFamily,lifecycle:map.arenaKind,persistence:map.arenaKind==="persistent"},...base}}const spec=SHELTERS.find(q=>q.id===scenario)||SHELTERS.find(q=>q.id==="fortress-district"),base=shelterFixture(spec.id,seed,now);return{...base,lab:"environment",scenario,label:spec.label,diagnostics:{district:base.game.map.district,structureDiagnostics:base.game.map.structureDiagnostics}}}
 
+// This fixture selects a natural production section and legal player start only.
+// The Lantern's spawn, borrowed kit, cooldowns, selector and leap are never replaced.
+export function naturalLanternRecoveryFixture(now = 0) {
+  const save = scratchSave(RECOVERY_CONTEXT.seed);
+  Object.assign(save.session, { area: 'overworld', rx: 7, ry: 4, x: 10, y: 20 });
+  Object.assign(save.position, { area: 'overworld', rx: 7, ry: 4, x: 10, y: 20 });
+  const game = new Game(save, now); game.installSystems();
+  const actor = naturalLanternRecoveryActor(game);
+  if (!actor || actor.kind !== 'graveLantern' || actor.hybridAttack !== 'leapSlam' || !actor.packAttacks?.includes('leapSlam'))
+    throw new Error('The natural Lantern recovery witness was not generated; no substitute is allowed.');
+  game.message = 'Natural Lantern recovery: Capture next natural leap watches real AI, pauses it, and saves only this candidate scratch checkpoint.';
+  return naturalRecoveryFixture(game);
+}
+function naturalRecoveryFixture(game) {
+  return { lab: RECOVERY_CONTEXT.lab, scenario: RECOVERY_CONTEXT.scenario, label: 'Natural Lantern borrowed-leap recovery',
+    seed: RECOVERY_CONTEXT.seed, variant: 0, save: game.save, game, production: true, recoveryContext: RECOVERY_CONTEXT,
+    diagnostics: { recovery: naturalLanternRecoveryWitness(game) } };
+}
+export function naturalLanternRecoveryActor(game) {
+  if (game?.area !== 'overworld' || game.rx !== 7 || game.ry !== 4 || game.save?.seed !== RECOVERY_CONTEXT.seed) return null;
+  return game.enemies?.find(e => e.id === RECOVERY_CONTEXT.actorId) || null;
+}
+export function naturalLanternRecoveryReady(game) {
+  const e = naturalLanternRecoveryActor(game);
+  return !!(e && e.kind === 'graveLantern' && e.hybridAttack === 'leapSlam' && e.packAttacks?.includes('leapSlam') &&
+    !e.dead && e.hp > 0 && game.player.hp > 0 && e.pack?.attack === 'leapSlam' && e.pack.phase === 'active' &&
+    e.aloft === true && Number.isFinite(e.hopLift) && e.hopLift > 0 &&
+    footprintOpen(game.map, game.map.width || 32, e.x, e.y) &&
+    footprintOpen(game.map, game.map.width || 32, game.player.x, game.player.y, false, false, false, true));
+}
+export function naturalLanternRecoveryWitness(game) {
+  const e = naturalLanternRecoveryActor(game);
+  return { seed: game?.save?.seed, rx: game?.rx, ry: game?.ry, areaStateId: game?.areaStateId?.(), paused: !!game?.paused,
+    player: game?.player ? { x: game.player.x, y: game.player.y, hp: game.player.hp } : null,
+    qualifies: naturalLanternRecoveryReady(game),
+    stableEnemyFootprint: !!e && footprintOpen(game.map, game.map.width || 32, e.x, e.y),
+    stablePlayerFootprint: !!game?.player && footprintOpen(game.map, game.map.width || 32, game.player.x, game.player.y, false, false, false, true), id: e?.id || null, kind: e?.kind || null,
+    hybridAttack: e?.hybridAttack || null, packAttacks: e?.packAttacks?.slice() || [],
+    x: e?.x, y: e?.y, hp: e?.hp, attack: e?.pack?.attack ?? null, phase: e?.pack?.phase ?? null,
+    hopLift: Number.isFinite(e?.hopLift) ? e.hopLift : null, aloft: e?.aloft === true,
+    cooldowns: e?.pack?.cd ? { ...e.pack.cd } : {}, materialContact: e ? ordinaryContactEnemy(e) : false };
+}
+export function restoreNaturalLanternRecoveryFixture(save, before, now = 0) {
+  const game = new Game(save, now); game.installSystems();
+  const after = naturalLanternRecoveryWitness(game), actor = naturalLanternRecoveryActor(game);
+  const sameCooldowns = !!actor?.pack?.cd && Object.keys(before.cooldowns || {}).length === Object.keys(actor.pack.cd).length &&
+    Object.entries(before.cooldowns || {}).every(([key, value]) => actor.pack.cd[key] === value);
+  const checks = { sameSeedSection: game.save.seed === RECOVERY_CONTEXT.seed && game.area === 'overworld' && game.rx === 7 && game.ry === 4,
+    sameActorKit: actor?.kind === 'graveLantern' && actor.hybridAttack === 'leapSlam' && actor.packAttacks?.includes('leapSlam'),
+    sameActorPositionAndHP: !!actor && actor.x === before.x && actor.y === before.y && actor.hp === before.hp,
+    samePlayerPositionAndHP: game.player.x === before.player?.x && game.player.y === before.player?.y && game.player.hp === before.player?.hp,
+    sameCooldowns, retainedPause: game.paused === true, resetAttack: actor?.pack?.attack === null && actor.pack.phase === null,
+    clearedLift: actor?.hopLift === 0 && actor.aloft === false, materialContact: after.materialContact === true };
+  const fixture = naturalRecoveryFixture(game);
+  fixture.diagnostics.restoration = { passed: Object.values(checks).every(Boolean), checks, before, after };
+  return fixture;
+}
+
 function stateFixture(lab,scenario,seed,variant,now){const {save,game}=gameForOverworld(seed,0,0,now),diagnostics={state:scenario,scratch:true};if(lab==="hunts"){if(scenario!=="empty-viewport"){save.viewport.activeHuntId="lab-hunt";save.viewport.contracts["lab-hunt"]={id:"lab-hunt",title:"Diagnostic Hunt",status:scenario.includes("completed")?"completed":scenario.includes("failed")?"failed":scenario.includes("located")?"target-located":"tracking",target:{rx:3,ry:-2}}}Object.assign(diagnostics,{viewport:save.viewport,creatures:Object.keys(CREATURE_FORMS),elites:Object.keys(ELITE_DEFINITIONS)})}if(lab==="inventory"){save.inventory=Array.from({length:scenario==="full-pack"?60:12},(_,i)=>generateItem(`${seed}:lab-item:${scenario}:${i}`,1+i));const candidate=save.inventory[0];if(scenario==='empty-slot')save.equipment[candidate.slot]=null;if(scenario.includes('upgrade')){save.materials.weaponSphere=20;save.materials.armorSphere=20;const slot=scenario.startsWith('armor')?'armor':'primary';diagnostics.upgrade=upgradeEquipment(save,slot)}if(scenario==='insufficient-spheres')diagnostics.upgrade=upgradeEquipment(save,'primary');Object.assign(diagnostics,{comparison:compareItemStats(candidate,save.equipment[candidate.slot]),tiers:ITEM_TIERS,inventoryCount:save.inventory.length,equipment:save.equipment,currency:save.currency})}if(lab==="magic"){let value=36;const bandScenario=scenario.match(/^band-(.+)$/);if(bandScenario)value=APERTURE_BANDS.find(b=>b.id===bandScenario[1])?.threshold||0;save.perception.aperture=value;save.apertureBand=apertureBand(value).id;const skill=Object.values(APERTURE_SKILLS).find(q=>scenario.startsWith(q.id));if(skill){const rank=Number(scenario.match(/rank-(\d+)/)?.[1]||1);for(let i=0;i<rank;i++)learnApertureSkill(save,skill.id);save.magicSkills.selected=skill.id}if(scenario.startsWith('aerial-')){save.magicSkills.learned['aerial-step']=1;save.magicSkills.selected='aerial-step';game.activateApertureSkill('aerial-step')}Object.assign(diagnostics,{aperture:value,band:save.apertureBand,skill:save.magicSkills.selected,rank:save.magicSkills.selected?save.magicSkills.learned[save.magicSkills.selected]:0,active:save.magicSkills.active,cooldowns:save.magicSkills.cooldowns,skills:Object.keys(APERTURE_SKILLS)})}if(lab==="performance"){diagnostics.workload={enemySpawns:game.map.enemySpawns.length,objects:game.map.objects.length,tiles:game.map.tiles.length,preset:scenario}}if(lab==="recovery"){if(scenario.includes("death"))save.lastDeath={schema:1,sequence:1,areaKind:scenario.startsWith("dungeon")?"dungeon":"overworld",rx:0,ry:0,x:16,y:16,label:"Diagnostic death",valid:true};if(scenario==="serialized")diagnostics.roundTrip=roundTripScratch(save).version;if(scenario==="legacy-migration")diagnostics.migrated=migrateSave({version:9,seed,checkpoints:save.checkpoints}).version;if(scenario==="corrupted-state")diagnostics.recovered=migrateSave({version:13,seed,manualWaypoint:{rx:"bad"},checkpoints:null}).version}if(lab==="scenes"){save.scenes.pending=scenario==="idle"?[]:[{id:scenario,variant:variant%3,status:scenario==="interrupted"?"interrupted":"queued"}];diagnostics.scenes=save.scenes}if(lab==="records"){save.lastDeath={schema:1,sequence:1,areaKind:"overworld",rx:0,ry:0,x:18,y:18,label:"Diagnostic death",valid:true};save.codex.features[scenario]={encountered:1,name:scenario};Object.assign(diagnostics,{atlasSymbols:["checkpoint","shrine","ruinMarker","dungeon","lastDeath"],codex:save.codex})}game.sync();return{lab,scenario,label:scenario.replaceAll("-"," "),seed,variant,save,game,production:true,diagnostics}}
 
 export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVING_SEED,variant=0,sizeProfile="standard",revealMode="normal",environment="dungeon-hollow",now=0}={}) {
   const cleanSeed=String(seed||DEFAULT_PROVING_SEED).slice(0,80),cleanVariant=Math.max(0,Math.min(999,Number(variant)||0));
+  if(lab===RECOVERY_CONTEXT.lab&&scenario===RECOVERY_CONTEXT.scenario)return naturalLanternRecoveryFixture(now);
   if(lab==="shelters")return shelterFixture(scenario,cleanSeed,now);
   if(lab==="test-tile")return testTileFixture(now);
   if(lab==="close-view")return closeViewFixture(scenario,cleanSeed,now);
@@ -832,6 +893,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
 
 export function labReport(fixture) {
   const {game}=fixture,map=game.map,primary=fixture.primary;
+  if(fixture.recoveryContext)fixture.diagnostics.recovery=naturalLanternRecoveryWitness(game);
   if (fixture.adoptionSpec) fixture.diagnostics.routingAdoption=routingAdoptionReceipt(fixture);
   if(fixture.diagnostics?.routing) fixture.diagnostics.routing.floor={id:map.id,grammar:map.building?.routing?.grammar||null,rooms:map.building?.routing?.nodes?.length||0,optional:map.building?.optionalRoute||map.building?.optionalRoutes||null,appearance:map.building?.appearance||map.greatBuilding?.appearance||null};
   if (fixture.buildPractice) {

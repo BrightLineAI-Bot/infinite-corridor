@@ -4,11 +4,11 @@ function drawShadowBody(ctx,x,y,s){
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r847-6be077b9239e";
-import { SHADOW_CLONE } from "./late-spells.js?v=r847-6be077b9239e";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r847-6be077b9239e";
-import { drawOrbit } from "./orbit-volley.js?v=r847-6be077b9239e";
-import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r847-6be077b9239e";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r851-1a2c35ae7ab9";
+import { SHADOW_CLONE } from "./late-spells.js?v=r851-1a2c35ae7ab9";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r851-1a2c35ae7ab9";
+import { drawOrbit } from "./orbit-volley.js?v=r851-1a2c35ae7ab9";
+import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r851-1a2c35ae7ab9";
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
 export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
@@ -62,7 +62,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   }
   // Release 365: Gravity Well (a turning spiral) and Stillpoint (still clock rings) over their circles; the Shadow Clone.
   {const t = performance.now() / 1000;
-  drawBrawler(ctx, game, toScreen, s, t); // release 483: Hammerfall, Great Sweep, Iron Fist
+  drawBrawler(ctx, game, toScreen, s, t, projectedShots); // release 483: Hammerfall, Great Sweep, Iron Fist
   drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
   drawOrbit(ctx, game, toScreen, s, t, projectedShots); // release 487: Orbit Volley
   drawToolForms(ctx, game, toScreen, s, t, projectedShots); // release 533: Nanoknives and the Arc Wave

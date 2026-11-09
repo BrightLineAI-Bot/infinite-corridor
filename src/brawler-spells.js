@@ -1,3 +1,5 @@
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r851-1a2c35ae7ab9';
+
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
 // down and attacks... another one that does a large sweep with a sword. And these can be buffed by melee damage... these are
 // brawler type [spells]... another one can be like a charge punch fist... you [dash] forward and you punch... you can like
@@ -173,18 +175,41 @@ export const BRAWLER_ECHO = { echoClone: 3, cloneArc: { shape: "arc", range: 1.7
 // How charged the dash punch is after `held` seconds of holding (0..1).
 export const fistCharge = (held) => Math.max(0, Math.min(1, (held - IRON_FISTS.tapGrace) / IRON_FISTS.chargeTime));
 
+// Presentation only: the original effect owns delay, contact, expiry and Echo identity.
+// Conjure below the local roof/arch rather than pretending to fall from a ceiling.
+export function hammerfallPresentation(fx, map) {
+  if (fx?.kind !== 'hammerfall' || !fx.brawler || !Number.isFinite(fx.delay) || !Number.isFinite(fx.life) || fx.life <= 0) return null;
+  let ceiling = interiorCeilingHeight(map) - .15;
+  for (const dx of [-.45, 0, .45]) for (const dy of [-.2, 0, .2])
+    if (interiorArchAt(map, fx.x + dx, fx.y + dy)) ceiling = Math.min(ceiling, INTERIOR_TRAVERSAL.archClearance - .15);
+  const scale = Math.min(1, Math.max(0, ceiling / 1.25));
+  const remaining = Math.max(0, Math.min(1, fx.delay / BRAWLER.hammerfall.delay));
+  // An Echo waits through its extra delay, then runs its own same descent.
+  const lift = Math.min(1.1, Math.max(0, ceiling - 1.25 * scale)) * (2 * remaining - remaining * remaining);
+  const struck = (fx.pulseIndex || 0) > 0;
+  return {kind:'hammerfallConjuration', x:fx.x, y:fx.y, supportX:fx.x, supportY:fx.y,
+    lift, scale, yaw:0, pose:'idle', pace:0, alpha:struck ? Math.max(0, Math.min(1, fx.life / BRAWLER.hammerfall.lifetime)) : 1};
+}
+function drawFallingHammer(ctx, x, y, s, delay) {
+  const hy = y - s * 2.2 * Math.max(0, delay / BRAWLER.hammerfall.delay), w = s * .9, h = s * .5;
+  ctx.fillStyle = '#e8d3a2'; ctx.strokeStyle = '#5a4628'; ctx.lineWidth = 2;
+  ctx.fillRect(x - w / 2, hy - h, w, h); ctx.strokeRect(x - w / 2, hy - h, w, h);
+  ctx.fillStyle = '#8a6a3e'; ctx.fillRect(x - s * .06, hy - h - s * .8, s * .12, s * .8);
+}
+
 // Drawing (called from combat-visuals.ts with its screen transform). `t` is seconds.
-export function drawBrawler(ctx, game, toScreen, s, t) {
+export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
   for (const fx of game.effects) {
     if (!fx.brawler) continue;
     const [x, y] = toScreen(fx), R = fx.radius * s;
     if (fx.kind === "hammerfall") {
-      const fall = fx.delay > 0 ? 1 - fx.delay / BRAWLER.hammerfall.delay : 1;
+      const native = hammerfallPresentation(fx, game.map);
+      const captured = native && capture?.captureActor?.({source:fx, x:fx.x, y:fx.y, height:2.4,
+        sample:()=>hammerfallPresentation(fx, game.map),
+        draw:(c, unit)=>{if(fx.delay > 0)drawFallingHammer(c, fx.x * unit, fx.y * unit, unit, fx.delay);}});
       ctx.strokeStyle = "#ffd58a99"; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); ctx.setLineDash([]); // where it lands
       if (fx.delay > 0) { // the hammer head comes down
-        const hy = y - s * 2.2 * (1 - fall), w = s * .9, h = s * .5;
-        ctx.fillStyle = "#e8d3a2"; ctx.strokeStyle = "#5a4628"; ctx.lineWidth = 2; ctx.fillRect(x - w / 2, hy - h, w, h); ctx.strokeRect(x - w / 2, hy - h, w, h);
-        ctx.fillStyle = "#8a6a3e"; ctx.fillRect(x - s * .06, hy - h - s * .8, s * .12, s * .8);
+        if (!captured) drawFallingHammer(ctx, x, y, s, fx.delay);
       } else { // the shock ring
         const k = Math.max(0, fx.life / .25); ctx.globalAlpha = k; ctx.strokeStyle = "#ffe2a8"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, R * (1.15 - .4 * k), 0, 7); ctx.stroke();
         ctx.fillStyle = "#ffcf7a44"; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); ctx.globalAlpha = 1;

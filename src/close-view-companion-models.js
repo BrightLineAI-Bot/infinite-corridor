@@ -1,20 +1,23 @@
 // Data-only native geometry for Close View-visible companions and wandering speakers.
 // Admission, actor routing and lifecycle clocks remain with their existing production producers.
-import { ellipsoid, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r847-6be077b9239e';
+import { ellipsoid, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r851-1a2c35ae7ab9';
 
 const E6=ellipsoid(6,2),E8=ellipsoid(8,3);
 const tube=(points,color,swing,px,pz,sides=4)=>part(curvedTube(points,sides),0,0,0,1,1,1,color,swing,px,pz);
 
 // Corridor Golem (tool-forms.ts): a squat rounded stone figure, two yellow sigil eyes and oversized punching fists.
 const golemStone=0x857a68,golemDark=0x3f382e,golemSigil=0xffd23f;
+// Four-face volumetric sigils replace box backs; the saved triangles fund real feet.
+const sigil=[[[-1,-1,-1],[-1,1,-1],[1,0,0]],[[-1,1,-1],[-1,0,1],[1,0,0]],[[-1,0,1],[-1,-1,-1],[1,0,0]],[[-1,-1,-1],[-1,0,1],[-1,1,-1]]];
 const corridorGolem=[
   part(E8,0,0,.72,.39,.34,.52,golemStone,0,0,.72,0,true),
   part(E6,.05,0,1.29,.25,.25,.20,golemStone,0,.05,1.29,0,true),
-  block(.265,-.09,1.32,.025,.045,.035,golemSigil),block(.265,.09,1.32,.025,.045,.035,golemSigil),
+  part(sigil,.285,-.09,1.32,.025,.045,.035,golemSigil),part(sigil,.285,.09,1.32,.025,.045,.035,golemSigil),
 ];
 for(const side of [-1,1])corridorGolem.push(
-  tube([[.01,side*.28,.93,.08],[.18,side*.43,.70,.065],[.32,side*.47,.55,.045]],golemDark,side*2,.01,.93),
+  tube([[.01,side*.28,.93,.08],[.18,side*.43,.70,.065],[.32,side*.47,.55,.045]],golemDark,side*2,.01,.93,3),
   part(E6,.39,side*.48,.51,.17,.16,.16,golemStone,side*2,.01,.93,0,true),
+  block(.09,side*.19,.13,.23,.15,.13,golemDark,side,0,.26),
 );
 
 // Dungeon Reciter (renderer.ts traveler/scholar): road-blue hood and robe, bent reading posture,
@@ -45,6 +48,16 @@ for(let i=0;i<4;i++){const side=i<2?-1:1,front=i%2?-1:1,swing=[-1,-2,1,2][i];eld
 );}
 for(let i=0;i<5;i++){const y=(i%2?-.10:.10),z=.91+i*.20;elderWanderer.push(block(.205,y,z,.018,.055,.045,elderRule,3,0,1.28));}
 
+// Original conjured impact hammer: a broad closed stone head, capped gold ends,
+// narrow haft and grip. One immutable recipe shared by every effect/Echo.
+const hammerfallConjuration=[
+  block(0,0,.225,.45,.20,.225,0xe8d3a2),
+  block(-.425,0,.225,.035,.215,.24,0x9b7439),
+  block(.425,0,.225,.035,.215,.24,0x9b7439),
+  block(0,0,.78,.055,.055,.43,0x8a6a3e),
+  block(0,0,1.20,.08,.08,.05,0xffd58a),
+];
+export const CLOSE_VIEW_EFFECT_MODELS=Object.freeze({hammerfallConjuration});
 export const CLOSE_VIEW_COMPANION_MODELS=Object.freeze({corridorGolem,dungeonReciter,elderWanderer});
 export const CLOSE_VIEW_COMPANION_KINDS=Object.freeze(Object.keys(CLOSE_VIEW_COMPANION_MODELS));
 
