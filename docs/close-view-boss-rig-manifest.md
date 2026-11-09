@@ -2,6 +2,44 @@
 
 Recorded 2026-11-08 against `ff2d4c13` (main r827 candidate baseline, not a claim about live production). Owner clarification: **record and prepare this work; implementation is not required now**. This is a detail record for the [single ordered build queue](close-view-pass-manifest.md), not a competing schedule. The coordinator owns integration and release order. No release number, source, test, configuration, dependency, generation or deployment change is part of this research.
 
+## Repeated boss refinement program — owner update 2026-11-09
+
+This extends the existing inventory and pilot, not the game's roster or difficulty. The owner requests repeated visual and animation passes until each existing encounter reads as a coherent, substantial three-dimensional fight: expressive body movement, readable windup and committed attack, convincing recovery/reaction/defeat, and a model/arena/camera relationship that supports scale and threat. Preserve current mechanics and difficulty. The comment about player strength does not authorize balance changes. Player action, equipment, visibility, space and spell refinements stay ahead in the master queue; boss research remains safe parallel preparation.
+
+**Integration owner:** root. **Implementation owner:** assigned per family when its slot opens; no unowned global boss renderer rewrite. Current inspection is pinned to main `6be077b9`, not the historical r827 header. No release number is assigned. Existing native bodies and special-sprite fallbacks are retained baselines, not completed detailed rigs.
+
+Every family receives these repeated passes, with receipts added to its row before status advances:
+
+| Pass | Required reviewable result | Completion gate |
+|---|---|---|
+| Inventory and contract | Actual production forms, final attack/variant kit, ownership, windup/contact/effect/recovery clocks, sockets, teleport/flight and cleanup | Source audit pinned to commit; no invented universal phase or bone-driven damage |
+| Model and rig | Original silhouette/proportions, connected articulated body, valid bind/weights, licensed provenance where reused, readable front/rear/side form | Geometry/normal/bind/socket tests and measured quality budgets; unsupported states retain fallback |
+| Attack motion pass | Every real attack and subphase, committed aim, readable loading/strike/cast/recovery, movement and hit/poise/death reactions | Actual Game event/geometry witnesses; same damage, reach, timing, targeting and counts |
+| Camera and arena pass | Normal-speed close-view fight among the actual cover, ceilings, doors, multiple actors and hazards | Hosted textured views and wall/depth/target clarity; do not inflate boss scale, erase cover or change routes to simulate majesty |
+| Second visual refinement | Revisit weak silhouettes, connective motion, contact readability, repeated actions, interruptions and transitions identified in the first motion review | Before/after same-scene clips/frames and issue closure; a single pose sheet is not final acceptance |
+| Recovery and budget pass | Pause/background, canonical reload reset/resume, death/sigil/reset, owner-effect cleanup, low/balanced/full and readiness/context fallback | Preserved schema/pins/rewards/unknown fields, deterministic caps/draw/upload/allocations; physical-phone evidence remains separate |
+| Final family gate | Exact integrated candidate, final Astra review, full CI/build/Preview and all required hosted witnesses | Coordinator records source/candidate/receipt IDs before publication authorization; repeat combined toolkit acceptance after delivery |
+
+### Family implementation ledger
+
+The fourteen interior species plus ordinary-controller Regent remain individually enumerated in the inventory below. Their final production variants and attack additions must be audited per row; no base-kit-only completion claim. Stillworks order is the following staged component plan, subordinate to the master queue:
+
+| Family / forms | Owner and current state | Required repeated scope |
+|---|---|---|
+| Void Walker | Boss specialist, implementation slot NOT STARTED; source clock/asset/architecture planning prepared | First `voidHand`, then all ten actual attacks, evasive teleport, six straight Nova attempts and damaging trails; independent hero/boss buffers, remote effect anchors and all repeated passes above |
+| Crimson Tyrant | Unassigned, PLANNED | Dragon anatomy and all actual Stillworks attacks; source flight/Sunfall cover and cleanup; reuse compatible skeleton only after license/topology/budget review |
+| Doom Chaser | Unassigned, PLANNED | Related dragon foundation may be reused, but every species-specific attack, Wing Walk, aerial drop, breath and recovery is separately verified |
+| Astral Worm / mirage / ink forms | Unassigned, PLANNED | Actual morph controller, old/new form transitions, clones, rings and ink origins; not placeholder pack bite or a forced humanoid skeleton |
+| Gloomvast / Cold Lights / Dark | Unassigned, PLANNED | Articulated spectral body and all real Dark/decoy/visibility/attack contracts; never expose concealed identity or discard attack-bearing lights for LOD |
+| Interior pool: 14 kinds + Regent | Unassigned, PLANNED; delivered native baseline retained | Each row below receives contract, model/rig, every-attack, arena, second-polish, lifecycle/budget and final gates; Regent retains its ordinary controller |
+| Roof and optional labyrinth guardians | Unassigned, EXPLICIT FOLLOW-ON | Audit relevance and exact roster first; no silent inclusion of every world beast/domain/Listener/guardian |
+
+### Walker planning findings to preserve
+
+Use independent actor and remote-effect clocks. Basic rends are created in START immediately and arm at their own .48/.64-second warnings; do not add the actor's windup. Rifts, constellation and horizons are emitted at their actual RUN transitions and may remain active after body recovery. Nova dash stepping runs during the entire active state, including the first 2.3 charging seconds, so charge and dash may overlap. Teleport is a discontinuity; only real accepted trail records imply damaging travel. Root/chest/head/hand sockets are cosmetic; remote palm, claw, sword, beam, portal, horizon and Nova anchors follow effect world geometry.
+
+Existing reload resets transient enemy attacks and clears packEffects; do not reinterpret exact-resume requirements as replaying discarded attacks. Ordinary endAttack preserves already emitted effects, while death/retreat/owner loss clears them. Respect the global 48-effect cap, emitter refusal and next-snapshot child ticking. The proposed extra detailed boss slot still needs independent architecture approval; the singleton hero slot and 256-triangle native format cannot simply host another full imported rig. No new implementation, asset download or current-license revalidation is claimed here.
+
 ## Intake and source boundaries
 
 The owner requests detailed monster skeletons/3D rigs and readable windups, attacks and recovery for every Pentagon boss and its arena encounter, with possible later labyrinth coverage. Reuse licensed rigged characters/creatures where their anatomy fits. The RPG character group may supply the “Boardwalker.” This identity is verified: [Void Walker source S2](void-walker-source-transcript.md) literally starts with that dictated word; [the normalized design](void-walker-design.md) and `MONSTER_PACK.voidWalker` canonically name **The Void Walker**. No new character or lore rename is proposed.
