@@ -251,6 +251,10 @@ const CLOSE_VIEW_LAB = [
   { id: "routing-adoption-new-keep", label: "Routing adoption: cross into a new standalone keep", routingAdoption: "keep" },
   { id: "routing-adoption-new-pentagon", label: "Routing adoption: cross into a new Pentagon", routingAdoption: "pentagon" },
   { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "padding-keep-reference", label: "Room clearance: keep reference", roomRouting: "keep", candidate: true, roomPadding: "reference" },
+  { id: "padding-keep-pilot", label: "Room clearance: keep widened edge", roomRouting: "keep", candidate: true, roomPadding: "pilot" },
+  { id: "padding-pentagon-reference", label: "Room clearance: Pentagon reference", roomRouting: "pentagon", candidate: true, roomPadding: "reference" },
+  { id: "padding-pentagon-pilot", label: "Room clearance: Pentagon widened edge", roomRouting: "pentagon", candidate: true, roomPadding: "pilot" },
   { id: "wayfarer-defeat", label: "Wayfarer defeat: Ashling encounter", defeatInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
@@ -434,8 +438,47 @@ export function selectLabBuildMaterial(fixture, kind) {
   setBuildKind(fixture.game.save, kind); fixture.game.save.build.continuous = false; return true;
 }
 
-// Real exterior doors and production interactions, on a fresh scratch save. The experimental
-// Pentagon selector belongs only to this instance/site: production's adoption cap stays at v9.
+const ROOM_PADDING_DIRECTIONS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+const ROOM_PADDING_TILE_KEYS = new Set(["x", "y", "kind", "detail", "blocked", "doorway", "elev", "slope"]);
+
+function roomPaddingWitness(game, mode) {
+  const map = game.map;
+  const at = (x, y) => map.tiles[y * map.width + x];
+  const reserved = [map.entry, map.exit, ...map.objects, ...map.enemySpawns, ...game.enemies, ...(map.wallGlints || [])];
+  const plain = (tile) => tile && !tile.doorway && !tile.slope && Object.keys(tile).every((key) => ROOM_PADDING_TILE_KEYS.has(key));
+  for (let y = 3; y < map.height - 3; y++) for (let x = 3; x < map.width - 3; x++) {
+    for (const [dx, dy] of ROOM_PADDING_DIRECTIONS) {
+      const tile = (depth, side) => at(x + depth * dx - side * dy, y + depth * dy + side * dx);
+      const floor = tile(-1, 0);
+      if (!plain(floor) || floor.blocked || !/Floor$/.test(floor.kind)) continue;
+      const front = [-2, -1, 0, 1, 2];
+      if (![-2, -1].every((depth) => front.every((side) => {
+        const next = tile(depth, side);
+        return plain(next) && !next.blocked && next.kind === floor.kind && next.elev === floor.elev;
+      }))) continue;
+      // A wall collar makes the strip a recess, with all approaches through the existing room.
+      const wall = (depth, side) => {
+        const next = tile(depth, side);
+        return plain(next) && next.blocked && ["keepWall", "cellarWall"].includes(next.kind);
+      };
+      if (!front.every((side) => wall(0, side) && wall(1, side))) continue;
+      if (reserved.some((point) => point && Math.hypot(point.x - x, point.y - y) < 4)) continue;
+      const cells = [-1, 0, 1].map((side) => tile(0, side));
+      if (mode === "pilot") {
+        const tiles = map.tiles.slice();
+        for (const cell of cells) {
+          tiles[cell.y * map.width + cell.x] = { ...cell, kind: floor.kind, elev: floor.elev, blocked: false };
+        }
+        map.tiles = tiles;
+      }
+      return { mode, found: true, cells: cells.map(({ x, y }) => ({ x, y })), approach: { x: floor.x, y: floor.y }, direction: { x: dx, y: dy } };
+    }
+  }
+  return { mode, found: false };
+}
+
+// Real exterior doors and production interactions on a fresh scratch save.
+// The experimental Pentagon selector belongs only to this Game instance and site.
 function roomRoutingFixture(spec, seed, now) {
   const save = scratchSave(seed); save.closeView = true;
   if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET;
@@ -489,15 +532,20 @@ function roomRoutingFixture(spec, seed, now) {
   const entered = game.interact("enter", door.id);
   if (!entered.ok) throw new Error(`Routing fixture entrance failed: ${entered.message}`);
   const entry = { x: game.player.x, y: game.player.y };
+  const roomPadding = spec.roomPadding ? roomPaddingWitness(game, spec.roomPadding) : null;
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY };
   game.message = spec.candidate ? "Explore the compact rooms and side ladders. The roof and courts use the ordinary outdoor view." : "Explore the current rooms and stairs. The roof and courts use the ordinary outdoor view.";
   game.sync();
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true,
+    ...(roomPadding ? { roomPadding, roomPaddingMap: game.map, developerHint: roomPadding.found
+      ? "Teleport to Room clearance approach, then walk and orbit near the selected edge. Reset same restores the starting comparison."
+      : "This entrance floor has no eligible room edge. Try another seed." } : {}),
     diagnostics: { routing: { experiment: spec.candidate, family: spec.roomRouting, version, base:game.map.building.base, experimentRevision:CLOSE_VIEW_ROOM_ROUTING.revision, appearance, site, entranceId, outside, scratchOnly: true, productionExportSupported: false, selectorScope: spec.roomRouting === "pentagon" ? "this fixture and Pentagon site only" : null } } };
 }
 
 // Explicit scratch reconstruction only; never a production import/export path.
 export function restoreRoomRoutingFixture(fixture, snapshot, now = 0) {
+  if (fixture?.roomPadding) throw new Error("Room clearance comparisons restart from their scratch scenario.");
   const routing=fixture?.diagnostics?.routing;
   if(!routing?.scratchOnly || snapshot?.seed!==fixture.seed || snapshot?.session?.area!=="dungeon") throw new Error("Routing scratch resume requires the same seed and an interior snapshot.");
   const active=String(snapshot.session.activeDungeonId||"");
@@ -918,6 +966,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
 
 export function labReport(fixture) {
   const {game}=fixture,map=game.map,primary=fixture.primary;
+  if (fixture.roomPadding) fixture.diagnostics.roomPadding = { ...fixture.roomPadding, active: map === fixture.roomPaddingMap };
   if(fixture.recoveryContext)fixture.diagnostics.recovery=naturalLanternRecoveryWitness(game);
   if (fixture.adoptionSpec) fixture.diagnostics.routingAdoption=routingAdoptionReceipt(fixture);
   if(fixture.diagnostics?.routing) fixture.diagnostics.routing.floor={id:map.id,grammar:map.building?.routing?.grammar||null,rooms:map.building?.routing?.nodes?.length||0,optional:map.building?.optionalRoute||map.building?.optionalRoutes||null,appearance:map.building?.appearance||map.greatBuilding?.appearance||null};
@@ -933,6 +982,9 @@ export function labReport(fixture) {
 
 export function teleportTargets(fixture) {
   const map=fixture.game.map,targets=[];
+  if (fixture.roomPadding?.found && map === fixture.roomPaddingMap) {
+    targets.push({ id: "room-clearance", label: "Room clearance approach", ...fixture.roomPadding.approach });
+  }
   if(fixture.lab==="close-view"&&fixture.scenario==="terrain-dig-return"&&fixture.diagnostics?.traversal?.found)targets.push({id:"excavation-ramp",label:"Excavation ramp",x:fixture.diagnostics.traversal.origin.x,y:fixture.diagnostics.traversal.origin.y});
   if(["combat-assets","creature-assets"].includes(fixture.lab)&&fixture.diagnostics?.placement?.player)targets.push({id:"gallery-start",label:"Gallery start",x:fixture.diagnostics.placement.player.x,y:fixture.diagnostics.placement.player.y});
   if(map.entry)targets.push({id:"entry",label:"Entrance",x:map.entry.x,y:map.entry.y});

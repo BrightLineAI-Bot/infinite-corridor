@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 855 — Room clearance comparisons
+
+**CODE:** Close View Lab pairs a reference and a widened edge for Keep 5 and Pentagon 10. After normal entrance and terrain placement, the pilot opens three cells behind a flat room edge. The surrounding wall keeps the recess accessible only from that room. Both fixtures offer the same developer teleport point for comparing movement and camera framing.
+
+**BOUNDARY:** The projection lives in the starting scratch map and is reconstructed by Reset same. The report marks it inactive after leaving that map. Generator defaults, generation pins and ceilings are inherited from the reference. Ordinary dungeon and grand hall generation use their existing paths.
+
 ## Release 854 — Wayfarer healing-drink gesture
 
 **CODE:** The three canonical healing potions record a 360 ms presentation receipt only after healing and inventory spend succeed. The Wayfarer's free hand raises a vial and the head tips back while the gait continues. Reduced motion lowers travel. Native fallback uses a free-arm cue or a small body cue with the two-handed Pike. The imported vial uses 24 triangles in the existing equipment stream and yields when space is short. Close View Lab includes a fresh damaged Wayfarer and the normal Potion input.
