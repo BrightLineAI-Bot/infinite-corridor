@@ -14,7 +14,7 @@ Verified live on 2026-11-09: r853-a53725ea58a7, commit a53725ea58a7b4d1fc93da2c2
 
 ## Healing-drink gesture
 
-- Implemented a short free-hand sip for the three healing potions and a Close View Lab witness using the regular Potion control. Healing and spend stay immediate. Schema 14 round-trip, phase continuity, action interruption and bounded equipment rendering have focused coverage. Hosted motion and phone validation are pending.
+- Implemented a short free-hand sip for the three healing potions and a Close View Lab witness using the regular Potion control. Healing and spend stay immediate. Schema 14 round-trip, phase continuity, action interruption and bounded equipment rendering have focused coverage. PR #509 merged. The exact r854-467e9d974308 desktop Preview showed the raised free hand and visible vial using the ordinary Potion button, with WebGL2 ready, isolated storage, and no console warnings or errors. Physical-phone validation remains open.
 
 ## Local ownership and r851 acceptance — 2026-11-09
 
