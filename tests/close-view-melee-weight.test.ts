@@ -65,6 +65,17 @@ test('imported cleaver drives the canonical leftSocket through four distinct con
   for(let a=0;a<4;a++)for(let b=a+1;b<4;b++)assert.ok(Math.hypot(points[a][0]-points[b][0],points[a][1]-points[b][1],points[a][2]-points[b][2])>.01,`cuts ${a+1}/${b+1} are distinct`);
 });
 
+test('weighted cleaver converges to the same low carry at both epsilon boundaries',()=>{
+  const maxDelta=(a:Float32Array,b:Float32Array)=>{let d=0;for(let i=0;i<a.length;i++)d=Math.max(d,Math.abs(a[i]-b[i]));return d;};
+  for(let step=1;step<=4;step++){const base={kind:'melee',profile:'verge-cleaver',durationMs:320,poseMs:2000,primaryMotion:{v:2,step},meleeAction:cleaver},
+    start=hero({...base,phase:0},true).frame,startNear=hero({...base,phase:1e-6},true).frame,endNear=hero({...base,phase:1-1e-6},true).frame,end=hero({...base,phase:1},true).frame;
+    assert.ok(maxDelta(start.positionsNormals,startNear.positionsNormals)<1e-4,`cut ${step} continuous from carry`);
+    assert.ok(maxDelta(endNear.positionsNormals,end.positionsNormals)<1e-4,`cut ${step} continuous into carry`);
+    assert.ok(Math.hypot(startNear.leftSocket[12]-start.leftSocket[12],startNear.leftSocket[13]-start.leftSocket[13],startNear.leftSocket[14]-start.leftSocket[14])<1e-4);
+    assert.ok(Math.hypot(endNear.leftSocket[12]-end.leftSocket[12],endNear.leftSocket[13]-end.leftSocket[13],endNear.leftSocket[14]-end.leftSocket[14])<1e-4);
+  }
+});
+
 test('imported Iron Fists mirrors accepted leads and keeps the jab opposite',()=>{
   for(const lead of ['right','left'] as const){const leadKey=`${lead}Socket` as const,otherKey=`${lead==='right'?'left':'right'}Socket` as const;
     for(const [move,expected] of [['dash',leadKey],['jab',otherKey],['uppercut',leadKey]] as const){const frame=hero({kind:'melee',profile:'fist',phase:.3,durationMs:300,poseMs:1910,fistLead:lead,fistStep:move==='dash'?1:move==='jab'?2:3,meleeAction:fist(move)}).frame;
@@ -75,11 +86,11 @@ test('imported Iron Fists mirrors accepted leads and keeps the jab opposite',()=
 });
 
 test('weighted fist startup preserves the accepted charge pose and leaves it continuously',()=>{
-  for(const fistLead of ['right','left'] as const){const held=hero({kind:'melee',profile:'fistCharge',phase:1,durationMs:240,poseMs:2000,fistLead,fistStep:1}).frame,
-    entry=hero({kind:'melee',profile:'fist',phase:0,durationMs:300,poseMs:2000,fistLead,fistStep:1,fistCharge:1,meleeAction:fist('dash')}).frame,
-    next=hero({kind:'melee',profile:'fist',phase:.001,durationMs:300,poseMs:2000,fistLead,fistStep:1,fistCharge:1,meleeAction:fist('dash')}).frame;
+  for(const fistLead of ['right','left'] as const)for(const [move,step] of [['dash',1],['jab',2],['uppercut',3]] as const){const held=hero({kind:'melee',profile:'fistCharge',phase:1,durationMs:240,poseMs:2000,fistLead,fistStep:step}).frame,
+    entry=hero({kind:'melee',profile:'fist',phase:0,durationMs:300,poseMs:2000,fistLead,fistStep:step,fistCharge:1,meleeAction:fist(move)}).frame,
+    next=hero({kind:'melee',profile:'fist',phase:.001,durationMs:300,poseMs:2000,fistLead,fistStep:step,fistCharge:1,meleeAction:fist(move)}).frame;
     let entryDelta=0,nextDelta=0;for(let i=0;i<entry.positionsNormals.length;i+=6){entryDelta=Math.max(entryDelta,Math.abs(entry.positionsNormals[i]-held.positionsNormals[i]),Math.abs(entry.positionsNormals[i+1]-held.positionsNormals[i+1]),Math.abs(entry.positionsNormals[i+2]-held.positionsNormals[i+2]));nextDelta=Math.max(nextDelta,Math.abs(next.positionsNormals[i]-entry.positionsNormals[i]),Math.abs(next.positionsNormals[i+1]-entry.positionsNormals[i+1]),Math.abs(next.positionsNormals[i+2]-entry.positionsNormals[i+2]));}
-    assert.ok(entryDelta<1e-6,`${fistLead} charge is exact at weighted entry`);assert.ok(nextDelta<.02,`${fistLead} startup is continuous`);
+    assert.ok(entryDelta<1e-6,`${fistLead} ${move} charge is exact at weighted entry`);assert.ok(nextDelta<.02,`${fistLead} ${move} startup is continuous`);
   }
 });
 

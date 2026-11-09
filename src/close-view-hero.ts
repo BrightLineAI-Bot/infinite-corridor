@@ -439,11 +439,11 @@ function weightedMeleePose(asset,state,pose,motion) {
     return;
   }
   rotateY(pose,27,motion.twist);rotateX(pose,24,(.12-.05*motion.rise)*w);rotateX(pose,4,-.055*w);
-  rotateX(pose,30,-.18*d);rotateX(pose,32,.10*d);build(asset,state,pose);
+  rotateX(pose,30,-.18*d);rotateX(pose,32,.10*d);build(asset,state,pose);state.other.set(pose);
   const g=state.global,s=12*16,t=state.primaryTarget;
   // Source right hand: a low rusty-gladius carry, then one of four alternating up/down diagonals.
-  t[0]=g[s+12]+.10+motion.side*w;t[1]=g[s+13]-.18+.18*motion.rise*w;t[2]=g[s+14]+.28+.16*d;
-  state.primaryGripResidual=solveArm(state,pose,true,t,.18+(motion.yaw-.18)*w,-.72+(motion.pitch+.72)*w);
+  t[0]=g[s+12]+.10+motion.side;t[1]=g[s+13]-.18+.18*motion.rise;t[2]=g[s+14]+.28+.16*motion.drive;
+  state.primaryGripResidual=solveArm(state,state.other,true,t,motion.yaw,motion.pitch);blend(pose,state.other,w);
   state.clip='derived-weighted-cleaver-'+motion.cutIndex;state.clipTime=motion.progress;
 }
 function socket(out, g, o, scale, cy, sy, input, dx, dz, floor) {
@@ -505,7 +505,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
     carryProfile=primaryAction||heldPrimary,roles=cleaverHandRoles(input.handProfile??carryProfile,primaryStage);
   if(meleeMotion){
     if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:meleeMotion.cutIndex});
-    else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,action?.fistLead==='left'?'left':'right');}
+    else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,meleeMotion.lead<0?'left':'right');}
     weightedMeleePose(asset,state,state.pose,meleeMotion);
   }
   else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;

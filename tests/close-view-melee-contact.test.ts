@@ -70,6 +70,28 @@ test('buffered Fist beat receives its own delayed descriptor and canceled contac
   canceled.g.fistPunch(2,0,200100,{x:1,y:0});canceled.g.fistPunch(3,0,200200,{x:1,y:0});const upper=canceled.g.effects.find((e:any)=>e.kind==='fist-uppercut');assert.ok(upper);assert.equal(upper.finisher,false);
 });
 
+test('accepted jump cancels either pending weapon contact while a refused jump retains it', () => {
+  for (const [weapon, releaseCharge] of [[cleaver(), false], [BRAWLER_GEAR[0].item, true]] as const) {
+    const { g, foe } = fixture(weapon);
+    const hp = foe.hp;
+    g.update(.016, input(true), 100000);
+    if (releaseCharge) g.update(.016, input(), 100001);
+    const due = g.pendingMeleeContact.releaseAt;
+    g.update(.01, actionInput('jump'), 100010);
+    assert.ok(g.jumpUntil > due);
+    assert.equal(g.pendingMeleeContact, null);
+    g.update(.1, input(), due + 1);
+    assert.equal(foe.hp, hp, 'a hidden strike must not resolve during the jump');
+  }
+  const { g } = fixture(cleaver());
+  g.update(.016, input(true), 100000);
+  const pending = g.pendingMeleeContact;
+  const cursed = g.cursed.bind(g);
+  g.cursed = (action: string, now: number) => action === 'jump' || cursed(action, now);
+  g.update(.01, actionInput('jump'), 100010);
+  assert.equal(g.pendingMeleeContact, pending);
+});
+
 test('coarse updates release once at contact pose and preserve newborn Fist lifetime',()=>{
   const cleave=fixture(cleaver());const hp=cleave.foe.hp;cleave.g.update(.016,input(true),300000);cleave.g.update(.3,input(),300300);assert.ok(cleave.foe.hp<hp);const after=cleave.foe.hp;assert.equal(cleave.g.player.actionVisualUntil,300585);cleave.g.update(.3,input(),300600);assert.equal(cleave.foe.hp,after);
   const fists=fixture(BRAWLER_GEAR[0].item);fists.g.update(.016,input(true),400000);fists.g.update(.016,input(),400001);fists.g.update(.3,input(),400301);const fx=fists.g.effects.find((e:any)=>e.kind==='iron-fist');assert.ok(fx);assert.equal(fx.life,.25);assert.equal(fists.g.player.actionVisualUntil,400561);

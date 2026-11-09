@@ -6628,7 +6628,7 @@ export class Game {
   castSpell(spellId = null) {
     const id=spellId&&SPELLS[spellId]?spellId:(this.save.equippedSpell||'ember-ring'),priorVisual=this.player.castVisual,before={effects:this.effects.length,shots:this.projectiles.length,clone:!!this.shadowCloneActive(this.lastUpdateNow||0),orbit:!!this.orbit&&!this.orbit.flight,x:this.player.x,y:this.player.y};
     const result = this.castSpellEffect(spellId);
-    if (result) { const now=this.lastUpdateNow||0;this.cancelPendingMeleeContact('spell');this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelAttackPresentation(now);if(this.player.castVisual===priorVisual)this.recordCastVisual(id,before); }
+    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelAttackPresentation(now);if(this.player.castVisual===priorVisual)this.recordCastVisual(id,before); }
     return result;
   }
   recordCastVisual(spellKind,before={},variant='cast',accepted=null){
@@ -7840,6 +7840,7 @@ export class Game {
     return true;
   }
   cancelAttackPresentation(now = this.lastUpdateNow || 0) {
+    this.cancelPendingMeleeContact('presentation-interrupted');
     const p = this.player, record = normalizeAttackVisual(p?.attackVisual);
     if (record && attackVisualDeadline(p, record,{effects:this.effects,now,pendingToolUse:this.pendingToolUse}) > now) p.attackVisual.presentationCancelled = true;
   }
@@ -8228,7 +8229,17 @@ export class Game {
       else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
-      else { this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); this.jumpDur = (this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)?.skyPlatform) ? JUMP.sky : JUMP.base) + skillRank(this.save,"quickening") * JUMP.quickening; if (this.mountRide()) this.jumpDur *= MOUNT_BEASTS[this.mountRide().beast].jump; /* release 748: a mount jumps farther */ this.jumpStart = now; this.jumpUntil = now + this.jumpDur; this.cancelAttackPresentation(now); cancelCastVisual(p); }
+      else {
+        this.jumpFrom = elevationAt(this.map, width0, p.x, p.y);
+        const highPlatform = this.area === "overworld" && (this.skyLevel > 0 || tileUnder(this.map, width0, p.x, p.y)?.skyPlatform);
+        this.jumpDur = (highPlatform ? JUMP.sky : JUMP.base) + skillRank(this.save, "quickening") * JUMP.quickening;
+        const mount = this.mountRide();
+        if (mount) this.jumpDur *= MOUNT_BEASTS[mount.beast].jump;
+        this.jumpStart = now;
+        this.jumpUntil = now + this.jumpDur;
+        this.cancelAttackPresentation(now);
+        cancelCastVisual(p);
+      }
     }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
