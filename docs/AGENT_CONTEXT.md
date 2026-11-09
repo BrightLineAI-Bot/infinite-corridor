@@ -3,6 +3,10 @@
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
 
+## Local ownership and verified r851 production — 2026-11-09
+
+The local Codex coordinator owns gameplay development, integration, merges, numbering and production publication under the handoff from Tim. The separate cloud pipeline effort remains limited to infrastructure. Production is verified at r851-1a2c35ae7ab9 after Publish 42638198273, with matching Pages identity and Options → System. Main at takeover is merged r852 b635f4b34336. Draft #507 remains isolated at 18ea3372fd96. Its exact CI passed and its hosted textured and phone checks remain open. The pass manifest records local visual evidence and the ordered continuation.
+
 ## Provisional r852 diagnostics packaging — 2026-11-09
 
 Actual main is merged r851 `1a2c35ae7ab984a069c0e4e68732cb6df28dcdf6`, tree `58c42b238884588d79ffecb3c0a5cf0c09f5e0d3`. Remote main and open PRs were checked before local packaging; only docs PRs #502/#214 were open and no competing r852 candidate was found. Root retains the integration/publication baton. `claude/close-view-diagnostics-release-cloud` is local provisional packaging of diagnostics source `b5b3cea9`, tree `a4632622`; no push, PR, merge or Publish is claimed.
