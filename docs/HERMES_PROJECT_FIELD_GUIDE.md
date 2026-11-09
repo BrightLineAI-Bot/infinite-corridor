@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 847 — Close View melee weight and contact
+
+**CODE:** Normal indoor Close View input starts the accepted Cleaver or Iron Fists pose immediately. A single versioned pending contact resolves the hit from the current position after the short windup. Cleaver retains four right-handed cuts and low carry; Iron Fists retains its alternating dash punch, opposite-hand jab and uppercut. The existing depth-tested decal pass draws the Cleaver trail from the visible blade.
+
+**BOUNDARY:** Base damage, reach, combo lengths and Echo ownership are preserved. Direct and AI attacks retain their existing timing. Successful interruptions cancel pending contact; refused actions preserve it. The pending contact record is additive at schema 14 and respects pause and exact resume. Hosted animation and physical-device checks are separate from source verification.
+
 ## Release 846 — ordinary Grave Lantern material contact
 
 **CODE:** Ordinary pack-world Grave Lanterns participate in the existing bounded actor-contact sweep with a stateless occupied interval from `.33 * scale` through `2.33 * scale`, using the existing finite `.25` through `4` scale clamp. Idle movement and explicitly known physical attack phases remain solid; blink destinations, blocked ram contact and landed recovery use the same existing contact path.

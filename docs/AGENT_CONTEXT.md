@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Close View melee r847 candidate
+
+Production was verified at r845-715a280c35cb after the Veil Moth hosted contact check. Grave Lantern merged in r846-672941fdd677; its Preview and live verification are tracked separately. r847 packages weighted Verge Cleaver and Iron Fists poses, short visible windups and exact pending-contact resume. The final combined Close View sweep follows r847 hosted acceptance. Boss rigs remain research and planning. Local servers and the full local suite remain stopped.
+
 ## Grave Lantern r846 packaging gate — 2026-11-08
 
 Production remains verified `r844-0ec3fe866c64`. Veil Moth r845 merged as official main `715a280c35cbb1c3ac8d8474865ee5631445401e`; merged CI42539736647 and Preview42539736648 were running at merge, so r845 was not yet hosted, live or published at this checkpoint. Against that complete history, r846 packages only the reviewed ordinary Grave Lantern low-hover material interval and known physical-phase admission. Hold r846 until r845 exact hosted acceptance and publication. Leap/dive travel, other airborne families, boss rigs, melee motion and the final combined sweep remain later. Local servers and the full suite remain stopped.
