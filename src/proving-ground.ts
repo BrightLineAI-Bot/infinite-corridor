@@ -75,8 +75,10 @@ async function initializeRecovery(restoreOnLoad){
       const checks=fixture.diagnostics.restoration.passed?'Reconstruction diagnostics agree.':'Reconstruction diagnostics FAILED; inspect the report.';
       updateRecoveryControls(`Checkpoint restored on page initialization through the canonical save reader and a fresh Game. ${checks} Still paused; resume and verify actual contact. This is not a production database load.`);
     }else if(loaded.status==='empty'||loaded.status==='ready'){
-      game.setPaused(false,performance.now());paused=false;last=performance.now();
-      updateRecoveryControls(loaded.status==='ready'?'Fresh scratch scenario running. A saved checkpoint is available; Reload and restore loads that checkpoint. Reset same never overwrites it.':'Natural scenario running. Capture next natural leap observes real AI, pauses the live Game and saves this candidate scratch checkpoint.');
+      // Initialization never resumes play after an awaited operation. In particular,
+      // a newer background/explicit pause remains authoritative after hide-return.
+      game.setPaused(true,performance.now());paused=true;last=performance.now();
+      updateRecoveryControls(loaded.status==='ready'?'Fresh scratch scenario initialized and paused. A saved checkpoint is available; Reload and restore loads that checkpoint. To start fresh, arm capture and press Resume. Reset same never overwrites it.':'Natural scenario initialized and paused. Capture next natural leap arms the real-AI watch; then press Resume. Only this candidate scratch checkpoint can be saved.');
     }else updateRecoveryControls(`${loaded.status}: ${loaded.error||'Checkpoint is preserved unchanged.'} Reset same does not erase it.`);
     updateDiagnostics(true);
   }catch(error){if(epoch!==recoveryEpoch)return;recoveryStatus='unavailable';recoveryBinding=null;updateRecoveryControls(`Recovery unavailable: ${error?.message||error} The scratch Game remains paused; no checkpoint was restored.`);}

@@ -14,17 +14,18 @@ const pause=()=>new Promise(resolve=>setTimeout(resolve,0));
 // Transactional fake: request success precedes commit; staged puts/deletes are
 // applied only on tx completion. Abort and quota paths retain the prior record.
 function storage(){
- const databases=new Map(),queues=new Map(),ctl={opened:[],closed:0,hold:false,failCommit:false,quota:false,blocked:false,releases:[],blockedSuccess:[],databases};
+ const databases=new Map(),queues=new Map(),ctl={opened:[],closed:0,transactions:[],failRead:'',hold:false,failCommit:false,quota:false,blocked:false,releases:[],blockedSuccess:[],databases};
  function db(name){
   if(!databases.has(name))databases.set(name,new Map());if(!queues.has(name))queues.set(name,[]);const data=databases.get(name),queue=queues.get(name);
   return {objectStoreNames:{contains:()=>true},createObjectStore(){},close(){ctl.closed++;},transaction(_name,mode){
+   const trace={mode,requests:[]};ctl.transactions.push(trace);
    const tx={pending:0,settled:false,error:null},staged=[],waiting=[];let started=false,finishing=false;
    const next=()=>{queue.shift();queue[0]?.();};
    const abort=error=>{if(tx.settled)return;tx.settled=true;tx.error=error||tx.error;setTimeout(()=>{tx.onabort?.();next();},0);};tx.abort=()=>abort();
    const settle=()=>{if(tx.pending||tx.settled||finishing)return;finishing=true;const complete=()=>{if(tx.settled)return;if(ctl.failCommit){abort(new Error('abort at commit'));return;}tx.settled=true;for(const f of staged)f();tx.oncomplete?.();next();};if(ctl.hold)ctl.releases.push(complete);else setTimeout(complete,0);};
    const request=fn=>{const q={};tx.pending++;const run=()=>setTimeout(()=>{if(tx.settled)return;try{q.result=fn();q.onsuccess?.();}catch(error){q.error=tx.error=error;q.onerror?.();abort(error);}tx.pending--;settle();},0);if(started)run();else waiting.push(run);return q;};
    const begin=()=>{started=true;for(const run of waiting)run();};queue.push(begin);if(queue.length===1)setTimeout(begin,0);
-   tx.objectStore=()=>({get:key=>request(()=>structuredClone(data.get(key))),put:(value,key)=>{assert.equal(mode,'readwrite');const copy=structuredClone(value);return request(()=>{if(ctl.quota)throw new Error('quota exceeded');staged.push(()=>data.set(key,copy));});},delete:key=>{assert.equal(mode,'readwrite');return request(()=>staged.push(()=>data.delete(key)));}});return tx;
+   tx.objectStore=()=>({count:key=>{trace.requests.push(['count',key]);return request(()=>{if(ctl.failRead==='count')throw new Error('count failed');return data.has(key)?1:0;});},get:key=>{trace.requests.push(['get',key]);return request(()=>{if(ctl.failRead==='get')throw new Error('get failed');return structuredClone(data.get(key));});},put:(value,key)=>{trace.requests.push(['put',key]);assert.equal(mode,'readwrite');const copy=structuredClone(value);return request(()=>{if(ctl.quota)throw new Error('quota exceeded');staged.push(()=>data.set(key,copy));});},delete:key=>{trace.requests.push(['delete',key]);assert.equal(mode,'readwrite');return request(()=>staged.push(()=>data.delete(key)));}});return tx;
   }};
  }
  ctl.idb={open(name){ctl.opened.push(name);const q={};const success=()=>{q.result=db(name);q.onsuccess?.();};setTimeout(()=>{if(ctl.blocked){ctl.blockedSuccess.push(success);q.onblocked?.();return;}success();},0);return q;}};return ctl;
@@ -64,4 +65,39 @@ test('concurrent matching write/clear operations serialize and cannot erase opaq
  const {record}=natural(),ctl=storage();
  const pair=await Promise.all([writeRecoveryCheckpoint({...options,record},ctl.idb),clearRecoveryCheckpoint(options,ctl.idb)]);assert.equal(pair[0].status,'stored');assert.equal(pair[1].status,'cleared');assert.equal((await readRecoveryCheckpoint(options,ctl.idb)).status,'empty');
  await writeRecoveryCheckpoint({...options,record},ctl.idb);const next=structuredClone(record);next.preWitness.futureConcurrent='retained';const both=await Promise.all([clearRecoveryCheckpoint(options,ctl.idb),writeRecoveryCheckpoint({...options,record:next},ctl.idb)]);assert.equal(both[0].status,'cleared');assert.equal(both[1].status,'stored');assert.equal((await readRecoveryCheckpoint(options,ctl.idb)).record.preWitness.futureConcurrent,'retained');
+});
+
+for(const [label,opaque] of [['null',null],['undefined',undefined]])test(`stored ${label} is damaged and cannot be replaced or cleared as an absent key`,async()=>{
+ const {record}=natural(),ctl=storage(),scope=recoveryScope(binding,href);await readRecoveryCheckpoint(options,ctl.idb);const data=ctl.databases.get(scope.db);data.set(scope.key,opaque);
+ assert.equal(data.has(scope.key),true,'the key exists even when get() returns an empty-looking value');
+ const read=await readRecoveryCheckpoint(options,ctl.idb),clear=await clearRecoveryCheckpoint(options,ctl.idb);let rejected=false;try{await writeRecoveryCheckpoint({...options,record},ctl.idb);}catch{rejected=true;}
+ assert.equal(rejected,true,`stored ${label} was overwritten (read=${read.status}, reset=${clear.status}, value preserved=${Object.is(data.get(scope.key),opaque)})`);
+ assert.equal(read.status,'damaged');assert.equal(clear.status,'damaged');assert.equal(data.has(scope.key),true);assert.equal(Object.is(data.get(scope.key),opaque),true);
+});
+
+test('presence and value share each transaction; only a genuinely absent key permits the first write',async()=>{
+ const {record}=natural(),ctl=storage(),scope=recoveryScope(binding,href);
+ assert.equal(inspectRecoveryEnvelope(null,options).status,'damaged');assert.equal(inspectRecoveryEnvelope(undefined,options).status,'damaged');
+ assert.equal((await readRecoveryCheckpoint(options,ctl.idb)).status,'empty');assert.equal((await clearRecoveryCheckpoint(options,ctl.idb)).status,'empty');
+ assert.equal((await writeRecoveryCheckpoint({...options,record},ctl.idb)).status,'stored');
+ assert.deepEqual(ctl.transactions.map(t=>[t.mode,t.requests.map(r=>r[0])]),[['readonly',['count','get']],['readwrite',['count','get']],['readwrite',['count','get','put']]]);
+ assert.ok(ctl.transactions.every(t=>t.requests.every(r=>r[1]===scope.key)));
+});
+test('presence or value request failure never creates an empty result or replaces present corrupt data',async()=>{
+ const {record}=natural(),ctl=storage(),scope=recoveryScope(binding,href);await readRecoveryCheckpoint(options,ctl.idb);const data=ctl.databases.get(scope.db);data.set(scope.key,undefined);
+ for(const request of ['count','get']){
+  ctl.failRead=request;
+  await assert.rejects(readRecoveryCheckpoint(options,ctl.idb),new RegExp(request+' failed'));
+  await assert.rejects(writeRecoveryCheckpoint({...options,record},ctl.idb),new RegExp(request+' failed'));
+  await assert.rejects(clearRecoveryCheckpoint(options,ctl.idb),new RegExp(request+' failed'));
+  assert.equal(data.has(scope.key),true);assert.equal(data.get(scope.key),undefined);
+ }
+ assert.ok(ctl.transactions.every(t=>t.requests.every(r=>r[0]!=='put'&&r[0]!=='delete')));
+});
+for(const [label,opaque] of [['null',null],['undefined',undefined]])test(`concurrent read, clear and replacement preserve stored ${label}`,async()=>{
+ const {record}=natural(),ctl=storage(),scope=recoveryScope(binding,href);await readRecoveryCheckpoint(options,ctl.idb);const data=ctl.databases.get(scope.db);data.set(scope.key,opaque);
+ const results=await Promise.allSettled([readRecoveryCheckpoint(options,ctl.idb),clearRecoveryCheckpoint(options,ctl.idb),writeRecoveryCheckpoint({...options,record},ctl.idb)]);
+ assert.equal(results[0].status,'fulfilled');assert.equal(results[0].value.status,'damaged');assert.equal(results[1].status,'fulfilled');assert.equal(results[1].value.status,'damaged');assert.equal(results[2].status,'rejected');
+ assert.equal(data.has(scope.key),true);assert.equal(Object.is(data.get(scope.key),opaque),true);
+ assert.ok(ctl.transactions.every(t=>t.requests.length===2&&t.requests[0][0]==='count'&&t.requests[1][0]==='get'),'same transaction checks presence/value without any mutation');
 });

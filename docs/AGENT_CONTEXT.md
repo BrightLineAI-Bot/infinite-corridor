@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## r850 Astra correction checkpoint — 2026-11-09
+
+Astra found two P2 blockers on draft504 head4a2d45f6/tree0d9c4bea, superseding earlier source clearance for those missing cases. Both reproduced against that frozen source: initialization could resume after a newer background pause, and stored null/undefined could be mistaken for key absence and overwritten. The current correction keeps fresh Recovery initialization paused until explicit Resume, including hide-and-return during identity/storage awaits; it reads key count and value within the same IndexedDB transaction so present corrupt values survive read, replacement and reset. Production saves are not exposed. Canonical codec bodies, runtime mechanics and release850 markers are unchanged. New regressions fail on the old source. Fresh exact corrected-tree Astra/CI/Preview and actual hosted persistence/reload/contact remain required; do not reuse the old clearance or claim hosted acceptance.
+
 ## Natural Lantern recovery r850 preparation — 2026-11-09
 
 Current main is merged r849 01bc5b39039acbe22f7a6ae06ba33e7343a2abf5, reviewed tree ccd8f4629012230f6a8fec2ee99a0d2d3fb3e5e8. Merged CI42604342929 and Preview42604342965 passed; candidate identity and isolated scratch startup were verified. Live remains r847-6be077b9239e and no Publish was dispatched. The natural persisted-reload gate is still open: frozen PG previews omit normal persistence, and no supported separate-origin normal-game route was established.

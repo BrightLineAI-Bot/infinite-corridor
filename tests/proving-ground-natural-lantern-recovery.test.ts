@@ -38,23 +38,26 @@ test('live paused Game snapshot reconstructs the same actor/player/cooldowns wit
 const uiSource=readFileSync(new URL('../src/proving-ground.ts',import.meta.url),'utf8');
 function controller(fixture,overrides={}){
  const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{disabled:false,hidden:false,textContent:'',value:'',replaceChildren(){},append(){}});return nodes.get(id);};
- const location={href,reload(){calls.reload++;}},calls={reload:0,write:0,read:0,clear:0,decode:0,resetInput:0,generate:0};let clock=1000;
+ const listeners=new Map(),doc={hidden:false,createElement:()=>node('made'),addEventListener(name,fn){listeners.set(name,fn);}};
+ const location={href,reload(){calls.reload++;}},calls={reload:0,write:0,read:0,clear:0,decode:0,resetInput:0,generate:0};let clock=fixture.game.lastUpdateNow??1000;
  const deps={RECOVERY_CONTEXT,recoveryScope,createRecoveryEnvelope,serializeSave,deserializeSave(text){calls.decode++;return deserializeSave(text);},naturalLanternRecoveryReady,naturalLanternRecoveryWitness,restoreNaturalLanternRecoveryFixture,
-  query:new URL(href).searchParams,location,performance:{now:()=>clock},$:node,seedInput:node('#seedInput'),variantInput:node('#variantInput'),controls:node('#labControls'),launcher:node('#labLauncher'),scenarioSelect:node('#scenarioSelect'),teleportSelect:node('#teleportSelect'),journeyRecord:{save:{seed:'ordinary-scratch'}},LABORATORIES:[],document:{createElement:()=>node('made')},Option:function(label,value){return{label,value};},DEFAULT_PROVING_SEED:'CINDER-VERGE-47',
+  query:new URL(href).searchParams,location,performance:{now:()=>clock},$:node,seedInput:node('#seedInput'),variantInput:node('#variantInput'),controls:node('#labControls'),launcher:node('#labLauncher'),scenarioSelect:node('#scenarioSelect'),teleportSelect:node('#teleportSelect'),journeyRecord:{save:{seed:'ordinary-scratch'}},LABORATORIES:[],document:doc,Option:function(label,value){return{label,value};},DEFAULT_PROVING_SEED:'CINDER-VERGE-47',
   input:{reset(){calls.resetInput++;}},fetch:async()=>({ok:true,json:async()=>binding}),
   readRecoveryCheckpoint:async()=>{calls.read++;return{status:'empty'};},writeRecoveryCheckpoint:async()=>{calls.write++;return{status:'stored'};},clearRecoveryCheckpoint:async()=>{calls.clear++;return{status:'cleared'};},
   invalidateInteraction(){},fillTeleports(){},updateDiagnostics(){},syncUrl(){},generate(){calls.generate++;},fixture,...overrides};
  const body=uiSource.slice(uiSource.indexOf('let recoveryEpoch='),uiSource.indexOf('const interactionLifecycle=')).replaceAll('export async function','async function').replaceAll('export function','function');
+ const visibility=uiSource.slice(uiSource.indexOf('document.addEventListener("visibilitychange",')).split('\n')[0];
+ const pauseHandler=uiSource.split('\n').find(line=>line.startsWith('$("#scenarioPause").onclick='));
  const lifecycle=['ready','renderLauncher','openJourney'].map(name=>uiSource.match(new RegExp('^function '+name+'\\(.*$','m'))[0]).join('\n');
  const keys=Object.keys(deps).filter(k=>k!=='fixture');
- const make=new Function('deps',`const {${keys.join(',')}}=deps;let fixture=deps.fixture,game=fixture.game,paused=false,last=0,selectedLab='recovery',teleportSignature='';${body}\n${lifecycle}\nreturn{initializeRecovery,captureRecovery,observeRecovery,clearCandidateRecoveryForReset,releaseCandidateRecoveryReset,ready,renderLauncher,openJourney,resetRecoveryState,get:()=>({fixture,game,paused,recoveryArmed,recoveryBusy,recoveryRecord,recoveryStatus,recoveryNote,recoveryEpoch})};`);
- const api=make(deps);return{...api,nodes,node,calls,location,setClock:t=>{clock=t;}};
+ const make=new Function('deps',`const {${keys.join(',')}}=deps;let fixture=deps.fixture,game=fixture.game,paused=false,last=0,selectedLab='recovery',teleportSignature='';${body}\n${lifecycle}\n${visibility}\n${pauseHandler}\nreturn{initializeRecovery,captureRecovery,observeRecovery,clearCandidateRecoveryForReset,releaseCandidateRecoveryReset,ready,renderLauncher,openJourney,resetRecoveryState,get:()=>({fixture,game,paused,recoveryArmed,recoveryBusy,recoveryRecord,recoveryStatus,recoveryNote,recoveryEpoch})};`);
+ const api=make(deps);return{...api,nodes,node,calls,location,visibility(hidden){doc.hidden=hidden;listeners.get('visibilitychange')();},setClock:t=>{clock=t;}};
 }
 test('capture UI waits for durable completion and only the reload control reloads the page',async()=>{
  const n=natural();let finish,stored;const pending=new Promise(resolve=>{finish=resolve;});
  const ui=controller(n.fixture,{writeRecoveryCheckpoint:options=>{stored=options.record;return pending;}});
- await ui.initializeRecovery(false);assert.equal(ui.get().game.paused,false);
- // Initialization paused/resumed this test fixture at one clock; capture still uses its current real state.
+ await ui.initializeRecovery(false);assert.equal(ui.get().game.paused,true);assert.match(ui.node('#recoveryStatus').textContent,/initialized and paused/);
+ // Initialization stays paused; a live already-qualified leap can be saved without resuming it.
  const saving=ui.captureRecovery(n.now);assert.equal(ui.get().game.paused,true);assert.equal(ui.get().recoveryBusy,true);assert.equal(ui.node('#recoveryReload').disabled,true);assert.equal(ui.calls.reload,0);
  await assert.rejects(ui.clearCandidateRecoveryForReset(),/Wait for the current recovery operation/);ui.releaseCandidateRecoveryReset(new Error('rejected overlapping reset'));assert.equal(ui.get().recoveryBusy,true,'a refused global reset cannot unlock an in-flight checkpoint write');
  assert.ok(stored.preWitness.hopLift>0);assert.equal(stored.preWitness.capturedAt,stored.capturedAt);
@@ -87,7 +90,7 @@ test('candidate global reset works from other labs and stops on opaque data; ord
 test('global reset cancels the watch and holds the capture lock across identity/clear and later handoff work',async()=>{
  const n=natural();let count=0,finishIdentity,writes=0;
  const ui=controller(n.fixture,{fetch:()=>++count===1?Promise.resolve({ok:true,json:async()=>binding}):new Promise(resolve=>{finishIdentity=resolve;}),writeRecoveryCheckpoint:async()=>{writes++;return{status:'stored'};}});
- await ui.initializeRecovery(false);ui.node('#recoveryCapture').onclick();assert.equal(ui.get().recoveryArmed,true);
+ await ui.initializeRecovery(false);ui.node('#scenarioPause').onclick();assert.equal(ui.get().game.paused,false);ui.node('#recoveryCapture').onclick();assert.equal(ui.get().recoveryArmed,true);
  const epoch=ui.get().recoveryEpoch,reset=ui.clearCandidateRecoveryForReset();
  assert.equal(ui.get().recoveryArmed,false);assert.equal(ui.get().recoveryBusy,true);assert.ok(ui.get().recoveryEpoch>epoch);assert.equal(ui.get().game.paused,true);
  ui.observeRecovery(n.now);await ui.captureRecovery(n.now);assert.equal(writes,0);
@@ -103,4 +106,28 @@ test('mobile Reset awaits checkpoint and handoff before clearing namespace keys 
  const reset=new Function('deps',`const{document,status,confirm,clearCandidateRecoveryForReset,releaseCandidateRecoveryReset,clearHandoff,location,localStorage,sessionStorage,storageNamespace}=deps;${body};return resetScratchData;`)({document:{querySelector:()=>button},status,confirm:()=>true,clearCandidateRecoveryForReset:clear||(async()=>{events.push('checkpoint');}),releaseCandidateRecoveryReset(){events.push('unlock');},clearHandoff:async()=>{events.push('handoff');},location:{href,reload:()=>events.push('reload')},localStorage:storage,sessionStorage:storage,storageNamespace:'ic-preview-test-scratch'});return{reset,events,status,button};}
  const good=mobile();await good.reset();assert.deepEqual(good.events,['checkpoint','handoff','remove','remove','reload']);
  const bad=mobile(async()=>{throw new Error('future checkpoint');});await bad.reset();assert.deepEqual(bad.events,['unlock']);assert.match(bad.status.textContent,/Reset stopped.*future checkpoint/);assert.equal(bad.button.disabled,false);
+});
+
+
+test('pending identity or checkpoint reads never resume newer background or explicit pause intent',async()=>{
+ const n=natural(),record=recordOf(n.g,n.now);
+ for(const pendingAt of ['identity','storage'])for(const result of ['empty','ready'])for(const intent of ['hide','hide-return','explicit-pause']){
+  let finish,pendingStarted=false;const waiting=new Promise(resolve=>{finish=resolve;});
+  const loaded=result==='ready'?{status:'ready',record}:{status:'empty'};
+  const ui=controller(naturalLanternRecoveryFixture(1000),{
+   fetch:pendingAt==='identity'?()=>{pendingStarted=true;return waiting;}:async()=>({ok:true,json:async()=>binding}),
+   readRecoveryCheckpoint:pendingAt==='storage'?()=>{pendingStarted=true;return waiting;}:async()=>loaded,
+  });
+  const initializing=ui.initializeRecovery(false);assert.equal(ui.get().game.paused,true);
+  for(let i=0;i<20&&!pendingStarted;i++)await Promise.resolve();assert.equal(pendingStarted,true,`${pendingAt} operation actually began and remains unresolved`);
+  // Exercise the actual public visibility/pause handlers while the awaited operation is pending.
+  if(intent==='hide'||intent==='hide-return'){ui.visibility(true);if(intent==='hide-return')ui.visibility(false);}
+  else{ui.node('#scenarioPause').onclick();ui.node('#scenarioPause').onclick();assert.equal(ui.get().game.paused,true);}
+  finish(pendingAt==='identity'?{ok:true,json:async()=>binding}:loaded);await initializing;
+  assert.equal(ui.get().game.paused,true,`${pendingAt}/${result}/${intent}: async initialization must not resume`);
+  assert.equal(ui.get().paused,true);assert.equal(ui.node('#scenarioPause').disabled,false,'explicit Resume becomes available after the checks finish');
+  ui.visibility(false);assert.equal(ui.get().game.paused,true,'returning to visibility still does not resume');
+  ui.node('#recoveryCapture').onclick();assert.equal(ui.get().recoveryArmed,true,'operator can arm the watch before the first leap');
+  ui.node('#scenarioPause').onclick();assert.equal(ui.get().game.paused,false,'only a new explicit Resume starts the fresh scenario');
+ }
 });

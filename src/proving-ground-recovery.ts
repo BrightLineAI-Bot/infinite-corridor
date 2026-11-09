@@ -40,7 +40,6 @@ function matchingWitness(w,save,actor){
 }
 export function inspectRecoveryEnvelope(record,{binding,context}={}){
   if(!validBinding(binding)||!validContext(context))return result('mismatch','Recovery expectation is not the exact supported candidate and natural scenario.');
-  if(record==null)return result('empty');
   if(!plain(record))return result('damaged','Checkpoint envelope is not an object.');
   if(record.format!==FORMAT||record.version!==VERSION)return result('unsupported','Checkpoint envelope format/version is not supported; it was kept unchanged.');
   if(!sameBinding(record.binding,binding)||!validContext(record.context))return result('mismatch','Checkpoint belongs to a different candidate or scenario; it was kept unchanged.');
@@ -75,11 +74,16 @@ async function transact(options,idb,operation){
       tx=db.transaction(STORE,operation==='read'?'readonly':'readwrite');
       tx.oncomplete=()=>{close();if(failed)reject(failed);else resolve(out);};
       tx.onerror=tx.onabort=()=>{close();reject(failed||tx.error||new Error('Recovery transaction failed; the checkpoint was not committed.'));};
-      const store=tx.objectStore(STORE),q=store.get(KEY);
-      q.onerror=()=>{failed=q.error||new Error('Recovery checkpoint could not be read.');};
-      q.onsuccess=()=>{
+      // get() returns undefined both for absence and for a stored undefined.
+      // Presence and value must be read under this same transaction's lock.
+      const store=tx.objectStore(STORE),presence=store.count(KEY),q=store.get(KEY);
+      let presentRead=false,valueRead=false,handled=false;
+      const process=()=>{
+        if(!presentRead||!valueRead||handled||failed)return;
+        handled=true;
         try {
-        const checked=inspectRecoveryEnvelope(q.result,{binding,context});
+        if(presence.result!==0&&presence.result!==1)throw new Error('Recovery checkpoint presence could not be confirmed.');
+        const checked=presence.result===0?result('empty'):inspectRecoveryEnvelope(q.result,{binding,context});
         if(operation==='read'){out=checked;return;}
         if(operation==='clear'){
           if(checked.status==='ready'){store.delete(KEY);out=result('cleared');}else out=checked;
@@ -91,6 +95,10 @@ async function transact(options,idb,operation){
         store.put(options.record,KEY);out=result('stored');
         }catch(error){failed=error;try{tx.abort();}catch{close();reject(error);}}
       };
+      presence.onerror=()=>{failed=presence.error||new Error('Recovery checkpoint presence could not be read.');};
+      q.onerror=()=>{failed=q.error||new Error('Recovery checkpoint could not be read.');};
+      presence.onsuccess=()=>{presentRead=true;process();};
+      q.onsuccess=()=>{valueRead=true;process();};
     }catch(error){failed=error;if(tx){try{tx.abort();}catch{close();reject(error);}}else{close();reject(error);}}
   });
 }
