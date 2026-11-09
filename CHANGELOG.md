@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 857 gives the ordinary Wayfarer a short cache collection gesture, recoil on confirmed combat hits and a distinct defeat fall, with isolated Proving Ground scenarios for each.
+
 - Release 856 adds room-edge clearance to newly discovered routed keeps and Pentagons and eases the Close View lens in their tight corners.
 
 - Release 855 adds matched room-clearance comparisons for a keep and a Pentagon chamber in Close View Lab.

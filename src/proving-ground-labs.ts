@@ -14,6 +14,7 @@ import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, AR
 import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.ts";
 import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.ts";
 import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.ts";
+import { VIEWPORT_CLOSED } from "./combat-visuals.ts";
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { ELITE_DEFINITIONS } from "./elites.ts";
 import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.ts";
@@ -250,10 +251,14 @@ const CLOSE_VIEW_LAB = [
   { id: "routing-adoption-new-keep", label: "Routing adoption: cross into a new standalone keep", routingAdoption: "keep" },
   { id: "routing-adoption-new-pentagon", label: "Routing adoption: cross into a new Pentagon", routingAdoption: "pentagon" },
   { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "cache-pickup-supply", label: "Cache pickup: supply cache", cachePickup: "supplyCache", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "cache-pickup-weapon", label: "Cache pickup: weapon cache", cachePickup: "weaponCache", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "padding-keep-reference", label: "Room clearance: keep reference", roomRouting: "keep", candidate: true, roomPadding: "reference" },
   { id: "padding-keep-pilot", label: "Room clearance: keep widened edge", roomRouting: "keep", candidate: true, roomPadding: "pilot" },
   { id: "padding-pentagon-reference", label: "Room clearance: Pentagon reference", roomRouting: "pentagon", candidate: true, roomPadding: "reference" },
   { id: "padding-pentagon-pilot", label: "Room clearance: Pentagon widened edge", roomRouting: "pentagon", candidate: true, roomPadding: "pilot" },
+  { id: "wayfarer-defeat", label: "Wayfarer defeat: Ashling encounter", reactionInspection: "defeat", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "wayfarer-hurt", label: "Wayfarer hurt: Ashling encounter", reactionInspection: "hurt", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
 // GPU scene's lava and pits can be seen without hunting for a room maze's gallery
@@ -378,6 +383,31 @@ function closeViewFixture(scenario, seed, now) {
     save.potionChoice = "restorativeDraught";
     save.consumables.restorativeDraught = 1;
     game.message = "Use Potion to drink the Restorative Draught. Reset same restores health and supplies for another test.";
+  }
+  if(spec.cachePickup){
+    const {player,dx,dy}=assetLane(game);
+    entry=player;
+    const facing=dx>0?"right":dx<0?"left":dy>0?"down":"up";
+    Object.assign(game.player,{x:player.x,y:player.y,facing});
+    save.lastAim={x:dx,y:dy};
+    game.enemies=[];
+    const x=player.x+dx,y=player.y+dy;
+    // Clear competing Act targets only in this scratch room.
+    game.map.objects=game.map.objects.filter(o=>Math.hypot(o.x-player.x,o.y-player.y)>=2);
+    game.map.objects.push({id:"lab-cache-pickup",kind:spec.cachePickup,supplyType:spec.cachePickup==="weaponCache"?"secondary":"restorativeDraught",x,y,state:"ready",actions:["collect"]});
+    game.message="Use Act to collect the nearby cache. Reset same restores it.";
+  }
+  if (spec.reactionInspection) {
+    const { player, foe, dx, dy } = assetLane(game);
+    entry = player;
+    const facing = dx > 0 ? "right" : dx < 0 ? "left" : dy > 0 ? "down" : "up";
+    const fatal = spec.reactionInspection === "defeat";
+    Object.assign(game.player, { x: player.x, y: player.y, facing, hp: fatal ? 1 : save.maxHp, invulnerableUntil: now });
+    const ashling = createCombatant("ashling", foe.x, foe.y, false, []);
+    ashling.id = `lab-wayfarer-${spec.reactionInspection}-ashling`;
+    game.enemies = [ashling];
+    game.deathBeat = VIEWPORT_CLOSED.fall;
+    game.message = "Stand still and let the Ashling land a hit. Reset same restarts the encounter.";
   }
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(traversal ? { diagnostics: { traversal } } : {}), ...(buildPractice ? { buildPractice, developerHint: game.message, diagnostics: { buildPractice } } : {}) };

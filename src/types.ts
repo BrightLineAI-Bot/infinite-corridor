@@ -1,5 +1,5 @@
 import { ACTION_MOTION, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, normalizePrimaryCombo } from "./action-motion.ts";
-import { normalizeConsumeVisual } from "./consume-visual.ts";
+import { normalizeCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual } from "./consume-visual.ts";
 import{freshEliteState,ensureEliteState}from'./elites.ts';import{ensureRot}from'./water-traversal.ts';import{ensureBoatState,ensureWood}from'./boats.ts';import{ensureSlots}from'./spell-slots.ts';import{ensureWanderer,ensureReciters}from'./travelers.ts';import{ensureQuestingBeast}from'./questing-beast.ts';import{ensureFarArray}from'./far-array.ts';
 import{normalizeMapMarks}from'./atlas-view.ts';import{ensureLattice}from'./transit-lattice.ts';import{ensureHometowns}from'./hometowns.ts';import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.ts';
 import{freshViewportState,ensureViewportState}from'./foundry.ts';
@@ -126,6 +126,8 @@ export function ensureAttackVisualRuntime(save) {
   if (runtime) {
     if (Object.hasOwn(runtime, "heroPresentationTime") && (!Number.isFinite(runtime.heroPresentationTime) || runtime.heroPresentationTime < 0 || runtime.heroPresentationTime > 1e12)) delete runtime.heroPresentationTime;
     if (Object.hasOwn(runtime, "consumeVisual")) runtime.consumeVisual = normalizeConsumeVisual(runtime.consumeVisual);
+    if (Object.hasOwn(runtime, "cachePickupVisual")) runtime.cachePickupVisual = normalizeCachePickupVisual(runtime.cachePickupVisual);
+    if (Object.hasOwn(runtime, "hurtVisual")) runtime.hurtVisual = normalizeHurtVisual(runtime.hurtVisual);
     if (Object.hasOwn(runtime, "actionVisualMotion")) runtime.actionVisualMotion = normalizeActionVisualMotion(runtime.actionVisualMotion, runtime.attackVisual);
     if (runtime.primaryVisualMotion != null) runtime.primaryVisualMotion = Number.isFinite(Number(runtime.primaryVisualMotion)) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, Number(runtime.primaryVisualMotion))) : 0;
     if (runtime.fistVisualMotion != null) runtime.fistVisualMotion = Number.isFinite(Number(runtime.fistVisualMotion)) ? Math.max(0, Math.min(ACTION_MOTION.meleeMs, Number(runtime.fistVisualMotion))) : 0;

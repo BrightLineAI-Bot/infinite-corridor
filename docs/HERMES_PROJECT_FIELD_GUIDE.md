@@ -6,6 +6,20 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 857 — Wayfarer cache collection, hurt and defeat
+
+### Cache collection
+
+**CODE:** The ordinary Close View Wayfarer briefly reaches with the free hand after a supply or weapon cache is collected. The 400 ms gesture uses the existing imported and native rigs and layers over gait. The Pike keeps its two-handed grip and uses a smaller acknowledgment. Proving Ground has separate supply and weapon scenarios using the regular Act control.
+
+**BOUNDARY:** Collection awards and uses the cache immediately through the existing interaction. An already active combat or healing animation keeps control, and a newly accepted action can retire the gesture. The optional schema 14 receipt preserves the presentation phase across pause and reload without repeating the reward. Entering a different area clears the known receipt. Reduced motion lowers the gesture and the existing geometry and rendering budgets are unchanged.
+
+### Hurt and defeat
+
+**CODE:** Ordinary on-foot Wayfarer recoil uses a 300 ms presentation receipt after an audited combat impact leaves a surviving injury. The native pose and imported rig share that clock. An accepted attack, tool, cast, jump or quickstep keeps control of the body. A fatal blow uses the existing fall clock; the final pose holds until recovery takes over. Two isolated Ashling encounters exercise real hurt and defeat.
+
+**BOUNDARY:** The receipt is additive in schema 14 and carries the existing logical presentation time across pause and save reload. Area transitions clear the known version and future versions remain opaque. Passive poison cannot arm recoil. Same-frame healing can mask an injury. Combat timing, damage, Second Wind, ordinary knockdown, and existing special forms keep their established behavior.
+
 ## Release 856 — Room edges and tight-corner framing
 
 **CODE:** New standalone Keep 5 and Pentagon 10 sites record room-padding version 1 on their first-floor history. The generator selects a three-cell recess from the original floor. Live area loading opens the selected cells after object placement and before restoring the actor footprint. The Close View lens widens smoothly when stone compresses the camera boom in the supported interiors.

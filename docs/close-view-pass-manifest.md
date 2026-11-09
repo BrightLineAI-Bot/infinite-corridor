@@ -2,7 +2,7 @@
 
 Updated: 2026-11-09. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live on 2026-11-09: r855-96d7069b1622, commit 96d7069b162241db099c844a8f62170da64d4fe0, tree 627d4c9054a21e76e064048fb3acd31c77d2ef2d. Astra found no blockers from r853. Publish 42669454669 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
+Verified live on 2026-11-09: r856-4939f21b4cf1, commit 4939f21b4cf1bd715c7943388d78e6b8e1017e0e, tree e3ee957d7a856467cb06475de97e9507f107f6c2. Astra found no blockers from r855. Publish 42687022957 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
 
 ## r853 tool appearance acceptance and tooling availability — 2026-11-09
 
@@ -18,8 +18,9 @@ Verified live on 2026-11-09: r855-96d7069b1622, commit 96d7069b162241db099c844a8
 
 ## Remaining Close View work
 
-- The r855 room comparisons are live. The r856 candidate pins clearance for new standalone keeps and Pentagons and widens the lens during tight corner compression. Local checks cover production site entry, old-site exclusion, original placement, exact resume, and portrait framing. The hosted r856 check is pending.
-- Finish the Wayfarer action pass with hurt, defeat and the remaining interaction gestures. Follow up on camera heading at low movement speeds and any tool pose or variant gaps found in the combined pass.
+- r856 room clearance and tight-corner framing are live. Hosted desktop WebGL2 confirmed new Keep 5 and Pentagon 10 sites adopt pin 1 through normal section movement and can be entered through Act. The widened edges were traversable and manual camera orbit was exercised in both comparison scenarios. Source checks cover old-site exclusion, original placement, exact resume and portrait framing. Physical-phone validation remains open.
+- Ordinary Wayfarer defeat and hurt are prepared locally on `claude/close-view-wayfarer-defeat`. Real Ashling witnesses cover the fatal fall, single recovery, ordinary recoil, Aegis, pause and save/resume. Focused source checks and the static build pass. Hosted imported/native visual checks and the remaining interaction gestures are open. Follow up on camera heading at low movement speeds and any tool pose or variant gaps found in the combined pass.
+- The first interaction gesture is prepared on `claude/close-view-cache-pickup`. A successful Collect in ordinary Close View gives the reward immediately and plays a short free-hand reach. Two-handed Pike carry keeps both grips and uses a brief acknowledgment. Both supply and weapon cache labs use regular Act. Focused checks cover rejection, interruption by accepted melee or a drink, pause, save/reload, unchanged geometry budgets, and no second reward. Hosted visual checks are open. Chest opening and tool-driven interactions remain separate gestures.
 - Run the combined traversal, combat, environment, recovery and offline checks. Physical-phone touch, frame rate and thermals require device evidence.
 - Start the articulated boss program with the Walker pilot after the player and room passes. Then work through the other Pentagon arena bosses and relevant labyrinth arenas using the roster and attack clocks in the boss manifest.
 

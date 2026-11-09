@@ -37,7 +37,7 @@ import { ensureSlots, slotted, pairingMods, slotReadiness, activeButton, slotToo
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
-import { CONSUME_VISUAL_MS, cancelConsumeVisual, normalizeConsumeVisual } from "./consume-visual.ts";
+import { CACHE_PICKUP_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizeCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
@@ -2347,6 +2347,8 @@ export class Game {
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     this.loadArea(this.area, false);
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
+    this.player.cachePickupVisual = normalizeCachePickupVisual(s.playerRuntime.cachePickupVisual);
+    this.player.hurtVisual = normalizeHurtVisual(s.playerRuntime.hurtVisual);
     this.restorePendingToolUse(s.playerRuntime.pendingToolUse,now);
     this.restorePendingMeleeContact(s.playerRuntime.pendingMeleeContact,now);
     this.restoreHammerfallStartup(s.playerRuntime.hammerfallStartup);
@@ -2829,6 +2831,8 @@ export class Game {
   }
   loadArea(area, capture = true) {
     if (this.player?.consumeVisual) this.cancelConsumeVisual('area-transition');
+    if (this.player?.cachePickupVisual?.v === 1) this.player.cachePickupVisual = null;
+    if (this.player?.hurtVisual?.v === 1) this.player.hurtVisual = null;
     this.cancelPendingToolUse('area-transition');
     this.cancelPendingMeleeContact('area-transition');
     this.clearHammerfallStartup('area-transition');
@@ -3350,6 +3354,8 @@ export class Game {
         walkPhase: this.player.walkPhase,
         heroPresentationTime: Math.max(0, Math.min(1e12, clock - (this.presentationPausedMs || 0))),
         consumeVisual: normalizeConsumeVisual(this.player.consumeVisual),
+        cachePickupVisual: normalizeCachePickupVisual(this.player.cachePickupVisual),
+        hurtVisual: normalizeHurtVisual(this.player.hurtVisual),
         attackCooldown: remaining(this.player.attackReadyAt, clock),
         attackMotion: remaining(this.player.attackUntil, clock),
         attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock)),
@@ -4252,6 +4258,7 @@ export class Game {
       r = applyInteraction(o, chosen, this.save, this.areaId(), this.area === "dungeon" ? { dungeonDepth: Math.max(0, (this.map?.multiLevel ? this.map.levels || [] : []).findIndex((q) => q.id === this.map.levelId)) } : {}); // release 287
     this.message = r.message;
     if (!r.ok) return r;
+    if (r.transition === "supply" && o.state === "used" && chosen === "collect" && (o.kind === "supplyCache" || o.kind === "weaponCache")) this.stampCachePickupVisual(o.kind);
     if (r.ok && o.kind === "traveler" && chosen === "speak" && !o.reciter && !o.wanderer && !o.rumourTold && this.area === "overworld") { const heard = wonderRumour(this.save, this.rx, this.ry, o.id || o.name); if (heard) { o.rumourTold = true; this.message = `${r.message} ${heard}`; } } // release 674: a traveller who has heard of a wonder says which way it lies (once)
     if ((o.kind === "npc"||o.kind==="shelterMerchant"||o.kind==="traveler") && chosen === "trade") this.shopRequested = o.id;
     if (this.save.hp !== before)
@@ -5051,6 +5058,8 @@ export class Game {
     if (bossPaced(source) && options.source !== "astralDrain") amount *= BOSS_PACE.damage; // release 421 (the Astral Worm's drain keeps its release-307 size: it is also its heal)
     if (this.frenzy?.active) amount *= 1 + FRENZY.extra; // release 710: the frenzy takes more out of you
     p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil)) * hurtScale(this.save)));
+    if (options.source === "ramCharge" || options.source === "phaseCharge" ||
+        options.source === "leapSlam" || options.source === "orb") this.noteHurtVisualImpact();
     p.invulnerableUntil = now + (options.beam ? 320 : 700);
     if (source?.kind === "doomChaser") this.frenzyHit(now); // release 710
     return true;
@@ -6388,6 +6397,14 @@ export class Game {
   closeViewAttackBufferEligible(now = 0) {
     return this.closeViewActionEligible() && !this.fistsEquipped() && this.save.activeWeaponSlot !== "secondary"
       && !this.cursed("attack", now) && !this.penned(now);
+  }
+  ordinaryCloseViewBody() {
+    const active = this.save.magicSkills?.active;
+    return this.closeViewActionEligible() && !this.mechUp() && !this.mountRide() && !aboard(this.save)
+      && !(active?.id === 'ember-form' && active.remaining > 0);
+  }
+  noteHurtVisualImpact() {
+    if (this._hurtVisualWitness === false && this.ordinaryCloseViewBody()) this._hurtVisualWitness = true;
   }
   resolveHammerfallStartup(observedOriginal=null){
     const q=this.hammerfallStartup;if(!q||q.v!==1)return{status:'none',effect:null};
@@ -8130,7 +8147,21 @@ export class Game {
     return this.useConsumable(id, now);
   }
   consumeLogicalNow(now = this.lastUpdateNow || 0) { return Math.max(0, Math.min(1e12, (this.paused ? this.pauseStarted : now) - (this.presentationPausedMs || 0))); }
-  cancelConsumeVisual(reason) { this.player.consumeVisual = cancelConsumeVisual(this.player.consumeVisual, reason); }
+  cancelConsumeVisual(reason) {
+    this.player.consumeVisual = cancelConsumeVisual(this.player.consumeVisual, reason);
+    this.player.cachePickupVisual = cancelCachePickupVisual(this.player.cachePickupVisual, reason);
+  }
+  stampCachePickupVisual(cacheKind, now = this.lastUpdateNow || 0) {
+    const p=this.player;
+    if (!this.ordinaryCloseViewBody() || this.fallen || this.swimming || (Number.isSafeInteger(p.cachePickupVisual?.v) && p.cachePickupVisual.v > 1)) return;
+    const acceptedNow = now > 0 ? now : this.lastUpdateNow > 0 ? this.lastUpdateNow : performance.now();
+    const logicalNow=this.consumeLogicalNow(acceptedNow), visualNow=this.paused?this.pauseStarted:acceptedNow, areaId=this.areaId(), levelId=String(this.map?.levelId||'root');
+    const busy=visualNow<(this.jumpUntil||0)||visualNow<(p.actionVisualUntil||0)||visualNow<(p.attackUntil||0)||visualNow<(p.castUntil||0)||
+      visualNow<(p.dodgeUntil||0)||visualNow<(p.stunnedUntil||0)||visualNow<(p.heldUntil||0)||!!this.fistCharge||!!this.pendingToolUse||!!this.pendingMeleeContact||
+      sampleHurtVisual(p.hurtVisual,logicalNow,areaId,levelId)!==null||
+      !!sampleConsumeVisual(p.consumeVisual,logicalNow,{area:this.area,areaId,levelId},{})?.active;
+    p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs: CACHE_PICKUP_VISUAL_MS, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
+  }
   stampConsumeVisual(itemKind, now) {
     if (Number.isSafeInteger(this.player.consumeVisual?.v) && this.player.consumeVisual.v > 1) return;
     const acceptedNow=now>0?now:this.lastUpdateNow>0?this.lastUpdateNow:performance.now();
@@ -8166,6 +8197,7 @@ export class Game {
       this.player.hp = Math.min(this.save.maxHp, this.player.hp + potionHeal(type, this.save.maxHp));
       c[type]--;
       this.message = `${POTIONS[type].name} mends ${Math.round(this.player.hp - before)} health.`;
+      this.player.cachePickupVisual = cancelCachePickupVisual(this.player.cachePickupVisual, 'drink');
       this.stampConsumeVisual(type, now);
       this.sync();
       return true;
@@ -8214,13 +8246,15 @@ export class Game {
     if (this.passingNote) { this.message = this.passingNote; this.passingNote = null; } // release 569: said after the section's other notes
     if (this.area === "dungeon" && this.map?.skyland) this.tickSkyland(dt); // release 571
     this.lastUpdateNow = now;
+    this._hurtVisualWitness = null;
     if (this.paused) return;
     if (this.area === "overworld" && this._pentOfferAt !== `${this.rx},${this.ry}` && (this._pentOfferWait = (this._pentOfferWait || 0) + Math.max(0, Number(dt) || 0)) >= PENTAGON_FINDING.hunts.settle) { this._pentOfferAt = `${this.rx},${this.ry}`; this._pentOfferWait = 0; this.warmPentagonCatchments(); this.offerPentagonHunt(); } // Pentagon finding: once a section has settled (never per frame), warm the catchments the next crossing may ask about and look for a hunt
     this.save.playSeconds = (Number(this.save.playSeconds) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); // release 379: playtime (paused time is not counted)
-    if (this.fallen) { this.tickFallen(dt, input, now); return; } // release 329
+    if (this.fallen) { if (this.player.hurtVisual?.v === 1) this.player.hurtVisual = null; this.tickFallen(dt, input, now); return; } // release 329
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
+    if (this.ordinaryCloseViewBody()) this._hurtVisualWitness = false;
     this._consumeVisualAcceptedHp = null;
     this.markWalked(); // DIG_GATES: the floor walked in an interior
     this.riderDown(); this.tickMount(dt); // release 748 (riderDown: never carry a rider lift over a frame)
@@ -8576,6 +8610,7 @@ export class Game {
         if(safe||now<=(p.invulnerableUntil||0))return;
         if(enclosureShields(this,{x:shot.x-(Number(shot.dx)||0)*.8,y:shot.y-(Number(shot.dy)||0)*.8}))return; // release 696: the enclosure's walls stop it
         p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));
+        if (shot.hostile) this.noteHurtVisualImpact();
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
@@ -8585,7 +8620,7 @@ export class Game {
       (shot, nx, ny) => this.sunburst(shot, nx, ny), // Sunburst Ricochet
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
-    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));p.invulnerableUntil=now+700}}
+    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));this.noteHurtVisualImpact();p.invulnerableUntil=now+700}}
     const hammerState=this.resolveHammerfallStartup(),hammerObserved=hammerState.status==='pending'?hammerState.effect:null;this._hammerfallObserved=hammerObserved;
     if(this.effects.length)tickSpellFields(this.effects,this.enemies,this.projectiles,dt,now,(x,y)=>{const t=this.map.tiles[Math.floor(y+.6)*width+Math.floor(x+.5)];return !!t&&!t.blocked&&!t.environment});/* release 365: Gravity Well, Stillpoint */
     if(this.effects.length)this.effects = updateEffects(
@@ -8710,6 +8745,7 @@ export class Game {
               (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))) * hurtScale(this.save), // a Tesseract's damageTaken
           ),
         );
+        this.noteHurtVisualImpact();
         p.invulnerableUntil = now + 700;
       }
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
@@ -8779,6 +8815,8 @@ export class Game {
     // Release 515: Sanctum, inside your own lingering spell: less damage, and a steady mend.
     if (fieldOn(this.save, "sanctum") && p.hp > 0 && this.inOwnField()) { const S = FIELD_PASSIVES.sanctum; if (p.hp < hpStart && !fellIntoHazard) p.hp = hpStart - (hpStart - p.hp) * (1 - S.guard); p.hp = Math.min(this.save.maxHp, p.hp + this.save.maxHp * S.mend * dt); }
     this.tickHotSprings(dt, p.hp < hpStart || !!fellIntoHazard, now); // the healing hot springs (HOT_SPRINGS): after every blow and guard of the frame
+    const hurtVisualAccepted = !!this._hurtVisualWitness && p.hp > 0 && p.hp < hpStart && !fellIntoHazard && !this.fallen && !(now < (p.stunnedUntil || 0));
+    this._hurtVisualWitness = null;
     const hpBeforeBypassHazards = p.hp;
     // Release 475: wading through lava in the robot cooks the Wayfarer inside it, past the plating, every guard and Ink Shield.
     if (this.mechUp() && !this.mechBoosting && p.hp > 0 && footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y) === "lava") { p.hp = Math.max(0, p.hp - this.save.maxHp * MECH_LAVA.heat * dt); if (p.hp <= 0) this.message = "The lava's heat cooks the Wayfarer inside the robot."; else if (now > (this.lavaWadeMessageAt || 0)) { this.lavaWadeMessageAt = now + 6000; this.message = "The robot wades through the lava. The heat inside is unbearable: get out of it."; } }
@@ -8799,6 +8837,11 @@ export class Game {
     this.gloomMend(); // the Gloomvast's decoys keep only GLOOM_FINALE.darkness.decoyTake of each blow (before the damage numbers read health)
     if (this.damageNumbers) this.trackDamageNumbers(now); // release 461
     if (p.hp <= 0 && this.area === "dungeon" && !fellIntoHazard && !this.save.session.holeDeath && runHas(this.save, this.areaId(), "secondWind") && !marginRun(this.save, this.areaId()).secondWind) { marginRun(this.save, this.areaId()).secondWind = true; p.hp = Math.max(1, Math.round(this.save.maxHp * SECOND_WIND.share)); p.invulnerableUntil = now + SECOND_WIND.guardMs; this.message = "Second Wind: the blow should have felled you. You are still standing."; this.defeatNotice = { title: "SECOND WIND", detail: "once in this crossing", kind: "discovery" }; } // release 459
+    if (hurtVisualAccepted && p.hp < hpStart && this.ordinaryCloseViewBody() && !(p.hurtVisual?.v > 1)) {
+      const acceptedLogicalMs = this.consumeLogicalNow(now), areaId = this.areaId(), levelId = String(this.map?.levelId || 'root');
+      if (sampleHurtVisual(p.hurtVisual, acceptedLogicalMs, areaId, levelId) === null) p.hurtVisual = { v: 1, kind: 'hurt', acceptedLogicalMs, areaId, levelId };
+    }
+    if ((p.hp <= 0 || now < (p.stunnedUntil || 0)) && p.hurtVisual?.v === 1) p.hurtVisual = null;
     if (p.hp <= 0 && this.rite) this.riteFailed(); // the Rite of Ascendancy: a death breaks it
     if (p.hp <= 0) {
       this.cancelConsumeVisual('death');

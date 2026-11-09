@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at game release r855, merged as 96d7069b162241db099c844a8f62170da64d4fe0. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at game release r856, merged as 4939f21b4cf1bd715c7943388d78e6b8e1017e0e. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 856 | Codex | claude/close-view-tight-corner | Versioned room clearance for new keeps and Pentagons, plus tight-corner framing | Prepared from r855. CI and Preview pending. |
+| 857 | Codex | claude/close-view-cache-pickup | Ordinary Wayfarer hurt, defeat and cache collection gestures with isolated lab scenarios | Prepared against live r856. CI and hosted verification pending. |
 | 854 | Codex | claude/close-view-healing-drink / #509 | Wayfarer healing-drink gesture and isolated Potion lab | Merged as 467e9d974308. CI 42651541179 and 42653990562 passed. Preview 42653990710 succeeded for r854-467e9d974308. Desktop scratch verified the sip and visible vial in WebGL2. Published in r855. Physical-phone validation remains open. |
 | 852 | Codex | claude/close-view-diagnostics-release-cloud / #506 | Read-only Proving Ground renderer diagnostics | Merged as b635f4b34336. CI 42627941926 and Preview 42627941960 passed. Diagnostics were verified on the r853 desktop preview. Published in r853. |
 | 850 | Codex | claude/pg-lantern-recovery-cloud / #504 | Candidate-scoped natural Lantern recovery | Merged as e789c26f7d71. CI and Preview passed. Cloud natural capture, browser reload and damage witness completed. Published in r851. |
@@ -222,6 +222,7 @@ Main is at game release r855, merged as 96d7069b162241db099c844a8f62170da64d4fe0
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 856 | r856-4939f21b4cf1 | 2026-11-09 | Astra review (855→856) found no blockers. Source CI 42672818404 attempt 3, merged CI 42683954351, Preview 42683953090, and Publish 42687022957 passed. Both new sites adopted padding pin 1 and were entered through normal Act in isolated hosted desktop checks. Live identity and Options → System matched; recent errors were empty. |
 | 855 | r855-96d7069b1622 | 2026-11-09 | Astra review (853→855) found no blockers. CI 42662711806 and 42664489989, Preview 42664490015, and Publish 42669454669 passed. The keep and Pentagon room comparisons passed desktop WebGL2 movement checks. Live identity and Options → System matched. Includes the r854 healing-drink gesture. |
 | 853 | r853-a53725ea58a7 | 2026-11-09 | Astra review (851→853): no blockers. Source CI 42643703674, merged CI 42646218531, Preview 42646218711 and Publish 42649614970 passed. Spark Coil, rank-zero Needle Caster and the Blunderbuss comparison were checked in the desktop preview. Tim accepted desktop for r853. Live identity and Options → System matched. Phone verification remains open. Includes r852. |
 | 851 | r851-1a2c35ae7ab9 | 2026-11-09 | Astra review (847→851): no blockers. Source CI 42614947720, merged CI 42620144417, Preview 42620144042, dry run 42638086622 and Publish 42638198273 passed. Tim accepted the exact desktop textured pass for this release. Live identity and Options → System matched. Phone validation remains open. Includes r848–r850. |
