@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 846 — ordinary Grave Lantern material contact
+
+**CODE:** Ordinary pack-world Grave Lanterns participate in the existing bounded actor-contact sweep with a stateless occupied interval from `.33 * scale` through `2.33 * scale`, using the existing finite `.25` through `4` scale clamp. Idle movement and explicitly known physical attack phases remain solid; blink destinations, blocked ram contact and landed recovery use the same existing contact path.
+
+**BOUNDARY:** Actual phase-charge, leap and dive travel remain clear, as do aloft, phasing and lifted states. Unknown attacks or phases fail closed. Contact radii, attack logic, damage, cooldowns, terrain permission, presentation, saves and schema are unchanged. Server-free checks and a static build do not establish hosted GPU presentation, physical-phone performance, other airborne families, boss rigs or full leap/dive acceptance.
+
 ## Release 845 — ordinary Veil Moth material contact
 
 **CODE:** The ordinary, non-pack Veil Moth participates in the existing bounded actor-contact sweep with a stateless occupied interval from `.35 * scale` through `1.48 * scale`, using the existing finite scale clamp of `.25` through `4`. Contact remains symmetric for player and creature movement, samples the existing physical support/carrier phases, and retains genuine clearance when one complete interval is above or below the other.

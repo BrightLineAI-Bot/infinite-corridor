@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Release r845 is assigned to the focused ordinary Veil Moth material-contact candidate against official main r844 (`0ec3fe866c64d6b5e1e9083aa55e08de22840054`). No later release number is assigned.
+Release r846 is assigned to the focused ordinary Grave Lantern material-contact candidate against official main r845 (`715a280c35cbb1c3ac8d8474865ee5631445401e`). No later release number is assigned.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 845 | Codex | `claude/close-view-material-airborne-contact` / #497 | Ordinary non-pack Veil Moth material body interval with genuine vertical clearance | Packaged from official r844. The runtime candidate passed source CI42535918124; the required fresh since-live review has no verdict because the reviewer hit a usage limit. Held for review. Grave Lantern and other airborne families remain separate. |
+| 846 | Codex | `claude/close-view-material-lantern-contact` | Ordinary Grave Lantern low-hover material interval with known physical-phase admission | Packaged from official r845. Held until r845 exact hosted acceptance and publication. Leap/dive travel, other airborne families and boss rigs remain separate. |
+| 845 | Codex | `claude/close-view-material-airborne-contact` / #497 | Ordinary non-pack Veil Moth material body interval with genuine vertical clearance | Merged as official main `715a280c35cbb1c3ac8d8474865ee5631445401e`. Source CI42535918124 passed; merged CI42539736647 and Preview42539736648 were running at merge. Not yet claimed hosted or published. Grave Lantern and other airborne families remain separate. |
 | 840 | Codex | `claude/close-view-armor-recovery` / #492 | Clunky Robot and fitted powered armor with atomic equipment | Published as r840-402c30d2d636. Source CI42521548622, merged CI42522976922, Preview42522977002 and Publish42524268786 succeeded. Fresh Astra review (839→840): no blockers. Live identity and actual Options → System verified; recent errors and console empty; paused250KB journey unchanged. |
 | 839 | Codex | `claude/close-view-target-recenter` / #491 | Finite centered Target recenter, shared presentation facing and live Proving Ground teleport choices | Published as r839-ca60fa41fc60. Source CI42519975159, merged CI42521269417, Preview42521269471 and Publish42522746645 succeeded. Fresh Astra review (838→839): no blockers. Live identity and actual Options → System verified; recent errors and console empty; paused250KB journey unchanged. Hosted Target and real-E floor/menu refresh acceptance passed. |
 | 829 | Codex | `claude/salvage-action-continuity` / #481 | Preserve generic-primary accepted pose continuity | Published as r829-9c21fb237fe9. Exact source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; merge tree matches reviewed source95d11c03. Hosted Salvage idle/swing/recovery, movement and tool/cast/dodge/jump switching checked without console/diagnostic errors. Live identity and actual Options → System verified after normal cache update, recent errors none. |

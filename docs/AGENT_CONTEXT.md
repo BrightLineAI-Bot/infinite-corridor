@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Grave Lantern r846 packaging gate — 2026-11-08
+
+Production remains verified `r844-0ec3fe866c64`. Veil Moth r845 merged as official main `715a280c35cbb1c3ac8d8474865ee5631445401e`; merged CI42539736647 and Preview42539736648 were running at merge, so r845 was not yet hosted, live or published at this checkpoint. Against that complete history, r846 packages only the reviewed ordinary Grave Lantern low-hover material interval and known physical-phase admission. Hold r846 until r845 exact hosted acceptance and publication. Leap/dive travel, other airborne families, boss rigs, melee motion and the final combined sweep remain later. Local servers and the full suite remain stopped.
+
 ## Veil Moth r845 packaging gate — 2026-11-08
 
 Production is verified `r844-0ec3fe866c64`, commit `0ec3fe866c64d6b5e1e9083aa55e08de22840054`, tree `d92fedd7c9a4302256584490170125158e6dba31`. CI, Preview and Publish42537266204 succeeded after a clear Astra review and ordinary hosted Keep 5/Pentagon 10 boundary crossing and door round trips. Live Options → System matches, recent errors are none, and the paused 250 KB journey is unchanged. PR #497 packages ordinary non-pack Veil Moth contact separately. Its required fresh review returned no verdict because the reviewer hit a usage limit; keep r845 held. Grave Lantern, the final sweep and boss-rig research remain later work. Local servers and the full suite remain stopped.
