@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Unnumbered preparation: restore ordinary Grave Lantern material contact after reloading a saved borrowed leap, clearing only the lift discarded with its transient attack.
+- Release 848: restore ordinary Grave Lantern material contact after reloading a saved borrowed leap, clearing only the lift discarded with its transient attack.
 
 
 - Release 847: give Verge Cleaver four weighted right-handed cuts and Iron Fists a full-body dash punch, jab and uppercut. Close View melee starts immediately and resolves contact during the visible strike.
