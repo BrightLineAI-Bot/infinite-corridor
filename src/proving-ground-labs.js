@@ -1,37 +1,37 @@
-import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r855-96d7069b1622';
-import { ordinaryContactEnemy } from './actor-contact.js?v=r855-96d7069b1622';
-import { Game, footprintOpen } from "./game.js?v=r855-96d7069b1622";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r855-96d7069b1622"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r855-96d7069b1622";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r855-96d7069b1622";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.js?v=r855-96d7069b1622";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r855-96d7069b1622";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r855-96d7069b1622";
-import { DIG, planDig } from "./digging.js?v=r855-96d7069b1622";
-import { freshSave, migrateSave } from "./types.js?v=r855-96d7069b1622";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r855-96d7069b1622";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r855-96d7069b1622";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r855-96d7069b1622";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r855-96d7069b1622";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r855-96d7069b1622";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r855-96d7069b1622";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r855-96d7069b1622";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r855-96d7069b1622";
-import { BIOMES, biomeFor } from "./landscape.js?v=r855-96d7069b1622";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r855-96d7069b1622";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r855-96d7069b1622";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r855-96d7069b1622";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r855-96d7069b1622";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r855-96d7069b1622";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r855-96d7069b1622";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r855-96d7069b1622";
-import { ensureLattice } from "./transit-lattice.js?v=r855-96d7069b1622";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r855-96d7069b1622";
-import { fieldOn } from "./lattice-fields.js?v=r855-96d7069b1622";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r855-96d7069b1622";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r855-96d7069b1622";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r855-96d7069b1622";
-import { validActions } from "./interactions.js?v=r855-96d7069b1622";
+import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r856-4939f21b4cf1';
+import { ordinaryContactEnemy } from './actor-contact.js?v=r856-4939f21b4cf1';
+import { Game, footprintOpen } from "./game.js?v=r856-4939f21b4cf1";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r856-4939f21b4cf1"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r856-4939f21b4cf1";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r856-4939f21b4cf1";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.js?v=r856-4939f21b4cf1";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r856-4939f21b4cf1";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r856-4939f21b4cf1";
+import { DIG, planDig } from "./digging.js?v=r856-4939f21b4cf1";
+import { freshSave, migrateSave } from "./types.js?v=r856-4939f21b4cf1";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r856-4939f21b4cf1";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r856-4939f21b4cf1";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r856-4939f21b4cf1";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r856-4939f21b4cf1";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r856-4939f21b4cf1";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r856-4939f21b4cf1";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r856-4939f21b4cf1";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r856-4939f21b4cf1";
+import { BIOMES, biomeFor } from "./landscape.js?v=r856-4939f21b4cf1";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r856-4939f21b4cf1";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r856-4939f21b4cf1";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r856-4939f21b4cf1";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r856-4939f21b4cf1";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r856-4939f21b4cf1";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r856-4939f21b4cf1";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r856-4939f21b4cf1";
+import { ensureLattice } from "./transit-lattice.js?v=r856-4939f21b4cf1";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r856-4939f21b4cf1";
+import { fieldOn } from "./lattice-fields.js?v=r856-4939f21b4cf1";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r856-4939f21b4cf1";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r856-4939f21b4cf1";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r856-4939f21b4cf1";
+import { validActions } from "./interactions.js?v=r856-4939f21b4cf1";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -395,7 +395,7 @@ function adoptionBoundaryStart(map, dy) {
 }
 function routingAdoptionReceipt(fixture) {
   const {game,save,adoptionSpec:S}=fixture, key=`${S.destination.rx},${S.destination.ry}`, B=game.map?.greatBuilding, P=game.map?.pentagon, I=game.area==="dungeon"?game.map?.building:null, candidate=I?.base||B?.base||P?.base||null, expected=S.family==="keep"?`building:${fixture.seed}:${S.destination.rx}:${S.destination.ry}:keep:`:`pentagon:${fixture.seed}:${S.centre.cx}:${S.centre.cy}`, base=candidate?.startsWith(expected)?candidate:null, f1=base?`${base}:f1`:null;
-  return { phase:game.area==="dungeon"?"interior":game.rx===S.destination.rx&&game.ry===S.destination.ry?"destination":"start", current:{area:game.area,rx:game.rx,ry:game.ry,mapId:game.map?.id||null}, target:{family:S.family,destination:S.destination,centre:S.centre||null}, actual:{base,version:I?.V??I?.interiorVersion??P?.V??save.consequences?.dungeons?.[f1]?.interiorVersion??null,atlasPin:save.atlas?.[key]?.pentVersion??null,interiorPin:f1?save.consequences?.dungeons?.[f1]?.interiorVersion??null:null,appearance:I?.appearance||B?.appearance||null,door:game.map?.objects?.find(o=>o.buildingDoor||o.pentagonDoor)?.id||null}, protectedRecord:structuredClone(save.consequences.dungeons[fixture.protectedKey]) };
+  return { phase:game.area==="dungeon"?"interior":game.rx===S.destination.rx&&game.ry===S.destination.ry?"destination":"start", current:{area:game.area,rx:game.rx,ry:game.ry,mapId:game.map?.id||null}, target:{family:S.family,destination:S.destination,centre:S.centre||null}, actual:{base,version:I?.V??I?.interiorVersion??P?.V??save.consequences?.dungeons?.[f1]?.interiorVersion??null,atlasPin:save.atlas?.[key]?.pentVersion??null,interiorPin:f1?save.consequences?.dungeons?.[f1]?.interiorVersion??null:null,roomPaddingPin:f1?save.consequences?.dungeons?.[f1]?.roomPaddingVersion??null:null,appearance:I?.appearance||B?.appearance||null,door:game.map?.objects?.find(o=>o.buildingDoor||o.pentagonDoor)?.id||null}, protectedRecord:structuredClone(save.consequences.dungeons[fixture.protectedKey]) };
 }
 function routingAdoptionFixture(spec, now) {
   const seed="ROUTING0", S={...ROUTING_ADOPTION_SITES[spec.routingAdoption],family:spec.routingAdoption}, save=scratchSave(seed);save.closeView=true;ensureCloseView(save);
@@ -425,43 +425,14 @@ export function selectLabBuildMaterial(fixture, kind) {
   setBuildKind(fixture.game.save, kind); fixture.game.save.build.continuous = false; return true;
 }
 
-const ROOM_PADDING_DIRECTIONS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-const ROOM_PADDING_TILE_KEYS = new Set(["x", "y", "kind", "detail", "blocked", "doorway", "elev", "slope"]);
-
 function roomPaddingWitness(game, mode) {
   const map = game.map;
-  const at = (x, y) => map.tiles[y * map.width + x];
   const reserved = [map.entry, map.exit, ...map.objects, ...map.enemySpawns, ...game.enemies, ...(map.wallGlints || [])];
-  const plain = (tile) => tile && !tile.doorway && !tile.slope && Object.keys(tile).every((key) => ROOM_PADDING_TILE_KEYS.has(key));
-  for (let y = 3; y < map.height - 3; y++) for (let x = 3; x < map.width - 3; x++) {
-    for (const [dx, dy] of ROOM_PADDING_DIRECTIONS) {
-      const tile = (depth, side) => at(x + depth * dx - side * dy, y + depth * dy + side * dx);
-      const floor = tile(-1, 0);
-      if (!plain(floor) || floor.blocked || !/Floor$/.test(floor.kind)) continue;
-      const front = [-2, -1, 0, 1, 2];
-      if (![-2, -1].every((depth) => front.every((side) => {
-        const next = tile(depth, side);
-        return plain(next) && !next.blocked && next.kind === floor.kind && next.elev === floor.elev;
-      }))) continue;
-      // A wall collar makes the strip a recess, with all approaches through the existing room.
-      const wall = (depth, side) => {
-        const next = tile(depth, side);
-        return plain(next) && next.blocked && ["keepWall", "cellarWall"].includes(next.kind);
-      };
-      if (!front.every((side) => wall(0, side) && wall(1, side))) continue;
-      if (reserved.some((point) => point && Math.hypot(point.x - x, point.y - y) < 4)) continue;
-      const cells = [-1, 0, 1].map((side) => tile(0, side));
-      if (mode === "pilot") {
-        const tiles = map.tiles.slice();
-        for (const cell of cells) {
-          tiles[cell.y * map.width + cell.x] = { ...cell, kind: floor.kind, elev: floor.elev, blocked: false };
-        }
-        map.tiles = tiles;
-      }
-      return { mode, found: true, cells: cells.map(({ x, y }) => ({ x, y })), approach: { x: floor.x, y: floor.y }, direction: { x: dx, y: dy } };
-    }
-  }
-  return { mode, found: false };
+  const footprint = roomPaddingFootprint(map, reserved);
+  if (!footprint) return { mode, found: false };
+  if (mode === "pilot") applyRoomPadding(map, footprint);
+  const { cells, approach, direction } = footprint;
+  return { mode, found: true, cells, approach, direction };
 }
 
 // Real exterior doors and production interactions on a fresh scratch save.
@@ -500,6 +471,12 @@ function roomRoutingFixture(spec, seed, now) {
   }
   if (!door) throw new Error(`No usable ${spec.roomRouting} entrance for seed ${seed}.`);
   if (spec.roomRouting === "keep") save.consequences.dungeons[door.dungeonId] = { interiorVersion: version };
+  else {
+    // The matched experiments compare the routed base with their own scratch
+    // projection. The separate adoption fixture exercises the real site pin.
+    const history = save.consequences.dungeons[`${game.map.pentagon.base}:f1`];
+    if (history) delete history.roomPaddingVersion;
+  }
   const keepBase = spec.roomRouting === "keep" ? door.dungeonId.replace(/:f\d+$/, "") : null;
   const appearance = spec.candidate && keepBase ? routingKeepAppearance(keepBase, version) : null;
   if (appearance) {

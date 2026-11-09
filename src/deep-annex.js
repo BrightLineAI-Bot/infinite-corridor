@@ -10,7 +10,7 @@
 // floor's return does not lead back: it lets you out at a random place in the world, `exit.near`–`exit.far` sections from
 // where you went in (open sea refused, unexplored ground preferred).
 // Save: additive at schema 14 (`history.deepAnnex` on each floor's dungeon history: { version, floor, base }).
-import { hashSeed } from "./random.js?v=r855-96d7069b1622";
+import { hashSeed } from "./random.js?v=r856-4939f21b4cf1";
 
 export const DEEP_ANNEX = {
   version: 1,

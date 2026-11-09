@@ -1,4 +1,4 @@
-import { rng, hashSeed } from "./random.js?v=r855-96d7069b1622";
+import { rng, hashSeed } from "./random.js?v=r856-4939f21b4cf1";
 
 // Proving Ground candidates only. The production adoption constants remain 4 / 9.
 // Original implementation of a room-region / connector graph; no upstream code is ported.
@@ -70,6 +70,63 @@ export const routingKeepAppearance = (base, version) => version === CLOSE_VIEW_R
   && /:keep:\d+r?$/.test(base) && hashSeed(`${base}:appearance:v1`) % 4 === 0
   ? { version: 1, kind: "biomechanical-keep" } : null;
 export const biomechanicalKeep = appearance => appearance?.version === 1 && appearance.kind === "biomechanical-keep";
+
+const PADDING_DIRECTIONS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+const PADDING_TILE_KEYS = new Set(["x", "y", "kind", "detail", "blocked", "doorway", "elev", "slope"]);
+const PADDING_FRONT = [-2, -1, 0, 1, 2];
+
+// Select from the generator's immutable result. Callers may finish geometry-dependent
+// object dressing against that result, then apply the returned footprint once, last.
+export function roomPaddingFootprint(map, reserved = [], treasure = () => false) {
+  const {width, height, tiles} = map;
+  const plain = tile => tile && !tile.doorway && !tile.slope && Object.keys(tile).every(key => PADDING_TILE_KEYS.has(key));
+  for (let y = 3; y < height - 3; y++) for (let x = 3; x < width - 3; x++) {
+    for (const [dx, dy] of PADDING_DIRECTIONS) {
+      const tile = (depth, side) => {
+        const tx = x + depth * dx - side * dy, ty = y + depth * dy + side * dx;
+        return tiles[ty * width + tx];
+      };
+      const floor = tile(-1, 0);
+      if (!plain(floor) || floor.blocked || !/Floor$/.test(floor.kind)) continue;
+      const sameFloor = (depth, side) => {
+        const next = tile(depth, side);
+        return plain(next) && !next.blocked && next.kind === floor.kind && next.elev === floor.elev;
+      };
+      const wall = (depth, side) => {
+        const next = tile(depth, side);
+        return plain(next) && next.blocked && (next.kind === "keepWall" || next.kind === "cellarWall");
+      };
+      if (!PADDING_FRONT.every(side => sameFloor(-2, side) && sameFloor(-1, side) && wall(0, side) && wall(1, side))) continue;
+      const cells = [-1, 0, 1].map(side => tile(0, side));
+      if (reserved.some(point => point && Math.hypot(point.x - x, point.y - y) < 4) ||
+          cells.some(cell => treasure(cell.x, cell.y))) continue;
+      return {
+        cells: cells.map(({x, y}) => ({x, y})),
+        walls: cells.map(cell => ({...cell})),
+        floor: {kind: floor.kind, elev: floor.elev},
+        approach: {x: floor.x, y: floor.y},
+        direction: {x: dx, y: dy},
+      };
+    }
+  }
+  return null;
+}
+export function applyRoomPadding(map, footprint) {
+  let tiles = null;
+  for (const [index, wall] of footprint.walls.entries()) {
+    const cell = footprint.cells[index];
+    const i = cell.y * map.width + cell.x;
+    const current = map.tiles[i];
+    const keys = Object.keys(wall);
+    // A persistent terrain overlay owns its tile. Preserve the rest of the recess
+    // so a change to one cell cannot put a wall through a saved actor in another.
+    if (!current || Object.keys(current).length !== keys.length ||
+        keys.some(key => !Object.hasOwn(current, key) || current[key] !== wall[key])) continue;
+    tiles ??= map.tiles.slice();
+    tiles[i] = { ...current, ...footprint.floor, blocked: false };
+  }
+  if (tiles) map.tiles = tiles;
+}
 
 // Exactly two bounded distance maps plus one <=4096-cell scan. Missing safe pairs are explicit.
 export function routingStairPair(base, a, b, fromA, fromB, portsA, portsB, terrainBase) {

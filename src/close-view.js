@@ -1,25 +1,25 @@
-import { rangedWeapon } from './items.js?v=r855-96d7069b1622';
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r855-96d7069b1622";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r855-96d7069b1622";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r855-96d7069b1622";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r855-96d7069b1622";
-import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage } from "./action-motion.js?v=r855-96d7069b1622";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r855-96d7069b1622";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r855-96d7069b1622';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r855-96d7069b1622";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation } from './close-view-player-presentation.js?v=r855-96d7069b1622';
-import { sampleConsumeVisual } from './consume-visual.js?v=r855-96d7069b1622';
-import { fistCharge } from './brawler-spells.js?v=r855-96d7069b1622';
-import { dronePos } from "./affixes.js?v=r855-96d7069b1622";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r855-96d7069b1622";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r855-96d7069b1622";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r855-96d7069b1622";
-import { knockdownPose } from "./lightning-giant-render.js?v=r855-96d7069b1622";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r855-96d7069b1622";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r855-96d7069b1622";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r855-96d7069b1622";
-import { SIGIL_CELLS } from "./watcher.js?v=r855-96d7069b1622";
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r855-96d7069b1622"; // version 4: the GPU scene
+import { rangedWeapon } from './items.js?v=r856-4939f21b4cf1';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r856-4939f21b4cf1";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r856-4939f21b4cf1";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r856-4939f21b4cf1";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r856-4939f21b4cf1";
+import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage } from "./action-motion.js?v=r856-4939f21b4cf1";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r856-4939f21b4cf1";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r856-4939f21b4cf1';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r856-4939f21b4cf1";
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation } from './close-view-player-presentation.js?v=r856-4939f21b4cf1';
+import { sampleConsumeVisual } from './consume-visual.js?v=r856-4939f21b4cf1';
+import { fistCharge } from './brawler-spells.js?v=r856-4939f21b4cf1';
+import { dronePos } from "./affixes.js?v=r856-4939f21b4cf1";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r856-4939f21b4cf1";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r856-4939f21b4cf1";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r856-4939f21b4cf1";
+import { knockdownPose } from "./lightning-giant-render.js?v=r856-4939f21b4cf1";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r856-4939f21b4cf1";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r856-4939f21b4cf1";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r856-4939f21b4cf1";
+import { SIGIL_CELLS } from "./watcher.js?v=r856-4939f21b4cf1";
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r856-4939f21b4cf1"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -73,6 +73,7 @@ export const CLOSE_VIEW = Object.freeze({
     // it sits under the spring's target, so it is seldom reached). Nothing is ever faded to show the Wayfarer.
     sightStep: .1, sightPad: .26, hardPad: .14,
     offsetGain: .25, offsetHold: .3, // lateral candidates must earn a useful, persistent clearance gain
+    tightFocal: .72, // routed-room relief only: bounded widening when solid stone leaves a sub-minimum boom
     shoulderRecover: .25, // clear space must persist before an obstructed shoulder expands again
     shoulderCenter: .55, shoulderFull: .9, // center a compressed boom; regain the preset offset in open space
     // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
@@ -234,7 +235,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r855-96d7069b1622's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r856-4939f21b4cf1's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -394,7 +395,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r855-96d7069b1622's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r856-4939f21b4cf1's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -440,6 +441,7 @@ export function closeViewApplies(g) { return closeViewWanted(g) && !openAirAt(g.
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
 const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+  focal: 1, focalV: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
@@ -458,7 +460,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r855-96d7069b1622's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r856-4939f21b4cf1's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
@@ -637,6 +639,7 @@ const footX = (p) => p.x + .5, footY = (p) => p.y + .75;
 // Later clearance changes never steer yaw or the movement basis.
 function ensureCam(g) {
   if (CAM.map === g.map) return;
+  CAM.focal = 1; CAM.focalV = 0;
   CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.bodyYaw = CAM.bodyDesiredYaw = FACING_YAW[g.player.facing] ?? NaN; CAM.bodyTransient = false; CAM.bodyRevision = CAM.targetRevision = 0; CAM.targetRecentre = false; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.shoulderRoom = CAM.shoulderClearFor = 0; CAM.pausedAt = NaN;
   CAM.pausedTotal = Number(g.presentationPausedMs) || 0;
   const facing = FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
@@ -857,6 +860,10 @@ function boomLength(g, fx, fy, ox = footX(g.player), oy = footY(g.player)) {
 // boom-pad square; the final padded feet-to-eye ray also has to clear the corner.
 // No screen/body history enters this decision, so a stationary rig cannot pump.
 const RIG_OFFSETS = [0, .5, -.5, 1, -1], RIG_REACH = new Float64Array(5);
+function tightCornerFamily(g) {
+  const b = g.map?.building;
+  return !g.map?.hall?.tall && ((b?.interiorVersion === 5 && b.style === "keep" && !b.pentagon) || (b?.pentagon && b.V === 10));
+}
 function offsetReach(g, fx, fy, ax, ay, offset) {
   const C = CLOSE_VIEW.camera, D = closeViewPreset(g).distance, pad = C.boomPad, step = C.boomStep / 2;
   closeViewStats.rigProbes++;
@@ -988,7 +995,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r855-96d7069b1622's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r856-4939f21b4cf1's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
@@ -1142,7 +1149,10 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // wall is cut at once, the only snap there is
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && wallAt(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
-  const craneUp = CAM.crane, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const craneUp = CAM.crane, baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const focalRelief = tightCornerFamily(g) ? Math.max(0, Math.min(1, (C.minDistance - want) / C.minDistance)) : 0;
+  spring(CAM, "focal", "focalV", lerp(1, C.tightFocal, focalRelief), C.letOut * 1.5, dt);
+  const F = baseF * CAM.focal;
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
   const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = CAM.centeredRear ? 0 : (offsetWant ? 0 : Cp.shoulder * mix) * Math.max(0, Math.min(1, (CAM.dist / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter))); let room = sh;
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (wallAt(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
@@ -1207,7 +1217,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     lowPitch = Math.max(lowPitch, angle - room); highPitch = Math.min(highPitch, angle + room);
   }
   // A very short boom under a low arch may not fit the whole body. Centre its
-  // angular span then; never move through stone, widen the FOV or shrink the model.
+  // angular span within the available lens and keep the camera on the clear side of the wall.
   const terrainPitch = lowPitch <= highPitch ? Math.max(lowPitch, Math.min(highPitch, requestedPitch))
     : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (footAngle + headAngle) / 2));
   CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;

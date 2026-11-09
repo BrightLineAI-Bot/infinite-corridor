@@ -9,8 +9,8 @@
 // normalised here). Deeper crossings hold pages more often (`deepBonus` per band). Not listed among the Journal's Active quests
 // (Tim, release 581); each page read is written in the Journal, and the Reciter's Tome keeps the book with no title (main.ts).
 // All writing is original to the game. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r855-96d7069b1622";
-import { READINGS, READING_ORDER, READING_BANDS, readingAt } from "./lore.js?v=r855-96d7069b1622";
+import { hashSeed } from "./random.js?v=r856-4939f21b4cf1";
+import { READINGS, READING_ORDER, READING_BANDS, readingAt } from "./lore.js?v=r856-4939f21b4cf1";
 
 export const TORN_PAGES = { chance: .06, deepBonus: .02, minDepth: 2, title: "A book with no title" };
 // What each page says. A page never names the book it was torn from, nor the Reading's book.

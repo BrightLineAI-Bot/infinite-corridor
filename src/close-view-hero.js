@@ -1,7 +1,7 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r855-96d7069b1622';
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r855-96d7069b1622';
-import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose } from './close-view-player-presentation.js?v=r855-96d7069b1622';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r856-4939f21b4cf1';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r856-4939f21b4cf1';
+import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose } from './close-view-player-presentation.js?v=r856-4939f21b4cf1';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
