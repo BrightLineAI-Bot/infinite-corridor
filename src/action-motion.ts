@@ -327,7 +327,7 @@ const HERO_PRESENTATION = new WeakMap();
 export function recordHeroPresentation(player,pose){if(!player||typeof player!=='object'||!pose||!Number.isFinite(pose.gaitPhase)||!Number.isFinite(pose.speed)||!Number.isFinite(pose.yaw)||!Number.isFinite(pose.now)||!Number.isFinite(pose.x)||!Number.isFinite(pose.y))return;let q=HERO_PRESENTATION.get(player);if(!q){q={gaitPhase:0,speed:0,yaw:0,now:0,x:0,y:0};HERO_PRESENTATION.set(player,q);}q.gaitPhase=pose.gaitPhase;q.speed=Math.max(0,Math.min(8,pose.speed));q.yaw=pose.yaw;q.now=pose.now;q.x=pose.x;q.y=pose.y;}
 export function recentHeroPresentation(player,now,x,y){const q=player&&HERO_PRESENTATION.get(player);return q&&Number.isFinite(now)&&now-q.now>=0&&now-q.now<=250&&Math.hypot(q.x-x,q.y-y)<=.25?{...q}:null;}
 
-// Accepted primary presentation cycles; no timing, hits or movement are owned here.
+// Accepted primary presentation cycles; their idle window never owns contact timing, hits or movement.
 export function normalizePrimaryMotion(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !Number.isInteger(raw.v) || raw.v < 2) return null;
   if (raw.v > 2) return { ...raw };
@@ -377,15 +377,29 @@ export function normalizePrimaryCombo(raw) {
   if (!Number.isInteger(raw.step) || raw.step < 1 || raw.step > 3) return null;
   return { ...raw, weaponKind: raw.weaponKind, step: raw.step };
 }
-export function advancePrimaryCombo(player, weaponKind) {
+export const CLEAVER_COMBO_IDLE_MS = 1000;
+export function advancePrimaryCombo(player, weaponKind, logicalNow) {
   if (weaponKind !== 'cinder-pike' && weaponKind !== 'verge-cleaver') { player.primaryCombo = null; return null; }
   const prior = normalizePrimaryCombo(player.primaryCombo);
-  const four = weaponKind === 'verge-cleaver';
-  const continuing = prior?.weaponKind === weaponKind && (four ? prior.v === 2 : prior.v == null || prior.v === 1);
+  const four = weaponKind === 'verge-cleaver', clocked = four && arguments.length >= 3;
+  // A supported current action may start at one without rewriting an opaque future counter.
+  if (clocked && prior?.v > 2) return 1;
+  let continuing = prior?.weaponKind === weaponKind && (four ? prior.v === 2 : prior.v == null || prior.v === 1);
+  const window = prior?.resetWindow, knownWindow = window && typeof window === 'object' && !Array.isArray(window) && window.v === 1;
+  const opaqueWindow = window != null && !knownWindow;
+  const validClock = typeof logicalNow === 'number' && Number.isFinite(logicalNow) && logicalNow >= 0 && logicalNow <= 1e12;
+  if (clocked && !opaqueWindow) {
+    const at = knownWindow ? window.acceptedLogicalMs : NaN;
+    const validAt = typeof at === 'number' && Number.isFinite(at) && at >= 0 && at <= 1e12;
+    const elapsed = logicalNow - at;
+    continuing = continuing && validClock && validAt && elapsed >= 0 && elapsed < CLEAVER_COMBO_IDLE_MS;
+  }
   const step = continuing ? prior.step % (four ? 4 : 3) + 1 : 1;
   const next = { ...(prior || {}), weaponKind, step };
   if (four) next.v = 2;
   else delete next.v;
+  if (clocked && !opaqueWindow && validClock)
+    next.resetWindow = { ...(knownWindow ? window : {}), v: 1, acceptedLogicalMs: logicalNow };
   player.primaryCombo = next;
   return step;
 }

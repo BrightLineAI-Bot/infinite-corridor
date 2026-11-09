@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Official main is r849 (`01bc5b39039acbe22f7a6ae06ba33e7343a2abf5`). Root prepares provisional r850 for the focused candidate-recovery package after checking main and open PRs; recheck the integration baton and main + 1 before merge. No independent Cleaver number is reserved.
+Official main is r850 (`e789c26f7d7171afefcb016481d323518b4a5d90`), reviewed tree `1bf2ca098629088b8ad5bac947054f1bd838aeb2`. Root holds provisional r851 for the isolated Cleaver-only idle-reset preparation, with integration held until r850 hosted acceptance. No other worker claims 851. Recheck remote main, main + 1 and the integration baton before any r851 draft or merge.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 850 (draft candidate) | Codex | `claude/pg-lantern-recovery-cloud` | Natural Lantern live capture, candidate-bound scratch persistence, canonical reload and reset isolation | Source e840002b independently cleared; provisional package prepared against actual main849. Exact packaged Astra/CI/Preview and hosted acceptance pending. Not merged or published. |
+| 851 (provisional local preparation) | Codex / root | `claude/cleaver-reset-release-cloud` | Cleaver-only 1000 ms accepted logical-input inactivity reset | Identical reviewed source 76fb70a0 reconciled with corrected recovery (rehearsal fd346850,106 focused checks). Prepared on actual main850 e789c26f; final packaging review/CI/Preview/hosted gates pending. Hold integration until 850 hosted acceptance; no push, PR, merge or publication. |
+| 850 | Codex / root | `claude/pg-lantern-recovery-cloud` / #504 | Natural Lantern live capture, candidate-bound scratch persistence, canonical reload and reset isolation | Merged once as e789c26f, tree 1bf2ca09 matching corrected Astra clearance. Source CI passed 3343 checks; merged CI42613606537 and Preview42613606635 pending at this checkpoint. Hosted persisted reload/manual contact remains OPEN; not published. |
 | 849 | Codex | `claude/close-view-refinement-release-cloud` / #503 | Coordinated action, equipment, Hammerfall/Golem and placed-light refinement | Merged once as `01bc5b39`, reviewed tree `ccd8f462`; source CI42602789320, merged CI42604342929 and Preview42604342965 passed. Isolated identity/startup smoke only; full hosted gates remain. Not published. |
 | 848 | Codex | `claude/grave-lantern-reload-lift` / #500 | Clear discarded Grave Lantern leap lift on canonical reload reset | Merged as `a553e1a5`, reviewed tree `6e4170e5`; source CI42549164434, merged CI42598043317 and Preview42598043388 passed. Exact natural persisted-reload hosted gate remains open; not published. |
 | 840 | Codex | `claude/close-view-armor-recovery` / #492 | Clunky Robot and fitted powered armor with atomic equipment | Published as r840-402c30d2d636. Source CI42521548622, merged CI42522976922, Preview42522977002 and Publish42524268786 succeeded. Fresh Astra review (839→840): no blockers. Live identity and actual Options → System verified; recent errors and console empty; paused250KB journey unchanged. |
