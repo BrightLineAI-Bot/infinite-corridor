@@ -102,9 +102,16 @@ test('walls: faces kept as far as the floor is drawn, a door face at every openi
   const src = readFileSync(new URL('../src/close-view.ts', import.meta.url), 'utf8'); assert.match(src, /reach = fogFar \+ 1/); assert.match(src, /segDist2\(x0, y0, x1, y1, CAM\.cx, CAM\.cy, ox, oy\)/);
 });
 
-test('targeting: standing still a swing goes the way the camera looks; a tap near a creature picks it; the nested trap and combat marks draw onto the Close View floor', () => {
-  const { g, foe } = room(); frame(g, 2); const yaw = CV.closeViewCamera().yaw; g.save.lastAim = { x: -1, y: 0 }; const st = { x: 0, y: 0 }; CV.closeViewSteer(g, st); CV.closeViewUnsteer(st);
-  assert.ok(Math.abs(g.save.lastAim.x - Math.cos(yaw)) < 1e-9 && Math.abs(g.save.lastAim.y - Math.sin(yaw)) < 1e-9, 'idle: aim along the view');
+test('targeting: standing still preserves character-front aim through camera orbit; a tap near a creature picks it; the nested trap and combat marks draw onto the Close View floor', () => {
+  const { g, foe } = room(); frame(g, 2); const front = CV.closeViewPlayerFacingYaw(g, T);
+  for (const orbit of [Math.PI / 2, Math.PI]) {
+    CV.closeViewPan(wrap(front + orbit - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, T); frame(g, 1);
+    assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - front) - orbit) < 1e-9, 'camera deliberately orbits away from the displayed front');
+    g.save.lastAim = { x: Math.cos(front + .37), y: Math.sin(front + .37) };
+    const st = { x: 0, y: 0 }; CV.closeViewSteer(g, st, T); CV.closeViewUnsteer(st);
+    assert.ok(Math.abs(g.save.lastAim.x - Math.cos(front)) < 1e-9 && Math.abs(g.save.lastAim.y - Math.sin(front)) < 1e-9, 'idle: aim follows character front, independently of camera and stale saved aim');
+  }
+  const yaw = CV.closeViewCamera().yaw;
   const e = foe('tap', Math.round(Math.cos(yaw) * 2), Math.round(Math.sin(yaw) * 2)); frame(g, 1);
   const c = CV.closeViewCamera(), dx = e.x + .5 - c.x, dy = e.y + .82 - c.y; // find the creature's foot on screen by probing taps
   let hit = null; for (let y = H * .3; y < H * .95 && !hit; y += 6) for (let x = 0; x < W && !hit; x += 6) { const q = CV.closeViewScreenToWorld(g, W, H, x, y); if (q?.enemyId === 'tap') hit = { x, y }; }
