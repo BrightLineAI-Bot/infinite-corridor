@@ -78,3 +78,17 @@ test('actual imported renderer selects idle and accepted recipes while unready/n
   for(const [id,kind] of [['wayfarer-active-robot','playerRobot'],['wayfarer-ember-form','playerEmberForm']]){const f=fixture(id);resetCloseViewCamera();render(screen,f,390,844,100000);assert.equal(closeViewGLStats.heroTriangles,0);assert.equal(closeViewGLStats.modelTriangles,modelTriangleCount(kind+':emitter'));}
  }finally{CLOSE_VIEW_HOOKS.gl=null;resetCloseViewGL();setCloseViewCanvasFactory(null);for(const name of names){if(old.get(name)===undefined)delete globalThis[name];else globalThis[name]=old.get(name);}}
 });
+
+test('Close View gallery starts an ordinary Needle Caster with its own accepted shot', () => {
+  const fixture = createLabFixture({ lab: 'combat-assets', scenario: 'blade-needle-ashling', seed: 'CINDER-VERGE-47', now: 1000 });
+  const { game, save } = fixture;
+  assert.equal(fixture.scenario, 'blade-needle-ashling');
+  assert.equal(save.closeView, true);
+  assert.equal(save.equipment.secondary.upgradeRank, 0);
+  assert.equal(rangedWeapon(save.equipment.secondary).name, 'Needle Caster');
+  assert.equal(fixture.diagnostics.resolved.tool.profile, 'Needle Caster');
+  assert.equal(game.fireSecondary(1000, { x: 1, y: 0 }), true);
+  assert.deepEqual(game.player.attackVisual.toolAppearance, { v: 1, kind: 'needle-caster' });
+  assert.equal(game.projectiles.length, 1);
+  assert.equal(game.projectiles[0].damageType, 'physical');
+});
