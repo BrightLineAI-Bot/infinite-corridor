@@ -4,6 +4,14 @@ Updated: 2026-11-09. This is the work record for the owner's Close View notes an
 
 Verified live: r847-6be077b9239e, commit 6be077b9239eae5e32733b2be720da2e9b65d60f, tree ada3107ed8c64c6d6edfab75e5cd4d1b3ebccbaa. Source CI42542299944, merged CI42543235774, Preview42543235734 and Publish42544780650 succeeded. Fresh Astra review (846→847) cleared the exact corrected tree. Live identity and Options → System match, the journey is paused at 250 KB, and recent errors are empty.
 
+## Corrected r852 Astra cleared / CI gate — 2026-11-09 13:37 UTC
+
+Parent supplied fresh Astra re-review clearance for exact #506 head4702585eb5a11a9fc006db51b99d4a6a30990723, tree430a9c43d986f17a94d01c1a2cd74f7f858f7e8d, base1a2c35ae7ab984a069c0e4e68732cb6df28dcdf6. Sole prior P2 is fixed through observational lifecycle invalidation, preserved historical counters and completed-scene reactivation. Astra independently passed68 focused checks, substantively verified old-source regression failures/new-source passes, plus fresh build/isolation and whitespace. No hosted/GPU/textured/phone acceptance was claimed. This supersedes the pending-review wording below only for this exact tree.
+
+Exact-head CI42626474142 remains in progress at this checkpoint: preview rehearsal passed; full npm test is running. PR506 remains draft/mergeable and frozen. Under Tim's automatic authority root may merge after rechecking head/tree/base/main and all exact checks; publication remains held until its required acceptance. No merge or Publish yet; main851/live847 remain unchanged.
+
+Independent queue: hammer_golem owns an isolated, unnumbered Spark/Needle imported-gear routing source branch based on corrected506, preserving native generic fallback and all budgets/mechanics. It does not edit506 or claim the next release. combined_acceptance prepares the public post-Preview diagnostics/lifecycle/renderer witness packet; root alone controls browser and integration. lantern_review continues read-only accepted healing-drink cancellation/clock/save audit; no concurrent Game edits. Geometry/boss adoption stays behind player work. Physical device and alternative GPU provision remain unavailable in the selected cloud toolset; no settings/transport workaround is planned.
+
 ## Corrected diagnostics r852 Astra handoff — 2026-11-09 13:33 UTC
 
 Current draft #506 exact remote head `4702585eb5a11a9fc006db51b99d4a6a30990723`, tree `430a9c43d986f17a94d01c1a2cd74f7f858f7e8d`, base/main still r851 `1a2c35ae7ab984a069c0e4e68732cb6df28dcdf6`. Remote tree matches clean local correction3b426d4a722cdeae3f5ae8d507563b7683f30c07. Exact-head CI42626474142 is pending at this checkpoint. No release-number change, merge or publication; live remains verified847.
