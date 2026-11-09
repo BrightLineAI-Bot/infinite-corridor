@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Grave Lantern r848 packaging candidate — 2026-11-09
+
+PR #500's reviewed source `0fd6e17db01194a529480606bbd0e636e8d879c5` is reconciled with documentation-only main `4359abc880b2116f3de2f5ed7640c4c1ab0554a1` and locally packaged as provisional r848. The only gameplay correction clears discarded Grave Lantern `hopLift` during canonical runtime reset; the natural borrowed-leap regression preserves position, HP, cooldowns and unknown fields. Prior exact source Astra review cleared the fix; the final packaging delta, exact-head CI, Preview and hosted acceptance remain separate gates. No merge or publication is implied. Recheck main and the release baton before integration. Production remains verified r847; preserve the separate refinement worktrees.
+
 ## Close View r847 production and combined pass
 
 Production is verified at r847-6be077b9239e, commit 6be077b9239eae5e32733b2be720da2e9b65d60f and tree ada3107ed8c64c6d6edfab75e5cd4d1b3ebccbaa. Exact CI42542299944, merged CI42543235774, Preview42543235734 and Publish42544780650 succeeded after Astra cleared the knockdown correction. Options → System matched, with the journey paused and no recent errors. The combined pass records hosted and regression evidence in close-view-pass-manifest.md. Grave Lantern borrowed-leap reload remains a separate draft PR (#500); boss rigs remain planning, and physical phone FPS, thermals and multitouch remain unmeasured.
