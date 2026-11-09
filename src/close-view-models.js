@@ -1,13 +1,13 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r846-672941fdd677';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r846-672941fdd677';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r846-672941fdd677';
-import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r846-672941fdd677';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r846-672941fdd677';
-import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.js?v=r846-672941fdd677';
-import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.js?v=r846-672941fdd677';
-import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r846-672941fdd677';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r846-672941fdd677';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r847-6be077b9239e';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r847-6be077b9239e';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r847-6be077b9239e';
+import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r847-6be077b9239e';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r847-6be077b9239e';
+import { CLOSE_VIEW_COMPANION_MODELS } from './close-view-companion-models.js?v=r847-6be077b9239e';
+import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose } from './close-view-player-presentation.js?v=r847-6be077b9239e';
+import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r847-6be077b9239e';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r847-6be077b9239e';
 export const MODEL_FLOATS = 10;
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
 const ash = 0x87503f, coal = 0x372927, ember = 0xf3a55c;
@@ -424,17 +424,19 @@ export function writeCloseViewModel(out, offset, actor) {
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
   const fist = pose === "fist", chargingFist = pose === "fistCharge", fistStep = [1,2,3].includes(actor.fistStep) ? actor.fistStep : 1;
-  const stage=actor.primaryStage??primaryVisualStage(actor),newCleaver=kind==='playerVergeCleaver'&&cleaverHandRoles('verge-cleaver',stage).grip==='leftSocket',opaqueCleaver=kind==='playerVergeCleaver'&&stage?.kind==='opaque',cut=newCleaver?cleaverCutMotion(stage,pose==='attack'?progress:0):null;
+  const stage=actor.primaryStage??primaryVisualStage(actor),meleePose=playerLike&&(pose==='attack'||pose==='fist')?sampleMeleeActionPose(actor.meleeAction,progress,stage?.step??fistStep,actor.fistLead):null,
+    weightedFists=meleePose?.kind==='iron-fists',newCleaver=kind==='playerVergeCleaver'&&(meleePose?.kind==='verge-cleaver'||cleaverHandRoles('verge-cleaver',stage).grip==='leftSocket'),opaqueCleaver=kind==='playerVergeCleaver'&&!meleePose&&stage?.kind==='opaque',cut=meleePose?.kind==='verge-cleaver'?meleePose:newCleaver?cleaverCutMotion(stage,pose==='attack'?progress:0):null;
+  if(meleePose)strike=meleePose.weight;
   if(newCleaver)strike=cut.weight;if(opaqueCleaver)strike=0;
   const primaryStep=[1,2,3].includes(actor.primaryStep)?actor.primaryStep:1,canonicalPrimary=kind==='playerCinderPike'||kind==='playerVergeCleaver';
-  const turn = newCleaver?cut.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
+  const turn = newCleaver?cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + .29 * strike - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
+  const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
     * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
-  const shift = (kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14) * strike - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
+  const shift = (weightedFists?(meleePose.move==='dash'?.25:.13)*meleePose.drive:(kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14) * strike) - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
   const foundry = kind.startsWith('foundry-');
@@ -455,7 +457,13 @@ export function writeCloseViewModel(out, offset, actor) {
         ? Math.sin(phase * 1.3 - swing * .57) * (.018 + .045 * moving) * secondary * (1 - fall)
       : 0;
     let angle = semanticAngle(kind, swing, actor.action, actionFamily, actionPhase, actionProgress, actionWeight, beat, moving, phase, secondary);
-    if ((playerLike || kind === "corridorGolem") && Math.abs(swing) === 2 && (fist || chargingFist)) {
+    if (playerLike&&weightedFists&&Math.abs(swing)===2) {
+      const striking=swing===(meleePose.lead>0?-2:2),guard=meleePose.move==='uppercut'?-.72:-.58;
+      angle=striking?guard-(meleePose.move==='uppercut'?1.62:meleePose.move==='dash'?1.18:.96)*meleePose.drive:guard-.16*meleePose.drive+.20*meleePose.recovery;
+    } else if(playerLike&&weightedFists&&Math.abs(swing)===1) {
+      // Rear-foot drive and the opposite planted lead foot survive even with ambient motion suppressed.
+      const rear=swing===(meleePose.lead>0?1:-1);angle=(rear?-.44:.24)*meleePose.drive+(rear?.18:-.10)*meleePose.recovery;
+    } else if ((playerLike || kind === "corridorGolem") && Math.abs(swing) === 2 && (fist || chargingFist)) {
       const lead=swing===(fistStep===2?2:-2);
       angle=chargingFist?-.65-.35*progress:lead?-.65-(fistStep===3?1.75:.95)*strike:-.55-.18*strike;
     } else if (angle !== null) { /* authored action-family joint */ }

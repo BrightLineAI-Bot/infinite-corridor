@@ -7,8 +7,8 @@
 // whole again, first on the farm and in the quarry, then in every section within `ringFor(epoch)` sections of the
 // Refuge (the ring widens by one each time, up to `maxRadius`). A section regrows when it is next loaded; trees felled
 // across a gap as a log crossing stay down. Data and rules; game.ts calls in.
-import { hashSeed } from "./random.js?v=r846-672941fdd677";
-import { LETHAL_KINDS } from "./landscape.js?v=r846-672941fdd677";
+import { hashSeed } from "./random.js?v=r847-6be077b9239e";
+import { LETHAL_KINDS } from "./landscape.js?v=r847-6be077b9239e";
 
 export const REGROW = { every: 20, maxRadius: 5 };
 export const REFUGE_LANDS = {

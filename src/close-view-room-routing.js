@@ -1,4 +1,4 @@
-import { rng, hashSeed } from "./random.js?v=r846-672941fdd677";
+import { rng, hashSeed } from "./random.js?v=r847-6be077b9239e";
 
 // Proving Ground candidates only. The production adoption constants remain 4 / 9.
 // Original implementation of a room-region / connector graph; no upstream code is ported.
