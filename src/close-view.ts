@@ -1906,6 +1906,14 @@ function buildStatic(map, geo, th) {
     if (Pr.chain && rnd(tx, ty, side, 43) < Pr.chain) cards.push(5, mx + ux * along(44) + nx * .32, my + uy * along(44) + ny * .32, .8 + rnd(tx, ty, side, 45) * .7, 0, 0, 0, 0);
     if ((ab & 1) && Pr.web && rnd(tx, ty, side, 46) < Pr.web) cards.push(4, x0, y0, ux, uy, nx, ny, .45 + rnd(tx, ty, side, 47) * .35);
   }
+  // A low marker makes the optional landing legible while keeping the approach dim.
+  const crawlLanding = map.closeViewCrawl?.landing;
+  if (crawlLanding && free(crawlLanding.x, crawlLanding.y)) {
+    const { x, y } = crawlLanding;
+    const marker = paint(x + .5, y + .5, .025, 0, 0, .45, .45);
+    marker.rect(0, 0, .3, .085, [.58, .43, .24]);
+    lights.push(x + .5, y + .5, .42, 2, .7, src.hue, 0, 1);
+  }
   // arches over doorways: a passage one tile wide through a wall between two rooms takes an arch at each end, with its soffit
   const A = th.arch, stoneMat = th.wall.kind === 1 ? 1 : th.wall.kind, acol = th.wall.kind === 1 ? wood : tg.wall, round = A.radius > .01;
   const roomy = (x, y, ew) => ew ? !solid(x - 1, y) || !solid(x + 1, y) : !solid(x, y - 1) || !solid(x, y + 1);

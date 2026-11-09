@@ -40,6 +40,8 @@ The local `claude/stillworks-close-view-pilot` branch adds the Stillworks baseli
 
 The fixture renders with the existing world camera. The next step is to qualify Stillworks cover, landmarks, gates and effect projection in Close View before admitting the arena or changing the Walker rig.
 
+The scratch fixture adds covered and exposed teleport positions two tiles apart. Both CINDER-VERGE-47 and TIM1 confirm that the production projectile ray from the Walker’s starting point is blocked at the first and clear at the second. The targets are available while the original arena map is active.
+
 ### Walker planning findings to preserve
 
 The Astra audit against `268e5c0262911cd82d0dfdd6c1db53eb9950f0e4` found a prerequisite. `interiorMap` excludes both finale and Stillworks flags. Before rig work, qualify the actual 41×39 Stillworks scene for Close View and add a scratch route through the production arena loader. Verify cover, formations, camera collision, effect projection and the normal gate and victory flow. Keep existing admission guards for unrelated scenes. The public `pack-boss-voidWalker` scenario can exercise generic attack semantics. Actual arena acceptance needs the tuned `pentFinaleBeast` without the world-beast flag.

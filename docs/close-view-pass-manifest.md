@@ -36,6 +36,12 @@ Verified live on 2026-11-09: r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855
   Excavation baseline verified in r857 scratch with DIG-AUDIT0. Ordinary Act opened tile (18, 26) at elevation 2. Normal movement crossed from y25 to y26.12 and returned to y25.03 with HP 60. Shovel presentation is the next tool interaction, using this same fixture. Stone placement remains a separate pass because repeated and continuous building need their own presentation rules. In the r857 current-keep scratch preview, two normal Build presses produced two independent records at level 2, spent 10 stone and cleared the stack as the records expired. The integrated local pass also passed 57 focused checks across routing, body contact, tight corners, jumping, blocks, chest, injury and GL recovery.
 - Start the articulated boss program with the Walker pilot after the player and room passes. Then work through the other Pentagon arena bosses and relevant labyrinth arenas using the roster and attack clocks in the boss manifest.
 
+## Bloodborne routing and Stillworks qualification
+
+Local branch `claude/stillworks-close-view-pilot` adds separate Proving Ground keep and Pentagon crawl experiments. The default witnesses take four steps through a sloped passage and safe drop. Existing return walks take twelve and twenty steps. Both were traversed with normal movement at full health, and the landing marker uses the existing static light pass. Existing floors and history pins are preserved by keeping the experiment in scratch fixtures. Source checks and static build passed. Hosted camera and lighting checks are next. [Routing study](close-view-dungeon-routing-study.md)
+
+The Stillworks fixture now provides nearby exposed and covered positions verified against the production projectile line-of-sight rule. The arena still uses its world camera. Close View qualification needs landmark, gate and effect projection evidence before the Walker rig work. [Boss rig manifest](close-view-boss-rig-manifest.md)
+
 ## Local ownership and r851 acceptance — 2026-11-09
 
 Tim transferred primary gameplay, integration, merge and publication ownership to the local Codex coordinator and directed the previous cloud gameplay coordinator to stop. The separate cloud effort may continue its assigned testing and publishing infrastructure work. Release numbering and production dispatch stay with the local coordinator. Main at takeover was r852 b635f4b34336b3bad89054919ed699070ab8bdaa.

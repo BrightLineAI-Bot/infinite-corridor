@@ -1,11 +1,11 @@
 import { RECOVERY_CONTEXT } from './proving-ground-recovery.ts';
 import { ordinaryContactEnemy } from './actor-contact.ts';
-import { Game, footprintOpen } from "./game.ts";
+import { Game, footprintOpen, hasLineOfSight } from "./game.ts";
 import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.ts"; // the Close View lab
 import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.ts";
 import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.ts";
 import { BUILDINGS, buildingHere } from "./great-buildings.ts";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.ts";
 import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.ts";
 import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.ts";
 import { DIG, planDig } from "./digging.ts";
@@ -249,6 +249,8 @@ const CLOSE_VIEW_LAB = [
   { id: "routing-keep-biomechanical-candidate", label: "Routing experiment: biomechanical Old Keep", roomRouting: "keep", candidate: true, biomechanical: true },
   { id: "routing-pentagon-baseline", label: "Routing comparison: Pentagon (current)", roomRouting: "pentagon", candidate: false },
   { id: "routing-pentagon-candidate", label: "Routing experiment: Pentagon (branched rooms)", roomRouting: "pentagon", candidate: true },
+  { id: "routing-crawl-keep", label: "Routing experiment: keep crawl and drop", roomRouting: "keep", candidate: true, crawlSeed: "CRAWL26" },
+  { id: "routing-crawl-pentagon", label: "Routing experiment: Pentagon crawl and drop", roomRouting: "pentagon", candidate: true, crawlSeed: "CRAWL1" },
   { id: "routing-adoption-new-keep", label: "Routing adoption: cross into a new standalone keep", routingAdoption: "keep" },
   { id: "routing-adoption-new-pentagon", label: "Routing adoption: cross into a new Pentagon", routingAdoption: "pentagon" },
   { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
@@ -317,9 +319,31 @@ function stillworksWalkerFixture(spec, seed, now) {
   if (!entered.ok || game.areaId() !== pentagonArenaId(plan.base)) {
     throw new Error("The vault wall did not lead to the Stillworks.");
   }
+  const map = game.map;
+  const walker = game.enemies.find(enemy => enemy.pentFinaleBeast === "voidWalker");
+  if (!walker) throw new Error("The Stillworks did not load its pinned Void Walker.");
+  const origin = { x: walker.x + .5, y: walker.y + .5 };
+  const cover = map.stillworks.pillars || [];
+  const probes = [];
+  for (const pillar of cover) {
+    const nearby = map.tiles.filter(tile => tile.kind === "stillFloor" &&
+      Math.hypot(tile.x - pillar.x, tile.y - pillar.y) <= 4 &&
+      Math.hypot(tile.x - walker.x, tile.y - walker.y) > 5 &&
+      footprintOpen(map, map.width, tile.x, tile.y));
+    const exposed = nearby.filter(tile => hasLineOfSight(origin, { x: tile.x + .5, y: tile.y + .7 }, map, map.width, true));
+    const shadow = nearby.find(tile => !exposed.includes(tile) &&
+      exposed.some(other => Math.hypot(other.x - tile.x, other.y - tile.y) <= 2));
+    if (!shadow) continue;
+    const clear = exposed.find(tile => Math.hypot(tile.x - shadow.x, tile.y - shadow.y) <= 2);
+    probes.push({ id: "stillworks-cover", label: "Stillworks · behind cover", x: shadow.x, y: shadow.y });
+    probes.push({ id: "stillworks-exposed", label: "Stillworks · exposed", x: clear.x, y: clear.y });
+    break;
+  }
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, production: true,
-    primary: game.map.entry, save, game,
-    developerHint: "Production Stillworks baseline. Approach the heart to wake the Void Walker." };
+    primary: map.entry, save, game, stillworksMap: map, stillworksProbes: probes,
+    diagnostics: { stillworks: { arenaVersion: map.pentArena, monoliths: map.objects.filter(object => object.kind === "stillMonolith").length,
+      pillars: cover.length, coverProbes: probes } },
+    developerHint: "Production Stillworks baseline. Approach the heart to wake the Void Walker. Compare the covered and exposed test positions." };
 }
 
 function closeViewFixture(scenario, seed, now) {
@@ -506,6 +530,7 @@ function roomPaddingWitness(game, mode) {
 // Real exterior doors and production interactions on a fresh scratch save.
 // The experimental Pentagon selector belongs only to this Game instance and site.
 function roomRoutingFixture(spec, seed, now) {
+  if (spec.crawlSeed && seed === DEFAULT_PROVING_SEED) seed = spec.crawlSeed;
   const save = scratchSave(seed); save.closeView = true;
   if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET;
   if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL;
@@ -565,6 +590,10 @@ function roomRoutingFixture(spec, seed, now) {
   if (!entered.ok) throw new Error(`Routing fixture entrance failed: ${entered.message}`);
   const entry = { x: game.player.x, y: game.player.y };
   const roomPadding = spec.roomPadding ? roomPaddingWitness(game, spec.roomPadding) : null;
+  const crawlMap = game.map;
+  const crawl = spec.crawlSeed ? carveCloseViewCrawl(crawlMap, crawlMap.id, [crawlMap.entry, crawlMap.exit,
+    ...crawlMap.objects, ...crawlMap.enemySpawns, ...game.enemies, ...(crawlMap.wallGlints || []), ...(crawlMap.murals || [])]) : null;
+  if (crawl) crawlMap.closeViewCrawl = crawl;
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY };
   game.message = spec.candidate ? "Explore the compact rooms and side ladders. The roof and courts use the ordinary outdoor view." : "Explore the current rooms and stairs. The roof and courts use the ordinary outdoor view.";
   game.sync();
@@ -572,7 +601,10 @@ function roomRoutingFixture(spec, seed, now) {
     ...(roomPadding ? { roomPadding, roomPaddingMap: game.map, developerHint: roomPadding.found
       ? "Teleport to Room clearance approach, then walk and orbit near the selected edge. Reset same restores the starting comparison."
       : "This entrance floor has no eligible room edge. Try another seed." } : {}),
-    diagnostics: { routing: { experiment: spec.candidate, family: spec.roomRouting, version, base:game.map.building.base, experimentRevision:CLOSE_VIEW_ROOM_ROUTING.revision, appearance, site, entranceId, outside, scratchOnly: true, productionExportSupported: false, selectorScope: spec.roomRouting === "pentagon" ? "this fixture and Pentagon site only" : null } } };
+    ...(spec.crawlSeed ? { crawl, crawlMap, developerHint: crawl
+      ? "Teleport to Crawl approach, then walk the sloped side passage and drop to the far landing. There is a longer walk back."
+      : "This floor has no eligible wall between two safe landings. Try the default seed for this scenario." } : {}),
+    diagnostics: { ...(spec.crawlSeed ? { crawl: crawl ?? { found: false } } : {}), routing: { experiment: spec.candidate, family: spec.roomRouting, version, base:game.map.building.base, experimentRevision:CLOSE_VIEW_ROOM_ROUTING.revision, appearance, site, entranceId, outside, scratchOnly: true, productionExportSupported: false, selectorScope: spec.roomRouting === "pentagon" ? "this fixture and Pentagon site only" : null } } };
 }
 
 // Explicit scratch reconstruction only; never a production import/export path.
@@ -998,6 +1030,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
 
 export function labReport(fixture) {
   const {game}=fixture,map=game.map,primary=fixture.primary;
+  if (fixture.crawl) fixture.diagnostics.crawl = { ...fixture.crawl, active: map === fixture.crawlMap };
   if (fixture.roomPadding) fixture.diagnostics.roomPadding = { ...fixture.roomPadding, active: map === fixture.roomPaddingMap };
   if(fixture.recoveryContext)fixture.diagnostics.recovery=naturalLanternRecoveryWitness(game);
   if (fixture.adoptionSpec) fixture.diagnostics.routingAdoption=routingAdoptionReceipt(fixture);
@@ -1014,6 +1047,10 @@ export function labReport(fixture) {
 
 export function teleportTargets(fixture) {
   const map=fixture.game.map,targets=[];
+  if (map === fixture.stillworksMap) targets.push(...fixture.stillworksProbes);
+  if (fixture.crawl && map === fixture.crawlMap) {
+    targets.push({ id: "crawl-approach", label: "Crawl approach", ...fixture.crawl.approach });
+  }
   if (fixture.roomPadding?.found && map === fixture.roomPaddingMap) {
     targets.push({ id: "room-clearance", label: "Room clearance approach", ...fixture.roomPadding.approach });
   }
