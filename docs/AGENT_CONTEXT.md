@@ -2,6 +2,16 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+
+## Provisional r852 diagnostics packaging — 2026-11-09
+
+Actual main is merged r851 `1a2c35ae7ab984a069c0e4e68732cb6df28dcdf6`, tree `58c42b238884588d79ffecb3c0a5cf0c09f5e0d3`. Remote main and open PRs were checked before local packaging; only docs PRs #502/#214 were open and no competing r852 candidate was found. Root retains the integration/publication baton. `claude/close-view-diagnostics-release-cloud` is local provisional packaging of diagnostics source `b5b3cea9`, tree `a4632622`; no push, PR, merge or Publish is claimed.
+
+Six read-only PG Diagnostics rows distinguish the last completed Close View scene/player/admission snapshot from current GPU/hero readiness and coarse historical failures. The dialog samples only when opened. Asset observation preserves the existing four-request success graph, cached promise and failure/no-retry behavior. No new timers, contexts, GL probes, URLs, hardware identifiers, dependencies, draws or per-frame allocations are added. No simulation, save, geometry or action changes are included.
+
+Source focused checks and the final build passed; independent source/packaging review, exact packaged CI/Preview and hosted DOM diagnostics remain separate gates. Root reports r851 CI/Preview success and r850 natural capture/reload checks plus bounded Dodge/attack witnesses, but Cleaver reset and textured/device acceptance remain open; visible billboard rendering is not textured evidence. This diagnostic candidate cannot retroactively certify r851 or earlier releases. Publication remains held; do not reinterpret missing GPU evidence as a physical-phone failure.
+
+
 ## Cleaver idle reset r851 preparation — 2026-11-09
 
 Actual main is merged r850 `e789c26f7d7171afefcb016481d323518b4a5d90`, tree `1bf2ca098629088b8ad5bac947054f1bd838aeb2`, matching the corrected Astra-reviewed recovery source. Source CI passed all 3343 checks. Merged CI42613606537 and Preview42613606635 are pending at this preparation checkpoint; the natural persisted-reload/manual-contact hosted gate remains OPEN. Production remains verified r847-6be077b9239e; no Publish was dispatched.
