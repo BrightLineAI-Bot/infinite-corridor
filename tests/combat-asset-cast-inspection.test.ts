@@ -9,11 +9,11 @@ import { createLabFixture, scenariosForLab } from '../src/proving-ground-labs.ts
 const seed='CAST-INSPECTION', spellIds=Object.keys(SPELLS), skillIds=Object.keys(APERTURE_SKILLS);
 const pressA=(game,now)=>game.update(0,{state:{x:0,y:0},consume:(action)=>action==='spell',held:()=>false},now);
 
-test('Combat Asset registry retains its original fourteen entries and appends all eighteen public cast inspections',()=>{
+test('Combat Asset registry preserves the original combat and cast entries before the Needle inspection',()=>{
   const all=scenariosForLab('combat-assets'),original=['blade-spark-ashling','pike-spindle-hound','cleaver-bombard-crawler','blade-bombard-pallid-crawler','blade-hammerfall-brute','cleaver-sweep-marshal','cleaver-mirage-stalker','blade-orrery-sentinel','pike-blunder-caster','blade-arc-wave-wisp','fists-spindle-flying','pike-echo-inspection','cleaver-echo-inspection','salvage-echo-inspection'];
-  assert.equal(all.length,32);assert.deepEqual(all.slice(0,14).map(q=>q.id),original);
-  assert.deepEqual(all.slice(14).map(q=>q.id),[...spellIds.map(id=>`cast-spell-${id}`),...skillIds.map(id=>`cast-skill-${id}`)]);
-  assert.deepEqual(all.slice(14).map(q=>q.label),[...Object.values(SPELLS).map(q=>`Cast inspection · ${q.name}`),...Object.values(APERTURE_SKILLS).map(q=>`Cast inspection · ${q.name}`)]);
+  assert.equal(all.length,33);assert.equal(all[32].id,'blade-needle-ashling');assert.deepEqual(all.slice(0,14).map(q=>q.id),original);
+  assert.deepEqual(all.slice(14,32).map(q=>q.id),[...spellIds.map(id=>`cast-spell-${id}`),...skillIds.map(id=>`cast-skill-${id}`)]);
+  assert.deepEqual(all.slice(14,32).map(q=>q.label),[...Object.values(SPELLS).map(q=>`Cast inspection · ${q.name}`),...Object.values(APERTURE_SKILLS).map(q=>`Cast inspection · ${q.name}`)]);
 });
 
 test('all eighteen quiet fixtures bind the real eligible castable to public Spell A without auto-casting',()=>{

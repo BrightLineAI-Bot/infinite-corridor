@@ -11,10 +11,10 @@ test('Creature Asset Lab is separate, exhaustive and leaves the existing combat 
   assert.equal(LABORATORIES.length,21);
   const cases=scenariosForLab('creature-assets');assert.equal(cases.length,47);assert.deepEqual(cases.slice(0,29).map(q=>q.id),roster);assert.deepEqual(cases.slice(29,35).map(q=>q.id),bodies.map(q=>`foundry-${q}`));assert.deepEqual(cases.slice(38).map(q=>q.id),['wayfarer-iron-fists','wayfarer-active-robot','wayfarer-empowered-suit','wayfarer-ember-form','corridor-golem','shadow-clone','aether-orrery','dungeon-reciter','elder-wanderer']);
   const combat=scenariosForLab('combat-assets');
-  assert.equal(combat.length,32);
+  assert.equal(combat.length,33);assert.equal(combat[32].id,'blade-needle-ashling');
   assert.deepEqual(combat.slice(11,14).map(q=>q.id),['pike-echo-inspection','cleaver-echo-inspection','salvage-echo-inspection']);
   assert.deepEqual(combat.slice(0,11).map(q=>q.id),['blade-spark-ashling','pike-spindle-hound','cleaver-bombard-crawler','blade-bombard-pallid-crawler','blade-hammerfall-brute','cleaver-sweep-marshal','cleaver-mirage-stalker','blade-orrery-sentinel','pike-blunder-caster','blade-arc-wave-wisp','fists-spindle-flying']);
-  assert.deepEqual(combat.slice(14).map(q=>q.id),['cast-spell-cinder-dart','cast-spell-ember-ring','cast-spell-grave-sun','cast-spell-shadow-clone','cast-spell-gravity-well','cast-spell-stillpoint','cast-spell-aegis','cast-spell-shadow-boxing','cast-spell-fire-burst','cast-spell-imbue-weapon','cast-spell-essence-walk','cast-spell-orbit-volley','cast-skill-ember-form','cast-skill-quickening','cast-skill-veil-guard','cast-skill-force-channel','cast-skill-aerial-step','cast-skill-rift-step']);
+  assert.deepEqual(combat.slice(14,32).map(q=>q.id),['cast-spell-cinder-dart','cast-spell-ember-ring','cast-spell-grave-sun','cast-spell-shadow-clone','cast-spell-gravity-well','cast-spell-stillpoint','cast-spell-aegis','cast-spell-shadow-boxing','cast-spell-fire-burst','cast-spell-imbue-weapon','cast-spell-essence-walk','cast-spell-orbit-volley','cast-skill-ember-form','cast-skill-quickening','cast-skill-veil-guard','cast-skill-force-channel','cast-skill-aerial-step','cast-skill-rift-step']);
 });
 
 test('nine visible-actor cases activate their production state without claiming native completion',()=>{
