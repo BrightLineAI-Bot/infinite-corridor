@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Close View plays a short collection gesture when the Wayfarer successfully collects a supply or weapon cache.
+
 - Close View gives the ordinary Wayfarer a distinct recoil on confirmed combat hits and a fall on defeat, with isolated Ashling encounters to inspect both.
 
 - Release 856 adds room-edge clearance to newly discovered routed keeps and Pentagons and eases the Close View lens in their tight corners.
