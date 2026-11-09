@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 854 — Wayfarer healing-drink gesture
+
+**CODE:** The three canonical healing potions record a 360 ms presentation receipt only after healing and inventory spend succeed. The Wayfarer's free hand raises a vial and the head tips back while the gait continues. Reduced motion lowers travel. Native fallback uses a free-arm cue or a small body cue with the two-handed Pike. The imported vial uses 24 triangles in the existing equipment stream and yields when space is short. Close View Lab includes a fresh damaged Wayfarer and the normal Potion input.
+
+**BOUNDARY:** Heal and spend are immediate. This adds no combat lockout, draw pass, texture, or schema bump. The optional schema 14 receipt uses the existing saved logical clock and preserves opaque future versions. Higher-priority accepted actions and detected injury can interrupt the gesture. Hosted desktop and physical-device validation are pending.
+
 ## Release 853 — Spark Coil and Needle Caster imported appearances (provisional local packaging)
 
 **CODE:** Successful canonical immediate `fireSecondary` acceptance adds a versioned visual-only `toolAppearance` for Spark Coil or unupgraded Needle Caster. The imported-player equipment selector reads that accepted identity through its existing 180 ms emitter action; idle reads the canonical equipped resolver. Gear changes do not rewrite an active receipt. Rank-6 Needle remains Blunderbuss. Missing, malformed and future receipts remain generic, while unknown save fields are retained.

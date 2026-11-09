@@ -2,7 +2,19 @@
 
 Updated: 2026-11-09. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live on 2026-11-09: r851-1a2c35ae7ab9, commit 1a2c35ae7ab984a069c0e4e68732cb6df28dcdf6, tree 58c42b238884588d79ffecb3c0a5cf0c09f5e0d3. Publish 42638198273 succeeded. Pages identity and Options → System matched. The production journey remained paused at 250 KB and recent errors were empty.
+Verified live on 2026-11-09: r853-a53725ea58a7, commit a53725ea58a7b4d1fc93da2c247e25e98ada7cdf, tree b4309eaa686cff5fa479a22a5a66d45836c5023a. Publish 42649614970 succeeded. Pages and Options → System matched. The journey remained paused at 250 KB with no recent errors.
+
+## r853 tool appearance acceptance and tooling availability — 2026-11-09
+
+- Exact PR #507 head e342398aca79c8ce56007daaebf3c5077637c240 and merged a53725ea share the Astra-cleared tree. Source CI 42643703674, merged CI 42646218531 and Preview 42646218711 passed. Fresh Astra review of r851→r853 found no blockers.
+- Local desktop scratch at 1280 × 720 and initial full quality reported WebGL2, imported Wayfarer, ready GPU and asset, candidate-scoped storage, and no console or diagnostic errors. Spark Coil showed the distinct short model and an active projectile. Rank-zero Needle Caster showed the longer model and defeated its Ashling with the shot. Rank-six Needle resolved to Blunderbuss in its comparison case. Tim accepted desktop for r853. Physical-phone FPS, touch and thermals remain open.
+- The cloud tooling PR #508 merged at fded909176ef45ea9355573a2173ab46ab22ed91 after r853 Publish finished. The manual Frozen candidate render preflight is available on main. It consumes a named existing artifact with read-only repository permissions, and the local coordinator left the single r852 dispatch for the cloud session. Game release numbering remains with the local coordinator.
+
+[Verified r853 preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r853-a53725ea58a7/) · [Publish run](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42649614970) · [Render preflight](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/workflows/render-preflight.yml)
+
+## Healing-drink gesture
+
+- Implemented a short free-hand sip for the three healing potions and a Close View Lab witness using the regular Potion control. Healing and spend stay immediate. Schema 14 round-trip, phase continuity, action interruption and bounded equipment rendering have focused coverage. Hosted motion and phone validation are pending.
 
 ## Local ownership and r851 acceptance — 2026-11-09
 
@@ -11,7 +23,7 @@ Tim transferred primary gameplay, integration, merge and publication ownership t
 - **Exact release gate.** Source CI 42614947720, merged CI 42620144417 and Preview 42620144042 passed. The merged tree matches reviewed PR #505 head c7ce8a08265ca1bba6b8116d5d429151af75d1cb. Fresh local Astra review cleared the complete r847→r851 diff. Dry run 42638086622 verified the stored artifact and staged the exact candidate. Tim accepted the desktop visual pass for this release. Publish 42638198273 deployed that artifact.
 - **Exact r851 desktop witness.** Local Windows in-app Chromium, 1280 × 720, initial full quality, isolated Combat Asset Lab, seed CINDER-VERGE-47. Ordinary startup showed the block-style player, then the imported textured Wayfarer, which uses WebGL2. r851 predates the public renderer-status rows. Four Cleaver inputs at roughly 0.64-second gaps showed up/down/up/down cuts from the side. Two opening cuts about 1.52 seconds apart showed reset. Pike showed point-up carry and three thrusts. Stationary melee followed character-facing after orbit. Jump showed takeoff and leg tuck, and Cinder Dart showed a free-hand cast. Hammer Fall and Golem appearance were exercised against Root Brute, which was defeated.
 - **Coverage.** Diagnostics showed schema 14, a controlling worker, candidate-scoped scratch storage and no recent errors. Console warnings/errors were empty. The startup placeholder and an early cast were sampled. The immutable lab offered no steady native-only or reduced-motion control. Phone FPS, touch and thermals remain open. The r850 natural Lantern save/reload and damage witness is separate cloud evidence.
-- **Next gameplay work.** PR #507 stays isolated at 18ea3372fd96218445ea4592092c318658ebeb5e. Exact CI 42630007707 passed; the handoff reports Astra clearance. Its textured and phone checks remain open. After that candidate, integrate the accepted-healing drink gesture from the unwired helper. Stamp only successful healing and preserve immediate healing, action priority, exact resume and pose cancellation. Iron Fists already has imported/native weighted motion from r847/r849; use current footage to direct further polish. Room-padding remains isolated and boss rigs remain planning.
+- **Historical continuation.** The Spark/Needle draft was next at the r851 checkpoint. Its later acceptance and publication are recorded above. The next separate action is the accepted-healing drink gesture. Room-padding stays isolated and boss rigs remain planning.
 
 [Verified r851 preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r851-1a2c35ae7ab9/) · [Publish run](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42638198273)
 

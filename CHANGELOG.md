@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 854 gives the Wayfarer a short healing-drink gesture in Close View and an isolated Potion test in Proving Ground.
+
 - Provisional Release 853: route the existing Spark Coil and Needle Caster recipes through imported-player idle and accepted-use equipment, preserving native fallback, shot origins, timing and ownership.
 
 - Release 852: expose read-only PG diagnostics for completed Close View rendering, native admission, hero asset loading and coarse GPU failure history; preserve existing fallback and loading behavior.
