@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { freeze, sourceRelease, stagePreview, stageRelease } from '../scripts/pages-release.mjs';
@@ -10,7 +11,7 @@ import { inventory, inventoryDigest } from '../src/release-artifact.mjs';
 import { auditCandidate, cli, readSnapshot, REPOSITORY } from '../scripts/candidate-audit.mjs';
 
 const commit = 'a'.repeat(40), tree = 'b'.repeat(40), at = '2026-11-09T12:00:00.000Z';
-const N = sourceRelease(new URL('..', import.meta.url).pathname);
+const N = sourceRelease(fileURLToPath(new URL('..', import.meta.url)));
 const binding = { proposalId: `r${N}-${commit.slice(0, 12)}`, candidateCommit: commit, candidateTree: tree };
 const live = { proposalId: 'r1-cccccccccccc', candidateCommit: 'c'.repeat(40), candidateTree: 'd'.repeat(40) };
 function fixture(t: any) {
@@ -140,7 +141,7 @@ test('changed frozen payload and invalid tree cannot produce a successful receip
 test('Git lookup checks exact commit tree using local objects only', t => {
   const f = fixture(t), repo = join(f.root, 'repo'); mkdirSync(repo);
   function git(...args: string[]) {
-    const r = spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim();
+    const r = spawnSync('git', ['-c', 'maintenance.auto=false', '-C', repo, ...args], { encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim();
   }
   git('init', '-q'); git('-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture');
   const realCommit = git('rev-parse', 'HEAD'), realTree = git('rev-parse', 'HEAD^{tree}');
@@ -159,7 +160,7 @@ test('Git lookup checks exact commit tree using local objects only', t => {
 for (const objectType of ['tree', 'annotated tag']) test(`Git lookup rejects ${objectType} supplied as the candidate commit`, t => {
   const f = fixture(t), repo = join(f.root, 'repo'); mkdirSync(repo);
   function git(...args: string[]) {
-    const r = spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim();
+    const r = spawnSync('git', ['-c', 'maintenance.auto=false', '-C', repo, ...args], { encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim();
   }
   git('init', '-q'); git('-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture');
   const realTree = git('rev-parse', 'HEAD^{tree}');
@@ -196,6 +197,7 @@ test('snapshot reader rejects oversized input, symlinks and malformed JSON', t =
 });
 
 // Existing staging functions mutate only this disposable copy. The audit remains read-only.
+// Keep fixture Git metadata stable while the test inventories and copies it.
 for (const tamperPreview of [false, true]) test(`isolated test-release rehearsal ${tamperPreview ? 'refuses altered preview bytes' : 'stages exact frozen bytes without certifying external gates'}`, t => {
   const f = fixture(t), ownerSite = join(f.root, 'owner-site'), rehearsalSite = join(f.root, 'rehearsal-site');
   mkdirSync(join(ownerSite, 'previews', live.proposalId), { recursive: true });
@@ -205,7 +207,7 @@ for (const tamperPreview of [false, true]) test(`isolated test-release rehearsal
   writeFileSync(join(ownerSite, 'CNAME'), 'fixture.example.invalid');
   writeFileSync(join(ownerSite, '.nojekyll'), '');
   for (const args of [['init', '-q'], ['add', '--all'], ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Synthetic baseline']]) {
-    const r = spawnSync('git', ['-C', ownerSite, ...args], { encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr);
+    const r = spawnSync('git', ['-c', 'maintenance.auto=false', '-C', ownerSite, ...args], { encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr);
   }
   const beforeOwner = inventoryDigest(inventory(ownerSite)), beforeCandidate = inventoryDigest(inventory(f.candidateDirectory));
   cpSync(ownerSite, rehearsalSite, { recursive: true });
