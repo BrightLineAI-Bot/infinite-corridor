@@ -6420,12 +6420,15 @@ export class Game {
       const primary = this.save.equipment.primary;
       attackVisual.weaponKind = primary?.id === "primary-cinder-pike" || primary?.name === "Cinder Pike" ? "cinder-pike"
         : primary?.id === "primary-verge-cleaver" || primary?.name === "Verge Cleaver" ? "verge-cleaver" : "salvage-blade";
-      const primaryStep = advancePrimaryCombo(this.player, attackVisual.weaponKind);
+      const logicalNow = now - (this.presentationPausedMs || 0);
+      const primaryStep = attackVisual.weaponKind === 'verge-cleaver'
+        ? advancePrimaryCombo(this.player, attackVisual.weaponKind, logicalNow)
+        : advancePrimaryCombo(this.player, attackVisual.weaponKind);
       if (primaryStep) {
         if (attackVisual.weaponKind === 'verge-cleaver') attackVisual.primaryMotion = { v: 2, step: primaryStep };
         else attackVisual.primaryStep = primaryStep;
       }
-      const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(this.player, logicalNow, this.player.x, this.player.y);
+      const prior = recentHeroPresentation(this.player, logicalNow, this.player.x, this.player.y);
       attackVisual.poseMs = prior?.now ?? Math.max(0, logicalNow);
       if (prior) attackVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw));
     }

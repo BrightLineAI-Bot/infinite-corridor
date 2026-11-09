@@ -49,7 +49,8 @@ test('six accepted Cleaver presses stamp 1/2/3/4/1/2 while refusal, Echo and clo
 
 test('Pike remains three-stage and family switches restart without changing Fists state',()=>{
   const g=fixture('pike'),steps=[];for(let n=0;n<4;n++){g.primaryAttack(100000+n*500);steps.push(g.player.attackVisual.primaryStep);assert.equal(g.player.attackVisual.primaryMotion,undefined);}assert.deepEqual(steps,[1,2,3,1]);
-  g.save.equipment.primary=cleaver();g.primaryAttack(102000);assert.equal(g.player.attackVisual.primaryMotion.step,1);assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step:1});
+  // Game stores the accepted logical input time; the two-argument pure helper below remains legacy.
+  g.save.equipment.primary=cleaver();g.primaryAttack(102000);assert.equal(g.player.attackVisual.primaryMotion.step,1);assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step:1,resetWindow:{v:1,acceptedLogicalMs:102000}});
   const player:any={primaryCombo:{weaponKind:'verge-cleaver',v:2,step:4,future:9}};assert.equal(advancePrimaryCombo(player,'verge-cleaver'),1);assert.deepEqual(player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step:1,future:9});
 });
 
@@ -60,7 +61,8 @@ test('all four Cleaver stages and committed phases round-trip through both runti
     const at=100000+(step-1)*500+phase;if(paused)g.setPaused(true,at);
     const saved=migrateSave(clone(g.exportSnapshot(at))),back:any=new Game(saved,200000);
     assert.deepEqual(back.player.attackVisual.primaryMotion,{v:2,step,futureMotion:{kept:true}});assert.equal(back.player.attackVisual.future.kept,step);
-    assert.deepEqual(back.player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step,futureCombo:{kept:true}});assert.equal(back.paused,paused);
+    // Reload preserves the last accepted logical time, independently of phase, pause and new wall clock.
+    assert.deepEqual(back.player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step,resetWindow:{v:1,acceptedLogicalMs:100000+(step-1)*500},futureCombo:{kept:true}});assert.equal(back.paused,paused);
     assert.deepEqual(saved.session.playerRuntime.attackVisual.primaryMotion,back.player.attackVisual.primaryMotion);
   }
 });
