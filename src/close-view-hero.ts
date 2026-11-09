@@ -1,7 +1,7 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
-import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -593,7 +593,8 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const timedPrimary=action?.kind==='melee'&&['melee','cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
   const chestOpening=action?.kind==='interact'&&action.profile==='chest-open';
-  const locomotionLayer=action?.kind==='drink'||(action?.kind==='interact'&&(action.profile==='cache-pickup'||chestOpening));
+  const shovelDigging=action?.kind==='interact'&&(action.profile==='shovel-dig'||action.profile==='iron-shovel-dig');
+  const locomotionLayer=action?.kind==='drink'||(action?.kind==='interact'&&(action.profile==='cache-pickup'||chestOpening||shovelDigging));
   clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction&&!locomotionLayer ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
@@ -621,7 +622,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   if (action&&!meleeMotion) {
     const kind = action.kind, profile = action.profile;
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
-    else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact'&&profile!=='cache-pickup'&&!chestOpening) clip = asset.clips.PickUp;
+    else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact'&&profile!=='cache-pickup'&&!chestOpening&&!shovelDigging) clip = asset.clips.PickUp;
     weight = kind === 'death' ? 1 : Math.min(1, p / .08, (1 - p) / .12);
     if (kind === 'hit' && profile === 'hurt' && input.reducedMotion) weight *= .65;
     if(kind==='dodge') {
@@ -640,6 +641,10 @@ export function sampleCloseViewHero(asset, state, input, out) {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
       toolPose(state,state.pose,profile,p,weight,action);
+    } else if(shovelDigging) {
+      const dig=sampleShovelDigPose(p,input.reducedMotion,state);
+      if(dig.weight>0){rotateX(state.pose,22,-1.08*dig.down+.34*dig.lever);rotateX(state.pose,21,-.48*dig.down-.30*dig.lever);rotateX(state.pose,18,.18*dig.down-.28*dig.lever);rotateX(state.pose,12,-.42*dig.down-.24*dig.lever);rotateX(state.pose,11,.22*dig.down);rotateX(state.pose,4,.34*dig.down-.16*dig.lever);}
+      state.clip=profile==='iron-shovel-dig'?'derived-iron-shovel-dig':'derived-shovel-dig';state.clipTime=p;
     } else if(kind==='interact'&&(profile==='cache-pickup'||chestOpening)) {
       const reach=chestOpening?chestOpenWeight(p,input.reducedMotion):cacheReachWeight(p,input.reducedMotion);
       const lift=chestOpening?smoothstep(clamp((p-.32)/.25)):0;

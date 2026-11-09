@@ -2312,11 +2312,13 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       }
     }
     let pickupPhase=null;
-    const openingChest=player.cachePickupVisual?.cacheKind==='chest';
+    const interactionKind=who===player?player.cachePickupVisual?.cacheKind:null;
+    const openingChest=interactionKind==='chest';
+    const shovelProfile=interactionKind==='shovelDig'?'shovel-dig':interactionKind==='ironShovelDig'?'iron-shovel-dig':null;
     if(ordinary&&(pose==='idle'||pose==='walk')&&player.cachePickupVisual?.v===1&&!(now<(player.dodgeUntil||0))){
       const logicalNow=(g.paused&&finite(g.pauseStarted)?g.pauseStarted:now)-(g.presentationPausedMs||0);
       pickupPhase=sampleCachePickupVisual(player.cachePickupVisual,logicalNow,g.areaId(),String(g.map?.levelId||'root'));
-      if(pickupPhase!==null)pose=openingChest?'openChest':'collect';
+      if(pickupPhase!==null)pose=shovelProfile?'shovelDig':openingChest?'openChest':'collect';
     }
     const meleeAction = visualAttack && visualRecord.meleeAction?.v === 1 ? visualRecord.meleeAction : null;
     const poseTime = who === player && !meleeAction && !primaryVisualStage(visualRecord) && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
@@ -2354,7 +2356,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     // Special native forms retain their existing tool recipe. Only the normal imported
     // stomp (and its normal native fallback) has empty held gear in this pass.
     const formKind = who === player && form ? playerFormModelKey(form, visualProfile==='hammer'?'hammer':held) : null;
-    const actor = { kind: formKind || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
+    const actor = { kind: (pose==='shovelDig'?'playerShovel':formKind) || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
@@ -2419,7 +2421,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; action.jumpAir = ordinaryJumpPresentation(g, now, d.jumpLift, d.jumpBaseMs); }
         else if(drink?.active){action.kind='drink';action.profile=drink.itemKind;action.phase=drink.phase;action.durationMs=drink.durationMs;}
-        else if(pickupPhase!==null){action.kind='interact';action.profile=openingChest?'chest-open':'cache-pickup';action.phase=pickupPhase;action.durationMs=player.cachePickupVisual.durationMs;}
+        else if(pickupPhase!==null){action.kind='interact';action.profile=shovelProfile||(openingChest?'chest-open':'cache-pickup');action.phase=pickupPhase;action.durationMs=player.cachePickupVisual.durationMs;}
         action.meleeAction = action.kind === 'melee' && attack ? meleeAction : null;
         // Generic primaries retain their accepted logical breathing phase at both blend endpoints.
         if (action.kind === 'melee' && action.profile === 'melee' && Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs;
@@ -2427,7 +2429,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
-          gear.profile = form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.drinkVial=action.kind==='drink'&&!state.heroFrame.powerSuit;gear.vialWeight=gear.drinkVial?state.heroPose.weight:0;gear.vialSocket=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);

@@ -37,7 +37,7 @@ import { ensureSlots, slotted, pairingMods, slotReadiness, activeButton, slotToo
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
-import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizeCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
+import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizeCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
@@ -4778,7 +4778,7 @@ export class Game {
     const preflight = validateDigPlan(this.save, this.map, plan, key); if (!preflight.ok) { this.message = preflight.message; return { ok: false, message: this.message }; }
     const c = plan.iron ? ensureIronShovel(this.save) : ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; }
     const r = dig(this.save, this.map, plan, key);
-    if (r.ok) { this.map.wallGlints = (this.map.wallGlints || []).filter((g) => g.x !== plan.x || g.y !== plan.y); }
+    if (r.ok) { this.map.wallGlints = (this.map.wallGlints || []).filter((g) => g.x !== plan.x || g.y !== plan.y); this.stampShovelDigVisual(plan.iron ? "ironShovelDig" : "shovelDig"); }
     this.message = (c.crafted ? c.message + " " : "") + (r.ok && plan.burrow ? LAB_BURROW.messages.burrow + " " : "") + r.message; this.sync(); return r;
   }
   // Release 231: the Tyrant Mosasaur rises from the deep a few tiles away and hunts the Wayfarer. It is not saved: the
@@ -8181,8 +8181,16 @@ export class Game {
       visualNow<(p.dodgeUntil||0)||visualNow<(p.stunnedUntil||0)||visualNow<(p.heldUntil||0)||!!this.fistCharge||!!this.pendingToolUse||!!this.pendingMeleeContact||
       sampleHurtVisual(p.hurtVisual,logicalNow,areaId,levelId)!==null||
       !!sampleConsumeVisual(p.consumeVisual,logicalNow,{area:this.area,areaId,levelId},{})?.active;
-    p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs: cacheKind === 'chest' ? CHEST_OPEN_VISUAL_MS : CACHE_PICKUP_VISUAL_MS, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
+    const durationMs=cacheKind === 'chest' ? CHEST_OPEN_VISUAL_MS : cacheKind === 'shovelDig' || cacheKind === 'ironShovelDig' ? SHOVEL_DIG_VISUAL_MS : CACHE_PICKUP_VISUAL_MS;
+    p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
     if (!busy) this.retireCleaverChoreography();
+  }
+  stampShovelDigVisual(cacheKind, now = this.lastUpdateNow || 0) {
+    const logicalNow=this.consumeLogicalNow(now),areaId=this.areaId(),levelId=String(this.map?.levelId||'root');
+    // A second immediate dig still changes the world, but cannot steal the body from
+    // the first accepted reach. This prevents rapid Act presses from restarting it.
+    if(sampleCachePickupVisual(this.player.cachePickupVisual,logicalNow,areaId,levelId)!==null)return false;
+    this.stampCachePickupVisual(cacheKind,now);return true;
   }
   stampConsumeVisual(itemKind, now) {
     if (Number.isSafeInteger(this.player.consumeVisual?.v) && this.player.consumeVisual.v > 1) return;
