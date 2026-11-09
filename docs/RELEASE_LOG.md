@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Official main is r847 (6be077b9239eae5e32733b2be720da2e9b65d60f). The next game release takes its number from freshly fetched main at merge preparation.
+Official main is r848 (`a553e1a5c684afc3975a4280f5d1b410a89a3a7d`). The isolated refinement package provisionally uses main + 1 for local review only; recheck main and the integration baton before any push or merge.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 848 (provisional) | Codex | `claude/lantern-release-packaging-cloud` / #500 source | Clear discarded Grave Lantern leap lift on canonical reload reset | Locally packaged from reviewed source `0fd6e17d` plus main docs `4359abc8`; final packaging review, exact-head CI, Preview and hosted gates pending. Recheck main before integration; no merge/publication. |
+| 849 (draft candidate) | Codex | `claude/close-view-refinement-release-cloud` | Coordinated action, equipment, Hammerfall/Golem and placed-light refinement | Preserves combined `c0010d34`; reconciles main `a553e1a5`. Prepared for draft review; final Astra, exact-head CI, Preview and hosted gates pending. No merge or publication. |
+| 848 | Codex | `claude/grave-lantern-reload-lift` / #500 | Clear discarded Grave Lantern leap lift on canonical reload reset | Merged with Tim approval as `a553e1a5`, reviewed tree `6e4170e5`; merged CI42598043317 and Preview42598043388 were in progress at this checkpoint. Hosted acceptance/publication unverified. |
 | 840 | Codex | `claude/close-view-armor-recovery` / #492 | Clunky Robot and fitted powered armor with atomic equipment | Published as r840-402c30d2d636. Source CI42521548622, merged CI42522976922, Preview42522977002 and Publish42524268786 succeeded. Fresh Astra review (839→840): no blockers. Live identity and actual Options → System verified; recent errors and console empty; paused250KB journey unchanged. |
 | 839 | Codex | `claude/close-view-target-recenter` / #491 | Finite centered Target recenter, shared presentation facing and live Proving Ground teleport choices | Published as r839-ca60fa41fc60. Source CI42519975159, merged CI42521269417, Preview42521269471 and Publish42522746645 succeeded. Fresh Astra review (838→839): no blockers. Live identity and actual Options → System verified; recent errors and console empty; paused250KB journey unchanged. Hosted Target and real-E floor/menu refresh acceptance passed. |
 | 829 | Codex | `claude/salvage-action-continuity` / #481 | Preserve generic-primary accepted pose continuity | Published as r829-9c21fb237fe9. Exact source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; merge tree matches reviewed source95d11c03. Hosted Salvage idle/swing/recovery, movement and tool/cast/dodge/jump switching checked without console/diagnostic errors. Live identity and actual Options → System verified after normal cache update, recent errors none. |
