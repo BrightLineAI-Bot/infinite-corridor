@@ -130,6 +130,54 @@ test('an actual named release restores ordinary shot ownership across GL failure
   h.gl.fault='';h.gl.lost=false;h.gl.error=0;out=frame(h,g);assert.equal(out.showing,true);assert.ok(out.floorPlan.has(shot));assert.equal(closeViewGLStats.projectedShots,1);assert.equal(h.gl.unallocatedUpdates,0);
 }));
 
+test('a weighted Cleaver trails the admitted blade around contact and yields to reduced motion', async () => {
+  const names = ['window', 'fetch', 'createImageBitmap'];
+  const previous = new Map(names.map(name => [name, (globalThis as any)[name]]));
+  (globalThis as any).window = {};
+  (globalThis as any).createImageBitmap = async () => ({ width: 1024, height: 1024 });
+  (globalThis as any).fetch = async (url: any) => {
+    const path = new URL(url);
+    assert.equal(path.protocol, 'file:');
+    const bytes = fs.readFileSync(path);
+    return { ok: true, json: async () => JSON.parse(bytes.toString()), arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+  };
+  try {
+    assert.ok(await loadCloseViewHero());
+    withGPU({}, h => {
+      const g: any = createLabFixture({ lab: 'combat-assets', scenario: 'cleaver-echo-inspection', now: 100000 }).game;
+      g.presentation = { effectiveQuality: 'full', reduceMotion: false };
+      const keys = (attack = false) => ({ state: { x: 0, y: 0 }, consume: (action: string) => attack && action === 'attack', held: () => false, reset: () => {} });
+      const trailVertices = () => {
+        const positions = [];
+        for (let i = GLB.nGlowStart; i < GLB.nDecal; i++) {
+          const index = i * DECAL_FLOATS;
+          if (GLB.decal[index + 7] === 0xc8aa83) positions.push(Array.from(GLB.decal.slice(index, index + DECAL_FLOATS)));
+        }
+        return positions;
+      };
+      g.update(.016, keys(true), 100000);
+      const contact = g.pendingMeleeContact.releaseAt;
+      assert.equal(frame(h, g).showing, true);
+      assert.equal(trailVertices().length, 0, 'the preload does not draw a disconnected sweep');
+      for (const now of [contact - 18, contact, contact + 18]) {
+        g.update(.016, keys(), now);
+        assert.equal(frame(h, g).showing, true);
+      }
+      const trail = trailVertices();
+      assert.ok(trail.length > 0 && trail.length <= 12, 'at most two quads from three blade samples');
+      assert.ok(trail.every(vertex => vertex.every(Number.isFinite) && vertex[8] === 1));
+      g.presentation.reduceMotion = true;
+      assert.equal(frame(h, g).showing, true);
+      assert.equal(trailVertices().length, 0);
+    });
+  } finally {
+    for (const name of names) {
+      if (previous.get(name) === undefined) delete (globalThis as any)[name];
+      else (globalThis as any)[name] = previous.get(name);
+    }
+  }
+});
+
 test('bounded tool supercover rejects corner, gridline, endpoint and rectangle hazards',()=>{
   const open=(width=6,height=6)=>({width,height,tiles:Array.from({length:width*height},()=>({blocked:false,seen:true,discovered:true}))});
   const map:any=open();assert.equal(closeViewCueSegmentOpen(map,.2,.2,2.8,.2),true);
