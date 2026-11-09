@@ -2,8 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {ordinaryDefeatPresentation} from '../src/close-view-player-presentation.ts';
-import {Game} from '../src/game.ts';
-import {freshSave} from '../src/types.ts';
+import {createLabFixture} from '../src/proving-ground-labs.ts';
 import {VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT} from '../src/combat-visuals.ts';
 
 const game=(extra={})=>({
@@ -46,17 +45,24 @@ test('native and imported close-view routes consume the same death phase without
   assert.match(source,/const knock = stunned && !defeat \? knockdownPose/);
 });
 
-test('the real death beat supplies the defeat clock and recovery retires it exactly once',()=>{
-  const save=freshSave();
-  const g=new Game(save,1000);
-  g.deathBeat=VIEWPORT_CLOSED.fall;
-  g.enemies=[];
-  g.player.hp=0;
-  g.update(1/60,VIEWPORT_QUIET_INPUT,1100);
-  assert.equal(ordinaryDefeatPresentation(g,1100)?.amount,0);
-  assert.ok(Math.abs(ordinaryDefeatPresentation(g,1275)?.amount-.5)<1e-8);
-  g.setPaused(true,1275);
-  assert.equal(ordinaryDefeatPresentation(g,9000)?.amount,ordinaryDefeatPresentation(g,1275)?.amount);
+test('the scratch Ashling lands a real fatal blow and recovery retires the pose exactly once',()=>{
+  const {game:g,save}=createLabFixture({lab:'close-view',scenario:'wayfarer-defeat',seed:'CINDER-VERGE-47',now:1000});
+  assert.equal(g.player.hp,1);
+  assert.equal(g.enemies.length,1);
+  assert.equal(g.enemies[0].kind,'ashling');
+  assert.equal(g.deathBeat,VIEWPORT_CLOSED.fall);
+  assert.equal(ordinaryDefeatPresentation(g,1000),null);
+  let now=1000;
+  for(let frame=0;frame<600&&!g.fallen;frame++){
+    now+=1000/60;
+    g.update(1/60,VIEWPORT_QUIET_INPUT,now);
+  }
+  assert.ok(g.fallen?.beat);
+  assert.equal(ordinaryDefeatPresentation(g,now)?.amount,0);
+  const midpoint=now+g.deathBeat*500;
+  assert.ok(Math.abs(ordinaryDefeatPresentation(g,midpoint)?.amount-.5)<1e-8);
+  g.setPaused(true,midpoint);
+  assert.equal(ordinaryDefeatPresentation(g,9000)?.amount,ordinaryDefeatPresentation(g,midpoint)?.amount);
   g.setPaused(false,9000);
   assert.ok(Math.abs(ordinaryDefeatPresentation(g,9000)?.amount-.5)<1e-8);
   g.update(1/60,VIEWPORT_QUIET_INPUT,9350);

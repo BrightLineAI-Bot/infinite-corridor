@@ -14,6 +14,7 @@ import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, AR
 import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.ts";
 import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.ts";
 import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.ts";
+import { VIEWPORT_CLOSED } from "./combat-visuals.ts";
 import { varyDungeonLayout } from "./dungeon-variation.ts";
 import { ELITE_DEFINITIONS } from "./elites.ts";
 import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.ts";
@@ -250,6 +251,7 @@ const CLOSE_VIEW_LAB = [
   { id: "routing-adoption-new-keep", label: "Routing adoption: cross into a new standalone keep", routingAdoption: "keep" },
   { id: "routing-adoption-new-pentagon", label: "Routing adoption: cross into a new Pentagon", routingAdoption: "pentagon" },
   { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "wayfarer-defeat", label: "Wayfarer defeat: Ashling encounter", defeatInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
 // GPU scene's lava and pits can be seen without hunting for a room maze's gallery
@@ -374,6 +376,17 @@ function closeViewFixture(scenario, seed, now) {
     save.potionChoice = "restorativeDraught";
     save.consumables.restorativeDraught = 1;
     game.message = "Use Potion to drink the Restorative Draught. Reset same restores health and supplies for another test.";
+  }
+  if (spec.defeatInspection) {
+    const { player, foe, dx, dy } = assetLane(game);
+    entry = player;
+    const facing = dx > 0 ? "right" : dx < 0 ? "left" : dy > 0 ? "down" : "up";
+    Object.assign(game.player, { x: player.x, y: player.y, facing, hp: 1, invulnerableUntil: now });
+    const ashling = createCombatant("ashling", foe.x, foe.y, false, []);
+    ashling.id = "lab-wayfarer-defeat-ashling";
+    game.enemies = [ashling];
+    game.deathBeat = VIEWPORT_CLOSED.fall;
+    game.message = "Stand still and let the Ashling land a hit. Reset same restarts the encounter.";
   }
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(traversal ? { diagnostics: { traversal } } : {}), ...(buildPractice ? { buildPractice, developerHint: game.message, diagnostics: { buildPractice } } : {}) };
