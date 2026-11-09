@@ -2,6 +2,10 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Close View r847 production and combined pass
+
+Production is verified at r847-6be077b9239e, commit 6be077b9239eae5e32733b2be720da2e9b65d60f and tree ada3107ed8c64c6d6edfab75e5cd4d1b3ebccbaa. Exact CI42542299944, merged CI42543235774, Preview42543235734 and Publish42544780650 succeeded after Astra cleared the knockdown correction. Options → System matched, with the journey paused and no recent errors. The combined pass records hosted and regression evidence in close-view-pass-manifest.md. Grave Lantern borrowed-leap reload remains a separate draft PR (#500); boss rigs remain planning, and physical phone FPS, thermals and multitouch remain unmeasured.
+
 ## Close View melee r847 candidate
 
 Production was verified at r845-715a280c35cb after the Veil Moth hosted contact check. Grave Lantern merged in r846-672941fdd677; its Preview and live verification are tracked separately. r847 packages weighted Verge Cleaver and Iron Fists poses, short visible windups and exact pending-contact resume. The final combined Close View sweep follows r847 hosted acceptance. Boss rigs remain research and planning. Local servers and the full local suite remain stopped.

@@ -15,14 +15,12 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Release r847 is assigned to Close View melee weight against official main r846 (672941fdd6770f45ae0273ddf385e8e04cb20593). No later number is assigned.
+Official main is r847 (6be077b9239eae5e32733b2be720da2e9b65d60f). The next game release takes its number from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 847 | Codex | claude/close-view-melee-weight | Weighted Verge Cleaver and Iron Fists with visible contact timing | Packaged from official main r846. CI, final review and hosted acceptance pending. |
-| 846 | Codex | claude/close-view-material-lantern-contact / #498 | Grave Lantern low-hover material interval | Merged as 672941fdd6770f45ae0273ddf385e8e04cb20593. Source CI42540306774 passed; merged CI42541303428 and Preview42541303547 were started. |
 | 840 | Codex | `claude/close-view-armor-recovery` / #492 | Clunky Robot and fitted powered armor with atomic equipment | Published as r840-402c30d2d636. Source CI42521548622, merged CI42522976922, Preview42522977002 and Publish42524268786 succeeded. Fresh Astra review (839→840): no blockers. Live identity and actual Options → System verified; recent errors and console empty; paused250KB journey unchanged. |
 | 839 | Codex | `claude/close-view-target-recenter` / #491 | Finite centered Target recenter, shared presentation facing and live Proving Ground teleport choices | Published as r839-ca60fa41fc60. Source CI42519975159, merged CI42521269417, Preview42521269471 and Publish42522746645 succeeded. Fresh Astra review (838→839): no blockers. Live identity and actual Options → System verified; recent errors and console empty; paused250KB journey unchanged. Hosted Target and real-E floor/menu refresh acceptance passed. |
 | 829 | Codex | `claude/salvage-action-continuity` / #481 | Preserve generic-primary accepted pose continuity | Published as r829-9c21fb237fe9. Exact source CI42479713134, merged CI42480707039, Preview42480707081 and Publish42482179727 succeeded. Fresh Astra review (828→829): no blockers; merge tree matches reviewed source95d11c03. Hosted Salvage idle/swing/recovery, movement and tool/cast/dodge/jump switching checked without console/diagnostic errors. Live identity and actual Options → System verified after normal cache update, recent errors none. |
@@ -218,6 +216,8 @@ Release r847 is assigned to Close View melee weight against official main r846 (
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 847 | r847-6be077b9239e | 2026-11-08 | Astra review (846→847): no blockers after the knockdown correction. Source CI42542299944, merged CI42543235774, Preview42543235734 and Publish42544780650 succeeded. Hosted Cleaver and Fists, target/orbit, tool/dodge and pause/resume checked. Live identity and Options → System matched; recent errors none. |
+| 846 | r846-672941fdd677 | 2026-11-08 | Astra review (845→846): no blockers. Source CI42540306774, merged CI42541303428, Preview42541303547 and Publish42542694852 succeeded. Hosted ordinary Lantern approach showed separation and took damage; live identity and Options → System matched. Borrowed-leap reload has a separate correction in draft PR #500. |
 | 845 | r845-715a280c35cb | 2026-11-08 | Astra review (844→845): no blockers after correction. Source CI42538337125, merged CI42539736647, Preview42539736648 and Publish42541009513 succeeded. Hosted Veil Moth contact and damage verified; live identity and Options → System matched. |
 | 844 | `r844-0ec3fe866c64` | 2026-11-08 | Astra review (843→844): no blockers. Source CI42534525705, merged CI42535658461, Preview42535658314 and Publish42537266204 succeeded. Ordinary hosted boundary crossings selected Keep 5 and Pentagon 10; real entry, exit and re-entry retained both versions. Live identity and Options → System match; recent errors none, paused journey storage unchanged at 250 KB. |
 | 843 | `r843-7cc357e4f592` | 2026-11-08 | Astra review (842→843): no blockers. Source CI42529952827, merged CI42530923512, Preview42530923499 and Publish42532509502 succeeded. Live identity commit7cc357e4f5924ba3320d6f7f76a44e72d6286ee8/treeb0baf469a66c521f161b1a8144a17e4a15ef78c2 and actual Options → System match, recent errors none; paused250KB journey unchanged. |
