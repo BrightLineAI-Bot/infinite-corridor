@@ -3301,7 +3301,7 @@ export class Game {
         walkPhase: this.player.walkPhase,
         heroPresentationTime: Math.max(0, Math.min(1e12, clock - (this.presentationPausedMs || 0))),
         consumeVisual: normalizeConsumeVisual(this.player.consumeVisual),
-        ...(this.player.hurtVisual ? { hurtVisual: normalizeHurtVisual(this.player.hurtVisual) } : {}),
+        hurtVisual: normalizeHurtVisual(this.player.hurtVisual),
         attackCooldown: remaining(this.player.attackReadyAt, clock),
         attackMotion: remaining(this.player.attackUntil, clock),
         attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock)),

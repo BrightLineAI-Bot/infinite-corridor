@@ -5,6 +5,8 @@ import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { VIEWPORT_QUIET_INPUT } from '../src/combat-visuals.ts';
+import { deserializeSave, serializeSave } from '../src/persistence.ts';
+import { eliteStateInPlace } from '../src/elites.ts';
 
 test('hurt receipt is bounded, dungeon-scoped, additive, and exact across migration', () => {
   const raw = { v: 1, kind: 'hurt', acceptedLogicalMs: 120, areaId: 'dungeon:test:g1', levelId: 'f2', future: { kept: true } };
@@ -49,10 +51,29 @@ test('a real Ashling hit drives a paused and reloadable recoil without replaying
   assert.equal(phase(g,now),0);
   g.setPaused(true,now+HURT_VISUAL_MS/2);
   assert.ok(Math.abs(phase(g,20000)-.5)<1e-8);
-  const reloaded=new Game(migrateSave(structuredClone(g.exportSnapshot(20000))),30000);
+  const reloaded=new Game(deserializeSave(serializeSave(g.exportSnapshot(20000))),30000);
   assert.deepEqual(reloaded.player.hurtVisual,receipt);
   assert.equal(reloaded.player.hp,g.player.hp);
   assert.ok(Math.abs(phase(reloaded,30000)-.5)<1e-8);
+  reloaded.loadArea(reloaded.area,false);
+  assert.equal(reloaded.player.hurtVisual,null);
+  const reentered=new Game(deserializeSave(serializeSave(reloaded.exportSnapshot(30010))),40000);
+  assert.equal(reentered.player.hurtVisual,null,'a cleared recoil cannot reappear on a second reload');
+});
+
+test('a hostile projectile triggers recoil through collision while poison ticks do not', () => {
+  const g=encounter(), hp=g.player.hp;
+  g.enemies=[];
+  g.projectiles=[{id:'hurt-shot',x:g.player.x+.5,y:g.player.y+.52,dx:1,dy:0,age:.1,speed:3,life:1,damage:2,hostile:true}];
+  g.update(1/60,VIEWPORT_QUIET_INPUT,1020);
+  assert.ok(g.player.hp<hp);
+  assert.equal(g.player.hurtVisual?.acceptedLogicalMs,1020);
+  const poisoned=encounter(), healthy=poisoned.player.hp;
+  poisoned.enemies=[];
+  Object.assign(eliteStateInPlace(poisoned.save).status,{poison:5,poisonDps:2,poisonTick:0});
+  poisoned.update(1/60,VIEWPORT_QUIET_INPUT,1020);
+  assert.ok(poisoned.player.hp<healthy);
+  assert.equal(poisoned.player.hurtVisual??null,null);
 });
 
 test('Aegis prevents recoil and a future receipt survives real damage and defeat', () => {
