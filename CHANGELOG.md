@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 855 adds matched room-clearance comparisons for a keep and a Pentagon chamber in Close View Lab.
+
 - Release 854 gives the Wayfarer a short healing-drink gesture in Close View and an isolated Potion test in Proving Ground.
 
 - Provisional Release 853: route the existing Spark Coil and Needle Caster recipes through imported-player idle and accepted-use equipment, preserving native fallback, shot origins, timing and ownership.

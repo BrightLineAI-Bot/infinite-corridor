@@ -14,7 +14,14 @@ Verified live on 2026-11-09: r853-a53725ea58a7, commit a53725ea58a7b4d1fc93da2c2
 
 ## Healing-drink gesture
 
-- Implemented a short free-hand sip for the three healing potions and a Close View Lab witness using the regular Potion control. Healing and spend stay immediate. Schema 14 round-trip, phase continuity, action interruption and bounded equipment rendering have focused coverage. Hosted motion and phone validation are pending.
+- Implemented a short free-hand sip for the three healing potions and a Close View Lab witness using the regular Potion control. Healing and spend stay immediate. Schema 14 round-trip, phase continuity, action interruption and bounded equipment rendering have focused coverage. PR #509 merged. The exact r854-467e9d974308 desktop Preview showed the raised free hand and visible vial using the ordinary Potion button, with WebGL2 ready, isolated storage, and no console warnings or errors. Physical-phone validation remains open.
+
+## Remaining Close View work
+
+- Room clearance comes first. The r855 Proving Ground pilot compares the same Keep 5 and Pentagon 10 entrance floors with a three-tile recess and their original edges. Hosted camera and combat-space checks come before any generation version or new-site adoption decision. Ceiling and drone clearance stay on the geometry review.
+- Finish the Wayfarer action pass with hurt, defeat and the remaining interaction gestures. Follow up on camera heading at low movement speeds and any tool pose or variant gaps found in the combined pass.
+- Run the combined traversal, combat, environment, recovery and offline checks. Physical-phone touch, frame rate and thermals require device evidence.
+- Start the articulated boss program with the Walker pilot after the player and room passes. Then work through the other Pentagon arena bosses and relevant labyrinth arenas using the roster and attack clocks in the boss manifest.
 
 ## Local ownership and r851 acceptance — 2026-11-09
 
