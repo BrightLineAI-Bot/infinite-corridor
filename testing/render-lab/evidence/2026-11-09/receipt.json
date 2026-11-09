@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "startedAt": "2026-11-09T14:56:24.298Z",
+  "scope": "local frozen artifact render probe, not publication acceptance",
+  "status": "blocked",
+  "scenarios": [],
+  "restrictions": [
+    "No visual approval",
+    "No physical phone performance evidence",
+    "No production or hosted-origin testing"
+  ],
+  "errors": [
+    "Chromium could not start with its normal sandbox; see chromium.log"
+  ],
+  "candidate": {
+    "id": "r852-b635f4b34336",
+    "commit": "b635f4b34336b3bad89054919ed699070ab8bdaa",
+    "tree": "430a9c43d986f17a94d01c1a2cd74f7f858f7e8d",
+    "digest": "8397b830c7ef339e56c3a1ab32673537874db058925c25b9230cc7295c40b72d"
+  },
+  "serving": "loopback-only disposable origin",
+  "browserFlags": [
+    "--headless",
+    "--remote-debugging-port=0",
+    "--user-data-dir=<disposable>",
+    "--no-first-run",
+    "--disable-background-networking",
+    "about:blank"
+  ],
+  "cleanup": {
+    "browserGroupStopped": true,
+    "profileRemoved": true
+  },
+  "finishedAt": "2026-11-09T14:56:24.841Z"
+}
