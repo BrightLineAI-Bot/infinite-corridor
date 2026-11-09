@@ -3,16 +3,13 @@
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
 
-## Provisional r853 simple-tool appearance packaging — 2026-11-09
+## Spark Coil and Needle Caster r853 draft — 2026-11-09
 
-Fresh remote main is merged r852 `b635f4b34336b3bad89054919ed699070ab8bdaa`, tree `430a9c43d986f17a94d01c1a2cd74f7f858f7e8d`. Only documentation PRs #502/#214 were open at the packaging check; no competing r853 candidate was found. Root provisionally assigns 853 only to `claude/simple-tool-appearance-release-cloud`; this is local preparation, not a merge-time claim. Main, open PRs and the release baton must be rechecked before remote integration.
+Draft PR #507 preserves the original imported Spark Coil and Needle Caster routing and the existing native generic fallback. A new isolated Combat Asset Lab fixture equips rank-zero Needle Caster and verifies its canonical accepted shot. The local coordinator reconciled the draft after PR #502 without changing the published r851 identity. New exact-head review and CI are required before merge, with hosted visual verification on its own preview.
 
-The four source files are byte-identical to reviewed remote `claude/simple-tool-appearance-cloud` commit `55ab4c9abaab952e10b2ea982f23d9edc66f8b20` (local reviewed checkpoint `888ef1cd`, tree `a97233f2`). Imported-player equipment selects the existing 56-triangle Spark Coil or 60-triangle Needle Caster at idle and from a successful accepted v1 `toolAppearance`. Native actors retain generic emitter recipes because full recipes exceed their 256-triangle caps. Rank-6 Needle resolution still selects Blunderbuss. Legacy, malformed and future appearance metadata retains generic fallback; schema14 unknown fields remain preserved.
+## Local ownership and verified r851 production — 2026-11-09
 
-Generic emitter animation, 180 ms presentation, modified 360 ms readiness, physical projectile origins, damage, counts, Echo/clone ownership, startup/muzzle memberships, body/gear caps and module/dependency inventory are unchanged. Independent final source review passed 80 focused checks. This package still requires independent packaging review, fresh exact-candidate review, CI/Preview and hosted visual/device acceptance; source/mock checks are not textured evidence.
-
-Parent receipts: r852 source CI42626474142 passed 3364 checks/build/rehearsal and fresh Astra review passed 68 focused checks on corrected source470/tree430. Merged CI42627941926 and Preview42627941960 were running at this checkpoint. Production remains verified r847; no Publish occurred. Root's separate master manifest preserves r850 recovery and r851/Cleaver acceptance details. No pass/boss manifest is edited by this package.
-
+The local Codex coordinator owns gameplay development, integration, merges, numbering and production publication under the handoff from Tim. The separate cloud pipeline effort remains limited to infrastructure. Production is verified at r851-1a2c35ae7ab9 after Publish 42638198273, with matching Pages identity and Options → System. Main at takeover is merged r852 b635f4b34336. Draft #507 remains isolated at 18ea3372fd96. Its exact CI passed and its hosted textured and phone checks remain open. The pass manifest records local visual evidence and the ordered continuation.
 
 ## Provisional r852 diagnostics packaging — 2026-11-09
 
