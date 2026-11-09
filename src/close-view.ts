@@ -2315,10 +2315,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const interactionKind=who===player?player.cachePickupVisual?.cacheKind:null;
     const openingChest=interactionKind==='chest';
     const shovelProfile=interactionKind==='shovelDig'?'shovel-dig':interactionKind==='ironShovelDig'?'iron-shovel-dig':null;
+    const placingStone=interactionKind==='stonePlace';
     if(ordinary&&(pose==='idle'||pose==='walk')&&player.cachePickupVisual?.v===1&&!(now<(player.dodgeUntil||0))){
       const logicalNow=(g.paused&&finite(g.pauseStarted)?g.pauseStarted:now)-(g.presentationPausedMs||0);
       pickupPhase=sampleCachePickupVisual(player.cachePickupVisual,logicalNow,g.areaId(),String(g.map?.levelId||'root'));
-      if(pickupPhase!==null)pose=shovelProfile?'shovelDig':openingChest?'openChest':'collect';
+      if(pickupPhase!==null)pose=placingStone?'placeStone':shovelProfile?'shovelDig':openingChest?'openChest':'collect';
     }
     const meleeAction = visualAttack && visualRecord.meleeAction?.v === 1 ? visualRecord.meleeAction : null;
     const poseTime = who === player && !meleeAction && !primaryVisualStage(visualRecord) && now - state.lastMeleeHit < MODEL_TIMING.contactHoldMs ? state.lastMeleeHit : now;
@@ -2421,7 +2422,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
         else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; action.jumpAir = ordinaryJumpPresentation(g, now, d.jumpLift, d.jumpBaseMs); }
         else if(drink?.active){action.kind='drink';action.profile=drink.itemKind;action.phase=drink.phase;action.durationMs=drink.durationMs;}
-        else if(pickupPhase!==null){action.kind='interact';action.profile=shovelProfile||(openingChest?'chest-open':'cache-pickup');action.phase=pickupPhase;action.durationMs=player.cachePickupVisual.durationMs;}
+        else if(pickupPhase!==null){action.kind='interact';action.profile=placingStone?'stone-place':shovelProfile||(openingChest?'chest-open':'cache-pickup');action.phase=pickupPhase;action.durationMs=player.cachePickupVisual.durationMs;}
         action.meleeAction = action.kind === 'melee' && attack ? meleeAction : null;
         // Generic primaries retain their accepted logical breathing phase at both blend endpoints.
         if (action.kind === 'melee' && action.profile === 'melee' && Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs;
