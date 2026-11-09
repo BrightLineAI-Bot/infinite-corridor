@@ -2,7 +2,7 @@
 
 Updated: 2026-11-09. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live on 2026-11-09: r853-a53725ea58a7, commit a53725ea58a7b4d1fc93da2c247e25e98ada7cdf, tree b4309eaa686cff5fa479a22a5a66d45836c5023a. Publish 42649614970 succeeded. Pages and Options → System matched. The journey remained paused at 250 KB with no recent errors.
+Verified live on 2026-11-09: r855-96d7069b1622, commit 96d7069b162241db099c844a8f62170da64d4fe0, tree 627d4c9054a21e76e064048fb3acd31c77d2ef2d. Astra found no blockers from r853. Publish 42669454669 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
 
 ## r853 tool appearance acceptance and tooling availability — 2026-11-09
 
