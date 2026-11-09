@@ -37,7 +37,7 @@ import { ensureSlots, slotted, pairingMods, slotReadiness, activeButton, slotToo
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
-import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizeCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
+import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
@@ -78,7 +78,7 @@ import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND,
 import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
-import { setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
+import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.ts";
 import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.ts";
@@ -2349,7 +2349,7 @@ export class Game {
     this.loadArea(this.area, false);
     if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
-    this.player.cachePickupVisual = normalizeCachePickupVisual(s.playerRuntime.cachePickupVisual);
+    this.player.cachePickupVisual = normalizePersistentCachePickupVisual(s.playerRuntime.cachePickupVisual);
     this.player.hurtVisual = normalizeHurtVisual(s.playerRuntime.hurtVisual);
     this.restorePendingToolUse(s.playerRuntime.pendingToolUse,now);
     this.restorePendingMeleeContact(s.playerRuntime.pendingMeleeContact,now);
@@ -3357,7 +3357,7 @@ export class Game {
         walkPhase: this.player.walkPhase,
         heroPresentationTime: Math.max(0, Math.min(1e12, clock - (this.presentationPausedMs || 0))),
         consumeVisual: normalizeConsumeVisual(this.player.consumeVisual),
-        cachePickupVisual: normalizeCachePickupVisual(this.player.cachePickupVisual),
+        cachePickupVisual: normalizePersistentCachePickupVisual(this.player.cachePickupVisual),
         hurtVisual: normalizeHurtVisual(this.player.hurtVisual),
         attackCooldown: remaining(this.player.attackReadyAt, clock),
         attackMotion: remaining(this.player.attackUntil, clock),
@@ -4778,7 +4778,7 @@ export class Game {
     const preflight = validateDigPlan(this.save, this.map, plan, key); if (!preflight.ok) { this.message = preflight.message; return { ok: false, message: this.message }; }
     const c = plan.iron ? ensureIronShovel(this.save) : ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; }
     const r = dig(this.save, this.map, plan, key);
-    if (r.ok) { this.map.wallGlints = (this.map.wallGlints || []).filter((g) => g.x !== plan.x || g.y !== plan.y); }
+    if (r.ok) { this.map.wallGlints = (this.map.wallGlints || []).filter((g) => g.x !== plan.x || g.y !== plan.y); this.stampShovelDigVisual(plan.iron ? "ironShovelDig" : "shovelDig"); }
     this.message = (c.crafted ? c.message + " " : "") + (r.ok && plan.burrow ? LAB_BURROW.messages.burrow + " " : "") + r.message; this.sync(); return r;
   }
   // Release 231: the Tyrant Mosasaur rises from the deep a few tiles away and hunts the Wayfarer. It is not saved: the
@@ -4803,7 +4803,8 @@ export class Game {
   // fence turned across the line from the Wayfarer to the tap.
   buildAt(wx, wy) {
     if (this.cursed("tools")) return { ok: false, message: this.message }; // release 737: NO TOOLS
-    const t = tapTarget(this.player, wx, wy), r = placeBuild(this, t.x, t.y, undefined, true, t.run);
+    const kind=activeBuildKind(this.save)||ensureBuild(this.save).build.kind,t = tapTarget(this.player, wx, wy), r = placeBuild(this, t.x, t.y, kind, true, t.run);
+    if(r.ok&&kind==='stone')this.stampStonePlacementVisual();
     this.message = r.message; return r;
   }
   // Release 269: the skiff a Build press would patch: the one you're aboard, or yours moored within reach, while its
@@ -6711,7 +6712,7 @@ export class Game {
     if (this.cursed("tools")) return false; // release 737: NO TOOLS (Build)
     if (this.mendTarget()) { this.message = mendSkiff(this.save).message; return true; }
     if (this.area === "overworld" && aboard(this.save)) { this.message = "Hold Build to raise a hull shield."; return false; }
-    const at = buildSpot(p), r = placeBuild(this, at.x, at.y, undefined, moving); this.message = r.message; this.save.aimMode = "build"; this.save.toolMode = false; return r.ok; // the button also turns on build mode: taps build
+    const kind=activeBuildKind(this.save)||ensureBuild(this.save).build.kind,at = buildSpot(p), r = placeBuild(this, at.x, at.y, kind, moving); if(r.ok&&kind==='stone')this.stampStonePlacementVisual();this.message = r.message; this.save.aimMode = "build"; this.save.toolMode = false; return r.ok; // the button also turns on build mode: taps build
   }
   useButtonItem(item, now = this.lastUpdateNow || 0) {
     if (!item) { this.message = `Preset ${(this.save.magicSkills.preset || 0) + 1}: choose its item in Pack → Supplies.`; return false; }
@@ -8181,8 +8182,21 @@ export class Game {
       visualNow<(p.dodgeUntil||0)||visualNow<(p.stunnedUntil||0)||visualNow<(p.heldUntil||0)||!!this.fistCharge||!!this.pendingToolUse||!!this.pendingMeleeContact||
       sampleHurtVisual(p.hurtVisual,logicalNow,areaId,levelId)!==null||
       !!sampleConsumeVisual(p.consumeVisual,logicalNow,{area:this.area,areaId,levelId},{})?.active;
-    p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs: cacheKind === 'chest' ? CHEST_OPEN_VISUAL_MS : CACHE_PICKUP_VISUAL_MS, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
+    const durationMs=cacheKind === 'chest' ? CHEST_OPEN_VISUAL_MS : cacheKind === 'shovelDig' || cacheKind === 'ironShovelDig' ? SHOVEL_DIG_VISUAL_MS : cacheKind === 'stonePlace' ? STONE_PLACE_VISUAL_MS : CACHE_PICKUP_VISUAL_MS;
+    p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
     if (!busy) this.retireCleaverChoreography();
+  }
+  stampShovelDigVisual(cacheKind, now = this.lastUpdateNow || 0) {
+    const logicalNow=this.consumeLogicalNow(now),areaId=this.areaId(),levelId=String(this.map?.levelId||'root');
+    // A second immediate dig still changes the world, but cannot steal the body from
+    // the first accepted reach. This prevents rapid Act presses from restarting it.
+    if(sampleCachePickupVisual(this.player.cachePickupVisual,logicalNow,areaId,levelId)!==null)return false;
+    this.stampCachePickupVisual(cacheKind,now);return true;
+  }
+  stampStonePlacementVisual(now = this.lastUpdateNow || 0) {
+    const logicalNow=this.consumeLogicalNow(now),areaId=this.areaId(),levelId=String(this.map?.levelId||'root');
+    if(sampleCachePickupVisual(this.player.cachePickupVisual,logicalNow,areaId,levelId)!==null)return false;
+    this.stampCachePickupVisual('stonePlace',now);return this.player.cachePickupVisual?.cancelled!==true;
   }
   stampConsumeVisual(itemKind, now) {
     if (Number.isSafeInteger(this.player.consumeVisual?.v) && this.player.consumeVisual.v > 1) return;

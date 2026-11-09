@@ -23,6 +23,14 @@ export function chestOpenWeight(phase, reducedMotion = false) {
   const reach = p < .32 ? cutSmooth(p / .32) : p < .65 ? 1 : 1 - cutSmooth((p - .65) / .35);
   return reach * (reducedMotion ? .6 : 1);
 }
+export function sampleShovelDigPose(phase, reducedMotion = false, out = {}) {
+  const p=unit(phase),down=cutSmooth(p/.34),recover=cutSmooth((p-.68)/.32),hold=down*(1-recover),lever=cutSmooth((p-.34)/.20)*(1-cutSmooth((p-.58)/.10)),scale=reducedMotion?.68:1;
+  out.weight=hold*scale;out.down=down*(1-recover)*scale;out.lever=lever*scale;out.recover=recover;return out;
+}
+export function stonePlaceWeight(phase, reducedMotion = false) {
+  const p=unit(phase),weight=p<.38?cutSmooth(p/.38):1-cutSmooth((p-.58)/.42);
+  return weight*(reducedMotion?.62:1);
+}
 // Accepted Stage 10b descriptors share one contact clock across native, imported and
 // reduced-motion presentation.  This sampler is deliberately geometry-only so the
 // renderer can also use it for a bounded weapon trail without inventing another timer.

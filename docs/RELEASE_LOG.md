@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at game release r858, merged as 03db834feac95a88e39bd66ac64da136bfafe773. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at game release r859, merged as 6c8e76670ac782fa4d63333bf2e8e74cf7e89141. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 859 | Codex | claude/close-view-chest-opening | Close View chest reach and lid lift, with a normal Act fixture | Focused checks and build pass. Full CI and hosted verification pending. |
-| 858 | Codex | claude/close-view-cleaver-choreography / #514 | Four linked right-handed Verge Cleaver cuts in imported and native Close View | Merged as 03db834feac9. Source CI 42698555018 passed. Merged CI 42700331951 and Preview 42700331564 were started. Hosted verification and publication pending. |
+| 860 | Codex | codex/close-view-stone-placement | Close View shovel dig and stone placement gestures | Focused checks and build pass. Full CI and hosted verification pending. |
+| 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift, with a normal Act fixture | Merged as 6c8e76670ac7. Source CI 42700948170 passed. Merged CI 42702713648 and Preview 42702713650 were started. Hosted verification and publication pending. |
+| 858 | Codex | claude/close-view-cleaver-choreography / #514 | Four linked right-handed Verge Cleaver cuts in imported and native Close View | Merged as 03db834feac9. Source CI 42698555018 passed. Merged CI 42700331951 passed. Preview 42700331564 built the candidate, with Pages delivery pending at this checkpoint. Hosted verification and publication pending. |
 | 854 | Codex | claude/close-view-healing-drink / #509 | Wayfarer healing-drink gesture and isolated Potion lab | Merged as 467e9d974308. CI 42651541179 and 42653990562 passed. Preview 42653990710 succeeded for r854-467e9d974308. Desktop scratch verified the sip and visible vial in WebGL2. Published in r855. Physical-phone validation remains open. |
 | 852 | Codex | claude/close-view-diagnostics-release-cloud / #506 | Read-only Proving Ground renderer diagnostics | Merged as b635f4b34336. CI 42627941926 and Preview 42627941960 passed. Diagnostics were verified on the r853 desktop preview. Published in r853. |
 | 850 | Codex | claude/pg-lantern-recovery-cloud / #504 | Candidate-scoped natural Lantern recovery | Merged as e789c26f7d71. CI and Preview passed. Cloud natural capture, browser reload and damage witness completed. Published in r851. |

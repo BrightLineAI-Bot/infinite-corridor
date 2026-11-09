@@ -6,6 +6,10 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 860 — Close View excavation and stone placement
+
+**CODE:** Successful Act digs show the shovel digging, levering and returning to carry. Successful Build and aimed stone placements add a short placing gesture. Rapid stacking keeps its immediate placement and independent block lifetimes. The existing excavation and building practice scenarios exercise the real controls.
+
 ## Release 859 — Close View chest opening
 
 **CODE:** An accepted chest open uses a short free-hand reach and lid lift in both Wayfarer rigs. The reward is granted immediately through the existing Act interaction. The Proving Ground Close View Lab includes a separate chest-opening fixture.

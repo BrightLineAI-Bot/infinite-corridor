@@ -5,7 +5,7 @@ import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteC
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
-import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
@@ -76,6 +76,14 @@ const playerTool = [
   part(frontPatch, .349, -.25, .783, 1, .033, .032, visor, -2, 0, 1.19),
 ];
 const playerUnarmed = player.slice(0, -2);
+// Compact original shovel: an ash shaft, iron collar and broad low-poly blade.
+// It shares the existing actor/equipment stream and the canonical right-hand grip.
+const shovelGear=[
+  block(.17,-.25,1.18,.026,.026,.40,0x795c48,-2,0,1.19),
+  block(.17,-.25,1.59,.052,.043,.055,bronze,-2,0,1.19),
+  part(taper,.17,-.25,1.78,.14,.035,.17,iron,-2,0,1.19),
+];
+const playerShovel=[...playerUnarmed,...shovelGear];
 // The source-free fallback keeps the approved body/head/feet and replaces each 20-triangle
 // one-piece limb with two 12-triangle segments. Two 12-triangle fists bring it to 254 triangles.
 const playerHammerStomp = playerUnarmed.filter((_,i)=>![10,12,14,16].includes(i)).map(p=>Math.abs(p.swing)===1?{...block(0,0,0,.12,.077,.076,leather),hammerPart:p.swing<0?0:1}:p);
@@ -347,7 +355,7 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
 } // exact rule cells are the residual panel, never generic bars
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -365,7 +373,7 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle,'spark-coil':sparkCoil,'needle-caster':needleCaster});
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,'shovel-dig':shovelGear,'iron-shovel-dig':shovelGear,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle,'spark-coil':sparkCoil,'needle-caster':needleCaster});
 export const HERO_EQUIPMENT_MAX_TRIANGLES = 156;
 export const HERO_DRINK_VIAL_TRIANGLES=24;
 // One bake-time heptagonal tapered bottle: visible at close range, but small enough
@@ -589,6 +597,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const jumpSettle = pose === "jump" && progress > .72 ? Math.sin((progress - .72) / .28 * Math.PI) : 0;
   const flinch = pose === "hit" ? progress : 0;
   const drinking=playerLike&&pose==='drink',drink=drinking?sampleDrinkPose(progress,actor.reduceMotion,DRINK_POSE):null;
+  const shovelDigging=playerLike&&pose==='shovelDig',shovel=shovelDigging?sampleShovelDigPose(progress,actor.reduceMotion,DRINK_POSE):null;
+  const placingStone=playerLike&&pose==='placeStone',place=placingStone?stonePlaceWeight(progress,actor.reduceMotion):0;
   const chestOpening=playerLike&&pose==='openChest';
   const collecting=playerLike&&(pose==='collect'||chestOpening);
   const reach=chestOpening?chestOpenWeight(progress,actor.reduceMotion):collecting?cacheReachWeight(progress,actor.reduceMotion):0;
@@ -610,7 +620,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const cleaverLoad = actor.reduceMotion ? .55 : 1;
   const turn = nativeCleaver?cf.twist*cleaverLoad+turnLean:newCleaver?cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .16 * stagger
+  const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
@@ -629,8 +639,8 @@ export function writeCloseViewModel(out, offset, actor) {
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
   const hammerWeight=kind==='playerHammerStomp'?hammerFrames(progress):0;
   const nativeJump=ordinaryNativeJump(actor),nativeJumpBaseline=pose==='jump'&&ordinaryJumpKind(kind)&&!kind.startsWith('playerIronFists');if(nativeJump||nativeJumpBaseline)nativeJumpFrames(actor,beat,stride,jump,jumpSettle,nativeJump);
-  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink','collect','openChest'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
-  const freeSwing=drinking||collecting?(cleaverHandRoles(kind==='playerVergeCleaver'?'verge-cleaver':'melee',stage).free==='leftSocket'?2:-2):0;
+  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink','collect','openChest','placeStone'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
+  const freeSwing=drinking||collecting||placingStone?(cleaverHandRoles(kind==='playerVergeCleaver'?'verge-cleaver':'melee',stage).free==='leftSocket'?2:-2):0;
   for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon, cleaverArm, cleaverWeapon } of models[kind]) {
     const jumpPart=nativeJump||nativeJumpBaseline?JUMP_PARTS.get(mesh):null;
     const mirroredArm=newCleaver&&Math.abs(sourceSwing)===2,swing=mirroredArm?-sourceSwing:sourceSwing;
@@ -685,6 +695,9 @@ export function writeCloseViewModel(out, offset, actor) {
     if(toolMotion&&swing===-2){const w=toolMotion.weight,baseUp=phasedTool.toolKind==='lumen-spindle'?.18:phasedTool.toolKind==='rift-bombard'?-.13:-.08;angle=beat*stride*(1-w)-(phasedTool.toolKind==='great-sweep'?.8:1.1)*w-(phasedTool.toolKind==='great-sweep'?0:(toolMotion.up-baseUp*w)*2);}
     if(drinking&&swing===freeSwing&&kind!=='playerCinderPike')angle+=( -1.08-.14*drink.sip-angle)*drink.weight;
     if(collecting&&swing===freeSwing&&kind!=='playerCinderPike')angle+=((chestOpening?-.64-.49*lidLift:-.86)-angle)*reach;
+    if(placingStone&&swing===freeSwing&&kind!=='playerCinderPike')angle+=(-.94-angle)*place;
+    if(shovelDigging&&swing===-2)angle+=(-1.18*(shovel?.down||0)+.46*(shovel?.lever||0)-angle)*(shovel?.weight||0);
+    if(shovelDigging&&swing===2)angle+=(-.50*(shovel?.down||0)-.28*(shovel?.lever||0)-angle)*(shovel?.weight||0);
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
