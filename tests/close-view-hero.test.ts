@@ -56,6 +56,16 @@ test('cache pickup reaches with the free hand and blends back into the same gait
   assert.ok(maxDelta(pikeCarry.positionsNormals,pikeCue.positionsNormals)>.01);
   for(const hand of ['leftSocket','rightSocket'])assert.ok(maxDelta(pikeCue[hand],pikeCarry[hand])<1e-6,'both Pike grips stay planted');
 });
+test('chest opening reaches and lifts the free hand while the Cleaver stays in its grip',()=>{
+  const base={nowMs:135,heldProfile:'verge-cleaver',handProfile:'verge-cleaver'};
+  const sampleChest=phase=>sample(input({...base,action:{kind:'interact',profile:'chest-open',phase,durationMs:510}}));
+  const reach=sampleChest(.32),lift=sampleChest(.57),rest=sample(input(base)).f;
+  assert.equal(lift.s.clip,'derived-chest-open');
+  assert.ok(lift.f.rightSocket[14]>reach.f.rightSocket[14]+.06);
+  assert.deepEqual(lift.f.leftSocket,rest.leftSocket);
+  assert.deepEqual(sampleChest(0).f.rightSocket,rest.rightSocket);
+  assert.deepEqual(sampleChest(1).f.rightSocket,rest.rightSocket);
+});
 test('native cache reach stays within existing geometry and returns to idle',()=>{
   const render=(pose,amount)=>{
     const out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS);

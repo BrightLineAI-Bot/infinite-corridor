@@ -37,7 +37,7 @@ import { ensureSlots, slotted, pairingMods, slotReadiness, activeButton, slotToo
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
-import { CACHE_PICKUP_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizeCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
+import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizeCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
@@ -4345,6 +4345,7 @@ export class Game {
       else if (B?.pentagon && B.V >= 3 && o.reliquary) this.awardTesseract(`${B.base}:reliquary:${B.node}`, "reliquary");
       else if (B?.pentagon && B.V >= 5 && o.sealedVault) this.awardTesseract(`${B.base}:sealed:${B.node}`, "sealed");
       else if (B?.pentagon && B.V >= 3 && B.vault && o.id === "building-cache") this.awardTesseract(`${B.base}:hoard`, dungeonHistory(this.save, `${B.base}:f1`).regentGrade || "regent");
+      this.stampCachePickupVisual("chest");
     }
     this.reconcileConsequences();
     this.sync();
@@ -8180,7 +8181,7 @@ export class Game {
       visualNow<(p.dodgeUntil||0)||visualNow<(p.stunnedUntil||0)||visualNow<(p.heldUntil||0)||!!this.fistCharge||!!this.pendingToolUse||!!this.pendingMeleeContact||
       sampleHurtVisual(p.hurtVisual,logicalNow,areaId,levelId)!==null||
       !!sampleConsumeVisual(p.consumeVisual,logicalNow,{area:this.area,areaId,levelId},{})?.active;
-    p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs: CACHE_PICKUP_VISUAL_MS, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
+    p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs: cacheKind === 'chest' ? CHEST_OPEN_VISUAL_MS : CACHE_PICKUP_VISUAL_MS, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
     if (!busy) this.retireCleaverChoreography();
   }
   stampConsumeVisual(itemKind, now) {

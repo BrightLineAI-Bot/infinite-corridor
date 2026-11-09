@@ -18,6 +18,11 @@ export function cacheReachWeight(phase, reducedMotion = false) {
   const reach = p < .38 ? cutSmooth(p / .38) : p < .57 ? 1 : 1 - cutSmooth((p - .57) / .43);
   return reach * (reducedMotion ? .6 : 1);
 }
+export function chestOpenWeight(phase, reducedMotion = false) {
+  const p = unit(phase);
+  const reach = p < .32 ? cutSmooth(p / .32) : p < .65 ? 1 : 1 - cutSmooth((p - .65) / .35);
+  return reach * (reducedMotion ? .6 : 1);
+}
 // Accepted Stage 10b descriptors share one contact clock across native, imported and
 // reduced-motion presentation.  This sampler is deliberately geometry-only so the
 // renderer can also use it for a bounded weapon trail without inventing another timer.

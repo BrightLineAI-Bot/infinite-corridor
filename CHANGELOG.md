@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 859 gives the Wayfarer a distinct free-hand reach and lid lift when opening a chest in Close View.
+
 - Release 858 connects the Verge Cleaver's four right-handed cuts: a rising diagonal, a shoulder-high slash, a descending diagonal and a low horizontal slash.
 
 - Release 857 gives the ordinary Wayfarer a short cache collection gesture, recoil on confirmed combat hits and a distinct defeat fall, with isolated Proving Ground scenarios for each.

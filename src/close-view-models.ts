@@ -5,7 +5,7 @@ import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteC
 import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
-import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight } from './close-view-player-presentation.ts';
+import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
@@ -589,7 +589,10 @@ export function writeCloseViewModel(out, offset, actor) {
   const jumpSettle = pose === "jump" && progress > .72 ? Math.sin((progress - .72) / .28 * Math.PI) : 0;
   const flinch = pose === "hit" ? progress : 0;
   const drinking=playerLike&&pose==='drink',drink=drinking?sampleDrinkPose(progress,actor.reduceMotion,DRINK_POSE):null;
-  const collecting=playerLike&&pose==='collect',reach=collecting?cacheReachWeight(progress,actor.reduceMotion):0;
+  const chestOpening=playerLike&&pose==='openChest';
+  const collecting=playerLike&&(pose==='collect'||chestOpening);
+  const reach=chestOpening?chestOpenWeight(progress,actor.reduceMotion):collecting?cacheReachWeight(progress,actor.reduceMotion):0;
+  const lidLift=chestOpening?Math.min(1,Math.max(0,(progress-.32)/.25)):0;
   const fall = pose === "death" ? progress : 0;
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
@@ -626,7 +629,7 @@ export function writeCloseViewModel(out, offset, actor) {
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
   const hammerWeight=kind==='playerHammerStomp'?hammerFrames(progress):0;
   const nativeJump=ordinaryNativeJump(actor),nativeJumpBaseline=pose==='jump'&&ordinaryJumpKind(kind)&&!kind.startsWith('playerIronFists');if(nativeJump||nativeJumpBaseline)nativeJumpFrames(actor,beat,stride,jump,jumpSettle,nativeJump);
-  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink','collect'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
+  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink','collect','openChest'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
   const freeSwing=drinking||collecting?(cleaverHandRoles(kind==='playerVergeCleaver'?'verge-cleaver':'melee',stage).free==='leftSocket'?2:-2):0;
   for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon, cleaverArm, cleaverWeapon } of models[kind]) {
     const jumpPart=nativeJump||nativeJumpBaseline?JUMP_PARTS.get(mesh):null;
@@ -681,7 +684,7 @@ export function writeCloseViewModel(out, offset, actor) {
     } else if(kind==='playerCinderPike'&&swing===-2) angle+=(primaryStep===2?-.22:primaryStep===3?.22:0)*strike;
     if(toolMotion&&swing===-2){const w=toolMotion.weight,baseUp=phasedTool.toolKind==='lumen-spindle'?.18:phasedTool.toolKind==='rift-bombard'?-.13:-.08;angle=beat*stride*(1-w)-(phasedTool.toolKind==='great-sweep'?.8:1.1)*w-(phasedTool.toolKind==='great-sweep'?0:(toolMotion.up-baseUp*w)*2);}
     if(drinking&&swing===freeSwing&&kind!=='playerCinderPike')angle+=( -1.08-.14*drink.sip-angle)*drink.weight;
-    if(collecting&&swing===freeSwing&&kind!=='playerCinderPike')angle+=(-.86-angle)*reach;
+    if(collecting&&swing===freeSwing&&kind!=='playerCinderPike')angle+=((chestOpening?-.64-.49*lidLift:-.86)-angle)*reach;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
