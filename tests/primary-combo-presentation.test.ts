@@ -241,6 +241,17 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
       const castUntil=g.player.castUntil;g.player.castUntil=0;render(screen,g,390,844,queued.at+1);delta=0;for(let k=0;k<castFrame.length;k++)delta=Math.max(delta,Math.abs(castFrame[k]-gl.uploads.at(-1)[k]));assert.ok(delta>1e-5,'new cast is visible after tool cancellation');g.player.castUntil=castUntil;
       const next=Math.max(queued.at+2,g.player.attackReadyAt);g.primaryAttack(next);assert.ok(g.player.castUntil>next);render(screen,g,390,844,next+40);const attackFrame=gl.uploads.at(-1);g.player.castUntil=0;render(screen,g,390,844,next+40);sameGeometry(gl.uploads.at(-1),attackFrame,'new primary wins older cast in production renderer');
     }
+    {
+      const g=fixture(), start=100400;
+      g.save.closeView=true;resetCloseViewCamera();render(screen,g,390,844,start);
+      const now=start+1000/60;
+      g.update(1/60,{...calm,state:{x:.2,y:0}},now);render(screen,g,390,844,now);
+      const ready=gl.uploads.at(-1);
+      g.attackAction='attack';try{g.primaryAttack(now);}finally{g.attackAction=null;}
+      assert.equal(g.player.attackVisual.cleaverChoreography?.v,1);
+      render(screen,g,390,844,now);
+      sameGeometry(gl.uploads.at(-1),ready,'authored Cleaver cut enters from the exact partial-walk carry');
+    }
     for(const kind of ['verge-cleaver','cinder-pike'])for(const hz of [30,60]){
       const g=fixture(kind);resetCloseViewCamera();let now=100400;render(screen,g,390,844,now);
       for(let n=1;n<=12;n++){now+=1000/hz;g.update(1/hz,{...calm,state:{x:.2,y:0}},now);render(screen,g,390,844,now);}
