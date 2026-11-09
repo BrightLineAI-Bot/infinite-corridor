@@ -1,6 +1,6 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.ts';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
 import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
@@ -328,6 +328,31 @@ function cleaverFourPose(state,pose,p,stage){
   state.clip='derived-right-cleaver-four';state.clipTime=p;state.primaryStep=stage?.step||1;
 }
 
+function choreographedCleaverPose(state, pose, frame, reducedMotion) {
+  const load = reducedMotion ? .55 : 1;
+  rotateY(pose, 28, frame.twist * .36 * load);
+  rotateY(pose, 27, frame.twist * .64 * load);
+  rotateX(pose, 24, frame.lean * load);
+  rotateY(pose, 4, -frame.twist * .32 * load);
+  rotateX(pose, 22, -frame.lean * .65 * load);
+  build(state.asset, state, pose);
+  const g = state.global, shoulder = 12 * 16, elbow = 11 * 16, wrist = 7 * 16, grip = 6 * 16, target = state.primaryTarget;
+  const reach = Math.hypot(g[elbow+12]-g[shoulder+12],g[elbow+13]-g[shoulder+13],g[elbow+14]-g[shoulder+14]) +
+    Math.hypot(g[wrist+12]-g[elbow+12],g[wrist+13]-g[elbow+13],g[wrist+14]-g[elbow+14]);
+  // Start at the existing gait-driven carry. Blend the rig-specific offset away
+  // as the hand leaves the hip, so the authored endpoints keep their full reach.
+  const carry = cleaverCarryFrame();
+  const leaveCarry = smoothstep(Math.hypot(frame.side - carry.side, frame.up - carry.up, frame.forward - carry.forward) / .45);
+  const carryX = g[shoulder+12] + .08;
+  const carryY = Math.max(g[shoulder+13] - reach * .80, state.minY + state.referenceHeight * .52);
+  const carryZ = g[shoulder+14] + .06 + .04 * Math.tanh((g[grip+14] - g[shoulder+14]) * 3);
+  target[0] = carryX + (g[shoulder+12] + frame.side * reach - carryX) * leaveCarry;
+  target[1] = carryY + (g[shoulder+13] + frame.up * reach - carryY) * leaveCarry;
+  target[2] = carryZ + (g[shoulder+14] + frame.forward * reach - carryZ) * leaveCarry;
+  state.primaryGripResidual = solveArm(state, pose, true, target, frame.yaw, frame.pitch);
+  state.clip = 'derived-choreographed-cleaver';
+}
+
 // Reachable source-space targets for the resolved free hand. The weapon hand remains
 // whatever carry/attack layer established; this solver runs last so casting never
 // yanks an accepted weapon socket off its grip.
@@ -576,7 +601,12 @@ export function sampleCloseViewHero(asset, state, input, out) {
   state.clip = speed > 2.8 ? 'Run' : speed > 0 ? 'Walk' : 'Idle'; state.clipTime = phase;
   const primaryStage=primaryAction?(primaryVisualStage(action)||(action.primaryMotion?{kind:'opaque'}:{kind:'legacy',step:1})):input.primaryCarryStage,
     carryProfile=primaryAction||heldPrimary,roles=cleaverHandRoles(input.handProfile??carryProfile,primaryStage);
-  if(meleeMotion){
+  if(carryProfile==='verge-cleaver'&&input.cleaverFrame){
+    choreographedCleaverPose(state,state.pose,input.cleaverFrame,input.reducedMotion);
+    state.clipTime=p;
+    state.primaryStep=primaryStage?.step||1;
+  }
+  else if(meleeMotion){
     if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:meleeMotion.cutIndex});
     else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,meleeMotion.lead<0?'left':'right');}
     weightedMeleePose(asset,state,state.pose,meleeMotion);

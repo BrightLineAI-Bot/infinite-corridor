@@ -4,11 +4,40 @@ import fs from 'node:fs';
 import {decodeCloseViewHero,createHeroPoseState,createHeroFrame,sampleCloseViewHero,loadCloseViewHero,getCloseViewHeroAsset,HERO_PROPORTIONS} from '../src/close-view-hero.ts';
 import {writeCloseViewHeroGear,writeCloseViewModel,modelTriangleCount,MODEL_FLOATS,MODEL_MAX_VERTICES} from '../src/close-view-models.ts';
 import {knockdownPose} from '../src/lightning-giant-render.ts';
+import {acceptCleaverChoreography,cleaverCarryFrame,sampleCleaverChoreography} from '../src/action-motion.ts';
 const meta=JSON.parse(fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.json',import.meta.url),'utf8'));
 const file=fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.bin',import.meta.url));
 const bytes=file.buffer.slice(file.byteOffset,file.byteOffset+file.byteLength),asset=decodeCloseViewHero(meta,bytes);
 const input=(extra={})=>({nowMs:100000,reducedMotion:false,x:3,y:4,groundZ:.3,liftZ:0,yaw:0,height:1.3776,speed:0,gaitPhase:0,action:null,alpha:1,tint:[1,1,1],hitFlash:0,...extra});
 function sample(i=input()){const s=createHeroPoseState(asset),f=createHeroFrame(asset);assert.equal(sampleCloseViewHero(asset,s,i,f),true);return{s,f};}
+test('the right-hand Cleaver crosses four distinct blade paths and returns to carry',()=>{
+  const held={heldProfile:'verge-cleaver',handProfile:'verge-cleaver',x:0,y:0,groundZ:0,height:1.38};
+  const joints=(frame,nowMs)=>{
+    const {f,s}=sample(input({...held,nowMs,cleaverFrame:frame}));
+    assert.equal(s.clip,'derived-choreographed-cleaver');
+    assert.ok(s.primaryGripResidual<.05);
+    const hand=[...f.leftSocket.slice(12,15)],tip=hand.map((v,i)=>v+f.leftSocket[i]*.6);
+    return {hand,tip};
+  };
+  const distance=(a,b)=>Math.hypot(...a.map((n,i)=>n-b[i]));
+  let prior=null, previousFinish=null;
+  for(let step=1;step<=4;step++){
+    const at=1000+(step-1)*420;
+    const record={weaponKind:'verge-cleaver',primaryMotion:{v:2,step},meleeAction:{v:1,kind:'verge-cleaver',move:'cleaver',contactMs:75,durationMs:360},cleaverChoreography:{...acceptCleaverChoreography(prior,at),contactLogicalMs:at+75}};
+    const atMs=ms=>joints(sampleCleaverChoreography(record,at+ms),at+ms);
+    const start=atMs(0),contact=atMs(75),finish=atMs(180);
+    if(previousFinish)assert.ok(distance(start.hand,previousFinish.hand)<.02);
+    const side=finish.hand[1]-start.hand[1],height=finish.hand[2]-start.hand[2];
+    assert.ok((step%2===1?-side:side)>.25);
+    if(step===1)assert.ok(height>.25&&finish.tip[2]-start.tip[2]>.30);
+    else if(step===3)assert.ok(height<-.20&&finish.tip[2]-start.tip[2]<-.20);
+    else assert.ok(Math.abs(height)<.05&&Math.abs(finish.tip[2]-start.tip[2])<.05);
+    assert.ok(contact.tip[0]>Math.max(start.tip[0],finish.tip[0])+.05);
+    previousFinish=atMs(420);
+    prior=record;
+    if(step===4)assert.deepEqual(previousFinish,joints(cleaverCarryFrame(),at+420));
+  }
+});
 test('cache pickup reaches with the free hand and blends back into the same gait', () => {
   const base={nowMs:135,speed:1.2,gaitPhase:.9,heldProfile:'verge-cleaver',handProfile:'verge-cleaver'};
   const reach=(phase,reducedMotion=false,overrides={})=>sample(input({...base,reducedMotion,...overrides,action:{kind:'interact',profile:'cache-pickup',phase,durationMs:400}}));

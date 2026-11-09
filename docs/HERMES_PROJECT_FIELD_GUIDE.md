@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 858 — Verge Cleaver four-cut choreography
+
+**CODE:** The Wayfarer cuts from the right hip to the left shoulder, across at shoulder height, down to the left hip, and across low before returning to carry. The imported rig uses the right-hand grip and turns the hips and shoulders through the cut. The native arm and blade follow the same path. The next accepted press starts at the previous pose, including during early follow-through or after an idle gap.
+
+**BOUNDARY:** The optional choreography record uses the existing logical action clock. Contact timing, hit geometry, cooldown and Echo ownership stay with the canonical attack. Older saves still load their prior pose records. The native model uses its existing sleeve and weapon meshes.
+
 ## Release 857 — Wayfarer cache collection, hurt and defeat
 
 ### Cache collection

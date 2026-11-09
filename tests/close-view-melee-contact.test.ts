@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { BRAWLER_GEAR, Game } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
-import { CLOSE_VIEW_MELEE_TIMING, normalizeMeleeActionVisual, normalizePendingMeleeContact, sampleMeleeActionContact } from '../src/action-motion.ts';
+import { CLOSE_VIEW_MELEE_TIMING, cleaverCarryFrame, normalizeAttackVisual, normalizeMeleeActionVisual, normalizePendingMeleeContact, sampleCleaverChoreography, sampleMeleeActionContact } from '../src/action-motion.ts';
 import { deserializeSave, serializeSave } from '../src/persistence.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
 
@@ -23,6 +23,63 @@ test('normal Close View Cleaver input accepts immediately and contacts once at t
   const{g,foe}=fixture(cleaver()),hp=foe.hp;g.update(.016,input(true),100000);const q=structuredClone(g.pendingMeleeContact),ready=g.player.attackReadyAt;assert.ok(q);assert.equal(foe.hp,hp);assert.equal(g.player.attackVisual.meleeAction.move,'cleaver');
   foe.x=g.player.x+8;g.update(.05,input(),q.releaseAt);assert.equal(foe.hp,hp,'a target that left reach before contact is not hit');assert.equal(g.pendingMeleeContact,null);assert.equal(g.player.attackReadyAt,ready);
   g.update(.05,input(),q.releaseAt+200);assert.equal(foe.hp,hp,'release is exactly once');
+});
+
+test('accepted Cleaver actions inherit the displayed path through pause and save without a renderer',()=>{
+  const {g}=fixture(cleaver());
+  g.update(.016,input(true),100000);
+  const first=g.player.attackVisual;
+  assert.deepEqual(sampleCleaverChoreography(first,100000),cleaverCarryFrame());
+  g.update(.016,input(),100075);
+  const held=sampleCleaverChoreography(first,100420);
+  assert.ok(held.side<0,'the first cut holds the left shoulder for a normal next press');
+  g.setPaused(true,100400);
+  const resumed=new Game(deserializeSave(serializeSave(g.exportSnapshot(200000))),400000);
+  resumed.installSystems();
+  resumed.setPaused(false,405000);
+  resumed.update(.016,input(true),405020);
+  const second=resumed.player.attackVisual;
+  assert.equal(second.primaryMotion.step,2);
+  assert.deepEqual(second.cleaverChoreography.entry,held);
+  assert.deepEqual(sampleCleaverChoreography(second,100420),held);
+  assert.equal(resumed.pendingMeleeContact.releaseAt,405095);
+  assert.deepEqual(resumed.pendingMeleeContact.payload.primaryMotion,{v:2,step:2});
+  resumed.update(.016,input(),405095);
+  assert.deepEqual(sampleCleaverChoreography(second,101419),cleaverCarryFrame());
+});
+
+test('a delayed Cleaver contact rebases the rendered follow-through and survives reload',()=>{
+  const {g,foe}=fixture(cleaver());
+  g.update(.016,input(true),100000);
+  const first=g.player.attackVisual, hp=foe.hp;
+  const anticipated=sampleCleaverChoreography(first,100075);
+  assert.deepEqual(sampleCleaverChoreography(first,100399),anticipated,'startup cannot run past pending contact');
+  g.update(.05,input(),100400);
+  assert.ok(foe.hp<hp);
+  assert.equal(first.cleaverChoreography.contactLogicalMs,100400);
+  assert.deepEqual(sampleCleaverChoreography(first,100400),anticipated);
+  const following=sampleCleaverChoreography(first,100450);
+  assert.notDeepEqual(following,anticipated);
+  g.setPaused(true,100450);
+  const resumed=new Game(deserializeSave(serializeSave(g.exportSnapshot(200000))),400000);
+  assert.deepEqual(sampleCleaverChoreography(resumed.player.attackVisual,resumed.consumeLogicalNow(400000)),following);
+  assert.equal(resumed.pendingMeleeContact,null);
+});
+
+test('invalid Cleaver choreography cannot cancel the canonical attack or reinterpret a future cue',()=>{
+  const {g}=fixture(cleaver());
+  g.update(.016,input(true),100000);
+  const accepted=structuredClone(g.player.attackVisual),bad=structuredClone(accepted);
+  bad.cleaverChoreography.entry.up=Infinity;
+  const normalized=normalizeAttackVisual(bad);
+  assert.deepEqual(normalized.meleeAction,accepted.meleeAction);
+  assert.equal(sampleCleaverChoreography(normalized,100020),null);
+  const future={v:3,opaque:{preserved:true}};
+  assert.deepEqual(normalizeAttackVisual({...accepted,cleaverChoreography:future}).cleaverChoreography,future);
+  assert.equal(sampleCleaverChoreography({...accepted,cleaverChoreography:future},100020),null);
+  g.update(.001,actionInput('dodge'),100010);
+  assert.equal(g.pendingMeleeContact,null);
+  assert.equal(sampleCleaverChoreography(g.player.attackVisual,100020),null);
 });
 
 test('Cleaver reload rebases cooldown and contact, then samples current position with accepted Echo stage',()=>{
