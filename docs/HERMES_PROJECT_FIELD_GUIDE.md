@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 856 — Room edges and tight-corner framing
+
+**CODE:** New standalone Keep 5 and Pentagon 10 sites record room-padding version 1 on their first-floor history. The generator selects a three-cell recess from the original floor. Live area loading opens the selected cells after object placement and before restoring the actor footprint. The Close View lens widens smoothly when stone compresses the camera boom in the supported interiors.
+
+**BOUNDARY:** Existing sites retain their original layout. New sites keep the original building IDs, stair and roof placement, and Pentagon progression. The selection reserves generated objects, enemy spawns and potential buried treasure. Grand halls and vaults retain their original geometry. Saved terrain changes take precedence over padding. The camera uses the existing collision and orbit controls.
+
 ## Release 855 — Room clearance comparisons
 
 **CODE:** Close View Lab pairs a reference and a widened edge for Keep 5 and Pentagon 10. After normal entrance and terrain placement, the pilot opens three cells behind a flat room edge. The surrounding wall keeps the recess accessible only from that room. Both fixtures offer the same developer teleport point for comparing movement and camera framing.

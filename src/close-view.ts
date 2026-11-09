@@ -73,6 +73,7 @@ export const CLOSE_VIEW = Object.freeze({
     // it sits under the spring's target, so it is seldom reached). Nothing is ever faded to show the Wayfarer.
     sightStep: .1, sightPad: .26, hardPad: .14,
     offsetGain: .25, offsetHold: .3, // lateral candidates must earn a useful, persistent clearance gain
+    tightFocal: .72, // routed-room relief only: bounded widening when solid stone leaves a sub-minimum boom
     shoulderRecover: .25, // clear space must persist before an obstructed shoulder expands again
     shoulderCenter: .55, shoulderFull: .9, // center a compressed boom; regain the preset offset in open space
     // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
@@ -440,6 +441,7 @@ export function closeViewApplies(g) { return closeViewWanted(g) && !openAirAt(g.
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
 const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+  focal: 1, focalV: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
@@ -637,6 +639,7 @@ const footX = (p) => p.x + .5, footY = (p) => p.y + .75;
 // Later clearance changes never steer yaw or the movement basis.
 function ensureCam(g) {
   if (CAM.map === g.map) return;
+  CAM.focal = 1; CAM.focalV = 0;
   CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.bodyYaw = CAM.bodyDesiredYaw = FACING_YAW[g.player.facing] ?? NaN; CAM.bodyTransient = false; CAM.bodyRevision = CAM.targetRevision = 0; CAM.targetRecentre = false; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.shoulderRoom = CAM.shoulderClearFor = 0; CAM.pausedAt = NaN;
   CAM.pausedTotal = Number(g.presentationPausedMs) || 0;
   const facing = FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
@@ -857,6 +860,10 @@ function boomLength(g, fx, fy, ox = footX(g.player), oy = footY(g.player)) {
 // boom-pad square; the final padded feet-to-eye ray also has to clear the corner.
 // No screen/body history enters this decision, so a stationary rig cannot pump.
 const RIG_OFFSETS = [0, .5, -.5, 1, -1], RIG_REACH = new Float64Array(5);
+function tightCornerFamily(g) {
+  const b = g.map?.building;
+  return !g.map?.hall?.tall && ((b?.interiorVersion === 5 && b.style === "keep" && !b.pentagon) || (b?.pentagon && b.V === 10));
+}
 function offsetReach(g, fx, fy, ax, ay, offset) {
   const C = CLOSE_VIEW.camera, D = closeViewPreset(g).distance, pad = C.boomPad, step = C.boomStep / 2;
   closeViewStats.rigProbes++;
@@ -1142,7 +1149,10 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // wall is cut at once, the only snap there is
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && wallAt(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
-  const craneUp = CAM.crane, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const craneUp = CAM.crane, baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const focalRelief = tightCornerFamily(g) ? Math.max(0, Math.min(1, (C.minDistance - want) / C.minDistance)) : 0;
+  spring(CAM, "focal", "focalV", lerp(1, C.tightFocal, focalRelief), C.letOut * 1.5, dt);
+  const F = baseF * CAM.focal;
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
   const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = CAM.centeredRear ? 0 : (offsetWant ? 0 : Cp.shoulder * mix) * Math.max(0, Math.min(1, (CAM.dist / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter))); let room = sh;
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (wallAt(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
@@ -1207,7 +1217,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     lowPitch = Math.max(lowPitch, angle - room); highPitch = Math.min(highPitch, angle + room);
   }
   // A very short boom under a low arch may not fit the whole body. Centre its
-  // angular span then; never move through stone, widen the FOV or shrink the model.
+  // angular span within the available lens and keep the camera on the clear side of the wall.
   const terrainPitch = lowPitch <= highPitch ? Math.max(lowPitch, Math.min(highPitch, requestedPitch))
     : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (footAngle + headAngle) / 2));
   CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;

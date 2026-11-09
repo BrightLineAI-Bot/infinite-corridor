@@ -96,7 +96,7 @@ import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
 import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
@@ -115,7 +115,7 @@ import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_
 import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
-import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, addDigSpot, digSpot, addStone } from "./digging.ts";
+import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.ts";
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
 import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.ts";
@@ -355,6 +355,9 @@ function interiorVersion(save, id, history, fresh) {
 }
 
 const INERT_KEEP_HISTORY = new Map([["discovered", false], ["bypassed", false], ["guardianDefeated", false], ["resolved", false], ["visitOpen", false], ["visits", 0], ["abandoned", 0]]);
+const ROOM_PADDING_CANDIDATE = Symbol("roomPaddingCandidate");
+const ROOM_PADDING_VERSION = 1;
+const ROOM_PADDING_V1_REWARD_TIER = 39; // Highest Aperture band when padding v1 was introduced.
 export function adoptRoutingKeep(save, map, rx, ry, prior) {
   const B = map?.greatBuilding, parsed = B?.base && parseBuildingId(`${B.base}:f1`);
   if (prior || B?.style !== "keep" || !parsed || parsed.seed !== save.seed || parsed.rx !== rx || parsed.ry !== ry || parsed.floors < 3 || parsed.floors > 4) return false;
@@ -362,8 +365,37 @@ export function adoptRoutingKeep(save, map, rx, ry, prior) {
   if (A[`overworld:${rx}:${ry}:g${save.worldGeneration}`] || keys.some((id) => A[id] || String(save.session?.activeDungeonId || "") === id) || keys.slice(1).some((id) => D[id])) return false;
   const h = D[f1];
   if (h && (Object.getPrototypeOf(h) !== Object.prototype || Object.entries(h).some(([k, v]) => !INERT_KEEP_HISTORY.has(k) || INERT_KEEP_HISTORY.get(k) !== v))) return false;
-  ((save.consequences ||= {}).dungeons ||= {})[f1] = { ...(h || {}), interiorVersion: 5 };
+  const sitePrefix = `building:${save.seed}:${rx}:${ry}:keep:`;
+  const active = String(save.session?.activeDungeonId || "");
+  const oldSite = save.explored?.[`${rx},${ry}`] || active.startsWith(sitePrefix) ||
+    Object.keys(A).some(id => id.startsWith(sitePrefix)) || Object.keys(D).some(id => id !== f1 && id.startsWith(sitePrefix));
+  const pin = oldSite ? {} : { roomPaddingVersion: ROOM_PADDING_VERSION };
+  ((save.consequences ||= {}).dungeons ||= {})[f1] = { ...(h || {}), interiorVersion: 5, ...pin };
   return true;
+}
+
+function adoptPentagonRoomPadding(save, cx, cy, base) {
+  const histories = save.consequences?.dungeons || {}, snapshots = save.session?.areas || {};
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const rx = cx + dx, ry = cy + dy, section = `${rx},${ry}`;
+    if (save.atlas?.[section] || save.explored?.[section] || snapshots[`overworld:${rx}:${ry}:g${save.worldGeneration}`]) return;
+  }
+  const prefix = `pentagon:${save.seed}:${cx}:${cy}:`;
+  const active = String(save.session?.activeDungeonId || "");
+  if (active.startsWith(prefix) || Object.keys(snapshots).some(id => id.startsWith(prefix)) ||
+      Object.keys(histories).some(id => id.startsWith(prefix))) return;
+  ((save.consequences ||= {}).dungeons ||= {})[`${base}:f1`] = { roomPaddingVersion: ROOM_PADDING_VERSION };
+}
+
+function planPinnedRoomPadding(save, id, map) {
+  const building = map?.building;
+  if (!building || map.hall || building.vault) return;
+  const history = save.consequences?.dungeons?.[`${building.base}:f1`];
+  if (history?.roomPaddingVersion !== ROOM_PADDING_VERSION) return;
+  const reserved = [map.entry, map.exit, ...map.objects, ...map.enemySpawns];
+  const treasure = (x, y) => !!wallTreasure(save.seed, id, x, y, ROOM_PADDING_V1_REWARD_TIER);
+  const footprint = roomPaddingFootprint(map, reserved, treasure);
+  if (footprint) Object.defineProperty(map, ROOM_PADDING_CANDIDATE, { value: footprint, configurable: true });
 }
 export function applyRoutingKeepAppearance(save, map) {
   const B = map?.greatBuilding, h = B?.base && save.consequences?.dungeons?.[`${B.base}:f1`];
@@ -416,7 +448,21 @@ export function generatePinnedDungeon(save, id, options = {}) {
   else if (/^(arena:|hunt-arena:|hunt-instance:|skyland:)/.test(id)) { map = generateBespokeArena(save.seed,id,{kind:id.startsWith('arena:')?'persistent':'temporary',cleared:!!history.resolved}); if (isSkyland(id)) dressSkyland(map, id, save); } // release 571: a Skyland is a temporary arena run in waves
   else if (isPentagonFinaleId(id)) { if (history.finaleFloor === undefined) history.finaleFloor = fresh ? PENTAGON.finale.floor : 1; map = generatePentagonFinale(save.seed, id, history.finaleFloor); history.gatePredatorSpawnThreshold = 0; } // the walkway's generator pinned (1: stars you cannot step onto; 2: a drop) // the Pentagon's finale: a walk among the stars (PENTAGON.finale)
   else if (isPentagonArenaId(id)) { map = pentagonArenaIn(save, id); history.gatePredatorSpawnThreshold = 0; } // the Pentagon's finale arena, before the walk (pentagon-arena.ts)
-  else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id) || isPentagonId(id)) { map = isPentagonId(id) ? pentagonMuralsState(save, labyrinthState(save, generatePentagonChamber(save.seed, id))) : isCastleId(id) ? towerKeyState(save, generateCastleFloor(save.seed, id, iv, castleVersionOf(save.atlas, parseCastleId(id).X, parseCastleId(id).Y))) : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id, iv)) : isCompoundId(id) ? towerKeyState(save, generateCompoundFloor(save.seed, id, iv, compoundVersionOf(save.atlas, parseCompoundId(id).rx, parseCompoundId(id).ry))) : generateBuildingFloor(save.seed, id, iv); /* TOWER_SEAL: the compound's or castle's own version decides its tower key */ history.gatePredatorSpawnThreshold = 0; } // great buildings and compounds: a floor each
+  else if (isPentagonId(id)) {
+    const raw = generatePentagonChamber(save.seed, id);
+    if (raw?.building?.V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion) planPinnedRoomPadding(save, id, raw);
+    map = pentagonMuralsState(save, labyrinthState(save, raw));
+    history.gatePredatorSpawnThreshold = 0;
+  }
+  else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id)) {
+    // Compounds and castles choose their tower keys from their own exterior versions.
+    map = isCastleId(id) ? towerKeyState(save, generateCastleFloor(save.seed, id, iv, castleVersionOf(save.atlas, parseCastleId(id).X, parseCastleId(id).Y)))
+      : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id, iv))
+      : isCompoundId(id) ? towerKeyState(save, generateCompoundFloor(save.seed, id, iv, compoundVersionOf(save.atlas, parseCompoundId(id).rx, parseCompoundId(id).ry)))
+      : generateBuildingFloor(save.seed, id, iv);
+    if (isBuildingId(id) && map?.building?.style === "keep" && iv === CLOSE_VIEW_ROOM_ROUTING.keepVersion) planPinnedRoomPadding(save, id, map);
+    history.gatePredatorSpawnThreshold = 0;
+  }
   else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); if (fresh && history.canyonGenerator === undefined) history.canyonGenerator = CANYON.generator; map = generateCanyon(save.seed, id, c.drilled, c.strained, history.canyonGenerator || 1); } // Canyon craters; release 735: generator 2 for craters first entered from now on
   else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
@@ -2909,7 +2955,7 @@ export class Game {
       if ((prior ? prior.ascendVersion : ASCENDANCY.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && !this.map.canopy && saplingHere(this.save.seed, this.rx, this.ry)) this.placeSapling(); // the Rite of Ascendancy
       if ((prior ? prior.arcVersion : 0) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; if (v >= 5 && arcologyHere(this.save.seed, this.rx, this.ry, sectionRegion(this.save.seed, this.rx, this.ry, v)) && buildArcology(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = ARCOLOGY.messages.arrive; } // ruined arcologies: only in sections first seen from now on
       if ((prior ? prior.keepVersion : 0) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && keepHere(this.save.seed, this.rx, this.ry) && buildKeep(this.map, this.save.seed, this.rx, this.ry) && !this.message) this.message = KEEPS.messages.arrive; // great keeps: only in sections first seen from now on
-      if ((prior ? prior.pentVersion : PENTAGON.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const c = pentagonCentre(this.rx, this.ry); if (c && this.pentagonHere(c.cx, c.cy) && placePentagonSection(this.map, this.save.seed, c.cx, c.cy, this.rx, this.ry, this.pentagonVersion(c.cx, c.cy))) { const H = dungeonHistory(this.save, `${this.map.pentagon.base}:f1`); for (const o of this.map.objects) { if (o.kind === "pentLever" && (H.pentLevers || []).includes(o.lever)) Object.assign(o, { state: "pulled", actions: [] }); if (o.sigil && (o.sigilKey ? (H.pentOpened || []).includes(o.sigilKey) : H.pentSigil)) o.unsealed = true; if (o.barred && o.pentagonDoor && (H.labOpen || []).includes(o.shortcutKey)) o.opened = true; } if (!this.message) this.message = PENTAGON.messages.arrive; } } // the Pentagon: nine sections, all new ground
+      if ((prior ? prior.pentVersion : PENTAGON.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const c = pentagonCentre(this.rx, this.ry); if (c && this.pentagonHere(c.cx, c.cy) && placePentagonSection(this.map, this.save.seed, c.cx, c.cy, this.rx, this.ry, this.pentagonVersion(c.cx, c.cy))) { if (!prior && this.map.pentagon.V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion) adoptPentagonRoomPadding(this.save, c.cx, c.cy, this.map.pentagon.base); const H = dungeonHistory(this.save, `${this.map.pentagon.base}:f1`); for (const o of this.map.objects) { if (o.kind === "pentLever" && (H.pentLevers || []).includes(o.lever)) Object.assign(o, { state: "pulled", actions: [] }); if (o.sigil && (o.sigilKey ? (H.pentOpened || []).includes(o.sigilKey) : H.pentSigil)) o.unsealed = true; if (o.barred && o.pentagonDoor && (H.labOpen || []).includes(o.shortcutKey)) o.opened = true; } if (!this.message) this.message = PENTAGON.messages.arrive; } } // the Pentagon: nine sections, all new ground
       if ((prior ? prior.castleVersion : CASTLES.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const c = castleCorner(this.rx, this.ry); if (c && this.castleHere(c.X, c.Y) && placeCastleQuarter(this.map, this.save.seed, c.X, c.Y, c.q, castleVersionOf(this.save.atlas, c.X, c.Y)) && !this.message) this.message = CASTLES.messages.arrive; } // Great Castles: a quarter in each of the four sections round a corner, all of them new ground
       if (this._coherence && (this.map.pentagon || this.map.greatBuilding?.castle)) dropOverwritten(this.map); // WG-10: a tree or a stand of caps a castle or a Pentagon built over goes whole
       if ((prior ? prior.labVersion : LABYRINTHS.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION, plan = labyrinthHere(this.save.seed, this.rx, this.ry, v >= 5 ? sectionRegion(this.save.seed, this.rx, this.ry, v) : null); if (plan && placeLabyrinth(this.map, this.save.seed, this.rx, this.ry, plan, exitsOpen, this.coherentDoor(), prior ? prior.labVersion : LABYRINTHS.version) && !this.message) this.message = LABYRINTHS.messages.arrive; } // labyrinths: only in sections first seen from now on
@@ -3095,6 +3141,11 @@ export class Game {
     }
     const ar=this.save.worldBeasts?.astralWorm?.active?.astralRetreat;
     if(ar&&astralRetreatSceneMatches(ar.scenes?.[ar.sceneKey],this)){const carried=astralRetreatSpawn(this.save.worldBeasts.astralWorm.active);if(carried){const existing=this.enemies.find(e=>e.worldBeast==='astralWorm');if(existing)Object.assign(existing,carried);else this.enemies.push(carried);ensureAI(existing||carried);}}
+    if(area==="dungeon"&&this.map[ROOM_PADDING_CANDIDATE]){
+      const candidate=this.map[ROOM_PADDING_CANDIDATE];
+      delete this.map[ROOM_PADDING_CANDIDATE];
+      applyRoomPadding(this.map,candidate);
+    }
     this._walkerRoutes = new WeakMap(); this._walkerLandingGraph = null;
     const areaWidth = mapWidth(this.map, area),
       resumeLiftPosition = !capture && this.validInteriorLift(this.save.session.playerRuntime?.droneLift),
