@@ -1,7 +1,8 @@
 import { RECOVERY_CONTEXT } from './proving-ground-recovery.ts';
 import { ordinaryContactEnemy } from './actor-contact.ts';
 import { Game, footprintOpen } from "./game.ts";
-import { PENTAGON, pentagonPlan } from "./pentagon.ts"; // the Close View lab
+import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.ts"; // the Close View lab
+import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.ts";
 import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.ts";
 import { BUILDINGS, buildingHere } from "./great-buildings.ts";
 import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
@@ -253,6 +254,7 @@ const CLOSE_VIEW_LAB = [
   { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "cache-pickup-supply", label: "Cache pickup: supply cache", cachePickup: "supplyCache", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "cache-pickup-weapon", label: "Cache pickup: weapon cache", cachePickup: "weaponCache", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "stillworks-void-walker", label: "Stillworks baseline · Void Walker", stillworks: true },
   { id: "chest-opening", label: "Chest opening: corridor chest", cachePickup: "chest", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "padding-keep-reference", label: "Room clearance: keep reference", roomRouting: "keep", candidate: true, roomPadding: "reference" },
   { id: "padding-keep-pilot", label: "Room clearance: keep widened edge", roomRouting: "keep", candidate: true, roomPadding: "pilot" },
@@ -291,8 +293,38 @@ function digReturnCandidate(game, preferred = null) {
   for (const source of map.tiles) if (source?.slope && source.rampDir) for (const dir of DIG_RETURN_DIRS) { const found = tryAt(source.x, source.y, dir); if (found) return found; }
   return null;
 }
+function stillworksWalkerFixture(spec, seed, now) {
+  const site = findLabPentagon(seed, now);
+  if (!site) throw new Error(`No Pentagon near the origin for seed ${seed}.`);
+  const plan = pentagonPlan(seed, site.cx, site.cy, site.V);
+  const save = scratchSave(seed);
+  save.closeView = true;
+  save.consequences.dungeons[`${plan.base}:f1`] = {
+    pentFinale: PENTAGON.finale.version,
+    pentArena: PENTAGON_ARENA.version,
+    pentArenaBeast: "voidWalker",
+  };
+  const game = new Game(save, now);
+  game.installSystems();
+  save.session.activeDungeonId = pentagonVaultId(plan);
+  save.session.dungeonReturn = { rx: site.cx, ry: site.cy, x: 16, y: 16 };
+  game.loadArea("dungeon", false);
+  const wall = game.map.objects.find((object) => object.kind === "pentFinaleWall");
+  if (!wall) throw new Error("The Stillworks entrance is missing from the vault.");
+  game.player.x = wall.x;
+  game.player.y = wall.y + 1;
+  const entered = game.interact("use", wall.id);
+  if (!entered.ok || game.areaId() !== pentagonArenaId(plan.base)) {
+    throw new Error("The vault wall did not lead to the Stillworks.");
+  }
+  return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, production: true,
+    primary: game.map.entry, save, game,
+    developerHint: "Production Stillworks baseline. Approach the heart to wake the Void Walker." };
+}
+
 function closeViewFixture(scenario, seed, now) {
   const spec = CLOSE_VIEW_LAB.find((q) => q.id === scenario) || CLOSE_VIEW_LAB[0];
+  if (spec.stillworks) return stillworksWalkerFixture(spec, seed, now);
   if (spec.routingAdoption) return routingAdoptionFixture(spec, now);
   if (spec.roomRouting) return roomRoutingFixture(spec, seed, now);
   let id, back;

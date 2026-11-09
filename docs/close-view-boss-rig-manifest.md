@@ -34,6 +34,12 @@ The fourteen interior species plus ordinary-controller Regent remain individuall
 | Interior pool: 14 kinds + Regent | Unassigned, PLANNED; delivered native baseline retained | Each row below receives contract, model/rig, every-attack, arena, second-polish, lifecycle/budget and final gates; Regent retains its ordinary controller |
 | Roof and optional labyrinth guardians | Unassigned, EXPLICIT FOLLOW-ON | Audit relevance and exact roster first; no silent inclusion of every world beast/domain/Listener/guardian |
 
+### r860 baseline fixture
+
+The local `claude/stillworks-close-view-pilot` branch adds the Stillworks baseline under the Close View laboratory. It pins the Void Walker in scratch history, enters through the Regent vault’s real wall interaction and uses the production arena and boss. Default CINDER-VERGE-47 and TIM1 both loaded the sleeping arena boss with the seam sealed. The onward gate refused entry and the back gate returned to the vault. All 17 existing Stillworks arena tests passed.
+
+The fixture renders with the existing world camera. The next step is to qualify Stillworks cover, landmarks, gates and effect projection in Close View before admitting the arena or changing the Walker rig.
+
 ### Walker planning findings to preserve
 
 The Astra audit against `268e5c0262911cd82d0dfdd6c1db53eb9950f0e4` found a prerequisite. `interiorMap` excludes both finale and Stillworks flags. Before rig work, qualify the actual 41×39 Stillworks scene for Close View and add a scratch route through the production arena loader. Verify cover, formations, camera collision, effect projection and the normal gate and victory flow. Keep existing admission guards for unrelated scenes. The public `pack-boss-voidWalker` scenario can exercise generic attack semantics. Actual arena acceptance needs the tuned `pentFinaleBeast` without the world-beast flag.
