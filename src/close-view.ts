@@ -461,11 +461,13 @@ export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scen
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
 // objects on commit; allocate detached display snapshots only when requested.
-const RENDER_DIAGNOSTICS={frame:0,backend:'none',player:'absent',actors:0,nativeActors:0,fallbacks:null};
+const RENDER_DIAGNOSTICS={activityValid:false,frame:0,backend:'none',player:'absent',actors:0,nativeActors:0,fallbacks:null};
 const DIAGNOSTIC_FALLBACKS=new Set(['custom-art','body','capture','visibility','special-form','foundry-role','foundry-action','foundry-movement','morphology','pack-effects','pack-action','pack-phase','elite-action','decorations','affix','attachment-budget']);
+// Visible-canvas owners may retire activity without touching camera/input state.
+export function invalidateCloseViewDiagnostics(){RENDER_DIAGNOSTICS.activityValid=false;}
 export function closeViewRenderDiagnostics(){
   const fallbacks={};for(const [reason,count] of Object.entries(RENDER_DIAGNOSTICS.fallbacks||{}))if(DIAGNOSTIC_FALLBACKS.has(reason)&&Number.isSafeInteger(count)&&count>0)fallbacks[reason]=Math.min(999,count);
-  return {active:CAM.drawn,frame:RENDER_DIAGNOSTICS.frame,backend:RENDER_DIAGNOSTICS.backend,player:RENDER_DIAGNOSTICS.player,actors:RENDER_DIAGNOSTICS.actors,nativeActors:RENDER_DIAGNOSTICS.nativeActors,fallbacks,asset:closeViewHeroAssetStatus(),gpu:closeViewGLDiagnostics()};
+  return {active:RENDER_DIAGNOSTICS.activityValid&&CAM.drawn,frame:RENDER_DIAGNOSTICS.frame,backend:RENDER_DIAGNOSTICS.backend,player:RENDER_DIAGNOSTICS.player,actors:RENDER_DIAGNOSTICS.actors,nativeActors:RENDER_DIAGNOSTICS.nativeActors,fallbacks,asset:closeViewHeroAssetStatus(),gpu:closeViewGLDiagnostics()};
 }
 
 
@@ -1352,7 +1354,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     ctx.fillStyle = SCREEN.vignette; ctx.fillRect(0, 0, w, h); }
   drawPlaceLabel(ctx, g, w, h);
   if (tm) { const t5 = performance.now(); T.ground = t1 - t0; T.torch = t2 - t1; T.floor = t3 - t2; T.scene = t4 - t3; T.overlay = t5 - t4; }
-  RENDER_DIAGNOSTICS.frame=closeViewStats.frames+1;RENDER_DIAGNOSTICS.backend=useGL?'webgl2':'2d';RENDER_DIAGNOSTICS.player=useGL?MODEL_STATE.playerRepresentation:capturedPlayer?'billboard':'absent';
+  RENDER_DIAGNOSTICS.activityValid=true;RENDER_DIAGNOSTICS.frame=closeViewStats.frames+1;RENDER_DIAGNOSTICS.backend=useGL?'webgl2':'2d';RENDER_DIAGNOSTICS.player=useGL?MODEL_STATE.playerRepresentation:capturedPlayer?'billboard':'absent';
   RENDER_DIAGNOSTICS.actors=useGL?closeViewGLStats.models:0;RENDER_DIAGNOSTICS.nativeActors=useGL?closeViewGLStats.models-(MODEL_STATE.hero?1:0):0;RENDER_DIAGNOSTICS.fallbacks=useGL?closeViewGLStats.modelFallbacks:null;
   captured = null; capturedPlayer = null; closeViewStats.frames++; CAM.drawn = true;
   return true;

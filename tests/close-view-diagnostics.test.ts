@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createLabFixture} from '../src/proving-ground-labs.ts';
 import {render} from '../src/renderer.ts';
+import * as CV from '../src/close-view.ts';
 import {closeViewRenderDiagnostics,CLOSE_VIEW_HOOKS,resetCloseViewCamera,setCloseViewCanvasFactory} from '../src/close-view.ts';
 import {closeViewGLReady,closeViewGLDiagnostics,closeViewGLFrameReady,prepareCloseViewHeroGL,resetCloseViewGL,closeViewGLStats} from '../src/close-view-gl.ts';
 import {loadCloseViewHero,decodeCloseViewHero} from '../src/close-view-hero.ts';
@@ -58,4 +59,26 @@ test('the PG dialog renders six diagnostic rows only when opened, with inactive/
   const snapshot={active:false,frame:7,backend:'webgl2',player:'native',actors:2,nativeActors:2,fallbacks:{body:1},asset:'unavailable',gpu:{state:'not-ready',lastFailure:'context-lost',heroState:'not-prepared',lastHeroFailure:'none'}};
   const deps={navigator:{},location:{search:'',pathname:'/previews/candidate/'},SAVE_VERSION:14,innerWidth:390,innerHeight:844,errorLog:[],storageNamespace:'scratch',dialog:node('dialog'),body:node('body'),document:{querySelector:node,createElement:()=>({textContent:''})},URLSearchParams,closeViewRenderDiagnostics(){reads++;return snapshot;}};
   const build=new Function('deps',`const {${Object.keys(deps).join(',')}}=deps;${snippet}`);build(deps);assert.equal(reads,0);await listeners.get('#pgDiagnosticsToggle:click')();assert.equal(reads,1);const rows=node('body').children;assert.equal(rows.length,34,'11 existing rows plus6 renderer rows');const text=rows.map(n=>n.textContent).join('\n');assert.match(text,/inactive; historical: webgl2/);assert.match(text,/last failure \(historical\): context-lost/);assert.match(text,/Hero asset\nunavailable/);assert.equal(node('dialog').open,true);assert.doesNotMatch(snippet,/setInterval|setTimeout|requestAnimationFrame|innerHTML/);
+});
+
+// Verbatim public PG lifecycle functions, with actual renderer diagnostics and
+// lightweight DOM/fixture dependencies. No browser, loopback server or new clocks.
+function lifecycle(initial,next){
+  const source=fs.readFileSync(new URL('../src/proving-ground.ts',import.meta.url),'utf8'),nodes=new Map();
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,disabled:false,value:'',textContent:'',replaceChildren(){},append(){}});return nodes.get(id);};
+  const functions=['ready','renderLauncher','openJourney','generate','resize'].map(name=>source.match(new RegExp('^function '+name+'\\(.*$','m'))[0]).join('\n'),idle=source.slice(source.indexOf('function idlePrompt()'),source.indexOf('function generate()'));
+  const canvas={clientWidth:390,clientHeight:844,style:{}},deps={invalidateCloseViewDiagnostics:CV.invalidateCloseViewDiagnostics,invalidateInteraction(){},resetRecoveryState(){},syncUrl(){},fillTeleports(){},updateDiagnostics(){},updateRecoveryControls(){},initializeRecovery(){},$ :node,controls:node('controls'),launcher:node('launcher'),teleportSelect:node('teleports'),scenarioSelect:node('scenario'),seedInput:node('seed'),variantInput:node('variant'),sizeProfileSelect:node('size'),revealModeSelect:node('reveal'),environmentSelect:node('environment'),document:{createElement:()=>node('created')},Option:function(){},LABORATORIES:[],input:{reset(){}},performance:{now:()=>100000},createLabFixture:()=>({game:next}),createJourneyFixture:()=>({game:next}),canvas,app:{getBoundingClientRect:()=>({width:390,height:844})},devicePixelRatio:1,renderScaleForViewport:()=>1,ctx:context()};
+  return new Function('deps','initial',`const {${Object.keys(deps).join(',')}}=deps;let fixture=initial?{game:initial}:null,game=initial,paused=false,recoveryBusy=false,recoveryBootPending=false,comparison=null,last=0,selectedLab='combat-assets',teleportSignature='',journeyRecord={save:{seed:'test'}};${functions}\n${idle}\nreturn{ready,renderLauncher,openJourney,generate,resize,idlePrompt,getGame:()=>game};`)(deps,initial);
+}
+
+test('public PG ready, Laboratories, fixture replacement and canvas clears retire active diagnostics but preserve completed evidence',()=>{
+  const stale=[];
+  for(const method of ['ready','renderLauncher','openJourney','generate','resize','idlePrompt'])gpu(({screen})=>{
+    const g=game();render(screen,g,390,844,101000);const before=closeViewRenderDiagnostics(),camera=CV.closeViewCamera(),saved=JSON.stringify(g.save);assert.equal(before.active,true);
+    const next=game(),api=lifecycle(method==='idlePrompt'?null:g,next);api[method]();const after=closeViewRenderDiagnostics();if(after.active)stale.push(method);
+    for(const key of ['frame','backend','player','actors','nativeActors','fallbacks'])assert.deepEqual(after[key],before[key],`${method} preserves ${key}`);
+    assert.deepEqual(CV.closeViewCamera(),camera,`${method} must not reset camera state`);assert.equal(JSON.stringify(g.save),saved);
+    render(screen,next,390,844,101016);const fresh=closeViewRenderDiagnostics();assert.equal(fresh.active,true);assert.ok(fresh.frame>after.frame,'only a fresh completed frame reactivates activity');
+  });
+  assert.deepEqual(stale,[],'lifecycle transitions must not label a cleared or superseded canvas as active');
 });

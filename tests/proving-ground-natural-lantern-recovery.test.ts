@@ -39,12 +39,12 @@ const uiSource=readFileSync(new URL('../src/proving-ground.ts',import.meta.url),
 function controller(fixture,overrides={}){
  const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{disabled:false,hidden:false,textContent:'',value:'',replaceChildren(){},append(){}});return nodes.get(id);};
  const listeners=new Map(),doc={hidden:false,createElement:()=>node('made'),addEventListener(name,fn){listeners.set(name,fn);}};
- const location={href,reload(){calls.reload++;}},calls={reload:0,write:0,read:0,clear:0,decode:0,resetInput:0,generate:0};let clock=fixture.game.lastUpdateNow??1000;
+ const location={href,reload(){calls.reload++;}},calls={reload:0,write:0,read:0,clear:0,decode:0,resetInput:0,generate:0,diagnosticInvalidations:0};let clock=fixture.game.lastUpdateNow??1000;
  const deps={RECOVERY_CONTEXT,recoveryScope,createRecoveryEnvelope,serializeSave,deserializeSave(text){calls.decode++;return deserializeSave(text);},naturalLanternRecoveryReady,naturalLanternRecoveryWitness,restoreNaturalLanternRecoveryFixture,
   query:new URL(href).searchParams,location,performance:{now:()=>clock},$:node,seedInput:node('#seedInput'),variantInput:node('#variantInput'),controls:node('#labControls'),launcher:node('#labLauncher'),scenarioSelect:node('#scenarioSelect'),teleportSelect:node('#teleportSelect'),journeyRecord:{save:{seed:'ordinary-scratch'}},LABORATORIES:[],document:doc,Option:function(label,value){return{label,value};},DEFAULT_PROVING_SEED:'CINDER-VERGE-47',
   input:{reset(){calls.resetInput++;}},fetch:async()=>({ok:true,json:async()=>binding}),
   readRecoveryCheckpoint:async()=>{calls.read++;return{status:'empty'};},writeRecoveryCheckpoint:async()=>{calls.write++;return{status:'stored'};},clearRecoveryCheckpoint:async()=>{calls.clear++;return{status:'cleared'};},
-  invalidateInteraction(){},fillTeleports(){},updateDiagnostics(){},syncUrl(){},generate(){calls.generate++;},fixture,...overrides};
+  invalidateCloseViewDiagnostics(){calls.diagnosticInvalidations++;},invalidateInteraction(){},fillTeleports(){},updateDiagnostics(){},syncUrl(){},generate(){calls.generate++;},fixture,...overrides};
  const body=uiSource.slice(uiSource.indexOf('let recoveryEpoch='),uiSource.indexOf('const interactionLifecycle=')).replaceAll('export async function','async function').replaceAll('export function','function');
  const visibility=uiSource.slice(uiSource.indexOf('document.addEventListener("visibilitychange",')).split('\n')[0];
  const pauseHandler=uiSource.split('\n').find(line=>line.startsWith('$("#scenarioPause").onclick='));
@@ -70,6 +70,11 @@ test('fresh page initialization validates identity before decode and restores pa
  const original=ui.get().game;await ui.initializeRecovery(true);
  assert.notEqual(ui.get().game,original);assert.equal(ui.calls.decode,1);assert.equal(ui.get().game.paused,true);assert.equal(ui.get().fixture.diagnostics.restoration.passed,true);
  assert.match(ui.node('#recoveryStatus').textContent,/resume and verify actual contact/);assert.match(ui.node('#recoveryStatus').textContent,/not a production database load/);
+});
+test('canonical asynchronous restoration retires diagnostics before replacing the visible Game owner',async()=>{
+ const n=natural(),record=recordOf(n.g,n.now),events=[];
+ const ui=controller(naturalLanternRecoveryFixture(50000),{readRecoveryCheckpoint:async()=>({status:'ready',record}),invalidateCloseViewDiagnostics(){events.push('invalidated');},restoreNaturalLanternRecoveryFixture(...args){events.push('restore');return restoreNaturalLanternRecoveryFixture(...args);}});
+ const original=ui.get().game;await ui.initializeRecovery(true);assert.notEqual(ui.get().game,original);assert.deepEqual(events,['invalidated','restore']);assert.equal(ui.get().game.paused,true);
 });
 test('capture failure is visible and paused; unsupported records are not decoded, overwritten or reloaded',async()=>{
  const n=natural(),ui=controller(n.fixture,{writeRecoveryCheckpoint:async()=>{throw new Error('quota');}});await ui.initializeRecovery(false);await ui.captureRecovery(n.now);
