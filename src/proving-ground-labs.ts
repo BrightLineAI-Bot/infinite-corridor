@@ -4,7 +4,7 @@ import { Game, footprintOpen } from "./game.ts";
 import { PENTAGON, pentagonPlan } from "./pentagon.ts"; // the Close View lab
 import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.ts";
 import { BUILDINGS, buildingHere } from "./great-buildings.ts";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.ts";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.ts";
 import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.ts";
 import { DIG, planDig } from "./digging.ts";
@@ -410,7 +410,7 @@ function adoptionBoundaryStart(map, dy) {
 }
 function routingAdoptionReceipt(fixture) {
   const {game,save,adoptionSpec:S}=fixture, key=`${S.destination.rx},${S.destination.ry}`, B=game.map?.greatBuilding, P=game.map?.pentagon, I=game.area==="dungeon"?game.map?.building:null, candidate=I?.base||B?.base||P?.base||null, expected=S.family==="keep"?`building:${fixture.seed}:${S.destination.rx}:${S.destination.ry}:keep:`:`pentagon:${fixture.seed}:${S.centre.cx}:${S.centre.cy}`, base=candidate?.startsWith(expected)?candidate:null, f1=base?`${base}:f1`:null;
-  return { phase:game.area==="dungeon"?"interior":game.rx===S.destination.rx&&game.ry===S.destination.ry?"destination":"start", current:{area:game.area,rx:game.rx,ry:game.ry,mapId:game.map?.id||null}, target:{family:S.family,destination:S.destination,centre:S.centre||null}, actual:{base,version:I?.V??I?.interiorVersion??P?.V??save.consequences?.dungeons?.[f1]?.interiorVersion??null,atlasPin:save.atlas?.[key]?.pentVersion??null,interiorPin:f1?save.consequences?.dungeons?.[f1]?.interiorVersion??null:null,appearance:I?.appearance||B?.appearance||null,door:game.map?.objects?.find(o=>o.buildingDoor||o.pentagonDoor)?.id||null}, protectedRecord:structuredClone(save.consequences.dungeons[fixture.protectedKey]) };
+  return { phase:game.area==="dungeon"?"interior":game.rx===S.destination.rx&&game.ry===S.destination.ry?"destination":"start", current:{area:game.area,rx:game.rx,ry:game.ry,mapId:game.map?.id||null}, target:{family:S.family,destination:S.destination,centre:S.centre||null}, actual:{base,version:I?.V??I?.interiorVersion??P?.V??save.consequences?.dungeons?.[f1]?.interiorVersion??null,atlasPin:save.atlas?.[key]?.pentVersion??null,interiorPin:f1?save.consequences?.dungeons?.[f1]?.interiorVersion??null:null,roomPaddingPin:f1?save.consequences?.dungeons?.[f1]?.roomPaddingVersion??null:null,appearance:I?.appearance||B?.appearance||null,door:game.map?.objects?.find(o=>o.buildingDoor||o.pentagonDoor)?.id||null}, protectedRecord:structuredClone(save.consequences.dungeons[fixture.protectedKey]) };
 }
 function routingAdoptionFixture(spec, now) {
   const seed="ROUTING0", S={...ROUTING_ADOPTION_SITES[spec.routingAdoption],family:spec.routingAdoption}, save=scratchSave(seed);save.closeView=true;ensureCloseView(save);
@@ -440,43 +440,14 @@ export function selectLabBuildMaterial(fixture, kind) {
   setBuildKind(fixture.game.save, kind); fixture.game.save.build.continuous = false; return true;
 }
 
-const ROOM_PADDING_DIRECTIONS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-const ROOM_PADDING_TILE_KEYS = new Set(["x", "y", "kind", "detail", "blocked", "doorway", "elev", "slope"]);
-
 function roomPaddingWitness(game, mode) {
   const map = game.map;
-  const at = (x, y) => map.tiles[y * map.width + x];
   const reserved = [map.entry, map.exit, ...map.objects, ...map.enemySpawns, ...game.enemies, ...(map.wallGlints || [])];
-  const plain = (tile) => tile && !tile.doorway && !tile.slope && Object.keys(tile).every((key) => ROOM_PADDING_TILE_KEYS.has(key));
-  for (let y = 3; y < map.height - 3; y++) for (let x = 3; x < map.width - 3; x++) {
-    for (const [dx, dy] of ROOM_PADDING_DIRECTIONS) {
-      const tile = (depth, side) => at(x + depth * dx - side * dy, y + depth * dy + side * dx);
-      const floor = tile(-1, 0);
-      if (!plain(floor) || floor.blocked || !/Floor$/.test(floor.kind)) continue;
-      const front = [-2, -1, 0, 1, 2];
-      if (![-2, -1].every((depth) => front.every((side) => {
-        const next = tile(depth, side);
-        return plain(next) && !next.blocked && next.kind === floor.kind && next.elev === floor.elev;
-      }))) continue;
-      // A wall collar makes the strip a recess, with all approaches through the existing room.
-      const wall = (depth, side) => {
-        const next = tile(depth, side);
-        return plain(next) && next.blocked && ["keepWall", "cellarWall"].includes(next.kind);
-      };
-      if (!front.every((side) => wall(0, side) && wall(1, side))) continue;
-      if (reserved.some((point) => point && Math.hypot(point.x - x, point.y - y) < 4)) continue;
-      const cells = [-1, 0, 1].map((side) => tile(0, side));
-      if (mode === "pilot") {
-        const tiles = map.tiles.slice();
-        for (const cell of cells) {
-          tiles[cell.y * map.width + cell.x] = { ...cell, kind: floor.kind, elev: floor.elev, blocked: false };
-        }
-        map.tiles = tiles;
-      }
-      return { mode, found: true, cells: cells.map(({ x, y }) => ({ x, y })), approach: { x: floor.x, y: floor.y }, direction: { x: dx, y: dy } };
-    }
-  }
-  return { mode, found: false };
+  const footprint = roomPaddingFootprint(map, reserved);
+  if (!footprint) return { mode, found: false };
+  if (mode === "pilot") applyRoomPadding(map, footprint);
+  const { cells, approach, direction } = footprint;
+  return { mode, found: true, cells, approach, direction };
 }
 
 // Real exterior doors and production interactions on a fresh scratch save.
@@ -515,6 +486,12 @@ function roomRoutingFixture(spec, seed, now) {
   }
   if (!door) throw new Error(`No usable ${spec.roomRouting} entrance for seed ${seed}.`);
   if (spec.roomRouting === "keep") save.consequences.dungeons[door.dungeonId] = { interiorVersion: version };
+  else {
+    // The matched experiments compare the routed base with their own scratch
+    // projection. The separate adoption fixture exercises the real site pin.
+    const history = save.consequences.dungeons[`${game.map.pentagon.base}:f1`];
+    if (history) delete history.roomPaddingVersion;
+  }
   const keepBase = spec.roomRouting === "keep" ? door.dungeonId.replace(/:f\d+$/, "") : null;
   const appearance = spec.candidate && keepBase ? routingKeepAppearance(keepBase, version) : null;
   if (appearance) {
