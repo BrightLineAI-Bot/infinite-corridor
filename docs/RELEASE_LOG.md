@@ -21,7 +21,7 @@ Main is at game release r856, merged as 4939f21b4cf1bd715c7943388d78e6b8e1017e0e
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| — | Codex | claude/close-view-wayfarer-defeat | Ordinary Wayfarer hurt and defeat animation with isolated Ashling witnesses | Source prepared. Release number pending the r856 merge and Preview. |
+| 857 | Codex | claude/close-view-cache-pickup | Ordinary Wayfarer hurt, defeat and cache collection gestures with isolated lab scenarios | Prepared against live r856. CI and hosted verification pending. |
 | 854 | Codex | claude/close-view-healing-drink / #509 | Wayfarer healing-drink gesture and isolated Potion lab | Merged as 467e9d974308. CI 42651541179 and 42653990562 passed. Preview 42653990710 succeeded for r854-467e9d974308. Desktop scratch verified the sip and visible vial in WebGL2. Published in r855. Physical-phone validation remains open. |
 | 852 | Codex | claude/close-view-diagnostics-release-cloud / #506 | Read-only Proving Ground renderer diagnostics | Merged as b635f4b34336. CI 42627941926 and Preview 42627941960 passed. Diagnostics were verified on the r853 desktop preview. Published in r853. |
 | 850 | Codex | claude/pg-lantern-recovery-cloud / #504 | Candidate-scoped natural Lantern recovery | Merged as e789c26f7d71. CI and Preview passed. Cloud natural capture, browser reload and damage witness completed. Published in r851. |
