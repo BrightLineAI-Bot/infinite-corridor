@@ -92,6 +92,33 @@ test('accepted jump cancels either pending weapon contact while a refused jump r
   assert.equal(g.pendingMeleeContact, pending);
 });
 
+test('actual knockdown cancels either pending contact while ordinary damage preserves it', () => {
+  for (const [weapon, releaseCharge] of [[cleaver(), false], [BRAWLER_GEAR[0].item, true]] as const) {
+    const { g, foe } = fixture(weapon);
+    const hp = foe.hp;
+    g.update(.016, input(true), 100000);
+    if (releaseCharge) g.update(.016, input(), 100001);
+    const due = g.pendingMeleeContact.releaseAt;
+    const ready = g.player.attackReadyAt;
+    const effectId = g.pendingMeleeContact.payload.effect?.id;
+    g.packWorld(.01, 100010).stun(2);
+    assert.ok(g.player.stunnedUntil > due);
+    assert.equal(g.pendingMeleeContact, null);
+    assert.equal(g.player.attackVisual.presentationCancelled, true);
+    g.update(.1, input(), due + 1);
+    assert.equal(g.player.attackReadyAt, ready);
+    assert.equal(foe.hp, hp);
+    if (effectId) assert.ok(!g.effects.some((effect: any) => effect.id === effectId));
+  }
+  const { g, foe } = fixture(cleaver());
+  g.update(.016, input(true), 100000);
+  const pending = g.pendingMeleeContact;
+  const hp = g.player.hp;
+  g.packWorld(.01, 100010).hurt(foe, 1);
+  assert.ok(g.player.hp < hp);
+  assert.equal(g.pendingMeleeContact, pending);
+});
+
 test('coarse updates release once at contact pose and preserve newborn Fist lifetime',()=>{
   const cleave=fixture(cleaver());const hp=cleave.foe.hp;cleave.g.update(.016,input(true),300000);cleave.g.update(.3,input(),300300);assert.ok(cleave.foe.hp<hp);const after=cleave.foe.hp;assert.equal(cleave.g.player.actionVisualUntil,300585);cleave.g.update(.3,input(),300600);assert.equal(cleave.foe.hp,after);
   const fists=fixture(BRAWLER_GEAR[0].item);fists.g.update(.016,input(true),400000);fists.g.update(.016,input(),400001);fists.g.update(.3,input(),400301);const fx=fists.g.effects.find((e:any)=>e.kind==='iron-fist');assert.ok(fx);assert.equal(fx.life,.25);assert.equal(fists.g.player.actionVisualUntil,400561);
