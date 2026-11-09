@@ -2,6 +2,12 @@
 
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
+## Natural Lantern recovery r850 preparation — 2026-11-09
+
+Current main is merged r849 01bc5b39039acbe22f7a6ae06ba33e7343a2abf5, reviewed tree ccd8f4629012230f6a8fec2ee99a0d2d3fb3e5e8. Merged CI42604342929 and Preview42604342965 passed; candidate identity and isolated scratch startup were verified. Live remains r847-6be077b9239e and no Publish was dispatched. The natural persisted-reload gate is still open: frozen PG previews omit normal persistence, and no supported separate-origin normal-game route was established.
+
+Root prepares provisional r850 on claude/pg-lantern-recovery-cloud from independently cleared source e840002bb3e05d9c6c548b9c894bacbd4a7e2add, tree41ab8a394713236193f28787a6be56a928ee7262: candidate-bound natural Lantern capture, durable scratch storage, canonical fresh-page reconstruction and reset isolation. Independent23 source checks and sole-builder19 build/artifact checks passed, with overlap; final packaged Astra/CI/Preview and hosted reload/contact remain required. Root owns release numbering and integration; Tim authorized automatic queue merges/publication subject to these gates. Cleaver reset76fb70a remains separate reviewed source. PR502 owns the durable pass/boss manifests; do not overwrite those concurrent docs from this package.
+
 ## Coordinated Close View r849 packaging candidate — 2026-11-09
 
 Prepared branch `claude/close-view-refinement-release-cloud` preserves rehearsal `c0010d34`, tree `6be5433310b794bc4dfc20a339be484c3d7a8e3e`, and reconciles actual main r848 `a553e1a5c684afc3975a4280f5d1b410a89a3a7d`. Scope: character-front aiming, enemy opacity, seven-strike/named-tool body load, imported/native Pike and jump, known cast/equipment refinement, Hammerfall/Golem and bounded placed-spell light. Spark/Needle recipes remain unwired; combo reset, rooms, bosses and other gestures remain separate. The rehearsal passed 107 focused checks/build plus independent interaction checks; packaged Astra/CI/Preview/hosted gates remain pending. Root owns integration. This is a draft review package. Tim authorized automatic queue merges/publication subject to required gates; no merge or publication is claimed here. PR #502 separately owns pass/boss manifests; this package leaves them untouched.

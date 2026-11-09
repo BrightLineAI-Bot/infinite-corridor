@@ -162,9 +162,9 @@ test('791: the laboratory page never loads production persistence or names a pro
   assert.ok(seen.has('proving-ground-handoff'));
   assert.equal(seen.has('persistence'), false, 'no persistence.ts in the laboratory graph');
   assert.equal(seen.has('main'), false, 'no main.ts in the laboratory graph');
-  // Only the handoff module opens IndexedDB there, and only its own database.
+  // Only the reviewed handoff and candidate-scoped recovery adapters may open IndexedDB.
   const idb = [...sources].filter(([, text]) => /indexedDB/.test(text)).map(([name]) => name);
-  assert.deepEqual(idb, ['proving-ground-handoff']);
+  assert.deepEqual(idb.sort(), ['proving-ground-handoff', 'proving-ground-recovery']);
   const handoff = sources.get('proving-ground-handoff');
   assert.doesNotMatch(handoff, /["'`]infinite-corridor["':]/, 'no production database or key');
   assert.match(handoff, /idb\.open\(PROVING_GROUND_HANDOFF\.db/);
@@ -174,7 +174,7 @@ test('791: the laboratory page never loads production persistence or names a pro
   for (const [name, text] of sources) assert.doesNotMatch(text, /["'`]\.\.\//, `${name} has a parent-path literal`);
   // Its worker never caches the published identity, and the production worker precaches the new module.
   assert.match(readFileSync(new URL('../proving-ground/sw.js', import.meta.url), 'utf8'), /release-identity\.json"\)\)return/);
-  for (const f of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(f, import.meta.url), 'utf8'), /src\/proving-ground-handoff\.js\?v=849/);
+  for (const f of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(f, import.meta.url), 'utf8'), /src\/proving-ground-handoff\.js\?v=850/);
   assert.match(readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8'), /'proving-ground-handoff'/);
 });
 
