@@ -1,0 +1,87 @@
+name: Frozen candidate render preflight
+
+# Manual, nonpublishing evidence only. No push/PR/workflow_run trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_id:
+        description: Exact existing frozen candidate id; never a new release number
+        required: true
+        type: string
+      candidate_commit:
+        description: Exact frozen candidate commit (40 lowercase hex)
+        required: true
+        type: string
+      candidate_tree:
+        description: Exact frozen candidate tree (40 lowercase hex)
+        required: true
+        type: string
+      payload_digest:
+        description: Existing frozen inventory digest (64 lowercase hex)
+        required: true
+        type: string
+      preview_run_id:
+        description: Exact existing Preview run ID on main
+        required: true
+        type: string
+      artifact_id:
+        description: Exact unexpired candidate artifact ID from that run
+        required: true
+        type: string
+      archive_digest:
+        description: Exact Actions archive digest (sha256 colon 64 lowercase hex)
+        required: true
+        type: string
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      # Retain an explicit blocked receipt even if checkout/setup/tests fail.
+      - name: Initialize failure evidence
+        env:
+          EVIDENCE_ROOT: ${{ runner.temp }}/render-preflight-evidence
+        run: |
+          mkdir -p "$EVIDENCE_ROOT"
+          echo '{"schema":1,"status":"blocked","reason":"Preflight did not complete; inspect job logs","rendererClass":"unknown","screenshots":"unavailable","physicalPhone":"not_measured","publicationAuthorized":false}' > "$EVIDENCE_ROOT/bootstrap-receipt.json"
+          echo 'Preflight bootstrap started; browser not yet run.' > "$EVIDENCE_ROOT/bootstrap.log"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Test evidence contracts
+        run: node --test tests/candidate-audit.test.ts tests/pages-release.test.ts testing/render-lab/*.test.mjs testing/render-preflight/*.test.mjs
+      - name: Verify existing artifact and probe preinstalled stable Chrome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREFLIGHT_INPUTS: ${{ toJSON(inputs) }}
+          PREFLIGHT_OUTPUT: ${{ runner.temp }}/render-preflight-evidence/run
+        run: node testing/render-preflight/preflight.mjs
+      - name: Retain receipts, logs and available screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: render-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/render-preflight-evidence/*.json
+            ${{ runner.temp }}/render-preflight-evidence/*.log
+            ${{ runner.temp }}/render-preflight-evidence/run/*.json
+            ${{ runner.temp }}/render-preflight-evidence/run/*.log
+            ${{ runner.temp }}/render-preflight-evidence/run/render/*.json
+            ${{ runner.temp }}/render-preflight-evidence/run/render/*.log
+            ${{ runner.temp }}/render-preflight-evidence/run/render/*.png
+          if-no-files-found: error
+          retention-days: 14
