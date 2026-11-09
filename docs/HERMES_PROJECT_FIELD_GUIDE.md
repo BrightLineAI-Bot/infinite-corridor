@@ -10,7 +10,13 @@ Operator decision 2026-10-11: Test Bot makes all code changes through approved c
 
 **CODE:** The existing `resetPackRuntime` clears `hopLift` for Grave Lantern when it discards transient enemy attack state. A naturally generated Lantern with borrowed Leap Slam previously retained positive lift after its attack and `aloft` state were reset on reload, causing the low-hover contact policy to continue excluding it. The regression uses seed `LANTERN-RELOAD`, section `(7,4)`, actor `pack-overworld:7:4:0`, the real attack selector/runner, and full Game serialization/restoration.
 
-**BOUNDARY:** Live leap travel stays excluded and saving a paused in-memory leap does not mutate it. The canonical reset-on-reload contract, positions, HP, cooldowns, unknown fields, schema 14 and generation pins remain intact. No other family or damage, reach, attack timing, terrain permission or rendering budget changes. This draft inherits r846 only as a preparation base; assign a fresh release during final packaging. Source checks/build and independent Codex review are not Astra release clearance, remote CI, hosted GPU acceptance or publication.
+**BOUNDARY:** Live leap travel stays excluded and saving a paused in-memory leap does not mutate it. The canonical reset-on-reload contract, positions, HP, cooldowns, unknown fields, schema 14 and generation pins remain intact. No other family or damage, reach, attack timing, terrain permission or rendering budget changes. This draft inherits current main only as a preparation base; assign a fresh release during final packaging. Source checks/build and independent Codex review are not Astra release clearance, remote CI, hosted GPU acceptance or publication.
+
+## Release 847 — Close View melee weight and contact
+
+**CODE:** Normal indoor Close View input starts the accepted Cleaver or Iron Fists pose immediately. A single versioned pending contact resolves the hit from the current position after the short windup. Cleaver retains four right-handed cuts and low carry; Iron Fists retains its alternating dash punch, opposite-hand jab and uppercut. The existing depth-tested decal pass draws the Cleaver trail from the visible blade.
+
+**BOUNDARY:** Base damage, reach, combo lengths and Echo ownership are preserved. Direct and AI attacks retain their existing timing. Successful interruptions cancel pending contact; refused actions preserve it. The pending contact record is additive at schema 14 and respects pause and exact resume. Hosted animation and physical-device checks are separate from source verification.
 
 ## Release 846 — ordinary Grave Lantern material contact
 

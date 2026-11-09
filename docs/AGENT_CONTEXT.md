@@ -4,7 +4,11 @@ For a fresh agent picking up Infinite Corridor. Workflow, commands and the relea
 
 ## Grave Lantern reload correction preparation — 2026-11-09
 
-The isolated unnumbered `claude/grave-lantern-reload-lift` correction is based on merged r846 `672941fdd6770f45ae0273ddf385e8e04cb20593`. Natural borrowed-leap Game reload reproduced stale `hopLift` `.39049536520580214` after the canonical attack/aloft reset, preventing ordinary material contact. The scoped correction clears discarded lift only for Grave Lantern; 77 relevant checks/build and independent Codex source review pass. The final regression uses real `game.presentation.reduceMotion` settings and claims physics/reload invariance only. This is draft preparation, with no release number claimed, merge or publication. Recheck active work/main and complete final release packaging, required review/CI/Preview and hosted gates before delivery. Do not duplicate this fix or overwrite the separate larger cloud preparation worktree.
+The isolated unnumbered `claude/grave-lantern-reload-lift` correction was prepared on merged r846 `672941fdd6770f45ae0273ddf385e8e04cb20593` and is now reconciled with merged r847 `6be077b9239eae5e32733b2be720da2e9b65d60f`. Natural borrowed-leap Game reload reproduced stale `hopLift` `.39049536520580214` after the canonical attack/aloft reset, preventing ordinary material contact. The scoped correction clears discarded lift only for Grave Lantern; 77 relevant checks/build and independent Codex source review pass. The final regression uses real `game.presentation.reduceMotion` settings and claims physics/reload invariance only. This is draft preparation, with no release number claimed, merge or publication. Recheck active work/main and complete final release packaging, required review/CI/Preview and hosted gates before delivery. Do not duplicate this fix or overwrite the separate larger cloud preparation worktree.
+
+## Close View melee r847 candidate
+
+Production was verified at r845-715a280c35cb after the Veil Moth hosted contact check. Grave Lantern merged in r846-672941fdd677; its Preview and live verification are tracked separately. r847 packages weighted Verge Cleaver and Iron Fists poses, short visible windups and exact pending-contact resume. The final combined Close View sweep follows r847 hosted acceptance. Boss rigs remain research and planning. Local servers and the full local suite remain stopped.
 
 ## Grave Lantern r846 packaging gate — 2026-11-08
 

@@ -7,6 +7,31 @@ export const ACTION_MOTION = Object.freeze({
   monsterContact: .16,
 });
 
+export const CLOSE_VIEW_MELEE_TIMING = Object.freeze({
+  cleaver: Object.freeze({ durationMs: 360, contactMs: 75 }),
+  dash: Object.freeze({ durationMs: 320, contactMs: 60 }),
+  jab: Object.freeze({ durationMs: 210, contactMs: 35 }),
+  uppercut: Object.freeze({ durationMs: 380, contactMs: 72 }),
+});
+const MELEE_ACTION_KINDS=Object.freeze(['verge-cleaver','iron-fists']);
+const MELEE_ACTION_MOVES=Object.freeze(['cleaver','dash','jab','uppercut']);
+export function normalizeMeleeActionVisual(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const v=Number(raw.v);
+  if(Number.isInteger(v)&&v>1)return{...raw};
+  const timing=CLOSE_VIEW_MELEE_TIMING[raw.move],contactMs=Number(raw.contactMs),durationMs=Number(raw.durationMs);
+  if(v!==1||!MELEE_ACTION_KINDS.includes(raw.kind)||!MELEE_ACTION_MOVES.includes(raw.move)||!timing||
+    !Number.isFinite(contactMs)||!Number.isFinite(durationMs)||durationMs!==timing.durationMs||
+    contactMs<1||contactMs>timing.contactMs||contactMs>durationMs)return null;
+  if((raw.kind==='verge-cleaver')!==(raw.move==='cleaver'))return null;
+  return{...raw,v:1,kind:raw.kind,move:raw.move,contactMs,durationMs};
+}
+export function sampleMeleeActionContact(record,elapsedMs){
+  const action=normalizeMeleeActionVisual(record?.meleeAction);if(!action||action.v!==1)return null;
+  const elapsed=Math.max(0,Math.min(action.durationMs,Number(elapsedMs)||0));
+  return{...action,elapsedMs:elapsed,phase:elapsed<action.contactMs?'startup':elapsed===action.contactMs?'contact':'recovery',released:elapsed>=action.contactMs,contactAgeMs:Math.max(0,elapsed-action.contactMs)};
+}
+
 export const ATTACK_VISUAL_PROFILES = Object.freeze([
   "melee", "fist", "emitter", "hammer", "sweep", "mirage", "orrery-tap", "orrery-release",
 ]);
@@ -66,6 +91,31 @@ export function normalizePendingToolUse(raw){
   if(!Number.isFinite(mag)||Math.abs(mag-1)>1e-5||!boundedNumber(startupMs,1,normal)||!boundedNumber(elapsedMs,0,startupMs)||!boundedNumber(remainingMs,0,startupMs)||Math.abs(elapsedMs+remainingMs-startupMs)>1e-5||!payload||(raw.toolKind==='great-sweep')!==(payload.family==='sweep'))return null;
   if(payload.family==='shot'){const spec=raw.toolKind==='rift-bombard'?['grenade','physical',8,[1,3]]:raw.toolKind==='blunderbuss'?['straight','physical',null,[3,5]]:['boomerang','magic',10,[1,3]],members=payload.members,executed=[payload.shot,...members];if(!spec[3].includes(members.length)||executed.some(m=>m.path!==spec[0]||m.damageType!==spec[1]||(spec[2]!=null&&m.speed!==spec[2])||(raw.toolKind==='blunderbuss'&&m.speed!==14&&m.speed!==11)))return null;}
   return {...raw,v:1,id:raw.id,toolKind:raw.toolKind,startupMs,elapsedMs,remainingMs,aim:{...raw.aim,x:ax,y:ay},payload};
+}
+export function normalizePendingMeleeContact(raw){
+  if(!finiteObject(raw))return null;
+  const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return structuredClone(raw);
+  const action=normalizeMeleeActionVisual(raw.action),contactMs=Number(raw.contactMs),elapsedMs=Number(raw.elapsedMs),remainingMs=Number(raw.remainingMs),aim=raw.aim,ax=Number(aim?.x),ay=Number(aim?.y),mag=Math.hypot(ax,ay);
+  if(v!==1||!validUseId(raw.id)||!action||action.v!==1||contactMs!==action.contactMs||
+    !['area','areaId','levelId'].every(k=>typeof raw[k]==='string'&&raw[k].length<=512)||
+    !finiteObject(aim)||!Number.isFinite(mag)||Math.abs(mag-1)>1e-5||
+    !boundedNumber(elapsedMs,0,contactMs)||!boundedNumber(remainingMs,0,contactMs)||
+    Math.abs(elapsedMs+remainingMs-contactMs)>1e-5)return null;
+  const p=raw.payload;let payload=null;
+  if(action.kind==='verge-cleaver'&&finiteObject(p)&&p.kind==='cleaver'&&finiteObject(p.profile)&&
+    ['range','arc','damage'].every(k=>boundedNumber(p.profile[k],0,1e6))&&typeof p.profile.shape==='string'&&
+    boundedNumber(p.meleeBonus,0,1e9)&&boundedNumber(p.attackDamage,0,100)&&boundedNumber(p.imbue,0,1e9)&&
+    typeof p.spellblade==='boolean'&&typeof p.awakened==='boolean'&&boundedNumber(p.support,0,999)&&
+    finiteObject(p.primaryMotion)&&p.primaryMotion.v===2&&Number.isInteger(p.primaryMotion.step)&&p.primaryMotion.step>=1&&p.primaryMotion.step<=4&&
+    (p.boxing===null||finiteObject(p.boxing)&&boundedNumber(p.boxing.damage,0,100)&&boundedNumber(p.boxing.heal,0,100)))
+    payload={...p,kind:'cleaver',profile:{range:Number(p.profile.range),arc:Number(p.profile.arc),damage:Number(p.profile.damage),shape:p.profile.shape},meleeBonus:Number(p.meleeBonus),attackDamage:Number(p.attackDamage),imbue:Number(p.imbue),spellblade:p.spellblade,boxing:p.boxing?{damage:Number(p.boxing.damage),heal:Number(p.boxing.heal)}:null,awakened:p.awakened,primaryMotion:{v:2,step:p.primaryMotion.step},support:Number(p.support)};
+  if(action.kind==='iron-fists'&&finiteObject(p)&&p.kind==='fist'&&finiteObject(p.effect)&&
+    ['life','radius','damage','pulse','untilPulse','imbue','stun'].every(k=>boundedNumber(p.effect[k],0,1e9))&&
+    ['iron-fist','fist-uppercut'].includes(p.effect.kind)&&p.effect.brawler===true&&p.effect.glyphHost==='melee'&&p.effect.pulse===99&&
+    Number.isInteger(p.step)&&p.step>=1&&p.step<=3&&boundedNumber(p.cloneDamage,0,1e9)&&typeof p.cloneEligible==='boolean')
+    payload={...p,kind:'fist',effect:{id:String(p.effect.id||'').slice(0,160),kind:p.effect.kind,brawler:true,life:Number(p.effect.life),radius:Number(p.effect.radius),pulse:99,untilPulse:0,damage:Number(p.effect.damage),pulseIndex:0,hits:{},glyphHost:'melee',healShare:Number(p.effect.healShare)||0,imbue:Number(p.effect.imbue),stun:Number(p.effect.stun),finisher:p.effect.finisher===true},step:p.step,cloneDamage:Number(p.cloneDamage),cloneEligible:p.cloneEligible};
+  if(!payload)return null;
+  return{...raw,v:1,id:raw.id,action,area:raw.area,areaId:raw.areaId,levelId:raw.levelId,contactMs,elapsedMs,remainingMs,aim:{x:ax,y:ay},payload};
 }
 export function toolUsePoseTime(record,elapsedMs){
   const duration=Math.max(0,Number(record?.durationMs)||0),elapsed=Math.max(0,Math.min(duration,Number.isFinite(Number(elapsedMs))?Number(elapsedMs):0)),u=record?.toolUse;
@@ -180,6 +230,7 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (!Number.isFinite(fistCharge) || fistCharge < 0 || fistCharge > 1) return null;
     copy.fistCharge = fistCharge;
   }
+  if(raw.meleeAction!=null){const action=normalizeMeleeActionVisual(raw.meleeAction);if(!action)return null;copy.meleeAction=action;}
   if (raw.hammerEffectId != null) {
     if (typeof raw.hammerEffectId !== "string" || !/^[a-z0-9-]{1,64}$/.test(raw.hammerEffectId)) return null;
     copy.hammerEffectId = raw.hammerEffectId;

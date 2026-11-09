@@ -1,7 +1,7 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.ts';
-import { cleaverHandRoles, cleaverCutMotion } from './close-view-player-presentation.ts';
+import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -415,6 +415,37 @@ function fistLayer(pose,step,lead,amount){const opening=lead==='left'?'left':'ri
 function sourceTime(p, duration) { return duration * (p < .18 ? p / .18 * .35 : .35 + (p - .18) / .82 * .65); }
 function fistSourceTime(p,duration){return duration*(p<.08?.35+.05*smoothstep(p/.08):.4+.35*smoothstep((p-.08)/.92));}
 function fistReadyPose(asset,state,pose,charge,lead){const w=clamp(charge);if(!(w>0))return;fistPose(asset,state,asset.clips.Punch.duration*.2,lead);blend(pose,state.other,.58*w);}
+function weightedMeleePose(asset,state,pose,motion) {
+  const w=motion.weight,d=motion.drive;if(!(w>0))return;
+  if(motion.kind==='iron-fists') {
+    const left=motion.lead<0,openingLeft=motion.openingLead<0,source=fistSourceTime(motion.progress,asset.clips.Punch.duration);
+    fistPose(asset,state,source,left?'left':'right');
+    const step=motion.move==='dash'?1:motion.move==='jab'?2:3;
+    fistLayer(state.other,step,openingLeft?'left':'right',motion.move==='uppercut'?.96:.76);
+    blend(pose,state.other,Math.min(1,w));
+    // Loaded hips/torso/shoulders and opposed legs retain the sampled walk beneath the strike.
+    rotateY(pose,27,motion.twist);rotateX(pose,24,(motion.move==='dash'?.20:.10)*d);rotateX(pose,4,-.06*d);
+    rotateX(pose,left?30:32,-.28*d);rotateX(pose,left?32:30,.13*d);
+    build(asset,state,pose);state.other.set(pose);
+    // Accepted lead owns the end-effector. Targets start at the current grips so a charged
+    // p=0 pose leaves continuously instead of snapping into a new authored source frame.
+    for(const strikingLeft of [left]){build(asset,state,state.other);const shoulder=(strikingLeft?12:22)*16,g=state.global,t=state.primaryTarget,isStrike=true,
+      forward=motion.move==='dash'?.62:motion.move==='jab'?.58:.46,lift=motion.move==='uppercut'?.20:-.12,side=strikingLeft?.06:-.06,
+      tx=g[shoulder+12]+side,ty=g[shoulder+13]+lift,tz=g[shoulder+14]+forward;
+      t[0]=tx;t[1]=ty;t[2]=tz;solveArm(state,state.other,strikingLeft,t,strikingLeft?-.08:.08,motion.move==='uppercut'&&isStrike?-.30:-.05);
+    }
+    blend(pose,state.other,w);
+    state.clip=motion.move==='dash'?'derived-weighted-dash-punch':motion.move==='jab'?'derived-weighted-opposite-jab':'derived-weighted-rising-uppercut';state.clipTime=motion.progress;
+    return;
+  }
+  rotateY(pose,27,motion.twist);rotateX(pose,24,(.12-.05*motion.rise)*w);rotateX(pose,4,-.055*w);
+  rotateX(pose,30,-.18*d);rotateX(pose,32,.10*d);build(asset,state,pose);state.other.set(pose);
+  const g=state.global,s=12*16,t=state.primaryTarget;
+  // Source right hand: a low rusty-gladius carry, then one of four alternating up/down diagonals.
+  t[0]=g[s+12]+.10+motion.side;t[1]=g[s+13]-.18+.18*motion.rise;t[2]=g[s+14]+.28+.16*motion.drive;
+  state.primaryGripResidual=solveArm(state,state.other,true,t,motion.yaw,motion.pitch);blend(pose,state.other,w);
+  state.clip='derived-weighted-cleaver-'+motion.cutIndex;state.clipTime=motion.progress;
+}
 function socket(out, g, o, scale, cy, sy, input, dx, dz, floor) {
   for (let c = 0; c < 4; c++) { const k = o + c * 4, x = g[k] + (c === 3 ? dx : 0), y = g[k + 1] - (c === 3 ? floor : 0), z = g[k + 2] + (c === 3 ? dz : 0); out[c * 4] = (z * cy - x * sy) * scale + (c === 3 ? input.x : 0); out[c * 4 + 1] = (z * sy + x * cy) * scale + (c === 3 ? input.y : 0); out[c * 4 + 2] = y * scale + (c === 3 ? input.groundZ + input.liftZ : 0); out[c * 4 + 3] = c === 3 ? 1 : 0; }
 }
@@ -466,17 +497,23 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
   clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
-  const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null;
+  const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
+    meleeMotion=action?.kind==='melee'?sampleMeleeActionPose(action.meleeAction,p,action?.primaryStage?.step??action?.primaryMotion?.step??action?.primaryStep??action?.fistStep,action?.fistLead):null;
   let clip = null, weight = 0, time = 0, dx = 0, dz = 0;
   state.clip = speed > 2.8 ? 'Run' : speed > 0 ? 'Walk' : 'Idle'; state.clipTime = phase;
   const primaryStage=primaryAction?(primaryVisualStage(action)||(action.primaryMotion?{kind:'opaque'}:{kind:'legacy',step:1})):input.primaryCarryStage,
     carryProfile=primaryAction||heldPrimary,roles=cleaverHandRoles(input.handProfile??carryProfile,primaryStage);
-  if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;
+  if(meleeMotion){
+    if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:meleeMotion.cutIndex});
+    else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,meleeMotion.lead<0?'left':'right');}
+    weightedMeleePose(asset,state,state.pose,meleeMotion);
+  }
+  else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;
   else if(carryProfile==='verge-cleaver'&&(!primaryStage||primaryStage.kind==='cleaver-four'))cleaverFourPose(state,state.pose,primaryAction?p:0,primaryStage);
   else if(primaryAction)primaryPose(state,state.pose,primaryAction,p,action.primaryStep);
   else if(heldPrimary)primaryPose(state,state.pose,heldPrimary,0);
   else state.primaryGripResidual=0;
-  if (action) {
+  if (action&&!meleeMotion) {
     const kind = action.kind, profile = action.profile;
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
     else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact') clip = asset.clips.PickUp;
@@ -488,11 +525,11 @@ export function sampleCloseViewHero(asset, state, input, out) {
         rotateX(state.pose,27,(.03+.22*forwardLean)*envelope);rotateX(state.pose,24,.14*forwardLean*envelope);rotateX(state.pose,4,-.08*forwardLean*envelope);rotateZ(state.pose,27,-.18*side*envelope);rotateZ(state.pose,24,-.14*side*envelope);rotateZ(state.pose,4,.08*side*envelope);}
       state.clip=Math.abs(side)>.55?(side>0?'derived-quickstep-right':'derived-quickstep-left'):(forward<0?'derived-quickstep-back':'derived-quickstep-forward');state.clipTime=p;weight=envelope;
     } else if(knocked) { state.clip='derived-knockdown';state.clipTime=p; }
-    else if (clip) { time = kind === 'melee' ? (profile==='fist'?fistSourceTime(p,clip.duration):sourceTime(p, clip.duration)) : p * clip.duration;const fistProfile=profile==='fist'||profile==='fistCharge',lead=action.fistLead==='left'?'left':'right',step=[1,2,3].includes(action.fistStep)?action.fistStep:1,strikeLead=step===2?(lead==='left'?'right':'left'):lead;if(fistProfile)fistPose(asset,state,time,strikeLead);else clipPose(asset,clip,time,state.other);
+    else if (clip) { time = kind === 'melee' ? (profile==='fist'?fistSourceTime(p,clip.duration):sourceTime(p, clip.duration)) : p * clip.duration;const fistProfile=kind==='melee'&&(profile==='fist'||profile==='fistCharge'),lead=action.fistLead==='left'?'left':'right',step=[1,2,3].includes(action.fistStep)?action.fistStep:1,strikeLead=step===2?(lead==='left'?'right':'left'):lead;if(fistProfile)fistPose(asset,state,time,strikeLead);else clipPose(asset,clip,time,state.other);
       if(fistProfile){if(profile==='fistCharge'){fistReadyPose(asset,state,state.pose,p,strikeLead);state.clip='derived-fist-charge';state.clipTime=p;clip=null;}else{const envelope=Math.min(1,p/.08,(1-p)/.16),carry=clamp(Number(action.fistCharge)||0)*(1-p);if(carry>0){fistReadyPose(asset,state,state.pose,carry,strikeLead);fistPose(asset,state,time,strikeLead);}fistLayer(state.other,step,lead,step===3?.9:.65);weight=envelope;state.clip=step===1?'derived-dash-punch':step===2?'derived-opposite-jab':'derived-rising-uppercut';state.clipTime=p;}}
       if (kind === 'dodge') { build(asset, state, state.other); const b = asset.meta.reference.bodyNode * 16; dx = -(state.global[b + 12] - state.rollX) * weight; dz = -(state.global[b + 14] - state.rollZ) * weight; }
 
-      if(clip){if(profile!=='fist'||weight>0)blend(state.pose, state.other, weight);if(profile!=='fist'){state.clip = clip.name; state.clipTime = time;}}
+      if(clip){if(!fistProfile||weight>0)blend(state.pose, state.other, weight);if(!fistProfile){state.clip = clip.name; state.clipTime = time;}}
     } else if (kind === 'melee' && profile === 'hammer') {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
