@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 850: expose natural Grave Lantern borrowed-leap capture and real page-reload reconstruction through candidate-bound scratch storage, with canonical save transport, exact-state diagnostics and guarded reset.
+
 - Release 849: refine character-front action aiming, nearby enemy opacity, seven-strike and named-tool body loading, imported/native Pike carry and jump, known cast follow-through, equipment, Hammerfall/Golem presentation and bounded placed-spell light.
 
 - Release 848: restore ordinary Grave Lantern material contact after reloading a saved borrowed leap, clearing only the lift discarded with its transient attack.
