@@ -1,6 +1,6 @@
 # Close View material-contact family inventory
 
-Status: **source pilot prepared, not integrated or delivered**. This inventory preserves the airborne-contact design findings after the ordinary Veil Moth pilot. The separate Grave Lantern branch now carries the reviewed low-hover interval and active-phase admission only; it allocates no release and claims no hosted GPU, phone, full-flight-family or boss delivery.
+Status: **focused r846 candidate, not delivered**. This inventory preserves the airborne-contact design findings after the ordinary Veil Moth r845 merge. The separate Grave Lantern candidate carries only the reviewed low-hover interval and known physical-phase admission; it claims no hosted GPU, phone, full-flight-family or boss delivery.
 
 ## Existing ordinary contact routes
 
