@@ -253,6 +253,7 @@ const CLOSE_VIEW_LAB = [
   { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "cache-pickup-supply", label: "Cache pickup: supply cache", cachePickup: "supplyCache", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "cache-pickup-weapon", label: "Cache pickup: weapon cache", cachePickup: "weaponCache", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "chest-opening", label: "Chest opening: corridor chest", cachePickup: "chest", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "padding-keep-reference", label: "Room clearance: keep reference", roomRouting: "keep", candidate: true, roomPadding: "reference" },
   { id: "padding-keep-pilot", label: "Room clearance: keep widened edge", roomRouting: "keep", candidate: true, roomPadding: "pilot" },
   { id: "padding-pentagon-reference", label: "Room clearance: Pentagon reference", roomRouting: "pentagon", candidate: true, roomPadding: "reference" },
@@ -394,8 +395,13 @@ function closeViewFixture(scenario, seed, now) {
     const x=player.x+dx,y=player.y+dy;
     // Clear competing Act targets only in this scratch room.
     game.map.objects=game.map.objects.filter(o=>Math.hypot(o.x-player.x,o.y-player.y)>=2);
-    game.map.objects.push({id:"lab-cache-pickup",kind:spec.cachePickup,supplyType:spec.cachePickup==="weaponCache"?"secondary":"restorativeDraught",x,y,state:"ready",actions:["collect"]});
-    game.message="Use Act to collect the nearby cache. Reset same restores it.";
+    if(spec.cachePickup==="chest"){
+      game.map.objects.push({id:"lab-chest-opening",kind:"chest",rewardSource:"chest",x,y,state:"closed",actions:["open"]});
+      game.message="Use Act to open the nearby chest. Reset same restores it.";
+    }else{
+      game.map.objects.push({id:"lab-cache-pickup",kind:spec.cachePickup,supplyType:spec.cachePickup==="weaponCache"?"secondary":"restorativeDraught",x,y,state:"ready",actions:["collect"]});
+      game.message="Use Act to collect the nearby cache. Reset same restores it.";
+    }
   }
   if (spec.reactionInspection) {
     const { player, foe, dx, dy } = assetLane(game);
