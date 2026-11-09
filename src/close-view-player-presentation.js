@@ -13,6 +13,11 @@ export function sampleDrinkPose(phase=0,reducedMotion=false,out={}) {
   out.weight=lift;out.sip=p>=.34&&p<=.66?cutSmooth((p-.34)/.12)*(1-cutSmooth((p-.54)/.12)):0;
   out.arm=lift*(reducedMotion?.72:1);out.head=lift*(reducedMotion?.55:1);return out;
 }
+export function cacheReachWeight(phase, reducedMotion = false) {
+  const p = unit(phase);
+  const reach = p < .38 ? cutSmooth(p / .38) : p < .57 ? 1 : 1 - cutSmooth((p - .57) / .43);
+  return reach * (reducedMotion ? .6 : 1);
+}
 // Accepted Stage 10b descriptors share one contact clock across native, imported and
 // reduced-motion presentation.  This sampler is deliberately geometry-only so the
 // renderer can also use it for a bounded weapon trail without inventing another timer.
@@ -92,4 +97,22 @@ export function ordinaryJumpPresentation(game, now, lift, baseMs) {
   const elapsedMs=clock-start,remainingMs=g.jumpUntil-clock;
   if(elapsedMs<0||remainingMs>durationMs+1e-6)return null;
   return {v:1,elapsedMs,remainingMs,durationMs,lift,rise:Math.min(1,elapsedMs/(baseMs*.5)),fall:Math.max(0,1-remainingMs/(baseMs*.5))};
+}
+
+// Read-only defeat handoff for the ordinary on-foot body. The short ordinary
+// death beat supplies the authored motion clock; a longer fallen window keeps
+// its endpoint instead of stretching or replaying the fall.
+export function ordinaryDefeatPresentation(game, now) {
+  const player = game?.player, fallen = game?.fallen;
+  const clock = game?.paused && Number.isFinite(game.pauseStarted) ? game.pauseStarted : now;
+  if (!fallen || player?.hp !== 0 || !Number.isFinite(clock) ||
+      !Number.isFinite(player.stunnedAt) || !Number.isFinite(fallen.until)) return null;
+  if (game.save?.boat?.aboard || game.mountRide?.()) return null;
+  const form = playerFormPresentation(game);
+  if (form && form.kind !== 'playerIronFists') return null;
+  const windowMs = fallen.until - player.stunnedAt;
+  const beatMs = game.deathBeat * 1000;
+  const durationMs = Number.isFinite(beatMs) && beatMs > 0 ? Math.min(windowMs, beatMs) : windowMs;
+  if (!(durationMs > 0)) return null;
+  return { amount: unit((clock - player.stunnedAt) / durationMs), durationMs };
 }

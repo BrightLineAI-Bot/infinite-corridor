@@ -1,13 +1,13 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r856-4939f21b4cf1';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r856-4939f21b4cf1';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r856-4939f21b4cf1';
-import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r856-4939f21b4cf1';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r856-4939f21b4cf1';
-import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r856-4939f21b4cf1';
-import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose } from './close-view-player-presentation.js?v=r856-4939f21b4cf1';
-import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r856-4939f21b4cf1';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r856-4939f21b4cf1';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r857-6ce7028f514c';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r857-6ce7028f514c';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r857-6ce7028f514c';
+import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r857-6ce7028f514c';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r857-6ce7028f514c';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r857-6ce7028f514c';
+import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, cacheReachWeight } from './close-view-player-presentation.js?v=r857-6ce7028f514c';
+import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r857-6ce7028f514c';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r857-6ce7028f514c';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -565,6 +565,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const jumpSettle = pose === "jump" && progress > .72 ? Math.sin((progress - .72) / .28 * Math.PI) : 0;
   const flinch = pose === "hit" ? progress : 0;
   const drinking=playerLike&&pose==='drink',drink=drinking?sampleDrinkPose(progress,actor.reduceMotion,DRINK_POSE):null;
+  const collecting=playerLike&&pose==='collect',reach=collecting?cacheReachWeight(progress,actor.reduceMotion):0;
   const fall = pose === "death" ? progress : 0;
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
@@ -577,7 +578,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const turn = newCleaver?cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .16 * stagger
-    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
+    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
     * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
@@ -595,8 +596,8 @@ export function writeCloseViewModel(out, offset, actor) {
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
   const hammerWeight=kind==='playerHammerStomp'?hammerFrames(progress):0;
   const nativeJump=ordinaryNativeJump(actor),nativeJumpBaseline=pose==='jump'&&ordinaryJumpKind(kind)&&!kind.startsWith('playerIronFists');if(nativeJump||nativeJumpBaseline)nativeJumpFrames(actor,beat,stride,jump,jumpSettle,nativeJump);
-  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
-  const drinkFreeSwing=drinking?(cleaverHandRoles(kind==='playerVergeCleaver'?'verge-cleaver':'melee',stage).free==='leftSocket'?2:-2):0;
+  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink','collect'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
+  const freeSwing=drinking||collecting?(cleaverHandRoles(kind==='playerVergeCleaver'?'verge-cleaver':'melee',stage).free==='leftSocket'?2:-2):0;
   for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon } of models[kind]) {
     const jumpPart=nativeJump||nativeJumpBaseline?JUMP_PARTS.get(mesh):null;
     const mirroredArm=newCleaver&&Math.abs(sourceSwing)===2,swing=mirroredArm?-sourceSwing:sourceSwing;
@@ -649,7 +650,8 @@ export function writeCloseViewModel(out, offset, actor) {
       angle=1.15+beat*.08+(primaryStep===1?-1.65:primaryStep===2?-1.25:-.90)*strike-.28*cast+.58*jump+.22*flinch;
     } else if(kind==='playerCinderPike'&&swing===-2) angle+=(primaryStep===2?-.22:primaryStep===3?.22:0)*strike;
     if(toolMotion&&swing===-2){const w=toolMotion.weight,baseUp=phasedTool.toolKind==='lumen-spindle'?.18:phasedTool.toolKind==='rift-bombard'?-.13:-.08;angle=beat*stride*(1-w)-(phasedTool.toolKind==='great-sweep'?.8:1.1)*w-(phasedTool.toolKind==='great-sweep'?0:(toolMotion.up-baseUp*w)*2);}
-    if(drinking&&swing===drinkFreeSwing&&kind!=='playerCinderPike')angle+=( -1.08-.14*drink.sip-angle)*drink.weight;
+    if(drinking&&swing===freeSwing&&kind!=='playerCinderPike')angle+=( -1.08-.14*drink.sip-angle)*drink.weight;
+    if(collecting&&swing===freeSwing&&kind!=='playerCinderPike')angle+=(-.86-angle)*reach;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
