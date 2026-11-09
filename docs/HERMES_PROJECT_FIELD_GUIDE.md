@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Prepared — Wayfarer hurt and defeat
+
+**CODE:** Ordinary on-foot Wayfarer recoil uses a 300 ms presentation receipt after an audited combat impact leaves a surviving injury. The native pose and imported rig share that clock. An accepted attack, tool, cast, jump or quickstep keeps control of the body. A fatal blow uses the existing fall clock; the final pose holds until recovery takes over. Two isolated Ashling encounters exercise real hurt and defeat.
+
+**BOUNDARY:** The receipt is additive in schema 14 and carries the existing logical presentation time across pause and save reload. Area transitions clear the known version and future versions remain opaque. Passive poison cannot arm recoil. Same-frame healing can mask an injury. Combat timing, damage, Second Wind, ordinary knockdown, and existing special forms keep their established behavior.
+
 ## Release 856 — Room edges and tight-corner framing
 
 **CODE:** New standalone Keep 5 and Pentagon 10 sites record room-padding version 1 on their first-floor history. The generator selects a three-cell recess from the original floor. Live area loading opens the selected cells after object placement and before restoring the actor footprint. The Close View lens widens smoothly when stone compresses the camera boom in the supported interiors.
