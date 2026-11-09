@@ -93,3 +93,21 @@ export function ordinaryJumpPresentation(game, now, lift, baseMs) {
   if(elapsedMs<0||remainingMs>durationMs+1e-6)return null;
   return {v:1,elapsedMs,remainingMs,durationMs,lift,rise:Math.min(1,elapsedMs/(baseMs*.5)),fall:Math.max(0,1-remainingMs/(baseMs*.5))};
 }
+
+// Read-only defeat handoff for the ordinary on-foot body. The short ordinary
+// death beat supplies the authored motion clock; a longer fallen window keeps
+// its endpoint instead of stretching or replaying the fall.
+export function ordinaryDefeatPresentation(game, now) {
+  const player = game?.player, fallen = game?.fallen;
+  const clock = game?.paused && Number.isFinite(game.pauseStarted) ? game.pauseStarted : now;
+  if (!fallen || player?.hp !== 0 || !Number.isFinite(clock) ||
+      !Number.isFinite(player.stunnedAt) || !Number.isFinite(fallen.until)) return null;
+  if (game.save?.boat?.aboard || game.mountRide?.()) return null;
+  const form = playerFormPresentation(game);
+  if (form && form.kind !== 'playerIronFists') return null;
+  const windowMs = fallen.until - player.stunnedAt;
+  const beatMs = game.deathBeat * 1000;
+  const durationMs = Number.isFinite(beatMs) && beatMs > 0 ? Math.min(windowMs, beatMs) : windowMs;
+  if (!(durationMs > 0)) return null;
+  return { amount: unit((clock - player.stunnedAt) / durationMs), durationMs };
+}
