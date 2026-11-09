@@ -2,6 +2,8 @@
 
 Status: **research and queued follow-up only**. This study records a concrete Stage 10 finding; it does not implement airborne collision or claim a release, hosted acceptance, or publication. Schedule it after the existing B → 7a → 7b → armor → routing sequence. Boss rigs remain a separate research program.
 
+Source-preparation receipt: an isolated ordinary Veil Moth pilot now uses a stateless authored occupied interval (`.35 × scale` to `1.48 × scale`) through the existing bounded actor-contact solver. It remains source-only and unnumbered; integration stays after routing, and fresh review, exact CI/Preview and hosted silhouette/contact acceptance remain mandatory before delivery.
+
 ## Observed gap and scope
 
 During actual hosted C836 inspection, a living Veil Moth mesh crossed the Wayfarer's torso while the player walked through it. Grounded contact deliberately exempts every flying or aloft actor, so this is outside C836's bounded grounded-body contract rather than a reason to redirect or reopen that release.

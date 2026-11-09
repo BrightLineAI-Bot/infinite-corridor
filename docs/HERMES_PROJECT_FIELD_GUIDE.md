@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 845 — ordinary Veil Moth material contact
+
+**CODE:** The ordinary, non-pack Veil Moth participates in the existing bounded actor-contact sweep with a stateless occupied interval from `.35 * scale` through `1.48 * scale`, using the existing finite scale clamp of `.25` through `4`. Contact remains symmetric for player and creature movement, samples the existing physical support/carrier phases, and retains genuine clearance when one complete interval is above or below the other.
+
+**BOUNDARY:** Pack-controlled, aloft, hopping, poise-broken and special-movement Veil Moths remain excluded, as do Cinder Wisps and every other airborne, phased, swarm, special-beast and boss family. Attack logic, AI, terrain permission, contact radii, renderer presentation, saves, schema, damage and balance are unchanged. Server-free checks and a static build do not establish hosted motion, GPU presentation, phone performance, or support for Grave Lantern and later material-family work.
+
 ## Release 844 — conservative production routing adoption
 
 **CODE:** An eligible newly placed standalone overworld keep records interior version 5 only after successful placement and only when its bounded family has no visited, generated, snapshotted, active, sibling or unknown compatibility evidence. A genuinely new Pentagon selects version 10 through the ordinary `Game` selector; the nine-cell atlas remains first authority, one agreeing canonical v1–v10 namespace is restored with finite lookups, and the actual placed `map.pentagon.V` is pinned. Public scratch scenarios cross ordinary section boundaries into deterministic fresh keep and Pentagon sites and report bounded live selector receipts.
