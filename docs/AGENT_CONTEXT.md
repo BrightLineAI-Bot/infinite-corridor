@@ -3,6 +3,17 @@
 For a fresh agent picking up Infinite Corridor. Workflow, commands and the release checklist are in `AGENTS.md`; code-level detail per release is in `docs/HERMES_PROJECT_FIELD_GUIDE.md` (the release sections at the top). Last updated 2026-11-07.
 
 
+## Provisional r853 simple-tool appearance packaging — 2026-11-09
+
+Fresh remote main is merged r852 `b635f4b34336b3bad89054919ed699070ab8bdaa`, tree `430a9c43d986f17a94d01c1a2cd74f7f858f7e8d`. Only documentation PRs #502/#214 were open at the packaging check; no competing r853 candidate was found. Root provisionally assigns 853 only to `claude/simple-tool-appearance-release-cloud`; this is local preparation, not a merge-time claim. Main, open PRs and the release baton must be rechecked before remote integration.
+
+The four source files are byte-identical to reviewed remote `claude/simple-tool-appearance-cloud` commit `55ab4c9abaab952e10b2ea982f23d9edc66f8b20` (local reviewed checkpoint `888ef1cd`, tree `a97233f2`). Imported-player equipment selects the existing 56-triangle Spark Coil or 60-triangle Needle Caster at idle and from a successful accepted v1 `toolAppearance`. Native actors retain generic emitter recipes because full recipes exceed their 256-triangle caps. Rank-6 Needle resolution still selects Blunderbuss. Legacy, malformed and future appearance metadata retains generic fallback; schema14 unknown fields remain preserved.
+
+Generic emitter animation, 180 ms presentation, modified 360 ms readiness, physical projectile origins, damage, counts, Echo/clone ownership, startup/muzzle memberships, body/gear caps and module/dependency inventory are unchanged. Independent final source review passed 80 focused checks. This package still requires independent packaging review, fresh exact-candidate review, CI/Preview and hosted visual/device acceptance; source/mock checks are not textured evidence.
+
+Parent receipts: r852 source CI42626474142 passed 3364 checks/build/rehearsal and fresh Astra review passed 68 focused checks on corrected source470/tree430. Merged CI42627941926 and Preview42627941960 were running at this checkpoint. Production remains verified r847; no Publish occurred. Root's separate master manifest preserves r850 recovery and r851/Cleaver acceptance details. No pass/boss manifest is edited by this package.
+
+
 ## Provisional r852 diagnostics packaging — 2026-11-09
 
 Actual main is merged r851 `1a2c35ae7ab984a069c0e4e68732cb6df28dcdf6`, tree `58c42b238884588d79ffecb3c0a5cf0c09f5e0d3`. Remote main and open PRs were checked before local packaging; only docs PRs #502/#214 were open and no competing r852 candidate was found. Root retains the integration/publication baton. `claude/close-view-diagnostics-release-cloud` is local provisional packaging of diagnostics source `b5b3cea9`, tree `a4632622`; no push, PR, merge or Publish is claimed.
