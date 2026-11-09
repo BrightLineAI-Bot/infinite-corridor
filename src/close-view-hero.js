@@ -1,7 +1,7 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r853-a53725ea58a7';
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r853-a53725ea58a7';
-import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose } from './close-view-player-presentation.js?v=r853-a53725ea58a7';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r855-96d7069b1622';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage } from './action-motion.js?v=r855-96d7069b1622';
+import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose } from './close-view-player-presentation.js?v=r855-96d7069b1622';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -567,7 +567,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const hammerAction=action?.kind==='melee'&&action.profile==='hammer';
   const timedPrimary=action?.kind==='melee'&&['melee','cinder-pike','verge-cleaver','fist','fistCharge'].includes(action.profile)&&Number.isFinite(action.poseMs),timedAction=action?.kind==='dodge'||timedPrimary;
   const idleMs=timedAction&&Number.isFinite(action.poseMs)?action.profile==='fistCharge'?action.poseMs:action.poseMs+p*(Number(action.durationMs)||(timedPrimary?240:260)):input.nowMs;
-  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
+  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction&&action.kind!=='drink' ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
     meleeMotion=action?.kind==='melee'?sampleMeleeActionPose(action.meleeAction,p,action?.primaryStage?.step??action?.primaryMotion?.step??action?.primaryStep??action?.fistStep,action?.fistLead):null;
@@ -607,6 +607,13 @@ export function sampleCloseViewHero(asset, state, input, out) {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
       toolPose(state,state.pose,profile,p,weight,action);
+    } else if(kind==='drink') {
+      const drink=sampleDrinkPose(p,input.reducedMotion,state),freeLeft=roles.free==='leftSocket',t=state.primaryTarget;
+      if(drink.weight>0){state.other.set(state.pose);build(asset,state,state.other);const shoulder=(freeLeft?12:22)*16;
+        t[0]=state.global[shoulder+12]+(freeLeft?.10:-.10);t[1]=state.global[shoulder+13]+.38*drink.arm;t[2]=state.global[shoulder+14]+.20*drink.arm;
+        solveArm(state,state.other,freeLeft,t,freeLeft?-.12:.12,-.72*drink.arm);
+        rotateX(state.other,24,.08*drink.head);rotateX(state.other,4,-.12*drink.head-.05*drink.sip);blend(state.pose,state.other,drink.weight);}
+      state.clip='derived-drink';state.clipTime=p;
     } else if (kind === 'ranged' || kind === 'cast' || kind === 'jump') {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.
       const pulse = Math.sin(p * Math.PI) * weight;

@@ -1,14 +1,15 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r853-a53725ea58a7';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r853-a53725ea58a7';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r853-a53725ea58a7';
-import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r853-a53725ea58a7';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r853-a53725ea58a7';
-import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r853-a53725ea58a7';
-import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose } from './close-view-player-presentation.js?v=r853-a53725ea58a7';
-import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r853-a53725ea58a7';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r853-a53725ea58a7';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r855-96d7069b1622';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r855-96d7069b1622';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r855-96d7069b1622';
+import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.js?v=r855-96d7069b1622';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r855-96d7069b1622';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r855-96d7069b1622';
+import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose } from './close-view-player-presentation.js?v=r855-96d7069b1622';
+import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r855-96d7069b1622';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r855-96d7069b1622';
 export const MODEL_FLOATS = 10;
+const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
 const ash = 0x87503f, coal = 0x372927, ember = 0xf3a55c;
 const bark = 0x626c50, darkBark = 0x373e2d, root = 0xb6a06b;
@@ -363,6 +364,18 @@ export function modelSupported(kind) {
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
 const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:playerTool.slice(-3),hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle,'spark-coil':sparkCoil,'needle-caster':needleCaster});
 export const HERO_EQUIPMENT_MAX_TRIANGLES = 156;
+export const HERO_DRINK_VIAL_TRIANGLES=24;
+// One bake-time heptagonal tapered bottle: visible at close range, but small enough
+// to share the existing equipment stream without another asset or draw call.
+const HERO_DRINK_VIAL=part(prism(7,.55),0,0,.075,.034,.034,.075,0x52d9bd).mesh;
+function writeHeroDrinkVial(out,offset,gear) {
+  const m=gear?.vialSocket;if(!m||m.length!==16)return offset;
+  for(let i=0;i<16;i++)if(!Number.isFinite(m[i]))return offset;
+  const ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);if(Math.min(ax,ay,az)<1e-6)return offset;
+  const alpha=(Number.isFinite(gear.alpha)?Math.max(0,Math.min(1,gear.alpha)):1)*Math.max(0,Math.min(1,Number(gear.vialWeight)||0));
+  for(let i=0;i<HERO_DRINK_VIAL.length;i+=MESH_FLOATS){const a=HERO_DRINK_VIAL,x=a[i],y=a[i+1],z=a[i+2];out[offset++]=m[12]+m[0]/ax*x+m[4]/ay*y+m[8]/az*z;out[offset++]=m[13]+m[1]/ax*x+m[5]/ay*y+m[9]/az*z;out[offset++]=m[14]+m[2]/ax*x+m[6]/ay*y+m[10]/az*z;let nx=m[0]/ax*a[i+3]+m[4]/ay*a[i+4]+m[8]/az*a[i+5],ny=m[1]/ax*a[i+3]+m[5]/ay*a[i+4]+m[9]/az*a[i+5],nz=m[2]/ax*a[i+3]+m[6]/ay*a[i+4]+m[10]/az*a[i+5],n=Math.hypot(nx,ny,nz)||1;out[offset++]=nx/n;out[offset++]=ny/n;out[offset++]=nz/n;out[offset++]=a[i+6];out[offset++]=a[i+7];out[offset++]=a[i+8];out[offset++]=alpha;}
+  return offset;
+}
 export function writeCloseViewHeroGear(out,offset,gear) {
   const parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null;
   // Legacy callers supplied only rightSocket. Explicit new roles require their real grip.
@@ -394,11 +407,13 @@ export function writeCloseViewHeroEquipment(out,offset,gear,frame) {
   let gearVertices=0;if(parts)for(const p of parts)gearVertices+=p.mesh.length/MESH_FLOATS;
   if(gear?.profile==='fist'||gear?.profile==='fistCharge')gearVertices*=2;
   if(!Number.isSafeInteger(offset)||offset<0||armorVertices!==(armored?CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES*3:0)||(armorVertices+gearVertices)/3>HERO_EQUIPMENT_MAX_TRIANGLES||offset+(armorVertices+gearVertices)*MODEL_FLOATS>out.length)return offset;
+  const vialRequested=gear?.drinkVial===true&&!armored&&Number(gear.vialWeight)>0,vialVertices=HERO_DRINK_VIAL_TRIANGLES*3;
+  const vialFits=vialRequested&&(armorVertices+gearVertices+vialVertices)/3<=HERO_EQUIPMENT_MAX_TRIANGLES&&offset+(armorVertices+gearVertices+vialVertices)*MODEL_FLOATS<=out.length;
   const start=offset,alpha=Number.isFinite(gear?.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear?.hitFlash)||0)),tr=Number.isFinite(gear?.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear?.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear?.tint?.[2])?gear.tint[2]:1;
   if(armored){let v=0;for(const part of CLOSE_VIEW_POWER_SUIT_ARMOR)for(let i=0;i<part.vertices.length;i++,v++){const s=v*6;for(let k=0;k<6;k++)out[offset++]=frame.suitPositionsNormals[s+k];const c=part.color,r=(c>>16)/255,g=((c>>8)&255)/255,b=(c&255)/255;out[offset++]=r*tr*(1-hit*.6)+.96*hit*.6;out[offset++]=g*tg*(1-hit*.6)+.34*hit*.6;out[offset++]=b*tb*(1-hit*.6)+.23*hit*.6;out[offset++]=alpha;}}
   const end=writeCloseViewHeroGear(out,offset,gear);
   if(parts&&end===offset)return start;
-  return end;
+  return vialFits?writeHeroDrinkVial(out,end,gear):end;
 }
 
 // Reused actor-local segment frames: columns X/Y, scaled Z, then origin. No per-vertex allocation.
@@ -549,6 +564,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const jump = pose === "jump" ? Math.sin(Math.PI * progress) : 0;
   const jumpSettle = pose === "jump" && progress > .72 ? Math.sin((progress - .72) / .28 * Math.PI) : 0;
   const flinch = pose === "hit" ? progress : 0;
+  const drinking=playerLike&&pose==='drink',drink=drinking?sampleDrinkPose(progress,actor.reduceMotion,DRINK_POSE):null;
   const fall = pose === "death" ? progress : 0;
   const knocked = pose === "knockdown" ? progress : 0;
   const turnLean = turnAmount * .13 * secondary;
@@ -560,7 +576,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const primaryStep=[1,2,3].includes(actor.primaryStep)?actor.primaryStep:1,canonicalPrimary=kind==='playerCinderPike'||kind==='playerVergeCleaver';
   const turn = newCleaver?cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump + .16 * stagger
+  const pitch = -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked;
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
@@ -579,7 +595,8 @@ export function writeCloseViewModel(out, offset, actor) {
       : actionPhase === 'recover' ? 1 - actionProgress : 0;
   const hammerWeight=kind==='playerHammerStomp'?hammerFrames(progress):0;
   const nativeJump=ordinaryNativeJump(actor),nativeJumpBaseline=pose==='jump'&&ordinaryJumpKind(kind)&&!kind.startsWith('playerIronFists');if(nativeJump||nativeJumpBaseline)nativeJumpFrames(actor,beat,stride,jump,jumpSettle,nativeJump);
-  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
+  const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
+  const drinkFreeSwing=drinking?(cleaverHandRoles(kind==='playerVergeCleaver'?'verge-cleaver':'melee',stage).free==='leftSocket'?2:-2):0;
   for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon } of models[kind]) {
     const jumpPart=nativeJump||nativeJumpBaseline?JUMP_PARTS.get(mesh):null;
     const mirroredArm=newCleaver&&Math.abs(sourceSwing)===2,swing=mirroredArm?-sourceSwing:sourceSwing;
@@ -632,6 +649,7 @@ export function writeCloseViewModel(out, offset, actor) {
       angle=1.15+beat*.08+(primaryStep===1?-1.65:primaryStep===2?-1.25:-.90)*strike-.28*cast+.58*jump+.22*flinch;
     } else if(kind==='playerCinderPike'&&swing===-2) angle+=(primaryStep===2?-.22:primaryStep===3?.22:0)*strike;
     if(toolMotion&&swing===-2){const w=toolMotion.weight,baseUp=phasedTool.toolKind==='lumen-spindle'?.18:phasedTool.toolKind==='rift-bombard'?-.13:-.08;angle=beat*stride*(1-w)-(phasedTool.toolKind==='great-sweep'?.8:1.1)*w-(phasedTool.toolKind==='great-sweep'?0:(toolMotion.up-baseUp*w)*2);}
+    if(drinking&&swing===drinkFreeSwing&&kind!=='playerCinderPike')angle+=( -1.08-.14*drink.sip-angle)*drink.weight;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);

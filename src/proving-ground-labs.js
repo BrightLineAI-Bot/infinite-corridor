@@ -1,37 +1,37 @@
-import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r853-a53725ea58a7';
-import { ordinaryContactEnemy } from './actor-contact.js?v=r853-a53725ea58a7';
-import { Game, footprintOpen } from "./game.js?v=r853-a53725ea58a7";
-import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r853-a53725ea58a7"; // the Close View lab
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r853-a53725ea58a7";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r853-a53725ea58a7";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.js?v=r853-a53725ea58a7";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r853-a53725ea58a7";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r853-a53725ea58a7";
-import { DIG, planDig } from "./digging.js?v=r853-a53725ea58a7";
-import { freshSave, migrateSave } from "./types.js?v=r853-a53725ea58a7";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r853-a53725ea58a7";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r853-a53725ea58a7";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r853-a53725ea58a7";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r853-a53725ea58a7";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r853-a53725ea58a7";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r853-a53725ea58a7";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r853-a53725ea58a7";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r853-a53725ea58a7";
-import { BIOMES, biomeFor } from "./landscape.js?v=r853-a53725ea58a7";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r853-a53725ea58a7";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r853-a53725ea58a7";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r853-a53725ea58a7";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r853-a53725ea58a7";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r853-a53725ea58a7";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r853-a53725ea58a7";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r853-a53725ea58a7";
-import { ensureLattice } from "./transit-lattice.js?v=r853-a53725ea58a7";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r853-a53725ea58a7";
-import { fieldOn } from "./lattice-fields.js?v=r853-a53725ea58a7";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r853-a53725ea58a7";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r853-a53725ea58a7";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r853-a53725ea58a7";
-import { validActions } from "./interactions.js?v=r853-a53725ea58a7";
+import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r855-96d7069b1622';
+import { ordinaryContactEnemy } from './actor-contact.js?v=r855-96d7069b1622';
+import { Game, footprintOpen } from "./game.js?v=r855-96d7069b1622";
+import { PENTAGON, pentagonPlan } from "./pentagon.js?v=r855-96d7069b1622"; // the Close View lab
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r855-96d7069b1622";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r855-96d7069b1622";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance } from "./close-view-room-routing.js?v=r855-96d7069b1622";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r855-96d7069b1622";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r855-96d7069b1622";
+import { DIG, planDig } from "./digging.js?v=r855-96d7069b1622";
+import { freshSave, migrateSave } from "./types.js?v=r855-96d7069b1622";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r855-96d7069b1622";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r855-96d7069b1622";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r855-96d7069b1622";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r855-96d7069b1622";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r855-96d7069b1622";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r855-96d7069b1622";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r855-96d7069b1622";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r855-96d7069b1622";
+import { BIOMES, biomeFor } from "./landscape.js?v=r855-96d7069b1622";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r855-96d7069b1622";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r855-96d7069b1622";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r855-96d7069b1622";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r855-96d7069b1622";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r855-96d7069b1622";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r855-96d7069b1622";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r855-96d7069b1622";
+import { ensureLattice } from "./transit-lattice.js?v=r855-96d7069b1622";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r855-96d7069b1622";
+import { fieldOn } from "./lattice-fields.js?v=r855-96d7069b1622";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r855-96d7069b1622";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r855-96d7069b1622";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r855-96d7069b1622";
+import { validActions } from "./interactions.js?v=r855-96d7069b1622";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -249,6 +249,11 @@ const CLOSE_VIEW_LAB = [
   { id: "routing-pentagon-candidate", label: "Routing experiment: Pentagon (branched rooms)", roomRouting: "pentagon", candidate: true },
   { id: "routing-adoption-new-keep", label: "Routing adoption: cross into a new standalone keep", routingAdoption: "keep" },
   { id: "routing-adoption-new-pentagon", label: "Routing adoption: cross into a new Pentagon", routingAdoption: "pentagon" },
+  { id: "healing-drink", label: "Healing drink: Restorative Draught", drinkInspection: true, pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
+  { id: "padding-keep-reference", label: "Room clearance: keep reference", roomRouting: "keep", candidate: true, roomPadding: "reference" },
+  { id: "padding-keep-pilot", label: "Room clearance: keep widened edge", roomRouting: "keep", candidate: true, roomPadding: "pilot" },
+  { id: "padding-pentagon-reference", label: "Room clearance: Pentagon reference", roomRouting: "pentagon", candidate: true, roomPadding: "reference" },
+  { id: "padding-pentagon-pilot", label: "Room clearance: Pentagon widened edge", roomRouting: "pentagon", candidate: true, roomPadding: "pilot" },
 ];
 // release 793: the lab's lava pool and a deep drop, stamped onto open floor near the entrance (scratch state only), so the
 // GPU scene's lava and pits can be seen without hunting for a room maze's gallery
@@ -364,6 +369,16 @@ function closeViewFixture(scenario, seed, now) {
   else if (spec.buildingFeature === "drone") game.message = traversal?.found ? "Close View drone lab: Jump, then press Jump again and hold to boost over the indoor platform chain." : traversal?.note;
   else if (spec.latestPentagon) game.message = "Close View Pentagon terrain lab: explore the current mixed rooms, side cells, broad corridors, and ramps.";
   else if (buildPractice) game.message = "Stone selected. Build raises the block ahead; tap it to stack. Jump onto one, then Jump from one to two. Choose Wood wall in the lab menu to compare. Reset same restores materials.";
+  if (spec.drinkInspection) {
+    entry = assetLane(game).player;
+    game.player.x = entry.x;
+    game.player.y = entry.y;
+    game.enemies = [];
+    game.player.hp = Math.ceil(save.maxHp * .45);
+    save.potionChoice = "restorativeDraught";
+    save.consumables.restorativeDraught = 1;
+    game.message = "Use Potion to drink the Restorative Draught. Reset same restores health and supplies for another test.";
+  }
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(traversal ? { diagnostics: { traversal } } : {}), ...(buildPractice ? { buildPractice, developerHint: game.message, diagnostics: { buildPractice } } : {}) };
 }
@@ -410,8 +425,47 @@ export function selectLabBuildMaterial(fixture, kind) {
   setBuildKind(fixture.game.save, kind); fixture.game.save.build.continuous = false; return true;
 }
 
-// Real exterior doors and production interactions, on a fresh scratch save. The experimental
-// Pentagon selector belongs only to this instance/site: production's adoption cap stays at v9.
+const ROOM_PADDING_DIRECTIONS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+const ROOM_PADDING_TILE_KEYS = new Set(["x", "y", "kind", "detail", "blocked", "doorway", "elev", "slope"]);
+
+function roomPaddingWitness(game, mode) {
+  const map = game.map;
+  const at = (x, y) => map.tiles[y * map.width + x];
+  const reserved = [map.entry, map.exit, ...map.objects, ...map.enemySpawns, ...game.enemies, ...(map.wallGlints || [])];
+  const plain = (tile) => tile && !tile.doorway && !tile.slope && Object.keys(tile).every((key) => ROOM_PADDING_TILE_KEYS.has(key));
+  for (let y = 3; y < map.height - 3; y++) for (let x = 3; x < map.width - 3; x++) {
+    for (const [dx, dy] of ROOM_PADDING_DIRECTIONS) {
+      const tile = (depth, side) => at(x + depth * dx - side * dy, y + depth * dy + side * dx);
+      const floor = tile(-1, 0);
+      if (!plain(floor) || floor.blocked || !/Floor$/.test(floor.kind)) continue;
+      const front = [-2, -1, 0, 1, 2];
+      if (![-2, -1].every((depth) => front.every((side) => {
+        const next = tile(depth, side);
+        return plain(next) && !next.blocked && next.kind === floor.kind && next.elev === floor.elev;
+      }))) continue;
+      // A wall collar makes the strip a recess, with all approaches through the existing room.
+      const wall = (depth, side) => {
+        const next = tile(depth, side);
+        return plain(next) && next.blocked && ["keepWall", "cellarWall"].includes(next.kind);
+      };
+      if (!front.every((side) => wall(0, side) && wall(1, side))) continue;
+      if (reserved.some((point) => point && Math.hypot(point.x - x, point.y - y) < 4)) continue;
+      const cells = [-1, 0, 1].map((side) => tile(0, side));
+      if (mode === "pilot") {
+        const tiles = map.tiles.slice();
+        for (const cell of cells) {
+          tiles[cell.y * map.width + cell.x] = { ...cell, kind: floor.kind, elev: floor.elev, blocked: false };
+        }
+        map.tiles = tiles;
+      }
+      return { mode, found: true, cells: cells.map(({ x, y }) => ({ x, y })), approach: { x: floor.x, y: floor.y }, direction: { x: dx, y: dy } };
+    }
+  }
+  return { mode, found: false };
+}
+
+// Real exterior doors and production interactions on a fresh scratch save.
+// The experimental Pentagon selector belongs only to this Game instance and site.
 function roomRoutingFixture(spec, seed, now) {
   const save = scratchSave(seed); save.closeView = true;
   if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET;
@@ -465,15 +519,20 @@ function roomRoutingFixture(spec, seed, now) {
   const entered = game.interact("enter", door.id);
   if (!entered.ok) throw new Error(`Routing fixture entrance failed: ${entered.message}`);
   const entry = { x: game.player.x, y: game.player.y };
+  const roomPadding = spec.roomPadding ? roomPaddingWitness(game, spec.roomPadding) : null;
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY };
   game.message = spec.candidate ? "Explore the compact rooms and side ladders. The roof and courts use the ordinary outdoor view." : "Explore the current rooms and stairs. The roof and courts use the ordinary outdoor view.";
   game.sync();
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true,
+    ...(roomPadding ? { roomPadding, roomPaddingMap: game.map, developerHint: roomPadding.found
+      ? "Teleport to Room clearance approach, then walk and orbit near the selected edge. Reset same restores the starting comparison."
+      : "This entrance floor has no eligible room edge. Try another seed." } : {}),
     diagnostics: { routing: { experiment: spec.candidate, family: spec.roomRouting, version, base:game.map.building.base, experimentRevision:CLOSE_VIEW_ROOM_ROUTING.revision, appearance, site, entranceId, outside, scratchOnly: true, productionExportSupported: false, selectorScope: spec.roomRouting === "pentagon" ? "this fixture and Pentagon site only" : null } } };
 }
 
 // Explicit scratch reconstruction only; never a production import/export path.
 export function restoreRoomRoutingFixture(fixture, snapshot, now = 0) {
+  if (fixture?.roomPadding) throw new Error("Room clearance comparisons restart from their scratch scenario.");
   const routing=fixture?.diagnostics?.routing;
   if(!routing?.scratchOnly || snapshot?.seed!==fixture.seed || snapshot?.session?.area!=="dungeon") throw new Error("Routing scratch resume requires the same seed and an interior snapshot.");
   const active=String(snapshot.session.activeDungeonId||"");
@@ -894,6 +953,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
 
 export function labReport(fixture) {
   const {game}=fixture,map=game.map,primary=fixture.primary;
+  if (fixture.roomPadding) fixture.diagnostics.roomPadding = { ...fixture.roomPadding, active: map === fixture.roomPaddingMap };
   if(fixture.recoveryContext)fixture.diagnostics.recovery=naturalLanternRecoveryWitness(game);
   if (fixture.adoptionSpec) fixture.diagnostics.routingAdoption=routingAdoptionReceipt(fixture);
   if(fixture.diagnostics?.routing) fixture.diagnostics.routing.floor={id:map.id,grammar:map.building?.routing?.grammar||null,rooms:map.building?.routing?.nodes?.length||0,optional:map.building?.optionalRoute||map.building?.optionalRoutes||null,appearance:map.building?.appearance||map.greatBuilding?.appearance||null};
@@ -909,6 +969,9 @@ export function labReport(fixture) {
 
 export function teleportTargets(fixture) {
   const map=fixture.game.map,targets=[];
+  if (fixture.roomPadding?.found && map === fixture.roomPaddingMap) {
+    targets.push({ id: "room-clearance", label: "Room clearance approach", ...fixture.roomPadding.approach });
+  }
   if(fixture.lab==="close-view"&&fixture.scenario==="terrain-dig-return"&&fixture.diagnostics?.traversal?.found)targets.push({id:"excavation-ramp",label:"Excavation ramp",x:fixture.diagnostics.traversal.origin.x,y:fixture.diagnostics.traversal.origin.y});
   if(["combat-assets","creature-assets"].includes(fixture.lab)&&fixture.diagnostics?.placement?.player)targets.push({id:"gallery-start",label:"Gallery start",x:fixture.diagnostics.placement.player.x,y:fixture.diagnostics.placement.player.y});
   if(map.entry)targets.push({id:"entry",label:"Entrance",x:map.entry.x,y:map.entry.y});
