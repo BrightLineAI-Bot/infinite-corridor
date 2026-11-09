@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 848 — Grave Lantern reload contact
+
+**CODE:** The existing `resetPackRuntime` clears `hopLift` for Grave Lantern when it discards transient enemy attack state. A naturally generated Lantern with borrowed Leap Slam previously retained positive lift after its attack and `aloft` state were reset on reload, causing the low-hover contact policy to continue excluding it. The regression uses seed `LANTERN-RELOAD`, section `(7,4)`, actor `pack-overworld:7:4:0`, the real attack selector/runner, and full Game serialization/restoration.
+
+**BOUNDARY:** Live leap travel stays excluded and saving a paused in-memory leap does not mutate it. The canonical reset-on-reload contract, positions, HP, cooldowns, unknown fields, schema 14 and generation pins remain intact. No other family or damage, reach, attack timing, terrain permission or rendering budget changes. This provisional package reconciles reviewed source `0fd6e17d` with documentation-only main `4359abc8`. Prior source Astra clearance does not establish clearance of the final packaging delta, exact-head CI, Preview, hosted GPU acceptance or publication. Recheck the release baton before integration.
+
 ## Release 847 — Close View melee weight and contact
 
 **CODE:** Normal indoor Close View input starts the accepted Cleaver or Iron Fists pose immediately. A single versioned pending contact resolves the hit from the current position after the short windup. Cleaver retains four right-handed cuts and low carry; Iron Fists retains its alternating dash punch, opposite-hand jab and uppercut. The existing depth-tested decal pass draws the Cleaver trail from the visible blade.

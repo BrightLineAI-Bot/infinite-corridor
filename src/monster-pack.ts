@@ -764,6 +764,8 @@ export function resetPackRuntime(enemy) {
   if (!enemy?.packKind) return enemy;
   const cd = enemy.pack?.cd || {};
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
+  // A reset Lantern returns to material hover; its discarded leap cannot retain lift.
+  if (enemy.kind === "graveLantern") enemy.hopLift = 0;
   if (enemy.kind === "psychicCrystal") enemy.crystalFall = 0; // release 259: a poise break does not survive a reload
   if (enemy.kind === "gloomvast") { enemy.gloomReel = 0; enemy.gloomFade = 0; enemy.poiseBreak = 0; if (!(enemy.gloomDark?.left > 0)) { enemy.gloomDark = null; enemy.gloomVeil = false; enemy.brain = MONSTER_PACK.gloomvast.brain; enemy.packAttacks = [...MONSTER_PACK.gloomvast.attacks, ...(enemy.hybridAttack ? [enemy.hybridAttack] : [])]; } else enemy.gloomDark.laid = false; } // the Gloomvast's Dark carries over a reload (Game.gloomResume lays its decoys again); nothing else of it does
   // Snapshots retain attack lists. Move the sky attack for existing journeys too, without retuning their beasts.
