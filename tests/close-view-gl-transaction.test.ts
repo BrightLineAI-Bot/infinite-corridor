@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
-import { render } from '../src/renderer.ts';
+import { render, standingOnRoof } from '../src/renderer.ts';
+import { Game } from '../src/game.ts';
+import { freshSave, migrateSave } from '../src/types.ts';
 import { drawRangedEffects, standardProjectileColor } from '../src/combat-visuals.ts';
-import { CLOSE_VIEW_HOOKS, closeViewShowing, closeViewCapturing, closeViewBareFloor, closeViewCueSegmentOpen, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { CLOSE_VIEW_HOOKS, closeViewShowing, closeViewCamera, closeViewRenderDiagnostics, closeViewCapturing, closeViewBareFloor, closeViewCueSegmentOpen, closeViewSteer, closeViewWorldCapture, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
 import { closeViewGLStats, GLB, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
 import { loadCloseViewHero } from '../src/close-view-hero.ts';
 import { projectileVisualPoint } from '../src/actor-presentation.ts';
@@ -81,6 +83,62 @@ test('healthy frame exclusively owns ordinary shots and raised Echo while retain
   assert.equal(closeViewGLStats.projectedShots,1);assert.ok(closeViewGLStats.echoRibbonVertices>0);assert.ok(closeViewGLStats.models>=2);
   assert.equal(h.log.some((q:any)=>q[0]==='ground'&&q[1]==='strokeStyle'&&q[2]==='#c9a7ff'),false,'no duplicate Echo floor stamp');
   assert.deepEqual({projectiles:g.projectiles,echo:g.glyphVisuals,enemies:g.enemies},before);
+}));
+
+test('Overworld Close View uses the existing world surface and restores overhead controls on failure or switch off',()=>withGPU({},h=>{
+  for (const [lab,scenario] of [['test-tile',''],['landscape','coast'],['landscape','great-tree-summit'],['combat','']]) {
+    const {game:g}=createLabFixture({lab,scenario,now:100000});
+    g.presentation={effectiveQuality:'low',reduceMotion:true};
+    g.save.closeView=false;
+    const eligibility=g.closeViewActionEligible(), hp=g.player.hp, tiles=JSON.stringify(g.map.tiles);
+    assert.equal(frame(h,g).showing,false);
+    g.save.overworldCloseView=true;
+    let floorCaptured=false;
+    const inspect=()=>{floorCaptured=closeViewWorldCapture()&&!closeViewBareFloor();};
+    CLOSE_VIEW_HOOKS.groundLayers.push(inspect);
+    try {
+      const result=frame(h,g);
+      assert.equal(result.showing,true,`${lab}/${scenario}`);
+      assert.equal(result.copies,1);
+    } finally { CLOSE_VIEW_HOOKS.groundLayers.pop(); }
+    assert.equal(floorCaptured,true);
+    assert.equal(g.closeViewActionEligible(),eligibility);
+    assert.equal(g.player.hp,hp);
+    assert.equal(JSON.stringify(g.map.tiles),tiles);
+    CLOSE_VIEW_HOOKS.gl=false;
+    assert.equal(frame(h,g).showing,false);
+    assert.equal(closeViewSteer(g,{x:0,y:-1}),false);
+    CLOSE_VIEW_HOOKS.gl=true;
+    g.save.overworldCloseView=false;
+    assert.equal(frame(h,g).showing,false);
+  }
+}));
+
+test('an opted-in old journey renders the upright Wayfarer on a roof and keeps skyway discs visible',()=>withGPU({},h=>{
+  const save=freshSave();
+  save.seed='GREAT1';
+  Object.assign(save.session,{area:'overworld',rx:-4,ry:-2,x:21,y:7});
+  delete save.overworldCloseView;
+  assert.equal(migrateSave(save).overworldCloseView,false);
+  save.overworldCloseView=true;
+  const g=new Game(migrateSave(JSON.parse(JSON.stringify(save))),100000);
+  g.lastUpdateNow=100000;
+  g.presentation={effectiveQuality:'low',reduceMotion:true};
+  assert.equal(standingOnRoof(g,32),true);
+  assert.equal(frame(h,g).showing,true);
+  assert.ok(closeViewGLStats.models>=1,JSON.stringify({camera:closeViewCamera(),render:closeViewRenderDiagnostics(),boards:GLB.nBoard}));
+
+  const skySave=freshSave();
+  skySave.seed='SKY';skySave.perception.aperture=3255;skySave.farArray={listeners:3,gate:3};
+  skySave.overworldCloseView=true;
+  const sky=new Game(skySave,100000);
+  sky.lastUpdateNow=100000;
+  sky.rx=-16;sky.ry=7;sky.loadArea('overworld');
+  const disc=sky.map.skyDiscs[0];
+  Object.assign(sky.player,{x:disc.x-.5,y:disc.y-.75});
+  sky.presentation={effectiveQuality:'low',reduceMotion:true};
+  assert.equal(frame(h,sky).showing,true);
+  assert.ok(h.log.some(row=>row[0]==='ground'&&row[1]==='fillStyle'&&row[2]==='#8f8aa0'),'a skyway platform is drawn in the captured surface');
 }));
 
 test('critical null resources reject the frame before floor ownership capture',()=>{

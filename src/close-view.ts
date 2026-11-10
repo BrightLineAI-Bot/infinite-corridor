@@ -405,7 +405,7 @@ export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Objec
 // save.closeViewAutoFollow: false when the player has turned the view's auto-follow off (it is on unless chosen off).
 // save.closeViewCamera (version 4): "drag" (drag anywhere on the right, the default) or "crescent" (the pan crescent).
 // save.closeViewSensitivity (version 4): the camera's turn rate, 1 unless chosen (CLOSE_VIEW.drag.sensitivity's range).
-export function ensureCloseView(s) { if (s && typeof s === "object") { s.closeView = s.closeView === true; if (!Object.hasOwn(CLOSE_VIEW.presets, s.closeViewPreset)) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewAutoFollow = s.closeViewAutoFollow !== false;
+export function ensureCloseView(s) { if (s && typeof s === "object") { s.closeView = s.closeView === true; s.overworldCloseView = s.overworldCloseView === true; if (!Object.hasOwn(CLOSE_VIEW.presets, s.closeViewPreset)) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewAutoFollow = s.closeViewAutoFollow !== false;
   if (!CLOSE_VIEW.controls.includes(s.closeViewCamera)) s.closeViewCamera = CLOSE_VIEW.defaultControl;
   const k = Number(s.closeViewSensitivity), [lo, hi] = CLOSE_VIEW.drag.sensitivity; s.closeViewSensitivity = Number.isFinite(k) ? Math.max(lo, Math.min(hi, k)) : 1; } return s; }
 export const closeViewControl = (g) => g?.save?.closeViewCamera === "crescent" ? "crescent" : "drag";
@@ -413,6 +413,10 @@ export const closeViewPreset = (g) => CLOSE_VIEW.presets[g?.save?.closeViewPrese
 
 const WALL_EXEMPT = /water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|sky|star|cloud/i;
 const STILLWORKS_AIR = Object.freeze({ near: 9, far: 22, ambient: [.32, .39, .50], fog: [.038, .051, .077], haze: [.14, .19, .27], hazeBand: [.08, .42] });
+const WORLD_AIR = Object.freeze({ ambient: [.82, .86, .89], fog: [.19, .24, .28], haze: [.30, .36, .41], hazeBand: [.04, .25] });
+const EMPTY_GEOMETRY = new Float32Array(0);
+const OPEN_WORLD_GEOMETRY = Object.freeze({ faces: EMPTY_GEOMETRY, detail: EMPTY_GEOMETRY, detailInst: EMPTY_GEOMETRY, joint: EMPTY_GEOMETRY, C: 8, cw: 0, ch: 0 });
+const OPEN_WORLD_STATIC = Object.freeze({ verts: 0, data: EMPTY_GEOMETRY, lights: EMPTY_GEOMETRY, flames: EMPTY_GEOMETRY, cards: EMPTY_GEOMETRY, nLights: 0, nFlames: 0, nCards: 0, inlay: new Float32Array(9) });
 export const stillworksCloseView = map => !!(map?.pentArena && map.building?.arena && map.stillworks?.walkerCloseView);
 // The Void Walker arena has its own open-air scene. Other finale maps and outdoor sections use the world camera.
 export function interiorMap(map) {
@@ -437,10 +441,20 @@ export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "li
 const THEME_OF = new WeakMap();
 export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
 const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
-// Close View is chosen and this is an interior (the area as a whole).
-export function closeViewWanted(g) { return g?.save?.closeView === true && g.area === "dungeon" && interiorMap(g.map) && !!g.player; }
-// ...and the Wayfarer stands indoors in it: Close View's camera applies.
-export function closeViewApplies(g) { return closeViewWanted(g) && !openAirAt(g.map, g.player.x, g.player.y); }
+const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorMap(g.map);
+const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
+export function overworldCloseViewApplies(g) {
+  if (g?.save?.overworldCloseView !== true || !g.player || indoorCloseViewTile(g)) return false;
+  const map = g.map, count = map?.tiles?.length, width = Number(map?.width) || (g.area === "dungeon" ? 24 : 32);
+  const height = Number(map?.height) || count / width;
+  return Number.isSafeInteger(count) && count > 0 && count <= 16384
+    && Number.isSafeInteger(width) && width > 0 && width <= 128
+    && Number.isSafeInteger(height) && height > 0 && height <= 128 && width * height === count;
+}
+export function closeViewWanted(g) { return (g?.save?.closeView === true && indoorCloseViewMap(g)) || overworldCloseViewApplies(g); }
+export function closeViewApplies(g) { return (g?.save?.closeView === true && indoorCloseViewTile(g)) || overworldCloseViewApplies(g); }
+const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.canopy || g.map.underwater || g.map.stillworks)
+  || openAirAt(g.map, g.player.x, g.player.y);
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
 const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
@@ -450,7 +464,7 @@ const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffse
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
 // cached screen gradients, each rebuilt only when the canvas or its size changes (keys are numbers: nothing is built per frame)
 const SCREEN = { ctx: null, fog: null, fogEnd: 0, fogW: 0, fogH: 0, fogY: NaN, vignette: null, vigW: 0, vigH: 0, warm: null, warmW: 0, warmH: 0, vault: null, vaultH: 0, vaultY: NaN };
-let capturing = false, captured = null, capturedPlayer = null, bareFloor = false; // bareFloor (version 5): the GPU scene shades the floor itself; the renderer draws only what lies on it
+let capturing = false, captured = null, capturedPlayer = null, bareFloor = false, worldCapture = false;
 let N = CLOSE_VIEW.maxItems;
 let itemKind = new Int8Array(N), itemRef = new Int32Array(N), itemDepth = new Float32Array(N), order = new Int32Array(N);
 let faceCorner = new Int8Array(N), faceXY = new Float32Array(N * 8), faceLevel = new Int16Array(N), faceAlpha = new Float32Array(N), faceStyle = new Int16Array(N), faceOrient = new Int8Array(N), faceLow = new Int8Array(N);
@@ -926,7 +940,7 @@ export function closeViewSteer(g, state, now = NaN) {
     // Without a current input/render clock, conservatively preserve restored action aim.
     const timedBusy = !Number.isFinite(clock) || p.actionVisualUntil > clock || p.attackUntil > clock ||
       p.castUntil > clock || p.dodgeUntil > clock || p.stunnedUntil > clock;
-    if (!CAM.bodyTransient && !timedBusy && !g.fistCharge && !g.pendingToolUse && !g.pendingMeleeContact) {
+    if (!overworldCloseViewApplies(g) && !CAM.bodyTransient && !timedBusy && !g.fistCharge && !g.pendingToolUse && !g.pendingMeleeContact) {
       const yaw = Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : FACING_YAW[p.facing];
       if (Number.isFinite(yaw)) {
         const a = g.save.lastAim, fx = Math.cos(yaw), fy = Math.sin(yaw);
@@ -950,22 +964,24 @@ export function closeViewShowing(g) { return CAM.drawn && CAM.map === g?.map && 
 // ------------------------------------------------------------------------------------------------ choosing the camera, and the blend
 // renderer.ts calls this first thing every frame. It decides which camera applies, eases between them, and returns true when
 // it has drawn the frame (Close View, or a blend); false lets the ordinary view draw as it always has, at no extra cost.
-const MODE = { cur: 0, wanted: false, g: null, map: null, lastNow: -1e9, pend: 0, pendAt: 0, t0: 0, to: -1, snap: null, snapCtx: null, snapW: 0, snapH: 0, mix: 1 };
+const MODE = { cur: 0, wanted: false, failed: false, g: null, map: null, lastNow: -1e9, pend: 0, pendAt: 0, t0: 0, to: -1, snap: null, snapCtx: null, snapW: 0, snapH: 0, mix: 1 };
 let bypass = false;
 export const closeViewBlend = () => ({ mode: MODE.cur ? "close" : "ordinary", blending: MODE.to >= 0, mix: MODE.mix });
 export function closeViewFrame(ctx, g, w, h, now, baseRender) {
   if (bypass || !g?.player) return false;
   const B = CLOSE_VIEW.blend, reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), same = MODE.g === g && now - MODE.lastNow < B.gap;
-  const wanted = closeViewWanted(g); let want = wanted && !openAirAt(g.map, g.player.x, g.player.y) ? 1 : 0;
+  const wanted = closeViewWanted(g); let want = closeViewApplies(g) ? 1 : 0;
   if (want !== MODE.cur && same && MODE.map === g.map && wanted && MODE.wanted) { // a threshold within one floor: it must hold a moment
     if (MODE.pend !== want || MODE.pendAt > now) { MODE.pend = want; MODE.pendAt = now; }
     if (now - MODE.pendAt < B.settle) want = MODE.cur; }
+  const retrying = MODE.failed && same && MODE.map === g.map && overworldCloseViewApplies(g);
   if (want !== MODE.cur) { MODE.cur = want; MODE.to = -1;
-    if (same && !reduce && snapshot(ctx)) { MODE.to = want; MODE.t0 = now; } }
+    if (same && !reduce && !retrying && snapshot(ctx)) { MODE.to = want; MODE.t0 = now; } }
   MODE.g = g; MODE.map = g.map; MODE.lastNow = now; MODE.pend = MODE.cur; MODE.wanted = wanted;
   let k = 1; if (MODE.to >= 0) { k = Math.max(0, Math.min(1, (now - MODE.t0) / (B.seconds * 1000))); if (k >= 1) MODE.to = -1; }
   const e = k * k * (3 - 2 * k), blending = k < 1; MODE.mix = e;
-  if (MODE.cur === 1) { const ok = renderCloseView(ctx, g, w, h, now, baseRender, e); if (!ok) { MODE.cur = 0; return false; } if (blending) overlaySnapshot(ctx, w, h, k); return true; }
+  if (MODE.cur === 1) { const ok = renderCloseView(ctx, g, w, h, now, baseRender, e); MODE.failed = !ok; if (!ok) { MODE.cur = 0; MODE.to = -1; return false; } if (blending) overlaySnapshot(ctx, w, h, k); return true; }
+  MODE.failed = false;
   CAM.drawn = false;
   if (!blending) return false;
   const z = 1 + (B.leaveZoom - 1) * (1 - e); ctx.save(); ctx.translate(w / 2, h / 2); ctx.scale(z, z); ctx.translate(-w / 2, -h / 2); bypass = true;
@@ -1039,6 +1055,7 @@ export const closeViewCapturing = () => capturing;
 // Version 5: while the GPU scene captures the ground, the ordinary renderer leaves out the floor tiles (closeViewBareFloor):
 // the ground texture holds only what lies on the floor (telegraphs, traps, marks), over the floor the shader builds.
 export const closeViewBareFloor = () => capturing && bareFloor;
+export const closeViewWorldCapture = () => capturing && worldCapture;
 export const closeViewActorLift = (draw, native = false) => Math.max(0,
   (draw?.lift || 0) + (draw?.jumpLift || 0) + (native ? draw?.nativeLift || 0 : 0));
 export function closeViewTake(draws, playerDraw) { captured = draws; capturedPlayer = playerDraw; }
@@ -1070,7 +1087,7 @@ function insertionSortByDepth(n) { for (let i = 1; i < n; i++) { const o = order
 // A failed GPU frame never commits its captured floor/actor ownership to the screen.
 function abortCloseViewGLFrame() {
   noteCloseViewGLFrameAbort();
-  captured = capturedPlayer = null; capturing = bareFloor = false; CAM.drawn = false;
+  captured = capturedPlayer = null; capturing = bareFloor = worldCapture = false; CAM.drawn = false;
   GLB.nBoard = GLB.nDecal = GLB.nGlowStart = 0;
   closeViewGLStats.echoRibbonPaths = closeViewGLStats.echoRibbonVertices = 0;
   resetCloseViewGL();
@@ -1078,7 +1095,10 @@ function abortCloseViewGLFrame() {
 }
 export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
-  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg, fogNear = air.near + fogShift, fogFar = air.far + fogShift;
+  const extended = overworldCloseViewApplies(g), flatWorld = extended && !interiorTerrain(g.map), outdoor = extended && openWorldScene(g);
+  const plainWorld = outdoor && flatWorld && !g.map.building;
+  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
+  const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : air.near + fogShift;
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
   closeViewStats.rigProbes = closeViewStats.rigSamples = 0;
@@ -1087,7 +1107,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // version 4: the GPU scene when it can be had (close-view-gl.ts); else the 2D view of version 3
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
   if (useGL && !closeViewGLFrameReady()) return abortCloseViewGLFrame();
-  if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
+  if (extended && !useGL) return false;
+  if (useGL && !plainWorld) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
   if (!useGL && stillworksCloseView(g.map)) return false; // cover and upright gates need the depth buffer
   if (!useGL && g.map?.building && hasStoneBuilds(g.map)) return false; // a raised legacy block also needs real depth; use the established world-view fallback
@@ -1100,7 +1121,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // a whole device pixel. The host's layers place themselves from the unrounded camera: they are moved by the rounding (dxL,
   // dyL), so a trap mark or a telegraph lies exactly where the floor under it is.
   const Tx = Math.round(W / 2 - p.x * s), Ty = Math.round(H / 2 - p.y * s), gox = Math.round(Tx * ts) - Tx * ts, goy = Math.round(Ty * ts) - Ty * ts, dxL = (Tx - (W / 2 - p.x * s)) * ts, dyL = (Ty - (H / 2 - p.y * s)) * ts;
-  gc.setTransform(ts, 0, 0, ts, gox, goy); gc.imageSmoothingEnabled = false; captured = null; capturedPlayer = null; capturing = true; bareFloor = useGL;
+  gc.setTransform(ts, 0, 0, ts, gox, goy); gc.imageSmoothingEnabled = false; captured = null; capturedPlayer = null; capturing = true; bareFloor = useGL && !flatWorld; worldCapture = flatWorld;
   try { baseRender(gc, g, W, H, now);
     if (shots) {
       shots.now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
@@ -1117,7 +1138,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
         return true;
       };
     }
-    for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = false; }
+    for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = worldCapture = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick;
@@ -1182,7 +1203,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
-  const cap = (x, y) => (interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
+  const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
   let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
   if (interiorTerrain(g.map) || hasStoneBuilds(g.map)) {
     const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
@@ -1259,7 +1280,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // Walls are kept to the same reach as the floor: as far ahead of the camera as the floor is drawn (the fog's far edge). They
   // used to be kept within a radius of the Wayfarer instead, so a wall ahead and to the side could be dropped while the floor
   // beyond it (another room) was still drawn: one of the ways the view saw through walls.
-  const geo = wallGeometry(g.map), faces = geo.faces, H0 = Wl.height, ox = footX(p), oy = footY(p), reach = fogFar + 1, cutPad2 = Wl.cutPad * Wl.cutPad;
+  const geo = plainWorld ? OPEN_WORLD_GEOMETRY : wallGeometry(g.map), faces = geo.faces, H0 = Wl.height, ox = footX(p), oy = footY(p), reach = fogFar + 1, cutPad2 = Wl.cutPad * Wl.cutPad;
   let n = 0; closeViewStats.faces = 0; closeViewStats.facesCut = 0; closeViewStats.boards = 0; closeViewStats.culled = 0;
   const disc = !!g.map?.dungeonContract?.discoveryEnabled, minCx = Math.max(0, Math.floor((CAM.cx - reach) / geo.C)), maxCx = Math.min(geo.cw - 1, Math.floor((CAM.cx + reach) / geo.C)), minCy = Math.max(0, Math.floor((CAM.cy - reach) / geo.C)), maxCy = Math.min(geo.ch - 1, Math.floor((CAM.cy + reach) / geo.C));
   // the Wayfarer's place on screen, for the cut-away
@@ -1321,7 +1342,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   }
   let packed;
   try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; }
-  if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots)) return abortCloseViewGLFrame(); }
+  if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor)) return abortCloseViewGLFrame(); }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
     if (itemKind[it] === 0) { const fo = it * 8, st = faceStyle[it], lv = faceLevel[it], al = faceAlpha[it]; if (al < 1) ctx.globalAlpha = al;
@@ -1658,7 +1679,7 @@ const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOS
       gl.uniform4f(U.u_pit, Pt.hole, Pt.chasm, Pt.dark, Pt.lip); gl.uniform3fv(U.u_stone, stone); gl.uniform3fv(U.u_lip, lip); gl.uniform3fv(U.u_safe, safe); gl.uniform3fv(U.u_chasm, chasm);
       const breath = UNI.reduce ? 1 : 1 - R.pulseDepth * (.5 + .5 * Math.sin(UNI.now / R.pulse * Math.PI * 2)); gl.uniform4f(U.u_safeP, R.near, R.full, R.alpha * breath, UNI.safeOn ? 1 : 0);
       gl.uniform4f(U.u_lava, Lv.scale, Lv.flow, Lv.light, q.lavaLight && lavaTiles > 0 ? 3 / Lv.reach : 0); gl.uniform3fv(U.u_lavaA, lavaA); gl.uniform3fv(U.u_lavaB, lavaB); gl.uniform3fv(U.u_lavaC, lavaC);
-      gl.uniform4f(U.u_floorP, Fl.kind, Fl.size, Fl.wear, Fl.sewer ? 1 : 0); gl.uniform3fv(U.u_floorRGB, tg.floor); gl.uniform3fv(U.u_floorJ, tg.joint); gl.uniform3fv(U.u_rug, tg.rug); gl.uniform4f(U.u_floorQ, q.bump ? 1 : 0, Fl.wet, q.relief ? 1 : 0, 0); },
+      gl.uniform4f(U.u_floorP, Fl.kind, Fl.size, Fl.wear, Fl.sewer ? 1 : 0); gl.uniform3fv(U.u_floorRGB, tg.floor); gl.uniform3fv(U.u_floorJ, tg.joint); gl.uniform3fv(U.u_rug, tg.rug); gl.uniform4f(U.u_floorQ, q.bump ? 1 : 0, Fl.wet, q.relief ? 1 : 0, UNI.worldCapture ? 1 : 0); },
     wall(gl, U, F) { const q = UNI.q, th = UNI.th, tg = UNI.tg, Wl = th.wall, A = th.arch;
       gl.uniform4f(U.u_detail, q.detail ? 1 : 0, q.detailNear, q.detailFar, GRIT.light); gl.uniform1fv(U.u_gritA, gritA); gl.uniform4f(U.u_shimmer, un.shimmer || 0, un.period || 1, UNI.reduce ? 1 : 0, GRIT.size[0] / (GRIT.size[0] * GRIT.instances * 9));
       gl.uniform4f(U.u_stoneP, Wl.stone[0], Wl.stone[1], q.relief ? Wl.stone[2] : Wl.stone[2] * .5, Wl.stone[3]); gl.uniform4f(U.u_wallP, Wl.damp[0], Wl.damp[1], q.bump ? 1 : 0, Wl.topFall);
@@ -2608,26 +2629,28 @@ export function writePlacedSpellLight(frame, fx, map, slot) {
   frame.lc[o+3]=.65*Math.min(1,Math.max(0,fx.life/fx.pulse));return true;
 }
 const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
-function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots) {
+function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor) {
   try {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, At = CLOSE_VIEW.atmosphere, F = GLF, p = g.player;
-  const th = themeOf(g.map), tg = themeGL(th), st = staticFor(g.map, geo, th); closeViewGLStats.theme = THEME_OF.get(g.map) || ""; const seen = (SEEN.map === g.map ? SEEN.fn : (SEEN.map = g.map, SEEN.fn = glSeen(g.map)));
+  const th = themeOf(g.map), tg = themeGL(th), st = geo === OPEN_WORLD_GEOMETRY ? OPEN_WORLD_STATIC : staticFor(g.map, geo, th); closeViewGLStats.theme = THEME_OF.get(g.map) || ""; const seen = (SEEN.map === g.map ? SEEN.fn : (SEEN.map = g.map, SEEN.fn = glSeen(g.map)));
   const scale = Math.max(.5, Math.min(4, (ctx.canvas?.width || w) / w)) * (Q.glScale || 1);
   F.w = w; F.h = h; F.devW = Math.max(1, Math.round(w * scale)); F.devH = Math.max(1, Math.round(h * scale));
   F.cx = CAM.cx; F.cy = CAM.cy; F.fx = CAM.fx; F.fy = CAM.fy; F.rx = CAM.rx; F.ry = CAM.ry; F.hc = CAM.hc; F.cosP = CAM.cosP; F.sinP = CAM.sinP; F.F = CAM.F; F.ppx = CAM.ppx; F.ppy = CAM.ppy;
   F.px = footX(p); F.py = footY(p);
   // the theme's light and air (the Pentagon's dread still shrinks the carried light, as before)
-  const air = stillworksCloseView(g.map) ? STILLWORKS_AIR : null;
+  const stillworks = stillworksCloseView(g.map);
+  const air = stillworks ? STILLWORKS_AIR : outdoor ? WORLD_AIR : null;
   const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = fogNear - CLOSE_VIEW.fog.near;
-  F.fogNear = air ? fogNear : Fo.near + fogK; F.fogFar = air ? fogFar : Fo.far + fogK; F.reach = F.fogFar + 2;
+  F.fogNear = air || flatWorld ? fogNear : Fo.near + fogK; F.fogFar = air || flatWorld ? fogFar : Fo.far + fogK; F.reach = F.fogFar + 2;
   F.fog.set(air?.fog || tg.fog); F.haze.set(air?.haze || tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = (air?.hazeBand || Fo.haze)[0]; F.fogP[3] = (air?.hazeBand || Fo.haze)[1];
   F.amb.set(air?.ambient || tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + interiorSurfaceHeight(g.map, footX(p), footY(p)); F.torchP[3] = .3;
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
   UNI.hall = g.map.hall?.tall ? g.map.hall : null;
-  UNI.openArena = !!air;
-  UNI.backdrop = BACKDROPS.get(air ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
+  UNI.openArena = stillworks || outdoor;
+  UNI.worldCapture = flatWorld;
+  UNI.backdrop = BACKDROPS.get(stillworks ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.inlay = st.inlay;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
   glMask(g.map, now, seen, drops, CLOSE_VIEW.gl.maskMs, th.floor.remap || null);

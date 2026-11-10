@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 867 adds a separate, optional Overworld Close View camera for outdoor areas, roofs, courtyards and other maps outside the original indoor coverage.
+
 - Release 866 gives the Stillworks Void Walker an articulated Close View body and a distinct Rending Hands windup and recovery.
 
 - Release 865 links new Great Tree summit skyways through Cloud Holds. Each crossing lands at a verified crown with an onward gate. Existing routes remain pinned.

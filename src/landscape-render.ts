@@ -528,9 +528,9 @@ function drawLevelMarks(ctx, t, x, y, px, py, s, tiles, w) {
 }
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-export function drawLandscapeTile(ctx, t, x, y, s, tiles, w) {
+export function drawLandscapeTile(ctx, t, x, y, s, tiles, w, flat = false) {
   if (!t?.landscape || !PAINT[t.kind]) return false;
-  const level = (t.elev || 0) - (t.slope ? .5 : 0), lift = Math.max(0, level) * LIFT_PER_LEVEL * tileLiftScale(t) * s, px = x * s, py = y * s - lift, variant = (t.detail || 0) % (t.kind === "sarcophagus" ? 10 : 4); // release 287: ten coffin looks (clean, weathered, cracked, empty)
+  const level = (t.elev || 0) - (t.slope ? .5 : 0), lift = flat ? 0 : Math.max(0, level) * LIFT_PER_LEVEL * tileLiftScale(t) * s, px = x * s, py = y * s - lift, variant = (t.detail || 0) % (t.kind === "sarcophagus" ? 10 : 4); // release 287: ten coffin looks (clean, weathered, cracked, empty)
   if (t.kind === "skyBridge") {
     ctx.fillStyle = grad(ctx, 0, y * s, 0, y * s + s, [[0, "#0d0f12"], [1, "#25282c"]]); ctx.fillRect(px, y * s, s + 1, s + 1); // the ravine below
     ctx.fillStyle = "#00000055"; ctx.fillRect(px + s * .1, y * s + s * .55, s * .8, s * .2); // the bridge's shadow far below

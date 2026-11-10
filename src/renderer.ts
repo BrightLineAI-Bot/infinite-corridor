@@ -34,7 +34,7 @@ import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -527,7 +527,7 @@ function drawCloudTile(ctx, t, x, y, s, tiles, w) {
 function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
   if (t?.kind === "voidScar") { drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,scarSurface); return; }
   if (drawStillworksTile(ctx, t, x, y, s)) return; // the Stillworks (pentagon-arena-render.ts): cached sprites per band and edge
-  if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w)) return;
+  if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w, closeViewWorldCapture())) return;
   if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
   if (t?.chasm) { drawStarChasm(ctx, t, x, y, s); if (t.kind === "starShard") drawStarShard(ctx, t, x, y, s); return; } // release 593; the Pentagon's finale: a stone adrift
   if (t?.kind === "starWalk" || t?.kind === "starDais") { drawStarWalk(ctx, t, x, y, s, map, w); return; } // the Pentagon's finale: the walkway among the stars
@@ -1399,8 +1399,8 @@ export function drawGiantTree(ctx, o, s, now) {
 // Release 587: a floating disc of a skyway (skylands.ts SKY_DISCS): its shadow on the ground, the disc `level` lifts above it, a
 // gentle bob. `d` is in foot coordinates (the Wayfarer's x + .5, y + .75).
 export function discLift(level) { return level * LIFT_PER_LEVEL; }
-export function drawSkyDisc(ctx, d, s, now) {
-  const bob = Math.sin(now / 900 + d.x + d.y) * .05 * s, cx = d.x * s, gy = d.y * s, cy = gy - discLift(d.level) * s + bob, rx = d.r * s, ry = d.r * s * .55;
+export function drawSkyDisc(ctx, d, s, now, flat = false) {
+  const bob = Math.sin(now / 900 + d.x + d.y) * .05 * s, cx = d.x * s, gy = d.y * s, cy = flat ? gy : gy - discLift(d.level) * s + bob, rx = d.r * s, ry = d.r * s * (flat ? 1 : .55);
   ctx.fillStyle = "#00000033"; ctx.beginPath(); ctx.ellipse(cx, gy, rx * .9, ry * .8, 0, 0, 7); ctx.fill();
   ctx.fillStyle = "#8f8aa0"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .16, rx * .96, ry * .9, 0, 0, 7); ctx.fill();
   const top = ctx.createRadialGradient(cx - rx * .3, cy - ry * .35, 0, cx, cy, rx); top.addColorStop(0, "#ffffff"); top.addColorStop(.7, "#e9e4f2"); top.addColorStop(1, "#cfc7de");
@@ -2331,7 +2331,7 @@ export function render(ctx, g, w, h, now) {
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
   ctx.imageSmoothingEnabled = false;
-  const bareFloor = closeViewBareFloor(); // Close View bare floor (release 794): its GPU scene shades the floor; only what lies on it is drawn here
+  const bareFloor = closeViewBareFloor(), worldCapture = closeViewWorldCapture();
   const stillworksCapture = bareFloor && !!g.map?.stillworks;
   if (bareFloor) ctx.clearRect(0, 0, w, h); else { ctx.fillStyle = "#141816";
   ctx.fillRect(0, 0, w, h); }
@@ -2341,10 +2341,10 @@ export function render(ctx, g, w, h, now) {
     mw = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32)),
     mh = Math.max(1,Number(g.map?.height)||Math.floor(g.map.tiles.length/mw)),
     l = Math.max(0, Math.floor(p.x - w / s / 2) - 2),
-    up = g.glide && g.area === "overworld" ? Math.ceil(discLift(g.glide.z) * CANOPY_LIFT) : g.map?.canopy?.top ? Math.ceil(liftAt(g.map, mw, p.x, p.y)) : 0, // 635: or gliding // release 633: high in a great tree the view looks down on rows far to the south
+    up = worldCapture ? 0 : g.glide && g.area === "overworld" ? Math.ceil(discLift(g.glide.z) * CANOPY_LIFT) : g.map?.canopy?.top ? Math.ceil(liftAt(g.map, mw, p.x, p.y)) : 0, // high in a great tree the world camera looks down on rows far to the south
     t = Math.max(0, Math.floor(p.y - up - h / s / 2) - 2),
     r = Math.min(mw, l + Math.ceil(w / s) + 5),
-    b = Math.min(mh, t + Math.ceil(h / s) + 5 + (g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL * CANOPY_LIFT) : 0) + up),
+    b = Math.min(mh, t + Math.ceil(h / s) + 5 + (!worldCapture && g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL * CANOPY_LIFT) : 0) + up),
     jumping = now < (g.jumpUntil || 0),
     lift = (interiorTerrain(g.map) && closeViewCapturing() ? 0 : jumpLift(g, now)) * s,
     dodging = now < (p.dodgeUntil || 0);
@@ -2354,7 +2354,7 @@ export function render(ctx, g, w, h, now) {
   renderCacheStats.visibleObjects=0;
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
-  const flatCapture = (g.map?.interiorTerrain?.version === 1 || g.map?.building) && closeViewCapturing();
+  const flatCapture = worldCapture || (g.map?.interiorTerrain?.version === 1 || g.map?.building) && closeViewCapturing();
   const groundLift = (x, y) => (flatCapture ? 0 : g.map?.landscape || g.map?.building ? liftAt(g.map, mw, x, y) : 0);
   const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
@@ -2364,13 +2364,13 @@ export function render(ctx, g, w, h, now) {
   const hopLift = interior && g.skyAir != null && jumping
     ? Math.max(flatCapture ? 0 : supportLevel, g.skyAir - (flatCapture ? supportLevel : 0)) * LIFT_PER_LEVEL
     : g.area === "overworld" && g.skyAir != null && jumping
-      ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1))
+      ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1) - (worldCapture ? liftAt(g.map, mw, p.x, p.y) : 0))
       : null;
-  const viewLift = g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : hopLift ?? groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
+  const viewLift = worldCapture ? 0 : g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : hopLift ?? groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
   if (g.area === "dungeon" && g.map?.stillworks && !stillworksCapture) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
-  const groundCached = !bareFloor && (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
+  const groundCached = !bareFloor && !worldCapture && (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
     const animated = render.animatedTiles || (render.animatedTiles = []), glitter = render.chasmGlitter || (render.chasmGlitter = []); animated.length = 0; glitter.length = 0;
     for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
@@ -2389,13 +2389,14 @@ export function render(ctx, g, w, h, now) {
       if(g.area==="dungeon"&&dungeonTileVisibility(g.map,x,y)==="unseen"&&!(LETHAL_KINDS.has(g.map.tiles[y*mw+x]?.kind)&&Math.hypot(x-p.x,y-p.y)<2.6)){fogTile(ctx,x,y,s);continue}
       tile(ctx, g.map.tiles[y * mw + x], x, y, s, g.map.tiles, mw,activeBuildingId, scarSurface);
     }
-    if (g.area === "overworld" && g.map?.canopy?.box) drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, g.map.canopy.box, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId, scarSurface)); } // great-tree review
+    if (worldCapture && g.map.movers?.length) drawRafts(ctx, g, s, now);
+    if (!worldCapture && g.area === "overworld" && g.map?.canopy?.box) drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, g.map.canopy.box, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId, scarSurface)); } // great-tree review
   drawVoidScarOverlay(ctx,g,s,mw,mh,{l,t,r,b},scarSurface);
   if (g.area === "dungeon" && g.map?.stillworks) drawStillworksLight(ctx, g, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), !stillworksCapture); // its great order, the heart's figure, the light falling inward, the counting in the grain
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0, heightNow = 0; // the Wayfarer's height in levels on a great tree's section (the crown veil reads it)
-  if (g.area === "overworld") { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
+  if (g.area === "overworld" && !worldCapture) { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
     if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); if (floor > 0) drawCanopyFloor(ctx, g.map.canopy, s, floor); const c = g.map?.canopy?.box; if (c) { for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, c, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw)); } } }
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
@@ -2715,7 +2716,10 @@ export function render(ctx, g, w, h, now) {
       });
   // Release 587: the skyway's floating discs, each sorted at its front edge; the Wayfarer standing on one is drawn just after it, lifted.
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
-  for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
+  for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) {
+    if (worldCapture) drawSkyDisc(ctx, d, s, now, true);
+    else draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
+  }
   const captureDrone=closeViewCapturing()&&closeViewBareFloor()&&!!g.droneUp?.()&&!!g.droneAt;
   const playerDraw = {
     nativeLift: playerFormPresentation(g)?.lift || 0,
@@ -2723,9 +2727,9 @@ export function render(ctx, g, w, h, now) {
     nativeDecorations: () => drawNativePlayerDecorations(ctx,g,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
     jumpBaseMs: JUMP.base,
     jumpLift: jumpLift(g, g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
-    y: onDisc ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && interior
+    y: onDisc && !worldCapture ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && interior
       ? Math.max(0, g.droneLift.z - supportLevel) * LIFT_PER_LEVEL
-      : g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
+      : g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 && !worldCapture ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
       if (g.glide && g.area === "overworld" && g.glide.open !== false) drawLeafGlider(ctx, p, s, now); // release 635; 641: only while open
       if (jumping) {
@@ -2850,7 +2854,7 @@ export function render(ctx, g, w, h, now) {
       fn:()=>drawDrone(ctx,x,rawY,s,p.facing,quiet?0:clock,carry,g.droneHealFx||0),
       nativeDecorations:()=>drawDrone(ctx,x,rawY,s,p.facing,quiet?0:clock,carry,g.droneHealFx||0,true)});
   }
-  if (!roofUnder) draws.push(playerDraw);
+  if (!roofUnder || worldCapture) draws.push(playerDraw);
   { const fz = g.area === "overworld" ? g.droneFizzleFx : null; if (fz && now < fz.until && visibleInCamera(fz, l, t, r, b, 4)) { const under = tileUnder(g.map, mw, fz.x, fz.y); draws.push({ y: fz.y + .01, x: fz.x, lift: (fz.levels || 0) * LIFT_PER_LEVEL * tileLiftScale(under), inSky: true, fn: () => drawDroneFizzle(ctx, fz, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) }); } } // the drone fizzle
   if (closeViewCapturing()) closeViewTake(draws.splice(0), playerDraw); // CLOSE VIEW (2/3): the actors become billboards
   draws.sort((a, b) => a.y - b.y);
@@ -2865,7 +2869,7 @@ export function render(ctx, g, w, h, now) {
   if (g.area === "dungeon" && (g.map.murals || g.map.sigils)) drawHallMarks(ctx, g.map, s, l, t, r, b); // release 795: murals carved in a grand hall's walls, the Watcher's sigil over doors, on banners and columns
   if (g.shortcutBurst) drawShortcutBurst(ctx, g, s, now); // a shortcut just opened
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
-  if (g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk
+  if (!worldCapture && g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk
     const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); ctx.globalAlpha = GIANT_TREE.ghost; if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
   }
   // Under water (W5): a blue-green wash with slow light shafts.
@@ -2945,15 +2949,15 @@ export function render(ctx, g, w, h, now) {
     ctx.restore();
   }
   if(skyA>0)ctx.restore()}
-  const frontShelter=objectLists.shelters.find(o=>!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
+  const frontShelter=!worldCapture&&objectLists.shelters.find(o=>!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   // roof report 2026-11-04: not from a roof's front row (it drew a second Wayfarer on the ground below), and at the ground's own height
   const shelterRaise=frontShelter?groundLift(p.x,p.y):0;if(shelterRaise){ctx.save();ctx.translate(0,-shelterRaise*s)}
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
   if(shelterRaise)ctx.restore();
   if(roofUnder){ // roof report 2026-11-04: on a roof, the Wayfarer stands over it, at the roof's height (the one draw), and the roof's lethal edges near them are marked over it
     drawTraversalCues(ctx,g.map,mw,p,s,now,null,(x,y)=>g.map.tiles[y*mw+x]?.structure==="buildingRoof");
-    const raise=groundLift(p.x,p.y)+(playerDraw.lift||0);ctx.save();if(raise)ctx.translate(0,-raise*s);playerDraw.fn();ctx.restore(); }
-  else if(g.area==="overworld"&&g.map?.greatBuilding&&behindRoof(g.map.tiles,mw,p)){ // roof report 2026-11-04: walking behind a building's facade, a faint Wayfarer shows through it
+    if (!worldCapture) { const raise=groundLift(p.x,p.y)+(playerDraw.lift||0);ctx.save();if(raise)ctx.translate(0,-raise*s);playerDraw.fn();ctx.restore(); } }
+  else if(!worldCapture&&g.area==="overworld"&&g.map?.greatBuilding&&behindRoof(g.map.tiles,mw,p)){ // roof report 2026-11-04: walking behind a building's facade, a faint Wayfarer shows through it
     const raise=groundLift(p.x,p.y)+(playerDraw.lift||0);ctx.save();ctx.globalAlpha=GIANT_TREE.ghost;if(raise)ctx.translate(0,-raise*s);playerDraw.fn();ctx.restore(); }
   const motion = now / 1000;
   for (const o of objectLists.animated)
