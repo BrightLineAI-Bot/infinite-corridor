@@ -174,34 +174,30 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
     };
     if(walkerDiagnostics){
       checkpoint?.('walker-camera');
-      const camera=await evaluate(`(() => {
+      await call('Page.bringToFront',{});
+      const setup=await evaluate(`(() => {
         const g=globalThis.provingGroundGame?.(), c=globalThis.__closeViewCam?.get();
-        const e=g?.enemies.find(q=>q.pentFinaleBeast==='voidWalker');
+        const e=g?.enemies.find(q=>q.pentFinaleBeast==='voidWalker' && q.kind==='voidWalker');
         const info=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
         const at=info.teleportTargets.find(q=>q.id==='stillworks-exposed');
-        const rect=document.querySelector('#game').getBoundingClientRect();
-        return { target:Math.atan2(e.y-at.y,e.x-at.x), yaw:c.yaw,
-          x:Math.round(rect.left+rect.width*.75), y:Math.round(rect.top+rect.height*.32) };
-      })()`);
-      for(let i=0;i<4;i++){
-        const c=await pose(), angle=camera.target-c.yaw;
+        if(!info.scratch || info.scenario!=='stillworks-void-walker' || !g?.map?.stillworks || !e || !at || !c?.valid)return null;
+        // Select the attack in this disposable encounter. Production scheduling, aim and effects still run normally.
+        e.packAttacks=['voidHand']; e.packBossAttacks=[];
+        const target=Math.atan2(e.y-at.y,e.x-at.x), angle=target-c.yaw;
         const error=Math.atan2(Math.sin(angle),Math.cos(angle));
-        if(Math.abs(error)<.25)break;
-        const dx=Math.max(-145,Math.min(145,Math.round(error/.009)));
-        const point={x:camera.x,y:camera.y};
-        await call('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',buttons:1,clickCount:1});
-        await wait(300);
-        const moved={x:point.x+dx,y:point.y};
-        try { await call('Input.dispatchMouseEvent',{type:'mouseMoved',...moved,button:'none',buttons:1}); }
-        finally { await call('Input.dispatchMouseEvent',{type:'mouseReleased',...moved,button:'left',buttons:0,clickCount:1}); }
-        await wait(250);
-      }
+        return {dx:error,paused:g.paused || info.paused,visibility:document.visibilityState,clock:g.lastUpdateNow};
+      })()`);
+      if(!setup)return {status:'blocked',before,reason:'Stillworks scratch setup unavailable',screenshots:[]};
+      if(setup.paused && setup.visibility==='visible')
+        await evaluate('document.querySelector("#scenarioPause").textContent==="Resume" && document.querySelector("#scenarioPause").click()');
       const screenshots=[], phases=[];
       const beginPhase=async phase=>evaluate(`(() => {
         const witness={status:'loading'};
         globalThis.__preflightWalkerPhase=witness;
         const deadline=performance.now()+30000;
-        import(${JSON.stringify(walkerDiagnostics)}).then(({closeViewRenderDiagnostics})=>{
+        import(${JSON.stringify(walkerDiagnostics)}).then(({closeViewRenderDiagnostics,closeViewPan,CLOSE_VIEW})=>{
+          if(${JSON.stringify(phase)}==='windup')
+            closeViewPan(${JSON.stringify(setup.dx)}/CLOSE_VIEW.crescent.yaw,0,performance.now());
           witness.status='sampling';
           function sample(){
             const g=globalThis.provingGroundGame?.(), e=g?.enemies.find(q=>q.pentFinaleBeast==='voidWalker');
@@ -209,6 +205,9 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
             const warnings=g?.packEffects.filter(f=>f.owner===e?.id && f.kind==='voidRend' && f.variant==='hand' && f.arming>0) || [];
             witness.sample={attack:e?.pack?.attack,phase:e?.pack?.phase,seq:e?.pack?.seq,remaining:e?.pack?.t,
               hp:g?.player.hp,nativeActors:d.nativeActors,frame:d.frame,backend:d.backend,
+              paused:g?.paused,visibility:document.visibilityState,clock:g?.lastUpdateNow,playSeconds:g?.save.playSeconds,
+              interactionOpen:document.querySelector('#pgInteraction')?.open,
+              boss:e&&{x:e.x,y:e.y,gap:e.pack?.gap,awake:e.pentArenaAwake},yaw:globalThis.__closeViewCam?.get().yaw,
               warnings:warnings.map(f=>({x:f.x,y:f.y,arming:f.arming}))};
             if(witness.sample.attack==='voidHand' && witness.sample.phase===${JSON.stringify(phase)}
               && d.backend==='webgl2' && d.nativeActors>0 && warnings.length===2){
