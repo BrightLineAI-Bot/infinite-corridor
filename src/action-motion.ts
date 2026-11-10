@@ -119,9 +119,9 @@ export function normalizePendingMeleeContact(raw){
     ['range','arc','damage'].every(k=>boundedNumber(p.profile[k],0,1e6))&&typeof p.profile.shape==='string'&&
     boundedNumber(p.meleeBonus,0,1e9)&&boundedNumber(p.attackDamage,0,100)&&boundedNumber(p.imbue,0,1e9)&&
     typeof p.spellblade==='boolean'&&typeof p.awakened==='boolean'&&boundedNumber(p.support,0,999)&&
-    finiteObject(p.primaryMotion)&&((action.v===1&&p.primaryMotion.v===2&&Number.isInteger(p.primaryMotion.step)&&p.primaryMotion.step>=1&&p.primaryMotion.step<=4)||(action.v===2&&p.primaryMotion.v===3&&Number.isInteger(p.primaryMotion.step)&&p.primaryMotion.step>=1&&p.primaryMotion.step<=3))&&
+    finiteObject(p.primaryMotion)&&((action.v===1&&p.primaryMotion.v===2&&Number.isInteger(p.primaryMotion.step)&&p.primaryMotion.step>=1&&p.primaryMotion.step<=4)||(action.v===2&&p.primaryMotion.v===3&&p.primaryMotion.mode==='quick'&&Number.isInteger(p.primaryMotion.step)&&p.primaryMotion.step>=1&&p.primaryMotion.step<=3))&&
     (p.boxing===null||finiteObject(p.boxing)&&boundedNumber(p.boxing.damage,0,100)&&boundedNumber(p.boxing.heal,0,100)))
-    payload={...p,kind:'cleaver',profile:{range:Number(p.profile.range),arc:Number(p.profile.arc),damage:Number(p.profile.damage),shape:p.profile.shape},meleeBonus:Number(p.meleeBonus),attackDamage:Number(p.attackDamage),imbue:Number(p.imbue),spellblade:p.spellblade,boxing:p.boxing?{damage:Number(p.boxing.damage),heal:Number(p.boxing.heal)}:null,awakened:p.awakened,primaryMotion:{v:p.primaryMotion.v,step:p.primaryMotion.step},support:Number(p.support)};
+    payload={...p,kind:'cleaver',profile:{range:Number(p.profile.range),arc:Number(p.profile.arc),damage:Number(p.profile.damage),shape:p.profile.shape},meleeBonus:Number(p.meleeBonus),attackDamage:Number(p.attackDamage),imbue:Number(p.imbue),spellblade:p.spellblade,boxing:p.boxing?{damage:Number(p.boxing.damage),heal:Number(p.boxing.heal)}:null,awakened:p.awakened,primaryMotion:{v:p.primaryMotion.v,...(p.primaryMotion.mode==='quick'?{mode:'quick'}:{}),step:p.primaryMotion.step},support:Number(p.support)};
   if(action.kind==='iron-fists'&&finiteObject(p)&&p.kind==='fist'&&finiteObject(p.effect)&&
     ['life','radius','damage','pulse','untilPulse','imbue','stun'].every(k=>boundedNumber(p.effect[k],0,1e9))&&
     ['iron-fist','fist-uppercut'].includes(p.effect.kind)&&p.effect.brawler===true&&p.effect.glyphHost==='melee'&&p.effect.pulse===99&&
@@ -349,7 +349,7 @@ export function recentHeroPresentation(player,now,x,y){const q=player&&HERO_PRES
 // Accepted primary presentation cycles; their idle window never owns contact timing, hits or movement.
 export function normalizePrimaryMotion(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !Number.isInteger(raw.v) || raw.v < 2) return null;
-  if (raw.v === 3) return Number.isInteger(raw.step) && raw.step >= 1 && raw.step <= 3 ? { ...raw, v: 3, step: raw.step } : null;
+  if (raw.v === 3) return raw.mode==='quick'&&Number.isInteger(raw.step) && raw.step >= 1 && raw.step <= 3 ? { ...raw, v: 3, mode:'quick', step: raw.step } : { ...raw };
   if (raw.v > 3) return { ...raw };
   if (!Number.isInteger(raw.step) || raw.step < 1 || raw.step > 4) return null;
   return { ...raw, v: 2, step: raw.step };
@@ -359,7 +359,7 @@ export function primaryVisualStage(record) {
   if (record.primaryMotion != null) {
     const motion = normalizePrimaryMotion(record.primaryMotion);
     if (!motion) return null;
-    if (motion.v === 3) return { kind: 'cleaver-three', step: motion.step, direction: motion.step === 2 ? -1 : 1 };
+    if (motion.v === 3) return motion.mode==='quick'?{ kind: 'cleaver-three', step: motion.step, direction: motion.step === 2 ? -1 : 1 }:{kind:'opaque'};
     if (motion.v > 3) return { kind: 'opaque' };
     return { kind: 'cleaver-four', step: motion.step, direction: motion.step === 1 || motion.step === 3 ? 1 : -1 };
   }
@@ -382,7 +382,7 @@ export function primaryCarryStage(record, combo, active = false) {
     }
     return null;
   }
-  if (saved.v === 3) return { kind:'cleaver-three', step:saved.step, direction:saved.step===2?-1:1 };
+  if (saved.v === 3) return saved.mode==='quick'?{ kind:'cleaver-three', step:saved.step, direction:saved.step===2?-1:1 }:{kind:'opaque'};
   if (Number.isInteger(saved.v) && saved.v > 3) return { kind: 'opaque' };
   if (saved.v === 2) return { kind: 'cleaver-four', step: saved.step, direction: saved.step === 1 || saved.step === 3 ? 1 : -1 };
   return { kind: 'legacy', step: saved.step };
@@ -392,8 +392,9 @@ export function normalizePrimaryCombo(raw) {
       typeof raw.weaponKind !== 'string' || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
   if (raw.v != null && (!Number.isInteger(raw.v) || raw.v < 1)) return null;
   if (raw.v === 3) {
+    if(raw.mode!=='quick')return{...raw,weaponKind:raw.weaponKind};
     if (raw.weaponKind !== 'verge-cleaver' || !Number.isInteger(raw.step) || raw.step < 1 || raw.step > 3) return null;
-    return { ...raw, weaponKind: raw.weaponKind, v: 3, step: raw.step };
+    return { ...raw, weaponKind: raw.weaponKind, v: 3, mode:'quick', step: raw.step };
   }
   if (Number.isInteger(raw.v) && raw.v > 3) return { ...raw, weaponKind: raw.weaponKind };
   if (raw.v === 2) {
@@ -494,16 +495,16 @@ export function acceptCleaverChoreography(prior, logicalNow) {
   return { v: 1, acceptedLogicalMs: logicalNow, entry: sampleCleaverChoreography(prior, logicalNow) ?? { ...CLEAVER_CARRY } };
 }
 
-export function advancePrimaryCombo(player, weaponKind, logicalNow) {
+export function advancePrimaryCombo(player, weaponKind, logicalNow, quick = false) {
   if (weaponKind !== 'cinder-pike' && weaponKind !== 'verge-cleaver') { player.primaryCombo = null; return null; }
   const prior = normalizePrimaryCombo(player.primaryCombo);
-  const cleaver = weaponKind === 'verge-cleaver', clocked = cleaver && arguments.length >= 3;
+  const cleaver = weaponKind === 'verge-cleaver', clocked = cleaver && arguments.length >= 3,quickMode=cleaver&&quick===true;
   // A supported current action may start at one without rewriting an opaque future counter.
   if (clocked && prior?.v > 3) return 1;
   const window = prior?.resetWindow, knownWindow = window && typeof window === 'object' && !Array.isArray(window) && window.v === 1;
   const opaqueWindow = window != null && !knownWindow;
-  const legacyFour=cleaver&&(!clocked||prior?.v===2&&opaqueWindow);
-  let continuing = prior?.weaponKind === weaponKind && (legacyFour?prior.v===2:cleaver ? prior.v === 3 : prior.v == null || prior.v === 1);
+  const legacyFour=cleaver&&(!quickMode||prior?.v===2&&opaqueWindow);
+  let continuing = prior?.weaponKind === weaponKind && (legacyFour?prior.v===2:cleaver ? prior.v === 3&&prior.mode==='quick' : prior.v == null || prior.v === 1);
   const validClock = typeof logicalNow === 'number' && Number.isFinite(logicalNow) && logicalNow >= 0 && logicalNow <= 1e12;
   if (clocked && !opaqueWindow) {
     const at = knownWindow ? window.acceptedLogicalMs : NaN;
@@ -514,7 +515,7 @@ export function advancePrimaryCombo(player, weaponKind, logicalNow) {
   const step = continuing ? prior.step % (legacyFour?4:3) + 1 : 1;
   const next = { ...(prior || {}), weaponKind, step };
   if (legacyFour)next.v=2;
-  else if (cleaver) next.v = 3;
+  else if (cleaver) {next.v = 3;next.mode='quick';}
   else delete next.v;
   if (clocked && !opaqueWindow && validClock)
     next.resetWindow = { ...(knownWindow ? window : {}), v: 1, acceptedLogicalMs: logicalNow };

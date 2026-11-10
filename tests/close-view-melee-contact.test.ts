@@ -29,7 +29,7 @@ test('accepted Cleaver actions inherit the displayed path through pause and save
   const {g}=fixture(cleaver());
   g.update(.016,input(true),100000);
   const first=g.player.attackVisual;
-  assert.deepEqual(first.primaryMotion,{v:3,step:1});assert.equal(first.durationMs,260);assert.equal(first.meleeAction.v,2);
+  assert.deepEqual(first.primaryMotion,{v:3,mode:'quick',step:1});assert.equal(first.durationMs,260);assert.equal(first.meleeAction.v,2);
   g.update(.016,input(),100075);
   assert.equal(sampleCleaverChoreography(first,100420),null,'v3 motion cannot be reinterpreted as persisted v2 choreography');
   g.setPaused(true,100400);
@@ -40,7 +40,7 @@ test('accepted Cleaver actions inherit the displayed path through pause and save
   const second=resumed.player.attackVisual;
   assert.equal(second.primaryMotion.step,2);
   assert.equal(resumed.pendingMeleeContact.releaseAt,405095);
-  assert.deepEqual(resumed.pendingMeleeContact.payload.primaryMotion,{v:3,step:2});
+  assert.deepEqual(resumed.pendingMeleeContact.payload.primaryMotion,{v:3,mode:'quick',step:2});
   resumed.update(.016,input(),405095);
   assert.equal(resumed.pendingMeleeContact,null);
 });
@@ -56,7 +56,7 @@ test('a delayed Cleaver contact rebases the rendered follow-through and survives
   assert.equal(g.player.actionVisualUntil,100585);
   g.setPaused(true,100450);
   const resumed=new Game(deserializeSave(serializeSave(g.exportSnapshot(200000))),400000);
-  assert.deepEqual(resumed.player.attackVisual.primaryMotion,{v:3,step:1});
+  assert.deepEqual(resumed.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});
   assert.equal(resumed.pendingMeleeContact,null);
 });
 
@@ -78,10 +78,10 @@ test('invalid Cleaver choreography cannot cancel the canonical attack or reinter
 
 test('Cleaver reload rebases cooldown and contact, then samples current position with accepted Echo stage',()=>{
   const{g,foe}=fixture(normalizeSockets({...cleaver(),tier:'relic',affixes:[]}));g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
-  g.update(.016,input(true),100000);const accepted=structuredClone(g.pendingMeleeContact);assert.deepEqual(accepted.payload.primaryMotion,{v:3,step:1});
+  g.update(.016,input(true),100000);const accepted=structuredClone(g.pendingMeleeContact);assert.deepEqual(accepted.payload.primaryMotion,{v:3,mode:'quick',step:1});
   const save=deserializeSave(serializeSave(g.exportSnapshot(100020))),resumed:any=new Game(save,1000);resumed.installSystems();assert.equal(resumed.player.attackReadyAt,1400);assert.equal(resumed.pendingMeleeContact.releaseAt,1055);
   resumed.player.x-=2;foe.x=resumed.player.x+1;resumed.enemies=[foe];resumed.player.meleeStrike=null;assert.equal(resumed.releasePendingMeleeContact(1055.001).released,true);assert.equal(resumed.pendingMeleeContact,null);assert.equal(resumed.player.attackReadyAt,1400);assert.equal(resumed.player.meleeStrike.x,resumed.player.x+.5);
-  const timer=resumed.glyphTimers.find((q:any)=>q.kind==='strike');assert.ok(timer);assert.ok(Math.abs(timer.at-1305.001)<1e-6);assert.equal(timer.echoVisual.x,resumed.player.x+.5);assert.deepEqual(timer.echoVisual.primaryMotion,{v:3,step:1});
+  const timer=resumed.glyphTimers.find((q:any)=>q.kind==='strike');assert.ok(timer);assert.ok(Math.abs(timer.at-1305.001)<1e-6);assert.equal(timer.echoVisual.x,resumed.player.x+.5);assert.deepEqual(timer.echoVisual.primaryMotion,{v:3,mode:'quick',step:1});
 });
 
 test('malformed supported pending records are inert while future versions remain opaque',()=>{

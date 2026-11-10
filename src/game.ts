@@ -6620,10 +6620,10 @@ export class Game {
       const logicalNow = now - (this.presentationPausedMs || 0);
       const newCleaverMotion=attackVisual.weaponKind==='verge-cleaver'&&this.attackAction==='attack'&&this.closeViewActionEligible();
       const primaryStep = attackVisual.weaponKind === 'verge-cleaver'
-        ? newCleaverMotion?advancePrimaryCombo(this.player, attackVisual.weaponKind, logicalNow):advancePrimaryCombo(this.player,attackVisual.weaponKind)
+        ? advancePrimaryCombo(this.player, attackVisual.weaponKind, logicalNow,newCleaverMotion)
         : advancePrimaryCombo(this.player, attackVisual.weaponKind);
       if (primaryStep) {
-        if (attackVisual.weaponKind === 'verge-cleaver') attackVisual.primaryMotion = { v: newCleaverMotion&&this.player.primaryCombo?.v!==2?3:2, step: primaryStep };
+        if (attackVisual.weaponKind === 'verge-cleaver') attackVisual.primaryMotion = newCleaverMotion&&this.player.primaryCombo?.v!==2?{v:3,mode:'quick',step:primaryStep}:{v:2,step:primaryStep};
         else attackVisual.primaryStep = primaryStep;
       }
       const prior = recentHeroPresentation(this.player, logicalNow, this.player.x, this.player.y);
