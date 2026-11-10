@@ -1,8 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
+import { assess, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
 const sample=frame=>({active:true,frame,backend:'webgl2',player:'imported',asset:'ready',gpu:{state:'ready',heroState:'ready'}});
+test('public diagnostics must report the exact candidate and real imported WebGL frames',()=>{
+  const id='r865-1532e8b05f7f';
+  const rows={'Game release':id,'Close View scene':'active: webgl2, completed frame 12','Player representation':'active: imported',
+    'Hero asset':'ready','GPU scene':'readiness: ready; last failure (historical): none',
+    'Hero GPU':'readiness: ready; last failure (historical): none','Recent errors':'none'};
+  const result=diagnosticsFromRows(rows,id);
+  assert.deepEqual(result,{...sample(12),clientError:false});
+  assert.throws(()=>diagnosticsFromRows(rows,'r864-9be7ed5f7dd5'),/different candidate/);
+  const historical=diagnosticsFromRows({...rows,'Close View scene':'inactive; historical: webgl2, completed frame 12'},id);
+  assert.equal(assess([historical,sample(13)]).status,'blocked');
+});
 test('actual advancing imported renderer observations do not grant visual or device acceptance',()=>{const r=assess([sample(1),sample(2)]);assert.equal(r.status,'render-observed');assert.equal(r.visualAcceptance,'not-reviewed');assert.equal(r.devicePerformance,'not-measured')});
+test('captured native WebGL frames remain evidence without satisfying the imported-hero gate',()=>{
+  const samples=[sample(7),sample(10)].map(s=>({...s,player:'native',asset:'loading'}));
+  assert.equal(capturedWebGLFrames({samples,captures:['startup.png']}),false);
+  assert.equal(capturedWebGLFrames({samples,screenshot:'sampled.png'}),true);
+  assert.equal(assess(samples).status,'blocked');
+});
 for(const [name,patch] of Object.entries({billboard:{backend:'2d',player:'billboard'},native:{player:'native'},stale:{active:false},missingAsset:{asset:'not-requested'},lost:{gpu:{state:'context-lost',heroState:'ready'}},missingUpload:{gpu:{state:'ready',heroState:'not-prepared'}}}))test(`${name} is blocked`,()=>assert.equal(assess([{...sample(1),...patch},{...sample(2),...patch}]).status,'blocked'));
 test('empty samples are blocked',()=>assert.equal(assess([]).status,'blocked'));
 test('stationary frames are blocked',()=>assert.equal(assess([sample(4),sample(4)]).status,'blocked'));
