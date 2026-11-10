@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleaverWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, overworldManualArrowWitness, seedOverworldManualJourney, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, doorWayfindingWitness, hasQuickCleaverMarker, mainHudCompassWitness, overworldManualArrowWitness, seedOverworldManualJourney, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
 import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
@@ -10,8 +10,15 @@ test('crawl movement maps the desired world heading to the camera-relative keys'
   assert.equal(movementKey(NaN, 1, 0), null);
 });
 
-test('Cleaver evidence requires a newly accepted first cut from normal Attack input', async () => {
-  const attack = { weapon: 'verge-cleaver', step: 1, acceptedAt: 42, contactMs: 75, durationMs: 360 };
+test('quick Cleaver selection requires the exact emitted timing marker',()=>{
+  assert.equal(hasQuickCleaverMarker('cleaverQuick:Object.freeze({durationMs:260,contactMs:75})'),true);
+  assert.equal(hasQuickCleaverMarker('cleaver:Object.freeze({durationMs:260,contactMs:75})'),false);
+  assert.equal(hasQuickCleaverMarker('cleaverQuick:Object.freeze({durationMs:360,contactMs:75})'),false);
+  assert.equal(hasQuickCleaverMarker('cleaverQuick:Object.freeze({durationMs:260,contactMs:60})'),false);
+});
+
+test('Cleaver evidence preserves the legacy newly accepted first cut witness', async () => {
+  const attack = { weapon: 'verge-cleaver', motionVersion:2, step: 1, acceptedAt: 42, contactMs: 75, durationMs: 360 };
   const input = [], samples = [{}, {}, attack];
   const result = await cleaverWitness({
     call: async (method, args) => input.push([method, args.key, args.type]),
@@ -27,6 +34,55 @@ test('Cleaver evidence requires a newly accepted first cut from normal Attack in
   });
   assert.equal(stale.status, 'blocked');
   assert.deepEqual(stale.screenshots, ['before-attack']);
+});
+
+test('quick Cleaver evidence requires three exact advancing cuts from normal Attack input', async () => {
+  const states=[{}];
+  for(let step=1;step<=3;step++){
+    const accepted={weapon:'verge-cleaver',motionVersion:3,step,meleeVersion:2,
+      acceptedAt:1000+step*420,contactMs:75,durationMs:260,pending:true};
+    states.push(accepted,{...accepted,pending:false,contactAt:accepted.acceptedAt+75},{...accepted,pending:false,contactAt:accepted.acceptedAt+75});
+  }
+  const input=[], waits=[];
+  const result=await cleaverWitness({
+    call:async(method,args)=>input.push([method,args.key,args.type]),
+    evaluate:async()=>states.shift()??{},wait:async ms=>waits.push(ms),capture:async name=>name,
+  });
+  assert.equal(result.status,'observed');
+  assert.equal(result.mode,'quick-three-cut');
+  assert.deepEqual(result.cuts.map(c=>c.accepted.step),[1,2,3]);
+  assert.ok(result.cuts.every(c=>c.contactObserved&&c.recoveryObserved));
+  assert.equal(input.filter(([,key,type])=>key==='j'&&type==='keyDown').length,3);
+  assert.deepEqual(result.screenshots,[
+    'before-attack','cut-1-startup','cut-1-contact','cut-1-recovery',
+    'cut-2-startup','cut-2-contact','cut-2-recovery',
+    'cut-3-startup','cut-3-contact','cut-3-recovery',
+  ]);
+  assert.equal(waits.filter(ms=>ms===240).length,2);
+  assert.equal(result.remainingVisualLimitations.length,2);
+});
+
+test('quick Cleaver evidence blocks a repeated or inexact cut stage', async () => {
+  const accepted={weapon:'verge-cleaver',motionVersion:3,step:1,meleeVersion:2,
+    acceptedAt:1420,contactMs:75,durationMs:260,pending:true};
+  const states=[{},accepted,{...accepted,pending:false,contactAt:1495},{...accepted,pending:false,contactAt:1495},
+    {...accepted,acceptedAt:1840}];
+  const result=await cleaverWitness({call:async()=>{},evaluate:async()=>states.shift()??{},
+    wait:async()=>{},capture:async name=>name});
+  assert.equal(result.status,'blocked');
+  assert.deepEqual(result.cuts.map(c=>[c.cut,c.accepted.step,c.exact]),[[1,1,true],[2,1,false]]);
+});
+
+test('quick Cleaver evidence blocks labels without an observed contact transition', async () => {
+  const accepted={weapon:'verge-cleaver',motionVersion:3,step:1,meleeVersion:2,
+    acceptedAt:1420,contactMs:75,durationMs:260,pending:true};
+  const states=[{},accepted,...Array.from({length:4},()=>({...accepted}))];
+  const captures=[];
+  const result=await cleaverWitness({call:async()=>{},evaluate:async()=>states.shift()??accepted,
+    wait:async()=>{},capture:async name=>(captures.push(name),name)});
+  assert.equal(result.status,'blocked');
+  assert.equal(result.cuts[0].contactObserved,false);
+  assert.deepEqual(captures,['before-attack','cut-1-startup']);
 });
 
 test('a failed public teleport is blocked instead of producing a landing receipt', async () => {

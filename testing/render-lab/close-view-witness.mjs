@@ -6,6 +6,8 @@ export const CLEAVER_CASE = 'cleaver-echo-inspection';
 export const SUMMIT_CASE = 'great-tree-summit';
 export const COMBAT_ACTION_CASES = ['pike-echo-inspection', 'cast-skill-aerial-step', 'blade-hammerfall-brute'];
 export const DOOR_WAYFINDING_CASES = Object.freeze(['terrain-pentagon', 'cube-doors']);
+export const hasQuickCleaverMarker = source => typeof source === 'string'
+  && /cleaverQuick\s*:\s*Object\.freeze\(\{\s*durationMs\s*:\s*260\s*,\s*contactMs\s*:\s*75\s*\}\)/.test(source);
 
 async function holdKey(call, wait, key, ms) {
   const pressed = [];
@@ -25,27 +27,72 @@ async function holdKey(call, wait, key, ms) {
 export async function cleaverWitness({ call, evaluate, wait, capture }) {
   const read = () => evaluate(`(() => {
     const g = globalThis.provingGroundGame?.(), a = g?.player?.attackVisual;
-    return { weapon:a?.weaponKind, step:a?.primaryMotion?.step,
+    return { weapon:a?.weaponKind, motionVersion:a?.primaryMotion?.v, step:a?.primaryMotion?.step,
+      meleeVersion:a?.meleeAction?.v,
       acceptedAt:a?.cleaverChoreography?.acceptedLogicalMs, contactMs:a?.meleeAction?.contactMs,
-      durationMs:a?.durationMs, pending:!!g?.pendingMeleeContact };
+      durationMs:a?.durationMs, pending:!!g?.pendingMeleeContact,
+      contactAt:a?.cleaverChoreography?.contactLogicalMs };
   })()`);
   const before = await read();
   const screenshots = [await capture('before-attack')];
-  await holdKey(call, wait, 'j', 45);
   const samples = [];
-  for (let i = 0; i < 12; i++) {
-    const sample = await read();
-    samples.push(sample);
-    if (sample.weapon === 'verge-cleaver' && Number.isFinite(sample.acceptedAt)
-        && sample.acceptedAt !== before.acceptedAt) break;
-    await wait(25);
+  const cuts = [];
+  let priorAcceptedAt = before.acceptedAt;
+  for (let cut = 1; cut <= 3; cut++) {
+    await holdKey(call, wait, 'j', 45);
+    let accepted;
+    for (let i = 0; i < 12; i++) {
+      const sample = await read();
+      samples.push(sample);
+      if (sample.weapon === 'verge-cleaver' && Number.isFinite(sample.acceptedAt)
+          && sample.acceptedAt !== priorAcceptedAt) { accepted = sample; break; }
+      await wait(25);
+    }
+    if (!accepted) break;
+    priorAcceptedAt = accepted.acceptedAt;
+    if (accepted.motionVersion !== 3) {
+      const legacyObserved = cut === 1 && accepted.motionVersion === 2 && accepted.step === 1
+        && accepted.contactMs > 0 && accepted.contactMs < accepted.durationMs;
+      if (legacyObserved) screenshots.push(await capture('after-accepted-attack'));
+      return { status: legacyObserved ? 'observed' : 'blocked', mode:'legacy', before,
+        accepted, cuts, samples, screenshots };
+    }
+    const exact = accepted.step === cut && accepted.meleeVersion === 2
+      && accepted.contactMs === 75 && accepted.durationMs === 260;
+    cuts.push({ cut, accepted, exact });
+    if (!exact) break;
+    screenshots.push(await capture(`cut-${cut}-startup`));
+    await wait(75);
+    let contact;
+    for(let i=0;i<4;i++){
+      contact=await read();samples.push(contact);
+      if(contact.acceptedAt===accepted.acceptedAt&&contact.step===cut&&!contact.pending
+          &&Number.isFinite(contact.contactAt)&&contact.contactAt>=accepted.acceptedAt+accepted.contactMs)break;
+      await wait(20);
+    }
+    cuts.at(-1).contact = contact;
+    cuts.at(-1).contactObserved = contact?.acceptedAt===accepted.acceptedAt&&contact?.step===cut
+      && !contact?.pending&&Number.isFinite(contact?.contactAt)
+      && contact.contactAt>=accepted.acceptedAt+accepted.contactMs;
+    if(!cuts.at(-1).contactObserved)break;
+    screenshots.push(await capture(`cut-${cut}-contact`));
+    await wait(105);
+    const recovery = await read(); samples.push(recovery); cuts.at(-1).recovery = recovery;
+    cuts.at(-1).recoveryObserved = recovery.acceptedAt===accepted.acceptedAt&&recovery.step===cut
+      && !recovery.pending&&recovery.contactAt===contact.contactAt;
+    if(!cuts.at(-1).recoveryObserved)break;
+    screenshots.push(await capture(`cut-${cut}-recovery`));
+    // The production cooldown is 420 ms. The phase observations above consume
+    // 180 ms; finish the ordinary interval before sending another Attack input.
+    if (cut < 3) await wait(240);
   }
-  const accepted = samples.at(-1);
-  const observed = accepted.weapon === 'verge-cleaver' && accepted.step === 1
-    && Number.isFinite(accepted.acceptedAt) && accepted.acceptedAt !== before.acceptedAt
-    && accepted.contactMs > 0 && accepted.contactMs < accepted.durationMs;
-  if (observed) screenshots.push(await capture('after-accepted-attack'));
-  return { status: observed ? 'observed' : 'blocked', before, samples, screenshots };
+  const observed = cuts.length === 3 && cuts.every(({ exact, contactObserved, recoveryObserved }, index) =>
+    exact && contactObserved && recoveryObserved && cuts[index].accepted.step === index + 1);
+  return { status: observed ? 'observed' : 'blocked', mode:'quick-three-cut', before, cuts,
+    samples, screenshots, remainingVisualLimitations: observed
+      ? ['Normal-speed stills sample startup, contact, and recovery; they do not prove perceived animation smoothness between frames.',
+        'The fixed Proving Ground camera supplies one useful encounter view; alternate camera angles are not forced.']
+      : ['The exact advancing three-cut sequence was not fully observed.'] };
 }
 
 export async function combatActionWitness(scenario, { call, evaluate, wait, capture }) {

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, stableFramePair, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
-import { cleaverWitness, combatActionWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, overworldManualArrowWitness, seedOverworldManualJourney, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, DOOR_WAYFINDING_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
+import { cleaverWitness, combatActionWitness, closeViewWitness, doorWayfindingWitness, hasQuickCleaverMarker, mainHudCompassWitness, overworldManualArrowWitness, seedOverworldManualJourney, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, DOOR_WAYFINDING_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -102,16 +102,24 @@ try {
     return observe;
   };
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
+  const actionMotionName='src/action-motion.js';
+  const actionMotion=candidate.files.preview[actionMotionName]
+    ? readFileSync(join(site,actionMotionName),'utf8') : '';
+  // Release numbers are assigned only when work merges. Select this bounded
+  // witness from an exact emitted timing key in the verified candidate inventory.
+  const quickCleaver=hasQuickCleaverMarker(actionMotion);
   const walker = /^r866-/.test(candidate.id);
   const wholeWorld = /^r867-/.test(candidate.id);
   const doorWayfinding = /^r86[89]-/.test(candidate.id);
   const overworldArrow = /^r869-/.test(candidate.id);
   const worldFixtures = {standard:'test-tile',coast:'landscape','great-tree-summit':'landscape',ashling:'combat'};
-  const cases = doorWayfinding ? [...DOOR_WAYFINDING_CASES] : wholeWorld ? Object.keys(worldFixtures) : walker ? [STILLWORKS_CASES[0]]
+  const cases = doorWayfinding ? [...DOOR_WAYFINDING_CASES] : wholeWorld ? Object.keys(worldFixtures) : walker ? [STILLWORKS_CASES[0]] : quickCleaver ? [CLEAVER_CASE]
     : [COMBAT_ACTION_CASES[1], ...STILLWORKS_CASES.slice(1).filter(id => fixtures.includes(`"${id}"`))];
   receipt.scope=doorWayfinding?`Dungeon door wayfinding${overworldArrow?' and Overworld Close View manual arrow':''} on exact frozen ${overworldArrow?'r869':'r868'}`
     :wholeWorld?'Overworld Close View and toggle on exact frozen r867'
-    :walker?'Rending Hands witness on exact frozen r866':'remaining online gameplay witnesses for exact frozen r865';
+    :walker?'Rending Hands witness on exact frozen r866'
+    :quickCleaver?'Verge Cleaver normal-speed three-cut visual witness on exact frozen candidate'
+    :'remaining online gameplay witnesses for exact frozen r865';
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[],captures:[]};receipt.scenarios.push(entry);
     checkpoint('scenario-navigate');
