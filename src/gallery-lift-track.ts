@@ -108,3 +108,17 @@ export function galleryLiftContains(track: GalleryLiftTrack, pose: GalleryLiftPo
     && Math.abs(actor.y - pose.y) <= track.deck.halfDepth
     && Math.abs(actor.footElevation - pose.elevation) <= track.deck.heightTolerance;
 }
+
+// Conservative continuous deck/body overlap for the one accepted frame. The deck path is
+// linear inside every track phase; callers split at phase boundaries by limiting their dt.
+export function galleryLiftSweepsActor(track: GalleryLiftTrack, from: GalleryLiftPose, to: GalleryLiftPose, actor: { x: number; y: number; bottomElevation: number; topElevation: number }): boolean {
+  if (![from.x, from.y, from.elevation, to.x, to.y, to.elevation, actor.x, actor.y, actor.bottomElevation, actor.topElevation].every(Number.isFinite)) return false;
+  const dx = to.x - from.x, dy = to.y - from.y, dz = to.elevation - from.elevation;
+  const denom = dx * dx + dy * dy;
+  const p = denom > 0 ? Math.max(0, Math.min(1, ((actor.x - from.x) * dx + (actor.y - from.y) * dy) / denom)) : 0;
+  const x = from.x + dx * p, y = from.y + dy * p, z = from.elevation + dz * p;
+  const verticalMin = Math.min(from.elevation, to.elevation), verticalMax = Math.max(from.elevation, to.elevation);
+  return Math.abs(actor.x - x) <= track.deck.halfWidth
+    && Math.abs(actor.y - y) <= track.deck.halfDepth
+    && Math.max(verticalMin, actor.bottomElevation) <= Math.min(verticalMax, actor.topElevation);
+}

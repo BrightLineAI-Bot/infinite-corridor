@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceGalleryLiftClock, createGalleryLiftTrack, galleryLiftContains, galleryLiftPose } from '../src/gallery-lift-track.ts';
+import { advanceGalleryLiftClock, createGalleryLiftTrack, galleryLiftContains, galleryLiftPose, galleryLiftSweepsActor } from '../src/gallery-lift-track.ts';
 
 const track = createGalleryLiftTrack({
   lower: { x: 18.5, y: 18.5, elevation: 0 },
@@ -48,4 +48,12 @@ test('invalid or unbounded track inputs are rejected', () => {
   assert.throws(() => createGalleryLiftTrack({ lower: { x: 0, y: 0, elevation: 0 }, upper: { x: 1, y: 1, elevation: 2 }, timing: { travel: 0 } }), RangeError);
   assert.throws(() => galleryLiftPose(track, Number.POSITIVE_INFINITY), RangeError);
   assert.throws(() => advanceGalleryLiftClock({ elapsed: 0 }, -.01), RangeError);
+});
+
+test('swept deck safety sees horizontal and pure vertical body crossings', () => {
+  const travel0 = galleryLiftPose(track, 1), travel1 = galleryLiftPose(track, 5);
+  assert.equal(galleryLiftSweepsActor(track, travel0, travel1, { x: 21, y: 14.5, bottomElevation: 0, topElevation: 2 }), true);
+  const rise0 = galleryLiftPose(track, 5), rise1 = galleryLiftPose(track, 7);
+  assert.equal(galleryLiftSweepsActor(track, rise0, rise1, { x: 23.5, y: 10.5, bottomElevation: 1, topElevation: 2 }), true);
+  assert.equal(galleryLiftSweepsActor(track, rise0, rise1, { x: 22, y: 10.5, bottomElevation: 1, topElevation: 2 }), false);
 });

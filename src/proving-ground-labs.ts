@@ -34,6 +34,7 @@ import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from
 import { AFFIXES, SHAMAN } from "./affixes.ts";
 import { addDungeonReciter, addDungeonElder } from "./travelers.ts";
 import { validActions } from "./interactions.ts";
+import { createGalleryLiftTrack } from "./gallery-lift-track.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -231,6 +232,7 @@ const CLOSE_VIEW_LAB = [
   { id: "pit-gallery", label: "Pentagon: a grand hall with a shaft", pick: (P) => P.nodes.find((n) => n.hall?.type === "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "terrain-pentagon", label: "Traversal: current Pentagon rooms and ramps", latestPentagon: true, pick: (P) => P.nodes.find((n) => (n.kind === "outer" || n.kind === "inner") && !n.hall) },
   { id: "vertical-gallery-keep", label: "Scratch gallery: terraced Keep", verticalGallery: "keep" },
+  { id: "vertical-gallery-lift", label: "Scratch gallery: moving lift", verticalGallery: "keep", galleryLift: true },
   { id: "vertical-gallery-drone", label: "Scratch gallery: Keep drone practice", verticalGallery: "keep", galleryDrone: true },
   { id: "vertical-gallery-pentagon", label: "Scratch gallery: terraced Pentagon", verticalGallery: "pentagon", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "cube-doors", label: "Wayfinding: Cube room maze", cubeDoors: true },
@@ -348,6 +350,29 @@ function stampVerticalGallery(map, family) {
     returnLoop: { found: true, northBridge: { from: { x: cx - 6, y: upperY + 1 }, to: { x: cx + 6, y: upperY + 1 } } }, sharedVolume: { safeFloor: true, level: 2, bounds: { x0: cx - 4, y0: upperY + 3, x1: cx + 4, y1: terraceTop - 1 } }, requiredDrone: false, boostSpur: boost, droneLaunch: boost.length===5 ? { x: boost[4].x, y: boost[4].y + 1 } : null, authoredBrightness: family==="keep" ? "daylight-v1" : "lantern-lit skylight",
     limits: "Scratch geometry demonstrates routing and composition only; it does not guarantee a future procedural placement or identical apparent brightness on every quality tier." };
 }
+
+function stampGalleryLift(map, gallery) {
+  const lane = gallery?.boostSpur;
+  if (!gallery?.found || lane?.length !== 5) return null;
+  const lower = lane[0], upper = lane.at(-1), dockX = upper.x + 1;
+  if (dockX >= map.width - 1) return null;
+  for (const point of lane) Object.assign(map.tiles[point.y * map.width + point.x], {
+    kind: "castleCourt", blocked: false, elev: 0, slope: false, interiorPlatform: false,
+    platformTop: false, gallerySpace: "lift-shaft", galleryLift: point === lower ? "lower-station" : "shaft",
+  });
+  Object.assign(map.tiles[upper.y * map.width + dockX], {
+    kind: "castleCourt", blocked: false, elev: 5, slope: false, interiorPlatform: true,
+    platformTop: true, gallerySpace: "lift-dock", galleryLift: "upper-dock",
+  });
+  const track = createGalleryLiftTrack({
+    lower: { x: lower.x, y: lower.y, elevation: 0 },
+    upper: { x: upper.x, y: upper.y, elevation: 5 },
+    deck: { halfWidth: .68, halfDepth: .46 },
+    timing: { dwellLower: 1.2, travel: 2, rise: 2, dwellUpper: 1.2 },
+  });
+  return { track, lower: track.lower, upper: track.upper, upperDock: { x: dockX, y: upper.y, elevation: 5 },
+    limits: "Isolated scratch runtime only. The broad stair remains the ordinary return route; no production mover or save field is created." };
+}
 export function findLabPentagon(seed, now = 0) {
   const probe = new Game(scratchSave(seed), now);
   for (let d = 0; d <= 160; d += PENTAGON.every) for (let cx = -d; cx <= d; cx += PENTAGON.every) for (let cy = -d; cy <= d; cy += PENTAGON.every) if ((Math.abs(cx) === d || Math.abs(cy) === d) && probe.pentagonHere(cx, cy)) return { cx, cy, V: probe.pentagonVersion(cx, cy) };
@@ -446,6 +471,7 @@ function closeViewFixture(scenario, seed, now) {
   const game = new Game(save, now); game.installSystems();
   save.session.activeDungeonId = id; save.session.dungeonReturn = back; game.loadArea("dungeon", false);
   const verticalGallery = spec.verticalGallery ? stampVerticalGallery(game.map, spec.verticalGallery) : null;
+  const galleryLift = spec.galleryLift ? stampGalleryLift(game.map, verticalGallery) : null;
   if (verticalGallery?.found) game.enemies = [];
   if (spec.buildingFeature || spec.latestPentagon || spec.buildVersion || spec.cubeDoors) {
     const loadArea = game.loadArea.bind(game);
@@ -457,6 +483,7 @@ function closeViewFixture(scenario, seed, now) {
     game.enemies = [];
   }
   let entry = game.map.entry || { x: 4, y: 5 };
+  if (galleryLift) entry = { x: galleryLift.lower.x, y: galleryLift.lower.y };
   if ((spec.id === "grand-hall" || spec.id === "pit-gallery") && game.map.hall) {
     const { tiles, width, height } = game.map;
     const candidates = spec.id === "pit-gallery" && tiles.some((t) => t.balcony)
@@ -466,6 +493,7 @@ function closeViewFixture(scenario, seed, now) {
     entry = candidates.reduce((best, t) => !best || distance(t) < distance(best) ? t : best, null) || entry;
   }
   game.player.x = entry.x; game.player.y = entry.y; game.player.attackReadyAt = now;
+  if (galleryLift) game.installScratchGalleryLift(galleryLift.track);
   if(spec.cubeDoors||game.map.building?.pentagon)game.labFogTick();
   let traversal = null;
   let buildPractice = null;
@@ -505,7 +533,8 @@ function closeViewFixture(scenario, seed, now) {
     traversal = { feature: "pentagon-terrain", found: game.map.interiorTerrain?.version === 1, version: game.map.building?.V || null, size: [game.map.width, game.map.height] };
   }
   if (spec.id === "hazards") stampHazards(game.map, { x: Math.round(entry.x), y: Math.round(entry.y) });
-  if (verticalGallery) game.message = verticalGallery.found && spec.galleryDrone ? "From the lower landing beside the east overlook, tap Jump twice and hold to rise. Move north onto the top step. The stair route still works without the drone." : verticalGallery.found ? "Climb the broad stair to the upper landing. Explore both galleries; either high walk returns to the terrace. The east stepping spur is optional." : verticalGallery.note;
+  if (galleryLift) game.message = "Stand on the marked deck for its short traverse and rise. Step east onto the upper dock; the broad stair remains the return route.";
+  else if (verticalGallery) game.message = verticalGallery.found && spec.galleryDrone ? "From the lower landing beside the east overlook, tap Jump twice and hold to rise. Move north onto the top step. The stair route still works without the drone." : verticalGallery.found ? "Climb the broad stair to the upper landing. Explore both galleries; either high walk returns to the terrace. The east stepping spur is optional." : verticalGallery.note;
   else if (spec.buildingFeature === "ramp") game.message = "Close View ramp lab: walk across the broad stepped strip and compare the camera at each height.";
   else if (spec.buildingFeature === "dig-return") game.message = traversal?.found ? "Face the cut wall, Act to dig, walk across and back." : traversal?.note;
   else if (spec.buildingFeature === "platform") game.message = traversal?.found ? "Close View platform lab: jump onto the +1 and +2 blocks, then up to the 2×2 top." : traversal?.note;
@@ -553,6 +582,7 @@ function closeViewFixture(scenario, seed, now) {
     game.message = "Stand still and let the Ashling land a hit. Reset same restarts the encounter.";
   }
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
+  if (galleryLift) verticalGallery.galleryLift = { lower: galleryLift.lower, upper: galleryLift.upper, upperDock: galleryLift.upperDock, limits: galleryLift.limits };
   return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(verticalGallery ? { developerHint: game.message, diagnostics: { verticalGallery } } : {}), ...(traversal ? { diagnostics: { traversal } } : {}), ...(buildPractice ? { buildPractice, developerHint: game.message, diagnostics: { buildPractice } } : {}) };
 }
 
