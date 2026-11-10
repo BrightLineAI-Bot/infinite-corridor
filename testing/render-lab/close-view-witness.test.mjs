@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleaverWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, overworldManualArrowWitness, seedOverworldManualJourney, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
 import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
@@ -101,6 +101,21 @@ test('normal-game north compass stays in world coordinates after a real camera d
   assert.deepEqual(navigations,['http://127.0.0.1/__release__/']);
   assert.deepEqual(calls.map(q=>q.slice(0,2)),[['Input.dispatchMouseEvent','mousePressed'],['Input.dispatchMouseEvent','mouseMoved'],['Input.dispatchMouseEvent','mouseReleased']]);
   assert.deepEqual(result.screenshots,['hud-true-north-before-drag','hud-true-north-after-drag']);
+});
+
+test('r869 Overworld Close View manual arrow keeps its east world bearing after camera drag', async () => {
+  const seeded={slot:2,seed:'R13',from:{rx:0,ry:0},target:{rx:1,ry:0},bearingDegrees:0,overworldCloseView:true};
+  assert.deepEqual(await seedOverworldManualJourney({evaluate:async expression=>expression.includes('structuredClone')?seeded:null}),seeded);
+  const states=[undefined,
+    {label:'Manual waypoint: Render preflight east, 1 section east',compassHidden:false,arrowHidden:false,dormant:false,arrived:false,transform:'rotate(90deg)',yaw:-Math.PI/2,valid:true,canvas:{left:0,top:0,width:768,height:540}},
+    {label:'Manual waypoint: Render preflight east, 1 section east',compassHidden:false,arrowHidden:false,dormant:false,arrived:false,transform:'rotate(180deg)',yaw:-Math.PI,valid:true},
+  ],calls=[];
+  const result=await overworldManualArrowWitness({seeded,releaseUrl:'http://127.0.0.1/__release__/',
+    evaluate:async()=>states.shift(),navigate:async()=>{},wait:async()=>{},capture:async name=>name,
+    call:async(method,args)=>calls.push([method,args.type])});
+  assert.equal(result.status,'observed');assert.equal(result.yawChanged,true);assert.equal(result.bearingStable,true);
+  assert.deepEqual(calls,[['Input.dispatchMouseEvent','mousePressed'],['Input.dispatchMouseEvent','mouseMoved'],['Input.dispatchMouseEvent','mouseReleased']]);
+  assert.deepEqual(result.screenshots,['overworld-manual-east-before-drag','overworld-manual-east-after-drag']);
 });
 
 test('summit staging accepts real Act admission only to a fresh cloud encounter with a distinct target', async () => {

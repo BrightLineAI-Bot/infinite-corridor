@@ -131,7 +131,7 @@ export async function preflight({ input, directory, repositoryDirectory, token }
       receipt.browserProbe = { phase: rendered.phase, scenario: last?.scenario, transport,
         display: rendered.display, requestedQuality: rendered.requestedCloseViewQuality,
         observed: rendered.scenarios?.filter(scenario => scenario.status === 'render-observed').length ?? 0 };
-      receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness, hudCompass, errors, webglCaptured }) => ({
+      receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness, hudCompass, overworldManualArrow, errors, webglCaptured }) => ({
         scenario, status, captures: captures?.length ?? 0, witness: witness?.status,
         witnessSummary: witness && { before:witness.before, covered:witness.covered, advanced:witness.advanced,
           accepted:witness.accepted, jump:witness.jump, first:witness.samples?.[0], path:witness.crawl?.path,
@@ -141,6 +141,8 @@ export async function preflight({ input, directory, repositoryDirectory, token }
           missing:witness.remainingVisualRequirement },
         hudCompass: hudCompass && { status:hudCompass.status, yawChanged:hudCompass.yawChanged, northInvariant:hudCompass.northInvariant,
           before:hudCompass.before, after:hudCompass.after, screenshots:hudCompass.screenshots },
+        overworldManualArrow: overworldManualArrow && { status:overworldManualArrow.status, yawChanged:overworldManualArrow.yawChanged,
+          bearingStable:overworldManualArrow.bearingStable, screenshots:overworldManualArrow.screenshots },
         webglCaptured, errors: errors?.slice(0, 3).map(({method,details}) => ({
           method, status: details?.response?.status, resource: details?.type, cancelled: details?.canceled,
         })),
@@ -167,7 +169,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     repositoryDirectory: process.cwd(), token: process.env.GH_TOKEN });
   // This summary is produced by the harness, not by console text from the candidate.
   console.log(JSON.stringify({ status: receipt.status, probe: receipt.browserProbe, renderer: receipt.rendererClass,
-    acquisition: receipt.artifactAudit, cleanup: receipt.cleanup, scenes: receipt.scenes, offline: receipt.offline,
+    acquisition: receipt.acquisition, artifactAudit: receipt.artifactAudit, cleanup: receipt.cleanup, scenes: receipt.scenes, offline: receipt.offline,
+    errors: receipt.errors,
     screenshots: Array.isArray(receipt.screenshots) ? receipt.screenshots.length : 0 }));
   process.exitCode = receipt.status === 'render_observed' ? 0 : 2;
 }

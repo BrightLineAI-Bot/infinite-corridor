@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
-import { cleaverWitness, combatActionWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, DOOR_WAYFINDING_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
+import { cleaverWitness, combatActionWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, overworldManualArrowWitness, seedOverworldManualJourney, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, DOOR_WAYFINDING_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -36,7 +36,7 @@ try {
       if(networkCut){deniedRequests++;res.writeHead(503).end();return;}
       if(req.method!=='GET'&&req.method!=='HEAD'){res.writeHead(405).end();return;}
       const pathname=new URL(req.url,'http://localhost').pathname;
-      const releaseMount=candidate.id.startsWith('r868-')&&pathname.startsWith('/__release__/');
+      const releaseMount=/^r86[89]-/.test(candidate.id)&&pathname.startsWith('/__release__/');
       const name=safePath(releaseMount?pathname.slice('/__release__'.length):pathname);
       const inventory=releaseMount?candidate.files.release:candidate.files.preview;
       const directory=releaseMount?'release':'preview-site';
@@ -104,11 +104,12 @@ try {
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
   const walker = /^r866-/.test(candidate.id);
   const wholeWorld = /^r867-/.test(candidate.id);
-  const doorWayfinding = /^r868-/.test(candidate.id);
+  const doorWayfinding = /^r86[89]-/.test(candidate.id);
+  const overworldArrow = /^r869-/.test(candidate.id);
   const worldFixtures = {standard:'test-tile',coast:'landscape','great-tree-summit':'landscape',ashling:'combat'};
   const cases = doorWayfinding ? [...DOOR_WAYFINDING_CASES] : wholeWorld ? Object.keys(worldFixtures) : walker ? [STILLWORKS_CASES[0]]
     : [COMBAT_ACTION_CASES[1], ...STILLWORKS_CASES.slice(1).filter(id => fixtures.includes(`"${id}"`))];
-  receipt.scope=doorWayfinding?'Dungeon door wayfinding on exact frozen r868'
+  receipt.scope=doorWayfinding?`Dungeon door wayfinding${overworldArrow?' and Overworld Close View manual arrow':''} on exact frozen ${overworldArrow?'r869':'r868'}`
     :wholeWorld?'Overworld Close View and toggle on exact frozen r867'
     :walker?'Rending Hands witness on exact frozen r866':'remaining online gameplay witnesses for exact frozen r865';
   for(const scenario of cases) {
@@ -231,6 +232,7 @@ try {
     if(doorWayfinding&&scenario==='cube-doors'){
       checkpoint('normal-game-compass');
       const compassStart=events.length;
+      const overworldSeed=overworldArrow?await seedOverworldManualJourney({evaluate}):null;
       entry.hudCompass=await mainHudCompassWitness({call,evaluate,navigate,wait,capture,releaseUrl:`${origin}/__release__/`});
       entry.hudCompass.errors=events.slice(compassStart).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
       entry.hudCompass.optionalBrowserRequests=entry.hudCompass.errors.filter(({details})=>details?.type==='Other'&&details.response?.status===404&&[`${origin}/favicon.ico`,`${origin}/__release__/favicon.ico`].includes(details.response.url));
@@ -240,6 +242,16 @@ try {
         entry.reasons.push('Normal-game True north HUD witness was not observed');
       }
       if(entry.hudCompass.errors.length){entry.status='blocked';entry.reasons.push('Browser errors in normal-game compass witness');}
+      if(overworldArrow){
+        checkpoint('overworld-manual-arrow');
+        const arrowStart=events.length;
+        entry.overworldManualArrow=await overworldManualArrowWitness({call,evaluate,navigate,wait,capture,releaseUrl:`${origin}/__release__/`,seeded:overworldSeed});
+        entry.overworldManualArrow.errors=events.slice(arrowStart).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
+        entry.overworldManualArrow.optionalBrowserRequests=entry.overworldManualArrow.errors.filter(({details})=>details?.type==='Other'&&details.response?.status===404&&[`${origin}/favicon.ico`,`${origin}/__release__/favicon.ico`].includes(details.response.url));
+        entry.overworldManualArrow.errors=entry.overworldManualArrow.errors.filter(error=>!entry.overworldManualArrow.optionalBrowserRequests.includes(error));
+        if(entry.overworldManualArrow.status!=='observed'){entry.status='blocked';entry.reasons.push('Overworld Close View manual-target arrow witness was not observed');}
+        if(entry.overworldManualArrow.errors.length){entry.status='blocked';entry.reasons.push('Browser errors in Overworld manual-arrow witness');}
+      }
     }
     checkpoint('scenario-observed');
     if(scenario===CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1])>=865){

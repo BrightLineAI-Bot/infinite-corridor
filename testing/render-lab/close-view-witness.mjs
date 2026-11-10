@@ -313,6 +313,50 @@ export async function mainHudCompassWitness({ call, evaluate, navigate, wait, ca
   return {status:observed?'observed':'blocked',seeded,before:{...before,rotation:firstRotation},after:{...after,rotation:secondRotation},yawChanged,northInvariant,screenshots};
 }
 
+export async function seedOverworldManualJourney({ evaluate }) {
+  return evaluate(`(() => {
+    const g=globalThis.provingGroundGame?.();if(!g)return null;
+    g.sync();const copy=structuredClone(g.save),rx=0,ry=0;
+    for(const area of Object.values(copy.dungeonDoorNavigation?.areas||{}))if(Array.isArray(area.waypointDoorIds))area.waypointDoorIds=[];
+    Object.assign(copy.session,{area:'overworld',rx,ry,x:16,y:16,activeDungeonId:null,activeDungeonLevelId:null,dungeonReturn:null});
+    Object.assign(copy.position,{area:'overworld',rx,ry,x:16,y:16});
+    copy.overworldCloseView=true;
+    copy.manualWaypoint={kind:'section',area:'overworld',rx:rx+1,ry,label:'Render preflight east'};
+    localStorage.setItem('infinite-corridor:slot-mirror:2',JSON.stringify(copy));
+    return {slot:2,seed:copy.seed,from:{rx,ry},target:{rx:rx+1,ry},bearingDegrees:0,overworldCloseView:copy.overworldCloseView};
+  })()`);
+}
+
+export async function overworldManualArrowWitness({ call, evaluate, navigate, wait, capture, releaseUrl, seeded }) {
+  if(!seeded?.overworldCloseView||seeded.bearingDegrees!==0)return {status:'blocked',seeded,reason:'Synthetic overworld journey was not prepared',screenshots:[]};
+  await evaluate(`localStorage.setItem('infinite-corridor:active-slot-v1','2')`);
+  await navigate(releaseUrl);
+  const read=()=>evaluate(`(() => {
+    const compass=document.querySelector('#navCompass'),arrow=document.querySelector('#navManualArrow'),canvas=document.querySelector('#game'),cam=globalThis.__closeViewCam?.get(),rect=canvas?.getBoundingClientRect();
+    return {label:compass?.getAttribute('aria-label')||null,compassHidden:compass?.hidden!==false,arrowHidden:arrow?.hidden!==false,
+      dormant:arrow?.classList.contains('dormant')===true,arrived:arrow?.classList.contains('arrived')===true,
+      transform:arrow?.style.transform||'',yaw:cam?.yaw,valid:cam?.valid===true,canvas:rect&&{left:rect.left,top:rect.top,width:rect.width,height:rect.height}};
+  })()`);
+  let before;
+  for(let i=0;i<40;i++){before=await read();if(before?.label?.includes('Manual waypoint: Render preflight east')&&!before.compassHidden&&!before.arrowHidden&&!before.dormant&&!before.arrived&&before.valid&&before.canvas?.width>0)break;await wait(125);}
+  const rotation=value=>Number(/^rotate\((-?[\d.]+)deg\)$/.exec(value||'')?.[1]),firstRotation=rotation(before?.transform),screenshots=[];
+  if(!before?.label?.includes('Manual waypoint: Render preflight east')||before.compassHidden||before.arrowHidden||before.dormant||before.arrived||!before.valid||!Number.isFinite(firstRotation))
+    return {status:'blocked',seeded,before,reason:'Visible eastward manual arrow was unavailable',screenshots};
+  screenshots.push(await capture('overworld-manual-east-before-drag'));
+  const x=before.canvas.left+before.canvas.width*.72,y=before.canvas.top+before.canvas.height*.42;
+  await call('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',buttons:1,clickCount:1});
+  await call('Input.dispatchMouseEvent',{type:'mouseMoved',x:x+110,y:y+8,button:'left',buttons:1});
+  await call('Input.dispatchMouseEvent',{type:'mouseReleased',x:x+110,y:y+8,button:'left',buttons:0,clickCount:1});
+  await wait(350);
+  const after=await read(),secondRotation=rotation(after?.transform),degrees=yaw=>yaw*180/Math.PI,wrap=value=>((value+180)%360+360)%360-180;
+  const yawChanged=Number.isFinite(before.yaw)&&Number.isFinite(after?.yaw)&&Math.abs(wrap(degrees(after.yaw-before.yaw)))>5;
+  const beforeBearing=wrap(firstRotation+degrees(before.yaw)),afterBearing=wrap(secondRotation+degrees(after.yaw));
+  const bearingStable=Number.isFinite(beforeBearing)&&Number.isFinite(afterBearing)&&Math.abs(wrap(beforeBearing-seeded.bearingDegrees))<=2&&Math.abs(wrap(afterBearing-seeded.bearingDegrees))<=2;
+  const observed=yawChanged&&bearingStable&&after.label?.includes('Manual waypoint: Render preflight east')&&!after.compassHidden&&!after.arrowHidden&&!after.dormant&&!after.arrived&&after.valid;
+  if(observed)screenshots.push(await capture('overworld-manual-east-after-drag'));
+  return {status:observed?'observed':'blocked',seeded,before:{...before,rotation:firstRotation,bearing:beforeBearing},after:{...after,rotation:secondRotation,bearing:afterBearing},yawChanged,bearingStable,screenshots};
+}
+
 export async function summitWitness({ call, evaluate, wait, capture }) {
   const read = () => evaluate(`(() => {
     const g = globalThis.provingGroundGame?.();
