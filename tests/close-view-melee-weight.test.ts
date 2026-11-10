@@ -20,6 +20,13 @@ test('melee sampler uses the declared common contact and four alternating bounde
   assert.equal(sampleMeleeActionPose({...cleaver,durationMs:Infinity},.5),null);
   assert.equal(sampleMeleeActionPose({v:1,kind:'iron-fists',move:'cleaver',contactMs:90,durationMs:300},.5),null);
 });
+test('new Cleaver sampler gives three quick continuations and constrains blade pitch at contact',()=>{
+  const action={v:2,kind:'verge-cleaver',move:'cleaver',contactMs:75,durationMs:260};
+  const cuts=[1,2,3].map(step=>sampleMeleeActionPose(action,75/260,step)!);
+  assert.ok(cuts.every(q=>q&&Math.abs(q.pitch)<.08&&q.kind==='verge-cleaver'));
+  assert.ok(cuts[0].yaw*cuts[1].yaw<0&&cuts[1].yaw*cuts[2].yaw<0,'continuations reverse their cutting line');
+  assert.equal(sampleMeleeActionPose({...action,durationMs:261},1,1)?.recovery,1);
+});
 
 test('dash, opposite jab and uppercut alternate the lead and recover their guard',()=>{
   for(const opening of ['right','left'] as const){const sign=opening==='right'?1:-1,dash=sampleMeleeActionPose(fist('dash'),.3,1,opening)!,jab=sampleMeleeActionPose(fist('jab'),.3,2,opening)!,upper=sampleMeleeActionPose(fist('uppercut'),.3,3,opening)!;

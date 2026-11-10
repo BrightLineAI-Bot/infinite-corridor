@@ -9,6 +9,7 @@ export const ACTION_MOTION = Object.freeze({
 
 export const CLOSE_VIEW_MELEE_TIMING = Object.freeze({
   cleaver: Object.freeze({ durationMs: 360, contactMs: 75 }),
+  cleaverQuick: Object.freeze({ durationMs: 260, contactMs: 75 }),
   dash: Object.freeze({ durationMs: 320, contactMs: 60 }),
   jab: Object.freeze({ durationMs: 210, contactMs: 35 }),
   uppercut: Object.freeze({ durationMs: 380, contactMs: 72 }),
@@ -18,7 +19,8 @@ const MELEE_ACTION_MOVES=Object.freeze(['cleaver','dash','jab','uppercut']);
 export function normalizeMeleeActionVisual(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
   const v=Number(raw.v);
-  if(Number.isInteger(v)&&v>1)return{...raw};
+  if(v===2){const timing=CLOSE_VIEW_MELEE_TIMING.cleaverQuick,contactMs=Number(raw.contactMs),durationMs=Number(raw.durationMs);return raw.kind==='verge-cleaver'&&raw.move==='cleaver'&&durationMs===timing.durationMs&&Number.isFinite(contactMs)&&contactMs>=1&&contactMs<=timing.contactMs?{...raw,v:2,kind:'verge-cleaver',move:'cleaver',contactMs,durationMs}:null;}
+  if(Number.isInteger(v)&&v>2)return{...raw};
   const timing=CLOSE_VIEW_MELEE_TIMING[raw.move],contactMs=Number(raw.contactMs),durationMs=Number(raw.durationMs);
   if(v!==1||!MELEE_ACTION_KINDS.includes(raw.kind)||!MELEE_ACTION_MOVES.includes(raw.move)||!timing||
     !Number.isFinite(contactMs)||!Number.isFinite(durationMs)||durationMs!==timing.durationMs||
@@ -27,7 +29,7 @@ export function normalizeMeleeActionVisual(raw){
   return{...raw,v:1,kind:raw.kind,move:raw.move,contactMs,durationMs};
 }
 export function sampleMeleeActionContact(record,elapsedMs){
-  const action=normalizeMeleeActionVisual(record?.meleeAction);if(!action||action.v!==1)return null;
+  const action=normalizeMeleeActionVisual(record?.meleeAction);if(!action||![1,2].includes(action.v))return null;
   const elapsed=Math.max(0,Math.min(action.durationMs,Number(elapsedMs)||0));
   return{...action,elapsedMs:elapsed,phase:elapsed<action.contactMs?'startup':elapsed===action.contactMs?'contact':'recovery',released:elapsed>=action.contactMs,contactAgeMs:Math.max(0,elapsed-action.contactMs)};
 }
@@ -107,7 +109,7 @@ export function normalizePendingMeleeContact(raw){
   if(!finiteObject(raw))return null;
   const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return structuredClone(raw);
   const action=normalizeMeleeActionVisual(raw.action),contactMs=Number(raw.contactMs),elapsedMs=Number(raw.elapsedMs),remainingMs=Number(raw.remainingMs),aim=raw.aim,ax=Number(aim?.x),ay=Number(aim?.y),mag=Math.hypot(ax,ay);
-  if(v!==1||!validUseId(raw.id)||!action||action.v!==1||contactMs!==action.contactMs||
+  if(v!==1||!validUseId(raw.id)||!action||![1,2].includes(action.v)||contactMs!==action.contactMs||
     !['area','areaId','levelId'].every(k=>typeof raw[k]==='string'&&raw[k].length<=512)||
     !finiteObject(aim)||!Number.isFinite(mag)||Math.abs(mag-1)>1e-5||
     !boundedNumber(elapsedMs,0,contactMs)||!boundedNumber(remainingMs,0,contactMs)||
@@ -117,9 +119,9 @@ export function normalizePendingMeleeContact(raw){
     ['range','arc','damage'].every(k=>boundedNumber(p.profile[k],0,1e6))&&typeof p.profile.shape==='string'&&
     boundedNumber(p.meleeBonus,0,1e9)&&boundedNumber(p.attackDamage,0,100)&&boundedNumber(p.imbue,0,1e9)&&
     typeof p.spellblade==='boolean'&&typeof p.awakened==='boolean'&&boundedNumber(p.support,0,999)&&
-    finiteObject(p.primaryMotion)&&p.primaryMotion.v===2&&Number.isInteger(p.primaryMotion.step)&&p.primaryMotion.step>=1&&p.primaryMotion.step<=4&&
+    finiteObject(p.primaryMotion)&&((action.v===1&&p.primaryMotion.v===2&&Number.isInteger(p.primaryMotion.step)&&p.primaryMotion.step>=1&&p.primaryMotion.step<=4)||(action.v===2&&p.primaryMotion.v===3&&Number.isInteger(p.primaryMotion.step)&&p.primaryMotion.step>=1&&p.primaryMotion.step<=3))&&
     (p.boxing===null||finiteObject(p.boxing)&&boundedNumber(p.boxing.damage,0,100)&&boundedNumber(p.boxing.heal,0,100)))
-    payload={...p,kind:'cleaver',profile:{range:Number(p.profile.range),arc:Number(p.profile.arc),damage:Number(p.profile.damage),shape:p.profile.shape},meleeBonus:Number(p.meleeBonus),attackDamage:Number(p.attackDamage),imbue:Number(p.imbue),spellblade:p.spellblade,boxing:p.boxing?{damage:Number(p.boxing.damage),heal:Number(p.boxing.heal)}:null,awakened:p.awakened,primaryMotion:{v:2,step:p.primaryMotion.step},support:Number(p.support)};
+    payload={...p,kind:'cleaver',profile:{range:Number(p.profile.range),arc:Number(p.profile.arc),damage:Number(p.profile.damage),shape:p.profile.shape},meleeBonus:Number(p.meleeBonus),attackDamage:Number(p.attackDamage),imbue:Number(p.imbue),spellblade:p.spellblade,boxing:p.boxing?{damage:Number(p.boxing.damage),heal:Number(p.boxing.heal)}:null,awakened:p.awakened,primaryMotion:{v:p.primaryMotion.v,step:p.primaryMotion.step},support:Number(p.support)};
   if(action.kind==='iron-fists'&&finiteObject(p)&&p.kind==='fist'&&finiteObject(p.effect)&&
     ['life','radius','damage','pulse','untilPulse','imbue','stun'].every(k=>boundedNumber(p.effect[k],0,1e9))&&
     ['iron-fist','fist-uppercut'].includes(p.effect.kind)&&p.effect.brawler===true&&p.effect.glyphHost==='melee'&&p.effect.pulse===99&&
@@ -347,7 +349,8 @@ export function recentHeroPresentation(player,now,x,y){const q=player&&HERO_PRES
 // Accepted primary presentation cycles; their idle window never owns contact timing, hits or movement.
 export function normalizePrimaryMotion(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !Number.isInteger(raw.v) || raw.v < 2) return null;
-  if (raw.v > 2) return { ...raw };
+  if (raw.v === 3) return Number.isInteger(raw.step) && raw.step >= 1 && raw.step <= 3 ? { ...raw, v: 3, step: raw.step } : null;
+  if (raw.v > 3) return { ...raw };
   if (!Number.isInteger(raw.step) || raw.step < 1 || raw.step > 4) return null;
   return { ...raw, v: 2, step: raw.step };
 }
@@ -356,7 +359,8 @@ export function primaryVisualStage(record) {
   if (record.primaryMotion != null) {
     const motion = normalizePrimaryMotion(record.primaryMotion);
     if (!motion) return null;
-    if (motion.v > 2) return { kind: 'opaque' };
+    if (motion.v === 3) return { kind: 'cleaver-three', step: motion.step, direction: motion.step === 2 ? -1 : 1 };
+    if (motion.v > 3) return { kind: 'opaque' };
     return { kind: 'cleaver-four', step: motion.step, direction: motion.step === 1 || motion.step === 3 ? 1 : -1 };
   }
   return Number.isInteger(record.primaryStep) && record.primaryStep >= 1 && record.primaryStep <= 3
@@ -378,7 +382,8 @@ export function primaryCarryStage(record, combo, active = false) {
     }
     return null;
   }
-  if (Number.isInteger(saved.v) && saved.v > 2) return { kind: 'opaque' };
+  if (saved.v === 3) return { kind:'cleaver-three', step:saved.step, direction:saved.step===2?-1:1 };
+  if (Number.isInteger(saved.v) && saved.v > 3) return { kind: 'opaque' };
   if (saved.v === 2) return { kind: 'cleaver-four', step: saved.step, direction: saved.step === 1 || saved.step === 3 ? 1 : -1 };
   return { kind: 'legacy', step: saved.step };
 }
@@ -386,7 +391,11 @@ export function normalizePrimaryCombo(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
       typeof raw.weaponKind !== 'string' || !ATTACK_VISUAL_PROFILE.test(raw.weaponKind)) return null;
   if (raw.v != null && (!Number.isInteger(raw.v) || raw.v < 1)) return null;
-  if (Number.isInteger(raw.v) && raw.v > 2) return { ...raw, weaponKind: raw.weaponKind };
+  if (raw.v === 3) {
+    if (raw.weaponKind !== 'verge-cleaver' || !Number.isInteger(raw.step) || raw.step < 1 || raw.step > 3) return null;
+    return { ...raw, weaponKind: raw.weaponKind, v: 3, step: raw.step };
+  }
+  if (Number.isInteger(raw.v) && raw.v > 3) return { ...raw, weaponKind: raw.weaponKind };
   if (raw.v === 2) {
     if (raw.weaponKind !== 'verge-cleaver' || !Number.isInteger(raw.step) || raw.step < 1 || raw.step > 4) return null;
     return { ...raw, weaponKind: raw.weaponKind, v: 2, step: raw.step };
@@ -488,12 +497,13 @@ export function acceptCleaverChoreography(prior, logicalNow) {
 export function advancePrimaryCombo(player, weaponKind, logicalNow) {
   if (weaponKind !== 'cinder-pike' && weaponKind !== 'verge-cleaver') { player.primaryCombo = null; return null; }
   const prior = normalizePrimaryCombo(player.primaryCombo);
-  const four = weaponKind === 'verge-cleaver', clocked = four && arguments.length >= 3;
+  const cleaver = weaponKind === 'verge-cleaver', clocked = cleaver && arguments.length >= 3;
   // A supported current action may start at one without rewriting an opaque future counter.
-  if (clocked && prior?.v > 2) return 1;
-  let continuing = prior?.weaponKind === weaponKind && (four ? prior.v === 2 : prior.v == null || prior.v === 1);
+  if (clocked && prior?.v > 3) return 1;
   const window = prior?.resetWindow, knownWindow = window && typeof window === 'object' && !Array.isArray(window) && window.v === 1;
   const opaqueWindow = window != null && !knownWindow;
+  const legacyFour=cleaver&&(!clocked||prior?.v===2&&opaqueWindow);
+  let continuing = prior?.weaponKind === weaponKind && (legacyFour?prior.v===2:cleaver ? prior.v === 3 : prior.v == null || prior.v === 1);
   const validClock = typeof logicalNow === 'number' && Number.isFinite(logicalNow) && logicalNow >= 0 && logicalNow <= 1e12;
   if (clocked && !opaqueWindow) {
     const at = knownWindow ? window.acceptedLogicalMs : NaN;
@@ -501,9 +511,10 @@ export function advancePrimaryCombo(player, weaponKind, logicalNow) {
     const elapsed = logicalNow - at;
     continuing = continuing && validClock && validAt && elapsed >= 0 && elapsed < CLEAVER_COMBO_IDLE_MS;
   }
-  const step = continuing ? prior.step % (four ? 4 : 3) + 1 : 1;
+  const step = continuing ? prior.step % (legacyFour?4:3) + 1 : 1;
   const next = { ...(prior || {}), weaponKind, step };
-  if (four) next.v = 2;
+  if (legacyFour)next.v=2;
+  else if (cleaver) next.v = 3;
   else delete next.v;
   if (clocked && !opaqueWindow && validClock)
     next.resetWindow = { ...(knownWindow ? window : {}), v: 1, acceptedLogicalMs: logicalNow };

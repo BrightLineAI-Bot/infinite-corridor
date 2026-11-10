@@ -184,7 +184,7 @@ test('accepted primary stage, visual clock and unknown metadata survive pause/re
   assert.equal(back.player.attackVisual.primaryStep,2);assert.equal(back.player.attackVisual.weaponKind,'cinder-pike');assert.deepEqual(back.player.attackVisual.aim,accepted.aim);
   assert.deepEqual(back.player.primaryCombo.future,{kept:true});assert.deepEqual(back.player.attackVisual.future,{kept:true});
   back.setPaused(false,205000);assert.equal(closeViewPlayerAction(back,205000).amount,.25);assert.equal(back.player.actionVisualUntil,205180);
-  back.player.attackReadyAt=0;back.primaryAttack(205001);assert.deepEqual(back.player.attackVisual.primaryMotion,{v:2,step:1},'new accepted Cleaver family starts its v2 cycle');
+  back.player.attackReadyAt=0;back.attackAction='attack';try{back.primaryAttack(205001);}finally{back.attackAction=null;}assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,step:1},'new accepted Close View Cleaver family starts its v3 cycle');
   const legacy=freshSave();legacy.session.playerRuntime.attackMotion=120;legacy.session.playerRuntime.attackVisual={profile:'melee',weaponKind:'cinder-pike',durationMs:240};const old=new Game(migrateSave(legacy),300000);assert.equal(closeViewPlayerAction(old,300000).amount,.5);
   for(const primaryStep of [0,4,1.5,'2',Infinity])assert.equal(normalizeAttackVisual({profile:'melee',durationMs:240,primaryStep}),null);
   for(const raw of [[],{weaponKind:'bad/path',step:1},{weaponKind:'cinder-pike',step:4}])assert.equal(normalizePrimaryCombo(raw),null);
@@ -250,7 +250,7 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
       g.attackAction='attack';try{g.primaryAttack(now);}finally{g.attackAction=null;}
       assert.equal(g.player.attackVisual.cleaverChoreography?.v,1);
       render(screen,g,390,844,now);
-      sameGeometry(gl.uploads.at(-1),ready,'authored Cleaver cut enters from the exact partial-walk carry');
+      sameGeometry(gl.uploads.at(-1),ready,'new Cleaver cut retains the exact partial-walk boundary before its quick crouch');
     }
     for(const kind of ['verge-cleaver','cinder-pike'])for(const hz of [30,60]){
       const g=fixture(kind);resetCloseViewCamera();let now=100400;render(screen,g,390,844,now);

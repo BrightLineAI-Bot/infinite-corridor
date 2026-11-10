@@ -27,7 +27,7 @@ test('actual Cleaver acceptance continues at 999ms and resets at 1000/1001ms wit
   for(const gap of [999,1000,1001]){
     const{g,foe}=fixture(),hp=foe.hp;assert.equal(press(g,start),1);const first=contact(g),damage=hp-foe.hp;
     const prior=copy(g.player.attackVisual),combo=copy(g.player.primaryCombo),before=foe.hp;
-    assert.deepEqual(primaryCarryStage(prior,combo,false),{kind:'cleaver-four',step:1,direction:1});
+    assert.deepEqual(primaryCarryStage(prior,combo,false),{kind:'cleaver-three',step:1,direction:1});
     assert.equal(press(g,start+gap),gap<1000?2:1);
     assert.equal(stamp(g),start+gap);const ready=g.player.attackReadyAt-(start+gap),second=contact(g);
     assert.equal(foe.hp,before-damage);assert.equal(ready,420);
@@ -35,9 +35,9 @@ test('actual Cleaver acceptance continues at 999ms and resets at 1000/1001ms wit
     g.update(.01,input(),start+gap+500);assert.equal(foe.hp,before-damage,'each accepted attack contacts once');
   }
 });
-test('four distinct voluntary cuts cycle, and any partial sequence restarts after the idle window',()=>{
-  const{g}=fixture(),steps=[];for(let i=0;i<5;i++){steps.push(press(g,start+i*500));contact(g);}assert.deepEqual(steps,[1,2,3,4,1]);
-  for(const length of [1,2,3,4]){const{g}=fixture();for(let i=0;i<length;i++){assert.equal(press(g,start+i*500),i+1);contact(g);}assert.equal(press(g,start+(length-1)*500+1000),1);}
+test('three distinct voluntary cuts cycle, and any partial sequence restarts after the idle window',()=>{
+  const{g}=fixture(),steps=[];for(let i=0;i<5;i++){steps.push(press(g,start+i*500));contact(g);}assert.deepEqual(steps,[1,2,3,1,2]);
+  for(const length of [1,2,3]){const{g}=fixture();for(let i=0;i<length;i++){assert.equal(press(g,start+i*500),i+1);contact(g);}assert.equal(press(g,start+(length-1)*500+1000),1);}
 });
 test('refusal, contact, Echo and clone work never advance or refresh accepted-input metadata',()=>{
   const{g}=fixture();g.save.equipment.primary=normalizeSockets({...g.save.equipment.primary,tier:'relic',affixes:[]});g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
@@ -97,6 +97,12 @@ test('old v2 without a stamp restarts only on acceptance, while opaque future co
   const back=new Game(deserializeSave(serializeSave(opaque.exportSnapshot(start+500))),900000);assert.deepEqual(back.player.primaryCombo,future);
   const futureWindow={v:8,acceptedLogicalMs:0,extra:{kept:true}},known={primaryCombo:{weaponKind:'verge-cleaver',v:2,step:3,resetWindow:copy(futureWindow)}};
   assert.equal(advancePrimaryCombo(known,'verge-cleaver',start),4);assert.deepEqual(known.primaryCombo.resetWindow,futureWindow);
+  const {g:legacyWindow}=fixture();legacyWindow.player.primaryCombo={...known.primaryCombo,step:3};
+  assert.equal(press(legacyWindow,start),4);
+  assert.deepEqual(legacyWindow.player.attackVisual.primaryMotion,{v:2,step:4});
+  assert.equal(legacyWindow.pendingMeleeContact.action.v,1);
+  assert.deepEqual(legacyWindow.player.primaryCombo.resetWindow,futureWindow);
+  contact(legacyWindow);
 });
 test('zero, backward and malformed clocks fail safely without dropping unknown metadata',()=>{
   const p={};assert.equal(advancePrimaryCombo(p,'verge-cleaver',0),1);assert.equal(p.primaryCombo.resetWindow.acceptedLogicalMs,0);
