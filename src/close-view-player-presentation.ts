@@ -4,7 +4,7 @@ const LEGACY_HANDS = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
 // Source labels are retained. In the existing projection source-left is the
 // displayed anatomical right. Resolve from the FINAL held owner, never equipment.
 export function cleaverHandRoles(finalProfile, stage = null) {
-  return finalProfile === 'verge-cleaver' && (!stage || stage.kind === 'cleaver-four') ? CLEAVER_RIGHT : LEGACY_HANDS;
+  return finalProfile === 'verge-cleaver' && (!stage || stage.kind === 'cleaver-four' || stage.kind==='cleaver-three') ? CLEAVER_RIGHT : LEGACY_HANDS;
 }
 const cutSmooth = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
 const unit = value => Math.max(0, Math.min(1, Number(value)||0));
@@ -36,22 +36,23 @@ export function stonePlaceWeight(phase, reducedMotion = false) {
 // renderer can also use it for a bounded weapon trail without inventing another timer.
 export function sampleMeleeActionPose(action, progress = 0, variant = 1, fistLead = 'right') {
   const cleaver=action?.v===1&&action.kind==='verge-cleaver'&&action.move==='cleaver';
+  const quickCleaver=action?.v===2&&action.kind==='verge-cleaver'&&action.move==='cleaver';
   const fists=action?.v===1&&action.kind==='iron-fists'&&['dash','jab','uppercut'].includes(action.move);
   const duration=Number(action?.durationMs),contactMs=Number(action?.contactMs);
-  if((!cleaver&&!fists)||!Number.isFinite(duration)||duration<=0||!Number.isFinite(contactMs)||contactMs<0||contactMs>duration)return null;
+  if((!cleaver&&!quickCleaver&&!fists)||!Number.isFinite(duration)||duration<=0||!Number.isFinite(contactMs)||contactMs<0||contactMs>duration)return null;
   const p=unit(progress),contact=unit(contactMs/duration),before=contact>0?cutSmooth(p/contact):1;
   const followEnd=Math.min(1,contact+Math.max(.12,(1-contact)*.38));
   const follow=p<=contact?0:cutSmooth((p-contact)/Math.max(.001,followEnd-contact));
   const recovery=p<=followEnd?0:cutSmooth((p-followEnd)/Math.max(.001,1-followEnd));
   const weight=(p<=contact?before:1-recovery),drive=before*(1-.28*follow)*(1-recovery);
   const step=Math.max(1,Math.min(4,Math.trunc(Number(variant))||1));
-  const up=step===1||step===3,diagonal=step>2?-1:1;
+  const up=step===1||step===3,diagonal=quickCleaver?(step===2?-1:1):(step>2?-1:1);
   const travel = p <= contact ? .72 * before : Math.min(1, .72 + .28 * follow);
   const openingLead=fistLead==='left'?-1:1,lead=action.move==='jab'?-openingLead:openingLead;
-  return Object.freeze({kind:action.kind,move:action.move,progress:p,contact,phase:p<contact?'windup':p<=followEnd?'follow-through':'recovery',weight,drive,recovery,lead,openingLead,cutIndex:step,
-    pitch:cleaver?(up?-.72+1.54*travel:.82-1.54*travel):0,
-    yaw:cleaver?diagonal*(.30-.62*travel):0,rise:cleaver?(up?travel:1-travel):0,
-    side:cleaver?diagonal*(.13-.27*travel):0,twist:cleaver?diagonal*(.22-.44*travel)*weight:lead*(action.move==='uppercut'?.30:.18)*weight});
+  return Object.freeze({kind:action.kind,actionVersion:action.v,move:action.move,progress:p,contact,phase:p<contact?'windup':p<=followEnd?'follow-through':'recovery',weight,drive,recovery,lead,openingLead,cutIndex:step,
+    pitch:quickCleaver?(.10-.18*travel):cleaver?(up?-.72+1.54*travel:.82-1.54*travel):0,
+    yaw:(cleaver||quickCleaver)?diagonal*(.30-.62*travel):0,rise:quickCleaver?.18+.12*travel:cleaver?(up?travel:1-travel):0,
+    side:(cleaver||quickCleaver)?diagonal*(.13-.27*travel):0,twist:(cleaver||quickCleaver)?diagonal*(.22-.44*travel)*weight:lead*(action.move==='uppercut'?.30:.18)*weight});
 }
 export function cleaverCutMotion(stage, phase = 0) {
   const p = Math.max(0, Math.min(1, Number(phase)||0)), step = stage?.kind === 'cleaver-four' ? stage.step : 1;

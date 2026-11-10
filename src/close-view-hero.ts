@@ -517,13 +517,20 @@ function weightedMeleePose(asset,state,pose,motion) {
     state.clip=motion.move==='dash'?'derived-weighted-dash-punch':motion.move==='jab'?'derived-weighted-opposite-jab':'derived-weighted-rising-uppercut';state.clipTime=motion.progress;
     return;
   }
+  if(motion.kind==='verge-cleaver'&&motion.actionVersion===2){
+    // The first cut inherits the source dagger's fast crouch/load; continuations
+    // keep its lower-body weight while the accepted descriptor owns distinct arms.
+    const source=sourceTime(motion.progress,asset.clips.Dagger_Attack.duration);
+    clipPose(asset,asset.clips.Dagger_Attack,source,state.other);
+    blend(pose,state.other,Math.min(1,w*(motion.cutIndex===1?.82:.52)));
+  }
   rotateY(pose,27,motion.twist);rotateX(pose,24,(.12-.05*motion.rise)*w);rotateX(pose,4,-.055*w);
   rotateX(pose,30,-.18*d);rotateX(pose,32,.10*d);build(asset,state,pose);state.other.set(pose);
   const g=state.global,s=12*16,t=state.primaryTarget;
   // Source right hand: a low rusty-gladius carry, then one of four alternating up/down diagonals.
   t[0]=g[s+12]+.10+motion.side;t[1]=g[s+13]-.18+.18*motion.rise;t[2]=g[s+14]+.28+.16*motion.drive;
   state.primaryGripResidual=solveArm(state,state.other,true,t,motion.yaw,motion.pitch);blend(pose,state.other,w);
-  state.clip='derived-weighted-cleaver-'+motion.cutIndex;state.clipTime=motion.progress;
+  state.clip=(motion.actionVersion===2?'derived-quick-cleaver-cut-':'derived-weighted-cleaver-')+motion.cutIndex;state.clipTime=motion.progress;
 }
 // Descriptor-owned counter-load and settling around the canonical contact pose.
 // Endpoints and contact are exact zeros: no new clock, root travel, leg solver or grip pass.
@@ -610,12 +617,13 @@ export function sampleCloseViewHero(asset, state, input, out) {
     state.primaryStep=primaryStage?.step||1;
   }
   else if(meleeMotion){
-    if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:meleeMotion.cutIndex});
+    if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,meleeMotion.actionVersion===1?{kind:'cleaver-four',step:meleeMotion.cutIndex}:input.primaryCarryStage?.kind==='cleaver-four'?input.primaryCarryStage:{kind:'cleaver-four',step:1});
     else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,meleeMotion.lead<0?'left':'right');}
     weightedMeleePose(asset,state,state.pose,meleeMotion);
     weightedMeleeLoad(state.pose,meleeMotion);
   }
   else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;
+  else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='cleaver-three')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:1});
   else if(carryProfile==='verge-cleaver'&&(!primaryStage||primaryStage.kind==='cleaver-four'))cleaverFourPose(state,state.pose,primaryAction?p:0,primaryStage);
   else if(primaryAction)primaryPose(state,state.pose,primaryAction,p,action.primaryStep);
   else if(heldPrimary)primaryPose(state,state.pose,heldPrimary,0);

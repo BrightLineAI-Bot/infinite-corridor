@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Game } from '../src/game.ts';
 import { migrateSave } from '../src/types.ts';
+import { deserializeSave, serializeSave } from '../src/persistence.ts';
+import { createCombatant } from '../src/combat.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
-import { closeViewPlayerAction, CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { closeViewPlayerAction, closeViewMeleeVisualRoute, CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
 import { loadCloseViewHero, decodeCloseViewHero, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from '../src/close-view-hero.ts';
 import { closeViewGLStats, resetCloseViewGL } from '../src/close-view-gl.ts';
 import { render as baseRender } from '../src/renderer.ts';
@@ -48,6 +50,20 @@ test('Salvage and future primaries keep the canonical generic presentation on im
     }
     const legacy=fixture(salvage()),legacyAt=520000;legacy.player.attackUntil=legacyAt+240;legacy.player.actionVisualUntil=legacyAt+240;legacy.player.attackVisual={profile:'melee',durationMs:240,weaponKind:'salvage-blade'};const record=clone(legacy.player.attackVisual);resetCloseViewCamera();render(screen,legacy,legacyAt+80);assert.ok(gl.uploads.at(-1).length>0);assert.deepEqual(legacy.player.attackVisual,record,'legacy accepted melee without poseMs remains safe and unchanged');
   } finally { CLOSE_VIEW_HOOKS.gl=null;resetCloseViewGL();setCloseViewCanvasFactory(null);for(const n of names){if(old.get(n)===undefined)delete globalThis[n];else globalThis[n]=old.get(n);} }
+});
+
+test('Verge Cleaver accepts a three-cut Close View transaction with exact timing and resume',()=>{
+  const cleaver=()=>({id:'primary-verge-cleaver',name:'Verge Cleaver',slot:'primary',power:5,property:'impact'});const {g,foe}=(()=>{const g:any=fixture(cleaver());g.save.closeView=true;g.save.activeWeaponSlot='primary';g.save.lastAim={x:1,y:0};for(const t of g.map.tiles){t.blocked=false;t.openAir=false;}const foe:any=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{id:'cleaver-target',hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];return{g,foe};})();
+  let hp=foe.hp;
+  for(let step=1;step<=3;step++){
+    const now=100000+(step-1)*420;g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(now,{x:1,y:0});}finally{g.attackAction=null;}
+    assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,mode:'quick',step});assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',step,v:3,mode:'quick',resetWindow:{v:1,acceptedLogicalMs:now}});
+    assert.equal(g.player.attackVisual.durationMs,260);assert.deepEqual(g.player.attackVisual.meleeAction,{v:2,kind:'verge-cleaver',move:'cleaver',contactMs:75,durationMs:260});assert.deepEqual(closeViewMeleeVisualRoute(g.player.attackVisual,true),{meleeAction:g.player.attackVisual.meleeAction,legacyCleaverFrame:false},'production renderer routes v2 without the old frame');assert.equal(g.pendingMeleeContact.releaseAt,now+75);assert.equal(foe.hp,hp);
+    g.releasePendingMeleeContact(now+75);assert.ok(foe.hp<hp);hp=foe.hp;
+  }
+  g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(101260,{x:1,y:0});}finally{g.attackAction=null;}assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});
+  const saved=deserializeSave(serializeSave(g.exportSnapshot(101280))),back:any=new Game(saved,200000);back.installSystems();assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});assert.deepEqual(back.pendingMeleeContact.payload.primaryMotion,{v:3,mode:'quick',step:1});assert.equal(back.pendingMeleeContact.releaseAt,200055);
+  const old={primaryMotion:{v:2,step:4},meleeAction:{v:1,kind:'verge-cleaver',move:'cleaver',contactMs:75,durationMs:360}};assert.deepEqual(closeViewMeleeVisualRoute(old,true),{meleeAction:old.meleeAction,legacyCleaverFrame:true},'persisted v1/v2 records retain their legacy frame route');
 });
 
 test('generic primaries share interruption priority and canonical strike/Echo origin',()=>{

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 871 gives the Verge Cleaver three quick cuts: the first borrows the Salvage Blade's fast crouch and two alternating follow-ups keep the gladius level through contact. Damage, reach, timing of the hit and cooldown are unchanged.
+
 - Release 870 lets ordinary monsters drop the Salvage Blade through their normal gear roll (about 1 in 12 gear drops). Bosses, elites, special foes, caches and shops are unchanged.
 
 - Release 869 makes Overworld Close View quest and waypoint arrows follow the camera while keeping the top-down compass north-up.
