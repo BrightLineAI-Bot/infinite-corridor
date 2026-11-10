@@ -17,6 +17,24 @@ export function pentagonWayfinding(save, map, player, previous = null) {
   const rooms = plan.nodes.filter(n => seen.has(n.n)).map(n => ({ id: `${p.base}:f${n.n + 1}`, name: n.name, current: n.n === p.n,
     floor: n.kind === "outer" ? "Outer ring" : n.kind === "heart" ? `Heart ${Number(n.id.slice(1)) + 1}` : "Inner ring" }));
   const known = new Map(rooms.map(n => [n.id, n])), prior = previous?.to === map.id && known.get(previous.from);
+  const byNode = new Map(plan.nodes.filter(n => seen.has(n.n)).map(n => [n.id, known.get(`${p.base}:f${n.n + 1}`)]));
+  const opened = new Set(history.labOpen || []), connections = [];
+  // A known pair proves only a mapped connection, never which door was traversed.
+  // Secret edges and optional parallel landings have no durable traversal receipt.
+  for (const edge of plan.edges) {
+    const from = byNode.get(edge.a), to = byNode.get(edge.b);
+    if (!from || !to || edge.secret || (edge.shortcut && !opened.has(edge.shortcut))) continue;
+    const heart = edge.a.startsWith("h") && edge.b.startsWith("h"), upper = heart && plan.nodes.find(n => n.id === edge.a);
+    const sealed = edge.sigil && !(p.V >= 4 ? (history.pentOpened || []).includes(`e:${edge.a}-${edge.b}`) : history.pentSigil);
+    const plate = edge.plate && !opened.has(`plate:${plan.nodes.find(n => n.id === edge.plate)?.n}`);
+    const keeper = heart && upper?.boss && (p.V === 2 || p.V >= 4) && !(history.pentBosses || []).includes(upper.n);
+    connections.push({ from: from.id, to: to.id, source: from.name, destination: to.name,
+      kind: heart ? "Stair" : edge.shortcut ? "Opened door shortcut" : "Door", note: sealed ? "sigil sealed" : plate ? "pressure plate" : keeper ? "descent held by keeper" : "" });
+  }
+  for (const link of plan.links || []) {
+    const from = byNode.get(link.near), to = byNode.get(link.deep);
+    if (from && to && opened.has(pentagonLinkKey(link.id))) connections.push({ from: from.id, to: to.id, source: from.name, destination: to.name, kind: "Opened shortcut", note: "" });
+  }
   const doors = (map.objects || []).filter(o => ["buildingStair", "exit", "pentShortcut"].includes(o.kind) && o.state !== "hidden" && (!o.secretDoor || known.has(o.toId))).map(o => {
     const destination = known.get(o.toId), back = !!prior && o.toId === prior.id;
     const blocked = !!((o.lock && !(history.labKeys || []).includes(o.lock)) || (o.barred && !(history.labOpen || []).includes(o.shortcutKey)) || (o.sigil && !o.unsealed) || (o.bossGate && !(history.pentBosses || []).includes(B.node)) || (o.plateLock && !(history.labOpen || []).includes(`plate:${B.node}`) && !map.tiles?.some(t => t.plate && t.build === "stone")) || (o.gate === "levers" && (history.pentLevers || []).length < PENTAGON.levers) || (o.kind === "pentShortcut" && o.end !== "deep" && !(history.labOpen || []).includes(pentagonLinkKey(o.link))));
@@ -25,7 +43,7 @@ export function pentagonWayfinding(save, map, player, previous = null) {
   });
   const entry = save?.session?.floorEntry;
   const arrival = entry?.id === map.id && Number.isFinite(entry.x) && Number.isFinite(entry.y) ? { x: entry.x, y: entry.y } : null;
-  return { rooms, doors, previous: prior?.name || null, arrival, position: { x: Math.round(player.x), y: Math.round(player.y) } };
+  return { rooms, connections, doors, previous: prior?.name || null, arrival, position: { x: Math.round(player.x), y: Math.round(player.y) } };
 }
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per

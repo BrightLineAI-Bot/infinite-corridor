@@ -43,7 +43,7 @@ test('real door transitions and repeated long backtracking retain exact previous
       assert.ok(result.doors.some(d => d.back && g.map.objects.find(o => o.id === d.id).toId === from));
       assert.equal(result.rooms.filter(r => r.current).length, 1);
     }
-    assert.equal(view(g).rooms.length, 3);
+    assert.equal(view(g).rooms.length, 3); assert.equal(view(g).connections.length, 2);
     g.loadArea('overworld', false); assert.equal(g.pentagonPrevious, null);
     assert.equal(view(g), null);
   }
@@ -69,7 +69,7 @@ test('canonical reload keeps discovery, saved arrival, unknown fields and pinned
   g.save.futureWayfindingField = { untouched: true }; g.save.session.floorEntry.future = 'keep';
   g.sync(); const before = view(g), tiles = JSON.stringify(g.map.tiles);
   const save = deserializeSave(serializeSave(g.save)), reloaded = new Game(save, 0), after = view(reloaded);
-  assert.deepEqual(after.rooms, before.rooms); assert.deepEqual(after.arrival, before.arrival); assert.equal(after.previous, null);
+  assert.deepEqual(after.rooms, before.rooms); assert.deepEqual(after.connections, before.connections); assert.deepEqual(after.arrival, before.arrival); assert.equal(after.previous, null);
   assert.deepEqual(save.futureWayfindingField, { untouched: true }); assert.equal(save.session.floorEntry.future, 'keep');
   assert.equal(JSON.stringify(reloaded.map.tiles), tiles); assert.equal(reloaded.map.building.V, 9); assert.equal(save.version, 14);
 });
@@ -86,6 +86,24 @@ test('route status follows durable key/bolt state and a live weighted pressure p
   assert.equal(view(g).doors.find(d => d.id === door.id).blocked, true);
   history.labKeys = ['test-key']; history.labOpen.push('test-bolt');
   assert.equal(view(g).doors.find(d => d.id === door.id).blocked, false);
+});
+
+test('overview excludes unknown endpoints and unproven secret/optional routes; opened shortcuts survive reload', () => {
+  const { g, plan } = setup(), history = g.save.consequences.dungeons[`${plan.base}:f1`];
+  assert.deepEqual(view(g).connections, []);
+  history.labSeen = plan.nodes.map(n => n.n);
+  const closed = view(g).connections;
+  assert.equal(closed.length, plan.edges.filter(e => !e.secret && !e.shortcut).length);
+  assert.ok(!closed.some(e => e.kind === 'Opened shortcut'));
+  const link = plan.links[0]; history.labOpen = [`link:${link.id}`];
+  const opened = view(g).connections;
+  assert.equal(opened.length, closed.length + 1);
+  assert.ok(opened.some(e => e.kind === 'Opened shortcut' && e.from === id(plan, link.near) && e.to === id(plan, link.deep)));
+  history.labSeen = history.labSeen.filter(n => n !== plan.nodes.find(n => n.id === link.deep).n);
+  assert.ok(!view(g).connections.some(e => e.kind === 'Opened shortcut'), 'an open receipt never names an unknown endpoint');
+  history.labSeen = plan.nodes.map(n => n.n); g.sync();
+  const reloaded = new Game(deserializeSave(serializeSave(g.save)), 0);
+  assert.deepEqual(view(reloaded).connections, opened);
 });
 
 
