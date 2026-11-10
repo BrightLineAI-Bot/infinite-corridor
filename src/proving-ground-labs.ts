@@ -340,11 +340,12 @@ function stampVerticalGallery(map, family) {
   ];
   map.hall = { type: "gallery", name: family === "pentagon" ? "The Terraced Chalice" : "The Lantern Terraces", tall: true,
     ceiling: "skylit", ceilingHeight: 9, open: false, sky: true, backdrop: "paleWell",
+    ...(family==="keep"?{galleryLighting:"daylight-v1"}:{}),
     features: [{ kind: "skylight", x: cx, y: upperY + 1 }, { kind: "lamp", x: cx - 8, y: upperY + 4 }, { kind: "lamp", x: cx + 8, y: upperY + 4 }] };
   return { found: true, family, elevationCap: 5, levelHeightTiles: .34, clearBounds: { x0: 1, y0: 1, x1: W - 2, y1: H - 2 }, entry, mainRoute: "five broad north ramps",
     branches: [{ id: "lantern-branch", side: "west", kind: kinds.west, endpoint: { x: westEdge + 2, y: upperY + 4 } },
       { id: "bridge-branch", side: "east", kind: kinds.east, endpoint: { x: eastEdge - 2, y: upperY + 4 } }],
-    returnLoop: { found: true, northBridge: { from: { x: cx - 6, y: upperY + 1 }, to: { x: cx + 6, y: upperY + 1 } } }, sharedVolume: { safeFloor: true, level: 2, bounds: { x0: cx - 4, y0: upperY + 3, x1: cx + 4, y1: terraceTop - 1 } }, requiredDrone: false, boostSpur: boost, droneLaunch: boost.length===5 ? { x: boost[4].x, y: boost[4].y + 1 } : null, authoredBrightness: "supported skylit hall metadata with paleWell backdrop; final exposure remains renderer-controlled",
+    returnLoop: { found: true, northBridge: { from: { x: cx - 6, y: upperY + 1 }, to: { x: cx + 6, y: upperY + 1 } } }, sharedVolume: { safeFloor: true, level: 2, bounds: { x0: cx - 4, y0: upperY + 3, x1: cx + 4, y1: terraceTop - 1 } }, requiredDrone: false, boostSpur: boost, droneLaunch: boost.length===5 ? { x: boost[4].x, y: boost[4].y + 1 } : null, authoredBrightness: family==="keep" ? "daylight-v1" : "lantern-lit skylight",
     limits: "Scratch geometry demonstrates routing and composition only; it does not guarantee a future procedural placement or identical apparent brightness on every quality tier." };
 }
 export function findLabPentagon(seed, now = 0) {
