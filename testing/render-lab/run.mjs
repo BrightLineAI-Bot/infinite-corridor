@@ -6,8 +6,8 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
-import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
-import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation, diagnosticObservation } from './resources.mjs';
+import { assess, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
+import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
 import { cleaverWitness, closeViewWitness, routePanelWitness, summitWitness, CLEAVER_CASE, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
@@ -93,7 +93,6 @@ try {
   if (fixtures.includes(`"${SUMMIT_CASE}"`)) cases.push(SUMMIT_CASE);
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[],captures:[]};receipt.scenarios.push(entry);
-    const marker = 'ic-render-diagnostics:' + scenario;
     checkpoint('scenario-navigate');
     const closeView=STILLWORKS_CASES.includes(scenario);
     const summit=scenario===SUMMIT_CASE;
@@ -101,10 +100,7 @@ try {
     const navigation=await call('Page.navigate',{url:`${origin}/?${query}`});
     if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
     const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
-    currentObservation=()=>{
-      entry.navigation=observe();
-      entry.diagnosticsStages=diagnosticObservation(events.slice(start),sessionId,entry.navigation.contextId,marker);
-    };
+    currentObservation=()=>{entry.navigation=observe();};
     checkpoint('scenario-document');
     const loaded=await waitForBrowserScene(()=>{const o=observe();return o.committed&&o.domReady&&Number.isInteger(o.contextId);});
     currentObservation();
@@ -128,17 +124,22 @@ try {
     await wait(1500);
     checkpoint('scenario-diagnostics');
     if(!summit) for(let i=0;i<2;i++){
-      const sample = await evaluate(`(async()=>{
-        const mark = stage => console.debug(${JSON.stringify(marker)}, ${i}, stage);
-        mark('evaluation-entered');
-        const module = await import(new URL(${JSON.stringify(diagnosticsPath)}, location.href));
-        mark('import-resolved');
-        const result = module.closeViewRenderDiagnostics();
-        result.effectiveQuality = globalThis.provingGroundGame?.()?.presentation?.effectiveQuality ?? null;
-        mark('diagnostics-returned');
-        return result;
-      })()`,true);
-      entry.samples.push(sample);
+      await evaluate('document.querySelector("#pgDiagnosticsToggle").click()');
+      let observation;
+      const opened = await waitForBrowserScene(async ()=>{
+        observation=await evaluate(`(() => {
+          const panel=document.querySelector('#pgDiagnostics');
+          if(!panel?.open)return null;
+          const rows=Object.fromEntries([...panel.querySelectorAll('#pgDiagnosticsBody dt')]
+            .map(term=>[term.textContent,term.nextElementSibling?.textContent]));
+          const effectiveQuality=globalThis.provingGroundGame?.()?.presentation?.effectiveQuality ?? null;
+          return {rows,effectiveQuality};
+        })()`);
+        return !!observation;
+      });
+      if(!opened)throw Error('Public renderer diagnostics did not open');
+      await evaluate('document.querySelector("#pgDiagnosticsClose").click()');
+      entry.samples.push({...diagnosticsFromRows(observation.rows,candidate.id),effectiveQuality:observation.effectiveQuality});
       await wait(300);
     }
     checkpoint('scenario-witness');
@@ -158,6 +159,7 @@ try {
     checkpoint('scenario-screenshot');
     entry.screenshot=await capture();
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
+    if(entry.samples.some(sample=>sample.clientError))entry.errors.push({method:'Public renderer diagnostics reported a client error'});
     if(summit){
       entry.scene='world-map';
       entry.reasons=entry.errors.length ? ['Browser errors in summit fixture'] : [];

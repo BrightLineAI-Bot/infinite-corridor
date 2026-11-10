@@ -15,6 +15,18 @@ export function assess(samples, errors = []) {
   return { status: reasons.length ? 'blocked' : 'render-observed', reasons,
     visualAcceptance: 'not-reviewed', devicePerformance: 'not-measured' };
 }
+export function diagnosticsFromRows(rows, candidateId) {
+  if (rows?.['Game release'] !== candidateId) throw Error('Diagnostics show a different candidate');
+  const scene = /^(active|inactive; historical): (\w+), completed frame (\d+)$/.exec(rows['Close View scene']);
+  const player = /^(?:active|inactive; historical): (\w+)$/.exec(rows['Player representation']);
+  const readiness = value => /^readiness: ([\w-]+);/.exec(value)?.[1];
+  return {
+    active: scene?.[1] === 'active', backend: scene?.[2], frame: Number(scene?.[3] ?? 0),
+    player: player?.[1], asset: rows['Hero asset'],
+    gpu: { state: readiness(rows['GPU scene']), heroState: readiness(rows['Hero GPU']) },
+    clientError: rows['Recent errors'] !== 'none',
+  };
+}
 export function safePath(pathname) {
   let path;
   try { path = decodeURIComponent(pathname).replace(/^\//, ''); } catch { throw Error('malformed path'); }

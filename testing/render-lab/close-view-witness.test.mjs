@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cleaverWitness, closeViewWitness, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
-import { waitForBrowserScene, navigationObservation, diagnosticObservation } from './resources.mjs';
+import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
   assert.equal(movementKey(-Math.PI / 2, 1, 0), 'd');
@@ -107,24 +107,4 @@ test('navigation readiness ties buffered events to the new loader and live defau
   events.push(event('Runtime.executionContextDestroyed', { executionContextId: 3 }), event('Network.loadingFailed', {}));
   assert.equal(observe().contextId, undefined);
   assert.equal(observe().failedRequests, 1);
-});
-
-test('failed diagnosis retains only recognized stages from the fixture context', () => {
-  const marker = 'ic-render-diagnostics:cleaver-echo-inspection';
-  const event = (context, sample, stage, label = marker) => ({
-    sessionId: 'target', method: 'Runtime.consoleAPICalled',
-    params: { executionContextId: context, args: [label, sample, stage].map(value => ({ value })) },
-  });
-  const events = [
-    event(3, 0, 'evaluation-entered'),
-    event(1, 0, 'import-resolved'),
-    event(3, 0, 'import-resolved', 'ordinary-game-message'),
-    event(3, 0, 'import-resolved'),
-    event(3, 2, 'diagnostics-returned'),
-    event(3, 0, 'unrecognized-stage'),
-  ];
-  assert.deepEqual(diagnosticObservation(events, 'target', 3, marker), [
-    { sample: 0, stage: 'evaluation-entered' },
-    { sample: 0, stage: 'import-resolved' },
-  ]);
 });

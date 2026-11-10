@@ -38,9 +38,9 @@ The first workflow step creates a bootstrap **blocked** receipt and log before c
 
 Once the preflight starts, it writes `preflight-receipt.json` and `preflight.log` even on normal input/download/verification/browser failures. A completed browser runner writes `render/receipt.json` and the final bounded `render/chromium.log`, including failure. It attempts `render/failure.png` after a page exists if a later exception occurs. Before browser/page creation, or if CDP capture fails, screenshots are explicitly unavailable; no synthetic screenshot or pass is fabricated. A hard runner timeout may leave only bootstrap/preflight/process logs, with cleanup unconfirmed and a blocked result.
 
-The render receipt retains up to two samples of three diagnostic stage markers.
-They show whether evaluation started, the module import resolved, and the
-diagnostic function returned before a browser response or timeout.
+The probe opens the frozen Preview's Diagnostics panel twice and samples its
+public rows. This avoids a separate diagnostic import during rendering. Both
+samples must belong to the exact candidate.
 
 The probe uses a 768 × 540 viewport at device scale 1 and requests the public
 Close View Low setting to limit work on the software renderer. Each diagnostic
