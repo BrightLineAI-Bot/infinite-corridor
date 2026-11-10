@@ -412,10 +412,12 @@ export const closeViewControl = (g) => g?.save?.closeViewCamera === "crescent" ?
 export const closeViewPreset = (g) => CLOSE_VIEW.presets[g?.save?.closeViewPreset] || CLOSE_VIEW.presets[CLOSE_VIEW.defaultPreset];
 
 const WALL_EXEMPT = /water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|sky|star|cloud/i;
-// An interior: a building's, a keep's or a Pentagon's floor. Not the Pentagon's finale (the walk among the stars) nor its
-// arena: those are open to the sky. The Pentagon's courts, roof and balconies are tiles of its overworld section, so they keep
-// the ordinary view without asking.
-export function interiorMap(map) { return !!map?.building && !map.building.finale && (!map.landscape || (interiorTerrain(map) && map.tiles?.length <= 4096 && map.width <= 64 && map.height <= 64)) && !map.stillworks && !map.skyCloud && !map.movers?.length && !map.canopy; }
+export const stillworksCloseView = map => !!(map?.pentArena && map.building?.arena && map.stillworks?.walkerCloseView);
+// The Void Walker arena has its own open-air scene. Other finale maps and outdoor sections use the world camera.
+export function interiorMap(map) {
+  if (map?.stillworks) return stillworksCloseView(map);
+  return !!map?.building && !map.building.finale && (!map.landscape || (interiorTerrain(map) && map.tiles?.length <= 4096 && map.width <= 64 && map.height <= 64)) && !map.skyCloud && !map.movers?.length && !map.canopy;
+}
 // An open-air tile inside an interior's map (a keep's yard, a labyrinth court): the ordinary view there.
 const OPEN_AIR_KINDS = new Set(["yardGrass"]);
 export function openAirAt(map, x, y) { const w = Math.max(1, Number(map?.width) || 32), t = map?.tiles?.[Math.floor(y + .75) * w + Math.floor(x + .5)]; return !!t && (t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || OPEN_AIR_KINDS.has(t.kind)); }
@@ -1085,6 +1087,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (useGL && !closeViewGLFrameReady()) return abortCloseViewGLFrame();
   if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
+  if (!useGL && stillworksCloseView(g.map)) return false; // cover and upright gates need the depth buffer
   if (!useGL && g.map?.building && hasStoneBuilds(g.map)) return false; // a raised legacy block also needs real depth; use the established world-view fallback
   const shots = useGL ? selectProjectedShots(g, Q, reduce) : null;
   if (useGL && !shots) return false;
@@ -1646,7 +1649,7 @@ const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOS
   const un = GRIT.variants.find((v) => v.id === "unresolved") || { shimmer: 0, period: 1 };
   return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null, hall: null, backdrop: NO_BACKDROP, inlay: SIGIL_INLAY,
     env(gl, U, F, lavaTiles) { const q = UNI.q, th = UNI.th, tg = UNI.tg, C = th.ceiling, Fl = th.floor;
-      gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
+      gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling && !UNI.openArena ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
       gl.uniform4f(U.u_hall, UNI.backdrop.kind, UNI.hall?.open ? 1 : 0, UNI.hall?.sky ? 1 : 0, HALL_VIEW.shaftDepth);
       gl.uniform3fv(U.u_backdrop, UNI.backdrop.colors);
       gl.uniform3fv(U.u_inlayColors, UNI.inlay);
@@ -1866,10 +1869,27 @@ function buildStatic(map, geo, th) {
   }
   const arch = new Uint8Array(w * h), capped = new Uint8Array(w * h), D = th.decor || {}, Pr = th.props || {}, PL = th.plinth, CO = th.cornice, PIL = th.pilaster;
   const iron = [.09, .085, .08], wax = [.72, .66, .52], clay = [.36, .27, .2], wood = [.2, .13, .08];
+  const stillworks = stillworksCloseView(map);
+  const arenaStone = [.105, .12, .16], pillarStone = [.16, .19, .25], lattice = [.37, .56, .67];
   for (let i = 0; i < geo.count; i++) { const o = i * 10, x0 = Fc[o], y0 = Fc[o + 1], x1 = Fc[o + 2], y1 = Fc[o + 3], nx = Fc[o + 4], ny = Fc[o + 5], tx = Fc[o + 6], ty = Fc[o + 7], st = Fc[o + 8], tier = tiles[ty * w + tx]?.tier === true, low = Fc[o + 9] || tier;
     const door = st === STYLE_INDEX.door, mat = door ? 5 : MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = tier ? HALL_VIEW.tierHeight : low ? RB : H;
     const a0 = ny !== 0 ? x0 : y0, a1 = ny !== 0 ? x1 : y1, grit = (geo.detail[i] || 0) * 4 + (geo.detailInst[i] & 15) * 2 + (geo.detailInst[i] & 16 ? 1 : 0), cb = geo.corner[i] & 3, ab = geo.ao[i] & 3, bits = cb + ab * 4, side = nx > 0 ? 1 : nx < 0 ? 3 : ny > 0 ? 2 : 0, hsh = ((tx * 73 + ty * 151 + side * 37) % 997 + 997) % 997;
     const dx = x1 - x0, dy = y1 - y0, fx = tx + nx, fy = ty + ny, front = free(fx, fy), exterior = tx - nx < 0 || ty - ny < 0 || tx - nx >= w || ty - ny >= h, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    if (stillworks) {
+      const tile = tiles[ty * w + tx];
+      const stone = tile.pillar || tile.monolith ? pillarStone : arenaStone;
+      quad(x0, y0, x1, y1, 0, top, a0, a1, nx, ny, 0, 0, stone, 0, grit, bits, hsh, tx, ty);
+      if (!capped[ty * w + tx]) {
+        capped[ty * w + tx] = 1;
+        flat(tx, ty, tx + 1, ty, tx + 1, ty + 1, tx, ty + 1, top, 1, 0, stone, hsh, tx, ty);
+      }
+      if (front && (tile.pillar || tile.monolith)) {
+        const face = paint(mx + nx * .012, my + ny * .012, top * .52, nx, ny, .78, top * .8);
+        if (tile.monolith) face.path([[0, -.47], [-.30, 0], [0, .47], [.30, 0], [0, -.47]], lattice);
+        else for (const level of [-.32, 0, .32]) face.rect(0, level, .5, .012, lattice);
+      }
+      continue;
+    }
     // the face's decoration, chosen once
     let deco = 0; if (!door && !low && mat !== 4) { const r = rnd(tx, ty, side, 9); let acc = 0; const pick = (k, share, code) => { if (!deco && share) { acc += share; if (r < acc) deco = code; } };
       if (exterior) pick("slit", D.slit, 3); pick("tapestry", D.tapestry, 2); pick("banner", D.banner, 1); pick("roots", D.roots, 4); pick("niche", D.niche, 6); pick("pods", D.pods, 7); pick("vent", D.vent, 8); }
@@ -1917,7 +1937,7 @@ function buildStatic(map, geo, th) {
   // arches over doorways: a passage one tile wide through a wall between two rooms takes an arch at each end, with its soffit
   const A = th.arch, stoneMat = th.wall.kind === 1 ? 1 : th.wall.kind, acol = th.wall.kind === 1 ? wood : tg.wall, round = A.radius > .01;
   const roomy = (x, y, ew) => ew ? !solid(x - 1, y) || !solid(x + 1, y) : !solid(x, y - 1) || !solid(x, y + 1);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue;
+  for (let y = 0; !stillworks && y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue;
     const direction = interiorTerrain(map) ? interiorArchAt(map, x, y) : null;
     const ns = interiorTerrain(map) ? direction === "ns"
       : solid(x - 1, y) && solid(x + 1, y) && !solid(x, y - 1) && !solid(x, y + 1) && roomy(x, y - 1, true) && roomy(x, y + 1, true);
@@ -1933,7 +1953,7 @@ function buildStatic(map, geo, th) {
       for (const q of [a, b, c2, a, c2, d2]) V(q[0], q[1], q[2], 0, q[3], q[2], H, 0, 0, 5, stoneMat, acol, 0, 0, 0, hsh, x, y); } }
   // Tile-sized beam sections use the same discovery mask as their ceiling plane. At a
   // crossing the short sections butt against the long one and share no bottom faces.
-  if (!map.hall?.open) {
+  if (!stillworks && !map.hall?.open) {
     const { data: mask } = closeViewMask(map);
     const covered = new Uint8Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -2579,6 +2599,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
   UNI.hall = g.map.hall?.tall ? g.map.hall : null;
+  UNI.openArena = stillworksCloseView(g.map);
   UNI.backdrop = BACKDROPS.get(UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.inlay = st.inlay;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
@@ -2640,7 +2661,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const residual = MODEL_STATE.admitted.has(it);
     const statusAlpha = residual && foe ? actorPresentation(foe)?.alpha ?? 1 : 1;
     const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
-    if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front,lx = bx - RX * hw, ly = by - RY * hw, rxp = bx + RX * hw, ryp = by + RY * hw, zb = -A.below;
+    if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front, ax = draw.wallAligned ? Math.sign(RX) || 1 : RX, ay = draw.wallAligned ? 0 : RY, lx = bx - ax * hw, ly = by - ay * hw, rxp = bx + ax * hw, ryp = by + ay * hw, zb = -A.below;
     BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
     if (foe || isPlayer) { if (MODEL_STATE.admitted.has(it)) shadow(X, Y, sc, statusAlpha); const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * statusAlpha, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }

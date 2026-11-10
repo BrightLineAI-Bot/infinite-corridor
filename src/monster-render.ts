@@ -1878,7 +1878,7 @@ function drawCrystalWater(ctx, f, s, now, lift, presentation) {
   ctx.restore(); ctx.restore();
 }
 
-export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0, presentation = {}) {
+export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0, presentation = {}, captureRift = null) {
   // Release 237: the glow and dark rims of every settled lava pool first, so pools that touch read as one spill.
   for (const f of effects || []) {
     if (f.kind !== "lava" || f.arming > 0 || !visible(f)) continue;
@@ -1894,7 +1894,11 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
   }
   for (const f of effects || []) {
     if (!visible(f)) continue;
-    if (VOID_EFFECTS.has(f.kind)) { drawVoidEffect(ctx, f, s, now, lift, presentation); continue; }
+    if (VOID_EFFECTS.has(f.kind)) {
+      if (f.kind === "voidRift" && captureRift) captureRift(f, () => drawVoidEffect(ctx, f, s, now, lift, presentation));
+      else drawVoidEffect(ctx, f, s, now, lift, presentation);
+      continue;
+    }
     if (GIANT_EFFECT_KINDS.has(f.kind)) { drawGiantEffect(ctx, f, s, now, presentation); continue; }
     if (STAG_EFFECT_KINDS.has(f.kind)) { drawStagEffect(ctx, f, s, now, presentation); continue; }
     if (DRAGON_EFFECT_KINDS.has(f.kind)) { drawDragonEffect(ctx, f, s, now, presentation); continue; }
