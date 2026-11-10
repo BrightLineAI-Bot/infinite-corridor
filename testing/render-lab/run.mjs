@@ -99,15 +99,20 @@ try {
   };
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
   const walker = /^r866-/.test(candidate.id);
-  const cases = walker ? [STILLWORKS_CASES[0]]
+  const wholeWorld = /^r867-/.test(candidate.id);
+  const worldFixtures = {standard:'test-tile',coast:'landscape','great-tree-summit':'landscape',ashling:'combat'};
+  const cases = wholeWorld ? Object.keys(worldFixtures) : walker ? [STILLWORKS_CASES[0]]
     : [COMBAT_ACTION_CASES[1], ...STILLWORKS_CASES.slice(1).filter(id => fixtures.includes(`"${id}"`))];
-  receipt.scope=walker?'Rending Hands witness on exact frozen r866':'remaining online gameplay witnesses for exact frozen r865';
+  receipt.scope=wholeWorld?'Overworld Close View and toggle on exact frozen r867'
+    :walker?'Rending Hands witness on exact frozen r866':'remaining online gameplay witnesses for exact frozen r865';
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[],captures:[]};receipt.scenarios.push(entry);
     checkpoint('scenario-navigate');
     const closeView=STILLWORKS_CASES.includes(scenario);
-    const summit=scenario===SUMMIT_CASE;
-    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:walker?'TIM1':closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
+    const summit=!wholeWorld && scenario===SUMMIT_CASE;
+    const lab=wholeWorld?worldFixtures[scenario]:summit?'landscape':closeView?'close-view':'combat-assets';
+    const query=new URLSearchParams({dev:'proving-ground',lab,env:lab==='combat'?'dungeon-hollow':'test-tile',scenario,seed:walker?'TIM1':closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
+    if(wholeWorld)query.set('overworldCloseView','1');
     const url=`${origin}/?${query}`;
     const observe=await navigate(url);
     currentObservation=()=>{
@@ -118,6 +123,7 @@ try {
     // Bounded wait for the real entry point. No altered game state or renderer globals.
     checkpoint('scenario-ready');
     const ready=await waitForBrowserScene(()=>evaluate('!!document.querySelector("#scenarioPause") && !!globalThis.provingGroundGame?.()'));
+    if(ready && wholeWorld)await evaluate('document.querySelector("#scenarioPause").textContent==="Pause" && document.querySelector("#scenarioPause").click()');
     if(!ready)throw Error(`scenario did not boot: ${scenario}`);
     const capture=async suffix=>{
       const name=`${scenario}${suffix ? '-' + suffix : ''}.png`;
@@ -170,7 +176,23 @@ try {
     checkpoint('scenario-screenshot');
     entry.screenshot=await capture();
     checkpoint('scenario-witness');
-    const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
+    const witness = wholeWorld ? async () => {
+      const observeWorld=()=>evaluate(`(() => {
+        const g=globalThis.provingGroundGame?.(), cam=globalThis.__closeViewCam?.get(), toggle=document.querySelector('#pgOverworldCloseView');
+        return {area:g?.areaId(), hp:g?.player.hp, drawn:cam?.drawn, checked:toggle?.checked, enabled:g?.save.overworldCloseView};
+      })()`);
+      const screenshots=[], samples=[], before=await observeWorld();
+      await evaluate('document.querySelector("#pgOverworldCloseView").click()');
+      const disabled=await waitForBrowserScene(async()=>{const state=await observeWorld();return !state.drawn && state.checked===false && state.enabled===false;});
+      samples.push(await observeWorld());
+      if(disabled)screenshots.push(await capture('overhead'));
+      await evaluate('document.querySelector("#pgOverworldCloseView").click()');
+      const enabled=await waitForBrowserScene(async()=>{const state=await observeWorld();return state.drawn && state.checked===true && state.enabled===true;});
+      const after=await observeWorld();samples.push(after);
+      if(enabled)screenshots.push(await capture('restored-close-view'));
+      const observed=before.drawn && before.enabled && disabled && enabled && before.area===after.area && before.hp===after.hp;
+      return {status:observed?'observed':'blocked',before,samples,screenshots};
+    } : summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
       : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness
       : COMBAT_ACTION_CASES.includes(scenario) && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 865 ? combatActionWitness.bind(null,scenario) : null;
     const witnessTools={call,evaluate,wait,capture,checkpoint,walkerDiagnostics:walker?diagnosticsPath:null};
