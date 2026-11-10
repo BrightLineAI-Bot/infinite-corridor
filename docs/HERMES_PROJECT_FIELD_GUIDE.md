@@ -10,7 +10,7 @@ Operator decision 2026-10-11: Test Bot makes all code changes through approved c
 
 **CODE:** `src/game.ts` records accepted door transitions and internal Cube doorway crossings. The existing dungeon Atlas in `src/atlas-view.ts` and `src/main.ts` shows the actual arrival in blue and other traversed doors in purple. Tap a discovered door to set or clear one of three points; tap the compass to cycle them. With no point selected, the compass indicates true north relative to the Close View camera. `src/renderer.ts` and `src/close-view.ts` draw torch sprites and budget up to two colored lights.
 
-**BOUNDARY:** Door history and points are additive at schema 14 and scoped to the dungeon floor or chamber. Old saves start without inferred door visits. Hidden routes stay out of the waypoint picker; unknown reciprocal arrivals remain unmarked. Generation, geometry, collision and gate rules are unchanged. The Proving Ground route panel uses only its scratch save.
+**BOUNDARY:** Door history and points are additive at schema 14 and scoped to the dungeon floor or chamber. Old saves start without inferred door visits. Cube fog and direct sight in Pentagons gate discovery; hidden routes stay out of the waypoint picker; unknown reciprocal arrivals remain unmarked. Generation, geometry, collision and gate rules are unchanged. The Proving Ground route panel uses only its scratch save.
 
 ## Release 867 — Overworld Close View
 

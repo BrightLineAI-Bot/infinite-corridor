@@ -25,8 +25,9 @@ test("Pentagon records the exact arrival door and remembers a different traverse
   const to=tag=>g.map.objects.find(o=>o.kind==="buildingStair"&&o.toId===id(tag));
   act(g,to("o1"));
   const a=to("o0"), b=to("o2"), chamber=g.areaId(), aId=dungeonDoorId(chamber,a), bId=dungeonDoorId(chamber,b);
-  labFogLook(g.map,a.x,a.y);labFogLook(g.map,b.x,b.y);
   assert.equal(doors(g).find(o=>o.id===aId)?.mark,"arrival");
+  assert.equal(doors(g).find(o=>o.id===bId),undefined,"the distant door has not been seen");
+  Object.assign(g.player,{x:b.x,y:b.y});g.labFogTick();
   assert.equal(doors(g).find(o=>o.id===bId)?.mark,"known");
   assert.equal(g.toggleDungeonDoorWaypoint(aId),true);
   assert.equal(doors(g).find(o=>o.id===aId)?.slot,1);
@@ -44,10 +45,11 @@ test("Cube doorway needs sight and a crossing; point cap preserves the first thr
   const g=new Game(freshSave(),0);
   const w=8,h=7, areaId="labyrinth:LB5:5:5:keep:f1";
   g.area="dungeon";g.save.session.activeDungeonId=areaId;
-  g.map={id:areaId,width:w,height:h,building:{labyrinth:true,roomMaze:1},objects:[],tiles:Array.from({length:w*h},(_,i)=>{
+  g.map={id:areaId,width:w,height:h,building:{labyrinth:true,roomMaze:1},objects:[{kind:"exit",id:"A",x:1,y:2},{kind:"exit",id:"B",x:1,y:3},{kind:"exit",id:"C",x:1,y:4}],tiles:Array.from({length:w*h},(_,i)=>{
     const x=i%w,y=Math.floor(i/w);return {x,y,blocked:x===3&&y!==3,doorway:x===3&&y===3};
   })};
   assert.deepEqual(doors(g),[]);
+  assert.equal(g.toggleDungeonDoorWaypoint(areaId+"::A"),false);
   labFogLook(g.map,2,3);
   const key=dungeonDoorId(areaId,{x:3,y:3});
   assert.equal(doors(g).find(o=>o.id===key)?.mark,"known");

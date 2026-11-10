@@ -99,7 +99,7 @@ import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exit
 import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
 import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
-import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore } from "./labyrinths.ts";
+import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
@@ -330,7 +330,7 @@ export function currentDungeonDoors(map,areaId){
  dungeonDoorCache.set(map,{areaId,objects:map.objects,tiles:map.tiles,list:objects});return objects;
 }
 export const currentDungeonDoorIds=(map,areaId)=>currentDungeonDoors(map,areaId).map(d=>d.id);
-export function dungeonDoorAreaState(save,areaId){const raw=save?.dungeonDoorNavigation,nav=raw?.schema===1&&raw.areas&&typeof raw.areas==='object'&&!Array.isArray(raw.areas)?raw:ensureDungeonDoorNavigation(save),key=String(areaId);return nav.areas[key]||=( {arrivalDoorId:null,visitedDoorIds:[],waypointDoorIds:[]} );}
+export function dungeonDoorAreaState(save,areaId){const raw=save?.dungeonDoorNavigation,nav=raw?.schema===1&&raw.areas&&typeof raw.areas==='object'&&!Array.isArray(raw.areas)?raw:ensureDungeonDoorNavigation(save),key=String(areaId);return nav.areas[key]||=( {arrivalDoorId:null,seenDoorIds:[],visitedDoorIds:[],waypointDoorIds:[]} );}
 export function setDungeonDoorWaypoint(save,areaId,doorId,on=true){const state=dungeonDoorAreaState(save,areaId),id=String(doorId||''),prefix=`${areaId}::`;if(!id.startsWith(prefix))return false;const has=state.waypointDoorIds.includes(id);if(!on){state.waypointDoorIds=state.waypointDoorIds.filter(q=>q!==id);return has;}if(has)return true;if(state.waypointDoorIds.length>=3)return false;state.waypointDoorIds=[...state.waypointDoorIds,id];return true;}
 export function recordDungeonDoorTraversal(save,{fromAreaId,fromDoorId,toAreaId=fromAreaId,toDoorId=null}){const from=dungeonDoorAreaState(save,fromAreaId),source=String(fromDoorId||'');if(!source.startsWith(`${fromAreaId}::`))return false;if(!from.visitedDoorIds.includes(source))from.visitedDoorIds.push(source);from.visitedDoorIds=from.visitedDoorIds.slice(-512);if(toDoorId){const target=String(toDoorId),to=dungeonDoorAreaState(save,toAreaId);if(!target.startsWith(`${toAreaId}::`))return true;if(!to.visitedDoorIds.includes(target))to.visitedDoorIds.push(target);to.visitedDoorIds=to.visitedDoorIds.slice(-512);to.arrivalDoorId=target;}return true;}
 // A labyrinth chamber as this journey left it: keys already taken are gone, sealed doors whose key you hold are open, a
@@ -7162,7 +7162,15 @@ export class Game {
     const stair = { id: "annex-stair", kind: "annexStair", name: `Annex Stair · down to floor ${A.floor + 1}`, x: at.x, y: at.y, state: "open", actions: ["descend"], toId: annexFloorId(A.base, A.floor + 1), floor: A.floor + 1 };
     this.map.objects.push(stair); return stair;
   }
-  toggleDungeonDoorWaypoint(doorId) {const areaId=this.areaId(),state=dungeonDoorAreaState(this.save,areaId),on=!state.waypointDoorIds.includes(doorId);return setDungeonDoorWaypoint(this.save,areaId,doorId,on);}
+  toggleDungeonDoorWaypoint(doorId) {
+    if(this.area!=="dungeon"||!(this.map.building?.labyrinth||this.map.building?.pentagon))return false;
+    const areaId=this.areaId(),state=this.save.dungeonDoorNavigation?.areas?.[areaId];
+    if(state?.waypointDoorIds.includes(doorId))return setDungeonDoorWaypoint(this.save,areaId,doorId,false);
+    const door=currentDungeonDoors(this.map,areaId).find(d=>d.id===doorId);
+    if(!door||door.state==="hidden")return false;
+    const known=this.map.building.pentagon?state?.seenDoorIds?.includes(doorId)||state?.visitedDoorIds?.includes(doorId):!door.secretDoor&&labFogState(this.map,door.x,door.y)>0;
+    return !!known&&setDungeonDoorWaypoint(this.save,areaId,doorId);
+  }
   noteInternalDoorCrossings(fromX,fromY,toX,toY) {
     const map=this.map;
     if(this.area!=="dungeon"||!map?.building?.roomMaze)return;
@@ -7628,6 +7636,15 @@ export class Game {
   // LAB_FOG (labyrinths.ts): in a labyrinth chamber, the sight round the Wayfarer, worked out again only on a new tile, and what
   // has been seen stored on the chamber's history once it grows (so it lasts through a save, a reload and an exact resume).
   labFogTick() {
+    if(this.map.building?.pentagon){
+      const t=labFogTile(this.player),last=this._pentDoorLook;
+      if(last?.map===this.map&&last.x===t.x&&last.y===t.y)return;
+      this._pentDoorLook={map:this.map,...t};
+      const areaId=this.areaId(),current=this.save.dungeonDoorNavigation?.areas?.[areaId],seen=current?.seenDoorIds||[];
+      const newlySeen=currentDungeonDoors(this.map,areaId).filter(door=>door.state!=="hidden"&&!door.secretDoor&&!seen.includes(door.id)&&labDoorInSight(this.map,t.x,t.y,door.x,door.y));
+      if(newlySeen.length)dungeonDoorAreaState(this.save,areaId).seenDoorIds=[...seen,...newlySeen.map(door=>door.id)].slice(-512);
+      return;
+    }
     if (!labFogOn(this.map)) return; const h = dungeonHistory(this.save, this.areaId()), t = labFogTile(this.player);
     labFogLook(this.map, t.x, t.y, h.labFog); labFogStore(this.map, h);
   }

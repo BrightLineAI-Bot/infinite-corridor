@@ -391,7 +391,7 @@ function closeViewFixture(scenario, seed, now) {
     entry = candidates.reduce((best, t) => !best || distance(t) < distance(best) ? t : best, null) || entry;
   }
   game.player.x = entry.x; game.player.y = entry.y; game.player.attackReadyAt = now;
-  if(spec.cubeDoors)game.labFogTick();
+  if(spec.cubeDoors||game.map.building?.pentagon)game.labFogTick();
   let traversal = null;
   let buildPractice = null;
   if (spec.buildVersion) {

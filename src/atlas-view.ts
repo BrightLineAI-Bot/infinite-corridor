@@ -39,7 +39,7 @@ export function discoveredDungeonDoors(save, map, { areaId = map?.id, previous =
   if (!map || !areaId) return [];
   const visible = point => point && dungeonPointDiscovered(map, point) && labFogState(map, point.x, point.y) > 0;
   const pentagon = map.building?.pentagon && parsePentagonId(map.id);
-  if (pentagon) return markDungeonDoors(save, areaId, pentagonDoorRows(save, map, previous).filter(visible), candidates);
+  if (pentagon) return markDungeonDoors(save, areaId, pentagonDoorRows(save, map, previous).filter(door=>visible(door)&&pentagonDoorSeen(save,areaId,door)), candidates);
   const knownLevels = new Set(map.deepProgress?.discoveredLevelIds || save?.consequences?.dungeons?.[areaId]?.deep?.discoveredLevelIds || []), levels = map.levels || [];
   const synthetic = (Array.isArray(candidates) ? candidates : []).filter(o => o.synthetic && o.kind === "doorway");
   const doors = [...(map.objects || []), ...synthetic].filter(o => (DUNGEON_ROUTE_TAGS[o.kind] || o.kind === "doorway") && o.state !== "hidden" && !o.secretDoor && visible(o)).map(o => {
@@ -54,7 +54,7 @@ export function discoveredDungeonDoors(save, map, { areaId = map?.id, previous =
 const navigationDoorMemo = new WeakMap();
 const navigationRoute = o => !!(DUNGEON_ROUTE_TAGS[o?.kind] || o?.kind === "pentShortcut");
 function navigationInputsMatch(prior, map, areaId, state, fog, candidates, history) {
-  if (!prior || prior.areaId !== areaId || prior.revealed !== map._dungeonRevealed || prior.revealedSize !== (map._dungeonRevealed?.size || 0) || prior.fogStamp !== (fog?.stamp || 0) || prior.arrival !== state.arrivalDoorId || prior.visited !== state.visitedDoorIds || prior.waypoints !== state.waypointDoorIds || prior.labOpen !== history?.labOpen || prior.labKeys !== history?.labKeys || prior.pentBosses !== history?.pentBosses) return false;
+  if (!prior || prior.areaId !== areaId || prior.revealed !== map._dungeonRevealed || prior.revealedSize !== (map._dungeonRevealed?.size || 0) || prior.fogStamp !== (fog?.stamp || 0) || prior.arrival !== state.arrivalDoorId || prior.seen !== state.seenDoorIds || prior.visited !== state.visitedDoorIds || prior.waypoints !== state.waypointDoorIds || prior.labOpen !== history?.labOpen || prior.labKeys !== history?.labKeys || prior.pentBosses !== history?.pentBosses) return false;
   for (const p of prior.plates) if (p.tile.build !== p.build) return false;
   if (candidates !== prior.candidateSource) { const list = Array.isArray(candidates) ? candidates : [], oldCandidates = prior.candidates; if (list.length !== oldCandidates.length) return false;
     for (let i = 0; i < list.length; i++) { const a = list[i], b = oldCandidates[i]; if (a.id !== b.id || a.x !== b.x || a.y !== b.y || a.kind !== b.kind || !!a.synthetic !== b.synthetic) return false; } }
@@ -77,7 +77,7 @@ export function dungeonNavigationDoors(save, map, areaId = map?.id, candidates =
   const candidateSnapshot = (Array.isArray(candidates) ? candidates : []).map(o => ({ id: o.id, x: o.x, y: o.y, kind: o.kind, synthetic: !!o.synthetic })), routes = [], plates = [];
   for (const o of map.objects || []) if (navigationRoute(o)) routes.push({ object: o, id: o.id, x: o.x, y: o.y, state: o.state, secret: !!o.secretDoor, unsealed: o.unsealed, kind: o.kind, toId: o.toId });
   for (const tile of map.tiles || []) if (tile.plate) plates.push({ tile, build: tile.build });
-  navigationDoorMemo.set(map, { areaId, revealed: map._dungeonRevealed, revealedSize: map._dungeonRevealed?.size || 0, fogStamp: fog?.stamp || 0, arrival: state.arrivalDoorId, visited: state.visitedDoorIds, waypoints: state.waypointDoorIds, labOpen: history?.labOpen, labKeys: history?.labKeys, pentBosses: history?.pentBosses, candidateSource: candidates, candidates: candidateSnapshot, routes, plates, value }); return value;
+  navigationDoorMemo.set(map, { areaId, revealed: map._dungeonRevealed, revealedSize: map._dungeonRevealed?.size || 0, fogStamp: fog?.stamp || 0, arrival: state.arrivalDoorId, seen: state.seenDoorIds, visited: state.visitedDoorIds, waypoints: state.waypointDoorIds, labOpen: history?.labOpen, labKeys: history?.labKeys, pentBosses: history?.pentBosses, candidateSource: candidates, candidates: candidateSnapshot, routes, plates, value }); return value;
 }
 
 // The same floor and visibility contract as the Atlas, with no destination generation.
@@ -121,12 +121,17 @@ export function pentagonWayfinding(save, map, player, previous = null, candidate
     const from = byNode.get(link.near), to = byNode.get(link.deep);
     if (from && to && opened.has(pentagonLinkKey(link.id))) connections.push({ from: from.id, to: to.id, source: from.name, destination: to.name, kind: "Opened shortcut", note: "" });
   }
-  const doors = markDungeonDoors(save, map.id, pentagonDoorRows(save, map, previous, known), candidates);
+  const doorRows = pentagonDoorRows(save, map, previous, known);
+  const doors = markDungeonDoors(save, map.id, candidates ? doorRows.filter(door=>pentagonDoorSeen(save,map.id,door)) : doorRows, candidates);
   const entry = save?.session?.floorEntry;
   const arrival = entry?.id === map.id && Number.isFinite(entry.x) && Number.isFinite(entry.y) ? { x: entry.x, y: entry.y } : null;
   return { rooms, connections, doors, previous: prior?.name || null, arrival, position: { x: Math.round(player.x), y: Math.round(player.y) } };
 }
 
+function pentagonDoorSeen(save,areaId,door){
+  const nav=save?.dungeonDoorNavigation?.areas?.[areaId],id=dungeonDoorId(areaId,door);
+  return !!(nav?.seenDoorIds?.includes(id)||nav?.visitedDoorIds?.includes(id)||nav?.arrivalDoorId===id);
+}
 function pentagonDoorRows(save, map, previous = null, knownRooms = null) {
   const B = map?.building, p = B?.pentagon && parsePentagonId(map.id);
   if (!p) return [];
