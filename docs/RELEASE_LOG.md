@@ -21,7 +21,7 @@ Main and production are at game release r863, merged as 36c57768eed1d96093fe6c4f
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| Unnumbered | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Draft opened. Focused tests and build passed on the prototype. |
+| 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | In flight. Focused route and reload tests passed. Exact CI, Preview and hosted readability checks pending. |
 | Unnumbered | Codex | claude/great-tree-skyway-chain / #522 | Validated summit-to-summit chain for new Great Tree skyways | Draft opened. Nineteen focused tests and build passed, including three hops with reloads. |
 | 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. The arena readability correction shipped with this work in r862. |
 | 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift | Merged as 6c8e76670ac7. Source CI 42700948170, merged CI 42702713648 and Preview 42702713650 passed. Published in r860. |
