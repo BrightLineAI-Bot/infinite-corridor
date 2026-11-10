@@ -1002,3 +1002,13 @@ body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #ev
 .close-lock .bull-ring { transition: fill-opacity .15s; }
 .close-lock[aria-pressed="true"]::before { border-color: #ff6a5a; box-shadow: inset 0 0 0 2px #151411, 0 0 12px #ff6a5aaa; }
 .close-lock[aria-pressed="true"] .bull-ring { fill-opacity: .38; }
+
+/* Shared dungeon route panel: readable route rows on narrow screens and a bounded discovered-room list. */
+.dungeon-wayfinding { text-align:left; font-size:.86rem; line-height:1.5; overflow-wrap:anywhere; }
+.dungeon-wayfinding > ul { list-style:none; padding:0; }
+.dungeon-wayfinding li { margin:.4rem 0; }
+.dungeon-wayfinding details { border-top:1px solid #5a584e; padding:.6rem 0; }
+.dungeon-wayfinding summary { cursor:pointer; min-height:32px; }
+.dungeon-wayfinding details ul { max-height:15rem; overflow-y:auto; padding-left:1.3rem; }
+
+body.proving-ground #pgRoutes[open] { display:block!important; max-width:min(92vw,38rem); color:#e9f7f5; background:#111923; border:1px solid #43c9bf; }

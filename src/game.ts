@@ -2847,6 +2847,7 @@ export class Game {
     applyDungeonDiscovery(this.map,next,this.map._dungeonRevealMode||"normal");return changed;
   }
   loadArea(area, capture = true) {
+    this.pentagonPrevious = null; // presentation-only: never infer a route after another arrival or reload.
     if (this.player?.consumeVisual) this.cancelConsumeVisual('area-transition');
     this.retireCleaverChoreography();
     if (this.player?.cachePickupVisual?.v === 1) this.player.cachePickupVisual = null;
@@ -7138,11 +7139,13 @@ export class Game {
   }
   // Great buildings (great-buildings.ts): a stair up or down to the next floor, each floor an area of its own.
   goBuildingFloor(toId, x, y) {
+    const from = this.map?.building?.pentagon ? this.areaId() : null;
     const prev = dungeonHistory(this.save, this.areaId()); prev.visitOpen = false; this.snapshotArea();
     this.save.session.activeDungeonId = toId; this.save.session.activeDungeonLevelId = null; pinDungeonLayout(this.save, toId);
     const h = dungeonHistory(this.save, toId); h.visits++; h.visitOpen = true;
     this.loadArea("dungeon", false); const at = buildingArrival(this.map, x, y); this.player.x = at.x; this.player.y = at.y;
     relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); this.projectiles = [];
+    this.pentagonPrevious = from && this.map?.building?.pentagon ? { from, to: toId } : null;
   }
   // Is a Great Castle on this corner for this journey? Its four sections must be new ground (none explored before castles).
   castleHere(X, Y) {

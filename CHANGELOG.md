@@ -3,6 +3,8 @@
 ## Unreleased
 
 - New Great Tree cloud routes reserve a real, undiscovered summit before entry, keeping their cloud holds and providing another cloud door after each crossing. Existing tree routes remain pinned.
+- Release 864 shows known doors, stairs, shortcuts and arrival markers in the existing dungeon Atlas. Pentagons add a discovered-chamber and connection overview plus a current-visit previous-chamber cue.
+
 - Release 863 gives the Verge Cleaver a brief counter-load, quicker impact travel and body drive on the approved rig while preserving four-cut endpoints and canonical contact timing. Library comparison and offline diagnostic are recorded in `docs/cleaver-motion-library-study.md`; hosted visual acceptance remains pending.
 
 - Release 862 lights the Stillworks independently of dungeon corridors, points the arrival camera into the arena and keeps the lab cover targets available after reload.
