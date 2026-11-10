@@ -21,6 +21,7 @@ Main is at game release r861, merged as dca0199f558393124d662c3ab6e529333cca72d3
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 863 | Codex | claude/cleaver-motion-library | Quicker Verge Cleaver impact and recovery on the approved Wayfarer rig | In flight. Textured Preview acceptance required. |
 | 862 | Codex | claude/stillworks-visibility | Stillworks entry framing, ambient light and scratch cover targets | In flight. Needs exact Preview visual checks before production. |
 | 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. Hosted r861-dca0199f5583 exposed poor arena readability at arrival and beyond the lantern. Held for the correction. |
 | 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift | Merged as 6c8e76670ac7. Source CI 42700948170, merged CI 42702713648 and Preview 42702713650 passed. Published in r860. |
