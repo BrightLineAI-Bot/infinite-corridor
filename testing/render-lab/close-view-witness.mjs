@@ -2,6 +2,41 @@
 export const STILLWORKS_CASES = Object.freeze([
   'stillworks-void-walker', 'routing-crawl-keep', 'routing-crawl-pentagon',
 ]);
+export const CLEAVER_CASE = 'cleaver-echo-inspection';
+
+async function holdKey(call, wait, key, ms) {
+  const upper = key.toUpperCase();
+  const args = { key, code: 'Key' + upper, windowsVirtualKeyCode: upper.charCodeAt(0) };
+  await call('Input.dispatchKeyEvent', { ...args, type: 'keyDown' });
+  try { await wait(ms); }
+  finally { await call('Input.dispatchKeyEvent', { ...args, type: 'keyUp' }); }
+}
+
+export async function cleaverWitness({ call, evaluate, wait, capture }) {
+  const read = () => evaluate(`(() => {
+    const g = globalThis.provingGroundGame?.(), a = g?.player?.attackVisual;
+    return { weapon:a?.weaponKind, step:a?.primaryMotion?.step,
+      acceptedAt:a?.cleaverChoreography?.acceptedLogicalMs, contactMs:a?.meleeAction?.contactMs,
+      durationMs:a?.durationMs, pending:!!g?.pendingMeleeContact };
+  })()`);
+  const before = await read();
+  const screenshots = [await capture('before-attack')];
+  await holdKey(call, wait, 'j', 45);
+  const samples = [];
+  for (let i = 0; i < 12; i++) {
+    const sample = await read();
+    samples.push(sample);
+    if (sample.weapon === 'verge-cleaver' && Number.isFinite(sample.acceptedAt)
+        && sample.acceptedAt !== before.acceptedAt) break;
+    await wait(25);
+  }
+  const accepted = samples.at(-1);
+  const observed = accepted.weapon === 'verge-cleaver' && accepted.step === 1
+    && Number.isFinite(accepted.acceptedAt) && accepted.acceptedAt !== before.acceptedAt
+    && accepted.contactMs > 0 && accepted.contactMs < accepted.durationMs;
+  if (observed) screenshots.push(await capture('after-accepted-attack'));
+  return { status: observed ? 'observed' : 'blocked', before, samples, screenshots };
+}
 
 const directions = [
   ['w', 0], ['d', Math.PI / 2], ['s', Math.PI], ['a', -Math.PI / 2],
@@ -20,12 +55,7 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
     return p && c?.valid && c.drawn ? {x:p.x,y:p.y,hp:p.hp,yaw:c.yaw,distance:c.distance,
       area:g.areaId(), effects:(g.packEffects||[]).map(f=>f.kind).slice(0,32)} : null;
   })()`);
-  const hold = async (key, ms) => {
-    const args = { key, code: 'Key' + key.toUpperCase(), windowsVirtualKeyCode: key.toUpperCase().charCodeAt(0) };
-    await call('Input.dispatchKeyEvent', { ...args, type: 'keyDown' });
-    try { await wait(ms); }
-    finally { await call('Input.dispatchKeyEvent', { ...args, type: 'keyUp' }); }
-  };
+  const hold = (key, ms) => holdKey(call, wait, key, ms);
   const before = await pose();
   if (!before || !Number.isFinite(before.yaw)) return { status: 'blocked', reason: 'No camera/player observation' };
   if (scenario === STILLWORKS_CASES[0]) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { closeViewWitness, movementKey } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, movementKey } from './close-view-witness.mjs';
 import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
@@ -8,6 +8,25 @@ test('crawl movement maps the desired world heading to the camera-relative keys'
   assert.equal(movementKey(Math.PI, 1, 0), 's');
   assert.equal(movementKey(Math.PI / 2, 0, 1), 'w');
   assert.equal(movementKey(NaN, 1, 0), null);
+});
+
+test('Cleaver evidence requires a newly accepted first cut from normal Attack input', async () => {
+  const attack = { weapon: 'verge-cleaver', step: 1, acceptedAt: 42, contactMs: 75, durationMs: 360 };
+  const input = [], samples = [{}, {}, attack];
+  const result = await cleaverWitness({
+    call: async (method, args) => input.push([method, args.key, args.type]),
+    evaluate: async () => samples.shift(),
+    wait: async () => {},
+    capture: async name => name,
+  });
+  assert.equal(result.status, 'observed');
+  assert.deepEqual(input, [['Input.dispatchKeyEvent', 'j', 'keyDown'], ['Input.dispatchKeyEvent', 'j', 'keyUp']]);
+  assert.deepEqual(result.screenshots, ['before-attack', 'after-accepted-attack']);
+  const stale = await cleaverWitness({
+    call: async () => {}, evaluate: async () => attack, wait: async () => {}, capture: async name => name,
+  });
+  assert.equal(stale.status, 'blocked');
+  assert.deepEqual(stale.screenshots, ['before-attack']);
 });
 
 test('a failed public teleport is blocked instead of producing a landing receipt', async () => {

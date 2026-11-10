@@ -38,6 +38,12 @@ The first workflow step creates a bootstrap **blocked** receipt and log before c
 
 Once the preflight starts, it writes `preflight-receipt.json` and `preflight.log` even on normal input/download/verification/browser failures. A completed browser runner writes `render/receipt.json` and the final bounded `render/chromium.log`, including failure. It attempts `render/failure.png` after a page exists if a later exception occurs. Before browser/page creation, or if CDP capture fails, screenshots are explicitly unavailable; no synthetic screenshot or pass is fabricated. A hard runner timeout may leave only bootstrap/preflight/process logs, with cleanup unconfirmed and a blocked result.
 
+For r863 and later, the Cleaver fixture must report a newly accepted first cut
+after normal Attack input. The receipt stores the attack samples and screenshots
+before input and after acceptance. This witnesses the input and its action
+record. The frame may be in follow-through or recovery, depending on Chrome
+capture latency. Reviewing timing and motion requires separate playback.
+
 Upload paths exclude the downloaded ZIP, extracted game payload, browser profiles, credentials and raw API responses. `actions-evidence.json` contains only allowlisted candidate/artifact/run fields. `candidate-audit.json` remains an unsigned observational receipt with `publicationAuthorized: false` and `releaseReadiness: "not_assessed"`.
 
 Renderer classification is `software` for known software-renderer signatures, otherwise `unknown`. `hardware` is reserved for independently established hardware evidence and is never inferred from a vendor name or WebGL2 success. The original prototype used the historical label `unverified`; newly generated receipts use `unknown`. Software frames can establish some shader/asset functionality, not hardware performance. Physical-phone coverage remains separately `not_measured`; visual acceptance stays `not_reviewed` even with PNGs and advancing frames.

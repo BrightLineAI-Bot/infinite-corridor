@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
-import { closeViewWitness, STILLWORKS_CASES } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, CLEAVER_CASE, STILLWORKS_CASES } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -84,7 +84,7 @@ try {
   let contextId;
   const evaluate=async (expression,awaitPromise=false)=>{const r=await call('Runtime.evaluate',{expression,contextId,awaitPromise,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
-  const cases = ['cleaver-echo-inspection','pike-echo-inspection','cast-skill-aerial-step','blade-hammerfall-brute'];
+  const cases = [CLEAVER_CASE,'pike-echo-inspection','cast-skill-aerial-step','blade-hammerfall-brute'];
   // An old frozen artifact need not contain the newer fixtures.
   cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
   for(const scenario of cases) {
@@ -109,7 +109,9 @@ try {
     checkpoint('scenario-diagnostics');
     for(let i=0;i<2;i++){entry.samples.push(await evaluate(`(async()=>{const m=await import(new URL(${JSON.stringify(diagnosticsPath)},location.href));return m.closeViewRenderDiagnostics()})()`,true));await wait(300);}
     checkpoint('scenario-witness');
-    if(closeView) entry.witness=await closeViewWitness(scenario,{call,evaluate,wait,capture:async suffix=>{
+    const witness = closeView ? closeViewWitness.bind(null, scenario)
+      : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness : null;
+    if(witness) entry.witness=await witness({call,evaluate,wait,capture:async suffix=>{
       const name=`${scenario}-${suffix}.png`;
       const image=await call('Page.captureScreenshot',{format:'png'});
       writeFileSync(join(out,name),Buffer.from(image.data,'base64'));
@@ -120,9 +122,9 @@ try {
     const image=await call('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,`${scenario}.png`),Buffer.from(image.data,'base64'));
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
     Object.assign(entry,assess(entry.samples,entry.errors));
-    if(closeView && entry.witness?.status!=='observed'){
+    if(witness && entry.witness?.status!=='observed'){
       entry.status='blocked';
-      entry.reasons.push('Required movement or encounter witness was not observed');
+      entry.reasons.push('Required input or encounter witness was not observed');
     }
     entry.screenshot=`${scenario}.png`;
     currentObservation();currentObservation=null;
