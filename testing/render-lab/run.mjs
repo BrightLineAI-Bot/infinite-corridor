@@ -7,7 +7,7 @@ import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
-import { disjointPaths, bounded, stopBrowser, normalBrowserFlags } from './resources.mjs';
+import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene } from './resources.mjs';
 import { closeViewWitness, STILLWORKS_CASES } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
@@ -18,7 +18,12 @@ mkdirSync(out,{recursive:true});
 const receipt={schema:1, startedAt:new Date().toISOString(), scope:'local frozen artifact render probe, not publication acceptance', status:'blocked', scenarios:[], restrictions:['No visual approval','No physical phone performance evidence','No production or hosted-origin testing'], errors:[],rendererClass:'unknown',physicalPhone:'not-measured',failureScreenshot:{status:'unavailable',reason:'No page available'}};
 let server, browser, profile, cdp, pageCall, logs='';
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const checkpoint = phase => {
+  receipt.phase = phase;
+  writeFileSync(join(out,'receipt.json'),JSON.stringify(receipt,null,2)+'\n');
+};
 try {
+  checkpoint('candidate-verification');
   const candidate=verifyCandidate(root);
   if(candidate.digest!==expected) throw Error('candidate digest differs from trusted input');
   receipt.candidate={id:candidate.id,commit:candidate.commit,tree:candidate.tree,digest:candidate.digest};
@@ -40,6 +45,7 @@ try {
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});
   receipt.serving='loopback-only disposable origin';
   const origin=`http://127.0.0.1:${server.address().port}`;
+  checkpoint('chrome-start');
   profile=mkdtempSync(join(tmpdir(),'ic-render-profile-'));
   // Never --no-sandbox, --ignore-gpu-blocklist, software-renderer overrides or real user profiles.
   const flags=normalBrowserFlags(profile);
@@ -54,11 +60,21 @@ try {
   if(!endpoint)throw Error('Chromium could not start with its normal sandbox; see chromium.log');
   const ws=new WebSocket(endpoint);
   try{await bounded(new Promise((r,j)=>{ws.onopen=r;ws.onerror=j}),10000,'CDP socket open timed out')}catch(e){ws.close();throw e}
-  let seq=0;const pending=new Map(), events=[];
+  let seq=0;const pending=new Map(), events=[], browserDeadline=Date.now()+155000;
   ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}}else events.push(m)};
-  cdp={send:(method,params={},sessionId)=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{pending.delete(id);reject(Error(`CDP timeout: ${method}`))},15000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params,...(sessionId?{sessionId}:{})}));}) ,close:()=>ws.close()};
+  cdp={send:(method,params={},sessionId)=>new Promise((resolve,reject)=>{
+    const timeout=Math.min(8000,browserDeadline-Date.now());
+    if(timeout<=0)return reject(Error('Browser probe deadline exceeded'));
+    const id=++seq;
+    const timer=setTimeout(()=>{pending.delete(id);reject(Error(`CDP timeout: ${method}`))},timeout);
+    pending.set(id,{resolve,reject,timer});
+    try{ws.send(JSON.stringify({id,method,params,...(sessionId?{sessionId}:{})}));}
+    catch(error){pending.delete(id);clearTimeout(timer);reject(error);}
+  }),close:()=>ws.close()};
+  checkpoint('chrome-connected');
   receipt.browser=await cdp.send('Browser.getVersion');
-  try{const info=await cdp.send('SystemInfo.getInfo');receipt.gpu={devices:info.gpu.devices,featureStatus:info.gpu.featureStatus,auxAttributes:info.gpu.auxAttributes};receipt.rendererClass=classifyRenderer(receipt.gpu)}catch{receipt.rendererClass='unknown'}
+  try{const info=await cdp.send('SystemInfo.getInfo');receipt.gpu={devices:info.gpu.devices,featureStatus:info.gpu.featureStatus,auxAttributes:info.gpu.auxAttributes};receipt.rendererClass=classifyRenderer(receipt.gpu)}
+  catch(error){if(/CDP timeout|probe deadline/.test(error.message))throw error;receipt.rendererClass='unknown'}
   const {targetId}=await cdp.send('Target.createTarget',{url:'about:blank'});
   const {sessionId}=await cdp.send('Target.attachToTarget',{targetId,flatten:true});
   const call=(method,params)=>cdp.send(method,params,sessionId);pageCall=call;
@@ -71,12 +87,12 @@ try {
   cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[]};receipt.scenarios.push(entry);
+    checkpoint('scenario-start');
     const closeView=STILLWORKS_CASES.includes(scenario);
     const query=new URLSearchParams({dev:'proving-ground',lab:closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal'});
     await call('Page.navigate',{url:`${origin}/?${query}`});
     // Bounded wait for the real entry point. No altered game state or renderer globals.
-    let ready=false;
-    for(let i=0;i<80;i++){await wait(100);try{ready=await evaluate('!!document.querySelector("#scenarioPause") && !!globalThis.provingGroundGame?.()')}catch{}if(ready)break;}
+    const ready=await waitForBrowserScene(()=>evaluate('!!document.querySelector("#scenarioPause") && !!globalThis.provingGroundGame?.()'));
     if(!ready)throw Error(`scenario did not boot: ${scenario}`);
     await wait(4000);
     for(let i=0;i<2;i++){entry.samples.push(await evaluate(`(async()=>{const m=await import(new URL(${JSON.stringify(diagnosticsPath)},location.href));return m.closeViewRenderDiagnostics()})()`));await wait(300);}
@@ -91,13 +107,14 @@ try {
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
     Object.assign(entry,assess(entry.samples,entry.errors));
     entry.screenshot=`${scenario}.png`;
+    checkpoint('scenario-observed');
   }
   receipt.status=receipt.scenarios.every(s=>s.status==='render-observed')?'render-observed':'blocked';
   // Recheck source bytes after execution, not just before serving them.
   if(verifyCandidate(root).digest!==expected)throw Error('candidate changed during execution');
 }catch(error){
   receipt.errors.push(String(error.message||error));receipt.status='blocked';
-  if(pageCall)try{
+  if(pageCall && !/CDP timeout|probe deadline/.test(String(error.message)))try{
     const image=await pageCall('Page.captureScreenshot',{format:'png'});
     writeFileSync(join(out,'failure.png'),Buffer.from(image.data,'base64'));
     receipt.failureScreenshot={status:'captured',file:'failure.png',visualAcceptance:'not-reviewed'};

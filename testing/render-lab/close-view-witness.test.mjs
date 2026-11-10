@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { closeViewWitness, movementKey } from './close-view-witness.mjs';
+import { waitForBrowserScene } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
   assert.equal(movementKey(-Math.PI / 2, 1, 0), 'd');
@@ -21,4 +22,17 @@ test('a failed public teleport is blocked instead of producing a landing receipt
   });
   assert.equal(witness.status, 'blocked');
   assert.match(witness.reason, /did not arrive/);
+});
+
+test('readiness waits for a loading scene but stops on the first browser transport failure', async () => {
+  let clock = 0, calls = 0;
+  const timing = { budgetMs: 250, now: () => clock, delay: async ms => { clock += ms; } };
+  assert.equal(await waitForBrowserScene(async () => ++calls === 3, timing), true);
+  clock = calls = 0;
+  await assert.rejects(waitForBrowserScene(async () => {
+    calls++;
+    throw Error('CDP timeout: Runtime.evaluate');
+  }, timing), /CDP timeout/);
+  assert.equal(calls, 1);
+  assert.equal(clock, 0);
 });
