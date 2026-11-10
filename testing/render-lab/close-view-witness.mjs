@@ -147,10 +147,13 @@ export async function doorWayfindingWitness(scenario, { call, evaluate, wait, ca
   const traversal=await evaluate(`(() => {
     const info=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent), select=document.querySelector('#teleportSelect');
     const scoped=${JSON.stringify(opened.doorId)}, raw=scoped.slice(scoped.lastIndexOf('::')+2);
-    const door=info.teleportTargets?.find(q=>q.id===scoped||q.id===raw);
+    const g=globalThis.provingGroundGame?.();
+    const steps=g?.map.objects.filter(o=>o.kind==='buildingStair'&&o.toId&&!o.lock&&!o.barred&&!o.sigil&&!o.bossGate&&!o.plateLock)||[];
+    const step=steps.find(o=>o.id===raw)||steps[0],id=step?.id;
+    const door=info.teleportTargets?.find(q=>q.id===id);
     if(!door || ![...select.options].some(o=>o.value===door.id))return {available:false};
     select.value=door.id;select.dispatchEvent(new Event('change',{bubbles:true}));
-    return {available:true,target:door};
+    return {available:true,target:door,toArea:step.toId,doorName:step.name};
   })()`);
   if(traversal.available){
     await evaluate(`document.querySelector('#pgRoutes form button').click()`);
@@ -158,11 +161,15 @@ export async function doorWayfindingWitness(scenario, { call, evaluate, wait, ca
     await wait(180);
     await holdKey(call,wait,'e',80);
     for(let i=0;i<8;i++){
+      await evaluate(`(() => {
+        const dialog=document.querySelector('#pgInteraction');
+        if(dialog?.open&&dialog.querySelector('h2')?.textContent===${JSON.stringify(traversal.doorName)})dialog.querySelector('.pg-interaction-actions button:not(:disabled)')?.click();
+      })()`);
       traversal.after=await evaluate(`globalThis.provingGroundGame?.().areaId()`);
       if(traversal.after!==before.area)break;
       await wait(100);
     }
-    traversal.observed=traversal.after!==before.area;
+    traversal.observed=traversal.after===traversal.toArea&&traversal.after!==before.area;
     if(traversal.observed){
       await wait(250);
       traversal.arrival=await evaluate(`JSON.parse(document.querySelector('#fixtureDiagnostics').textContent).doorWayfinding?.find(door=>door.mark==='arrival')||null`);
