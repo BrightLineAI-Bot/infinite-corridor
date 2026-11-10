@@ -1,6 +1,7 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
 import { canopyGateDestination } from './trees.ts';
-import { ACTOR_CONTACT, actorContactContext } from "./actor-contact.ts";
+import { ACTOR_CONTACT, ACTOR_BODY_HEIGHT, actorContactBottom, actorContactContext, actorContactTop, ordinaryContactEnemy } from "./actor-contact.ts";
+import { advanceGalleryLiftClock, galleryLiftContains, galleryLiftPose, galleryLiftSweepsActor } from "./gallery-lift-track.ts";
 import { simpleToolAppearanceKind, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
@@ -3474,6 +3475,9 @@ export class Game {
       return ground + this.discAir * LIFT_PER_LEVEL;
     if (this.skyLevel > 0 && discAt(this.map, x + .5, y + .75, { level: this.skyLevel }))
       return ground + this.skyLevel * LIFT_PER_LEVEL;
+    const lift = this.scratchGalleryLift;
+    if (lift?.rider && lift.map===this.map && galleryLiftContains(lift.track, lift.pose, { x, y, footElevation: lift.pose.elevation }))
+      return lift.pose.elevation * LIFT_PER_LEVEL;
     if (carrier?.raft) {
       const px = Math.max(0, Math.min(1, Number(phase?.x) || 0)), py = Math.max(0, Math.min(1, Number(phase?.y) || 0)),
         pt = Math.max(0, Math.min(1, Number(phase?.t) || 0)), a = carrier.old, b = carrier.current,
@@ -3484,6 +3488,55 @@ export class Game {
     }
     const time = Number(this.save.playSeconds) || 0, raft = platformUnder(this.map, x, y, time);
     return raft ? ground + platformPos(raft, time).z * LIFT_PER_LEVEL : null;
+  }
+  installScratchGalleryLift(track, snapshot = null) {
+    const elapsed = Number.isFinite(snapshot?.elapsed) && snapshot.elapsed >= 0 ? snapshot.elapsed : 0;
+    const pose = galleryLiftPose(track, elapsed);
+    this.scratchGalleryLift = { map: this.map, track, clock: Object.freeze({ elapsed }), pose, rider: snapshot?.rider === true, blocked: false };
+    if (this.scratchGalleryLift.rider) Object.assign(this.player, { x: pose.x, y: pose.y });
+    return this.scratchGalleryLiftSnapshot();
+  }
+  scratchGalleryLiftSnapshot() {
+    const q = this.scratchGalleryLift;
+    return q ? { elapsed: q.clock.elapsed, rider: q.rider, blocked: q.blocked, pose: { ...q.pose }, feetElevation: q.rider ? q.pose.elevation : this.elevationHere(this.player.x, this.player.y) } : null;
+  }
+  tickScratchGalleryLift(dt) {
+    const q = this.scratchGalleryLift;
+    if (!q || this.paused || !(dt > 0)) return false;
+    if (q.map !== this.map) { this.scratchGalleryLift = null; return false; }
+    const ground = this.elevationHere(this.player.x, this.player.y);
+    if (q.rider && !galleryLiftContains(q.track, q.pose, { x: this.player.x, y: this.player.y, footElevation: q.pose.elevation })) q.rider = false;
+    if (!q.rider && galleryLiftContains(q.track, q.pose, { x: this.player.x, y: this.player.y, footElevation: ground })) q.rider = true;
+    const nextClock = advanceGalleryLiftClock(q.clock, Math.max(0, Math.min(1, Number(dt) || 0)));
+    const next = galleryLiftPose(q.track, nextClock.elapsed);
+    const width = mapWidth(this.map, this.area);
+    let blocked = (this.enemies || []).some((enemy) => {
+      if (!ordinaryContactEnemy(enemy)) return false;
+      const support = liftAt(this.map, width, enemy.x, enemy.y) / LIFT_PER_LEVEL;
+      return galleryLiftSweepsActor(q.track, q.pose, next, { x: enemy.x, y: enemy.y,
+        bottomElevation: support + actorContactBottom(enemy) / LIFT_PER_LEVEL,
+        topElevation: support + actorContactTop(enemy, this) / LIFT_PER_LEVEL });
+    });
+    if (!blocked && q.rider) {
+      const ox = this.player.x, oy = this.player.y, dx = next.x - q.pose.x, dy = next.y - q.pose.y;
+      // Check the swept rider, including pure vertical movement under a low roof or arch.
+      const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/.2));
+      for(let i=0;i<=steps;i++){
+        const f=i/steps,z=q.pose.elevation+(next.elevation-q.pose.elevation)*f;
+        if(z>this.interiorLiftCeiling(ox+dx*f,oy+dy*f)+1e-6){blocked=true;break;}
+      }
+      if(blocked){q.blocked=true;return false;}
+      q.pose = next;
+      if ((dx || dy) && (!this.moveGrounded(this.player, dx, dy) || Math.abs(this.player.x - (ox + dx)) > 1e-7 || Math.abs(this.player.y - (oy + dy)) > 1e-7)) {
+        Object.assign(this.player, { x: ox, y: oy }); q.pose = galleryLiftPose(q.track, q.clock.elapsed); blocked = true;
+      }
+    } else if (!blocked) {
+      const bodyTop = ground + ACTOR_BODY_HEIGHT.player / LIFT_PER_LEVEL;
+      blocked = galleryLiftSweepsActor(q.track, q.pose, next, { x: this.player.x, y: this.player.y, bottomElevation: ground, topElevation: bodyTop });
+    }
+    q.blocked = blocked;
+    if (!blocked) { q.clock = nextClock; q.pose = next; }
+    return !blocked;
   }
   // The shared ordinary-displacement adapter also serves pulls, knockback and enemy lunges.
   // Specialized boat/mount/world-beast controllers retain their explicit movement paths.
@@ -3506,7 +3559,7 @@ export class Game {
     // Simulation flags match the commit path, without mutating the player, lift or action clocks.
     probe.x = p.x; probe.y = p.y; probe.isPlayer = true; probe.jumping = jumping; probe.voidSuit = this.mechUp() && this.area !== "dungeon";
     const launch = jumping && (from?.skyPlatform || (interiorTerrain(this.map) && from?.interiorPlatform));
-    probe.airElev = jumping ? (launch ? Math.max(this.skyAir ?? -1, from.elev || 0) : this.skyAir ?? undefined) : undefined;
+    probe.airElev = this.scratchGalleryLift?.rider ? this.scratchGalleryLift.pose.elevation : jumping ? (launch ? Math.max(this.skyAir ?? -1, from.elev || 0) : this.skyAir ?? undefined) : undefined;
     probe.airElevScale = launch ? tileLiftScale(from) : this.skyAirScale || 1;
     contacts.supportSubject = probe;
     contacts.carrier = carrier;
@@ -3620,7 +3673,7 @@ export class Game {
   }
   elevationHere(x, y) { return elevationAt(this.map, mapWidth(this.map, this.area), x, y); }
   // The Wayfarer's height in levels: the ground under them, or the drone's lift or a glide's height (ELEVATION_REACH).
-  playerLevel() { if (this.droneLiftAllowed() && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; return this.elevationHere(this.player.x, this.player.y + (this.player.riderShift || 0)); } // release 748: a mounted rider stands where the mount's feet are
+  playerLevel() { if (this.scratchGalleryLift?.rider) return this.scratchGalleryLift.pose.elevation; if (this.droneLiftAllowed() && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; return this.elevationHere(this.player.x, this.player.y + (this.player.riderShift || 0)); } // release 748: a mounted rider stands where the mount's feet are
   bodyReach(e) { return bodyBlowReaches(this.map, mapWidth(this.map, this.area), e, this.player, null, this.playerLevel()); }
   glyphWorld(now) {
     const game = this, p = this.player;
@@ -8457,6 +8510,7 @@ export class Game {
     if (this.paused) return;
     if (this.area === "overworld" && this._pentOfferAt !== `${this.rx},${this.ry}` && (this._pentOfferWait = (this._pentOfferWait || 0) + Math.max(0, Number(dt) || 0)) >= PENTAGON_FINDING.hunts.settle) { this._pentOfferAt = `${this.rx},${this.ry}`; this._pentOfferWait = 0; this.warmPentagonCatchments(); this.offerPentagonHunt(); } // Pentagon finding: once a section has settled (never per frame), warm the catchments the next crossing may ask about and look for a hunt
     this.save.playSeconds = (Number(this.save.playSeconds) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); // release 379: playtime (paused time is not counted)
+    this.tickScratchGalleryLift(dt); // isolated opt-in gallery witness; never installed by production generation
     if (this.fallen) { if (this.player.hurtVisual?.v === 1) this.player.hurtVisual = null; this.tickFallen(dt, input, now); return; } // release 329
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
@@ -8665,7 +8719,7 @@ export class Game {
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?(tileUnder(this.map,width,nx,ny)?.chasm?(this.fellStars=true,"The Wayfarer steps off the edge and falls away into the stars."):"The ledge gives way beneath the Wayfarer."):"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {
-      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp() && this.area !== "dungeon"; /* 511: never through dungeon walls */ // release 509: only the robot steps into a star-void
+      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0) || this.scratchGalleryLift?.rider === true; p.voidSuit = this.mechUp() && this.area !== "dungeon"; /* 511: never through dungeon walls */ // release 509: only the robot steps into a star-void
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
       // Release 585 (the skyway climb): a jump from a sky platform keeps its height over the gap below until it ends, so the
       // next platform (one level up at most) can be reached; a jump that ends over the gap falls from that height.
@@ -8673,7 +8727,7 @@ export class Game {
       if (skyFrom?.kind === "canopyTrunk") this.lastCrownAt = now; // release 637: the glider opens only from the crown
       if (skyFrom?.kind === "canopyTrunk" && !this.save.glider) { this.save.glider = true; this.message = GLIDE.found; journalOnce(this.save, "glider:found", GLIDE.found, "The Great Trees"); } // release 635
       if (p.jumping && (skyFrom?.skyPlatform || (interiorTerrain(this.map) && skyFrom?.interiorPlatform))) { this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0); this.skyAirScale = tileLiftScale(skyFrom); } // skyAirScale: the launching platform's drawn scale, so the hop is drawn at its height over the gap (renderer.ts)
-      p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
+      p.airElev = this.scratchGalleryLift?.rider ? this.scratchGalleryLift.pose.elevation : p.jumping && this.skyAir != null ? this.skyAir : undefined;
       let fallStart = this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;
       const finishFall = (height) => {
         const raw0 = fallStart - height; if (this.save.glider && !this.glide && raw0 >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && !this.liftDrop) { /* release 669: a long fall is a freefall with the drone out too (the drone has Jump in a jump; the glider in a freefall); a drop off your own booster is a fall */ this.glide = { z: fallStart, vx: 0, vy: 0, open: false, fallFrom: fallStart, told: false }; this.glideHome = this.treeGlideHome(fallStart); this.message = GLIDE.falling; return; } // release 641: a long fall is a freefall: Jump opens the glider // release 635: the glider opens
