@@ -21,10 +21,10 @@ Main is at r869 (`d6c8a8f181d1`); r870 (#532), r871 (#533) and r872 (#536) merge
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 873 | Claude | claude/interior-platform-reach | Interior terrain v2: jump platforms never create one-way pockets or sealed guards | In flight. |
-| 872 | Claude | claude/overworld-close-view-fidelity / #536 | Overworld Close View sky, ground, water and standing solids | Merged as `62f86eace9c7`. |
-| 871 | Claude | claude/cleaver-salvage-flow / #533 | Verge Cleaver three quick grounded cuts | Merged as `5bdd583a2065`; Preview r871-5bdd583a2065. |
-| 870 | Claude | claude/salvage-blade-drops / #532 | Salvage Blade in the ordinary monster gear roll | Merged as `5873f2790e2e`; Preview r870-5873f2790e2e. |
+| 873 | Claude | claude/interior-platform-reach | Interior terrain v2: jump platforms never create one-way pockets or sealed guards | Merged as `d4a0b43a1879` (#537). Published in r873. |
+| 872 | Claude | claude/overworld-close-view-fidelity / #536 | Overworld Close View sky, ground, water and standing solids | Merged as `62f86eace9c7`. Published in r873. |
+| 871 | Claude | claude/cleaver-salvage-flow / #533 | Verge Cleaver three quick grounded cuts | Merged as `5bdd583a2065`; Preview r871-5bdd583a2065. Published in r873. |
+| 870 | Claude | claude/salvage-blade-drops / #532 | Salvage Blade in the ordinary monster gear roll | Merged as `5873f2790e2e`; Preview r870-5873f2790e2e. Published in r873. |
 | 868 | Codex | claude/dungeon-door-wayfinding / #529 | Discovered Cube/Pentagon doors, traversal torches, three waypoints and north fallback | Merged as `c66bcccd6ded3`; Preview 42832591291 passed. Published in r869 after the overworld compass correction. |
 | 867 | Codex | claude/close-view-everywhere / #527 | Opt-in Overworld Close View alongside the existing indoor toggle | Merged as `4d4e08da67ef`; Preview 42819756691 and exact WebGL preflight 42822447254 passed. The hosted toggle was verified. Published in r869. |
 | 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Merged as 9be7ed5f7dd5. Source CI 42789144576 and merged CI 42790706548 passed. Preview 42790706560 failed the unchanged castle generation timing assertion. Exact retry 42792770710 passed. Atlas visual acceptance passed on exact r865 and the work was published in r865. |
@@ -231,6 +231,7 @@ Main is at r869 (`d6c8a8f181d1`); r870 (#532), r871 (#533) and r872 (#536) merge
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 873 | r873-d4a0b43a1879 | 2026-11-10 | Includes r870–r872. Fable review (869→873): no blockers; 3,516 tests pass, 26,862 pinned floors and 500 save-pinned floors regenerate identically, 60,000 default loot rolls identical, saved four-cut Cleaver records resume exactly. Live identity verified. |
 | 869 | r869-d6c8a8f181d1 | 2026-11-10 | Includes r867 and r868. Astra review (866→869) found no blockers. Merged CI 42837647783 and Preview 42837647733 passed. Browser Companion verified the blue arrival torch and Cube waypoint selection. Frozen WebGL evidence 42842391961 verified true north and the overworld target bearing through camera turns. The first Publish timed out waiting for Pages. Publish 42857232512 succeeded. Public identity and Options → System matched, with no recent errors. |
 | 866 | r866-2a08d6b00273 | 2026-11-10 | Astra review (865→866): no blockers. Preview 42810368434 and Rending Hands witness 42813314967 passed. Publish 42814014175 updated the root artifact; its public Pages wait and retry 42816425923 timed out. The subsequent Pages deployment for r867 Preview served the retained r866 root, whose public identity matched the exact commit and tree. |
 | 865 | r865-1532e8b05f7f | 2026-11-10 | Includes r864. Astra review (863→865): no blockers. Source CI 42790937252, merged CI 42792839287, Preview 42792839108 and Publish 42796632516 passed. Browser Companion verified the Pentagon Atlas, summit gate and normal Act entry into the Cloud Hold on the exact Preview. Live Pages identity and Options → System matched, with no recent errors. |
