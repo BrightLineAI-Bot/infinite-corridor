@@ -100,8 +100,7 @@ try {
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
   const cases = [COMBAT_ACTION_CASES[1]];
   receipt.scope='remaining online gameplay witnesses for exact frozen r865';
-  cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
-  if (fixtures.includes(`"${SUMMIT_CASE}"`)) cases.push(SUMMIT_CASE);
+  cases.push(...STILLWORKS_CASES.slice(1).filter(id => fixtures.includes(`"${id}"`)));
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[],captures:[]};receipt.scenarios.push(entry);
     checkpoint('scenario-navigate');
@@ -154,7 +153,7 @@ try {
       const deadline=Date.now()+12000;
       let first=await readDiagnostics();
       const startup=first;
-      while(first.asset==='loading' && Date.now()<deadline){
+      while(first.asset!=='failed' && (first.player!=='imported' || first.heroGPU!=='ready') && Date.now()<deadline){
         await wait(450);
         first=await readDiagnostics();
       }
