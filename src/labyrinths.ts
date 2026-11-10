@@ -722,6 +722,13 @@ function clearLine(T, W, x, y, tx, ty) {
     if ((x !== tx || y !== ty) && blocks(T, y * W + x)) return false; }
   return true;
 }
+// Narrow reuse for door discovery in rooms that deliberately have no fog overlay.
+export function labDoorInSight(map, ox, oy, tx, ty) {
+  const {width:w,tiles}=map,h=map.height||Math.floor(tiles.length/w);
+  if(ox<0||oy<0||tx<0||ty<0||ox>=w||oy>=h||tx>=w||ty>=h)return false;
+  if((tx-ox)**2+(ty-oy)**2>LAB_FOG.radius**2)return false;
+  return clearLine(tiles,w,ox,oy,tx,ty)||clearLine(tiles,w,tx,ty,ox,oy);
+}
 // The Wayfarer's tile (as game.ts markWalked and landscape.ts tileUnder read it).
 export const labFogTile = (p) => ({ x: Math.floor(p.x + .5), y: Math.floor(p.y + .75) });
 // Work the sight out from tile (ox, oy). Does nothing when the tile has not changed since the last time.

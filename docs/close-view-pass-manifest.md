@@ -4,6 +4,13 @@ Updated: 2026-11-09. This is the work record for the owner's Close View notes an
 
 Verified live on 2026-11-09: r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855cbef6623a7fab26, tree ebf51648774c496840596c9ce8aa70c525894ce2. Astra found no blockers from r857. Publish 42713761172 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
 
+## Current checkpoint — 2026-11-10
+
+- Production identity is `r866-2a08d6b00273`. Astra found no blockers against r865, and the exact Stillworks Rending Hands preflight passed. The two Publish workflows timed out waiting for Pages after the root artifact was pushed; Pages resumed serving that exact root when r867 Preview deployed.
+- The [r867 Preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r867-4d4e08da67ef/?dev=proving-ground&lab=test-tile&scenario=standard&overworldCloseView=1&cvQuality=low) adds an independent, opt-in Overworld Close View setting. The [exact WebGL preflight](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42822447254) completed and retained desktop frames. Physical phone coverage remains open.
+- Next priority: Cube and Pentagon door lights and compass. Verify actual arrival versus another traversed door, undiscovered door suppression, three selectable points and reload, and true north while the Close View camera turns. The new work is being prepared separately from r867.
+- The follow-up [Stillworks Rending Hands kit](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/528) remains an unnumbered draft, with Rift Claws and Swords Beyond poses prepared and 34 focused checks passed.
+
 ## r860 published batch — 2026-11-09
 
 - The prior live identity was r857-6ce7028f514c. r858 (#514), r859 (#515) and r860 (#516) merged, and their merged CI passed. r858 Preview 42700331564 failed its Pages wait with HTTP 404 after 15 minutes. r859 Preview 42702713650 and r860 Preview 42705201998 succeeded.

@@ -230,6 +230,7 @@ const CLOSE_VIEW_LAB = [
   { id: "grand-hall", label: "Pentagon: a grand hall", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "pit-gallery", label: "Pentagon: a grand hall with a shaft", pick: (P) => P.nodes.find((n) => n.hall?.type === "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "terrain-pentagon", label: "Traversal: current Pentagon rooms and ramps", latestPentagon: true, pick: (P) => P.nodes.find((n) => (n.kind === "outer" || n.kind === "inner") && !n.hall) },
+  { id: "cube-doors", label: "Wayfinding: Cube room maze", cubeDoors: true },
   { id: "building", label: "Great building: a keep's first floor" },
   { id: "hazards", label: "Great building: an upper floor's holes, with lava stamped in (Close View's pits and lava)" }, // release 793
   { id: "terrain-ramps", label: "Traversal: broad indoor ramps", buildingFeature: "ramp" },
@@ -352,7 +353,10 @@ function closeViewFixture(scenario, seed, now) {
   if (spec.routingAdoption) return routingAdoptionFixture(spec, now);
   if (spec.roomRouting) return roomRoutingFixture(spec, seed, now);
   let id, back;
-  if (spec.style) { // release 794: a theme's floor, built from a great building's id near the keep the lab finds (scratch only)
+  if(spec.cubeDoors){
+    id=`labyrinth:${seed}:0:0:keep~r2:f2`;back={rx:0,ry:0,x:16,y:16};
+  }
+  else if (spec.style) { // release 794: a theme's floor, built from a great building's id near the keep the lab finds (scratch only)
     const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); const floors = 3; let rx = b.rx;
     if (spec.style === "keep") for (let k = 0; k < 200 && closeViewThemeLivedIn(`building:${seed}:${rx}:${b.ry}:keep:${floors}`) !== spec.lived; k++) rx++; // a keep that is (or is not) lived in
     id = `building:${seed}:${rx}:${b.ry}:${spec.style}:${floors}:f${spec.floor || 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
@@ -368,7 +372,7 @@ function closeViewFixture(scenario, seed, now) {
   Object.assign(save.session, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 }); Object.assign(save.position, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 });
   const game = new Game(save, now); game.installSystems();
   save.session.activeDungeonId = id; save.session.dungeonReturn = back; game.loadArea("dungeon", false);
-  if (spec.buildingFeature || spec.latestPentagon || spec.buildVersion) {
+  if (spec.buildingFeature || spec.latestPentagon || spec.buildVersion || spec.cubeDoors) {
     const loadArea = game.loadArea.bind(game);
     game.loadArea = (area, capture = true) => {
       const result = loadArea(area, capture);
@@ -387,6 +391,7 @@ function closeViewFixture(scenario, seed, now) {
     entry = candidates.reduce((best, t) => !best || distance(t) < distance(best) ? t : best, null) || entry;
   }
   game.player.x = entry.x; game.player.y = entry.y; game.player.attackReadyAt = now;
+  if(spec.cubeDoors||game.map.building?.pentagon)game.labFogTick();
   let traversal = null;
   let buildPractice = null;
   if (spec.buildVersion) {

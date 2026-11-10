@@ -398,7 +398,7 @@ export const CLOSE_VIEW = Object.freeze({
 // Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.ts's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
-export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
+export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
 
 // Save (additive, schema 14): save.closeView, true when the player has chosen Close View for interiors. Off by default.
 // save.closeViewPreset: one of CLOSE_VIEW.presets' keys (the standard one unless chosen).
@@ -2629,6 +2629,34 @@ export function writePlacedSpellLight(frame, fx, map, slot) {
   frame.lc[o+3]=.65*Math.min(1,Math.max(0,fx.life/fx.pulse));return true;
 }
 const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
+// Place each lantern at a doorway jamb. For a closed gate, put it on the
+// first walkable approach so its flame does not sit inside the blocked tile.
+export function closeViewCompassRotation(dx,dy,yaw=-Math.PI/2){
+  return Math.round((Math.atan2(dy,dx)-yaw)*180/Math.PI);
+}
+export function closeViewDoorTorchPosition(map, door) {
+  const w=map.width||32,h=map.height||Math.floor(map.tiles.length/w);
+  const free=(x,y)=>x>=0&&y>=0&&x<w&&y<h&&!map.tiles[y*w+x]?.blocked;
+  const {x,y}=door, ew=free(x-1,y)&&free(x+1,y), ns=free(x,y-1)&&free(x,y+1);
+  if(door.blocked){
+    for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]])if(free(x+dx,y+dy))
+      return {x:x+.5+dx*.65+dy*.28,y:y+.5+dy*.65-dx*.28};
+  }
+  return ew&&!ns?{x:x+.5,y:y+.82}:{x:x+.82,y:y+.5};
+}
+function nearbyDoorTorches(g,px,py,reach,seen,limit){
+  const doors=CLOSE_VIEW_HOOKS.navigationDoors?.(g);
+  if(!doors?.length||limit<=0)return [];
+  const list=[];
+  for(const door of doors){
+    if(door.mark==="known"||seen&&!seen(door.x,door.y))continue;
+    const p=closeViewDoorTorchPosition(g.map,door),dist=Math.hypot(p.x-px,p.y-py);
+    if(dist>reach+1.8)continue;
+    list.push({...p,dist,arrival:door.mark==="arrival"});
+  }
+  list.sort((a,b)=>a.dist-b.dist);
+  return list.slice(0,limit);
+}
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor) {
   try {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, At = CLOSE_VIEW.atmosphere, F = GLF, p = g.player;
@@ -2659,7 +2687,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // the placed lights: the nearest few to the Wayfarer that the fog of war has shown, each breathing gently (still with reduced motion)
   const K = Math.min(8, Q.lights ?? At.lights), L = st.lights, px = F.px, py = F.py;
   const spellLight=K>0?nearestPlacedSpellLight(g.effects,g.map,px,py,F.reach,seen):null;
-  const staticLimit=K-(spellLight?1:0);let nk = 0;
+  const torchLights=nearbyDoorTorches(g,px,py,F.reach,seen,Math.min(2,K-(spellLight?1:0)));
+  const staticLimit=K-(spellLight?1:0)-torchLights.length;let nk = 0;
   for (let i = 0; i < st.nLights; i++) { const o = i * LIGHT_FLOATS, d = Math.hypot(L[o] - px, L[o + 1] - py); if (d > F.reach + L[o + 3]) continue; if (seen && !seen(Math.floor(L[o]), Math.floor(L[o + 1]))) continue;
     if (nk < staticLimit) { PICK.idx[nk] = i; PICK.d[nk] = d; nk++; } else if(staticLimit>0) { let wi = 0; for (let j = 1; j < nk; j++) if (PICK.d[j] > PICK.d[wi]) wi = j; if (d < PICK.d[wi]) { PICK.idx[wi] = i; PICK.d[wi] = d; } } }
   for (let i = 1; i < nk; i++) { const di = PICK.d[i], ii = PICK.idx[i]; let j = i - 1; while (j >= 0 && PICK.d[j] > di) { PICK.d[j + 1] = PICK.d[j]; PICK.idx[j + 1] = PICK.idx[j]; j--; } PICK.d[j + 1] = di; PICK.idx[j + 1] = ii; } // nearest first (the shader's highlights take the first two)
@@ -2671,6 +2700,11 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // Append after static lights: PICK, first-two highlights, halos and motes keep
   // their original static indices. No additional cards or rendering passes.
   if(spellLight&&writePlacedSpellLight(F,spellLight,g.map,nk))F.nl++;
+  for(const torch of torchLights){
+    const i=F.nl++*4;
+    F.lp[i]=torch.x;F.lp[i+1]=torch.y;F.lp[i+2]=interiorSurfaceHeight(g.map,torch.x,torch.y)+.82;F.lp[i+3]=1.8;
+    F.lc[i]=torch.arrival?.21:.55;F.lc[i+1]=torch.arrival?.65:.26;F.lc[i+2]=1;F.lc[i+3]=.68;
+  }
   // billboards (far to near), and their floor decals
   let nb = 0; for (let i = 0; i < n; i++) if (itemKind[i] === 1) nb++;
   const B = glEnsure("board", nb * 6); let D = glEnsure("decal", (nb * 3 + 400) * 6); let bv = 0, dv = 0; const tw = GROUND.canvas.width, th2 = GROUND.canvas.height, RX = CAM.rx, RY = CAM.ry;
