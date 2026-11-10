@@ -115,7 +115,7 @@ export async function preflight({ input, directory, repositoryDirectory, token }
       preflightCommit: process.env.GITHUB_SHA || 'unknown', runId: process.env.GITHUB_RUN_ID || 'unknown', runAttempt: process.env.GITHUB_RUN_ATTEMPT || 'unknown' };
     const labOutput = join(output, 'render');
     const child = spawnSync(process.execPath, [join(HERE, '../render-lab/run.mjs'), '--candidate', candidateDirectory, '--digest', s.payload_digest, '--out', labOutput, '--chromium', chrome],
-      { encoding: 'utf8', timeout: 360000, maxBuffer: 1024 * 1024, env: browserEnvironment(process.env) });
+      { encoding: 'utf8', timeout: 420000, maxBuffer: 1024 * 1024, env: browserEnvironment(process.env) });
     writeFileSync(join(output, 'render-process.log'), String(child.stdout || '') + String(child.stderr || ''));
     receipt.cleanup = 'unconfirmed';
     receipt.browser = { exitCode: child.status, signal: child.signal, error: child.error ? 'Browser runner failed or timed out; cleanup not confirmed' : null };
@@ -123,6 +123,7 @@ export async function preflight({ input, directory, repositoryDirectory, token }
       const rendered = JSON.parse(readFileSync(join(labOutput, 'receipt.json'), 'utf8'));
       receipt.cleanup = rendered.cleanup || 'unconfirmed';
       receipt.rendererClass = rendered.rendererClass || 'unknown';
+      if(rendered.offline)receipt.offline=rendered.offline;
       receipt.screenshots = rendered.scenarios?.flatMap(scenario =>
         scenario.captures ?? [scenario.firstScreenshot, scenario.screenshot, ...(scenario.witness?.screenshots || [])].filter(Boolean)) || [];
       const last = rendered.scenarios?.at(-1);
@@ -158,7 +159,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     repositoryDirectory: process.cwd(), token: process.env.GH_TOKEN });
   // This summary is produced by the harness, not by console text from the candidate.
   console.log(JSON.stringify({ status: receipt.status, probe: receipt.browserProbe, renderer: receipt.rendererClass,
-    acquisition: receipt.artifactAudit, cleanup: receipt.cleanup, scenes: receipt.scenes,
+    acquisition: receipt.artifactAudit, cleanup: receipt.cleanup, scenes: receipt.scenes, offline: receipt.offline,
     screenshots: Array.isArray(receipt.screenshots) ? receipt.screenshots.length : 0 }));
   process.exitCode = receipt.status === 'render_observed' ? 0 : 2;
 }

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
-import { cleaverWitness, closeViewWitness, routePanelWitness, summitWitness, CLEAVER_CASE, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
+import { cleaverWitness, combatActionWitness, closeViewWitness, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -16,7 +16,7 @@ const {root,out}=disjointPaths(candidatePath,output);
 if (existsSync(out)) throw Error('refusing to overwrite evidence');
 mkdirSync(out,{recursive:true});
 const receipt={schema:1, startedAt:new Date().toISOString(), scope:'local frozen artifact render probe, not publication acceptance', status:'blocked', scenarios:[], restrictions:['No visual approval','No physical phone performance evidence','No production or hosted-origin testing'], errors:[],rendererClass:'unknown',physicalPhone:'not-measured',failureScreenshot:{status:'unavailable',reason:'No page available'}};
-let server, browser, profile, cdp, pageCall, currentObservation, logs='';
+let server, browser, profile, cdp, pageCall, currentObservation, logs='', networkCut=false, deniedRequests=0;
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const checkpoint = phase => {
   receipt.phase = phase;
@@ -33,6 +33,7 @@ try {
   const mime={'.html':'text/html','.js':'text/javascript','.json':'application/json','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
   server=createServer((req,res)=>{
     try {
+      if(networkCut){deniedRequests++;res.writeHead(503).end();return;}
       if(req.method!=='GET'&&req.method!=='HEAD'){res.writeHead(405).end();return;}
       const name=safePath(new URL(req.url,'http://localhost').pathname);
       // Serve only the already verified inventory, never arbitrary workspace files.
@@ -60,7 +61,7 @@ try {
   if(!endpoint)throw Error('Chromium could not start with its normal sandbox; see chromium.log');
   const ws=new WebSocket(endpoint);
   try{await bounded(new Promise((r,j)=>{ws.onopen=r;ws.onerror=j}),10000,'CDP socket open timed out')}catch(e){ws.close();throw e}
-  let seq=0;const pending=new Map(), events=[], browserDeadline=Date.now()+270000;
+  let seq=0;const pending=new Map(), events=[], browserDeadline=Date.now()+360000;
   ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}}else events.push(m)};
   cdp={send:(method,params={},sessionId)=>new Promise((resolve,reject)=>{
     const timeout=Math.min(8000,browserDeadline-Date.now());
@@ -86,8 +87,18 @@ try {
   await call('Emulation.setDeviceMetricsOverride',receipt.display);
   let contextId;
   const evaluate=async (expression,awaitPromise=false)=>{const r=await call('Runtime.evaluate',{expression,contextId,awaitPromise,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
+  const navigate=async url=>{
+    const start=events.length;
+    const navigation=await call('Page.navigate',{url});
+    if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
+    const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
+    if(!await waitForBrowserScene(()=>{const o=observe();return o.committed&&o.domReady&&Number.isInteger(o.contextId);}))
+      throw Error('Browser did not load the expected document');
+    contextId=observe().contextId;
+    return observe;
+  };
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
-  const cases = [CLEAVER_CASE,'pike-echo-inspection','cast-skill-aerial-step','blade-hammerfall-brute'];
+  const cases = [CLEAVER_CASE,...COMBAT_ACTION_CASES];
   // An old frozen artifact need not contain the newer fixtures.
   cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
   if (fixtures.includes(`"${SUMMIT_CASE}"`)) cases.push(SUMMIT_CASE);
@@ -97,18 +108,13 @@ try {
     const closeView=STILLWORKS_CASES.includes(scenario);
     const summit=scenario===SUMMIT_CASE;
     const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
-    const navigation=await call('Page.navigate',{url:`${origin}/?${query}`});
-    if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
-    const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
+    const url=`${origin}/?${query}`;
+    const observe=await navigate(url);
     currentObservation=()=>{
       entry.navigation=observe();
       entry.webglCaptured=capturedWebGLFrames(entry);
     };
-    checkpoint('scenario-document');
-    const loaded=await waitForBrowserScene(()=>{const o=observe();return o.committed&&o.domReady&&Number.isInteger(o.contextId);});
     currentObservation();
-    if(!loaded)throw Error(`document did not become ready: ${scenario}`);
-    contextId=entry.navigation.contextId;
     // Bounded wait for the real entry point. No altered game state or renderer globals.
     checkpoint('scenario-ready');
     const ready=await waitForBrowserScene(()=>evaluate('!!document.querySelector("#scenarioPause") && !!globalThis.provingGroundGame?.()'));
@@ -144,24 +150,29 @@ try {
       await evaluate('document.querySelector("#pgDiagnosticsClose").click()');
       return {...diagnosticsFromRows(observation.rows,candidate.id),effectiveQuality:observation.effectiveQuality};
     };
-    if(!summit){
+    const readFramePair=async()=>{
       const deadline=Date.now()+12000;
       let first=await readDiagnostics();
-      entry.startupSample=first;
+      const startup=first;
       while(first.asset==='loading' && Date.now()<deadline){
         await wait(450);
         first=await readDiagnostics();
       }
-      entry.samples.push(first);
       await wait(300);
-      entry.samples.push(await readDiagnostics());
+      return {startup, samples:[first,await readDiagnostics()]};
+    };
+    if(!summit){
+      const frames=await readFramePair();
+      entry.startupSample=frames.startup;
+      entry.samples=frames.samples;
     }
     // Keep the sampled scene even if an input witness later fails.
     checkpoint('scenario-screenshot');
     entry.screenshot=await capture();
     checkpoint('scenario-witness');
     const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
-      : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness : null;
+      : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness
+      : COMBAT_ACTION_CASES.includes(scenario) && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 865 ? combatActionWitness.bind(null,scenario) : null;
     const witnessTools={call,evaluate,wait,capture};
     if(witness) entry.witness=await witness(witnessTools);
     if(scenario.startsWith('routing-crawl-') && entry.witness?.status==='observed'){
@@ -173,6 +184,11 @@ try {
       }
     }
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
+    // Chrome's optional root favicon is absent from the frozen inventory. Keep the
+    // receipt, but a failed browser decoration is independent of application assets.
+    entry.optionalBrowserRequests=entry.errors.filter(({details})=>details?.type==='Other'
+      && details.response?.status===404 && details.response.url===`${origin}/favicon.ico`);
+    entry.errors=entry.errors.filter(error=>!entry.optionalBrowserRequests.includes(error));
     if(entry.samples.some(sample=>sample.clientError))entry.errors.push({method:'Public renderer diagnostics reported a client error'});
     if(summit){
       entry.scene='world-map';
@@ -185,8 +201,43 @@ try {
     }
     currentObservation();currentObservation=null;
     checkpoint('scenario-observed');
+    if(scenario===CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1])>=865){
+      checkpoint('offline-cleaver');
+      const beforeContext=contextId;
+      const workerUrl=`${origin}/sw.js?v=${candidate.id}`;
+      const controller=()=>evaluate('navigator.serviceWorker.controller?.scriptURL');
+      const conditions=offline=>call('Network.emulateNetworkConditions',{offline,latency:0,downloadThroughput:-1,uploadThroughput:-1});
+      receipt.offline={status:'blocked',scenario,worker:false};
+      if(!await waitForBrowserScene(async()=>await controller()===workerUrl,{budgetMs:18000}))
+        throw Error('Exact Preview service worker did not control the warm page');
+      receipt.offline.worker=true;
+      await call('Network.setCacheDisabled',{cacheDisabled:true});
+      try{
+        networkCut=true;
+        await conditions(true);
+        await navigate(url);
+        const recovered=await waitForBrowserScene(()=>evaluate('!!globalThis.provingGroundGame?.() && !!document.querySelector("#scenarioPause")'));
+        if(!recovered || contextId===beforeContext || await controller()!==workerUrl || await evaluate('navigator.onLine')!==false)
+          throw Error('Offline reload did not restore the controlled candidate fixture');
+        receipt.offline.reloaded=true;
+        const {samples}=await readFramePair();
+        const action=await cleaverWitness({...witnessTools,capture:suffix=>capture('offline-'+suffix)});
+        const png=await capture('offline-scene');
+        const renderer=assess(samples,samples.some(sample=>sample.clientError)?['client error']:[]);
+        Object.assign(receipt.offline,{samples,action,png,deniedRequests,renderer,
+          status:action.status==='observed'&&renderer.status==='render-observed'?'observed':'blocked'});
+      }finally{
+        networkCut=false;
+        await conditions(false);
+        await call('Network.setCacheDisabled',{cacheDisabled:false});
+        const head=await fetch(`${origin}/release-identity.json`,{method:'HEAD'});
+        receipt.offline.networkRestored=head.ok && await evaluate('navigator.onLine')===true;
+        if(!receipt.offline.networkRestored)receipt.offline.status='blocked';
+      }
+      checkpoint('offline-complete');
+    }
   }
-  receipt.status=receipt.scenarios.every(s=>s.status==='render-observed')?'render-observed':'blocked';
+  receipt.status=receipt.scenarios.every(s=>s.status==='render-observed')&&(!receipt.offline||receipt.offline.status==='observed')?'render-observed':'blocked';
   // Recheck source bytes after execution, not just before serving them.
   if(verifyCandidate(root).digest!==expected)throw Error('candidate changed during execution');
 }catch(error){

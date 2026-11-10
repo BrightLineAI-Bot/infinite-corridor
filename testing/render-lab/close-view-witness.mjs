@@ -4,6 +4,7 @@ export const STILLWORKS_CASES = Object.freeze([
 ]);
 export const CLEAVER_CASE = 'cleaver-echo-inspection';
 export const SUMMIT_CASE = 'great-tree-summit';
+export const COMBAT_ACTION_CASES = ['pike-echo-inspection', 'cast-skill-aerial-step', 'blade-hammerfall-brute'];
 
 async function holdKey(call, wait, key, ms) {
   const upper = key.toUpperCase();
@@ -37,6 +38,35 @@ export async function cleaverWitness({ call, evaluate, wait, capture }) {
     && accepted.contactMs > 0 && accepted.contactMs < accepted.durationMs;
   if (observed) screenshots.push(await capture('after-accepted-attack'));
   return { status: observed ? 'observed' : 'blocked', before, samples, screenshots };
+}
+
+export async function combatActionWitness(scenario, { call, evaluate, wait, capture }) {
+  const read = () => evaluate(`(() => {
+    const g=globalThis.provingGroundGame?.(), p=g?.player, a=p?.attackVisual;
+    return { attackUntil:p?.attackUntil, weapon:a?.weaponKind, step:a?.primaryStep,
+      castUntil:p?.castUntil, spell:p?.castVisual?.spellKind, jumpUntil:g?.jumpUntil,
+      hammerId:g?.hammerfallStartup?.effectId ?? a?.hammerEffectId, lastTool:g?.lastToolAt };
+  })()`);
+  const before=await read(), samples=[];
+  const pike=scenario===COMBAT_ACTION_CASES[0], aerial=scenario===COMBAT_ACTION_CASES[1];
+  await holdKey(call,wait,pike?'j':aerial?'f':'q',120);
+  let accepted;
+  for(let i=0;i<8;i++){
+    const state=await read();samples.push(state);
+    if(pike ? state.weapon==='cinder-pike' && state.step===1 && state.attackUntil>before.attackUntil
+      : aerial ? state.spell==='aerial-step' && state.castUntil>before.castUntil
+      : state.hammerId!=null && state.hammerId!==before.hammerId){
+      accepted=state;break;
+    }
+    await wait(90);
+  }
+  if(aerial && accepted){
+    await holdKey(call,wait,'k',120);
+    const airborne=await read();samples.push(airborne);
+    if(!(airborne.jumpUntil>0 && airborne.jumpUntil!==before.jumpUntil))accepted=null;
+  }
+  const screenshots=accepted?[await capture('accepted-input')]:[];
+  return {status:accepted?'observed':'blocked',before,samples,screenshots};
 }
 
 export async function routePanelWitness(scenario, { evaluate, capture }) {
@@ -103,18 +133,22 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
   const pose = () => evaluate(`(() => {
     const g = globalThis.provingGroundGame?.(), p = g?.player, c = globalThis.__closeViewCam?.get();
     return p && c?.valid && c.drawn ? {x:p.x,y:p.y,hp:p.hp,yaw:c.yaw,inputYaw:c.inputYaw,distance:c.distance,
-      area:g.areaId(), warnings:(g.packEffects||[]).filter(f=>f.kind.startsWith('void') && f.arming>0).map(f=>f.kind).slice(0,32)} : null;
+      area:g.areaId(), awake:g.enemies.some(e=>e.pentFinaleBeast==='voidWalker' && e.pentArenaAwake),
+      warnings:(g.packEffects||[]).filter(f=>f.kind.startsWith('void') && f.arming>0).map(f=>f.kind).slice(0,32)} : null;
   })()`);
   const hold = (key, ms) => holdKey(call, wait, key, ms);
   const before = await pose();
   if (!before || !Number.isFinite(before.yaw)) return { status: 'blocked', reason: 'No camera/player observation' };
   if (scenario === STILLWORKS_CASES[0]) {
-    await hold('w', 1900);
-    const advanced = await pose();
-    const screenshots = [await capture('floor')];
-    await hold('w', 900);
     const encounter = [];
-    for (let i = 0; i < 6; i++) {
+    let advanced=before;
+    for(let i=0;i<8&&!advanced?.awake;i++){
+      await hold('w',700);
+      advanced=await pose();
+      encounter.push(advanced);
+    }
+    const screenshots = [await capture('floor')];
+    for (let i = 0; i < 14; i++) {
       const state = await pose();
       encounter.push(state);
       if (state?.warnings?.length) {
@@ -124,7 +158,7 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
       await wait(220);
     }
     const moved = advanced?.area === before.area && Math.hypot(advanced.x - before.x, advanced.y - before.y) > 2;
-    return { status: moved && screenshots.length === 2 ? 'observed' : 'blocked', before, advanced, encounter, screenshots };
+    return { status: moved && advanced?.awake && screenshots.length === 2 ? 'observed' : 'blocked', before, advanced, encounter, screenshots };
   }
   const crawl = await evaluate(`(() => {
     const info = JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
@@ -155,6 +189,7 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
     if (!state || Math.hypot(point.x - state.x, point.y - state.y) > .35 || state.area !== start.area) break;
   }
   screenshots.push(await capture('landing'));
-  const end = crawl.path.at(-1), landed = state?.area === start.area && Math.hypot(end.x - state.x, end.y - state.y) <= .35;
+  const end = crawl.path.at(-1), landed = state?.area === start.area
+    && Math.round(state.x)===end.x && Math.round(state.y)===end.y;
   return { status: landed && state.hp === start.hp ? 'observed' : 'blocked', crawl, start, samples, screenshots };
 }
