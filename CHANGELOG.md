@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 872: Overworld Close View now has a sky, sun and horizon for each region. Its ground reaches the section's edge and fades into the horizon, with surface detail and level edges, and its water reflects the sky. Rubble, crags, castle walls, ice spires and trees now stand up as solids. This is rendering only, and the view with Close View off is unchanged.
+
 - Release 871 gives the Verge Cleaver three quick cuts: the first borrows the Salvage Blade's fast crouch and two alternating follow-ups keep the gladius level through contact. Damage, reach, timing of the hit and cooldown are unchanged.
 
 - Release 870 lets ordinary monsters drop the Salvage Blade through their normal gear roll (about 1 in 12 gear drops). Bosses, elites, special foes, caches and shops are unchanged.

@@ -19,7 +19,8 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { OUTDOOR, outdoorScene, outdoorTreeObject } from "./close-view-outdoor.ts"; // the open world's sky, ground and solids
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -1324,7 +1325,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
       itemKind[n] = 0; itemRef[n] = fi; itemDepth[n] = depthMid; order[n] = n; n++; closeViewStats.faces++;
     } }
   const draws = captured || [];
-  for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i])) continue;
+  const meshTrees = useGL && plainWorld && g.area === "overworld" && closeViewOutdoorAvailable(); // standing trees are solids there (close-view-outdoor.ts), not cards
+  for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object))) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
     const q = project(bxw, byw, interiorSurfaceHeight(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
@@ -2684,6 +2686,18 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   UNI.hall = g.map.hall?.tall ? g.map.hall : null;
   UNI.openArena = stillworks || outdoor;
   UNI.worldCapture = flatWorld;
+  // the open world (close-view-outdoor.ts): its sky, sun and air, the ground's far field and its solids
+  F.outdoor = 0; F.sunC.fill(0);
+  const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map) : null;
+  if (openWorld && glOutdoor(openWorld)) { const sk = openWorld.sky, view = OUTDOOR.view[g.presentation?.effectiveQuality] || OUTDOOR.view.balanced, half = GROUND.W / (2 * s), W2 = OUTDOOR.water, R2 = OUTDOOR.relief, D2 = OUTDOOR.detail;
+    F.outdoor = 1; F.fogNear = view.near; F.fogFar = view.far; F.reach = F.fogFar + 2; F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar;
+    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= OUTDOOR.torch;
+    F.grade[0] = sk.grade[0]; F.grade[1] = sk.grade[1]; F.grade[2] = sk.grade[2]; F.grade[3] = 1 / sk.grade[3]; F.finish[0] = Q.vignette ? OUTDOOR.vignette : OUTDOOR.vignette * .6;
+    F.outdoorP[1] = half - OUTDOOR.blend.inner; F.outdoorP[2] = half - OUTDOOR.blend.outer; F.outdoorP[3] = Q.detail ? 1 : 0;
+    F.skyZ[0] = sk.zenith[0]; F.skyZ[1] = sk.zenith[1]; F.skyZ[2] = sk.zenith[2]; F.skyZ[3] = sk.clouds; F.skyH[0] = sk.horizon[0]; F.skyH[1] = sk.horizon[1]; F.skyH[2] = sk.horizon[2]; F.skyH[3] = sk.ridgeH;
+    F.ridge[0] = sk.ridge[0]; F.ridge[1] = sk.ridge[1]; F.ridge[2] = sk.ridge[2]; F.ridge[3] = sk.rough;
+    F.outW[0] = W2.base; F.outW[1] = W2.glance; F.outW[2] = W2.ripple; F.outW[3] = W2.rippleAmp; F.outR[0] = R2.foot; F.outR[1] = R2.dark; F.outR[2] = R2.lip; F.outR[3] = R2.light;
+    F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint; }
   UNI.backdrop = BACKDROPS.get(stillworks ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.inlay = st.inlay;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
@@ -2756,6 +2770,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (foe || isPlayer) { if (MODEL_STATE.admitted.has(it)) shadow(X, Y, sc, statusAlpha); const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * statusAlpha, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
   GLB.nBoard = bv;
+  // outdoors: a soft shadow under each standing tree near the Wayfarer, cast a little away from the sun
+  if (F.outdoor) { const Ts = OUTDOOR.treeShadow; for (const o of g.map.objects || []) { if (!outdoorTreeObject(o)) continue; const X = Number(o.x) + .5 - F.sun[0] * .35, Y = Number(o.y) + .72 - F.sun[1] * .35;
+    if (Math.hypot(X - px, Y - py) > F.reach) continue; flatD(X, Y, Ts.r * OUTDOOR.trees[o.vegetationForm].r / OUTDOOR.trees.canopy.r + .15, 0, Ts.alpha, 0); } }
   // card props near the Wayfarer: cobwebs, chains, bones (the nearest `cards`), and the spikes of traps that are up
   { const P = At.props, C2 = st.cards, cap = Q.cards ?? P.cards; let used = 0; const H0 = Wl.height;
     for (let i = 0; i < st.nCards && used < cap; i++) { const o = i * CARD_FLOATS, X = C2[o + 1], Y = C2[o + 2]; if (Math.hypot(X - px, Y - py) > P.reach || Math.hypot(X - CAM.cx, Y - CAM.cy) < P.nearCam) continue; // never a card right at the lens if (seen && !seen(Math.floor(X + (C2[o] === 4 ? C2[o + 5] * .5 : 0)), Math.floor(Y + (C2[o] === 4 ? C2[o + 6] * .5 : 0)))) continue; used++;
