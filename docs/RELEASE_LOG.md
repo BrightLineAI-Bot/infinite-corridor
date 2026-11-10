@@ -15,14 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r864, merged as 9be7ed5f7dd57a4cbfce96147c5340bdeba88268. Production remains r863. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r865, merged as 1532e8b05f7f9f608ce75e53f0b95a6ab2168705. Production remains r863. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 865 | Codex | claude/great-tree-skyway-chain / #522 | Validated summit-to-summit chain for new Great Tree skyways | In flight. Focused tests and build passed, including three hops with reloads. Exact CI, Preview and hosted acceptance pending. |
-| 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Merged as 9be7ed5f7dd5. Exact source CI 42789144576 passed. Merged CI 42790706548 and Preview 42790706560 started. Hosted acceptance pending. |
+| 865 | Codex | claude/great-tree-skyway-chain / #522 | Validated summit-to-summit chain for new Great Tree skyways | Merged as 1532e8b05f7f. Source CI 42790937252, merged CI 42792839287 and Preview 42792839108 passed. Pages identity matches r865-1532e8b05f7f. Hosted acceptance pending. |
+| 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Merged as 9be7ed5f7dd5. Source CI 42789144576 and merged CI 42790706548 passed. Preview 42790706560 failed the unchanged castle generation timing assertion. Exact retry 42792770710 passed. Astra review (863→864): no blockers. Hosted visual acceptance held after the in-app webview attach timeout. |
 | 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. The arena readability correction shipped with this work in r862. |
 | 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift | Merged as 6c8e76670ac7. Source CI 42700948170, merged CI 42702713648 and Preview 42702713650 passed. Published in r860. |
 | 858 | Codex | claude/close-view-cleaver-choreography / #514 | Four linked right-handed Verge Cleaver cuts | Merged as 03db834feac9. Source CI 42698555018 and merged CI 42700331951 passed. Preview 42700331564 timed out waiting for Pages. Published in r860. |
