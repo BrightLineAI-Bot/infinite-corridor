@@ -124,12 +124,17 @@ export async function preflight({ input, directory, repositoryDirectory, token }
       receipt.cleanup = rendered.cleanup || 'unconfirmed';
       receipt.rendererClass = rendered.rendererClass || 'unknown';
       receipt.screenshots = rendered.scenarios?.flatMap(scenario =>
-        [scenario.firstScreenshot, scenario.screenshot, ...(scenario.witness?.screenshots || [])].filter(Boolean)) || [];
+        scenario.captures ?? [scenario.firstScreenshot, scenario.screenshot, ...(scenario.witness?.screenshots || [])].filter(Boolean)) || [];
       const last = rendered.scenarios?.at(-1);
-      const transport = rendered.errors?.find(message => /^CDP timeout: [A-Za-z.]+$/.test(message));
+      const transport = rendered.errors?.find(message => /^(CDP timeout: [A-Za-z.]+|Browser probe deadline exceeded)$/.test(message));
       receipt.browserProbe = { phase: rendered.phase, scenario: last?.scenario, transport,
-        diagnosticStages: last?.diagnosticsStages, display: rendered.display, quality: rendered.closeViewQuality,
+        diagnosticStages: last?.diagnosticsStages, display: rendered.display, requestedQuality: rendered.requestedCloseViewQuality,
         observed: rendered.scenarios?.filter(scenario => scenario.status === 'render-observed').length ?? 0 };
+      receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness }) => ({
+        scenario, status, captures: captures?.length ?? 0, witness: witness?.status,
+        reasons, frames: samples?.map(({ frame, active, backend, player, asset, gpu, effectiveQuality }) =>
+          ({ frame, active, backend, player, asset, gpu: gpu?.state, heroGPU: gpu?.heroState, effectiveQuality })),
+      }));
       receipt.failureScreenshot = rendered.failureScreenshot || { status: 'unavailable' };
       if (child.status === 0 && rendered.status === 'render-observed' && rendered.candidate?.digest === s.payload_digest && rendered.cleanup?.browserGroupStopped === true) receipt.status = 'render_observed';
     }
@@ -150,6 +155,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     repositoryDirectory: process.cwd(), token: process.env.GH_TOKEN });
   // This summary is produced by the harness, not by console text from the candidate.
   console.log(JSON.stringify({ status: receipt.status, probe: receipt.browserProbe, renderer: receipt.rendererClass,
-    acquisition: receipt.artifactAudit, cleanup: receipt.cleanup, screenshots: Array.isArray(receipt.screenshots) ? receipt.screenshots.length : 0 }));
+    acquisition: receipt.artifactAudit, cleanup: receipt.cleanup, scenes: receipt.scenes,
+    screenshots: Array.isArray(receipt.screenshots) ? receipt.screenshots.length : 0 }));
   process.exitCode = receipt.status === 'render_observed' ? 0 : 2;
 }

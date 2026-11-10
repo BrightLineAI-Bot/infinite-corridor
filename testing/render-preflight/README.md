@@ -42,8 +42,9 @@ The render receipt retains up to two samples of three diagnostic stage markers.
 They show whether evaluation started, the module import resolved, and the
 diagnostic function returned before a browser response or timeout.
 
-The probe uses a 768 × 540 viewport at device scale 1 and the public Close View
-Low setting to limit work on the software renderer. The first PNG is saved
+The probe uses a 768 × 540 viewport at device scale 1 and requests the public
+Close View Low setting to limit work on the software renderer. Each diagnostic
+sample records the effective game tier when present. The first PNG is saved
 before querying renderer diagnostics. This startup frame can show a fallback
 while assets load. A successful WebGL witness still requires advancing completed
 frames and the imported Wayfarer.

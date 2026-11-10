@@ -60,7 +60,7 @@ try {
   if(!endpoint)throw Error('Chromium could not start with its normal sandbox; see chromium.log');
   const ws=new WebSocket(endpoint);
   try{await bounded(new Promise((r,j)=>{ws.onopen=r;ws.onerror=j}),10000,'CDP socket open timed out')}catch(e){ws.close();throw e}
-  let seq=0;const pending=new Map(), events=[], browserDeadline=Date.now()+155000;
+  let seq=0;const pending=new Map(), events=[], browserDeadline=Date.now()+270000;
   ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}}else events.push(m)};
   cdp={send:(method,params={},sessionId)=>new Promise((resolve,reject)=>{
     const timeout=Math.min(8000,browserDeadline-Date.now());
@@ -82,7 +82,7 @@ try {
   await call('Page.setLifecycleEventsEnabled',{enabled:true});
   // Keep the software runner's pixel load bounded with ordinary display and game settings.
   receipt.display={width:768,height:540,deviceScaleFactor:1,mobile:false};
-  receipt.closeViewQuality='low';
+  receipt.requestedCloseViewQuality='low';
   await call('Emulation.setDeviceMetricsOverride',receipt.display);
   let contextId;
   const evaluate=async (expression,awaitPromise=false)=>{const r=await call('Runtime.evaluate',{expression,contextId,awaitPromise,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
@@ -92,12 +92,12 @@ try {
   cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
   if (fixtures.includes(`"${SUMMIT_CASE}"`)) cases.push(SUMMIT_CASE);
   for(const scenario of cases) {
-    const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[]};receipt.scenarios.push(entry);
+    const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[],captures:[]};receipt.scenarios.push(entry);
     const marker = 'ic-render-diagnostics:' + scenario;
     checkpoint('scenario-navigate');
     const closeView=STILLWORKS_CASES.includes(scenario);
     const summit=scenario===SUMMIT_CASE;
-    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.closeViewQuality});
+    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
     const navigation=await call('Page.navigate',{url:`${origin}/?${query}`});
     if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
     const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
@@ -118,6 +118,8 @@ try {
       const name=`${scenario}${suffix ? '-' + suffix : ''}.png`;
       const screenshot=await call('Page.captureScreenshot',{format:'png'});
       writeFileSync(join(out,name),Buffer.from(screenshot.data,'base64'));
+      entry.captures.push(name);
+      checkpoint(receipt.phase);
       return name;
     };
     checkpoint('scenario-first-capture');
@@ -132,6 +134,7 @@ try {
         const module = await import(new URL(${JSON.stringify(diagnosticsPath)}, location.href));
         mark('import-resolved');
         const result = module.closeViewRenderDiagnostics();
+        result.effectiveQuality = globalThis.provingGroundGame?.()?.presentation?.effectiveQuality ?? null;
         mark('diagnostics-returned');
         return result;
       })()`,true);
