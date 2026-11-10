@@ -15,15 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at game release r859, merged as 6c8e76670ac782fa4d63333bf2e8e74cf7e89141. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at game release r860, merged as 7df1ae3e3e1b7f8ce79e44855cbef6623a7fab26. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 860 | Codex | codex/close-view-stone-placement | Close View shovel dig and stone placement gestures | Focused checks and build pass. Full CI and hosted verification pending. |
-| 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift, with a normal Act fixture | Merged as 6c8e76670ac7. Source CI 42700948170 passed. Merged CI 42702713648 and Preview 42702713650 were started. Hosted verification and publication pending. |
-| 858 | Codex | claude/close-view-cleaver-choreography / #514 | Four linked right-handed Verge Cleaver cuts in imported and native Close View | Merged as 03db834feac9. Source CI 42698555018 passed. Merged CI 42700331951 passed. Preview 42700331564 built the candidate, with Pages delivery pending at this checkpoint. Hosted verification and publication pending. |
+| 861 | Codex | claude/stillworks-close-view-pilot | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | In flight. Production remains r860 pending exact preview and review. |
+| 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift | Merged as 6c8e76670ac7. Source CI 42700948170, merged CI 42702713648 and Preview 42702713650 passed. Published in r860. |
+| 858 | Codex | claude/close-view-cleaver-choreography / #514 | Four linked right-handed Verge Cleaver cuts | Merged as 03db834feac9. Source CI 42698555018 and merged CI 42700331951 passed. Preview 42700331564 timed out waiting for Pages. Published in r860. |
 | 854 | Codex | claude/close-view-healing-drink / #509 | Wayfarer healing-drink gesture and isolated Potion lab | Merged as 467e9d974308. CI 42651541179 and 42653990562 passed. Preview 42653990710 succeeded for r854-467e9d974308. Desktop scratch verified the sip and visible vial in WebGL2. Published in r855. Physical-phone validation remains open. |
 | 852 | Codex | claude/close-view-diagnostics-release-cloud / #506 | Read-only Proving Ground renderer diagnostics | Merged as b635f4b34336. CI 42627941926 and Preview 42627941960 passed. Diagnostics were verified on the r853 desktop preview. Published in r853. |
 | 850 | Codex | claude/pg-lantern-recovery-cloud / #504 | Candidate-scoped natural Lantern recovery | Merged as e789c26f7d71. CI and Preview passed. Cloud natural capture, browser reload and damage witness completed. Published in r851. |
@@ -224,6 +224,7 @@ Main is at game release r859, merged as 6c8e76670ac782fa4d63333bf2e8e74cf7e89141
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 860 | r860-7df1ae3e3e1b | 2026-11-09 | Includes r858 and r859. Astra review (857→860) found no blockers. Source CI 42702961817, merged CI 42705200519, Preview 42705201998 and Publish 42713761172 passed. Hosted desktop verified Cleaver, chest, shovel, traversal and block placement and reload. Pages and Options → System matched, with no recent errors. |
 | 857 | r857-6ce7028f514c | 2026-11-09 | Astra review (856→857) found no blockers. Source CI 42691080118, merged CI 42692399162, Preview 42692398857 and Publish 42695170879 passed. Hosted desktop used both caches through Act and exercised real Ashling hurt, defeat and recovery. Live identity and Options → System matched with no recent errors. |
 | 856 | r856-4939f21b4cf1 | 2026-11-09 | Astra review (855→856) found no blockers. Source CI 42672818404 attempt 3, merged CI 42683954351, Preview 42683953090, and Publish 42687022957 passed. Both new sites adopted padding pin 1 and were entered through normal Act in isolated hosted desktop checks. Live identity and Options → System matched; recent errors were empty. |
 | 855 | r855-96d7069b1622 | 2026-11-09 | Astra review (853→855) found no blockers. CI 42662711806 and 42664489989, Preview 42664490015, and Publish 42669454669 passed. The keep and Pentagon room comparisons passed desktop WebGL2 movement checks. Live identity and Options → System matched. Includes the r854 healing-drink gesture. |

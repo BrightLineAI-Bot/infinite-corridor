@@ -2332,6 +2332,7 @@ export function render(ctx, g, w, h, now) {
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
   ctx.imageSmoothingEnabled = false;
   const bareFloor = closeViewBareFloor(); // Close View bare floor (release 794): its GPU scene shades the floor; only what lies on it is drawn here
+  const stillworksCapture = bareFloor && !!g.map?.stillworks;
   if (bareFloor) ctx.clearRect(0, 0, w, h); else { ctx.fillStyle = "#141816";
   ctx.fillRect(0, 0, w, h); }
   const budget = presentationBudget(g.presentation, g.area),
@@ -2368,7 +2369,7 @@ export function render(ctx, g, w, h, now) {
   const viewLift = g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : hopLift ?? groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
-  if (g.area === "dungeon" && g.map?.stillworks) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
+  if (g.area === "dungeon" && g.map?.stillworks && !stillworksCapture) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
   const groundCached = !bareFloor && (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
   if (groundCached) {
     const animated = render.animatedTiles || (render.animatedTiles = []), glitter = render.chasmGlitter || (render.chasmGlitter = []); animated.length = 0; glitter.length = 0;
@@ -2390,7 +2391,7 @@ export function render(ctx, g, w, h, now) {
     }
     if (g.area === "overworld" && g.map?.canopy?.box) drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, g.map.canopy.box, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId, scarSurface)); } // great-tree review
   drawVoidScarOverlay(ctx,g,s,mw,mh,{l,t,r,b},scarSurface);
-  if (g.area === "dungeon" && g.map?.stillworks) drawStillworksLight(ctx, g, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // its great order, the heart's figure, the light falling inward, the counting in the grain
+  if (g.area === "dungeon" && g.map?.stillworks) drawStillworksLight(ctx, g, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), !stillworksCapture); // its great order, the heart's figure, the light falling inward, the counting in the grain
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0, heightNow = 0; // the Wayfarer's height in levels on a great tree's section (the crown veil reads it)
@@ -2434,7 +2435,9 @@ export function render(ctx, g, w, h, now) {
     for (const [cx, cy] of [[X, Y], [X + S2, Y], [X, Y + S2], [X + S2, Y + S2]]) { ctx.fillStyle = "#5b3d22"; ctx.fillRect(cx - th * .7, cy - wallH - 2, th * 1.4, wallH + th / 2); } // corner posts
     ctx.restore(); }
   // Active combat effects, including Supernova, intentionally paint over fog. They never reveal tiles or actors.
-  drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation);
+  const draws = [];
+  const captureRift = stillworksCapture ? (effect, draw) => draws.push({ x: effect.x, y: effect.y, fn: draw }) : null;
+  drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),g.presentation,captureRift);
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
   drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&!e.gloomVeil&&shownInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
   for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? Math.max(0, Math.min(1, 1 - (h.armAt - now) / ((A?.arm || .5) * 1000))) : 1; /* release 694: rounding put k a hair below 0 the frame a mark was laid, and a negative radius threw */ if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
@@ -2499,9 +2502,18 @@ export function render(ctx, g, w, h, now) {
     ctx.stroke();
   }
   if (g.area === "dungeon" && g.map.wallGlints?.length) for (const q of g.map.wallGlints) if (visibleInCamera(q, l, t, r, b) && seenInDungeon(g, q)) drawWallGlint(ctx, q, s, now); // release 225
-  const draws = [];
+  if (stillworksCapture) {
+    for (const gate of g.map.objects) {
+      if (gate.kind !== "pentArenaGate" || !seenInDungeon(g, gate) || !visibleInCamera(gate, l, t, r, b, 2)) continue;
+      // Stand the gate card against the arena-facing side of the blocked tile.
+      const faceY = gate.y + (gate.inner.y > gate.y ? 1.10 : -.10);
+      const art = { ...gate, y: faceY - .95 };
+      draws.push({ x: art.x, y: faceY - .82, wallAligned: true,
+        fn: () => drawStillworksObject(ctx, art, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) });
+    }
+  }
   for (const o of g.map.objects)
-    if (renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
+    if (!(stillworksCapture && (o.kind === "pentArenaGate" || o.kind === "stillMonolith")) && renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))
       draws.push({
         object:o,
         ...(closeViewCapturing()&&nativeTraveler(o,now,false)?{nativeAux:{source:o,sample:(clock,quiet)=>nativeTraveler(o,clock,quiet)},nativeHeight:o.elder?3.05:1.8,nativePanelOffset:o.elder?.29:0,nativeEffects:!!o.elder,

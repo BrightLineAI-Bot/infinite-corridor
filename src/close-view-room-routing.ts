@@ -1,4 +1,5 @@
 import { rng, hashSeed } from "./random.ts";
+import { MAX_LEVEL, interiorTerrain, interiorTileLevel } from "./landscape.ts";
 
 // Proving Ground candidates only. The production adoption constants remain 4 / 9.
 // Original implementation of a room-region / connector graph; no upstream code is ported.
@@ -154,3 +155,97 @@ export function routingStairPair(base, a, b, fromA, fromB, portsA, portsB, terra
   return best||{reason:"no separated common flat landing"};
 }
 export const routingNearLanding = (points,x,y) => (points||[]).some(p=>Math.max(Math.abs(p.x-x),Math.abs(p.y-y))<=1);
+
+
+const CRAWL_DIRECTIONS = [
+  { dx: 0, dy: -1, rampDir: "north" },
+  { dx: 1, dy: 0, rampDir: "east" },
+  { dx: 0, dy: 1, rampDir: "south" },
+  { dx: -1, dy: 0, rampDir: "west" },
+];
+const CRAWL_WALL_KINDS = new Set(["keepWall", "cellarWall"]);
+const crawlPoint = ({ x, y }) => ({ x, y });
+
+// Find an optional shortcut between two landings already linked by a safe walk.
+// The first step is a ramp and the far lip drops one level onto existing floor.
+export function carveCloseViewCrawl(map, key, reserved = []) {
+  if (!interiorTerrain(map) || map.tiles.length > 4096) return null;
+  const { width, height, tiles } = map;
+  const index = (x, y) => y * width + x;
+  const tileAt = (x, y) => x >= 0 && y >= 0 && x < width && y < height ? tiles[index(x, y)] : null;
+  const floor = tile => tile && !tile.blocked && !tile.doorway && !tile.hole &&
+    !tile.openAir && !tile.perch && !tile.build && /Floor$/.test(tile.kind);
+  const wall = tile => tile && tile.blocked && CRAWL_WALL_KINDS.has(tile.kind) &&
+    Object.keys(tile).every(key => PADDING_TILE_KEYS.has(key));
+  const protectedCells = new Set();
+  for (const point of reserved.filter(Boolean)) {
+    const x = Math.round(point.x), y = Math.round(point.y);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (tileAt(x + dx, y + dy)) protectedCells.add(index(x + dx, y + dy));
+    }
+  }
+  const isProtected = tile => protectedCells.has(index(tile.x, tile.y));
+
+  function walkingDistance(from, to) {
+    const distances = new Int16Array(tiles.length).fill(-1);
+    const queue = [from];
+    distances[index(from.x, from.y)] = 0;
+    for (let head = 0; head < queue.length; head++) {
+      const a = queue[head], distance = distances[index(a.x, a.y)];
+      if (a === to) return distance;
+      for (const { dx, dy } of CRAWL_DIRECTIONS) {
+        const b = tileAt(a.x + dx, a.y + dy);
+        if (!floor(b) || isProtected(b)) continue;
+        const next = index(b.x, b.y);
+        if (distances[next] >= 0) continue;
+        const edgeX = a.x + .5 + dx * .5, edgeY = a.y + .5 + dy * .5;
+        const drop = interiorTileLevel(a, edgeX, edgeY) - interiorTileLevel(b, edgeX, edgeY);
+        if (drop < -1e-5 || drop > 1 + 1e-5) continue;
+        distances[next] = distance + 1;
+        queue.push(b);
+      }
+    }
+    return -1;
+  }
+
+  const candidates = [];
+  for (const approach of tiles) {
+    if (!floor(approach) || approach.slope || !Number.isInteger(approach.elev) ||
+        approach.elev >= MAX_LEVEL || isProtected(approach)) continue;
+    for (const direction of CRAWL_DIRECTIONS) {
+      const { dx, dy } = direction;
+      for (const length of [2, 3]) {
+        const landing = tileAt(approach.x + dx * (length + 1), approach.y + dy * (length + 1));
+        if (!floor(landing) || landing.slope || landing.elev !== approach.elev || isProtected(landing)) continue;
+        const cells = [];
+        for (let step = 1; step <= length; step++) {
+          const x = approach.x + dx * step, y = approach.y + dy * step;
+          const tile = tileAt(x, y);
+          if (!wall(tile) || isProtected(tile) || !wall(tileAt(x - dy, y + dx)) ||
+              !wall(tileAt(x + dy, y - dx))) break;
+          cells.push(tile);
+        }
+        if (cells.length !== length) continue;
+        const rank = hashSeed(`${key}:crawl:v1:${approach.x},${approach.y}:${direction.rampDir}:${length}`);
+        candidates.push({ approach, landing, cells, direction, rank });
+      }
+    }
+  }
+  candidates.sort((a, b) => a.rank - b.rank);
+  for (const { approach, landing, cells, direction } of candidates.slice(0, 32)) {
+    const outward = walkingDistance(approach, landing);
+    if (outward < cells.length + 6) continue;
+    const back = walkingDistance(landing, approach);
+    if (back < cells.length + 6) continue;
+    const nextTiles = tiles.slice();
+    for (const [step, cell] of cells.entries()) {
+      const next = { ...cell, kind: approach.kind, blocked: false, elev: approach.elev + 1, slope: step === 0 };
+      if (next.slope) next.rampDir = direction.rampDir;
+      nextTiles[index(cell.x, cell.y)] = next;
+    }
+    map.tiles = nextTiles;
+    return { approach: crawlPoint(approach), landing: crawlPoint(landing), cells: cells.map(crawlPoint),
+      direction, drop: 1, shortcutSteps: cells.length + 1, walkingSteps: outward, returnSteps: back };
+  }
+  return null;
+}

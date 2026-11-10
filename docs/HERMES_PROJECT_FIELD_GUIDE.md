@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 861 — Stillworks Void Walker arena in Close View
+
+**CODE:** The existing Void Walker arena renders with open sky, cover at the actual blocked tiles and gates on the arena walls. Upright rifts use the depth buffer. Beams and attack warnings remain on the floor. Close View Lab includes the real Stillworks fixture and separate sloped crawl-and-drop experiments for keeps and Pentagons.
+
+**BOUNDARY:** The arena uses existing boss and layout history pins, with no schema change. Gate progression, projectile cover and other finale cameras are unchanged. Non-WebGL uses the world camera. Crawl experiments are scratch-only and do not regenerate explored dungeons.
+
 ## Release 860 — Close View excavation and stone placement
 
 **CODE:** Successful Act digs show the shovel digging, levering and returning to carry. Successful Build and aimed stone placements add a short placing gesture. Rapid stacking keeps its immediate placement and independent block lifetimes. The existing excavation and building practice scenarios exercise the real controls.

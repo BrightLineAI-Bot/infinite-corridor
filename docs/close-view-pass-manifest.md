@@ -2,7 +2,15 @@
 
 Updated: 2026-11-09. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
 
-Verified live on 2026-11-09: r857-6ce7028f514c, commit 6ce7028f514c6a2bcab228e8a2a0c5624f64ef00, tree ec76875dc390bdde939fdb480e3318de9b9e23ce. Astra found no blockers from r856. Publish 42695170879 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
+Verified live on 2026-11-09: r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855cbef6623a7fab26, tree ebf51648774c496840596c9ce8aa70c525894ce2. Astra found no blockers from r857. Publish 42713761172 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
+
+## r860 published batch — 2026-11-09
+
+- The prior live identity was r857-6ce7028f514c. r858 (#514), r859 (#515) and r860 (#516) merged, and their merged CI passed. r858 Preview 42700331564 failed its Pages wait with HTTP 404 after 15 minutes. r859 Preview 42702713650 and r860 Preview 42705201998 succeeded.
+- The exact batch is r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855cbef6623a7fab26, tree ebf51648774c496840596c9ce8aa70c525894ce2. Pages identity matched. Fresh Astra review of the complete live r857 to r860 diff found no blockers and passed 69 focused checks. Merged CI 42705200519 passed.
+- Hosted desktop acceptance used the exact candidate in WebGL2 with the imported Wayfarer. Rear, side and front camera checks covered the linked Cleaver cuts. Normal Act opened the chest and excavated the ramp. The Wayfarer crossed and returned at full health. Build showed the placement gesture, stacked two blocks and restored an empty scratch lane on reload. Publish 42713761172 succeeded. Physical-phone performance and offline coverage remain open.
+
+[Exact r860 preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r860-7df1ae3e3e1b/) · [Preview workflow](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42705201998)
 
 ## r853 tool appearance acceptance and tooling availability — 2026-11-09
 
@@ -18,15 +26,23 @@ Verified live on 2026-11-09: r857-6ce7028f514c, commit 6ce7028f514c6a2bcab228e8a
 
 ## Remaining Close View work
 
-- The Verge Cleaver's latest direction is right hip to left shoulder, level across to the extended right shoulder, diagonally down to the left hip, then level across low to the right before returning to carry. r858 implements this in both rigs and preserves the hand position when the next cut is accepted. Tests check the physical blade path, pause/reload, delayed contact, and the existing hit and Echo rules. Hosted front, rear and side views remain pending.
+- The Verge Cleaver's latest direction is right hip to left shoulder, level across to the extended right shoulder, diagonally down to the left hip, then level across low to the right before returning to carry. r858 implements this in both rigs and preserves the hand position when the next cut is accepted. Tests check the physical blade path, pause/reload, delayed contact, and the existing hit and Echo rules. Hosted front, rear and side views were checked in r860.
 
 - r856 room clearance and tight-corner framing are live. Hosted desktop WebGL2 confirmed new Keep 5 and Pentagon 10 sites adopt pin 1 through normal section movement and can be entered through Act. The widened edges were traversable and manual camera orbit was exercised in both comparison scenarios. Source checks cover old-site exclusion, original placement, exact resume and portrait framing. Physical-phone validation remains open.
 - Ordinary Wayfarer hurt and defeat are live in r857. Hosted desktop WebGL2 witnessed Ashling injury, the fall and recovery. Focused checks cover the native fallback, Aegis, pause, reload and a single recovery. Follow up on camera heading at low movement speeds and any tool pose or variant gaps found in the combined pass.
-- Supply and weapon cache collection is live in r857. Both hosted scenarios used the regular Act control. Focused checks cover the free-hand reach, the two-handed Pike cue, interruptions, pause, reload and single rewards. r859 packages the separate chest-opening gesture with its own Act scenario, immediate reward and free-hand lift. r860 packages two tool interactions developed separately. Standard and iron shovel digs use the existing excavation fixture and a 250-triangle native model. Stone placement uses the real Build and aimed placement controls, preserves Pike grip and keeps build acceptance immediate. The transient placement pose clears with its block on reload. Hosted checks are pending.
+- Supply and weapon cache collection is live in r857. Both hosted scenarios used the regular Act control. Focused checks cover the free-hand reach, the two-handed Pike cue, interruptions, pause, reload and single rewards. r859 packages the separate chest-opening gesture with its own Act scenario, immediate reward and free-hand lift. r860 packages two tool interactions developed separately. Standard and iron shovel digs use the existing excavation fixture and a 250-triangle native model. Stone placement uses the real Build and aimed placement controls, preserves Pike grip and keeps build acceptance immediate. The transient placement pose clears with its block on reload. Hosted r860 confirmed chest opening, standard shovel use and stone stacking and reload.
 - Run the combined traversal, combat, environment, recovery and offline checks. Physical-phone touch, frame rate and thermals require device evidence.
 
   Excavation baseline verified in r857 scratch with DIG-AUDIT0. Ordinary Act opened tile (18, 26) at elevation 2. Normal movement crossed from y25 to y26.12 and returned to y25.03 with HP 60. Shovel presentation is the next tool interaction, using this same fixture. Stone placement remains a separate pass because repeated and continuous building need their own presentation rules. In the r857 current-keep scratch preview, two normal Build presses produced two independent records at level 2, spent 10 stone and cleared the stack as the records expired. The integrated local pass also passed 57 focused checks across routing, body contact, tight corners, jumping, blocks, chest, injury and GL recovery.
 - Start the articulated boss program with the Walker pilot after the player and room passes. Then work through the other Pentagon arena bosses and relevant labyrinth arenas using the roster and attack clocks in the boss manifest.
+
+## Bloodborne routing and Stillworks qualification
+
+Local branch `claude/stillworks-close-view-pilot` adds separate Proving Ground keep and Pentagon crawl experiments. The default witnesses take four steps through a sloped passage and safe drop. Existing return walks take twelve and twenty steps. Both were traversed with normal movement at full health, and the landing marker uses the existing static light pass. Existing floors and history pins are preserved by keeping the experiment in scratch fixtures. Source checks and static build passed. Hosted camera and lighting checks are next. [Routing study](close-view-dungeon-routing-study.md)
+
+Both crawl witnesses were then traversed with the real movement loop and Close View camera at 390×844 and 844×390. In all 216 sampled frames the camera stayed out of walls and the Wayfarer's torso projected inside the viewport. The shortest boom was 0.30 tiles and the longest was 2.70. Both drops left health at 60. Keep the tight squeeze for the next textured check, focusing on camera compression, silhouette readability and how well the landing light signals the drop.
+
+The Stillworks Void Walker arena now has a WebGL Close View path. The original blocked tiles form the ridges, pillars and standing lattices. The gates draw on their arena-facing walls, and upright rifts use depth while beams and damage warnings still project onto the floor. Non-WebGL play falls back to the world camera. The fixture still provides nearby exposed and covered positions checked against the production projectile rule. Mock WebGL submission passed on CINDER-VERGE-47 and TIM1 at all three quality tiers, including the vault return, sealed seam, seam opened by victory, and a rift board. Textured arena and crawl checks remain open. [Boss rig manifest](close-view-boss-rig-manifest.md)
 
 ## Local ownership and r851 acceptance — 2026-11-09
 

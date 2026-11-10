@@ -519,8 +519,12 @@ export function tunePentagonArenaBeast(c, id, save, stats, regional) {
   delete c.worldBeast; delete c.minimumAttackWindup; return c;
 }
 function pentagonArenaIn(save, id) {
-  const P = parsePentagonArenaId(id); if (!P) return null; const H = dungeonHistory(save, `${P.base}:f1`), map = generatePentagonArena(save.seed, id, pentagonArenaBeast(save, P.base), pentagonArenaVersion(H.pentArena)); // the version its wall opened with (1: release 754's floor; 2: with the pillars)
-  if (H.pentArenaWon) map.enemySpawns = []; return map;
+  const P = parsePentagonArenaId(id); if (!P) return null;
+  const H = dungeonHistory(save, `${P.base}:f1`), beast = pentagonArenaBeast(save, P.base);
+  const map = generatePentagonArena(save.seed, id, beast, pentagonArenaVersion(H.pentArena)); // the version its wall opened with (1: release 754's floor; 2: with the pillars)
+  map.stillworks.walkerCloseView = beast?.id === "voidWalker";
+  if (H.pentArenaWon) map.enemySpawns = [];
+  return map;
 }
 function pentagonWalkBackIn(save, map) {
   const base = map.building?.base; if (!base || !dungeonHistory(save, `${base}:f1`).pentArena) return;

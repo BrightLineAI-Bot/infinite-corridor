@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 861 brings the Stillworks Void Walker arena into WebGL Close View and adds isolated keep and Pentagon crawl-and-drop scenarios to the Proving Ground.
+
 - Release 860 gives Close View distinct shovel and stone-placement gestures while excavation, building and stacking remain immediate.
 
 - Release 859 gives the Wayfarer a distinct free-hand reach and lid lift when opening a chest in Close View.
