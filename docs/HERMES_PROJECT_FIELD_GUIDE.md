@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 867 — Overworld Close View
+
+**CODE:** Options → Camera has a per-journey Overworld Close View switch. It uses the existing third-person camera and relative movement controls in areas outside the indoor switch's coverage. The projection reuses the world renderer's terrain art, with outdoor air and no generated ceiling above open areas. The Proving Ground has the same switch for its scratch fixtures and accepts `overworldCloseView=1` in Preview links.
+
+**BOUNDARY:** Both camera settings can be toggled separately. The new switch defaults off on old and new journeys. Combat rules, collisions, traversal and save schema retain their existing paths. The first outdoor projection flattens older terrain artwork, while the existing heightfield renderer continues to handle supported raised interiors. A missing WebGL2 scene or a map outside the bounded render budget uses the overhead camera.
+
 ## Release 866 — Stillworks Void Walker rig
 
 **CODE:** Close View submits the Stillworks Void Walker through the existing native actor renderer. The original 254-triangle model has articulated shoulders, elbows, hips and knees. Rending Hands uses the accepted windup and recovery phase clocks and committed aim. Reduced Motion suppresses gait flourish and retains the cast gesture.

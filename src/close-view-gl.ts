@@ -267,6 +267,10 @@ void main() {
     if (fogK < 0.999) {
       vec3 dif, spe; vec3 W3 = vec3(P, 0.0);
       if ((m.r & 2u) == 2u) { col = u_fog; } // unseen: the dark keeps its secrets
+      else if (u_floorQ.w > 0.5) {
+        vec4 surface = overlayAt(P);
+        col = atmos(u_fog * (1.0 - surface.a) + surface.rgb, W3, depth, u_amb);
+      }
       else if (m.g == 1u || m.g == 3u || m.g == 5u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
       else if (m.g == 2u) { col = atmos(lavaColor(P, T), W3, depth, vec3(0.0)); }
       else { float h, wet; uint mat = m.b >> 1u; vec3 alb = floorMat(P, T, mat, h, wet);

@@ -21,6 +21,7 @@ Main and production are at r865, merged as 1532e8b05f7f9f608ce75e53f0b95a6ab2168
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 867 | Codex | claude/close-view-everywhere | Opt-in Overworld Close View alongside the existing indoor toggle | In flight. Reserved from main at r866. |
 | 866 | Codex | claude/stillworks-walker-rig | Articulated Stillworks Void Walker body and Rending Hands presentation | In flight. Reserved from main at r865. |
 | 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Merged as 9be7ed5f7dd5. Source CI 42789144576 and merged CI 42790706548 passed. Preview 42790706560 failed the unchanged castle generation timing assertion. Exact retry 42792770710 passed. Atlas visual acceptance passed on exact r865 and the work was published in r865. |
 | 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. The arena readability correction shipped with this work in r862. |
