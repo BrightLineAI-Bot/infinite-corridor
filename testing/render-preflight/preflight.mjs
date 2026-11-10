@@ -130,9 +130,9 @@ export async function preflight({ input, directory, repositoryDirectory, token }
       receipt.browserProbe = { phase: rendered.phase, scenario: last?.scenario, transport,
         display: rendered.display, requestedQuality: rendered.requestedCloseViewQuality,
         observed: rendered.scenarios?.filter(scenario => scenario.status === 'render-observed').length ?? 0 };
-      receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness, errors }) => ({
+      receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness, errors, webglCaptured }) => ({
         scenario, status, captures: captures?.length ?? 0, witness: witness?.status,
-        errors: errors?.slice(0, 3).map(({method,details}) => ({
+        webglCaptured, errors: errors?.slice(0, 3).map(({method,details}) => ({
           method, status: details?.response?.status, resource: details?.type, cancelled: details?.canceled,
         })),
         reasons, frames: samples?.map(({ frame, active, backend, player, asset, gpu, effectiveQuality }) =>

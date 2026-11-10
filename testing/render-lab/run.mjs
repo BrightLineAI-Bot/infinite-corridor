@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
-import { assess, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
+import { assess, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
 import { cleaverWitness, closeViewWitness, routePanelWitness, summitWitness, CLEAVER_CASE, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
@@ -100,7 +100,10 @@ try {
     const navigation=await call('Page.navigate',{url:`${origin}/?${query}`});
     if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
     const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
-    currentObservation=()=>{entry.navigation=observe();};
+    currentObservation=()=>{
+      entry.navigation=observe();
+      entry.webglCaptured=capturedWebGLFrames(entry);
+    };
     checkpoint('scenario-document');
     const loaded=await waitForBrowserScene(()=>{const o=observe();return o.committed&&o.domReady&&Number.isInteger(o.contextId);});
     currentObservation();
@@ -123,7 +126,7 @@ try {
     checkpoint('scenario-settle');
     await wait(1500);
     checkpoint('scenario-diagnostics');
-    if(!summit) for(let i=0;i<2;i++){
+    const readDiagnostics=async()=>{
       await evaluate('document.querySelector("#pgDiagnosticsToggle").click()');
       let observation;
       const opened = await waitForBrowserScene(async ()=>{
@@ -139,9 +142,23 @@ try {
       });
       if(!opened)throw Error('Public renderer diagnostics did not open');
       await evaluate('document.querySelector("#pgDiagnosticsClose").click()');
-      entry.samples.push({...diagnosticsFromRows(observation.rows,candidate.id),effectiveQuality:observation.effectiveQuality});
+      return {...diagnosticsFromRows(observation.rows,candidate.id),effectiveQuality:observation.effectiveQuality};
+    };
+    if(!summit){
+      const deadline=Date.now()+12000;
+      let first=await readDiagnostics();
+      entry.startupSample=first;
+      while(first.asset==='loading' && Date.now()<deadline){
+        await wait(450);
+        first=await readDiagnostics();
+      }
+      entry.samples.push(first);
       await wait(300);
+      entry.samples.push(await readDiagnostics());
     }
+    // Keep the sampled scene even if an input witness later fails.
+    checkpoint('scenario-screenshot');
+    entry.screenshot=await capture();
     checkpoint('scenario-witness');
     const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
       : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness : null;
@@ -155,9 +172,6 @@ try {
         if(panel.status==='blocked') entry.witness.status='blocked';
       }
     }
-    // A PNG is evidence for human review, not an automatic aesthetic verdict.
-    checkpoint('scenario-screenshot');
-    entry.screenshot=await capture();
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
     if(entry.samples.some(sample=>sample.clientError))entry.errors.push({method:'Public renderer diagnostics reported a client error'});
     if(summit){

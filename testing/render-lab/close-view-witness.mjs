@@ -102,8 +102,8 @@ export function movementKey(yaw, dx, dy) {
 export async function closeViewWitness(scenario, { call, evaluate, wait, capture }) {
   const pose = () => evaluate(`(() => {
     const g = globalThis.provingGroundGame?.(), p = g?.player, c = globalThis.__closeViewCam?.get();
-    return p && c?.valid && c.drawn ? {x:p.x,y:p.y,hp:p.hp,yaw:c.yaw,distance:c.distance,
-      area:g.areaId(), effects:(g.packEffects||[]).map(f=>f.kind).slice(0,32)} : null;
+    return p && c?.valid && c.drawn ? {x:p.x,y:p.y,hp:p.hp,yaw:c.yaw,inputYaw:c.inputYaw,distance:c.distance,
+      area:g.areaId(), warnings:(g.packEffects||[]).filter(f=>f.kind.startsWith('void') && f.arming>0).map(f=>f.kind).slice(0,32)} : null;
   })()`);
   const hold = (key, ms) => holdKey(call, wait, key, ms);
   const before = await pose();
@@ -117,7 +117,7 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
     for (let i = 0; i < 6; i++) {
       const state = await pose();
       encounter.push(state);
-      if (state?.effects?.some(kind => /^void/.test(kind))) {
+      if (state?.warnings?.length) {
         screenshots.push(await capture('warning'));
         break;
       }
@@ -146,7 +146,7 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
     for (let i = 0; i < 8 && state; i++) {
       const dx = point.x - state.x, dy = point.y - state.y, distance = Math.hypot(dx, dy);
       if (distance <= .25) break;
-      const key = movementKey(state.yaw, dx, dy);
+      const key = movementKey(state.inputYaw ?? state.yaw, dx, dy);
       if (!key) break;
       await hold(key, Math.max(45, Math.min(155, distance * 170)));
       state = await pose();

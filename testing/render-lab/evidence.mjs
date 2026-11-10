@@ -15,6 +15,12 @@ export function assess(samples, errors = []) {
   return { status: reasons.length ? 'blocked' : 'render-observed', reasons,
     visualAcceptance: 'not-reviewed', devicePerformance: 'not-measured' };
 }
+export function capturedWebGLFrames(scenario) {
+  const { samples, screenshot } = scenario;
+  return !!screenshot && samples?.length >= 2
+    && samples.every(s => s?.active && s.backend === 'webgl2' && s.frame > 0)
+    && samples.at(-1).frame > samples[0].frame;
+}
 export function diagnosticsFromRows(rows, candidateId) {
   if (rows?.['Game release'] !== candidateId) throw Error('Diagnostics show a different candidate');
   const scene = /^(active|inactive; historical): (\w+), completed frame (\d+)$/.exec(rows['Close View scene']);
