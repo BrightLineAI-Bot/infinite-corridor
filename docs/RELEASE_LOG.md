@@ -15,14 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r869 (`d6c8a8f181d1`); r870 merged (#532); r871 is in flight; production serves `r869-d6c8a8f181d1`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r869 (`d6c8a8f181d1`); r870 (#532) and r871 (#533) merged; r872 is in flight; production serves `r869-d6c8a8f181d1`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 871 | Claude | claude/cleaver-salvage-flow / #533 | Verge Cleaver three quick grounded cuts | In flight. |
-| 870 | Claude | claude/salvage-blade-drops / #532 | Salvage Blade in the ordinary monster gear roll | Merged as `5873f2790e2e`. |
+| 872 | Claude | claude/overworld-close-view-fidelity | Overworld Close View sky, ground, water and standing solids | In flight. |
+| 871 | Claude | claude/cleaver-salvage-flow / #533 | Verge Cleaver three quick grounded cuts | Merged as `5bdd583a2065`; Preview r871-5bdd583a2065. |
+| 870 | Claude | claude/salvage-blade-drops / #532 | Salvage Blade in the ordinary monster gear roll | Merged as `5873f2790e2e`; Preview r870-5873f2790e2e. |
 | 868 | Codex | claude/dungeon-door-wayfinding / #529 | Discovered Cube/Pentagon doors, traversal torches, three waypoints and north fallback | Merged as `c66bcccd6ded3`; Preview 42832591291 passed. Published in r869 after the overworld compass correction. |
 | 867 | Codex | claude/close-view-everywhere / #527 | Opt-in Overworld Close View alongside the existing indoor toggle | Merged as `4d4e08da67ef`; Preview 42819756691 and exact WebGL preflight 42822447254 passed. The hosted toggle was verified. Published in r869. |
 | 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Merged as 9be7ed5f7dd5. Source CI 42789144576 and merged CI 42790706548 passed. Preview 42790706560 failed the unchanged castle generation timing assertion. Exact retry 42792770710 passed. Atlas visual acceptance passed on exact r865 and the work was published in r865. |
