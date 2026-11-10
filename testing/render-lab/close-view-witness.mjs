@@ -38,6 +38,26 @@ export async function cleaverWitness({ call, evaluate, wait, capture }) {
   return { status: observed ? 'observed' : 'blocked', before, samples, screenshots };
 }
 
+export async function routePanelWitness(scenario, { evaluate, capture }) {
+  const report = await evaluate(`(() => {
+    const button = document.querySelector('#scenarioRoutes');
+    if (!button) return null;
+    button.click();
+    const panel = document.querySelector('#pgRoutes'), routes = panel?.querySelector('[aria-label="Known floor routes"]');
+    const headings = [...(panel?.querySelectorAll('summary') || [])].map(node => node.textContent);
+    return { open:panel?.open === true, current:panel?.querySelector('.dungeon-wayfinding p')?.textContent,
+      routes:routes ? [...routes.children].map(node => node.textContent) : null, headings };
+  })()`);
+  if (!report) return null; // Earlier artifacts have no route panel.
+  const pentagonOverview = scenario !== 'routing-crawl-pentagon'
+    || (report.headings.some(text => text.startsWith('Discovered chambers ('))
+      && report.headings.some(text => text.startsWith('Mapped connections (')));
+  const observed = report.open && report.current?.startsWith('You are here:')
+    && Array.isArray(report.routes) && pentagonOverview;
+  return { status: observed ? 'observed' : 'blocked', report,
+    screenshots: report.open ? [await capture('known-routes')] : [] };
+}
+
 const directions = [
   ['w', 0], ['d', Math.PI / 2], ['s', Math.PI], ['a', -Math.PI / 2],
 ];

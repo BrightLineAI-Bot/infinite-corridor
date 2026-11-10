@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleaverWitness, closeViewWitness, movementKey } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, movementKey, routePanelWitness } from './close-view-witness.mjs';
 import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
@@ -41,6 +41,19 @@ test('a failed public teleport is blocked instead of producing a landing receipt
   });
   assert.equal(witness.status, 'blocked');
   assert.match(witness.reason, /did not arrive/);
+});
+
+test('route panel witnesses current-floor cues and requires the Pentagon overview', async () => {
+  const state = { open: true, current: 'You are here: a chamber', routes: [], headings: [] };
+  const capture = async name => name;
+  const check = (scenario, report) => routePanelWitness(scenario, { evaluate: async () => report, capture });
+  assert.equal(await check('routing-crawl-keep', null), null);
+  assert.equal((await check('routing-crawl-keep', state)).status, 'observed');
+  assert.equal((await check('routing-crawl-pentagon', state)).status, 'blocked');
+  const headings = ['Discovered chambers (1)', 'Mapped connections (0)'];
+  const result = await check('routing-crawl-pentagon', { ...state, headings });
+  assert.equal(result.status, 'observed');
+  assert.deepEqual(result.screenshots, ['known-routes']);
 });
 
 test('readiness waits for a loading scene but stops on the first browser transport failure', async () => {

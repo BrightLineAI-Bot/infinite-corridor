@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
-import { cleaverWitness, closeViewWitness, CLEAVER_CASE, STILLWORKS_CASES } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, routePanelWitness, CLEAVER_CASE, STILLWORKS_CASES } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -111,12 +111,21 @@ try {
     checkpoint('scenario-witness');
     const witness = closeView ? closeViewWitness.bind(null, scenario)
       : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness : null;
-    if(witness) entry.witness=await witness({call,evaluate,wait,capture:async suffix=>{
+    const witnessTools={call,evaluate,wait,capture:async suffix=>{
       const name=`${scenario}-${suffix}.png`;
       const image=await call('Page.captureScreenshot',{format:'png'});
       writeFileSync(join(out,name),Buffer.from(image.data,'base64'));
       return name;
-    }});
+    }};
+    if(witness) entry.witness=await witness(witnessTools);
+    if(scenario.startsWith('routing-crawl-') && entry.witness?.status==='observed'){
+      const panel=await routePanelWitness(scenario,witnessTools);
+      if(panel){
+        entry.witness.routePanel=panel.report;
+        entry.witness.screenshots.push(...panel.screenshots);
+        if(panel.status==='blocked') entry.witness.status='blocked';
+      }
+    }
     // A PNG is evidence for human review, not an automatic aesthetic verdict.
     checkpoint('scenario-screenshot');
     const image=await call('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,`${scenario}.png`),Buffer.from(image.data,'base64'));
