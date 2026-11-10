@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { closeViewWitness, movementKey } from './close-view-witness.mjs';
-import { waitForBrowserScene } from './resources.mjs';
+import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
   assert.equal(movementKey(-Math.PI / 2, 1, 0), 'd');
@@ -35,4 +35,24 @@ test('readiness waits for a loading scene but stops on the first browser transpo
   }, timing), /CDP timeout/);
   assert.equal(calls, 1);
   assert.equal(clock, 0);
+});
+
+test('navigation readiness ties buffered events to the new loader and live default context', () => {
+  const event = (method, params, sessionId = 'target') => ({ method, params, sessionId });
+  const events = [
+    event('Page.frameNavigated', { frame: { id: 'main', loaderId: 'old' } }),
+    event('Runtime.executionContextCreated', { context: { id: 1, auxData: { frameId: 'main', isDefault: true } } }),
+    event('Page.lifecycleEvent', { frameId: 'main', loaderId: 'old', name: 'DOMContentLoaded' }),
+    event('Runtime.executionContextsCleared', {}),
+    event('Page.frameNavigated', { frame: { id: 'main', loaderId: 'next' } }),
+    event('Runtime.executionContextCreated', { context: { id: 2, auxData: { frameId: 'main', isDefault: false } } }),
+    event('Runtime.executionContextCreated', { context: { id: 3, auxData: { frameId: 'main', isDefault: true } } }),
+    event('Page.lifecycleEvent', { frameId: 'main', loaderId: 'next', name: 'DOMContentLoaded' }),
+    event('Network.loadingFailed', {}, 'other-tab'),
+  ];
+  const observe = () => navigationObservation(events, 'target', { frameId: 'main', loaderId: 'next' });
+  assert.deepEqual(observe(), { committed: true, domReady: true, contextId: 3, failedRequests: 0, exceptions: 0 });
+  events.push(event('Runtime.executionContextDestroyed', { executionContextId: 3 }), event('Network.loadingFailed', {}));
+  assert.equal(observe().contextId, undefined);
+  assert.equal(observe().failedRequests, 1);
 });

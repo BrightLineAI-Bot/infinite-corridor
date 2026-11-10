@@ -17,7 +17,7 @@ export function movementKey(yaw, dx, dy) {
 export async function closeViewWitness(scenario, { call, evaluate, wait, capture }) {
   const pose = () => evaluate(`(() => {
     const g = globalThis.provingGroundGame?.(), p = g?.player, c = globalThis.__closeViewCam?.get();
-    return p && c ? {x:p.x,y:p.y,hp:p.hp,yaw:c.yaw,distance:c.distance,
+    return p && c?.valid && c.drawn ? {x:p.x,y:p.y,hp:p.hp,yaw:c.yaw,distance:c.distance,
       area:g.areaId(), effects:(g.packEffects||[]).map(f=>f.kind).slice(0,32)} : null;
   })()`);
   const hold = async (key, ms) => {
@@ -44,7 +44,7 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
       await wait(220);
     }
     const moved = advanced?.area === before.area && Math.hypot(advanced.x - before.x, advanced.y - before.y) > 2;
-    return { status: moved ? 'observed' : 'blocked', before, advanced, encounter, screenshots };
+    return { status: moved && screenshots.length === 2 ? 'observed' : 'blocked', before, advanced, encounter, screenshots };
   }
   const crawl = await evaluate(`(() => {
     const info = JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
