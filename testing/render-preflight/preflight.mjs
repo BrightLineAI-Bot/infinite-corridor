@@ -131,11 +131,16 @@ export async function preflight({ input, directory, repositoryDirectory, token }
       receipt.browserProbe = { phase: rendered.phase, scenario: last?.scenario, transport,
         display: rendered.display, requestedQuality: rendered.requestedCloseViewQuality,
         observed: rendered.scenarios?.filter(scenario => scenario.status === 'render-observed').length ?? 0 };
-      receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness, errors, webglCaptured }) => ({
+      receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness, hudCompass, errors, webglCaptured }) => ({
         scenario, status, captures: captures?.length ?? 0, witness: witness?.status,
         witnessSummary: witness && { before:witness.before, covered:witness.covered, advanced:witness.advanced,
           accepted:witness.accepted, jump:witness.jump, first:witness.samples?.[0], path:witness.crawl?.path,
-          last:witness.samples?.at(-1) ?? witness.encounter?.at(-1) },
+          last:witness.samples?.at(-1) ?? witness.encounter?.at(-1),
+          points:witness.threePoints?.selected?.map(({id,slot})=>({id,slot})),
+          doorArrival:witness.traversal?.arrival?.id, returnMarks:witness.traversal?.returnMarks,
+          missing:witness.remainingVisualRequirement },
+        hudCompass: hudCompass && { status:hudCompass.status, yawChanged:hudCompass.yawChanged, northInvariant:hudCompass.northInvariant,
+          before:hudCompass.before, after:hudCompass.after, screenshots:hudCompass.screenshots },
         webglCaptured, errors: errors?.slice(0, 3).map(({method,details}) => ({
           method, status: details?.response?.status, resource: details?.type, cancelled: details?.canceled,
         })),

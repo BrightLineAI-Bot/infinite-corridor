@@ -110,15 +110,36 @@ export async function routePanelWitness(scenario, { evaluate, capture }) {
 // panel. A traversal receipt is optional and is recorded only when normal Act
 // changes the production area after a public teleport to an actual door.
 export async function doorWayfindingWitness(scenario, { call, evaluate, wait, capture }) {
-  const before = await evaluate(`(() => {
+  let before = await evaluate(`(() => {
     const g=globalThis.provingGroundGame?.(), button=document.querySelector('#scenarioRoutes');
     const report=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
     return {area:g?.areaId(),enabled:button?.disabled===false,doors:report.doorWayfinding||[],
       scenario:report.scenario,scratch:report.scratch,player:report.player};
   })()`);
   const screenshots=[];
+  let discovery=null;
+  if(scenario==='cube-doors'&&before.scratch&&before.doors.length<3){
+    discovery=await evaluate(`(() => {
+      const select=document.querySelector('#teleportSelect'),id='lab-stair-0-down';
+      if(![...select.options].some(option=>option.value===id))return {available:false};
+      select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}));
+      const resume=document.querySelector('#scenarioPause');
+      if(resume?.textContent==='Resume')resume.click();
+      return {available:true,target:id};
+    })()`);
+    if(discovery.available){
+      await wait(450);
+      const refreshed=await evaluate(`(() => {
+        const g=globalThis.provingGroundGame?.(),report=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
+        return {area:g?.areaId(),enabled:document.querySelector('#scenarioRoutes')?.disabled===false,
+          doors:report.doorWayfinding||[],scenario:report.scenario,scratch:report.scratch,player:report.player};
+      })()`);
+      discovery.revealed=refreshed.doors.length;
+      before=refreshed;
+    }
+  }
   if(!before.scratch || before.scenario!==scenario || !before.enabled || !before.doors.length)
-    return {status:'blocked',before,reason:'Public dungeon route controls or doors unavailable',screenshots};
+    return {status:'blocked',before,discovery,reason:'Public dungeon route controls or doors unavailable',screenshots};
   await evaluate(`document.querySelector('#scenarioRoutes').click()`);
   await wait(120);
   const opened=await evaluate(`(() => {
@@ -142,6 +163,30 @@ export async function doorWayfindingWitness(scenario, { call, evaluate, wait, ca
     && marked.door?.slot===1;
   if(markedObserved)screenshots.push(await capture('routes-selected-waypoint'));
 
+  // Use the same public Add controls for the remaining two slots. The fourth
+  // control, when this discovered floor exposes one, must be disabled at the cap.
+  const threePoints=await evaluate(`(() => {
+    let panel=document.querySelector('#pgRoutes');
+    for(let attempt=0;attempt<3&&panel.querySelectorAll('button.dungeon-door-waypoint[aria-pressed="true"]').length<3;attempt++){
+      const button=[...panel.querySelectorAll('button.dungeon-door-waypoint')]
+        .find(candidate=>candidate.getAttribute('aria-pressed')==='false'&&!candidate.disabled);
+      if(!button)break;
+      button.click();
+      panel=document.querySelector('#pgRoutes');
+    }
+    const report=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
+    const selected=(report.doorWayfinding||[]).filter(door=>door.slot>0).sort((a,b)=>a.slot-b.slot);
+    const pressed=[...panel.querySelectorAll('button.dungeon-door-waypoint[aria-pressed="true"]')]
+      .map(button=>button.closest('[data-door-id]')?.dataset.doorId).filter(Boolean);
+    const unselected=[...panel.querySelectorAll('button.dungeon-door-waypoint[aria-pressed="false"]')];
+    return {selected,pressed,capDisabled:unselected.length?unselected.every(button=>button.disabled):null};
+  })()`);
+  threePoints.observed=threePoints.selected.length===3
+    && threePoints.selected.every((door,index)=>door.slot===index+1)
+    && threePoints.pressed.length===3 && threePoints.selected.every(door=>threePoints.pressed.includes(door.id))
+    && threePoints.capDisabled!==false;
+  if(threePoints.observed)screenshots.push(await capture('routes-three-waypoints'));
+
   // Best-effort actual door traversal. The teleport is the supported PG selector;
   // Act remains ordinary keyboard input. Never manufacture a transition receipt.
   const traversal=await evaluate(`(() => {
@@ -153,31 +198,119 @@ export async function doorWayfindingWitness(scenario, { call, evaluate, wait, ca
     const door=info.teleportTargets?.find(q=>q.id===id);
     if(!door || ![...select.options].some(o=>o.value===door.id))return {available:false};
     select.value=door.id;select.dispatchEvent(new Event('change',{bubbles:true}));
-    return {available:true,target:door,toArea:step.toId,doorName:step.name};
+    return {available:true,target:door,toArea:step.toId,doorName:step.name,doorId:step.id};
   })()`);
-  if(traversal.available){
-    await evaluate(`document.querySelector('#pgRoutes form button').click()`);
+  const publicDoorTravel=async step=>{
+    if(!step?.available)return {available:false};
+    await evaluate(`(() => {
+      const select=document.querySelector('#teleportSelect'),id=${JSON.stringify(step.doorId)};
+      if(![...select.options].some(o=>o.value===id))return false;
+      select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}));return true;
+    })()`);
     await evaluate(`document.querySelector('#scenarioPause').textContent==='Resume'&&document.querySelector('#scenarioPause').click()`);
-    await wait(180);
-    await holdKey(call,wait,'e',80);
+    await wait(180);await holdKey(call,wait,'e',80);
+    let after;
     for(let i=0;i<8;i++){
       await evaluate(`(() => {
         const dialog=document.querySelector('#pgInteraction');
-        if(dialog?.open&&dialog.querySelector('h2')?.textContent===${JSON.stringify(traversal.doorName)})dialog.querySelector('.pg-interaction-actions button:not(:disabled)')?.click();
+        if(dialog?.open&&dialog.querySelector('h2')?.textContent===${JSON.stringify(step.doorName)})dialog.querySelector('.pg-interaction-actions button:not(:disabled)')?.click();
       })()`);
-      traversal.after=await evaluate(`globalThis.provingGroundGame?.().areaId()`);
-      if(traversal.after!==before.area)break;
+      after=await evaluate(`globalThis.provingGroundGame?.().areaId()`);
+      if(after===step.toArea)break;
       await wait(100);
     }
-    traversal.observed=traversal.after===traversal.toArea&&traversal.after!==before.area;
+    return {...step,after,observed:after===step.toArea};
+  };
+  const reciprocalStep=toArea=>evaluate(`(() => {
+    const info=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent),select=document.querySelector('#teleportSelect'),g=globalThis.provingGroundGame?.();
+    const step=g?.map.objects.find(o=>o.kind==='buildingStair'&&o.toId===${JSON.stringify(toArea)}&&!o.lock&&!o.barred&&!o.sigil&&!o.bossGate&&!o.plateLock);
+    const door=step&&info.teleportTargets?.find(q=>q.id===step.id);
+    return step&&door&&[...select.options].some(o=>o.value===door.id)?{available:true,target:door,toArea:step.toId,doorName:step.name,doorId:step.id}:{available:false};
+  })()`);
+  const differentStep=exclude=>evaluate(`(() => {
+    const info=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent),select=document.querySelector('#teleportSelect'),g=globalThis.provingGroundGame?.();
+    const step=g?.map.objects.find(o=>o.kind==='buildingStair'&&o.id!==${JSON.stringify(exclude)}&&o.toId&&!o.lock&&!o.barred&&!o.sigil&&!o.bossGate&&!o.plateLock&&info.teleportTargets?.some(q=>q.id===o.id));
+    const door=step&&info.teleportTargets.find(q=>q.id===step.id);
+    return step&&door&&[...select.options].some(o=>o.value===door.id)?{available:true,target:door,toArea:step.toId,doorName:step.name,doorId:step.id}:{available:false};
+  })()`);
+  if(traversal.available){
+    await evaluate(`document.querySelector('#pgRoutes form button').click()`);
+    Object.assign(traversal,await publicDoorTravel(traversal));
     if(traversal.observed){
       await wait(250);
       traversal.arrival=await evaluate(`JSON.parse(document.querySelector('#fixtureDiagnostics').textContent).doorWayfinding?.find(door=>door.mark==='arrival')||null`);
       screenshots.push(await capture('normal-act-door-traversal'));
+      const back=await publicDoorTravel(await reciprocalStep(before.area));
+      const different=back.observed?await publicDoorTravel(await differentStep(traversal.doorId)):{available:false};
+      const returned=different.observed?await publicDoorTravel(await reciprocalStep(before.area)):{available:false};
+      traversal.roundTrip={back,different,returned};
+      if(returned.observed){
+        await wait(250);
+        traversal.returnMarks=await evaluate(`(() => {
+          const doors=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent).doorWayfinding||[];
+          return {arrival:doors.find(door=>door.mark==='arrival')||null,visited:doors.filter(door=>door.mark==='visited')};
+        })()`);
+        traversal.differentDoorObserved=traversal.returnMarks.arrival?.id?.endsWith('::'+different.doorId)
+          && traversal.returnMarks.visited.some(door=>door.id.endsWith('::'+traversal.doorId));
+        if(traversal.differentDoorObserved)screenshots.push(await capture('different-door-return-blue-purple'));
+      }
     }
   }
-  return {status:markedObserved?'observed':'blocked',before,opened,marked,traversal,
-    remainingVisualRequirement:traversal.arrival?null:'Actual door traversal was not safely observed; no traversal receipt is claimed.',screenshots};
+  const required=markedObserved&&(scenario==='cube-doors' ? threePoints.observed
+    : traversal.arrival&&traversal.differentDoorObserved);
+  return {status:required?'observed':'blocked',before,discovery,opened,marked,threePoints,traversal,
+    compassTrueNorth:{status:'not-evaluated-here',reason:'The scratch Proving Ground does not drive the production HUD compass; run.mjs evaluates it separately on the exact release.'},
+    remainingVisualRequirement:required?[]:
+      [scenario==='cube-doors'?'Three public saved points were not safely observed':'Blue actual arrival or purple prior door after a different-door return was not safely observed'],screenshots};
+}
+
+export async function mainHudCompassWitness({ call, evaluate, navigate, wait, capture, releaseUrl }) {
+  const seeded=await evaluate(`(() => {
+    const g=globalThis.provingGroundGame?.();if(!g)return null;
+    g.sync();const copy=structuredClone(g.save);let cleared=0;
+    for(const area of Object.values(copy.dungeonDoorNavigation?.areas||{})){
+      if(Array.isArray(area.waypointDoorIds)){cleared+=area.waypointDoorIds.length;area.waypointDoorIds=[];}
+    }
+    localStorage.setItem('infinite-corridor:active-slot-v1','3');
+    localStorage.setItem('infinite-corridor:slot-mirror:3',JSON.stringify(copy));
+    return {area:g.areaId(),seed:copy.seed,slot:3,cleared,sourceWaypoints:Object.values(g.save.dungeonDoorNavigation?.areas||{}).reduce((n,a)=>n+(a.waypointDoorIds?.length||0),0)};
+  })()`);
+  if(!seeded||seeded.cleared<3||seeded.sourceWaypoints<3)return {status:'blocked',seeded,reason:'Scratch clone with three source points was unavailable',screenshots:[]};
+  await navigate(releaseUrl);
+  let before;
+  for(let i=0;i<40;i++){
+    before=await evaluate(`(() => {
+      const compass=document.querySelector('#navCompass'),arrow=document.querySelector('#navManualArrow'),canvas=document.querySelector('#game'),cam=globalThis.__closeViewCam?.get(),rect=canvas?.getBoundingClientRect();
+      return {label:compass?.getAttribute('aria-label')||null,hidden:compass?.hidden!==false,north:compass?.classList.contains('north')===true,
+        transform:arrow?.style.transform||'',yaw:cam?.yaw,valid:cam?.valid===true,canvas:rect&&{left:rect.left,top:rect.top,width:rect.width,height:rect.height}};
+    })()`);
+    if(before?.label==='True north'&&!before.hidden&&before.north&&before.valid&&before.canvas?.width>0)break;
+    await wait(125);
+  }
+  const rotation=value=>Number(/^rotate\((-?[\d.]+)deg\)$/.exec(value||'')?.[1]);
+  const firstRotation=rotation(before?.transform),screenshots=[];
+  if(before?.label!=='True north'||before.hidden||!before.north||!before.valid||!Number.isFinite(firstRotation))
+    return {status:'blocked',seeded,before,reason:'Visible normal-game True north HUD was unavailable',screenshots};
+  screenshots.push(await capture('hud-true-north-before-drag'));
+  const x=before.canvas.left+before.canvas.width*.72,y=before.canvas.top+before.canvas.height*.42;
+  await call('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',buttons:1,clickCount:1});
+  await call('Input.dispatchMouseEvent',{type:'mouseMoved',x:x+110,y:y+8,button:'left',buttons:1});
+  await call('Input.dispatchMouseEvent',{type:'mouseReleased',x:x+110,y:y+8,button:'left',buttons:0,clickCount:1});
+  await wait(350);
+  const after=await evaluate(`(() => {
+    const compass=document.querySelector('#navCompass'),arrow=document.querySelector('#navManualArrow'),cam=globalThis.__closeViewCam?.get();
+    return {label:compass?.getAttribute('aria-label')||null,hidden:compass?.hidden!==false,north:compass?.classList.contains('north')===true,
+      transform:arrow?.style.transform||'',yaw:cam?.yaw,valid:cam?.valid===true};
+  })()`);
+  const secondRotation=rotation(after?.transform),degrees=yaw=>yaw*180/Math.PI,
+    wrap=value=>((value+180)%360+360)%360-180;
+  const yawChanged=Number.isFinite(before.yaw)&&Number.isFinite(after?.yaw)&&Math.abs(wrap(degrees(after.yaw-before.yaw)))>5;
+  const northInvariant=Number.isFinite(firstRotation)&&Number.isFinite(secondRotation)
+    && Math.abs(wrap(firstRotation+degrees(before.yaw)+90))<=2
+    && Math.abs(wrap(secondRotation+degrees(after.yaw)+90))<=2;
+  const observed=yawChanged&&northInvariant&&after.label==='True north'&&!after.hidden&&after.north&&after.valid;
+  if(observed)screenshots.push(await capture('hud-true-north-after-drag'));
+  return {status:observed?'observed':'blocked',seeded,before:{...before,rotation:firstRotation},after:{...after,rotation:secondRotation},yawChanged,northInvariant,screenshots};
 }
 
 export async function summitWitness({ call, evaluate, wait, capture }) {

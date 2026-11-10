@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleaverWitness, closeViewWitness, doorWayfindingWitness, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
 import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
@@ -58,11 +58,15 @@ test('route panel witnesses current-floor cues and requires the Pentagon overvie
 
 test('door wayfinding uses the public route panel and requires its numbered pressed diagnostic', async () => {
   const states = [
-    { area:'cube:f2', enabled:true, doors:[{id:'cube:f2::door-a'}], scenario:'cube-doors', scratch:true },
+    { area:'cube:f2', enabled:true, doors:[{id:'cube:f2::door-a'},{id:'cube:f2::door-b'}], scenario:'cube-doors', scratch:true },
+    { available:true,target:'lab-stair-0-down' },
+    { area:'cube:f2', enabled:true, doors:[{id:'cube:f2::door-a'},{id:'cube:f2::door-b'},{id:'cube:f2::door-c'},{id:'cube:f2::door-d'}], scenario:'cube-doors', scratch:true },
     true,
     { open:true, label:'Add waypoint for DOOR at 4, 5', pressed:'false', doorId:'cube:f2::door-a' },
     true,
     { open:true, label:'Remove waypoint for DOOR at 4, 5', pressed:'true', door:{id:'cube:f2::door-a',slot:1} },
+    { selected:[{id:'cube:f2::door-a',slot:1},{id:'cube:f2::door-b',slot:2},{id:'cube:f2::door-c',slot:3}],
+      pressed:['cube:f2::door-a','cube:f2::door-b','cube:f2::door-c'],capDisabled:true },
     { available:false },
   ];
   const result=await doorWayfindingWitness('cube-doors',{
@@ -70,13 +74,33 @@ test('door wayfinding uses the public route panel and requires its numbered pres
     wait:async()=>{}, capture:async name=>name,
   });
   assert.equal(result.status,'observed');
-  assert.deepEqual(result.screenshots,['routes-before-waypoint','routes-selected-waypoint']);
-  assert.match(result.remainingVisualRequirement,/not safely observed/);
+  assert.deepEqual(result.screenshots,['routes-before-waypoint','routes-selected-waypoint','routes-three-waypoints']);
+  assert.deepEqual(result.discovery,{available:true,target:'lab-stair-0-down',revealed:4});
+  assert.equal(result.threePoints.observed,true);
+  assert.deepEqual(result.remainingVisualRequirement,[]);
+  assert.equal(result.compassTrueNorth.status,'not-evaluated-here');
   const blocked=await doorWayfindingWitness('terrain-pentagon',{
     evaluate:async()=>({area:'pentagon',enabled:true,doors:[],scenario:'terrain-pentagon',scratch:true}),
     call:async()=>{},wait:async()=>{},capture:async()=>assert.fail('no screenshot without doors'),
   });
   assert.equal(blocked.status,'blocked');
+});
+
+test('normal-game north compass stays in world coordinates after a real camera drag', async () => {
+  const states=[
+    {area:'cube:f2',seed:'R13',slot:3,cleared:3,sourceWaypoints:3},
+    {label:'True north',hidden:false,north:true,transform:'rotate(0deg)',yaw:-Math.PI/2,valid:true,canvas:{left:0,top:0,width:768,height:540}},
+    {label:'True north',hidden:false,north:true,transform:'rotate(90deg)',yaw:-Math.PI,valid:true},
+  ],calls=[],navigations=[];
+  const result=await mainHudCompassWitness({
+    evaluate:async()=>states.shift(),navigate:async url=>navigations.push(url),wait:async()=>{},capture:async name=>name,
+    call:async(method,args)=>calls.push([method,args.type,args.x,args.y]),releaseUrl:'http://127.0.0.1/__release__/',
+  });
+  assert.equal(result.status,'observed');
+  assert.equal(result.yawChanged,true);assert.equal(result.northInvariant,true);
+  assert.deepEqual(navigations,['http://127.0.0.1/__release__/']);
+  assert.deepEqual(calls.map(q=>q.slice(0,2)),[['Input.dispatchMouseEvent','mousePressed'],['Input.dispatchMouseEvent','mouseMoved'],['Input.dispatchMouseEvent','mouseReleased']]);
+  assert.deepEqual(result.screenshots,['hud-true-north-before-drag','hud-true-north-after-drag']);
 });
 
 test('summit staging accepts real Act admission only to a fresh cloud encounter with a distinct target', async () => {

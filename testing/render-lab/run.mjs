@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
-import { cleaverWitness, combatActionWitness, closeViewWitness, doorWayfindingWitness, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, DOOR_WAYFINDING_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
+import { cleaverWitness, combatActionWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, DOOR_WAYFINDING_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -35,10 +35,14 @@ try {
     try {
       if(networkCut){deniedRequests++;res.writeHead(503).end();return;}
       if(req.method!=='GET'&&req.method!=='HEAD'){res.writeHead(405).end();return;}
-      const name=safePath(new URL(req.url,'http://localhost').pathname);
+      const pathname=new URL(req.url,'http://localhost').pathname;
+      const releaseMount=candidate.id.startsWith('r868-')&&pathname.startsWith('/__release__/');
+      const name=safePath(releaseMount?pathname.slice('/__release__'.length):pathname);
+      const inventory=releaseMount?candidate.files.release:candidate.files.preview;
+      const directory=releaseMount?'release':'preview-site';
       // Serve only the already verified inventory, never arbitrary workspace files.
-      if(!candidate.files.preview[name]){res.writeHead(404).end();return;}
-      const data=readFileSync(join(site,name));
+      if(!inventory[name]){res.writeHead(404).end();return;}
+      const data=readFileSync(join(root,directory,name));
       res.writeHead(200,{'Content-Type':mime[extname(name)]||'application/octet-stream','Cache-Control':'no-store'});
       res.end(req.method==='HEAD'?undefined:data);
     }catch{res.writeHead(400).end();}
@@ -224,6 +228,19 @@ try {
       entry.reasons.push('Required input or encounter witness was not observed');
     }
     currentObservation();currentObservation=null;
+    if(doorWayfinding&&scenario==='cube-doors'){
+      checkpoint('normal-game-compass');
+      const compassStart=events.length;
+      entry.hudCompass=await mainHudCompassWitness({call,evaluate,navigate,wait,capture,releaseUrl:`${origin}/__release__/`});
+      entry.hudCompass.errors=events.slice(compassStart).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
+      entry.hudCompass.optionalBrowserRequests=entry.hudCompass.errors.filter(({details})=>details?.type==='Other'&&details.response?.status===404&&[`${origin}/favicon.ico`,`${origin}/__release__/favicon.ico`].includes(details.response.url));
+      entry.hudCompass.errors=entry.hudCompass.errors.filter(error=>!entry.hudCompass.optionalBrowserRequests.includes(error));
+      if(entry.hudCompass.status!=='observed'){
+        entry.status='blocked';
+        entry.reasons.push('Normal-game True north HUD witness was not observed');
+      }
+      if(entry.hudCompass.errors.length){entry.status='blocked';entry.reasons.push('Browser errors in normal-game compass witness');}
+    }
     checkpoint('scenario-observed');
     if(scenario===CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1])>=865){
       checkpoint('offline-cleaver');
