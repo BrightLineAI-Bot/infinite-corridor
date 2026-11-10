@@ -1,39 +1,39 @@
-import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r866-2a08d6b00273';
-import { ordinaryContactEnemy } from './actor-contact.js?v=r866-2a08d6b00273';
-import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r866-2a08d6b00273";
-import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r866-2a08d6b00273"; // the Close View lab
-import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r866-2a08d6b00273";
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r866-2a08d6b00273";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r866-2a08d6b00273";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r866-2a08d6b00273";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r866-2a08d6b00273";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r866-2a08d6b00273";
-import { DIG, planDig } from "./digging.js?v=r866-2a08d6b00273";
-import { freshSave, migrateSave } from "./types.js?v=r866-2a08d6b00273";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r866-2a08d6b00273";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r866-2a08d6b00273";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r866-2a08d6b00273";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r866-2a08d6b00273";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r866-2a08d6b00273";
-import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r866-2a08d6b00273";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r866-2a08d6b00273";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r866-2a08d6b00273";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r866-2a08d6b00273";
-import { BIOMES, biomeFor } from "./landscape.js?v=r866-2a08d6b00273";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r866-2a08d6b00273";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r866-2a08d6b00273";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r866-2a08d6b00273";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r866-2a08d6b00273";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r866-2a08d6b00273";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r866-2a08d6b00273";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r866-2a08d6b00273";
-import { ensureLattice } from "./transit-lattice.js?v=r866-2a08d6b00273";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r866-2a08d6b00273";
-import { fieldOn } from "./lattice-fields.js?v=r866-2a08d6b00273";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r866-2a08d6b00273";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r866-2a08d6b00273";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r866-2a08d6b00273";
-import { validActions } from "./interactions.js?v=r866-2a08d6b00273";
+import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r869-d6c8a8f181d1';
+import { ordinaryContactEnemy } from './actor-contact.js?v=r869-d6c8a8f181d1';
+import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r869-d6c8a8f181d1";
+import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r869-d6c8a8f181d1"; // the Close View lab
+import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r869-d6c8a8f181d1";
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r869-d6c8a8f181d1";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r869-d6c8a8f181d1";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r869-d6c8a8f181d1";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r869-d6c8a8f181d1";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r869-d6c8a8f181d1";
+import { DIG, planDig } from "./digging.js?v=r869-d6c8a8f181d1";
+import { freshSave, migrateSave } from "./types.js?v=r869-d6c8a8f181d1";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r869-d6c8a8f181d1";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r869-d6c8a8f181d1";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r869-d6c8a8f181d1";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r869-d6c8a8f181d1";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r869-d6c8a8f181d1";
+import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r869-d6c8a8f181d1";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r869-d6c8a8f181d1";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r869-d6c8a8f181d1";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r869-d6c8a8f181d1";
+import { BIOMES, biomeFor } from "./landscape.js?v=r869-d6c8a8f181d1";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r869-d6c8a8f181d1";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r869-d6c8a8f181d1";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r869-d6c8a8f181d1";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r869-d6c8a8f181d1";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r869-d6c8a8f181d1";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r869-d6c8a8f181d1";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r869-d6c8a8f181d1";
+import { ensureLattice } from "./transit-lattice.js?v=r869-d6c8a8f181d1";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r869-d6c8a8f181d1";
+import { fieldOn } from "./lattice-fields.js?v=r869-d6c8a8f181d1";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r869-d6c8a8f181d1";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r869-d6c8a8f181d1";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r869-d6c8a8f181d1";
+import { validActions } from "./interactions.js?v=r869-d6c8a8f181d1";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -230,6 +230,7 @@ const CLOSE_VIEW_LAB = [
   { id: "grand-hall", label: "Pentagon: a grand hall", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "pit-gallery", label: "Pentagon: a grand hall with a shaft", pick: (P) => P.nodes.find((n) => n.hall?.type === "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "terrain-pentagon", label: "Traversal: current Pentagon rooms and ramps", latestPentagon: true, pick: (P) => P.nodes.find((n) => (n.kind === "outer" || n.kind === "inner") && !n.hall) },
+  { id: "cube-doors", label: "Wayfinding: Cube room maze", cubeDoors: true },
   { id: "building", label: "Great building: a keep's first floor" },
   { id: "hazards", label: "Great building: an upper floor's holes, with lava stamped in (Close View's pits and lava)" }, // release 793
   { id: "terrain-ramps", label: "Traversal: broad indoor ramps", buildingFeature: "ramp" },
@@ -352,7 +353,10 @@ function closeViewFixture(scenario, seed, now) {
   if (spec.routingAdoption) return routingAdoptionFixture(spec, now);
   if (spec.roomRouting) return roomRoutingFixture(spec, seed, now);
   let id, back;
-  if (spec.style) { // release 794: a theme's floor, built from a great building's id near the keep the lab finds (scratch only)
+  if(spec.cubeDoors){
+    id=`labyrinth:${seed}:0:0:keep~r2:f2`;back={rx:0,ry:0,x:16,y:16};
+  }
+  else if (spec.style) { // release 794: a theme's floor, built from a great building's id near the keep the lab finds (scratch only)
     const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); const floors = 3; let rx = b.rx;
     if (spec.style === "keep") for (let k = 0; k < 200 && closeViewThemeLivedIn(`building:${seed}:${rx}:${b.ry}:keep:${floors}`) !== spec.lived; k++) rx++; // a keep that is (or is not) lived in
     id = `building:${seed}:${rx}:${b.ry}:${spec.style}:${floors}:f${spec.floor || 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
@@ -368,7 +372,7 @@ function closeViewFixture(scenario, seed, now) {
   Object.assign(save.session, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 }); Object.assign(save.position, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 });
   const game = new Game(save, now); game.installSystems();
   save.session.activeDungeonId = id; save.session.dungeonReturn = back; game.loadArea("dungeon", false);
-  if (spec.buildingFeature || spec.latestPentagon || spec.buildVersion) {
+  if (spec.buildingFeature || spec.latestPentagon || spec.buildVersion || spec.cubeDoors) {
     const loadArea = game.loadArea.bind(game);
     game.loadArea = (area, capture = true) => {
       const result = loadArea(area, capture);
@@ -387,6 +391,7 @@ function closeViewFixture(scenario, seed, now) {
     entry = candidates.reduce((best, t) => !best || distance(t) < distance(best) ? t : best, null) || entry;
   }
   game.player.x = entry.x; game.player.y = entry.y; game.player.attackReadyAt = now;
+  if(spec.cubeDoors||game.map.building?.pentagon)game.labFogTick();
   let traversal = null;
   let buildPractice = null;
   if (spec.buildVersion) {

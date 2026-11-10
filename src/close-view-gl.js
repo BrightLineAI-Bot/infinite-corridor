@@ -1,6 +1,6 @@
-import { MODEL_FLOATS } from "./close-view-models.js?v=r866-2a08d6b00273";
-import { buildVisualRevision } from "./building.js?v=r866-2a08d6b00273";
-import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r866-2a08d6b00273';
+import { MODEL_FLOATS } from "./close-view-models.js?v=r869-d6c8a8f181d1";
+import { buildVisualRevision } from "./building.js?v=r869-d6c8a8f181d1";
+import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r869-d6c8a8f181d1';
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -267,6 +267,10 @@ void main() {
     if (fogK < 0.999) {
       vec3 dif, spe; vec3 W3 = vec3(P, 0.0);
       if ((m.r & 2u) == 2u) { col = u_fog; } // unseen: the dark keeps its secrets
+      else if (u_floorQ.w > 0.5) {
+        vec4 surface = overlayAt(P);
+        col = atmos(u_fog * (1.0 - surface.a) + surface.rgb, W3, depth, u_amb);
+      }
       else if (m.g == 1u || m.g == 3u || m.g == 5u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
       else if (m.g == 2u) { col = atmos(lavaColor(P, T), W3, depth, vec3(0.0)); }
       else { float h, wet; uint mat = m.b >> 1u; vec3 alb = floorMat(P, T, mat, h, wet);
