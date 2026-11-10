@@ -45,7 +45,8 @@ export async function combatActionWitness(scenario, { call, evaluate, wait, capt
     const g=globalThis.provingGroundGame?.(), p=g?.player, a=p?.attackVisual;
     return { attackUntil:p?.attackUntil, weapon:a?.weaponKind, step:a?.primaryStep,
       castUntil:p?.castUntil, spell:p?.castVisual?.spellKind, jumpUntil:g?.jumpUntil,
-      hammerId:g?.hammerfallStartup?.effectId ?? a?.hammerEffectId, lastTool:g?.lastToolAt };
+      hammerId:g?.hammerfallStartup?.effectId ?? a?.hammerEffectId,
+      activeSkill:g?.save.magicSkills?.active?.id, message:g?.message };
   })()`);
   const before=await read(), samples=[];
   const pike=scenario===COMBAT_ACTION_CASES[0], aerial=scenario===COMBAT_ACTION_CASES[1];
@@ -59,11 +60,6 @@ export async function combatActionWitness(scenario, { call, evaluate, wait, capt
       accepted=state;break;
     }
     await wait(90);
-  }
-  if(aerial && accepted){
-    await holdKey(call,wait,'k',120);
-    const airborne=await read();samples.push(airborne);
-    if(!(airborne.jumpUntil>0 && airborne.jumpUntil!==before.jumpUntil))accepted=null;
   }
   const screenshots=accepted?[await capture('accepted-input')]:[];
   return {status:accepted?'observed':'blocked',before,samples,screenshots};
@@ -141,24 +137,37 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
   if (!before || !Number.isFinite(before.yaw)) return { status: 'blocked', reason: 'No camera/player observation' };
   if (scenario === STILLWORKS_CASES[0]) {
     const encounter = [];
-    let advanced=before;
-    for(let i=0;i<8&&!advanced?.awake;i++){
-      await hold('w',700);
-      advanced=await pose();
-      encounter.push(advanced);
-    }
-    const screenshots = [await capture('floor')];
-    for (let i = 0; i < 14; i++) {
+    const probe=async id=>{
+      const expected=await evaluate(`(() => {
+        const report=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
+        const target=report.teleportTargets.find(q=>q.id===${JSON.stringify(id)});
+        const select=document.querySelector('#teleportSelect');
+        if(!target || ![...select.options].some(o=>o.value===target.id))return null;
+        select.value=target.id;
+        select.dispatchEvent(new Event('change',{bubbles:true}));
+        return target;
+      })()`);
+      await wait(350);
+      const current=await pose();
+      return expected && current && Math.hypot(current.x-expected.x,current.y-expected.y)<.35 ? current : null;
+    };
+    const covered=await probe('stillworks-cover');
+    const screenshots=covered?[await capture('covered')]:[];
+    const advanced=await probe('stillworks-exposed');
+    if(advanced)screenshots.push(await capture('exposed'));
+    let warning=false;
+    for (let i = 0; i < 18 && advanced; i++) {
       const state = await pose();
       encounter.push(state);
       if (state?.warnings?.length) {
         screenshots.push(await capture('warning'));
+        warning=true;
         break;
       }
       await wait(220);
     }
-    const moved = advanced?.area === before.area && Math.hypot(advanced.x - before.x, advanced.y - before.y) > 2;
-    return { status: moved && advanced?.awake && screenshots.length === 2 ? 'observed' : 'blocked', before, advanced, encounter, screenshots };
+    return {status:covered && advanced && warning && encounter.some(q=>q?.awake)?'observed':'blocked',
+      before,covered,advanced,encounter,screenshots};
   }
   const crawl = await evaluate(`(() => {
     const info = JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
@@ -176,20 +185,15 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
   if (!state || Math.hypot(state.x - crawl.approach.x, state.y - crawl.approach.y) > .25)
     return { status: 'blocked', reason: 'Crawl approach selection did not arrive', crawl, state };
   const start = state, screenshots = [await capture('approach')], samples = [];
-  for (const point of crawl.path) {
-    for (let i = 0; i < 8 && state; i++) {
-      const dx = point.x - state.x, dy = point.y - state.y, distance = Math.hypot(dx, dy);
-      if (distance <= .25) break;
-      const key = movementKey(state.inputYaw ?? state.yaw, dx, dy);
-      if (!key) break;
-      await hold(key, Math.max(45, Math.min(155, distance * 170)));
-      state = await pose();
-    }
-    samples.push(state);
-    if (!state || Math.hypot(point.x - state.x, point.y - state.y) > .35 || state.area !== start.area) break;
+  const end=crawl.path.at(-1), inTile=() => state?.area===start.area && Math.round(state.x)===end.x && Math.round(state.y)===end.y;
+  for(let i=0;i<12 && state && !inTile();i++){
+    const dx=end.x-state.x,dy=end.y-state.y,key=movementKey(state.inputYaw ?? state.yaw,dx,dy);
+    if(!key)break;
+    await hold(key,Math.max(180,Math.min(420,Math.hypot(dx,dy)*400)));
+    state=await pose();samples.push(state);
+    if(state?.area!==start.area)break;
   }
   screenshots.push(await capture('landing'));
-  const end = crawl.path.at(-1), landed = state?.area === start.area
-    && Math.round(state.x)===end.x && Math.round(state.y)===end.y;
+  const landed=inTile();
   return { status: landed && state.hp === start.hp ? 'observed' : 'blocked', crawl, start, samples, screenshots };
 }

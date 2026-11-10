@@ -133,6 +133,8 @@ export async function preflight({ input, directory, repositoryDirectory, token }
         observed: rendered.scenarios?.filter(scenario => scenario.status === 'render-observed').length ?? 0 };
       receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness, errors, webglCaptured }) => ({
         scenario, status, captures: captures?.length ?? 0, witness: witness?.status,
+        witnessSummary: witness && { before:witness.before, covered:witness.covered, advanced:witness.advanced,
+          last:witness.samples?.at(-1) ?? witness.encounter?.at(-1) },
         webglCaptured, errors: errors?.slice(0, 3).map(({method,details}) => ({
           method, status: details?.response?.status, resource: details?.type, cancelled: details?.canceled,
         })),

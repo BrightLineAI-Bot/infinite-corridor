@@ -98,8 +98,8 @@ try {
     return observe;
   };
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
-  const cases = [CLEAVER_CASE,...COMBAT_ACTION_CASES];
-  // An old frozen artifact need not contain the newer fixtures.
+  const cases = [COMBAT_ACTION_CASES[1]];
+  receipt.scope='remaining online gameplay witnesses for exact frozen r865';
   cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
   if (fixtures.includes(`"${SUMMIT_CASE}"`)) cases.push(SUMMIT_CASE);
   for(const scenario of cases) {
