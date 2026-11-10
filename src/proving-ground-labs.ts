@@ -231,6 +231,7 @@ const CLOSE_VIEW_LAB = [
   { id: "pit-gallery", label: "Pentagon: a grand hall with a shaft", pick: (P) => P.nodes.find((n) => n.hall?.type === "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "terrain-pentagon", label: "Traversal: current Pentagon rooms and ramps", latestPentagon: true, pick: (P) => P.nodes.find((n) => (n.kind === "outer" || n.kind === "inner") && !n.hall) },
   { id: "vertical-gallery-keep", label: "Scratch gallery: terraced Keep", verticalGallery: "keep" },
+  { id: "vertical-gallery-drone", label: "Scratch gallery: Keep drone practice", verticalGallery: "keep", galleryDrone: true },
   { id: "vertical-gallery-pentagon", label: "Scratch gallery: terraced Pentagon", verticalGallery: "pentagon", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "cube-doors", label: "Wayfinding: Cube room maze", cubeDoors: true },
   { id: "building", label: "Great building: a keep's first floor" },
@@ -298,7 +299,7 @@ function stampVerticalGallery(map, family) {
     }
   };
   const cx = Math.floor(W / 2), startY = H - 4, terraceTop = H - 12, upperY = 3;
-  carve(cx - 6, startY, cx + 6, H - 2, 0, kinds.start, "landing");
+  carve(cx - 6, startY, cx + 9, H - 2, 0, kinds.start, "landing");
   for (let step = 1; step <= 5; step++) {
     const y = H - 4 - step; carve(cx - 1, y, cx + 1, y, step, kinds.stair, "stair");
     for (let x = cx - 1; x <= cx + 1; x++) Object.assign(map.tiles[y * W + x], { slope: true, rampDir: "north" });
@@ -343,7 +344,7 @@ function stampVerticalGallery(map, family) {
   return { found: true, family, elevationCap: 5, levelHeightTiles: .34, clearBounds: { x0: 1, y0: 1, x1: W - 2, y1: H - 2 }, entry, mainRoute: "five broad north ramps",
     branches: [{ id: "lantern-branch", side: "west", kind: kinds.west, endpoint: { x: westEdge + 2, y: upperY + 4 } },
       { id: "bridge-branch", side: "east", kind: kinds.east, endpoint: { x: eastEdge - 2, y: upperY + 4 } }],
-    returnLoop: { found: true, northBridge: { from: { x: cx - 6, y: upperY + 1 }, to: { x: cx + 6, y: upperY + 1 } } }, sharedVolume: { safeFloor: true, level: 2, bounds: { x0: cx - 4, y0: upperY + 3, x1: cx + 4, y1: terraceTop - 1 } }, requiredDrone: false, boostSpur: boost, authoredBrightness: "supported skylit hall metadata with paleWell backdrop; final exposure remains renderer-controlled",
+    returnLoop: { found: true, northBridge: { from: { x: cx - 6, y: upperY + 1 }, to: { x: cx + 6, y: upperY + 1 } } }, sharedVolume: { safeFloor: true, level: 2, bounds: { x0: cx - 4, y0: upperY + 3, x1: cx + 4, y1: terraceTop - 1 } }, requiredDrone: false, boostSpur: boost, droneLaunch: boost.length===5 ? { x: boost[4].x, y: boost[4].y + 1 } : null, authoredBrightness: "supported skylit hall metadata with paleWell backdrop; final exposure remains renderer-controlled",
     limits: "Scratch geometry demonstrates routing and composition only; it does not guarantee a future procedural placement or identical apparent brightness on every quality tier." };
 }
 export function findLabPentagon(seed, now = 0) {
@@ -435,7 +436,7 @@ function closeViewFixture(scenario, seed, now) {
   else { const c = findLabPentagon(seed, now); if (!c) throw new Error(`No Pentagon near the origin for seed ${seed}.`); const P = pentagonPlan(seed, c.cx, c.cy, spec.latestPentagon ? c.V : Math.min(c.V, 8)), q = spec.pick(P) || P.nodes[0]; id = `${P.base}:f${q.n + 1}`; back = { rx: c.cx, ry: c.cy, x: 16, y: 16 }; }
   const save = scratchSave(seed); save.closeView = true; if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET; if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL; ensureCloseView(save); // ?cvPreset=close|wide tries a camera preset
   if (id.startsWith("building:")) save.consequences.dungeons[id] = { interiorVersion: spec.buildVersion || (spec.buildingFeature ? BUILDINGS.interior.version : 2) };
-  if (spec.buildingFeature === "drone") {
+  if (spec.buildingFeature === "drone" || spec.galleryDrone) {
     save.farArray.gate = 5;
     save.mech = { built: true, active: true, mode: "drone", plate: 60, fuel: DRONE.carry, cooldown: 0, healCd: 0, rocketCd: 0 };
     ensureMech(save);
@@ -503,7 +504,7 @@ function closeViewFixture(scenario, seed, now) {
     traversal = { feature: "pentagon-terrain", found: game.map.interiorTerrain?.version === 1, version: game.map.building?.V || null, size: [game.map.width, game.map.height] };
   }
   if (spec.id === "hazards") stampHazards(game.map, { x: Math.round(entry.x), y: Math.round(entry.y) });
-  if (verticalGallery) game.message = verticalGallery.found ? "Climb the broad stair to the upper landing. Explore both galleries; either high walk returns to the terrace. The east stepping spur is optional." : verticalGallery.note;
+  if (verticalGallery) game.message = verticalGallery.found && spec.galleryDrone ? "From the lower landing beside the east overlook, tap Jump twice and hold to rise. Move north onto the top step. The stair route still works without the drone." : verticalGallery.found ? "Climb the broad stair to the upper landing. Explore both galleries; either high walk returns to the terrace. The east stepping spur is optional." : verticalGallery.note;
   else if (spec.buildingFeature === "ramp") game.message = "Close View ramp lab: walk across the broad stepped strip and compare the camera at each height.";
   else if (spec.buildingFeature === "dig-return") game.message = traversal?.found ? "Face the cut wall, Act to dig, walk across and back." : traversal?.note;
   else if (spec.buildingFeature === "platform") game.message = traversal?.found ? "Close View platform lab: jump onto the +1 and +2 blocks, then up to the 2×2 top." : traversal?.note;
