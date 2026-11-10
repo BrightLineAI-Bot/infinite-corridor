@@ -173,7 +173,7 @@ try {
     const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
       : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness
       : COMBAT_ACTION_CASES.includes(scenario) && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 865 ? combatActionWitness.bind(null,scenario) : null;
-    const witnessTools={call,evaluate,wait,capture,walkerDiagnostics:walker?diagnosticsPath:null};
+    const witnessTools={call,evaluate,wait,capture,checkpoint,walkerDiagnostics:walker?diagnosticsPath:null};
     if(witness) entry.witness=await witness(witnessTools);
     if(scenario.startsWith('routing-crawl-') && entry.witness?.status==='observed'){
       const panel=await routePanelWitness(scenario,witnessTools);

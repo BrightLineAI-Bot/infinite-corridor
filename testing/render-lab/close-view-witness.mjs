@@ -145,7 +145,7 @@ export function movementKey(yaw, dx, dy) {
     Math.cos(angle - next[1]) > Math.cos(angle - best[1]) ? next : best)[0];
 }
 
-export async function closeViewWitness(scenario, { call, evaluate, wait, capture, walkerDiagnostics }) {
+export async function closeViewWitness(scenario, { call, evaluate, wait, capture, checkpoint, walkerDiagnostics }) {
   const pose = () => evaluate(`(() => {
     const g = globalThis.provingGroundGame?.(), p = g?.player, c = globalThis.__closeViewCam?.get();
     return p && c?.valid && c.drawn ? {x:p.x,y:p.y,hp:p.hp,yaw:c.yaw,inputYaw:c.inputYaw,distance:c.distance,
@@ -173,6 +173,7 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
       return expected && current && Math.hypot(current.x-expected.x,current.y-expected.y)<.35 ? current : null;
     };
     if(walkerDiagnostics){
+      checkpoint?.('walker-camera');
       const camera=await evaluate(`(() => {
         const g=globalThis.provingGroundGame?.(), c=globalThis.__closeViewCam?.get();
         const e=g?.enemies.find(q=>q.pentFinaleBeast==='voidWalker');
@@ -195,45 +196,61 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
         finally { await call('Input.dispatchMouseEvent',{type:'mouseReleased',...moved,button:'left',buttons:0,clickCount:1}); }
         await wait(250);
       }
-      const exposed=await probe('stillworks-exposed');
       const screenshots=[], phases=[];
-      const observe=phase=>evaluate(`(async()=>{
-        const {closeViewRenderDiagnostics}=await import(${JSON.stringify(walkerDiagnostics)});
-        const deadline=performance.now()+5000;
-        return await new Promise(resolve=>{
+      const beginPhase=async phase=>evaluate(`(() => {
+        const witness={status:'loading'};
+        globalThis.__preflightWalkerPhase=witness;
+        const deadline=performance.now()+30000;
+        import(${JSON.stringify(walkerDiagnostics)}).then(({closeViewRenderDiagnostics})=>{
+          witness.status='sampling';
           function sample(){
             const g=globalThis.provingGroundGame?.(), e=g?.enemies.find(q=>q.pentFinaleBeast==='voidWalker');
             const d=closeViewRenderDiagnostics();
             const warnings=g?.packEffects.filter(f=>f.owner===e?.id && f.kind==='voidRend' && f.variant==='hand' && f.arming>0) || [];
-            const state={attack:e?.pack?.attack,phase:e?.pack?.phase,seq:e?.pack?.seq,remaining:e?.pack?.t,
+            witness.sample={attack:e?.pack?.attack,phase:e?.pack?.phase,seq:e?.pack?.seq,remaining:e?.pack?.t,
               hp:g?.player.hp,nativeActors:d.nativeActors,frame:d.frame,backend:d.backend,
               warnings:warnings.map(f=>({x:f.x,y:f.y,arming:f.arming}))};
-            if(state.attack==='voidHand' && state.phase===${JSON.stringify(phase)}
+            if(witness.sample.attack==='voidHand' && witness.sample.phase===${JSON.stringify(phase)}
               && d.backend==='webgl2' && d.nativeActors>0 && warnings.length===2){
-              document.querySelector('#scenarioPause').click();resolve({...state,observed:true});return;
+              document.querySelector('#scenarioPause').click();
+              witness.status='observed';return;
             }
-            if(performance.now()>=deadline || !(state.hp>0)){resolve(state);return;}
+            if(performance.now()>=deadline || !(witness.sample.hp>0)){witness.status='blocked';return;}
             requestAnimationFrame(sample);
           }
           requestAnimationFrame(sample);
-        });
-      })()`,true);
+        }).catch(()=>{witness.status='diagnostics-failed'});
+        return true;
+      })()`);
+      const readPhase=async()=>{
+        const deadline=Date.now()+34000;
+        let result;
+        do {
+          result=await evaluate('globalThis.__preflightWalkerPhase');
+          if(result?.status!=='loading' && result?.status!=='sampling')break;
+          await wait(350);
+        } while(Date.now()<deadline);
+        return {...result?.sample,observed:result?.status==='observed',witnessStatus:result?.status};
+      };
+      checkpoint?.('walker-exposed');
+      await beginPhase('windup');
+      const exposed=await probe('stillworks-exposed');
       if(exposed){
-        for(let i=0;i<6;i++){
-          const sample=await observe('windup');phases.push(sample);
-          if(sample.observed){
-            screenshots.push(await capture('rending-hands-windup'));
+        checkpoint?.('walker-windup');
+        const sample=await readPhase();phases.push(sample);
+        if(sample.observed){
+          screenshots.push(await capture('rending-hands-windup'));
+          await beginPhase('recover');
+          await evaluate('document.querySelector("#scenarioPause").click()');
+          checkpoint?.('walker-recovery');
+          const recovery=await readPhase();phases.push(recovery);
+          if(recovery.observed){
+            screenshots.push(await capture('rending-hands-recovery'));
             await evaluate('document.querySelector("#scenarioPause").click()');
-            const recovery=await observe('recover');phases.push(recovery);
-            if(recovery.observed){
-              screenshots.push(await capture('rending-hands-recovery'));
-              await evaluate('document.querySelector("#scenarioPause").click()');
-            }
-            const observed=recovery.observed && recovery.seq===sample.seq && recovery.frame>sample.frame
-              && recovery.warnings.every((f,i)=>f.x===sample.warnings[i].x && f.y===sample.warnings[i].y && f.arming<sample.warnings[i].arming);
-            return {status:observed?'observed':'blocked',before,advanced:exposed,samples:phases,screenshots};
           }
-          if(!(sample.hp>0))break;
+          const observed=recovery.observed && recovery.seq===sample.seq && recovery.frame>sample.frame
+            && recovery.warnings.every((f,i)=>f.x===sample.warnings[i].x && f.y===sample.warnings[i].y && f.arming<sample.warnings[i].arming);
+          return {status:observed?'observed':'blocked',before,advanced:exposed,samples:phases,screenshots};
         }
       }
       screenshots.push(await capture('rending-hands-last-position'));
