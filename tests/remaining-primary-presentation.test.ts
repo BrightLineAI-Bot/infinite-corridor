@@ -57,12 +57,12 @@ test('Verge Cleaver accepts a three-cut Close View transaction with exact timing
   let hp=foe.hp;
   for(let step=1;step<=3;step++){
     const now=100000+(step-1)*420;g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(now,{x:1,y:0});}finally{g.attackAction=null;}
-    assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,step});assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',step,v:3,resetWindow:{v:1,acceptedLogicalMs:now}});
+    assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,mode:'quick',step});assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',step,v:3,mode:'quick',resetWindow:{v:1,acceptedLogicalMs:now}});
     assert.equal(g.player.attackVisual.durationMs,260);assert.deepEqual(g.player.attackVisual.meleeAction,{v:2,kind:'verge-cleaver',move:'cleaver',contactMs:75,durationMs:260});assert.deepEqual(closeViewMeleeVisualRoute(g.player.attackVisual,true),{meleeAction:g.player.attackVisual.meleeAction,legacyCleaverFrame:false},'production renderer routes v2 without the old frame');assert.equal(g.pendingMeleeContact.releaseAt,now+75);assert.equal(foe.hp,hp);
     g.releasePendingMeleeContact(now+75);assert.ok(foe.hp<hp);hp=foe.hp;
   }
-  g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(101260,{x:1,y:0});}finally{g.attackAction=null;}assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,step:1});
-  const saved=deserializeSave(serializeSave(g.exportSnapshot(101280))),back:any=new Game(saved,200000);back.installSystems();assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,step:1});assert.deepEqual(back.pendingMeleeContact.payload.primaryMotion,{v:3,step:1});assert.equal(back.pendingMeleeContact.releaseAt,200055);
+  g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(101260,{x:1,y:0});}finally{g.attackAction=null;}assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});
+  const saved=deserializeSave(serializeSave(g.exportSnapshot(101280))),back:any=new Game(saved,200000);back.installSystems();assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});assert.deepEqual(back.pendingMeleeContact.payload.primaryMotion,{v:3,mode:'quick',step:1});assert.equal(back.pendingMeleeContact.releaseAt,200055);
   const old={primaryMotion:{v:2,step:4},meleeAction:{v:1,kind:'verge-cleaver',move:'cleaver',contactMs:75,durationMs:360}};assert.deepEqual(closeViewMeleeVisualRoute(old,true),{meleeAction:old.meleeAction,legacyCleaverFrame:true},'persisted v1/v2 records retain their legacy frame route');
 });
 
