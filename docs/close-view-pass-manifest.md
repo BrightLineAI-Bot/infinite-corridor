@@ -4,6 +4,14 @@ Updated: 2026-11-09. This is the work record for the owner's Close View notes an
 
 Verified live on 2026-11-09: r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855cbef6623a7fab26, tree ebf51648774c496840596c9ce8aa70c525894ce2. Astra found no blockers from r857. Publish 42713761172 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
 
+## Current handoff — 2026-11-10
+
+- Production Pages serves `r866-2a08d6b00273` (commit `2a08d6b0027356bd9933679da8f0bd784665980f`, tree `aa7bb95cfe870ce00d58ff1b991605a0ce085e13`). Publish runs 42814014175 and 42816425923 timed out waiting for Pages after the root update. The r867 Preview deployment served the retained r866 root; public identity matched. A fresh live Options → System check remains outstanding.
+- [r867 Overworld Close View Preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r867-4d4e08da67ef/?dev=proving-ground&lab=test-tile&scenario=standard&overworldCloseView=1) passed Preview 42819756691. Its opt-in checkbox was confirmed off and on in Browser Companion. Nonpublishing WebGL preflight 42822447254 retained artifact 13766334448 with four scratch scenes.
+- [r868 door wayfinding PR #529](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/529) at `d9656e9f2` is the next game candidate. Focused tests, schema 14/pin checks, generated Cube movement and build pass. Early Astra review and sight-discovery delta review found no remaining source blockers. Exact [CI 42825620133](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42825620133) is running; rehearsal passed. Wait for green, merge via PR, verify Preview and visual evidence, then run a fresh r866-to-merged-candidate review before Publish. No r868 production dispatch has occurred.
+- Browser Companion `browser_open` stopped with `GRANT_EXPIRED_OR_REVOKED`. Do not use that transport until restored. The separate nonpublishing witness branch `claude/r865-remaining-witness` at `464ed60f1` is ready for the exact r868 frozen Preview. Verify the actual rendered torch and route panel; a harness receipt alone does not establish visual acceptance.
+- Stillworks continues independently: [draft #528](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/528) at `441fee843` has green CI for Rift Claws and Swords Beyond. Unnumbered local commits `6f0941083` (Slash, Spikes, Wraiths; 37 checks) and `2ad4a1a5d` (Open Ways, Constellation, Horizons; 40 checks) follow it. Supernova and the teleport discontinuity are separately scoped; the completed poses do not change effects, damage, clocks, or the 254-triangle body budget.
+
 ## r860 published batch — 2026-11-09
 
 - The prior live identity was r857-6ce7028f514c. r858 (#514), r859 (#515) and r860 (#516) merged, and their merged CI passed. r858 Preview 42700331564 failed its Pages wait with HTTP 404 after 15 minutes. r859 Preview 42702713650 and r860 Preview 42705201998 succeeded.
@@ -110,7 +118,7 @@ The r866 publication review found no blockers across the full live r865 to r866 
 
 Tim asked for a separate Overworld Close View switch. [PR #527](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/527) adds it to Camera options and to the scratch Proving Ground. The first pass projects existing artwork for older terrain, and keeps the original raised interior mesh path. Local checks cover ground, coast, canopy, a regular dungeon, roof and skyway platforms, plus reversal and fallback. The exact Preview still needs the hosted toggle and rendering checks.
 
-The Walker remains the next manifest family. Rift Claws and Swords Beyond are implemented in local `claude/stillworks-rending-kit` at `a6eb686e0`. The 34 focused checks cover the accepted phases, remote warning geometry and sprite fallback. This work is separate from #527.
+The Walker remains the next manifest family. Rift Claws and Swords Beyond are implemented in [draft #528](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/528) at `441fee843`. The 34 focused checks cover the accepted phases, remote warning geometry and sprite fallback. This work is separate from #527.
 
 ## Local ownership and r851 acceptance — 2026-11-09
 
