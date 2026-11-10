@@ -75,9 +75,10 @@ The latest authorized Browser Companion run opened the exact keep fixture, but `
 
 Publish 42785323582 succeeded on 2026-11-10. The live Pages identity and the live Options → System label both matched `r862-d5057d129fcd`. Physical-phone performance remains unmeasured.
 
-- [Cleaver #520](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/520) merged as `36c57768eed1` with the exact reviewed tree. Merged CI 42784487106 and Preview 42784487071 started. Normal-speed textured checks remain open.
+- [Cleaver #520](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/520) merged as `36c57768eed1` with the exact reviewed tree. Merged CI 42784487106 and Preview 42784487071 passed. The exact textured Preview showed real strikes from front, side and rear, plus dodge movement. Source tests cover contact, follow-ups and Echo. Astra cleared the fresh r862 to r863 review. Publish 42786332296 succeeded, and the live Pages identity and Options → System matched after a fresh navigation.
 - [Wayfinding #521](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/521) is an unnumbered draft. The shared Atlas panel covers Pentagon and ordinary dungeon routes. Focused transition, reload and discovery tests passed.
 - [Great Tree #522](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/522) is an unnumbered draft. Nineteen focused checks passed, including three hops and reloads.
+- [WebGL staging #519](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/519) adds accepted Cleaver input and shared route-panel captures at `72adc5d9a`. Twenty-seven focused evidence tests pass. The full local staging contract command encountered Windows symlink, Python spawn and CRLF limitations. Hosted Chrome evidence after the prior CDP timeout and a summit travel witness remain open.
 
 ## Local ownership and r851 acceptance — 2026-11-09
 
