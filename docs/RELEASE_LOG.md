@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at game release r861, merged as dca0199f558393124d662c3ab6e529333cca72d3. Production remains r860. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at game release r862, merged as d5057d129fcd47a56b5a6988a066153bbc2f1a26. Production remains r860. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 862 | Codex | claude/stillworks-visibility | Stillworks entry framing, ambient light and scratch cover targets | In flight. Needs exact Preview visual checks before production. |
+| 862 | Codex | claude/stillworks-visibility / #518 | Stillworks entry framing, ambient light and scratch cover targets | Merged as d5057d129fcd. Source CI 42746680076, merged CI 42747904947 and Preview 42747904923 passed. Astra review (860→862): no blockers on tree 46bb3d52cda7. Exact hosted r862-d5057d129fcd visual acceptance is pending after Browser Companion returned BROWSER_UNAVAILABLE. Production remains r860. |
 | 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. Hosted r861-dca0199f5583 exposed poor arena readability at arrival and beyond the lantern. Held for the correction. |
 | 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift | Merged as 6c8e76670ac7. Source CI 42700948170, merged CI 42702713648 and Preview 42702713650 passed. Published in r860. |
 | 858 | Codex | claude/close-view-cleaver-choreography / #514 | Four linked right-handed Verge Cleaver cuts | Merged as 03db834feac9. Source CI 42698555018 and merged CI 42700331951 passed. Preview 42700331564 timed out waiting for Pages. Published in r860. |
