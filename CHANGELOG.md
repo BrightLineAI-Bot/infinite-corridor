@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Pentagon Atlas prototype lists discovered chambers and numbered current-floor connections, marks saved arrival, and identifies the previous chamber during the current visit without adding save fields.
+
 - Release 862 lights the Stillworks independently of dungeon corridors, points the arrival camera into the arena and keeps the lab cover targets available after reload.
 
 - Release 861 brings the Stillworks Void Walker arena into WebGL Close View and adds isolated keep and Pentagon crawl-and-drop scenarios to the Proving Ground.

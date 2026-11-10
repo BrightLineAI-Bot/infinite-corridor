@@ -4,6 +4,29 @@
 // towns, districts and Wayglasses inside it). No DOM.
 import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.ts";
+
+// Read-only Pentagon wayfinding. Chamber discovery is already durable in labSeen;
+// never generate another chamber, infer visit order from it, or name an unseen room.
+export function pentagonWayfinding(save, map, player, previous = null) {
+  const B = map?.building, p = B?.pentagon && parsePentagonId(map.id);
+  if (!p) return null;
+  const plan = pentagonPlan(p.seed, p.cx, p.cy, p.V), history = save?.consequences?.dungeons?.[`${B.base}:f1`] || {};
+  const seen = new Set((Array.isArray(history.labSeen) ? history.labSeen : []).filter(Number.isInteger));
+  seen.add(p.n);
+  const rooms = plan.nodes.filter(n => seen.has(n.n)).map(n => ({ id: `${p.base}:f${n.n + 1}`, name: n.name, current: n.n === p.n,
+    floor: n.kind === "outer" ? "Outer ring" : n.kind === "heart" ? `Heart ${Number(n.id.slice(1)) + 1}` : "Inner ring" }));
+  const known = new Map(rooms.map(n => [n.id, n])), prior = previous?.to === map.id && known.get(previous.from);
+  const doors = (map.objects || []).filter(o => ["buildingStair", "exit", "pentShortcut"].includes(o.kind) && o.state !== "hidden" && (!o.secretDoor || known.has(o.toId))).map(o => {
+    const destination = known.get(o.toId), back = !!prior && o.toId === prior.id;
+    const blocked = !!((o.lock && !(history.labKeys || []).includes(o.lock)) || (o.barred && !(history.labOpen || []).includes(o.shortcutKey)) || (o.sigil && !o.unsealed) || (o.bossGate && !(history.pentBosses || []).includes(B.node)) || (o.plateLock && !(history.labOpen || []).includes(`plate:${B.node}`) && !map.tiles?.some(t => t.plate && t.build === "stone")) || (o.gate === "levers" && (history.pentLevers || []).length < PENTAGON.levers) || (o.kind === "pentShortcut" && o.end !== "deep" && !(history.labOpen || []).includes(pentagonLinkKey(o.link))));
+    const direction = o.kind === "exit" ? "OUT" : o.kind === "pentShortcut" ? "SHORTCUT" : o.dir === "up" ? "UP" : o.dir === "down" ? "DOWN" : "DOOR";
+    return { id: o.id, x: o.x, y: o.y, direction, back, blocked, target: destination?.name || (o.kind === "exit" ? "Outside" : "Unexplored"), tag: `${back ? "BACK · " : ""}${direction}${blocked ? " · LOCKED" : ""}` };
+  });
+  const entry = save?.session?.floorEntry;
+  const arrival = entry?.id === map.id && Number.isFinite(entry.x) && Number.isFinite(entry.y) ? { x: entry.x, y: entry.y } : null;
+  return { rooms, doors, previous: prior?.name || null, arrival, position: { x: Math.round(player.x), y: Math.round(player.y) } };
+}
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
 // section from a cached image, with markers at a fixed size. `step` is the factor of one zoom press.
