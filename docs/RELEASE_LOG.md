@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main and production are at r865, merged as 1532e8b05f7f9f608ce75e53f0b95a6ab2168705. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r866, merged as 2a08d6b0027356bd9933679da8f0bd784665980f. Production is at r865-1532e8b05f7f. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 866 | Codex | claude/stillworks-walker-rig | Articulated Stillworks Void Walker body and Rending Hands presentation | In flight. Reserved from main at r865. |
+| 866 | Codex | claude/stillworks-walker-rig / #526 | Articulated Stillworks Void Walker body and Rending Hands presentation | Merged as 2a08d6b00273. Source CI 42808628592 and Preview 42810368434 passed. Exact Stillworks Rending Hands witness passed in 42813314967. [Preview r866-2a08d6b00273](https://brightlineai-bot.github.io/infinite-corridor/previews/r866-2a08d6b00273/). |
 | 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Merged as 9be7ed5f7dd5. Source CI 42789144576 and merged CI 42790706548 passed. Preview 42790706560 failed the unchanged castle generation timing assertion. Exact retry 42792770710 passed. Atlas visual acceptance passed on exact r865 and the work was published in r865. |
 | 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. The arena readability correction shipped with this work in r862. |
 | 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift | Merged as 6c8e76670ac7. Source CI 42700948170, merged CI 42702713648 and Preview 42702713650 passed. Published in r860. |

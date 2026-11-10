@@ -46,7 +46,9 @@ The scratch fixture adds covered and exposed teleport positions two tiles apart.
 
 The pilot uses an original 254-triangle articulated body in the existing Close View actor budget. The hood and recessed nebula face, divided coat, and human scale carry over the current silhouette. Connected shoulders, elbows, hips and knees drive locomotion and the Rending Hands gesture. Reduced Motion suppresses gait flourish and retains the cast gesture.
 
-Only the live Stillworks finale Walker is eligible for this body, in idle, movement, or the accepted Rending Hands windup and recovery. The pose uses the committed aim and the accepted phase clock. The ground palms keep their independent warning, origin and damage; the pilot does not change their timing. Other attacks, teleport, hidden states, death, and unsupported render states retain the existing sprite path. The detailed attack set and hosted normal-speed visual review remain open.
+Only the live Stillworks finale Walker is eligible for this body, in idle, movement, or the accepted Rending Hands windup and recovery. The pose uses the committed aim and the accepted phase clock. The ground palms keep their independent warning, origin and damage. Other attacks, teleport, hidden states, death, and unsupported render states retain the existing sprite path.
+
+The [exact r866 Stillworks witness](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42813314967) selected Rending Hands in the disposable TIM1 fixture. The production scheduler accepted it as sequence 1. Frames 49 and 61 recorded one native actor in windup and recovery, with the same two ground anchors and advancing warning timers. No browser errors were reported. [Four screenshots and the action trace](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42813314967/artifacts/13763991731) accompany the receipt. The broader attack set, natural full-fight visual review and phone measurements remain open.
 
 ### Walker planning findings to preserve
 
