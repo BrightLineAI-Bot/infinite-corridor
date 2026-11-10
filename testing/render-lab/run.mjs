@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags } from './resources.mjs';
+import { closeViewWitness, STILLWORKS_CASES } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -64,9 +65,14 @@ try {
   await call('Page.enable');await call('Runtime.enable');await call('Network.enable');
   await call('Emulation.setDeviceMetricsOverride',{width:900,height:700,deviceScaleFactor:1,mobile:false});
   const evaluate=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
-  for(const scenario of ['cleaver-echo-inspection','pike-echo-inspection','cast-skill-aerial-step','blade-hammerfall-brute']) {
+  const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
+  const cases = ['cleaver-echo-inspection','pike-echo-inspection','cast-skill-aerial-step','blade-hammerfall-brute'];
+  // An old frozen artifact need not contain the newer fixtures.
+  cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
+  for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[]};receipt.scenarios.push(entry);
-    const query=new URLSearchParams({dev:'proving-ground',lab:'combat-assets',env:'test-tile',scenario,seed:'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal'});
+    const closeView=STILLWORKS_CASES.includes(scenario);
+    const query=new URLSearchParams({dev:'proving-ground',lab:closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal'});
     await call('Page.navigate',{url:`${origin}/?${query}`});
     // Bounded wait for the real entry point. No altered game state or renderer globals.
     let ready=false;
@@ -74,6 +80,12 @@ try {
     if(!ready)throw Error(`scenario did not boot: ${scenario}`);
     await wait(4000);
     for(let i=0;i<2;i++){entry.samples.push(await evaluate(`(async()=>{const m=await import(new URL(${JSON.stringify(diagnosticsPath)},location.href));return m.closeViewRenderDiagnostics()})()`));await wait(300);}
+    if(closeView) entry.witness=await closeViewWitness(scenario,{call,evaluate,wait,capture:async suffix=>{
+      const name=`${scenario}-${suffix}.png`;
+      const image=await call('Page.captureScreenshot',{format:'png'});
+      writeFileSync(join(out,name),Buffer.from(image.data,'base64'));
+      return name;
+    }});
     // A PNG is evidence for human review, not an automatic aesthetic verdict.
     const image=await call('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,`${scenario}.png`),Buffer.from(image.data,'base64'));
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
