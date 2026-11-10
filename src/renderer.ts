@@ -1,3 +1,4 @@
+import { galleryLiftSupportZ } from './gallery-lift-render.ts';
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
 import { FAR_FOLK } from "./far-realms.ts";
@@ -2376,7 +2377,8 @@ export function render(ctx, g, w, h, now) {
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
   const interior = interiorTerrain(g.map);
-  const supportLevel = interior ? interiorSurfaceLevel(g.map, p.x + .5, p.y + .75) : 0;
+  const liftSupportZ = galleryLiftSupportZ(g);
+  const supportLevel = Number.isFinite(liftSupportZ) ? liftSupportZ / LIFT_PER_LEVEL : interior ? interiorSurfaceLevel(g.map, p.x + .5, p.y + .75) : 0;
   const hopLift = interior && g.skyAir != null && jumping
     ? Math.max(flatCapture ? 0 : supportLevel, g.skyAir - (flatCapture ? supportLevel : 0)) * LIFT_PER_LEVEL
     : g.area === "overworld" && g.skyAir != null && jumping
@@ -2745,6 +2747,7 @@ export function render(ctx, g, w, h, now) {
   }
   const captureDrone=closeViewCapturing()&&closeViewBareFloor()&&!!g.droneUp?.()&&!!g.droneAt;
   const playerDraw = {
+    supportZ: liftSupportZ,
     nativeLift: playerFormPresentation(g)?.lift || 0,
     nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
     nativeDecorations: () => drawNativePlayerDecorations(ctx,g,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
