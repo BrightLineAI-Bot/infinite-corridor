@@ -15,6 +15,19 @@ export function assess(samples, errors = []) {
   return { status: reasons.length ? 'blocked' : 'render-observed', reasons,
     visualAcceptance: 'not-reviewed', devicePerformance: 'not-measured' };
 }
+// Keep the cold startup receipt, but use two advancing, ready frames to decide
+// whether the imported renderer settled. Never extend the acquisition window on a retry.
+export async function stableFramePair(read, wait, { now=Date.now, timeoutMs=22000, intervalMs=350 }={}) {
+  const deadline=now()+timeoutMs;
+  const startup=await read();
+  let samples=[startup];
+  while(now()<deadline && samples.at(-1).asset!=='failed' && !samples.at(-1).clientError){
+    await wait(intervalMs);
+    samples=[samples.at(-1),await read()];
+    if(assess(samples).status==='render-observed')break;
+  }
+  return {startup,samples};
+}
 export function capturedWebGLFrames(scenario) {
   const { samples, screenshot } = scenario;
   return !!screenshot && samples?.length >= 2

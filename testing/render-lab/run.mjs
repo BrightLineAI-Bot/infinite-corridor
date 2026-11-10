@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
-import { assess, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
+import { assess, stableFramePair, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
 import { cleaverWitness, combatActionWitness, closeViewWitness, doorWayfindingWitness, mainHudCompassWitness, overworldManualArrowWitness, seedOverworldManualJourney, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, DOOR_WAYFINDING_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
@@ -163,17 +163,7 @@ try {
       await evaluate('document.querySelector("#pgDiagnosticsClose").click()');
       return {...diagnosticsFromRows(observation.rows,candidate.id),effectiveQuality:observation.effectiveQuality};
     };
-    const readFramePair=async()=>{
-      const deadline=Date.now()+12000;
-      let first=await readDiagnostics();
-      const startup=first;
-      while(first.asset!=='failed' && (first.player!=='imported' || first.gpu?.heroState!=='ready') && Date.now()<deadline){
-        await wait(450);
-        first=await readDiagnostics();
-      }
-      await wait(300);
-      return {startup, samples:[first,await readDiagnostics()]};
-    };
+    const readFramePair=()=>stableFramePair(readDiagnostics,wait);
     if(!summit){
       const frames=await readFramePair();
       entry.startupSample=frames.startup;
@@ -218,7 +208,7 @@ try {
     entry.optionalBrowserRequests=entry.errors.filter(({details})=>details?.type==='Other'
       && details.response?.status===404 && details.response.url===`${origin}/favicon.ico`);
     entry.errors=entry.errors.filter(error=>!entry.optionalBrowserRequests.includes(error));
-    if(entry.samples.some(sample=>sample.clientError))entry.errors.push({method:'Public renderer diagnostics reported a client error'});
+    if(entry.startupSample?.clientError||entry.samples.some(sample=>sample.clientError))entry.errors.push({method:'Public renderer diagnostics reported a client error'});
     if(summit){
       entry.scene='world-map';
       entry.reasons=entry.errors.length ? ['Browser errors in summit fixture'] : [];
