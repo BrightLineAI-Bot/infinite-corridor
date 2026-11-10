@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 862 lights the Stillworks independently of dungeon corridors, points the arrival camera into the arena and keeps the lab cover targets available after reload.
+
 - Release 861 brings the Stillworks Void Walker arena into WebGL Close View and adds isolated keep and Pentagon crawl-and-drop scenarios to the Proving Ground.
 
 - Release 860 gives Close View distinct shovel and stone-placement gestures while excavation, building and stacking remain immediate.
