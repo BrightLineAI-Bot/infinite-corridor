@@ -15,7 +15,7 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r869 (`d6c8a8f181d1`); r870 (#532), r871 (#533) and r872 (#536) merged; r873 is in flight; production serves `r869-d6c8a8f181d1`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r873 (`d4a0b43a1879`); production serves `r873-d4a0b43a1879`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
