@@ -1,10 +1,32 @@
 // The Atlas at every scale (release 205; Tim, 2026-10-19: "I need to be able to zoom out way farther … a region view or
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
-// towns, districts and Wayglasses inside it). No DOM.
+// towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
 import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.ts";
+import { dungeonPointDiscovered } from "./dungeon-framework.ts";
+import { labFogState } from "./labyrinths.ts";
+
+const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR" };
+
+// The same floor and visibility contract as the Atlas, with no destination generation.
+export function dungeonWayfinding(save, map, player, { current = true, areaId = map?.id, previous = null } = {}) {
+  if (!map) return null;
+  const pentagon = pentagonWayfinding(save, map, player, previous);
+  if (pentagon) return { ...pentagon, position: current ? pentagon.position : null, arrival: current ? pentagon.arrival : null, arrivalLabel: "ARRIVAL", previous: current ? pentagon.previous : null };
+  const visible = point => point && dungeonPointDiscovered(map, point) && labFogState(map, point.x, point.y) > 0;
+  const knownLevels = new Set(map.deepProgress?.discoveredLevelIds || save?.consequences?.dungeons?.[areaId]?.deep?.discoveredLevelIds || []), levels = map.levels || [];
+  const doors = (map.objects || []).filter(o => DUNGEON_ROUTE_TAGS[o.kind] && o.state !== "hidden" && !o.secretDoor && visible(o)).map(o => {
+    const targetId = o.toLevelId || o.targetLevelId, targetLevel = knownLevels.has(targetId) && levels.find(q => q.id === targetId);
+    const dir = o.dir || o.direction, direction = dir === "up" ? "UP" : dir === "down" ? "DOWN" : dir === "door" ? "DOOR" : dir === "roof" || dir === "roofExit" ? "ROOF / OUT" : DUNGEON_ROUTE_TAGS[o.kind];
+    return { id: o.id, x: o.x, y: o.y, direction, tag: direction, back: false,
+      target: targetId ? targetLevel?.name || "Unexplored level" : o.toId ? "Another chamber" : o.kind === "exit" || o.kind === "deepReturn" ? "Way out" : "Route marker" };
+  });
+  const saved = save?.session?.floorEntry, arrival = current && !map.multiLevel && saved?.id === areaId && visible(saved) ? { x: saved.x, y: saved.y } : null;
+  return { doors, previous: null, arrival: arrival || (current && visible(map.entry) ? { x: map.entry.x, y: map.entry.y } : null), arrivalLabel: arrival ? "ARRIVAL" : "FLOOR ENTRY",
+    position: current ? { x: Math.round(player.x), y: Math.round(player.y) } : null };
+}
 
 // Read-only Pentagon wayfinding. Chamber discovery is already durable in labSeen;
 // never generate another chamber, infer visit order from it, or name an unseen room.
@@ -110,4 +132,16 @@ export function toggleMapMark(save, rx, ry) {
   const color = MAP_MARKS.colors.findIndex((_, i) => !marks.some((m) => m.color === i));
   marks.push({ rx, ry, color });
   return { ok: true, message: `${MAP_MARKS.names[color]} mark set on ${rx}, ${ry}.` };
+}
+
+// Shared by the production Atlas and the scratch-only Proving Ground witness.
+export function renderDungeonWayfindingPanel(panel, view, map) {
+  const doc = panel.ownerDocument; panel.classList.add("dungeon-wayfinding");
+  panel.hidden=!view;panel.replaceChildren();if(!view)return;
+  const heading=doc.createElement("p");heading.textContent=view.position?`You are here: ${map.name} · ${view.position.x}, ${view.position.y}. ${view.previous?`Previous chamber: ${view.previous}. BACK marks doors returning there.`:"Previous route unavailable."}`:`Inspecting ${map.levelName||map.name}. Your position and arrival are on the current floor.`;panel.append(heading);
+  if(view.arrival){const entry=doc.createElement("p");entry.textContent=`${view.arrivalLabel}: ${view.arrival.x}, ${view.arrival.y}`;panel.append(entry)}
+  const routes=doc.createElement("ul");routes.setAttribute("aria-label","Known floor routes");for(const [i,door] of view.doors.entries()){const row=doc.createElement("li");row.textContent=`${i+1}. ${door.tag} · ${door.back?"Return to":door.direction==="OUT"?"Leave for":"Onward to"} ${door.target} · ${door.x}, ${door.y}`;routes.append(row)}panel.append(routes);
+  if(!view.rooms){const note=doc.createElement("p");note.textContent="Only discovered markers are listed. Doors and routes may still require a key, objective or mechanism.";panel.append(note);return}
+  const known=doc.createElement("details"),summary=doc.createElement("summary");summary.textContent=`Discovered chambers (${view.rooms.length})`;known.append(summary);const list=doc.createElement("ul");for(const room of view.rooms){const row=doc.createElement("li");row.textContent=`${room.floor} · ${room.name}${room.current?" · YOU ARE HERE":""}`;list.append(row)}known.append(list);panel.append(known);
+  const connections=doc.createElement("details"),connectionTitle=doc.createElement("summary");connectionTitle.textContent=`Mapped connections (${view.connections.length})`;connections.append(connectionTitle);const explanation=doc.createElement("p");explanation.textContent="Between discovered chambers. This is not a record of travel order; secret doors and unrecorded side routes are omitted.";connections.append(explanation);const edges=doc.createElement("ul");for(const edge of view.connections){const row=doc.createElement("li");row.textContent=`${edge.source} ↔ ${edge.destination} · ${edge.kind}${edge.note?` · ${edge.note}`:""}`;edges.append(row)}connections.append(edges);panel.append(connections);
 }
