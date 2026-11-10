@@ -2152,6 +2152,23 @@ function sampleCleaverTrail(trail, owner, socket, now, alpha) {
   }
   samples[index + 6] = now;
 }
+export function stillworksWalkerRigPose(map, walker) {
+  if (!stillworksCloseView(map) || walker?.kind !== 'voidWalker' || walker.pentFinaleBeast !== 'voidWalker'
+      || walker.worldBeast || walker.marine || walker.dead || !(walker.hp > 0) || walker.hidden || walker.gloomVeil
+      || walker.untargetable || walker.voidDashing || walker.voidCharging || walker.voidTeleport > 0
+      || walker.affixes?.length || walker.eliteWindup > 0 || walker.eliteActive > 0) return null;
+  const pack = walker.pack;
+  if (!pack?.attack) return !pack?.phase || pack.phase === 'idle' ? { gesture: 0, aim: null } : null;
+  if (pack.attack !== 'voidHand' || !['windup', 'recover'].includes(pack.phase)
+      || !Number.isFinite(pack.t) || pack.t < 0 || !Number.isSafeInteger(pack.seq) || pack.seq < 1) return null;
+  const aim = pack.data?.aim;
+  if (!Number.isFinite(aim?.x) || !Number.isFinite(aim?.y) || Math.hypot(aim.x, aim.y) < .01) return null;
+  const action = ATTACK_MODULES.voidHand;
+  const duration = pack.phase === 'windup' ? action.windup * (pack.paced ? BOSS_PACE.windup : 1) : action.recover;
+  const remaining = Math.min(1, pack.t / duration);
+  const blend = pack.phase === 'windup' ? 1 - remaining : remaining;
+  return { gesture: blend * blend * (3 - 2 * blend), aim, phase: pack.phase, sequence: pack.seq };
+}
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
   const semantic = actorPresentation(who)?.action === 'pack' ? packActionPresentation(who, ATTACK_MODULES, BOSS_PACE.windup, now) : null;
@@ -2266,6 +2283,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const admit = (it, who, kind) => {
     const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], pack = who.pack;
     const presentation = who === player ? null : actorPresentation(who);
+    const walkerRig = kind === 'voidWalker' ? stillworksWalkerRigPose(g.map, who) : null;
     const monsterAction = who === player ? null : closeViewMonsterAction(who, kind, d.nativeWindup, now, d.nativeActionShape);
     const playerAction = who === player ? closeViewPlayerAction(g, now) : null;
     const toolFacingYaw = who === player ? closeViewToolFacingYaw(state.tracks.get(who), playerAction) : NaN;
@@ -2295,14 +2313,15 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     let targetYaw = track.yaw;
     if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
     else if (!stunned && facing) targetYaw = Math.atan2(facing[1], facing[0]);
-    const ax = aim?.dx ?? aim?.x, ay = aim?.dy ?? aim?.y;
+    const committedAim = walkerRig?.aim || aim;
+    const ax = committedAim?.dx ?? committedAim?.x, ay = committedAim?.dy ?? committedAim?.y;
     if (!stunned && Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
     const yawDelta = Math.atan2(Math.sin(targetYaw - track.yaw), Math.cos(targetYaw - track.yaw));
     const turn = Math.max(-1, Math.min(1, yawDelta));
     if (who === player) {
       const resolved = resolveCloseViewPlayerFacing(track.yaw, targetYaw, { elapsed, snap: attack || charge != null || dist > 3, stunned, overrideYaw: importedDodge && Number.isFinite(dodgeSeed?.facingYaw) ? dodgeSeed.facingYaw : stunned ? NaN : toolFacingYaw, transient: stunned || attack || cast || jump || charge != null || importedDodge });
       targetYaw = resolved.desiredYaw; track.yaw = resolved.displayedYaw;
-    } else if (!stunned && (attack || winding || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
+    } else if (!stunned && (attack || winding || walkerRig?.aim || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
     if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));}
@@ -2397,6 +2416,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       fistStep: charge != null ? g.fistCharge.step || 1 : visualRecord?.fistStep,
       fistLead: charge != null ? (g.fistCharge.step > 1 ? g.fistCombo?.lead : g.save.fistOpeningHand === 'right' ? 'left' : 'right') : visualRecord?.fistLead,
       effectTime: now,
+      walkerGesture: walkerRig?.gesture,
       palette: presentation?.palette,
       watched,
       action: presentation?.stagger ? null : monsterAction?.semantic?.action,
@@ -2521,7 +2541,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   // Admission is an effect/action coverage contract, not a growing kind whitelist.
   const canModel = (it, foe) => {
     if (itemKind[it] !== 1 || !foe) return false;
+    const capture = draws[itemRef[it]];
     const reason = CLOSE_VIEW_HOOKS.art[foe.kind] ? 'custom-art'
+      : foe.kind === 'voidWalker' ? (modelSupported('voidWalker') && stillworksWalkerRigPose(g.map, foe)
+        && capture?.enemy === foe && typeof capture.nativePackEffects === 'function' ? null : 'walker-rig-fallback')
       : nativeCreatureCoverage(foe, draws[itemRef[it]], { mesh: modelSupported(actorModelKey(foe)), attachments: modelSupportsAttachments(actorModelKey(foe), 3) });
     if (reason) { closeViewGLStats.modelFallbacks[reason] = (closeViewGLStats.modelFallbacks[reason] || 0) + 1; return false; }
     return true;
@@ -2537,6 +2560,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     else if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
   }
   for (const [who, track] of state.tracks) {
+    if (who.kind === 'voidWalker' && who.dead) { state.tracks.delete(who); continue; }
     if (who.dead && who.hp <= 0 && !who.noRewards) {
       track.deathAt ??= now;
       const amount = (now - track.deathAt) / MODEL_TIMING.deathMs;

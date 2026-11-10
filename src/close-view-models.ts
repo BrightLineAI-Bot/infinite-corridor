@@ -2,7 +2,7 @@
 import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
-import { CLOSE_VIEW_PENTAGON_MODELS } from './close-view-pentagon-models.ts';
+import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
@@ -356,7 +356,7 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
-  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
+  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
@@ -641,7 +641,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const nativeJump=ordinaryNativeJump(actor),nativeJumpBaseline=pose==='jump'&&ordinaryJumpKind(kind)&&!kind.startsWith('playerIronFists');if(nativeJump||nativeJumpBaseline)nativeJumpFrames(actor,beat,stride,jump,jumpSettle,nativeJump);
   const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink','collect','openChest','placeStone'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
   const freeSwing=drinking||collecting||placingStone?(cleaverHandRoles(kind==='playerVergeCleaver'?'verge-cleaver':'melee',stage).free==='leftSocket'?2:-2):0;
-  for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon, cleaverArm, cleaverWeapon } of models[kind]) {
+  const walkerGesture=kind==='voidWalker'&&Number.isFinite(actor.walkerGesture)?Math.max(0,Math.min(1,actor.walkerGesture)):0;
+  for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon, cleaverArm, cleaverWeapon, walkerBone } of models[kind]) {
     const jumpPart=nativeJump||nativeJumpBaseline?JUMP_PARTS.get(mesh):null;
     const mirroredArm=newCleaver&&Math.abs(sourceSwing)===2,swing=mirroredArm?-sourceSwing:sourceSwing;
     const coilSway = swing === 4 || swing === 5
@@ -706,6 +707,12 @@ export function writeCloseViewModel(out, offset, actor) {
       ? kind === 'playerCinderPike' ? 0 : (kind === 'playerVergeCleaver' ? primaryStep===2?-1.18:primaryStep===3?.45:1.18 : .95) * Math.sin(progress * Math.PI * 2) * strike : 0;
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = newCleaver&&swing===2?.25:playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
+    const walkerArm = walkerBone?.chain.endsWith('Arm');
+    const walkerGait = walkerBone && !walkerArm ? (walkerBone.chain.startsWith('left') ? -1 : 1) * beat * .34 * secondary : 0;
+    const walkerParent = walkerArm ? -.08 - walkerGesture * .88 : walkerGait;
+    const walkerChild = walkerArm ? -.10 - walkerGesture * .54 : -walkerGait * .72;
+    const parentC = walkerBone ? Math.cos(walkerParent) : 1, parentS = walkerBone ? Math.sin(walkerParent) : 0;
+    const childC = walkerBone ? Math.cos(walkerChild) : 1, childS = walkerBone ? Math.sin(walkerChild) : 0;
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
       const localY = mirroredArm?-mesh[i+1]:axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
       const normalY = mirroredArm?-mesh[i+4]:axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
@@ -753,6 +760,21 @@ export function writeCloseViewModel(out, offset, actor) {
           d=wrist[2]+z[2]*along+y[2]*across+x[2]*thick;
           na=z[0]*nz+y[0]*ny+x[0]*nx;nb=z[1]*nz+y[1]*ny+x[1]*nx;nd=z[2]*nz+y[2]*ny+x[2]*nx;
         }
+        f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;
+      }
+      if(walkerBone){
+        // Walker-only two-bone FK in the forward/up plane. Distal pieces first bend around
+        // their real elbow/knee, then inherit the shoulder/hip turn. Reduced motion zeros
+        // only gait; the accepted voidHand gesture remains fully readable.
+        let a=mesh[i]+px,b=mesh[i+1],d=mesh[i+2]+pz,na=mesh[i+3],nb=mesh[i+4],nd=mesh[i+5];
+        if (walkerBone.segment === 'lower') {
+          const [ox, , oz] = walkerBone.pivot, dx = a - ox, dz = d - oz;
+          a = ox + dx * childC + dz * childS; d = oz + dz * childC - dx * childS;
+          const qx = na * childC + nd * childS; nd = nd * childC - na * childS; na = qx;
+        }
+        const ox = walkerArm ? 0 : -.015, oz = walkerArm ? 1.03 : .48, dx = a - ox, dz = d - oz;
+        a = ox + dx * parentC + dz * parentS; d = oz + dz * parentC - dx * parentS;
+        const qx = na * parentC + nd * parentS; nd = nd * parentC - na * parentS; na = qx;
         f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;
       }
       if(hammerPart!==undefined){
