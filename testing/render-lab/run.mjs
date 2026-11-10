@@ -7,7 +7,7 @@ import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
-import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
+import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation, diagnosticObservation } from './resources.mjs';
 import { cleaverWitness, closeViewWitness, routePanelWitness, summitWitness, CLEAVER_CASE, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
@@ -90,6 +90,7 @@ try {
   if (fixtures.includes(`"${SUMMIT_CASE}"`)) cases.push(SUMMIT_CASE);
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[]};receipt.scenarios.push(entry);
+    const marker = 'ic-render-diagnostics:' + scenario;
     checkpoint('scenario-navigate');
     const closeView=STILLWORKS_CASES.includes(scenario);
     const summit=scenario===SUMMIT_CASE;
@@ -97,7 +98,10 @@ try {
     const navigation=await call('Page.navigate',{url:`${origin}/?${query}`});
     if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
     const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
-    currentObservation=()=>{entry.navigation=observe();};
+    currentObservation=()=>{
+      entry.navigation=observe();
+      entry.diagnosticsStages=diagnosticObservation(events.slice(start),sessionId,entry.navigation.contextId,marker);
+    };
     checkpoint('scenario-document');
     const loaded=await waitForBrowserScene(()=>{const o=observe();return o.committed&&o.domReady&&Number.isInteger(o.contextId);});
     currentObservation();
@@ -109,7 +113,19 @@ try {
     if(!ready)throw Error(`scenario did not boot: ${scenario}`);
     await wait(4000);
     checkpoint('scenario-diagnostics');
-    if(!summit) for(let i=0;i<2;i++){entry.samples.push(await evaluate(`(async()=>{const m=await import(new URL(${JSON.stringify(diagnosticsPath)},location.href));return m.closeViewRenderDiagnostics()})()`,true));await wait(300);}
+    if(!summit) for(let i=0;i<2;i++){
+      const sample = await evaluate(`(async()=>{
+        const mark = stage => console.debug(${JSON.stringify(marker)}, ${i}, stage);
+        mark('evaluation-entered');
+        const module = await import(new URL(${JSON.stringify(diagnosticsPath)}, location.href));
+        mark('import-resolved');
+        const result = module.closeViewRenderDiagnostics();
+        mark('diagnostics-returned');
+        return result;
+      })()`,true);
+      entry.samples.push(sample);
+      await wait(300);
+    }
     checkpoint('scenario-witness');
     const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
       : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness : null;

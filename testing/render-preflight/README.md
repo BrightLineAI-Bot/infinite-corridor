@@ -38,6 +38,10 @@ The first workflow step creates a bootstrap **blocked** receipt and log before c
 
 Once the preflight starts, it writes `preflight-receipt.json` and `preflight.log` even on normal input/download/verification/browser failures. A completed browser runner writes `render/receipt.json` and the final bounded `render/chromium.log`, including failure. It attempts `render/failure.png` after a page exists if a later exception occurs. Before browser/page creation, or if CDP capture fails, screenshots are explicitly unavailable; no synthetic screenshot or pass is fabricated. A hard runner timeout may leave only bootstrap/preflight/process logs, with cleanup unconfirmed and a blocked result.
 
+The render receipt retains up to two samples of three diagnostic stage markers.
+They show whether evaluation started, the module import resolved, and the
+diagnostic function returned before a browser response or timeout.
+
 For r863 and later, the Cleaver fixture must report a newly accepted first cut
 after normal Attack input. The receipt stores the attack samples and screenshots
 before input and after acceptance. This witnesses the input and its action

@@ -48,6 +48,16 @@ export function navigationObservation(events, sessionId, { frameId, loaderId }) 
   }
   return { committed, domReady, contextId, failedRequests, exceptions };
 }
+
+export function diagnosticObservation(events, sessionId, contextId, marker) {
+  const stages = new Set(['evaluation-entered', 'import-resolved', 'diagnostics-returned']);
+  return events.flatMap(({ sessionId: session, method, params }) => {
+    if (session !== sessionId || method !== 'Runtime.consoleAPICalled'
+        || params.executionContextId !== contextId || params.args[0]?.value !== marker) return [];
+    const sample = params.args[1]?.value, stage = params.args[2]?.value;
+    return (sample === 0 || sample === 1) && stages.has(stage) ? [{ sample, stage }] : [];
+  }).slice(-6);
+}
 // The runner launches one detached POSIX process group, never targets existing processes.
 export async function stopBrowser(child, {signal=(pid,sig)=>process.kill(pid,sig), delay=sleep, attempts=30}={}) {
   if(!child?.pid)return true;
