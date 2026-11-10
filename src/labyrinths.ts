@@ -172,7 +172,7 @@ export function carveGaps(base, q, W, H, open, V = 1) {
 }
 
 // `V`: the interior version pinned for the labyrinth (great-buildings.ts BUILDINGS.interior; 1 by default, as first released).
-export function generateLabyrinthChamber(seed, id, V = 1) {
+export function generateLabyrinthChamber(seed, id, V = 1, T = 1) { // `T`: the chamber's interior terrain version (great-buildings.ts INTERIOR_TERRAIN)
   if (parseLabyrinthId(id)?.rooms) return generateRoomMazeFloor(seed, id); // a room maze's floor (its own generator version, in the id)
   const P = parseLabyrinthId(id), plan = P && labyrinthPlan(P.base); if (!plan) return null;
   const q = plan.nodes[P.node]; if (!q) return null;
@@ -221,7 +221,7 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
   if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0] || (V >= 2 ? nearKey() : null); if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
   const fall = q.kind === "gaps" ? plan.nodes[q.fallTo] : null, fallAt = fall ? (fall.slots.values().next().value?.inner || { x: W >> 1, y: H >> 1 }) : null;
   return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,
-    ...(theme ? { dress: theme } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 }, P.base, V);
+    ...(theme ? { dress: theme } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 }, P.base, V, T);
 }
 
 // ------------------------------------------------------------------------------------------------ outside, on the overworld

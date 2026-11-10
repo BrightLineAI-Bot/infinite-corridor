@@ -14,6 +14,7 @@
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
 import { hashSeed, rng, byHash } from "./random.ts";
 import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms, routingStairPair, routingNearLanding, routingKeepAppearance } from "./close-view-room-routing.ts";
+import { canStep } from "./landscape.ts";
 
 export const BUILDINGS = {
   version: 3, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was
@@ -432,9 +433,24 @@ export function layFloorV4(base, f, W, H, S, arrive, keepOpen = []) {
   return floor;
 }
 
+// Interior terrain versions, pinned per floor in its dungeon history (`terrainVersion`, game.ts `interiorTerrainVersion`):
+// a floor generated before keeps version 1 exactly as it was. Version 2 changes only when the optional jump platform is
+// accepted (`platformJudge`): the floor reachable from the entry, under the real step rules with jumps, must be the
+// same with the platform as without it, every reachable tile must still lead back to the entry, the first step needs open
+// floor on its approach side, and creatures' spawns and the exit are kept clear as objects are. In version 1 the platform
+// could plug a two-wide corridor: a one-way drop into a pocket walled three high, or a sealed area with guards in it.
+export const INTERIOR_TERRAIN = {
+  version: 2,
+  // Fixed for every version (a change here moves floors already generated). `cells`: the chain as [dx, dy, height] from its
+  // first step, two steps east then a 2x2 top; `clear`: its least distance (steps along the axes) from the entry, every
+  // object and, from version 2, the exit and every creature's spawn.
+  platform: { cells: [[0, 0, 1], [1, 0, 2], [2, 0, 3], [3, 0, 3], [2, 1, 3], [3, 1, 3]], clear: 3 },
+};
+
 // A tame, single-surface heightfield for v3 maps. Mandatory objects remain on level ground; broad cardinal
 // ramps connect every raised patch, so baseline on-foot progression never depends on a jump or drone.
-export function addInteriorTerrain(map, base, V = 1) {
+// `T`: the interior terrain version (INTERIOR_TERRAIN); 1 lays the platform exactly as every floor generated before.
+export function addInteriorTerrain(map, base, V = 1, T = 1) {
   if (V < 3 || !map?.tiles?.length) return map;
   const W = map.width;
   const H = map.height;
@@ -464,24 +480,19 @@ export function addInteriorTerrain(map, base, V = 1) {
   }
   // Optional jump chain: two stepping blocks lead to a 2x2 top. It is accepted only when the whole
   // island can be removed from ordinary walking and every interactable still remains reachable.
-  const occupied = [map.entry, ...(map.objects || [])].filter(Boolean);
+  const PL = INTERIOR_TERRAIN.platform, top = Math.max(...PL.cells.map((c) => c[2]));
+  const occupied = [map.entry, ...(T >= 2 ? [map.exit, ...(map.enemySpawns || [])] : []), ...(map.objects || [])].filter(Boolean);
   const farFromUse = (x, y) => occupied.every((object) =>
-    Math.abs(Math.round(object.x) - x) + Math.abs(Math.round(object.y) - y) >= 3
+    Math.abs(Math.round(object.x) - x) + Math.abs(Math.round(object.y) - y) >= PL.clear
   );
+  const accept = T >= 2 ? platformJudge(map, W, H) : null;
   const patterns = [];
   for (let y = 3; y < H - 4; y++) {
     for (let x = 3; x < W - 6; x++) patterns.push({ x, y });
   }
   patterns.sort(byHash((p) => `${base}:interior-platform:v1:${p.x},${p.y}`));
   for (const pattern of patterns) {
-    const cells = [
-      [pattern.x, pattern.y, 1],
-      [pattern.x + 1, pattern.y, 2],
-      [pattern.x + 2, pattern.y, 3],
-      [pattern.x + 3, pattern.y, 3],
-      [pattern.x + 2, pattern.y + 1, 3],
-      [pattern.x + 3, pattern.y + 1, 3],
-    ];
+    const cells = PL.cells.map(([dx, dy, elev]) => [pattern.x + dx, pattern.y + dy, elev]);
     const cut = new Set(cells.map(([x, y]) => y * W + x));
     const available = cells.every(([x, y]) => {
       const tile = map.tiles[y * W + x];
@@ -513,19 +524,80 @@ export function addInteriorTerrain(map, base, V = 1) {
       return x >= 0 && y >= 0 && x < W && y < H && !seen[y * W + x];
     });
     if (strandsObject) continue;
+    if (accept && !accept(cells)) continue;
     for (const [x, y, elev] of cells) {
       Object.assign(map.tiles[y * W + x], {
         elev,
         slope: false,
         interiorPlatform: true,
-        platformTop: elev === 3 || undefined,
+        platformTop: elev === top || undefined,
       });
     }
     break;
   }
   map.landscape = { version: 0, biome: null, name: null, interior: true };
-  map.interiorTerrain = { version: 1, maxLevel: 5 };
+  map.interiorTerrain = T >= 2 ? { version: 1, maxLevel: 5, platform: T } : { version: 1, maxLevel: 5 };
   return map;
+}
+
+// Interior terrain v2's acceptance test for a platform chain (`cells`: [x, y, elev], the first the height-1 step). Built once
+// a floor over its ramped heightfield (platform not yet laid): null when nothing could be accepted, because the floor itself
+// already has ground with no way back, or something used that cannot be reached. Going out, a hole may be jumped across (so
+// ground past a gap counts as reached); coming back, never (so it must lead home on foot). Generation-time only.
+function platformJudge(map, W, H) {
+  const tiles = map.tiles, N = W * H;
+  if (!map.entry) return null;
+  const ex = Math.round(map.entry.x), ey = Math.round(map.entry.y), start = ey * W + ex;
+  const open = (k) => { const t = tiles[k]; return !!t && !t.blocked && !t.hole; };
+  const floor = (k) => { const t = tiles[k]; return !!t && !t.blocked; };
+  if (ex < 0 || ey < 0 || ex >= W || ey >= H || !open(start)) return null;
+  // canStep reads only the tiles and the terrain record; the probe carries the record the finished map will have
+  const probe = { tiles, width: W, height: H, landscape: { version: 0, interior: true }, interiorTerrain: { version: 1, maxLevel: 5 } };
+  const walker = { isPlayer: true, jumping: true, airElev: undefined };
+  // a jump from a platform step keeps its height in the air (game.ts skyAir), as the Wayfarer's does
+  const step = (a, b) => {
+    const from = tiles[a];
+    walker.airElev = from.interiorPlatform ? from.elev : undefined;
+    return canStep(walker, probe, W, a % W, ((a / W) | 0) - .25, b % W, ((b / W) | 0) - .25);
+  };
+  const queue = new Int32Array(N);
+  const flood = (seen, backward) => {
+    seen.fill(0); seen[start] = 1; queue[0] = start; let n = 1;
+    for (let i = 0; i < n; i++) {
+      const k = queue[i], x = k % W, y = (k / W) | 0;
+      for (const [dx, dy] of N4) {
+        const nx = x + dx, ny = y + dy, next = ny * W + nx;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[next] || !(backward ? open(next) : floor(next))) continue;
+        if (tiles[k].hole || tiles[next].hole ? false : !(backward ? step(next, k) : step(k, next))) continue;
+        seen[next] = 1; queue[n++] = next;
+      }
+    }
+    return seen;
+  };
+  const used = [...(map.objects || []), ...(map.enemySpawns || [])].filter(Boolean);
+  const sound = (forward, back) => {
+    for (let k = 0; k < N; k++) if (forward[k] && !back[k] && !tiles[k].hole) return false;
+    return used.every((o) => {
+      const x = Math.round(o.x), y = Math.round(o.y);
+      if (x < 0 || y < 0 || x >= W || y >= H) return true; // an edge door outside the floor
+      if (open(y * W + x)) return !!forward[y * W + x];
+      return N4.some(([dx, dy]) => { const nx = x + dx, ny = y + dy; return nx >= 0 && ny >= 0 && nx < W && ny < H && !!forward[ny * W + nx]; });
+    });
+  };
+  const before = flood(new Uint8Array(N), false);
+  if (!sound(before, flood(new Uint8Array(N), true))) return null;
+  const forward = new Uint8Array(N), back = new Uint8Array(N);
+  return (cells) => {
+    const [sx, sy] = cells[0], approach = sy * W + sx - 1;
+    if (sx < 1 || !open(approach) || !before[approach] || tiles[approach].slope) return false;
+    const was = cells.map(([x, y]) => tiles[y * W + x]);
+    for (const [i, [, , elev]] of cells.entries()) tiles[cells[i][1] * W + cells[i][0]] = { ...was[i], elev, slope: false, interiorPlatform: true };
+    let ok = step(approach, sy * W + sx);
+    if (ok) { flood(forward, false); for (let k = 0; k < N && ok; k++) if (forward[k] !== before[k]) ok = false; }
+    if (ok) ok = sound(forward, flood(back, true));
+    for (const [i, [x, y]] of cells.entries()) tiles[y * W + x] = was[i];
+    return ok;
+  };
 }
 
 // Open cells by distance from `from`, farthest first (only cells `ok` allows, ignoring holes).
@@ -567,7 +639,7 @@ export function guardianBeside(tiles, W, c, free, V = 1, from = null) {
 }
 
 // The dungeon map for one floor (`id` as `buildingFloorId`). `V` is the interior version pinned for the building (1 by default).
-export function generateBuildingFloor(seed, id, V = 1) {
+export function generateBuildingFloor(seed, id, V = 1, T = 1) { // `T`: the floor's interior terrain version (INTERIOR_TERRAIN)
   const P = parseBuildingId(id), plan = P && buildingPlan(P.base, V); if (!plan) return null;
   const S = BUILDINGS.styles[P.style], F = plan.floors[P.floor - 1], { W, H } = plan, tiles = [], holes = new Set((F.holes || []).map(([x, y]) => y * W + x));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, g = F.grid[k], rm = F.room[k];
@@ -601,7 +673,7 @@ export function generateBuildingFloor(seed, id, V = 1) {
       const q = F.far.find((p) => free(p.x, p.y) && clear(p) && Math.abs(p.x - F.arrive.x) + Math.abs(p.y - F.arrive.y) > 3 && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => taken.has((p.y + dy) * W + p.x + dx))) || [...F.far].reverse().find((p) => free(p.x, p.y) && clear(p)) || F.far.find((p) => free(p.x, p.y));
       if (q) { objects.push({ id: "building-roof-ladder", kind: "buildingStair", name: "Ladder up · the roof", x: q.x, y: q.y, state: "open", actions: ["climb"], dir: "roof" }); taken.add(q.y * W + q.x); } } }
   return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${S.name}, ${P.floor === 1 ? "the ground floor" : `floor ${P.floor}`} of ${P.floors}`, danger: "falling floors", width: W, height: H, tiles, entry, exit: P.floor === 1 ? { ...plan.door } : null, objects, enemySpawns,
-    building: { base: P.base, style: P.style, ...(F.routing ? { routing:F.routing, optionalRoute:plan.optionalRoute, ...(routingKeepAppearance(P.base,V) ? {appearance:routingKeepAppearance(P.base,V)} : {}) } : {}), floor: P.floor, floors: P.floors, roof: P.roof, ...(V >= 2 ? { interiorVersion: V } : {}), breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }, P.base, V); // layoutVersion 1: dungeon-variation leaves it as laid
+    building: { base: P.base, style: P.style, ...(F.routing ? { routing:F.routing, optionalRoute:plan.optionalRoute, ...(routingKeepAppearance(P.base,V) ? {appearance:routingKeepAppearance(P.base,V)} : {}) } : {}), floor: P.floor, floors: P.floors, roof: P.roof, ...(V >= 2 ? { interiorVersion: V } : {}), breachEntry: plan.breach ? { x: plan.breach.x, y: 1 } : null, roofLadder: objects.find((o) => o.dir === "roof") ? (({ x, y }) => ({ x, y }))(objects.find((o) => o.dir === "roof")) : null }, layoutVersion: 1, themePool: 0 }, P.base, V, T); // layoutVersion 1: dungeon-variation leaves it as laid
 }
 
 // The nearest open floor beside `p` (not on a stair or a hole), to stand on when you arrive by it.

@@ -523,7 +523,7 @@ function reservePentagonFinaleAlcove(tiles, W, H, entry, ports, id, floorKind) {
   }
   return { x: spot.x, y: spot.y, inner: spot.inner };
 }
-export function generatePentagonChamber(seed, id) {
+export function generatePentagonChamber(seed, id, T = 1) { // `T`: the chamber's interior terrain version (great-buildings.ts INTERIOR_TERRAIN)
   const Pp = parsePentagonId(id); if (!Pp) return null; const plan = pentagonPlan(Pp.seed, Pp.cx, Pp.cy, Pp.V), q = plan.nodes[Pp.n]; if (!q) return null;
   const P = PENTAGON, S = BUILDINGS.styles.keep, W = q.W || plan.W, H = q.H || plan.H, base = `${Pp.base}:${q.id}`, open = q.ports.map((p) => ({ x: p.x, y: p.y, inner: p.inner, wall: p.x === 0 || p.y === 0 || p.x === W - 1 || p.y === H - 1 }));
   const plateSpot = plan.plateE && plan.plateE.plate === q.id ? q.ports.find((p) => p.edge === plan.plateE) : null;
@@ -597,7 +597,7 @@ export function generatePentagonChamber(seed, id) {
     building: { base: Pp.base, style: "keep", ...(routing ? {routing,optionalRoutes:plan.optionalRoutes} : {}), floor: depth, floors: V2 ? 3 + plan.nh - 1 : 5, labyrinth: true, pentagon: true, node: q.n, kind: q.floorKind, of: plan.nodes.length, keys: plan.keyNode ? [{ id: "key0", name: "Regent's Key" }] : plan.V >= 3 ? P.shardNames.slice(0, P.secrets).map((name, k) => ({ id: `shard${k}`, name })) : [], trial: !!q.trial, trials: plan.trials.length, entries, exitsTo, vault: V2 ? vault : q.id === "h2", ...(V2 ? { V: plan.V, dread, boss: !!boss, levers: plan.levers.length, champions: plan.trials.length + plan.nh - 1, heartFloor: q.kind === "heart" ? hi : -1 } : {}), breachEntry: null, roofLadder: null, fallTo: null }, layoutVersion: 1, themePool: 0, ...(dress || {}) };
   // The temporary reservation makes optional platform placement prove a walking
   // route to the alcove too. It is never an interactable in the returned chamber.
-  const terrain = addInteriorTerrain(finaleAlcove ? { ...chamber, objects: [...objects, { ...finaleAlcove.inner }] } : chamber, Pp.base, plan.V >= 9 ? 3 : 1);
+  const terrain = addInteriorTerrain(finaleAlcove ? { ...chamber, objects: [...objects, { ...finaleAlcove.inner }] } : chamber, Pp.base, plan.V >= 9 ? 3 : 1, T);
   terrain.objects = objects;
   return terrain;
 }

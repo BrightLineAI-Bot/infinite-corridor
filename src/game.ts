@@ -96,7 +96,7 @@ import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-n
 import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
-import { BUILDINGS, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
+import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
 import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
 import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.ts";
@@ -373,6 +373,16 @@ function interiorVersion(save, id, history, fresh) {
   history.interiorVersion = v; return v;
 }
 
+// The interior terrain version of one floor or chamber (great-buildings.ts INTERIOR_TERRAIN), pinned on its own history the
+// first time it is generated: a floor generated before keeps version 1 (its jump platform exactly as it was laid); one never
+// generated takes the current version. A platform stays on its own floor, so unexplored floors of an older building and
+// chambers of an older Pentagon take it too, while their layouts keep the building's or Pentagon's own pinned version.
+function interiorTerrainVersion(history, fresh) {
+  if (history.terrainVersion === undefined) history.terrainVersion = fresh ? INTERIOR_TERRAIN.version : 1;
+  return history.terrainVersion;
+}
+const terrainPinned = (save, id) => save.consequences?.dungeons?.[id]?.terrainVersion ?? 1;
+
 const INERT_KEEP_HISTORY = new Map([["discovered", false], ["bypassed", false], ["guardianDefeated", false], ["resolved", false], ["visitOpen", false], ["visits", 0], ["abandoned", 0]]);
 const ROOM_PADDING_CANDIDATE = Symbol("roomPaddingCandidate");
 const ROOM_PADDING_VERSION = 1;
@@ -468,17 +478,18 @@ export function generatePinnedDungeon(save, id, options = {}) {
   else if (isPentagonFinaleId(id)) { if (history.finaleFloor === undefined) history.finaleFloor = fresh ? PENTAGON.finale.floor : 1; map = generatePentagonFinale(save.seed, id, history.finaleFloor); history.gatePredatorSpawnThreshold = 0; } // the walkway's generator pinned (1: stars you cannot step onto; 2: a drop) // the Pentagon's finale: a walk among the stars (PENTAGON.finale)
   else if (isPentagonArenaId(id)) { map = pentagonArenaIn(save, id); history.gatePredatorSpawnThreshold = 0; } // the Pentagon's finale arena, before the walk (pentagon-arena.ts)
   else if (isPentagonId(id)) {
-    const raw = generatePentagonChamber(save.seed, id);
+    const raw = generatePentagonChamber(save.seed, id, interiorTerrainVersion(history, fresh));
     if (raw?.building?.V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion) planPinnedRoomPadding(save, id, raw);
     map = pentagonMuralsState(save, labyrinthState(save, raw));
     history.gatePredatorSpawnThreshold = 0;
   }
   else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id)) {
     // Compounds and castles choose their tower keys from their own exterior versions.
-    map = isCastleId(id) ? towerKeyState(save, generateCastleFloor(save.seed, id, iv, castleVersionOf(save.atlas, parseCastleId(id).X, parseCastleId(id).Y)))
-      : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id, iv))
-      : isCompoundId(id) ? towerKeyState(save, generateCompoundFloor(save.seed, id, iv, compoundVersionOf(save.atlas, parseCompoundId(id).rx, parseCompoundId(id).ry)))
-      : generateBuildingFloor(save.seed, id, iv);
+    const tv = interiorTerrainVersion(history, fresh);
+    map = isCastleId(id) ? towerKeyState(save, generateCastleFloor(save.seed, id, iv, castleVersionOf(save.atlas, parseCastleId(id).X, parseCastleId(id).Y), tv))
+      : isLabyrinthId(id) ? labyrinthState(save, generateLabyrinthChamber(save.seed, id, iv, tv))
+      : isCompoundId(id) ? towerKeyState(save, generateCompoundFloor(save.seed, id, iv, compoundVersionOf(save.atlas, parseCompoundId(id).rx, parseCompoundId(id).ry), tv))
+      : generateBuildingFloor(save.seed, id, iv, tv);
     if (isBuildingId(id) && map?.building?.style === "keep" && iv === CLOSE_VIEW_ROOM_ROUTING.keepVersion) planPinnedRoomPadding(save, id, map);
     history.gatePredatorSpawnThreshold = 0;
   }
@@ -505,7 +516,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
 function pentagonLinksIn(save, id, map) {
   const Pp = parsePentagonId(id), plan = Pp && pentagonPlan(Pp.seed, Pp.cx, Pp.cy, Pp.V); if (!plan?.links?.length) return;
   const L = dungeonHistory(save, `${Pp.base}:f1`); if (L.pentLinks === undefined) L.pentLinks = PENTAGON.shortcuts.overlay; if (!L.pentLinks) return;
-  const raw = generatePentagonChamber(save.seed, id), opened = L.labOpen || [];
+  const raw = generatePentagonChamber(save.seed, id, terrainPinned(save, id)), opened = L.labOpen || [];
   for (const o of pentagonLinkEnds(plan, { ...map, objects: [...(raw?.objects || []), ...(map.objects || [])], enemySpawns: [...(raw?.enemySpawns || []), ...(map.enemySpawns || [])] })) {
     if (opened.includes(pentagonLinkKey(o.link))) o.state = "open"; map.objects.push(o); }
 }
@@ -514,7 +525,7 @@ function pentagonLinksIn(save, id, map) {
 // is found on the chamber as generated (with its link ends), so it is the same on every load and in every journey.
 function pentagonFinaleIn(save, id, map, force = false) {
   if ((!force && !dungeonHistory(save, `${map.building.base}:f1`).pentFinale) || map.objects.some((o) => o.kind === "pentFinaleWall")) return null;
-  const raw = generatePentagonChamber(save.seed, id), keep = map.objects.filter((o) => o.kind === "pentShortcut");
+  const raw = generatePentagonChamber(save.seed, id, terrainPinned(save, id)), keep = map.objects.filter((o) => o.kind === "pentShortcut");
   const spot = pentagonFinaleSpot({ ...map, id, objects: [...(raw?.objects || []), ...keep], enemySpawns: [...(raw?.enemySpawns || [])] });
   if (!spot) return null; const o = pentagonFinaleWall(map.building.base, spot);
   if (dungeonHistory(save, `${map.building.base}:f1`).pentArena) Object.assign(o, { toId: pentagonArenaId(map.building.base), name: PENTAGON_ARENA.names.gateIn }); // the way leads through the arena first
