@@ -2949,7 +2949,7 @@ export function render(ctx, g, w, h, now) {
     ctx.restore();
   }
   if(skyA>0)ctx.restore()}
-  const frontShelter=!worldCapture&&objectLists.shelters.find(o=>!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
+  const frontShelter=objectLists.shelters.find(o=>!worldCapture&&!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   // roof report 2026-11-04: not from a roof's front row (it drew a second Wayfarer on the ground below), and at the ground's own height
   const shelterRaise=frontShelter?groundLift(p.x,p.y):0;if(shelterRaise){ctx.save();ctx.translate(0,-shelterRaise*s)}
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
