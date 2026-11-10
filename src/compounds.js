@@ -12,9 +12,9 @@
 // wing with an outer door has a courtyard door: you go in, up its ladders and out onto the wall walk, across it, and down
 // through another wing's hatch and floors to reach the courtyard, and from the courtyard the tower climbs to the boss and the
 // treasure room (and, sometimes, the tower's own roof). Everything is pinned per section (`atlas.compoundVersion`).
-import { hashSeed } from "./random.js?v=r869-d6c8a8f181d1";
-import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.js?v=r869-d6c8a8f181d1";
-import { canStep } from "./landscape.js?v=r869-d6c8a8f181d1";
+import { hashSeed } from "./random.js?v=r873-d4a0b43a1879";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.js?v=r873-d4a0b43a1879";
+import { canStep } from "./landscape.js?v=r873-d4a0b43a1879";
 
 export const COMPOUNDS = {
   version: 2, // 2 (Tim, 2026-11-06; great-buildings.ts TOWER_SEAL): the tower is sealed until its key, which lies deep in the wing the
@@ -220,7 +220,7 @@ export function compoundPartPlan(base, V = 1, CV = 1) { // `CV`: the compound's 
   if (memo.size > 40) memo.clear(); memo.set(key, plan); return plan;
 }
 
-export function generateCompoundFloor(seed, id, V = 1, CV = 1) { // `V`: the interior version pinned for the compound (great-buildings.ts BUILDINGS.interior); `CV`: the compound's own version
+export function generateCompoundFloor(seed, id, V = 1, CV = 1, T = 1) { // `T`: the floor's interior terrain version (great-buildings.ts INTERIOR_TERRAIN); `V`: the interior version pinned for the compound (great-buildings.ts BUILDINGS.interior); `CV`: the compound's own version
   const P = parseCompoundId(id), plan = P && compoundPartPlan(P.base, V, CV); if (!plan) return null;
   const S = BUILDINGS.styles[P.style], CS = COMPOUNDS.styles[P.style], F = plan.floors[P.floor - 1], { W, H } = plan, tiles = [], holes = new Set((F.holes || []).map(([x, y]) => y * W + x));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, g = F.grid[k], rm = F.room[k];
@@ -251,7 +251,7 @@ export function generateCompoundFloor(seed, id, V = 1, CV = 1) { // `V`: the int
   // version 2: the tower's key, on its floor of the key wing, held by a Key Warden
   const sealKey = plan.seal && P.floor === plan.seal.floor ? placeTowerKey(objects, enemySpawns, tiles, W, F, free, plan.seal, id, S.guardian, V, entry) : null;
   return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${COMPOUNDS.styles[P.style].name}: the ${plan.partName}, ${floorName.toLowerCase()} of ${P.floors}`, danger: "falling floors", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
-    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, compound: true, ...(V >= 2 ? { interiorVersion: V } : {}), part: P.part, entries, breachEntry: null, roofLadder: roofLadder ? { x: roofLadder.x, y: roofLadder.y } : null, ...(sealKey ? { towerKey: { base: plan.seal.base, key: plan.seal.key } } : {}) }, layoutVersion: 1, themePool: 0 }, P.base, V);
+    building: { base: P.base, style: P.style, floor: P.floor, floors: P.floors, roof: P.roof, compound: true, ...(V >= 2 ? { interiorVersion: V } : {}), part: P.part, entries, breachEntry: null, roofLadder: roofLadder ? { x: roofLadder.x, y: roofLadder.y } : null, ...(sealKey ? { towerKey: { base: plan.seal.base, key: plan.seal.key } } : {}) }, layoutVersion: 1, themePool: 0 }, P.base, V, T);
 }function stepOff(tiles, W, p) {
   for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) { const t = tiles[(p.y + dy) * W + p.x + dx]; if (t && !t.blocked && !t.hole && t.x === p.x + dx) return { x: p.x + dx, y: p.y + dy }; }
   return { x: p.x, y: p.y };

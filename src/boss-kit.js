@@ -12,7 +12,7 @@
 // - Adds: as its health falls past each `adds.at` share it calls `adds.size` of the area's creatures round itself (never more
 //   than `adds.cap` of its own alive). They are summons: no rewards, and they go when it falls.
 // Runtime only: `kitRole`, `kitMoves`, `kitClock`, `kitCalls` on the creature, additive.
-import { hashSeed } from "./random.js?v=r869-d6c8a8f181d1";
+import { hashSeed } from "./random.js?v=r873-d4a0b43a1879";
 
 export const BOSS_KIT = {
   guardian: { modules: 3, moves: 2, attackGap: .35, cooldown: .8, speed: 1.08, adds: { at: [.75, .5, .25], size: [2, 3], cap: 6 } },

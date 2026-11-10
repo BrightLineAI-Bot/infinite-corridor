@@ -7,15 +7,15 @@
 //
 // A labyrinth is one closed building on the overworld with one door. Inside it is a maze of chambers, each an area of its own,
 // joined by doors (the same level) and ladders (up to a loft, down to a cellar or a subcellar). The chambers are:
-//   hall    rooms split by inner walls (great-buildings.js?v=r869-d6c8a8f181d1's floor plan)
+//   hall    rooms split by inner walls (great-buildings.js?v=r873-d4a0b43a1879's floor plan)
 //   court   an open-air hedge maze: outside, but still inside the labyrinth
 //   cellar  a stone maze under the ground (two levels down is a subcellar)
 //   gaps    a gallery of platforms over a drop: jump the one-tile gaps; fall and you land in a cellar somewhere else
 // The chambers form a tree, so there is one way through. The vault is the chamber farthest from the door, the one real end,
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
-import { hashSeed, rng, byHash } from "./random.js?v=r869-d6c8a8f181d1";
-import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.js?v=r869-d6c8a8f181d1";
+import { hashSeed, rng, byHash } from "./random.js?v=r873-d4a0b43a1879";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.js?v=r873-d4a0b43a1879";
 
 export const LABYRINTHS = {
   version: 4, // 4: styles rolled evenly (styleWeights), room mazes ~r2 (the vault by style, told at the door; keys); sections pinned to 3 keep their region's style and ~r1
@@ -45,7 +45,7 @@ export const LABYRINTHS = {
     hive: { name: "Hive Labyrinth", hall: "Brood Hall", court: "Spore Garden", cellar: "Burrow", subcellar: "Deep Burrow", gaps: "Rift Gallery", vault: "Queen's Chamber" },
     // The Shell-Labyrinth (turtle-shell.ts): the maze inside a slain Mountain Turtle's shell. Never rolled on the overworld. Its
     // rooms are laid out as the Old Keep's (`building`); Tim (2026-11-04): "let's use the clockwork dungeon theme, and the mosaic
-    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.js?v=r869-d6c8a8f181d1's Brass Engine and Mosaic
+    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.js?v=r873-d4a0b43a1879's Brass Engine and Mosaic
     // Sanctum tiles, see SHELL_THEMES): the halls and galleries are clockwork, the courts, undercrofts and the vault mosaic.
     shell: { name: "The Shell-Labyrinth", hall: "Gear Hall", court: "Mosaic Court", cellar: "Mosaic Undercroft", subcellar: "Deep Undercroft", gaps: "Gallery of Gears", vault: "Heart of the Shell", building: "keep",
       themes: { hall: "clockwork", gaps: "clockwork", court: "mosaic", cellar: "mosaic", vault: "mosaic" } },
@@ -172,7 +172,7 @@ export function carveGaps(base, q, W, H, open, V = 1) {
 }
 
 // `V`: the interior version pinned for the labyrinth (great-buildings.ts BUILDINGS.interior; 1 by default, as first released).
-export function generateLabyrinthChamber(seed, id, V = 1) {
+export function generateLabyrinthChamber(seed, id, V = 1, T = 1) { // `T`: the chamber's interior terrain version (great-buildings.ts INTERIOR_TERRAIN)
   if (parseLabyrinthId(id)?.rooms) return generateRoomMazeFloor(seed, id); // a room maze's floor (its own generator version, in the id)
   const P = parseLabyrinthId(id), plan = P && labyrinthPlan(P.base); if (!plan) return null;
   const q = plan.nodes[P.node]; if (!q) return null;
@@ -221,7 +221,7 @@ export function generateLabyrinthChamber(seed, id, V = 1) {
   if (q.key) { const c = [...cells].reverse().find((p) => !taken.has(p.y * W + p.x)) || cells[0] || (V >= 2 ? nearKey() : null); if (c) { objects.push({ id: `lab-${q.key.id}`, kind: "labKey", keyId: q.key.id, name: q.key.name, x: c.x, y: c.y, state: "waiting", actions: ["take"], lore: `The ${q.key.name}. Somewhere along the way, a sealed door waits for it.` }); taken.add(c.y * W + c.x); } }
   const fall = q.kind === "gaps" ? plan.nodes[q.fallTo] : null, fallAt = fall ? (fall.slots.values().next().value?.inner || { x: W >> 1, y: H >> 1 }) : null;
   return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${plan.S.name}: ${name.split(" · ")[1]}`, danger: q.kind === "gaps" ? "a long fall" : "a maze", width: W, height: H, tiles, entry: q.n === 0 ? { ...plan.front.inner } : { ...arrive }, exit: null, objects, enemySpawns,
-    ...(theme ? { dress: theme } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 }, P.base, V);
+    ...(theme ? { dress: theme } : {}), building: { keys: plan.gates.map((g) => g.key), base: P.base, style: P.style, ...(V >= 2 ? { interiorVersion: V } : {}), floor: 1 + Math.floor(q.depth / 3), floors: 1 + Math.floor(Math.max(...plan.nodes.map((o) => o.depth)) / 3), roof: false, labyrinth: true, node: q.n, kind: q.kind, vault: q.vault, depth: q.depth, of: plan.nodes.length, fallTo: fall ? { id: nodeId(P.base, fall.n), x: fallAt.x, y: fallAt.y } : null, entries: {}, breachEntry: null, roofLadder: null, open: q.kind === "court" }, layoutVersion: 1, themePool: 0 }, P.base, V, T);
 }
 
 // ------------------------------------------------------------------------------------------------ outside, on the overworld
@@ -399,7 +399,7 @@ export const ROOM_MAZES = {
   guards: { share: .4, max: 6, roofMax: 3 }, // of a floor's rooms, guarded (one each), at most
   deadCache: .3, lookoutCache: .6, caches: 4, // a dead-end room's cache; a dead-end floor's; at most this many
   props: .3, // share of a room's edge tiles (never in line with a doorway) that hold a prop
-  // Room themes (a floor and a prop; `u`: drawn from underlands.js?v=r869-d6c8a8f181d1's tiles; `q`: a 2x2 motif) by level: the undercroft, the roof,
+  // Room themes (a floor and a prop; `u`: drawn from underlands.js?v=r873-d4a0b43a1879's tiles; `q`: a 2x2 motif) by level: the undercroft, the roof,
   // and the floors between by style.
   themes: {
     keep: [{ name: "Crypt", floor: "ossuary", prop: "sarcophagus", u: 1 }, { name: "Chapel", floor: "templeMosaic", prop: "templePillar", u: 1, q: 1 }, { name: "Solar", floor: "carpetFloor" },

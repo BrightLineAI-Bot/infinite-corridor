@@ -1,39 +1,39 @@
-import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r869-d6c8a8f181d1';
-import { ordinaryContactEnemy } from './actor-contact.js?v=r869-d6c8a8f181d1';
-import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r869-d6c8a8f181d1";
-import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r869-d6c8a8f181d1"; // the Close View lab
-import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r869-d6c8a8f181d1";
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r869-d6c8a8f181d1";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r869-d6c8a8f181d1";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r869-d6c8a8f181d1";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r869-d6c8a8f181d1";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r869-d6c8a8f181d1";
-import { DIG, planDig } from "./digging.js?v=r869-d6c8a8f181d1";
-import { freshSave, migrateSave } from "./types.js?v=r869-d6c8a8f181d1";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r869-d6c8a8f181d1";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r869-d6c8a8f181d1";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r869-d6c8a8f181d1";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r869-d6c8a8f181d1";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r869-d6c8a8f181d1";
-import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r869-d6c8a8f181d1";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r869-d6c8a8f181d1";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r869-d6c8a8f181d1";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r869-d6c8a8f181d1";
-import { BIOMES, biomeFor } from "./landscape.js?v=r869-d6c8a8f181d1";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r869-d6c8a8f181d1";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r869-d6c8a8f181d1";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r869-d6c8a8f181d1";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r869-d6c8a8f181d1";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r869-d6c8a8f181d1";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r869-d6c8a8f181d1";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r869-d6c8a8f181d1";
-import { ensureLattice } from "./transit-lattice.js?v=r869-d6c8a8f181d1";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r869-d6c8a8f181d1";
-import { fieldOn } from "./lattice-fields.js?v=r869-d6c8a8f181d1";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r869-d6c8a8f181d1";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r869-d6c8a8f181d1";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r869-d6c8a8f181d1";
-import { validActions } from "./interactions.js?v=r869-d6c8a8f181d1";
+import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r873-d4a0b43a1879';
+import { ordinaryContactEnemy } from './actor-contact.js?v=r873-d4a0b43a1879';
+import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r873-d4a0b43a1879";
+import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r873-d4a0b43a1879"; // the Close View lab
+import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r873-d4a0b43a1879";
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r873-d4a0b43a1879";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r873-d4a0b43a1879";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r873-d4a0b43a1879";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r873-d4a0b43a1879";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r873-d4a0b43a1879";
+import { DIG, planDig } from "./digging.js?v=r873-d4a0b43a1879";
+import { freshSave, migrateSave } from "./types.js?v=r873-d4a0b43a1879";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r873-d4a0b43a1879";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r873-d4a0b43a1879";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r873-d4a0b43a1879";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r873-d4a0b43a1879";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r873-d4a0b43a1879";
+import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r873-d4a0b43a1879";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r873-d4a0b43a1879";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r873-d4a0b43a1879";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r873-d4a0b43a1879";
+import { BIOMES, biomeFor } from "./landscape.js?v=r873-d4a0b43a1879";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r873-d4a0b43a1879";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r873-d4a0b43a1879";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r873-d4a0b43a1879";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r873-d4a0b43a1879";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r873-d4a0b43a1879";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r873-d4a0b43a1879";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r873-d4a0b43a1879";
+import { ensureLattice } from "./transit-lattice.js?v=r873-d4a0b43a1879";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r873-d4a0b43a1879";
+import { fieldOn } from "./lattice-fields.js?v=r873-d4a0b43a1879";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r873-d4a0b43a1879";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r873-d4a0b43a1879";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r873-d4a0b43a1879";
+import { validActions } from "./interactions.js?v=r873-d4a0b43a1879";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -364,6 +364,10 @@ function closeViewFixture(scenario, seed, now) {
   else { const c = findLabPentagon(seed, now); if (!c) throw new Error(`No Pentagon near the origin for seed ${seed}.`); const P = pentagonPlan(seed, c.cx, c.cy, spec.latestPentagon ? c.V : Math.min(c.V, 8)), q = spec.pick(P) || P.nodes[0]; id = `${P.base}:f${q.n + 1}`; back = { rx: c.cx, ry: c.cy, x: 16, y: 16 }; }
   const save = scratchSave(seed); save.closeView = true; if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET; if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL; ensureCloseView(save); // ?cvPreset=close|wide tries a camera preset
   if (id.startsWith("building:")) save.consequences.dungeons[id] = { interiorVersion: spec.buildVersion || (spec.buildingFeature ? BUILDINGS.interior.version : 2) };
+  // The platform-chain lab keeps the interior terrain v1 chain (great-buildings.ts INTERIOR_TERRAIN): the same six-cell shape
+  // journeys begun before still hold, on the deterministic floors its contact calibration was measured on. Version 2 only
+  // refuses some placements; it lays no other shape.
+  if (id.startsWith("building:") && spec.buildingFeature === "platform") save.consequences.dungeons[id].terrainVersion = 1;
   if (spec.buildingFeature === "drone") {
     save.farArray.gate = 5;
     save.mech = { built: true, active: true, mode: "drone", plate: 60, fuel: DRONE.carry, cooldown: 0, healCd: 0, rocketCd: 0 };

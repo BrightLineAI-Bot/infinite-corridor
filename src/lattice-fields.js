@@ -7,8 +7,8 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r869-d6c8a8f181d1";
-import { SUNBURST } from "./tool-forms.js?v=r869-d6c8a8f181d1";
+import { latticePassives } from "./transit-lattice.js?v=r873-d4a0b43a1879";
+import { SUNBURST } from "./tool-forms.js?v=r873-d4a0b43a1879";
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {

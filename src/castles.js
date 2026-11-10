@@ -12,8 +12,8 @@
 // into the keep's courtyard, up the keep to its lord and its treasure, and its gate lets you out at the front. The fourth quarter
 // is a feint: its wing leads to its own sealed courtyard and back round. Everything is a hash of the seed and the corner, and a
 // castle stands only where all four sections are new ground (`atlas.castleVersion`) and none of their lanes reaches the corner.
-import { hashSeed } from "./random.js?v=r869-d6c8a8f181d1";
-import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.js?v=r869-d6c8a8f181d1";
+import { hashSeed } from "./random.js?v=r873-d4a0b43a1879";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, addHoles, guardianBeside, TOWER_SEAL, towerSealText, placeTowerKey, planTowerClimb } from "./great-buildings.js?v=r873-d4a0b43a1879";
 
 export const CASTLES = {
   version: 3, // 3 (Tim, 2026-11-06; great-buildings.ts TOWER_SEAL): the keep's door is sealed until the Keep Key, which lies on the
@@ -162,7 +162,7 @@ export function castlePartPlan(base, V = 1) {
   if (memo.size > 40) memo.clear(); memo.set(key, plan); return plan;
 }
 
-export function generateCastleFloor(seed, id, V = 1, CV = 1) { // `V`: the interior version pinned for the castle part (great-buildings.ts BUILDINGS.interior); `CV`: the castle's own version (castleVersionOf)
+export function generateCastleFloor(seed, id, V = 1, CV = 1, T = 1) { // `T`: the floor's interior terrain version (great-buildings.ts INTERIOR_TERRAIN); `V`: the interior version pinned for the castle part (great-buildings.ts BUILDINGS.interior); `CV`: the castle's own version (castleVersionOf)
   const P = parseCastleId(id), plan = P && castlePartPlan(P.base, V); if (!plan) return null;
   const S = BUILDINGS.styles.keep, F = plan.floors[P.floor - 1], { W, H } = plan, tiles = [], holes = new Set((F.holes || []).map(([x, y]) => y * W + x));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, g = F.grid[k], rm = F.room[k];
@@ -189,5 +189,5 @@ export function generateCastleFloor(seed, id, V = 1, CV = 1) { // `V`: the inter
   // version 3: the Keep Key on the top floor of the wing between the gate's quarter and the keep's, held by a Key Warden
   const seal = !plan.keep && top ? castleSeal(P.seed, P.X, P.Y, CV) : null, sealKey = seal && plan.part.q === seal.wing ? placeTowerKey(objects, enemySpawns, tiles, W, F, free, seal, id, S.guardian, V, entry) : null;
   return addInteriorTerrain({ seed, id, recipe: "greatBuilding", name, identity: `${N.castle}: the ${plan.name}`, danger: "a castle's halls", width: W, height: H, tiles, entry, exit: null, objects, enemySpawns,
-    building: { base: P.base, style: "keep", floor: P.floor, floors: P.floors, castle: true, ...(V >= 2 ? { interiorVersion: V } : {}), part: P.part, entries, exitsTo, breachEntry: null, roofLadder: null, ...(sealKey ? { towerKey: { base: seal.base, key: seal.key } } : {}) }, layoutVersion: 1, themePool: 0 }, P.base, V);
+    building: { base: P.base, style: "keep", floor: P.floor, floors: P.floors, castle: true, ...(V >= 2 ? { interiorVersion: V } : {}), part: P.part, entries, exitsTo, breachEntry: null, roofLadder: null, ...(sealKey ? { towerKey: { base: seal.base, key: seal.key } } : {}) }, layoutVersion: 1, themePool: 0 }, P.base, V, T);
 }
