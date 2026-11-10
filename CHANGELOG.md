@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 869 makes Overworld Close View quest and waypoint arrows follow the camera while keeping the top-down compass north-up.
+
 - Release 868 adds door lights and up to three Atlas door waypoints in Cubes and Pentagons. The compass points north when no point is set.
 
 - Release 867 adds a separate, optional Overworld Close View camera for outdoor areas, roofs, courtyards and other maps outside the original indoor coverage.

@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 869 — Camera-relative overworld compass
+
+**CODE:** `src/main.ts` uses the shared compass rotation for active overworld quest and manual targets, just as it does for dungeon door points and true north. A target keeps its actual world direction as the Close View camera turns.
+
+**BOUNDARY:** The standard view remains north-up. Arrival and inactive target behavior, map data, saves, rendering, and movement rules are unchanged.
+
 ## Release 868 — Cube and Pentagon door wayfinding
 
 **CODE:** `src/game.ts` records accepted door transitions and internal Cube doorway crossings. The existing dungeon Atlas in `src/atlas-view.ts` and `src/main.ts` shows the actual arrival in blue and other traversed doors in purple. Tap a discovered door to set or clear one of three points; tap the compass to cycle them. With no point selected, the compass indicates true north relative to the Close View camera. `src/renderer.ts` and `src/close-view.ts` draw torch sprites and budget up to two colored lights.

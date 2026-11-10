@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { freshSave } from "../src/types.ts";
 import { Game, currentDungeonDoors, dungeonDoorId } from "../src/game.ts";
 import { serializeSave, deserializeSave } from "../src/persistence.ts";
@@ -81,4 +82,26 @@ test("Compass north stays in world coordinates at each cardinal Close View yaw",
   assert.equal(closeViewCompassRotation(0,-1),0);
   assert.deepEqual([-Math.PI/2,0,Math.PI/2,Math.PI].map(yaw=>((closeViewCompassRotation(0,-1,yaw)%360)+360)%360),[0,270,180,90]);
   assert.equal(closeViewCompassRotation(1,0,0),0);
+});
+
+test("Overworld quest and manual compass arrows use camera yaw only while Close View is showing",()=>{
+  const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
+  const read=name=>{
+    const body=source.match(new RegExp("^function "+name+"\\([^\\n]+\\n[\\s\\S]*?^}","m"));
+    assert.ok(body,name);
+    return body[0];
+  };
+  const game={area:"overworld",rx:0,ry:0,player:{x:16,y:16}};
+  let close=false,yaw=-Math.PI/2;
+  const arrowFor=new Function("game","hudSet","compassHeading","closeViewShowing","closeViewCamera","closeViewCompassRotation",
+    read("updateNavigationArrow")+"\n"+read("compassRotation")+"\nreturn updateNavigationArrow;")
+    (game,(arrow,key,value)=>arrow[key]=value,()=>"",()=>close,()=>({valid:true,yaw}),closeViewCompassRotation);
+  for(const kind of ["guidance","manual"]){
+    const arrow={},target={kind,area:"overworld",rx:0,ry:-1,name:"North"};
+    yaw=Math.PI/2;close=false;arrowFor(arrow,target);
+    assert.equal(arrow.transform,"rotate(0deg)");
+    close=true;
+    const rotations=[-Math.PI/2,0,Math.PI/2,Math.PI].map(value=>{yaw=value;arrowFor(arrow,target);return arrow.transform;});
+    assert.deepEqual(rotations,["rotate(0deg)","rotate(-90deg)","rotate(-180deg)","rotate(-270deg)"]);
+  }
 });
