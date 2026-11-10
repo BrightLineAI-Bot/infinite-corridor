@@ -34,7 +34,8 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, activeButton, slotTool, CASTABLES, availableCastables } from "./spell-slots.ts";
+import { ensureSlots, slotted, pairingMods, slotReadiness, activeUtility, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS } from "./spell-slots.ts";
+import { pressOculus, tickOculus } from "./oculus.ts"; // release 874: the Oculus, a utility-button choice
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
@@ -2015,6 +2016,7 @@ export function actionReadiness(game, now = 0) {
     jump: { remaining: jump / 1000, duration: 0.52 },
     spell: essenceReadiness(game, "a", slotReadiness(game.save, "a", spell)),
     spell2: essenceReadiness(game, "b", slotReadiness(game.save, "b", spell)),
+    spell3: essenceReadiness(game, "c", slotReadiness(game.save, "c", spell)), // release 874: slot C
     potion: {
       remaining: 0,
       duration: 0,
@@ -4827,7 +4829,7 @@ export class Game {
   }
   // Release 329: the pause after a world beast fells the Wayfarer. No control; beasts wander near where they stood.
   tickFallen(dt, input, now) {
-    for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact", "build", "preset"]) input.consume?.(action);
+    for (const action of ["tool", "spell", "spell2", "spell3", "dodge", "jump", "potion", "attack", "interact", "build", "utility", "preset"]) input.consume?.(action);
     const width = mapWidth(this.map, this.area);
     for (const e of this.enemies) {
       if (e.dead || !(e.worldBeast || e.questingBeast || (this.fallen.live && e.stalker))) continue;
@@ -5608,7 +5610,7 @@ export class Game {
     if (this._mirrorWorld?.now === now) return this._mirrorWorld;
     const width = mapWidth(this.map, this.area), s = this.save, slot = (q) => slotted(s, q)?.kind === "spell";
     return (this._mirrorWorld = { now, dt, enemies: this.enemies, projectiles: this.projectiles, player: this.player,
-      kit: { tool: !!rangedWeapon(s.equipment?.secondary), spell: slot("a") || slot("b") },
+      kit: { tool: !!rangedWeapon(s.equipment?.secondary), spell: slot("a") || slot("b") || slot("c") }, // release 874: slot C too
       open: (x, y) => { const t = this.map.tiles[Math.floor(y + .6) * width + Math.floor(x + .5)]; return !!t && !t.blocked && !t.environment; },
       spawn: (owner, x, y, i, f) => {
         const c = createCombatant("listener", x, y, false, []), hp = Math.max(1, Math.round(owner.maxHp * f.hpShare)), damage = Math.max(1, Math.round(owner.damage * MIRROR_FORM.cloneDamage)), scale = (owner.scale || 1) * MIRROR_FORM.cloneScale;
@@ -6817,7 +6819,7 @@ export class Game {
     const c = slotted(this.save, slot);
     if (!c) { this.message = `Slot ${slot.toUpperCase()} is empty — fill it in the Arcanum.`; return false; }
     if (c.kind !== "skill" && this.penned(now)) return false; // release 697 (Tim: "you should be able to use items" in a pen): only spells are refused there
-    this.castAction = slot === "b" ? "spell2" : "spell"; try { return this.castCost(c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id)); } finally { this.castAction = null; } // release 417: the button a held Shadow Clone listens to
+    this.castAction = SLOT_ACTIONS[slot] || "spell"; try { return this.castCost(c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id)); } finally { this.castAction = null; } // release 417: the button a held Shadow Clone listens to
   }
   // A Tesseract's castHarm: health lost with each cast that answers (never below TESSERACTS.harmFloor). Returns the cast's result.
   castCost(ok) { if (ok) tesseractHarm(this.save, this.player, armorGlyphBonus(this.save).castHarm); return ok; }
@@ -6832,6 +6834,14 @@ export class Game {
     const c = CASTABLES[key]; if (!c || !availableCastables(this.save).includes(key)) { this.message = "Not learned yet."; return false; }
     if (c.kind !== "skill" && this.penned(this.lastUpdateNow || 0)) return false; // release 697
     return this.castCost(c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id));
+  }
+  // Release 874: the fixed utility button does what the active preset chose: Build (as the Build button did), the
+  // Submersible Frame (as the frame on an item button did: robot, Empowered, drone) or the Oculus.
+  pressUtility(now = this.lastUpdateNow || 0, moving = false) {
+    const u = activeUtility(this.save);
+    if (u === "frame") return this.useButtonItem("submersible", now);
+    if (u === "oculus") return pressOculus(this, now, (x, y) => footprintOpen(this.map, mapWidth(this.map, this.area), x, y));
+    return this.pressBuild(moving);
   }
   // The Build action, from whichever button holds it (release 269 mend, 267 build mode, 265 walls and blocks).
   pressBuild(moving = false) {
@@ -8500,7 +8510,7 @@ export class Game {
     if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { this.clearAttackBuffer(); p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
     // Knocked down by a shock (release 257): no movement or actions until the Wayfarer gets back up.
     if (p.shockCount && now - (p.shockAt || 0) > GIANT.shockDecay * 1000) p.shockCount = 0; // the shock counter fades
-    if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
+    if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "spell3", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
     if (p.hp <= 0) this.clearAttackBuffer();
     if (Math.hypot(x, y) > 0.15)
       this.save.lastAim = projectileDirection(x, y, p.facing);
@@ -8543,6 +8553,7 @@ export class Game {
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) { this.clearAttackBuffer(); this.castSlot("a"); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.castSlot("b"); }
+    if (input.consume("spell3")) { this.clearAttackBuffer(); this.castSlot("c"); } // release 874: slot C
     const dodgePressed = input.consume("dodge"); if (dodgePressed) this.clearAttackBuffer();
     if (dodgePressed && !this.cursed("dodge", now)) { // release 737: NO DODGE
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
@@ -8586,14 +8597,12 @@ export class Game {
       const ticked = m?.built ? tickMech(this.save, dt, !(now < (this.jumpUntil || 0))) : null; if (ticked === "spent") this.message = "Out of cinder iron: the robot drops back to its plain stride."; else if (ticked === "replated") this.message = "The robot's plating is whole again."; /* release 383 */ if (this.droneUp()) this.tickDrone(dt, now); }
     if (input.consume("potion")) this.drinkPotion(now); // release 339: the chosen potion tier; 341: brewed when needed
     if (input.consume("preset")) { this.cancelPendingMeleeContact('equipment-switch'); this.cancelConsumeVisual('equipment-switch'); this.message = swapPreset(this.save).message; this.refreshDerivedStats(); } /* release 541: preset armor changes the maxima */ // release 261: swap spell presets 1 and 2; 393: with the whole build
-    if (input.consume("build")) { // release 269: beside (or aboard) a damaged skiff, Build patches the hull instead
-      const btn = activeButton(this.save); // release 291: a preset may make it an item button; release 309: or a spell
-      if (btn.mode === "item") this.useButtonItem(btn.item, now);
-      else if (btn.mode === "cast") { this.castAction = "build"; try { this.castKey(btn.key); } finally { this.castAction = null; } } // release 419: a held Build sends a Shadow Clone too
-      else this.pressBuild(Math.hypot(x, y) > .15);
-    }
+    // Release 874: the fixed utility button ("utility"; "build" is its older action name, kept for key B and old callers).
+    // Release 291/309's Build button is slot C now ("spell3" above).
+    { const pressed = input.consume("utility"), legacy = input.consume("build"); if (pressed || legacy) this.pressUtility(now, Math.hypot(x, y) > .15); }
+    tickOculus(this, now); // release 874: a dais stepped onto switches the view; one left alone fades
     // Release 269 (Tim: "if you hold the build button while you're at sea, it will apply the hull shield"): held aboard.
-    if (this.area === "overworld" && aboard(this.save) && (input.held?.("build") && activeButton(this.save).mode === "build" || ["spell", "spell2"].some((k, i) => input.held?.(k) && slotTool(this.save, i ? "b" : "a")?.tool === "build"))) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
+    if (this.area === "overworld" && aboard(this.save) && ((input.held?.("utility") || input.held?.("build")) && activeUtility(this.save) === "build" || SLOTS.some((q) => input.held?.(SLOT_ACTIONS[q]) && slotTool(this.save, q)?.tool === "build"))) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
     else { this.buildHold = 0; this.buildHoldDone = false; } // release 265: raise a wood wall or stone block in front
     const dodging = now < (p.dodgeUntil || 0);
     if (!dodging && now < (p.confusedUntil || 0)) { x = -x; y = -y; } // release 731: confused by a haunt, forward is back

@@ -1020,3 +1020,38 @@ body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #ev
 .dungeon-wayfinding details ul { max-height:15rem; overflow-y:auto; padding-left:1.3rem; }
 
 body.proving-ground #pgRoutes[open] { display:block!important; max-width:min(92vw,38rem); color:#e9f7f5; background:#111923; border:1px solid #43c9bf; }
+
+/* Release 874 (Tim, 2026-11-10): the fixed utility button takes the compass's place beside A and B. Its icon says what the
+   active preset put on it: the hammer (Build), the frame (Robot / Drone) or the Oculus. Slot C takes Build's oval in the
+   cluster. The compass moves to the top right corner of the screen; the HUD box ends 294-340 px in, so the two never meet
+   on 360-430 px phones. */
+.left-controls .utility-slot { grid-row: 1; grid-column: 1; display: block; }
+.utility-slot button.utility { position: relative; width: 46px; height: 46px; min-width: 0; padding: 0 0 7px; border-radius: 50%; display: grid; place-items: center; }
+.utility-slot .utility-icon { display: block; width: 28px; height: 28px; line-height: 0; pointer-events: none; filter: drop-shadow(0 1px 1px #000a); }
+.utility-slot .utility-icon svg { width: 100%; height: 100%; }
+.utility-slot button.utility.spent .utility-icon { opacity: .5; }
+.utility-slot button.utility.selected { color: #f2d79d; border-color: #c9a15c; filter: drop-shadow(0 0 5px #bb7b3f88); }
+.utility-slot button.utility[data-utility="oculus"] { border-color: #3f8f8a; }
+.utility-slot button.utility.oculus-up { box-shadow: 0 0 12px #5fe0d8, inset 0 0 0 2px #5fe0d8; }
+.action-diamond .spell-c { left: 0; top: calc(var(--button) * 2.52); }
+.left-controls .compass-slot { position: fixed; z-index: 5; top: calc(env(safe-area-inset-top) + 8px); right: calc(env(safe-area-inset-right) + 8px); grid-row: auto; grid-column: auto; margin: 0; width: 40px; height: 40px; }
+.left-controls .compass-slot .nav-compass { width: 36px; height: 36px; }
+/* the lab's identity bar runs across the top of the screen: the compass sits under it there */
+body.proving-ground .left-controls .compass-slot { top: calc(env(safe-area-inset-top) + 64px); }
+/* The Oculus's warp (main.ts): an iris of light closes and opens over the screen. None under Reduced Motion. */
+#oculusWarp { position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 55%, transparent 0 18%, #5fe0d855 30%, #071a1ccc 70%); }
+#oculusWarp.top { background: radial-gradient(circle at 50% 55%, transparent 0 18%, #f0b45a55 30%, #1c130acc 70%); }
+#oculusWarp.on { animation: oculus-warp var(--oculus-warp, 700ms) ease-out; }
+@keyframes oculus-warp { 0% { opacity: 0; transform: scale(1.4); } 35% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9); } }
+body.reduce-motion #oculusWarp { display: none; }
+/* Release 287's red circle and slash, on the utility button when it is Build and nothing can be built. */
+.utility-slot button.utility[data-utility="build"].spent::before { content: ""; position: absolute; left: 50%; top: 44%; width: 30px; height: 30px; transform: translate(-50%, -50%); border: 3px solid #e0574f; border-radius: 50%; box-sizing: border-box; background: linear-gradient(-45deg, transparent 44%, #e0574f 44% 56%, transparent 56%); box-shadow: 0 0 4px #000a; transition: none; z-index: 2; pointer-events: none; }
+/* Narrow portrait phones (under 390 px): the left controls move nearer the edge and the utility button is a little
+   smaller, so Spell B clears Act and the preset button clears C (they touched at 360 px before release 874 too). */
+@media (orientation: portrait) and (max-width: 389px) {
+  .left-controls { left: calc(env(safe-area-inset-left) + 8px); }
+  .utility-slot button.utility { width: 42px; height: 42px; }
+  .utility-slot .utility-icon { width: 26px; height: 26px; }
+}
+/* An item in a slot (A, B or C) shows its drawn icon at the symbol's size. */
+.buttons button.spell .slot-sym svg { display: block; width: 22px; height: 22px; margin: 0 auto; pointer-events: none; }
