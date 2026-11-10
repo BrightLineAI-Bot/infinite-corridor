@@ -695,6 +695,11 @@ function recordRelayChain(save, areaId) {
   journalOnce(save, "relay-network-answered", "Five cleared crossings form a readable pattern. Restoring a relay opens its line: passage and connection improve, but hostile things can learn and pursue that route. Severing a relay closes the line permanently: its salvage can be recovered, but its connection and whatever it might have reached are lost. A far relay answers with a coordinate that does not belong to any charted section, leaving three lumen dust and a Crossing Sigil fused into the receiver.", "The Far Signal");
   return true;
 }
+// Only the ordinary kill's normal gear roll enters the Salvage Blade pool. Extra rarity drops and named/special foes retain
+// their established tables and deterministic streams; this also keeps static caches and shop stock outside the channel.
+export function ordinaryMonsterGearDrop(e) {
+  return !!e && !e.boss && !e.elite && !e.eliteId && !e.unique && !e.worldBoss && !e.worldBeast && !e.questingBeast && !e.stalker && !e.seaKind && !e.apertureEncounter && !e.dungeonRole && !e.fracRank && !e.fracReinforcement && !e.domainReinforcement && !e.summonedBy && !e.noRewards && !isCrossingGuardian(e);
+}
 const MILESTONE_GEAR = [
   [4, { id: "milestone-cinder-pike", name: "Cinder Pike", slot: "primary", power: 5, property: "reach" }],
   [8, { id: "milestone-needle-caster", name: "Needle Caster", slot: "secondary", power: 8, property: "quick" }],
@@ -6474,7 +6479,7 @@ export class Game {
       this.player.maxStamina = this.save.maxStamina;
       this.message = `Level ${this.save.level} reached — health and stamina increased. ${this.save.statPoints} stat point${this.save.statPoints === 1 ? "" : "s"} available in Pack.`;
     }
-    if (!e.fracReinforcement || hashSeed(`${this.save.seed}:frac-drop:${this.save.dropCounter}:${e.id}`) % 100 < FRACTURED.trashDrop * 100) this.obtainDrop(e.kind); // release 651: a reinforcement seldom drops
+    if (!e.fracReinforcement || hashSeed(`${this.save.seed}:frac-drop:${this.save.dropCounter}:${e.id}`) % 100 < FRACTURED.trashDrop * 100) this.obtainDrop(e.kind, ordinaryMonsterGearDrop(e)); // release 651: a reinforcement seldom drops
     if (e.fracRank) for (let i = 0; i < (e.fracRank === "rare" ? 2 : 1); i++) this.obtainDrop(e.kind); // champions and rares drop more
     if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
@@ -8270,10 +8275,10 @@ export class Game {
     this.message = "Aim fixed for the next Tool or Spell.";
     return true;
   }
-  obtainDrop(src) {
+  obtainDrop(src, ordinaryMonster = false) {
     const n = this.save.dropCounter++;
     const deep = this.area === "dungeon" && this.map?.deepFloor ? lootBonus(this.map.deepFloor, deepShaft(this.save, this.areaId()).best) : 0; // release 677: deeper loot, only near your deepest floor
-    const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep);
+    const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep, ordinaryMonster ? { ordinaryMonster: true } : null);
     const r = storeInventoryItem(this.save, item);
     if (r.stored && item.property === "brawler") this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
     this.save.materials.cinderIron++;
