@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r873 (`d4a0b43a1879`); production serves `r873-d4a0b43a1879`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r873 (`d4a0b43a1879`); r874 is in flight; production serves `r873-d4a0b43a1879`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 874 | Claude | claude/oculus-utility-button | Oculus utility button (Oculus/Build/Robot-Drone per preset), slot C with three spells, compass top right | In flight. |
 | 873 | Claude | claude/interior-platform-reach | Interior terrain v2: jump platforms never create one-way pockets or sealed guards | Merged as `d4a0b43a1879` (#537). Published in r873. |
 | 872 | Claude | claude/overworld-close-view-fidelity / #536 | Overworld Close View sky, ground, water and standing solids | Merged as `62f86eace9c7`. Published in r873. |
 | 871 | Claude | claude/cleaver-salvage-flow / #533 | Verge Cleaver three quick grounded cuts | Merged as `5bdd583a2065`; Preview r871-5bdd583a2065. Published in r873. |

@@ -2404,12 +2404,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 873 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 874 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "873"/);assert.match(html,/styles\.css\?v=873/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v873`/);assert.match(sw,/styles\.css\?v=873/);assert.match(sw,/proving-ground-labs\.js\?v=873/);assert.match(sw,/dungeon-framework\.js\?v=873/);assert.match(sw,/renderer\.js\?v=873/);
-  assert.match(build,/release='873'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "874"/);assert.match(html,/styles\.css\?v=874/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v874`/);assert.match(sw,/styles\.css\?v=874/);assert.match(sw,/proving-ground-labs\.js\?v=874/);assert.match(sw,/dungeon-framework\.js\?v=874/);assert.match(sw,/renderer\.js\?v=874/);
+  assert.match(build,/release='874'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });
@@ -2716,7 +2716,7 @@ test("deep-v1 dungeon generation is deterministic and preserves ordinary dungeon
  const id=deepDungeonId("DEEP-SEED",3,-8,11),a=generateDeepDungeon("DEEP-SEED",id),b=generateDungeon("DEEP-SEED",id);
  assert.deepEqual(a,b);assert.deepEqual(a,generateDeepDungeon("DEEP-SEED",id));assert.equal(id,"dungeon:DEEP-SEED:g3:-8:11:deep-v1");
  assert.deepEqual(dungeonDescriptor(id),{recipe:"deep-v1",name:"The Threefold Deep",identity:"sealed deep dungeon",danger:"three wing wardens",depth:"deep"});
- for(const[ordinary,expected]of[["dungeon:S:g1","7f287b6e420b87e06926ab172389778ae6b8d5063989fbf703080251a87380c1"],["dungeon:S:g1:1:2:a","d4f3e0b43e0e00ac5f535e771ecd098f73f4f7bb81dbd5af9aafdaf52b7b1094"]])assert.equal(createHash("sha256").update(JSON.stringify(generateDungeon("S",ordinary))).digest("hex"),expected);
+ for(const[ordinary,expected]of[["dungeon:S:g1","7f287b6e420b87e06926ab172389778ae6b8d5063989fbf703080251a87480c1"],["dungeon:S:g1:1:2:a","d4f3e0b43e0e00ac5f535e771ecd098f73f4f7bb81dbd5af9aafdaf52b7b1094"]])assert.equal(createHash("sha256").update(JSON.stringify(generateDungeon("S",ordinary))).digest("hex"),expected);
 });
 
 test("deep-v1 authored graph exposes stable wings anchors hazards and sealed finale metadata",()=>{
