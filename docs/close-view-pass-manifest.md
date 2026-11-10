@@ -38,6 +38,15 @@ Verified live on 2026-11-09: r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855
 
 ## Bloodborne routing and Stillworks qualification
 
+### Parallel continuation
+
+- Motion: `claude/cleaver-motion-library`, isolated reuse research and a focused right-handed four-cut comparison. Keep authored timing changes separate from engine adoption.
+- Wayfinding: `claude/pentagon-wayfinding`, reuse Atlas and discovery for a player position, arrival cue, known doors and a discovered-only chamber overview.
+- Skyways: `claude/great-tree-skyway-chain`, add a versioned route between validated Great Tree summit gates while preserving legacy pins and existing cloud encounters.
+- Staging: draft #519, `claude/render-preflight-stillworks`. The original r862 run 42750627343 stopped after the browser process limit and retained artifact 13734335016. Run 42751688750 verified the exact frozen r862 artifact and passed its Linux evidence tests, then stopped at `CDP timeout: Runtime.evaluate` in `cleaver-echo-inspection` using software Chrome. It observed no frames, retained no screenshots and confirmed cleanup. Astra identified a navigation synchronization gap but could not establish the timeout's cause. Follow-up `fa5769b7e` waits for the matching new loader and default context, records the actual failing phase and blocks success when a required movement observation is missing. Twenty-five focused tooling checks pass; the revised harness has not been rerun on the stopped browser transport. r862 is held for its remaining visual checks; r860 is still live.
+
+The local coordinator owns numbering, review, merge and Publish. Refreshed main confirmed r862 and no other game PR in flight. The motion prototype is packaged as [r863 PR #520](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/520), source `8b5e8574595dd9e4aa2c3c828c92cbf37aac3589`, tree `ed351a7ba07fdfaa76991ef17f4350b1f2fecf62`. The static build, release checks and 78 focused regressions passed. Astra found no blockers from live r860; exact CI 42752034680 and textured hosted motion remain separate gates. Wayfinding and skyways remain unnumbered.
+
 Local branch `claude/stillworks-close-view-pilot` adds separate Proving Ground keep and Pentagon crawl experiments. The default witnesses take four steps through a sloped passage and safe drop. Existing return walks take twelve and twenty steps. Both were traversed with normal movement at full health, and the landing marker uses the existing static light pass. Existing floors and history pins are preserved by keeping the experiment in scratch fixtures. Source checks and static build passed. Hosted camera and lighting checks are next. [Routing study](close-view-dungeon-routing-study.md)
 
 Both crawl witnesses were then traversed with the real movement loop and Close View camera at 390×844 and 844×390. In all 216 sampled frames the camera stayed out of walls and the Wayfarer's torso projected inside the viewport. The shortest boom was 0.30 tiles and the longest was 2.70. Both drops left health at 60. Keep the tight squeeze for the next textured check, focusing on camera compression, silhouette readability and how well the landing light signals the drop.
@@ -59,6 +68,16 @@ Tim directed use of the GitHub WebGL staging harness. The original harness only 
 Operator protocol: Browser Companion first for hosted checks. On a tool failure, record the exact operation and safe error and stop the failed transport. One normal in-app attempt is authorized only for an isolated Companion failure. Network, DNS, firewall, sandbox, credential or approval blocks must be reported without a workaround. Continue independent work. Publish only the explicitly authorized candidate after exact CI, Preview, full since-live review and visual acceptance.
 
 [Exact r862 preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r862-d5057d129fcd/) · [Preview workflow](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42747904923)
+
+### Published r862 and parallel drafts
+
+The latest authorized Browser Companion run opened the exact keep fixture, but `browser_select` returned `verified: false`. The normal in-app fallback moved through the keep crawl from (33,5) to (36.83,5) and the Pentagon crawl from (41,4) to (41.32,7.64), with HP 60 at both landings and textured passage geometry visible. The hosted Stillworks fixture showed the covered position and reported the gate sealed. The prior ordinary approach showed visible cover pillars, the Void Walker, its rift and a floor warning. Full victory/gate-open behavior was covered by source integration tests.
+
+Publish 42785323582 succeeded on 2026-11-10. The live Pages identity and the live Options → System label both matched `r862-d5057d129fcd`. Physical-phone performance remains unmeasured.
+
+- [Cleaver #520](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/520) merged as `36c57768eed1` with the exact reviewed tree. Merged CI 42784487106 and Preview 42784487071 started. Normal-speed textured checks remain open.
+- [Wayfinding #521](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/521) is an unnumbered draft. The shared Atlas panel covers Pentagon and ordinary dungeon routes. Focused transition, reload and discovery tests passed.
+- [Great Tree #522](https://github.com/BrightLineAI-Bot/infinite-corridor/pull/522) is an unnumbered draft. Nineteen focused checks passed, including three hops and reloads.
 
 ## Local ownership and r851 acceptance — 2026-11-09
 

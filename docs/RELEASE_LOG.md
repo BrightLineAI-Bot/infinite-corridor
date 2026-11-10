@@ -15,14 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at game release r862, merged as d5057d129fcd47a56b5a6988a066153bbc2f1a26. Production remains r860. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at game release r863, merged as 36c57768eed1d96093fe6c4f8b97da5fb0a73295. Production is r862. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 862 | Codex | claude/stillworks-visibility / #518 | Stillworks entry framing, ambient light and scratch cover targets | Merged as d5057d129fcd. Source CI 42746680076, merged CI 42747904947 and Preview 42747904923 passed. Astra review (860→862): no blockers on tree 46bb3d52cda7. Exact hosted r862-d5057d129fcd rendered in restored Browser Companion, but gameplay selection did not verify and the normal in-app fallback timed out. Visual acceptance is still pending. Production remains r860. |
-| 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. Hosted r861-dca0199f5583 exposed poor arena readability at arrival and beyond the lantern. Held for the correction. |
+| 863 | Codex | claude/cleaver-motion-library / #520 | Quicker Verge Cleaver impact and recovery on the approved Wayfarer rig | Merged as 36c57768eed1. Exact source CI 42752034680 passed. Merged CI 42784487106 and Preview 42784487071 started. Textured Preview acceptance remains open. |
+| Unnumbered | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Draft opened. Focused tests and build passed on the prototype. |
+| Unnumbered | Codex | claude/great-tree-skyway-chain / #522 | Validated summit-to-summit chain for new Great Tree skyways | Draft opened. Nineteen focused tests and build passed, including three hops with reloads. |
+| 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. The arena readability correction shipped with this work in r862. |
 | 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift | Merged as 6c8e76670ac7. Source CI 42700948170, merged CI 42702713648 and Preview 42702713650 passed. Published in r860. |
 | 858 | Codex | claude/close-view-cleaver-choreography / #514 | Four linked right-handed Verge Cleaver cuts | Merged as 03db834feac9. Source CI 42698555018 and merged CI 42700331951 passed. Preview 42700331564 timed out waiting for Pages. Published in r860. |
 | 854 | Codex | claude/close-view-healing-drink / #509 | Wayfarer healing-drink gesture and isolated Potion lab | Merged as 467e9d974308. CI 42651541179 and 42653990562 passed. Preview 42653990710 succeeded for r854-467e9d974308. Desktop scratch verified the sip and visible vial in WebGL2. Published in r855. Physical-phone validation remains open. |
@@ -225,6 +227,7 @@ Main is at game release r862, merged as d5057d129fcd47a56b5a6988a066153bbc2f1a26
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 862 | r862-d5057d129fcd | 2026-11-10 | Includes r861. Astra review (860→862): no blockers. Merged CI 42747904947, Preview 42747904923 and Publish 42785323582 passed. Hosted desktop checked Stillworks arena readability and both crawl passages. Pages identity and Options → System matched. |
 | 860 | r860-7df1ae3e3e1b | 2026-11-09 | Includes r858 and r859. Astra review (857→860) found no blockers. Source CI 42702961817, merged CI 42705200519, Preview 42705201998 and Publish 42713761172 passed. Hosted desktop verified Cleaver, chest, shovel, traversal and block placement and reload. Pages and Options → System matched, with no recent errors. |
 | 857 | r857-6ce7028f514c | 2026-11-09 | Astra review (856→857) found no blockers. Source CI 42691080118, merged CI 42692399162, Preview 42692398857 and Publish 42695170879 passed. Hosted desktop used both caches through Act and exercised real Ashling hurt, defeat and recovery. Live identity and Options → System matched with no recent errors. |
 | 856 | r856-4939f21b4cf1 | 2026-11-09 | Astra review (855→856) found no blockers. Source CI 42672818404 attempt 3, merged CI 42683954351, Preview 42683953090, and Publish 42687022957 passed. Both new sites adopted padding pin 1 and were entered through normal Act in isolated hosted desktop checks. Live identity and Options → System matched; recent errors were empty. |
