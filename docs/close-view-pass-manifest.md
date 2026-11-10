@@ -46,6 +46,16 @@ The Stillworks Void Walker arena now has a WebGL Close View path. The original b
 
 Hosted r861 confirmed textured arena geometry and gate art, but the entrance faced the nearby wall and the dungeon lighting hid distant cover. Hold r861. The visibility correction points entry into the arena, adds ambient light and open sky, and keeps cover probes after arena reload. Local checks verified the camera direction and boom recovery on both seeds. The in-app browser stopped on a CDP timeout during crawl checks. Verify the corrected hosted arena lighting, gate readability and both crawl passages before production.
 
+### Exact r862 checkpoint and browser recovery
+
+PR #518 merged as `d5057d129fcd47a56b5a6988a066153bbc2f1a26`, tree `46bb3d52cda7dede3ed2d2683d4bca10b818618e`. Source CI 42746680076, merged CI 42747904947 and Preview 42747904923 passed. Astra cleared the complete r860 to r862 diff. A separate local combined pass passed the camera, routing, room padding, native jump, arena, Walker, tool transaction/presentation and scratch handoff suites.
+
+Browser Companion restored and displayed the exact release label, textured Stillworks entrance and both crawl scenes. Both crawl recipes were active with four steps and their expected return paths. The Stillworks entry still showed substantial near-wall camera compression in the static image. Browser Companion element selection returned `dispatched_unverified` with `verified: false`; the arena player report stayed at the entry after both cover selections. The authorized normal in-app fallback opened the exact page, then `check862.getAXState()` timed out at `DOMSnapshot.captureSnapshot` on tab 22. Neither browser established hosted motion through the entrance or crawl passages, cover and warning readability, or gate operation. Do not publish r862 without that evidence.
+
+Operator protocol: Browser Companion first for hosted checks. On a tool failure, record the exact operation and safe error and stop the failed transport. One normal in-app attempt is authorized only for an isolated Companion failure. Network, DNS, firewall, sandbox, credential or approval blocks must be reported without a workaround. Continue independent work. Publish only the explicitly authorized candidate after exact CI, Preview, full since-live review and visual acceptance.
+
+[Exact r862 preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r862-d5057d129fcd/) · [Preview workflow](https://github.com/BrightLineAI-Bot/infinite-corridor/actions/runs/42747904923)
+
 ## Local ownership and r851 acceptance — 2026-11-09
 
 Tim transferred primary gameplay, integration, merge and publication ownership to the local Codex coordinator and directed the previous cloud gameplay coordinator to stop. The separate cloud effort may continue its assigned testing and publishing infrastructure work. Release numbering and production dispatch stay with the local coordinator. Main at takeover was r852 b635f4b34336b3bad89054919ed699070ab8bdaa.
