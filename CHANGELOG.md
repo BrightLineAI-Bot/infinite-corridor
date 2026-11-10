@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 863 gives the Verge Cleaver a brief counter-load, quicker impact travel and body drive on the approved rig while preserving four-cut endpoints and canonical contact timing. Library comparison and offline diagnostic are recorded in `docs/cleaver-motion-library-study.md`; hosted visual acceptance remains pending.
+
 - Release 862 lights the Stillworks independently of dungeon corridors, points the arrival camera into the arena and keeps the lab cover targets available after reload.
 
 - Release 861 brings the Stillworks Void Walker arena into WebGL Close View and adds isolated keep and Pentagon crawl-and-drop scenarios to the Proving Ground.
