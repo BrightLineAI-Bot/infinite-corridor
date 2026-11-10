@@ -8,5 +8,6 @@ test('the dungeon map names exits, doors out, the annex way back and daises', ()
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
   const fn = main.match(/function dungeonMapTag\(o\)\{[^\n]+/)?.[0]; assert.ok(fn);
   for (const word of ['"EXIT"', '"DOOR OUT"', '"WAY BACK"', '"DAIS"']) assert.ok(fn.includes(word), word);
-  assert.match(main, /const tag=dungeonMapTag\(o\);if\(tag\)\{/);
+  assert.match(main, /tag=route\?[^;\n]+:dungeonMapTag\(o\);if\(tag\)\{/);
+  assert.match(main, /mctx\.fillText\(tag,tx,y\+4\)/);
 });

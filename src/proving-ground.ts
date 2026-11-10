@@ -28,6 +28,10 @@ const panel=document.createElement("aside");panel.id="provingGroundPanel";panel.
   <div class="proving-buttons"><button id="fixtureCopy">Copy recipe/report</button><button id="fixtureExit">Exit to normal game</button></div>
  </section>`;document.body.append(panel);
 const interactionDialog=document.createElement("dialog");interactionDialog.id="pgInteraction";interactionDialog.innerHTML=`<form method="dialog"><h2></h2><p class="pg-interaction-lore"></p><p class="pg-interaction-status" aria-live="polite"></p><div class="pg-interaction-actions"></div><button value="cancel">Return to world</button></form>`;document.body.append(interactionDialog);interactionDialog.hidden=false;
+const routesDialog=document.createElement("dialog");routesDialog.id="pgRoutes";
+routesDialog.innerHTML=`<h2>Known dungeon routes</h2><p>Scratch fixture paused. Close this panel, then press Resume to continue.</p><div class="pg-route-body"></div><form method="dialog"><button>Close routes</button></form>`;
+document.body.append(routesDialog);
+const routesBody=routesDialog.querySelector(".pg-route-body");
 const $=selector=>panel.querySelector(selector),launcher=$("#labLauncher"),controls=$("#labControls"),scenarioSelect=$("#scenarioSelect"),seedInput=$("#seedInput"),variantInput=$("#variantInput"),sizeProfileSelect=$("#sizeProfileSelect"),revealModeSelect=$("#revealModeSelect"),teleportSelect=$("#teleportSelect"),environmentSelect=$("#environmentSelect");
 // Release 279 (Tim, 2026-10-22: "there should just be a drop down for whichever arena... and then... a start simulation button"):
 // the combat lab picks its environment from a list, and nothing starts until Start test.
@@ -45,11 +49,6 @@ CLOSE_VIEW_HOOKS.groundLayers.push((c,W,H,projectedShots)=>{if(game)drawRangedEf
 let journeyRecord=null,fixture=null,game=null,paused=false,last=performance.now(),lastDiagnostic=0,teleportSignature="",comparison=null,input=createInput(document,globalThis,{controlSmoothing:38});
 let recoveryEpoch=0,recoveryBinding=null,recoveryRecord=null,recoveryArmed=false,recoveryBusy=false,recoveryStatus='unavailable',recoveryNote='',recoveryResetActive=false;
 let recoveryBootPending=query.get('lab')===RECOVERY_CONTEXT.lab&&query.get('scenario')===RECOVERY_CONTEXT.scenario&&query.get('seed')===RECOVERY_CONTEXT.seed;
-// Read-only witness of the exact production route panel. Stay paused after dismissal.
-const routesDialog=document.createElement("dialog"),routesBody=document.createElement("div"),routesTitle=document.createElement("h2"),routesNote=document.createElement("p"),routesClose=document.createElement("button");
-routesDialog.id="pgRoutes";routesTitle.textContent="Known dungeon routes";routesNote.textContent="Scratch fixture paused. Close this panel, then press Resume to continue.";routesClose.type="button";routesClose.textContent="Close routes";routesClose.onclick=()=>routesDialog.close();routesDialog.append(routesTitle,routesNote,routesBody,routesClose);document.body.append(routesDialog);
-$("#scenarioRoutes").onclick=()=>{if(!game||game.area!=="dungeon"||recoveryBusy||interactionDialog.open)return;paused=true;game.setPaused(true,performance.now());input.reset();renderDungeonWayfindingPanel(routesBody,dungeonWayfinding(game.save,game.map,game.player,{areaId:game.areaId(),previous:game.pentagonPrevious}),game.map);routesDialog.showModal();updateDiagnostics(true)};
-
 function resetRecoveryState(){recoveryEpoch++;recoveryBinding=null;recoveryRecord=null;recoveryArmed=false;recoveryStatus='unavailable';recoveryNote='';updateRecoveryControls();}
 function updateRecoveryControls(note){
   if(note!==undefined)recoveryNote=note;
@@ -178,6 +177,14 @@ function resize(){const rect=app.getBoundingClientRect(),d=renderScaleForViewpor
 function frame(now){const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;if(!interactionDialog.open)input.update(dt);if(game&&!paused&&!interactionDialog.open){closeViewSteer(game,input.state,now);try{game.update(dt,input,now);pollInteraction();observeRecovery(now)}finally{closeViewUnsteer(input.state)}}if(fixture?.testTile&&game?.area==="overworld"&&game.rx===TEST_TILE.rx&&game.ry===TEST_TILE.ry&&!game.map.testTile){stampTestTile(game.map);game.sync()}/* release 279: the test tile stays as it is when the Wayfarer comes back out */if(game){render(ctx,game,canvas.clientWidth,canvas.clientHeight,now);if(!closeViewShowing(game))drawRangedEffects(ctx,game,canvas.clientWidth,canvas.clientHeight);}else idlePrompt();closePan.sync();updateDiagnostics();requestAnimationFrame(frame)}
 $("#labHome").onclick=()=>{invalidateInteraction();renderLauncher()};$("#scenarioPrevious").onclick=()=>adjacent(-1);$("#scenarioNext").onclick=()=>adjacent(1);$("#scenarioGenerate").onclick=generate;$("#scenarioReset").onclick=generate;scenarioSelect.onchange=()=>AUTO_START.has(selectedLab)?generate():ready();environmentSelect.onchange=ready;
 sizeProfileSelect.onchange=ready;revealModeSelect.onchange=ready;
+// Read-only witness of the production route panel. Stay paused after dismissal.
+$("#scenarioRoutes").onclick=()=>{
+  if(!game||game.area!=="dungeon"||recoveryBusy||interactionDialog.open)return;
+  paused=true;game.setPaused(true,performance.now());input.reset();
+  const view=dungeonWayfinding(game.save,game.map,game.player,{areaId:game.areaId(),previous:game.pentagonPrevious});
+  renderDungeonWayfindingPanel(routesBody,view,game.map);
+  routesDialog.showModal();updateDiagnostics(true);
+};
 $("#buildMaterialSelect").onchange=()=>{if(selectLabBuildMaterial(fixture,$("#buildMaterialSelect").value))updateDiagnostics(true)};
 $("#buildViewSelect").onchange=()=>{if(fixture?.buildPractice){game.save.closeView=$("#buildViewSelect").value==="close";updateDiagnostics(true)}};
 $("#scenarioCompare").onclick=()=>{try{const other=createLabFixture({lab:selectedLab,scenario:scenarioSelect.value,seed:seedInput.value,variant:Number(variantInput.value)||0,sizeProfile:sizeProfileSelect.value,revealMode:revealModeSelect.value,now:performance.now()}),a=labReport(fixture).topologyHash,b=labReport(other).topologyHash;comparison={first:a,second:b,match:a===b,checkedAt:new Date().toISOString()};updateDiagnostics(true)}catch(error){comparison={match:false,error:String(error?.message||error)};updateDiagnostics(true)}};
