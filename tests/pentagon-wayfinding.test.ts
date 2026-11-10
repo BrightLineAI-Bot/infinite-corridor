@@ -105,5 +105,3 @@ test('overview excludes unknown endpoints and unproven secret/optional routes; o
   const reloaded = new Game(deserializeSave(serializeSave(g.save)), 0);
   assert.deepEqual(view(reloaded).connections, opened);
 });
-
-
