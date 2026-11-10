@@ -26,7 +26,7 @@ The fourteen interior species plus ordinary-controller Regent remain individuall
 
 | Family / forms | Owner and current state | Required repeated scope |
 |---|---|---|
-| Void Walker | Boss specialist, implementation slot NOT STARTED; source clock/asset/architecture planning prepared | First `voidHand`, then all ten actual attacks, evasive teleport, six straight Nova attempts and damaging trails; independent hero/boss buffers, remote effect anchors and all repeated passes above |
+| Void Walker | Stillworks pilot available in r866; Rift Claws and Swords Beyond have focused source coverage on `claude/stillworks-rending-kit` | Verify the new gestures in Preview, then cover the remaining attacks, evasive teleport, six straight Nova attempts and damaging trails with the real remote effect anchors |
 | Crimson Tyrant | Unassigned, PLANNED | Dragon anatomy and all actual Stillworks attacks; source flight/Sunfall cover and cleanup; reuse compatible skeleton only after license/topology/budget review |
 | Doom Chaser | Unassigned, PLANNED | Related dragon foundation may be reused, but every species-specific attack, Wing Walk, aerial drop, breath and recovery is separately verified |
 | Astral Worm / mirage / ink forms | Unassigned, PLANNED | Actual morph controller, old/new form transitions, clones, rings and ink origins; not placeholder pack bite or a forced humanoid skeleton |

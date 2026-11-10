@@ -554,6 +554,13 @@ function nativeCleaverRig(frame) {
   };
 }
 
+// Paired shoulder and elbow angles. The remote rend owns the actual contact.
+const WALKER_ARM_POSES = {
+  voidHand: [[-.96, -.64], [-.96, -.64]],
+  voidClaw: [[-1.22, .34], [-.42, -1.02]],
+  voidSword: [[-.72, .24], [-.90, .08]],
+};
+
 export function writeCloseViewModel(out, offset, actor) {
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
@@ -642,6 +649,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink','collect','openChest','placeStone'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
   const freeSwing=drinking||collecting||placingStone?(cleaverHandRoles(kind==='playerVergeCleaver'?'verge-cleaver':'melee',stage).free==='leftSocket'?2:-2):0;
   const walkerGesture=kind==='voidWalker'&&Number.isFinite(actor.walkerGesture)?Math.max(0,Math.min(1,actor.walkerGesture)):0;
+  const walkerPose = kind === 'voidWalker' && Object.hasOwn(WALKER_ARM_POSES, actor.walkerAttack)
+    ? WALKER_ARM_POSES[actor.walkerAttack] : WALKER_ARM_POSES.voidHand;
   for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon, cleaverArm, cleaverWeapon, walkerBone } of models[kind]) {
     const jumpPart=nativeJump||nativeJumpBaseline?JUMP_PARTS.get(mesh):null;
     const mirroredArm=newCleaver&&Math.abs(sourceSwing)===2,swing=mirroredArm?-sourceSwing:sourceSwing;
@@ -708,9 +717,11 @@ export function writeCloseViewModel(out, offset, actor) {
     const cc = Math.cos(cutYaw), sc = Math.sin(cutYaw);
     const pivotY = newCleaver&&swing===2?.25:playerLike && swing === -2 ? PLAYER_FORM_HANDS[kind.split(':')[0]]?.y ?? -.25 : 0;
     const walkerArm = walkerBone?.chain.endsWith('Arm');
-    const walkerGait = walkerBone && !walkerArm ? (walkerBone.chain.startsWith('left') ? -1 : 1) * beat * .34 * secondary : 0;
-    const walkerParent = walkerArm ? -.08 - walkerGesture * .88 : walkerGait;
-    const walkerChild = walkerArm ? -.10 - walkerGesture * .54 : -walkerGait * .72;
+    const walkerLeft = walkerBone?.chain.startsWith('left');
+    const walkerGait = walkerBone && !walkerArm ? (walkerLeft ? -1 : 1) * beat * .34 * secondary : 0;
+    const walkerArmPose = walkerPose[walkerLeft ? 0 : 1];
+    const walkerParent = walkerArm ? -.08 + walkerGesture * (walkerArmPose[0] + .08) : walkerGait;
+    const walkerChild = walkerArm ? -.10 + walkerGesture * (walkerArmPose[1] + .10) : -walkerGait * .72;
     const parentC = walkerBone ? Math.cos(walkerParent) : 1, parentS = walkerBone ? Math.sin(walkerParent) : 0;
     const childC = walkerBone ? Math.cos(walkerChild) : 1, childS = walkerBone ? Math.sin(walkerChild) : 0;
     for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
@@ -765,7 +776,7 @@ export function writeCloseViewModel(out, offset, actor) {
       if(walkerBone){
         // Walker-only two-bone FK in the forward/up plane. Distal pieces first bend around
         // their real elbow/knee, then inherit the shoulder/hip turn. Reduced motion zeros
-        // only gait; the accepted voidHand gesture remains fully readable.
+        // only gait; accepted rend gestures remain fully readable.
         let a=mesh[i]+px,b=mesh[i+1],d=mesh[i+2]+pz,na=mesh[i+3],nb=mesh[i+4],nd=mesh[i+5];
         if (walkerBone.segment === 'lower') {
           const [ox, , oz] = walkerBone.pivot, dx = a - ox, dz = d - oz;

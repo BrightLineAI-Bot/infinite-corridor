@@ -2173,6 +2173,7 @@ function sampleCleaverTrail(trail, owner, socket, now, alpha) {
   }
   samples[index + 6] = now;
 }
+const WALKER_NATIVE_RENDS = new Set(['voidHand', 'voidClaw', 'voidSword']);
 export function stillworksWalkerRigPose(map, walker) {
   if (!stillworksCloseView(map) || walker?.kind !== 'voidWalker' || walker.pentFinaleBeast !== 'voidWalker'
       || walker.worldBeast || walker.marine || walker.dead || !(walker.hp > 0) || walker.hidden || walker.gloomVeil
@@ -2180,15 +2181,15 @@ export function stillworksWalkerRigPose(map, walker) {
       || walker.affixes?.length || walker.eliteWindup > 0 || walker.eliteActive > 0) return null;
   const pack = walker.pack;
   if (!pack?.attack) return !pack?.phase || pack.phase === 'idle' ? { gesture: 0, aim: null } : null;
-  if (pack.attack !== 'voidHand' || !['windup', 'recover'].includes(pack.phase)
+  if (!WALKER_NATIVE_RENDS.has(pack.attack) || (pack.phase !== 'windup' && pack.phase !== 'recover')
       || !Number.isFinite(pack.t) || pack.t < 0 || !Number.isSafeInteger(pack.seq) || pack.seq < 1) return null;
   const aim = pack.data?.aim;
   if (!Number.isFinite(aim?.x) || !Number.isFinite(aim?.y) || Math.hypot(aim.x, aim.y) < .01) return null;
-  const action = ATTACK_MODULES.voidHand;
+  const action = ATTACK_MODULES[pack.attack];
   const duration = pack.phase === 'windup' ? action.windup * (pack.paced ? BOSS_PACE.windup : 1) : action.recover;
   const remaining = Math.min(1, pack.t / duration);
   const blend = pack.phase === 'windup' ? 1 - remaining : remaining;
-  return { gesture: blend * blend * (3 - 2 * blend), aim, phase: pack.phase, sequence: pack.seq };
+  return { gesture: blend * blend * (3 - 2 * blend), attack: pack.attack, aim, phase: pack.phase, sequence: pack.seq };
 }
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
@@ -2438,6 +2439,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       fistLead: charge != null ? (g.fistCharge.step > 1 ? g.fistCombo?.lead : g.save.fistOpeningHand === 'right' ? 'left' : 'right') : visualRecord?.fistLead,
       effectTime: now,
       walkerGesture: walkerRig?.gesture,
+      walkerAttack: walkerRig?.attack,
       palette: presentation?.palette,
       watched,
       action: presentation?.stagger ? null : monsterAction?.semantic?.action,
