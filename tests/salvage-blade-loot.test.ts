@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateItem, isValidItem, ORDINARY_MONSTER_LOOT } from '../src/items.ts';
+import { generateItem, isValidItem, ORDINARY_MONSTER_LOOT, primaryProfile, PRIMARY_PROFILES } from '../src/items.ts';
 import { freshSave } from '../src/types.ts';
-import { Game, ordinaryMonsterGearDrop } from '../src/game.ts';
+import { Game, ordinaryMonsterGearDrop, equipInventoryItem } from '../src/game.ts';
+import { serializeSave, deserializeSave } from '../src/save-codec.ts';
 
 test('Salvage Blade is a deterministic early ordinary-monster gear drop without perturbing its item roll', () => {
   let salvage = 0;
@@ -47,4 +48,9 @@ test('an ordinary Ashling defeat awards a valid Salvage Blade through the existi
   const loot=save.inventory.find(o=>o.name==='Salvage Blade');
   assert.ok(loot&&isValidItem(loot));
   assert.equal(save.dropCounter,n+1);
+  assert.equal(equipInventoryItem(save,save.inventory.indexOf(loot)),true);
+  const equipped=deserializeSave(serializeSave(save)).equipment.primary;
+  assert.equal(equipped.id,loot.id);
+  assert.equal(equipped.name,'Salvage Blade');
+  assert.equal(primaryProfile(equipped),PRIMARY_PROFILES['salvage-blade']);
 });
