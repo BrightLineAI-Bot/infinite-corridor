@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 868 adds door lights and up to three Atlas door waypoints in Cubes and Pentagons. The compass points north when no point is set.
+
 - Release 867 adds a separate, optional Overworld Close View camera for outdoor areas, roofs, courtyards and other maps outside the original indoor coverage.
 
 - Release 866 gives the Stillworks Void Walker an articulated Close View body and a distinct Rending Hands windup and recovery.

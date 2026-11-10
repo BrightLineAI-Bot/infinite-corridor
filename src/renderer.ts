@@ -34,7 +34,7 @@ import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -2055,6 +2055,22 @@ function drawPentLever(ctx, o, s, now) {
 }
 // Version 6: the shortcut links. A lift cage, a ladder, a door or a portcullis; shut, it shows its bars (the near side) or its
 // winch, bolt or lever (the deep side, lit gold: use it); open, it stands clear. A short dust ring when one opens.
+function drawDungeonDoorTorch(ctx,point,s,mark,now,reduceMotion){
+  const x=point.x*s,y=point.y*s;
+  const flame=mark==="arrival"?"#55c6ff":mark==="visited"?"#b578ff":"#eac18a";
+  const sway=reduceMotion?0:Math.sin(now/230+point.x+point.y)*s*.025;
+  ctx.save();
+  ctx.fillStyle="#302a27";ctx.fillRect(x-s*.08,y-s*.70,s*.16,s*.19);
+  ctx.fillStyle="#a29a81";ctx.fillRect(x-s*.105,y-s*.72,s*.21,s*.055);
+  ctx.globalAlpha*=.30;ctx.fillStyle=flame;
+  ctx.beginPath();ctx.ellipse(x,y-s*.82,s*.16,s*.21,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha/=.30;
+  ctx.beginPath();ctx.moveTo(x-s*.07,y-s*.73);
+  ctx.quadraticCurveTo(x-s*.1,y-s*.82,x+sway,y-s*.98);
+  ctx.quadraticCurveTo(x+s*.09,y-s*.82,x+s*.065,y-s*.73);ctx.fill();
+  ctx.fillStyle="#fff6e2";ctx.fillRect(x-s*.02,y-s*.82,s*.04,s*.075);
+  ctx.restore();
+}
 function drawBars(ctx, o, s) { const x = o.x * s, y = o.y * s; ctx.save(); ctx.strokeStyle = "#8a8172"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); for (const q of [.28, .5, .72]) { ctx.moveTo(x + s * q, y + s * .08); ctx.lineTo(x + s * q, y + s * .95); } ctx.moveTo(x + s * .16, y + s * .5); ctx.lineTo(x + s * .84, y + s * .5); ctx.stroke(); ctx.restore(); }
 function drawPentShortcut(ctx, o, s, now) {
   const x = o.x * s, y = o.y * s, open = o.state === "open", deep = o.end === "deep", pulse = .5 + .5 * Math.sin(now / 420), k = o.linkKind; ctx.save();
@@ -2512,6 +2528,13 @@ export function render(ctx, g, w, h, now) {
       draws.push({ x: art.x, y: faceY - .82, wallAligned: true,
         fn: () => drawStillworksObject(ctx, art, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) });
     }
+  }
+  const navigationDoors=closeViewCapturing()?CLOSE_VIEW_HOOKS.navigationDoors?.(g):null;
+  if(navigationDoors?.length)for(const door of navigationDoors){
+    if(!visibleInCamera(door,l,t,r,b,1))continue;
+    const point=closeViewDoorTorchPosition(g.map,door),x=point.x-.5,y=point.y-.82;
+    draws.push({x,y,nativeSupportX:point.x,nativeSupportY:point.y,
+      fn:()=>drawDungeonDoorTorch(ctx,point,s,door.mark,now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode))});
   }
   for (const o of g.map.objects)
     if (!(stillworksCapture && (o.kind === "pentArenaGate" || o.kind === "stillMonolith")) && renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.vegetationForm==="giant"?GIANT_TREE.height+3:2)&&!(o.kind === "cache" && o.state === "hidden")&&!(o.kind==="displacementTrap"&&o.state!=="used")&&!(o.kind==="deepShortcut"&&o.state==="hidden")&&(renderCacheStats.visibleObjects++,true))

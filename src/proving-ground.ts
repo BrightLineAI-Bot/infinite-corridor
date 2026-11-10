@@ -1,4 +1,5 @@
-import { dungeonWayfinding, renderDungeonWayfindingPanel } from "./atlas-view.ts";
+import { currentDungeonDoors } from './game.ts';
+import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.ts";
 import { serializeSave, deserializeSave } from './save-codec.ts';
 import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.ts';
 import { drawRangedEffects } from "./combat-visuals.ts";
@@ -180,14 +181,21 @@ function resize(){const rect=app.getBoundingClientRect(),d=renderScaleForViewpor
 function frame(now){const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;if(!interactionDialog.open)input.update(dt);if(game&&!paused&&!interactionDialog.open){closeViewSteer(game,input.state,now);try{game.update(dt,input,now);pollInteraction();observeRecovery(now)}finally{closeViewUnsteer(input.state)}}if(fixture?.testTile&&game?.area==="overworld"&&game.rx===TEST_TILE.rx&&game.ry===TEST_TILE.ry&&!game.map.testTile){stampTestTile(game.map);game.sync()}/* release 279: the test tile stays as it is when the Wayfarer comes back out */if(game){render(ctx,game,canvas.clientWidth,canvas.clientHeight,now);if(!closeViewShowing(game))drawRangedEffects(ctx,game,canvas.clientWidth,canvas.clientHeight);}else idlePrompt();closePan.sync();updateDiagnostics();requestAnimationFrame(frame)}
 $("#labHome").onclick=()=>{invalidateInteraction();renderLauncher()};$("#scenarioPrevious").onclick=()=>adjacent(-1);$("#scenarioNext").onclick=()=>adjacent(1);$("#scenarioGenerate").onclick=generate;$("#scenarioReset").onclick=generate;scenarioSelect.onchange=()=>AUTO_START.has(selectedLab)?generate():ready();environmentSelect.onchange=ready;
 sizeProfileSelect.onchange=ready;revealModeSelect.onchange=ready;
-// Read-only witness of the production route panel. Stay paused after dismissal.
+// Exercise the production route panel against the isolated scratch save. Stay paused after dismissal.
 $("#scenarioRoutes").onclick=()=>{
   if(!game||game.area!=="dungeon"||recoveryBusy||interactionDialog.open)return;
   paused=true;game.setPaused(true,performance.now());input.reset();
-  const view=dungeonWayfinding(game.save,game.map,game.player,{areaId:game.areaId(),previous:game.pentagonPrevious});
-  renderDungeonWayfindingPanel(routesBody,view,game.map);
+  renderScratchDungeonRoutes();
   routesDialog.showModal();updateDiagnostics(true);
 };
+function renderScratchDungeonRoutes(){
+  const areaId=game.areaId(),candidates=game.map.building?.labyrinth||game.map.building?.pentagon?currentDungeonDoors(game.map,areaId):[];
+  const view=dungeonWayfinding(game.save,game.map,game.player,{areaId,previous:game.pentagonPrevious,candidates});
+  renderDungeonWayfindingPanel(routesBody,view,game.map,{onToggleDoor:door=>{
+    if(game.toggleDungeonDoorWaypoint(door.doorId)){renderScratchDungeonRoutes();updateDiagnostics(true)}
+  }});
+}
+CLOSE_VIEW_HOOKS.navigationDoors = g => g.area==="dungeon" ? dungeonNavigationDoors(g.save,g.map,g.areaId(),currentDungeonDoors(g.map,g.areaId())) : [];
 $("#buildMaterialSelect").onchange=()=>{if(selectLabBuildMaterial(fixture,$("#buildMaterialSelect").value))updateDiagnostics(true)};
 $("#buildViewSelect").onchange=()=>{if(fixture?.buildPractice){game.save.closeView=$("#buildViewSelect").value==="close";updateDiagnostics(true)}};
 $("#scenarioCompare").onclick=()=>{try{const other=createLabFixture({lab:selectedLab,scenario:scenarioSelect.value,seed:seedInput.value,variant:Number(variantInput.value)||0,sizeProfile:sizeProfileSelect.value,revealMode:revealModeSelect.value,now:performance.now()}),a=labReport(fixture).topologyHash,b=labReport(other).topologyHash;comparison={first:a,second:b,match:a===b,checkedAt:new Date().toISOString()};updateDiagnostics(true)}catch(error){comparison={match:false,error:String(error?.message||error)};updateDiagnostics(true)}};

@@ -6,23 +6,87 @@ import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.ts";
 import { dungeonPointDiscovered } from "./dungeon-framework.ts";
-import { labFogState } from "./labyrinths.ts";
+import { labFogOf, labFogState } from "./labyrinths.ts";
 
-const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR" };
+const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
+export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };
+
+// Door-navigation receipts use area-scoped IDs so repeated generator-local names
+// (for example `building-exit`) cannot collide. Keep this pure: Atlas inspection
+// must neither create navigation state nor repair a save as a side effect.
+export const dungeonDoorId = (areaId, door) => { const id = String(typeof door === "string" ? door : door?.id); return id.startsWith(`${areaId}::`) ? id : `${areaId}::${id}`; };
+export function dungeonDoorWaypointIds(save, areaId) {
+  const raw = save?.dungeonDoorNavigation?.areas?.[areaId]?.waypointDoorIds;
+  const out = [];
+  for (const id of Array.isArray(raw) ? raw : []) if (typeof id === "string" && id.startsWith(`${areaId}::`) && !out.includes(id) && out.length < DUNGEON_DOOR_WAYPOINTS.max) out.push(id);
+  return out;
+}
+
+function markDungeonDoors(save, areaId, doors, candidates = null) {
+  const area = save?.dungeonDoorNavigation?.areas?.[areaId] || {}, visited = new Set(Array.isArray(area.visitedDoorIds) ? area.visitedDoorIds : []);
+  const marks = dungeonDoorWaypointIds(save, areaId), byId = new Map(marks.map((id, i) => [id, i + 1]));
+  const selectable = Array.isArray(candidates) ? new Set(candidates.map(d => dungeonDoorId(areaId, d))) : null;
+  return doors.map((door) => {
+    const doorId = dungeonDoorId(areaId, door), mark = byId.get(doorId) || null;
+    return { ...door, doorId, areaId, selected: mark !== null, mark, visitMark: area.arrivalDoorId === doorId ? "arrival" : visited.has(doorId) ? "visited" : "known", selectable: !selectable || selectable.has(doorId) };
+  });
+}
+
+// Shared pure model for the floor map, Compass and close-view door rendering.
+// A route is disclosed by the same chunk/fog rules as the dungeon map. Secret
+// objects and hidden state never leak merely because their object was generated.
+export function discoveredDungeonDoors(save, map, { areaId = map?.id, previous = null, candidates = null } = {}) {
+  if (!map || !areaId) return [];
+  const visible = point => point && dungeonPointDiscovered(map, point) && labFogState(map, point.x, point.y) > 0;
+  const pentagon = map.building?.pentagon && parsePentagonId(map.id);
+  if (pentagon) return markDungeonDoors(save, areaId, pentagonDoorRows(save, map, previous).filter(visible), candidates);
+  const knownLevels = new Set(map.deepProgress?.discoveredLevelIds || save?.consequences?.dungeons?.[areaId]?.deep?.discoveredLevelIds || []), levels = map.levels || [];
+  const synthetic = (Array.isArray(candidates) ? candidates : []).filter(o => o.synthetic && o.kind === "doorway");
+  const doors = [...(map.objects || []), ...synthetic].filter(o => (DUNGEON_ROUTE_TAGS[o.kind] || o.kind === "doorway") && o.state !== "hidden" && !o.secretDoor && visible(o)).map(o => {
+    const targetId = o.toLevelId || o.targetLevelId, targetLevel = knownLevels.has(targetId) && levels.find(q => q.id === targetId);
+    const dir = o.dir || o.direction, direction = o.kind === "doorway" ? "DOOR" : dir === "up" ? "UP" : dir === "down" ? "DOWN" : dir === "door" ? "DOOR" : dir === "roof" || dir === "roofExit" ? "ROOF / OUT" : DUNGEON_ROUTE_TAGS[o.kind];
+    return { id: o.id, x: o.x, y: o.y, kind: o.kind, direction, tag: direction, back: false, blocked: o.kind === "labGate" && o.state !== "open",
+      target: targetId ? targetLevel?.name || "Unexplored level" : o.toId ? "Another chamber" : o.kind === "exit" || o.kind === "deepReturn" ? "Way out" : o.kind === "labGate" || o.kind === "doorway" ? "The other side" : "Route marker" };
+  });
+  return markDungeonDoors(save, areaId, doors, candidates);
+}
+
+const navigationDoorMemo = new WeakMap();
+const navigationRoute = o => !!(DUNGEON_ROUTE_TAGS[o?.kind] || o?.kind === "pentShortcut");
+function navigationInputsMatch(prior, map, areaId, state, fog, candidates, history) {
+  if (!prior || prior.areaId !== areaId || prior.revealed !== map._dungeonRevealed || prior.revealedSize !== (map._dungeonRevealed?.size || 0) || prior.fogStamp !== (fog?.stamp || 0) || prior.arrival !== state.arrivalDoorId || prior.visited !== state.visitedDoorIds || prior.waypoints !== state.waypointDoorIds || prior.labOpen !== history?.labOpen || prior.labKeys !== history?.labKeys || prior.pentBosses !== history?.pentBosses) return false;
+  for (const p of prior.plates) if (p.tile.build !== p.build) return false;
+  if (candidates !== prior.candidateSource) { const list = Array.isArray(candidates) ? candidates : [], oldCandidates = prior.candidates; if (list.length !== oldCandidates.length) return false;
+    for (let i = 0; i < list.length; i++) { const a = list[i], b = oldCandidates[i]; if (a.id !== b.id || a.x !== b.x || a.y !== b.y || a.kind !== b.kind || !!a.synthetic !== b.synthetic) return false; } }
+  let n = 0; for (const o of map.objects || []) if (navigationRoute(o)) { const b = prior.routes[n++]; if (!b || o !== b.object || o.id !== b.id || o.x !== b.x || o.y !== b.y || o.state !== b.state || !!o.secretDoor !== b.secret || o.unsealed !== b.unsealed || o.kind !== b.kind || o.toId !== b.toId) return false; }
+  return n === prior.routes.length;
+}
+// Allocation-free on an unchanged frame. The key follows every input that can
+// disclose or alter a door: dungeon chunks, labyrinth fog, object state, and
+// the area's durable arrival/visited/waypoint receipts.
+export function dungeonNavigationDoors(save, map, areaId = map?.id, candidates = null) {
+  if (!map || !areaId || !(map.building?.labyrinth || map.building?.pentagon)) return [];
+  const state = save?.dungeonDoorNavigation?.areas?.[areaId] || {}, fog = labFogOf(map), history = save?.consequences?.dungeons?.[map.building?.base ? `${map.building.base}:f1` : areaId];
+  const prior = navigationDoorMemo.get(map); if (navigationInputsMatch(prior, map, areaId, state, fog, candidates, history)) return prior.value;
+  const visited = new Set(Array.isArray(state.visitedDoorIds) ? state.visitedDoorIds : []), slots = new Map(dungeonDoorWaypointIds(save, areaId).map((id, i) => [id, i + 1]));
+  const value = discoveredDungeonDoors(save, map, { areaId, candidates }).filter(door=>door.selectable).map(door => ({
+    id: door.doorId, x: door.x, y: door.y, label: `${door.tag} · ${door.target}`,
+    mark: state.arrivalDoorId === door.doorId ? "arrival" : visited.has(door.doorId) ? "visited" : "known",
+    slot: slots.get(door.doorId) || null, kind: door.kind, blocked: !!door.blocked
+  }));
+  const candidateSnapshot = (Array.isArray(candidates) ? candidates : []).map(o => ({ id: o.id, x: o.x, y: o.y, kind: o.kind, synthetic: !!o.synthetic })), routes = [], plates = [];
+  for (const o of map.objects || []) if (navigationRoute(o)) routes.push({ object: o, id: o.id, x: o.x, y: o.y, state: o.state, secret: !!o.secretDoor, unsealed: o.unsealed, kind: o.kind, toId: o.toId });
+  for (const tile of map.tiles || []) if (tile.plate) plates.push({ tile, build: tile.build });
+  navigationDoorMemo.set(map, { areaId, revealed: map._dungeonRevealed, revealedSize: map._dungeonRevealed?.size || 0, fogStamp: fog?.stamp || 0, arrival: state.arrivalDoorId, visited: state.visitedDoorIds, waypoints: state.waypointDoorIds, labOpen: history?.labOpen, labKeys: history?.labKeys, pentBosses: history?.pentBosses, candidateSource: candidates, candidates: candidateSnapshot, routes, plates, value }); return value;
+}
 
 // The same floor and visibility contract as the Atlas, with no destination generation.
-export function dungeonWayfinding(save, map, player, { current = true, areaId = map?.id, previous = null } = {}) {
+export function dungeonWayfinding(save, map, player, { current = true, areaId = map?.id, previous = null, candidates = null } = {}) {
   if (!map) return null;
-  const pentagon = pentagonWayfinding(save, map, player, previous);
+  const pentagon = pentagonWayfinding(save, map, player, previous, candidates);
   if (pentagon) return { ...pentagon, position: current ? pentagon.position : null, arrival: current ? pentagon.arrival : null, arrivalLabel: "ARRIVAL", previous: current ? pentagon.previous : null };
   const visible = point => point && dungeonPointDiscovered(map, point) && labFogState(map, point.x, point.y) > 0;
-  const knownLevels = new Set(map.deepProgress?.discoveredLevelIds || save?.consequences?.dungeons?.[areaId]?.deep?.discoveredLevelIds || []), levels = map.levels || [];
-  const doors = (map.objects || []).filter(o => DUNGEON_ROUTE_TAGS[o.kind] && o.state !== "hidden" && !o.secretDoor && visible(o)).map(o => {
-    const targetId = o.toLevelId || o.targetLevelId, targetLevel = knownLevels.has(targetId) && levels.find(q => q.id === targetId);
-    const dir = o.dir || o.direction, direction = dir === "up" ? "UP" : dir === "down" ? "DOWN" : dir === "door" ? "DOOR" : dir === "roof" || dir === "roofExit" ? "ROOF / OUT" : DUNGEON_ROUTE_TAGS[o.kind];
-    return { id: o.id, x: o.x, y: o.y, direction, tag: direction, back: false,
-      target: targetId ? targetLevel?.name || "Unexplored level" : o.toId ? "Another chamber" : o.kind === "exit" || o.kind === "deepReturn" ? "Way out" : "Route marker" };
-  });
+  const doors = discoveredDungeonDoors(save, map, { areaId, previous, candidates });
   const saved = save?.session?.floorEntry, arrival = current && !map.multiLevel && saved?.id === areaId && visible(saved) ? { x: saved.x, y: saved.y } : null;
   return { doors, previous: null, arrival: arrival || (current && visible(map.entry) ? { x: map.entry.x, y: map.entry.y } : null), arrivalLabel: arrival ? "ARRIVAL" : "FLOOR ENTRY",
     position: current ? { x: Math.round(player.x), y: Math.round(player.y) } : null };
@@ -30,7 +94,7 @@ export function dungeonWayfinding(save, map, player, { current = true, areaId = 
 
 // Read-only Pentagon wayfinding. Chamber discovery is already durable in labSeen;
 // never generate another chamber, infer visit order from it, or name an unseen room.
-export function pentagonWayfinding(save, map, player, previous = null) {
+export function pentagonWayfinding(save, map, player, previous = null, candidates = null) {
   const B = map?.building, p = B?.pentagon && parsePentagonId(map.id);
   if (!p) return null;
   const plan = pentagonPlan(p.seed, p.cx, p.cy, p.V), history = save?.consequences?.dungeons?.[`${B.base}:f1`] || {};
@@ -57,15 +121,25 @@ export function pentagonWayfinding(save, map, player, previous = null) {
     const from = byNode.get(link.near), to = byNode.get(link.deep);
     if (from && to && opened.has(pentagonLinkKey(link.id))) connections.push({ from: from.id, to: to.id, source: from.name, destination: to.name, kind: "Opened shortcut", note: "" });
   }
-  const doors = (map.objects || []).filter(o => ["buildingStair", "exit", "pentShortcut"].includes(o.kind) && o.state !== "hidden" && (!o.secretDoor || known.has(o.toId))).map(o => {
-    const destination = known.get(o.toId), back = !!prior && o.toId === prior.id;
-    const blocked = !!((o.lock && !(history.labKeys || []).includes(o.lock)) || (o.barred && !(history.labOpen || []).includes(o.shortcutKey)) || (o.sigil && !o.unsealed) || (o.bossGate && !(history.pentBosses || []).includes(B.node)) || (o.plateLock && !(history.labOpen || []).includes(`plate:${B.node}`) && !map.tiles?.some(t => t.plate && t.build === "stone")) || (o.gate === "levers" && (history.pentLevers || []).length < PENTAGON.levers) || (o.kind === "pentShortcut" && o.end !== "deep" && !(history.labOpen || []).includes(pentagonLinkKey(o.link))));
-    const direction = o.kind === "exit" ? "OUT" : o.kind === "pentShortcut" ? "SHORTCUT" : o.dir === "up" ? "UP" : o.dir === "down" ? "DOWN" : "DOOR";
-    return { id: o.id, x: o.x, y: o.y, direction, back, blocked, target: destination?.name || (o.kind === "exit" ? "Outside" : "Unexplored"), tag: `${back ? "BACK · " : ""}${direction}${blocked ? " · LOCKED" : ""}` };
-  });
+  const doors = markDungeonDoors(save, map.id, pentagonDoorRows(save, map, previous, known), candidates);
   const entry = save?.session?.floorEntry;
   const arrival = entry?.id === map.id && Number.isFinite(entry.x) && Number.isFinite(entry.y) ? { x: entry.x, y: entry.y } : null;
   return { rooms, connections, doors, previous: prior?.name || null, arrival, position: { x: Math.round(player.x), y: Math.round(player.y) } };
+}
+
+function pentagonDoorRows(save, map, previous = null, knownRooms = null) {
+  const B = map?.building, p = B?.pentagon && parsePentagonId(map.id);
+  if (!p) return [];
+  const plan = pentagonPlan(p.seed, p.cx, p.cy, p.V), history = save?.consequences?.dungeons?.[`${B.base}:f1`] || {};
+  const seen = new Set((Array.isArray(history.labSeen) ? history.labSeen : []).filter(Number.isInteger)); seen.add(p.n);
+  const known = knownRooms || new Map(plan.nodes.filter(n => seen.has(n.n)).map(n => [`${p.base}:f${n.n + 1}`, { id: `${p.base}:f${n.n + 1}`, name: n.name }]));
+  const prior = previous?.to === map.id && known.get(previous.from);
+  return (map.objects || []).filter(o => ["buildingStair", "exit", "pentShortcut"].includes(o.kind) && o.state !== "hidden" && (!o.secretDoor || known.has(o.toId))).map(o => {
+    const destination = known.get(o.toId), back = !!prior && o.toId === prior.id;
+    const blocked = !!((o.lock && !(history.labKeys || []).includes(o.lock)) || (o.barred && !(history.labOpen || []).includes(o.shortcutKey)) || (o.sigil && !o.unsealed) || (o.bossGate && !(history.pentBosses || []).includes(B.node)) || (o.plateLock && !(history.labOpen || []).includes(`plate:${B.node}`) && !map.tiles?.some(t => t.plate && t.build === "stone")) || (o.gate === "levers" && (history.pentLevers || []).length < PENTAGON.levers) || (o.kind === "pentShortcut" && o.end !== "deep" && !(history.labOpen || []).includes(pentagonLinkKey(o.link))));
+    const direction = o.kind === "exit" ? "OUT" : o.kind === "pentShortcut" ? "SHORTCUT" : o.dir === "up" ? "UP" : o.dir === "down" ? "DOWN" : "DOOR";
+    return { id: o.id, x: o.x, y: o.y, kind: o.kind, direction, back, blocked, target: destination?.name || (o.kind === "exit" ? "Outside" : "Unexplored"), tag: `${back ? "BACK · " : ""}${direction}${blocked ? " · LOCKED" : ""}` };
+  });
 }
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
@@ -135,12 +209,12 @@ export function toggleMapMark(save, rx, ry) {
 }
 
 // Shared by the production Atlas and the scratch-only Proving Ground witness.
-export function renderDungeonWayfindingPanel(panel, view, map) {
+export function renderDungeonWayfindingPanel(panel, view, map, { onToggleDoor = null } = {}) {
   const doc = panel.ownerDocument; panel.classList.add("dungeon-wayfinding");
   panel.hidden=!view;panel.replaceChildren();if(!view)return;
   const heading=doc.createElement("p");heading.textContent=view.position?`You are here: ${map.name} · ${view.position.x}, ${view.position.y}. ${view.previous?`Previous chamber: ${view.previous}. BACK marks doors returning there.`:"Previous route unavailable."}`:`Inspecting ${map.levelName||map.name}. Your position and arrival are on the current floor.`;panel.append(heading);
   if(view.arrival){const entry=doc.createElement("p");entry.textContent=`${view.arrivalLabel}: ${view.arrival.x}, ${view.arrival.y}`;panel.append(entry)}
-  const routes=doc.createElement("ul");routes.setAttribute("aria-label","Known floor routes");for(const [i,door] of view.doors.entries()){const row=doc.createElement("li");row.textContent=`${i+1}. ${door.tag} · ${door.back?"Return to":door.direction==="OUT"?"Leave for":"Onward to"} ${door.target} · ${door.x}, ${door.y}`;routes.append(row)}panel.append(routes);
+  const routes=doc.createElement("ul");routes.setAttribute("aria-label","Known floor routes");const selected=view.doors.filter(d=>d.selected).length;for(const [i,door] of view.doors.entries()){const row=doc.createElement("li"),text=doc.createElement("span"),receipt=door.visitMark==="arrival"?"ARRIVAL · ":door.visitMark==="visited"?"TRAVERSED · ":"";row.className="dungeon-door-row";row.setAttribute("data-door-id",door.doorId||"");text.textContent=`${i+1}. ${door.mark?`MARK ${door.mark} · `:""}${receipt}${door.tag} · ${door.back?"Return to":door.direction==="OUT"?"Leave for":"Onward to"} ${door.target} · ${door.x}, ${door.y}`;row.append(text);if(onToggleDoor&&door.doorId&&door.selectable!==false){const button=doc.createElement("button");button.type="button";button.className="dungeon-door-waypoint";button.textContent=door.selected?"Remove":"Add";button.setAttribute("aria-pressed",door.selected?"true":"false");button.setAttribute("aria-label",`${door.selected?"Remove":"Add"} waypoint for ${door.tag} at ${door.x}, ${door.y}`);button.disabled=!door.selected&&selected>=DUNGEON_DOOR_WAYPOINTS.max;button.onclick=()=>onToggleDoor(door,!door.selected);row.append(button)}routes.append(row)}panel.append(routes);
   if(!view.rooms){const note=doc.createElement("p");note.textContent="Only discovered markers are listed. Doors and routes may still require a key, objective or mechanism.";panel.append(note);return}
   const known=doc.createElement("details"),summary=doc.createElement("summary");summary.textContent=`Discovered chambers (${view.rooms.length})`;known.append(summary);const list=doc.createElement("ul");for(const room of view.rooms){const row=doc.createElement("li");row.textContent=`${room.floor} · ${room.name}${room.current?" · YOU ARE HERE":""}`;list.append(row)}known.append(list);panel.append(known);
   const connections=doc.createElement("details"),connectionTitle=doc.createElement("summary");connectionTitle.textContent=`Mapped connections (${view.connections.length})`;connections.append(connectionTitle);const explanation=doc.createElement("p");explanation.textContent="Between discovered chambers. This is not a record of travel order; secret doors and unrecorded side routes are omitted.";connections.append(explanation);const edges=doc.createElement("ul");for(const edge of view.connections){const row=doc.createElement("li");row.textContent=`${edge.source} ↔ ${edge.destination} · ${edge.kind}${edge.note?` · ${edge.note}`:""}`;edges.append(row)}connections.append(edges);panel.append(connections);

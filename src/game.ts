@@ -58,7 +58,7 @@ import {
   gainAperture,
   progressLead,
 } from "./interactions.ts";
-import { ensurePerceptionInPlace, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
+import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks } from "./fractured.ts";
@@ -315,6 +315,24 @@ function dressDeepFloor(map, floor) {
     if ((dx || dy) && t && !t.blocked && !t.environment && !map.objects.some((o) => o.x === x && o.y === y) && !map.objects.some((o) => o.kind === "emberDoor")) map.objects.push({ id: "ember-door", kind: "emberDoor", name: "Ember Door", x, y, state: "open", actions: ["burn"] }); }
   return map;
 }
+// Stable, area-scoped ids shared by traversal receipts and the dungeon Atlas. Ordinary Cube doorways are tile geometry,
+// so expose small synthetic door records without changing the pinned generator or its maps.
+export const dungeonDoorId=(areaId,door)=>`${String(areaId)}::${String(door?.id||`doorway-${door?.x}-${door?.y}`)}`;
+const dungeonDoorCache=new WeakMap();
+function dungeonDoorCandidate(areaId,o){const d={...o,id:dungeonDoorId(areaId,o),objectId:o.id,synthetic:false};for(const key of['state','opened','unlocked','unsealed','sealed','barred','blocked'])Object.defineProperty(d,key,{enumerable:true,configurable:true,get:()=>o[key]});return d;}
+export function currentDungeonDoors(map,areaId){
+ if(!map||typeof map!=='object')return[];const cached=dungeonDoorCache.get(map);if(cached&&cached.areaId===areaId&&cached.objects===map.objects&&cached.tiles===map.tiles)return cached.list;
+ const objects=(map?.objects||[]).filter(o=>['buildingStair','pentShortcut','labGate','exit'].includes(o.kind)||o.kind==='dungeon'&&o.buildingDoor).map(o=>dungeonDoorCandidate(areaId,o));
+ if(map.building?.roomMaze){
+  const occupied=new Set(objects.map(d=>`${d.x},${d.y}`));
+  for(const t of map.tiles||[])if(t?.doorway&&!occupied.has(`${t.x},${t.y}`))objects.push({id:dungeonDoorId(areaId,t),objectId:null,kind:'doorway',name:'Doorway',x:t.x,y:t.y,synthetic:true});
+ }
+ dungeonDoorCache.set(map,{areaId,objects:map.objects,tiles:map.tiles,list:objects});return objects;
+}
+export const currentDungeonDoorIds=(map,areaId)=>currentDungeonDoors(map,areaId).map(d=>d.id);
+export function dungeonDoorAreaState(save,areaId){const raw=save?.dungeonDoorNavigation,nav=raw?.schema===1&&raw.areas&&typeof raw.areas==='object'&&!Array.isArray(raw.areas)?raw:ensureDungeonDoorNavigation(save),key=String(areaId);return nav.areas[key]||=( {arrivalDoorId:null,visitedDoorIds:[],waypointDoorIds:[]} );}
+export function setDungeonDoorWaypoint(save,areaId,doorId,on=true){const state=dungeonDoorAreaState(save,areaId),id=String(doorId||''),prefix=`${areaId}::`;if(!id.startsWith(prefix))return false;const has=state.waypointDoorIds.includes(id);if(!on){state.waypointDoorIds=state.waypointDoorIds.filter(q=>q!==id);return has;}if(has)return true;if(state.waypointDoorIds.length>=3)return false;state.waypointDoorIds=[...state.waypointDoorIds,id];return true;}
+export function recordDungeonDoorTraversal(save,{fromAreaId,fromDoorId,toAreaId=fromAreaId,toDoorId=null}){const from=dungeonDoorAreaState(save,fromAreaId),source=String(fromDoorId||'');if(!source.startsWith(`${fromAreaId}::`))return false;if(!from.visitedDoorIds.includes(source))from.visitedDoorIds.push(source);from.visitedDoorIds=from.visitedDoorIds.slice(-512);if(toDoorId){const target=String(toDoorId),to=dungeonDoorAreaState(save,toAreaId);if(!target.startsWith(`${toAreaId}::`))return true;if(!to.visitedDoorIds.includes(target))to.visitedDoorIds.push(target);to.visitedDoorIds=to.visitedDoorIds.slice(-512);to.arrivalDoorId=target;}return true;}
 // A labyrinth chamber as this journey left it: keys already taken are gone, sealed doors whose key you hold are open, a
 // shortcut opened from the far side is open from the hall too (all kept on the labyrinth's first chamber's history).
 function labyrinthState(save, map) {
@@ -4369,6 +4387,7 @@ export class Game {
     } else if(r.transition==="displacement"){
       this.startDisplacement(o,false);
     } else if (r.transition === "dungeon") {
+      const exteriorAreaId=this.areaId(),exteriorDoorId=o.buildingDoor?dungeonDoorId(exteriorAreaId,o):null;
       this.save.session.dungeonReturn = {
         rx: this.rx,
         ry: this.ry,
@@ -4399,6 +4418,12 @@ export class Game {
       if (o.enterAt === "roof" && this.map.building?.roofLadder) { const at = buildingArrival(this.map, this.map.building.roofLadder.x, this.map.building.roofLadder.y); this.player.x = at.x; this.player.y = at.y; } // down through its roof hatch
       if (o.buildingDoors && this.map.building) dungeonHistory(this.save, `${this.map.building.base}:f1`).buildingDoors = { ...o.buildingDoors }; // where each of its ways out lets you out
       if (o.buildingDoors && this.map.building?.roomMaze && this.map.building.vault) addRoofExit(this.save, this.areaId(), this.map, dungeonHistory(this.save, this.areaId())); // ROOM_MAZES: the vault stands on the floor the door opens onto, laid before its door was recorded
+      if(exteriorDoorId&&(this.map.building?.labyrinth||this.map.building?.pentagon)){
+        const areaId=this.areaId(),targetId=o.enterAt==="breach"?"building-breach":o.enterAt==="roof"?null:o.enterAt?`building-exit-${o.enterAt}`:"building-exit";
+        const doors=targetId?currentDungeonDoors(this.map,areaId).filter(d=>d.objectId===targetId):[];
+        if(doors.length===1)recordDungeonDoorTraversal(this.save,{fromAreaId:exteriorAreaId,fromDoorId:exteriorDoorId,toAreaId:areaId,toDoorId:doors[0].id});
+        else if(this.save.dungeonDoorNavigation?.areas?.[areaId])dungeonDoorAreaState(this.save,areaId).arrivalDoorId=null;
+      }
       if (this.map.building) this.defeatNotice = { title: this.map.name.toUpperCase(), detail: this.map.building.roomMaze ? `${this.map.building.vaultLine || this.map.building.hint} · ${this.labyrinthProgress()}` : this.map.building.labyrinth ? `one way through, one real end · ${this.labyrinthProgress()}` : `${this.map.building.floors} floors · find the ladder up · mind the floor`, kind: "danger" };
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
       if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
@@ -4409,7 +4434,7 @@ export class Game {
           return this.finishSkySummit(h.skySummitRoute);
         }
       }
-      if(this.save.session.activeDisplacement){if(!this.thresholdOpen()){this.message="The Mislaid Threshold remains sealed while its guardian lives. Its guardian is marked on the dungeon map.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).annexNext){this.climbAnnex(dungeonHistory(this.save,this.areaId()).annexNext)}/* release 678: up to the annex's next island */else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).skyHop){const id=this.areaId();this.leaveDungeon("");this.skyHop(id,skyAnnexFloor(id)===3?SKY_ANNEX.messages.top:"The cloud gate lets go of you. You fall a long way, and land far off.")}/* release 589 */else { const sc = this.pentShortcutOpened; this.pentShortcutOpened = null; this.leaveDungeon(sc ? sc.message : "You emerge at the dungeon entrance."); if (sc) { const d = this.map.objects.find((q) => q.pentagonDoor && q.shortcutKey === sc.door); if (d) { d.opened = true; this.shortcutBurst = { x: d.x, y: d.y, t0: null, life: PENTAGON.shortcuts.burst }; } this.defeatNotice = { title: PENTAGON.shortcuts.notice, detail: "a door in the outer wall, open from the land now", kind: "discovery", sound: "shortcut" }; } }
+      if(this.save.session.activeDisplacement){if(!this.thresholdOpen()){this.message="The Mislaid Threshold remains sealed while its guardian lives. Its guardian is marked on the dungeon map.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).annexNext){this.climbAnnex(dungeonHistory(this.save,this.areaId()).annexNext)}/* release 678: up to the annex's next island */else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).skyHop){const id=this.areaId();this.leaveDungeon("");this.skyHop(id,skyAnnexFloor(id)===3?SKY_ANNEX.messages.top:"The cloud gate lets go of you. You fall a long way, and land far off.")}/* release 589 */else { const sc = this.pentShortcutOpened; this.pentShortcutOpened = null; const doorArea=this.map.building?.labyrinth||this.map.building?.pentagon?this.areaId():null; if(this.leaveDungeon(sc ? sc.message : "You emerge at the dungeon entrance.")&&doorArea)recordDungeonDoorTraversal(this.save,{fromAreaId:doorArea,fromDoorId:dungeonDoorId(doorArea,o)}); if (sc) { const d = this.map.objects.find((q) => q.pentagonDoor && q.shortcutKey === sc.door); if (d) { d.opened = true; this.shortcutBurst = { x: d.x, y: d.y, t0: null, life: PENTAGON.shortcuts.burst }; } this.defeatNotice = { title: PENTAGON.shortcuts.notice, detail: "a door in the outer wall, open from the land now", kind: "discovery", sound: "shortcut" }; } }
     } else if (r.transition === "checkpoint") {
       this.save.session.displacementJourney=null;
       if (clearRot(this.save)) this.message += " Resting here clears the blight rot."; this.curseRested(); // release 737
@@ -7137,14 +7162,53 @@ export class Game {
     const stair = { id: "annex-stair", kind: "annexStair", name: `Annex Stair · down to floor ${A.floor + 1}`, x: at.x, y: at.y, state: "open", actions: ["descend"], toId: annexFloorId(A.base, A.floor + 1), floor: A.floor + 1 };
     this.map.objects.push(stair); return stair;
   }
+  toggleDungeonDoorWaypoint(doorId) {const areaId=this.areaId(),state=dungeonDoorAreaState(this.save,areaId),on=!state.waypointDoorIds.includes(doorId);return setDungeonDoorWaypoint(this.save,areaId,doorId,on);}
+  noteInternalDoorCrossings(fromX,fromY,toX,toY) {
+    const map=this.map;
+    if(this.area!=="dungeon"||!map?.building?.roomMaze)return;
+    if(this._doorCrossing?.map!==map)this._doorCrossing={map,x:fromX,y:fromY,sides:new Map()};
+    const track=this._doorCrossing;
+    if(Math.hypot(fromX-track.x,fromY-track.y)>.15)track.sides.clear(); // teleport/relocation, not a walk through a door
+    track.x=toX;track.y=toY;
+    const areaId=this.areaId(),w=mapWidth(map,"dungeon"),free=(x,y)=>{const t=map.tiles[y*w+x];return t&&t.x===x&&t.y===y&&!t.blocked};
+    for(const door of currentDungeonDoors(map,areaId)){
+      if(door.kind!=="doorway"&&door.kind!=="labGate")continue;
+      const {x,y,id}=door;
+      if(Math.abs(toX-x)>1.35||Math.abs(toY-y) > 1.6 || door.kind==="labGate"&&door.state!=="open"){track.sides.delete(id);continue}
+      const ew=free(x-1,y)&&free(x+1,y),ns=free(x,y-1)&&free(x,y+1);
+      const horizontal=door.kind==="labGate"||ew&&!ns;
+      if(door.kind==="doorway"&&ew===ns){track.sides.delete(id);continue}
+      const a=horizontal?fromX-x:fromY+.25-y,b=horizontal?toX-x:toY+.25-y;
+      const lane=horizontal?toY+.25-y:toX-x;
+      if(Math.abs(lane)>.49){track.sides.delete(id);continue}
+      const end=Math.abs(b)>.51?Math.sign(b):0;
+      const approach=track.sides.get(id)||((Math.abs(a)>.51)?Math.sign(a):0);
+      if(end&&approach&&end!==approach){
+        recordDungeonDoorTraversal(this.save,{fromAreaId:areaId,fromDoorId:id,toDoorId:id});
+        track.sides.set(id,end);
+      }else if(approach||end)track.sides.set(id,end||approach);
+    }
+  }
+  exactBuildingReciprocal(source,fromAreaId,fromNode) {
+    const doors=currentDungeonDoors(this.map,this.areaId());
+    const pairedId=source.counterpartId||(/^lab-pass-\d+$/.test(source.id)&&Number.isInteger(fromNode)?`lab-pass-${fromNode}`:null);
+    const candidates=source.kind==="pentShortcut"?doors.filter(d=>d.kind==="pentShortcut"&&d.link===source.link)
+      :doors.filter(d=>d.kind==="buildingStair"&&d.toId===fromAreaId&&(pairedId?d.objectId===pairedId:d.x===source.toX&&d.y===source.toY));
+    return candidates.length===1?candidates[0]:null;
+  }
   // Great buildings (great-buildings.ts): a stair up or down to the next floor, each floor an area of its own.
-  goBuildingFloor(toId, x, y) {
-    const from = this.map?.building?.pentagon ? this.areaId() : null;
+  goBuildingFloor(toId, x, y, sourceDoor=null) {
+    const fromId=this.areaId(),fromNode=this.map?.building?.node,from = this.map?.building?.pentagon ? fromId : null;
     const prev = dungeonHistory(this.save, this.areaId()); prev.visitOpen = false; this.snapshotArea();
     this.save.session.activeDungeonId = toId; this.save.session.activeDungeonLevelId = null; pinDungeonLayout(this.save, toId);
     const h = dungeonHistory(this.save, toId); h.visits++; h.visitOpen = true;
     this.loadArea("dungeon", false); const at = buildingArrival(this.map, x, y); this.player.x = at.x; this.player.y = at.y;
     relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); this.projectiles = [];
+    if(this.map.building?.labyrinth||this.map.building?.pentagon){
+      const areaId=this.areaId(), reciprocal=sourceDoor&&this.exactBuildingReciprocal(sourceDoor,fromId,fromNode);
+      if(!reciprocal&&this.save.dungeonDoorNavigation?.areas?.[areaId])dungeonDoorAreaState(this.save,areaId).arrivalDoorId=null;
+      if(sourceDoor)recordDungeonDoorTraversal(this.save,{fromAreaId:fromId,fromDoorId:dungeonDoorId(fromId,sourceDoor),toAreaId:areaId,toDoorId:reciprocal?.id||null});
+    }
     this.pentagonPrevious = from && this.map?.building?.pentagon ? { from, to: toId } : null;
   }
   // Is a Great Castle on this corner for this journey? Its four sections must be new ground (none explored before castles).
@@ -7342,7 +7406,7 @@ export class Game {
     const S = PENTAGON.shortcuts, K = S.kinds[o.linkKind] || S.kinds.door, base = this.map.building.base, H = dungeonHistory(this.save, `${base}:f1`), key = pentagonLinkKey(o.link);
     const open = (H.labOpen || []).includes(key); if (!open && o.end !== "deep") { this.message = K.barred; return { ok: false, message: this.message }; }
     if (!open) { H.labOpen = [...new Set([...(H.labOpen || []), key])]; journalOnce(this.save, `pentagon-shortcut:${base}:${key}`, `${K.opens} (${o.name})`, PENTAGON.name); }
-    this.goBuildingFloor(o.toId, o.x, o.y); const there = this.map.objects.find((q) => q.kind === "pentShortcut" && q.link === o.link), where = this.map.name.split(" · ")[1] || "the other side";
+    this.goBuildingFloor(o.toId, o.x, o.y, o); const there = this.map.objects.find((q) => q.kind === "pentShortcut" && q.link === o.link), where = this.map.name.split(" · ")[1] || "the other side";
     if (there) { there.state = "open"; const at = buildingArrival(this.map, there.x, there.y); this.player.x = at.x; this.player.y = at.y; relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); if (!open) this.shortcutBurst = { x: there.x, y: there.y, t0: null, life: S.burst }; }
     this.message = open ? `${K.ride} to ${where}.` : K.opens;
     this.defeatNotice = open ? { title: this.map.name.toUpperCase(), detail: this.labyrinthProgress(), kind: "danger" } : { title: S.notice, detail: `${where} · ${this.labyrinthProgress()}`, kind: "discovery", sound: "shortcut" };
@@ -7519,10 +7583,10 @@ export class Game {
       if (o.bossGate && !(H.pentBosses || []).includes(this.map.building.node)) { const k = this.enemies.find((e) => e.pentBoss && !e.dead); this.message = `${PENTAGON.messages.bossGate}${k ? `: ${k.packName}` : ""}.`; return { ok: false, message: this.message }; }
       if (o.plateLock && !(H.labOpen || []).includes(`plate:${this.map.building.node}`)) { if (!this.map.tiles.some((t) => t.plate && t.build === "stone")) { this.message = PENTAGON.messages.plate; return { ok: false, message: this.message }; } H.labOpen = [...new Set([...(H.labOpen || []), `plate:${this.map.building.node}`])]; } // the Pentagon's pressure plate: a block on it holds the door, and once through it stays wedged open
       if (o.shortcutOpens) { H.labOpen = [...new Set([...(H.labOpen || []), o.shortcutOpens])]; } // opened from the far side: open from the hall now too
-      this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, where = this.map.name.split(" · ")[1] || "the next chamber";
+      this.goBuildingFloor(o.toId, o.toX, o.toY, o); const B = this.map.building, where = this.map.name.split(" · ")[1] || "the next chamber";
       this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${B.roomMaze ? B.hint : B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? HOLE_DROPS.messages.gallery : B.kind === "court" ? "out under the sky, still inside" : "find the way on"} · ${this.labyrinthProgress()}`, kind: "danger" };
       this.message = `${o.dir === "door" ? LABYRINTHS.messages.door : o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${where}.`; this.sync(); return { ok: true, message: this.message }; }
-    this.goBuildingFloor(o.toId, o.toX, o.toY); const B = this.map.building, top = B.floor >= B.floors;
+    this.goBuildingFloor(o.toId, o.toX, o.toY, o); const B = this.map.building, top = B.floor >= B.floors;
     this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };
     this.message = `${o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${this.map.name.split(" · ")[1] || `floor ${B.floor}`}.`; this.sync(); return { ok: true, message: this.message };
   }
@@ -7541,7 +7605,9 @@ export class Game {
     const R = o.roofExit, B = this.map.building, D = dungeonHistory(this.save, `${B.base}:f1`).buildingDoors;
     const door = D && D.rx === R.rx && D.ry === R.ry && D.front ? D.front : null;
     this.save.session.dungeonReturn = { rx: R.rx, ry: R.ry, x: door ? door.x : 16, y: door ? door.y : 16 };
+    const doorArea=B?.labyrinth||B?.pentagon?this.areaId():null;
     if (!this.leaveDungeon(ROOF_EXIT.messages.door)) return { ok: false, message: this.message };
+    if(doorArea)recordDungeonDoorTraversal(this.save,{fromAreaId:doorArea,fromDoorId:dungeonDoorId(doorArea,o)});
     const land = R.roof ? roofLanding(this.map, R.part) : null;
     if (land) { this.player.x = land.x; this.player.y = land.y; this.message = ROOF_EXIT.messages.roof; }
     else if (!door) { const d = this.map.objects.find((q) => q.kind === "dungeon" && q.buildingDoor && !q.roofHatch && !q.breachDoor && String(q.dungeonId || "").startsWith(`${B.base}:`)); if (d) { this.player.x = d.x; this.player.y = d.y; } }
@@ -8664,6 +8730,7 @@ export class Game {
       const fizzled = this.droneFizzleFx?.at === now ? `${this.message} ` : ""; // the drone fizzle's why stays in front of the fall
       if (hurt === Infinity) { p.hp = 0; this._fatalFall = true; this.message = `${fizzled}The Wayfarer falls ${drop} levels.`; }
       else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 400); this.message = `${fizzled}A hard landing: ${drop} levels down.`; }
+      if(!fellIntoHazard)this.noteInternalDoorCrossings(fromX,fromY,p.x,p.y);
     }
     if(!fellIntoHazard&&!terrainHazard&&aerial)this.save.magicSkills.lastSafe={x:p.x,y:p.y,area:this.area,areaId:this.areaId()};
     if(!fellIntoHazard&&this.area==="dungeon")this.updateDungeonDiscovery();
