@@ -12,7 +12,7 @@
 // Static layers are cached: each floor and formation tile is a sprite (a few variants per density band and edge), the heart's
 // figure and the standing lattices are sprites, and the land beyond the map is a pattern of the same formations; the per-frame
 // work is a handful of strokes, bounded by the quality tier, and still under reduced motion.
-import { PENTAGON_ARENA } from "./pentagon-arena.js?v=r860-7df1ae3e3e1b";
+import { PENTAGON_ARENA } from "./pentagon-arena.js?v=r862-d5057d129fcd";
 
 export const STILLWORKS_ART = {
   res: 3, // sprite pixels per screen pixel at most (devicePixelRatio, capped)
@@ -169,7 +169,7 @@ export function drawStillworksBeyond(ctx, g, s, w, h) {
 }
 // After the ground, before the creatures: the floor's great order, the heart's figure, the light falling inward, the counting in the
 // grain and the lattice under the Wayfarer's feet. `quality` is the presentation tier; `reduce` holds everything still.
-export function drawStillworksLight(ctx, g, s, now, quality = "balanced", reduce = false) {
+export function drawStillworksLight(ctx, g, s, now, quality = "balanced", reduce = false, drawCover = true) {
   const W = g.map?.stillworks; if (!W) return; const P = PENTAGON_ARENA, cx = W.cx * s, cy = W.cy * s, R = W.radius * s, inner = Math.cos(Math.PI / 5);
   ctx.save();
   // the great order: terraces and five spokes, faint
@@ -196,7 +196,7 @@ export function drawStillworksLight(ctx, g, s, now, quality = "balanced", reduce
     const e = r + j, n = Math.ceil(2 * e / j) + 1, fy = ((oy % j) + j) % j, fd = (((oy - e - ox) % j) + j) % j; ctx.lineWidth = .6; ctx.strokeStyle = nearGrad || `rgba(${A.latticeRgb},${N.alpha * .5})`; ctx.beginPath(); // world-aligned lines, drawn in local space
     for (let y = -fy - n * j; y <= e; y += j) if (y >= -e) { ctx.moveTo(-e, y); ctx.lineTo(e, y); } for (let x = fd - n * j; x <= e; x += j) { ctx.moveTo(x, -e); ctx.lineTo(x + 2 * e, e); } ctx.stroke(); ctx.globalAlpha = 1; }
   ctx.restore();
-  drawStillworksPillars(ctx, W, s);
+  if (drawCover) drawStillworksPillars(ctx, W, s);
 }
 // The pillars (arena version 2; pentagon-arena.ts cover): one cached sprite per variant and size, drawn standing on their stone after the
 // ground and before the creatures, so a Wayfarer sheltering behind one is still seen. At most `PENTAGON_ARENA.cover.count` draws.

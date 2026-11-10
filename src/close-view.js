@@ -1,25 +1,25 @@
-import { rangedWeapon } from './items.js?v=r860-7df1ae3e3e1b';
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r860-7df1ae3e3e1b";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r860-7df1ae3e3e1b";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r860-7df1ae3e3e1b";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r860-7df1ae3e3e1b";
-import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r860-7df1ae3e3e1b";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r860-7df1ae3e3e1b";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r860-7df1ae3e3e1b';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r860-7df1ae3e3e1b";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.js?v=r860-7df1ae3e3e1b';
-import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r860-7df1ae3e3e1b';
-import { fistCharge } from './brawler-spells.js?v=r860-7df1ae3e3e1b';
-import { dronePos } from "./affixes.js?v=r860-7df1ae3e3e1b";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r860-7df1ae3e3e1b";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r860-7df1ae3e3e1b";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r860-7df1ae3e3e1b";
-import { knockdownPose } from "./lightning-giant-render.js?v=r860-7df1ae3e3e1b";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r860-7df1ae3e3e1b";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r860-7df1ae3e3e1b";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r860-7df1ae3e3e1b";
-import { SIGIL_CELLS } from "./watcher.js?v=r860-7df1ae3e3e1b";
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r860-7df1ae3e3e1b"; // version 4: the GPU scene
+import { rangedWeapon } from './items.js?v=r862-d5057d129fcd';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r862-d5057d129fcd";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r862-d5057d129fcd";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r862-d5057d129fcd";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r862-d5057d129fcd";
+import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r862-d5057d129fcd";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r862-d5057d129fcd";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r862-d5057d129fcd';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r862-d5057d129fcd";
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.js?v=r862-d5057d129fcd';
+import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r862-d5057d129fcd';
+import { fistCharge } from './brawler-spells.js?v=r862-d5057d129fcd';
+import { dronePos } from "./affixes.js?v=r862-d5057d129fcd";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r862-d5057d129fcd";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r862-d5057d129fcd";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r862-d5057d129fcd";
+import { knockdownPose } from "./lightning-giant-render.js?v=r862-d5057d129fcd";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r862-d5057d129fcd";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r862-d5057d129fcd";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r862-d5057d129fcd";
+import { SIGIL_CELLS } from "./watcher.js?v=r862-d5057d129fcd";
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r862-d5057d129fcd"; // version 4: the GPU scene
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -235,7 +235,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r860-7df1ae3e3e1b's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r862-d5057d129fcd's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -395,7 +395,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r860-7df1ae3e3e1b's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r862-d5057d129fcd's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -412,10 +412,13 @@ export const closeViewControl = (g) => g?.save?.closeViewCamera === "crescent" ?
 export const closeViewPreset = (g) => CLOSE_VIEW.presets[g?.save?.closeViewPreset] || CLOSE_VIEW.presets[CLOSE_VIEW.defaultPreset];
 
 const WALL_EXEMPT = /water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|sky|star|cloud/i;
-// An interior: a building's, a keep's or a Pentagon's floor. Not the Pentagon's finale (the walk among the stars) nor its
-// arena: those are open to the sky. The Pentagon's courts, roof and balconies are tiles of its overworld section, so they keep
-// the ordinary view without asking.
-export function interiorMap(map) { return !!map?.building && !map.building.finale && (!map.landscape || (interiorTerrain(map) && map.tiles?.length <= 4096 && map.width <= 64 && map.height <= 64)) && !map.stillworks && !map.skyCloud && !map.movers?.length && !map.canopy; }
+const STILLWORKS_AIR = Object.freeze({ near: 9, far: 22, ambient: [.32, .39, .50], fog: [.038, .051, .077], haze: [.14, .19, .27], hazeBand: [.08, .42] });
+export const stillworksCloseView = map => !!(map?.pentArena && map.building?.arena && map.stillworks?.walkerCloseView);
+// The Void Walker arena has its own open-air scene. Other finale maps and outdoor sections use the world camera.
+export function interiorMap(map) {
+  if (map?.stillworks) return stillworksCloseView(map);
+  return !!map?.building && !map.building.finale && (!map.landscape || (interiorTerrain(map) && map.tiles?.length <= 4096 && map.width <= 64 && map.height <= 64)) && !map.skyCloud && !map.movers?.length && !map.canopy;
+}
 // An open-air tile inside an interior's map (a keep's yard, a labyrinth court): the ordinary view there.
 const OPEN_AIR_KINDS = new Set(["yardGrass"]);
 export function openAirAt(map, x, y) { const w = Math.max(1, Number(map?.width) || 32), t = map?.tiles?.[Math.floor(y + .75) * w + Math.floor(x + .5)]; return !!t && (t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || OPEN_AIR_KINDS.has(t.kind)); }
@@ -460,7 +463,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r860-7df1ae3e3e1b's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r862-d5057d129fcd's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
@@ -642,7 +645,8 @@ function ensureCam(g) {
   CAM.focal = 1; CAM.focalV = 0;
   CAM.map = g.map; CAM.drawn = false; CAM.dist = closeViewPreset(g).distance; CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.bodyYaw = CAM.bodyDesiredYaw = FACING_YAW[g.player.facing] ?? NaN; CAM.bodyTransient = false; CAM.bodyRevision = CAM.targetRevision = 0; CAM.targetRecentre = false; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.shoulderRoom = CAM.shoulderClearFor = 0; CAM.pausedAt = NaN;
   CAM.pausedTotal = Number(g.presentationPausedMs) || 0;
-  const facing = FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
+  const entry = g.map.entry, arena = stillworksCloseView(g.map) && entry && Math.hypot(g.player.x - entry.x, g.player.y - entry.y) <= 1.25 ? g.map.stillworks : null;
+  const facing = arena ? Math.atan2(arena.cy - footY(g.player), arena.cx - footX(g.player)) : FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
   CAM.rigActive = false; CAM.rigIndex = CAM.rigPending = CAM.rigHold = CAM.rigOffset = CAM.rigOffsetV = 0; CAM.centeredRear = false; CAM.recentre = NaN;
   const preset = closeViewPreset(g), evaluate = (angle) => {
     const fx = Math.cos(angle), fy = Math.sin(angle), forward = Math.min(6, open(angle));
@@ -655,7 +659,7 @@ function ensureCam(g) {
     return { score: forward * (.15 + reach / preset.distance), forward, reach, index };
   };
   let yaw = facing, best = evaluate(facing), fallback = best.reach >= CLOSE_VIEW.camera.minDistance ? { ...best, yaw: facing, facingDelta: 0 } : null;
-  if (best.forward < preset.distance + 1 || best.reach < preset.distance * .55)
+  if (!arena && (best.forward < preset.distance + 1 || best.reach < preset.distance * .55))
     for (let i = 0; i < 8; i++) {
       const a = wrap(i * Math.PI / 4), candidate = evaluate(a), facingDelta = Math.abs(wrap(a - facing));
       if (candidate.reach >= CLOSE_VIEW.camera.minDistance && (!fallback || candidate.score > fallback.score + .01 || (Math.abs(candidate.score - fallback.score) <= .01 && facingDelta < fallback.facingDelta))) fallback = { ...candidate, yaw: a, facingDelta };
@@ -995,7 +999,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r860-7df1ae3e3e1b's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r862-d5057d129fcd's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
@@ -1074,7 +1078,7 @@ function abortCloseViewGLFrame() {
 }
 export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
-  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift, fogNear = Fg.near + fogShift, fogFar = Fg.far + fogShift;
+  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg, fogNear = air.near + fogShift, fogFar = air.far + fogShift;
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
   closeViewStats.rigProbes = closeViewStats.rigSamples = 0;
@@ -1085,6 +1089,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (useGL && !closeViewGLFrameReady()) return abortCloseViewGLFrame();
   if (useGL) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
+  if (!useGL && stillworksCloseView(g.map)) return false; // cover and upright gates need the depth buffer
   if (!useGL && g.map?.building && hasStoneBuilds(g.map)) return false; // a raised legacy block also needs real depth; use the established world-view fallback
   const shots = useGL ? selectProjectedShots(g, Q, reduce) : null;
   if (useGL && !shots) return false;
@@ -1646,8 +1651,8 @@ const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOS
   const un = GRIT.variants.find((v) => v.id === "unresolved") || { shimmer: 0, period: 1 };
   return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null, hall: null, backdrop: NO_BACKDROP, inlay: SIGIL_INLAY,
     env(gl, U, F, lavaTiles) { const q = UNI.q, th = UNI.th, tg = UNI.tg, C = th.ceiling, Fl = th.floor;
-      gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
-      gl.uniform4f(U.u_hall, UNI.backdrop.kind, UNI.hall?.open ? 1 : 0, UNI.hall?.sky ? 1 : 0, HALL_VIEW.shaftDepth);
+      gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling && !UNI.openArena ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
+      gl.uniform4f(U.u_hall, UNI.backdrop.kind, UNI.hall?.open ? 1 : 0, UNI.openArena ? 2 : UNI.hall?.sky ? 1 : 0, HALL_VIEW.shaftDepth);
       gl.uniform3fv(U.u_backdrop, UNI.backdrop.colors);
       gl.uniform3fv(U.u_inlayColors, UNI.inlay);
       gl.uniform4f(U.u_pit, Pt.hole, Pt.chasm, Pt.dark, Pt.lip); gl.uniform3fv(U.u_stone, stone); gl.uniform3fv(U.u_lip, lip); gl.uniform3fv(U.u_safe, safe); gl.uniform3fv(U.u_chasm, chasm);
@@ -1866,10 +1871,27 @@ function buildStatic(map, geo, th) {
   }
   const arch = new Uint8Array(w * h), capped = new Uint8Array(w * h), D = th.decor || {}, Pr = th.props || {}, PL = th.plinth, CO = th.cornice, PIL = th.pilaster;
   const iron = [.09, .085, .08], wax = [.72, .66, .52], clay = [.36, .27, .2], wood = [.2, .13, .08];
+  const stillworks = stillworksCloseView(map);
+  const arenaStone = [.105, .12, .16], pillarStone = [.16, .19, .25], lattice = [.37, .56, .67];
   for (let i = 0; i < geo.count; i++) { const o = i * 10, x0 = Fc[o], y0 = Fc[o + 1], x1 = Fc[o + 2], y1 = Fc[o + 3], nx = Fc[o + 4], ny = Fc[o + 5], tx = Fc[o + 6], ty = Fc[o + 7], st = Fc[o + 8], tier = tiles[ty * w + tx]?.tier === true, low = Fc[o + 9] || tier;
     const door = st === STYLE_INDEX.door, mat = door ? 5 : MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = tier ? HALL_VIEW.tierHeight : low ? RB : H;
     const a0 = ny !== 0 ? x0 : y0, a1 = ny !== 0 ? x1 : y1, grit = (geo.detail[i] || 0) * 4 + (geo.detailInst[i] & 15) * 2 + (geo.detailInst[i] & 16 ? 1 : 0), cb = geo.corner[i] & 3, ab = geo.ao[i] & 3, bits = cb + ab * 4, side = nx > 0 ? 1 : nx < 0 ? 3 : ny > 0 ? 2 : 0, hsh = ((tx * 73 + ty * 151 + side * 37) % 997 + 997) % 997;
     const dx = x1 - x0, dy = y1 - y0, fx = tx + nx, fy = ty + ny, front = free(fx, fy), exterior = tx - nx < 0 || ty - ny < 0 || tx - nx >= w || ty - ny >= h, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    if (stillworks) {
+      const tile = tiles[ty * w + tx];
+      const stone = tile.pillar || tile.monolith ? pillarStone : arenaStone;
+      quad(x0, y0, x1, y1, 0, top, a0, a1, nx, ny, 0, 0, stone, 0, grit, bits, hsh, tx, ty);
+      if (!capped[ty * w + tx]) {
+        capped[ty * w + tx] = 1;
+        flat(tx, ty, tx + 1, ty, tx + 1, ty + 1, tx, ty + 1, top, 1, 0, stone, hsh, tx, ty);
+      }
+      if (front && (tile.pillar || tile.monolith)) {
+        const face = paint(mx + nx * .012, my + ny * .012, top * .52, nx, ny, .78, top * .8);
+        if (tile.monolith) face.path([[0, -.47], [-.30, 0], [0, .47], [.30, 0], [0, -.47]], lattice);
+        else for (const level of [-.32, 0, .32]) face.rect(0, level, .5, .012, lattice);
+      }
+      continue;
+    }
     // the face's decoration, chosen once
     let deco = 0; if (!door && !low && mat !== 4) { const r = rnd(tx, ty, side, 9); let acc = 0; const pick = (k, share, code) => { if (!deco && share) { acc += share; if (r < acc) deco = code; } };
       if (exterior) pick("slit", D.slit, 3); pick("tapestry", D.tapestry, 2); pick("banner", D.banner, 1); pick("roots", D.roots, 4); pick("niche", D.niche, 6); pick("pods", D.pods, 7); pick("vent", D.vent, 8); }
@@ -1906,10 +1928,18 @@ function buildStatic(map, geo, th) {
     if (Pr.chain && rnd(tx, ty, side, 43) < Pr.chain) cards.push(5, mx + ux * along(44) + nx * .32, my + uy * along(44) + ny * .32, .8 + rnd(tx, ty, side, 45) * .7, 0, 0, 0, 0);
     if ((ab & 1) && Pr.web && rnd(tx, ty, side, 46) < Pr.web) cards.push(4, x0, y0, ux, uy, nx, ny, .45 + rnd(tx, ty, side, 47) * .35);
   }
+  // A low marker makes the optional landing legible while keeping the approach dim.
+  const crawlLanding = map.closeViewCrawl?.landing;
+  if (crawlLanding && free(crawlLanding.x, crawlLanding.y)) {
+    const { x, y } = crawlLanding;
+    const marker = paint(x + .5, y + .5, .025, 0, 0, .45, .45);
+    marker.rect(0, 0, .3, .085, [.58, .43, .24]);
+    lights.push(x + .5, y + .5, .42, 2, .7, src.hue, 0, 1);
+  }
   // arches over doorways: a passage one tile wide through a wall between two rooms takes an arch at each end, with its soffit
   const A = th.arch, stoneMat = th.wall.kind === 1 ? 1 : th.wall.kind, acol = th.wall.kind === 1 ? wood : tg.wall, round = A.radius > .01;
   const roomy = (x, y, ew) => ew ? !solid(x - 1, y) || !solid(x + 1, y) : !solid(x, y - 1) || !solid(x, y + 1);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue;
+  for (let y = 0; !stillworks && y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue;
     const direction = interiorTerrain(map) ? interiorArchAt(map, x, y) : null;
     const ns = interiorTerrain(map) ? direction === "ns"
       : solid(x - 1, y) && solid(x + 1, y) && !solid(x, y - 1) && !solid(x, y + 1) && roomy(x, y - 1, true) && roomy(x, y + 1, true);
@@ -1925,7 +1955,7 @@ function buildStatic(map, geo, th) {
       for (const q of [a, b, c2, a, c2, d2]) V(q[0], q[1], q[2], 0, q[3], q[2], H, 0, 0, 5, stoneMat, acol, 0, 0, 0, hsh, x, y); } }
   // Tile-sized beam sections use the same discovery mask as their ceiling plane. At a
   // crossing the short sections butt against the long one and share no bottom faces.
-  if (!map.hall?.open) {
+  if (!stillworks && !map.hall?.open) {
     const { data: mask } = closeViewMask(map);
     const covered = new Uint8Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -2563,15 +2593,17 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   F.cx = CAM.cx; F.cy = CAM.cy; F.fx = CAM.fx; F.fy = CAM.fy; F.rx = CAM.rx; F.ry = CAM.ry; F.hc = CAM.hc; F.cosP = CAM.cosP; F.sinP = CAM.sinP; F.F = CAM.F; F.ppx = CAM.ppx; F.ppy = CAM.ppy;
   F.px = footX(p); F.py = footY(p);
   // the theme's light and air (the Pentagon's dread still shrinks the carried light, as before)
-  const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = (fogNear - CLOSE_VIEW.fog.near); // the blend's fog shift, carried over
-  F.fogNear = Fo.near + fogK; F.fogFar = Fo.far + fogK; F.reach = F.fogFar + 2;
-  F.fog.set(tg.fog); F.haze.set(tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = Fo.haze[0]; F.fogP[3] = Fo.haze[1];
-  F.amb.set(tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + interiorSurfaceHeight(g.map, footX(p), footY(p)); F.torchP[3] = .3;
+  const air = stillworksCloseView(g.map) ? STILLWORKS_AIR : null;
+  const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = fogNear - CLOSE_VIEW.fog.near;
+  F.fogNear = air ? fogNear : Fo.near + fogK; F.fogFar = air ? fogFar : Fo.far + fogK; F.reach = F.fogFar + 2;
+  F.fog.set(air?.fog || tg.fog); F.haze.set(air?.haze || tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = (air?.hazeBand || Fo.haze)[0]; F.fogP[3] = (air?.hazeBand || Fo.haze)[1];
+  F.amb.set(air?.ambient || tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + interiorSurfaceHeight(g.map, footX(p), footY(p)); F.torchP[3] = .3;
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
   UNI.hall = g.map.hall?.tall ? g.map.hall : null;
-  UNI.backdrop = BACKDROPS.get(UNI.hall?.backdrop) || NO_BACKDROP;
+  UNI.openArena = !!air;
+  UNI.backdrop = BACKDROPS.get(air ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.inlay = st.inlay;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
   glMask(g.map, now, seen, drops, CLOSE_VIEW.gl.maskMs, th.floor.remap || null);
@@ -2632,7 +2664,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const residual = MODEL_STATE.admitted.has(it);
     const statusAlpha = residual && foe ? actorPresentation(foe)?.alpha ?? 1 : 1;
     const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
-    if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front,lx = bx - RX * hw, ly = by - RY * hw, rxp = bx + RX * hw, ryp = by + RY * hw, zb = -A.below;
+    if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front, ax = draw.wallAligned ? Math.sign(RX) || 1 : RX, ay = draw.wallAligned ? 0 : RY, lx = bx - ax * hw, ly = by - ay * hw, rxp = bx + ax * hw, ryp = by + ay * hw, zb = -A.below;
     BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
     if (foe || isPlayer) { if (MODEL_STATE.admitted.has(it)) shadow(X, Y, sc, statusAlpha); const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * statusAlpha, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }

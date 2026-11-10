@@ -1,6 +1,6 @@
-import { MODEL_FLOATS } from "./close-view-models.js?v=r860-7df1ae3e3e1b";
-import { buildVisualRevision } from "./building.js?v=r860-7df1ae3e3e1b";
-import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r860-7df1ae3e3e1b';
+import { MODEL_FLOATS } from "./close-view-models.js?v=r862-d5057d129fcd";
+import { buildVisualRevision } from "./building.js?v=r862-d5057d129fcd";
+import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r862-d5057d129fcd';
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -114,7 +114,7 @@ uniform float u_terrain;
 uniform sampler2D u_ground; uniform vec4 u_gmap; uniform vec2 u_tex; // gmap: px per tile, x0, y0 (device px of world 0,0), the texture's last row of ground
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 uniform vec4 u_ceil; uniform vec3 u_ceilRGB; uniform vec4 u_ceilK; // ceil: height, on (0/1), bay (tiles), detail (0/1); ceilK: kind, rib width, darkness above, -
-uniform vec4 u_hall; uniform vec3 u_backdrop[3]; // backdrop kind, open roof, skylight, shaft depth
+uniform vec4 u_hall; uniform vec3 u_backdrop[3]; // backdrop kind, open roof, skylight (1) or arena sky (2), shaft depth
 uniform vec4 u_pit; uniform vec3 u_stone; uniform vec3 u_lip; uniform vec3 u_safe; uniform vec4 u_safeP; // pit: hole depth, chasm depth, darkening a tile, lip width; safeP: near, full, breath, on
 uniform vec4 u_lava; uniform vec3 u_lavaA; uniform vec3 u_lavaB; uniform vec3 u_lavaC; uniform vec3 u_chasm; // lava: scale, flow, light, light reach
 uniform vec3 u_inlayColors[3];
@@ -260,7 +260,7 @@ void main() {
   vec2 css = vec2(gl_FragCoord.x, u_dev.y - gl_FragCoord.y) * (u_size / u_dev);
   float b = (css.x - u_pp.x) / u_F, a = (u_pp.y - css.y) / u_F;
   vec3 dir = vec3(u_fwd * (u_cosP + a * u_sinP) + u_right * b, -u_sinP + a * u_cosP);
-  vec3 col = u_terrain > .5 && dir.z > 0.0 && u_hall.x > 0.0 ? hallBackdrop(dir) : u_fog;
+  vec3 col = (u_terrain > .5 || u_hall.z > 1.5) && dir.z > 0.0 && u_hall.x > 0.0 ? hallBackdrop(dir) : u_fog;
   if (u_terrain > .5) { outColor = vec4(finish(col), 1.0); return; }
   if (dir.z < -1e-5) { float t = -u_hc / dir.z; vec2 P = u_cam + dir.xy * t; ivec2 T = ivec2(floor(P)); uvec4 m = maskAt(T);
     float depth = t /* dir's component along the view axis is 1: t is the camera depth */, fogK = clamp((depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0);

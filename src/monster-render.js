@@ -1,21 +1,21 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r860-7df1ae3e3e1b";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r860-7df1ae3e3e1b";
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r862-d5057d129fcd";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r862-d5057d129fcd";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r860-7df1ae3e3e1b"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r860-7df1ae3e3e1b";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r862-d5057d129fcd"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r862-d5057d129fcd";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r860-7df1ae3e3e1b";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r860-7df1ae3e3e1b";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r860-7df1ae3e3e1b";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r860-7df1ae3e3e1b";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r860-7df1ae3e3e1b";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r860-7df1ae3e3e1b";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r860-7df1ae3e3e1b";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r862-d5057d129fcd";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r862-d5057d129fcd";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r862-d5057d129fcd";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r862-d5057d129fcd";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r862-d5057d129fcd";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r862-d5057d129fcd";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r862-d5057d129fcd";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r860-7df1ae3e3e1b";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r862-d5057d129fcd";
 
 const TAU = Math.PI * 2;
 
@@ -1878,7 +1878,7 @@ function drawCrystalWater(ctx, f, s, now, lift, presentation) {
   ctx.restore(); ctx.restore();
 }
 
-export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0, presentation = {}) {
+export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift = () => 0, presentation = {}, captureRift = null) {
   // Release 237: the glow and dark rims of every settled lava pool first, so pools that touch read as one spill.
   for (const f of effects || []) {
     if (f.kind !== "lava" || f.arming > 0 || !visible(f)) continue;
@@ -1894,7 +1894,11 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
   }
   for (const f of effects || []) {
     if (!visible(f)) continue;
-    if (VOID_EFFECTS.has(f.kind)) { drawVoidEffect(ctx, f, s, now, lift, presentation); continue; }
+    if (VOID_EFFECTS.has(f.kind)) {
+      if (f.kind === "voidRift" && captureRift) captureRift(f, () => drawVoidEffect(ctx, f, s, now, lift, presentation));
+      else drawVoidEffect(ctx, f, s, now, lift, presentation);
+      continue;
+    }
     if (GIANT_EFFECT_KINDS.has(f.kind)) { drawGiantEffect(ctx, f, s, now, presentation); continue; }
     if (STAG_EFFECT_KINDS.has(f.kind)) { drawStagEffect(ctx, f, s, now, presentation); continue; }
     if (DRAGON_EFFECT_KINDS.has(f.kind)) { drawDragonEffect(ctx, f, s, now, presentation); continue; }
