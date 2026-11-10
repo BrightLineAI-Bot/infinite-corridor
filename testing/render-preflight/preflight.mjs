@@ -124,10 +124,11 @@ export async function preflight({ input, directory, repositoryDirectory, token }
       receipt.cleanup = rendered.cleanup || 'unconfirmed';
       receipt.rendererClass = rendered.rendererClass || 'unknown';
       receipt.screenshots = rendered.scenarios?.flatMap(scenario =>
-        [scenario.screenshot, ...(scenario.witness?.screenshots || [])].filter(Boolean)) || [];
+        [scenario.firstScreenshot, scenario.screenshot, ...(scenario.witness?.screenshots || [])].filter(Boolean)) || [];
       const last = rendered.scenarios?.at(-1);
       const transport = rendered.errors?.find(message => /^CDP timeout: [A-Za-z.]+$/.test(message));
       receipt.browserProbe = { phase: rendered.phase, scenario: last?.scenario, transport,
+        diagnosticStages: last?.diagnosticsStages, display: rendered.display, quality: rendered.closeViewQuality,
         observed: rendered.scenarios?.filter(scenario => scenario.status === 'render-observed').length ?? 0 };
       receipt.failureScreenshot = rendered.failureScreenshot || { status: 'unavailable' };
       if (child.status === 0 && rendered.status === 'render-observed' && rendered.candidate?.digest === s.payload_digest && rendered.cleanup?.browserGroupStopped === true) receipt.status = 'render_observed';

@@ -80,7 +80,10 @@ try {
   const call=(method,params)=>cdp.send(method,params,sessionId);pageCall=call;
   await call('Page.enable');await call('Runtime.enable');await call('Network.enable');
   await call('Page.setLifecycleEventsEnabled',{enabled:true});
-  await call('Emulation.setDeviceMetricsOverride',{width:900,height:700,deviceScaleFactor:1,mobile:false});
+  // Keep the software runner's pixel load bounded with ordinary display and game settings.
+  receipt.display={width:768,height:540,deviceScaleFactor:1,mobile:false};
+  receipt.closeViewQuality='low';
+  await call('Emulation.setDeviceMetricsOverride',receipt.display);
   let contextId;
   const evaluate=async (expression,awaitPromise=false)=>{const r=await call('Runtime.evaluate',{expression,contextId,awaitPromise,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
@@ -94,7 +97,7 @@ try {
     checkpoint('scenario-navigate');
     const closeView=STILLWORKS_CASES.includes(scenario);
     const summit=scenario===SUMMIT_CASE;
-    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal'});
+    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.closeViewQuality});
     const navigation=await call('Page.navigate',{url:`${origin}/?${query}`});
     if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
     const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
@@ -111,7 +114,16 @@ try {
     checkpoint('scenario-ready');
     const ready=await waitForBrowserScene(()=>evaluate('!!document.querySelector("#scenarioPause") && !!globalThis.provingGroundGame?.()'));
     if(!ready)throw Error(`scenario did not boot: ${scenario}`);
-    await wait(4000);
+    const capture=async suffix=>{
+      const name=`${scenario}${suffix ? '-' + suffix : ''}.png`;
+      const screenshot=await call('Page.captureScreenshot',{format:'png'});
+      writeFileSync(join(out,name),Buffer.from(screenshot.data,'base64'));
+      return name;
+    };
+    checkpoint('scenario-first-capture');
+    entry.firstScreenshot=await capture('startup');
+    checkpoint('scenario-settle');
+    await wait(1500);
     checkpoint('scenario-diagnostics');
     if(!summit) for(let i=0;i<2;i++){
       const sample = await evaluate(`(async()=>{
@@ -129,12 +141,7 @@ try {
     checkpoint('scenario-witness');
     const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
       : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness : null;
-    const witnessTools={call,evaluate,wait,capture:async suffix=>{
-      const name=`${scenario}-${suffix}.png`;
-      const image=await call('Page.captureScreenshot',{format:'png'});
-      writeFileSync(join(out,name),Buffer.from(image.data,'base64'));
-      return name;
-    }};
+    const witnessTools={call,evaluate,wait,capture};
     if(witness) entry.witness=await witness(witnessTools);
     if(scenario.startsWith('routing-crawl-') && entry.witness?.status==='observed'){
       const panel=await routePanelWitness(scenario,witnessTools);
@@ -146,7 +153,7 @@ try {
     }
     // A PNG is evidence for human review, not an automatic aesthetic verdict.
     checkpoint('scenario-screenshot');
-    const image=await call('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,`${scenario}.png`),Buffer.from(image.data,'base64'));
+    entry.screenshot=await capture();
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
     if(summit){
       entry.scene='world-map';
@@ -157,7 +164,6 @@ try {
       entry.status='blocked';
       entry.reasons.push('Required input or encounter witness was not observed');
     }
-    entry.screenshot=`${scenario}.png`;
     currentObservation();currentObservation=null;
     checkpoint('scenario-observed');
   }
