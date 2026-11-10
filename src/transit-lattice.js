@@ -11,8 +11,8 @@
 // per kind, and what is set: `passives` (a constellation node id for its primary form, `id:alt` for its secondary) and
 // `echoes` (Echo ids). What a passive or Echo set here does is read by constellation.ts (nodeOn/altOn) and echoes.ts
 // (activeEchoes); setting one is done there, so this module stays free of both. Balance as data.
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r865-1532e8b05f7f";
-import { piecesNeeded, piecesToUnlock } from "./far-array.js?v=r865-1532e8b05f7f";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r866-2a08d6b00273";
+import { piecesNeeded, piecesToUnlock } from "./far-array.js?v=r866-2a08d6b00273";
 
 // payPer: "gate" pays each Gate once, when it is unlocked (Tim, 2026-11-05: "the coordinates should come once per gate"), its
 // pieces + 1 for the Listener (363's "components + 1"); "kill" is releases 363-759's payment for every Listener kill.

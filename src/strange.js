@@ -2,7 +2,7 @@
 // shrubs and rocks, not in chopping every tree: "you don't have to tell me where they are … they should be pretty rare".
 // A strange thing keeps its ordinary shape (and solidity) but shimmers, doubles and sheds pale motes (renderer.ts).
 // Touching it always opens a Glimpse; afterwards it is ordinary. Nothing marks them on the Atlas. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r865-1532e8b05f7f";
+import { hashSeed } from "./random.js?v=r866-2a08d6b00273";
 
 // Balance: the share of overworld sections holding one strange thing, and how near the Refuge they can be.
 export const STRANGE = { version: 1, chance: .035, minDepth: 1 };

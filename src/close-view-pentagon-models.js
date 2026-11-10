@@ -1,11 +1,44 @@
 // Authored Close View bodies for the Pentagon, its dungeon grotesques and its blue haunts.
 // Geometry follows the original monster-render silhouettes; presentation metadata controls admission.
-import { bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r865-1532e8b05f7f';
+import { bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r866-2a08d6b00273';
 
 const E5 = ellipsoid(5, 1), E6 = ellipsoid(6, 2), E8 = ellipsoid(8, 3);
 const limb = (points, color, swing, px, pz, sides = 4) => part(curvedTube(points, sides), 0, 0, 0, 1, 1, 1, color, swing, px, pz);
 const wing = membrane([[0,0,0],[.02,.18,.12],[-.14,.46,.08],[-.36,.65,-.05],[-.08,.20,-.10]]);
 const smallWing = membrane([[0,0,0],[-.10,.30,.05],[-.26,.44,-.05],[-.05,.12,-.08]]);
+
+// Void Walker: an ordinary traveller's scale and cloth silhouette, never an armoured giant.
+// The limb pieces carry a private two-bone role consumed by close-view-models: forearms/shins
+// inherit their shoulder/hip turn before bending at the elbow/knee, so the chains stay joined.
+const walkerBone=(points,color,chain,segment,pivot)=>({...limb(points,color,0,pivot[0],pivot[2],3),walkerBone:{chain,segment,pivot}});
+export const STILLWORKS_WALKER_MODEL=[
+  // A narrow layered coat, with two independently readable tails below the waist.
+  part(verticalLoft([[0,.14,0],[.01,.20,.24],[-.015,.22,.56],[.015,.18,.79]],6),0,0,.42,1,1,1,0x18151f),
+  part(membrane([[.02,-.18,.78],[.08,-.20,.36],[-.03,-.055,.04],[-.08,-.02,.42]]),0,0,.02,1,1,1,0x4a4258),
+  part(membrane([[.01,.18,.78],[.07,.20,.36],[-.02,.055,.04],[-.08,.02,.42]]),0,0,.02,1,1,1,0x292334),
+  // Hood, recessed cosmic face and restrained violet nebula/stars.
+  part(verticalLoft([[0,.19,0],[-.015,.25,.13],[-.04,.23,.32],[-.10,.14,.42]],6),-.015,0,1.08,1,1,1,0x514861),
+  part(E6,.145,0,1.30,.025,.145,.145,0x090615),
+  part(E5,.171,-.018,1.30,.008,.092,.075,0x5d3a83),
+  block(.181,-.068,1.335,.008,.008,.008,0xe8ddff), block(.183,.047,1.275,.006,.006,.006,0xb994ee),
+  block(.177,.015,1.355,.005,.005,.005,0xf7f0ff),
+  // Small clasp; no breastplate, weapon or attack prop.
+  part(taper,.11,0,1.03,.035,.035,.045,0x8f63ba),
+];
+for(const side of [-1,1]){
+  const arm=side<0?'leftArm':'rightArm',shoulder=[0,side*.205,1.03],elbow=[-.03,side*.265,.77],wrist=[.04,side*.285,.53];
+  STILLWORKS_WALKER_MODEL.push(
+    walkerBone([[...shoulder,.052],[...elbow,.043]],side<0?0x393146:0x2c2638,arm,'upper',shoulder),
+    walkerBone([[...elbow,.044],[...wrist,.032]],side<0?0x30293c:0x231e2d,arm,'lower',elbow),
+    {...part(E5,wrist[0],wrist[1],wrist[2]-.015,.043,.04,.055,0x171022,0,wrist[0],wrist[2]),walkerBone:{chain:arm,segment:'lower',pivot:elbow}},
+  );
+  const leg=side<0?'leftLeg':'rightLeg',hip=[-.015,side*.105,.48],knee=[.025,side*.12,.26],ankle=[-.015,side*.13,.10];
+  STILLWORKS_WALKER_MODEL.push(
+    walkerBone([[...hip,.06],[...knee,.052]],0x17141d,leg,'upper',hip),
+    walkerBone([[...knee,.052],[...ankle,.04]],side<0?0x121019:0x1c1823,leg,'lower',knee),
+    {...part(taper,.005,side*.13,.075,.075,.075,.105,side<0?0x121019:0x1d1926,0,.005,.075),walkerBone:{chain:leg,segment:'lower',pivot:knee}},
+  );
+}
 
 // Weeping Saint: bowed pale statue, covered face, red tears and long reaching arms.
 const weepingSaint = [

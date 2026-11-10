@@ -1,12 +1,12 @@
-import { dungeonWayfinding, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r865-1532e8b05f7f";
-import { serializeSave, deserializeSave } from './save-codec.js?v=r865-1532e8b05f7f';
-import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r865-1532e8b05f7f';
-import { drawRangedEffects } from "./combat-visuals.js?v=r865-1532e8b05f7f";
-import { createInput } from "./input.js?v=r865-1532e8b05f7f";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r865-1532e8b05f7f";
-import { CLOSE_VIEW_HOOKS, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r865-1532e8b05f7f"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r865-1532e8b05f7f";
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r865-1532e8b05f7f"; // release 791: Enter Proving Ground from Options
+import { dungeonWayfinding, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r866-2a08d6b00273";
+import { serializeSave, deserializeSave } from './save-codec.js?v=r866-2a08d6b00273';
+import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r866-2a08d6b00273';
+import { drawRangedEffects } from "./combat-visuals.js?v=r866-2a08d6b00273";
+import { createInput } from "./input.js?v=r866-2a08d6b00273";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r866-2a08d6b00273";
+import { CLOSE_VIEW_HOOKS, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r866-2a08d6b00273"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r866-2a08d6b00273";
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r866-2a08d6b00273"; // release 791: Enter Proving Ground from Options
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
