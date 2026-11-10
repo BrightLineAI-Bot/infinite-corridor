@@ -88,6 +88,8 @@ Publish 42785323582 succeeded on 2026-11-10. The live Pages identity and the liv
 
 On exact [r864 Preview](https://brightlineai-bot.github.io/infinite-corridor/previews/r864-9be7ed5f7dd5/), normal in-app `cua.createBrowserTab` returned `Timed out waiting for the Browser webview to attach for this browser-use page`. The in-app path stopped. Browser Companion had already stopped at its unverified selection. Both game candidates remain held for hosted visual acceptance. Production remains `r863-36c57768eed1`.
 
+Astra also cleared the full exact r863 → r865 diff, including wayfinding and skyway integration, against the still-live r863 identity. If that baseline holds, the latest exact r865 Preview can cover both changes once both hosted checks pass.
+
 ## Local ownership and r851 acceptance — 2026-11-09
 
 Tim transferred primary gameplay, integration, merge and publication ownership to the local Codex coordinator and directed the previous cloud gameplay coordinator to stop. The separate cloud effort may continue its assigned testing and publishing infrastructure work. Release numbering and production dispatch stay with the local coordinator. Main at takeover was r852 b635f4b34336b3bad89054919ed699070ab8bdaa.
