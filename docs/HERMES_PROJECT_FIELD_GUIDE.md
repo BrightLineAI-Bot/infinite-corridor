@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 863 — Verge Cleaver strike timing
+
+**CODE:** After comparing official Quaternius, Mixamo, Three.js and Babylon animation sources, the existing approved rig and shared Cleaver sampler remain the best fit. The sword counter-loads briefly, accelerates into the existing contact and decelerates through follow-through; the existing hip/shoulder layer follows a stronger counter-twist. Both rigs retain the four authored endpoints and exact inherited entry. See `docs/cleaver-motion-library-study.md` for license/compatibility analysis and `testing/cleaver-motion-preview.mjs` for the standalone offline CPU diagnostic.
+
+**BOUNDARY:** No dependency, asset, draw, canonical combat timing, hit, cooldown, Echo, dodge, save-schema or generator change. Seventy-one focused source checks pass, including 30/60 Hz imported/native samples, exact follow-ups and existing runtime contracts. Generated untextured CPU playback is not hosted normal-speed visual acceptance or phone performance evidence. Release numbering, build/CI, textured hosted acceptance and publication remain coordinator-owned gates.
+
 ## Release 862 — Stillworks visibility and arrival
 
 **CODE:** The Void Walker arena uses cool ambient light, a longer fog falloff and the existing sky shader. The arrival camera looks into the arena and extends its boom after the Wayfarer leaves the entrance. Scratch cover comparison points stay available when the same arena is regenerated.
