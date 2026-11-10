@@ -93,6 +93,31 @@ test('production native and unsupported fallback submissions retain solid nearby
 }));
 
 
+test('Stillworks submits the native Walker body, then falls back for an unsupported attack', () => withGPU(({ screen }) => {
+  const now = 100000;
+  const { game, stillworksProbes } = createLabFixture({ lab: 'close-view', scenario: 'stillworks-void-walker', now });
+  const walker = game.enemies.find(e => e.pentFinaleBeast === 'voidWalker');
+  const at = stillworksProbes.find(q => q.id === 'stillworks-exposed');
+  Object.assign(game.player, { x: at.x, y: at.y });
+  game.presentation = { effectiveQuality: 'full', reduceMotion: true };
+  game.paused = true; game.pauseStarted = now;
+  game.enemies = [];
+  render(screen, game, 390, 844, now);
+  const eye = closeViewCamera();
+  Object.assign(walker, { x: (eye.x + at.x + .5) / 2 - .5, y: (eye.y + at.y + .75) / 2 - .82 });
+  game.enemies = [walker];
+  render(screen, game, 390, 844, now);
+  assert.equal(closeViewGLStats.models, 2);
+  Object.assign(walker.pack, { attack: 'voidHand', phase: 'windup', seq: 1, t: .13, data: { aim: { x: 0, y: 1 } } });
+  render(screen, game, 390, 844, now + 16);
+  assert.equal(closeViewGLStats.models, 2);
+  walker.pack.attack = 'voidClaw';
+  render(screen, game, 390, 844, now + 32);
+  assert.equal(closeViewGLStats.models, 1);
+  assert.equal(closeViewGLStats.modelFallbacks['walker-rig-fallback'], 1);
+  assert.ok(GLB.nBoard > 0);
+}));
+
 test('retained native death completes without changing actor state or admission budgets', () => withGPU(({ screen }) => {
   const now = 200000;
   const { game } = createLabFixture({ lab: 'close-view', scenario: 'terrain-ramps', now });

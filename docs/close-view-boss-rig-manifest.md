@@ -42,6 +42,12 @@ The baseline fixture originally used the world camera. The local pilot now admit
 
 The scratch fixture adds covered and exposed teleport positions two tiles apart. Both CINDER-VERGE-47 and TIM1 confirm that the production projectile ray from the Walker’s starting point is blocked at the first and clear at the second. The targets are available while the original arena map is active.
 
+### Stillworks Walker rig pilot
+
+The pilot uses an original 254-triangle articulated body in the existing Close View actor budget. The hood and recessed nebula face, divided coat, and human scale carry over the current silhouette. Connected shoulders, elbows, hips and knees drive locomotion and the Rending Hands gesture. Reduced Motion suppresses gait flourish and retains the cast gesture.
+
+Only the live Stillworks finale Walker is eligible for this body, in idle, movement, or the accepted Rending Hands windup and recovery. The pose uses the committed aim and the accepted phase clock. The ground palms keep their independent warning, origin and damage; the pilot does not change their timing. Other attacks, teleport, hidden states, death, and unsupported render states retain the existing sprite path. The detailed attack set and hosted normal-speed visual review remain open.
+
 ### Walker planning findings to preserve
 
 The Astra audit against `268e5c0262911cd82d0dfdd6c1db53eb9950f0e4` found a prerequisite. `interiorMap` excludes both finale and Stillworks flags. Before rig work, qualify the actual 41×39 Stillworks scene for Close View and add a scratch route through the production arena loader. Verify cover, formations, camera collision, effect projection and the normal gate and victory flow. Keep existing admission guards for unrelated scenes. The public `pack-boss-voidWalker` scenario can exercise generic attack semantics. Actual arena acceptance needs the tuned `pentFinaleBeast` without the world-beast flag.
