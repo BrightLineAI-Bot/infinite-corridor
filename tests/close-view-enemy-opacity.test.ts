@@ -111,7 +111,12 @@ test('Stillworks submits the native Walker body, then falls back for an unsuppor
   Object.assign(walker.pack, { attack: 'voidHand', phase: 'windup', seq: 1, t: .13, data: { aim: { x: 0, y: 1 } } });
   render(screen, game, 390, 844, now + 16);
   assert.equal(closeViewGLStats.models, 2);
-  walker.pack.attack = 'voidClaw';
+  for (const attack of ['voidClaw', 'voidSword']) {
+    walker.pack.attack = attack;
+    render(screen, game, 390, 844, now + 24);
+    assert.equal(closeViewGLStats.models, 2);
+  }
+  walker.pack.attack = 'voidSlash';
   render(screen, game, 390, 844, now + 32);
   assert.equal(closeViewGLStats.models, 1);
   assert.equal(closeViewGLStats.modelFallbacks['walker-rig-fallback'], 1);
