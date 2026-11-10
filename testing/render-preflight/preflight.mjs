@@ -127,13 +127,14 @@ export async function preflight({ input, directory, repositoryDirectory, token }
       receipt.screenshots = rendered.scenarios?.flatMap(scenario =>
         scenario.captures ?? [scenario.firstScreenshot, scenario.screenshot, ...(scenario.witness?.screenshots || [])].filter(Boolean)) || [];
       const last = rendered.scenarios?.at(-1);
-      const transport = rendered.errors?.find(message => /^(CDP timeout: [A-Za-z.]+|Browser probe deadline exceeded)$/.test(message));
+      const transport = rendered.errors?.find(message => /^(CDP timeout: [A-Za-z.]+|CDP socket open timed out|Browser probe deadline exceeded|Chromium could not start with its normal sandbox; see chromium\.log)$/.test(message));
       receipt.browserProbe = { phase: rendered.phase, scenario: last?.scenario, transport,
         display: rendered.display, requestedQuality: rendered.requestedCloseViewQuality,
         observed: rendered.scenarios?.filter(scenario => scenario.status === 'render-observed').length ?? 0 };
       receipt.scenes = rendered.scenarios?.map(({ scenario, status, reasons, samples, captures, witness, errors, webglCaptured }) => ({
         scenario, status, captures: captures?.length ?? 0, witness: witness?.status,
         witnessSummary: witness && { before:witness.before, covered:witness.covered, advanced:witness.advanced,
+          accepted:witness.accepted, jump:witness.jump, first:witness.samples?.[0], path:witness.crawl?.path,
           last:witness.samples?.at(-1) ?? witness.encounter?.at(-1) },
         webglCaptured, errors: errors?.slice(0, 3).map(({method,details}) => ({
           method, status: details?.response?.status, resource: details?.type, cancelled: details?.canceled,

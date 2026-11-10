@@ -145,7 +145,7 @@ export function movementKey(yaw, dx, dy) {
     Math.cos(angle - next[1]) > Math.cos(angle - best[1]) ? next : best)[0];
 }
 
-export async function closeViewWitness(scenario, { call, evaluate, wait, capture }) {
+export async function closeViewWitness(scenario, { call, evaluate, wait, capture, walkerDiagnostics }) {
   const pose = () => evaluate(`(() => {
     const g = globalThis.provingGroundGame?.(), p = g?.player, c = globalThis.__closeViewCam?.get();
     return p && c?.valid && c.drawn ? {x:p.x,y:p.y,hp:p.hp,yaw:c.yaw,inputYaw:c.inputYaw,distance:c.distance,
@@ -172,6 +172,73 @@ export async function closeViewWitness(scenario, { call, evaluate, wait, capture
       const current=await pose();
       return expected && current && Math.hypot(current.x-expected.x,current.y-expected.y)<.35 ? current : null;
     };
+    if(walkerDiagnostics){
+      const camera=await evaluate(`(() => {
+        const g=globalThis.provingGroundGame?.(), c=globalThis.__closeViewCam?.get();
+        const e=g?.enemies.find(q=>q.pentFinaleBeast==='voidWalker');
+        const info=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
+        const at=info.teleportTargets.find(q=>q.id==='stillworks-exposed');
+        const rect=document.querySelector('#game').getBoundingClientRect();
+        return { target:Math.atan2(e.y-at.y,e.x-at.x), yaw:c.yaw,
+          x:Math.round(rect.left+rect.width*.75), y:Math.round(rect.top+rect.height*.32) };
+      })()`);
+      for(let i=0;i<4;i++){
+        const c=await pose(), angle=camera.target-c.yaw;
+        const error=Math.atan2(Math.sin(angle),Math.cos(angle));
+        if(Math.abs(error)<.25)break;
+        const dx=Math.max(-145,Math.min(145,Math.round(error/.009)));
+        const point={x:camera.x,y:camera.y};
+        await call('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',buttons:1,clickCount:1});
+        await wait(300);
+        const moved={x:point.x+dx,y:point.y};
+        try { await call('Input.dispatchMouseEvent',{type:'mouseMoved',...moved,button:'none',buttons:1}); }
+        finally { await call('Input.dispatchMouseEvent',{type:'mouseReleased',...moved,button:'left',buttons:0,clickCount:1}); }
+        await wait(250);
+      }
+      const exposed=await probe('stillworks-exposed');
+      const screenshots=[], phases=[];
+      const observe=phase=>evaluate(`(async()=>{
+        const {closeViewRenderDiagnostics}=await import(${JSON.stringify(walkerDiagnostics)});
+        const deadline=performance.now()+5000;
+        return await new Promise(resolve=>{
+          function sample(){
+            const g=globalThis.provingGroundGame?.(), e=g?.enemies.find(q=>q.pentFinaleBeast==='voidWalker');
+            const d=closeViewRenderDiagnostics();
+            const warnings=g?.packEffects.filter(f=>f.owner===e?.id && f.kind==='voidRend' && f.variant==='hand' && f.arming>0) || [];
+            const state={attack:e?.pack?.attack,phase:e?.pack?.phase,seq:e?.pack?.seq,remaining:e?.pack?.t,
+              hp:g?.player.hp,nativeActors:d.nativeActors,frame:d.frame,backend:d.backend,
+              warnings:warnings.map(f=>({x:f.x,y:f.y,arming:f.arming}))};
+            if(state.attack==='voidHand' && state.phase===${JSON.stringify(phase)}
+              && d.backend==='webgl2' && d.nativeActors>0 && warnings.length===2){
+              document.querySelector('#scenarioPause').click();resolve({...state,observed:true});return;
+            }
+            if(performance.now()>=deadline || !(state.hp>0)){resolve(state);return;}
+            requestAnimationFrame(sample);
+          }
+          requestAnimationFrame(sample);
+        });
+      })()`,true);
+      if(exposed){
+        for(let i=0;i<6;i++){
+          const sample=await observe('windup');phases.push(sample);
+          if(sample.observed){
+            screenshots.push(await capture('rending-hands-windup'));
+            await evaluate('document.querySelector("#scenarioPause").click()');
+            const recovery=await observe('recover');phases.push(recovery);
+            if(recovery.observed){
+              screenshots.push(await capture('rending-hands-recovery'));
+              await evaluate('document.querySelector("#scenarioPause").click()');
+            }
+            const observed=recovery.observed && recovery.seq===sample.seq && recovery.frame>sample.frame
+              && recovery.warnings.every((f,i)=>f.x===sample.warnings[i].x && f.y===sample.warnings[i].y && f.arming<sample.warnings[i].arming);
+            return {status:observed?'observed':'blocked',before,advanced:exposed,samples:phases,screenshots};
+          }
+          if(!(sample.hp>0))break;
+        }
+      }
+      screenshots.push(await capture('rending-hands-last-position'));
+      return {status:'blocked',before,advanced:exposed,samples:phases,screenshots};
+    }
     const covered=await probe('stillworks-cover');
     const screenshots=covered?[await capture('covered')]:[];
     const advanced=await probe('stillworks-exposed');

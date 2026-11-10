@@ -98,15 +98,16 @@ try {
     return observe;
   };
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
-  const cases = [COMBAT_ACTION_CASES[1]];
-  receipt.scope='remaining online gameplay witnesses for exact frozen r865';
-  cases.push(...STILLWORKS_CASES.slice(1).filter(id => fixtures.includes(`"${id}"`)));
+  const walker = /^r866-/.test(candidate.id);
+  const cases = walker ? [STILLWORKS_CASES[0]]
+    : [COMBAT_ACTION_CASES[1], ...STILLWORKS_CASES.slice(1).filter(id => fixtures.includes(`"${id}"`))];
+  receipt.scope=walker?'Rending Hands witness on exact frozen r866':'remaining online gameplay witnesses for exact frozen r865';
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[],captures:[]};receipt.scenarios.push(entry);
     checkpoint('scenario-navigate');
     const closeView=STILLWORKS_CASES.includes(scenario);
     const summit=scenario===SUMMIT_CASE;
-    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
+    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:walker?'TIM1':closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
     const url=`${origin}/?${query}`;
     const observe=await navigate(url);
     currentObservation=()=>{
@@ -153,7 +154,7 @@ try {
       const deadline=Date.now()+12000;
       let first=await readDiagnostics();
       const startup=first;
-      while(first.asset!=='failed' && (first.player!=='imported' || first.heroGPU!=='ready') && Date.now()<deadline){
+      while(first.asset!=='failed' && (first.player!=='imported' || first.gpu?.heroState!=='ready') && Date.now()<deadline){
         await wait(450);
         first=await readDiagnostics();
       }
@@ -172,7 +173,7 @@ try {
     const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
       : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness
       : COMBAT_ACTION_CASES.includes(scenario) && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 865 ? combatActionWitness.bind(null,scenario) : null;
-    const witnessTools={call,evaluate,wait,capture};
+    const witnessTools={call,evaluate,wait,capture,walkerDiagnostics:walker?diagnosticsPath:null};
     if(witness) entry.witness=await witness(witnessTools);
     if(scenario.startsWith('routing-crawl-') && entry.witness?.status==='observed'){
       const panel=await routePanelWitness(scenario,witnessTools);
