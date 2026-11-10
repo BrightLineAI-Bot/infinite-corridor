@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleaverWitness, closeViewWitness, movementKey, routePanelWitness } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
 import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
@@ -54,6 +54,26 @@ test('route panel witnesses current-floor cues and requires the Pentagon overvie
   const result = await check('routing-crawl-pentagon', { ...state, headings });
   assert.equal(result.status, 'observed');
   assert.deepEqual(result.screenshots, ['known-routes']);
+});
+
+test('summit staging accepts real Act admission only to a fresh cloud encounter with a distinct target', async () => {
+  const from = { rx: 38, ry: 18 }, to = { rx: 37, ry: 15 };
+  const before = { scratch: true, area: 'overworld', section: from, gate: 'cloud' };
+  const after = { scratch: true, area: 'dungeon', wave: 0, alive: 4, route: { from, to } };
+  const input = [];
+  const check = (state) => {
+    const states = [before, state];
+    return summitWitness({
+      evaluate: async () => states.shift(), capture: async name => name, wait: async () => {},
+      call: async (method, args) => input.push([method, args.key, args.type]),
+    });
+  };
+  const result = await check(after);
+  assert.equal(result.status, 'observed');
+  assert.deepEqual(result.screenshots, ['summit-gate', 'cloud-hold-entry']);
+  assert.deepEqual(input, [['Input.dispatchKeyEvent', 'e', 'keyDown'], ['Input.dispatchKeyEvent', 'e', 'keyUp']]);
+  assert.equal((await check({ ...after, route: { from, to: from } })).status, 'blocked');
+  assert.equal((await check({ ...after, alive: 0 })).status, 'blocked');
 });
 
 test('readiness waits for a loading scene but stops on the first browser transport failure', async () => {

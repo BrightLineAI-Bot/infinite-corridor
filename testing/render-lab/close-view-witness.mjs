@@ -3,6 +3,7 @@ export const STILLWORKS_CASES = Object.freeze([
   'stillworks-void-walker', 'routing-crawl-keep', 'routing-crawl-pentagon',
 ]);
 export const CLEAVER_CASE = 'cleaver-echo-inspection';
+export const SUMMIT_CASE = 'great-tree-summit';
 
 async function holdKey(call, wait, key, ms) {
   const upper = key.toUpperCase();
@@ -56,6 +57,35 @@ export async function routePanelWitness(scenario, { evaluate, capture }) {
     && Array.isArray(report.routes) && pentagonOverview;
   return { status: observed ? 'observed' : 'blocked', report,
     screenshots: report.open ? [await capture('known-routes')] : [] };
+}
+
+export async function summitWitness({ call, evaluate, wait, capture }) {
+  const read = () => evaluate(`(() => {
+    const g = globalThis.provingGroundGame?.();
+    const r = JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
+    const run = g?.save.consequences.dungeons[g.areaId()], route = run?.skySummitRoute;
+    return { scratch:r.scratch, area:r.area, identity:r.identity, section:r.diagnostics?.section,
+      gate:r.diagnostics?.summit?.gateId, alive:r.enemies.alive, wave:run?.skyWave,
+      route:route && { from:route.from, to:route.to } };
+  })()`);
+  const before = await read();
+  if (!before.scratch || before.area !== 'overworld' || !before.gate || !before.section)
+    return { status: 'blocked', before, screenshots: [] };
+  const screenshots = [await capture('summit-gate')];
+  await holdKey(call, wait, 'e', 60);
+  let after;
+  for (let i = 0; i < 8; i++) {
+    after = await read();
+    if (after.area === 'dungeon') break;
+    await wait(100);
+  }
+  const { from, to } = after.route || {};
+  const observed = after.scratch && after.area === 'dungeon' && after.wave === 0 && after.alive > 0
+    && from?.rx === before.section.rx && from?.ry === before.section.ry
+    && Number.isInteger(to?.rx) && Number.isInteger(to?.ry)
+    && (to.rx !== from.rx || to.ry !== from.ry);
+  if (observed) screenshots.push(await capture('cloud-hold-entry'));
+  return { status: observed ? 'observed' : 'blocked', before, after, screenshots };
 }
 
 const directions = [

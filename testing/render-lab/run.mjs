@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
-import { cleaverWitness, closeViewWitness, routePanelWitness, CLEAVER_CASE, STILLWORKS_CASES } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, routePanelWitness, summitWitness, CLEAVER_CASE, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -87,11 +87,13 @@ try {
   const cases = [CLEAVER_CASE,'pike-echo-inspection','cast-skill-aerial-step','blade-hammerfall-brute'];
   // An old frozen artifact need not contain the newer fixtures.
   cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
+  if (fixtures.includes(`"${SUMMIT_CASE}"`)) cases.push(SUMMIT_CASE);
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[]};receipt.scenarios.push(entry);
     checkpoint('scenario-navigate');
     const closeView=STILLWORKS_CASES.includes(scenario);
-    const query=new URLSearchParams({dev:'proving-ground',lab:closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal'});
+    const summit=scenario===SUMMIT_CASE;
+    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal'});
     const navigation=await call('Page.navigate',{url:`${origin}/?${query}`});
     if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
     const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
@@ -107,9 +109,9 @@ try {
     if(!ready)throw Error(`scenario did not boot: ${scenario}`);
     await wait(4000);
     checkpoint('scenario-diagnostics');
-    for(let i=0;i<2;i++){entry.samples.push(await evaluate(`(async()=>{const m=await import(new URL(${JSON.stringify(diagnosticsPath)},location.href));return m.closeViewRenderDiagnostics()})()`,true));await wait(300);}
+    if(!summit) for(let i=0;i<2;i++){entry.samples.push(await evaluate(`(async()=>{const m=await import(new URL(${JSON.stringify(diagnosticsPath)},location.href));return m.closeViewRenderDiagnostics()})()`,true));await wait(300);}
     checkpoint('scenario-witness');
-    const witness = closeView ? closeViewWitness.bind(null, scenario)
+    const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
       : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness : null;
     const witnessTools={call,evaluate,wait,capture:async suffix=>{
       const name=`${scenario}-${suffix}.png`;
@@ -130,7 +132,11 @@ try {
     checkpoint('scenario-screenshot');
     const image=await call('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,`${scenario}.png`),Buffer.from(image.data,'base64'));
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
-    Object.assign(entry,assess(entry.samples,entry.errors));
+    if(summit){
+      entry.scene='world-map';
+      entry.reasons=entry.errors.length ? ['Browser errors in summit fixture'] : [];
+      entry.status=entry.errors.length ? 'blocked' : 'render-observed';
+    }else Object.assign(entry,assess(entry.samples,entry.errors));
     if(witness && entry.witness?.status!=='observed'){
       entry.status='blocked';
       entry.reasons.push('Required input or encounter witness was not observed');

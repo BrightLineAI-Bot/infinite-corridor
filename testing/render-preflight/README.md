@@ -46,6 +46,10 @@ capture latency. Reviewing timing and motion requires separate playback.
 When a crawl fixture exposes the shared route panel, the probe opens it after
 the traversal. It records the position label and known routes, and requires
 the discovered-chamber and connection headings for the Pentagon fixture.
+When the frozen artifact includes the Great Tree summit fixture, the probe
+records the summit gate and the live Cloud Hold after normal Act input. The
+world-map receipt is separate from WebGL2 diagnostics and covers entry only.
+Consecutive hops and reloads remain gameplay acceptance checks.
 
 Upload paths exclude the downloaded ZIP, extracted game payload, browser profiles, credentials and raw API responses. `actions-evidence.json` contains only allowlisted candidate/artifact/run fields. `candidate-audit.json` remains an unsigned observational receipt with `publicationAuthorized: false` and `releaseReadiness: "not_assessed"`.
 
