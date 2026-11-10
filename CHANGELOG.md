@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 873: interior jump platforms on new floors (buildings, compounds, castles, labyrinths, Pentagon chambers) no longer seal off guards, stand on creatures' spawns, or drop you into a pocket you can't climb out of. Floors you have already explored stay as they were.
+
 - Release 872: Overworld Close View now has a sky, sun and horizon for each region. Its ground reaches the section's edge and fades into the horizon, with surface detail and level edges, and its water reflects the sky. Rubble, crags, castle walls, ice spires and trees now stand up as solids. This is rendering only, and the view with Close View off is unchanged.
 
 - Release 871 gives the Verge Cleaver three quick cuts: the first borrows the Salvage Blade's fast crouch and two alternating follow-ups keep the gladius level through contact. Damage, reach, timing of the hit and cooldown are unchanged.
