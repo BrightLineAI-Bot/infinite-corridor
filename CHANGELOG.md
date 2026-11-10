@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New Great Tree cloud routes reserve a real, undiscovered summit before entry, keeping their cloud holds and providing another cloud door after each crossing. Existing tree routes remain pinned.
+
 - Release 862 lights the Stillworks independently of dungeon corridors, points the arrival camera into the arena and keeps the lab cover targets available after reload.
 
 - Release 861 brings the Stillworks Void Walker arena into WebGL Close View and adds isolated keep and Pentagon crawl-and-drop scenarios to the Proving Ground.

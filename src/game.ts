@@ -1,4 +1,5 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
+import { canopyGateDestination } from './trees.ts';
 import { ACTOR_CONTACT, actorContactContext } from "./actor-contact.ts";
 import { simpleToolAppearanceKind, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
@@ -68,7 +69,7 @@ import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { ensureSkylands } from "./skylands.ts";
-import { SKYLANDS, SKY_BASE, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
+import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
@@ -855,6 +856,16 @@ export const DUNGEON_BOOST = { hp: 1.2, damage: 1.2, count: .2, near: 3 };
 const WONDER_CUE = { pentagon: 14, labyrinth: 6 }; // release 729: how far (sections) the gold cue looked for a Pentagon (no longer: Pentagons have their own sigils, pentagon.ts PENTAGON_FINDING), a labyrinth
 const GUARDIAN_ROLES = ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"];
 export const SKY_TREE = { search: 6, loads: 4, chance: .55, annexSearch: 10, annexLoads: 8 }; // 678: the annex's last gate looks wider, unseen trees only // release 663: sky gates land on a great tree: rings searched round the drop, sections built at most, the trees' grow chance
+export const SKY_SUMMIT = { version: 1, radius: 24, loads: 8 };
+// Validate the built door tree, including its actual footing; a rumour alone is not a destination.
+export function skySummitLanding(map) {
+  const c = map?.canopy, gate = map?.objects?.find((o) => o.kind === "canopyGate" && o.dest === "cloud" && o.state === "open" && o.actions?.includes("enter"));
+  if (!c?.top || !gate) return null;
+  const crown = map.tiles.filter((t) => t.kind === "canopyTrunk" && !t.blocked && t.elev === c.top && t.x >= c.x0 && t.x < c.x0 + c.size && t.y >= c.y0 && t.y < c.y0 + c.size);
+  if (!crown.some((t) => t.x === gate.x && t.y === gate.y)) return null;
+  const t = crown.filter((t) => t.x !== gate.x || t.y !== gate.y).sort((a, b) => Math.hypot(a.x - gate.x, a.y - gate.y) - Math.hypot(b.x - gate.x, b.y - gate.y) || a.y - b.y || a.x - b.x)[0];
+  return t ? { x: t.x, y: t.y - .2, gateId: gate.id } : null;
+}
 // Release 651: an ordinary creature, which Fractured mode copies into packs and brings back (never a guardian, boss, hunt,
 // world beast or any one-time foe).
 function fracturedOrdinary(q) { return !!q && !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.eliteId && !q.objectiveId && !q.foundryId && !q.domainBoss && !q.domainManifestation && !q.wingId && !q.marginWarden && !q.gatePredator && !q.viewportHuntId && !q.huntInstanceId && !q.ambient && !q.passiveBehavior && !q.astralCompanionOf && !q.retreating && !q.passingBeast && !q.skirmishId && !q.farArrayBoss && !q.farArraySummon && !q.packGuardian && !q.apertureEncounter && !q.hordeOf && !q.skyEcho && !q.arenaId && q.kind !== "npc" && !q.mireHeart && !q.mireSeep; }
@@ -2993,6 +3004,7 @@ export class Game {
         ...(prior ? (prior.watcherVersion ? { watcherVersion: prior.watcherVersion } : {}) : { watcherVersion: WATCHER.version }),
         ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
+        ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : {}), // great keeps: sections first seen from 683 until the great buildings
         ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : {}), // and the ruined arcologies (685)
@@ -4048,6 +4060,62 @@ export class Game {
   // discovered... far off... so you can either parachute down or you can hop down"): a sky gate drops the Wayfarer on the crown
   // of a great tree near where it would have dropped them, one never seen first, then the nearest. Cheap tests (the jungle region
   // and the tree's own grow roll) pick the candidates; at most `SKY_TREE.loads` sections are built to find one. None: the old drop.
+  // Admission is bounded and isolated. Failed probes never discover sections, retire hunts,
+  // alter snapshots or touch production storage. Only unseen destinations can extend this chain.
+  planSkySummit() {
+    const from = { rx: this.rx, ry: this.ry }, run = (this.save.skylands?.runs || 0) + 1;
+    const target = skylandHop(`summit:v1:${this.save.seed}:${from.rx},${from.ry}:${run}`, from.rx, from.ry), candidates = [];
+    for (let dy = -SKY_SUMMIT.radius; dy <= SKY_SUMMIT.radius; dy++) for (let dx = -SKY_SUMMIT.radius; dx <= SKY_SUMMIT.radius; dx++) {
+      const rx = target.rx + dx, ry = target.ry + dy;
+      if ((rx === from.rx && ry === from.ry) || this.save.atlas?.[`${rx},${ry}`] || canopyGateDestination(this.save.seed, rx, ry) !== "cloud" || !wonderAt(this.save.seed, rx, ry, "tree")) continue;
+      candidates.push({ rx, ry, distance: dx * dx + dy * dy });
+    }
+    candidates.sort((a, b) => a.distance - b.distance || a.ry - b.ry || a.rx - b.rx);
+    for (const to of candidates.slice(0, SKY_SUMMIT.loads)) {
+      const copy = structuredClone(this.save);
+      Object.assign(copy.session, { area: "overworld", rx: to.rx, ry: to.ry, x: 16, y: 16, activeDungeonId: null, activeDungeonLevelId: null });
+      const probe = new Game(copy, this.lastUpdateNow || 0), landing = skySummitLanding(probe.map);
+      if (landing) return { v: 1, from, to: { rx: to.rx, ry: to.ry }, ...landing, atlas: structuredClone(copy.atlas[`${to.rx},${to.ry}`]) };
+    }
+    return null;
+  }
+  finishSkySummit(route) {
+    // Rebuild with the current world's pins before touching the live map, save or snapshots.
+    // An admitted record is a plan, never authority to place the Wayfarer on unchecked ground.
+    const origin = this.save.session.dungeonReturn;
+    if (!validSkySummitRoute(route) || !origin || route.from.rx !== origin.rx || route.from.ry !== origin.ry) return this.retreatSkySummit();
+    const key = `${route.to.rx},${route.to.ry}`, pins = this.save.atlas?.[key] || route.atlas;
+    if (pins.skySummitVersion !== 1) return this.retreatSkySummit();
+    const copy = structuredClone(this.save);
+    (copy.atlas ||= {})[key] = structuredClone(pins);
+    Object.assign(copy.session, { area: "overworld", rx: route.to.rx, ry: route.to.ry, x: 16, y: 16, activeDungeonId: null, activeDungeonLevelId: null });
+    const probe = new Game(copy, this.lastUpdateNow || 0), landing = skySummitLanding(probe.map);
+    if (!landing || landing.gateId !== route.gateId) return this.retreatSkySummit();
+    this.snapshotArea();
+    const fresh = !this.save.atlas[key];
+    this.save.atlas[key] ||= structuredClone(pins);
+    if (fresh) { noteDiscovery(this.save); noteSeasonDiscovery(this.save, sectionRegion(this.save.seed, route.to.rx, route.to.ry, pins.landscapeVersion).id); }
+    this.rx = route.to.rx; this.ry = route.to.ry;
+    this.save.session.activeDungeonId = null; this.save.session.activeDungeonLevelId = null;
+    this.loadArea("overworld", false);
+    Object.assign(this.player, { x: landing.x, y: landing.y });
+    Object.assign(this, { skyAir: null, skyLevel: 0, discAir: null, projectiles: [], effects: [], traversal: null });
+    this.lastCrownAt = this.lastUpdateNow || 0;
+    this.message = "The cloud gate opens among the leaves of another great tree. A door of cloud waits on its crown.";
+    this.sync(); return { ok: true, message: this.message };
+  }
+  retreatSkySummit() {
+    const ok = this.leaveDungeon("The far crown has faded from the cloud. The door returns you to where you climbed.");
+    if (ok) {
+      const landing = skySummitLanding(this.map);
+      if (landing) Object.assign(this.player, { x: landing.x, y: landing.y });
+      else relocateIfStranded(this.player, this.map, mapWidth(this.map, "overworld"));
+      Object.assign(this, { skyAir: null, skyLevel: 0, discAir: null });
+      this.lastCrownAt = landing ? this.lastUpdateNow || 0 : 0;
+      this.sync();
+    }
+    return { ok: !!ok, message: this.message };
+  }
   treeCrownHop(id, from) {
     const seed = this.save.seed, target = skylandHop(id, from.rx, from.ry), cands = [], annex = skyAnnexFloor(id) === 3; // release 678
     const R = annex ? SKY_TREE.annexSearch : SKY_TREE.search; for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = target.rx + dx, y = target.ry + dy;
@@ -4286,10 +4354,16 @@ export class Game {
     if(r.transition==="elitePortal"){
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();/* release 439 */
     } else if(r.transition==="skyland"){ // release 571: climb a Sky Stair
+      const admission = skylandAdmission(this.save, r.tier);
+      if (!admission.ok) return { ...admission, message: (this.message = admission.message) };
+      const summit = r.canopy && this.save.atlas?.[`${this.rx},${this.ry}`]?.skySummitVersion === 1;
+      const summitRoute = summit ? this.planSkySummit() : null;
+      if (summit && !summitRoute) return { ok: false, message: (this.message = "The cloud beyond the door is still. No other crown answers this crossing yet.") };
       const b=beginSkyland(this.save,{rx:this.rx,ry:this.ry},r.tier,r.mode);/* 631: the canopy's door is always a cloud hold */if(!b.ok){this.message=b.message;return{ok:false,message:b.message}}
       if(b.gate){this.skyHop(b.id,b.message);return{ok:true,message:this.message}}/* release 589: a sky gate */
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=b.id;this.save.session.activeDungeonLevelId=null;
       const h=dungeonHistory(this.save,b.id);h.gatePredatorSpawnThreshold=0;h.skyWave=0;h.visits++;h.visitOpen=true;if(isDivineRun(b.id)){if(visceraOf(this.save)>0)h.skyHold=true;else h.skyPact=takePact(this.save)}/* release 682: the pact goes with the Divine Challenge; 686: holding viscera, it waits on the Ascension Dais */
+      if (summitRoute) h.skySummitRoute = summitRoute;
       this.loadArea('dungeon');this.player.x=this.map.entry?.x??18;this.player.y=(this.map.entry?.y??27)-1;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();this.message=b.message;this.sync();return{ok:true,message:b.message};
     } else if(r.transition==="displacement"){
       this.startDisplacement(o,false);
@@ -4328,6 +4402,12 @@ export class Game {
       relocateIfStranded(this.player, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); // release 419
       if (marginaliaOpen(this.save) && marginCrossing(this.areaId())) { beginMarginRun(this.save, this.areaId()); if (ensureMarginalia(this.save).found.length) this.marginPasteRequested = true; } // release 459
     } else if (r.transition === "exit") {
+      if (this.map?.skyland) {
+        const h = dungeonHistory(this.save, this.areaId());
+        if (h.skyHop && "skySummitRoute" in h) {
+          return this.finishSkySummit(h.skySummitRoute);
+        }
+      }
       if(this.save.session.activeDisplacement){if(!this.thresholdOpen()){this.message="The Mislaid Threshold remains sealed while its guardian lives. Its guardian is marked on the dungeon map.";return{ok:false,message:this.message}}const d=this.save.session.activeDisplacement;this.snapshotArea();this.rx=d.destination.rx;this.ry=d.destination.ry;this.save.session.displacementJourney={source:d.source,destination:d.destination};this.save.session.activeDisplacement=null;this.save.session.activeDungeonId=null;this.loadArea("overworld",false);this.player.x=16;this.player.y=16;relocateIfStranded(this.player,this.map,mapWidth(this.map,'overworld'));this.message="The completed crossing releases you onto stable ground in a distant, uncharted Corridor. Find a physical Wayglass to restore travel."}else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).annexNext){this.climbAnnex(dungeonHistory(this.save,this.areaId()).annexNext)}/* release 678: up to the annex's next island */else if(this.map?.skyland&&dungeonHistory(this.save,this.areaId()).skyHop){const id=this.areaId();this.leaveDungeon("");this.skyHop(id,skyAnnexFloor(id)===3?SKY_ANNEX.messages.top:"The cloud gate lets go of you. You fall a long way, and land far off.")}/* release 589 */else { const sc = this.pentShortcutOpened; this.pentShortcutOpened = null; this.leaveDungeon(sc ? sc.message : "You emerge at the dungeon entrance."); if (sc) { const d = this.map.objects.find((q) => q.pentagonDoor && q.shortcutKey === sc.door); if (d) { d.opened = true; this.shortcutBurst = { x: d.x, y: d.y, t0: null, life: PENTAGON.shortcuts.burst }; } this.defeatNotice = { title: PENTAGON.shortcuts.notice, detail: "a door in the outer wall, open from the land now", kind: "discovery", sound: "shortcut" }; } }
     } else if (r.transition === "checkpoint") {
       this.save.session.displacementJourney=null;

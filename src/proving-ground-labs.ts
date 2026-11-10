@@ -1,6 +1,6 @@
 import { RECOVERY_CONTEXT } from './proving-ground-recovery.ts';
 import { ordinaryContactEnemy } from './actor-contact.ts';
-import { Game, footprintOpen, hasLineOfSight } from "./game.ts";
+import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.ts";
 import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.ts"; // the Close View lab
 import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.ts";
 import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.ts";
@@ -837,8 +837,17 @@ function deepFixture(scenario, seed, variant, now, forceThreefold=false) {
   return {lab:forceThreefold?"threefold":"deep-dungeon",scenario:archetype,label:map.name,seed,variant,production:true,...base};
 }
 
-const LANDSCAPE_SCENARIOS = [...Object.values(BIOMES).map((b) => ({ id: b.id, label: b.name })), { id: "volcano", label: "Erupting volcano" }, { id: "skybridge", label: "Sky bridge" }];
+const LANDSCAPE_SCENARIOS = [...Object.values(BIOMES).map((b) => ({ id: b.id, label: b.name })), { id: "volcano", label: "Erupting volcano" }, { id: "skybridge", label: "Sky bridge" }, { id: "great-tree-summit", label: "Great Tree summit · SKYTREE 38,18" }];
 function landscapeFixture(scenario, seed, now) {
+  if (scenario === "great-tree-summit") {
+    const actualSeed = "SKYTREE", rx = 38, ry = 18, base = gameForOverworld(actualSeed, rx, ry, now), { game, save } = base;
+    const landing = skySummitLanding(game.map), gate = landing && game.map.objects.find((o) => o.id === landing.gateId);
+    if (!gate || save.atlas[`${rx},${ry}`]?.skySummitVersion !== 1) throw new Error("The Great Tree summit fixture has no verified current cloud door.");
+    Object.assign(game.player, { x: gate.x, y: gate.y - .2 }); game.sync();
+    return { lab: "landscape", scenario, label: "Great Tree summit · SKYTREE 38,18", seed: actualSeed, variant: 0, production: true, ...base, primary: gate,
+      developerHint: "Fixed scratch summit: SKYTREE 38,18. Use Act to enter the Cloud Hold, defeat its ordinary waves, then take the exit to the next crown and its onward door.",
+      diagnostics: { section: { rx, ry }, summit: { gateId: gate.id, height: game.map.canopy.top }, skySummitVersion: save.atlas[`${rx},${ry}`].skySummitVersion } };
+  }
   const feature = scenario === "volcano" || scenario === "skybridge" ? scenario : null, biome = feature ? "mountains" : BIOMES[scenario] ? scenario : "mountains";
   for (let radius = 2; radius <= 40; radius++) for (let y = -radius; y <= radius; y++) for (let x = -radius; x <= radius; x++) {
     if (Math.max(Math.abs(x), Math.abs(y)) !== radius || biomeFor(seed, x, y) !== biome) continue;
