@@ -38,6 +38,30 @@ The first workflow step creates a bootstrap **blocked** receipt and log before c
 
 Once the preflight starts, it writes `preflight-receipt.json` and `preflight.log` even on normal input/download/verification/browser failures. A completed browser runner writes `render/receipt.json` and the final bounded `render/chromium.log`, including failure. It attempts `render/failure.png` after a page exists if a later exception occurs. Before browser/page creation, or if CDP capture fails, screenshots are explicitly unavailable; no synthetic screenshot or pass is fabricated. A hard runner timeout may leave only bootstrap/preflight/process logs, with cleanup unconfirmed and a blocked result.
 
+The probe opens the frozen Preview's Diagnostics panel twice and samples its
+public rows. This avoids a separate diagnostic import during rendering. Both
+samples must belong to the exact candidate.
+
+The probe uses a 768 × 540 viewport at device scale 1 and requests the public
+Close View Low setting to limit work on the software renderer. Each diagnostic
+sample records the effective game tier when present. The first PNG is saved
+before querying renderer diagnostics. This startup frame can show a fallback
+while assets load. A successful WebGL witness still requires advancing completed
+frames and the imported Wayfarer.
+
+For r863 and later, the Cleaver fixture must report a newly accepted first cut
+after normal Attack input. The receipt stores the attack samples and screenshots
+before input and after acceptance. This witnesses the input and its action
+record. The frame may be in follow-through or recovery, depending on Chrome
+capture latency. Reviewing timing and motion requires separate playback.
+When a crawl fixture exposes the shared route panel, the probe opens it after
+the traversal. It records the position label and known routes, and requires
+the discovered-chamber and connection headings for the Pentagon fixture.
+When the frozen artifact includes the Great Tree summit fixture, the probe
+records the summit gate and the live Cloud Hold after normal Act input. The
+world-map receipt is separate from WebGL2 diagnostics and covers entry only.
+Consecutive hops and reloads remain gameplay acceptance checks.
+
 Upload paths exclude the downloaded ZIP, extracted game payload, browser profiles, credentials and raw API responses. `actions-evidence.json` contains only allowlisted candidate/artifact/run fields. `candidate-audit.json` remains an unsigned observational receipt with `publicationAuthorized: false` and `releaseReadiness: "not_assessed"`.
 
 Renderer classification is `software` for known software-renderer signatures, otherwise `unknown`. `hardware` is reserved for independently established hardware evidence and is never inferred from a vendor name or WebGL2 success. The original prototype used the historical label `unverified`; newly generated receipts use `unknown`. Software frames can establish some shader/asset functionality, not hardware performance. Physical-phone coverage remains separately `not_measured`; visual acceptance stays `not_reviewed` even with PNGs and advancing frames.

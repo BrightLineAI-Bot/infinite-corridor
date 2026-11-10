@@ -6,8 +6,9 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
-import { assess, classifyRenderer, safePath, diagnosticsModulePath } from './evidence.mjs';
-import { disjointPaths, bounded, stopBrowser, normalBrowserFlags } from './resources.mjs';
+import { assess, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
+import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
+import { cleaverWitness, closeViewWitness, routePanelWitness, summitWitness, CLEAVER_CASE, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -15,9 +16,14 @@ const {root,out}=disjointPaths(candidatePath,output);
 if (existsSync(out)) throw Error('refusing to overwrite evidence');
 mkdirSync(out,{recursive:true});
 const receipt={schema:1, startedAt:new Date().toISOString(), scope:'local frozen artifact render probe, not publication acceptance', status:'blocked', scenarios:[], restrictions:['No visual approval','No physical phone performance evidence','No production or hosted-origin testing'], errors:[],rendererClass:'unknown',physicalPhone:'not-measured',failureScreenshot:{status:'unavailable',reason:'No page available'}};
-let server, browser, profile, cdp, pageCall, logs='';
+let server, browser, profile, cdp, pageCall, currentObservation, logs='';
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const checkpoint = phase => {
+  receipt.phase = phase;
+  writeFileSync(join(out,'receipt.json'),JSON.stringify(receipt,null,2)+'\n');
+};
 try {
+  checkpoint('candidate-verification');
   const candidate=verifyCandidate(root);
   if(candidate.digest!==expected) throw Error('candidate digest differs from trusted input');
   receipt.candidate={id:candidate.id,commit:candidate.commit,tree:candidate.tree,digest:candidate.digest};
@@ -39,6 +45,7 @@ try {
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});
   receipt.serving='loopback-only disposable origin';
   const origin=`http://127.0.0.1:${server.address().port}`;
+  checkpoint('chrome-start');
   profile=mkdtempSync(join(tmpdir(),'ic-render-profile-'));
   // Never --no-sandbox, --ignore-gpu-blocklist, software-renderer overrides or real user profiles.
   const flags=normalBrowserFlags(profile);
@@ -53,39 +60,139 @@ try {
   if(!endpoint)throw Error('Chromium could not start with its normal sandbox; see chromium.log');
   const ws=new WebSocket(endpoint);
   try{await bounded(new Promise((r,j)=>{ws.onopen=r;ws.onerror=j}),10000,'CDP socket open timed out')}catch(e){ws.close();throw e}
-  let seq=0;const pending=new Map(), events=[];
+  let seq=0;const pending=new Map(), events=[], browserDeadline=Date.now()+270000;
   ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}}else events.push(m)};
-  cdp={send:(method,params={},sessionId)=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{pending.delete(id);reject(Error(`CDP timeout: ${method}`))},15000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params,...(sessionId?{sessionId}:{})}));}) ,close:()=>ws.close()};
+  cdp={send:(method,params={},sessionId)=>new Promise((resolve,reject)=>{
+    const timeout=Math.min(8000,browserDeadline-Date.now());
+    if(timeout<=0)return reject(Error('Browser probe deadline exceeded'));
+    const id=++seq;
+    const timer=setTimeout(()=>{pending.delete(id);reject(Error(`CDP timeout: ${method}`))},timeout);
+    pending.set(id,{resolve,reject,timer});
+    try{ws.send(JSON.stringify({id,method,params,...(sessionId?{sessionId}:{})}));}
+    catch(error){pending.delete(id);clearTimeout(timer);reject(error);}
+  }),close:()=>ws.close()};
+  checkpoint('chrome-connected');
   receipt.browser=await cdp.send('Browser.getVersion');
-  try{const info=await cdp.send('SystemInfo.getInfo');receipt.gpu={devices:info.gpu.devices,featureStatus:info.gpu.featureStatus,auxAttributes:info.gpu.auxAttributes};receipt.rendererClass=classifyRenderer(receipt.gpu)}catch{receipt.rendererClass='unknown'}
+  try{const info=await cdp.send('SystemInfo.getInfo');receipt.gpu={devices:info.gpu.devices,featureStatus:info.gpu.featureStatus,auxAttributes:info.gpu.auxAttributes};receipt.rendererClass=classifyRenderer(receipt.gpu)}
+  catch(error){if(/CDP timeout|probe deadline/.test(error.message))throw error;receipt.rendererClass='unknown'}
   const {targetId}=await cdp.send('Target.createTarget',{url:'about:blank'});
   const {sessionId}=await cdp.send('Target.attachToTarget',{targetId,flatten:true});
   const call=(method,params)=>cdp.send(method,params,sessionId);pageCall=call;
   await call('Page.enable');await call('Runtime.enable');await call('Network.enable');
-  await call('Emulation.setDeviceMetricsOverride',{width:900,height:700,deviceScaleFactor:1,mobile:false});
-  const evaluate=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
-  for(const scenario of ['cleaver-echo-inspection','pike-echo-inspection','cast-skill-aerial-step','blade-hammerfall-brute']) {
-    const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[]};receipt.scenarios.push(entry);
-    const query=new URLSearchParams({dev:'proving-ground',lab:'combat-assets',env:'test-tile',scenario,seed:'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal'});
-    await call('Page.navigate',{url:`${origin}/?${query}`});
+  await call('Page.setLifecycleEventsEnabled',{enabled:true});
+  // Keep the software runner's pixel load bounded with ordinary display and game settings.
+  receipt.display={width:768,height:540,deviceScaleFactor:1,mobile:false};
+  receipt.requestedCloseViewQuality='low';
+  await call('Emulation.setDeviceMetricsOverride',receipt.display);
+  let contextId;
+  const evaluate=async (expression,awaitPromise=false)=>{const r=await call('Runtime.evaluate',{expression,contextId,awaitPromise,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
+  const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
+  const cases = [CLEAVER_CASE,'pike-echo-inspection','cast-skill-aerial-step','blade-hammerfall-brute'];
+  // An old frozen artifact need not contain the newer fixtures.
+  cases.push(...STILLWORKS_CASES.filter(id => fixtures.includes(`"${id}"`)));
+  if (fixtures.includes(`"${SUMMIT_CASE}"`)) cases.push(SUMMIT_CASE);
+  for(const scenario of cases) {
+    const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[],captures:[]};receipt.scenarios.push(entry);
+    checkpoint('scenario-navigate');
+    const closeView=STILLWORKS_CASES.includes(scenario);
+    const summit=scenario===SUMMIT_CASE;
+    const query=new URLSearchParams({dev:'proving-ground',lab:summit?'landscape':closeView?'close-view':'combat-assets',env:'test-tile',scenario,seed:closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
+    const navigation=await call('Page.navigate',{url:`${origin}/?${query}`});
+    if(navigation.errorText || !navigation.loaderId || !navigation.frameId) throw Error('Browser did not start the expected document navigation');
+    const observe=()=>navigationObservation(events.slice(start),sessionId,navigation);
+    currentObservation=()=>{
+      entry.navigation=observe();
+      entry.webglCaptured=capturedWebGLFrames(entry);
+    };
+    checkpoint('scenario-document');
+    const loaded=await waitForBrowserScene(()=>{const o=observe();return o.committed&&o.domReady&&Number.isInteger(o.contextId);});
+    currentObservation();
+    if(!loaded)throw Error(`document did not become ready: ${scenario}`);
+    contextId=entry.navigation.contextId;
     // Bounded wait for the real entry point. No altered game state or renderer globals.
-    let ready=false;
-    for(let i=0;i<80;i++){await wait(100);try{ready=await evaluate('!!document.querySelector("#scenarioPause") && !!globalThis.provingGroundGame?.()')}catch{}if(ready)break;}
+    checkpoint('scenario-ready');
+    const ready=await waitForBrowserScene(()=>evaluate('!!document.querySelector("#scenarioPause") && !!globalThis.provingGroundGame?.()'));
     if(!ready)throw Error(`scenario did not boot: ${scenario}`);
-    await wait(4000);
-    for(let i=0;i<2;i++){entry.samples.push(await evaluate(`(async()=>{const m=await import(new URL(${JSON.stringify(diagnosticsPath)},location.href));return m.closeViewRenderDiagnostics()})()`));await wait(300);}
-    // A PNG is evidence for human review, not an automatic aesthetic verdict.
-    const image=await call('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,`${scenario}.png`),Buffer.from(image.data,'base64'));
+    const capture=async suffix=>{
+      const name=`${scenario}${suffix ? '-' + suffix : ''}.png`;
+      const screenshot=await call('Page.captureScreenshot',{format:'png'});
+      writeFileSync(join(out,name),Buffer.from(screenshot.data,'base64'));
+      entry.captures.push(name);
+      checkpoint(receipt.phase);
+      return name;
+    };
+    checkpoint('scenario-first-capture');
+    entry.firstScreenshot=await capture('startup');
+    checkpoint('scenario-settle');
+    await wait(1500);
+    checkpoint('scenario-diagnostics');
+    const readDiagnostics=async()=>{
+      await evaluate('document.querySelector("#pgDiagnosticsToggle").click()');
+      let observation;
+      const opened = await waitForBrowserScene(async ()=>{
+        observation=await evaluate(`(() => {
+          const panel=document.querySelector('#pgDiagnostics');
+          if(!panel?.open)return null;
+          const rows=Object.fromEntries([...panel.querySelectorAll('#pgDiagnosticsBody dt')]
+            .map(term=>[term.textContent,term.nextElementSibling?.textContent]));
+          const effectiveQuality=globalThis.provingGroundGame?.()?.presentation?.effectiveQuality ?? null;
+          return {rows,effectiveQuality};
+        })()`);
+        return !!observation;
+      });
+      if(!opened)throw Error('Public renderer diagnostics did not open');
+      await evaluate('document.querySelector("#pgDiagnosticsClose").click()');
+      return {...diagnosticsFromRows(observation.rows,candidate.id),effectiveQuality:observation.effectiveQuality};
+    };
+    if(!summit){
+      const deadline=Date.now()+12000;
+      let first=await readDiagnostics();
+      entry.startupSample=first;
+      while(first.asset==='loading' && Date.now()<deadline){
+        await wait(450);
+        first=await readDiagnostics();
+      }
+      entry.samples.push(first);
+      await wait(300);
+      entry.samples.push(await readDiagnostics());
+    }
+    // Keep the sampled scene even if an input witness later fails.
+    checkpoint('scenario-screenshot');
+    entry.screenshot=await capture();
+    checkpoint('scenario-witness');
+    const witness = summit ? summitWitness : closeView ? closeViewWitness.bind(null, scenario)
+      : scenario === CLEAVER_CASE && Number(/^r(\d+)-/.exec(candidate.id)?.[1]) >= 863 ? cleaverWitness : null;
+    const witnessTools={call,evaluate,wait,capture};
+    if(witness) entry.witness=await witness(witnessTools);
+    if(scenario.startsWith('routing-crawl-') && entry.witness?.status==='observed'){
+      const panel=await routePanelWitness(scenario,witnessTools);
+      if(panel){
+        entry.witness.routePanel=panel.report;
+        entry.witness.screenshots.push(...panel.screenshots);
+        if(panel.status==='blocked') entry.witness.status='blocked';
+      }
+    }
     entry.errors=events.slice(start).filter(e=>e.sessionId===sessionId&&(e.method==='Runtime.exceptionThrown'||(e.method==='Network.responseReceived'&&e.params.response.status>=400)||e.method==='Network.loadingFailed')).map(e=>({method:e.method,details:e.params}));
-    Object.assign(entry,assess(entry.samples,entry.errors));
-    entry.screenshot=`${scenario}.png`;
+    if(entry.samples.some(sample=>sample.clientError))entry.errors.push({method:'Public renderer diagnostics reported a client error'});
+    if(summit){
+      entry.scene='world-map';
+      entry.reasons=entry.errors.length ? ['Browser errors in summit fixture'] : [];
+      entry.status=entry.errors.length ? 'blocked' : 'render-observed';
+    }else Object.assign(entry,assess(entry.samples,entry.errors));
+    if(witness && entry.witness?.status!=='observed'){
+      entry.status='blocked';
+      entry.reasons.push('Required input or encounter witness was not observed');
+    }
+    currentObservation();currentObservation=null;
+    checkpoint('scenario-observed');
   }
   receipt.status=receipt.scenarios.every(s=>s.status==='render-observed')?'render-observed':'blocked';
   // Recheck source bytes after execution, not just before serving them.
   if(verifyCandidate(root).digest!==expected)throw Error('candidate changed during execution');
 }catch(error){
   receipt.errors.push(String(error.message||error));receipt.status='blocked';
-  if(pageCall)try{
+  currentObservation?.();
+  if(pageCall && !/CDP timeout|probe deadline/.test(String(error.message)))try{
     const image=await pageCall('Page.captureScreenshot',{format:'png'});
     writeFileSync(join(out,'failure.png'),Buffer.from(image.data,'base64'));
     receipt.failureScreenshot={status:'captured',file:'failure.png',visualAcceptance:'not-reviewed'};

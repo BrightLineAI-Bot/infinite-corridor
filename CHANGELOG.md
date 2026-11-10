@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 866 gives the Stillworks Void Walker an articulated Close View body and a distinct Rending Hands windup and recovery.
+
 - Release 865 links new Great Tree summit skyways through Cloud Holds. Each crossing lands at a verified crown with an onward gate. Existing routes remain pinned.
 
 - Release 864 shows known doors, stairs, shortcuts and arrival markers in the existing dungeon Atlas. Pentagons add a discovered-chamber and connection overview plus a current-visit previous-chamber cue.
