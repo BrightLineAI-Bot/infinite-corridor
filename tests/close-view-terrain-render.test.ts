@@ -50,7 +50,7 @@ test('the GPU Close View renders captured actors on every new interior heightfie
   setCloseViewCanvasFactory(() => canvas); CLOSE_VIEW_HOOKS.gl = true; resetCloseViewGL();
   try {
     let now = 100000;
-    for (const scenario of ['terrain-ramps', 'platform-chain', 'indoor-drone', 'terrain-pentagon']) {
+    for (const scenario of ['terrain-ramps', 'platform-chain', 'indoor-drone', 'terrain-pentagon', 'vertical-gallery-keep', 'vertical-gallery-pentagon']) {
       const { game } = createLabFixture({ lab: 'close-view', scenario, now });
       game.presentation = { effectiveQuality: 'full' }; resetCloseViewCamera();
       const before = closeViewGLStats.frames;

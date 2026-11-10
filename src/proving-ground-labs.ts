@@ -230,6 +230,8 @@ const CLOSE_VIEW_LAB = [
   { id: "grand-hall", label: "Pentagon: a grand hall", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "pit-gallery", label: "Pentagon: a grand hall with a shaft", pick: (P) => P.nodes.find((n) => n.hall?.type === "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "terrain-pentagon", label: "Traversal: current Pentagon rooms and ramps", latestPentagon: true, pick: (P) => P.nodes.find((n) => (n.kind === "outer" || n.kind === "inner") && !n.hall) },
+  { id: "vertical-gallery-keep", label: "Scratch gallery: terraced Keep", verticalGallery: "keep" },
+  { id: "vertical-gallery-pentagon", label: "Scratch gallery: terraced Pentagon", verticalGallery: "pentagon", pick: (P) => P.nodes.find((n) => n.hall && n.hall.type !== "pitGallery") || P.nodes.find((n) => n.hall) },
   { id: "cube-doors", label: "Wayfinding: Cube room maze", cubeDoors: true },
   { id: "building", label: "Great building: a keep's first floor" },
   { id: "hazards", label: "Great building: an upper floor's holes, with lava stamped in (Close View's pits and lava)" }, // release 793
@@ -274,6 +276,75 @@ function stampHazards(map, entry) {
   const place = (cw, ch, near, make) => { for (let r = near; r < 14; r++) for (let y = entry.y - r; y <= entry.y + r; y++) for (let x = entry.x - r; x <= entry.x + r; x++) if (fits(x, y, cw, ch, near)) { for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) { const k = (y + j) * w + x + i; map.tiles[k] = { ...map.tiles[k], ...make(x + i, y + j) }; } return true; } return false; };
   place(3, 2, 2, () => ({ kind: "lava", environment: "lava", volcanic: true, blocked: false }));
   place(2, 2, 4, () => ({ kind: "floorHole", hole: true, blocked: false }));
+}
+
+// A bounded authored witness for discussing spacious vertical interiors before any generator is adopted. It deliberately
+// uses the production heightfield, ramp and jump fields: the ordinary stair reaches every branch on foot, while the short
+// platform spur is only an optional movement/boost comparison. The loaded floor, save and all edits remain scratch-only.
+function stampVerticalGallery(map, family) {
+  const W = map.width, H = map.height || Math.floor(map.tiles.length / W);
+  if (W < 26 || H < 22) return { found: false, note: `The loaded ${family} floor is too small for the 26×22 authored gallery.` };
+  const wall = family === "pentagon" ? "cryptWall" : "castleWall";
+  const kinds = family === "pentagon"
+    ? { start: "mosaicFloor", stair: "flagFloor", terrace: "tileFloor", west: "carpetFloor", east: "mosaicFloor", loop: "flagFloor" }
+    : { start: "flagFloor", stair: "castleStair", terrace: "castleCourt", west: "carpetFloor", east: "mosaicFloor", loop: "flagFloor" };
+  for (const tile of map.tiles) {
+    for (const key of ["environment", "rampDir", "hallVoid", "column", "tier", "balcony", "doorway", "inlay", "sigil", "gallerySpace"]) delete tile[key];
+    Object.assign(tile, { kind: wall, blocked: true, hole: false, openAir: false, courtyard: false, elev: 0, slope: false, interiorPlatform: false, platformTop: false });
+  }
+  const carve = (x0, y0, x1, y1, elev, kind, mark) => {
+    for (let y = Math.max(1, y0); y <= Math.min(H - 2, y1); y++) for (let x = Math.max(1, x0); x <= Math.min(W - 2, x1); x++) {
+      const tile = map.tiles[y * W + x]; Object.assign(tile, { kind, blocked: false, elev, gallerySpace: mark });
+    }
+  };
+  const cx = Math.floor(W / 2), startY = H - 4, terraceTop = H - 12, upperY = 3;
+  carve(cx - 6, startY, cx + 6, H - 2, 0, kinds.start, "landing");
+  for (let step = 1; step <= 5; step++) {
+    const y = H - 4 - step; carve(cx - 1, y, cx + 1, y, step, kinds.stair, "stair");
+    for (let x = cx - 1; x <= cx + 1; x++) Object.assign(map.tiles[y * W + x], { slope: true, rampDir: "north" });
+  }
+  carve(cx - 7, terraceTop, cx + 7, H - 10, 5, kinds.terrace, "upper-landing");
+  const westEdge = 2, eastEdge = W - 3, branchBottom = H - 11;
+  carve(westEdge, upperY, cx - 6, branchBottom, 5, kinds.west, "lantern-branch");
+  carve(cx + 6, upperY, eastEdge, branchBottom, 5, kinds.east, "bridge-branch");
+  carve(cx - 6, upperY, cx + 6, upperY + 2, 5, kinds.loop, "return-bridge");
+  // Two narrow high walks make the terrace read as a bridge circuit without becoming the only route.
+  carve(cx - 7, upperY + 2, cx - 5, terraceTop, 5, kinds.loop, "west-walk");
+  carve(cx + 5, upperY + 2, cx + 7, terraceTop, 5, kinds.loop, "east-walk");
+  // The walks overlook one shared, safe volume, not a solid block of corridor walls. Three ordinary ramps descend from
+  // the upper landing to its broad lower floor; the heightfield has no stacked surface and no lethal gap.
+  carve(cx - 4, upperY + 3, cx + 4, terraceTop - 1, 2, kinds.start, "sunken-floor");
+  for (let drop = 0; drop < 3; drop++) {
+    const y = terraceTop - 1 - drop, elev = 5 - drop;
+    carve(cx - 1, y, cx + 1, y, elev, kinds.stair, "sunken-stair");
+    for (let x = cx - 1; x <= cx + 1; x++) Object.assign(map.tiles[y * W + x], { slope: true, rampDir: "south" });
+  }
+  // Optional one-level jump chain beside the broad stair. It ends at a small overlook, not a required destination.
+  const boostY = startY - 1, boost = [];
+  for (let step = 1; step <= 5; step++) {
+    const x = cx + 3 + step, y = boostY; if (x >= W - 2) break;
+    carve(x, y, x, y, step, kinds.terrace, "boost-spur");
+    const tile = map.tiles[y * W + x]; tile.interiorPlatform = true; tile.platformTop = step === 5; boost.push({ x, y, elev: step });
+  }
+  const entry = { x: cx, y: startY + 1 };
+  map.entry = entry; map.exit = entry; map.objects = []; map.enemySpawns = [];
+  map.landscape = { version: 0, biome: null, name: null, interior: true };
+  map.interiorTerrain = { version: 1, maxLevel: 5 };
+  map.backdrop = "paleWell"; map.sigils = [];
+  // Reuse existing artwork on these scratch walls; there are no new lore or journal entries.
+  map.murals = [
+    { x: westEdge - 1, y: upperY + 4, side: "west", muralId: "longMigration", scale: 4, place: "wall" },
+    { x: eastEdge + 1, y: upperY + 4, side: "east", muralId: "eldersPass", scale: 4, place: "wall" },
+    { x: cx, y: upperY - 1, side: "north", muralId: "eightyEight", scale: 5, place: "wall" },
+  ];
+  map.hall = { type: "gallery", name: family === "pentagon" ? "The Terraced Chalice" : "The Lantern Terraces", tall: true,
+    ceiling: "skylit", ceilingHeight: 9, open: false, sky: true, backdrop: "paleWell",
+    features: [{ kind: "skylight", x: cx, y: upperY + 1 }, { kind: "lamp", x: cx - 8, y: upperY + 4 }, { kind: "lamp", x: cx + 8, y: upperY + 4 }] };
+  return { found: true, family, elevationCap: 5, levelHeightTiles: .34, clearBounds: { x0: 1, y0: 1, x1: W - 2, y1: H - 2 }, entry, mainRoute: "five broad north ramps",
+    branches: [{ id: "lantern-branch", side: "west", kind: kinds.west, endpoint: { x: westEdge + 2, y: upperY + 4 } },
+      { id: "bridge-branch", side: "east", kind: kinds.east, endpoint: { x: eastEdge - 2, y: upperY + 4 } }],
+    returnLoop: { found: true, northBridge: { from: { x: cx - 6, y: upperY + 1 }, to: { x: cx + 6, y: upperY + 1 } } }, sharedVolume: { safeFloor: true, level: 2, bounds: { x0: cx - 4, y0: upperY + 3, x1: cx + 4, y1: terraceTop - 1 } }, requiredDrone: false, boostSpur: boost, authoredBrightness: "supported skylit hall metadata with paleWell backdrop; final exposure remains renderer-controlled",
+    limits: "Scratch geometry demonstrates routing and composition only; it does not guarantee a future procedural placement or identical apparent brightness on every quality tier." };
 }
 export function findLabPentagon(seed, now = 0) {
   const probe = new Game(scratchSave(seed), now);
@@ -360,7 +431,7 @@ function closeViewFixture(scenario, seed, now) {
     const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); const floors = 3; let rx = b.rx;
     if (spec.style === "keep") for (let k = 0; k < 200 && closeViewThemeLivedIn(`building:${seed}:${rx}:${b.ry}:keep:${floors}`) !== spec.lived; k++) rx++; // a keep that is (or is not) lived in
     id = `building:${seed}:${rx}:${b.ry}:${spec.style}:${floors}:f${spec.floor || 1}`; back = { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
-  else if (spec.id === "building" || spec.id === "hazards" || spec.buildingFeature || spec.buildVersion) { const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); id = spec.buildingFeature === "dig-return" && seed === "DIG-AUDIT0" ? `building:${seed}:1:1:keep:4:f1` : `building:${seed}:${b.rx}:${b.ry}:keep:${b.floors}:f${spec.id === "hazards" ? Math.min(2, b.floors) : 1}`; back = spec.buildingFeature === "dig-return" && seed === "DIG-AUDIT0" ? { rx: 1, ry: 1, x: 16, y: 16 } : { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
+  else if (spec.id === "building" || spec.id === "hazards" || spec.buildingFeature || spec.buildVersion || spec.verticalGallery === "keep") { const b = findLabBuilding(seed); if (!b) throw new Error(`No keep near the origin for seed ${seed}.`); id = spec.buildingFeature === "dig-return" && seed === "DIG-AUDIT0" ? `building:${seed}:1:1:keep:4:f1` : `building:${seed}:${b.rx}:${b.ry}:keep:${b.floors}:f${spec.id === "hazards" ? Math.min(2, b.floors) : 1}`; back = spec.buildingFeature === "dig-return" && seed === "DIG-AUDIT0" ? { rx: 1, ry: 1, x: 16, y: 16 } : { rx: b.rx, ry: b.ry, x: 16, y: 16 }; }
   else { const c = findLabPentagon(seed, now); if (!c) throw new Error(`No Pentagon near the origin for seed ${seed}.`); const P = pentagonPlan(seed, c.cx, c.cy, spec.latestPentagon ? c.V : Math.min(c.V, 8)), q = spec.pick(P) || P.nodes[0]; id = `${P.base}:f${q.n + 1}`; back = { rx: c.cx, ry: c.cy, x: 16, y: 16 }; }
   const save = scratchSave(seed); save.closeView = true; if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET; if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL; ensureCloseView(save); // ?cvPreset=close|wide tries a camera preset
   if (id.startsWith("building:")) save.consequences.dungeons[id] = { interiorVersion: spec.buildVersion || (spec.buildingFeature ? BUILDINGS.interior.version : 2) };
@@ -372,6 +443,8 @@ function closeViewFixture(scenario, seed, now) {
   Object.assign(save.session, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 }); Object.assign(save.position, { area: "overworld", rx: back.rx, ry: back.ry, x: 16, y: 16 });
   const game = new Game(save, now); game.installSystems();
   save.session.activeDungeonId = id; save.session.dungeonReturn = back; game.loadArea("dungeon", false);
+  const verticalGallery = spec.verticalGallery ? stampVerticalGallery(game.map, spec.verticalGallery) : null;
+  if (verticalGallery?.found) game.enemies = [];
   if (spec.buildingFeature || spec.latestPentagon || spec.buildVersion || spec.cubeDoors) {
     const loadArea = game.loadArea.bind(game);
     game.loadArea = (area, capture = true) => {
@@ -430,7 +503,8 @@ function closeViewFixture(scenario, seed, now) {
     traversal = { feature: "pentagon-terrain", found: game.map.interiorTerrain?.version === 1, version: game.map.building?.V || null, size: [game.map.width, game.map.height] };
   }
   if (spec.id === "hazards") stampHazards(game.map, { x: Math.round(entry.x), y: Math.round(entry.y) });
-  if (spec.buildingFeature === "ramp") game.message = "Close View ramp lab: walk across the broad stepped strip and compare the camera at each height.";
+  if (verticalGallery) game.message = verticalGallery.found ? "Climb the broad stair to the upper landing. Explore both galleries; either high walk returns to the terrace. The east stepping spur is optional." : verticalGallery.note;
+  else if (spec.buildingFeature === "ramp") game.message = "Close View ramp lab: walk across the broad stepped strip and compare the camera at each height.";
   else if (spec.buildingFeature === "dig-return") game.message = traversal?.found ? "Face the cut wall, Act to dig, walk across and back." : traversal?.note;
   else if (spec.buildingFeature === "platform") game.message = traversal?.found ? "Close View platform lab: jump onto the +1 and +2 blocks, then up to the 2×2 top." : traversal?.note;
   else if (spec.buildingFeature === "drone") game.message = traversal?.found ? "Close View drone lab: Jump, then press Jump again and hold to boost over the indoor platform chain." : traversal?.note;
@@ -477,7 +551,7 @@ function closeViewFixture(scenario, seed, now) {
     game.message = "Stand still and let the Ashling land a hit. Reset same restarts the encounter.";
   }
   if (LAB_CV_QUALITY) game.presentation = { ...(game.presentation || {}), effectiveQuality: LAB_CV_QUALITY }; game.sync();
-  return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(traversal ? { diagnostics: { traversal } } : {}), ...(buildPractice ? { buildPractice, developerHint: game.message, diagnostics: { buildPractice } } : {}) };
+  return { lab: "close-view", scenario: spec.id, label: spec.label, seed, variant: 0, save, game, production: true, primary: entry, closeView: true, ...(spec.buildingFeature === "dig-return" ? { developerHint: "Face cut wall, Act to dig, walk across and back." } : {}), ...(verticalGallery ? { developerHint: game.message, diagnostics: { verticalGallery } } : {}), ...(traversal ? { diagnostics: { traversal } } : {}), ...(buildPractice ? { buildPractice, developerHint: game.message, diagnostics: { buildPractice } } : {}) };
 }
 
 const ROUTING_ADOPTION_SITES = {
