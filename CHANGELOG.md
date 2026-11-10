@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 870 lets ordinary monsters drop the Salvage Blade through their normal gear roll (about 1 in 12 gear drops). Bosses, elites, special foes, caches and shops are unchanged.
+
 - Release 869 makes Overworld Close View quest and waypoint arrows follow the camera while keeping the top-down compass north-up.
 
 - Release 868 adds door lights and up to three Atlas door waypoints in Cubes and Pentagons. The compass points north when no point is set.

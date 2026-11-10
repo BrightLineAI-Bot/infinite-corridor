@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 870 — Salvage Blade from ordinary monsters
+
+**CODE:** `src/items.ts` adds `ORDINARY_MONSTER_LOOT` (`salvageBladePrimaryShare` .5). `generateItem(seed, level, source)` takes an optional `{ ordinaryMonster: true }`; when a primary roll is not already a brawler override, a separate stream (`<seed>:salvage-blade-loot:v1`) turns half of those primaries into a Salvage Blade (`steady`), keeping the rolled id, power, tier and affixes. `isValidItem` accepts it. `src/game.ts` `ordinaryMonsterGearDrop(e)` marks only ordinary rewarded kills (no boss, elite, unique, world boss or beast, Questing Beast, Stalker, sea creature, Aperture encounter, dungeon role, Fractured rank or reinforcement, domain reinforcement, summon, no-reward or Crossing guardian), and `defeatEnemy` passes it to `obtainDrop`. Test: `tests/salvage-blade-loot.test.ts`.
+
+**BOUNDARY:** About 8% of ordinary gear drops become a Salvage Blade (329 of 4,000 sampled). Every other roll, and every cache, shop, boss, elite, Fractured champion and special reward, is byte-for-byte unchanged because the blade uses its own stream. No save change (schema 14); the item uses the existing Salvage Blade attack profile.
+
 ## Release 869 — Camera-relative overworld compass
 
 **CODE:** `src/main.ts` uses the shared compass rotation for active overworld quest and manual targets, just as it does for dungeon door points and true north. A target keeps its actual world direction as the Close View camera turns.
