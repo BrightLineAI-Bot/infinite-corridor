@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleaverWitness, closeViewWitness, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
+import { cleaverWitness, closeViewWitness, doorWayfindingWitness, movementKey, routePanelWitness, summitWitness } from './close-view-witness.mjs';
 import { waitForBrowserScene, navigationObservation } from './resources.mjs';
 
 test('crawl movement maps the desired world heading to the camera-relative keys', () => {
@@ -54,6 +54,29 @@ test('route panel witnesses current-floor cues and requires the Pentagon overvie
   const result = await check('routing-crawl-pentagon', { ...state, headings });
   assert.equal(result.status, 'observed');
   assert.deepEqual(result.screenshots, ['known-routes']);
+});
+
+test('door wayfinding uses the public route panel and requires its numbered pressed diagnostic', async () => {
+  const states = [
+    { area:'cube:f2', enabled:true, doors:[{id:'cube:f2::door-a'}], scenario:'cube-doors', scratch:true },
+    true,
+    { open:true, label:'Add waypoint for DOOR at 4, 5', pressed:'false', doorId:'cube:f2::door-a' },
+    true,
+    { open:true, label:'Remove waypoint for DOOR at 4, 5', pressed:'true', door:{id:'cube:f2::door-a',slot:1} },
+    { available:false },
+  ];
+  const result=await doorWayfindingWitness('cube-doors',{
+    evaluate:async()=>states.shift(), call:async()=>assert.fail('Act is not sent without a public door teleport'),
+    wait:async()=>{}, capture:async name=>name,
+  });
+  assert.equal(result.status,'observed');
+  assert.deepEqual(result.screenshots,['routes-before-waypoint','routes-selected-waypoint']);
+  assert.match(result.remainingVisualRequirement,/not safely observed/);
+  const blocked=await doorWayfindingWitness('terrain-pentagon',{
+    evaluate:async()=>({area:'pentagon',enabled:true,doors:[],scenario:'terrain-pentagon',scratch:true}),
+    call:async()=>{},wait:async()=>{},capture:async()=>assert.fail('no screenshot without doors'),
+  });
+  assert.equal(blocked.status,'blocked');
 });
 
 test('summit staging accepts real Act admission only to a fresh cloud encounter with a distinct target', async () => {

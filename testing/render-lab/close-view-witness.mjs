@@ -5,6 +5,7 @@ export const STILLWORKS_CASES = Object.freeze([
 export const CLEAVER_CASE = 'cleaver-echo-inspection';
 export const SUMMIT_CASE = 'great-tree-summit';
 export const COMBAT_ACTION_CASES = ['pike-echo-inspection', 'cast-skill-aerial-step', 'blade-hammerfall-brute'];
+export const DOOR_WAYFINDING_CASES = Object.freeze(['terrain-pentagon', 'cube-doors']);
 
 async function holdKey(call, wait, key, ms) {
   const pressed = [];
@@ -103,6 +104,73 @@ export async function routePanelWitness(scenario, { evaluate, capture }) {
     && Array.isArray(report.routes) && pentagonOverview;
   return { status: observed ? 'observed' : 'blocked', report,
     screenshots: report.open ? [await capture('known-routes')] : [] };
+}
+
+// r868: exercise only the public Proving Ground controls and the production route
+// panel. A traversal receipt is optional and is recorded only when normal Act
+// changes the production area after a public teleport to an actual door.
+export async function doorWayfindingWitness(scenario, { call, evaluate, wait, capture }) {
+  const before = await evaluate(`(() => {
+    const g=globalThis.provingGroundGame?.(), button=document.querySelector('#scenarioRoutes');
+    const report=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
+    return {area:g?.areaId(),enabled:button?.disabled===false,doors:report.doorWayfinding||[],
+      scenario:report.scenario,scratch:report.scratch,player:report.player};
+  })()`);
+  const screenshots=[];
+  if(!before.scratch || before.scenario!==scenario || !before.enabled || !before.doors.length)
+    return {status:'blocked',before,reason:'Public dungeon route controls or doors unavailable',screenshots};
+  await evaluate(`document.querySelector('#scenarioRoutes').click()`);
+  await wait(120);
+  const opened=await evaluate(`(() => {
+    const panel=document.querySelector('#pgRoutes'), button=panel?.querySelector('button.dungeon-door-waypoint');
+    return {open:panel?.open===true,label:button?.getAttribute('aria-label')||null,
+      pressed:button?.getAttribute('aria-pressed')||null,doorId:button?.closest('[data-door-id]')?.dataset.doorId||null};
+  })()`);
+  if(!opened.open || !opened.label?.startsWith('Add waypoint for ') || opened.pressed!=='false' || !opened.doorId)
+    return {status:'blocked',before,opened,reason:'Add waypoint control unavailable',screenshots};
+  screenshots.push(await capture('routes-before-waypoint'));
+  await evaluate(`document.querySelector('#pgRoutes button.dungeon-door-waypoint').click()`);
+  await wait(120);
+  const marked=await evaluate(`(() => {
+    const panel=document.querySelector('#pgRoutes'), button=panel?.querySelector('[data-door-id=${JSON.stringify(opened.doorId)}] button.dungeon-door-waypoint');
+    const report=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent);
+    const door=(report.doorWayfinding||[]).find(q=>q.id===${JSON.stringify(opened.doorId)});
+    return {open:panel?.open===true,label:button?.getAttribute('aria-label')||null,
+      pressed:button?.getAttribute('aria-pressed')||null,door:door||null};
+  })()`);
+  const markedObserved=marked.open && marked.pressed==='true' && marked.label?.startsWith('Remove waypoint for ')
+    && marked.door?.slot===1;
+  if(markedObserved)screenshots.push(await capture('routes-selected-waypoint'));
+
+  // Best-effort actual door traversal. The teleport is the supported PG selector;
+  // Act remains ordinary keyboard input. Never manufacture a transition receipt.
+  const traversal=await evaluate(`(() => {
+    const info=JSON.parse(document.querySelector('#fixtureDiagnostics').textContent), select=document.querySelector('#teleportSelect');
+    const scoped=${JSON.stringify(opened.doorId)}, raw=scoped.slice(scoped.lastIndexOf('::')+2);
+    const door=info.teleportTargets?.find(q=>q.id===scoped||q.id===raw);
+    if(!door || ![...select.options].some(o=>o.value===door.id))return {available:false};
+    select.value=door.id;select.dispatchEvent(new Event('change',{bubbles:true}));
+    return {available:true,target:door};
+  })()`);
+  if(traversal.available){
+    await evaluate(`document.querySelector('#pgRoutes form button').click()`);
+    await evaluate(`document.querySelector('#scenarioPause').textContent==='Resume'&&document.querySelector('#scenarioPause').click()`);
+    await wait(180);
+    await holdKey(call,wait,'e',80);
+    for(let i=0;i<8;i++){
+      traversal.after=await evaluate(`globalThis.provingGroundGame?.().areaId()`);
+      if(traversal.after!==before.area)break;
+      await wait(100);
+    }
+    traversal.observed=traversal.after!==before.area;
+    if(traversal.observed){
+      await wait(250);
+      traversal.arrival=await evaluate(`JSON.parse(document.querySelector('#fixtureDiagnostics').textContent).doorWayfinding?.find(door=>door.mark==='arrival')||null`);
+      screenshots.push(await capture('normal-act-door-traversal'));
+    }
+  }
+  return {status:markedObserved?'observed':'blocked',before,opened,marked,traversal,
+    remainingVisualRequirement:traversal.arrival?null:'Actual door traversal was not safely observed; no traversal receipt is claimed.',screenshots};
 }
 
 export async function summitWitness({ call, evaluate, wait, capture }) {

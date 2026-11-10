@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { verifyCandidate } from '../../scripts/pages-release.mjs';
 import { assess, capturedWebGLFrames, classifyRenderer, safePath, diagnosticsModulePath, diagnosticsFromRows } from './evidence.mjs';
 import { disjointPaths, bounded, stopBrowser, normalBrowserFlags, waitForBrowserScene, navigationObservation } from './resources.mjs';
-import { cleaverWitness, combatActionWitness, closeViewWitness, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
+import { cleaverWitness, combatActionWitness, closeViewWitness, doorWayfindingWitness, routePanelWitness, summitWitness, CLEAVER_CASE, COMBAT_ACTION_CASES, DOOR_WAYFINDING_CASES, STILLWORKS_CASES, SUMMIT_CASE } from './close-view-witness.mjs';
 const args = process.argv.slice(2), option = name => { const i=args.indexOf(`--${name}`); return i<0?undefined:args[i+1]; };
 const candidatePath=option('candidate'), expected=option('digest'), output=option('out');
 if (!candidatePath || !/^[a-f0-9]{64}$/.test(expected||'') || !output) throw Error('Usage: node testing/render-lab/run.mjs --candidate DIR --digest TRUSTED_SHA256 --out NEW_DIR [--chromium PATH]');
@@ -100,18 +100,20 @@ try {
   const fixtures = readFileSync(join(site,'src/proving-ground-labs.js'),'utf8');
   const walker = /^r866-/.test(candidate.id);
   const wholeWorld = /^r867-/.test(candidate.id);
+  const doorWayfinding = /^r868-/.test(candidate.id);
   const worldFixtures = {standard:'test-tile',coast:'landscape','great-tree-summit':'landscape',ashling:'combat'};
-  const cases = wholeWorld ? Object.keys(worldFixtures) : walker ? [STILLWORKS_CASES[0]]
+  const cases = doorWayfinding ? [...DOOR_WAYFINDING_CASES] : wholeWorld ? Object.keys(worldFixtures) : walker ? [STILLWORKS_CASES[0]]
     : [COMBAT_ACTION_CASES[1], ...STILLWORKS_CASES.slice(1).filter(id => fixtures.includes(`"${id}"`))];
-  receipt.scope=wholeWorld?'Overworld Close View and toggle on exact frozen r867'
+  receipt.scope=doorWayfinding?'Dungeon door wayfinding on exact frozen r868'
+    :wholeWorld?'Overworld Close View and toggle on exact frozen r867'
     :walker?'Rending Hands witness on exact frozen r866':'remaining online gameplay witnesses for exact frozen r865';
   for(const scenario of cases) {
     const start=events.length, entry={scenario,status:'blocked',samples:[],errors:[],captures:[]};receipt.scenarios.push(entry);
     checkpoint('scenario-navigate');
     const closeView=STILLWORKS_CASES.includes(scenario);
     const summit=!wholeWorld && scenario===SUMMIT_CASE;
-    const lab=wholeWorld?worldFixtures[scenario]:summit?'landscape':closeView?'close-view':'combat-assets';
-    const query=new URLSearchParams({dev:'proving-ground',lab,env:lab==='combat'?'dungeon-hollow':'test-tile',scenario,seed:walker?'TIM1':closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
+    const lab=wholeWorld?worldFixtures[scenario]:doorWayfinding?'close-view':summit?'landscape':closeView?'close-view':'combat-assets';
+    const query=new URLSearchParams({dev:'proving-ground',lab,env:lab==='combat'?'dungeon-hollow':'test-tile',scenario,seed:doorWayfinding&&scenario==='cube-doors'?'R13':walker?'TIM1':closeView?'CINDER-VERGE-47':'RENDER-LAB-1',variant:'0',size:'standard',reveal:'normal',cvQuality:receipt.requestedCloseViewQuality});
     if(wholeWorld)query.set('overworldCloseView','1');
     const url=`${origin}/?${query}`;
     const observe=await navigate(url);
@@ -176,7 +178,7 @@ try {
     checkpoint('scenario-screenshot');
     entry.screenshot=await capture();
     checkpoint('scenario-witness');
-    const witness = wholeWorld ? async () => {
+    const witness = doorWayfinding ? doorWayfindingWitness.bind(null,scenario) : wholeWorld ? async () => {
       const observeWorld=()=>evaluate(`(() => {
         const g=globalThis.provingGroundGame?.(), cam=globalThis.__closeViewCam?.get(), toggle=document.querySelector('#pgOverworldCloseView');
         return {area:g?.areaId(), hp:g?.player.hp, drawn:cam?.drawn, checked:toggle?.checked, enabled:g?.save.overworldCloseView};
