@@ -409,6 +409,10 @@ const CLEAVER_ENDS = Object.freeze([
   cleaverKey(.57, -.68, .34, .92, -.08, .22, .07),
 ]);
 const CLEAVER_FOLLOW_MS = 105;
+// Presentation-only clip timing: load the sword/body before accelerating through
+// the canonical hit. The contact producer, not this curve, still owns damage.
+const CLEAVER_LOAD_FRACTION = .42;
+const CLEAVER_BACKSWING = .06;
 const CLEAVER_READY_MS = 475;
 const CLEAVER_SETTLE_MS = 820;
 export const cleaverCarryFrame = () => CLEAVER_CARRY;
@@ -456,12 +460,21 @@ export function sampleCleaverChoreography(record, logicalNow) {
     const finish = step === 4 ? action.durationMs : CLEAVER_SETTLE_MS;
     return mixCleaverFrame(end, CLEAVER_CARRY, smooth((elapsed - start) / (finish - start)));
   }
-  // The hand accelerates into the existing contact and carries through it.
+  // A short counter-movement makes the windup readable even from a held combo
+  // endpoint. Keep p0 exact so a follow-up can inherit ANY interrupted pose.
   const before = elapsed <= action.contactMs;
   const fraction = before ? elapsed / action.contactMs : (elapsed - action.contactMs) / CLEAVER_FOLLOW_MS;
-  const travel = before ? .5 * fraction ** 2 : 1 - .5 * (1 - fraction) ** 2;
+  const loading = before && fraction < CLEAVER_LOAD_FRACTION;
+  const strike = (fraction - CLEAVER_LOAD_FRACTION) / (1 - CLEAVER_LOAD_FRACTION);
+  const travel = before
+    ? loading ? -CLEAVER_BACKSWING * smooth(fraction / CLEAVER_LOAD_FRACTION)
+      : -CLEAVER_BACKSWING + (.5 + CLEAVER_BACKSWING) * strike ** 2
+    : 1 - .5 * (1 - fraction) ** 3;
   const frame = mixCleaverFrame(cue.entry, end, travel);
-  const arc = Math.sin(Math.PI * travel);
+  const arc = Math.sin(Math.PI * Math.max(0, travel));
+  const load = before ? Math.sin(Math.PI * fraction) ** 2 : 0;
+  frame.twist -= Math.sign(end.twist) * .16 * load;
+  frame.lean -= .055 * load;
   frame.forward += .24 * arc;
   if (step === 1 || step === 3) frame.pitch += (step === 1 ? .30 : -.30) * arc;
   frame.lean += .11 * arc;

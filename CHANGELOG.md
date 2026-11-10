@@ -5,6 +5,7 @@
 - The shared dungeon Atlas route list also covers discovered ordinary exits, stairs, deep transitions and portals, with visibility-gated entry markers and explicit inspected-floor labeling.
 
 - Pentagon Atlas prototype lists discovered chambers and numbered current-floor connections, marks saved arrival, and identifies the previous chamber during the current visit without adding save fields.
+- Release 863 gives the Verge Cleaver a brief counter-load, quicker impact travel and body drive on the approved rig while preserving four-cut endpoints and canonical contact timing. Library comparison and offline diagnostic are recorded in `docs/cleaver-motion-library-study.md`; hosted visual acceptance remains pending.
 
 - Release 862 lights the Stillworks independently of dungeon corridors, points the arrival camera into the arena and keeps the lab cover targets available after reload.
 
