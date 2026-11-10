@@ -1047,7 +1047,7 @@ export function labReport(fixture) {
 
 export function teleportTargets(fixture) {
   const map=fixture.game.map,targets=[];
-  if (map === fixture.stillworksMap) targets.push(...fixture.stillworksProbes);
+  if (fixture.stillworksMap && map?.id === fixture.stillworksMap.id && map.pentArena === fixture.stillworksMap.pentArena) targets.push(...fixture.stillworksProbes);
   if (fixture.crawl && map === fixture.crawlMap) {
     targets.push({ id: "crawl-approach", label: "Crawl approach", ...fixture.crawl.approach });
   }
