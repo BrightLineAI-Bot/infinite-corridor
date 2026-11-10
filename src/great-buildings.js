@@ -12,8 +12,8 @@
 // somewhere across the floor from where you came in, and above the ground floor, holes where the floor has fallen through
 // (step in and you drop to the floor below, hurt; jump and you clear them). The top floor holds the building's guardian and
 // its cache. Everything is a hash of the seed and the building (ids carry the style and the floor count), built per floor.
-import { hashSeed, rng, byHash } from "./random.js?v=r863-36c57768eed1";
-import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms, routingStairPair, routingNearLanding, routingKeepAppearance } from "./close-view-room-routing.js?v=r863-36c57768eed1";
+import { hashSeed, rng, byHash } from "./random.js?v=r865-1532e8b05f7f";
+import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms, routingStairPair, routingNearLanding, routingKeepAppearance } from "./close-view-room-routing.js?v=r865-1532e8b05f7f";
 
 export const BUILDINGS = {
   version: 3, // 2: shaped footprints (rect, L, T, U), hives, built over natural ground (`placeBuildingV2`); 1 stays as it was

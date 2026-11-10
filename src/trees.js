@@ -14,7 +14,7 @@
 //   levels under the branch above, so a fall off the higher branch lands on one (it hurts) and the climb goes on from there;
 // - leaves on its branches (the tips always), and decorative boughs drawn off its trunk, which nothing walks on.
 // Bounded: at most two trees, a few thousand tile checks, once per section; nothing spawns up there.
-import { hashSeed, byHash } from "./random.js?v=r863-36c57768eed1";
+import { hashSeed, byHash } from "./random.js?v=r865-1532e8b05f7f";
 
 export const TREE_VERSION = 13;
 // Release 672 (landscape version 14; Tim, 2026-11-01: "I haven't seen any tall trees"): a survey found the version 13 search
@@ -213,6 +213,9 @@ export const TREES = {
     { name: "emberleaf", bark: ["#4a3426", "#24170e"], leaf: ["#8a3a1c", "#b5562a", "#5e2414", "#d27a3a"], tint: "#20100822" },
   ],
 };
+
+// Shared with summit routing: the historical door roll, without building a tree.
+export const canopyGateDestination = (seed, rx, ry) => (hashSeed(`${seed}:canopy-door:v1:${ry * 7919 + rx}`) % 1000) / 1000 < TREES.starfield ? "starfield" : "cloud";
 
 const idx = (x, y) => y * 32 + x;
 // hashSeed (random.ts) carried on from a prefix's state: fnvFrom(fnvFrom(2166136261, a), b) >>> 0 === hashSeed(a + b). The tree
@@ -464,7 +467,7 @@ export function growTrees(map, seed, rx, ry, { ground, reachable, trapped, versi
     map.objects = (map.objects || []).filter((o) => { const i = idx(Math.round(o.x), Math.round(o.y)); return !((o.jungle || (v14 && o.forest)) && cleared.has(i)) && !(o.kind === "tree" && strip.has(i)); }); // 672: a forest's own trees too; version 18: any tree in the trunk's strip
     map.enemySpawns = (map.enemySpawns || []).filter((q) => !laid.has(idx(Math.round(q.x), Math.round(q.y))));
     const door = trees[trees.length - 1], gate = turn(door.op, door.N, door.tx, door.ty)(Math.floor(door.N / 2), Math.floor(door.N / 2));
-    const dest = (hashSeed(`${seed}:canopy-door:v1:${ry * 7919 + rx}`) % 1000) / 1000 < T.starfield ? "starfield" : "cloud";
+    const dest = canopyGateDestination(seed, rx, ry);
     map.objects.push({ id: `canopy-gate-${rx}-${ry}`, kind: "canopyGate", name: dest === "starfield" ? "A door in the great tree, full of stars" : "A door in the great tree, full of cloud", x: gate[0], y: gate[1], dest, actions: ["enter"], state: "open" });
     const xs = [...laid].map((i) => i % 32), ys = [...laid].map((i) => Math.floor(i / 32)), bx = Math.min(...xs) - 1, by = Math.min(...ys) - 1, n = Math.max(Math.max(...xs) - bx, Math.max(...ys) - by) + 2;
     const rec = (tr, low) => ({ x0: tr.tx, y0: tr.ty, size: tr.N, top: tr.top, look: tr.look, boughs: tr.boughs, ...(low ? { low: true } : {}) });

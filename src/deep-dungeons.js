@@ -1,6 +1,6 @@
-import { hashSeed, rng } from "./random.js?v=r863-36c57768eed1";
-import { populateDungeonEncounters } from "./arenas.js?v=r863-36c57768eed1";
-import { annotateDungeon } from "./dungeon-framework.js?v=r863-36c57768eed1";
+import { hashSeed, rng } from "./random.js?v=r865-1532e8b05f7f";
+import { populateDungeonEncounters } from "./arenas.js?v=r865-1532e8b05f7f";
+import { annotateDungeon } from "./dungeon-framework.js?v=r865-1532e8b05f7f";
 
 export const DEEP_DUNGEON_SCHEMA_VERSION = 3;
 // Release 735: placement version of deep-v2 dungeons, pinned per history (`deepPlacement`, game.ts generatePinnedDungeon) for
