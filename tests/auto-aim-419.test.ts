@@ -32,6 +32,6 @@ test('more sensitive to what is ahead; never drawn to what cannot be hit', () =>
   assert.equal(autoAimable({ kind: 'npc' }), false); assert.equal(autoAimable({ astralAllyOf: 'p' }), false);
 });
 
-test('a Shadow Clone cast from the Build button listens to Build while it is held', () => {
-  assert.match(readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'), /btn\.mode === "cast"\) \{ this\.castAction = "build"; try \{ this\.castKey\(btn\.key\); \} finally \{ this\.castAction = null; \} \}/);
+test('a Shadow Clone cast from the Build button listens to Build while it is held (release 874: the Build button is slot C, its own action spell3)', () => {
+  assert.match(readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'), /this\.castAction = SLOT_ACTIONS\[slot\] \|\| "spell"; try \{/);
 });

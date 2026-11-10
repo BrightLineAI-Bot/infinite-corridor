@@ -46,6 +46,6 @@ test('pressing a slot that holds Build builds; the item slot uses the item; the 
   setSlot(s, 'a', 'build'); s.materials.stone = 20; s.materials.wood = 20;
   s.aimMode = null; g.castSlot('a'); assert.equal(s.aimMode, 'build', 'the slot pressed Build (build mode on)');
   setSlot(s, 'b', 'item'); assignPresetItem(s, 0, 'lumenPhial'); s.consumables.lumenPhial = 2; g.castSlot('b', 1000); assert.equal(s.consumables.lumenPhial, 1);
-  setPresetButton(s, 0, 'spell:ember-ring'); const press = { state: { x: 0, y: 0 }, consume: (k) => k === 'build', held: () => false };
+  setPresetButton(s, 0, 'spell:ember-ring'); const press = { state: { x: 0, y: 0 }, consume: (k) => k === 'spell3', held: () => false }; // release 874: the Build button is slot C
   g.update(.016, press, 5000); assert.match(g.message, /Ember Ring|recovers/);
 });

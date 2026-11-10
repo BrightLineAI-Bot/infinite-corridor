@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 874: Oculus and slot C. The compass's bottom-left place is now a fixed utility button, chosen per preset in the Arcanum (Oculus, Build, or Robot / Drone). The Oculus opens a glowing dais for 5 s; step onto it to switch between Close View and the top-down view. The old Build button is now slot C: A, B and C each take a spell, discipline, Build or item, so three spells can be equipped. The compass moves to the top-right corner.
+
 - Release 873: interior jump platforms on new floors (buildings, compounds, castles, labyrinths, Pentagon chambers) no longer seal off guards, stand on creatures' spawns, or drop you into a pocket you can't climb out of. Floors you have already explored stay as they were.
 
 - Release 872: Overworld Close View now has a sky, sun and horizon for each region. Its ground reaches the section's edge and fades into the horizon, with surface detail and level edges, and its water reflects the sky. Rubble, crags, castle walls, ice spires and trees now stand up as solids. This is rendering only, and the view with Close View off is unchanged.

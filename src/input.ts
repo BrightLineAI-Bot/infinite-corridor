@@ -34,6 +34,8 @@ export function createInput(root, host = globalThis, options = {}) {
       journal: false,
       preset: false,
       build: false,
+      spell3: false, // release 874: slot C
+      utility: false, // release 874: the fixed utility button (Build, Robot / Drone or the Oculus)
     },
     target = { x: 0, y: 0 },
     keys = new Set(),
@@ -58,7 +60,8 @@ export function createInput(root, host = globalThis, options = {}) {
     i: "menu",
     l: "journal",
     t: "preset",
-    b: "build",
+    b: "utility", // release 874: the utility button (it was Build, still its default)
+    c: "spell3", // release 874: slot C
   };
   function clearPointer() {
     movementPointer = null;

@@ -60,7 +60,18 @@ export const PAIRINGS = {
   "rift+ward": { name: "Anchorage", text: "Take 4% less damage; stamina returns 2 per second faster.", mods: { guard: .04, stamina: 2 } },
   "force+rift": { name: "Breach", text: "Spells deal 8% more damage; recover 5% faster.", mods: { spellDamage: .08, cooldown: .05 } },
 };
-export const SLOTS = ["a", "b"];
+// Release 874 (Tim, 2026-11-10: "a new C button replacing the build button... you can still use items in slots A, B, or C";
+// then "the player can now equip 3 spells across A, B and C"): a third slot, C, in the Build button's old place. It holds
+// what A and B hold (a spell, a discipline, Build or the preset's item); all three may be spells. Like B, C is open at once.
+// The Pairing stays the attributes of A and B. Additive at schema 14: a save without C gets an empty C (or what its preset's
+// Build button held, below).
+export const SLOTS = ["a", "b", "c"];
+// The input action each slot's button sends (input.ts keys F, G and C).
+export const SLOT_ACTIONS = Object.freeze({ a: "spell", b: "spell2", c: "spell3" });
+// Release 874: the fixed utility button where the compass sat (bottom left). Each preset chooses what it does. "frame" is the
+// Submersible Frame ashore: the robot, its Empowered (power armor) mode and the drone are one control, the same frame
+// cycled by the same button (vehicle-gates.ts toggleMech; robot or drone is the frame's mode, chosen in Supplies).
+export const UTILITY = Object.freeze({ choices: Object.freeze(["oculus", "build", "frame"]), default: "build", names: Object.freeze({ oculus: "Oculus", build: "Build", frame: "Robot / Drone" }) });
 // Release 309 (Tim: "I want you to be able to put build in any one of those positions... items... spells... or build"): A and
 // B may also hold "build" or "item" (the preset's item), and the Build button may hold a castable. Additive at schema 14.
 export const SLOT_TOOLS = ["build", "item"];
@@ -76,18 +87,31 @@ export function ensureSlots(save) {
   const ms = (save.magicSkills ||= { schema: 1, learned: {}, selected: null, active: null, cooldowns: {}, lastSafe: null });
   ms.cooldowns ||= {};
   const raw = ms.slots && typeof ms.slots === "object" ? ms.slots : null, valid = (k) => (CASTABLES[k] || SLOT_TOOLS.includes(k) ? k : null);
-  ms.slots = raw ? { a: valid(raw.a), b: valid(raw.b) } : { a: `spell:${SPELLS[save.equippedSpell] ? save.equippedSpell : "ember-ring"}`, b: ms.selected && CASTABLES[`skill:${ms.selected}`] ? `skill:${ms.selected}` : null };
+  // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved slot sets;
+  // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
+  // Release 291: each preset also said what the Build button did: "build", or "item" with the item it uses (additive).
+  // Release 874: the Build button became slot C (`c`) and the fixed utility button (`utility`). A preset from before 874
+  // keeps what its Build button held: a spell, a discipline or an item moves to C; the Submersible Frame (the robot) moves
+  // to the utility button as "frame"; plain Build stays Build, on the utility button, with C empty. `button` is kept as it
+  // was, no longer read, so nothing written before is lost.
+  const pair = (q) => {
+    if (!q || typeof q !== "object") return null;
+    const legacy = q.button === "item" ? "item" : CASTABLES[q.button] ? q.button : "build", item = BUTTON_ITEMS.includes(q.item) ? q.item : null, frame = legacy === "item" && item === "submersible";
+    const c = Object.hasOwn(q, "c") ? valid(q.c) : legacy === "build" || frame ? null : legacy;
+    const utility = UTILITY.choices.includes(q.utility) ? q.utility : Object.hasOwn(q, "utility") ? UTILITY.default : frame ? "frame" : UTILITY.default;
+    const out = { ...q, a: valid(q.a), b: valid(q.b), c, utility, item }; // release 874: other fields (an older `button`, unknown ones) are kept
+    if (!(q.build && typeof q.build === "object")) delete out.build; // release 393: `build` (build-presets.ts) rides along
+    return out;
+  };
+  const list = Array.isArray(ms.presets) ? ms.presets.slice(0, PRESETS).map(pair) : [];
+  ms.preset = ms.preset === 1 ? 1 : 0;
+  ms.slots = raw ? { a: valid(raw.a), b: valid(raw.b), c: Object.hasOwn(raw, "c") ? valid(raw.c) : list[ms.preset]?.c ?? null } : { a: `spell:${SPELLS[save.equippedSpell] ? save.equippedSpell : "ember-ring"}`, b: ms.selected && CASTABLES[`skill:${ms.selected}`] ? `skill:${ms.selected}` : null, c: null };
   if (ms.slots.a && ms.slots.a === ms.slots.b) ms.slots.b = null;
+  if (ms.slots.c && (ms.slots.c === ms.slots.a || ms.slots.c === ms.slots.b)) ms.slots.c = null;
   ms.pairingsSeen = { ...(ms.pairingsSeen || {}) };
   // Release 489/493: a retired spell's glyph sockets give their glyphs back (Iron Fist became a weapon, Hammerfall and Great Sweep tools).
   for (const id of RETIRED_SPELLS) { const g = save.spellGlyphs?.[id]; if (!Array.isArray(g)) continue; save.glyphs ||= {}; for (const q of g) if (q) save.glyphs[q] = (Number(save.glyphs[q]) || 0) + 1; delete save.spellGlyphs[id]; if (save.equippedSpell === id) save.equippedSpell = "ember-ring"; }
-  // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved A/B pairs;
-  // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
-  // Release 291: each preset also says what the Build button does: "build", or "item" with the item it uses (additive).
-  const pair = (q) => (q && typeof q === "object" ? { a: valid(q.a), b: valid(q.b), button: q.button === "item" ? "item" : CASTABLES[q.button] ? q.button : "build", item: BUTTON_ITEMS.includes(q.item) ? q.item : null, ...(q.build && typeof q.build === "object" ? { build: q.build } : {}) } : null); // release 393: `build` (build-presets.ts) rides along
-  const list = Array.isArray(ms.presets) ? ms.presets.slice(0, PRESETS).map(pair) : [];
-  ms.preset = ms.preset === 1 ? 1 : 0;
-  ms.presets = Array.from({ length: PRESETS }, (_, i) => list[i] || { ...ms.slots, button: "build", item: null });
+  ms.presets = Array.from({ length: PRESETS }, (_, i) => list[i] || { ...ms.slots, utility: UTILITY.default, item: null });
   ms.presets[ms.preset] = { ...ms.presets[ms.preset], ...ms.slots };
   return ms.slots;
 }
@@ -96,18 +120,36 @@ export const PRESETS = 2;
 // your preset... next to each item in the supplies menu... preset 1 or preset 2... if preset 1 is set to build, then only
 // preset 2 will be selectable"). The items the Build button can use.
 export const BUTTON_ITEMS = ["ironbarkTonic", "lumenPhial", "clearrootAmpoule", "submersible"]; // release 311: the submersible frame (Tim: "this one should get its own option to place in the... preset slot") // release 293 (Tim): not the draught, which has its own Potion button; release 295: nor the Hull Shield, which Build already deploys at sea (hold)
-export function presetButton(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const p = save.magicSkills.presets[i]; return { button: p.button === "item" ? "item" : CASTABLES[p.button] ? p.button : "build", item: p.item || null }; }
-export function setPresetButton(save, i, mode) { ensureSlots(save); const p = save.magicSkills.presets[i]; if (!p) return null; if (CASTABLES[mode] && !availableCastables(save).includes(mode)) return p.button; p.button = mode === "item" ? "item" : CASTABLES[mode] ? mode : "build"; return p.button; }
-// Gives `type` to preset i's Build button (only while that preset's button is set to Item); again, takes it off.
+// Release 874: what was the Build button is slot C. These keep the release-291/309 reading of it: "item", a castable key,
+// or "build" for anything else (C empty or holding Build).
+const legacyButton = (c) => (c === "item" ? "item" : CASTABLES[c] ? c : "build");
+export function presetButton(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const p = save.magicSkills.presets[i]; return { button: legacyButton(p.c), item: p.item || null }; }
+// Sets preset i's slot C the release-291 way: "item", a learned castable, or anything else for an empty C.
+export function setPresetButton(save, i, mode) {
+  ensureSlots(save); const ms = save.magicSkills, p = ms.presets[i]; if (!p) return null;
+  if (CASTABLES[mode] && !availableCastables(save).includes(mode)) return legacyButton(p.c);
+  const key = mode === "item" ? "item" : CASTABLES[mode] ? mode : null;
+  if (i === (ms.preset || 0)) setSlot(save, "c", key); else { p.c = key; if (key && (p.a === key || p.b === key)) p.c = null; }
+  return legacyButton(ms.presets[i].c);
+}
+// Gives `type` to preset i's item (used by every slot set to Item); again, takes it off.
 export function assignPresetItem(save, i, type) {
   ensureSlots(save); const p = save.magicSkills.presets[i];
   if (!p || !BUTTON_ITEMS.includes(type)) return { ok: false, message: "That item cannot go on a button." };
-  if (p.button !== "item" && p.a !== "item" && p.b !== "item") return { ok: false, message: `Preset ${i + 1} has no Item slot. Set A, B or the Build button to Item in the Arcanum first.` };
-  const where = [p.button === "item" && "the Build button", p.a === "item" && "A", p.b === "item" && "B"].filter(Boolean); // release 309: any slot set to Item uses it
-  p.item = p.item === type ? null : type; return { ok: true, message: p.item ? `Preset ${i + 1}: its item is now this one${where.length ? ` (on ${where.join(", ")})` : "; set a slot to Item in the Arcanum to use it"}.` : `Preset ${i + 1}: no item.` };
+  const where = SLOTS.filter((q) => p[q] === "item").map((q) => q.toUpperCase()); // release 309: any slot set to Item uses it
+  if (!where.length) return { ok: false, message: `Preset ${i + 1} has no Item slot. Set A, B or C to Item in the Arcanum first.` };
+  p.item = p.item === type ? null : type; return { ok: true, message: p.item ? `Preset ${i + 1}: its item is now this one (on ${where.join(", ")}).` : `Preset ${i + 1}: no item.` };
 }
-// What the Build button does now: { mode: "build" } or { mode: "item", item } (item may be null: nothing assigned).
+// What slot C does now, the release-291 way: { mode: "build" }, { mode: "item", item } or { mode: "cast", key }.
 export function activeButton(save) { const b = presetButton(save); return b.button === "item" ? { mode: "item", item: b.item } : CASTABLES[b.button] ? { mode: "cast", key: b.button } : { mode: "build" }; }
+// Release 874: the utility button of preset i ("oculus", "build" or "frame"), and setting it. The active preset's applies.
+export function presetUtility(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const u = save.magicSkills.presets[i]?.utility; return UTILITY.choices.includes(u) ? u : UTILITY.default; }
+export function setPresetUtility(save, i, choice) {
+  ensureSlots(save); const p = save.magicSkills.presets[i];
+  if (!p || !UTILITY.choices.includes(choice)) return { ok: false, message: "That cannot go on the utility button." };
+  p.utility = choice; return { ok: true, message: `Preset ${i + 1}: the utility button is now ${UTILITY.names[choice]}.` };
+}
+export const activeUtility = (save) => presetUtility(save);
 // What slot A or B holds when it is not a castable: "build", "item" (with the preset's item), or null.
 export function slotTool(save, slot) { const k = ensureSlots(save)[slot]; return SLOT_TOOLS.includes(k) ? { tool: k, item: k === "item" ? save.magicSkills.presets[save.magicSkills.preset || 0]?.item || null : null } : null; }
 // Switch to the other preset: its spells go into A and B (passives are untouched). Returns the message to show.
@@ -115,9 +157,10 @@ export function togglePreset(save) {
   const slots = ensureSlots(save), ms = save.magicSkills, next = (ms.preset + 1) % PRESETS, p = ms.presets[next], have = availableCastables(save);
   ms.presets[ms.preset] = { ...ms.presets[ms.preset], ...slots }; ms.preset = next;
   const ok = (k) => k && (SLOT_TOOLS.includes(k) || have.includes(k)); slots.a = ok(p.a) ? p.a : null; slots.b = ok(p.b) && p.b !== slots.a ? p.b : null;
+  slots.c = ok(p.c) && p.c !== slots.a && p.c !== slots.b ? p.c : null; // release 874
   ms.presets[next] = { ...p, ...slots }; syncLegacy(save);
-  const a = slotted(save, "a"), b = slotted(save, "b");
-  return { ok: true, preset: next + 1, message: `Spell preset ${next + 1}: A ${a ? a.name : "empty"} · B ${b ? b.name : "empty"}.` };
+  const name = (q) => { const c = slotted(save, q), t = !c && slotTool(save, q); return c ? c.name : t ? (t.tool === "build" ? "Build" : "Item") : "empty"; };
+  return { ok: true, preset: next + 1, message: `Spell preset ${next + 1}: A ${name("a")} · B ${name("b")} · C ${name("c")}.` };
 }
 export function slotted(save, slot) {
   const k = ensureSlots(save)[slot], c = CASTABLES[k];
@@ -128,10 +171,11 @@ export function slotted(save, slot) {
 }
 // Put a castable in a slot (null empties it). Slotting what the other slot holds swaps them.
 export function setSlot(save, slot, key) {
-  const slots = ensureSlots(save), other = slot === "a" ? "b" : "a";
+  const slots = ensureSlots(save);
   if (!SLOTS.includes(slot)) return { ok: false, message: "Unknown slot." };
   if (key && !SLOT_TOOLS.includes(key) && !availableCastables(save).includes(key)) return { ok: false, message: "Not learned yet." };
-  if (key && slots[other] === key) slots[other] = slots[slot];
+  const other = key ? SLOTS.find((q) => q !== slot && slots[q] === key) : null; // release 874: any of the other two slots
+  if (other) slots[other] = slots[slot];
   slots[slot] = key || null;
   save.magicSkills.presets[save.magicSkills.preset] = { ...save.magicSkills.presets[save.magicSkills.preset], ...slots }; // release 261: setting a slot sets the active preset
   syncLegacy(save);
@@ -142,7 +186,7 @@ export function setSlot(save, slot, key) {
 }
 // Older systems read `equippedSpell` (spell glyph host) and `selected` (bound discipline); keep them following the slots.
 function syncLegacy(save) {
-  const ms = save.magicSkills, s = [slotted(save, "a"), slotted(save, "b")].filter(Boolean);
+  const ms = save.magicSkills, s = SLOTS.map((q) => slotted(save, q)).filter(Boolean);
   const spell = s.find((q) => q.kind === "spell"), skill = s.find((q) => q.kind === "skill");
   if (spell) save.equippedSpell = spell.id;
   ms.selected = skill ? skill.id : null;

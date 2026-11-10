@@ -8,7 +8,7 @@ import { Game } from '../src/game.ts';
 import { setPresetButton, assignPresetItem } from '../src/spell-slots.ts';
 
 const ready = () => { const s = freshSave(); s.seed = 'SUB'; s.perception.aperture = 3255; s.farArray = { listeners: 3, gate: 3 }; s.consumables.submersible = 1; return s; };
-const pressBuild = (g, t) => { let used = false; g.update(.05, { state: { x: 0, y: 0 }, consume: (k) => k === 'build' && !used && (used = true), held: () => false }, t); };
+const pressBuild = (g, t) => { let used = false; g.update(.05, { state: { x: 0, y: 0 }, consume: (k) => k === 'spell3' && !used && (used = true), held: () => false }, t); };
 
 test('the Build button as the submersible item: build, call up, empower, stow, call up again', () => {
   const s = ready(); s.materials = { ...(s.materials || {}), cinderIron: 5 }; const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld'); g.enemies = [];
