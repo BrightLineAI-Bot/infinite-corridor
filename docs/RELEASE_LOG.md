@@ -15,14 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r864, merged as 9be7ed5f7dd57a4cbfce96147c5340bdeba88268. Production remains r863. The next game release number is assigned from freshly fetched main at merge preparation.
+Main and production are at r865, merged as 1532e8b05f7f9f608ce75e53f0b95a6ab2168705. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 865 | Codex | claude/great-tree-skyway-chain / #522 | Validated summit-to-summit chain for new Great Tree skyways | In flight. Focused tests and build passed, including three hops with reloads. Exact CI, Preview and hosted acceptance pending. |
-| 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Merged as 9be7ed5f7dd5. Exact source CI 42789144576 passed. Merged CI 42790706548 and Preview 42790706560 started. Hosted acceptance pending. |
+| 864 | Codex | claude/pentagon-wayfinding / #521 | Discovered-only Atlas route cues for Pentagons and other dungeons | Merged as 9be7ed5f7dd5. Source CI 42789144576 and merged CI 42790706548 passed. Preview 42790706560 failed the unchanged castle generation timing assertion. Exact retry 42792770710 passed. Atlas visual acceptance passed on exact r865 and the work was published in r865. |
 | 861 | Codex | claude/stillworks-close-view-pilot / #517 | Stillworks Void Walker arena in Close View and isolated keep/Pentagon crawl scenarios | Merged as dca0199f5583. Source CI 42742861914 and Preview 42743911417 passed. The arena readability correction shipped with this work in r862. |
 | 859 | Codex | claude/close-view-chest-opening / #515 | Close View chest reach and lid lift | Merged as 6c8e76670ac7. Source CI 42700948170, merged CI 42702713648 and Preview 42702713650 passed. Published in r860. |
 | 858 | Codex | claude/close-view-cleaver-choreography / #514 | Four linked right-handed Verge Cleaver cuts | Merged as 03db834feac9. Source CI 42698555018 and merged CI 42700331951 passed. Preview 42700331564 timed out waiting for Pages. Published in r860. |
@@ -226,6 +225,7 @@ Main is at r864, merged as 9be7ed5f7dd57a4cbfce96147c5340bdeba88268. Production 
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 865 | r865-1532e8b05f7f | 2026-11-10 | Includes r864. Astra review (863→865): no blockers. Source CI 42790937252, merged CI 42792839287, Preview 42792839108 and Publish 42796632516 passed. Browser Companion verified the Pentagon Atlas, summit gate and normal Act entry into the Cloud Hold on the exact Preview. Live Pages identity and Options → System matched, with no recent errors. |
 | 863 | r863-36c57768eed1 | 2026-11-10 | Astra review (862→863): no blockers. Source CI 42752034680, merged CI 42784487106, Preview 42784487071 and Publish 42786332296 passed. Exact textured desktop Preview showed Cleaver strikes from three angles and accepted dodge movement. Pages identity and Options → System matched after a fresh navigation. |
 | 862 | r862-d5057d129fcd | 2026-11-10 | Includes r861. Astra review (860→862): no blockers. Merged CI 42747904947, Preview 42747904923 and Publish 42785323582 passed. Hosted desktop checked Stillworks arena readability and both crawl passages. Pages identity and Options → System matched. |
 | 860 | r860-7df1ae3e3e1b | 2026-11-09 | Includes r858 and r859. Astra review (857→860) found no blockers. Source CI 42702961817, merged CI 42705200519, Preview 42705201998 and Publish 42713761172 passed. Hosted desktop verified Cleaver, chest, shovel, traversal and block placement and reload. Pages and Options → System matched, with no recent errors. |
