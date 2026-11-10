@@ -364,6 +364,10 @@ function closeViewFixture(scenario, seed, now) {
   else { const c = findLabPentagon(seed, now); if (!c) throw new Error(`No Pentagon near the origin for seed ${seed}.`); const P = pentagonPlan(seed, c.cx, c.cy, spec.latestPentagon ? c.V : Math.min(c.V, 8)), q = spec.pick(P) || P.nodes[0]; id = `${P.base}:f${q.n + 1}`; back = { rx: c.cx, ry: c.cy, x: 16, y: 16 }; }
   const save = scratchSave(seed); save.closeView = true; if (LAB_CV_PRESET) save.closeViewPreset = LAB_CV_PRESET; if (LAB_CV_CONTROL) save.closeViewCamera = LAB_CV_CONTROL; ensureCloseView(save); // ?cvPreset=close|wide tries a camera preset
   if (id.startsWith("building:")) save.consequences.dungeons[id] = { interiorVersion: spec.buildVersion || (spec.buildingFeature ? BUILDINGS.interior.version : 2) };
+  // The platform-chain lab keeps the interior terrain v1 chain (great-buildings.ts INTERIOR_TERRAIN): the same six-cell shape
+  // journeys begun before still hold, on the deterministic floors its contact calibration was measured on. Version 2 only
+  // refuses some placements; it lays no other shape.
+  if (id.startsWith("building:") && spec.buildingFeature === "platform") save.consequences.dungeons[id].terrainVersion = 1;
   if (spec.buildingFeature === "drone") {
     save.farArray.gate = 5;
     save.mech = { built: true, active: true, mode: "drone", plate: 60, fuel: DRONE.carry, cooldown: 0, healCd: 0, rocketCd: 0 };
