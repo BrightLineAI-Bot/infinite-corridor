@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { render } from '../src/renderer.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { CLOSE_VIEW_HOOKS, closeViewStats, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
-import { closeViewGLStats, resetCloseViewGL } from '../src/close-view-gl.ts';
+import { closeViewGLStats, resetCloseViewGL, GLF } from '../src/close-view-gl.ts';
 
 const noopContext = () => new Proxy({
   canvas: null,
@@ -50,7 +50,7 @@ test('the GPU Close View renders captured actors on every new interior heightfie
   setCloseViewCanvasFactory(() => canvas); CLOSE_VIEW_HOOKS.gl = true; resetCloseViewGL();
   try {
     let now = 100000;
-    for (const scenario of ['terrain-ramps', 'platform-chain', 'indoor-drone', 'terrain-pentagon']) {
+    for (const scenario of ['terrain-ramps', 'platform-chain', 'indoor-drone', 'terrain-pentagon', 'vertical-gallery-keep', 'vertical-gallery-pentagon', 'vertical-gallery-drone']) {
       const { game } = createLabFixture({ lab: 'close-view', scenario, now });
       game.presentation = { effectiveQuality: 'full' }; resetCloseViewCamera();
       const before = closeViewGLStats.frames;
@@ -58,6 +58,7 @@ test('the GPU Close View renders captured actors on every new interior heightfie
       assert.ok(closeViewGLStats.frames > before, `${scenario}: GPU frame completed`);
       assert.equal(closeViewStats.gl, 1, `${scenario}: WebGL path, not the fallback`);
       assert.ok(closeViewGLStats.drawCalls > 0, `${scenario}: GPU draw calls submitted`);
+      if(scenario.startsWith('vertical-gallery-'))assert.equal(GLF.amb[0]>.4,scenario!=='vertical-gallery-pentagon',`${scenario}: authored ambient lighting`);
       assert.ok(closeViewGLStats.models > 0 || closeViewGLStats.boards > 0, `${scenario}: a native model or captured sprite was submitted`);
     }
   } finally {
