@@ -33,11 +33,19 @@ export const SKYLANDS = {
   ],
 };
 const n0 = (v) => Math.max(0, Math.floor(Number(v) || 0));
+export function validSkySummitRoute(q) {
+  return q?.v === 1 && [q.from?.rx, q.from?.ry, q.to?.rx, q.to?.ry].every(Number.isSafeInteger)
+    && (q.from.rx !== q.to.rx || q.from.ry !== q.to.ry) && Number.isFinite(q.x) && Number.isFinite(q.y)
+    && q.x >= 0 && q.x < 32 && q.y >= 0 && q.y < 32 && typeof q.gateId === "string"
+    && q.atlas?.skySummitVersion === 1 && Number.isInteger(q.atlas?.landscapeVersion);
+}
 export function ensureSkylands(save) {
   const q = save.skylands && typeof save.skylands === "object" && !Array.isArray(save.skylands) ? save.skylands : (save.skylands = {});
   Object.assign(q, { sigils: n0(q.sigils), best: Number.isInteger(q.best) && q.best >= 0 ? Math.min(SKYLANDS.maxTier, q.best) : -1, runs: n0(q.runs), clears: n0(q.clears) }); // in place: holders of it stay current
   if ("viscera" in q) q.viscera = n0(q.viscera); // release 682: Divine Viscera, and the pact made with them (both only once there are any)
   if ("pact" in q) { const p = normalPact(q.pact); if (p) q.pact = p; else delete q.pact; }
+  const h = save.consequences?.dungeons?.[save.session?.activeDungeonId];
+  if (h?.skySummitRoute?.v === 1 && !validSkySummitRoute(h.skySummitRoute)) h.skySummitRoute = null;
   return q;
 }
 export const SKYWAY = { version: 2, platforms: [5, 4, 3], size: 2, gap: 1, area: [4, 27], clear: 1, tries: 120 }; // the most platforms that fit
@@ -247,10 +255,16 @@ export function skylandHop(id, rx, ry) {
 }
 export const isSkyland = (id) => String(id || "").startsWith("skyland:");
 export const skylandTierOf = (id) => { const m = /:t(\d+):r\d+$/.exec(String(id)); return m ? Number(m[1]) : 0; };
-// Spend the sigils and name the run. Returns { ok, id, tier, message }.
-export function beginSkyland(save, at, tier, forceMode = null) { // release 631: `forceMode` (the canopy's cloud hold)
+// Share the inexpensive canonical refusal before any summit destination work.
+export function skylandAdmission(save, tier) {
   const s = ensureSkylands(save), t = n0(tier);
   if (!skylandTiers(save).includes(t)) return { ok: false, message: t > s.best + 1 ? `Ascension ${t} opens once Ascension ${t - 1} is cleared.` : `Ascension ${t} needs ${t} Ascension Sigils; you hold ${s.sigils}.` };
+  return { ok: true, tier: t };
+}
+// Spend the sigils and name the run. Returns { ok, id, tier, message }.
+export function beginSkyland(save, at, tier, forceMode = null) { // release 631: `forceMode` (the canopy's cloud hold)
+  const admission = skylandAdmission(save, tier); if (!admission.ok) return admission;
+  const s = save.skylands, t = admission.tier;
   s.runs++; const mode = SKY_MODES.names[forceMode] ? forceMode : rollSkylandMode(save.seed, at, s.runs), id = `skyland:${save.seed}:${at.rx},${at.ry}:m${mode}:t${t}:r${s.runs}`; // release 589: a mode of its own
   if (mode === "gate") return { ok: true, id, tier: t, mode, gate: true, message: "The door opens on nothing but sky, and the sky takes you. You fall a long way, and land far off." };
   s.sigils -= t; const echoes = slainBeasts(save), name = SKY_MODES.names[mode];
