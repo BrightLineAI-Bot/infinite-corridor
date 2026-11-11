@@ -3,7 +3,7 @@ import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, vert
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.ts';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
@@ -437,6 +437,23 @@ export function writeCloseViewHeroEquipment(out,offset,gear,frame) {
   const end=writeCloseViewHeroGear(out,offset,gear);
   if(parts&&end===offset)return start;
   return vialFits?writeHeroDrinkVial(out,end,gear):end;
+}
+
+// The standard Wayfarer kit has its own fixed reservation beside the held-gear stream, so a tool,
+// gauntlets or the drink vial never compete with it. Atomic: all of the kit or none of it. The
+// largest held gear (96) plus the vial (24) plus this reservation keeps the whole imported hero
+// equipment inside one ordinary 256-triangle actor slot of the shared model buffer.
+export const HERO_KIT_MAX_TRIANGLES = 136;
+const KIT_RGB=new Float32Array(CLOSE_VIEW_WAYFARER_KIT.length*3);
+CLOSE_VIEW_WAYFARER_KIT.forEach((p,i)=>{const g=p.glow||1;KIT_RGB[i*3]=(p.color>>16)/255*g;KIT_RGB[i*3+1]=((p.color>>8)&255)/255*g;KIT_RGB[i*3+2]=(p.color&255)/255*g;});
+export function writeCloseViewHeroKit(out,offset,gear,frame) {
+  const vertices=CLOSE_VIEW_WAYFARER_KIT_TRIANGLES*3;
+  if(frame?.powerSuit===true||frame?.kitVertexCount!==vertices||!(vertices/3<=HERO_KIT_MAX_TRIANGLES)||!Number.isSafeInteger(offset)||offset<0||offset+vertices*MODEL_FLOATS>out.length)return offset;
+  const src=frame.kitPositionsNormals,alpha=Number.isFinite(gear?.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear?.hitFlash)||0)),tr=Number.isFinite(gear?.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear?.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear?.tint?.[2])?gear.tint[2]:1;
+  let v=0;
+  for(let p=0;p<CLOSE_VIEW_WAYFARER_KIT.length;p++){const n=CLOSE_VIEW_WAYFARER_KIT[p].vertices.length,r=KIT_RGB[p*3]*tr*(1-hit*.6)+.96*hit*.6,g=KIT_RGB[p*3+1]*tg*(1-hit*.6)+.34*hit*.6,b=KIT_RGB[p*3+2]*tb*(1-hit*.6)+.23*hit*.6;
+    for(let i=0;i<n;i++,v++){const s=v*6;out[offset++]=src[s];out[offset++]=src[s+1];out[offset++]=src[s+2];out[offset++]=src[s+3];out[offset++]=src[s+4];out[offset++]=src[s+5];out[offset++]=r;out[offset++]=g;out[offset++]=b;out[offset++]=alpha;}}
+  return offset;
 }
 
 // Reused actor-local segment frames: columns X/Y, scaled Z, then origin. No per-vertex allocation.

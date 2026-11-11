@@ -4,7 +4,7 @@ import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./veh
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.ts';
@@ -2574,6 +2574,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         input.powerSuit = form?.kind === 'playerPowerSuit';
+        input.wayfarerKit = !form || form.kind === 'playerIronFists'; // the standard Wayfarer look; the suit has its own armor
         if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
         // Empty gear retains Hammerfall carry; accepted tools retain their flattened base pose.
         input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
@@ -2623,7 +2624,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
               sampleCleaverTrail(state.cleaverTrail, player.attackVisual, grip, now, actor.alpha);
             }
           }
-          offset = equipped;
+          offset = writeCloseViewHeroKit(state.vertices, equipped, gear, state.heroFrame);
           const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip],rx=right?.[12],ry=right?.[13],rz=right?.[14];
           if(actor.alpha>0&&closeViewHeldMuzzlePoint(state.muzzle,gear.profile,right))state.muzzleReady=true;
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
