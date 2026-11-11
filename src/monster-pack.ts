@@ -11,6 +11,7 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.ts";
 import { stageOneBeastReference } from "./stages.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
+import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop } from "./adventure-creatures.ts"; // adventure creatures (Tim, 2026-11-11)
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -40,6 +41,11 @@ export const BRAINS = {
   juggernaut: { id: "juggernaut", name: "Squares up to charge", preferred: [3, 6.5] },
   ambush: { id: "ambush", name: "Waits unseen", preferred: [1.5, 3], hiddenUntilAggro: true },
   weeping: { id: "weeping", name: "Moves only when unwatched", preferred: [0.9, 1.6] },
+  // Adventure creatures (adventure-creatures.ts): a percher holds its ledge or wall until it drops; a vantage keeper shells from its
+  // home ground and walks back to it; a looper flies a loop over its home until it sees you, then circles you.
+  perch: { id: "perch", name: "Holds a ledge, then drops", preferred: [1.2, 2.2] },
+  vantage: { id: "vantage", name: "Keeps the high ground", preferred: [4.5, 7], retreat: 3 },
+  loop: { id: "loop", name: "Flies a patrol loop", preferred: [3.4, 5.4] },
 };
 
 // Telegraphed abilities. Times are seconds; `damage` multiplies the creature's damage;
@@ -67,6 +73,16 @@ export const ATTACK_MODULES = {
   broodBirth: { id: "broodBirth", name: "Brood Birth", range: [0, 9], cooldown: 8, windup: .9, recover: .6, damage: 0, tags: ["summon"], text: "Splits off pallid crawlers (at most four alive)." },
   fleshBloom: { id: "fleshBloom", name: "Flesh Bloom", range: [0, 7], cooldown: 5, windup: .6, recover: .6, damage: .35, tags: ["ground", "control"], text: "Living flesh carpets the floor; it slows you and gnaws while you stand in it." },
   spikeVolley: { id: "spikeVolley", name: "Spike Volley", range: [2, 8.5], cooldown: 5.2, windup: .75, recover: .85, damage: .8, jumpable: true, tags: ["ground", "spikes"], text: "Rears up and flings its spikes: five land around and ahead of you." },
+  // Adventure creatures (adventure-creatures.ts, Tim 2026-11-11: built for tall, open ground). `gate` names a readiness rule
+  // (advGate below); `heightReach` lets a ranged attack reach farther from above (ADV.reach). Their numbers live in ADV.
+  ledgeDrop: { id: "ledgeDrop", name: "Ledge Drop", range: [0, 6.5], cooldown: 5, windup: .9, active: .4, recover: 1.1, damage: 1.2, gate: "above", tags: ["ground", "leap", "height"], text: "From a ledge or a wall above you it leans out; its mark follows you, stops, and it drops onto it. The longer the fall, the harder it lands." },
+  ledgeClimb: { id: "ledgeClimb", name: "Ledge Climb", range: [0, 14], cooldown: 7, windup: .7, active: .55, recover: .35, damage: 0, gate: "perch", tags: ["movement", "height"], text: "Coils, and springs back up to a ledge or a wall. Catch it on the ground before it does." },
+  censerLob: { id: "censerLob", name: "Censer Lob", range: [2.5, 8.5], cooldown: 4.6, windup: .75, recover: .8, damage: .85, jumpable: true, heightReach: true, tags: ["ground", "ranged", "height"], text: "Swings its censer and lobs two smoking pots: one at you, one where you are going. Their smoke slows. From higher up it throws farther." },
+  thornDarts: { id: "thornDarts", name: "Thorn Darts", range: [2.5, 7.5], cooldown: 4.2, windup: .8, recover: .7, damage: .7, los: true, heightReach: true, tags: ["ranged", "height"], text: "Its bloom opens and three darts fly down the marked lanes. Walls stop them. From higher up they fly farther." },
+  vineVault: { id: "vineVault", name: "Vine Vault", range: [1.8, 7], cooldown: 4.4, windup: .7, active: .5, recover: .8, damage: 1.1, jumpable: true, tags: ["ground", "leap", "height"], text: "Vaults across levels onto the marked spot, wherever you stand. Jump or dodge the landing." },
+  vineRetreat: { id: "vineRetreat", name: "Vine Retreat", range: [0, 3.2], cooldown: 5.5, windup: .45, active: .55, recover: .4, damage: 0, gate: "retreat", tags: ["movement", "height"], text: "Swings away up to higher ground, out of reach of your blade." },
+  sinkFunnel: { id: "sinkFunnel", name: "Sink Funnel", range: [0, 2.9], cooldown: 6.5, windup: .9, active: 1.2, recover: 1.2, damage: 1.3, gate: "level", requires: "burrows", tags: ["ground", "control", "burrow"], text: "The sand dimples and rings close in: the ground opens into a funnel that drags you to its mouth. Run out against it, or stand higher than it." },
+  glassStrafe: { id: "glassStrafe", name: "Glass Strafe", range: [2, 9], cooldown: 5.5, windup: .8, active: .8, recover: .7, damage: .8, jumpable: true, requires: "flying", tags: ["ground", "air"], text: "Banks and runs low down the marked lane, dropping hot glass that bursts a moment later. Jump the bursts or leave the lane." },
   // The Questing Beast's own kit (release 187, Tim 2026-10-18: "attack attack attack", energy as well as claws).
   // Short windups and recoveries; it chases between them. Orbs are dodged (the dodge's i-frames) or outrun; the wave is jumped.
   qbRend: { id: "qbRend", name: "Rend", range: [0, 2.3], cooldown: .9, windup: .22, recover: .2, damage: 1, los: true, tags: ["melee"], text: "A fast, wide rake of claws." },
@@ -679,6 +695,40 @@ export const MONSTER_PACK = {
     attacks: ["ramCharge", "sweepBeam", "shockwave"], bossAttacks: ["mortarVolley", "groundRupture"],
     palette: ["#d0d6de", "#1a1e26", "#ff3b5c", "#ffe3ea"], render: "helmSovereign", tags: ["construct", "robot"],
     lore: "The ship's mind, given a body to defend the helm. It has held the same course for longer than anyone aboard has lived." },
+  // Adventure creatures (adventure-creatures.ts; Tim, 2026-11-11: new creatures for the adventures' tall, open ground, original designs).
+  // `adventureKin`: found only where an adventure's theme table places them (prototypeOnly keeps them off every crossing, dungeon,
+  // guardian pool and Echo list; they keep their own kits, no hybrid). Drawn by adventure-creature-render.ts, solid in Close View
+  // through close-view-adventure-models.ts.
+  galleryLurker: { id: "galleryLurker", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Gallery Lurker", epithet: "It Waits on the Rail",
+    stats: [40, 10, 0], form: { scale: 1.05 }, sizeClass: "medium", movement: "skitter", brain: "perch",
+    attacks: ["ledgeDrop", "clawSweep", "ledgeClimb"], bossAttacks: ["shockwave"],
+    palette: ["#8c8577", "#24211d", "#e8b04a", "#f6e7c4"], render: "galleryLurker", tags: ["beast", "climber", "tomb"],
+    lore: "A gaunt grey thing of too many joints that hangs from the lip of a gallery like a gargoyle that forgot to set. Two amber eyes, and a patience that ends all at once." },
+  censerWarden: { id: "censerWarden", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Censer Warden", epithet: "Keeper of the Low Smoke",
+    stats: [46, 9, 6], form: { scale: 1.15 }, sizeClass: "medium", movement: "walk", brain: "vantage",
+    attacks: ["censerLob", "clawSweep"], bossAttacks: ["sigilScatter"],
+    palette: ["#5a5148", "#1c1916", "#ffb347", "#ffe9c2"], render: "censerWarden", tags: ["spirit", "fire", "tomb"],
+    lore: "A tall hooded keeper with a censer on a long chain. It keeps to the upper galleries and sends its smoke down to whoever walks below." },
+  vinehookLeaper: { id: "vinehookLeaper", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Vinehook Leaper", epithet: "It Takes the High Branch",
+    stats: [36, 9, 0], form: { scale: 1 }, sizeClass: "medium", movement: "skitter", brain: "flank",
+    attacks: ["vineVault", "clawSweep", "vineRetreat"], bossAttacks: ["shockwave"],
+    palette: ["#4f6b3a", "#1a2414", "#c9e86a", "#f2ffd0"], render: "vinehookLeaper", tags: ["beast", "climber", "jungle"],
+    lore: "Long arms ending in hooks of green horn, a tail like a coiled vine. It crosses the ruin by its heights and comes down only to strike." },
+  thornspitterBloom: { id: "thornspitterBloom", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Thornspitter Bloom", epithet: "The Flower That Aims",
+    stats: [34, 8, 7], form: { scale: 1 }, sizeClass: "medium", movement: "lurch", brain: "vantage",
+    attacks: ["thornDarts", "bite"], bossAttacks: ["groundRupture"],
+    palette: ["#3e6b4a", "#142218", "#ff6a8a", "#ffe0ea"], render: "thornspitterBloom", tags: ["plant", "jungle"],
+    lore: "A fleshy bloom on a crawling root, rooted on the old terraces. It turns to follow you like a flower follows the sun, and then it fires." },
+  sinkmaw: { id: "sinkmaw", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Sinkmaw", epithet: "The Hollow in the Dune",
+    stats: [58, 11, 0], form: { scale: 1.25 }, sizeClass: "large", movement: "burrow", brain: "ambush",
+    attacks: ["sinkFunnel", "burrowAmbush", "bite"], bossAttacks: ["shockwave"],
+    palette: ["#c9a46a", "#3a2a18", "#ff8a3a", "#fff0d0"], render: "sinkmaw", tags: ["beast", "burrow", "desert"],
+    lore: "A mouth the width of a cart under a skin of sand. The dune dimples where it lies; step on the dimple and the dune becomes a throat." },
+  cinderKite: { id: "cinderKite", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Cinder Kite", epithet: "It Rides the Heat",
+    stats: [30, 8, 0], form: { scale: 1.1 }, sizeClass: "medium", movement: "fly", brain: "loop",
+    attacks: ["glassStrafe", "bite"], bossAttacks: ["diveBomb"],
+    palette: ["#b0643a", "#2b1a12", "#ffd27a", "#f4e6cc"], render: "cinderKite", tags: ["beast", "flying", "desert"],
+    lore: "A rust-red sail of skin on bone ribs that turns the same slow loop over the waste all day. When it sees you it banks, comes in low, and the sand behind it starts to glitter." },
 };
 
 // Unreleased fixture-only entries are explicitly addressable, but not part of the player catalog,
@@ -758,7 +808,7 @@ export function validateMonster(def) {
 // monster (only modules their movement can perform), so encounters keep surprising.
 export function packVariant(kind, identity) {
   const def = MONSTER_PACK[kind];
-  if (!def || kind === "voidWalker" || def.roofKin) return { hybridAttack: null, donor: null }; // the roof dwellers keep their own kits
+  if (!def || kind === "voidWalker" || def.roofKin || def.adventureKin) return { hybridAttack: null, donor: null }; // the roof dwellers (and the adventure creatures) keep their own kits
   const n = hashSeed(`pack-variant:v${MONSTER_PACK_VERSION}:${kind}:${identity}`);
   if (n % 100 >= 22) return { hybridAttack: null, donor: null };
   const move = MOVEMENT_MODES[def.movement], own = new Set([...def.attacks, ...(def.bossAttacks || [])]);
@@ -803,6 +853,7 @@ export function resetPackRuntime(enemy) {
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
   // A reset Lantern returns to material hover; its discarded leap cannot retain lift.
   if (enemy.kind === "graveLantern") enemy.hopLift = 0;
+  if (MONSTER_PACK[enemy.kind]?.adventureKin) { enemy.hopLift = 0; enemy.advCling = null; enemy.advPerched = false; enemy.advPose = null; } // a leap, a cling or a kite's height never resumes mid-air (its loop and home do; a Lurker by a wall clings again: advInit)
   if (enemy.kind === "psychicCrystal") enemy.crystalFall = 0; // release 259: a poise break does not survive a reload
   if (enemy.kind === "gloomvast") { enemy.gloomReel = 0; enemy.gloomFade = 0; enemy.poiseBreak = 0; if (!(enemy.gloomDark?.left > 0)) { enemy.gloomDark = null; enemy.gloomVeil = false; enemy.brain = MONSTER_PACK.gloomvast.brain; enemy.packAttacks = [...MONSTER_PACK.gloomvast.attacks, ...(enemy.hybridAttack ? [enemy.hybridAttack] : [])]; } else enemy.gloomDark.laid = false; } // the Gloomvast's Dark carries over a reload (Game.gloomResume lays its decoys again); nothing else of it does
   // Snapshots retain attack lists. Move the sky attack for existing journeys too, without retuning their beasts.
@@ -834,7 +885,7 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
 // damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
-export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, gloomfall: .1, gloomMote: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0 }, fallbackPad: .2 };
+export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, gloomfall: .1, gloomMote: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0, censerPot: .3, glassShard: .3, thornDart: .3 /* adventure creatures */ }, fallbackPad: .2 };
 export function effectFootprint(f) {
   if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
@@ -1383,7 +1434,7 @@ function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
-  e.voidDashing = false; e.voidCharging = false;
+  e.voidDashing = false; e.voidCharging = false; e.advPose = null;
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0; e.doomRays = null; e.doomBreath = null;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
@@ -2958,11 +3009,163 @@ const RUN = {
   },
 };
 
+// ---------------------------------------------------------------- adventure creatures (adventure-creatures.ts; Tim, 2026-11-11)
+// Built for tall, open ground. Every number is in ADV; the floor, the levels (`w.elevation`) and the walls come from the pack world.
+// Their leaps share one runner: a mark under the Wayfarer (followed for part of the windup, then held) or a found spot (a perch, a
+// retreat), a hop drawn as lift (`hopLift`), and the landing. A landing on the Wayfarer hits harder the farther it fell (dropBonus).
+function advLeapStart(e, s, w, id) {
+  const C = ADV.leaps[id], A = ATTACK_MODULES[id], p = center(w.player);
+  s.data.from = { x: e.x, y: e.y }; s.data.fromLift = Number(e.hopLift) || 0; s.data.fromLevel = levelAt(w, e) + (e.advCling ? ADV.perch.clingRise : 0); e.advPose = C.pose;
+  if (C.to === "player") { s.data.held = 0; s.tele = { type: "circle", x: p.x, y: p.y, radius: C.radius, total: (A.windup || .5) * (s.paced ? BOSS_PACE.windup : 1) }; return; }
+  const spot = C.search === "perch" ? findPerch(e, w, p) : findRetreat(e, w, p, s.seq);
+  s.data.spot = spot ? { x: spot.x, y: spot.y, cling: !!(C.cling && spot.cling) } : null;
+  s.tele = spot ? { type: "brace" } : null;
+}
+function advLeapRun(e, s, w, id) {
+  const C = ADV.leaps[id], A = ATTACK_MODULES[id], p = center(w.player);
+  if (s.phase === "windup") {
+    if (C.to === "player" && s.tele) { s.data.held += w.dt; if (s.data.held <= C.track) { const k = Math.min(1, w.dt * 6); s.tele.x += (p.x - s.tele.x) * k; s.tele.y += (p.y - s.tele.y) * k; } else s.tele.locked = true; }
+    if (s.t > 0) return;
+    const land = C.to === "player" ? s.tele && nearestOpen(w, s.tele.x, s.tele.y, 2.5) : s.data.spot;
+    if (!land) { endAttack(e, s); return; }
+    s.data.land = { x: land.x, y: land.y }; s.data.cling = C.to === "spot" && !!land.cling;
+    s.data.drop = s.data.fromLevel - levelAt(w, land) - (s.data.cling ? ADV.perch.clingRise : 0); // levels fallen (climbed, when negative)
+    e.advCling = false; e.advPerched = false; e.aloft = true; toPhase(s, "active", A.active); return;
+  }
+  if (s.phase !== "active") return;
+  const k = 1 - Math.max(0, s.t) / A.active, f = s.data.from, L = s.data.land, climb = Math.max(0, -s.data.drop);
+  e.x = f.x + (L.x - f.x) * k; e.y = f.y + (L.y - f.y) * k; if (Math.abs(L.x - f.x) > .05) e.facingX = L.x > f.x ? 1 : -1;
+  e.hopLift = s.data.fromLift * (1 - k) + Math.sin(k * Math.PI) * (C.arc + climb * C.climbLift) + (s.data.cling ? k * ADV.perch.clingLift : 0);
+  if (s.t > 0) return;
+  e.x = L.x; e.y = L.y; e.aloft = false; e.advCling = s.data.cling; e.hopLift = s.data.cling ? ADV.perch.clingLift : 0;
+  if (C.damage) {
+    if (distance(p, L) <= C.radius + .3) w.hurt(e, Math.max(1, Math.ceil(damageOf(e, id) * (1 + dropBonus(id, s.data.drop)))), { jumpable: !!A.jumpable, source: id });
+    w.addEffect({ kind: "dust", owner: e.id, x: L.x, y: L.y, radius: C.radius, arming: 0, life: .45, damage: 0 });
+  }
+  s.advGround = 0; s.advScan = null; s.tele = null; e.advPose = null; toPhase(s, "recover", A.recover);
+}
+// Readiness rules (ATTACK_MODULES[id].gate): "above" only from a ledge or a wall above the Wayfarer; "level" never under someone
+// standing higher; "perch" only after a while on the ground and with a perch in reach; "retreat" only with somewhere to go.
+// Searches are cached on the pack state for ADV.perch.rescan seconds, so a frame costs one lookup.
+function advSpot(e, s, w, p, kind) {
+  const now = Number(w.now) || 0, c = s.advScan;
+  if (c && c.kind === kind && now - c.at < ADV.perch.rescan * 1000) return c.found;
+  const found = !!(kind === "perch" ? findPerch(e, w, p) : findRetreat(e, w, p, s.seq));
+  s.advScan = { kind, at: now, found }; return found;
+}
+function advGate(e, s, w, gate) {
+  const p = center(w.player);
+  if (gate === "above") return !!e.advCling || levelAt(w, e) - levelAt(w, p) >= ADV.perch.minRise;
+  if (gate === "level") return levelAt(w, p) - levelAt(w, e) <= ADV.sink.above;
+  if (gate === "perch") return !e.advPerched && !e.advCling && (s.advGround || 0) >= ADV.perch.wait && advSpot(e, s, w, p, "perch");
+  if (gate === "retreat") return advSpot(e, s, w, p, "retreat");
+  return true;
+}
+// A Gallery Lurker set beside a wall on level ground starts clinging to it (once; after a reload it decides again).
+function advInit(e, w) {
+  if (!e.advHome) e.advHome = { x: e.x, y: e.y };
+  if (e.kind === "galleryLurker" && e.advCling == null) {
+    const here = levelAt(w, e); let wall = false, ledge = false;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { if (!w.open(e.x + dx, e.y + dy)) wall = true; else if (levelAt(w, { x: e.x + dx, y: e.y + dy }) < here) ledge = true; }
+    e.advCling = wall && !ledge; e.hopLift = e.advCling ? ADV.perch.clingLift : 0;
+  }
+  if (e.kind === "sinkmaw" && e.advBuried == null) e.advBuried = true;
+}
+function advKiteLift(e, s, dt) {
+  const K = ADV.kite, target = s.attack === "glassStrafe" && s.phase !== "recover" ? K.low : s.attack === "diveBomb" ? 0 : K.altitude, now = Number(e.hopLift) || 0;
+  e.hopLift = now + Math.max(-K.ease * dt, Math.min(K.ease * dt, target - now));
+}
+// Not yet roused: the Kite flies its loop; the Sinkmaw lies buried; the percher and the keepers hold still. The Leaper wanders.
+function advIdle(e, s, w) {
+  advInit(e, w);
+  if (e.kind === "cinderKite") {
+    advKiteLift(e, s, w.dt);
+    if (!Array.isArray(e.advLoop) || !e.advLoop.length) { e.advLoop = kiteLoop(e.id, e.advHome, w); e.advLeg = 0; }
+    const K = ADV.kite, leg = (Number(e.advLeg) || 0) % e.advLoop.length, q = e.advLoop[leg], dx = q.x - e.x, dy = q.y - e.y, dd = Math.hypot(dx, dy);
+    if (dd <= K.near) { e.advLeg = (leg + 1) % e.advLoop.length; return true; }
+    const step = Math.min(dd, .82 * K.speed * MOVEMENT_MODES.fly.speed * (e.speedMultiplier || 1) * w.dt);
+    if (!w.move(e, dx / dd * step, dy / dd * step, { phase: false })) e.advLeg = (leg + 1) % e.advLoop.length; // blocked: on to the next point
+    if (Math.abs(dx) > .05) e.facingX = dx > 0 ? 1 : -1;
+    return true;
+  }
+  if (e.kind === "sinkmaw") { e.untargetable = !!e.advBuried; return true; }
+  return e.kind !== "vinehookLeaper";
+}
+// Roused, each frame before it moves or picks an attack. True when it is done for this frame.
+function advTick(e, s, w, p, d) {
+  advInit(e, w);
+  if (e.kind === "galleryLurker") {
+    e.advPerched = !s.attack && (!!e.advCling || levelAt(w, e) - levelAt(w, p) >= ADV.perch.minRise);
+    if (!s.attack) s.advGround = e.advPerched ? 0 : (s.advGround || 0) + w.dt;
+  } else if (e.kind === "sinkmaw") {
+    if (!s.attack && !e.advBuried) { s.advUp = (s.advUp || 0) + w.dt; if (s.advUp >= ADV.sink.rebury && d >= ADV.sink.clear) { e.advBuried = true; s.advUp = 0; } }
+    if (e.advBuried) e.untargetable = true;
+  } else if (e.kind === "cinderKite") {
+    advKiteLift(e, s, w.dt);
+    const H = e.advHome; if (!s.attack && Math.hypot(e.x - H.x, e.y - H.y) > ADV.kite.leash) { e.aggro = false; return true; } // back to its loop
+  }
+  return false;
+}
+// Holding its place this frame: a percher on its ledge, a Sinkmaw under the sand.
+const advHold = (e) => !!(e.advPerched || e.advBuried);
+Object.assign(START, {
+  ledgeDrop(e, s, w) { advLeapStart(e, s, w, "ledgeDrop"); },
+  ledgeClimb(e, s, w) { advLeapStart(e, s, w, "ledgeClimb"); },
+  vineVault(e, s, w) { advLeapStart(e, s, w, "vineVault"); },
+  vineRetreat(e, s, w) { advLeapStart(e, s, w, "vineRetreat"); },
+  censerLob(e, s, w) { const p = s.data.target, v = playerVelocity(w), C = ADV.censer; s.data.pots = [{ x: p.x, y: p.y }, { x: p.x + v.x * C.lead, y: p.y + v.y * C.lead }]; s.tele = { type: "spit", target: { ...p } }; e.advPose = "swing"; },
+  thornDarts(e, s, w) {
+    const D = ADV.darts, base = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.reach = D.reach + heightReach("thornDarts", levelAt(w, e) - levelAt(w, w.player));
+    s.data.dirs = Array.from({ length: D.count }, (_, i) => { const a = base + (i - (D.count - 1) / 2) * D.spread; return { x: Math.cos(a), y: Math.sin(a) }; });
+    s.tele = { type: "tendrils", dirs: s.data.dirs, length: s.data.reach, width: D.width }; e.advPose = "open";
+  },
+  sinkFunnel(e, s) { s.tele = { type: "ring", radius: ADV.sink.radius, inhale: true }; e.advPose = "open"; },
+  glassStrafe(e, s, w) {
+    const K = ADV.kite, a = s.data.aim, end = { x: Math.max(0, Math.min((w.width || 32) - 1, e.x + a.x * K.lane)), y: Math.max(0, Math.min((w.height || 32) - 1, e.y + a.y * K.lane)) };
+    s.data.from = { x: e.x, y: e.y }; s.data.end = end; s.data.dropped = 0; s.tele = { type: "lane", aim: a, length: Math.hypot(end.x - e.x, end.y - e.y), width: K.width }; e.advPose = "bank";
+  },
+});
+Object.assign(RUN, {
+  ledgeDrop(e, s, w) { advLeapRun(e, s, w, "ledgeDrop"); },
+  ledgeClimb(e, s, w) { advLeapRun(e, s, w, "ledgeClimb"); },
+  vineVault(e, s, w) { advLeapRun(e, s, w, "vineVault"); },
+  vineRetreat(e, s, w) { advLeapRun(e, s, w, "vineRetreat"); },
+  censerLob(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const C = ADV.censer; s.data.pots.forEach((q, i) => { const at = nearestOpen(w, q.x, q.y, 1.5); if (at) w.addEffect({ kind: "censerPot", owner: e.id, x: at.x, y: at.y, radius: C.radius, arming: C.arming[i] ?? C.arming[0], damage: damageOf(e, "censerLob"), jumpable: true, from: { x: e.x, y: e.y } }); });
+    s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.censerLob.recover);
+  },
+  thornDarts(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const D = ADV.darts; let live = voidEffects(w).filter((f) => f.kind === "thornDart" && f.owner === e.id && f.life > 0).length;
+    for (const dir of s.data.dirs) { if (live >= D.cap) break; live++; w.addEffect({ kind: "thornDart", owner: e.id, x: e.x, y: e.y, vx: dir.x * D.speed, vy: dir.y * D.speed, radius: D.radius, arming: 0, life: s.data.reach / D.speed, total: s.data.reach / D.speed, damage: damageOf(e, "thornDarts") }); }
+    s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.thornDarts.recover);
+  },
+  sinkFunnel(e, s, w) {
+    const A = ATTACK_MODULES.sinkFunnel, C = ADV.sink, p = center(w.player), reach = levelAt(w, p) - levelAt(w, e) <= C.above;
+    if (s.phase === "windup") { if (s.t <= 0) { e.advBuried = false; e.hidden = false; e.untargetable = false; s.advUp = 0; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    if (reach) w.pull?.(e, C.pull * w.dt, C.radius);
+    if (reach && !s.hitOnce && distance(p, e) <= bodyRadius(e) + C.bite) { s.hitOnce = true; w.hurt(e, damageOf(e, "sinkFunnel"), { jumpable: false, source: "sinkFunnel" }); }
+    if (s.t <= 0) { s.tele = null; e.advPose = null; toPhase(s, "recover", A.recover); }
+  },
+  glassStrafe(e, s, w) {
+    const A = ATTACK_MODULES.glassStrafe, K = ADV.kite;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    const k = 1 - Math.max(0, s.t) / A.active, f = s.data.from, E = s.data.end, nx = f.x + (E.x - f.x) * k, ny = f.y + (E.y - f.y) * k;
+    if (w.open(nx, ny)) { e.x = nx; e.y = ny; } // a wall ends its run where it stands
+    while (s.data.dropped < K.shards && k >= (s.data.dropped + .5) / K.shards) { w.addEffect({ kind: "glassShard", owner: e.id, x: e.x, y: e.y, radius: K.shardRadius, arming: K.arming + s.data.dropped * K.step, damage: damageOf(e, "glassStrafe"), jumpable: true }); s.data.dropped++; }
+    if (s.t <= 0) { s.tele = null; e.advPose = null; toPhase(s, "recover", A.recover); }
+  },
+});
+
 // Brains: where to stand between attacks.
 function brainVector(e, s, w, def) {
   const p = center(w.player), brain = BRAINS[e.brain || def.brain] || BRAINS.duelist, [near, far] = brain.preferred, d = distance(p, e), to = unit(p.x - e.x, p.y - e.y), side = { x: -to.y * s.orbitDir, y: to.x * s.orbitDir };
-  if (brain.id === "orbit") { const radial = (d - (near + far) / 2) * .7; return { x: side.x * .85 + to.x * radial, y: side.y * .85 + to.y * radial, speed: .95 }; }
-  if (brain.id === "kite" || brain.id === "artillery") {
+  if (brain.id === "vantage" && e.advHome && Math.hypot(e.x - e.advHome.x, e.y - e.advHome.y) > ADV.vantage.leash) return { ...unit(e.advHome.x - e.x, e.advHome.y - e.y), speed: .9 }; // back to its high ground
+  if (brain.id === "orbit" || brain.id === "loop") { const radial = (d - (near + far) / 2) * .7; return { x: side.x * .85 + to.x * radial, y: side.y * .85 + to.y * radial, speed: .95 }; }
+  if (brain.id === "kite" || brain.id === "artillery" || brain.id === "vantage") {
     if (!w.los(e, w.player, true)) return { x: to.x, y: to.y, speed: .9 };
     if (d < (brain.retreat || near)) return { x: -to.x + side.x * .4, y: -to.y + side.y * .4, speed: 1.05 };
     if (d > far) return { x: to.x, y: to.y, speed: .85 };
@@ -2981,8 +3184,10 @@ function brainVector(e, s, w, def) {
 function attackReady(e, s, w, id, d) {
   const attack = ATTACK_MODULES[id];
   if (!attack || attack.passive || (s.cd[id] || 0) > 0) return false;
-  const [lo, hi] = attack.range || [0, 9];
-  if (d < lo || d > hi + bodyRadius(e)) return false;
+  const [lo, hi] = attack.range || [0, 9], reach = attack.heightReach ? heightReach(id, levelAt(w, e) - levelAt(w, w.player)) : 0; // adventure creatures reach farther from above
+  if (d < lo || d > hi + reach + bodyRadius(e)) return false;
+  if (e.advBuried && id !== "sinkFunnel") return false; // a buried Sinkmaw only opens its funnel
+  if (attack.gate && !advGate(e, s, w, attack.gate)) return false;
   if (e.phases && !w.open(e.x, e.y)) return false;
   if (attack.los && !w.los(e, w.player, attack.tags.includes("ranged"))) return false;
   if (id === "voidSupernova" && voidEffects(w).some((f) => f.owner === e.id && f.kind === "voidRift" && f.tracking && !f.activated)) return false;
@@ -3395,8 +3600,9 @@ export function updatePackMonster(e, w) {
   const calmCrystal = roaming && e.kind === "psychicCrystal";
   if (calmCrystal && !e.aggro) { if (d < CRYSTAL.touchAggro || (Number.isFinite(s.calmHp) && e.hp < s.calmHp)) e.aggro = true; s.calmHp = e.hp; }
   else if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player))) e.aggro = true;
-  e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase));
+  e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase)) || (e.kind === "sinkmaw" ? e.advBuried !== false : !!e.advBuried);
   if (!e.aggro) {
+    if (def.adventureKin && advIdle(e, s, w)) return; // adventure-creatures.ts: a loop, a burial, a perch
     if (hunting && e.kind === "voidWalker") { w.walkerPatrol?.(e, s); return; }
     if (roaming) { patrolDungeon(e, s, w); return; }
     s.wander = ((s.wander ?? (hashSeed(e.id) % 628) / 100) + dt / 2.4) % TAU;
@@ -3405,6 +3611,7 @@ export function updatePackMonster(e, w) {
   }
   // Release 259: a dungeon Crystal that has lost the Wayfarer for a while goes back to its patrol.
   if (roaming && !e.retreating) { const seen = d <= CRYSTAL.roamSight || w.los(e, w.player); s.lostFor = seen ? 0 : (s.lostFor || 0) + dt; if (s.lostFor >= CRYSTAL.forgetAfter && !s.attack) { e.aggro = false; s.lostFor = 0; s.manifest = null; s.wallTime = 0; s.roam = null; patrolDungeon(e, s, w); return; } }
+  if (def.adventureKin && advTick(e, s, w, p, d)) return;
   if (e.hitStun > 0 && s.state === "move") return;
   if (e.hitStun > 0 && s.attack && s.phase === "windup" && !e.untargetable && windupHeld(e, s.data ||= {}, dt)) return; // release 561: held, never cancelled
   if (!e.illusion) passiveStillness(e, s, w);
@@ -3434,7 +3641,7 @@ export function updatePackMonster(e, w) {
   }
   // Move according to the brain, then start the best ready attack.
   const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * (e.mothKindled > 0 ? MOTH.kindle.speed : 1) * dt;
-  const moved = w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
+  const hold = def.adventureKin && advHold(e), moved = hold || w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   if (!moved && !move.phases) w.detour?.(e, speed);
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
@@ -3788,7 +3995,7 @@ function tickGateEffect(f, w) {
 // Ground effects: arming, detonation (once, if the player is inside), webs that slow, and rings.
 // Release 748 (Tim, 2026-11-04): what lies on the ground (pools, trails, webs, tar, brambles) is met at the Wayfarer's feet; on a
 // mount that is the mount's feet (`w.feet`), while blows, shots, blasts and beams meet the rider where drawn (`w.player`).
-export const GROUND_EFFECTS = new Set(["web", "ooze", "lava", "flameTrail", "frostTrail", "flesh", "briar", "darkPool", "doomTar", "mire"]);
+export const GROUND_EFFECTS = new Set(["web", "ooze", "lava", "flameTrail", "frostTrail", "flesh", "briar", "darkPool", "doomTar", "mire", "censerSmoke"]);
 export function tickPackEffects(effects, w) {
   if (!(w.dt > 0)) return effects;
   const body = center(w.player), feet = w.feet ? center(w.feet()) : body, p = body;
@@ -3903,6 +4110,14 @@ export function tickPackEffects(effects, w) {
     else if (f.kind === "orb") { if (f.homing > 0 && f.age <= f.homing) { const sp = Math.hypot(f.vx, f.vy) || 1, cur = Math.atan2(f.vy, f.vx), diff = ((Math.atan2(p.y - f.y, p.x - f.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-(f.turn || 1.5) * w.dt, Math.min((f.turn || 1.5) * w.dt, diff)); f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; } /* release 664: a worm tentacle's homing orb */ f.x += f.vx * w.dt; f.y += f.vy * w.dt; if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0; else if (!f.hit && distance(p, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "orb" }); } }
     else if (f.kind === "briar") { // release 705: the Briar Stag's brambles slow and scratch while they stand
       if (distance(p, f) <= f.radius + .1) { w.slow(STAG.briarSlow, .3); if (!(f.nextBite > f.age)) { f.nextBite = f.age + STAG.briarTick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "briar", beam: true }); } }
+    } else if (f.kind === "thornDart") { // the Thornspitter's darts (adventure creatures): straight, stopped by walls, one hit each
+      const before = { x: f.x, y: f.y }, open = w.projectileOpen || w.tileOpen; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
+      if (open && !open(f.x + .5, f.y + .5)) f.life = 0;
+      else if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "thornDarts" }); }
+    } else if (f.kind === "censerPot") { // the Censer Warden's pot bursts, and leaves smoke that slows
+      if (!f.detonated) { f.detonated = true; f.life = .35; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "censerLob" });
+        const S = ADV.censer.smoke; w.addEffect({ kind: "censerSmoke", owner: f.owner, x: f.x, y: f.y, radius: S.radius, arming: 0, life: S.life, total: S.life, damage: 0, slow: S.slow }); }
+    } else if (f.kind === "censerSmoke") { if (distance(p, f) <= f.radius) w.slow?.(f.slow, .25);
     } else if (f.kind === "thorn" || f.kind === "clawBeam") {
       const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
       if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;

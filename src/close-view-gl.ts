@@ -1,6 +1,7 @@
 import { MODEL_FLOATS } from "./close-view-models.ts";
 import { buildVisualRevision } from "./building.ts";
 import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.ts';
+import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from './close-view-beast-gl.ts'; // release 891: world beasts' skinned bodies
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -842,7 +843,7 @@ export function closeViewGLDiagnostics(){return {
 };}
 export function noteCloseViewGLFrameAbort(){GPU_DIAGNOSTICS.lastFailure=GPU_DIAGNOSTICS.frameFailure==='none'?'frame-aborted':GPU_DIAGNOSTICS.frameFailure;}
 globalThis.__closeViewGL = closeViewGLStats; // read by the browser harness and the lab's console (diagnostics only)
-const S = { canvas: null, gl: null, hero: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, prop: null, vbo: { env: null, wall: null, board: null, decal: null, model: null, prop: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null, prop: null },
+const S = { canvas: null, gl: null, hero: null, beast: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, prop: null, vbo: { env: null, wall: null, board: null, decal: null, model: null, prop: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null, prop: null },
   tex: { ground: null, mask: null, grit: null, terrain: null }, outdoorKey: null, outdoorVerts: 0, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
 // The dynamic vertex arrays, grown by doubling (never per frame once warm).
 export const WALL_FLOATS = 20, BOARD_FLOATS = 9, DECAL_FLOATS = 9;
@@ -877,6 +878,7 @@ export function closeViewGLReady(makeCanvas) {
     S.model = compile(gl, MODEL_VS, MODEL_FS);
     // The optional hero program may fail without taking the ordinary renderer down.
     try { S.hero = createHeroGL(gl, compile, VS_COMMON, FS_COMMON); } catch { S.hero = null; GPU_DIAGNOSTICS.lastHeroFailure='program-unavailable'; }
+    try { S.beast = createBeastGL(gl, compile, VS_COMMON, FS_COMMON, CLOSE_VIEW_ACTOR_LOOK); } catch { S.beast = null; } // optional too: beasts keep their billboards without it
     for (const k of ["env", "wall", "board", "decal", "model"]) S.vbo[k] = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.env); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     S.vao.env = layout(gl, S.env, S.vbo.env, 2, [["a_pos", 2]]);
@@ -911,9 +913,11 @@ export function closeViewGLFrameReady() {
 export const closeViewGLCanvas = () => S.canvas;
 export const closeViewOutdoorAvailable = () => !!(S.gl && S.prop && S.tex.terrain); // the open world's solids can be drawn
 // Call before admitting the imported body; absent decoded images/context keeps the existing presentation.
+// Release 887: a beast's mesh, uploaded once per context; false keeps that beast on its billboard.
+export const prepareCloseViewBeastMesh = (mesh) => !!S.gl && !!S.beast && prepareBeastMesh(S.gl, S.beast, mesh);
 export const prepareCloseViewHeroGL = (asset) => {const ready=!!S.gl&&prepareHeroGL(S.gl,S.hero,asset);if(S.hero?.failed)GPU_DIAGNOSTICS.lastHeroFailure='upload-failed';return ready;};
 // For tests and the lab: forget the context (the next frame asks again).
-export function resetCloseViewGL() { GPU_DIAGNOSTICS.contextLost=false;if(S.gl) disposeHeroGL(S.gl,S.hero,true); S.hero = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit","terrain"])S.tex[k]=null; S.prop = null; S.vbo.prop = S.vao.prop = null; S.outdoorKey = null; S.outdoorVerts = 0; S.terr = null; S.vbo.terr = S.vao.terr = null; S.terrKey = null; S.terrVerts = 0; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
+export function resetCloseViewGL() { GPU_DIAGNOSTICS.contextLost=false;if(S.gl) { disposeHeroGL(S.gl,S.hero,true); disposeBeastGL(S.gl,S.beast,true); } S.hero = null; S.beast = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit","terrain"])S.tex[k]=null; S.prop = null; S.vbo.prop = S.vao.prop = null; S.outdoorKey = null; S.outdoorVerts = 0; S.terr = null; S.vbo.terr = S.vao.terr = null; S.terrKey = null; S.terrVerts = 0; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
 // r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
@@ -997,7 +1001,7 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   outdoor: 0, sun: new Float32Array([0, 0, 1, 0]), sunC: new Float32Array(3), outdoorP: new Float32Array(4), skyZ: new Float32Array(4), skyH: new Float32Array(4), ridge: new Float32Array(4), outW: new Float32Array(4), outR: new Float32Array(4), outD: new Float32Array(4), outX: new Float32Array(4), outY: new Float32Array(4), props: 0,
   // the solids drawn in runs (start, count) when a house's roof is left out; nRuns 0: the whole buffer in one call
   runs: new Int32Array(2 * 16), nRuns: 0, relief: 0 };
-export function drawSceneGL(ground, U, models = null, hero = null) {
+export function drawSceneGL(ground, U, models = null, hero = null, beasts = null) {
   const gl = S.gl; if (!closeViewGLFrameReady()) return false; const F = GLF; let calls = 0;
   try {
   const c = S.canvas; if (c.width !== F.devW || c.height !== F.devH) { c.width = F.devW; c.height = F.devH; }
@@ -1062,15 +1066,19 @@ export function drawSceneGL(ground, U, models = null, hero = null) {
     gl.depthFunc(gl.GREATER); gl.uniform1f(model.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
   }
   if(hasHero) { gl.depthFunc(gl.GREATER); drawHeroGL(gl,S.hero,hero,1,cam,light,F.sil); calls++; }
-  if(hasModels || hasHero) {
+  const hasBeasts = !!(beasts?.count && S.beast);
+  if(hasBeasts) { gl.depthFunc(gl.GREATER); calls += drawBeastsGL(gl,S.beast,beasts,1,cam,light,F.sil); }
+  if(hasModels || hasHero || hasBeasts) {
     gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
     if(hasModels) { gl.useProgram(model.p); gl.bindVertexArray(S.vao.model); gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, models.length/MODEL_FLOATS); calls++; }
     if(hasHero) { drawHeroGL(gl,S.hero,hero,0,cam,light,F.sil); calls++; }
+    if(hasBeasts) calls += drawBeastsGL(gl,S.beast,beasts,0,cam,light,F.sil);
     gl.depthMask(false); gl.enable(gl.BLEND);
   }
   if (GLB.nBoard > 0) { useBoards(); gl.uniform1f(S.board.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; }
   closeViewGLStats.modelTriangles = (hasModels ? models.length / (3 * MODEL_FLOATS) : 0) + (hasHero ? hero.indexCount/3 : 0);
   closeViewGLStats.heroTriangles = hasHero ? hero.indexCount/3 : 0;
+  { let bt = 0; if (hasBeasts) for (let i = 0; i < beasts.count; i++) { const f = beasts.items[i]; bt += (f.cloud ? f.mesh.triangles : f.mesh.coreTriangles); } closeViewGLStats.beastTriangles = bt; closeViewGLStats.beasts = hasBeasts ? beasts.count : 0; closeViewGLStats.modelTriangles += bt; }
   closeViewGLStats.heroUploadBytes = hasHero ? S.hero.uploadBytes : 0;
   // 5. flames, halos, motes and wind-up glows, added in light
   if (GLB.nDecal > GLB.nGlowStart) { gl.useProgram(S.decal.p); decalU(); gl.bindVertexArray(S.vao.decal); gl.blendFunc(gl.ONE, gl.ONE); gl.drawArrays(gl.TRIANGLES, GLB.nGlowStart, GLB.nDecal - GLB.nGlowStart); calls++; }
