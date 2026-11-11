@@ -84,24 +84,22 @@ test("Compass north stays in world coordinates at each cardinal Close View yaw",
   assert.equal(closeViewCompassRotation(1,0,0),0);
 });
 
-test("Overworld quest and manual compass arrows use camera yaw only while Close View is showing",()=>{
+test("Overworld quest and manual compass arrows turn with the Wayfarer's facing, not the Close View camera",()=>{
+  // r869 pinned these arrows to the Close View camera yaw; Tim (2026-11-11) asked for the Wayfarer's facing instead, in both views.
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
   const read=name=>{
     const body=source.match(new RegExp("^function "+name+"\\([^\\n]+\\n[\\s\\S]*?^}","m"));
     assert.ok(body,name);
     return body[0];
   };
-  const game={area:"overworld",rx:0,ry:0,player:{x:16,y:16}};
-  let close=false,yaw=-Math.PI/2;
-  const arrowFor=new Function("game","hudSet","compassHeading","closeViewShowing","closeViewCamera","closeViewCompassRotation",
+  const game={area:"overworld",rx:0,ry:0,player:{x:16,y:16}},compassFrame={ready:true,yaw:-Math.PI/2};
+  const arrowFor=new Function("game","hudSet","compassHeading","compassFrame","closeViewCompassRotation",
     read("updateNavigationArrow")+"\n"+read("compassRotation")+"\nreturn updateNavigationArrow;")
-    (game,(arrow,key,value)=>arrow[key]=value,()=>"",()=>close,()=>({valid:true,yaw}),closeViewCompassRotation);
+    (game,(arrow,key,value)=>arrow[key]=value,()=>"",compassFrame,closeViewCompassRotation);
   for(const kind of ["guidance","manual"]){
     const arrow={},target={kind,area:"overworld",rx:0,ry:-1,name:"North"};
-    yaw=Math.PI/2;close=false;arrowFor(arrow,target);
-    assert.equal(arrow.transform,"rotate(0deg)");
-    close=true;
-    const rotations=[-Math.PI/2,0,Math.PI/2,Math.PI].map(value=>{yaw=value;arrowFor(arrow,target);return arrow.transform;});
+    const rotations=[-Math.PI/2,0,Math.PI/2,Math.PI].map(value=>{compassFrame.yaw=value;arrowFor(arrow,target);return arrow.transform;});
     assert.deepEqual(rotations,["rotate(0deg)","rotate(-90deg)","rotate(-180deg)","rotate(-270deg)"]);
   }
+  assert.doesNotMatch(read("compassRotation"),/closeViewCamera/);
 });

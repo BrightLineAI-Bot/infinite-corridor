@@ -13,7 +13,7 @@ import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountL
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCamera, closeViewCompassRotation, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, compassWalkHeading, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors } from "./game.ts";
@@ -650,9 +650,22 @@ function dungeonCompassPoints() {
   }
   return compassDoorPoints;
 }
+// Tim (2026-11-11): the compass turns with the way the Wayfarer faces, not the camera, in Close View and the standard view
+// alike: ahead is the top of the dial, and the needle, the door points and the dial's N keep their true world bearings in
+// that frame. compassFrame is updated once a HUD frame (updateCompassFrame); nothing here allocates.
+const compassFrame = { yaw: NaN, turning: false, ready: false, map: null, at: NaN, target: NaN, vx: 0, vy: 0, x: NaN, y: NaN, facing: null, held: NaN };
+const navCompassDial = (() => { const dial = document.createElement("span"); dial.className = "nav-dial"; dial.setAttribute("aria-hidden", "true"); dial.innerHTML = '<i class="nav-dial-n">N</i><i class="nav-dial-tick e"></i><i class="nav-dial-tick s"></i><i class="nav-dial-tick w"></i>'; navCompass.prepend(dial); return dial; })();
+function updateCompassFrame(now) {
+  if (compassFrame.map !== game.map) { compassFrame.map = game.map; compassFrame.ready = false; compassFrame.x = NaN; compassFrame.target = NaN; compassFrame.held = NaN; }
+  const dt = Number.isFinite(compassFrame.at) ? (now - compassFrame.at) / 1000 : 0, p = game.player; compassFrame.at = now;
+  const walk = compassWalkHeading(compassFrame, p.x, p.y, p.facing, dt), body = closeViewShowing(game) ? closeViewBodyFacingYaw() : NaN;
+  /* Close View: the body as drawn; a swing, cast or dodge that turns it for a moment keeps the way they were going */
+  compassFrame.target = Number.isFinite(body) ? body : closeViewShowing(game) && Number.isFinite(compassFrame.target) ? compassFrame.target : walk;
+  compassFacingStep(compassFrame, compassFrame.target, dt, !!(settings.reduceMotion || settings.safeMode));
+  hudSet(navCompassDial, "transform", `rotate(${closeViewCompassRotation(0, -1, compassFrame.yaw)}deg)`);
+}
 function compassRotation(dx, dy) {
-  const camera = closeViewShowing(game) ? closeViewCamera() : null;
-  return closeViewCompassRotation(dx,dy,camera?.valid ? camera.yaw : undefined);
+  return closeViewCompassRotation(dx,dy,compassFrame.ready ? compassFrame.yaw : undefined);
 }
 function pointDungeonCompass(point) {
   updateNavigationArrow(navGuidanceArrow, null);
@@ -667,7 +680,8 @@ function pointDungeonCompass(point) {
   const label = point ? `Door point ${point.slot}: ${point.label}${arrived ? " reached" : ""}` : "True north";
   hudSet(navCompass, "aria-label", label); hudSet(navCompass, "title", label);
 }
-function updateNavigationCompass() {
+function updateNavigationCompass(now = performance.now()) {
+  updateCompassFrame(now);
   if (game.area === "dungeon") {
     const points = dungeonCompassPoints();
     pointDungeonCompass(points.find(door => door.id === dungeonCompassPick) || points[0]);
