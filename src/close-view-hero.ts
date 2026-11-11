@@ -740,6 +740,9 @@ export function sampleCloseViewHero(asset, state, input, out) {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.
       const pulse = Math.sin(p * Math.PI) * weight;
       if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight,action);
+      // The simple shooting tools (Spark Coil, Needle Caster: profile 'emitter') aim forward from a
+      // braced chest-height hold like the named tools, rather than pointing at the ceiling.
+      else if (kind === 'ranged' && profile === 'emitter') { toolPose(state,state.pose,profile,p,weight,action); state.clip='derived-ranged'; }
       else if (kind === 'ranged') { const A=heldArm(profile); rotateX(state.pose, A.shoulder, -.8 * weight); rotateX(state.pose, A.elbow, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') {
         // Orrery tools and pre-descriptor saves retain their established cast layer.
