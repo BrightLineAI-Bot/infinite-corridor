@@ -59,7 +59,7 @@ export const CLOSE_VIEW = Object.freeze({
     minDistance: 1, // the boom's usual shortest... (a wall closer than this pulls it in further: the camera is never inside a wall)
     closest: .3, // ...and its absolute shortest
     crane: .75, // ...and for each tile it is pulled in, it rises this much (never above the walls' tops less `craneClear`), so
-    craneClear: .25, // the Wayfarer stays a figure in the view, not a wall of cloth
+    craneClear: .2, // the Wayfarer stays a figure in the view, not a wall of cloth (was .25 before the 2026-11-11 height pass)
     nearFade: Object.freeze([1.6, .55]), // (version 5, the GPU scene: never fainter than atmosphere.nearFade) // nearer than this (camera depth), the Wayfarer is drawn this faint, so the way ahead shows
     center: .5, // the aim point's place on screen, as a share of the height from the top
     boomPad: .32, // the camera keeps this far off a wall
@@ -86,6 +86,14 @@ export const CLOSE_VIEW = Object.freeze({
     // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
     // bound encloses the Wayfarer's .82-scale, 1.68-tile hood, including its walking bob.
     framing: Object.freeze({ bodyHeight: 1.45, margin: .05, pitchMin: -1.2, pitchMax: 1.35 }),
+    // Outdoors over the heightfield (2026-11-11): the line from the Wayfarer's chest to the camera must clear the ground behind
+    // them. Rather than only cutting the boom where a ledge rises into that line, the crane first rises, up to `riseMax` tiles
+    // over the preset's outdoorHeight, so the camera looks down over the ledge; only a ledge too tall and too close for that
+    // shortens the boom, and then to the longest length the risen crane can see over. The rise is taken at once (it grows
+    // smoothly as the Wayfarer backs toward a ledge) and let down on the crane's spring.
+    // `horizonRoom`: outdoors the crane is held low enough that the Wayfarer's feet and this many degrees of sky above the
+    // horizon both fit the screen's height (outdoorCrane; it binds only in a short landscape view).
+    outdoor: Object.freeze({ riseMax: 2.2, horizonRoom: 4, minHeight: 1.2 }), // minHeight: never lower than this however short the view
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -101,9 +109,16 @@ export const CLOSE_VIEW = Object.freeze({
     // and lower so the pitch shows more of the floor beyond the Wayfarer, who stays framed low of centre. Walls still pull the
     // boom in (CLOSE_VIEW.camera), so tight corridors keep the old close framing. `fogPush`: tiles the depth fog is pushed out
     // with the longer boom, so the Wayfarer and the ground just past them are no foggier than at the old distance.
-    standard: Object.freeze({ label: "Standard", height: 1.9, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
-    close: Object.freeze({ label: "Close (tight, low)", height: 1.55, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
-    wide: Object.freeze({ label: "Wide (further back)", height: 2.15, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
+    // version 4 (Tim, 2026-11-11: "higher camera in general", after the overworld's levels became 1.2 tiles tall and a cliff at
+    // the Wayfarer's back pulled the camera in to their shoulder): indoors each preset is raised toward the cap (was close 1.55,
+    // standard 1.9, wide 2.15; the walls' tops less craneClear, 2.2, and the arch and hall caps still bound it). Outdoors (the
+    // overworld, courts and roofs: no ceiling) the crane stands at `outdoorHeight`, high enough that a level or two of ledge
+    // behind the Wayfarer is looked down over (CLOSE_VIEW.camera.outdoor) rather than cutting the boom. The look point is kept:
+    // the pitch outdoors is about 20-24 degrees, so in portrait the horizon still sits in the upper third of the screen and the
+    // Wayfarer's feet at about two thirds of the way down.
+    standard: Object.freeze({ label: "Standard", height: 2.05, outdoorHeight: 3, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
+    close: Object.freeze({ label: "Close (tight, low)", height: 1.8, outdoorHeight: 2.6, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
+    wide: Object.freeze({ label: "Wide (further back)", height: 2.2, outdoorHeight: 3.4, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
   }),
   defaultPreset: "standard",
   fov: Object.freeze({ verticalMax: 100 }), // the horizontal fov (by preset) or this vertical one, whichever is narrower, sets the focal length
@@ -1248,7 +1263,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
   const extended = overworldCloseViewApplies(g), flatWorld = extended && !interiorTerrain(g.map), outdoor = extended && openWorldScene(g);
   const plainWorld = outdoor && flatWorld && !g.map.building;
-  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
+  const Cp = closeViewPreset(g), camH = lerp(E.height, outdoor && Number.isFinite(Cp.outdoorHeight) ? outdoorCrane(Cp, w, h) : Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
   const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : air.near + fogShift;
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
@@ -1360,6 +1375,14 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // remain solid even when a collision or a jump changes the camera in one frame.
   const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? surfaceZ(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
   let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
+  if (outdoor && RELIEF.map === g.map) { // look down over a ledge behind (CLOSE_VIEW.camera.outdoor): the crane rises before the boom is cut
+    const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), L0 = Math.hypot(dx, dy), steps = Math.max(1, Math.ceil(L0 / .08)), top = camH + C.outdoor.riseMax;
+    let m = 0, keep = L0, need = 0;
+    for (let i = 1; i <= steps; i++) { const s = L0 * i / steps, rise = surfaceZ(g.map, footX(p) + dx * i / steps, footY(p) + dy * i / steps) + .12 - playerZ;
+      const mm = Math.max(m, (rise - .6) / s), req = Math.max(.6 + mm * s, rise, need); if (req > top) { keep = L0 * (i - 1) / steps; break; } m = mm; need = req; }
+    if (keep < L0 - 1e-6) { const k = keep / L0; CAM.cx = footX(p) + dx * k; CAM.cy = footY(p) + dy * k; CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0; }
+    need += .02; if (need > CAM.crane) { CAM.crane = need; CAM.craneV = 0; } terrainCameraZ = playerZ + Math.max(craneUp, need); // a hair over the line, so the check below agrees
+  }
   if (interiorTerrain(g.map) || hasStoneBuilds(g.map) || RELIEF.map === g.map) { // the camera's line to the Wayfarer never dips under the ground
     const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
     for (let i = 1; i <= steps; i++) {
@@ -1908,6 +1931,14 @@ const HALL_VIEW = Object.freeze({ minHeight: 6, maxHeight: 14, tierHeight: .65, 
 const BACKDROPS = new Map(PENTAGON_BACKDROPS.map(({ id, palette }, i) => [
   id, { kind: i + 1, colors: Float32Array.from(palette.flatMap((hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255))) },
 ]));
+// The preset's outdoor crane height, no higher than lets the Wayfarer's feet and the horizon (with `horizonRoom` degrees of sky)
+// share the screen's height: in portrait the full outdoorHeight; in a short landscape view about the old height (the horizon
+// matters more there than the extra height).
+function outdoorCrane(Cp, w, h) {
+  const C = CLOSE_VIEW.camera, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const span = 2 * Math.atan(h * (.5 - C.framing.margin) / F) - C.outdoor.horizonRoom * DEG;
+  return Math.max(C.outdoor.minHeight, Math.min(Cp.outdoorHeight, Cp.distance * Math.tan(Math.max(.05, Math.min(1.4, span)))));
+}
 function hallHeight(map) {
   if (interiorTerrain(map)) return interiorCeilingHeight(map);
   const height = map.hall?.ceilingHeight;
