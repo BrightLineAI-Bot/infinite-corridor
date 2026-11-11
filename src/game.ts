@@ -3303,7 +3303,10 @@ export class Game {
           this.map,
         ),
       );
-      { const w = this.wonderCue(); if (w) this.map.objects.push(w); } // release 729: a cue toward the nearest unexplored labyrinth (Pentagons: the sigil below)
+      // Waymark guides (Tim, 2026-11-11: "remove the smaller one with the line"): the release 729 gold cue (a small pentagon with a
+      // line, toward a labyrinth) is not laid on guided ground (atlas guideVersion); the Pentagon sigil below is its one five-sided
+      // mark. Ground seen before keeps the cue, since other objects there were placed around it.
+      if (!this.save.atlas?.[`${this.rx},${this.ry}`]?.guideVersion) { const w = this.wonderCue(); if (w) this.map.objects.push(w); } // release 729
       { const p = this.pentagonSigil(); if (p) this.map.objects.push(p); this.pentagonFindingArrive(); this._pentOfferAt = null; this._pentOfferWait = 0; } // Pentagon finding: a sigil toward the Pentagon whose catchment holds this section; hunts reached or done
       if (this.map.pentagon) this.roofDwell = { sleepers: this.roofSleepers(), told: false }; // roof-dwellers.ts: asleep, outside the enemy list, until the Wayfarer is on the roof
       for (const o of this.map.objects)

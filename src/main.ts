@@ -2294,9 +2294,9 @@ function openJournal(mode = "chronicle") {
     }
     const entries=mode==="glossary"?STAT_GLOSSARY.map((entry,i)=>[`term-${i}`,entry]):mode==="rules"?[
       ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. The open side of the ring faces the route."]],
-      ["chevron",["Open chevron — Crossing","Amber marks lead toward a skyway: floating discs that climb to a door in the open air, the crossing into the Skylands. Follow them and you reach one, often some eight to ten sections on. The vertex where the two lines meet points toward the crossing."]],
-      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss: ground a world beast you have woken will claim when you arrive, or one that already holds its ground. The corner filled with a red wedge faces the route."]],
-      ["spiral",["Open spiral — Unusual site","Violet marks lead toward a Watcher's Shrine, the pristine tomb that folds the Corridor and carries you somewhere else. The open end of the spiral faces the route."]],
+      ["chevron",["Open chevron — Skyway","Amber marks lead toward a skyway: floating discs that climb to a door in the open air, the crossing into the Skylands. Follow them and you reach one, often some eight to ten sections on. The vertex where the two lines meet points toward the crossing."]],
+      ["triangle",["Hollow triangle — World boss","Red marks lead toward a world boss: ground a world beast you have woken will claim when you arrive, or one that already holds its ground. The corner filled with a red wedge faces the route."]],
+      ["spiral",["Open spiral — Watcher's Shrine","Violet marks lead toward a Watcher's Shrine, the pristine tomb that folds the Corridor and carries you somewhere else. The open end of the spiral faces the route."]],
       ["pentagon",["Five-sided sigil — Pentagon","Gold sigils cut into the ground point toward a Pentagon not yet complete. The long point is the way; read one to learn how far."]],
       ["guidance-arrow",["Violet compass arrow — Guidance","Tracks the active quest, Viewport hunt, or Corridor objective. It changes as that objective advances and never replaces a manual waypoint."]],
       ["manual-arrow",["Cyan compass arrow — Manual waypoint","Tracks the explored Atlas section you selected. It remains until you clear or replace it, even while guidance is active."]],

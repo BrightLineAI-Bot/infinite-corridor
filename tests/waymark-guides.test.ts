@@ -144,7 +144,8 @@ test('guided ground builds no neighbouring section for its marks, and a section 
 test('ground seen before the guides, and new ground that hosts nothing, regenerate exactly as on main', () => {
   // Digests of tiles, objects (marks aside), spawns, sky discs and creatures, computed on origin/main (release 896) and here.
   // `old` 1: a guide host loaded with a release-896 atlas record (no guideVersion): no skyway, shrine or lair is added.
-  // `old` 0: new ground beside a host, hosting nothing: the same as main, the guides aside.
+  // `old` 0: new ground beside a host, hosting nothing: the same as main, the guides aside (three re-pinned with the gold cue gone,
+  // which no longer stands on guided ground for other objects to keep clear of: PIN1 25,-3, 31,1 and 30,2).
   const OLD = { terrain: 'glass', landscapeVersion: 17, hamletVersion: 2, travelVersion: 1, seaVersion: 3, dreamVersion: 4, watcherVersion: 1, skyVersion: 3, skyPlace: 2, deepVersion: 1, buildingVersion: 2, farVersion: 6, compoundVersion: 1, labVersion: 1, castleVersion: 1, pentVersion: 5, canyonVersion: 1, ascendVersion: 1, indoorDungeonVersion: 1, landscape: 'isles' };
   const sha = (v) => crypto.createHash('sha1').update(JSON.stringify(v)).digest('hex').slice(0, 16);
   for (const [seed, rx, ry, old, hash] of PINNED) {
@@ -162,6 +163,15 @@ test('the Pentagon sigil is much smaller', () => {
   assert.ok(pentagonSigilReach() <= .65 && pentagonSigilReach() < before / 2, `${pentagonSigilReach()} tiles`);
   assert.ok(PENTAGON_SIGIL_MARK.radius < .62 / 2 + .01);
   const renderer = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'); assert.doesNotMatch(renderer, /r=s\*\.62/); assert.match(renderer, /drawPentagonSigilIcon\(ctx,s,o\.state==="read"\)/);
+});
+
+test('the smaller pentagon with the line (the release 729 gold cue) is gone from guided ground; ground seen before keeps it', () => {
+  for (const seed of ['TIM1', 'GUIDE1']) for (const [rx, ry] of [[0, 4], [3, 9], [-7, 12], [18, -5], [25, 20]]) { const g = visit(seed, rx, ry);
+    assert.ok(!g.map.objects.some((o) => o.kind === 'wayfindingCue' && o.signalKind === 'wonder'), `${seed} ${rx},${ry}`); }
+  const old = { terrain: 'glass', landscapeVersion: 17, watcherVersion: 1, skyVersion: 3, skyPlace: 2, sigilVersion: 1 }; let kept = 0;
+  for (const [rx, ry] of [[0, 4], [3, 9], [-7, 12], [18, -5], [25, 20], [-30, 22], [40, 8]]) { const s = woken('TIM1'); s.atlas = { [`${rx},${ry}`]: { ...old } }; const g = visit('TIM1', rx, ry, s);
+    if (g.map.objects.some((o) => o.kind === 'wayfindingCue' && o.signalKind === 'wonder')) kept++; }
+  assert.ok(kept > 0, 'the old cue still stands on ground seen before');
 });
 
 test('the Journal says where each mark leads', () => {
@@ -199,15 +209,15 @@ const PINNED = [
   ["PIN1", 14, 5, 0, "d685b93f437343c8"],
   ["PIN1", 13, 6, 0, "900c063890c8b611"],
   ["PIN1", 26, -4, 0, "f0a75a0cc96adccf"],
-  ["PIN1", 25, -3, 0, "d2563ab99126a7a3"],
+  ["PIN1", 25, -3, 0, "56ac7a55529297a5"],
   ["PIN1", -13, 15, 0, "ee1ccb78ea8d786a"],
   ["PIN1", -14, 16, 0, "b7abbbed7a354a44"],
   ["PIN1", 14, 24, 0, "7b9170eb50a377e2"],
   ["PIN1", 13, 25, 0, "3039fa3928dade38"],
   ["PIN1", 21, 10, 0, "da9026a75501d14e"],
   ["PIN1", 20, 11, 0, "486f126dc880b277"],
-  ["PIN1", 31, 1, 0, "bd4cf7910e9e9cd8"],
-  ["PIN1", 30, 2, 0, "4cc0f88ce5fdf056"],
+  ["PIN1", 31, 1, 0, "9f3b04d0f30f2dff"],
+  ["PIN1", 30, 2, 0, "191af15acbdc39e4"],
   ["PIN1", -11, 20, 0, "a2f2b07daa883f65"],
   ["PIN1", -12, 21, 0, "20ce73b63011e694"],
   ["PIN1", 21, 31, 0, "df220481f2db127f"],

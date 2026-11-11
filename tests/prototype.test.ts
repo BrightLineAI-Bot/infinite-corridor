@@ -2279,7 +2279,7 @@ test("structure repair stays at generation boundaries and shared occupancy drive
 
 test("journal renders the same minimalist trail marks used on the floor",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
-  assert.match(source,/function trailMark/);assert.match(source,/Open ring — Wayglass/);assert.match(source,/Open chevron — Crossing/);assert.match(source,/Hollow triangle — Major danger/);assert.match(source,/Open spiral — Unusual site/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
+  assert.match(source,/function trailMark/);assert.match(source,/Open ring — Wayglass/);assert.match(source,/Open chevron — Skyway/);assert.match(source,/Hollow triangle — World boss/);assert.match(source,/Open spiral — Watcher's Shrine/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
 });
 
 test("world discovery banners identify their destination and suppress activated Wayglasses",()=>{
