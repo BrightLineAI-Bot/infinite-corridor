@@ -4,9 +4,9 @@ import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./veh
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.ts";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.ts";
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge } from './brawler-spells.ts';
@@ -302,11 +302,11 @@ export const CLOSE_VIEW = Object.freeze({
   // keeps and castles are cold dressed stone (`livedInShare` of them lived in: warmer, tapestries, some lights burning with
   // ghost-light); hives are chitin and resin with a dim bioluminescence; arcologies are an old machine's failing panels.
   // Every choice is a hash of the building and its floor: never stored, never per frame.
-  // wall.kind: 0 coursed stone, 1 packed dirt and timber, 2 chitin, 3 machine panels; stone: course height, block length,
+  // wall.kind: 0 coursed stone, 1 packed dirt and timber, 2 chitin, 3 machine panels, 6 a starship's clean panels; stone: course height, block length,
   // bevel, roughness (tiles); damp: height of the wet foot (tiles) and how wet; topFall: how bright the wall's top stays.
   // floor.kind: the shader's floorMat for an ordinary floor (0 flagstones, 6 dirt, 7 resin, 10 plating; a rug, planks or
   // mosaic keep their own); size: a flagstone's course; sewer: a channel down the middle of passages.
-  // ceiling.kind: 0 a ribbed vault (bays of `bay` tiles), 1 timber beams, 2 organic ribs, 3 conduits; dark: how far up into
+  // ceiling.kind: 0 a ribbed vault (bays of `bay` tiles), 1 timber beams, 2 organic ribs, 3 conduits, 4 a starship's clean panels; dark: how far up into
   // the dark the vault's webs go. arch: an arch over each doorway (spring height, radius: 0 a flat lintel; band: voussoirs).
   // pilaster: one every this many tiles along a straight wall (0 none); plinth, cornice: height, depth (tiles).
   // light: the carried light (colour, reach, strength, height) and the ambient; sources: placed lights on `share` of the wall
@@ -377,6 +377,19 @@ export const CLOSE_VIEW = Object.freeze({
       fog: Object.freeze({ rgb: Object.freeze([6, 8, 7]), near: 2.6, far: 12, haze: Object.freeze([.08, .7]), hazeRGB: Object.freeze([15, 18, 15]) }),
       grade: Object.freeze([.98, 1.02, .95, 1.1]), vignette: .5, deco1: Object.freeze([42, 46, 40]), deco2: Object.freeze([112, 110, 86]), glow: Object.freeze([170, 205, 140]),
       decor: Object.freeze({ vent: .07, roots: .05 }), props: Object.freeze({ rubble: .03, chain: .02, web: .15 }) }),
+    // Seed realms (seed-realms.ts, Tim 2026-11-11: "more sci-fi, instead of like a dirty old asylum or laboratory"): the Drifting
+    // Ship's own look. wall.kind 6: clean brushed composite panels with crisp seams, a light strip at head height and a kick strip
+    // (close-view-gl.ts); its lights are strips (hue 4: cool, no flame, no bracket); no damp, grit, webs or rubble.
+    starship: Object.freeze({ label: "Starship: clean composite panels and light strips",
+      wall: Object.freeze({ kind: 6, rgb: Object.freeze([120, 130, 142]), mortar: Object.freeze([16, 20, 26]), stone: Object.freeze([.34, .8, .02, .2]), damp: Object.freeze([0, 0]), dampRGB: Object.freeze([150, 160, 170]), topFall: .55 }),
+      floor: Object.freeze({ kind: 10, rgb: Object.freeze([78, 86, 96]), joint: Object.freeze([20, 24, 30]), rug: Object.freeze([40, 48, 60]), size: .6, wear: .1, wet: .35, sewer: false }),
+      ceiling: Object.freeze({ kind: 4, rgb: Object.freeze([62, 70, 80]), bay: 3, rib: .08, dark: .5 }),
+      arch: Object.freeze({ spring: 2.05, radius: 0, band: .2 }), pilaster: 0, plinth: Object.freeze([0, 0]), cornice: Object.freeze([0, 0]),
+      light: Object.freeze({ torch: Object.freeze([205, 225, 255]), reach: 6, strength: 1.7, height: 1.15, ambient: Object.freeze([12, 14, 18]),
+        sources: Object.freeze({ share: .14, spacing: 4, reach: 4.6, strength: 1.5, hue: 4, ghost: 0, candles: 0 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([4, 6, 10]), near: 3, far: 13, haze: Object.freeze([.04, .8]), hazeRGB: Object.freeze([10, 14, 22]) }),
+      grade: Object.freeze([.94, 1, 1.08, 1.08]), vignette: .5, deco1: Object.freeze([40, 48, 60]), deco2: Object.freeze([120, 160, 200]), glow: Object.freeze([140, 210, 255]),
+      decor: Object.freeze({}), props: Object.freeze({}) }),
     arcology: Object.freeze({ label: "Arcology: an old machine, failing",
       wall: Object.freeze({ kind: 3, rgb: Object.freeze([70, 76, 74]), mortar: Object.freeze([14, 15, 15]), stone: Object.freeze([.34, .8, .04, .4]), damp: Object.freeze([.6, .45]), dampRGB: Object.freeze([152, 158, 142]), topFall: .4 }),
       floor: Object.freeze({ kind: 10, rgb: Object.freeze([60, 64, 62]), joint: Object.freeze([12, 13, 13]), rug: Object.freeze([40, 40, 46]), size: .6, wear: .5, wet: .2, sewer: false }),
@@ -468,8 +481,10 @@ export function closeViewThemeId(b) {
 }
 export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "lived") < CLOSE_VIEW.themes.livedInShare; // for the lab: which keeps are lived in
 const THEME_OF = new WeakMap();
-export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
-const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
+const SEED_REALM_THEMES = Object.freeze({ ship: "starship", husk: "rootCellar" }); // seed realms (seed-realms.ts): the ship's clean panels, the husk's mine timbers
+const mapThemeId = (map) => SEED_REALM_THEMES[map?.seedRealm?.realm] || closeViewThemeId(map?.building);
+export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
+const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
 const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorMap(g.map);
 const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
 export function overworldCloseViewApplies(g) {
@@ -1773,6 +1788,7 @@ const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOS
   return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null, hall: null, backdrop: NO_BACKDROP, inlay: SIGIL_INLAY,
     env(gl, U, F, lavaTiles) { const q = UNI.q, th = UNI.th, tg = UNI.tg, C = th.ceiling, Fl = th.floor;
       gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling && !UNI.openArena ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
+      gl.uniform4f(U.u_space, UNI.space ? 1 : 0, 1, q.relief ? 1 : 0, 0); // seed realms: the cosmos through the ship's glass
       gl.uniform4f(U.u_hall, UNI.backdrop.kind, UNI.hall?.open ? 1 : 0, UNI.openArena ? 2 : UNI.hall?.sky ? 1 : 0, HALL_VIEW.shaftDepth);
       gl.uniform3fv(U.u_backdrop, UNI.backdrop.colors);
       gl.uniform3fv(U.u_inlayColors, UNI.inlay);
@@ -2034,8 +2050,8 @@ function buildStatic(map, geo, th) {
     // a placed light: a sconce on the wall (on a bracket), a pod in a hive's wall, a lamp in a machine's
     let lit = false;
     if (rnd(tx, ty, side, 1) < src.share && deco !== 3) { const lx = mx + nx * .2, ly = my + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - lx, lights[k + 1] - ly) >= src.spacing;
-      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
-        if (hue !== 1) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
+      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 || mat === 6 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
+        if (hue !== 1 && hue < 4) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
     // candles in an inside corner, on the floor
     if ((ab & 1) && src.candles > 0 && rnd(tx, ty, side, 6) < src.candles) { const ux = Math.sign(dx), uy = Math.sign(dy), cx = x0 + ux * .2 + nx * .2, cy = y0 + uy * .2 + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - cx, lights[k + 1] - cy) >= src.spacing * .5;
       if (ok) { lights.push(cx, cy, .35, src.reach * .7, src.strength * .7, 0, rnd(tx, ty, side, 7) * 6.283, 1);
@@ -2217,6 +2233,38 @@ export function selectProjectedShots(g, q, reduce = false) {
   PROJECTED_SHOTS.orbit = PROJECTED_ENTRIES.some(e=>e.kind==="orbit") ? orbit : null;
   return PROJECTED_SHOTS;
 }
+// A Close View shot from the player's held tool leaves the drawn muzzle: the offset from its
+// authoritative spawn point to this frame's posed muzzle is latched once, then eased out over
+// `settle` seconds. Presentation only: position, collision, aim and saves are never touched.
+export const CLOSE_VIEW_SHOT_MUZZLE = Object.freeze({ settle: .14, slots: 16, maxOffset: 1.2 });
+const MUZZLE_SHOTS = { refs: new Array(CLOSE_VIEW_SHOT_MUZZLE.slots).fill(null), offset: new Float32Array(CLOSE_VIEW_SHOT_MUZZLE.slots * 3) };
+const MUZZLE_OFF = new Float32Array(3);
+export const closeViewMuzzleShot = (shot) => !!shot && !shot.hostile && !shot.dead && !shot.shadow && !shot.echo && !shot.returning && shot.glyphHost === 'tool' && shot.visualLaunch == null;
+export function closeViewMuzzleWeight(age, settle = CLOSE_VIEW_SHOT_MUZZLE.settle) { const t = Math.max(0, Math.min(1, (Number(age) || 0) / settle)); return 1 - t * t * (3 - 2 * t); }
+// Spawn-to-muzzle offset (out[0..2]) for a straight launch seen `age` seconds after spawn.
+export function closeViewMuzzleOffset(out, shot, muzzle, support = 0) {
+  const d = Math.hypot(shot?.dx, shot?.dy), age = Math.max(0, Number(shot?.age) || 0);
+  if (!(d > 1e-6) || !finite(shot.speed) || !finite(shot.x) || !finite(shot.y)) return null;
+  const back = shot.speed * age, sx = shot.x - shot.dx / d * back, sy = shot.y - shot.dy / d * back;
+  out[0] = muzzle[0] - sx; out[1] = muzzle[1] - sy; out[2] = muzzle[2] - (support + shotVisualHeight(shot, 0));
+  return finite(out[0] + out[1] + out[2]) && Math.hypot(out[0], out[1], out[2]) <= CLOSE_VIEW_SHOT_MUZZLE.maxOffset ? out : null;
+}
+// Returns the current ease weight (0 when the shot has no muzzle latch) and fills MUZZLE_OFF.
+function shotMuzzleWeight(g, shot) {
+  const S = CLOSE_VIEW_SHOT_MUZZLE, R = MUZZLE_SHOTS, age = Number(shot?.age);
+  if (!(age >= 0 && age < S.settle) || !closeViewMuzzleShot(shot)) return 0;
+  let slot = R.refs.indexOf(shot);
+  if (slot < 0) {
+    if (!MODEL_STATE.muzzleReady) return 0;
+    for (let i = 0; i < S.slots; i++) { const q = R.refs[i]; if (!q || q.dead || !(q.age < S.settle)) { R.refs[i] = null; if (slot < 0) slot = i; } }
+    if (slot < 0) return 0;
+    const back = shot.speed * age, d = Math.hypot(shot.dx, shot.dy) || 1;
+    if (!closeViewMuzzleOffset(MUZZLE_OFF, shot, MODEL_STATE.muzzle, interiorSurfaceHeight(g.map, shot.x - shot.dx / d * back, shot.y - shot.dy / d * back))) return 0;
+    R.refs[slot] = shot; R.offset[slot * 3] = MUZZLE_OFF[0]; R.offset[slot * 3 + 1] = MUZZLE_OFF[1]; R.offset[slot * 3 + 2] = MUZZLE_OFF[2];
+  }
+  MUZZLE_OFF[0] = R.offset[slot * 3]; MUZZLE_OFF[1] = R.offset[slot * 3 + 1]; MUZZLE_OFF[2] = R.offset[slot * 3 + 2];
+  return closeViewMuzzleWeight(age, S.settle);
+}
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
 const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkRadians: 5.4, castMs: ACTION_MOTION.castMs, turnRate: 12, strideSpeed: 4, windupMs: 450 });
@@ -2247,6 +2295,8 @@ const MODEL_STATE = {
   heroGear: { profile: '', leftSocket: null, rightSocket: null, vialSocket:null,drinkVial:false,vialWeight:0,alpha: 1, tint: null, hitFlash: 0 },
   cleaverTrail: { owner: null, samples: new Float64Array(21), count: 0, visible: false, alpha: 1 },
   toolEmission:new Float32Array(3),toolEmissionReady:false,toolRelease:null,toolAlpha:1,
+  // The posed player's held-tool muzzle this frame (imported socket or native recipe point).
+  muzzle:new Float32Array(3),muzzleReady:false,nativeMuzzle:new Float32Array(4),
   spellEmission:new Float32Array(3),spellEmissionReady:false,spellRelease:null,spellAlpha:1,
 };
 
@@ -2379,7 +2429,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   const form = playerFormPresentation(g);
   const importedPlayer = !form || form.kind === 'playerIronFists' || form.kind === 'playerPowerSuit';
   state.admitted.clear();
-  state.playerRepresentation=capturedPlayer?'billboard':'absent';state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;
+  state.playerRepresentation=capturedPlayer?'billboard':'absent';state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;state.muzzleReady=false;
   state.cleaverTrail.visible = false;
   if (importedPlayer && !state.heroRequested && typeof globalThis.Image === 'function') {
     state.heroRequested = true;
@@ -2546,7 +2596,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       actionProgress: monsterAction?.semantic?.progress || 0,
       alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (who === player ? 1 : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
       attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: interiorSurfaceHeight(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
-      poison: who === player && g.save.elites?.status?.poison > 0 };
+      poison: who === player && g.save.elites?.status?.poison > 0, muzzleOut: who === player ? state.nativeMuzzle : null };
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
     track.winding = winding;
     track.attacking = attack;
@@ -2614,7 +2664,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             }
           }
           offset = equipped;
-          const right=state.heroFrame.rightSocket,rx=right?.[12],ry=right?.[13],rz=right?.[14];
+          const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip],rx=right?.[12],ry=right?.[13],rz=right?.[14];
+          if(actor.alpha>0&&closeViewHeldMuzzlePoint(state.muzzle,gear.profile,right))state.muzzleReady=true;
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
           // A hit still hides the transient muzzle cues even when the accepted tool owns the body pose.
           if(!hit&&closeViewToolCueOwnsAction(acceptedTool,input.action,action)&&Number.isFinite(rx)&&Number.isFinite(ry)&&Number.isFinite(rz)&&Math.hypot(rx-(who.x+.5),ry-(who.y+.45))<=.9&&closeViewToolEmissionPoint(state.toolEmission,acceptedTool,right)&&toolCueSegmentOpen(g.map,who.x+.5,who.y+.45,state.toolEmission[0],state.toolEmission[1])){state.toolEmissionReady=true;state.toolRelease=visualRecord;state.toolAlpha=actor.alpha;}
@@ -2631,7 +2682,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       }
     }
     if (!imported && !append(actor)) return;
-    if(who===player&&!imported)state.playerRepresentation='native';
+    if(who===player&&!imported){state.playerRepresentation='native';if(state.nativeMuzzle[3]===1&&actor.alpha>0){state.muzzle[0]=state.nativeMuzzle[0];state.muzzle[1]=state.nativeMuzzle[1];state.muzzle[2]=state.nativeMuzzle[2];state.muzzleReady=true;}}
     if (who === player) CAM.bodyRevision++;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
     state.tracks.set(who, track);
@@ -2775,7 +2826,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
-  UNI.hall = g.map.hall?.tall ? g.map.hall : null;
+  UNI.hall = g.map.hall?.tall ? g.map.hall : null; UNI.space = g.map?.seedRealm?.realm === "ship";
   UNI.openArena = stillworks || outdoor;
   UNI.worldCapture = flatWorld;
   // the open world (close-view-outdoor.ts): its sky, sun and air, the ground's far field and its solids
@@ -2943,7 +2994,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // Accepted release cue follows this frame's actual final socket. It never moves the shot.
   if(MODEL_STATE.toolEmissionReady&&MODEL_STATE.toolRelease){const release=MODEL_STATE.toolRelease,releaseNow=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,elapsed=Math.max(0,release.durationMs-Math.max(0,(g.player.actionVisualUntil||0)-releaseNow)),age=toolUseReleaseAge(release,elapsed);
     if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
-    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
+    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot&&!(shotMuzzleWeight(g,shot)>0)){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
   // Spells arbitrate the same single release lane after final-pose sampling. Fire may link only its
   // immutable accepted central source; Orbit deliberately has no connector.
@@ -2958,7 +3009,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       const X=entry.geom.x,Y=entry.geom.y,z=entry.geom.z,size=shot.radius>1.1?.32:.22,color=shot.perfect?0xffd86a:0xb48cff;
       room(6);card(X,Y,z-size,z+size,size,11,SHOT_DRAW.headAlpha,color,0,true);continue;
     }
-    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
+    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),mw=fire?0:shotMuzzleWeight(g,shot),X=head.x+MUZZLE_OFF[0]*mw,Y=head.y+MUZZLE_OFF[1]*mw,z=head.z+MUZZLE_OFF[2]*mw,magic = shot.damageType === "magic";
     const size = fire?.2:(magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1));
     const hue = fire?"#ff7a2a":standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
@@ -2968,7 +3019,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       if (d > 1e-4) {
         const trailTime = Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
         const length = Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
-        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tx=tail.x,ty=tail.y,tz=tail.z,r = size * .75;
+        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tw=mw>0?closeViewMuzzleWeight((shot.age||0)-trailTime):0,tx=tail.x+MUZZLE_OFF[0]*tw,ty=tail.y+MUZZLE_OFF[1]*tw,tz=tail.z+MUZZLE_OFF[2]*tw,r = size * .75;
         room(6);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);

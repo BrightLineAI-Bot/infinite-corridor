@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODEL_FLOATS, writeCloseViewHeroGear } from '../src/close-view-models.ts';
+import { closeViewHeldScale } from '../src/close-view-player-presentation.ts';
 const socket=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
 function mesh(profile){const out=new Float32Array(96*3*MODEL_FLOATS);const end=writeCloseViewHeroGear(out,0,{profile,rightSocket:socket});return out.slice(0,end);}
 const near=(a,b)=>Math.abs(a-b)<1e-6;
+// Right-hand tools are drawn at their CLOSE_VIEW_HELD_GEAR scale on top of the .82 recipe conversion.
+const KB=.82*closeViewHeldScale('blunderbuss'),KR=.82*closeViewHeldScale('rift-bombard'),KS=.82*closeViewHeldScale('lumen-spindle');
 
 test('Great Sweep forged blade is closed, nondegenerate, and retains its broken outline',()=>{
   const out=mesh('great-sweep');assert.equal(out.length/30,64);
@@ -27,11 +30,11 @@ test('Great Sweep forged blade is closed, nondegenerate, and retains its broken 
 test('Blunderbuss retains its muzzle plane with a recessed open bore within the equipment budget',()=>{
   const out=mesh('blunderbuss');assert.equal(out.length/30,92);assert.ok(92+60<=156);
   const verts=Array.from({length:out.length/10},(_,i)=>Array.from(out.slice(i*10,i*10+10)));
-  const muzzle=(1.535-.79)*.82,front=verts.filter(p=>near(p[0],muzzle));
+  const muzzle=(1.535-.79)*KB,front=verts.filter(p=>near(p[0],muzzle));
   assert.ok(front.length>0);assert.ok(verts.every(p=>p[0]<=muzzle+1e-6));
-  assert.ok(front.every(p=>Math.hypot(p[1],p[2])>=.052*.82-1e-6),'muzzle has an unfilled bore');
+  assert.ok(front.every(p=>Math.hypot(p[1],p[2])>=.052*KB-1e-6),'muzzle has an unfilled bore');
   const cap=verts.filter(p=>near(p[6],0x11/255)&&near(p[7],0x15/255)&&near(p[8],0x1b/255));
-  assert.equal(cap.length,12);assert.ok(cap.every(p=>near(p[0],(1.43-.79)*.82)),'dark bore terminates behind the muzzle');
+  assert.equal(cap.length,12);assert.ok(cap.every(p=>near(p[0],(1.43-.79)*KB)),'dark bore terminates behind the muzzle');
 });
 
 test('Bombard exposes six separate cylinder mouths while retaining its fixed reach and 96-triangle ceiling',()=>{
@@ -41,24 +44,24 @@ test('Bombard exposes six separate cylinder mouths while retaining its fixed rea
   assert.equal(mouths.length,36);
   for(let i=0;i<6;i++){
     const a=(i+.5)*Math.PI/3,group=mouths.slice(i*6,i*6+6);
-    assert.ok(group.every(p=>near(p[0],(1.301-.79)*.82)));
+    assert.ok(group.every(p=>near(p[0],(1.301-.79)*KR)));
     const y=group.reduce((n,p)=>n+p[1],0)/6,z=group.reduce((n,p)=>n+p[2],0)/6;
-    assert.ok(near(y,-Math.cos(a)*.083*.82));assert.ok(near(z,-Math.sin(a)*.083*.82));
+    assert.ok(near(y,-Math.cos(a)*.083*KR));assert.ok(near(z,-Math.sin(a)*.083*KR));
   }
-  assert.ok(near(Math.max(...vertices.map(p=>p[0])),.6519));
+  assert.ok(near(Math.max(...vertices.map(p=>p[0])),.6519*closeViewHeldScale('rift-bombard')));
 });
 
 test('Spindle collars stay within its established head silhouette and emission reach',()=>{
   const out=mesh('lumen-spindle');assert.equal(out.length/30,78);assert.ok(78+60<=156);
   const vertices=Array.from({length:out.length/10},(_,i)=>Array.from(out.slice(i*10,i*10+10)));
-  assert.ok(near(Math.max(...vertices.map(p=>p[0])),.6437));
-  assert.ok(near(Math.max(...vertices.map(p=>Math.abs(p[1]))),.05326056));
-  assert.ok(near(Math.max(...vertices.map(p=>Math.abs(p[2]))),.0615));
+  assert.ok(near(Math.max(...vertices.map(p=>p[0])),.6437*closeViewHeldScale('lumen-spindle')));
+  assert.ok(near(Math.max(...vertices.map(p=>Math.abs(p[1]))),.05326056*closeViewHeldScale('lumen-spindle')));
+  assert.ok(near(Math.max(...vertices.map(p=>Math.abs(p[2]))),.0615*closeViewHeldScale('lumen-spindle')));
   // New collars occupy the original shaft/head interval, never a displaced tip.
   for(const [start,end] of [[24,44],[56,76]]){
     const collar=vertices.slice(start*3,end*3);
     assert.equal(collar.length,60);
-    assert.ok(collar.every(p=>p[0]>.43&&p[0]<.55));
+    assert.ok(collar.every(p=>p[0]>.43*KS/.82&&p[0]<.55*KS/.82));
   }
 });
 

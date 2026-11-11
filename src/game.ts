@@ -69,6 +69,7 @@ import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
+import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
@@ -117,6 +118,7 @@ import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_
 import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
+import { creditFind } from "./digging.ts"; // seed realms: a cache's find
 import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.ts";
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
 import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.ts";
@@ -450,6 +452,7 @@ export function recoverPentagonVersion(save, cx, cy) {
   const versions = [...new Set(candidates)]; return !malformed && !malformedHistory && versions.length === 1 ? versions[0] : malformed || malformedHistory || versions.length ? PENTAGON.version : CLOSE_VIEW_ROOM_ROUTING.pentagonVersion;
 }
 export function generatePinnedDungeon(save, id, options = {}) {
+  if (isSeedRealmId(id)) return generateSeedRealm(save.seed, id) || seedRealmFallback(id); // seed realms: laid from the id alone, never pinned or dressed
   if (isPentagonFinaleId(id) || isPentagonArenaId(id)) { const h = dungeonHistory(save, id); if (h.relayNode === undefined) h.relayNode = false; } // the Pentagon's finale is a quiet place: no relay node (nor bells, pages, threads, margins or wanderers: loadArea)
   const history = pinDungeonLayout(save, id), canonical = `dungeon:${save.seed}:g${save.worldGeneration}`;
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
@@ -2331,7 +2334,16 @@ export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100, landOnArr
 // dodge goes along one of the four axes (a branch is one tile wide: a diagonal dodge drifted off it), and a sky hop flies
 // straight: while the Wayfarer is in the air over the gap only the stick's larger axis moves it, so a thumb's drift cannot carry
 // it off the line between the twin tips. Aim off an edge and you still go off it.
-export const TREE_FOOTING = { dodgeAxes: 4, straightHop: true, gapBelow: 1 }; // gapBelow: in the air this many levels or more under the launch height counts as over the gap
+export const TREE_FOOTING = { dodgeAxes: 4, straightHop: true, gapBelow: 1, stepLands: true }; // gapBelow: in the air this many levels or more under the launch height counts as over the gap. stepLands (2026-11-11): a jump from a branch up onto the next branch ends there, as a hop does past a gap; the long sky jump (JUMP.sky) carried a held stick on past a turn and off the branch
+// loadArea's notice when the Wayfarer's position had to be moved onto open ground.
+export const SETTLED_MESSAGE = "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
+// The keel (Tim, 2026-11-11: "potentially impossible to traverse a tree to get to the top... substantially broken"): a branch is one
+// tile wide, and the Wayfarer came off each turn near its edge, so a thumb a few degrees off the branch walked off it. On a great
+// tree's tile whose side is not level with it (a drop, the step a turn came from, the crown's rim), a stick held along the tile
+// (its smaller axis at most `lean` of the larger) steers to the tile's middle line instead of drifting: the sideways part becomes
+// a pull to the middle, `pull` per tile off it, at most `max` of the stick. A jump keeps the line of the tile it left from.
+// Push clearly sideways and you still step off (falls stay lethal; no brink guard). The crown's inside is left free.
+export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 export function jumpLift(g, now) {
   const until = g?.jumpUntil || 0; if (!(now < until)) return 0;
   if (g.mechBoosting) return JUMP.arc;
@@ -2642,7 +2654,7 @@ export class Game {
         stateId=area==="dungeon"&&levelId?`${id}:level:${levelId}`:id,
         had = !!this.save.session.areas[stateId];
       load(area, capture);
-      if (area === "dungeon" && !this.map?.building) {
+      if (area === "dungeon" && !this.map?.building && !this.map?.seedRealm) { // seed realms hold their own crystals
         const annex = String(this.save.session.activeDungeonId).endsWith(
             ":aperture-annex",
           ),
@@ -2802,7 +2814,7 @@ export class Game {
       this._apertureInstalled &&
       this.area === "dungeon" &&
       this.map &&
-      !this.map.building &&
+      !this.map.building && !this.map.seedRealm && // seed realms hold their own crystals
       !this.map.objects.some((o) => o.kind === "apertureMemory")
     ) {
       const annex = String(this.save.session.activeDungeonId).endsWith(
@@ -2917,7 +2929,7 @@ export class Game {
         : sectionTerrain(this.save.seed, this.rx, this.ry, this.save.worldGeneration, this.sectionTerrainSteps()); // perf pack: kept terrain (see sectionTerrain)
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.skyLevel=0;this.discAir=null;/* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;/* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry);} // release 289: sections first seen from now on
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
@@ -2925,7 +2937,7 @@ export class Game {
     if(area==="dungeon"&&this.map.arenaKind==="dive"&&this.map.lair&&!this.map.objects.some(o=>o.kind==="diveOnward")){const w=mapWidth(this.map,area),L=this.map.lair,spot=[[-3,0],[3,0],[-3,2],[3,2],[0,3],[-2,-2],[2,-2]].map(([dx,dy])=>({x:L.x+dx,y:L.y+dy})).find(q=>{const t=this.map.tiles[q.y*w+q.x];return t&&!t.blocked&&!this.map.objects.some(o=>o.x===q.x&&o.y===q.y)});if(spot)this.map.objects.push({id:`${this.areaId()}:onward`,kind:"diveOnward",name:"Deep current",x:spot.x,y:spot.y,state:"open",actions:["follow"]})} // release 311: a grotto's lair holds a current to the next buoy
     if (area === "dungeon" && this.map.arenaKind === "dive") this.placeTideBearer(); // travel seeds: the Tide Bearer waits at the far end of every dive
     if(area==="overworld"){plantRefugeLands(this.map,this.rx,this.ry,this.refugeLandsWhere());for(const o of this.map.objects)if(o.talkKey)o.line=talkLine(o,this.refugeLandsWhere(),Number(this.save.worldFlags[o.talkKey])||0)} // release 265: the farm, the quarry and the farmer
-    if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
+    if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.seedRealm/* seed realms: no wanderers */){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
     if(area==="dungeon"&&isArrayRun(loadingId)&&ensureFarArray(this.save).activeRun?.id===loadingId){const run=this.save.farArray.activeRun,spawns=this.map.enemySpawns,multi=!!this.map.multiLevel,g=spawns.find(e=>e.dungeonRole==="finalBoss")||spawns.find(e=>e.dungeonRole==="gateWarden")||(multi?null:spawns.find(e=>e.boss)||spawns[spawns.length-1]);if(g){const boss=runBossSpawn(this.save,{x:g.x,y:g.y});if(boss){spawns.splice(spawns.indexOf(g),1);if(!spawns.some(e=>e.id===boss.id))spawns.push({...boss,objectiveId:g.objectiveId||null})}}if(!this.map.objects.some(o=>o.kind==="arrayPylon"))this.map.objects.push(...arrayPylons(this.map,`${loadingId}:${this.map.levelId||""}`,mapWidth(this.map,area)));this.map.name=runName(run,run.gate)}
     if(area==="dungeon"&&history?.relayNode){if(placeRelayNode(this.map,loadingId,this.save))ensureRelayNetwork(this.save).seen=true;}
     if(area==="dungeon"&&this.map.dungeonContract?.discoveryEnabled){const discovered=discoveryForLevel(history,this.map);applyDungeonDiscovery(this.map,discovered);this._dungeonChunkId=null;}
@@ -2947,7 +2959,7 @@ export class Game {
       if(this.map.settlement){recordPeoplePlace(this.save,this.map.settlement.id,{type:'settlement',name:this.map.settlement.name||this.map.settlement.id,sigil:'settlement',summary:'A settled refuge maintained against the Corridor.',facts:[`Reached at ${this.rx},${this.ry}.`],crossRefs:['Viewport'],outcome:this.save.consequences.settlements[this.map.settlement.id]?.status||'standing',coordinates:{rx:this.rx,ry:this.ry}});for(const o of this.map.objects.filter(q=>q.kind==='npc'))recordPeoplePlace(this.save,o.id,{type:'person',name:o.name,role:o.role,sigil:'person',summary:`${o.role} of ${this.map.settlement.name||'this refuge'}.`,facts:[this.save.consequences.npcs[o.id]?.status==='dead'?'Recorded dead.':'Encountered alive.'],crossRefs:[this.map.settlement.name||this.map.settlement.id],outcome:this.save.consequences.npcs[o.id]?.status||'alive'})}
     }
     if(area==='dungeon'&&String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:')){const id=this.save.session.activeDungeonId,instance=this.save.viewport.instances[id],hunt=this.save.viewport.contracts[instance?.contractId];this.map.recipe='hunt-instance';this.map.name=hunt?.title||'Held Aperture';this.map.huntInstanceId=id;this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(instance&&!instance.completed&&hunt?.generated){const at=this.map.objective||{x:18,y:11};this.map.enemySpawns.push({...generatedHuntSpawn(hunt,at,id),boss:true,worldBoss:true,huntInstanceId:id})}else if(instance&&!instance.completed){const c=foundryCandidate(this.save.seed,hunt.target.rx,hunt.target.ry,this.save.worldGeneration),at=this.map.objective||{x:18,y:11};Object.assign(c,{id:`${id}:boss`,foundryId:`${id}:boss`,foundryName:c.name,foundryRole:'boss',role:'boss',baseKind:'archiveBehemoth',kind:'archiveBehemoth',boss:true,x:at.x,y:at.y,viewportHuntId:hunt.id,worldBoss:true,huntInstanceId:id,foundryModules:[c.body,c.movement,c.attack,c.weakness,c.ecology]});this.map.enemySpawns.push(c)}}
-    if(area==='dungeon'){const spots=this.map.tiles.filter(t=>!t.blocked&&t.x>3&&t.y>3),key=`${loadingId}:${this.map.levelStableId||this.map.levelId||''}`;if(spots.length){const wild=admittedFoundrySpawn(this.save,key,'dungeon',spots[hashSeed(`${key}:admitted-at`)%spots.length]);if(wild)this.map.enemySpawns.push(wild)}}
+    if(area==='dungeon'&&!this.map.seedRealm/* seed realms */){const spots=this.map.tiles.filter(t=>!t.blocked&&t.x>3&&t.y>3),key=`${loadingId}:${this.map.levelStableId||this.map.levelId||''}`;if(spots.length){const wild=admittedFoundrySpawn(this.save,key,'dungeon',spots[hashSeed(`${key}:admitted-at`)%spots.length]);if(wild)this.map.enemySpawns.push(wild)}}
     if(area==='dungeon'&&this.save.session.viewportDungeonHuntId&&!String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:')){const hunt=this.save.viewport.contracts[this.save.session.viewportDungeonHuntId];if(hunt&&!['completed','archived'].includes(hunt.status)){const open=this.map.tiles.filter(t=>!t.blocked&&t.x>5&&t.y>5),at=open[hashSeed(`${hunt.id}:${this.areaId()}:boss`)%open.length]||this.map.objective||this.map.entry;this.map.enemySpawns.push({id:`viewport-dungeon-target:${hunt.id}`,kind:hunt.targetKind||'latticeHunter',x:at.x,y:at.y,boss:true,traits:['vital','keen'],viewportHuntId:hunt.id,worldBoss:false})}}
     if (area === "dungeon" && this.map.recipe === "cistern") {
       // Release 467 (Codex audit F001): the cistern's pool is not laid where it would cut a guardian or an exit off from the
@@ -2982,7 +2994,7 @@ export class Game {
       if(guardian){history.guardianKind??=history.ladder?ladderGuardian(this.save.seed,packAreaId,history.ladder.tier,guardianKindFor(this.save.seed,packAreaId),GUARDIAN_POOL):guardianKindFor(this.save.seed,packAreaId);/* release 319 */guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
     }
     if(packAdopted&&this.map.encounterVersion&&this.map.monsterPack!==MONSTER_PACK_VERSION){this.map.enemySpawns=this.map.enemySpawns.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0;this.map.encounterGroups=[]}
-    if (area === "dungeon" && !this.map.deepDungeon && !this.map.building && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
+    if (area === "dungeon" && !this.map.deepDungeon && !this.map.building && !this.map.seedRealm /* seed realms */ && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
       this.map.enemySpawns.push({ kind: "gateRevenant", x: 18, y: 6, gatePredator: true });
     if(area==="dungeon"&&!this.map.arena&&!this.map.building&&!String(this.areaId()).startsWith("hunt-instance:")&&!String(this.areaId()).startsWith("elite-portal:")&&!String(this.areaId()).includes("aperture-annex"))populateDungeonEncounters(this.map,{deep:!!this.map.deepDungeon||this.map.recipe==="deep-v1",monsterPack:packAdopted});this.trapSeeds=[];if(area==="dungeon"&&!this.map.arena&&!this.map.building&&this.save.consequences?.dungeons?.[this.save.session.activeDungeonId]?.trapsVersion&&!this.map.objects?.some(o=>o.newTrap))addNewTraps(this.map,this.save.seed,this.areaId(),this.save.consequences.dungeons[this.save.session.activeDungeonId].trapsVersion);/* release 523: only crossings first generated from now on */
     if (area === "overworld" && (this.rx !== 0 || this.ry !== 0)) {
@@ -3082,7 +3094,7 @@ export class Game {
     if(area==="overworld")addSurveyorStatue(this.map,this.save,this.rx,this.ry); // release 551: Corwin's statue, once the chain is whole
     if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */if(!beast&&!worldBeast){const chrys=mothChrysalisFor(this.save,this.map,this.rx,this.ry);if(chrys){this.map.enemySpawns.push(chrys);this.message=CHRYSALIS.found}}/* release 708: the Ashen Moth's chrysalis on a great tree */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}{const seenSky=this.save.atlas?.[`${this.rx},${this.ry}`];if((!seenSky||seenSky.skyVersion)&&!this.map.settlement&&skylandSection(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1)&&!this.map.objects.some(o=>o.kind==='skyStair')){const skyV=seenSky?.skyVersion||SKYLANDS.version,disc=skyV>=3?buildSkyDiscs(this.map,this.save.seed,this.rx,this.ry):null,top=disc?{x:disc.x-.5,y:disc.y-.75,elev:disc.level,disc:true}:skyV===2?buildSkyway(this.map,this.save.seed,this.rx,this.ry):null;/* release 585: the skyway ascent; 587: floating discs */const spot=skyV>=2?top:this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&!t.buildingId&&t.x>8&&t.x<24&&t.y>8&&t.y<24&&!this.map.objects.some(o=>Math.hypot(o.x-t.x,o.y-t.y)<2)).sort((a,b)=>Math.hypot(a.x-16,a.y-15)-Math.hypot(b.x-16,b.y-15))[0];if(spot&&top)this.map.objects.push({id:`skyway-${this.rx}-${this.ry}`,kind:'skyStair',name:'Skyway',skyway:true,elev:top.elev,...(top.disc?{disc:true}:{}),lore:'At the top of the floating steps a door of pale stone stands in the open air, and behind it is sky.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});else if(spot)this.map.objects.push({id:`sky-stair-${this.rx}-${this.ry}`,kind:'skyStair',name:'Sky Stair',lore:'A stair of pale stone climbs into the open air and stops. Above it, islands drift. The divine challenge is offered to anyone who climbs.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});const annex=spot&&skyAnnexStair(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1),st=annex&&this.map.objects.find(o=>o.kind==='skyStair');if(st){Object.assign(st,{skyAnnex:true,name:`${st.name} · ${SKY_ANNEX.name}`,lore:SKY_ANNEX.messages.stair});this.message=SKY_ANNEX.messages.stair}/* release 678: the Skylands Deep Annex, named before you climb */const rec=spot&&this.save.atlas?.[`${this.rx},${this.ry}`];if(rec&&Array.isArray(rec.sites)&&!rec.sites.some(q=>q.kind==='skyStair'))rec.sites.push({kind:'skyStair',name:st?st.name:top?'Skyway':'Sky Stair',x:spot.x,y:spot.y})}}/* release 571: the Skylands */if(!beast&&!worldBeast){const passing=passingBeastFor(this.save,this.map,this.rx,this.ry,Object.keys(this.save.explored||{}).length);if(passing){this.map.enemySpawns.push(passing);passingSeen(this.save);/* sightings (2026-11-11): one passer between meetings */this.passingNote=`Far off, ${WORLD_BEASTS[passing.passingBeast].name} moves through, bound for ${BEAST_HOMES[WORLD_BEASTS[passing.passingBeast].home].name}. It pays you no mind: it is only passing through, a sight, not a hunt you can follow.`}}/* release 569 */if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
-    if(area==="dungeon"){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
+    if(area==="dungeon"&&!this.map.seedRealm/* seed realms: no world beasts */){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId(), dungeonHistory(this.save, this.areaId()).wardensSlain || [])) this.map.enemySpawns.push(w); // release 459: Margin Wardens; 473: the slain stay slain
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
@@ -3100,12 +3112,13 @@ export class Game {
       const t = crown.sort((a, b) => (a.y - b.y) || (a.x - b.x))[0]; if (t) this.map.objects.push({ id: `crown-rest-${this.rx}-${this.ry}`, kind: "crownRest", name: "Crown Rest", x: t.x, y: t.y, state: "open", actions: [] });
     }
     if (area === 'dungeon' && this.map.skyland) for (const e of this.enemies) this.scaleSkyFoe(e); // release 571
+    if (area === 'overworld') dropSeedRealms(this.save); // seed realms: a realm left is gone (all but the one the session still holds)
     if (area === 'overworld') { const areas = this.save.session?.areas || {}, hist = this.save.consequences?.dungeons || {}; for (const k of Object.keys(areas)) if (isSkyland(k)) delete areas[k]; for (const k of Object.keys(hist)) if (isSkyland(k)) delete hist[k]; } // release 571: a finished or abandoned Skyland run leaves nothing behind
     // Far Array bosses are tuned to the Wayfarer last, over the depth and boss-form scaling (release 138).
     if(area==="dungeon"&&isArrayRun(loadingId))for(const e of this.enemies)if(e.farArrayBoss)tuneArrayBoss(e,this.save,characterStats(this.save),e.farArrayBoss);
     // Surface sea creatures (water world W3): deterministic per section, only in landscape version 2+ water.
     if(area==="overworld"||this.map.underwater)for(const q of area==="overworld"?seaSpawns(this.map,this.save.seed,this.rx,this.ry):(this.map.seaSpawns||[])){const c=createCombatant("ashling",q.x,q.y,false,[]);Object.assign(c,{id:q.id,kind:q.kind,variantId:`${q.kind}:common`,meleePatterns:[],tentacles:0},seaCombatantFields(q.kind));this.enemies.push(c)}
-    const intrusions = this.map.deepDungeon || this.map.recipe === "deep-v1" ? [] : apertureEncounterSpawns(
+    const intrusions = this.map.deepDungeon || this.map.recipe === "deep-v1" || this.map.seedRealm ? [] : apertureEncounterSpawns(
       this.save.seed,
       this.areaId(),
       this.save.perception?.aperture || 0,
@@ -3191,6 +3204,7 @@ export class Game {
       const progress = applyDeepDungeonProgress(this.save, this.areaId(), this.map), defeated = new Set([...(progress.defeatedWingIds || []).map((wing) => `deep-v1-miniboss-${wing}`), ...(progress.defeatedFinalIds || [])]);
       this.enemies = this.enemies.filter((e) => !defeated.has(e.id) && !(e.objectiveId && progress.completedObjectiveIds.includes(e.objectiveId)));
     }
+    if (area === "dungeon" && this.map.seedRealm) this.dressSeedRealm(); // seed realms: paid, lit and opened, from the realm's history
     // Persistent scars overlay pinned generation in either world, after saved objects
     // and quest progress are restored; they never complete those objectives themselves.
     applyVoidScars(this.save, this.map, this.areaStateId());
@@ -3249,9 +3263,7 @@ export class Game {
       } else if (!e.seaKind) relocateIfStranded(e, this.map, areaWidth);
       refreshMarineBeast(e, this.map, areaWidth, area);
     }
-    if (playerRelocated)
-      this.message =
-        "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
+    if (playerRelocated) this.message = SETTLED_MESSAGE;
     if (area === 'dungeon' && !this.map.arena && !this.save.session.activeDisplacement && !String(loadingId).startsWith('hunt-')) this.prepareDungeonCompletion();
     if (area === 'dungeon' && this.save.session.activeDisplacement) { const h = dungeonHistory(this.save, this.areaId()); if (!h.thresholdOpen) { const fell = this.enemies.find((e) => e.dead && !e.worldBeast && !e.questingBeast && (e.boss || isCrossingGuardian(e)) && (e.boss || !this.enemies.some((q) => !q.dead && isCrossingGuardian(q)))); if (fell) { h.thresholdOpen = true; h.thresholdDoor = { x: Math.round(fell.x), y: Math.round(fell.y) }; } } this.raiseThresholdDoor(); } // release 451: also for a guardian felled before this release
     this.reconcileConsequences();
@@ -3473,7 +3485,7 @@ export class Game {
       fatalFallPending: this._fatalFallPending === true,
       // Exact resume of a jump in the air (found with TREE_GLIDE.home.reached): the height it left from and the sky-hop height it
       // holds; before, a jump off a great crown saved mid-air resumed at the ground's height and its fall (or freefall) was lost.
-      jumpAir: clock < (this.jumpUntil || 0) && !this.droneLift ? { from: Number.isFinite(this.jumpFrom) ? this.jumpFrom : null, skyAir: Number.isFinite(this.skyAir) ? this.skyAir : null, scale: Number(this.skyAirScale) || null, dur: Number(this.jumpDur) || null, liftDrop: this.liftDrop === true, hopGap: this.skyHopGap === true } : null,
+      jumpAir: clock < (this.jumpUntil || 0) && !this.droneLift ? { from: Number.isFinite(this.jumpFrom) ? this.jumpFrom : null, skyAir: Number.isFinite(this.skyAir) ? this.skyAir : null, scale: Number(this.skyAirScale) || null, dur: Number(this.jumpDur) || null, liftDrop: this.liftDrop === true, hopGap: this.skyHopGap === true, ...(this.keelLine ? { keel: { x: this.keelLine.x, y: this.keelLine.y } } : {}) } : null,
       curses: cursesOut(p.curses, clock), // release 737: the haunt curses, with what each has left (and the health FRAIL holds back)
     };
   }
@@ -3524,6 +3536,28 @@ export class Game {
     if (!contacts || contacts.clip(p.x, p.y, dx, dy) === 1) { p.x = x; p.y = y; return true; }
     return moveAxis(p, dx, dy, this.map, mapWidth(this.map, this.area), false, null, false, contacts);
   }
+  // TREE_KEEL: the stick, steered to the middle line of the great-tree branch under the feet when it is held along the branch.
+  // The stick's smaller axis as the keel steers it (a pull toward the middle line), or null to leave the stick alone. In a jump
+  // from a branch the line is that branch's (`keelLine`, set at the press), whatever is under the feet. No allocation per frame.
+  treeKeel(x, y, dodging = false, dt = 1 / 60, now = 0) {
+    const p = this.player, w = mapWidth(this.map, this.area), tiles = this.map.tiles, air = now < (this.jumpUntil || 0), line = air ? this.keelLine : null;
+    if (!line) this.keelLine = null;
+    if (air && !TREE_FOOTING.straightHop) return null; // in the air the keel is part of the straight hop: off with it
+    const u = line ? tiles[line.y * w + line.x] : tileUnder(this.map, w, p.x, p.y);
+    if (!u?.canopy || u.blocked) return null;
+    const alongX = Math.abs(x) >= Math.abs(y), major = Math.abs(alongX ? x : y), minor = alongX ? y : x;
+    if (!(major > 0) || Math.abs(minor) > TREE_KEEL.lean * major) return null;
+    const off = alongX ? (u.y - .25) - p.y : u.x - p.x;
+    if (line) { if (Math.abs(off) >= 1) return null; } // a jump that has left the line's own row or column is not steered back to it
+    else { // only where a side is not level with the tile: a drop, the step a turn came from, the crown's rim
+      const e = u.elev || 0, ax = u.x - (alongX ? 0 : 1), ay = u.y - (alongX ? 1 : 0), bx = u.x + (alongX ? 0 : 1), by = u.y + (alongX ? 1 : 0), h = Math.floor(tiles.length / w);
+      const a = ax < 0 || ay < 0 || ax >= w || ay >= h ? null : tiles[ay * w + ax], b = bx < 0 || by < 0 || bx >= w || by >= h ? null : tiles[by * w + bx];
+      const level = (n) => !!n && (n.blocked || (!LETHAL_KINDS.has(n.kind) && (n.elev || 0) === e)); // a wall beside it cannot be stepped into
+      if (level(a) && level(b)) return null;
+    }
+    const speed = (dodging ? 4.8 : 2.4) * (1 + (characterStats(this.save).moveSpeed || 0)), most = Math.abs(off) / Math.max(1e-6, speed * Math.max(dt, 1e-3));
+    return Math.sign(off) * Math.min(Math.abs(off) * TREE_KEEL.pull, TREE_KEEL.max, most) * major;
+  }
   planGroundedPlayerMove(dx, dy, width, now, carrier = null) {
     const contacts = actorContactContext(this, this.player, dx, dy); if (!contacts) return null;
     const probe = contacts.probe, p = this.player, from = tileUnder(this.map, width, p.x, p.y), jumping = now < (this.jumpUntil || 0);
@@ -3558,7 +3592,7 @@ export class Game {
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
-    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.ledgeHint = null; this.poisonSoak = 0;
+    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
     this.endGloomDarks(); // the Gloomvast's Dark ends with a death or a journey by Wayglass
@@ -3586,6 +3620,7 @@ export class Game {
   restoreJumpAir(j, now) {
     if (!j || typeof j !== "object" || !(this.jumpUntil > now)) return; const n = (v) => v != null && Number.isFinite(Number(v)) ? Number(v) : null;
     if (n(j.from) != null) this.jumpFrom = n(j.from); if (n(j.skyAir) != null) this.skyAir = n(j.skyAir); if (n(j.scale) > 0) this.skyAirScale = n(j.scale); if (n(j.dur) > 0) this.jumpDur = n(j.dur); this.liftDrop = j.liftDrop === true; this.skyHopGap = j.hopGap === true;
+    const k = j.keel; this.keelLine = k && typeof k === "object" && Number.isInteger(k.x) && Number.isInteger(k.y) ? { x: k.x, y: k.y } : null; // TREE_KEEL: the branch the jump left from
   }
   // Release 734 (S6/F2): where a death or Wayglass travel lands. A checkpoint with a null or NaN coordinate (a damaged save)
   // threw on every death or stranded the Wayfarer at x=null; the active one is repaired to the Ember Refuge instead.
@@ -3727,6 +3762,7 @@ export class Game {
     const pursuers = this.enemies.filter((e) => e.gatePredator && e.aggro && !e.dead).slice(0, HORDE.active); // release 269: a horde's pursuers all follow
     for (const q of pursuers) q.dead = true;
     const leavingId=this.save.session.activeDungeonId,isHuntInstance=String(leavingId||'').startsWith('hunt-instance:');
+    if (isSeedRealmId(leavingId)) this.save.session.seedRealm = null; /* seed realms: left another way (a sigil), the realm is gone all the same */ else
     abandonDungeon(this.save, this.areaId());
     if(isHuntInstance){const instance=this.save.viewport.instances[leavingId];if(instance&&!instance.completed)abandonHuntInstance(this.save,leavingId)}
     this.snapshotArea();
@@ -4235,6 +4271,7 @@ export class Game {
     if (o.kind === "canopyGate" && action === "plantFossil") return this.plantFossilSeed(o); // travel seeds: a sure way to another crown
     if (o.kind === "canopyGate" && !action && o.state === "open" && seedCount(this.save, "fossilized") > 0) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name} — enter, or plant a ${SEEDS.fossilized.name}.`) }; }
     if (o.kind === "seedFind") return this.takeSeedFind(o);
+    if (o.realmObject && this.area === "dungeon" && this.map?.seedRealm) return this.useRealmObject(o, action); // seed realms
     if (o.kind === "tideBearer") return this.tideBearerAction(o, action);
     if (o.completionExit) {
       if (!dungeonHistory(this.save,this.areaId()).combatClear?.completed) return {ok:false,message:this.message='The return remains sealed while a required guardian lives.'};
@@ -4368,6 +4405,8 @@ export class Game {
     }
     // Release 215: touching a strange thing opens a Glimpse.
     if (o.kind === "digSpot" && (action || validActions(o, this.save)[0]) === "dig") { const c = ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; } const r = digSpot(this.save, o, this.rx, this.ry); this.message = (c.crafted ? c.message + " " : "") + r.message; this.sync(); return r; }
+    if (o.kind === "watcherTomb" && String(action || "").startsWith("realmSeed:")) return this.enterSeedRealm(o, String(action).slice(10)); // seed realms
+    if (o.kind === "watcherTomb" && !action && this.area === "overworld" && o.where !== "crypt" && realmSeedKinds().some((k) => seedCount(this.save, k) > 0)) return this.offerSeedMenu(o); // seed realms: offer, or touch
     if (o.kind === "watcherTomb") return this.touchWatcherTomb(o); // release 289
     if (o.kind === "surveyorLink") { const r = takeSurveyorLink(this.save, o, this.areaId()); this.message = r.message; if (r.ok) journalOnce(this.save, `surveyor:${r.index}`, `Link ${r.total} of ${SURVEYOR.links}. "${r.note}"`, "The Surveyor's Chain"); if (r.ok && r.total >= SURVEYOR.links) { const at = surveyorStatueSection(this.save); this.message += ` On your Atlas the twelve crossings join into one chain, and it runs on to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`; journalOnce(this.save, "surveyor:map", `Laid end to end, the crossings where the links lay draw a chain across the Atlas. It runs on past the last of them to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`, "The Surveyor's Chain"); this.settleArcana(); } this.sync(); return r; } // release 505; 551: the last map
     if (o.kind === "surveyorStatue") { const r = visitSurveyorStatue(this.save, o); this.message = r.message; if (r.first) journalOnce(this.save, "surveyor:statue", r.message, "The Surveyor's Chain"); this.sync(); return r; } // release 551
@@ -4443,7 +4482,7 @@ export class Game {
       const horde = rollHorde(this.save, this.save.session.activeDungeonId, h, h.ladder ? ladderRoll(this.save.seed, this.save.session.activeDungeonId, "horde", h.ladder.tier) : undefined); // release 269: decided on the first visit; 319: by the ladder
       h.visits++;
       h.visitOpen = true;
-      this.loadArea("dungeon");
+      { const was = this.message; this.loadArea("dungeon"); if (this.message === SETTLED_MESSAGE) this.message = was; } // the position loadArea judged was the door's on the land outside, never where you arrive (just below): a crater, mostly clods, said "settles you" on every entry
       if (horde?.left > 0) this.message = `The crossing is thick with Gate Revenants: ${horde.left} remain.`;
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
@@ -4988,6 +5027,90 @@ export class Game {
     consumeSeed(s, "opal"); h.opalPassage = { v: 1, ...to };
     this.message = `The Tide Bearer takes the ${SEEDS.opal.name} and lets it sink into the lantern of still water she carries. “Go up the line. It will bring you up beside another buoy, far from here.” (${seedCount(s, "opal")} left.)`;
     this.sync(); return { ok: true, message: this.message };
+  }
+  // Seed realms (seed-realms.ts). A Pumice or Crimson Seed offered at one of the Watcher's tombs above ground opens a realm
+  // that is never kept: the seed is spent, the realm laid from the world seed and the count of that seed used, and the
+  // session holds only { id, kind, from, dest } (validSeedRealmState) beside the usual dungeon return and snapshot.
+  offerSeedMenu(o) {
+    const held = realmSeedKinds().filter((k) => seedCount(this.save, k) > 0);
+    o.actionLabels = { ...o.actionLabels, ...Object.fromEntries(held.map((k) => [`realmSeed:${k}`, `${SEED_REALMS.text.offer(SEEDS[k].name)} (${seedCount(this.save, k)} held): ${SEED_REALMS[realmOfSeed(k)].name}`])), touch: o.state === "opened" ? "Touch the tomb" : "Touch the tomb (it folds you away, once)" };
+    this.interactionRequested = o.id; return { ok: true, message: (this.message = "The Watcher's sigil stirs at the seed you carry. Offer it, or touch the tomb.") };
+  }
+  enterSeedRealm(o, kind) {
+    const fail = (m) => ({ ok: false, message: (this.message = m) }), realm = realmOfSeed(kind), s = this.save;
+    if (this.area !== "overworld" || o?.kind !== "watcherTomb" || o.where === "crypt" || !realm) return fail("Only the Watcher's shrines above ground answer a seed.");
+    if (seedCount(s, kind) < 1) return fail(`You carry no ${SEEDS[kind]?.name || "seed"}.`);
+    if (this.rite) return fail("Not while the Rite holds you here.");
+    if (!consumeSeed(s, kind)) return fail(`You carry no ${SEEDS[kind].name}.`);
+    const n = ensureSeeds(s).used[kind], id = seedRealmId(s.seed, kind, n), from = { rx: this.rx, ry: this.ry };
+    dropSeedRealms(s, null); // anything left of another realm is gone already
+    s.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y };
+    s.session.seedRealm = { v: 1, id, kind, from, dest: realmDestination(s.atlas, id, from) };
+    s.session.activeDungeonId = id; s.session.activeDungeonLevelId = null; s.session.viewportDungeonHuntId = null;
+    const h = dungeonHistory(s, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0;
+    journalOnce(s, `seed-realm:${realm}`, realm === "ship" ? "A Crimson Seed given to the Watcher's shrine opened a way aboard a great ship adrift among the stars. Nothing aboard it lasts: when you leave, it is gone." : "A Pumice Seed given to the Watcher's shrine opened a way down into a mining world bored hollow, haunted by its dead. Nothing there lasts: when you leave, it is gone.", "Seed realms");
+    this.loadArea("dungeon"); this.player.x = this.map.entry.x; this.player.y = this.map.entry.y; this.settleArrival();
+    this.player.invulnerableUntil = Math.max(this.player.invulnerableUntil || 0, (this.lastUpdateNow || 0) + 1500);
+    Object.assign(this, { projectiles: [], effects: [], traversal: null });
+    this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${SEED_REALMS[realm].label} · it fades when you leave`, kind: "discovery" };
+    this.message = SEED_REALMS.text.enter[realm]; this.sync(); return { ok: true, message: this.message, realm: id };
+  }
+  // The realm's state over its generated map, from its history: what was paid stays spent, a kindled beacon stays lit (and is
+  // where a fall returns you), the Way Onward opens once the heart has fallen. Called by loadArea for every realm load.
+  dressSeedRealm() {
+    if (this.area !== "dungeon" || !this.map?.seedRealm) return;
+    const h = dungeonHistory(this.save, this.areaId()), paid = new Set(h.realmPaid || []);
+    for (const o of this.map.objects) {
+      if (!o.realmObject) continue;
+      if (paid.has(o.id)) o.state = "used";
+      if (o.realmObject === "beacon" && h.realmBeacon) o.state = "lit";
+      if (o.realmObject === "exit" && o.onward) o.state = h.realmDone ? "open" : "sealed";
+    }
+    if (h.realmDone) for (const e of this.enemies) if (e.seedRealmHeart) { e.dead = true; e.hp = 0; e.rewarded = true; }
+    const b = h.realmBeacon && this.map.objects.find((o) => o.realmObject === "beacon"); if (b) this.map.entry = { ...(b.rise || { x: b.x, y: b.y + 1 }) };
+  }
+  useRealmObject(o, action) {
+    const s = this.save, h = dungeonHistory(s, this.areaId()), paid = (h.realmPaid ||= []), pay = () => { if (!paid.includes(o.id)) paid.push(o.id); o.state = "used"; };
+    const done = (m, ok = true) => { this.message = m; this.sync(); return { ok, message: m }; };
+    if (o.realmObject === "exit") {
+      if (o.state === "sealed") return done(SEED_REALMS.text.sealed, false);
+      if (!action) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name} — leave this realm for good?`) }; }
+      return this.leaveSeedRealm(o);
+    }
+    if (o.realmObject === "lore") { journalOnce(s, `realm-lore:${o.lore.slice(0, 40)}`, o.lore, "Seed realms"); return done(o.lore); }
+    if (o.realmObject === "beacon") { const was = !!h.realmBeacon; h.realmBeacon = { x: o.x, y: o.y }; o.state = "lit"; this.map.entry = { ...(o.rise || { x: o.x, y: o.y + 1 }) }; this.player.hp = this.save.maxHp; this.player.stamina = this.player.maxStamina; return done(was ? SEED_REALMS.text.beaconLit : SEED_REALMS.text.beacon); }
+    if (o.state === "used" || paid.includes(o.id)) { o.state = "used"; return done(o.realmObject === "crystal" ? "The crystal is dark now. What it held is in your Aperture." : "Nothing more here.", false); }
+    if (o.realmObject === "crystal") { pay(); gainAperture(s, SEED_REALMS.crystal.aperture, `realm-crystal:${this.areaId()}:${o.id}`, "An Aperture Crystal gives up its light to you."); return done(`The Aperture Crystal flares and goes dark. Aperture +${SEED_REALMS.crystal.aperture}.`); }
+    if (o.realmObject === "cache") { pay(); const f = realmCacheFind(`${this.areaId()}:${o.id}`); return done(`Inside: ${creditFind(s, f)}.`); }
+    if (o.realmObject === "seed") { pay(); const n = grantSeed(s, o.seed); journalOnce(s, `seed:${o.seed}`, `You found a ${SEEDS[o.seed].name}. ${SEEDS[o.seed].text}`, "Seeds"); return done(`You pick up a ${SEEDS[o.seed].name} (${n} held).`); }
+    return done("Nothing happens.", false);
+  }
+  // The heart has fallen: Divine Viscera, once; the Way Onward opens.
+  seedRealmWon(e) {
+    const h = dungeonHistory(this.save, this.areaId()); if (h.realmDone) return null;
+    const realm = this.map.seedRealm.realm, got = realmViscera(this.save.session.seedRealm?.from?.rx ?? this.rx, this.save.session.seedRealm?.from?.ry ?? this.ry);
+    h.realmDone = true; ensureSkylands(this.save); this.save.skylands.viscera = (Number(this.save.skylands.viscera) || 0) + got;
+    for (const o of this.map.objects) if (o.realmObject === "exit" && o.onward) o.state = "open";
+    journalOnce(this.save, `seed-realm-won:${realm}`, realm === "ship" ? "You brought down the Helm Sovereign. The ship's heart gave up Divine Viscera, and a Way Onward opened on its bridge." : "You laid the Last Foreman to rest. The husk's heart gave up Divine Viscera, and a Way Onward opened where it fell.", "Seed realms");
+    this.defeatNotice = { title: realm === "ship" ? "THE HELM FALLS" : "THE FOREMAN RESTS", detail: `+${got} ${VISCERA.name} · the Way Onward is open`, kind: "discovery" };
+    this.message = `${SEED_REALMS.text.won[realm]} +${got} ${VISCERA.name}.`; return got;
+  }
+  // Leaving: the realm is dropped (its snapshot and history), and the Wayfarer is set down at the realm's destination.
+  leaveSeedRealm(o = null) {
+    const s = this.save, st = s.session.seedRealm, from = st?.from || { rx: this.rx, ry: this.ry }, dest = st?.dest || realmDestination(s.atlas, this.areaId(), from);
+    s.session.seedRealm = null; s.session.activeDungeonId = null; s.session.activeDungeonLevelId = null; s.session.dungeonReturn = null; s.session.viewportDungeonHuntId = null;
+    dropSeedRealms(s, null);
+    const id = st?.id || this.areaId(); let shrine = null;
+    for (let k = 0; k < 6; k++) { // a section all sea is passed over, as a sky gate's fall is (skyHop)
+      const to = k ? realmDestination({}, `${id}:${k}`, from) : dest; this.rx = to.rx; this.ry = to.ry; this.loadArea("overworld", false);
+      const w = mapWidth(this.map, "overworld"); shrine = this.map.objects.find((q) => q.kind === "watcherTomb" && q.where !== "crypt" && (!Number.isFinite(to.x) || (q.x === to.x && q.y === to.y))) || null;
+      if (shrine) { this.player.x = shrine.x; this.player.y = shrine.y + 1; } else { this.player.x = 16; this.player.y = 16; }
+      relocateIfStranded(this.player, this.map, w); this.landSafely();
+      if (!isMarineTile(this.map.tiles?.[Math.floor(this.player.y + .72) * w + Math.floor(this.player.x + .5)])) break;
+    }
+    Object.assign(this, { projectiles: [], effects: [], traversal: null, skyAir: null, skyLevel: 0, discAir: null });
+    this.player.invulnerableUntil = Math.max(this.player.invulnerableUntil || 0, (this.lastUpdateNow || 0) + 1500);
+    this.message = shrine ? SEED_REALMS.text.leftShrine : SEED_REALMS.text.left; this.sync(); return { ok: true, message: this.message, to: { rx: this.rx, ry: this.ry } };
   }
   // Where an Opal Seed's passage surfaces: a real buoy (diveSite on the previewed section, the rule loadArea uses), first round a
   // spot `hop` sections off in a direction drawn from the dive and the seeds already given, then round the buoy itself (`near`).
@@ -6109,6 +6232,8 @@ export class Game {
       if (e.id) c.id = e.id;
       if(e.kind === "astralWorm")c.astralSeed=hashSeed(`${this.save.seed}:${c.id}:astral-v1`);
       if (e.packGuardian) c.packGuardian = true;
+      if (e.seedRealmHeart) c.seedRealmHeart = true; // seed realms: its fall completes the realm
+      if (e.realmThreat) { c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * (Number(e.realmThreat.hp) || 1))); c.damage = Math.max(1, Math.round(c.damage * (Number(e.realmThreat.damage) || 1))); } // SEED_REALMS.threat
       if (e.skirmishId) Object.assign(c, skirmishFields(e));
       if (e.questingBeast) tuneQuestingBeast(c, this.save, characterStats(this.save));
       if (e.worldBeast) tuneWorldBeast(c, this.save, e.worldBeast, characterStats(this.save));
@@ -6550,6 +6675,7 @@ export class Game {
     }
     if(this.area==='dungeon') recordDungeonBossDefeat(dungeonHistory(this.save,this.areaId()),e);
     if (!((e.worldBeast && WORLD_BEASTS[e.worldBeast]) || e.questingBeast || (e.pentFinaleBeast && this.map?.pentArena))) this.defeatNotice = enemyDefeatNotice(e, this.area); // a world boss keeps its own notice (Tim: "it should say archfiend slain")
+    if (e.seedRealmHeart && this.area === "dungeon" && this.map?.seedRealm && !e.summonedBy && !e.illusion) this.seedRealmWon(e); // seed realms: the heart falls
     if (e.stalker && this._stalkerWon) { const won = this._stalkerWon; this._stalkerWon = null; this.defeatNotice = { title: "THE STALKER FALLS", detail: `+${won.marks} marks · a ${won.sphere === "weaponSphere" ? "weapon" : "armor"} sphere · it will hunt again after ${won.quiet} new sections${won.echo ? ` · an Echo: ${ECHOES[won.echo].name}` : ""}`, kind: "danger" }; } // release 678
     if (tidemantleTrial(this.area, this.map, e) && grantTidemantle(this.save, `${this.areaId()}:${e.id}`)) {
       this.defeatNotice = { ...this.defeatNotice, detail: `${this.defeatNotice?.detail || ""} · the Tidemantle is yours` };
@@ -8747,6 +8873,7 @@ export class Game {
         if (mount) this.jumpDur *= MOUNT_BEASTS[mount.beast].jump;
         this.jumpStart = now;
         this.jumpUntil = now + this.jumpDur;
+        { const u = TREE_KEEL.on && this.area === "overworld" && this.map?.canopy ? tileUnder(this.map, width0, p.x, p.y) : null; this.keelLine = u?.canopy && !u.blocked ? { x: u.x, y: u.y } : null; } // TREE_KEEL: a jump from a branch keeps to that branch's line
         this.cancelConsumeVisual('jump');
         this.cancelAttackPresentation(now);
         cancelCastVisual(p);
@@ -8777,6 +8904,7 @@ export class Game {
       const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
       if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
     }
+    if (TREE_KEEL.on && this.area === "overworld" && this.map?.canopy && !this.droneLift && !this.glide && (Math.abs(x) > .15 || Math.abs(y) > .15)) { const k = this.treeKeel(x, y, dodging, dt, now); if (k !== null) { if (Math.abs(x) >= Math.abs(y)) y = k; else x = k; } }
     const swimming = this.swimsHere(footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y)), underfoot = this.map.landscape ? tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind : null;
     const sailing = this.area === "overworld" && aboard(this.save);
     let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (this.map.underwater ? DIVE.speed : 1) * (sailing ? BOAT.speed : swimming ? (this.mechUp() ? MECH_WATER.speed : TIDEMANTLE.speed) : dodging ? (p.dodgeMired ? STAG.mire.dodgeSpeed : 1) : mireSpeed(underfoot)) * (!dodging && !sailing && !swimming && this.mountRide() ? MOUNT_BEASTS[this.mountRide().beast].speed : 1), // release 748: riding (dodges unchanged)
@@ -8902,6 +9030,7 @@ export class Game {
         const u = tileUnder(this.map, width, p.x, p.y);
         if (u && !u.skyPlatform && landed <= this.skyAir - TREE_FOOTING.gapBelow) this.skyHopGap = true;
         else if (this.skyHopGap && u?.skyPlatform && landed >= this.skyAir && landed <= this.skyAir + 1) { this.jumpUntil = now; p.jumping = false; }
+        else if (TREE_FOOTING.stepLands && this.map?.canopy && u?.canopy && u.skyPlatform && landed > this.skyAir && landed <= this.skyAir + 1) { this.jumpUntil = now; p.jumping = false; } // TREE_FOOTING.stepLands
       }
       if (!p.jumping) this.skyHopGap = false;
       if (p.jumping && this.skyAir != null && landed < this.skyAir) hurt = 0; // still in the air over a skyway gap
