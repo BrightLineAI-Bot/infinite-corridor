@@ -2408,7 +2408,7 @@ test("release 908 loads normal play and the isolated Proving Ground coherently",
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
   assert.match(html,/const release = "908"/);assert.match(html,/styles\.css\?v=908/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v907`/);assert.match(sw,/styles\.css\?v=908/);assert.match(sw,/proving-ground-labs\.js\?v=908/);assert.match(sw,/dungeon-framework\.js\?v=908/);assert.match(sw,/renderer\.js\?v=908/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v908`/);assert.match(sw,/styles\.css\?v=908/);assert.match(sw,/proving-ground-labs\.js\?v=908/);assert.match(sw,/dungeon-framework\.js\?v=908/);assert.match(sw,/renderer\.js\?v=908/);
   assert.match(build,/release='908'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
