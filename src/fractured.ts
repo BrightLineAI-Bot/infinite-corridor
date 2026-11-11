@@ -158,3 +158,64 @@ export function wardenBody(seed, key, kinds, isPack) {
   return pool[hashSeed(`${seed}:fracture-warden:${key}`) % pool.length];
 }
 export function wardenAttacks(seed, key) { const A = FRACTURE_WARDEN.attacks; return [...A].sort(byHash((a) => `${seed}:${key}:wa:${a}`)).slice(0, 7); }
+
+// Building respawns (Tim, 2026-11-11: "more like Tower of Fantasy, where monsters respawn after a while... they're trivial,
+// but they give you something to do while traversing... at least the keeps, the Pentagons, the arcologies and the cubes should
+// have monster packs that respawn periodically... just have a number of monsters that respawn periodically").
+// On a floor of one of those places (`respawnPlace`; ordinary crossings and dungeons are left as they are), once the floor is
+// down to `below` living creatures a timer runs while the Wayfarer stays on it (game time: pause and background stop it); at
+// `every` s a pack of `pack` creatures of the floor's own sort comes in, out of sight (`sight`, or no line of sight) and at
+// least `minDistance` tiles off, on open, safe floor the Wayfarer can walk to. Never on a guarded floor (a guardian, boss,
+// trial, vault or finale), never in Fractured mode (its waves own the pace), never past `liveCap` creatures alive on the floor
+// nor `perVisit` respawned in one visit. A respawned creature gives `reward.xp` of the experience and `reward.marks` marks,
+// drops an item `reward.drop` of the time and nothing else: no lasting flags, keys, relics, glyphs, Echoes, Sigils, Tesseracts
+// or quest kills. Rolls are a hash of the seed, the floor and the floor's respawn counter `n`.
+export const RESPAWN = {
+  places: { keep: true, arcology: true, pentagon: true, cube: true }, // which kinds of building respawn
+  styles: { keep: "keep", apartment: "arcology" }, // a building's style → its kind (hives and the Shell-Labyrinth: none)
+  every: 35, // s on the floor, once it is down to `below`, before a pack comes
+  below: 1, // living creatures at or under which the timer runs
+  retry: 3, // s before trying again when no spot was found
+  pack: [2, 4],
+  near: 2, // tiles a pack spreads round its anchor
+  liveCap: 12, // creatures alive on the floor, respawned or not (phones)
+  perVisit: 36, // respawned creatures in one visit to a floor
+  minDistance: 7, // tiles from the Wayfarer, always
+  sight: 12, // tiles: nearer than this a spot also needs a wall between it and the Wayfarer
+  objectClear: 2, // tiles kept clear round every object (doors, stairs, ladders, chests, exits, keys, relics, rests)
+  maxTiles: 6000, // a floor larger than this is never searched
+  corpse: 2, // s a fallen respawned creature lies before it is cleared away
+  reward: { xp: .5, marks: 1, drop: .2 },
+  messages: { stir: "Something stirs on this floor again." },
+};
+const STYLE_ID = /^(?:building|compound):.+:(-?\d+):(-?\d+):(keep|apartment|hive):/;
+const LAB_ID = /^labyrinth:.+:(-?\d+):(-?\d+):(keep|apartment|hive|shell)(~r\d+)?:f\d+$/;
+// Which kind of respawning building a dungeon id is a floor of: "keep" (Old Keeps, Castle Compounds, castles, Labyrinth Keeps),
+// "arcology" (Ruined Arcologies, Arcology Blocks, Arcology Mazes), "pentagon" (its chambers), "cube" (room mazes), or null.
+export function respawnPlace(id) {
+  const s = String(id || ""), P = RESPAWN.places; let kind = null;
+  if (s.startsWith("pentagon:")) kind = "pentagon";
+  else if (s.startsWith("castle:")) kind = "keep";
+  else { const lab = s.match(LAB_ID); if (lab) kind = lab[4] && lab[3] !== "shell" ? "cube" : RESPAWN.styles[lab[3]] || null; else { const m = s.match(STYLE_ID); if (m) kind = RESPAWN.styles[m[3]] || null; } }
+  return kind && P[kind] ? kind : null;
+}
+// A floor that never respawns: arenas, finales, vaults, trials, a boss's floor, any floor laid with a guardian.
+export function respawnFloorOk(map) {
+  const B = map?.building; if (!B || map.arena || map.pentArena || map.skyland || map.seedRealm) return false;
+  if (B.finale || B.vault || B.boss || B.trial) return false;
+  return !(map.enemySpawns || []).some((e) => e.boss || e.buildingGuardian || e.pentBoss || e.keyKeeper || e.pentFinaleBeast || String(e.id).endsWith(":guardian"));
+}
+// One step of a floor's timer (`st`: { t, n, made }): true when a pack is due.
+export function respawnDue(st, live, dt) {
+  const R = RESPAWN; if (live > R.below || st.made >= R.perVisit || live >= R.liveCap) return false;
+  st.t = (Number(st.t) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); return st.t >= R.every;
+}
+// The pack for the floor's `n`th respawn: one kind, `size` members on candidate tiles (`cands`, already open, reachable and
+// unseen) nearest a hashed anchor, never more than `room`.
+export function respawnPack(seed, key, n, cands, kinds, room) {
+  if (!cands?.length || !kinds?.length || room < 1) return [];
+  const R = RESPAWN, h = (k) => hashSeed(`${seed}:respawn:v1:${key}:${n}:${k}`), size = Math.min(room, R.pack[0] + h("size") % (R.pack[1] - R.pack[0] + 1));
+  const a = cands[h("anchor") % cands.length], kind = kinds[h("kind") % kinds.length];
+  const near = cands.filter((c) => Math.abs(c.x - a.x) <= R.near && Math.abs(c.y - a.y) <= R.near).sort((p, q) => (Math.hypot(p.x - a.x, p.y - a.y) - Math.hypot(q.x - a.x, q.y - a.y)) || (h(`${p.x},${p.y}`) - h(`${q.x},${q.y}`)));
+  return near.slice(0, size).map((c, i) => ({ id: `respawn-${n}-${i}`, kind, x: c.x, y: c.y, traits: [], respawned: true }));
+}

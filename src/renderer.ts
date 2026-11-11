@@ -30,13 +30,13 @@ import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-rend
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced } from "./monster-pack.ts";
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -2767,7 +2767,7 @@ export function render(ctx, g, w, h, now) {
             ctx.restore();
           }
           if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
             ctx,
@@ -2952,6 +2952,7 @@ export function render(ctx, g, w, h, now) {
   for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && seenInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
   for (const o of g.map.objects) if (o.pentagonDoor && o.barred && !o.opened && visibleInCamera(o, l, t, r, b)) drawBars(ctx, o, s); // v6: an exterior shortcut door, bolted from within
   if (g.area === "dungeon" && (g.map.murals || g.map.sigils)) drawHallMarks(ctx, g.map, s, l, t, r, b); // release 795: murals carved in a grand hall's walls, the Watcher's sigil over doors, on banners and columns
+  if (g.area === "dungeon" && !closeViewCapturing()) drawCloseViewLightsStd(ctx, g, s, now, l, t, r, b); // the sconces and candles Close View places in an interior, in this view too (close-view.ts)
   if (g.shortcutBurst) drawShortcutBurst(ctx, g, s, now); // a shortcut just opened
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (!worldCapture && g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk

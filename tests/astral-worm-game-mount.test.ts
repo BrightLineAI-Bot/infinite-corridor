@@ -40,16 +40,16 @@ test('Game fixture mount follows moving worm while Walker attacks and cannot ind
 
 test('Game actual piercing projectile hits both mounted ordinary actors independently',()=>{
   const {g,owner,rider}=fixture();g.projectiles=[shot(owner)];step(g);
-  assert.equal(owner.hp,975);assert.equal(rider.hp,475);assert.equal(rider.astralMount.damageTaken,25);
+  assert.equal(owner.hp,977);assert.equal(rider.hp,477);assert.equal(rider.astralMount.damageTaken,23);
   assert.equal(rider.astralMount.status,'mounted');assert.equal(g.projectiles[0].hits[owner.id],true);assert.equal(g.projectiles[0].hits[rider.id],true);
 });
 
 test('Game actual splash effect hits both mounted actors and overkill counts only removed rider HP',()=>{
   const {g,owner,rider}=fixture();g.effects=[blast(owner)];step(g);
-  assert.equal(owner.hp,975);assert.equal(rider.hp,475);assert.equal(rider.astralMount.damageTaken,25);
+  assert.equal(owner.hp,977);assert.equal(rider.hp,477);assert.equal(rider.astralMount.damageTaken,23);
   rider.hp=7;g.effects=[blast(owner,100)];step(g,1,50);
-  assert.equal(rider.astralMount.damageTaken,32);assert.equal(rider.astralMount.status,'dismounted');
-  assert.equal(owner.hp,875);assert.equal(rider.dead,true);assert.equal(rider.maxHp,500);
+  assert.equal(rider.astralMount.damageTaken,30);assert.equal(rider.astralMount.status,'dismounted');
+  assert.equal(owner.hp,887);assert.equal(rider.dead,true);assert.equal(rider.maxHp,500);
 });
 
 test('Game real melee and glyph direct damage contribute actual player damage without changing owner HP indirectly',()=>{
@@ -57,13 +57,13 @@ test('Game real melee and glyph direct damage contribute actual player damage wi
   const before=rider.hp;g.primaryStrike(1000,{x:0,y:-1});
   assert.ok(rider.hp<before);assert.equal(rider.astralMount.damageTaken,before-rider.hp);
   const ownerHp=owner.hp,damage=rider.astralMount.damageTaken;g.glyphWorld(1100).damage(rider,10);
-  assert.equal(rider.astralMount.damageTaken,damage+10);assert.equal(owner.hp,ownerHp);
-  rider.glyphBurn={until:5000,dps:8};const beforeBurn=rider.hp;g.tickGlyphs(.25,1200);assert.equal(beforeBurn-rider.hp,2);
-  assert.equal(rider.astralMount.damageTaken,damage+10+beforeBurn-rider.hp);
+  assert.equal(rider.astralMount.damageTaken,damage+9);assert.equal(owner.hp,ownerHp);
+  rider.glyphBurn={until:5000,dps:8};const beforeBurn=rider.hp;g.tickGlyphs(.25,1200);assert.equal(beforeBurn-rider.hp,1);
+  assert.equal(rider.astralMount.damageTaken,damage+9+beforeBurn-rider.hp);
 });
 
 test('Game damage threshold dismounts safely and restores independent movement and teleport callbacks',()=>{
-  const {g,owner,rider}=fixture();g.glyphWorld(1).damage(rider,100);
+  const {g,owner,rider}=fixture();g.glyphWorld(1).damage(rider,111);
   assert.equal(rider.astralMount.status,'dismounted');assert.equal(rider.astralMount.reason,'damage');
   assert.ok(walkerGroundPositionOpen(g.map,32,rider.x,rider.y));assert.equal(owner.hp,1000);assert.equal(rider.hp,400);
   const w=g.packWorld(.05,50),x=rider.x;assert.equal(w.move(rider,-.1,0),true);assert.ok(rider.x<x);
@@ -89,7 +89,7 @@ test('Game ocean and blocked landings stay pending, targetable and immobile unti
   for(const kind of ['ocean','deepOcean','wall']) {
     const {g,owner,rider}=fixture('overworld');
     for(const t of g.map.tiles){t.kind=kind;t.blocked=kind==='wall';}
-    g.glyphWorld(1).damage(rider,100);
+    g.glyphWorld(1).damage(rider,111);
     assert.equal(rider.astralMount.status,'landing',kind);assert.equal(!!rider.untargetable,false);
     const at={x:rider.x,y:rider.y},w=g.packWorld(.05,50);
     assert.equal(w.move(rider,1,0),false);assert.equal(w.safeTeleport(rider,3,3),false);
@@ -109,7 +109,7 @@ test('Game dungeon landing rejects disconnected dry islands even when a footprin
   Object.assign(g.map.tiles[12*32+11],{kind:'floor',blocked:false});
   assert.equal(walkerGroundPositionOpen(g.map,32,11,12),true);
   assert.equal(g.astralLandingOpen(rider,{x:11,y:12}),false);
-  g.glyphWorld(1).damage(rider,100);assert.equal(rider.astralMount.status,'landing');
+  g.glyphWorld(1).damage(rider,111);assert.equal(rider.astralMount.status,'landing');
 });
 
 test('Game pause freezes riding and pending-landing state exactly',()=>{
@@ -144,25 +144,25 @@ test('Game explicit mount rejects allied helper, actors outside the scene, and a
 test('Game non-piercing shots still stop at first mounted actor and unrelated piercing targets keep prior substep behavior',()=>{
   {
     const {g,owner,rider}=fixture();const p=shot(owner);p.pierce=0;g.projectiles=[p];step(g);
-    assert.equal(owner.hp,975);assert.equal(rider.hp,500);assert.equal(rider.astralMount.damageTaken,0);
+    assert.equal(owner.hp,977);assert.equal(rider.hp,500);assert.equal(rider.astralMount.damageTaken,0);
   }
   {
     const {g,owner,rider}=fixture();delete rider.astralMount;const p=shot(owner);g.projectiles=[p];step(g);
-    assert.equal(owner.hp,975);assert.equal(rider.hp,500);
+    assert.equal(owner.hp,977);assert.equal(rider.hp,500);
   }
 });
 
 test('Game lethal owner piercing hit still reaches co-located living rider and unrelated health loss does not count',()=>{
   const {g,owner,rider}=fixture();owner.hp=10;rider.hp-=7;g.syncAstralRiders();
   assert.equal(rider.astralMount.damageTaken,0);g.projectiles=[shot(owner,25)];step(g);
-  assert.equal(owner.dead,true);assert.equal(rider.hp,468);assert.equal(rider.astralMount.damageTaken,25);
+  assert.equal(owner.dead,true);assert.equal(rider.hp,470);assert.equal(rider.astralMount.damageTaken,23);
   assert.equal(rider.astralMount.status,'dismounted');assert.equal(rider.astralMount.reason,'owner-dead');
 });
 
 test('Game pending-landing fixture save restores unresolved placement without resetting knockoff damage',()=>{
   const save=freshSave();save.seed='ASTRAL-MOUNT-PENDING-SAVE';const g=new Game(save,0);
   const {rider}=actors(g,g.player.x,g.player.y);for(const t of g.map.tiles){t.kind='ocean';t.blocked=false;}
-  g.glyphWorld(1).damage(rider,100);assert.equal(rider.astralMount.status,'landing');
+  g.glyphWorld(1).damage(rider,111);assert.equal(rider.astralMount.status,'landing');
   g.setPaused(true,10);const expected=JSON.parse(JSON.stringify(rider.astralMount));
   const restored=new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(10)))),1000);
   const r=restored.enemies.find(e=>e.id===rider.id);assert.ok(r);assert.deepEqual(r.astralMount,expected);

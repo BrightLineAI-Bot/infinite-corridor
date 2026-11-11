@@ -13,7 +13,7 @@ import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountL
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCamera, closeViewCompassRotation, closeViewScreenToWorld, mountCloseViewControls, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors } from "./game.ts";
@@ -21,7 +21,7 @@ import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt } from "./brawler-spell
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS } from "./landscape.ts"; // release 573
 import { skylandLabel, SEEDS, seedCount } from "./skylands.ts";
-import { CREATURE_TRAITS } from "./combat.ts";
+import { CREATURE_TRAITS, wayfarerDamage } from "./combat.ts";
 import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY } from "./monster-pack.ts";
 import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.ts";
@@ -454,7 +454,7 @@ function apertureStatsCard() {
   card.append(h, text);
   if (tier > 3) {
     const r = tier - 3, detail = document.createElement("p");
-    detail.textContent = `Resonance ${r}: +${r * 6} maximum health, +${r * 2} melee and +${r * 2} spell damage. Aperture encounters grow stronger and more frequent with each band.`;
+    detail.textContent = `Resonance ${r}: +${r * 6} maximum health, +${wayfarerDamage(r * 2)} melee and +${wayfarerDamage(r * 2)} spell damage. Aperture encounters grow stronger and more frequent with each band.`;
     card.append(detail);
   }
   if (tier >= 1) {
@@ -653,9 +653,21 @@ function dungeonCompassPoints() {
   }
   return compassDoorPoints;
 }
+// Tim (2026-11-11): in Close View the compass turns with the way the Wayfarer faces, not the camera: ahead is the top of the
+// dial, and the needles, door points and the dial's N keep their true world bearings in that frame. The standard view stays
+// north-up ("north up is just standard for the map"). compassFrame is updated once a HUD frame; nothing here allocates.
+const compassFrame = { yaw: NaN, turning: false, ready: false, map: null, at: NaN, target: NaN };
+const navCompassDial = (() => { const dial = document.createElement("span"); dial.className = "nav-dial"; dial.setAttribute("aria-hidden", "true"); dial.innerHTML = '<i class="nav-dial-n">N</i><i class="nav-dial-tick e"></i><i class="nav-dial-tick s"></i><i class="nav-dial-tick w"></i>'; navCompass.prepend(dial); return dial; })();
+function updateCompassFrame(now) {
+  if (compassFrame.map !== game.map) { compassFrame.map = game.map; compassFrame.ready = false; compassFrame.target = NaN; }
+  const dt = Number.isFinite(compassFrame.at) ? (now - compassFrame.at) / 1000 : 0, close = closeViewShowing(game), body = close ? closeViewBodyFacingYaw() : NaN; compassFrame.at = now;
+  /* Close View: the body as drawn; a swing, cast or dodge that turns it for a moment keeps the way they were going */
+  compassFrame.target = !close ? -Math.PI / 2 : Number.isFinite(body) ? body : Number.isFinite(compassFrame.target) ? compassFrame.target : -Math.PI / 2;
+  compassFacingStep(compassFrame, compassFrame.target, dt, !!(settings.reduceMotion || settings.safeMode));
+  hudSet(navCompassDial, "transform", `rotate(${closeViewCompassRotation(0, -1, compassFrame.yaw)}deg)`);
+}
 function compassRotation(dx, dy) {
-  const camera = closeViewShowing(game) ? closeViewCamera() : null;
-  return closeViewCompassRotation(dx,dy,camera?.valid ? camera.yaw : undefined);
+  return closeViewCompassRotation(dx,dy,compassFrame.ready ? compassFrame.yaw : undefined);
 }
 function pointDungeonCompass(point) {
   updateNavigationArrow(navGuidanceArrow, null);
@@ -670,7 +682,8 @@ function pointDungeonCompass(point) {
   const label = point ? `Door point ${point.slot}: ${point.label}${arrived ? " reached" : ""}` : "True north";
   hudSet(navCompass, "aria-label", label); hudSet(navCompass, "title", label);
 }
-function updateNavigationCompass() {
+function updateNavigationCompass(now = performance.now()) {
+  updateCompassFrame(now);
   if (game.area === "dungeon") {
     const points = dungeonCompassPoints();
     pointDungeonCompass(points.find(door => door.id === dungeonCompassPick) || points[0]);
@@ -1415,7 +1428,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:886,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:894,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1439,7 +1452,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:886,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 886\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:894,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 894\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1451,7 +1464,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:886,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:894,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1911,8 +1924,8 @@ function openPack(tab) {
     `${save.maxHp} maximum health`,
     `${save.maxStamina} maximum stamina`,
     `${Math.round(derived.damageReduction * 100)}% damage resistance`,
-    `+${derived.meleeBonus} melee bonus`,
-    `+${derived.magicBonus} spell/projectile bonus`,
+    `+${wayfarerDamage(derived.meleeBonus)} melee bonus`, // Tim 2026-11-11: damage text shows what lands (WAYFARER_DAMAGE), in whole numbers
+    `+${wayfarerDamage(derived.magicBonus)} spell/projectile bonus`,
     `+${Math.round(derived.attackReach*100)}% melee and projectile reach`,
   ]) {
     const span = document.createElement("span");
@@ -2934,9 +2947,9 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const sockets=(save.spellGlyphs?.[show.id]||[]).filter(Boolean).map(g=>`${GLYPHS[g].sigil} ${GLYPHS[g].name}`);
   {const tags=el('div','arc-tags');tags.append(elemBadge(CASTABLES[`spell:${show.id}`]?.attr||'fire'),kindTag('Active spell',true));detail.append(el('strong','',show.name),tags)}
   if(show.text)detail.append(el('p','',show.text)); // release 365
-  detail.append(el('p','',show.essence?`${game.spellCooldownFor(show).toFixed(1).replace(/\.0$/,'')}s cooldown · lasts ${ESSENCE_WALK.seconds}s · while it lasts, a spell still recovering casts anyway for stamina (${ESSENCE_WALK.cost.base} + ${ESSENCE_WALK.cost.perSecond} a second of its cooldown, ${ESSENCE_WALK.cost.min}–${ESSENCE_WALK.cost.max}) and its cooldown runs on as it was; a ready spell casts as usual; a recast refreshes the window. Aegis costs ${ESSENCE_WALK.costs.aegis}, and spent down too far for another it is locked for its whole cooldown. Not the disciplines. ${presetCastables().filter(c=>c.kind==='spell'&&!essenceExempt(c.id)).map(c=>`${SPELLS[c.id].name}: ${game.essencePrice(c.id)} stamina`).join(' · ')||'Slot a spell to see its cost.'}`:show.imbue?`${show.cooldown}s cooldown · lasts ${IMBUE.seconds}s · adds magic damage to every melee hit from your Focus alone: now +${Math.round(imbueAmount(save.stats?.Focus,characterStats(save).magicBonus))} a hit (before glyphs and spell-damage bonuses). Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.brawler?`${show.cooldown}s cooldown · a brawler spell: its damage follows your melee damage, and it aims like a swing. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.id==='shadow-clone'?`${show.cooldown}s cooldown · lasts ${show.lifetime}s · hold to send it up to ${show.maxRange} tiles away · copies your blows at half damage.`:`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
+  detail.append(el('p','',show.essence?`${game.spellCooldownFor(show).toFixed(1).replace(/\.0$/,'')}s cooldown · lasts ${ESSENCE_WALK.seconds}s · while it lasts, a spell still recovering casts anyway for stamina (${ESSENCE_WALK.cost.base} + ${ESSENCE_WALK.cost.perSecond} a second of its cooldown, ${ESSENCE_WALK.cost.min}–${ESSENCE_WALK.cost.max}) and its cooldown runs on as it was; a ready spell casts as usual; a recast refreshes the window. Aegis costs ${ESSENCE_WALK.costs.aegis}, and spent down too far for another it is locked for its whole cooldown. Not the disciplines. ${presetCastables().filter(c=>c.kind==='spell'&&!essenceExempt(c.id)).map(c=>`${SPELLS[c.id].name}: ${game.essencePrice(c.id)} stamina`).join(' · ')||'Slot a spell to see its cost.'}`:show.imbue?`${show.cooldown}s cooldown · lasts ${IMBUE.seconds}s · adds magic damage to every melee hit from your Focus alone: now +${wayfarerDamage(imbueAmount(save.stats?.Focus,characterStats(save).magicBonus))} a hit (before glyphs and spell-damage bonuses). Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.brawler?`${show.cooldown}s cooldown · a brawler spell: its damage follows your melee damage, and it aims like a swing. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.id==='shadow-clone'?`${show.cooldown}s cooldown · lasts ${show.lifetime}s · hold to send it up to ${show.maxRange} tiles away · copies your blows at half damage.`:`${show.cooldown}s cooldown · power ${wayfarerDamage(show.damage)} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
   // What changes your spells: Focus, the Pairing, and the few constellation nodes that reach them (NODE_EFFECTS.spells).
-  {const boosts=[`Focus ${save.stats?.Focus||1}: +${characterStats(save).magicBonus} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
+  {const boosts=[`Focus ${save.stats?.Focus||1}: +${wayfarerDamage(characterStats(save).magicBonus)} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
    for(const bid of BRANCH_IDS){const b=BRANCHES[bid];for(const node of[b.mod,...b.caps]){const fx=NODE_EFFECTS[node.id];if(fx?.spells)boosts.push(`${node.name} (${b.name}, ${hasNode(save,node.id)?'learned':'not learned'}): ${fx.spells} Only while ${APERTURE_SKILLS[b.active].name} is active.`)}}
    const list=el('ul','arc-boosts');for(const t of boosts)list.append(el('li','',t));detail.append(el('small','arc-hint','What affects your spells:'),list,el('small','arc-hint','Other constellation entries change their own discipline, not your spells.'))}
   if(spellOpen(save,show.id))detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));else detail.append(el('small','arc-why',`Opens at the ${APERTURE_BANDS[show.unlockTier].name} band of the Aperture.`)); // release 365
