@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 882: Close View: every sword is held and swung in the Wayfarer's left hand (including the Verge Cleaver), guns and tools sit a little smaller in the right hand, the Blunderbuss is raised two-handed like a rifle and the Rift Bombard is held two-handed low at the hip when fired, and tool shots now leave the weapon's muzzle instead of the chest.
 - Release 881: Great trees climb reliably: the Wayfarer keeps to a branch's middle under a drifting thumb, a jump up a step lands on it, and branch edges over a drop are rimmed in gold; in the standard view the Wayfarer no longer floats above raised Pentagon and building floors; craters no longer show a false "settles you" notice, and the clod hint names the shovel.
 - Release 880: Lantern: the Wayfarer now carries a lantern that you can put in slot A, B or C from the Arcanum. Tap its button to light or shutter it. Lit, it pushes back the dark around you in dungeons (the Pentagons' dread and the Starfield's gloom) and lengthens your torch in Close View.
 - Release 879: Travel seeds: a Fossilized Seed planted in a great tree's crown door is a sure way to another great tree's crown; an Opal Seed given to the Tide Bearer at the far end of a dive makes its line surface beside another buoy; Pumice and Crimson Seeds can be found and carried. Seeds are rare: lying in the open on new ground, in crossing chests and from Skyland clears (Pack → Supplies).
