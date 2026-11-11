@@ -21,7 +21,8 @@ Main is at r875 (`f410be5ab7b8`); production serves `r875-f410be5ab7b8`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 876 | Claude | claude/beast-retreat | World-beast passers only between hunts, once, free beasts only; FRESH TRACKS once per leg | In flight. |
+| 877 | Claude | claude/lock-on | Close View target mode (red button, auto next-foe lock, nearer-threat switch), lock-on strafe, stick follows camera through Target recenter | In flight. |
+| 876 | Claude | claude/beast-retreat | World-beast passers only between hunts, once, free beasts only; FRESH TRACKS once per leg | Merged as `006c7c6cf9f3` (#543). |
 | 875 | Claude | claude/robot-drone-utility-dais-facing | Robot and Drone as separate utility choices (one at a time); Oculus dais ahead of the facing | Merged as `f410be5ab7b8` (#541). Published in r875. |
 | 874 | Claude | claude/oculus-utility-button | Oculus utility button (Oculus/Build/Robot-Drone per preset), slot C with three spells, compass top right | Merged as `00abe1a858bf` (#539). Published in r874. |
 | 873 | Claude | claude/interior-platform-reach | Interior terrain v2: jump platforms never create one-way pockets or sealed guards | Merged as `d4a0b43a1879` (#537). Published in r873. |
