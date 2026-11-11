@@ -21,6 +21,7 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 896 | Claude | claude/cv-briar-stag | Close View Briar Stag as one blended-skin animal with a planted four-legged gait and all twelve attacks on their clocks; blend skinning and lofts in the shared beast rig | In flight. |
 | 895 | Claude | claude/cv-dungeon-themes | Deep themes in Close View; Close View allowed by place (refused in crossings, dive sites, grottoes with an on-entry message); floating Aperture crystals; 3D blue Oculus dais | In flight. |
 | 894 | Claude | claude/adventure-creatures | Six new creatures (two each for Tomb, Verdant Ruin, Ash Waste) built for tall open ground; prototype-only until adventure Pentagons place them; Proving Ground 'Adventure heights' ground | Merged as `16a335d78d6a` (#561). |
 | 893 | Claude | claude/cv-lightning-giant | Close View beast slot (shared skinned rig, GPU-skinned program) and the Lightning Giant as a solid animated machine on its real attack clocks, drawn 1.25× | Merged as `31d33d89dd96` (#557). |
