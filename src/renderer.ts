@@ -33,6 +33,7 @@ import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
+import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
 import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
@@ -2125,6 +2126,36 @@ function drawDread(ctx, w, h, share) {
     const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${.5 + share * .35})`); v.addColorStop(1, `rgba(2,2,6,${.8 + share * .18})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
   ctx.drawImage(o.canvas, 0, 0, w, h);
 }
+// Release 593: the Starfield penumbra, clear to `inner` tiles round the screen's centre and `dark` by `outer`: the same
+// drawing as render()'s own line (kept there as it was), for the Lantern to draw through its layer.
+function drawChasmPenumbra(ctx, w, h, s) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); }
+// LANTERN (spell-slots.ts): one cached mask (warm light whose alpha is lanternLift, sampled in LANTERN_STOPS) and one reused
+// screen-sized layer. Nothing is made per frame: the mask once, the layer once and again only when the screen resizes.
+const lanternRender = { mask: null, layer: null, lx: null };
+function lanternMask() {
+  if (lanternRender.mask) return lanternRender.mask;
+  const c = makeGroundCanvas(), x = c?.getContext?.("2d"); if (!x) return null; const D = LANTERN.maskPx, r = D / 2; c.width = c.height = D;
+  const gr = x.createRadialGradient(r, r, 0, r, r, r); for (const [o, a] of LANTERN_STOPS) gr.addColorStop(o, `rgba(${LANTERN.glowRGB},${a.toFixed(3)})`);
+  x.fillStyle = gr; x.fillRect(0, 0, D, D); return (lanternRender.mask = c);
+}
+// Its warm light on the floor round the Wayfarer at (x, y) (world or screen pixels), added over what is drawn.
+function drawLanternGlow(ctx, x, y, s) {
+  const m = lanternMask(); if (!m) return; const R = LANTERN.radius * s;
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = LANTERN.glow; ctx.drawImage(m, x - R, y - R, 2 * R, 2 * R); ctx.restore();
+}
+// A screen darkness overlay (`draw(ctx, w, h, arg)`): unlit, drawn as it always was; lit, drawn into the layer, the lantern's
+// light taken out of it round (x, y) in screen pixels (destination-out: lanternLift of the darkness, none beyond the radius),
+// and the layer laid over the screen. The overlay itself is unchanged.
+export function drawLanternDark(ctx, w, h, s, lit, x, y, draw, arg) {
+  const cw = ctx.canvas?.width, ch = ctx.canvas?.height, m = lit && cw > 0 && ch > 0 && typeof ctx.drawImage === "function" ? lanternMask() : null;
+  if (!m) { draw(ctx, w, h, arg); return; }
+  if (!lanternRender.layer) { const c = makeGroundCanvas(), lx = c?.getContext?.("2d"); if (!lx) { draw(ctx, w, h, arg); return; } lanternRender.layer = c; lanternRender.lx = lx; }
+  const c = lanternRender.layer, lx = lanternRender.lx; if (c.width !== cw) c.width = cw; if (c.height !== ch) c.height = ch;
+  lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = "source-over"; lx.globalAlpha = 1; lx.clearRect(0, 0, cw, ch); lx.setTransform(cw / w, 0, 0, ch / h, 0, 0);
+  draw(lx, w, h, arg);
+  const R = LANTERN.radius * s; lx.globalCompositeOperation = "destination-out"; lx.globalAlpha = LANTERN.strength; lx.drawImage(m, x - R, y - R, 2 * R, 2 * R); lx.globalCompositeOperation = "source-over"; lx.globalAlpha = 1;
+  ctx.drawImage(c, 0, 0, w, h);
+}
 // A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
 // the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
 function drawBuildingStair(ctx, o, s, now) {
@@ -2998,6 +3029,7 @@ export function render(ctx, g, w, h, now) {
       ctx.arc(cx + Math.cos(spin) * s * 0.52, cy + Math.sin(spin) * s * 0.52, 2, 0, 7);
       ctx.fill();
     }
+  if (!closeViewCapturing() && lanternShines(g.save, g.area)) drawLanternGlow(ctx, (p.x + .5) * s, (p.y + .55 - viewLift) * s, s); // LANTERN: its warm light on the floor (under the fog of war)
   if (g.area === "dungeon") drawLabFog(ctx, g, s, { l, t, r, b }, budget.quality); // LAB_FOG: a labyrinth chamber's fog of war, over everything on its floor
   if (g.area === "dungeon") drawWayMarks(ctx, g, s, now); // which way is down and which is out, plainly marked
   ctx.restore();
@@ -3023,7 +3055,9 @@ export function render(ctx, g, w, h, now) {
     ctx.save(); ctx.fillStyle = "#0a0610b0"; ctx.fillRect(bx - 2, by - 2, bw + 4, 10); ctx.fillStyle = warden ? "#ff4a7a" : m.kills >= m.need ? `rgba(255,120,170,${.6 + .4 * Math.sin(now / 120)})` : "#c06aff"; ctx.fillRect(bx, by, bw * Math.min(1, k), 6);
     ctx.strokeStyle = "#ffffff40"; ctx.lineWidth = 1; ctx.strokeRect(bx - .5, by - .5, bw + 1, 7); ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#f2e6ff"; ctx.strokeStyle = "#000c"; ctx.lineWidth = 3;
     const label = warden ? "FRACTURE WARDEN" : m.kills >= m.need ? "THE FRACTURE TEARS" : `FRACTURE ${m.kills}/${m.need}`; ctx.strokeText(label, w / 2, by + 19); ctx.fillText(label, w / 2, by + 19); ctx.restore(); } }
-  if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
+  const lanternLit = lanternShines(g.save, g.area), lanternX = w / 2 + .5 * s, lanternY = h / 2 + .55 * s; // LANTERN: where its light lifts the screen's dark
+  if (g.area === "dungeon" && g.map?.chasm && lanternLit) drawLanternDark(ctx, w, h, s, lanternLit, lanternX, lanternY, drawChasmPenumbra, s); // LANTERN: the penumbra below, drawn through the Lantern's layer
+  else if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
   if (budget.weather && SEASON && !g.map.weather && SEASONS.weather[SEASON]) { // release 679: the season's weather in the woods (light: a few motes)
     const kind = SEASONS.weather[SEASON], count = budget.quality === "full" ? 18 : 9;
     for (let i = 0; i < count; i++) { const f = (motion * (.05 + (i % 4) * .012) + i * .29) % 1, x = ((i * 127 + g.rx * 37 + Math.sin(motion * .7 + i) * 26) % w + w) % w, y = f * (h + 20) - 10;
@@ -3062,7 +3096,7 @@ export function render(ctx, g, w, h, now) {
       y = ((i * 73 + Math.sin(phase * 0.07) * 45) % (h + 60)) - 30;
     ctx.fillRect(x, y, i % 3 === 0 ? 3 : 2, 1);
   }
-  if (g.area === "dungeon" && g.map?.building?.dread) drawDread(ctx, w, h, g.map.building.dread); // the Pentagon's dread (v2)
+  if (g.area === "dungeon" && g.map?.building?.dread) drawLanternDark(ctx, w, h, s, lanternLit, lanternX, lanternY, drawDread, g.map.building.dread); // the Pentagon's dread (v2), the Lantern's light through it
   if (!drawScreenOverlay(ctx, w, h)) {
     ctx.fillStyle = "#5c4a3b0c";
     ctx.fillRect(0, 0, w, h);
