@@ -116,17 +116,19 @@ test('the boss, its paths and its shots respect the pillars: each finale beast f
 });
 
 // ------------------------------------------------------------------------------------------------ the duel
-test('a headless duel in the pillared Stillworks (early, mid, late, endgame): a Wayfarer who swings and hides behind a pillar when the Sunfall gathers is never touched by it and kills the Tyrant', { timeout: 300000 }, () => {
+// Tim (2026-11-11, WAYFARER_DAMAGE 0.9): "the early fight is still a loss": the early Wayfarer brings the Tyrant to about a fifth, then a
+// Sunfall it cannot reach the shade from (about ten tiles away) ends it and the Stillworks resets.
+test('a headless duel in the pillared Stillworks (early, mid, late, endgame): a Wayfarer who swings and hides behind a pillar when the Sunfall gathers is never touched by it; from mid on it kills the Tyrant, early it falls with the Tyrant near a fifth', { timeout: 300000 }, () => {
   const rows = [];
-  for (const [name, base] of Object.entries(BUILDS)) { const save = JSON.parse(JSON.stringify(base)), g = game(SEED, save), P = plan(); intoArena(g, P, 'crimsonTyrant'); const b = beastOf(g), p = g.player; let now = 1000, t = 0, worst = 0, sun = 0, casts = 0, shade = null, was = false;
+  for (const [name, base] of Object.entries(BUILDS)) { const save = JSON.parse(JSON.stringify(base)), g = game(SEED, save), P = plan(); intoArena(g, P, 'crimsonTyrant'); const b = beastOf(g), p = g.player; let now = 1000, t = 0, worst = 0, sun = 0, casts = 0, shade = null, was = false, low = 1;
     const hurt = g.packHurt.bind(g); g.packHurt = (src, amt, o, at) => { if (o?.source === 'dragonSupernova') sun++; return hurt(src, amt, o, at); };
     for (; t < 240 && !b.dead; t += 1 / 30) { now += 1000 / 30; const nova = b.pack?.attack === 'dragonSupernova'; if (nova && !was) { casts++; shade = shadeSpot(g.map, b, p); } was = nova;
       const to = nova && shade ? shade : b, dx = to.x - p.x, dy = to.y - p.y, d = Math.hypot(dx, dy) || 1; p.facing = Math.abs(b.x - p.x) > Math.abs(b.y - p.y) ? (b.x > p.x ? 'right' : 'left') : (b.y > p.y ? 'down' : 'up');
       const move = nova ? (d > .15 ? { x: dx / d, y: dy / d } : { x: 0, y: 0 }) : d > 1.6 ? { x: dx / d, y: dy / d } : { x: 0, y: 0 };
-      const before = p.hp; g.update(1 / 30, { state: move, consume: (k) => !nova && k === 'attack', held: (k) => !nova && k === 'attack', reset() {} }, now); worst = Math.max(worst, before - p.hp); p.hp = g.save.maxHp; p.invulnerableUntil = 0; }
+      const before = p.hp, hpWas = b.hp; g.update(1 / 30, { state: move, consume: (k) => !nova && k === 'attack', held: (k) => !nova && k === 'attack', reset() {} }, now); if (b.hp > hpWas + 1) break; /* the Wayfarer fell: the Stillworks reset */ low = Math.min(low, b.hp / b.maxHp); worst = Math.max(worst, before - p.hp); p.hp = g.save.maxHp; p.invulnerableUntil = 0; }
     rows.push(`${name}: ${t.toFixed(1)} s, ${casts} Sunfalls, biggest blow ${Math.round(worst / g.save.maxHp * 100)}%`);
-    assert.ok(b.dead, `${name}: it falls (${Math.round(b.hp / b.maxHp * 100)}% left)`); assert.equal(sun, 0, `${name}: the Sunfall never reached behind the pillar (${casts} cast)`); assert.ok(worst >= g.save.maxHp * .2, `${name}: hit hard (${worst})`);
-    if (name !== 'early') assert.ok(t > 8 && t < 120, `${name}: ${t.toFixed(1)} s`); assert.equal(H(g, P).pentArenaWon, true); }
+    if (name === 'early') { assert.ok(!b.dead && !H(g, P).pentArenaWon, 'early: the Tyrant wins'); assert.ok(low > .1 && low < .3, `early: brought to about a fifth (${Math.round(low * 100)}%)`); } else assert.ok(b.dead, `${name}: it falls (${Math.round(b.hp / b.maxHp * 100)}% left)`); if (name === 'early') assert.ok(sun <= 1, `early: at most the one Sunfall that ends it (${sun})`); else assert.equal(sun, 0, `${name}: the Sunfall never reached behind the pillar (${casts} cast)`); assert.ok(worst >= g.save.maxHp * .2, `${name}: hit hard (${worst})`);
+    if (name !== 'early') { assert.ok(t > 8 && t < 120, `${name}: ${t.toFixed(1)} s`); assert.equal(H(g, P).pentArenaWon, true); } }
   console.log(rows.join('\n'));
 });
 

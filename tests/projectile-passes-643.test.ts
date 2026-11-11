@@ -23,5 +23,5 @@ test('a piercing shot that stays inside a body is one hit, not one a frame', () 
   const { g, e } = arena(); let t = 1000;
   g.projectiles.push({ id: 'p1', x: 16.5, y: 10.45, dx: 0, dy: 0, speed: 0, life: 1, damage: 10, damageType: 'physical', path: 'straight', age: 0, hits: {}, pierce: 3 });
   for (let i = 0; i < 10; i++) { t += 50; g.update(.05, idle, t); }
-  assert.equal(10000 - e.hp, 10); assert.ok(PASS_CLEAR > 0);
+  assert.equal(10000 - e.hp, 9); assert.ok(PASS_CLEAR > 0);
 });

@@ -253,7 +253,7 @@ export function glyphHit(world, loadout, e, dealt, ctx = {}) {
   if (e.dead && loadout.resonant("undertow")) world.heal((world.maxHp || 0) * .05);
 }
 // Burn and slow, ticked by the Game every frame. Returns enemies killed by burning.
-export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}) {
+export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}, scale = 1) { // scale: the Wayfarer's damage scale (WAYFARER_DAMAGE), burns being the Wayfarer's
   for (const e of enemies) {
     if (e.dead) continue;
     const slowed = (e.glyphSlow?.until || 0) > now;
@@ -262,7 +262,7 @@ export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}) {
     const b = e.glyphBurn;
     if (!b) continue;
     if (b.until <= now) { delete e.glyphBurn; continue; }
-    b.tick = (b.tick || 0) + b.dps * dt;
+    b.tick = (b.tick || 0) + b.dps * dt * scale;
     const whole = Math.floor(b.tick);
     if (whole > 0) { b.tick -= whole; e.hp -= whole; e.hitFlash = Math.max(e.hitFlash || 0, .06); if (e.hp <= 0) { e.dead = true; onBurnDeath(e); } }
   }
