@@ -100,9 +100,10 @@ const WALK_PHASE = [0, .25, .5, .75], GALLOP_PHASE = [0, .55, .1, .65];
 // ------------------------------------------------------------------------------------------------ the body
 let PALETTE = null;
 const palette = () => { const A = STAG_ART; return PALETTE ||= {
-  hide: hex(A.hide), hideDark: hex(A.hideDark), hideLight: 0x7a6248, bark: hex(A.bark), moss: hex(A.moss), mossLight: hex(A.mossLight),
+  // a shade lighter than the standard view's hide (Tim, 2026-11-11: "make his color a little bit lighter"), with pale dapples
+  hide: 0x6f5840, hideDark: 0x4e3c2a, hideLight: 0x947658, speckle: 0xe2cfaa, bark: hex(A.bark), moss: hex(A.moss), mossLight: hex(A.mossLight), leaf: 0x4f7230, leafDark: 0x38521f,
   antler: hex(A.antler), antlerDark: hex(A.antlerDark), bramble: hex(A.bramble), thorn: hex(A.thorn), blossom: hex(A.blossom), blossomCore: hex(A.blossomCore),
-  eye: hex(A.eye), fire: hex(A.fire), fireCore: hex(A.fireCore), muzzle: 0x3a2a1c, innerEar: 0xc9a888, hoof: 0x2a1d12, belly: 0x4a3826,
+  eye: hex(A.eye), fire: hex(A.fire), fireCore: hex(A.fireCore), muzzle: 0x3a2a1c, innerEar: 0xc9a888, hoof: 0x2a1d12, belly: 0x5a4632, throat: 0x8c7254,
 }; };
 // The crown (pass 1): a stag's antler in 3D, read from the standard view's branching fan. A main beam curves out, back and up
 // from the skull, then forward at the top; a brow tine, a bez tine and a trez tine reach forward and up off it, and the beam
@@ -137,16 +138,66 @@ function buildStagMesh(tier) {
     const furrow = .5 + .5 * Math.sin(i * 2.6 + Math.sin(k * 1.3) * .8);
     let c = lerpHex(C.hide, C.hideLight, Math.max(0, (st - .2) / .8) * .9 + muscle * .55);
     c = lerpHex(c, C.hideDark, furrow * .3);
+    // dapples: pale specks over the back and upper flanks of the body (not the neck)
+    const h = (((i * 2654435761) ^ (k * 40503)) >>> 0) % 1000 / 1000;
+    if (i >= 2 && i <= 10 && st > -.1 && st < .9 && h < .12) c = lerpHex(c, C.speckle, .35);
     return st < -.3 ? lerpHex(c, C.belly, Math.min(1, (-.3 - st) / .4)) : c;
   };
+  // (Tim, 2026-11-11: "his belly is a little bit big ... like a hot dog"): a deep chest that tucks hard into a slim waist and
+  // rises into the haunch, so the underline sweeps up; the back line stays level. The head is sculpted: a domed cranium, the
+  // brow, a narrowing face and a fine muzzle.
   const BODY = [ // [f, u, half width, half height, bone a, bone b, weight on b]
-    [-.575, .635, 0, 0, 'pelvis'], [-.55, .63, .065, .075, 'pelvis'], [-.5, .62, .115, .135, 'pelvis'], [-.42, .61, .155, .185, 'pelvis'],
-    [-.32, .6, .168, .205, 'pelvis'], [-.2, .6, .162, .2, 'pelvis', 'spine', .45], [-.06, .6, .158, .205, 'spine'], [.08, .6, .165, .22, 'spine', 'chest', .35],
-    [.2, .61, .162, .228, 'chest'], [.3, .63, .152, .228, 'chest'], [.38, .68, .128, .195, 'chest', 'neck', .3], [.43, .77, .102, .138, 'neck'],
-    [.5, .86, .084, .104, 'neck', 'neck2', .5], [.57, .92, .071, .086, 'neck2'], [.63, .97, .066, .075, 'neck2', 'head', .6], [.69, .995, .06, .07, 'head'],
-    [.75, .985, .054, .061, 'head'], [.81, .96, .045, .05, 'head'], [.86, .94, .035, .039, 'head'], [.895, .925, .022, .026, 'head'], [.908, .918, 0, 0, 'head']];
-  B.color(C.hide).loft({ seg: low ? 12 : 16, sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })),
-    tone: (i, k, st) => i >= BODY.length - 4 ? (st > -.2 ? C.muzzle : C.hideDark) : mott(i, k, st), caps: false });
+    [-.575, .66, 0, 0, 'pelvis'], [-.55, .66, .06, .07, 'pelvis'], [-.5, .65, .11, .13, 'pelvis'], [-.42, .64, .145, .175, 'pelvis'],
+    [-.32, .63, .155, .195, 'pelvis'], [-.2, .655, .14, .17, 'pelvis', 'spine', .45], [-.07, .67, .128, .152, 'spine'], [.06, .645, .14, .19, 'spine', 'chest', .35],
+    [.18, .615, .152, .228, 'chest'], [.28, .62, .148, .232, 'chest'], [.37, .67, .124, .2, 'chest', 'neck', .3], [.43, .77, .098, .135, 'neck'],
+    [.5, .86, .08, .1, 'neck', 'neck2', .5], [.57, .92, .068, .083, 'neck2'], [.63, .97, .064, .074, 'neck2', 'head', .6], [.68, 1.0, .064, .072, 'head'],
+    [.725, 1.0, .058, .064, 'head'], [.77, .985, .047, .052, 'head'], [.81, .965, .038, .044, 'head'], [.845, .948, .031, .036, 'head'], [.875, .936, .025, .029, 'head'],
+    [.898, .928, .017, .02, 'head'], [.91, .924, 0, 0, 'head']];
+  B.color(C.hide).loft({ seg: low ? 10 : 16, sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })),
+    tone: (i, k, st) => i >= BODY.length - 3 ? (st > -.3 ? C.muzzle : C.hideDark) : i >= 11 && st < -.4 ? C.throat : mott(i, k, st), caps: false });
+  // The mane (Tim, 2026-11-11: "a bunch of flowers and leaves ... growing along his back ... like a mane"): from the rump along
+  // the spine and up the crest of the neck to the poll, leaves splayed to either side, moss tufts and pale blossoms through the
+  // bramble, seated on the hide's top line and bound to the bone beneath so it moves with the body.
+  { const top = (f) => { let a = BODY[1], b = BODY[BODY.length - 2]; for (let q = 1; q < BODY.length - 1; q++) if (BODY[q][0] <= f && BODY[q + 1][0] >= f) { a = BODY[q]; b = BODY[q + 1]; break; }
+      const t = Math.max(0, Math.min(1, (f - a[0]) / ((b[0] - a[0]) || 1))); return a[1] + a[3] + (b[1] + b[3] - a[1] - a[3]) * t; };
+    const boneAt = (f) => f < -.25 ? 'pelvis' : f < .1 ? 'spine' : f < .38 ? 'chest' : f < .52 ? 'neck' : 'neck2';
+    const bw = STAG_SKELETON.bindWorld;
+    const at = (bone, p) => { const i = BI[bone] * 3; return [p[0] - bw[i], p[1] - bw[i + 1], p[2] - bw[i + 2]]; };
+    const leaf = (bone, base, side, len, w, tone) => { // a two-sided leaf splayed out and back from the crest
+      const d = [-.45, side * .7, .55], l = Math.hypot(...d), u = [d[0] / l, d[1] / l, d[2] / l], n = [-side * .2, .1 * side, 1];
+      const tip = [base[0] + u[0] * len, base[1] + u[1] * len, base[2] + u[2] * len], mid = [base[0] + u[0] * len * .45, base[1] + u[1] * len * .45, base[2] + u[2] * len * .45];
+      const sx = [-u[1] * w * side, u[0] * w * side, 0], pts = [base, [mid[0] + sx[0], mid[1] + sx[1], mid[2] + w * .4], tip, [mid[0] - sx[0], mid[1] - sx[1], mid[2] - w * .4]].map((p) => at(bone, p));
+      void n; B.bone(bone).color(tone); B.poly(pts); B.poly(pts.slice().reverse()); };
+    const bloom = (bone, c) => { // five flat petals round a core, both faces
+      B.bone(bone).color(C.blossom, E_BLOSSOM); const r = .03;
+      for (let q = 0; q < 5; q++) { const a0 = q / 5 * Math.PI * 2, a1 = a0 + .55, p = [c, [c[0] + Math.cos(a0) * r, c[1] + Math.sin(a0) * r, c[2] + .006], [c[0] + Math.cos(a1) * r, c[1] + Math.sin(a1) * r, c[2] + .006]].map((x) => at(bone, x)); B.poly(p); B.poly(p.slice().reverse()); }
+      B.color(C.blossomCore, E_BLOSSOM).ellipsoid({ at: at(bone, [c[0], c[1], c[2] + .008]), radius: [.008, .008, .006], rings: 2, seg: 4 }); };
+    // a mossy ridge along the crest that the leaves grow from (blended along the spine bones)
+    if (!low) { const R2 = [[-.48, 'pelvis'], [-.3, 'pelvis'], [-.12, 'pelvis', 'spine', .5], [.06, 'spine', 'chest', .4], [.24, 'chest'], [.38, 'chest', 'neck', .4], [.5, 'neck', 'neck2', .5], [.62, 'neck2', 'head', .3]];
+      B.color(C.moss).loft({ seg: 6, up: [0, 0, 1], sections: R2.map(([f, a, b, w], q) => ({ at: [f, 0, top(f) - .004], rx: q === 0 || q === R2.length - 1 ? .012 : .028, rz: .016, bones: [a, b ?? a, w || 0] })), tone: (q, k, st) => st > .3 ? C.mossLight : C.moss }); }
+    const n = low ? 7 : full ? 26 : 16;
+    for (let q = 0; q < n; q++) {
+      const f = -.46 + q * (1.12 / (n - 1)), z = top(f) - .006, bone = boneAt(f), side = q % 2 ? 1 : -1, big = f > .35 ? .75 : 1;
+      leaf(bone, [f, side * .012, z], side, (.075 + .02 * ((q * 7) % 3)) * big, .038 * big, q % 3 === 0 ? C.leafDark : q % 3 === 1 ? C.leaf : C.mossLight);
+      if (!low) leaf(bone, [f + .02, -side * .01, z + .004], -side, .055 * big, .03 * big, q % 2 ? C.moss : C.leaf);
+      if (q % (low ? 4 : 3) === 1) bloom(bone, [f, (q % 2 ? .02 : -.02), z + .03]);
+    }
+  }
+  // Dapples (Tim, 2026-11-11: "make them a little speckled"): small pale discs seated on the hide over the back and upper flanks,
+  // each on the body's surface and bound to the bone beneath (crisp, where a coloured vertex would only smear).
+  { const nSp = low ? 0 : full ? 34 : 18, bw = STAG_SKELETON.bindWorld;
+    const sec = (f) => { for (let q = 1; q < BODY.length - 1; q++) if (BODY[q][0] <= f && BODY[q + 1][0] >= f) { const a = BODY[q], b = BODY[q + 1], t = (f - a[0]) / (b[0] - a[0]); return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t]; } return BODY[4].slice(1, 4); };
+    for (let q = 0; q < nSp; q++) {
+      const h1 = ((q * 2654435761) >>> 0) % 1000 / 1000, h2 = ((q * 40503 + 977) >>> 0) % 1000 / 1000, f = -.4 + h1 * .66, side = q % 2 ? 1 : -1, th = (.18 + h2 * .52) * Math.PI;
+      const [cu, rx, rz] = sec(f), ct = Math.cos(th) * side, st = Math.sin(th), bone = f < -.25 ? 'pelvis' : f < .1 ? 'spine' : 'chest', bi = BI[bone] * 3;
+      const nrm = [0, ct / rx, st / rz], nl = Math.hypot(...nrm), n = [0, nrm[1] / nl, nrm[2] / nl], c = [f, ct * rx * 1.006, cu + st * rz * 1.006];
+      const r = .011 + .008 * h2, t1 = [1, 0, 0], t2 = [0, -n[2], n[1]], pts = [];
+      for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; pts.push([c[0] + (t1[0] * Math.cos(a) + t2[0] * Math.sin(a)) * r * 1.3 - bw[bi], c[1] + (t2[1] * Math.sin(a)) * r - bw[bi + 1], c[2] + (t2[2] * Math.sin(a)) * r - bw[bi + 2]]); }
+      B.bone(bone).color(C.speckle); const nn = [pts[1][0] - pts[0][0], pts[1][1] - pts[0][1], pts[1][2] - pts[0][2]], mm = [pts[2][0] - pts[0][0], pts[2][1] - pts[0][1], pts[2][2] - pts[0][2]];
+      const fn = [nn[1] * mm[2] - nn[2] * mm[1], nn[2] * mm[0] - nn[0] * mm[2], nn[0] * mm[1] - nn[1] * mm[0]];
+      B.poly(fn[0] * n[0] + fn[1] * n[1] + fn[2] * n[2] >= 0 ? pts : pts.slice().reverse());
+    }
+  }
   B.bone('tail').color(C.hideDark).lathe({ at: [-.02, 0, 0], F: [-.6, 0, .8], rings: [[0, .035], [.05, .04], [.09, 0]], seg: 6 });
   // The bramble vine along the back with thorns raking backward (pelvis to withers).
   const vine = (bone, pts) => { if (low) return; B.bone(bone); for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], dir = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(...dir);
@@ -156,15 +207,16 @@ function buildStagMesh(tier) {
   vine('spine', [[-.12, 0, .17], [0, .01, .18], [.12, -.01, .18], [.24, 0, .19]]);
   vine('chest', [[-.06, 0, .21], [.04, .01, .23], [.12, 0, .2]]);
   // Neck: a tapered column, wide where it meets the shoulders, with a moss mane along its crest and a lighter throat.
-  B.bone('neck'); for (let i = 0; i < (low ? 2 : 4); i++) { const f = -.04 + i * (low ? .1 : .055); B.color(i % 2 ? C.mossLight : C.moss).ellipsoid({ at: [f * .7 - .02, 0, .035 + f * .7], radius: [.05, .028, .03], rings: 3, seg: 6, F: [.7, 0, .7], U: [-.7, 0, .7] }); } // moss mane
-  B.bone('neck2'); for (let i = 0; i < (low ? 1 : 3); i++) { const f = -.04 + i * .06; B.color(i % 2 ? C.moss : C.mossLight).ellipsoid({ at: [f * .85, 0, .04 + f * .5], radius: [.045, .025, .026], rings: 3, seg: 6, F: [.85, 0, .5], U: [-.5, 0, .85] }); }
+  B.bone('neck'); for (let i = 0; i < (low ? 0 : 4); i++) { const f = -.04 + i * (low ? .1 : .055); B.color(i % 2 ? C.mossLight : C.moss).ellipsoid({ at: [f * .7 - .02, 0, .035 + f * .7], radius: [.05, .028, .03], rings: 3, seg: 6, F: [.7, 0, .7], U: [-.7, 0, .7] }); } // moss mane
+  B.bone('neck2'); for (let i = 0; i < (low ? 0 : 3); i++) { const f = -.04 + i * .06; B.color(i % 2 ? C.moss : C.mossLight).ellipsoid({ at: [f * .85, 0, .04 + f * .5], radius: [.045, .025, .026], rings: 3, seg: 6, F: [.85, 0, .5], U: [-.5, 0, .85] }); }
   if (!low) B.color(C.mossLight).ellipsoid({ at: [-.08, 0, .1], radius: [.06, .035, .03], rings: 3, seg: 6, F: [.7, 0, .7], U: [-.7, 0, .7] }); // moss at the withers
   // Head: a long deer skull (brow, tapering muzzle, dark muzzle tip and nostrils), the brow ridge, glowing green eyes, ears.
   B.bone('head'); for (const s of [-1, 1]) {
-    B.color(C.bark).box({ at: [.06, s * .045, .035], size: [.04, .012, .008], bevel: 0, F: [1, s * .3, -.1] }); // brow ridge
+    B.color(C.hideDark).ellipsoid({ at: [.055, s * .05, .03], radius: [.03, .014, .012], rings: 3, seg: 7, F: [1, s * .25, -.15] }); // brow over the eye
     B.color(C.eye, E_EYE).ellipsoid({ at: [.055, s * .058, .015], radius: [.016, .008, .011], rings: 3, seg: 6 });
   }
-  B.bone('jaw').color(C.hideDark).lathe({ at: [0, 0, 0], F: [1, 0, -.35], rings: [[0, .035], [.14, .02]], rs: .8, seg: 7 });
+  if (!low) { const J = STAG_SKELETON.bindWorld, j = BI.jaw * 3, jx = J[j], jz = J[j + 2]; // the lower jaw, a smooth tapering loft
+    B.color(C.hideDark).loft({ seg: 10, sections: [[-.04, .012, .03, .02], [.02, .004, .026, .017], [.07, -.004, .019, .013], [.11, -.01, .011, .008], [.125, -.012, 0, 0]].map(([f, u, rx, rz]) => ({ at: [jx + f, 0, jz + u], rx, rz, bones: ['jaw', 'jaw', 0] })), caps: false, tone: (i, k, st) => st > .3 ? C.hideDark : C.throat }); }
   for (const s of ['L', 'R']) {
     const side = s === 'R' ? 1 : -1;
     B.bone('ear' + s).color(C.hide).ellipsoid({ at: [-.02, side * .05, .02], radius: [.03, .06, .015], rings: 3, seg: 7, F: [0, side, .4], U: [-1, 0, 0] });
@@ -188,13 +240,13 @@ function buildStagMesh(tier) {
   }
   // Legs: each one limb of hide that starts inside the body and blends through hip or shoulder, stifle or elbow, hock or knee,
   // a muscled top tapering to a slim cannon, then the cloven hoof and its fetlock moss.
-  const HIND = [[.64, .06, .09, 'p'], [.55, .07, .1, 'p', 't', .5], [.46, .066, .095, 't'], [.37, .046, .06, 't', 'm', .5], [.25, .033, .043, 'm'], [.14, .025, .031, 'm', 'l', .5], [.1, .02, .024, 'l'], [0, .018, .02, 'l'], [-.025, .02, .024, 'l']];
-  const FORE = [[.68, .06, .09, 'p'], [.57, .063, .086, 'p', 't', .5], [.47, .05, .066, 't'], [.37, .036, .046, 't', 'm', .5], [.26, .03, .036, 'm'], [.16, .024, .03, 'm', 'l', .5], [.1, .019, .022, 'l'], [0, .018, .02, 'l'], [-.02, .02, .023, 'l']];
+  const HIND = [[.6, .036, .055, 'p'], [.53, .05, .08, 'p', 't', .5], [.46, .066, .095, 't'], [.37, .046, .06, 't', 'm', .5], [.25, .033, .043, 'm'], [.14, .025, .031, 'm', 'l', .5], [.1, .02, .024, 'l'], [0, .018, .02, 'l'], [-.025, .02, .024, 'l']];
+  const FORE = [[.6, .034, .05, 'p'], [.54, .045, .07, 'p', 't', .5], [.47, .05, .066, 't'], [.37, .036, .046, 't', 'm', .5], [.26, .03, .036, 'm'], [.16, .024, .03, 'm', 'l', .5], [.1, .019, .022, 'l'], [0, .018, .02, 'l'], [-.02, .02, .023, 'l']];
   for (const L of LEGS) {
     const at = STAG_SKELETON.bindWorld, top = BI[L.top] * 3, x = at[top], y = at[top + 1], parent = L.hind ? 'pelvis' : 'chest';
     const name = (c) => c === 'p' ? parent : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
     B.color(C.hide).loft({ seg: 10, up: [1, 0, 0], sections: (L.hind ? HIND : FORE).map(([u, rx, rz, a, b, w]) => ({ at: [x + (L.hind && u > .4 ? .015 : 0), y, u], rx, rz, bones: [name(a), name(b ?? a), w || 0] })),
-      tone: (i) => i >= 6 ? C.hideDark : lerpHex(C.hide, C.hideDark, .18 + .06 * i) });
+      tone: (i, k, st) => i >= 6 ? C.hideDark : i < 4 ? mott(L.hind ? 4 : 9, k, st) : lerpHex(C.hide, C.hideDark, .1 + .08 * (i - 3)) });
     const can = L.hind ? R.hindCannon : R.foreCannon;
     if (!low) B.bone(L.low).color(C.moss).ellipsoid({ at: [0, 0, -can + .012], radius: [.028, .028, .013], rings: 3, seg: 6 });
     for (const s of low ? [0] : [-1, 1]) B.bone(L.hoof).color(C.hoof).box({ at: [.012, s * .013, -.018], size: [.028, low ? .022 : .011, .018], bevel: 0, taper: .3, skew: .006 });
