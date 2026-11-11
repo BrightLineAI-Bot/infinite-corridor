@@ -1,10 +1,17 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.ts';
 import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
-import { cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+// Source arms. Source-left (sign +1, +X) is the displayed anatomical right; source-right the left.
+const SOURCE_LEFT_ARM = Object.freeze({ left: true, shoulder: 12, elbow: 11, wrist: 7, grip: 6, free: 22, freeElbow: 21, sign: 1 });
+const SOURCE_RIGHT_ARM = Object.freeze({ left: false, shoulder: 22, elbow: 21, wrist: 18, grip: 16, free: 12, freeElbow: 11, sign: -1 });
+// Every sword is in the displayed left hand. The Cleaver cuts were authored on source-left;
+// CLEAVER_ARM mirrors them (lateral offsets, yaw, roll) onto source-right.
+const CLEAVER_ARM = SOURCE_RIGHT_ARM;
+const heldArm = profile => closeViewHeldHand(profile) === 'right' ? SOURCE_LEFT_ARM : SOURCE_RIGHT_ARM;
 let loaded = null, loading = null, assetStatus = 'not-requested';
 // Observation only: reading status never starts or retries asset loading.
 export const closeViewHeroAssetStatus = () => assetStatus;
@@ -315,41 +322,41 @@ function primaryPose(state,pose,profile,p,step=1){
 }
 
 function cleaverFourPose(state,pose,p,stage){
-  const cut=cleaverCutMotion(stage,p),w=cut.weight;
-  if(w>0){rotateY(pose,27,cut.twist);rotateX(pose,24,(.10-.05*cut.rise)*w);rotateX(pose,4,-.045*w);rotateX(pose,22,-.28*w);rotateZ(pose,22,cut.twist*.4);}
+  const A=CLEAVER_ARM,m=A.sign,cut=cleaverCutMotion(stage,p),w=cut.weight;
+  if(w>0){rotateY(pose,27,m*cut.twist);rotateX(pose,24,(.10-.05*cut.rise)*w);rotateX(pose,4,-.045*w);rotateX(pose,A.free,-.28*w);rotateZ(pose,A.free,m*cut.twist*.4);}
   build(state.asset,state,pose);
-  const g=state.global,s=12*16,e=11*16,h=7*16,grip=6*16,t=state.primaryTarget;
+  const g=state.global,s=A.shoulder*16,e=A.elbow*16,h=A.wrist*16,grip=A.grip*16,t=state.primaryTarget;
   const reach=Math.hypot(g[e+12]-g[s+12],g[e+13]-g[s+13],g[e+14]-g[s+14])+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);
-  const carryX=g[s+12]+.08,carryY=Math.max(g[s+13]-reach*.80,state.minY+state.referenceHeight*.52),carryZ=g[s+14]+.06+.04*Math.tanh((g[grip+14]-g[s+14])*3);
-  t[0]=carryX+(g[s+12]+cut.side-carryX)*w;
+  const carryX=g[s+12]+m*.08,carryY=Math.max(g[s+13]-reach*.80,state.minY+state.referenceHeight*.52),carryZ=g[s+14]+.06+.04*Math.tanh((g[grip+14]-g[s+14])*3);
+  t[0]=carryX+(g[s+12]+m*cut.side-carryX)*w;
   t[1]=carryY+(g[s+13]-reach*(.58-.36*cut.rise)-carryY)*w;
   t[2]=carryZ+(g[s+14]+reach*.48-carryZ)*w;
-  state.primaryGripResidual=solveArm(state,pose,true,t,.20+(cut.yaw-.20)*w,-.70+(cut.pitch+.70)*w);
-  state.clip='derived-right-cleaver-four';state.clipTime=p;state.primaryStep=stage?.step||1;
+  state.primaryGripResidual=solveArm(state,pose,A.left,t,m*(.20+(cut.yaw-.20)*w),-.70+(cut.pitch+.70)*w);
+  state.clip='derived-left-cleaver-four';state.clipTime=p;state.primaryStep=stage?.step||1;
 }
 
 function choreographedCleaverPose(state, pose, frame, reducedMotion) {
-  const load = reducedMotion ? .55 : 1;
-  rotateY(pose, 28, frame.twist * .36 * load);
-  rotateY(pose, 27, frame.twist * .64 * load);
+  const load = reducedMotion ? .55 : 1, A = CLEAVER_ARM, m = A.sign;
+  rotateY(pose, 28, m * frame.twist * .36 * load);
+  rotateY(pose, 27, m * frame.twist * .64 * load);
   rotateX(pose, 24, frame.lean * load);
-  rotateY(pose, 4, -frame.twist * .32 * load);
-  rotateX(pose, 22, -frame.lean * .65 * load);
+  rotateY(pose, 4, -m * frame.twist * .32 * load);
+  rotateX(pose, A.free, -frame.lean * .65 * load);
   build(state.asset, state, pose);
-  const g = state.global, shoulder = 12 * 16, elbow = 11 * 16, wrist = 7 * 16, grip = 6 * 16, target = state.primaryTarget;
+  const g = state.global, shoulder = A.shoulder * 16, elbow = A.elbow * 16, wrist = A.wrist * 16, grip = A.grip * 16, target = state.primaryTarget;
   const reach = Math.hypot(g[elbow+12]-g[shoulder+12],g[elbow+13]-g[shoulder+13],g[elbow+14]-g[shoulder+14]) +
     Math.hypot(g[wrist+12]-g[elbow+12],g[wrist+13]-g[elbow+13],g[wrist+14]-g[elbow+14]);
   // Start at the existing gait-driven carry. Blend the rig-specific offset away
   // as the hand leaves the hip, so the authored endpoints keep their full reach.
   const carry = cleaverCarryFrame();
   const leaveCarry = smoothstep(Math.hypot(frame.side - carry.side, frame.up - carry.up, frame.forward - carry.forward) / .45);
-  const carryX = g[shoulder+12] + .08;
+  const carryX = g[shoulder+12] + m * .08;
   const carryY = Math.max(g[shoulder+13] - reach * .80, state.minY + state.referenceHeight * .52);
   const carryZ = g[shoulder+14] + .06 + .04 * Math.tanh((g[grip+14] - g[shoulder+14]) * 3);
-  target[0] = carryX + (g[shoulder+12] + frame.side * reach - carryX) * leaveCarry;
+  target[0] = carryX + (g[shoulder+12] + m * frame.side * reach - carryX) * leaveCarry;
   target[1] = carryY + (g[shoulder+13] + frame.up * reach - carryY) * leaveCarry;
   target[2] = carryZ + (g[shoulder+14] + frame.forward * reach - carryZ) * leaveCarry;
-  state.primaryGripResidual = solveArm(state, pose, true, target, frame.yaw, frame.pitch);
+  state.primaryGripResidual = solveArm(state, pose, A.left, target, m * frame.yaw, frame.pitch);
   state.clip = 'derived-choreographed-cleaver';
 }
 
@@ -386,7 +393,7 @@ const TOOL_BODY_LOAD=Object.freeze({
   'lumen-spindle':Object.freeze({twist:.018,brace:.025,guard:.035}),
   'great-sweep':Object.freeze({twist:.13,brace:.07,guard:.12}),
 });
-function phasedToolBodyLoad(pose,profile,p,action){
+function phasedToolBodyLoad(pose,profile,p,action,A=SOURCE_RIGHT_ARM){
   const recipe=TOOL_BODY_LOAD[profile];if(!recipe||action?.toolMotion?.v!==1||action?.toolUse?.v!==1)return;
   // toolPose already validates the receipt. Reuse its scalar clock fields without another phase object.
   const use=action.toolUse,duration=Number(action.durationMs),startup=Number(use.startupMs),before=use.phase==='startup';
@@ -398,26 +405,45 @@ function phasedToolBodyLoad(pose,profile,p,action){
   const u=clamp(before?age/startup:age/settle);
   if(!(u>0&&u<1))return;
   const tail=1-u,pulse=before?16*u*u*tail*tail:(729/16)*u*u*tail*tail*tail*tail;
-  const direction=profile==='great-sweep'&&action.toolMotion.direction===-1?-1:1,twist=recipe.twist*pulse*direction*(before?-1:1),brace=recipe.brace*pulse*(before?.65:-1);
+  // Authored for a source-right (displayed-left) hold; a right-hand tool mirrors the twist.
+  const direction=(profile==='great-sweep'&&action.toolMotion.direction===-1?-1:1)*-A.sign,twist=recipe.twist*pulse*direction*(before?-1:1),brace=recipe.brace*pulse*(before?.65:-1);
   // The independent leg hierarchy and both grip solutions are unchanged at entry/release/expiry.
   rotateY(pose,28,twist*.35);rotateY(pose,27,twist);rotateY(pose,24,twist*.65);
   rotateX(pose,27,brace*.4);rotateX(pose,24,brace);rotateY(pose,4,-twist*.6);
-  rotateX(pose,12,-recipe.guard*pulse);rotateZ(pose,12,twist*.3);
+  rotateX(pose,A.free,-recipe.guard*pulse);rotateZ(pose,A.free,-A.sign*twist*.3);
 }
 function toolPose(state,pose,profile,p,weight,action){
   if(action?.toolMotion&&action.toolMotion.v!==1)return;
   if(action?.toolUse&&['unknown','cancelled'].includes(toolUsePoseTime(action,p*(Number(action?.durationMs)||180)).phase))return;
-  state.other.set(pose);build(state.asset,state,state.other);const shoulder=22*16,target=state.primaryTarget;
+  // Motions are authored for a source-right hold; r mirrors side and yaw onto a right-hand tool.
+  const A=heldArm(profile),r=-A.sign,rifle=Object.hasOwn(CLOSE_VIEW_RIFLE_GRIP,profile)?CLOSE_VIEW_RIFLE_GRIP[profile]:null;
+  state.other.set(pose);build(state.asset,state,state.other);const shoulder=A.shoulder*16,target=state.primaryTarget;
   const motion=sampleToolActionMotion(action,p*(Number(action?.durationMs)||180));let frameYaw=0,side=0,up=-.10,forward=.47;
   if(motion){({yaw:frameYaw,side,up,forward,weight}=motion);}
   else if(profile==='lumen-spindle'){side=-.03;up=.18;forward=.54;}
   else if(profile==='rift-bombard'){side=-.05;up=-.13;forward=.43;}
   else if(profile==='blunderbuss'){side=-.04;up=-.08;forward=.50;}
   else if(profile==='great-sweep'){const a=p<.18?-65+(p/.18)*38:p<.56?-27+((p-.18)/.38)*112:85-((p-.56)/.44)*150;frameYaw=a*Math.PI/180;side=Math.sin(frameYaw)*.22;up=p<.56?.08:-.10;forward=.38+Math.cos(frameYaw)*.13;}
+  side*=r;frameYaw*=r;let framePitch=0;
+  // Rifle grip: the same accepted raise envelope lifts the trigger hand toward the chest
+  // centre line so the barrel is shouldered and level while firing.
+  if(rifle){side-=A.sign*rifle.raise[0]*weight;up+=rifle.raise[1]*weight;forward+=rifle.raise[2]*weight;framePitch=rifle.pitch*weight;}
   target[0]=state.global[shoulder+12]+side;target[1]=state.global[shoulder+13]+up;target[2]=state.global[shoulder+14]+forward;
-  solveArm(state,state.other,false,target,frameYaw);blend(pose,state.other,weight);
-  phasedToolBodyLoad(pose,profile,p,action);
-  state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':'derived-braced-tool';state.clipTime=p;
+  solveArm(state,state.other,A.left,target,frameYaw,framePitch);blend(pose,state.other,weight);
+  phasedToolBodyLoad(pose,profile,p,action,A);
+  if(rifle&&weight>0)rifleSupportHand(state,pose,profile,rifle,A,weight);
+  state.clip=profile==='great-sweep'?'derived-great-sweep':profile==='lumen-spindle'?'derived-raised-wand':rifle?'derived-rifle-grip':'derived-braced-tool';state.clipTime=p;
+}
+// The free hand takes the barrel from below: a point along the drawn barrel (the exact recipe
+// conversion of writeCloseViewHeroGear, in source units), then the arm is solved to it last.
+function rifleSupportHand(state,pose,profile,rifle,A,weight){
+  build(state.asset,state,pose);
+  const g=state.global,o=state.asset.meta.sockets[A.left?'left':'right'].node*16,ax=Math.hypot(g[o],g[o+1],g[o+2]),scale=state.worldScale>0?state.worldScale:1;
+  if(!(ax>1e-6))return;
+  const along=(rifle.support[0]-.79)*.82*closeViewHeldScale(profile)/scale,t=state.primaryTarget;
+  // Socket +X is the barrel. The hand sits under it (source +Y is up).
+  t[0]=g[o+12]+g[o]/ax*along;t[1]=g[o+13]+g[o+1]/ax*along-rifle.support[1]/scale;t[2]=g[o+14]+g[o+2]/ax*along;
+  state.other.set(pose);solveArm(state,state.other,!A.left,t,A.sign*rifle.supportYaw,rifle.supportPitch);blend(pose,state.other,weight);
 }
 
 function build(asset, state, pose) {
@@ -449,7 +475,7 @@ function deform(asset, state) {
 export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),primaryGripResidual:0,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
   s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.proportions={width:proportions.width,depth:proportions.depth,hands:proportions.hands};s.fit=fitProportions(asset,s.proportions);
   clipPose(asset, asset.clips.Idle, 0, s.pose); build(asset, s, s.pose); deform(asset, s);
@@ -524,12 +550,13 @@ function weightedMeleePose(asset,state,pose,motion) {
     clipPose(asset,asset.clips.Dagger_Attack,source,state.other);
     blend(pose,state.other,Math.min(1,w*(motion.cutIndex===1?.82:.52)));
   }
-  rotateY(pose,27,motion.twist);rotateX(pose,24,(.12-.05*motion.rise)*w);rotateX(pose,4,-.055*w);
-  rotateX(pose,30,-.18*d);rotateX(pose,32,.10*d);build(asset,state,pose);state.other.set(pose);
-  const g=state.global,s=12*16,t=state.primaryTarget;
-  // Source right hand: a low rusty-gladius carry, then one of four alternating up/down diagonals.
-  t[0]=g[s+12]+.10+motion.side;t[1]=g[s+13]-.18+.18*motion.rise;t[2]=g[s+14]+.28+.16*motion.drive;
-  state.primaryGripResidual=solveArm(state,state.other,true,t,motion.yaw,motion.pitch);blend(pose,state.other,w);
+  const A=CLEAVER_ARM,m=A.sign;
+  rotateY(pose,27,m*motion.twist);rotateX(pose,24,(.12-.05*motion.rise)*w);rotateX(pose,4,-.055*w);
+  rotateX(pose,m>0?30:32,-.18*d);rotateX(pose,m>0?32:30,.10*d);build(asset,state,pose);state.other.set(pose);
+  const g=state.global,s=A.shoulder*16,t=state.primaryTarget;
+  // Displayed left hand: a low rusty-gladius carry, then the accepted alternating diagonals.
+  t[0]=g[s+12]+m*(.10+motion.side);t[1]=g[s+13]-.18+.18*motion.rise;t[2]=g[s+14]+.28+.16*motion.drive;
+  state.primaryGripResidual=solveArm(state,state.other,A.left,t,m*motion.yaw,motion.pitch);blend(pose,state.other,w);
   state.clip=(motion.actionVersion===2?'derived-quick-cleaver-cut-':'derived-weighted-cleaver-')+motion.cutIndex;state.clipTime=motion.progress;
 }
 // Descriptor-owned counter-load and settling around the canonical contact pose.
@@ -540,13 +567,13 @@ function weightedMeleeLoad(pose, motion) {
   const before=p<c,u=clamp(before?p/Math.max(1e-6,c):(p-c)/Math.max(1e-6,1-c));
   // A flat-ended pulse gives acceleration into the load and deceleration out of follow-through.
   const pulse=16*u*u*(1-u)*(1-u),fist=motion.kind==='iron-fists',jab=motion.move==='jab',upper=motion.move==='uppercut';
-  const direction=fist?motion.lead:(motion.cutIndex<=2?-1:1),load=direction*pulse*(before?-1:1);
+  const direction=fist?motion.lead:CLEAVER_ARM.sign*(motion.cutIndex<=2?-1:1),load=direction*pulse*(before?-1:1);
   const scale=jab?.55:upper?1.10:1;
   // Hips are a torso parent; the independent thigh/foot hierarchy is intentionally untouched.
   rotateY(pose,28,.045*load*scale);rotateY(pose,27,.085*load*scale);rotateY(pose,24,.065*load*scale);
   rotateX(pose,27,(before?(upper?-.055:.035):.025)*pulse*scale);
   rotateX(pose,24,(before?.055:-.025)*pulse*scale);rotateY(pose,4,-.065*load*scale);
-  const guard=fist?(motion.lead<0?22:12):22;
+  const guard=fist?(motion.lead<0?22:12):CLEAVER_ARM.free;
   rotateX(pose,guard,-(before?.11:.055)*pulse*scale);
   rotateZ(pose,guard,.055*load*scale);
 }
@@ -590,7 +617,7 @@ function samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p)
   return true;
 }
 export function sampleCloseViewHero(asset, state, input, out) {
-  out.ready = false;out.powerSuit=false;out.suitVertexCount=0;
+  out.ready = false;out.powerSuit=false;out.suitVertexCount=0;state.worldScale=input.height/state.referenceHeight;
   if (out.asset !== asset || !Number.isFinite(input.nowMs) || !Number.isFinite(input.x) || !Number.isFinite(input.y) || !Number.isFinite(input.groundZ) || !Number.isFinite(input.liftZ) || !Number.isFinite(input.yaw) || !(input.height > 0) || !Number.isFinite(input.height)) return false;
   // Input speed is tiles/second; the existing gait phase is already distance-driven radians.
   const speed = Math.max(0,Number(input.speed)||0), phase = ((Number(input.gaitPhase) || 0) / TAU % 1 + 1) % 1;
@@ -683,7 +710,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.
       const pulse = Math.sin(p * Math.PI) * weight;
       if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight,action);
-      else if (kind === 'ranged') { rotateX(state.pose, 22, -.8 * weight); rotateX(state.pose, 21, -.4 * weight - .15 * pulse); }
+      else if (kind === 'ranged') { const A=heldArm(profile); rotateX(state.pose, A.shoulder, -.8 * weight); rotateX(state.pose, A.elbow, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') {
         // Orrery tools and pre-descriptor saves retain their established cast layer.
         // Unknown future spell profiles remain neutral until they have a recipe.
