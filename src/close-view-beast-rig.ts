@@ -275,6 +275,8 @@ export function meshBuilder(skeleton, detail = 1) {
   // continuous hide across joints instead of rigid parts meeting at a crease).
   const vertBlend = (x, y, z, nx, ny, nz, ba, bb, w, r, g, b) => {
     const l = Math.hypot(nx, ny, nz) || 1; pos.push(x, y, z); nrm.push(nx / l, ny / l, nz / l); col.push(r, g, b); skin.push(ba, emit, bb, w); return pos.length / 3 - 1; };
+  // (the Nanobot Knight's imported human body: model-space vertices already blended between two bones)
+  B.vertexBlend = (x, y, z, nx, ny, nz, ba, bb, w, hex) => vertBlend(x, y, z, nx, ny, nz, skeleton.index[ba], skeleton.index[bb], w, ...rgb(hex));
   // A loft: one smooth skin swept through cross-sections along a path in model bind space. sections: [{ at: [f, r, u], rx
   // (half width), rz (half height), bones: [a, b, w] (w on b) }]. The ring lies across the path; `tone(i, k, sinT)` may vary
   // the colour (a darker belly, mottled bark). Ends close to a point when their radius is 0, or are capped.

@@ -14,10 +14,17 @@ import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
+import { KNIGHT_BODY } from "./close-view-beast-knight-body.ts";
 
+function knightJoints() {
+  const J = KNIGHT_BODY.joints, d = (a, b) => Math.hypot(J[a][0] - J[b][0], J[a][1] - J[b][1], J[a][2] - J[b][2]);
+  return { hip: J.pelvis[2], hipWidth: Math.abs(J.thighR[1]), thigh: d('thighR', 'shinR'), shin: d('shinR', 'footR'), ankle: J.footR[2], upperArm: d('armR', 'foreR'), foreArm: d('foreR', 'handR'), shoulder: Math.abs(J.armR[1]) };
+}
 export const KNIGHT_RIG = Object.freeze({
   closeViewScale: 1.25, // a quarter larger than the standard view, like every Close View beast (presentation only)
-  hip: .52, hipWidth: .08, thigh: .25, shin: .23, ankle: .04, upperArm: .21, foreArm: .2, shoulder: .14, blade: .85, stand: .035, // stand: knees a little bent at rest
+  // the body's joints come from the converted human body (close-view-beast-knight-body.ts, Tim 2026-11-11: an RPG Character Pack
+  // body, slightly longer and more slender than a human, 1.75 x the Wayfarer); the limb lengths are measured from them
+  ...knightJoints(), blade: .85, stand: .03, // stand: knees a little bent at rest
   stride: .42, stance: .62, footLift: .07, settle: 6, stepAt: .07, stepTime: .28, turnRate: 6, standTurnRate: 5, attackTurnRate: 14,
   blendMs: 140, impactMs: 260, hitMs: 220, deathMs: 2200, breathe: .3, bob: .012, flowRate: .45, motes: 8,
   // body poses: crouch (hips down), lean (+ forward), twist (+ turns the right shoulder forward), head (+ up), the sword hand
@@ -42,16 +49,17 @@ const POSE_VEC = Object.freeze(Object.fromEntries(Object.entries(KNIGHT_RIG.pose
 
 // ------------------------------------------------------------------------------------------------ skeleton
 const R = KNIGHT_RIG, MOTES = R.motes;
+const KJ = KNIGHT_BODY.joints, rel = (a, b) => b ? [KJ[a][0] - KJ[b][0], KJ[a][1] - KJ[b][1], KJ[a][2] - KJ[b][2]] : KJ[a].slice();
 export const KNIGHT_SKELETON = defineSkeleton([
   { name: 'root', parent: null, at: [0, 0, 0] },
-  { name: 'pelvis', parent: 'root', at: [0, 0, R.hip] },
-  { name: 'thighL', parent: 'pelvis', at: [0, -R.hipWidth, -.01] }, { name: 'shinL', parent: 'thighL', at: [0, 0, -R.thigh] }, { name: 'footL', parent: 'shinL', at: [0, 0, -R.shin] },
-  { name: 'thighR', parent: 'pelvis', at: [0, R.hipWidth, -.01] }, { name: 'shinR', parent: 'thighR', at: [0, 0, -R.thigh] }, { name: 'footR', parent: 'shinR', at: [0, 0, -R.shin] },
-  { name: 'spine', parent: 'pelvis', at: [0, 0, .1] }, { name: 'chest', parent: 'spine', at: [0, 0, .16] }, // the slim waist, then the chest
-  { name: 'neck', parent: 'chest', at: [0, 0, .1] }, { name: 'head', parent: 'neck', at: [.01, 0, .06] },
-  { name: 'armL', parent: 'chest', at: [0, -R.shoulder, .08] }, { name: 'foreL', parent: 'armL', at: [0, 0, -R.upperArm] }, { name: 'handL', parent: 'foreL', at: [0, 0, -R.foreArm] },
+  { name: 'pelvis', parent: 'root', at: rel('pelvis') },
+  { name: 'thighL', parent: 'pelvis', at: rel('thighL', 'pelvis') }, { name: 'shinL', parent: 'thighL', at: rel('shinL', 'thighL') }, { name: 'footL', parent: 'shinL', at: rel('footL', 'shinL') },
+  { name: 'thighR', parent: 'pelvis', at: rel('thighR', 'pelvis') }, { name: 'shinR', parent: 'thighR', at: rel('shinR', 'thighR') }, { name: 'footR', parent: 'shinR', at: rel('footR', 'shinR') },
+  { name: 'spine', parent: 'pelvis', at: rel('spine', 'pelvis') }, { name: 'chest', parent: 'spine', at: rel('chest', 'spine') },
+  { name: 'neck', parent: 'chest', at: rel('neck', 'chest') }, { name: 'head', parent: 'neck', at: rel('head', 'neck') },
+  { name: 'armL', parent: 'chest', at: rel('armL', 'chest') }, { name: 'foreL', parent: 'armL', at: rel('foreL', 'armL') }, { name: 'handL', parent: 'foreL', at: rel('handL', 'foreL') },
   { name: 'cannon', parent: 'foreL', at: [0, 0, 0] }, // the forearm opened into a cannon (scaled up from nothing)
-  { name: 'armR', parent: 'chest', at: [0, R.shoulder, .08] }, { name: 'foreR', parent: 'armR', at: [0, 0, -R.upperArm] }, { name: 'handR', parent: 'foreR', at: [0, 0, -R.foreArm] },
+  { name: 'armR', parent: 'chest', at: rel('armR', 'chest') }, { name: 'foreR', parent: 'armR', at: rel('foreR', 'armR') }, { name: 'handR', parent: 'foreR', at: rel('handR', 'foreR') },
   { name: 'sword', parent: 'handR', at: [0, 0, 0] },
   // the cape: the swarm streaming back off the shoulders, four links
   { name: 'cape0', parent: 'chest', at: [-.09, 0, .07] }, { name: 'cape1', parent: 'cape0', at: [-.09, 0, -.2] }, { name: 'cape2', parent: 'cape1', at: [-.09, 0, -.2] }, { name: 'cape3', parent: 'cape2', at: [-.08, 0, -.19] },
@@ -63,60 +71,56 @@ const E_SEAM = 1, E_MUZZLE = 2, E_SPARK = 3;
 const MIST_STRIKE = .22; // monster-pack.ts knightMist: toPhase(s, "strike", .22) after the travel
 
 // ------------------------------------------------------------------------------------------------ the body
-const C = Object.freeze({ plate: 0x22222a, lit: 0x30303a, bright: 0x34343e, dark: 0x1c1c22, deep: 0x16161a, black: 0x101014, knee: 0x3a3a44, greave: 0x24242c, blade: 0x0a0a0e,
-  helm: 0x26262e, spike: 0x16161c, red: 0xff2a2a, mote: 0x14121a, mote2: 0x201a28, guard: 0x30303a });
+const C = Object.freeze({ plate: 0x2a2a33, lit: 0x40404c, bright: 0x464654, dark: 0x22222a, deep: 0x1c1c22, black: 0x101014, knee: 0x3a3a44, greave: 0x24242c, blade: 0x0a0a0e,
+  helm: 0x2c2c36, spike: 0x16161c, red: 0xff2a2a, mote: 0x14121a, mote2: 0x201a28, guard: 0x30303a });
 function buildKnightMesh(tier) {
   const d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(KNIGHT_SKELETON, d), bw = KNIGHT_SKELETON.bindWorld;
   const at = (bone, p) => { const i = BI[bone] * 3; return [p[0] - bw[i], p[1] - bw[i + 1], p[2] - bw[i + 2]]; };
   const box = (bone, tone, p, size, o = {}) => B.bone(bone).color(tone, o.emit || 0).box({ at: at(bone, p), size, bevel: o.bevel ?? .2, taper: o.taper || 0, F: o.F, U: o.U });
   const h = (a, b = 0) => ((((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000) / 1000;
-  // (Tim, 2026-11-11: "more slim, less chunky ... built more like Artorias"): a lean, tall, athletic knight: long legs, a
-  // narrow waist under a chest that widens to the shoulders, slim limbs, a tall narrow helm. Heights follow the rig.
-  const hip = R.hip, knee = R.hip - R.thigh - .01, waist = hip + .1, chestZ = waist + .16, sh = chestZ + .08, headZ = chestZ + .16;
-  // ---- legs: slim cuisses, small knee cops, long greaves, pointed sabatons
+  // (Tim, 2026-11-11: "not so boxy ... he needs to look like a human ... use one of the models from the RPG creator"; "slightly
+  // longer and slender ... and taller"): the converted human body, its limbs and torso in dark plate (the source texture's
+  // light and shade kept as the plate's highlights), hands and feet darker; the armour below is fitted over it
+  const J0 = KNIGHT_BODY.joints, hip = J0.pelvis[2], knee = J0.shinR[2], waist = J0.spine[2], chestZ = J0.chest[2], sh = J0.armR[2], headZ = J0.head[2];
+  { const dec = (b64, T) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+    const P = dec(KNIGHT_BODY.positions, Float32Array), N = dec(KNIGHT_BODY.normals, Int8Array), Bn = dec(KNIGHT_BODY.bone, Uint8Array), Wt = dec(KNIGHT_BODY.weight, Uint8Array), L = dec(KNIGHT_BODY.shade, Uint8Array), IX = dec(full ? KNIGHT_BODY.indices : low ? KNIGHT_BODY.indicesLow : KNIGHT_BODY.indicesBalanced, Uint16Array);
+    const names = KNIGHT_BODY.bones, lerp = (a, b, t) => { const c = (sh2) => Math.round(((a >> sh2) & 255) + ((((b >> sh2) & 255) - ((a >> sh2) & 255)) * t)); return (c(16) << 16) | (c(8) << 8) | c(0); };
+    const base = (bn) => /hand|foot/.test(bn) ? [C.black, C.plate] : /arm|fore|thigh|shin/.test(bn) ? [C.deep, C.bright] : [C.deep, C.lit];
+    const ids = new Array(KNIGHT_BODY.vertexCount);
+    for (let v = 0; v < KNIGHT_BODY.vertexCount; v++) { const a = names[Bn[v * 2]], b = names[Bn[v * 2 + 1]], [lo, hi] = base(a);
+      ids[v] = B.vertexBlend(P[v * 3], P[v * 3 + 1], P[v * 3 + 2], N[v * 3] / 127, N[v * 3 + 1] / 127, N[v * 3 + 2] / 127, a, b, Wt[v] / 255, lerp(lo, hi, Math.pow(L[v] / 255, 1.2))); }
+    for (let i = 0; i < IX.length; i += 3) B.tri(ids[IX[i]], ids[IX[i + 1]], ids[IX[i + 2]]); }
+  // ---- armour over it: knee cops, pointed sabatons; the faulds, tassets and tabard; the seams of light; the gorget
   for (const [s, tag] of [[-1, 'L'], [1, 'R']]) {
-    const y = s * R.hipWidth;
-    box('thigh' + tag, s > 0 ? C.greave : C.plate, [0, y, (hip + knee) / 2], [.04, .042, R.thigh * .48], { taper: .2 });
-    if (!low) box('thigh' + tag, C.dark, [.008, y + s * .034, (hip + knee) / 2 + .02], [.03, .008, R.thigh * .32], { bevel: 0 }); // the outer plate of the cuisse
-    box('shin' + tag, C.knee, [.026, y, knee], [.034, .044, .024], { taper: .3 }); // the knee cop
-    box('shin' + tag, s > 0 ? C.greave : C.deep, [0, y, (knee + R.ankle) / 2 + .01], [.036, .036, R.shin * .46], { taper: -.2 }); // the greave, swelling to the calf
-    if (!low) box('shin' + tag, C.dark, [.032, y, (knee + R.ankle) / 2 + .02], [.007, .025, R.shin * .38], { bevel: 0 }); // its ridge
-    box('foot' + tag, C.black, [.045, y, .02], [.075, .036, .02], { taper: .4, skew: .025 }); // the pointed sabaton
+    const y = J0['thigh' + tag][1];
+    box('shin' + tag, C.knee, [J0['shin' + tag][0] + .045, y, knee], [.03, .04, .026], { taper: .3 }); // the knee cop
+    box('foot' + tag, C.black, [J0['foot' + tag][0] + .06, y, .022], [.07, .034, .02], { taper: .4, skew: .025 }); // the pointed sabaton
   }
-  // ---- the waist: short faulds over narrow hips, a red seam of light across them
-  box('pelvis', C.dark, [0, 0, hip - .02], [.07, .1, .05], { taper: -.15 });
-  if (!low) for (const s of [-1, 1]) box('pelvis', C.deep, [.01, s * .075, hip - .06], [.05, .045, .04], { taper: -.2, F: [1, 0, 0], U: [0, s * .25, 1] }); // tassets
-  box('pelvis', C.red, [.072, 0, hip + .015], [.003, .085, .003], { bevel: 0, emit: E_SEAM });
-  // ---- the torso: a slim banded waist, the breastplate widening to the shoulders (a V), a keel and the seam of light
-  box('spine', C.deep, [0, 0, waist + .03], [.05, .075, .055], { taper: -.1 });
-  if (!low) box('spine', C.dark, [.048, 0, waist + .03], [.006, .065, .005], { bevel: 0 });
-  box('chest', C.plate, [0, 0, chestZ - .02], [.08, .125, .1], { taper: -.4 });
-  box('chest', C.lit, [.06, 0, chestZ], [.024, .06, .085], { taper: -.3 }); // the lit keel of the breastplate
-  box('chest', C.red, [.087, 0, chestZ - .04], [.003, .003, .075], { bevel: 0, emit: E_SEAM }); // the seam, down the front
-  if (!low) box('chest', C.dark, [-.055, 0, chestZ], [.025, .11, .08], { taper: -.3 }); // the backplate
-  box('neck', C.deep, [0, 0, sh + .025], [.038, .045, .03], { taper: .2 }); // the gorget
-  // ---- pauldrons: lean, swept, layered, angled down over the arms
+  if (!low) for (const s of [-1, 1]) box('pelvis', C.deep, [.0, s * .085, hip - .02], [.05, .04, .045], { taper: -.2, F: [1, 0, 0], U: [0, s * .25, 1] }); // tassets
+  for (const sx of [1, -1]) { B.bone('pelvis').color(C.deep).box({ at: at('pelvis', [sx * .085, 0, hip - .07]), size: [.006, .05, .09], bevel: 0, taper: .3, F: [sx, 0, -.12 * sx], U: [sx * .15, 0, 1] });
+    if (!low) B.color(C.red, E_SEAM).box({ at: at('pelvis', [sx * .1, 0, hip - .155]), size: [.004, .036, .003], bevel: 0, F: [sx, 0, 0] }); }
+  box('spine', C.red, [.095, 0, waist], [.003, .08, .003], { bevel: 0, emit: E_SEAM }); // the seam across the waist
+  box('chest', C.red, [.12, 0, chestZ], [.003, .003, .07], { bevel: 0, emit: E_SEAM }); // the seam, down the front
+  box('neck', C.deep, [J0.neck[0], 0, J0.neck[2] + .01], [.045, .05, .03], { taper: .2 }); // the gorget
+  // ---- pauldrons: lean, swept, layered, angled down over the shoulders
   for (const [s, tag] of [[-1, 'L'], [1, 'R']]) {
-    const y = s * R.shoulder;
-    B.bone('arm' + tag).color(s > 0 ? C.bright : C.dark).box({ at: at('arm' + tag, [-.005, y + s * .02, sh + .015]), size: [.06, .05, .035], bevel: .25, taper: .3, F: [1, 0, 0], U: [0, s * .55, 1] });
-    if (!low) B.color(C.deep).box({ at: at('arm' + tag, [-.005, y + s * .04, sh - .03]), size: [.05, .035, .022], bevel: .2, F: [1, 0, 0], U: [0, s * .85, 1] });
-    // the arm: rerebrace, couter, vambrace, gauntlet (straight down from the shoulder in the bind)
-    box('arm' + tag, C.plate, [0, y, sh - R.upperArm * .48], [.026, .026, R.upperArm * .42]);
-    box('fore' + tag, C.knee, [-.008, y, sh - R.upperArm], [.023, .03, .02], { taper: .2 }); // the couter at the elbow
-    box('fore' + tag, s > 0 ? C.lit : C.plate, [0, y, sh - R.upperArm - R.foreArm * .48], [.026, .026, R.foreArm * .4], { taper: -.2 }); // the vambrace
-    box('hand' + tag, C.deep, [0, y, sh - R.upperArm - R.foreArm - .015], [.024, .022, .028]); // the gauntlet
+    const y = J0['arm' + tag][1], ax = J0['arm' + tag][0];
+    B.bone('arm' + tag).color(s > 0 ? C.bright : C.dark).box({ at: at('arm' + tag, [ax, y + s * .015, sh + .03]), size: [.065, .055, .035], bevel: .25, taper: .3, F: [1, 0, 0], U: [0, s * .55, 1] });
+    if (!low) B.color(C.deep).box({ at: at('arm' + tag, [ax, y + s * .04, sh - .02]), size: [.055, .035, .024], bevel: .2, F: [1, 0, 0], U: [0, s * .85, 1] });
+    if (!low) box('fore' + tag, C.knee, [ax - .03, y, J0['fore' + tag][2]], [.022, .032, .022], { taper: .2 }); // the couter at the elbow
   }
   // the cannon in the left forearm: a barrel that slides out and opens, a red muzzle
-  { const y = -R.shoulder, el = sh - R.upperArm;
+  { const y = J0.foreL[1], el = J0.foreL[2];
     B.bone('cannon').color(C.plate).lathe({ at: at('cannon', [0, y, el]), F: [0, 0, -1], U: [1, 0, 0], rings: [[0, .036], [.12, .04], [.21, .048], [.25, .056]], seg: low ? 5 : 8, smooth: false, caps: true });
     if (!low) for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; B.color(C.bright).box({ at: at('cannon', [Math.cos(a) * .05, y + Math.sin(a) * .05, el - .19]), size: [.01, .01, .05], bevel: 0, F: [Math.cos(a), Math.sin(a), 0], U: [0, 0, 1] }); } // the opened plates
     B.color(C.red, E_MUZZLE).lathe({ at: at('cannon', [0, y, el - .255]), F: [0, 0, -1], U: [1, 0, 0], rings: [[0, .042], [.01, .038], [.012, 0]], seg: low ? 5 : 8, caps: false }); }
-  // ---- the helm: tall and narrow, the face plates closing to a ridge, a red visor slit, a long spike swept back
-  box('head', C.helm, [0, 0, headZ + .075], [.058, .055, .1], { taper: .15, bevel: .25 });
-  box('head', C.lit, [.046, 0, headZ + .06], [.025, .045, .085], { taper: .35 }); // the face plate, lit
-  box('head', C.red, [.07, 0, headZ + .1], [.003, .04, .005], { bevel: 0, emit: E_SEAM }); // the visor slit
-  if (!low) box('head', C.deep, [.03, 0, headZ + .18], [.05, .014, .012], { bevel: 0, F: [1, 0, -.25] }); // the crest ridge
-  B.bone('head').color(C.spike).lathe({ at: at('head', [-.015, 0, headZ + .17]), F: [-.4, 0, 1], U: [1, 0, 0], rings: [[0, .018], [.08, .01], [.16, 0]], seg: low ? 4 : 5, smooth: false });
+  // ---- the helm: sculpted, rounded and tall, narrowing to a ridge, lit down the face; a red visor slit; a spike swept back
+  { const hx = J0.head[0] + .008, H = [[-.015, .048, .052], [.03, .058, .064], [.09, .06, .068], [.14, .055, .063], [.18, .042, .05], [.205, .022, .03], [.215, 0, 0]];
+    B.bone('head').color(C.helm).loft({ seg: low ? 7 : 12, up: [1, 0, 0], sections: H.map(([z, ry, rx]) => ({ at: [hx, 0, headZ + z], rx: ry, rz: rx, bones: ['head', 'head', 0] })),
+      tone: (i, k, st) => st > .6 ? C.lit : st < -.5 ? C.deep : C.helm, caps: true });
+    box('head', C.red, [hx + .067, 0, headZ + .1], [.003, .036, .005], { bevel: 0, emit: E_SEAM }); // the visor slit
+    if (!low) box('head', C.dark, [hx + .052, 0, headZ + .055], [.012, .004, .045], { bevel: 0 }); // the ridge down the face
+    B.bone('head').color(C.spike).lathe({ at: at('head', [hx - .02, 0, headZ + .19]), F: [-.45, 0, 1], U: [1, 0, 0], rings: [[0, .016], [.08, .009], [.15, 0]], seg: low ? 4 : 5, smooth: false }); }
   // ---- the greatsword (bound to the sword bone, along its +f): grip and pommel, a broad crossguard, the long black blade and
   // its red edge
   { const sw = bw[BI.sword * 3], sy = bw[BI.sword * 3 + 1], sz = bw[BI.sword * 3 + 2], P = (f, r, u) => [sw + f, sy + r, sz + u];
@@ -128,7 +132,7 @@ function buildKnightMesh(tier) {
     B.bone('sword').color(C.blade).poly([at('sword', P(.035 + R.blade * .88, 0, -.024)), at('sword', P(.035 + R.blade, 0, 0)), at('sword', P(.035 + R.blade * .88, 0, .024))]);
     box('sword', C.red, P(.035 + R.blade * .44, 0, .028), [R.blade * .43, .009, .003], { bevel: 0, emit: E_SEAM }); } // the red edge
   // ---- the cape of motes: small dark facets streaming back off the shoulders, thinning toward the tail; a few red
-  const capeN = low ? 18 : full ? 72 : 36, cb = ['cape0', 'cape1', 'cape2', 'cape3'];
+  const capeN = low ? 6 : full ? 72 : 36, cb = ['cape0', 'cape1', 'cape2', 'cape3'];
   for (let i = 0; i < capeN; i++) {
     const f = (i + .5) / capeN, seg = Math.min(2, Math.floor(f * 3)), w = f * 3 - seg, a = cb[seg], b2 = cb[seg + 1];
     const pa = [bw[BI[a] * 3], bw[BI[a] * 3 + 1], bw[BI[a] * 3 + 2]], pb = [bw[BI[b2] * 3], bw[BI[b2] * 3 + 1], bw[BI[b2] * 3 + 2]];
@@ -137,7 +141,7 @@ function buildKnightMesh(tier) {
     B.bone(w > .5 ? b2 : a).color(red ? C.red : i % 3 ? C.mote : C.mote2, red ? E_SPARK : 0).box({ at: at(w > .5 ? b2 : a, p), size: [sz, sz, sz], bevel: 0, F: [h(i, 4) - .5, h(i, 5) - .5, 1], U: [1, 0, 0] });
   }
   // the flowing motes: each mote bone carries a little cluster (placed along the cape, or swirling in mist, every frame)
-  for (let m = 0; m < MOTES; m++) for (let k = 0; k < (low ? 2 : 4); k++) { const red = k === 3 && m % 2 === 0, sz = .016 + .008 * h(m, k);
+  for (let m = 0; m < MOTES; m++) for (let k = 0; k < (low ? 1 : 4); k++) { const red = k === 3 && m % 2 === 0, sz = .016 + .008 * h(m, k);
     B.bone('mote' + m).color(red ? C.red : k % 2 ? C.mote : C.mote2, red ? E_SPARK : 0).box({ at: [(h(m, k + 7) - .5) * .06, (h(m, k + 9) - .5) * .06, (h(m, k + 11) - .5) * .06], size: [sz, sz, sz], bevel: 0, F: [h(m, k) - .5, .3, 1], U: [1, 0, 0] }); }
   return B.done();
 }
