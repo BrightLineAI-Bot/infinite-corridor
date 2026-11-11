@@ -457,8 +457,10 @@ export function closeViewThemeId(b) {
 }
 export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "lived") < CLOSE_VIEW.themes.livedInShare; // for the lab: which keeps are lived in
 const THEME_OF = new WeakMap();
-export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
-const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
+const SEED_REALM_THEMES = Object.freeze({ ship: "arcology", husk: "rootCellar" }); // seed realms (seed-realms.ts): the ship's machine panels, the husk's mine timbers
+const mapThemeId = (map) => SEED_REALM_THEMES[map?.seedRealm?.realm] || closeViewThemeId(map?.building);
+export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
+const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
 const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorMap(g.map);
 const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
 export function overworldCloseViewApplies(g) {
