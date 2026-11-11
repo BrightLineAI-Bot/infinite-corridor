@@ -2530,7 +2530,7 @@ test("tiered inventory affixes are visible mechanical sortable and auto-salvage 
   assert.ok(epic);assert.ok(["rare","epic","relic"].includes(itemTier(epic)));assert.ok(affixValue(epic,"reach")>0);assert.ok(itemScore(epic)>epic.power*10);
   const s=freshSave();s.inventory=Array.from({length:EQUIPMENT_CAPACITY},(_,i)=>({...generateItem("full:"+i,1),power:1,tier:"common",affixes:[]}));
   const strong={...generateItem("strong",15),power:20,tier:"relic",affixes:[{id:"attack",value:7}]},iron=s.materials.cinderIron;
-  const stored=storeInventoryItem(s,strong);assert.equal(stored.stored,true);assert.equal(s.inventory.length,EQUIPMENT_CAPACITY);assert.ok(s.inventory.some(q=>q.id===strong.id));assert.equal(s.materials.cinderIron,iron);/* release 663: a full pack's salvage pays no iron */
+  const stored=storeInventoryItem(s,strong);assert.equal(stored.stored,true);assert.equal(s.inventory.length,EQUIPMENT_CAPACITY);assert.ok(s.inventory.some(q=>q.id===strong.id));assert.equal(stored.iron,1);assert.equal(s.materials.cinderIron,iron+1);/* tool rounds (2026-11-11): a full pack's salvage pays the tier's iron again (a common piece: 1); release 663 paid none */
   const n=s.inventory.length,manual=salvageInventoryItem(s,0);assert.ok(manual.iron>=1);assert.equal(s.inventory.length,n-1);
   const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/inventoryView[\s\S]*slotFilter[\s\S]*tierFilter[\s\S]*sortFilter/);assert.match(main,/describeAffixes/);
 });
