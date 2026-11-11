@@ -31,7 +31,7 @@ import { drawPackPortrait } from "./monster-render.ts";
 import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading } from "./lore.ts";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
@@ -223,7 +223,7 @@ import {
 import { warmWayfindingSignals } from "./world.ts";
 import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.ts"; // release 431
 import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.ts"; // release 595
-import { THREADS, THREAD_ORDER, threadsStarted, threadFound } from "./threads.ts"; // release 627
+import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress } from "./threads.ts"; // release 627; arcana regions (2026-11-11)
 import { ILSE_MEETINGS, ilseMet } from "./ilse.ts"; // the Journal's Arcana tab
 import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.ts"; // release 605
 import { PROVING_GROUND_HANDOFF, provingGroundOptionRows, handoffRecord, writeHandoff } from "./proving-ground-handoff.ts"; // release 791
@@ -1329,10 +1329,15 @@ function playGlimpse(id,{replay=false,after=null}={}){
 // beats... I would like to see... where they're going"): every story told across crossings, how far you have followed it, what
 // you have read of it, and where to look for the rest. Pieces not yet found are never shown, only counted.
 const ARCANA_BANDS = { near: "crossings near the Refuge", middle: "crossings of the middle distance", far: "far crossings", deep: "the deep reaches", beyond: "the far realms, a thousand sections out and more" };
-function arcanaCard(out, title, count, total, where, read, ending, open = false) {
+// Arcana regions (2026-11-11; threads.ts arcanaProgress, lore.ts ARCANA_REGIONS): `hint` is the set's row there. With a home
+// (regions live) the card says where the rest most likely lie, and whether you stand in that region now; the Torn Pages name
+// the Readings still missing; otherwise the band words as before. The count names its unit ("5 of 7 bells rung").
+function arcanaCard(out, title, count, total, where, read, ending, open = false, hint = null) {
   const card = document.createElement("article"), h = document.createElement("h4"), meta = document.createElement("p"), dots = document.createElement("p");
   card.className = "item arcana-card"; h.textContent = title; meta.className = "options-note";
-  meta.textContent = count >= total ? `Complete · ${total} of ${total}` : count ? `${count} of ${total} found · the rest lie in ${where}` : `Not begun · look in ${where}`;
+  const unit = hint?.unit || "found", home = hint?.home && hint.where, here = home && inArcanaHome(hint.id, game.rx, game.ry) ? " · you are in that region now" : "", pages = hint?.id === "pages" && hint.where;
+  if (home || pages) where = hint.where;
+  meta.textContent = count >= total ? `Complete · ${total} of ${total} ${hint?.unit || ""}`.trim() : count ? `${count} of ${total} ${unit} · ${home ? `the rest most likely lie ${where}` : pages ? `still to find: ${where}` : `the rest lie in ${where}`}${here}` : `Not begun · ${home ? `most likely ${where}` : pages ? `one in each Reading: ${where}` : `look in ${where}`}${here}`;
   dots.textContent = Array.from({ length: total }, (_, i) => i < count ? "●" : "○").join(" "); dots.setAttribute("aria-label", `${count} of ${total}`);
   card.append(h, meta, dots);
   if (read.length || ending) { const d = document.createElement("details"), sum = document.createElement("summary"); sum.textContent = count >= total ? "Read it again" : "What you have read"; d.open = open; d.append(sum);
@@ -1345,12 +1350,13 @@ function renderArcana(out){
   const h=document.createElement("h3"),intro=document.createElement("p");h.textContent="Arcana";intro.className="options-note";
   intro.textContent="The stories the Corridor tells across many crossings: how far you have followed each, what you have read, and where the rest lie. What you have not found yet stays hidden.";out.append(h,intro);
   const section=(title)=>{const t=document.createElement("h3");t.textContent=title;out.append(t);};
+  const hints=Object.fromEntries(arcanaProgress(save).map((r)=>[r.id,r]));
   section("Threads");
-  for(const id of THREAD_ORDER){const T=THREADS[id],found=threadFound(save,id).length;arcanaCard(out,T.title,Math.min(found,T.pieces.length),T.pieces.length,ARCANA_BANDS[T.band]||"the crossings",T.pieces.slice(0,found).map((p,i)=>[`${i+1}`,p]),found>=T.pieces.length?T.ending:null);}
+  for(const id of THREAD_ORDER){const T=THREADS[id],found=threadFound(save,id).length;arcanaCard(out,T.title,Math.min(found,T.pieces.length),T.pieces.length,ARCANA_BANDS[T.band]||"the crossings",T.pieces.slice(0,found).map((p,i)=>[`${i+1}`,p]),found>=T.pieces.length?T.ending:null,false,hints[id]);}
   section("Across the Corridor");
-  const rung=bellsRung(save).split("").filter(Boolean);arcanaCard(out,"The Seven Bells",rung.length,BELLS.count,"crossings near the Refuge",rung.map((k)=>[`The bell for ${BELL_GLIMPSES[k]?.who||"someone"}`,(BELL_GLIMPSES[k]?.lines||[]).join(" ")]),rung.length>=BELLS.count?BELL_FINAL:null);
-  const links=Array.isArray(save.lore?.surveyor?.links)?save.lore.surveyor.links:[];arcanaCard(out,"The Surveyor's Chain",links.length,SURVEYOR.links,"crossings far from the Refuge",links.slice().sort((a,b)=>a-b).map((i)=>[`Link ${i+1}`,SURVEYOR_NOTES[i]||""]),surveyorComplete(save)?"With every link, the last map turned out to be the world itself. Abel Corwin's statue stands where the Far Sleep begins.":null);
-  const pages=pagesFound(save);arcanaCard(out,TORN_PAGES.title,pages.length,READING_ORDER.length,"the deepest crossings of each Reading",pages.map((r)=>[READINGS[r]?.name||r,PAGE_TEXT[r]||""]),pages.length>=READING_ORDER.length?PAGES_FINAL:null);
+  const rung=bellsRung(save).split("").filter(Boolean);arcanaCard(out,"The Seven Bells",rung.length,BELLS.count,hints.bells.where,rung.map((k)=>[`The bell for ${BELL_GLIMPSES[k]?.who||"someone"}`,(BELL_GLIMPSES[k]?.lines||[]).join(" ")]),rung.length>=BELLS.count?BELL_FINAL:null,false,hints.bells);
+  const links=Array.isArray(save.lore?.surveyor?.links)?save.lore.surveyor.links:[];arcanaCard(out,"The Surveyor's Chain",links.length,SURVEYOR.links,hints.surveyor.where,links.slice().sort((a,b)=>a-b).map((i)=>[`Link ${i+1}`,SURVEYOR_NOTES[i]||""]),surveyorComplete(save)?"With every link, the last map turned out to be the world itself. Abel Corwin's statue stands where the Far Sleep begins.":null,false,hints.surveyor);
+  const pages=pagesFound(save);arcanaCard(out,TORN_PAGES.title,pages.length,READING_ORDER.length,hints.pages.where,pages.map((r)=>[READINGS[r]?.name||r,PAGE_TEXT[r]||""]),pages.length>=READING_ORDER.length?PAGES_FINAL:null,false,hints.pages);
   const met=ilseMet(save).split("").filter(Boolean),meetings=Object.keys(ILSE_MEETINGS);arcanaCard(out,"Ilse",met.length,meetings.length,"lit roads, now and then",met.map((k)=>[ILSE_MEETINGS[k]?.name||"Ilse",(ILSE_MEETINGS[k]?.lines||[]).join(" ")]),null);
   const glimpses=GLIMPSE_ORDER.filter((id)=>glimpseAllowed(id,settings.familySafe)),seen=witnessedGlimpses(save).filter((id)=>glimpses.includes(id));
   const g=document.createElement("article"),gh=document.createElement("h4"),gp=document.createElement("p");g.className="item arcana-card";gh.textContent="Glimpses";gp.className="options-note";gp.textContent=`${seen.length} of ${glimpses.length} seen · through other eyes, anywhere in the Corridor. The Reciter's Tome replays them.`;g.append(gh,gp);out.append(g);
