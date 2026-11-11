@@ -23,9 +23,9 @@ export const WORM_SKELETON = defineSkeleton([
   { name: 'root', parent: null, at: [0, 0, 0] },
   ...Array.from({ length: SEGS }, (_, i) => ({ name: 'seg' + i, parent: i ? 'seg' + (i - 1) : 'root', at: [0, 0, i ? WORM_RIG.seg : -.3] })),
   { name: 'head', parent: 'seg' + (SEGS - 1), at: [0, 0, WORM_RIG.seg] },
-  { name: 'throat', parent: 'head', at: [0, 0, .22] },
+  { name: 'throat', parent: 'head', at: [0, 0, .32] },
   ...Array.from({ length: TENTS }, (_, i) => { const a = (i / TENTS) * Math.PI * 2, r = .3;
-    return [{ name: 'tent' + i, parent: 'head', at: [Math.cos(a) * r, Math.sin(a) * r, .26] }, { name: 'tentB' + i, parent: 'tent' + i, at: [0, 0, .2] }]; }).flat(),
+    return [{ name: 'tent' + i, parent: 'head', at: [Math.cos(a) * r, Math.sin(a) * r, .36] }, { name: 'tentB' + i, parent: 'tent' + i, at: [0, 0, .2] }]; }).flat(),
 ]);
 const BI = WORM_SKELETON.index;
 const E_THROAT = 1, E_FIRE = 2;
@@ -56,10 +56,10 @@ function buildWormMesh(tier) {
   // the head: a round cap wider than the column, the lip folding in to the maw
   const HR = R.headRadius;
   B.bone('head').color(C.sand).lathe({ at: [0, 0, 0], F: [0, 0, 1], U: [1, 0, 0], seg: low ? 9 : full ? 18 : 13,
-    rings: [[-.01, R.radius * 1.08], [.06, HR * .97], [.13, HR], [.2, HR * .94], [.25, HR * .8], [.27, HR * .64]], caps: false,
+    rings: [[-.01, R.radius * 1.08], [.08, HR * .98], [.18, HR], [.27, HR * .94], [.34, HR * .8], [.37, HR * .64]], caps: false,
     tone: (i) => i >= 4 ? C.pale : i % 2 ? C.sandLit : C.sand });
   // lip folds, the throat and the fire deep in it
-  B.bone('head').color(C.tan).lathe({ at: [0, 0, .262], F: [0, 0, 1], U: [1, 0, 0], seg: low ? 9 : full ? 18 : 13, rings: [[0, HR * .66], [.012, HR * .6], [.006, HR * .52]], caps: false });
+  B.bone('head').color(C.tan).lathe({ at: [0, 0, .362], F: [0, 0, 1], U: [1, 0, 0], seg: low ? 9 : full ? 18 : 13, rings: [[0, HR * .66], [.012, HR * .6], [.006, HR * .52]], caps: false });
   B.bone('throat').color(C.throat).ellipsoid({ at: [0, 0, .0], radius: [HR * .64, HR * .64, .07], rings: low ? 3 : 5, seg: low ? 9 : 14 });
   B.bone('throat').color(lerpHex(C.throat, C.fire, .45), E_THROAT).ellipsoid({ at: [0, 0, .058], radius: [HR * .4, HR * .4, .016], rings: 3, seg: low ? 10 : 18 });
   B.bone('throat').color(C.fire, E_THROAT).ellipsoid({ at: [0, 0, .066], radius: [HR * .24, HR * .24, .014], rings: 3, seg: low ? 10 : 16 });
@@ -161,8 +161,8 @@ export function sampleWorm(tr, e, env) {
   for (let i = 1; i < SEGS; i++) { const f = i / (SEGS - 1), wgt = (2 * f) / SEGS;
     setEuler(P, BI['seg' + i], .02 * sway, W6[1] * wgt + .15 * hit * f, -W6[2] * wgt + sway * .3 * Math.sin(f * Math.PI) + .2 * hit * tr.hitSide * f); P.scl[BI['seg' + i]] = 1 + suckShiver; resolveBone(P, BI['seg' + i]); }
   // the head: tilted toward the Wayfarer so the maw faces it; the throat opens wider as the maw opens
-  setEuler(P, BI.head, 0, .7 + .25 * W6[1] - .2 * ACT.suck, 0); resolveBone(P, BI.head);
-  const open = W6[4]; setOffset(P, BI.throat, 0, 0, .22 + .02 * (open - .7)); P.scl[BI.throat] = Math.max(.001, .6 + .45 * open); resolveBone(P, BI.throat);
+  setEuler(P, BI.head, 0, .6 + .25 * W6[1] - .2 * ACT.suck, 0); resolveBone(P, BI.head);
+  const open = W6[4]; setOffset(P, BI.throat, 0, 0, .02 * (open - .7)); P.scl[BI.throat] = Math.max(.001, .6 + .45 * open); resolveBone(P, BI.throat);
   // the lip tentacles: writhing; thrown forward along the maw's lanes when it lashes; drawn in as it drinks the air
   const hi = BI.head * 9, hu = [P.wr[hi + 6], P.wr[hi + 7], P.wr[hi + 8]], hl = Math.hypot(hu[0], hu[1], hu[2]) || 1;
   for (let i = 0; i < TENTS; i++) {
