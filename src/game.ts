@@ -69,7 +69,7 @@ import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
-import { ensureSkylands } from "./skylands.ts";
+import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
@@ -113,7 +113,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
-import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend } from "./landscape.ts";
+import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
 import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -2923,6 +2923,7 @@ export class Game {
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
     if(area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="warpDais"&&this.save.worldFlags[`warp-dais:${this.areaId()}:${o.id}`])o.state="attuned"; // release 301
     if(area==="dungeon"&&this.map.arenaKind==="dive"&&this.map.lair&&!this.map.objects.some(o=>o.kind==="diveOnward")){const w=mapWidth(this.map,area),L=this.map.lair,spot=[[-3,0],[3,0],[-3,2],[3,2],[0,3],[-2,-2],[2,-2]].map(([dx,dy])=>({x:L.x+dx,y:L.y+dy})).find(q=>{const t=this.map.tiles[q.y*w+q.x];return t&&!t.blocked&&!this.map.objects.some(o=>o.x===q.x&&o.y===q.y)});if(spot)this.map.objects.push({id:`${this.areaId()}:onward`,kind:"diveOnward",name:"Deep current",x:spot.x,y:spot.y,state:"open",actions:["follow"]})} // release 311: a grotto's lair holds a current to the next buoy
+    if (area === "dungeon" && this.map.arenaKind === "dive") this.placeTideBearer(); // travel seeds: the Tide Bearer waits at the far end of every dive
     if(area==="overworld"){plantRefugeLands(this.map,this.rx,this.ry,this.refugeLandsWhere());for(const o of this.map.objects)if(o.talkKey)o.line=talkLine(o,this.refugeLandsWhere(),Number(this.save.worldFlags[o.talkKey])||0)} // release 265: the farm, the quarry and the farmer
     if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
     if(area==="dungeon"&&isArrayRun(loadingId)&&ensureFarArray(this.save).activeRun?.id===loadingId){const run=this.save.farArray.activeRun,spawns=this.map.enemySpawns,multi=!!this.map.multiLevel,g=spawns.find(e=>e.dungeonRole==="finalBoss")||spawns.find(e=>e.dungeonRole==="gateWarden")||(multi?null:spawns.find(e=>e.boss)||spawns[spawns.length-1]);if(g){const boss=runBossSpawn(this.save,{x:g.x,y:g.y});if(boss){spawns.splice(spawns.indexOf(g),1);if(!spawns.some(e=>e.id===boss.id))spawns.push({...boss,objectiveId:g.objectiveId||null})}}if(!this.map.objects.some(o=>o.kind==="arrayPylon"))this.map.objects.push(...arrayPylons(this.map,`${loadingId}:${this.map.levelId||""}`,mapWidth(this.map,area)));this.map.name=runName(run,run.gate)}
@@ -3045,6 +3046,7 @@ export class Game {
         ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
         ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
+        ...(prior ? {} : { seedFindVersion: SEED_FINDS.version }), // travel seeds: a seed may lie only on ground first seen from now on
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : {}), // great keeps: sections first seen from 683 until the great buildings
         ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : {}), // and the ruined arcologies (685)
@@ -3064,6 +3066,7 @@ export class Game {
         .filter((o) => ["diveSite","shipwright","checkpoint","dungeon","arenaEntrance","shrine","ruinMarker","shack","bossCue","architecturalDistrict","supplyCache","storyEcho","watcherTomb","skyStair","deepShaft"].includes(o.kind)) // release 465: the Watcher's shrines
         .map((o) => ({ kind: o.kind, name: o.kind === "watcherTomb" ? (o.where === "shrine" ? "Watcher's Shrine" : "Watcher's Tomb") : o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
+    if (area === "overworld") this.placeSeedFind(); // travel seeds (skylands.ts SEED_FINDS): new ground only, once
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save),fits:this._coherence?creatureSpot(this.map,creatureRegions(this.map)):null});/* WG-08: new ground's extras stand where they can move */
     if(area==="overworld"&&this.farPocket)populatePocket(this.map,this.save.seed,this.rx,this.ry,this.farPocket); // release 715: a stag grove or a blob pocket
@@ -4003,6 +4006,7 @@ export class Game {
     if (skylandHops(id)) h.skyHop = true; // release 589: this run's way down is a cloud gate
     (this.questNotices ||= []).push({ title: "SKYLAND CLEARED", detail: `Ascension ${tier} · +${won.sigils} Ascension Sigil${won.sigils > 1 ? "s" : ""}, +${won.marks} marks${won.weaponSphere || won.armorSphere ? `, ${won.weaponSphere + won.armorSphere} spheres` : ""}${won.viscera ? `, +${won.viscera} ${VISCERA.name}` : ""}`, kind: "quest" });
     this.message = `The islands fall quiet. You hold ${this.save.skylands.sigils} Ascension Sigil${this.save.skylands.sigils === 1 ? "" : "s"}. ${h.skyHop ? "The way down has become a gate of cloud: it drops you far from where you climbed." : "Take the way back down at the stair's foot."}`;
+    { const sk = this.grantSeedFind("skyland", id); if (sk) this.message += ` A ${SEEDS[sk].name} drifts down with the last of them.`; } // travel seeds (SEED_FINDS.skyland)
     journalOnce(this.save, `skyland-best:${this.save.skylands.best}`, `You cleared a Skyland at Ascension ${tier}. Each climb repays its sigils; the higher stairs ask for more.`, "The Skylands"); this.sync();
   }
   // The nearest Wayglass or relay within WAYGLASS_ZONE.reach that can be used, or null.
@@ -4228,6 +4232,10 @@ export class Game {
     if (o.kind === "towerLever") return this.pullTowerLever(o); // and the lever at the top of its climb
     if (!action && o.roofHatch && o.kind === "dungeon") action = "enter"; // roof report (2026-11-04): a roof hatch is a ladder down, taken at the first press like the ladder up to it (no crossing chooser)
     if (o.skyway && (o.disc ? this.skyLevel || 0 : elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) < (o.elev || 0)) return { ok: false, message: (this.message = "The skyway door hangs above you. Climb the floating platforms to reach it: jump from one to the next.") }; // release 585
+    if (o.kind === "canopyGate" && action === "plantFossil") return this.plantFossilSeed(o); // travel seeds: a sure way to another crown
+    if (o.kind === "canopyGate" && !action && o.state === "open" && seedCount(this.save, "fossilized") > 0) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name} — enter, or plant a ${SEEDS.fossilized.name}.`) }; }
+    if (o.kind === "seedFind") return this.takeSeedFind(o);
+    if (o.kind === "tideBearer") return this.tideBearerAction(o, action);
     if (o.completionExit) {
       if (!dungeonHistory(this.save,this.areaId()).combatClear?.completed) return {ok:false,message:this.message='The return remains sealed while a required guardian lives.'};
       // Release 217: a linked dungeon's guardian's door (past its second level) opens at its other mouth.
@@ -4475,6 +4483,7 @@ export class Game {
         this.save.activeCheckpoint;
     } else if (r.transition === "chest") {
       this.obtainDrop(o.rewardSource || "chest");
+      if (this.area === "dungeon" && !this.map?.skyland) { const sk = this.grantSeedFind("dungeon", `${this.areaStateId()}:${o.id}`); if (sk) this.message = `${this.message} Among it lies a ${SEEDS[sk].name}.`; } // travel seeds (SEED_FINDS.dungeon)
       const B = this.map?.building; // Tesseract glyphs (release 729): a labyrinth's vault, the Pentagon's reliquaries and the Regent's hoard
       if (B && o.id === "building-cache" && B.vault && B.labyrinth && !B.pentagon && B.style === TURTLE_SHELL.style) this.payShellVault(B); // the Shell-Labyrinth: a Tesseract glyph or Divine Viscera
       else if (B && o.id === "building-cache" && B.vault && B.labyrinth && !B.pentagon) this.awardTesseract(`${B.base}:vault`, "labyrinth");
@@ -4516,6 +4525,7 @@ export class Game {
   // Diving (water world W5): a dive buoy loads the underwater scene; the surface line brings the diver back up to it.
   diveAction(o) {
     const s = this.save;
+    if ((o.kind === "diveExit" || o.kind === "diveOnward") && validOpalPassage(dungeonHistory(s, s.session.activeDungeonId).opalPassage)) return this.followOpalPassage(); // travel seeds: the Tide Bearer's passage, sure
     if (o.kind === "diveExit") { const ok = this.leaveDungeon("You follow the line back to the surface."); if (ok) { s.session.breath = DIVE.breath; this.sync(); } return { ok: !!ok, message: this.message }; }
     if (o.kind === "diveOnward") { // release 311: the deep current runs on to the next dive buoy
       { const gate = underwaterGate(s); if (!gate.ok) { this.message = `The current pulls toward somewhere far. ${gate.why}`; return { ok: false, message: this.message }; } } // release 315
@@ -4875,6 +4885,135 @@ export class Game {
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
   // dungeon"): the dive buoy the grotto's deep current carries you to — the nearest other buoy section, rings outward from
   // the one you dove at (dive:<seed>:<rx>:<ry>), found with the same rule diveSite uses. Returns a dungeonReturn place.
+  // Travel seeds (skylands.ts SEEDS). A seed found is given once: its place's win is kept in worldFlags (seedFindFlag).
+  grantSeedFind(source, key) {
+    const kind = seedFindRoll(this.save.seed, source, key), flag = seedFindFlag(source, key);
+    if (!kind || this.save.worldFlags[flag]) return null;
+    this.save.worldFlags[flag] = true; const n = grantSeed(this.save, kind), S = SEEDS[kind];
+    (this.questNotices ||= []).push({ title: S.name.toUpperCase(), detail: `found · ${n} held · Pack → Supplies`, kind: "discovery" });
+    journalOnce(this.save, `seed:${kind}`, `You found a ${S.name}. ${S.text}`, "Seeds");
+    return kind;
+  }
+  // A seed lying in the open, in a section first seen from SEED_FINDS.version (Atlas `seedFindVersion`): on open, level ground the
+  // Wayfarer can walk to from the section's middle, never in a town, hamlet or far domain. Taken once.
+  placeSeedFind() {
+    const key = `${this.rx},${this.ry}`, M = this.map, seen = this.save.atlas?.[key];
+    if (seen?.seedFindVersion !== SEED_FINDS.version || !M?.tiles?.length || M.settlement || M.hamlet || M.farDomain || M.objects.some((o) => o.kind === "seedFind")) return null;
+    const kind = seedFindRoll(this.save.seed, "overworld", key); if (!kind || this.save.worldFlags[seedFindFlag("overworld", key)]) return null;
+    const W = 32, taken = new Set(M.objects.map((o) => Math.round(o.y) * W + Math.round(o.x))), ground = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !t.chasm && !LETHAL_KINDS.has(t.kind) && !isMarineTile(t) && !/water|shallow|ocean|mire|bog|pool|lava|void|abyss|canyon|river/i.test(String(t.kind));
+    const start = M.tiles.filter(ground).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0]; if (!start) return null;
+    const reach = reachableFromPlaza(M, start, !!this._coherence), open = M.tiles.filter((t) => reach[t.y * W + t.x] && ground(t) && t.x > 2 && t.y > 2 && t.x < 29 && t.y < 29 && !taken.has(t.y * W + t.x) && Math.hypot(t.x - 16, t.y - 16) >= 4);
+    if (!open.length) return null;
+    const at = open[hashSeed(`${this.save.seed}:seed-find-at:v${SEED_FINDS.version}:${key}`) % open.length], S = SEEDS[kind];
+    const o = { id: `seed-find-${this.rx}-${this.ry}`, kind: "seedFind", seed: kind, name: S.name, x: at.x, y: at.y, state: "waiting", actions: ["take"], actionLabels: { take: `Pick up the ${S.name}` } };
+    M.objects.push(o); return o;
+  }
+  takeSeedFind(o) {
+    const key = `${this.rx},${this.ry}`, flag = seedFindFlag("overworld", key), S = SEEDS[o.seed];
+    this.map.objects = this.map.objects.filter((q) => q !== o);
+    if (!S || this.save.worldFlags[flag]) { this.message = "Nothing is left here."; return { ok: false, message: this.message }; }
+    this.save.worldFlags[flag] = true; const n = grantSeed(this.save, o.seed);
+    journalOnce(this.save, `seed:${o.seed}`, `You found a ${S.name} lying in the open at ${key}. ${S.text}`, "Seeds");
+    this.message = `A ${S.name}, lying here in the open. Strange place for one. (${n} held.) ${S.text}`;
+    this.sync(); return { ok: true, message: this.message, seed: o.seed };
+  }
+  // A Fossilized Seed's crossing: another great tree's crown, `SEED_TRAVEL.fossilized.hop` sections off in a direction drawn from the
+  // tree and the seeds already planted. Candidates are found as treeCrownHop finds them (cheap tests first), then built in isolated
+  // copies of the save (at most `loads`; the read-only terrain preview costs about as much and misses castles and Pentagons built
+  // over a tree) until one has an open crown. Pure for the live game: nothing is discovered or changed.
+  planFossilHop() {
+    const T = SEED_TRAVEL.fossilized, seed = this.save.seed, from = { rx: this.rx, ry: this.ry }, used = ensureSeeds(this.save).used.fossilized;
+    const target = seedHopTarget(`fossil:v1:${seed}:${from.rx},${from.ry}:${used}`, from.rx, from.ry, T.hop), cands = [], had = new Set();
+    const look = (c, R) => { const out = [];
+      for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+        const x = c.rx + dx, y = c.ry + dy; if ((x === from.rx && y === from.ry) || had.has(`${x},${y}`)) continue;
+        const seen = this.save.atlas?.[`${x},${y}`], version = seen?.landscapeVersion || LANDSCAPE_VERSION; if (seen && !seen.landscapeVersion) continue;
+        if (version >= 14 ? !wonderAt(seed, x, y, "tree") : version < 12 || sectionRegion(seed, x, y, version).type !== "jungle" || (hashSeed(`${seed}:canopy-grow:v1:${y * 7919 + x}`) % 1000) / 1000 >= SKY_TREE.chance) continue;
+        out.push({ rx: x, ry: y, d: dx * dx + dy * dy });
+      }
+      out.sort((a, b) => (c === from ? b.d - a.d : a.d - b.d) || a.ry - b.ry || a.rx - b.rx); for (const q of out) { had.add(`${q.rx},${q.ry}`); cands.push(q); } };
+    look(target, T.radius); if (cands.length < T.loads) look(from, T.near); // round the far spot, nearest it first; then round this tree, farthest first
+    for (const c of cands.slice(0, T.loads)) {
+      const copy = structuredClone(this.save);
+      Object.assign(copy.session, { area: "overworld", rx: c.rx, ry: c.ry, x: 16, y: 16, activeDungeonId: null, activeDungeonLevelId: null });
+      const probe = new Game(copy, this.lastUpdateNow || 0), spot = probe.map?.canopy?.top ? crownSpot(probe.map) : null;
+      if (spot && !probe.map.tiles[Math.round(spot.y + .2) * 32 + Math.round(spot.x)]?.blocked) return { rx: c.rx, ry: c.ry, x: spot.x, y: spot.y };
+    }
+    return null;
+  }
+  plantFossilSeed(o) {
+    const fail = (m) => ({ ok: false, message: (this.message = m) });
+    if (this.area !== "overworld" || o?.kind !== "canopyGate" || o.state !== "open") return fail("A Fossilized Seed takes root only in the door on a great tree's crown.");
+    if (seedCount(this.save, "fossilized") < 1) return fail(`You carry no ${SEEDS.fossilized.name}.`);
+    if (elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y) < (this.map.canopy?.top || 0)) return fail("Climb to the crown first: the seed is planted in the door itself.");
+    const to = this.planFossilHop(); if (!to) return fail(`The ${SEEDS.fossilized.name} will not take: no other crown answers this door from here. You keep the seed.`);
+    this.snapshotArea();
+    this.rx = to.rx; this.ry = to.ry; this.save.session.activeDungeonId = null; this.save.session.activeDungeonLevelId = null;
+    this.loadArea("overworld", false);
+    const spot = crownSpot(this.map) || to; Object.assign(this.player, { x: spot.x, y: spot.y, sailVx: 0, sailVy: 0 });
+    if (!(spot.x === to.x && spot.y === to.y)) relocateIfStranded(this.player, this.map, mapWidth(this.map, "overworld"));
+    consumeSeed(this.save, "fossilized");
+    Object.assign(this, { skyAir: null, skyLevel: 0, discAir: null, glide: null, glideHome: null, crownFoot: null, projectiles: [], effects: [], traversal: null, swimming: false });
+    this.lastCrownAt = this.lastUpdateNow || 0;
+    this.message = `You press the ${SEEDS.fossilized.name} into the door. Roots of stone run out through the cloud, and the door lets you out among the leaves on the crown of another great tree (${this.rx}, ${this.ry}). ${seedCount(this.save, "fossilized")} left.`;
+    this.sync(); return { ok: true, message: this.message, to: { rx: this.rx, ry: this.ry } };
+  }
+  // The Tide Bearer: a keeper of currents at the far end of every dive (dive generators 1 and 2), near its sunken cache, on open
+  // floor joined to the way in. Added at load like the deep current; the dive's own map is never regenerated.
+  placeTideBearer() {
+    const M = this.map; if (!M?.tiles?.length || M.objects.some((o) => o.kind === "tideBearer")) return null;
+    const at = M.objects.find((o) => o.kind === "chest" && String(o.id).endsWith(":cache")) || M.lair, e = M.entry; if (!at || !e) return null;
+    const w = mapWidth(M, "dungeon"), h = Math.floor(M.tiles.length / w), seen = new Uint8Array(w * h), q = [Math.round(e.y) * w + Math.round(e.x)];
+    if (!M.tiles[q[0]] || M.tiles[q[0]].blocked) return null; seen[q[0]] = 1;
+    for (let k = 0; k < q.length; k++) { const i = q[k], x = i % w, y = (i - x) / w; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, j = ny * w + nx; if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen[j] || !M.tiles[j] || M.tiles[j].blocked) continue; seen[j] = 1; q.push(j); } }
+    const taken = new Set(M.objects.map((o) => Math.round(o.y) * w + Math.round(o.x)));
+    const spot = M.tiles.filter((t) => seen[t.y * w + t.x] && !taken.has(t.y * w + t.x) && Math.hypot(t.x - at.x, t.y - at.y) >= 1 && Math.hypot(t.x - at.x, t.y - at.y) <= 3).sort((a, b) => Math.hypot(a.x - at.x, a.y - at.y) - Math.hypot(b.x - at.x, b.y - at.y) || a.y - b.y || a.x - b.x)[0];
+    if (!spot) return null;
+    const o = { id: `${this.areaId()}:tide-bearer`, kind: "tideBearer", name: "Tide Bearer", x: spot.x, y: spot.y, state: "open", actions: ["speak", "offerOpal"], actionLabels: { speak: "Speak with the Tide Bearer", offerOpal: `Give an ${SEEDS.opal.name}` } };
+    M.objects.push(o); return o;
+  }
+  tideBearerAction(o, action) {
+    const s = this.save, h = dungeonHistory(s, s.session.activeDungeonId), pending = validOpalPassage(h.opalPassage), held = seedCount(s, "opal");
+    if (!action) { o.actionLabels = { ...o.actionLabels, offerOpal: `Give an ${SEEDS.opal.name} (${held} held)` }; this.interactionRequested = o.id; return { ok: true, message: (this.message = "Tide Bearer — choose an action.") }; }
+    if (action === "speak") {
+      this.message = pending ? "Tide Bearer: “The tide is turned for you. Take the line up, and it will set you beside another buoy, far from this one.”"
+        : held ? `Tide Bearer: “You carry an ${SEEDS.opal.name}. Give it to me, and this deep's line will lead up beside another buoy, somewhere far. Without one the currents go where they please.”`
+        : `Tide Bearer: “I keep the turnings of the deep. Bring me an ${SEEDS.opal.name}, and I will turn this one's line toward another buoy, far off. They lie about the world in odd places.”`;
+      return { ok: true, message: this.message };
+    }
+    if (action !== "offerOpal") return { ok: false, message: (this.message = "The Tide Bearer only watches the water.") };
+    if (pending) return { ok: false, message: (this.message = "Tide Bearer: “Your passage is already promised. Take the line up.”") };
+    if (held < 1) return { ok: false, message: (this.message = `Tide Bearer: “You have no ${SEEDS.opal.name}. Without one the currents go where they please.”`) };
+    const to = this.opalPassageTarget(); if (!to) return { ok: false, message: (this.message = "Tide Bearer: “The currents are knotted here today; no other buoy answers. Keep your seed.”") };
+    consumeSeed(s, "opal"); h.opalPassage = { v: 1, ...to };
+    this.message = `The Tide Bearer takes the ${SEEDS.opal.name} and lets it sink into the lantern of still water she carries. “Go up the line. It will bring you up beside another buoy, far from here.” (${seedCount(s, "opal")} left.)`;
+    this.sync(); return { ok: true, message: this.message };
+  }
+  // Where an Opal Seed's passage surfaces: a real buoy (diveSite on the previewed section, the rule loadArea uses), first round a
+  // spot `hop` sections off in a direction drawn from the dive and the seeds already given, then round the buoy itself (`near`).
+  // At most `loads` sections previewed; previews (walkerCrossingMap) never touch the save. Null when none answers.
+  opalPassageTarget() {
+    const m = /^dive:.+:(-?\d+):(-?\d+)$/.exec(String(this.save.session.activeDungeonId || "")); if (!m) return null;
+    const T = SEED_TRAVEL.opal, seed = this.save.seed, ox = Number(m[1]), oy = Number(m[2]), used = ensureSeeds(this.save).used.opal;
+    const target = seedHopTarget(`opal:v1:${seed}:${ox},${oy}:${used}`, ox, oy, T.hop); let loads = 0;
+    const look = (cx, cy, R) => {
+      for (let r = 0; r <= R; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; if (loads >= T.loads) return null;
+        const rx = cx + dx, ry = cy + dy; if ((rx === ox && ry === oy) || biomeFor(seed, rx, ry) !== "sea" || hashSeed(`${seed}:dive:site:${rx}:${ry}`) % DIVE.siteEvery !== 0) continue;
+        loads++; const site = diveSite(walkerCrossingMap(this.save, rx, ry), seed, rx, ry);
+        if (site) return { rx, ry, x: site.x, y: site.y - .2 };
+      }
+      return null;
+    };
+    return look(target.rx, target.ry, T.radius) || look(ox, oy, T.near);
+  }
+  followOpalPassage() {
+    const s = this.save, h = dungeonHistory(s, s.session.activeDungeonId), q = h.opalPassage, back = s.session.dungeonReturn;
+    s.session.dungeonReturn = { rx: q.rx, ry: q.ry, x: q.x, y: q.y }; delete h.opalPassage;
+    const ok = this.leaveDungeon("The line runs on and on, and you come up beside another buoy, far from where you dove. The Tide Bearer kept her word.");
+    if (!ok) { h.opalPassage = q; s.session.dungeonReturn = back; return { ok: false, message: this.message }; }
+    s.session.breath = DIVE.breath; this.sync(); return { ok: true, message: this.message, to: { rx: q.rx, ry: q.ry } };
+  }
   onwardBuoy() {
     const m = /^dive:.+:(-?\d+):(-?\d+)$/.exec(String(this.save.session.activeDungeonId || "")); if (!m) return null;
     const ox = Number(m[1]), oy = Number(m[2]), seed = this.save.seed; let tries = 0;
