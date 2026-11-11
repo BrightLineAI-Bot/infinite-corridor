@@ -90,6 +90,17 @@ function buildKnightMesh(tier) {
     for (let v = 0; v < KNIGHT_BODY.vertexCount; v++) { const a = names[Bn[v * 2]], b = names[Bn[v * 2 + 1]], [lo, hi] = base(a);
       ids[v] = B.vertexBlend(P[v * 3], P[v * 3 + 1], P[v * 3 + 2], N[v * 3] / 127, N[v * 3 + 1] / 127, N[v * 3 + 2] / 127, a, b, Wt[v] / 255, lerp(lo, hi, Math.pow(L[v] / 255, 1.2))); }
     for (let i = 0; i < IX.length; i += 3) B.tri(ids[IX[i]], ids[IX[i + 1]], ids[IX[i + 2]]); }
+  // ---- plate fitted over the limbs (pass: more fidelity where the budget allows): cuisses on the thighs, greaves on the shins
+  // with a lit ridge down the front, vambraces on the forearms; each a shell hugging its bone, a little proud of the body
+  if (!low) { const shell = (bone, x, y, z0, z1, r0, r1, tone) => B.bone(bone).color(tone).loft({ seg: full ? 10 : 7, up: [1, 0, 0],
+      sections: [[z0, r0], [z0 + (z1 - z0) * .5, (r0 + r1) / 2 * 1.06], [z1, r1]].map(([z, r]) => ({ at: [x, y, z], rx: r, rz: r * 1.12, bones: [bone, bone, 0] })),
+      tone: (i, k, st) => st > .55 ? C.lit : C.plate, caps: false });
+    for (const tag of ['L', 'R']) { const t = J0['thigh' + tag], k = J0['shin' + tag], f = J0['foot' + tag], a = J0['arm' + tag], e = J0['fore' + tag], h = J0['hand' + tag];
+      shell('thigh' + tag, t[0] + .005, t[1], t[2] - .04, k[2] + .05, .058, .046, C.plate);
+      shell('shin' + tag, k[0] + .004, k[1], k[2] - .03, f[2] + .06, .046, .036, C.plate);
+      if (full) box('shin' + tag, C.lit, [k[0] + .05, k[1], (k[2] + f[2]) / 2 + .01], [.006, .008, (k[2] - f[2]) * .38], { bevel: 0 });
+      shell('fore' + tag, e[0], e[1], e[2] - .03, h[2] + .03, .036, .03, C.plate);
+      void a; } }
   // ---- armour over it: knee cops, pointed sabatons; the faulds, tassets and tabard; the seams of light; the gorget
   for (const [s, tag] of [[-1, 'L'], [1, 'R']]) {
     const y = J0['thigh' + tag][1];
