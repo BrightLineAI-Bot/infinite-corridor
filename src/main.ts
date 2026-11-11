@@ -31,7 +31,7 @@ import { drawPackPortrait } from "./monster-render.ts";
 import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaOpen, arcanaHas, arcanaClue } from "./lore.ts";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
@@ -1341,7 +1341,7 @@ function arcanaCard(out, title, count, total, where, read, ending, open = false,
   meta.textContent = count >= total ? `Complete · ${total} of ${total} ${hint?.unit || ""}`.trim() : count ? `${count} of ${total} ${unit} · ${home ? `the rest most likely lie ${where}` : pages ? `still to find: ${where}` : `the rest lie in ${where}`}${here}` : `Not begun · ${home ? `most likely ${where}` : pages ? `one in each Reading: ${where}` : `look in ${where}`}${here}`;
   dots.textContent = Array.from({ length: total }, (_, i) => i < count ? "●" : "○").join(" "); dots.setAttribute("aria-label", `${count} of ${total}`);
   card.append(h, meta, dots);
-  { const u = hint && arcanaUnlockFrom(hint.id), U = u && ARCANA_UNLOCKS[u]; if (U && (U.fresh || save.arcana?.gated)) { const p = document.createElement("p"); p.className = "options-note"; p.textContent = arcanaHas(save, u) ? `Opened: ${U.name}.` : `Completing it opens ${U.name}.`; card.append(p); } } // 2026-11-11: lore.ts ARCANA_UNLOCKS
+  { const u = hint && arcanaUnlockFrom(hint.id), U = u && ARCANA_UNLOCKS[u]; if (U) { const p = document.createElement("p"); p.className = "options-note"; p.textContent = arcanaHas(save, u) ? `Opened: ${U.name}.` : `Completing it opens ${U.name}.`; card.append(p); } } // 2026-11-11: lore.ts ARCANA_UNLOCKS
   if (read.length || ending) { const d = document.createElement("details"), sum = document.createElement("summary"); sum.textContent = count >= total ? "Read it again" : "What you have read"; d.open = open; d.append(sum);
     for (const [label, text] of read) { const q = document.createElement("p"); if (label) { const b = document.createElement("strong"); b.textContent = `${label}. `; q.append(b); } q.append(text); d.append(q); }
     if (ending) { const q = document.createElement("p"), b = document.createElement("strong"); b.textContent = "The ending. "; q.append(b, ending); d.append(q); }
@@ -2899,7 +2899,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
  const sky=el('div','arc-sky');ensureSlots(save);
  {const key=el('section','arc-key');key.append(el('p','','Elements:'));for(const a of Object.keys(ATTRIBUTES))key.append(elemBadge(a));key.append(el('p','',''),kindTag('⚡ Active',true),el('span','',' you cast it from slot A, B or C, then it recovers. '),kindTag('Passive',false),el('span','',' works by itself once learned: always, or while its discipline is active.'));sky.append(key)}
- const inSlot=(key)=>SLOTS.find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>[...SLOTS.map(q=>{if(q==='c'&&!arcanaOpen(save,'slot:c')){const b=uiButton('C: not yet open',()=>{game.message=arcanaClue('slot:c')});b.disabled=true;b.title=arcanaClue('slot:c');return b}/* 2026-11-11: slot C opens with the Cairn Keeper's errand */const here=save.magicSkills.slots[q]===key,b=uiButton(here?`In slot ${q.toUpperCase()}`:`Set in ${q.toUpperCase()}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b})]; // release 309; 874: the Build button is slot C, set like A and B
+ const inSlot=(key)=>SLOTS.find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>[...SLOTS.map(q=>{const here=save.magicSkills.slots[q]===key,b=uiButton(here?`In slot ${q.toUpperCase()}`:`Set in ${q.toUpperCase()}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b})]; // release 309; 874: the Build button is slot C, set like A and B
  // Slots A, B and C (release 874), and the Pairing the attributes of A and B make.
  {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
   // Release 261: two spell presets; the slots below belong to the active one (the HUD's preset button switches them too).
@@ -2931,7 +2931,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   {const boosts=[`Focus ${save.stats?.Focus||1}: +${characterStats(save).magicBonus} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
    for(const bid of BRANCH_IDS){const b=BRANCHES[bid];for(const node of[b.mod,...b.caps]){const fx=NODE_EFFECTS[node.id];if(fx?.spells)boosts.push(`${node.name} (${b.name}, ${hasNode(save,node.id)?'learned':'not learned'}): ${fx.spells} Only while ${APERTURE_SKILLS[b.active].name} is active.`)}}
    const list=el('ul','arc-boosts');for(const t of boosts)list.append(el('li','',t));detail.append(el('small','arc-hint','What affects your spells:'),list,el('small','arc-hint','Other constellation entries change their own discipline, not your spells.'))}
-  if(spellOpen(save,show.id))detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));else detail.append(el('small','arc-why',!arcanaOpen(save,`spell:${show.id}`)?arcanaClue(`spell:${show.id}`):`Opens at the ${APERTURE_BANDS[show.unlockTier].name} band of the Aperture.`)); // release 365; 2026-11-11: a spell a set opens shows its clue
+  if(spellOpen(save,show.id))detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));else detail.append(el('small','arc-why',`Opens at the ${APERTURE_BANDS[show.unlockTier].name} band of the Aperture.`)); // release 365
   card.append(head,path,detail);sky.append(card)}
  for(const bid of BRANCH_IDS){const b=BRANCHES[bid],skill=APERTURE_SKILLS[b.active],rank=skillRank(save,skill.id),modOn=!!save.constellation.mods[b.mod.id],caps=branchCaps(save,bid),mastered=rank>=skill.maxRank,open=value>=skill.threshold;
   const card=el('section','arc-branch'+(open?'':' sealed'));card.dataset.branch=bid;
@@ -2950,7 +2950,6 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
    node.onclick=()=>{arcanumFocus={branch:bid,node:n.id};openSkills(atShrine)};(i>=2?path.lastElementChild:path).append(node)});
   const show=focus||nodes.find(n=>n.can)||nodes[0];
   {const[label,active]=nodeKind(show,skill),tags=el('div','arc-tags');if(attr)tags.append(elemBadge(attr));tags.append(kindTag(label,active));detail.append(el('strong','',show.name),tags,el('p','',show.text));if(NODE_EFFECTS[show.ref]?.spells)detail.append(el('small','arc-hint',`Also affects your spells: ${NODE_EFFECTS[show.ref].spells}`))}
-  if(show.cap&&show.state!=='owned'){const shut=show.ref==='aerial-step'&&!arcanaOpen(save,'cap:aerial-step')?'cap:aerial-step':caps.length&&!arcanaOpen(save,'cap:second')?'cap:second':null;if(shut)detail.append(el('small','arc-why',arcanaClue(shut)))} // 2026-11-11: a capstone a milestone opens shows its clue
   // Release 359: the other form of a passive, and the button that swaps them (from Infinite III, once learned).
   if(show.ref&&ALT_PASSIVES[show.ref]){const A=ALT_PASSIVES[show.ref],learned=show.state==='owned',open=altUnlocked(save),other=show.alt?{name:show.primaryName,text:show.primaryText,label:'Primary'}:{name:A.name,text:A.text,label:'Secondary'};
    const box=el('div','arc-alt');box.append(el('small','arc-hint',`${show.alt?'Secondary form in use.':'Primary form in use.'} ${other.label} form: ${other.name} — ${other.text}`));

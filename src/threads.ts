@@ -450,27 +450,15 @@ export function settleArcanaRewards(save, grant = () => {}) {
   return out;
 }
 
-// Milestones that open an unlock (lore.ts ARCANA_UNLOCKS `from`), beside the sets: the first link of Abel Corwin's chain (the
-// Cairn Keeper's errand, the journey's first quest), the crown of a first great tree (the leaf glider found there), and a first
-// skyway of the Skylands cleared.
-export const ARCANA_MILESTONES = {
-  firstLink: { name: "The Cairn Keeper's errand", done: (s) => surveyorFound(s) >= 1 },
-  firstGreatTree: { name: "The crown of a great tree", done: (s) => !!s?.glider },
-  firstSkyway: { name: "A skyway cleared", done: (s) => (Number(s?.skylands?.clears) || 0) >= 1 },
-};
-// Whether the set or milestone `from` is complete.
-export function arcanaDone(save, from) {
-  if (ARCANA_MILESTONES[from]) return ARCANA_MILESTONES[from].done(save);
-  return !!arcanaProgress(save, false).find((r) => r.id === from)?.complete;
-}
-// Opens every unlock whose set or milestone is complete and not yet earned, once each: save.arcana.unlocked[id] (created on
-// first use; additive). `grant(id, unlock)` announces it. On a journey from before the gates, what was free stays open
-// anyway; earning it still records it (and the two new passives work only once earned). Returns the ids opened.
+// Whether the set `from` is complete.
+export const arcanaDone = (save, from) => !!arcanaProgress(save, false).find((r) => r.id === from)?.complete;
+// Earns every passive whose set is complete and not yet earned, once each: save.arcana.unlocked[id] (created on first use;
+// additive). `grant(id, unlock)` announces it. A set finished before is paid the first time this runs. Returns the ids earned.
 export function settleArcanaUnlocks(save, grant = () => {}) {
   const out = [];
   for (const [id, u] of Object.entries(ARCANA_UNLOCKS)) { if (arcanaHas(save, id) || !arcanaDone(save, u.from)) continue;
     const a = (save.arcana && typeof save.arcana === "object" ? save.arcana : (save.arcana = {})); (a.unlocked ||= {})[id] = true; grant(id, u); out.push(id); }
   return out;
 }
-// The unlock a set or milestone opens, or null (for the Arcana cards: "Completing it opens ...").
+// The passive a set earns, or null (for the Arcana cards: "Completing it opens ...").
 export const arcanaUnlockFrom = (from) => Object.entries(ARCANA_UNLOCKS).find(([, u]) => u.from === from)?.[0] || null;

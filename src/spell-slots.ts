@@ -5,7 +5,6 @@
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
 import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.ts";
-import { arcanaOpen, arcanaClue } from "./lore.ts"; // 2026-11-11: slot C opens with the Cairn Keeper's errand on a journey begun gated
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -182,7 +181,6 @@ export function setPresetButton(save, i, mode) {
   ensureSlots(save); const ms = save.magicSkills, p = ms.presets[i]; if (!p) return null;
   if (CASTABLES[mode] && !availableCastables(save).includes(mode)) return legacyButton(p.c);
   const key = mode === "item" ? "item" : CASTABLES[mode] ? mode : null;
-  if (key && !arcanaOpen(save, "slot:c")) return legacyButton(p.c); // 2026-11-11: slot C closed
   if (i === (ms.preset || 0)) setSlot(save, "c", key); else { p.c = key; if (key && (p.a === key || p.b === key)) p.c = null; }
   return legacyButton(ms.presets[i].c);
 }
@@ -227,7 +225,6 @@ export function slotted(save, slot) {
 export function setSlot(save, slot, key) {
   const slots = ensureSlots(save);
   if (!SLOTS.includes(slot)) return { ok: false, message: "Unknown slot." };
-  if (slot === "c" && key && !arcanaOpen(save, "slot:c")) return { ok: false, message: `Slot C is not open yet. ${arcanaClue("slot:c")}` };
   if (key && !SLOT_TOOLS.includes(key) && !availableCastables(save).includes(key)) return { ok: false, message: "Not learned yet." };
   const other = key ? SLOTS.find((q) => q !== slot && slots[q] === key) : null; // release 874: any of the other two slots
   if (other) slots[other] = slots[slot];

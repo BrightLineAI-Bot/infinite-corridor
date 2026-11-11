@@ -12,7 +12,6 @@ import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrad
 import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.ts";
 import { pairingMods } from "./spell-slots.ts";
 import { latticePassives, toggleLatticeSlot } from "./transit-lattice.ts";
-import { arcanaOpen, arcanaClue } from "./lore.ts"; // 2026-11-11: the arcana unlocks (awakening, Aerial Step, a second capstone)
 import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.ts";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
@@ -169,8 +168,6 @@ export function chooseCap(save, branch, capId) {
   if (branchCaps(save, branch).includes(capId)) return { ok: false, message: `${cap.name} already crowns the ${b.name} branch.` };
   if (!save.constellation.mods[b.mod.id]) return { ok: false, message: `Take ${b.mod.name} first.` };
   if (skillRank(save, b.active) < APERTURE_SKILLS[b.active].maxRank) return { ok: false, message: `Master ${APERTURE_SKILLS[b.active].name} first.` };
-  if (capId === "aerial-step" && !arcanaOpen(save, "cap:aerial-step")) return { ok: false, message: arcanaClue("cap:aerial-step") };
-  if (save.constellation.caps[branch] && !arcanaOpen(save, "cap:second")) return { ok: false, message: arcanaClue("cap:second") };
   if (pointsFree(save) < 2) return { ok: false, message: "A capstone needs 2 free points." };
   save.constellation.caps2 ||= {};
   if (save.constellation.caps[branch]) save.constellation.caps2[branch] = capId; else save.constellation.caps[branch] = capId;
@@ -279,7 +276,6 @@ export function awakenCheck(save, slot) {
   const item = save.equipment?.[slot];
   if (!item || (slot !== "primary" && slot !== "secondary")) return { ok: false, message: "Only a primary weapon or a tool can awaken." };
   if (item.awakened) return { ok: false, message: `${item.name} is already awakened.` };
-  if (!arcanaOpen(save, `awaken:${slot}`)) return { ok: false, message: arcanaClue(`awaken:${slot}`) };
   const n = normalizeItemUpgrade(item), cap = UPGRADE_CAPS[itemTier(n)];
   if ((n.upgradeRank || 0) < cap) return { ok: false, message: `Strengthen ${item.name} to +${cap} first (now +${n.upgradeRank || 0}).` };
   const reso = resonancesOf(item.glyphs || []);

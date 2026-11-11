@@ -121,9 +121,9 @@ export function visitSurveyorStatue(save, o) {
 // The Cairn Keeper (2026-11-11; Tim: a first quest from the Refuge: "you meet someone who sets you on a thread, the first
 // dungeon gives the first item... and the Journal guidance leads on"). At Ember Refuge, beside the cairn where Abel Corwin
 // drove his first peg, an old woman keeps the stones. Speaking with her sets the errand (save.arcana.starter = "set"): the first
-// ordinary crossing entered after it holds the chain's first link, wherever it lies, while no link is found. Taking that link
-// opens slot C on a journey begun gated (lore.ts ARCANA_UNLOCKS "slot:c", milestone firstLink), and her next words point the
-// way the rest went (the chain's home). On every journey she stands there; on one that has found a link she only talks.
+// ordinary crossing entered after it holds the chain's first link, wherever it lies, while no link is found. She unlocks nothing
+// (Tim, 2026-11-11: what was free stays free for now); once the link is taken her next words point the way the rest went (the
+// chain's home). On every journey she stands there; on one that has found a link she only talks.
 export const CAIRN_KEEPER = { id: "cairn-keeper", name: "Maud Fennick", role: "Cairn Keeper", near: { x: 4, y: 9 } };
 export const CAIRN_LINES = {
   first: [
