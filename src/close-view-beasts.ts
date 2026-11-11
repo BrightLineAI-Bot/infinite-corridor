@@ -10,6 +10,7 @@ import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close
 import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.ts";
 import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.ts";
 import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.ts";
+import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.ts";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -27,6 +28,7 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   groveMoth: Object.freeze({ mesh: mothMesh, createTrack: createMothTrack, sample: sampleMoth, get scale() { return MOTH_RIG.closeViewScale; } }),
   // up out of its hole only: under the ground, or about to burst up, it keeps the standard view's heaving mound
   tremorWorm: Object.freeze({ mesh: wormMesh, createTrack: createWormTrack, sample: sampleWorm, eligible: (e) => !e.untargetable, get scale() { return WORM_RIG.closeViewScale; } }),
+  psychicCrystal: Object.freeze({ mesh: crystalMesh, createTrack: createCrystalTrack, sample: sampleCrystal, get scale() { return CRYSTAL_RIG.closeViewScale; } }),
 });
 // Forms the body covers. Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
 export function closeViewBeastEligible(e) {
