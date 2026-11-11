@@ -22,7 +22,7 @@ import { TREES } from "./trees.ts";
 import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
 import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
-import { SKY_DISCS } from "./skylands.ts"; // release 587
+import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
@@ -2677,6 +2677,8 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "saplingDais" || o.kind === "riteAshes") { drawRiteTree(ctx, o, s, now); // the Rite of Ascendancy
           } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
+          } else if (o.kind === "seedFind") { drawSeedFind(ctx, o, s, now); // travel seeds
+          } else if (o.kind === "tideBearer") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); drawTideLantern(ctx, o, s, now); // travel seeds
           } else if (o.kind === "threadRelic") { drawThreadRelic(ctx, o, s, now); // release 627
           } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
@@ -3276,4 +3278,21 @@ function drawSeaHazards(ctx, sea, s, now, l, t, r, b, map) {
     ctx.fillStyle = "#e6f4fb"; ctx.strokeStyle = "#8fb8cf"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle = "#b9dcef"; ctx.beginPath(); ctx.moveTo(berg.x * s, berg.y * s); for (let i = 0; i < 3; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fill();
   }
+}
+
+// Travel seeds (skylands.ts SEEDS): a seed lying in the open, a small glint over it; and the Tide Bearer's lantern of still water.
+function drawSeedFind(ctx, o, s, now) {
+  const S = SEEDS[o.seed] || SEEDS.opal, cx = (o.x + .5) * s, cy = (o.y + .72) * s, pulse = .5 + .5 * Math.sin(now / 420 + o.x);
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .1, s * .16, s * .06, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = S.color; ctx.strokeStyle = "#0008"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.ellipse(cx, cy - s * .02, s * .11, s * .15, .5, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.globalAlpha = .45 + .5 * pulse; ctx.fillStyle = S.glint; ctx.beginPath(); ctx.arc(cx - s * .03, cy - s * .08, s * .035, 0, 7); ctx.fill();
+  ctx.strokeStyle = S.glint; ctx.lineWidth = Math.max(1, s * .025); const r = s * (.2 + .06 * pulse); ctx.beginPath(); ctx.moveTo(cx, cy - r - s * .1); ctx.lineTo(cx, cy - r - s * .22); ctx.moveTo(cx - s * .06, cy - r - s * .16); ctx.lineTo(cx + s * .06, cy - r - s * .16); ctx.stroke();
+  ctx.restore();
+}
+function drawTideLantern(ctx, o, s, now) {
+  const cx = (o.x + .82) * s, cy = (o.y + .35) * s, pulse = .5 + .5 * Math.sin(now / 600);
+  ctx.save(); ctx.strokeStyle = "#cfe6ee"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(cx, cy - s * .22); ctx.lineTo(cx, cy - s * .1); ctx.stroke();
+  ctx.fillStyle = `rgba(150,220,235,${.35 + .35 * pulse})`; ctx.beginPath(); ctx.arc(cx, cy, s * .1, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#e2f4f8"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("TIDE BEARER", (o.x + .5) * s, (o.y - .3) * s); ctx.textAlign = "start";
+  ctx.restore();
 }
