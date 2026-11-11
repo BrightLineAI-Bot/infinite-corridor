@@ -115,13 +115,16 @@ function buildKnightMesh(tier) {
     B.bone('cannon').color(C.plate).lathe({ at: at('cannon', [0, y, el]), F: [0, 0, -1], U: [1, 0, 0], rings: [[0, .036], [.12, .04], [.21, .048], [.25, .056]], seg: low ? 5 : 8, smooth: false, caps: true });
     if (!low) for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; B.color(C.bright).box({ at: at('cannon', [Math.cos(a) * .05, y + Math.sin(a) * .05, el - .19]), size: [.01, .01, .05], bevel: 0, F: [Math.cos(a), Math.sin(a), 0], U: [0, 0, 1] }); } // the opened plates
     B.color(C.red, E_MUZZLE).lathe({ at: at('cannon', [0, y, el - .255]), F: [0, 0, -1], U: [1, 0, 0], rings: [[0, .042], [.01, .038], [.012, 0]], seg: low ? 5 : 8, caps: false }); }
-  // ---- the helm: sculpted, rounded and tall, narrowing to a ridge, lit down the face; a red visor slit; a spike swept back
-  { const hx = J0.head[0] + .008, H = [[-.015, .048, .052], [.03, .058, .064], [.09, .06, .068], [.14, .055, .063], [.18, .042, .05], [.205, .022, .03], [.215, 0, 0]];
-    B.bone('head').color(C.helm).loft({ seg: low ? 7 : 12, up: [1, 0, 0], sections: H.map(([z, ry, rx]) => ({ at: [hx, 0, headZ + z], rx: ry, rz: rx, bones: ['head', 'head', 0] })),
+  // ---- the helm (Tim: "less like a cone head ... a different type of helmet"): a rounded skull, a squared face visor with a
+  // brow ridge and the red slit, cheek guards flaring down and out, a low crest running front to back
+  { const hx = J0.head[0] + .008, H = [[-.02, .046, .05], [.02, .056, .062], [.07, .06, .068], [.11, .06, .068], [.14, .054, .062], [.165, .04, .048], [.18, .018, .024], [.186, 0, 0]];
+    B.bone('head').color(C.helm).loft({ seg: low ? 7 : 12, up: [1, 0, 0], sections: H.map(([z, ry, rx]) => ({ at: [hx - .006, 0, headZ + z], rx: ry, rz: rx, bones: ['head', 'head', 0] })),
       tone: (i, k, st) => st > .6 ? C.lit : st < -.5 ? C.deep : C.helm, caps: true });
-    box('head', C.red, [hx + .067, 0, headZ + .1], [.003, .036, .005], { bevel: 0, emit: E_SEAM }); // the visor slit
-    if (!low) box('head', C.dark, [hx + .052, 0, headZ + .055], [.012, .004, .045], { bevel: 0 }); // the ridge down the face
-    B.bone('head').color(C.spike).lathe({ at: at('head', [hx - .02, 0, headZ + .19]), F: [-.45, 0, 1], U: [1, 0, 0], rings: [[0, .016], [.08, .009], [.15, 0]], seg: low ? 4 : 5, smooth: false }); }
+    box('head', C.plate, [hx + .055, 0, headZ + .06], [.016, .048, .055], { bevel: .3, taper: -.1 }); // the face visor
+    box('head', C.lit, [hx + .064, 0, headZ + .115], [.012, .056, .009], { bevel: .2 }); // the brow ridge
+    box('head', C.red, [hx + .072, 0, headZ + .093], [.003, .04, .005], { bevel: 0, emit: E_SEAM }); // the visor slit
+    if (!low) { for (const s of [-1, 1]) box('head', C.dark, [hx + .02, s * .058, headZ + .015], [.035, .008, .04], { bevel: 0, F: [1, 0, 0], U: [0, -s * .3, 1] }); // cheek guards
+      for (let k = 0; k < 3; k++) box('head', C.spike, [hx + .03 - k * .045, 0, headZ + .178 - k * k * .006], [.024, .006, .014 - k * .003], { bevel: 0 }); } } // the crest
   // ---- the greatsword (bound to the sword bone, along its +f): grip and pommel, a broad crossguard, the long black blade and
   // its red edge
   { const sw = bw[BI.sword * 3], sy = bw[BI.sword * 3 + 1], sz = bw[BI.sword * 3 + 2], P = (f, r, u) => [sw + f, sy + r, sz + u];

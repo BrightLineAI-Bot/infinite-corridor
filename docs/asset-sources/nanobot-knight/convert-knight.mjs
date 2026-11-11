@@ -40,7 +40,8 @@ const app = (R, p) => [dot(R[0], p), dot(R[1], p), dot(R[2], p)];
 const DOWN = [0, -1, 0];
 // ---- the proportions (Tim: "slightly longer and slender ... and taller", not stretched): length along each bone, slimming
 // across it (radius); hands and feet smaller all round
-const PROP = { leg: { len: 1.14, rad: .8 }, arm: { len: 1.1, rad: .78 }, torso: { len: 1.12, rad: .84 }, hand: { len: .72, rad: .72 }, foot: { len: .82, rad: .8 }, neck: { len: 1.15, rad: .8 } };
+// (then Tim: "even more slim and more tall ... his torso should be more elongated ... [his legs] a little bit more elongated")
+const PROP = { leg: { len: 1.26, rad: .72 }, arm: { len: 1.16, rad: .7 }, torso: { len: 1.28, rad: .76 }, hand: { len: .7, rad: .68 }, foot: { len: .8, rad: .76 }, neck: { len: 1.2, rad: .74 } };
 const sideOf = (nm) => nm.endsWith('.L') ? 'L' : nm.endsWith('.R') ? 'R' : '';
 const groupOf = (nm) => /UpperLeg|LowerLeg/.test(nm) ? 'leg' : /UpperArm|LowerArm/.test(nm) ? 'arm' : /Fist|Thumb|Weapon/.test(nm) ? 'hand' : /Foot|Shoelace/.test(nm) ? 'foot' : /Neck/.test(nm) ? 'neck' : 'torso';
 // new joint frames: for each skin joint, the source position P, the new position P2, the bone's delta rotation Q (applied in
@@ -118,7 +119,7 @@ const tris = []; for (let i = 0; i < IX.count; i += 3) { const a = IX.data[i], b
 // ---- scale: the body's height (feet to the top of the neck) to the Knight's (the helm sits above it)
 const used = [...new Set(tris)].sort((a, b) => a - b), remap = new Map(used.map((v, i) => [v, i]));
 let zmin = Infinity, zmax = -Infinity; for (const v of used) { zmin = Math.min(zmin, verts[v].p[2]); zmax = Math.max(zmax, verts[v].p[2]); }
-const neckTop = toModel(byName.Head.P2)[2], TARGET_NECK = 1.06, k = TARGET_NECK / (neckTop - zmin); // the top of the neck at 1.06 model units (the helm above reaches ~1.33: 1.75 x the Wayfarer at the Knight's scale)
+const neckTop = toModel(byName.Head.P2)[2], TARGET_NECK = 1.16, k = TARGET_NECK / (neckTop - zmin); // the top of the neck at 1.06 model units (the helm above reaches ~1.33: 1.75 x the Wayfarer at the Knight's scale)
 const jointOut = {}; for (const [nm, b] of [['Hips', 'pelvis'], ['Abdomen', 'spine'], ['Torso', 'chest'], ['Neck', 'neck'], ['Head', 'head'], ['UpperArm.L', 'armR'], ['LowerArm.L', 'foreR'], ['Fist.L', 'handR'], ['UpperArm.R', 'armL'], ['LowerArm.R', 'foreL'], ['Fist.R', 'handL'], ['UpperLeg.L', 'thighR'], ['LowerLeg.L', 'shinR'], ['Foot.L', 'footR'], ['UpperLeg.R', 'thighL'], ['LowerLeg.R', 'shinL'], ['Foot.R', 'footL']]) {
   const q = toModel(byName[nm].P2); jointOut[b] = [+(q[0] * k).toFixed(4), +(q[1] * k).toFixed(4), +((q[2] - zmin) * k).toFixed(4)]; }
 const pos32 = new Float32Array(used.length * 3), nrm8 = new Int8Array(used.length * 3), bone8 = new Uint8Array(used.length * 2), w8 = new Uint8Array(used.length), lum8 = new Uint8Array(used.length);
