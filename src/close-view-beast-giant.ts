@@ -16,7 +16,8 @@ import {
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, mix, span, kick, wobble, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
 
-const A = GIANT_ART;
+// GIANT_ART is read when a mesh or pose is first made, never at load: monster-pack.ts reaches close-view.ts, which loads
+// this module before lightning-giant-render.ts has finished loading.
 const hex = (s) => parseInt(s.slice(1), 16);
 // Balance-free presentation numbers (body units, seconds, radians), in one table.
 export const GIANT_RIG = Object.freeze({
@@ -105,12 +106,14 @@ const JETS = [[-.09, .245, -2.45, .085, .032, .26], [-.145, .199, -2.78, .07, .0
 const jetDir = (a) => [Math.cos(a), 0, -Math.sin(a)]; // 2D (x forward, y down) to (f, r, u)
 
 // ------------------------------------------------------------------------------------------------ the body
-const C = {
+let PALETTE = null;
+const palette = () => { const A = GIANT_ART; return PALETTE ||= {
   metal: hex(A.metal), dark: hex(A.metalDark), edge: hex(A.metalEdge), plate: hex(A.plate), copper: hex(A.copper), copperDark: hex(A.copperDark),
   core: hex(A.core), hot: hex(A.coreHot), trim: hex(A.trim), rivet: hex(A.rivet), visor: 0x1a2026, haft: 0x59626c, steel: 0xd6dde4, rod: 0xc9d3dc,
   farTone: 0x4a535d, hydraulic: 0x3e464f, cloudDark: 0x3d4550, cloudMid: 0x5f6a76, cloudLight: 0x8a95a1, cloudCap: 0xb4bec8,
-};
+}; };
 function buildGiantMesh(tier) {
+  const C = palette();
   const d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(GIANT_SKELETON, d);
   const U = [0, 0, 1], F = [1, 0, 0], DOWN = [0, 0, -1];
   // Legs: armoured thigh, knee cap, shin with guard and calf hydraulics, heavy wedge foot with toe plate and heel.
@@ -393,7 +396,7 @@ export function sampleGiant(tr, e, env) {
   resetPose(P);
   let rootZ = env.z + air, alpha = 1;
   const cloud = (e.marine && e.fleeFade == null) || (e.giantCloud && e.fleeFade != null);
-  if (e.marine && e.fleeFade == null) rootZ += S * (A.cloudRide + (reduce ? 0 : Math.sin(t * 1.6) * A.cloudBob));
+  if (e.marine && e.fleeFade == null) rootZ += S * (GIANT_ART.cloudRide + (reduce ? 0 : Math.sin(t * 1.6) * GIANT_ART.cloudBob));
   if (e.fleeFade != null && e.giantCloud) { rootZ += (1 - e.fleeFade) * S * 2.4; alpha = Math.min(1, e.fleeFade * 1.6); }
   else if (e.fleeFade != null) { alpha = clamp01(e.fleeFade); rootZ -= (1 - e.fleeFade) * S * .4; }
   let topple = 0;
