@@ -1,4 +1,4 @@
-// The Close View beast roster (release 889): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
+// The Close View beast roster (release 890): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
 // BEAST_SLOT.maxBeasts keeps its standard-view billboard exactly as before.
 import { BEAST_SLOT } from "./close-view-beast-rig.ts";

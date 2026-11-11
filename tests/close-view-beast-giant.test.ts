@@ -1,4 +1,4 @@
-// Release 889: the Lightning Giant's skinned Close View body (src/close-view-beast-giant.ts on the shared beast rig).
+// Release 890: the Lightning Giant's skinned Close View body (src/close-view-beast-giant.ts on the shared beast rig).
 // Pose and rig checks like the Wayfarer's: every attack reaches its key poses on the game's own clocks, planted feet stay
 // put, the mesh is bounded per quality tier, sampling is deterministic and reuses its buffers.
 import test from 'node:test';

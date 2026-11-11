@@ -1,4 +1,4 @@
-// Close View beast rig (release 889; Tim, 2026-11-11: a Close View rework of every world beast "to the same standard we are
+// Close View beast rig (release 890; Tim, 2026-11-11: a Close View rework of every world beast "to the same standard we are
 // giving the Wayfarer ... he should feel alive, like a real creature"). The ordinary native creature format is 256 triangles a
 // body, re-written on the CPU every frame. A world beast needs more than that to read as a solid, convincing machine or
 // animal at Close View's range, so beasts get their own slot:

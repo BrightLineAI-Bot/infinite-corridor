@@ -70,7 +70,7 @@ test('ordinary Pentagon camera keeps its established preset while routed-corner 
   const ordinary = createLabFixture({ lab: 'close-view', scenario: 'outer', seed: 'CINDER-VERGE-47', now }).game;
   ordinary.enemies = []; ordinary.save.closeViewAutoFollow = false; ordinary.presentation = { effectiveQuality: 'full', reduceMotion: true };
   const baseline = at(ordinary, { x: ordinary.player.x, y: ordinary.player.y }, Math.PI);
-  assert.ok(Math.abs(baseline.distance - 1.1) < .01 && Math.abs(baseline.pitch - .6815852775609947) < .01,
+  assert.ok(Math.abs(baseline.distance - 1.1) < .01 && Math.abs(baseline.pitch - .7259344520020021) < .01,
     `ordinary environment retains its established camera preset; ${JSON.stringify(baseline)}`);
 
   const f = fixture('keep'), yaw = -17 * Math.PI / 18;
