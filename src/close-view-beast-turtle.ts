@@ -63,7 +63,7 @@ const WALK_PHASE = [0, .25, .5, .75], DASH_PHASE = [0, .5, .5, 0];
 
 // ------------------------------------------------------------------------------------------------ the body
 const C = Object.freeze({ lit: 0x9c978a, mid: 0x7b776c, dark: 0x55524a, deep: 0x3a3833, ledge: 0xb3ae9f, line: 0x2a2824, ice: 0xa8dcef, iceLit: 0xe4f5fb,
-  iceDark: 0x6aa6c4, skin: 0x6d6a5f, skinLit: 0x8a8679, skinDark: 0x48463f, lichen: 0x6f7a5a, snow: 0xe9eef0, nail: 0xb8b29e, door: 0x1b1d1f, doorGlow: 0x8fd8ff,
+  iceDark: 0x6aa6c4, skin: 0x6d6a5f, skinLit: 0x8a8679, skinDark: 0x48463f, lichen: 0x6f7a5a, worn: 0x6a665c, moss: 0x66704f, pale: 0x948f82, snow: 0xe9eef0, nail: 0xb8b29e, door: 0x1b1d1f, doorGlow: 0x8fd8ff,
   beak: 0x2e2c27, eye: 0x1a1c1e, iris: 0x9fc8d8, mouth: 0xbfe8ff });
 // the terraces: [half length, half width, base height]; four courses of fitted stone, each set back from the one below
 const TERRACES = Object.freeze([0, 1, 2, 3].map((i) => Object.freeze([.55 * (1 - .2 * i), .46 * (1 - .2 * i), .255 + i * .115])));
@@ -77,26 +77,41 @@ function buildTurtleMesh(tier) {
   // ---- the plinth it all stands on: worn dark stone, the rim of the plastron
   B.bone('body').color(C.deep).box({ at: at('body', [0, 0, .21]), size: [.57, .48, .045], bevel: .3 });
   if (!low) B.color(C.dark).box({ at: at('body', [0, 0, .252]), size: [.565, .475, .006], bevel: 0 }); // the worn rim
+  if (!low) for (let k = 0; k < (full ? 9 : 5); k++) { const side = k % 4, f = (h(k, 21) * 1.6 - .8), p = side < 2 ? [(side ? 1 : -1) * .575, f * .45, .17] : [f * .55, (side === 2 ? 1 : -1) * .485, .17], len = .03 + .04 * h(k, 22);
+    B.color(k % 2 ? C.ice : C.iceLit).lathe({ at: at('body', p), F: [0, 0, -1], U: [1, 0, 0], rings: [[0, .009 + .006 * h(k, 23)], [len, 0]], seg: 4, caps: false, smooth: false }); } // icicles hanging from the rim
   // ---- the four terraces: each a block of fitted stone with sloped faces, a lit ledge on top
   for (let i = 0; i < 4; i++) {
     const [L, Wd, z0] = TERRACES[i];
-    B.bone('body').color(i % 2 ? C.mid : C.dark).box({ at: at('body', [0, 0, z0 + COURSE / 2]), size: [L, Wd, COURSE / 2], taper: .07, bevel: .14 });
+    B.bone('body').color(C.deep).box({ at: at('body', [0, 0, z0 + COURSE / 2]), size: [L, Wd, COURSE / 2], taper: .07, bevel: .3 }); // the mortar and core, worn round at the edges
     B.color(C.ledge).box({ at: at('body', [0, 0, z0 + COURSE + .004]), size: [L * .93, Wd * .93, .006], bevel: 0 });
     // snow lies on the upper ledges, drifted against the course above
     if (i >= 1) B.color(C.snow).box({ at: at('body', [-.01 * i, .005, z0 + COURSE + .011]), size: [L * (.86 - .04 * i), Wd * (.86 - .04 * i), .003], bevel: 0 });
     if (low) continue;
-    // weathering: a dark band where rain runs off the ledge above, low on each course
-    for (const sx of [-1, 1]) B.color(C.deep).box({ at: at('body', [sx * (L * .985 + .002), 0, z0 + COURSE * .12]), size: [.002, Wd * .97, COURSE * .1], bevel: 0 });
-    for (const sy of [-1, 1]) B.color(C.deep).box({ at: at('body', [0, sy * (Wd * .985 + .002), z0 + COURSE * .12]), size: [L * .97, .002, COURSE * .1], bevel: 0 });
-    // block joints: dark seams down each face, staggered course to course; a seam along the middle of the course
-    const seams = full ? 2 : 1;
-    for (const sx of [-1, 1]) for (let j = -seams; j <= seams; j++) { const y = (j + (i % 2) * .5) * Wd * (full ? .36 : .6); if (Math.abs(y) > Wd * .9) continue;
-      B.color(C.line).box({ at: at('body', [sx * (L * .965 + .003), y, z0 + COURSE / 2]), size: [.004, .005, COURSE * .47], bevel: 0 }); }
-    for (const sy of [-1, 1]) for (let j = -seams - 1; j <= seams + 1; j++) { const x = (j + (i % 2) * .5) * L * (full ? .3 : .45); if (Math.abs(x) > L * .9) continue;
-      B.color(C.line).box({ at: at('body', [x, sy * (Wd * .965 + .003), z0 + COURSE / 2]), size: [.005, .004, COURSE * .47], bevel: 0 }); }
-    // lichen on the stone
-    if (full) for (let j = 0; j < 3; j++) { const sy = j % 2 ? 1 : -1, x = (h(i, j) * 2 - 1) * L * .75;
-      B.color(C.lichen).box({ at: at('body', [x, sy * (Wd * .965 + .004), z0 + COURSE * (.25 + .5 * h(j, i))]), size: [.03 + .02 * h(i + 5, j), .004, .012], bevel: 0 }); }
+    // (Tim, 2026-11-11: "make his shell more weathered"): each face laid in courses of stone blocks of uneven width and
+    // mixed weathering (grey, darkened, moss-green, pale), set a little proud of the mortar so the joints read between them;
+    // some blocks worn down at the top, some cracked, now and then one fallen out; the faces lean in as the course rises
+    const tones = [C.mid, C.dark, C.lit, C.worn, C.moss, C.pale, C.mid, C.worn];
+    const rows = full && i === 0 ? 2 : 1; // the bottom course in two staggered rows
+    for (let row = 0; row < rows; row++) for (const [axis, sg] of [[0, -1], [0, 1], [1, -1], [1, 1]]) {
+      const half = axis === 0 ? Wd : L, dist = axis === 0 ? L : Wd, n = (half > .35 ? 6 : half > .22 ? 5 : 4) - (full ? 0 : 2) + row;
+      const nrm = axis === 0 ? [sg * COURSE, 0, .07 * dist] : [0, sg * COURSE, .07 * dist], up = axis === 0 ? [-sg * .07 * dist, 0, COURSE] : [0, -sg * .07 * dist, COURSE];
+      // uneven widths: cut points jittered along the face (the same every build)
+      const cuts = [-half * .97]; for (let k = 1; k < n; k++) cuts.push(-half * .97 + (2 * half * .97) * (k - row * .5 + (h(i * 7 + axis + row * 31, k * 3 + sg + 4) - .5) * .5) / n); cuts.push(half * .97);
+      for (let k = 0; k < n; k++) {
+        const a = cuts[k] + .004, b = cuts[k + 1] - .004, mid = (a + b) / 2, hw = (b - a) / 2, r = h(i * 13 + k + row * 17, axis * 5 + sg + 9);
+        if (r < .06) continue; // a block fallen out: the dark core shows
+        if (i === 1 && axis === 0 && sg > 0 && Math.abs(mid) < .09) continue; // the tomb door is here
+        const rh = COURSE * (rows > 1 ? .21 : .44), worn = r > .8 ? .55 + .3 * h(k, i) : 1, hu = rh * worn, zc = z0 + (rows > 1 ? COURSE * (.25 + .5 * row) : COURSE * .5) - (rh - hu);
+        const off = dist - .07 * dist * ((zc - z0) / COURSE) + .003;
+        const at0 = axis === 0 ? [sg * off, mid, zc] : [mid, sg * off, zc];
+        B.color(tones[Math.floor(r * 997) % tones.length]).box({ at: at('body', at0), size: [.004, hw, hu], bevel: 0, F: nrm, U: up });
+        if (full && r > .55 && r < .68) { // a crack across it
+          const tilt = h(k, i + 3) > .5 ? .55 : -.55, cr = axis === 0 ? [0, Math.cos(tilt) * 0 + Math.sin(tilt), 0] : [Math.sin(tilt), 0, 0];
+          const cu = [up[0] + cr[0] * COURSE, up[1] + cr[1] * COURSE, up[2]];
+          B.color(C.line).box({ at: at('body', [at0[0] + (axis === 0 ? sg * .003 : 0), at0[1] + (axis === 1 ? sg * .003 : 0), at0[2]]), size: [.003, .0025, hu * .85], bevel: 0, F: nrm, U: cu });
+        }
+      }
+    }
   }
   // ---- the tomb door in the second terrace, toward the head: a dark doorway lit faintly from deep inside, sill and lintel
   { const [L, , z0] = TERRACES[1], x = L * .965;
