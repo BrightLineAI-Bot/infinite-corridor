@@ -15,13 +15,24 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r875 (`f410be5ab7b8`); production serves `r875-f410be5ab7b8`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 880 | Claude | claude/lantern | Lantern tool for slot A/B/C; lit, it lifts dungeon darkness round the Wayfarer and lengthens the Close View torch | In flight. |
+| 891 | Claude | claude/building-respawns | Cleared building floors (keep, arcology, Pentagon chamber, room-maze cube) bring a pack of their own creatures back every 35 s of play, out of sight; small rewards only | In flight. |
+| 890 | Claude | claude/wayfarer-damage-10 | Wayfarer damage x0.9 across every source (WAYFARER_DAMAGE table); healing unscaled; damage text shows the scaled whole numbers | Merged as `be74e4f7eaee` (#558). |
+| 889 | Claude | claude/cv-camera-targeting | Close View presets farther back and higher (wide 5 tiles); one target priority, reach lock, sticky lock, smooth switches, lock ring and edge pointer | Merged as `1711f90d36f9` (#556). |
+| 888 | Claude | claude/wayfarer-passes | Close View Wayfarer: standard kit, silver pod robot, empowered pressure suit, readable jump/landing/hurt, aliveness pass, Wayfarer materials on tools | Merged as `62046802f210` (#555). |
+| 887 | Claude | claude/compass-facing | Close View compass follows the Wayfarer's body facing, not the camera; standard view stays north-up with an N/E/S/W dial | Merged as `c84d55569c78` (#554). |
+| 886 | Claude | claude/arcana-live | Arcana region placement live (straight-line homes); Bell Toll and Lamplighter's Light earned on every save; the Cairn Keeper starts the Chain; nothing gated | Merged as `174ffb69bb4d` (#549). |
+| 885 | Claude | claude/sim-clock | Fixed 60 Hz simulation steps with interpolated drawing; Close View floor walls built off the entry frame (2–4× faster, byte-identical) | Merged as `0e5133f207af` (#553). |
+| 884 | Claude | claude/cv-creatures | Close View creatures fully opaque within view range (designed ghosts stay ghostly), brighter light floor, cool rim and glowing parts | Merged as `51db683090cf` (#552). |
+| 883 | Claude | claude/seed-dungeons | Pumice and Crimson Seeds offered at a Watcher's shrine open one-time realms (Hollow Husk, Drifting Ship) with new creatures, crystals, caches, a beacon and Divine Viscera; never kept | Merged as `23d96f405dd8` (#551). |
+| 882 | Claude | claude/weapon-hands | Close View: all swords in the left hand, tools in the right and smaller, Blunderbuss shouldered and Rift Bombard low at the hip two-handed, tool shots from the muzzle | Merged as `eec2aff3df39` (#550). |
+| 881 | Claude | claude/sv-trees-chasm | Great-tree keel steering, step landings and gold branch rims; standard view draws actors on flat interior floors; crater false notice and shovel hint | Merged as `fc5a0d9d5e61` (#548). |
+| 880 | Claude | claude/lantern | Lantern tool for slot A/B/C; lit, it lifts dungeon darkness round the Wayfarer and lengthens the Close View torch | Merged as `77949ef723ba` (#547). |
 | 879 | Claude | claude/seeds-travel | Fossilized seed sure hop between great-tree crowns; Opal seed and the Tide Bearer at every dive; Pumice and Crimson seeds carried; rare finds | Merged as `d2d3440281c9` (#546). |
 | 878 | Claude | claude/region-arcana | Region homes for bells, chain and threads (version-gated, switch off), Journal counts with units and hints, Torn Pages region hints, arcana reward hook | Merged as `efa75cf3d286` (#545). |
 | 877 | Claude | claude/lock-on | Close View target mode (red button, auto next-foe lock, nearer-threat switch), lock-on strafe, stick follows camera through Target recenter | Merged as `9c94e503733b` (#544). |
@@ -238,6 +249,7 @@ Main is at r875 (`f410be5ab7b8`); production serves `r875-f410be5ab7b8`. The nex
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 881 | r881-fc5a0d9d5e61 | 2026-11-11 | Fable review (875→881, releases 876–881): no blockers; 3,597 tests pass; dist parses; r875 saves migrate identically apart from the new `lantern`/`seedPouch` keys; existing journeys generate identically; arcana regions off. Notes: seed finds shift later placements on new ground after pickup; an Opal passage skips the underwater gate; Fossilized planning untested on phones; a passer is consumed by a resume. Live identity verified. |
 | 875 | r875-f410be5ab7b8 | 2026-11-11 | Fable review (874→875) found one blocker: a `//` comment in a one-line HUD statement in src/main.ts hid code and dist/src/main.js did not parse; fixed in 3df885f9 with a block comment. Fable re-review: no blockers. Live identity verified. tests/dist-syntax.test.ts now parses every shipped module so this cannot recur. |
 | 874 | r874-00abe1a858bf | 2026-11-11 | Fable review (873→874): no blockers; 3,528 tests pass; ten pre-874 save shapes migrate with A/B intact, Build and the robot never lost, idempotent; dais never saved. Live identity verified. |
 | 873 | r873-d4a0b43a1879 | 2026-11-10 | Includes r870–r872. Fable review (869→873): no blockers; 3,516 tests pass, 26,862 pinned floors and 500 save-pinned floors regenerate identically, 60,000 default loot rolls identical, saved four-cut Cleaver records resume exactly. Live identity verified. |

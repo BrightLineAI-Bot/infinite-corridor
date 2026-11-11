@@ -1,10 +1,51 @@
 // Pure player form facts and read-only selection. No mesh, Game or renderer dependencies.
-const CLEAVER_RIGHT = Object.freeze({ grip: 'leftSocket', free: 'rightSocket' });
-const LEGACY_HANDS = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
-// Source labels are retained. In the existing projection source-left is the
-// displayed anatomical right. Resolve from the FINAL held owner, never equipment.
+const RIGHT_HAND = Object.freeze({ grip: 'leftSocket', free: 'rightSocket' });
+const LEFT_HAND = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
+// Close View held gear, presentation only (Tim, 2026-11-11: every sword in the left hand,
+// guns and tools in the right, tools a little smaller, Rift Bombard and Blunderbuss held
+// two-handed like a rifle while firing). `hand` is the DISPLAYED anatomical hand. Source
+// labels are retained: in the existing projection source-left (leftSocket, native swing +2,
+// recipe/model +Y) is the displayed anatomical right, so a right-hand item uses leftSocket.
+// `scale` multiplies the imported .82 recipe conversion and the native baked tool recipe.
+// `grip`: 'one' one-handed, 'rifle' trigger hand plus a support hand under the barrel while
+// firing, 'pike' the existing two-handed polearm frame.
+export const CLOSE_VIEW_HELD_GEAR = Object.freeze({
+  melee: Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  'salvage-blade': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  'verge-cleaver': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  'cinder-pike': Object.freeze({ hand: 'left', scale: 1, grip: 'pike' }),
+  'great-sweep': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  mirage: Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  emitter: Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
+  'spark-coil': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
+  'needle-caster': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
+  'lumen-spindle': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
+  'rift-bombard': Object.freeze({ hand: 'right', scale: .78, grip: 'rifle' }),
+  blunderbuss: Object.freeze({ hand: 'right', scale: .8, grip: 'rifle' }),
+  hammer: Object.freeze({ hand: 'right', scale: .85, grip: 'one' }),
+  'orrery-tap': Object.freeze({ hand: 'right', scale: .85, grip: 'one' }),
+  'orrery-release': Object.freeze({ hand: 'right', scale: .85, grip: 'one' }),
+});
+// Rifle-grip tuning (imported source space, metres of the fitted rig; native recipe radians).
+// raise: added to the accepted tool motion's shoulder-relative target (negative up lowers it) (side is toward the
+// body's centre line), weighted by its raise envelope. support: the point the support hand
+// takes, along the barrel from the grip in recipe units (.79 = grip) and below it.
+export const CLOSE_VIEW_RIFLE_GRIP = Object.freeze({
+  // Tim 2026-11-11: the Bombard is held low, two hands on it down by the hip/waist, muzzle forward.
+  'rift-bombard': Object.freeze({ raise: Object.freeze([.07, -.26, -.12]), pitch: 0, support: Object.freeze([1.20, .045]), supportYaw: .55, supportPitch: -.35, nativeRaise: -.35, nativeReach: .92, nativeInward: .55 }),
+  blunderbuss: Object.freeze({ raise: Object.freeze([.11, .19, -.06]), pitch: .10, support: Object.freeze([1.22, .04]), supportYaw: .55, supportPitch: -.35, nativeRaise: .28, nativeReach: .92, nativeInward: .55 }),
+});
+export const closeViewHeldGear = (profile) => Object.hasOwn(CLOSE_VIEW_HELD_GEAR, profile) ? CLOSE_VIEW_HELD_GEAR[profile] : null;
+export const closeViewHeldHand = (profile) => closeViewHeldGear(profile)?.hand ?? 'left';
+export const closeViewHeldScale = (profile) => closeViewHeldGear(profile)?.scale ?? 1;
+// Which socket holds the FINAL held owner and which hand is free. Unknown profiles keep the
+// established left-hand (source rightSocket) grip. `stage` is accepted for older callers;
+// every Verge Cleaver record now resolves to the same left-hand grip.
+export function closeViewHandRoles(finalProfile) {
+  return closeViewHeldHand(finalProfile) === 'right' ? RIGHT_HAND : LEFT_HAND;
+}
 export function cleaverHandRoles(finalProfile, stage = null) {
-  return finalProfile === 'verge-cleaver' && (!stage || stage.kind === 'cleaver-four' || stage.kind==='cleaver-three') ? CLEAVER_RIGHT : LEGACY_HANDS;
+  return closeViewHandRoles(finalProfile);
 }
 const cutSmooth = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
 const unit = value => Math.max(0, Math.min(1, Number(value)||0));
@@ -71,7 +112,7 @@ export const CLOSE_VIEW_PLAYER_FORM_PROFILES = Object.freeze({
 
 export const PLAYER_FORM_HANDS = Object.freeze({
   playerIronFists: Object.freeze({ x:.22,y:-.35,z:.76,px:0,pz:1.20 }),
-  playerRobot: Object.freeze({ x:.29,y:-.63,z:.70,px:-.04,pz:1.17 }),
+  playerRobot: Object.freeze({ x:.24,y:-.73,z:.54,px:0,pz:.96 }),
   playerPowerSuit: Object.freeze({ x:.14,y:-.27,z:.82,px:0,pz:1.18 }),
   playerEmberForm: Object.freeze({ x:.24,y:-.46,z:.84,px:0,pz:1.48 }),
 });
@@ -111,6 +152,19 @@ export function ordinaryJumpPresentation(game, now, lift, baseMs) {
   const elapsedMs=clock-start,remainingMs=g.jumpUntil-clock;
   if(elapsedMs<0||remainingMs>durationMs+1e-6)return null;
   return {v:1,elapsedMs,remainingMs,durationMs,lift,rise:Math.min(1,elapsedMs/(baseMs*.5)),fall:Math.max(0,1-remainingMs/(baseMs*.5))};
+}
+
+// Read-only touchdown handoff: the short absorb after an ordinary jump, read from the jump's own
+// finished clock (jumpUntil). No new timer or state; null outside the window or in any other mode.
+export const ORDINARY_LANDING_MS = 220;
+export function ordinaryLandingPresentation(game, now) {
+  const g=game,p=g?.player,clock=g?.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now;
+  if(!p||!(p.hp>0)||!Number.isFinite(clock)||!Number.isFinite(g.jumpUntil)||!Number.isFinite(g.jumpStart)||!(g.jumpStart<g.jumpUntil))return null;
+  const age=clock-g.jumpUntil;if(!(age>=0&&age<ORDINARY_LANDING_MS))return null;
+  if(g.droneLift||g.mechBoosting||g.glide||g.swimming||g.save?.boat?.aboard||g.mountRide?.()||g.mechUp?.()||g.droneUp?.())return null;
+  const form=playerFormPresentation(g);if(form&&form.kind!=='playerIronFists')return null;
+  if(clock<(p.stunnedUntil||0)||clock<(p.dodgeUntil||0))return null;
+  return age/ORDINARY_LANDING_MS;
 }
 
 // Read-only defeat handoff for the ordinary on-foot body. The short ordinary

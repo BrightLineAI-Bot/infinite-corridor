@@ -56,7 +56,7 @@ test('production masked renderer keeps accepted tool poses across primary Echo, 
       assert.equal(closeViewGLStats.heroTriangles,3170);assert.ok(closeViewGLStats.modelTriangles<=3170+256);assert.ok(acceptedGear.every(Number.isFinite));
       g.setPaused(true,sampleAt);assert.deepEqual(draw(g,110000),accepted);const saved=migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(110000)))),back=new Game(saved,200000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();
       assert.deepEqual(draw(back,200000),accepted,kind+' exact paused reload body');assert.deepEqual(gl.modelData,acceptedGear,kind+' exact paused reload gear');
-      back.setPaused(false,201000);const releaseAt=back.pendingToolUse.releaseAt;back.releasePendingToolUse(releaseAt);const fistAt=Math.max(201001,releaseAt+1);assert.equal(back.fistPunch(1,0,fistAt,{x:1,y:0}),true);draw(back,fistAt+39);assert.equal(closeViewGLStats.modelTriangles,3170+64,'new Fists replace tool gear with bilateral gauntlets');
+      back.setPaused(false,201000);const releaseAt=back.pendingToolUse.releaseAt;back.releasePendingToolUse(releaseAt);const fistAt=Math.max(201001,releaseAt+1);assert.equal(back.fistPunch(1,0,fistAt,{x:1,y:0}),true);draw(back,fistAt+39);assert.equal(closeViewGLStats.modelTriangles,3170+64+132,'new Fists replace tool gear with bilateral gauntlets');
       delete g.player.attackVisual.toolKind;assert.notDeepEqual(draw(g,sampleAt),accepted,kind+' accepted identity selects its distinct body pose');g.player.attackVisual=structuredClone(record);
     }
   }finally{CLOSE_VIEW_HOOKS.gl=null;resetCloseViewGL();setCloseViewCanvasFactory(null);for(const n of names){if(old.get(n)===undefined)delete globalThis[n];else globalThis[n]=old.get(n);}}

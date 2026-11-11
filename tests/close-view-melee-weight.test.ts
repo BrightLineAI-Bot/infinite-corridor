@@ -59,15 +59,15 @@ test('imported hero shares contact poses in full and reduced motion and returns 
   }
 });
 
-test('imported cleaver drives the canonical leftSocket through four distinct continuous paths',()=>{
+test('imported cleaver drives the canonical left-hand rightSocket through four distinct continuous paths',()=>{
   const carry=hero(null,false,2000,'verge-cleaver').frame,points:number[][]=[];
   for(let step=1;step<=4;step++){
     const base={kind:'melee',profile:'verge-cleaver',durationMs:320,poseMs:1904,primaryMotion:{v:2,step},meleeAction:cleaver};
     const before=hero({...base,phase:.3-1e-5}).frame,at=hero({...base,phase:.3}).frame,after=hero({...base,phase:.3+1e-5}).frame;
-    const point=Array.from(at.leftSocket.slice(12,15));points.push(point);
+    const point=Array.from(at.rightSocket.slice(12,15));points.push(point);
     const move=(key:'leftSocket'|'rightSocket')=>Math.hypot(at[key][12]-carry[key][12],at[key][13]-carry[key][13],at[key][14]-carry[key][14]);
-    assert.ok(move('leftSocket')>move('rightSocket')+.015,`cut ${step} moves canonical grip most`);
-    for(const near of [before,after])assert.ok(Math.hypot(near.leftSocket[12]-point[0],near.leftSocket[13]-point[1],near.leftSocket[14]-point[2])<.002,`cut ${step} is continuous at contact`);
+    assert.ok(move('rightSocket')>move('leftSocket')+.015,`cut ${step} moves canonical grip most`);
+    for(const near of [before,after])assert.ok(Math.hypot(near.rightSocket[12]-point[0],near.rightSocket[13]-point[1],near.rightSocket[14]-point[2])<.002,`cut ${step} is continuous at contact`);
   }
   for(let a=0;a<4;a++)for(let b=a+1;b<4;b++)assert.ok(Math.hypot(points[a][0]-points[b][0],points[a][1]-points[b][1],points[a][2]-points[b][2])>.01,`cuts ${a+1}/${b+1} are distinct`);
 });

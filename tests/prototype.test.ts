@@ -1507,14 +1507,14 @@ test("projectiles and spell pulses hurt NPCs once and preserve exact paused woun
         },
       ];
     g.update(0.1, idle(), 1);
-    assert.equal(g.save.consequences.npcs[v.id].hp, 18);
+    assert.equal(g.save.consequences.npcs[v.id].hp, 20);
     g.setPaused(true, 2);
     const r = new Game(
       deserializeSave(serializeSave(g.exportSnapshot(2))),
       100,
     );
     r.update(20, idle(), 200);
-    assert.equal(r.save.consequences.npcs[v.id].hp, 18);
+    assert.equal(r.save.consequences.npcs[v.id].hp, 20);
     assert.equal(r.save.xp, 0);
   }
 });
@@ -2404,12 +2404,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 880 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 891 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "880"/);assert.match(html,/styles\.css\?v=880/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v880`/);assert.match(sw,/styles\.css\?v=880/);assert.match(sw,/proving-ground-labs\.js\?v=880/);assert.match(sw,/dungeon-framework\.js\?v=880/);assert.match(sw,/renderer\.js\?v=880/);
-  assert.match(build,/release='880'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "891"/);assert.match(html,/styles\.css\?v=891/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v891`/);assert.match(sw,/styles\.css\?v=891/);assert.match(sw,/proving-ground-labs\.js\?v=891/);assert.match(sw,/dungeon-framework\.js\?v=891/);assert.match(sw,/renderer\.js\?v=891/);
+  assert.match(build,/release='891'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });

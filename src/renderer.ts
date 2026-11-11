@@ -1,3 +1,4 @@
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
 import { FAR_FOLK } from "./far-realms.ts";
@@ -530,6 +531,7 @@ function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=nu
   if (drawStillworksTile(ctx, t, x, y, s)) return; // the Stillworks (pentagon-arena-render.ts): cached sprites per band and edge
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w, closeViewWorldCapture())) return;
   if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
+  if (t?.realm && drawRealmTile(ctx, t, x, y, s, map, w)) return; // seed realms (seed-realm-render.ts)
   if (t?.chasm) { drawStarChasm(ctx, t, x, y, s); if (t.kind === "starShard") drawStarShard(ctx, t, x, y, s); return; } // release 593; the Pentagon's finale: a stone adrift
   if (t?.kind === "starWalk" || t?.kind === "starDais") { drawStarWalk(ctx, t, x, y, s, map, w); return; } // the Pentagon's finale: the walkway among the stars
   const p = PAL[t.kind] || PAL.ash,
@@ -2373,6 +2375,9 @@ function drawScreenOverlay(ctx, w, h) {
   ctx.drawImage(o.canvas, 0, 0, w, h);
   return true;
 }
+// The standard view's floor (renderer.ts render): `flatInterior`, a versioned interior heightfield (landscape.ts interiorTerrain)
+// is painted flat here, so its actors are drawn on the flat floor rather than lifted by levels nobody sees.
+export const STANDARD_VIEW_FLOOR = { flatInterior: true };
 export function render(ctx, g, w, h, now) {
   if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) return; // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
@@ -2402,14 +2407,19 @@ export function render(ctx, g, w, h, now) {
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
   const flatCapture = worldCapture || (g.map?.interiorTerrain?.version === 1 || g.map?.building) && closeViewCapturing();
-  const groundLift = (x, y) => (flatCapture ? 0 : g.map?.landscape || g.map?.building ? liftAt(g.map, mw, x, y) : 0);
-  const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
+  // STANDARD_VIEW_FLOOR (Tim, 2026-11-11: in the Pentagons "the character seems to be kind of like floating above the ground"):
+  // this view paints a versioned interior heightfield's floor flat (its tiles carry no landscape lift), so whoever stands on its
+  // raised half is drawn on that flat floor too; a hop or the drone is drawn by its height over the floor under it, as Close
+  // View's flat capture does. Close View draws the heights themselves.
+  const flatFloor = flatCapture || STANDARD_VIEW_FLOOR.flatInterior && interiorTerrain(g.map);
+  const groundLift = (x, y) => (flatFloor ? 0 : g.map?.landscape || g.map?.building ? liftAt(g.map, mw, x, y) : 0);
+  const crystalLift = e => flatFloor ? 0 : crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
   const interior = interiorTerrain(g.map);
   const supportLevel = interior ? interiorSurfaceLevel(g.map, p.x + .5, p.y + .75) : 0;
   const hopLift = interior && g.skyAir != null && jumping
-    ? Math.max(flatCapture ? 0 : supportLevel, g.skyAir - (flatCapture ? supportLevel : 0)) * LIFT_PER_LEVEL
+    ? Math.max(flatFloor ? 0 : supportLevel, g.skyAir - (flatFloor ? supportLevel : 0)) * LIFT_PER_LEVEL
     : g.area === "overworld" && g.skyAir != null && jumping
       ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1) - (worldCapture ? liftAt(g.map, mw, p.x, p.y) : 0))
       : null;
@@ -2439,6 +2449,7 @@ export function render(ctx, g, w, h, now) {
     if (worldCapture && g.map.movers?.length) drawRafts(ctx, g, s, now);
     if (!worldCapture && g.area === "overworld" && g.map?.canopy?.box) drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, g.map.canopy.box, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId, scarSurface)); } // great-tree review
   drawVoidScarOverlay(ctx,g,s,mw,mh,{l,t,r,b},scarSurface);
+  if (g.area === "dungeon" && g.map?.seedRealm) drawRealmCosmos(ctx, g, s, { l, t, r, b }, now, p.x + .5, p.y + .5 - viewLift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // seed realms: the galaxy through the glass
   if (g.area === "dungeon" && g.map?.stillworks) drawStillworksLight(ctx, g, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), !stillworksCapture); // its great order, the heart's figure, the light falling inward, the counting in the grain
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
@@ -2582,6 +2593,7 @@ export function render(ctx, g, w, h, now) {
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
           else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301
+          else if (o.realmObject) drawRealmObject(ctx, o, s, now); // seed realms
           else if (g.area === "dungeon" && wayKind(o, g.map) || (o.kind === "deepTransition")) drawWayMarker(ctx, o, s, now, o.kind === "deepTransition" ? (o.direction === "down" ? "down" : "up") : wayKind(o, g.map) === "down" ? "down" : "up", o.kind === "emberDoor"); // a way: a marker stone with a chevron
           else if (o.kind === "buildingStair") drawBuildingStair(ctx, o, s, now); // great buildings
           else if (o.kind === "labKey") drawLabKey(ctx, o, s, now); // a labyrinth's key

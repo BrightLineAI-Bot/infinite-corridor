@@ -25,6 +25,7 @@ export function projectileVisualPoint(shot, support=0, x=shot.x, y=shot.y, age=s
 }
 export function readProjectileVisualFlight(raw){const d=Number(raw?.duration);return raw&&typeof raw==='object'&&!Array.isArray(raw)&&raw.v===1&&Number.isFinite(d)&&d>0&&d<=8?{...raw,v:1,duration:d}:null;}
 
+// `spectral`: a ghost by design (Close View draws it a little see-through with a cold rim; every other creature is solid).
 const profile = (bodyLift, head, shot, action, decoration = true, extra = {}) => Object.freeze({ bodyLift, head, shot, action, decoration, ...extra });
 const foundryProfiles = Object.fromEntries(Object.entries(FOUNDRY_BASE_BODIES).map(([kind,body])=>[kind,profile(0,FOUNDRY_MODEL_METADATA[body].headZ,FOUNDRY_MODEL_METADATA[body].actionZ,'foundry')]));
 export const ACTOR_PRESENTATION = Object.freeze({
@@ -47,14 +48,14 @@ export const ACTOR_PRESENTATION = Object.freeze({
   amalgam: profile(0, 1.25, .95, 'pack'),
   gnawingMaw: profile(0, 1.05, .72, 'pack', true, { hidden: 'silent' }),
   cinderSeraph: profile(.45, 1.6, 1.81, 'pack'),
-  lumenWraith: profile(.35, 1.7, 1.82, 'pack'),
+  lumenWraith: profile(.35, 1.7, 1.82, 'pack', true, { spectral: true }),
   veilSpinner: profile(0, .7, .4, 'pack'),
   riftLynx: profile(0, .85, .55, 'pack'),
   sunderjaw: profile(0, .9, .4, 'pack', true, { segments: 3, hidden: 'mound' }),
   thunderhorn: profile(0, 1.25, .7, 'pack'),
   siegeBeetle: profile(0, 1.3, 1.17, 'pack', true, { segments: 2 }),
-  gloomwisp: profile(.25, .95, .93, 'pack'),
-  gloomgorge: profile(.12, 1.3, .92, 'pack'),
+  gloomwisp: profile(.25, .95, .93, 'pack', true, { spectral: true }),
+  gloomgorge: profile(.12, 1.3, .92, 'pack', true, { spectral: true }),
 });
 export function actorProfile(actor) {
   const p = ACTOR_PRESENTATION[actor?.kind];
