@@ -16,8 +16,8 @@
 //   At `swarm.at` health it calls small silver copies of itself (capped). It carries 1–2 elite affixes and scales with
 //   regionalThreat.
 // Runtime fields on the creatures (`stalkForm`, `stalkAct`, …) are never saved; only `save.stalker` is.
-import { hashSeed } from "./random.js?v=r886-174ffb69bb4d";
-import { ENCLOSURE, trapChance } from "./building.js?v=r886-174ffb69bb4d"; // release 696: the Enclosure trap
+import { hashSeed } from "./random.js?v=r896-d66b426b1554";
+import { ENCLOSURE, trapChance } from "./building.js?v=r896-d66b426b1554"; // release 696: the Enclosure trap
 
 export const STALKER = {
   version: 1,

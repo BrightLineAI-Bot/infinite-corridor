@@ -1,39 +1,41 @@
-import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r886-174ffb69bb4d';
-import { ordinaryContactEnemy } from './actor-contact.js?v=r886-174ffb69bb4d';
-import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r886-174ffb69bb4d";
-import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r886-174ffb69bb4d"; // the Close View lab
-import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r886-174ffb69bb4d";
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r886-174ffb69bb4d";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r886-174ffb69bb4d";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r886-174ffb69bb4d";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r886-174ffb69bb4d";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r886-174ffb69bb4d";
-import { DIG, planDig } from "./digging.js?v=r886-174ffb69bb4d";
-import { freshSave, migrateSave } from "./types.js?v=r886-174ffb69bb4d";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r886-174ffb69bb4d";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r886-174ffb69bb4d";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r886-174ffb69bb4d";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r886-174ffb69bb4d";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r886-174ffb69bb4d";
-import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r886-174ffb69bb4d";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r886-174ffb69bb4d";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r886-174ffb69bb4d";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r886-174ffb69bb4d";
-import { BIOMES, biomeFor } from "./landscape.js?v=r886-174ffb69bb4d";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r886-174ffb69bb4d";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r886-174ffb69bb4d";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r886-174ffb69bb4d";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r886-174ffb69bb4d";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r886-174ffb69bb4d";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r886-174ffb69bb4d";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r886-174ffb69bb4d";
-import { ensureLattice } from "./transit-lattice.js?v=r886-174ffb69bb4d";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r886-174ffb69bb4d";
-import { fieldOn } from "./lattice-fields.js?v=r886-174ffb69bb4d";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r886-174ffb69bb4d";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r886-174ffb69bb4d";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r886-174ffb69bb4d";
-import { validActions } from "./interactions.js?v=r886-174ffb69bb4d";
+import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r896-d66b426b1554';
+import { ordinaryContactEnemy } from './actor-contact.js?v=r896-d66b426b1554';
+import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r896-d66b426b1554";
+import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r896-d66b426b1554"; // the Close View lab
+import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r896-d66b426b1554";
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r896-d66b426b1554";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r896-d66b426b1554";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r896-d66b426b1554";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r896-d66b426b1554";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r896-d66b426b1554";
+import { DIG, planDig } from "./digging.js?v=r896-d66b426b1554";
+import { freshSave, migrateSave } from "./types.js?v=r896-d66b426b1554";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r896-d66b426b1554";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r896-d66b426b1554";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r896-d66b426b1554";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r896-d66b426b1554";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r896-d66b426b1554";
+import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r896-d66b426b1554";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r896-d66b426b1554";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r896-d66b426b1554";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r896-d66b426b1554";
+import { isAdventureKind, adventureSpawnSpot } from "./adventure-creatures.js?v=r896-d66b426b1554"; // adventure creatures: the combat lab places them by habitat
+import { LETHAL_KINDS } from "./landscape.js?v=r896-d66b426b1554";
+import { BIOMES, biomeFor } from "./landscape.js?v=r896-d66b426b1554";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r896-d66b426b1554";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r896-d66b426b1554";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r896-d66b426b1554";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r896-d66b426b1554";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r896-d66b426b1554";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r896-d66b426b1554";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r896-d66b426b1554";
+import { ensureLattice } from "./transit-lattice.js?v=r896-d66b426b1554";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r896-d66b426b1554";
+import { fieldOn } from "./lattice-fields.js?v=r896-d66b426b1554";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r896-d66b426b1554";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r896-d66b426b1554";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r896-d66b426b1554";
+import { validActions } from "./interactions.js?v=r896-d66b426b1554";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -135,7 +137,7 @@ const ORDINARY = ["hollow", "cistern", "kiln"].map((id) => ({ id, label: `${id[0
 const FORGE = [{ id: "sandbox", label: "Sandbox: every glyph, empty sockets" }, { id: "echoes", label: "Echoes: every Creature Echo owned, none set" }, { id: "awakening", label: "Awakening-ready: Aperture 90, lumen dust, max-rank relics holding Wildfire" }, ...Object.entries(RESONANCES).map(([id, r]) => ({ id: `resonance-${id}`, label: `${r.name} (${GLYPHS[r.pair[0]].name} + ${GLYPHS[r.pair[1]].name})` }))];
 const UNDERLANDS = [...LAYOUTS.map((id) => ({ id: `layout-${id}`, label: `${id[0].toUpperCase()}${id.slice(1)} layout` })), ...Object.entries(UNDER_THEMES).map(([id, t]) => ({ id: `theme-${id}`, label: `${t.name || id} environment` })), { id: "relay-node", label: "Relay node, guardian defeated" }];
 const DEEP = [{id:"legacy-v1",label:"Legacy v1 Threefold expedition"},...DEEP_ARCHETYPE_IDS.map((id) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)} deep expedition` }))];
-const CREATURES = [...Object.keys(CREATURE_FORMS).filter(id=>!MONSTER_PACK[id]?.prototypeOnly), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers",...PACK_KINDS.map(id=>`pack-boss-${id}`)].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
+const CREATURES = [...Object.keys(CREATURE_FORMS).filter(id=>!MONSTER_PACK[id]?.prototypeOnly||MONSTER_PACK[id]?.adventureKin /* the adventure creatures can be tried here */), ...Object.keys(ELITE_DEFINITIONS).filter((id)=>!Object.hasOwn(CREATURE_FORMS,id)),...Object.keys(MELEE_PATTERNS).map(id=>`pattern-${id}`),"pattern-elite-combination","pattern-wall-interruption","pattern-multiple-attackers",...PACK_KINDS.map(id=>`pack-boss-${id}`)].map((id)=>({id,label:id.replace(/([A-Z])/g," $1").replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}));
 const COMBAT_ASSETS = [
   { id: "blade-spark-ashling", label: "Salvage Blade + Spark Coil · Ashling", primary: "Salvage Blade", tool: "Spark Coil", spell: "ember-ring", foe: "ashling" },
   { id: "pike-spindle-hound", label: "Cinder Pike + Lumen Spindle · Ashen Hound", primary: "Cinder Pike", tool: "Lumen Spindle", spell: "cinder-dart", foe: "ashenHound" },
@@ -384,6 +386,7 @@ function closeViewFixture(scenario, seed, now) {
       return result;
     };
     game.enemies = [];
+    game.respawnOff = true; // a quiet floor stays quiet: no building respawns (fractured.ts RESPAWN) in this lab
   }
   let entry = game.map.entry || { x: 4, y: 5 };
   if ((spec.id === "grand-hall" || spec.id === "pit-gallery") && game.map.hall) {
@@ -908,7 +911,33 @@ export const COMBAT_ENVIRONMENTS = [
   ...["hollow", "cistern", "kiln"].map((r) => ({ id: `dungeon-${r}`, label: `Dungeon: ${r}` })),
   ...ARENA_FAMILIES.map((f) => ({ id: `arena-${f}`, label: `Arena: ${f.replaceAll("-", " ")}` })),
   ...Object.keys(BIOMES).map((b) => ({ id: `land-${b}`, label: `Overworld: ${b}` })),
+  { id: "adventure-heights", label: "Adventure heights: tiered gallery, wall, sand flat" }, // the adventure creatures' heights (adventure-creatures.ts)
 ];
+// The adventure creatures' test ground: the standard test tile with a tiered gallery (levels 1 to 3, stairs on its west face), a stone
+// wall to cling to, and an open sand flat. Scratch state only. The Wayfarer starts in sight of the ground the creature lives on (the
+// gallery for perchers, keepers and leapers; the sand for the Sinkmaw and the Kite), facing it, with open ground behind for the camera.
+export const ADVENTURE_HEIGHTS = { gallery: { x: [3, 11], y: [10, 18] }, wall: { x: 14, y: [8, 13] }, sand: { x: [17, 23], y: [18, 25] }, start: { gallery: { x: 7, y: 22, facing: "up" }, sand: { x: 20, y: 27, facing: "up" } } };
+export function stampAdventureHeights(map) {
+  stampTestTile(map);
+  const W = map.width || 32, H = ADVENTURE_HEIGHTS, put = (x, y, t) => { map.tiles[y * W + x] = { x, y, detail: 0, ...t }; };
+  const [gx0, gx1] = H.gallery.x, [gy0, gy1] = H.gallery.y;
+  for (let y = gy0; y <= gy1; y++) for (let x = gx0; x <= gx1; x++) { const ring = Math.min(x - gx0, gx1 - x, y - gy0, gy1 - y), elev = ring >= 3 ? 3 : ring >= 2 ? 2 : 1; put(x, y, { kind: "alpineGrass", blocked: false, elev, landscape: "mountains" }); }
+  const mid = Math.round((gy0 + gy1) / 2); for (let i = 0; i < 4; i++) put(gx0 + i, mid, { kind: "mountainTrail", blocked: false, elev: Math.min(3, i + 1), landscape: "mountains", slope: true }); // stairs up the west face
+  for (let y = H.wall.y[0]; y <= H.wall.y[1]; y++) put(H.wall.x, y, { kind: "crag", blocked: true, elev: 0, landscape: "mountains" });
+  for (let y = H.sand.y[0]; y <= H.sand.y[1]; y++) for (let x = H.sand.x[0]; x <= H.sand.x[1]; x++) put(x, y, { kind: "sand", blocked: false, elev: 0, landscape: "desert" });
+  map.objects = (map.objects || []).filter((o) => { const t = map.tiles[Math.round(o.y) * W + Math.round(o.x)]; return o.id === "test-tile-crossing" || !(t && (t.elev > 0 || t.kind === "sand" || t.kind === "crag")); });
+  map.name = "Adventure heights"; return map;
+}
+function adventureHeightsFixture(now, kind = "") {
+  const base = testTileFixture(now), { game } = base; stampAdventureHeights(game.map); Object.assign(game.player, ["sinkmaw", "cinderKite"].includes(kind) ? ADVENTURE_HEIGHTS.start.sand : ADVENTURE_HEIGHTS.start.gallery); game.sync();
+  return { ...base, label: "Adventure heights" };
+}
+// Placement by habitat (adventure-creatures.ts adventureSpawnSpot) on an overworld map: open, safe floor, never a doorway, stairs, chest or object.
+function adventureArea(map) {
+  const W = map.width || 32, H = map.height || 32, at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? map.tiles[Math.round(y) * W + Math.round(x)] : null), objs = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
+  return { width: W, height: H, open: (x, y) => { const t = at(Math.round(x), Math.round(y)); return !!t && !t.blocked && !t.structure && !t.pit && !t.hole && !LETHAL_KINDS.has(t.kind); }, level: (x, y) => at(Math.round(x), Math.round(y))?.elev || 0,
+    safe: (x, y) => { const t = at(x, y); return !!t && !t.doorway && !t.stairs && !t.slope && !objs.has(`${x},${y}`); } };
+}
 function combatKind(scenario) {
   const packBoss = scenario.startsWith('pack-boss-') && isPackKind(scenario.slice(10)), patternScenario = scenario.startsWith('pattern-');
   return { packBoss, patternScenario, kind: packBoss ? scenario.slice(10) : patternScenario ? (scenario.includes('elite') ? 'hollowMarshal' : 'ashling') : CREATURES.some(q => q.id === scenario) ? scenario : "ashling" };
@@ -916,6 +945,13 @@ function combatKind(scenario) {
 // An overworld environment (the test tile or a landscape section): the creature stands a few tiles from the Wayfarer.
 function overworldCombat(scenario, variant, base, now) {
   const { packBoss, kind } = combatKind(scenario), { game } = base, W = game.map.width || 32, p = game.player;
+  if (isAdventureKind(kind)) { // by habitat (perch, vantage, sand, sky), regionally scaled through the one helper
+    const area = adventureArea(game.map), used = [], count = packBoss ? 1 : 1 + Math.min(2, Math.max(0, variant % 3));
+    game.enemies = [];
+    for (let i = 0; i < count; i++) { const at = adventureSpawnSpot(area, kind, p, used); if (!at) break; used.push(at); const e = game.scaleToRegion(game.createEnemyFromSpawn({ id: `proving:combat:${kind}:${variant}:${i}`, kind, x: at.x, y: at.y, boss: packBoss }, "overworld")); e.aggro = true; game.enemies.push(e); }
+    game.sync();
+    return { ...base, lab: "combat", scenario, label: `${MONSTER_PACK[kind].name} in ${base.label || game.map.name || "the overworld"}`, variant, diagnostics: { combatKind: kind, quantity: game.enemies.length, adventure: true } };
+  }
   const open = game.map.tiles.filter((t) => !t.blocked && !t.structure && !t.slope && !(t.elev > 0) && t.x > 2 && t.y > 2 && t.x < W - 3 && t.y < 29 && Math.hypot(t.x - p.x, t.y - p.y) >= 4 && Math.hypot(t.x - p.x, t.y - p.y) <= 9);
   const count = packBoss ? 1 : scenario === 'pattern-multiple-attackers' ? 6 : 1 + Math.min(5, Math.max(0, variant % 6));
   game.enemies = Array.from({ length: Math.min(count, open.length) }, (_, i) => { const t = open[(i * 13 + variant) % open.length]; return game.createEnemyFromSpawn({ id: `proving:combat:${kind}:${variant}:${i}`, kind, x: t.x, y: t.y, boss: packBoss || !!ELITE_DEFINITIONS[kind], ...(kind === "gateRevenant" ? { gatePredator: true } : {}) }, "overworld"); });
@@ -926,6 +962,7 @@ function overworldCombat(scenario, variant, base, now) {
 function combatFixture(scenario, seed, variant, now, environment = "dungeon-hollow") {
   const env = COMBAT_ENVIRONMENTS.some((q) => q.id === environment) ? environment : "dungeon-hollow";
   if (env === "test-tile") return { ...overworldCombat(scenario, variant, testTileFixture(now), now), environment: env, testTile: true };
+  if (env === "adventure-heights") return { ...overworldCombat(scenario, variant, adventureHeightsFixture(now, combatKind(scenario).kind), now), environment: env, testTile: true };
   if (env.startsWith("land-")) return { ...overworldCombat(scenario, variant, landscapeFixture(env.slice(5), seed, now), now), environment: env };
   if (env.startsWith("arena-")) return { ...arenaCombat(scenario, seed, variant, now, env.slice(6)), environment: env };
   return { ...dungeonCombat(scenario, seed, variant, now, env.slice(8)), environment: env };

@@ -1,22 +1,23 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r886-174ffb69bb4d"; // seed realms
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r886-174ffb69bb4d";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r886-174ffb69bb4d";
+import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r896-d66b426b1554"; // seed realms
+import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect } from "./adventure-creature-render.js?v=r896-d66b426b1554"; // adventure creatures
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r896-d66b426b1554";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r896-d66b426b1554";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r886-174ffb69bb4d"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r886-174ffb69bb4d";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r896-d66b426b1554"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r896-d66b426b1554";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r886-174ffb69bb4d";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r886-174ffb69bb4d";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r886-174ffb69bb4d";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r886-174ffb69bb4d";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r886-174ffb69bb4d";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r886-174ffb69bb4d";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r886-174ffb69bb4d";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r896-d66b426b1554";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r896-d66b426b1554";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r896-d66b426b1554";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r896-d66b426b1554";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r896-d66b426b1554";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r896-d66b426b1554";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r896-d66b426b1554";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r886-174ffb69bb4d";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r896-d66b426b1554";
 
 const TAU = Math.PI * 2;
 
@@ -458,6 +459,7 @@ export function drawGloomDark(ctx, x, y, s, view, dark, opts = {}) {
 
 const BODY = {
   ...SEED_REALM_BODIES, // seed realms (seed-realm-render.ts)
+  ...ADVENTURE_BODIES, // adventure creatures (adventure-creature-render.ts): drawn once, then stamped
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
@@ -1328,7 +1330,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   let sp = sprites.get(e.id);
@@ -1908,6 +1910,7 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
     if (MOTH_EFFECT_KINDS.has(f.kind) || f.kind === "orb" && f.moth) { drawMothEffect(ctx, f, s, now, presentation); continue; }
     if (f.kind === "debris" && f.medium === "water") { drawCrystalWater(ctx, f, s, now, lift, presentation); continue; }
     if (f.kind === "gloomfall" || f.kind === "gloomMote") { drawGloomEffect(ctx, f, s, now); continue; } // the Gloomvast's
+    if (ADVENTURE_EFFECT_KINDS.has(f.kind)) { drawAdventureEffect(ctx, f, s, now, presentation); continue; } // the adventure creatures' pots, smoke, darts and glass
     const x = (f.x + .5) * s, y = (f.y + .62 - (ON_GROUND.has(f.kind) ? Number(lift(f)) || 0 : 0)) * s, r = (f.radius || 1) * s, pulse = .6 + Math.sin(now / 80) * .25;
     ctx.save();
     if (f.kind === "gateBreath") {

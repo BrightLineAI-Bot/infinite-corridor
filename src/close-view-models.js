@@ -1,13 +1,14 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r886-174ffb69bb4d';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r886-174ffb69bb4d';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r886-174ffb69bb4d';
-import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r886-174ffb69bb4d';
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from './close-view-player-forms.js?v=r886-174ffb69bb4d';
-import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r886-174ffb69bb4d';
-import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r886-174ffb69bb4d';
-import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r886-174ffb69bb4d';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r886-174ffb69bb4d';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r896-d66b426b1554';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r896-d66b426b1554';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r896-d66b426b1554';
+import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r896-d66b426b1554';
+import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.js?v=r896-d66b426b1554'; // adventure creatures
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r896-d66b426b1554';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r896-d66b426b1554';
+import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r896-d66b426b1554';
+import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r896-d66b426b1554';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r896-d66b426b1554';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -366,9 +367,28 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
   companions['dungeonReciter:'+look]=parts;
 } // exact rule cells are the residual panel, never generic bars
 
+// Tim, 2026-11-11, in the Deep: what lies there and the Oculus stand in Close View as solid things, not as flat
+// marks or cards (close-view.ts CLOSE_VIEW_PROPS places them). Aperture crystals float and turn, lit from within; the Oculus's
+// dais is the standard view's blue; the Ember Door and the Deep Stair are stones with a lit face and a turning chevron. Their
+// glowing colours are entries of CLOSE_VIEW_ACTOR_LOOK.emissive (the violet 0xc58cff, the cyan 0x7fe7ff, ember 0xf3a55c, gold
+// 0xffd25a), so they are lit from within and resist the fog.
+const bipyramid=(n,up,down,upper)=>{const ring=[],faces=[];for(let i=0;i<n;i++){const a=(i+.5)*2*Math.PI/n;ring.push([Math.cos(a),Math.sin(a),0]);}for(let i=0;i<n;i++){const j=(i+1)%n;faces.push(upper?[ring[i],ring[j],[0,0,up]]:[ring[j],ring[i],[0,0,-down]]);}return faces;};
+const crystal=(lit,dark)=>{const parts=[part(bipyramid(6,.36,.3,true),0,0,0,.16,.16,1,lit),part(bipyramid(6,.36,.3,false),0,0,0,.16,.16,1,dark)];
+  for(let k=0;k<3;k++){const a=k*2*Math.PI/3,x=Math.cos(a)*.3,y=Math.sin(a)*.3,z=(k-1)*.09;parts.push(part(bipyramid(4,.09,.07,true),x,y,z,.045,.045,1,lit),part(bipyramid(4,.09,.07,false),x,y,z,.045,.045,1,dark));}
+  return parts;};
+const apertureCrystal=crystal(0xc58cff,0x6e3f9e),apertureRift=crystal(0x7fe7ff,0x1f6a72);
+const oculusDais=[part(prism(10),0,0,.04,.44,.44,.04,0x1c4a52),part(prism(10),0,0,.086,.34,.34,.008,0x7fe7ff),part(ellipsoid(6,2),0,0,.62,.05,.13,.24,0x7fe7ff,0,0,.62,0,true),part(ellipsoid(6,1),0,0,.62,.058,.05,.1,0x1c4a52,0,0,.62,0,true)];
+for(let i=0;i<8;i++){const a=i*Math.PI/4,c=Math.cos(a),s=Math.sin(a),w=.018,P=(r,d)=>[c*r-s*d,s*r+c*d,.098];oculusDais.push(part(membrane([P(.13,-w),P(.31,-w),P(.31,w),P(.13,w)]),0,0,0,1,1,1,0x123a40));}
+const wayStone=(glow,down)=>{const parts=[part(prism(4,.8),0,0,.23,.3*Math.SQRT2,.3*Math.SQRT2,.23,0x3e3c44),block(0,0,.48,.26,.26,.035,0x57555f)];
+  for(const [x,y,sx,sy] of [[.255,0,.006,.15],[-.255,0,.006,.15],[0,.255,.15,.006],[0,-.255,.15,.006]])parts.push(block(x,y,.24,sx,sy,.12,glow));
+  for(const side of [-1,1])parts.push(block(side*.1,0,.86,.13,.035,.035,glow,0,side*.1,.86,(down?1:-1)*side*-.785));
+  return parts;};
+const wayEmber=wayStone(0xf3a55c,false),wayDeep=wayStone(0xffd25a,true);
+export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep});
+
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
-  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
+  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS, ...CLOSE_VIEW_PROP_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
@@ -385,8 +405,21 @@ export function modelSupported(kind) {
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,'shovel-dig':shovelGear,'iron-shovel-dig':shovelGear,fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:emitterGear,hammer:playerHammer.slice(-2),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':riftBombard,'great-sweep':greatSweep,blunderbuss,'lumen-spindle':lumenSpindle,'spark-coil':sparkCoil,'needle-caster':needleCaster});
-export const HERO_EQUIPMENT_MAX_TRIANGLES = 156;
+// Imported-hero tools wear the Wayfarer's materials (Tim, 2026-11-11: tools should match his art):
+// the creature-shared plum iron and soot become blued gunmetal, the dark coat-cloth grips warm
+// leather, the Blunderbuss stock walnut. Bake-time copies only: native fallback recipes and their
+// pinned bytes are untouched, and no tool gains or loses a triangle.
+const WAYFARER_TOOL_COLORS = new Map([[iron, 0x3a4246], [coal, 0x24282b], [leather, 0x5a4330], [0x46392e, 0x5b4130]]);
+function wayfarerToolMaterials(parts) {
+  const key = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255].map(Math.fround).join();
+  const map = new Map([...WAYFARER_TOOL_COLORS].map(([from, to]) => [key(from), [(to >> 16) / 255, ((to >> 8) & 255) / 255, (to & 255) / 255]]));
+  return Object.freeze(parts.map(p => { const mesh = Float32Array.from(p.mesh); for (let i = 0; i < mesh.length; i += MESH_FLOATS) { const to = map.get([mesh[i + 6], mesh[i + 7], mesh[i + 8]].join()); if (to) { mesh[i + 6] = to[0]; mesh[i + 7] = to[1]; mesh[i + 8] = to[2]; } } return { ...p, mesh }; }));
+}
+const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster)});
+// Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
+// (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
+// fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.
+export const HERO_EQUIPMENT_MAX_TRIANGLES = 220, HERO_SLOT_EXTRA_TRIANGLES = 64;
 export const HERO_DRINK_VIAL_TRIANGLES=24;
 // One bake-time heptagonal tapered bottle: visible at close range, but small enough
 // to share the existing equipment stream without another asset or draw call.
@@ -437,6 +470,25 @@ export function writeCloseViewHeroEquipment(out,offset,gear,frame) {
   const end=writeCloseViewHeroGear(out,offset,gear);
   if(parts&&end===offset)return start;
   return vialFits?writeHeroDrinkVial(out,end,gear):end;
+}
+
+// The standard Wayfarer kit has its own fixed reservation beside the held-gear stream, so a tool,
+// gauntlets or the drink vial never compete with it. Atomic: all of the kit or none of it. The
+// largest held gear (96) plus the vial (24) plus this reservation keeps the whole imported hero
+// equipment inside one ordinary 256-triangle actor slot of the shared model buffer.
+// On the suit, armor (124) + gear (<=96) + helmet and pack (97) fit one slot plus HERO_SLOT_EXTRA_TRIANGLES.
+export const HERO_KIT_MAX_TRIANGLES = 136;
+const kitRgb=list=>{const rgb=new Float32Array(list.length*3);list.forEach((p,i)=>{const g=p.glow||1;rgb[i*3]=(p.color>>16)/255*g;rgb[i*3+1]=((p.color>>8)&255)/255*g;rgb[i*3+2]=(p.color&255)/255*g;});return rgb;};
+const KIT_SETS=Object.freeze({standard:Object.freeze({list:CLOSE_VIEW_WAYFARER_KIT,triangles:CLOSE_VIEW_WAYFARER_KIT_TRIANGLES,rgb:kitRgb(CLOSE_VIEW_WAYFARER_KIT),suit:false}),suit:Object.freeze({list:CLOSE_VIEW_SUIT_KIT,triangles:CLOSE_VIEW_SUIT_KIT_TRIANGLES,rgb:kitRgb(CLOSE_VIEW_SUIT_KIT),suit:true})});
+export function writeCloseViewHeroKit(out,offset,gear,frame) {
+  const set=Object.hasOwn(KIT_SETS,frame?.kitSet)?KIT_SETS[frame.kitSet]:null,vertices=set?set.triangles*3:0;
+  if(!set||set.suit!==(frame.powerSuit===true)||frame.kitVertexCount!==vertices||!(vertices/3<=HERO_KIT_MAX_TRIANGLES)||!Number.isSafeInteger(offset)||offset<0||offset+vertices*MODEL_FLOATS>out.length)return offset;
+  const KIT_LIST=set.list,KIT_RGB=set.rgb;
+  const src=frame.kitPositionsNormals,alpha=Number.isFinite(gear?.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear?.hitFlash)||0)),tr=Number.isFinite(gear?.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear?.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear?.tint?.[2])?gear.tint[2]:1;
+  let v=0;
+  for(let p=0;p<KIT_LIST.length;p++){const n=KIT_LIST[p].vertices.length,r=KIT_RGB[p*3]*tr*(1-hit*.6)+.96*hit*.6,g=KIT_RGB[p*3+1]*tg*(1-hit*.6)+.34*hit*.6,b=KIT_RGB[p*3+2]*tb*(1-hit*.6)+.23*hit*.6;
+    for(let i=0;i<n;i++,v++){const s=v*6;out[offset++]=src[s];out[offset++]=src[s+1];out[offset++]=src[s+2];out[offset++]=src[s+3];out[offset++]=src[s+4];out[offset++]=src[s+5];out[offset++]=r;out[offset++]=g;out[offset++]=b;out[offset++]=alpha;}}
+  return offset;
 }
 
 // Reused actor-local segment frames: columns X/Y, scaled Z, then origin. No per-vertex allocation.

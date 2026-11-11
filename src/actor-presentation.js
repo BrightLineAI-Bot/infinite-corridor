@@ -1,5 +1,5 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
-import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r886-174ffb69bb4d';
+import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r896-d66b426b1554';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
 // Player drone: its source sprite carries above the player but its simulation point eases behind.
@@ -56,6 +56,13 @@ export const ACTOR_PRESENTATION = Object.freeze({
   siegeBeetle: profile(0, 1.3, 1.17, 'pack', true, { segments: 2 }),
   gloomwisp: profile(.25, .95, .93, 'pack', true, { spectral: true }),
   gloomgorge: profile(.12, 1.3, .92, 'pack', true, { spectral: true }),
+  // Adventure creatures (adventure-creatures.ts): solid authored bodies (close-view-adventure-models.ts).
+  galleryLurker: profile(0, 1.15, .9, 'pack'),
+  censerWarden: profile(0, 1.85, 1.2, 'pack'),
+  vinehookLeaper: profile(0, 1.05, .8, 'pack'),
+  thornspitterBloom: profile(0, 1.15, 1.0, 'pack'),
+  sinkmaw: profile(0, .75, .5, 'pack', true, { hidden: 'mound' }),
+  cinderKite: profile(.2, .8, .6, 'pack'),
 });
 export function actorProfile(actor) {
   const p = ACTOR_PRESENTATION[actor?.kind];
@@ -75,6 +82,8 @@ export const PACK_ACTION_FAMILIES = Object.freeze({
   webSpit: 'ranged', leapSlam: 'leap', phaseCharge: 'charge', ramCharge: 'charge', shockwave: 'slam',
   mirrorClones: 'summon', mirrorSwap: 'teleport', diveBomb: 'dive', firefall: 'ranged',
   devourPull: 'inhale', broodBirth: 'summon', fleshBloom: 'ranged', wispBewilder: 'howl', gorgeHowl: 'howl',
+  // Adventure creatures' own modules (adventure-creatures.ts).
+  ledgeDrop: 'leap', ledgeClimb: 'leap', vineVault: 'leap', vineRetreat: 'leap', censerLob: 'ranged', thornDarts: 'ranged', sinkFunnel: 'inhale', glassStrafe: 'dive',
 });
 const PACK_PHASES = new Set(['windup', 'strike', 'active', 'recover', 'track', 'lock', 'travel', 'erupt', 'stunned']);
 export function packActionPresentation(actor, modules, windupScale = 1.2, now = 0) {
@@ -89,7 +98,7 @@ export function packActionPresentation(actor, modules, windupScale = 1.2, now = 
   const angle = action === 'sweepBeam' ? s.tele?.angle ?? s.data?.angle : null;
   const aim = Number.isFinite(angle) ? { x: Math.cos(angle), y: Math.sin(angle) } : s.data?.aim || null;
   return { action, family, phase, progress, aim, winding: phase === 'windup' || phase === 'strike',
-    airborne: action === 'leapSlam' && phase === 'active' || action === 'diveBomb' && ['windup', 'track', 'lock'].includes(phase),
+    airborne: family === 'leap' && phase === 'active' || action === 'diveBomb' && ['windup', 'track', 'lock'].includes(phase), // every leap module (leapSlam and the adventure creatures' leaps)
     contact: phase === 'recover', active: phase === 'active', stunned: phase === 'stunned' };
 }
 export const PROJECTILE_VISUAL_HEIGHTS = Object.freeze(Object.fromEntries(Object.entries(ACTOR_PRESENTATION).map(([kind, p]) => [kind, p.shot])));
