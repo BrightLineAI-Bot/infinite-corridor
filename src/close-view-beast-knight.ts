@@ -101,12 +101,12 @@ function buildKnightMesh(tier) {
     if (!low) B.color(C.red, E_SEAM).box({ at: at('pelvis', [sx * .1, 0, hip - .155]), size: [.004, .036, .003], bevel: 0, F: [sx, 0, 0] }); }
   box('spine', C.red, [.095, 0, waist], [.003, .08, .003], { bevel: 0, emit: E_SEAM }); // the seam across the waist
   box('chest', C.red, [.12, 0, chestZ], [.003, .003, .07], { bevel: 0, emit: E_SEAM }); // the seam, down the front
-  box('neck', C.deep, [J0.neck[0], 0, J0.neck[2] + .01], [.045, .05, .03], { taper: .2 }); // the gorget
+  if (!low) box('neck', C.deep, [J0.neck[0], 0, J0.neck[2] + .01], [.045, .05, .03], { taper: .2 }); // the gorget
   // ---- pauldrons: lean, swept, layered, angled down over the shoulders
   for (const [s, tag] of [[-1, 'L'], [1, 'R']]) {
     const y = J0['arm' + tag][1], ax = J0['arm' + tag][0];
     // a rounded shell over the shoulder, a lame below it, each a little out and down
-    B.bone('arm' + tag).color(s > 0 ? C.bright : C.plate).lathe({ at: at('arm' + tag, [ax - .005, y - s * .015, sh + .005]), F: [0, s * .55, .85], U: [1, 0, 0], rings: [[0, .072], [.022, .068], [.042, .05], [.055, .026], [.06, 0]], rs: .85, seg: low ? 5 : 9, caps: false });
+    B.bone('arm' + tag).color(s > 0 ? C.bright : C.plate).lathe({ at: at('arm' + tag, [ax - .005, y - s * .015, sh + .005]), F: [0, s * .55, .85], U: [1, 0, 0], rings: [[0, .072], [.022, .068], [.042, .05], [.055, .026], [.06, 0]], rs: .85, seg: low ? 5 : 12, caps: false });
     if (!low) B.color(C.dark).lathe({ at: at('arm' + tag, [ax - .005, y + s * .012, sh - .035]), F: [0, s * .85, .5], U: [1, 0, 0], rings: [[0, .06], [.02, .055], [.03, 0]], rs: .85, seg: 8, caps: false });
     if (!low) box('fore' + tag, C.knee, [ax - .03, y, J0['fore' + tag][2]], [.022, .032, .022], { taper: .2 }); // the couter at the elbow
   }
@@ -115,16 +115,13 @@ function buildKnightMesh(tier) {
     B.bone('cannon').color(C.plate).lathe({ at: at('cannon', [0, y, el]), F: [0, 0, -1], U: [1, 0, 0], rings: [[0, .036], [.12, .04], [.21, .048], [.25, .056]], seg: low ? 5 : 8, smooth: false, caps: true });
     if (!low) for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; B.color(C.bright).box({ at: at('cannon', [Math.cos(a) * .05, y + Math.sin(a) * .05, el - .19]), size: [.01, .01, .05], bevel: 0, F: [Math.cos(a), Math.sin(a), 0], U: [0, 0, 1] }); } // the opened plates
     B.color(C.red, E_MUZZLE).lathe({ at: at('cannon', [0, y, el - .255]), F: [0, 0, -1], U: [1, 0, 0], rings: [[0, .042], [.01, .038], [.012, 0]], seg: low ? 5 : 8, caps: false }); }
-  // ---- the helm (Tim: "less like a cone head ... a different type of helmet"): a rounded skull, a squared face visor with a
-  // brow ridge and the red slit, cheek guards flaring down and out, a low crest running front to back
-  { const hx = J0.head[0] + .008, H = [[-.02, .046, .05], [.02, .056, .062], [.07, .06, .068], [.11, .06, .068], [.14, .054, .062], [.165, .04, .048], [.18, .018, .024], [.186, 0, 0]];
-    B.bone('head').color(C.helm).loft({ seg: low ? 7 : 12, up: [1, 0, 0], sections: H.map(([z, ry, rx]) => ({ at: [hx - .006, 0, headZ + z], rx: ry, rz: rx, bones: ['head', 'head', 0] })),
+  // ---- the helm (Tim kept it: "I like his cone head ... the feather pointing off the top"): sculpted, rounded and tall, narrowing to a ridge, lit down the face; a red visor slit; a spike swept back
+  { const hx = J0.head[0] + .008, H = [[-.1, .04, .044, .8], [-.055, .046, .05, .4], [-.015, .05, .054], [.03, .058, .064], [.09, .06, .068], [.14, .055, .063], [.18, .042, .05], [.205, .022, .03], [.215, 0, 0]];
+    B.bone('head').color(C.helm).loft({ seg: low ? 7 : 16, up: [1, 0, 0], sections: H.map(([z, ry, rx, nw]) => ({ at: [hx, 0, headZ + z], rx: ry, rz: rx, bones: ['head', 'neck', nw || 0] })), // its neck guard follows the neck
       tone: (i, k, st) => st > .6 ? C.lit : st < -.5 ? C.deep : C.helm, caps: true });
-    box('head', C.plate, [hx + .055, 0, headZ + .06], [.016, .048, .055], { bevel: .3, taper: -.1 }); // the face visor
-    box('head', C.lit, [hx + .064, 0, headZ + .115], [.012, .056, .009], { bevel: .2 }); // the brow ridge
-    box('head', C.red, [hx + .072, 0, headZ + .093], [.003, .04, .005], { bevel: 0, emit: E_SEAM }); // the visor slit
-    if (!low) { for (const s of [-1, 1]) box('head', C.dark, [hx + .02, s * .058, headZ + .015], [.035, .008, .04], { bevel: 0, F: [1, 0, 0], U: [0, -s * .3, 1] }); // cheek guards
-      for (let k = 0; k < 3; k++) box('head', C.spike, [hx + .03 - k * .045, 0, headZ + .178 - k * k * .006], [.024, .006, .014 - k * .003], { bevel: 0 }); } } // the crest
+    box('head', C.red, [hx + .067, 0, headZ + .1], [.003, .036, .005], { bevel: 0, emit: E_SEAM }); // the visor slit
+    if (!low) box('head', C.dark, [hx + .052, 0, headZ + .055], [.012, .004, .045], { bevel: 0 }); // the ridge down the face
+    B.bone('head').color(C.spike).lathe({ at: at('head', [hx - .02, 0, headZ + .19]), F: [-.45, 0, 1], U: [1, 0, 0], rings: [[0, .016], [.08, .009], [.15, 0]], seg: low ? 4 : 5, smooth: false }); }
   // ---- the greatsword (bound to the sword bone, along its +f): grip and pommel, a broad crossguard, the long black blade and
   // its red edge
   { const sw = bw[BI.sword * 3], sy = bw[BI.sword * 3 + 1], sz = bw[BI.sword * 3 + 2], P = (f, r, u) => [sw + f, sy + r, sz + u];
@@ -136,7 +133,8 @@ function buildKnightMesh(tier) {
     B.bone('sword').color(C.blade).poly([at('sword', P(.035 + R.blade * .88, 0, -.024)), at('sword', P(.035 + R.blade, 0, 0)), at('sword', P(.035 + R.blade * .88, 0, .024))]);
     box('sword', C.red, P(.035 + R.blade * .44, 0, .028), [R.blade * .43, .009, .003], { bevel: 0, emit: E_SEAM }); } // the red edge
   // ---- the cape of motes: small dark facets streaming back off the shoulders, thinning toward the tail; a few red
-  const capeN = low ? 4 : full ? 72 : 36, cb = ['cape0', 'cape1', 'cape2', 'cape3'];
+  // fewer motes than before, so the budget goes to the body (Tim)
+  const capeN = low ? 3 : full ? 36 : 22, cb = ['cape0', 'cape1', 'cape2', 'cape3'];
   for (let i = 0; i < capeN; i++) {
     const f = (i + .5) / capeN, seg = Math.min(2, Math.floor(f * 3)), w = f * 3 - seg, a = cb[seg], b2 = cb[seg + 1];
     const pa = [bw[BI[a] * 3], bw[BI[a] * 3 + 1], bw[BI[a] * 3 + 2]], pb = [bw[BI[b2] * 3], bw[BI[b2] * 3 + 1], bw[BI[b2] * 3 + 2]];
