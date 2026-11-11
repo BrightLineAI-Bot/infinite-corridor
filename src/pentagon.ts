@@ -22,6 +22,7 @@ import { PENTAGON_HALLS, assignPentagonHalls, layPentagonHall, dressPentagonHall
 const PENTAGON_HALLS_FLOOR = (type) => PENTAGON_HALLS.types[type]?.floor || "flagFloor";
 import { ADVENTURE_PENTAGON as AP, ADVENTURE_THEMES, ADVENTURE_AREAS, ADVENTURE_LINKS, composeDistrict, adventureThemePick, adventureRoster, adventureAreaSize, layAdventureArea, adventureCreatureTheme } from "./adventures.ts";
 import { pickAdventureCreature, adventureSpawnSpot } from "./adventure-creatures.ts";
+import { SIGIL_BOUNDS, sigilFits, inlaySigil } from "./watcher.ts";
 
 export const PENTAGON = {
   version: 9, // 9: spacious branching ordinary chambers; 8: grand halls, murals and the Watcher's sigil (pentagon-halls.ts); earlier versions remain pinned. The legacy baseline: new ground takes 10 (release 844 room routing) or 11 (the adventure: adventures.ts ADVENTURE_PENTAGON), chosen in game.ts recoverPentagonVersion
@@ -680,7 +681,27 @@ export function generatePentagonChamber(seed, id, T = 1) { // `T`: the chamber's
     const area = { width: W, height: H, open: (x, y) => { const t = at(x, y); return !!t && !t.blocked && !t.hole; }, level: (x, y) => at(x, y)?.elev || 0,
       safe: (x, y) => { const t = at(x, y); return !!t && reach.has(y * W + x) && !t.doorway && !t.plate && !t.pentFinaleClear && !t.slope && !held.has(y * W + x) && !routingNearLanding(optionalLandings, x, y); } };
     for (const { i, c, kind } of advSlots) { const p = adventureSpawnSpot(area, kind, c, used) || c; used.push(p); held.add(p.y * W + p.x); terrain.enemySpawns.push({ id: `${id}:g${i}`, kind, x: p.x, y: p.y, buildingGuard: true, adventureCreature: advModule }); } }
+  if (A) layAdventureMosaic(terrain, id, q, theme); // v11: the Watcher's sigil in the floor, last (floor marks only)
   return terrain;
+}
+// v11 (adventures.ts ADVENTURE_PENTAGON.mosaics): the Watcher's sigil as a large floor mosaic in a grand hall, a keep, the Waystone
+// hall and a share of the plazas, courts and vistas. The spot: the first, out from the middle (seeded), where the sigil and its
+// border lie on open, level floor clear of doorways, plates, slopes, the finale's reserve and any floor mark already laid. Only
+// `sigil` (the part) and `sigilTint` change on those tiles; the chamber's sigils list records it. Pure.
+function layAdventureMosaic(map, id, q, theme) {
+  const M = AP.mosaics, want = q.hall ? M.hall : M[q.area] ?? 0; if (!want || (hashSeed(`${id}:mosaic`) % 1000) / 1000 >= want) return null;
+  const W = map.width, T = map.tiles, tint = theme.palette.light;
+  if (T.some((t) => t.sigil)) { for (const t of T) if (t.sigil) t.sigilTint = tint; map.watcherPlaced = true; return null; } // a hall that inlays the sigil itself (ballroom, arena) keeps its own, in the ward's light
+  const ok = (t, x, y, cx, cy) => !!t && !t.blocked && !t.doorway && !t.plate && !t.slope && !t.hole && !t.pentFinaleClear && !t.inlay && !t.sigil && (t.elev || 0) === (T[cy * W + cx]?.elev || 0);
+  const H = map.height, mx = (W >> 1) + (hashSeed(`${id}:mosaic-jx`) % 5) - 2, my = (H >> 1) + (hashSeed(`${id}:mosaic-jy`) % 5) - 2, m = M.margin, spots = [];
+  for (let y = 1 - SIGIL_BOUNDS.minY + m; y < H - 1 - SIGIL_BOUNDS.maxY - m; y++) for (let x = 1 - SIGIL_BOUNDS.minX + m; x < W - 1 - SIGIL_BOUNDS.maxX - m; x++) spots.push({ x, y, d: (x - mx) ** 2 + (y - my) ** 2 });
+  spots.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x); // every spot, nearest the (seeded) middle first: at most a chamber's tiles
+  const spot = spots.find((p) => sigilFits(map, W, p.x, p.y, ok, m)); if (!spot) return null;
+  inlaySigil(map, W, spot.x, spot.y, { mosaic: true });
+  for (let y = spot.y + SIGIL_BOUNDS.minY - 1; y <= spot.y + SIGIL_BOUNDS.maxY + 1; y++) for (let x = spot.x + SIGIL_BOUNDS.minX - 1; x <= spot.x + SIGIL_BOUNDS.maxX + 1; x++) { const t = T[y * W + x]; if (t?.sigil) t.sigilTint = tint; }
+  (map.sigils ||= []).push({ x: spot.x, y: spot.y, kind: "inlay", mosaic: true, scale: SIGIL_BOUNDS.maxY - SIGIL_BOUNDS.minY + 1 });
+  map.watcherPlaced = true; // the chamber's sigil is this one: watcher.ts placeWatcherDungeon lays no second over it
+  return spot;
 }
 
 // ------------------------------------------------------------------------------------------------ what the walls say

@@ -909,7 +909,7 @@ export function closeViewMask(map, seen = null, safe = null, out = null, remap =
     const vis = !seen || (t.blocked && seen.wall ? seen.wall(x, y) : seen(x, y)), code = vis ? closeViewHazardCode(t) : 0, mat = closeViewFloorMaterial(t);
     const sky = skylights.length && skylights.some((f) => Math.abs(f.x - x) <= 1 && Math.abs(f.y - y) <= 1);
     const space = t.realm === "ship" && (t.kind === "shipGlass" || t.kind === "shipStarWindow" || (t.chasm && !t.catwalk)), bay = t.realm === "ship" && (t.catwalk || (t.chasm && !t.bored)); // seed realms: the cosmos below (space), and above an open bay and its catwalks (bay)
-    data[o] = (open || bay ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0) | (space ? 8 : 0) | (bay ? 16 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); const inlay = !t.blocked && map.hall && vis ? (t.sigil === "pupil" ? 4 : t.sigil ? 3 : t.inlay === 2 ? 2 : t.inlay === 1 ? 1 : 0) : 0;
+    data[o] = (open || bay ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0) | (space ? 8 : 0) | (bay ? 16 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); const inlay = !t.blocked && (map.hall || map.building?.adventure) && vis ? (t.sigil === "pupil" ? 4 : t.sigil ? 3 : t.inlay === 2 ? 2 : t.inlay === 1 ? 1 : 0) : 0;
     data[o + 3] = (t.blocked && !code ? 1 : 0) | (inlay << 1); if (code === 2) lava++; }
   return { data, w, h, lava };
 }

@@ -57,6 +57,12 @@ export const ADVENTURE_PENTAGON = {
   // The adventure creatures (adventure-creatures.ts, release 894): the share of a v11 chamber's ordinary guard slots given to its
   // theme's own creatures (by `creatures.module`; picked and placed by that module; scaled by Game.scaleToRegion).
   creatures: { share: .5 },
+  // The Watcher's sigil worked into the floors as a large mosaic (Tim, 2026-11-11: "we can incorporate some of the Watcher's
+  // sigils into the Pentagon mosaic floors"): the sigil of the tombs and shrines (watcher.ts SIGIL_CELLS, inlaySigil with its
+  // tessera border), inlaid in every grand hall that has room (none already carries one), every district keep and a share of
+  // the plazas and courts, tinted from the ward's theme light. Floor marks only (`tile.sigil`, `tile.sigilTint`): no collision,
+  // no objects; drawn with the ground (renderer.ts sigilInlay, cached), and in Close View from its floor data.
+  mosaics: { hall: 1, keep: 1, plaza: .5, court: .5, vista: .3, waystone: 1, margin: 0 }, // margin: clear tiles round the sigil's border
   halls: { size: { ballroom: [55, 41], arena: [51, 45], gallery: [59, 33], colonnade: [53, 41], pitGallery: [51, 43] }, columns: .25 },
   // The camera (Tim, 2026-11-11: "Rather than making the camera have less view in the Pentagon, we should make the Pentagon areas
   // wider so there's more view... The camera view is essential"): Close View's wide boom hangs `boom` tiles behind the Wayfarer and

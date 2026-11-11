@@ -343,8 +343,10 @@ function hallInlay(ctx, t, x, y, s) { const px = x * s, py = y * s; ctx.fillStyl
 // Release 289: a tile of the Watcher's sigil (watcher.ts): pale violet inlaid stone, the eye's pupil brightest; in arenas a
 // border and tesserae of small tiles around it; on a shrine, the raised platforms (their faces are the landscape's own).
 const SIGIL_INLAY = { lid: ["#b8b0d855", "#e6e0ff66"], ring: ["#b8b0d855", "#e6e0ff66"], eye: ["#a79ed066", "#e6e0ff55"], pupil: ["#d8d0ff99", "#ffffffaa"], orbit: ["#9f96c855", "#d8d2f855"], tools: ["#a79ed055", "#e6e0ff55"], border: ["#c9a15c44", "#e2c04f55"], tessera: ["#6d5f8a33", "#b8b0d833"] };
+const tintCache = new Map(), SIGIL_TINT_ALPHA = { tessera: ["1c", "30"], border: ["55", "88"], pupil: ["cc", "ff"] }; // Pentagon v11: a mosaic in its theme's light (adventures.ts mosaics)
+const sigilColours = (t) => { if (!t.sigilTint) return SIGIL_INLAY[t.sigil] || SIGIL_INLAY.ring; const k = `${t.sigilTint}:${t.sigil}`; let c = tintCache.get(k); if (!c) { const [a, b] = SIGIL_TINT_ALPHA[t.sigil] || ["88", "cc"]; c = [`${t.sigilTint}${a}`, `${t.sigilTint}${b}`]; if (tintCache.size < 64) tintCache.set(k, c); } return c; };
 function sigilInlay(ctx, t, x, y, s) {
-  const [fill, edge] = SIGIL_INLAY[t.sigil] || SIGIL_INLAY.ring, px = x * s, py = y * s - (t.landscape ? landscapeTileLift(t, s) : 0), d = Number.isFinite(t.detail) ? t.detail : h(x, y);
+  const [fill, edge] = sigilColours(t), px = x * s, py = y * s - (t.landscape ? landscapeTileLift(t, s) : 0), d = Number.isFinite(t.detail) ? t.detail : h(x, y);
   if (t.sigil === "tessera") { for (let k = 0; k < 4; k++) { ctx.fillStyle = (d + k) % 3 ? fill : edge; ctx.fillRect(px + s * (.08 + (k % 2) * .44), py + s * (.08 + Math.floor(k / 2) * .44), s * .38, s * .38); } return; }
   ctx.fillStyle = fill; ctx.fillRect(px + s * .06, py + s * .06, s * .88, s * .88);
   ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, s * .04); ctx.strokeRect(px + s * .1, py + s * .1, s * .8, s * .8);
