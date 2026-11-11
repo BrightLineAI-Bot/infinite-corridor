@@ -18,10 +18,11 @@ export const CRYSTAL_SKELETON = defineSkeleton([
   { name: 'body', parent: 'float', at: [0, 0, 0] },
   { name: 'lesserL', parent: 'float', at: [0, -R.W * 1.2, -R.H * .35] }, { name: 'lesserR', parent: 'float', at: [0, R.W * 1.2, -R.H * .35] },
   ...Array.from({ length: SHARDS }, (_, i) => ({ name: 'shard' + i, parent: 'float', at: [R.shardOrbit, 0, 0] })),
-  { name: 'aura', parent: 'float', at: [0, 0, 0] },
+  { name: 'auraR', parent: 'float', at: [0, 0, 0] }, { name: 'auraV', parent: 'float', at: [0, 0, 0] }, { name: 'auraW', parent: 'float', at: [0, 0, 0] },
 ]);
 const BI = CRYSTAL_SKELETON.index;
-const E_CORE = 1, E_RED = 2, E_VIOLET = 3, E_WHITE = 4;
+// the aura's three shells share channel 4 (two-sided, kept out of the silhouette, dithered); the one shown is the one at full size
+const E_CORE = 1, E_AURA = 4;
 const C = Object.freeze({ lit: 0xdfe6ff, mid: 0x7d88b8, shade: 0x4a5288, lesserLit: 0xcdd6f6, lesserMid: 0x8a95c4, lesserShade: 0x6d78a8, edge: 0x20244a,
   core: 0xe8eeff, red: 0xff3c3c, violet: 0xaa5aff, white: 0xebf0ff });
 
@@ -49,7 +50,7 @@ function buildCrystalMesh(tier) {
   for (let i = 0; i < SHARDS; i++) crystal(B, 'shard' + i, .07, .025, 1, 1, [C.lit, C.lesserShade, C.mid], i * .4);
   // the aura (shown dithered, its colour by what it means): red when it attacks, violet as it takes hold, a hazy white at rest
   B.mark();
-  for (const [col, ch] of [[C.red, E_RED], [C.violet, E_VIOLET], [C.white, E_WHITE]]) B.bone('aura').color(col, ch).ellipsoid({ at: [0, 0, 0], radius: [.5, .5, .6], rings: low ? 5 : 8, seg: low ? 8 : 14 });
+  for (const [col, bone] of [[C.red, 'auraR'], [C.violet, 'auraV'], [C.white, 'auraW']]) B.bone(bone).color(col, E_AURA).ellipsoid({ at: [0, 0, 0], radius: [.5, .5, .6], rings: low ? 5 : 8, seg: low ? 8 : 14 });
   return B.done();
 }
 const MESHES = { full: null, balanced: null, low: null };
@@ -104,16 +105,17 @@ export function sampleCrystal(tr, e, env) {
   const want3 = fall > 0 ? [0, 0, 0] : grab ? [0, 1, 0] : hostile ? [1, 0, 0] : [0, 0, 1], k3 = Math.min(1, dt * 6) || 1;
   for (let i = 0; i < 3; i++) tr.aura[i] += (want3[i] - tr.aura[i]) * k3;
   const arWant = grab ? .42 + (reduce ? 0 : .04 * Math.sin(t * 12)) : hostile ? .66 + (reduce ? 0 : .05 * Math.sin(t * 9)) : .52; tr.auraR += (arWant - tr.auraR) * k3;
-  P.scl[BI.aura] = Math.max(.001, (tr.auraR / .52) * (windup ? 1.15 : 1) * (1 - ease)); resolveBone(P, BI.aura);
+  const size = (tr.auraR / .52) * (windup ? 1.15 : 1) * (1 - ease);
+  ['auraR', 'auraV', 'auraW'].forEach((b, i) => { P.scl[BI[b]] = Math.max(.001, size * smooth(clamp01((tr.aura[i] - .1) / .8))); resolveBone(P, BI[b]); });
   writeSkin(P);
   const F = tr.frame, life = dead ? 1 - span(death, .5, 1) : 1, glowK = fall > 0 ? .35 : 1;
   F.emitK[0] = life * glowK * (1.1 + .5 * (hostile || grab ? 1 : 0) + .6 * pulse + (reduce ? 0 : .1 * Math.sin(t * 3)));
-  F.emitK[1] = 1.3; F.emitK[2] = 1.3; F.emitK[3] = 1.1;
-  const base = .2 * (windup ? 1.3 : 1) * life; F.emitA[0] = 1; F.emitA[1] = base * 1.5 * tr.aura[0]; F.emitA[2] = base * 1.5 * tr.aura[1]; F.emitA[3] = base * .8 * tr.aura[2];
+  F.emitK[1] = 0; F.emitK[2] = 0; F.emitK[3] = 1.2;
+  F.emitA[0] = 1; F.emitA[1] = 1; F.emitA[2] = 1; F.emitA[3] = fall > 0 ? 0 : life * (windup ? .32 : .25) * (tr.aura[2] > .5 ? .7 : 1);
   F.tier = env.tier || 'full'; F.mesh = crystalMesh(F.tier); F.skin = P.skin; F.alpha = life;
   F.hit = Math.max(0, Math.min(1, Number(e.hitFlash) || 0)) * .8 + Math.max(0, hit) * .4;
   F.x = x; F.y = y; F.z = env.z; F.yaw = yaw; F.scale = S; F.air = Math.max(0, (R.hover - sink) * S); F.shadow = 1; F.phase = att ? `${att}:${ph}` : dead ? 'death' : 'move';
-  F.contact = pulse > .5 ? 1 : 0; F.cloud = F.emitA[1] > .01 || F.emitA[2] > .01 || F.emitA[3] > .01;
+  F.contact = pulse > .5 ? 1 : 0; F.cloud = F.emitA[3] > .01;
   return F;
 }
 export const crystalBone = (tr, name) => { const i = BI[name]; return [tr.pose.wp[i * 3], tr.pose.wp[i * 3 + 1], tr.pose.wp[i * 3 + 2]]; };

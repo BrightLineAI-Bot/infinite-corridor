@@ -42,9 +42,10 @@ test('the mesh: bounded per tier, valid, cached; registered', () => {
 test('it floats at head height and turns; its aura says what it means', () => {
   const e = createCombatant('psychicCrystal', 10, 10, true, []), tr = createCrystalTrack(), S = scaleOf(e); let now = 1000, f;
   const run = (n) => { for (let i = 0; i < n; i++) f = sampleCrystal(tr, e, env(e, now += 16)); return f; };
-  run(40); assert.ok(crystalBone(tr, 'body')[2] > .6 * S, 'floating'); assert.ok(f.emitA[3] > .1 && f.emitA[1] < .02, 'white at rest');
-  e.pack = { attack: 'psyPush', phase: 'active', t: 1, seq: 1, data: {} }; run(60); assert.ok(f.emitA[1] > .2 && f.emitA[3] < .02, 'red attacking');
-  e.pack = { attack: 'psyGrab', phase: 'windup', t: 1, seq: 2, data: {} }; run(60); assert.ok(f.emitA[2] > .2 && f.emitA[1] < .02, 'violet as it takes hold');
+  const shown = () => ['auraR', 'auraV', 'auraW'].map((b) => tr.pose.scl[CRYSTAL_SKELETON.index[b]] > .5 ? 1 : 0).join('');
+  run(40); assert.ok(crystalBone(tr, 'body')[2] > .6 * S, 'floating'); assert.ok(f.emitA[3] > .1); assert.equal(shown(), '001', 'white at rest');
+  e.pack = { attack: 'psyPush', phase: 'active', t: 1, seq: 1, data: {} }; run(60); assert.equal(shown(), '100', 'red attacking');
+  e.pack = { attack: 'psyGrab', phase: 'windup', t: 1, seq: 2, data: {} }; run(60); assert.equal(shown(), '010', 'violet as it takes hold');
 });
 
 test('deterministic', () => {
