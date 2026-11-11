@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 906 | Claude | claude/weapon-visuals | Close View weapon models only: proportioned Verge Cleaver hilt, the Rift Bombard as a black-and-blue hip-held grenade launcher, light polish on the Blunderbuss and Salvage Blade | In flight. |
+| 907 | Claude | claude/world-caches | Data-driven world caches on new ground: corpses, thrones, lever-barred alcoves in crossings; corpses, ledges and climb tops in sections; tiered loot incl. rare travel seeds | In flight. |
+| 906 | Claude | claude/weapon-visuals | Close View weapon models only: proportioned Verge Cleaver hilt, the Rift Bombard as a black-and-blue hip-held grenade launcher, light polish on the Blunderbuss and Salvage Blade | Merged as `edc5b9bbd14c` (#573). |
 | 905 | Claude | claude/cv-questing-beast | Close View Questing Beast: furred jackal-like body, real folding wings with a body membrane, all attacks on their clocks; beast budget 5000/3000/1200 | Merged as `303e02e3e709` (#571). |
 | 904 | Claude | claude/waymark-guides | Trail marks on new ground lead to one real destination of their kind about 8-10 sections ahead (amber chevron: skyway; red triangle: world boss; violet spiral: Watcher's Shrine); smaller Pentagon sigil; the small gold pentagon cue is no longer laid on guided ground; Journal symbol cards renamed | Merged as `329f853333e3` (#572). |
 | 903 | Claude | claude/region-daily-1111 | New region type on new ground only: glaciated far mountain ranges (30+ sections out) with icefalls, crevasse fields and snow bridges, seracs, melt pools and frozen caches; landscape version 24 | Merged as `1c4e9c4bd612` (#570). |
