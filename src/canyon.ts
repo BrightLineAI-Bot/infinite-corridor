@@ -44,7 +44,7 @@ export const CANYON = {
   messages: {
     entrance: "A crater gapes here: something fell from the sky and drove deep into the earth. The Canyon below is packed with clods you can drill through.",
     enter: "Call up the robot and push into a clod to drill it with the auger. Ringed clods are unstable: drill them in short bursts or they go green, yellow, red. Red caves in: find another way.",
-    needRobot: "The clods are too dense to dig by hand. Call up the robot: its auger drills them.",
+    needRobot: "The clods are too dense to push through by hand. Dig one out with a shovel (Act), or call up the robot: its auger drills them.",
     toYellow: "The clod groans: it has gone yellow. Drill in short bursts.",
     yellowToRed: "The clod cracks red. Break it and the ceiling comes down: find another way.",
     caveIn: (n, limit) => `The ceiling caves in! (${n} of ${limit}: one more and the crater may collapse)`,
