@@ -277,13 +277,12 @@ float outdoorDetail(vec2 P, uint cls, float hf) {
   if (cls == 6u) { vec3 k = cells(P * 1.6); return (k.z - 0.5) * 0.5 - (1.0 - smoothstep(0.01, 0.05, k.y)) * 0.35 * hf; }
   return (fbm(P * 2.5) - 0.5) * 0.8 + (vnoise(P * 37.0) - 0.5) * 0.3 * hf;
 }
-// the ordinary art at P, filtered to a coarser level (lod): its colour without its tile-scale lines and edges
-vec3 groundLod(vec2 P, float lod, vec3 fallback) { vec2 px = P * u_gmap.x + u_gmap.yz; if (px.x < 0.0 || px.y < 0.0 || px.y > u_gmap.w || px.x > u_tex.x) return fallback;
-  vec4 c = textureLod(u_ground, px / u_tex, lod); return c.a > 0.02 ? c.rgb / c.a : fallback; }
 bool waterTile(ivec2 T) { return (outdoorFlags(T) & 1u) == 1u; }
 // how much water is at P, 0 to 1: the four nearest tile centres' water, blended bilinearly at a point wandered a little by
 // noise, so a coast is a curve and not a staircase (a water tile's own middle is always water, dry ground's always dry)
-float waterField(vec2 P) { vec2 Q = P - 0.5 + (vec2(vnoise(P * 1.7), vnoise(P * 1.7 + 9.2)) - 0.5) * u_outY.z; vec2 b = floor(Q), f = fract(Q); f = f * f * (3.0 - 2.0 * f); ivec2 T = ivec2(b);
+float waterField(vec2 P) { vec2 Q0 = P - 0.5; ivec2 T0 = ivec2(floor(Q0)); // all four nearest middles alike (most of the ground, open water): no shore here, no noise
+  bool w0 = waterTile(T0), w1 = waterTile(T0 + ivec2(1, 0)), w2 = waterTile(T0 + ivec2(0, 1)), w3 = waterTile(T0 + ivec2(1, 1)); if (w0 == w1 && w0 == w2 && w0 == w3) return w0 ? 1.0 : 0.0;
+  vec2 Q = Q0 + (vec2(vnoise(P * 1.7), vnoise(P * 1.7 + 9.2)) - 0.5) * u_outY.z; vec2 b = floor(Q), f = fract(Q); f = f * f * (3.0 - 2.0 * f); ivec2 T = ivec2(b);
   float a = waterTile(T) ? 1.0 : 0.0, c = waterTile(T + ivec2(1, 0)) ? 1.0 : 0.0, d = waterTile(T + ivec2(0, 1)) ? 1.0 : 0.0, e = waterTile(T + ivec2(1, 1)) ? 1.0 : 0.0;
   return mix(mix(a, c, f.x), mix(d, e, f.x), f.y); }
 // the open ground: the ordinary art near (its tile lines softened into its own colour), the section's own colours beyond,
@@ -295,7 +294,7 @@ vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface) {
   vec2 dd = abs(P - u_player); float near = (1.0 - smoothstep(u_outdoor.y, u_outdoor.z, max(dd.x, dd.y))) * surface.a;
   vec3 art = surface.rgb / max(surface.a, 1e-3);
   float wf = waterField(P), wet = smoothstep(0.5 - u_outX.y, 0.5, wf); bool water = wf > 0.5;
-  if (near > 0.0 && u_outX.x < 0.999) { vec3 soft = groundLod(P, 2.6, farC); art = water && u_outX.w < 0.5 ? mix(mix(farC, soft, 0.3), art, 0.12) : mix(mix(soft, farC, 0.3), art, u_outX.x); }
+  if (near > 0.0 && u_outX.x < 0.999) art = mix(farC, art, water && u_outX.w < 0.5 ? 0.12 : u_outX.x); // the tile lines softened into the ground's own warped colour (no extra texture read)
   vec3 alb = mix(farC, art, near);
   vec3 N = vec3(0.0, 0.0, 1.0), W3 = vec3(P, 0.0);
   if (u_outdoor.w > 0.5 && !water) { float fw = length(fwidth(P)), hf = 1.0 - smoothstep(0.012, 0.045, fw), amp = u_outD.x * (1.0 - smoothstep(u_outD.y, u_outD.z, depth));
@@ -310,8 +309,9 @@ vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface) {
     col *= 1.0 - u_outR.y * (1.0 - smoothstep(0.0, u_outR.x, foot)); col *= 1.0 + u_outR.w * (1.0 - smoothstep(0.0, u_outR.z, lip)); }
   if (water) { vec3 n = vec3(0.0, 0.0, 1.0); float t = u_time * 0.0004;
     if (u_finish.z > 0.5) { vec2 q = P * u_outW.z; // two swells crossing, and a finer chop near the eye
-      n = normalize(vec3((vnoise(q + vec2(t, 0.0)) - vnoise(q + vec2(3.1, t))) * u_outW.w + (vnoise(q * 2.7 - vec2(t * 1.9, 0.0)) - 0.5) * u_outW.w * 0.45,
-        (vnoise(q * 1.3 - vec2(t * 0.7, t)) - vnoise(q * 1.3 + 5.7)) * u_outW.w + (vnoise(q * 2.9 + vec2(0.0, t * 1.6)) - 0.5) * u_outW.w * 0.45, 1.0)); }
+      vec2 sw = vec2(vnoise(q + vec2(t, 0.0)) - vnoise(q + vec2(3.1, t)), vnoise(q * 1.3 - vec2(t * 0.7, t)) - vnoise(q * 1.3 + 5.7));
+      if (depth < 9.0) sw += (vec2(vnoise(q * 2.7 - vec2(t * 1.9, 0.0)), vnoise(q * 2.9 + vec2(0.0, t * 1.6))) - 0.5) * 0.45 * (1.0 - smoothstep(6.0, 9.0, depth));
+      n = normalize(vec3(sw * u_outW.w, 1.0)); }
     // the depth: how far into the water this is (its own field), and how much water lies two tiles round it
     float ring = 0.0; for (int i = 0; i < 8; i++) { ivec2 o = i == 0 ? ivec2(2, 0) : i == 1 ? ivec2(-2, 0) : i == 2 ? ivec2(0, 2) : i == 3 ? ivec2(0, -2) : i == 4 ? ivec2(2, 2) : i == 5 ? ivec2(-2, 2) : i == 6 ? ivec2(2, -2) : ivec2(-2, -2); ring += waterTile(T + o) ? 0.125 : 0.0; }
     float deep = smoothstep(0.5, 1.0, wf) * (0.35 + 0.65 * ring);
@@ -321,8 +321,9 @@ vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface) {
     float fres = u_outW.x + (u_outW.y - u_outW.x) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 4.0);
     col = mix(col, outdoorSky(r, u_outY.w > 0.5), fres) + u_sunC * pow(max(dot(r, u_sun.xyz), 0.0), 140.0) * u_outD.w;
     // foam where the water meets the shore: a broken line that breathes (still with reduced motion)
-    float edge = 1.0 - smoothstep(0.5, 0.5 + u_outX.y * 0.9, wf), br = vnoise(P * 6.0 + vec2(t * 2.5, -t * 1.7)) * 0.6 + vnoise(P * 15.0 - t * 3.0) * 0.4;
-    float foam = edge * smoothstep(0.35, 0.75, br + edge * 0.35) * u_outX.z; col = mix(col, vec3(0.92, 0.95, 0.96) * (dif * 0.6 + 0.4), clamp(foam, 0.0, 0.85));
+    float edge = 1.0 - smoothstep(0.5, 0.5 + u_outX.y * 0.9, wf);
+    if (edge > 0.001) { float br = vnoise(P * 6.0 + vec2(t * 2.5, -t * 1.7)) * 0.6 + vnoise(P * 15.0 - t * 3.0) * 0.4;
+      float foam = edge * smoothstep(0.35, 0.75, br + edge * 0.35) * u_outX.z; col = mix(col, vec3(0.92, 0.95, 0.96) * (dif * 0.6 + 0.4), clamp(foam, 0.0, 0.85)); }
     if (u_outX.w > 0.5) col = mix(col, art * dif, near * 0.6); }
   return atmos(col, W3, depth, dif);
 }

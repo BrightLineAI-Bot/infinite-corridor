@@ -152,9 +152,9 @@ test('an interior\'s props are solids on its floor; the standard view shows the 
 
 test('the shaders carry the shore, the softened ground and the props\' materials; tiers and reduced motion as before', () => {
   const src = readFileSync(new URL('../src/close-view-gl.ts', import.meta.url), 'utf8');
-  for (const k of ['float waterField(', 'vec3 groundLod(', 'uniform vec4 u_outX;', 'uniform vec4 u_outY;', 'if (m > 6.5)']) assert.ok(src.includes(k), k);
+  for (const k of ['float waterField(', 'uniform vec4 u_outX;', 'uniform vec4 u_outY;', 'if (m > 6.5)']) assert.ok(src.includes(k), k);
   const cv = readFileSync(new URL('../src/close-view.ts', import.meta.url), 'utf8');
-  assert.ok(/F\.outX\[2\] = Q\.relief \? W2\.foam : W2\.foam \* \.6/.test(cv), 'the low tier keeps less foam'); assert.ok(/F\.outY\[3\] = Q\.relief \? 1 : 0/.test(cv), 'reflected clouds only where the tier has relief');
+  assert.ok(/F\.outX\[2\] = Q\.relief \? W2\.foam : W2\.foam \* \.6/.test(cv), 'the low tier keeps less foam'); assert.ok(/F\.outY\[3\] = Q\.motes \? 1 : 0/.test(cv), 'reflected clouds on the full tier only');
   for (const k of ['wander', 'shore', 'foam', 'deep', 'shallow']) assert.ok(Number.isFinite((OUTDOOR.water as any)[k]), k);
   assert.ok(OUTDOOR.ground.art > 0 && OUTDOOR.ground.art <= 1);
 });

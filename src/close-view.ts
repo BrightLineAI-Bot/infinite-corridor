@@ -1579,7 +1579,8 @@ function relativeFacing(p, aim = null) {
 const SPRITES = { used: 0 };
 // The ordinary view writes names and titles beside its sprites (a villager's name and role, VIEWPORT, WRECK, SHIPWRIGHT).
 // On a card the camera magnifies them many times and the card's edge cuts them, so a town filled the view with giant
-// clipped words. While the cards are painted only a glyph or two is kept (a quest giver's "!" or "…"); longer text is not.
+// clipped words. While a thing's or a person's card is painted only a glyph or two is kept (a quest giver's "!" or "…"); longer
+// text is not. A creature's card keeps its words (a pack's name, BLOCKED): they are part of the fight.
 const CARD_TEXT = { fill: null, stroke: null, ctx: null, ownFill: false, ownStroke: false };
 function cardFillText(t, x, y, m) { if (String(t).length <= 2) CARD_TEXT.fill.call(this, t, x, y, m); }
 function cardStrokeText(t, x, y, m) { if (String(t).length <= 2) CARD_TEXT.stroke.call(this, t, x, y, m); }
@@ -1595,7 +1596,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
   const A = CLOSE_VIEW.actors, ac = GROUND.ctx; if (!ac) return false;
   const Y0 = GROUND.atlasY, AW = GROUND.canvas.width, AH = GROUND.canvas.height - Y0; let x = 0, y = 0, rowH = 0;
   ac.setTransform(1, 0, 0, 1, 0, 0); ac.clearRect(0, Y0, AW, AH);
-  quietCardText(ac); try {
+  try {
   let first = true; for (let oi = n - 1; oi >= 0; oi--) { const it = order[oi]; if (itemKind[it] !== 1) continue; // nearest first: they get the room
     const d = draws[itemRef[it]], nativeBody = native?.has(it), foe = boardFoe[it];
     const residual = nativeBody && typeof d.nativeDecorations === 'function' && (d.nativeEffects || foe?.fracRank === 'rare' && foe.packName || foe?.fracWarden || foe?.warded || foe?.affixes?.length || foe?.poiseBreak > 0 || foe?.pack?.phase === 'stunned');
@@ -1617,7 +1618,8 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     if (d.lift && !interiorTerrain(g.map)) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1) ac.globalAlpha = d.alpha;
     const art = foe && CLOSE_VIEW_HOOKS.art[foe.kind]; // (boardFoe is written afresh for every item each frame)
     // phase 2: a creature with close-view art draws itself, from the camera's side (view: where it stands relative to the camera)
-    try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && !nativeBody && facing === "up") backOfHood(ac, p, s); } finally { ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
+    if (!foe && !player && !residual && !d.nativeAux && d.object) quietCardText(ac); // a creature's status words (BLOCKED, a pack's name) stay; a place's or a person's name does not
+    try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && !nativeBody && facing === "up") backOfHood(ac, p, s); } finally { restoreCardText(); ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
     x += pw + 2; rowH = Math.max(rowH, ph + 2); }
   SPRITES.used = y + rowH; } finally { restoreCardText(); } return true;
 }
@@ -2178,6 +2180,7 @@ export function drawCloseViewLightsStd(ctx, g, s, now, l, t, r, b) {
   let st; try { st = staticFor(map, wallGeometry(map), themeOf(map)); } catch { return 0; }
   if (STD_LIGHT.seenMap !== map) { STD_LIGHT.seenMap = map; STD_LIGHT.seen = glSeen(map); } const seen = STD_LIGHT.seen, S = CLOSE_VIEW_STD_LIGHTS;
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), At = CLOSE_VIEW.atmosphere, L = st.lights, Fl = st.flames; let drawn = 0;
+  if (typeof ctx.drawImage !== "function" || typeof ctx.ellipse !== "function") return 0;
   const near = (x, y, pad) => x > l - pad && x < r + pad && y > t - pad && y < b + pad && (!seen || seen(Math.floor(x), Math.floor(y)));
   ctx.save(); ctx.globalCompositeOperation = "lighter";
   for (let i = 0; i < st.nLights; i++) { const o = i * LIGHT_FLOATS, x = L[o], y = L[o + 1]; if (!near(x, y, S.pool)) continue; const hue = L[o + 5] | 0, sp = stdGlowSprite(hue); if (!sp) break;
@@ -2832,7 +2835,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     F.outW[0] = W2.base; F.outW[1] = W2.glance; F.outW[2] = W2.ripple; F.outW[3] = W2.rippleAmp; F.outR[0] = R2.foot; F.outR[1] = R2.dark; F.outR[2] = R2.lip; F.outR[3] = R2.light;
     F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint;
     F.outX[0] = OUTDOOR.ground.art; F.outX[1] = W2.shore; F.outX[2] = Q.relief ? W2.foam : W2.foam * .6; F.outX[3] = g.map.movers?.length ? 1 : 0; // rafts are drawn on the water by the ordinary art: keep it there
-    F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.relief ? 1 : 0; }
+    F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.motes ? 1 : 0; } // clouds in the water: the full tier only
   // a house's roof is left out while the Wayfarer is inside it, the camera is over it, or it stands between them
   F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy);
   // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
