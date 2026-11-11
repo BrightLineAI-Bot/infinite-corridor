@@ -528,7 +528,8 @@ export function selectLabBuildMaterial(fixture, kind) {
 
 function roomPaddingWitness(game, mode) {
   const map = game.map;
-  const reserved = [map.entry, map.exit, ...map.objects, ...map.enemySpawns, ...game.enemies, ...(map.wallGlints || [])];
+  // World caches are laid after production plans its padding (game.ts loadArea), so the witness leaves them out as production does.
+  const reserved = [map.entry, map.exit, ...map.objects.filter((o) => o.kind !== "worldCache" && o.kind !== "cacheLever"), ...map.enemySpawns, ...game.enemies, ...(map.wallGlints || [])];
   const footprint = roomPaddingFootprint(map, reserved);
   if (!footprint) return { mode, found: false };
   if (mode === "pilot") applyRoomPadding(map, footprint);
