@@ -22,7 +22,7 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ } from "./close-view-outdoor.ts";
+import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING } from "./close-view-outdoor.ts";
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -171,7 +171,7 @@ export const CLOSE_VIEW = Object.freeze({
     minDistance: 1, // the boom's usual shortest... (a wall closer than this pulls it in further: the camera is never inside a wall)
     closest: .3, // ...and its absolute shortest
     crane: .75, // ...and for each tile it is pulled in, it rises this much (never above the walls' tops less `craneClear`), so
-    craneClear: .25, // the Wayfarer stays a figure in the view, not a wall of cloth
+    craneClear: .2, // the Wayfarer stays a figure in the view, not a wall of cloth (was .25 before the 2026-11-11 height pass)
     nearFade: Object.freeze([1.6, .55]), // (version 5, the GPU scene: never fainter than atmosphere.nearFade) // nearer than this (camera depth), the Wayfarer is drawn this faint, so the way ahead shows
     center: .5, // the aim point's place on screen, as a share of the height from the top
     boomPad: .32, // the camera keeps this far off a wall
@@ -198,6 +198,14 @@ export const CLOSE_VIEW = Object.freeze({
     // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
     // bound encloses the Wayfarer's .82-scale, 1.68-tile hood, including its walking bob.
     framing: Object.freeze({ bodyHeight: 1.45, margin: .05, pitchMin: -1.2, pitchMax: 1.35 }),
+    // Outdoors over the heightfield (2026-11-11): the line from the Wayfarer's chest to the camera must clear the ground behind
+    // them. Rather than only cutting the boom where a ledge rises into that line, the crane first rises, up to `riseMax` tiles
+    // over the preset's outdoorHeight, so the camera looks down over the ledge; only a ledge too tall and too close for that
+    // shortens the boom, and then to the longest length the risen crane can see over. The rise is taken at once (it grows
+    // smoothly as the Wayfarer backs toward a ledge) and let down on the crane's spring.
+    // `horizonRoom`: outdoors the crane is held low enough that the Wayfarer's feet and this many degrees of sky above the
+    // horizon both fit the screen's height (outdoorCrane; it binds only in a short landscape view).
+    outdoor: Object.freeze({ riseMax: 2.2, horizonRoom: 4, minHeight: 1.2 }), // minHeight: never lower than this however short the view
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -213,9 +221,16 @@ export const CLOSE_VIEW = Object.freeze({
     // and lower so the pitch shows more of the floor beyond the Wayfarer, who stays framed low of centre. Walls still pull the
     // boom in (CLOSE_VIEW.camera), so tight corridors keep the old close framing. `fogPush`: tiles the depth fog is pushed out
     // with the longer boom, so the Wayfarer and the ground just past them are no foggier than at the old distance.
-    standard: Object.freeze({ label: "Standard", height: 1.9, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
-    close: Object.freeze({ label: "Close (tight, low)", height: 1.55, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
-    wide: Object.freeze({ label: "Wide (further back)", height: 2.15, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
+    // version 4 (Tim, 2026-11-11: "higher camera in general", after the overworld's levels became 1.2 tiles tall and a cliff at
+    // the Wayfarer's back pulled the camera in to their shoulder): indoors each preset is raised toward the cap (was close 1.55,
+    // standard 1.9, wide 2.15; the walls' tops less craneClear, 2.2, and the arch and hall caps still bound it). Outdoors (the
+    // overworld, courts and roofs: no ceiling) the crane stands at `outdoorHeight`, high enough that a level or two of ledge
+    // behind the Wayfarer is looked down over (CLOSE_VIEW.camera.outdoor) rather than cutting the boom. The look point is kept:
+    // the pitch outdoors is about 20-24 degrees, so in portrait the horizon still sits in the upper third of the screen and the
+    // Wayfarer's feet at about two thirds of the way down.
+    standard: Object.freeze({ label: "Standard", height: 2.05, outdoorHeight: 3, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
+    close: Object.freeze({ label: "Close (tight, low)", height: 1.8, outdoorHeight: 2.6, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
+    wide: Object.freeze({ label: "Wide (further back)", height: 2.2, outdoorHeight: 3.4, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
   }),
   defaultPreset: "standard",
   fov: Object.freeze({ verticalMax: 100 }), // the horizontal fov (by preset) or this vertical one, whichever is narrower, sets the focal length
@@ -1393,7 +1408,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
   const extended = overworldCloseViewApplies(g), flatWorld = extended && !interiorTerrain(g.map), outdoor = extended && openWorldScene(g);
   const plainWorld = outdoor && flatWorld && !g.map.building;
-  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
+  const Cp = closeViewPreset(g), camH = lerp(E.height, outdoor && Number.isFinite(Cp.outdoorHeight) ? outdoorCrane(Cp, w, h) : Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
   const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : air.near + fogShift;
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
@@ -1440,6 +1455,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     }
     for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = worldCapture = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
+  if (capturedPlayer && RELIEF.map === g.map) presentLeap(g, now, capturedPlayer); // the taller levels: a jump that reaches the ledge, a drop that falls
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
   const t1 = tm ? performance.now() : 0;
@@ -1499,12 +1515,20 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
     if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
   }
-  const playerZ = surfaceZ(g.map, footX(p), footY(p)) +
-    Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
+  const playerZ = RELIEF.map === g.map && LEAP.map === g.map ? LEAP.base + Math.max(0, capturedPlayer?.lift || 0) // over the heightfield the camera follows the Wayfarer's footing, not each jump's arc
+    : surfaceZ(g.map, footX(p), footY(p)) + Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
   const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? surfaceZ(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
   let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
+  if (outdoor && RELIEF.map === g.map) { // look down over a ledge behind (CLOSE_VIEW.camera.outdoor): the crane rises before the boom is cut
+    const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), L0 = Math.hypot(dx, dy), steps = Math.max(1, Math.ceil(L0 / .08)), top = camH + C.outdoor.riseMax;
+    let m = 0, keep = L0, need = 0;
+    for (let i = 1; i <= steps; i++) { const s = L0 * i / steps, rise = surfaceZ(g.map, footX(p) + dx * i / steps, footY(p) + dy * i / steps) + .12 - playerZ;
+      const mm = Math.max(m, (rise - .6) / s), req = Math.max(.6 + mm * s, rise, need); if (req > top) { keep = L0 * (i - 1) / steps; break; } m = mm; need = req; }
+    if (keep < L0 - 1e-6) { const k = keep / L0; CAM.cx = footX(p) + dx * k; CAM.cy = footY(p) + dy * k; CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0; }
+    need += .02; if (need > CAM.crane) { CAM.crane = need; CAM.craneV = 0; } terrainCameraZ = playerZ + Math.max(craneUp, need); // a hair over the line, so the check below agrees
+  }
   if (interiorTerrain(g.map) || hasStoneBuilds(g.map) || RELIEF.map === g.map) { // the camera's line to the Wayfarer never dips under the ground
     const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
     for (let i = 1; i <= steps; i++) {
@@ -1993,7 +2017,7 @@ export function closeViewEchoRibbons(g, map, quality = "balanced", reduce = fals
     if (!valid(q)) return;
     const d=Math.hypot(q.dx,q.dy),dx=q.dx/d,dy=q.dy/d,n=K.segments,shape=q.shape==='thrust'?'thrust':'sweep',half=(Number(q.arc)||100)*Math.PI/360;
     const stage=memory?primaryVisualStage(q):null,step=stage?.step||(memory&&q.primaryMotion==null?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0),offset=stage?.kind==='cleaver-four'?(stage.direction>0?-.28:.28):step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
-    const ground=Number.isFinite(q.support)?q.support*LIFT_PER_LEVEL:surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
+    const ground=Number.isFinite(q.support)?q.support*(RELIEF.map===map?OUTDOOR.terrain.level:LIFT_PER_LEVEL):surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
     const point = i => { const t=i/n,b=shape==='thrust'?angle:start+(end-start)*t,r=shape==='thrust'?.18+(q.range-.18)*t:q.range,x=q.x+Math.cos(b)*r,y=q.y+Math.sin(b)*r,z=ground+K.height[0]+(K.height[1]-K.height[0])*Math.sin(Math.PI*t),tx=shape==='thrust'?dx:-Math.sin(b),ty=shape==='thrust'?dy:Math.cos(b),w=width*(shape==='thrust'?(1-t*.82):(.72+.28*Math.sin(Math.PI*t))); return {x,y,z,nx:-ty*w,ny:tx*w}; };
     let a=point(0); for(let i=1;i<=n;i++){const b=point(i),alpha=Math.max(0,Math.min(1,fade))*spec.alpha; emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x+b.nx,b.y+b.ny,b.z,1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x-a.nx,a.y-a.ny,a.z,-1,1,alpha,spec.color,1);vertices+=6;a=b;} paths++;
   };
@@ -2070,6 +2094,14 @@ const HALL_VIEW = Object.freeze({ minHeight: 6, maxHeight: 14, tierHeight: .65, 
 const BACKDROPS = new Map(PENTAGON_BACKDROPS.map(({ id, palette }, i) => [
   id, { kind: i + 1, colors: Float32Array.from(palette.flatMap((hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255))) },
 ]));
+// The preset's outdoor crane height, no higher than lets the Wayfarer's feet and the horizon (with `horizonRoom` degrees of sky)
+// share the screen's height: in portrait the full outdoorHeight; in a short landscape view about the old height (the horizon
+// matters more there than the extra height).
+function outdoorCrane(Cp, w, h) {
+  const C = CLOSE_VIEW.camera, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const span = 2 * Math.atan(h * (.5 - C.framing.margin) / F) - C.outdoor.horizonRoom * DEG;
+  return Math.max(C.outdoor.minHeight, Math.min(Cp.outdoorHeight, Cp.distance * Math.tan(Math.max(.05, Math.min(1.4, span)))));
+}
 function hallHeight(map) {
   if (interiorTerrain(map)) return interiorCeilingHeight(map);
   const height = map.hall?.ceilingHeight;
@@ -3278,6 +3310,33 @@ export function roofHidden(r, px, py, cx, cy, pad = .4) {
   if (Math.abs(dy) < 1e-9) { if (cy < y0 || cy > y1) return false; } else { const a = (y0 - cy) / dy, b = (y1 - cy) / dy; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
   return t0 <= t1;
 }
+// The Wayfarer's leaps and drops over the overworld's taller levels (OUTDOOR.terrain version 3). Gameplay is unchanged: one
+// jump a level, the tile under the feet decides the footing. What is drawn: the footing (`base`) rises toward the ledge the
+// jump is carrying them onto (the ground where their motion will put them when the jump ends), so the arc clears the ledge
+// before the feet cross onto it, never popping up; the arc itself is scaled from the ordinary jump's (JUMP.arc tiles at its
+// peak) to `arcPeak` of a level; stepping or jumping off a ledge, the footing falls under `gravity` until it meets the
+// ground. A difference of `snap` or less (a ramp's slope, a pebble of noise) is followed at once. Presentation only: it
+// writes the frame's captured Wayfarer card's jumpLift (a fresh object each frame), never the game.
+export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, gravity: 28, snap: .18, rise: 16, reset: 2.5 });
+const LEAP = { map: null, base: 0, v: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0 };
+export function presentLeap(g, now, d) {
+  const K = CLOSE_VIEW_LEAP, p = g.player, fx = footX(p), fy = footY(p), ground = surfaceZ(g.map, fx, fy), clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  const special = !!(g.droneLift || g.mechBoosting || g.glide || g.swimming || g.save?.boat?.aboard || g.mountRide?.() || g.skyAir != null);
+  if (LEAP.map !== g.map || !Number.isFinite(LEAP.x) || Math.hypot(fx - LEAP.x, fy - LEAP.y) > K.reset || special) { LEAP.base = ground; LEAP.v = 0; LEAP.vx = LEAP.vy = 0; LEAP.t = clock; }
+  const dt = Math.max(0, Math.min(.1, (clock - LEAP.t) / 1000));
+  if (dt > 0) { const k = Math.min(1, dt * 12); LEAP.vx += ((fx - LEAP.x) / dt - LEAP.vx) * k; LEAP.vy += ((fy - LEAP.y) / dt - LEAP.vy) * k; }
+  LEAP.map = g.map; LEAP.t = clock; LEAP.x = fx; LEAP.y = fy; if (special) return;
+  const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0); let arc = 0;
+  if (jumping) { const left = Math.max(0, ((g.jumpUntil || 0) - clock) / 1000), ahead = surfaceZ(g.map, fx + LEAP.vx * left, fy + LEAP.vy * left), target = Math.max(ground, ahead);
+    if (target > LEAP.base) LEAP.base += (target - LEAP.base) * Math.min(1, dt * K.rise); // rising toward the ledge it is carrying them onto
+    arc = lift / K.arcFrom * K.arcPeak * OUTDOOR.terrain.level; }
+  if (ground >= LEAP.base) { if (!jumping || ground - LEAP.base <= K.snap) LEAP.base = ground; LEAP.v = 0; } // stepped up without a leap (a ramp, a lift): on it at once
+  else if (LEAP.base - ground <= K.snap && !jumping) { LEAP.base = ground; LEAP.v = 0; }
+  else if (!jumping) { LEAP.v += K.gravity * dt; LEAP.base = Math.max(ground, LEAP.base - LEAP.v * dt); if (LEAP.base <= ground) LEAP.v = 0; } // off a ledge: a fall
+  const z = Math.max(ground, LEAP.base + arc); d.jumpLift = Math.max(0, z - ground - Math.max(0, Number(d.lift) || 0));
+  return z;
+}
+export const closeViewLeap = () => ({ base: LEAP.base, v: LEAP.v }); // for tests
 const PROP_Z = { map: null }; // the floor whose props are being built (propZ reads its heights; no closure a frame)
 const propZ = (x, y) => interiorSurfaceHeight(PROP_Z.map, x, y);
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor) {
@@ -3306,7 +3365,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map, RELIEF.map === g.map) : null;
   if (openWorld && glOutdoor(openWorld)) { const sk = openWorld.sky, view = OUTDOOR.view[g.presentation?.effectiveQuality] || OUTDOOR.view.balanced, half = GROUND.W / (2 * s), W2 = OUTDOOR.water, R2 = OUTDOOR.relief, D2 = OUTDOOR.detail;
     F.outdoor = 1; F.fogNear = view.near; F.fogFar = view.far; F.reach = F.fogFar + 2; F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar;
-    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= OUTDOOR.torch;
+    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= sk.torch ?? OUTDOOR.torch;
     F.grade[0] = sk.grade[0]; F.grade[1] = sk.grade[1]; F.grade[2] = sk.grade[2]; F.grade[3] = 1 / sk.grade[3]; F.finish[0] = Q.vignette ? OUTDOOR.vignette : OUTDOOR.vignette * .6;
     F.outdoorP[1] = half - OUTDOOR.blend.inner; F.outdoorP[2] = half - OUTDOOR.blend.outer; F.outdoorP[3] = Q.detail ? 1 : 0;
     F.skyZ[0] = sk.zenith[0]; F.skyZ[1] = sk.zenith[1]; F.skyZ[2] = sk.zenith[2]; F.skyZ[3] = sk.clouds; F.skyH[0] = sk.horizon[0]; F.skyH[1] = sk.horizon[1]; F.skyH[2] = sk.horizon[2]; F.skyH[3] = sk.ridgeH;
@@ -3314,7 +3373,11 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     F.outW[0] = W2.base; F.outW[1] = W2.glance; F.outW[2] = W2.ripple; F.outW[3] = W2.rippleAmp; F.outR[0] = R2.foot; F.outR[1] = R2.dark; F.outR[2] = R2.lip; F.outR[3] = R2.light;
     F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint;
     F.outX[0] = OUTDOOR.ground.art; F.outX[1] = W2.shore; F.outX[2] = Q.relief ? W2.foam : W2.foam * .6; F.outX[3] = g.map.movers?.length ? 1 : 0; // rafts are drawn on the water by the ordinary art: keep it there
-    F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.motes ? 1 : 0; } // clouds in the water: the full tier only
+    F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.motes ? 1 : 0; // clouds in the water: the full tier only
+    // the sky's mood: stars, the clouds' undersides, the moon, a distant flash (none with reduced motion) and the clouds' colour
+    const flash = reduce ? 0 : outdoorLightning(now, sk.lightning || 0); F.mood[0] = sk.stars || 0; F.mood[1] = sk.cloudDark || 0; F.mood[2] = sk.moon || 0; F.mood[3] = flash;
+    if (sk.cloud) { F.moodC[0] = sk.cloud[0]; F.moodC[1] = sk.cloud[1]; F.moodC[2] = sk.cloud[2]; } else F.moodC.fill(1); F.moodC[3] = flash > 0 ? LIGHTNING.az : 0;
+    if (flash > 0) { const lift = 1 + OUTDOOR.lightning.lift * flash; F.amb[0] *= lift; F.amb[1] *= lift; F.amb[2] *= lift; } }
   // a house's roof is left out while the Wayfarer is inside it, the camera is over it, or it stands between them
   F.relief = F.outdoor && openWorld.ground && glRelief(openWorld) ? 1 : 0;
   F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy);

@@ -915,7 +915,7 @@ export const COMBAT_ENVIRONMENTS = [
 ];
 // The adventure creatures' test ground: the standard test tile with a tiered gallery (levels 1 to 3, stairs on its west face), a stone
 // wall to cling to, and an open sand flat. Scratch state only. The Wayfarer starts in sight of the ground the creature lives on (the
-// gallery for perchers, keepers and leapers; the sand for the Sinkmaw and the Kite), facing it, with open ground behind for the camera.
+// gallery for perchers, keepers and leapers; the open sand for the Sinkmaw, the Kite, the Lamplighter, the Medusa and the Glider), facing it, with open ground behind for the camera.
 export const ADVENTURE_HEIGHTS = { gallery: { x: [3, 11], y: [10, 18] }, wall: { x: 14, y: [8, 13] }, sand: { x: [17, 23], y: [18, 25] }, start: { gallery: { x: 7, y: 22, facing: "up" }, sand: { x: 20, y: 27, facing: "up" } } };
 export function stampAdventureHeights(map) {
   stampTestTile(map);
@@ -929,7 +929,7 @@ export function stampAdventureHeights(map) {
   map.name = "Adventure heights"; return map;
 }
 function adventureHeightsFixture(now, kind = "") {
-  const base = testTileFixture(now), { game } = base; stampAdventureHeights(game.map); Object.assign(game.player, ["sinkmaw", "cinderKite"].includes(kind) ? ADVENTURE_HEIGHTS.start.sand : ADVENTURE_HEIGHTS.start.gallery); game.sync();
+  const base = testTileFixture(now), { game } = base; stampAdventureHeights(game.map); Object.assign(game.player, ["sinkmaw", "cinderKite", "lamplighter", "spindriftMedusa", "lakeGlider"].includes(kind) ? ADVENTURE_HEIGHTS.start.sand : ADVENTURE_HEIGHTS.start.gallery); game.sync();
   return { ...base, label: "Adventure heights" };
 }
 // Placement by habitat (adventure-creatures.ts adventureSpawnSpot) on an overworld map: open, safe floor, never a doorway, stairs, chest or object.

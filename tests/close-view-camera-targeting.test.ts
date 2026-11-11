@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { interiorSurfaceHeight } from '../src/landscape.ts';
 import * as CV from '../src/close-view.ts';
+import { render } from '../src/renderer.ts';
+import { outdoorRelief, outdoorSurfaceZ } from '../src/close-view-outdoor.ts';
+import { resetCloseViewGL } from '../src/close-view-gl.ts';
 
 // Tim, 2026-11-11: the Close View camera pulled back in every preset (wide the farthest), and a second targeting pass toward a
 // reliable phone lock-on: one priority for every choice, attacks at the lock, a sticky lock through brief occlusion, smooth
@@ -137,3 +140,63 @@ test('locked, a dodge keeps the lock and the view keeps within its speed bound',
   for (let i = 0; i < 50; i++) { const s = { x: 1, y: 0 }; CV.closeViewSteer(g, s, now); now += 16; let used = false; g.update(.016, { state: s, consume: (k) => i === 0 && k === 'dodge' && !used && (used = true), held: () => false, reset() {} }, now); CV.closeViewUnsteer(s); const y = frame(g).yaw; peak = Math.max(peak, Math.abs(wrap(y - prev)) / .016); prev = y; }
   assert.equal(g.lockedTarget()?.id, e.id); assert.ok(peak <= L.maxRate * Math.PI / 180 + 1e-6, `bounded (${(peak * 180 / Math.PI).toFixed(0)} deg/s)`);
 });
+
+// Tim, 2026-11-11: "higher camera in general" (the overworld's levels are 1.2 tiles tall; with his back to a two-level cliff
+// the camera pulled in to his shoulder). Indoors raised toward the cap; outdoors a much higher crane that rises further over a
+// ledge behind rather than cutting the boom, with the horizon kept on screen.
+test('every preset is higher: indoors toward the walls\' cap, outdoors clearly higher', () => {
+  const P = C.presets, r889 = { close: 1.55, standard: 1.9, wide: 2.15 };
+  for (const [id, h] of Object.entries(r889)) {
+    assert.ok(P[id].height > h && P[id].height <= C.walls.height - C.camera.craneClear + 1e-9, `${id}: indoors ${h} -> ${P[id].height}, under the cap`);
+    assert.ok(P[id].outdoorHeight >= P[id].height + .7, `${id}: outdoors ${P[id].outdoorHeight}`);
+  }
+  assert.ok(P.wide.outdoorHeight > P.standard.outdoorHeight && P.standard.outdoorHeight > P.close.outdoorHeight);
+  assert.ok(C.camera.outdoor.riseMax >= 1.5 && C.camera.outdoor.horizonRoom > 0, 'the ledge rise and the horizon room are data');
+});
+
+class StubGL { constructor() { let next = 1; const c = new Map(); return new Proxy(this, { get: (o: any, k: any) => { if (k in o) return o[k]; if (typeof k === 'string' && /^[A-Z][A-Z0-9_]+$/.test(k)) { if (!c.has(k)) c.set(k, next++); return c.get(k); } return () => {}; } }); }
+  isContextLost() { return false; } getError() { return (this as any).NO_ERROR; } getExtension() { return null; } createShader() { return {}; } getShaderParameter() { return true; }
+  createProgram() { return {}; } getProgramParameter(_p: any, k: any) { return k === (this as any).ACTIVE_UNIFORMS || k === (this as any).ACTIVE_ATTRIBUTES ? 0 : true; } createBuffer() { return {}; } createVertexArray() { return {}; } createTexture() { return {}; } }
+// The overworld's standard test tile over the (stub) GPU: its plateau rises one level at x 24 and two at x 25 (rows 3-6).
+function overworld(run) {
+  const prev = (globalThis as any).WebGL2RenderingContext, gl: any = new StubGL(); let made = 0; (globalThis as any).WebGL2RenderingContext = StubGL;
+  CV.setCloseViewCanvasFactory(() => { if (++made === 1) return { width: 390, height: 844, getContext: () => ctx }; return { width: 390, height: 844, addEventListener() {}, getContext: (k) => k === 'webgl2' ? gl : ctx }; });
+  CV.CLOSE_VIEW_HOOKS.gl = true; resetCloseViewGL(); CV.resetCloseViewCamera();
+  try { run(); } finally { CV.CLOSE_VIEW_HOOKS.gl = null; resetCloseViewGL(); CV.resetCloseViewCamera(); CV.setCloseViewCanvasFactory(() => ({ width: 1, height: 1, getContext: () => ctx })); if (prev === undefined) delete (globalThis as any).WebGL2RenderingContext; else (globalThis as any).WebGL2RenderingContext = prev; }
+}
+function outside(id, x, y, yaw, w, h) {
+  const g: any = createLabFixture({ lab: 'test-tile', scenario: '', now: 1000 }).game, screen: any = new Proxy({ canvas: { width: w, height: h } }, { get: (o, k) => k in o ? o[k] : (ctx as any)[k], set: (o, k, v) => { o[k] = v; return true; } });
+  g.save.overworldCloseView = true; g.save.closeViewPreset = id; g.save.closeViewAutoFollow = false; g.presentation = { effectiveQuality: 'low', reduceMotion: true }; g.enemies = [];
+  g.player.x = x; g.player.y = y; CV.resetCloseViewCamera(); render(screen, g, w, h, now += 16);
+  CV.closeViewPan(wrap(yaw - CV.closeViewCamera().yaw) / C.crescent.yaw, -CV.closeViewCamera().pitchUser / C.crescent.pitch, now - 10000);
+  const seen: any[] = []; for (let i = 0; i < 260; i++) { render(screen, g, w, h, now += 16); if (i >= 180) seen.push(CV.closeViewCamera()); }
+  const c = CV.closeViewCamera(), z = outdoorSurfaceZ(outdoorRelief(g.map), x + .5, y + .75);
+  return { g, c, z, seen, feet: CV.closeViewProject(x + .5, y + .82, z), head: CV.closeViewProject(x + .5, y + .82, z + C.camera.framing.bodyHeight),
+    horizon: CV.closeViewProject(c.x + Math.cos(c.yaw) * 400, c.y + Math.sin(c.yaw) * 400, c.height) };
+}
+
+test('outdoors the camera stands high with the horizon in view; in a short landscape view it keeps the horizon', () => overworld(() => {
+  for (const id of ['close', 'standard', 'wide']) {
+    const o = outside(id, 19, 10, Math.PI, 390, 844);
+    assert.ok(Math.abs(o.c.distance - C.presets[id].distance) < .02, `${id}: full boom`); assert.ok(Math.abs(o.c.height - o.z - C.presets[id].outdoorHeight) < .02, `${id}: at its outdoor height (${(o.c.height - o.z).toFixed(2)})`);
+    assert.ok(o.feet.sy > 844 * .55 && o.feet.sy < 844 * .72 && o.head.sy > 844 * .4, `${id}: the Wayfarer low of centre (${o.feet.sy.toFixed(0)})`);
+    assert.ok(o.horizon && o.horizon.sy > 844 * .2 && o.horizon.sy < 844 * .45, `${id}: the horizon in the upper part of the screen (${o.horizon?.sy.toFixed(0)})`);
+    for (const ahead of [2, 4, 8]) { const q = CV.closeViewProject(19.5 - ahead, 10.82, o.z + .7); assert.ok(q && q.sy > 0 && q.sy < o.feet.sy && q.sx > 0 && q.sx < 390, `${id}: a foe ${ahead} tiles ahead is framed above the Wayfarer for the lock`); }
+    const l = outside(id, 19, 10, Math.PI, 844, 390);
+    assert.ok(l.horizon && l.horizon.sy >= 0, `${id} landscape: some sky (${l.horizon?.sy.toFixed(0)})`); assert.ok(l.feet.sy <= 390 * (1 - C.camera.framing.margin) + 1, `${id} landscape: feet in frame`);
+  }
+}));
+
+test('with its back to a two-level cliff the camera rises and looks down over it instead of pulling in, and holds still', () => overworld(() => {
+  for (const id of ['close', 'standard', 'wide']) {
+    const o = outside(id, 23, 4, Math.PI, 390, 844), P = C.presets[id];
+    assert.ok(o.c.distance > P.distance - .05, `${id}: the full boom (${o.c.distance.toFixed(2)})`);
+    assert.ok(o.c.height - o.z > P.outdoorHeight + .2 && o.c.height - o.z <= P.outdoorHeight + C.camera.outdoor.riseMax + .03, `${id}: risen over the ledge (${(o.c.height - o.z).toFixed(2)})`);
+    const R = outdoorRelief(o.g.map), px = 23.5, py = 4.75; // the line from the chest to the camera clears the ground
+    for (let i = 1; i <= 50; i++) { const k = i / 50; assert.ok(o.z + .6 + (o.c.height - o.z - .6) * k >= outdoorSurfaceZ(R, px + (o.c.x - px) * k, py + (o.c.y - py) * k) + .1, `${id}: clear at ${k}`); }
+    assert.ok(o.feet.sy > 844 * .55 && o.feet.sy < 844 * .75 && o.horizon.sy > 0, `${id}: framed, and the horizon still shows`);
+    const d = o.seen.map((c) => c.distance), hh = o.seen.map((c) => c.height); assert.ok(Math.max(...d) - Math.min(...d) < .01 && Math.max(...hh) - Math.min(...hh) < .01, `${id}: no pumping`);
+  }
+  // too tall and too close for the rise alone: the boom shortens only as far as it must
+  const t = outside('wide', 23.3, 4, Math.PI, 390, 844); assert.ok(t.c.distance > 4 && t.c.height - t.z <= C.presets.wide.outdoorHeight + C.camera.outdoor.riseMax + .03, `tight: ${t.c.distance.toFixed(2)}`);
+}));
