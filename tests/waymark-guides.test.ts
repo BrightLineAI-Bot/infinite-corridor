@@ -142,7 +142,7 @@ test('guided ground builds no neighbouring section for its marks, and a section 
 });
 
 test('ground seen before the guides, and new ground that hosts nothing, regenerate exactly as on main', () => {
-  // Digests of tiles, objects (marks aside), spawns, sky discs and creatures, computed on origin/main (release 896) and here.
+  // Digests of tiles, objects (marks and world caches aside: caches have their own tests), spawns, sky discs and creatures, computed on origin/main (release 896) and here.
   // `old` 1: a guide host loaded with a release-896 atlas record (no guideVersion): no skyway, shrine or lair is added.
   // `old` 0: new ground beside a host, hosting nothing: the same as main, the guides aside (three re-pinned with the gold cue gone,
   // which no longer stands on guided ground for other objects to keep clear of: PIN1 25,-3, 31,1 and 30,2).
@@ -151,7 +151,7 @@ test('ground seen before the guides, and new ground that hosts nothing, regenera
   for (const [seed, rx, ry, old, hash] of PINNED) {
     const s = woken(seed); if (old) s.atlas = { [`${rx},${ry}`]: structuredClone(OLD) }; const g = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld'); const m = g.map;
     if (old) assert.ok(GUIDE_KINDS.some((k) => guideHost(seed, k, rx, ry)), `${seed} ${rx},${ry} is a host`); else assert.ok(!GUIDE_KINDS.some((k) => guideHost(seed, k, rx, ry)));
-    assert.equal(sha([m.tiles.map((t) => [t.kind, t.blocked ? 1 : 0, t.elev || 0, t.slope ? 1 : 0, t.wallSides || null, t.sigil || null]), (m.objects || []).filter((o) => o.kind !== 'wayfindingCue').map((o) => [o.id, o.kind, o.x, o.y]).sort(), (m.enemySpawns || []).map((e) => [e.kind, e.x, e.y]), m.skyDiscs || null, g.enemies.map((e) => [e.kind, e.worldBeast || null])]), hash, `${seed} ${rx},${ry} old ${old}`);
+    assert.equal(sha([m.tiles.map((t) => [t.kind, t.blocked ? 1 : 0, t.elev || 0, t.slope ? 1 : 0, t.wallSides || null, t.sigil || null]), (m.objects || []).filter((o) => o.kind !== 'wayfindingCue' && o.kind !== 'worldCache' && o.kind !== 'cacheLever').map((o) => [o.id, o.kind, o.x, o.y]).sort(), (m.enemySpawns || []).map((e) => [e.kind, e.x, e.y]), m.skyDiscs || null, g.enemies.map((e) => [e.kind, e.worldBeast || null])]), hash, `${seed} ${rx},${ry} old ${old}`);
     if (old) assert.ok(!g.map.objects.some((o) => o.guide), 'old ground keeps the old marks');
   }
   // an unguided disc search is the release 587 one: the guided search only runs when asked
