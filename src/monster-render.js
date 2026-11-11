@@ -1,23 +1,23 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r896-d66b426b1554"; // seed realms
-import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect } from "./adventure-creature-render.js?v=r896-d66b426b1554"; // adventure creatures
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r896-d66b426b1554";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r896-d66b426b1554";
+import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r907-a00159304000"; // seed realms
+import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.js?v=r907-a00159304000"; // adventure creatures
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r907-a00159304000";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r907-a00159304000";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r896-d66b426b1554"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r896-d66b426b1554";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r907-a00159304000"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r907-a00159304000";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r896-d66b426b1554";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r896-d66b426b1554";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r896-d66b426b1554";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r896-d66b426b1554";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r896-d66b426b1554";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r896-d66b426b1554";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r896-d66b426b1554";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r907-a00159304000";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r907-a00159304000";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r907-a00159304000";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r907-a00159304000";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r907-a00159304000";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r907-a00159304000";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r907-a00159304000";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r896-d66b426b1554";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r907-a00159304000";
 
 const TAU = Math.PI * 2;
 
@@ -1652,6 +1652,7 @@ export function drawNativePackEffects(ctx, e, s, now, presentation = {}, anchors
   ctx.restore();
 }
 export function drawNativePackFloor(ctx, e, s, now, quiet = false) {
+  if (e.kind === 'sinkmaw' && e.hidden && e.advBuried && !e.dead) { drawSinkmawDimple(ctx, (e.x + .5) * s, (e.y + .82) * s, s * Math.max(.6, Number(e.scale) || 1), MONSTER_PACK.sinkmaw.palette, quiet ? 0 : now / 1000); return; } // Tim (2026-11-11): its dimple and ripples on the Close View floor too
   if (e.kind !== 'sunderjaw' || !e.hidden || e.gloomVeil || e.dead) return;
   const u = s * Math.max(.6, Number(e.scale) || 1), k = (e.x + .5) * s, b = (e.y + .82) * s, t = quiet ? 0 : now / 1000, p = MONSTER_PACK.sunderjaw.palette;
   ctx.save(); ctx.fillStyle = p[1] + 'cc'; ctx.beginPath(); ctx.ellipse(k, b, u * .45, u * .35, 0, 0, TAU); ctx.fill();

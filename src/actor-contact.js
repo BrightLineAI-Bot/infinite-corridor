@@ -1,5 +1,5 @@
-import { enemyBodyRadius } from "./combat.js?v=r896-d66b426b1554";
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r896-d66b426b1554";
+import { enemyBodyRadius } from "./combat.js?v=r907-a00159304000";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r907-a00159304000";
 
 export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSteps: 256, epsilon: 1e-7 });
 // These controllers own teleportation, roaming, mounting or large-body movement outside ordinary AI.

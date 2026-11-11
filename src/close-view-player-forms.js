@@ -1,6 +1,6 @@
 // Authored Close View geometry for player states whose ordinary renderer changes the whole silhouette.
 // This module is deliberately data-only: callers decide when the real equipment/runtime state selects a key.
-import { bevel, block, curvedTube, ellipsoid, membrane, part, prism, ringLoft, verticalLoft, taper } from './close-view-mesh.js?v=r896-d66b426b1554';
+import { bevel, block, curvedTube, ellipsoid, membrane, part, prism, ringLoft, verticalLoft, taper } from './close-view-mesh.js?v=r907-a00159304000';
 
 const coat = 0x303934, hem = 0x28312e, leather = 0x302b29, amber = 0xf3a55c;
 const iron = 0x34383d, ironEdge = 0x171a1d, worn = 0x747a80, glass = 0x31505b;
@@ -262,4 +262,4 @@ export const CLOSE_VIEW_PLAYER_FORM_MODELS = Object.freeze({
   playerEmberForm: emberForm,
 });
 
-export { CLOSE_VIEW_PLAYER_FORM_PROFILES } from './close-view-player-presentation.js?v=r896-d66b426b1554';
+export { CLOSE_VIEW_PLAYER_FORM_PROFILES } from './close-view-player-presentation.js?v=r907-a00159304000';

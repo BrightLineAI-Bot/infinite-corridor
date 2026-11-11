@@ -1,41 +1,41 @@
-import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r896-d66b426b1554';
-import { ordinaryContactEnemy } from './actor-contact.js?v=r896-d66b426b1554';
-import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r896-d66b426b1554";
-import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r896-d66b426b1554"; // the Close View lab
-import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r896-d66b426b1554";
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r896-d66b426b1554";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r896-d66b426b1554";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r896-d66b426b1554";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r896-d66b426b1554";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r896-d66b426b1554";
-import { DIG, planDig } from "./digging.js?v=r896-d66b426b1554";
-import { freshSave, migrateSave } from "./types.js?v=r896-d66b426b1554";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r896-d66b426b1554";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r896-d66b426b1554";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r896-d66b426b1554";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r896-d66b426b1554";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r896-d66b426b1554";
-import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r896-d66b426b1554";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r896-d66b426b1554";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r896-d66b426b1554";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r896-d66b426b1554";
-import { isAdventureKind, adventureSpawnSpot } from "./adventure-creatures.js?v=r896-d66b426b1554"; // adventure creatures: the combat lab places them by habitat
-import { LETHAL_KINDS } from "./landscape.js?v=r896-d66b426b1554";
-import { BIOMES, biomeFor } from "./landscape.js?v=r896-d66b426b1554";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r896-d66b426b1554";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r896-d66b426b1554";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r896-d66b426b1554";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r896-d66b426b1554";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r896-d66b426b1554";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r896-d66b426b1554";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r896-d66b426b1554";
-import { ensureLattice } from "./transit-lattice.js?v=r896-d66b426b1554";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r896-d66b426b1554";
-import { fieldOn } from "./lattice-fields.js?v=r896-d66b426b1554";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r896-d66b426b1554";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r896-d66b426b1554";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r896-d66b426b1554";
-import { validActions } from "./interactions.js?v=r896-d66b426b1554";
+import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r907-a00159304000';
+import { ordinaryContactEnemy } from './actor-contact.js?v=r907-a00159304000';
+import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r907-a00159304000";
+import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r907-a00159304000"; // the Close View lab
+import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r907-a00159304000";
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r907-a00159304000";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r907-a00159304000";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r907-a00159304000";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r907-a00159304000";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r907-a00159304000";
+import { DIG, planDig } from "./digging.js?v=r907-a00159304000";
+import { freshSave, migrateSave } from "./types.js?v=r907-a00159304000";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r907-a00159304000";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r907-a00159304000";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r907-a00159304000";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r907-a00159304000";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r907-a00159304000";
+import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r907-a00159304000";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r907-a00159304000";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r907-a00159304000";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r907-a00159304000";
+import { isAdventureKind, adventureSpawnSpot } from "./adventure-creatures.js?v=r907-a00159304000"; // adventure creatures: the combat lab places them by habitat
+import { LETHAL_KINDS } from "./landscape.js?v=r907-a00159304000";
+import { BIOMES, biomeFor } from "./landscape.js?v=r907-a00159304000";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r907-a00159304000";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r907-a00159304000";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r907-a00159304000";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r907-a00159304000";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r907-a00159304000";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r907-a00159304000";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r907-a00159304000";
+import { ensureLattice } from "./transit-lattice.js?v=r907-a00159304000";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r907-a00159304000";
+import { fieldOn } from "./lattice-fields.js?v=r907-a00159304000";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r907-a00159304000";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r907-a00159304000";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r907-a00159304000";
+import { validActions } from "./interactions.js?v=r907-a00159304000";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -531,7 +531,8 @@ export function selectLabBuildMaterial(fixture, kind) {
 
 function roomPaddingWitness(game, mode) {
   const map = game.map;
-  const reserved = [map.entry, map.exit, ...map.objects, ...map.enemySpawns, ...game.enemies, ...(map.wallGlints || [])];
+  // World caches are laid after production plans its padding (game.ts loadArea), so the witness leaves them out as production does.
+  const reserved = [map.entry, map.exit, ...map.objects.filter((o) => o.kind !== "worldCache" && o.kind !== "cacheLever"), ...map.enemySpawns, ...game.enemies, ...(map.wallGlints || [])];
   const footprint = roomPaddingFootprint(map, reserved);
   if (!footprint) return { mode, found: false };
   if (mode === "pilot") applyRoomPadding(map, footprint);
@@ -915,7 +916,7 @@ export const COMBAT_ENVIRONMENTS = [
 ];
 // The adventure creatures' test ground: the standard test tile with a tiered gallery (levels 1 to 3, stairs on its west face), a stone
 // wall to cling to, and an open sand flat. Scratch state only. The Wayfarer starts in sight of the ground the creature lives on (the
-// gallery for perchers, keepers and leapers; the sand for the Sinkmaw and the Kite), facing it, with open ground behind for the camera.
+// gallery for perchers, keepers and leapers; the open sand for the Sinkmaw, the Kite, the Lamplighter, the Medusa and the Glider), facing it, with open ground behind for the camera.
 export const ADVENTURE_HEIGHTS = { gallery: { x: [3, 11], y: [10, 18] }, wall: { x: 14, y: [8, 13] }, sand: { x: [17, 23], y: [18, 25] }, start: { gallery: { x: 7, y: 22, facing: "up" }, sand: { x: 20, y: 27, facing: "up" } } };
 export function stampAdventureHeights(map) {
   stampTestTile(map);
@@ -929,7 +930,7 @@ export function stampAdventureHeights(map) {
   map.name = "Adventure heights"; return map;
 }
 function adventureHeightsFixture(now, kind = "") {
-  const base = testTileFixture(now), { game } = base; stampAdventureHeights(game.map); Object.assign(game.player, ["sinkmaw", "cinderKite"].includes(kind) ? ADVENTURE_HEIGHTS.start.sand : ADVENTURE_HEIGHTS.start.gallery); game.sync();
+  const base = testTileFixture(now), { game } = base; stampAdventureHeights(game.map); Object.assign(game.player, ["sinkmaw", "cinderKite", "lamplighter", "spindriftMedusa", "lakeGlider"].includes(kind) ? ADVENTURE_HEIGHTS.start.sand : ADVENTURE_HEIGHTS.start.gallery); game.sync();
   return { ...base, label: "Adventure heights" };
 }
 // Placement by habitat (adventure-creatures.ts adventureSpawnSpot) on an overworld map: open, safe floor, never a doorway, stairs, chest or object.

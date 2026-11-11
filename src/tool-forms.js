@@ -1,4 +1,5 @@
-import { stampAttackVisual } from "./action-motion.js?v=r896-d66b426b1554";
+import { stampAttackVisual } from "./action-motion.js?v=r907-a00159304000";
+import { hashSeed } from "./random.js?v=r907-a00159304000";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -250,9 +251,11 @@ function clonePlace(game, now) {
 export function orreryPress(game, now, dir, action = null) {
   const O = ORRERY, S = state(game), p = game.player, c = centre(game), power = game.orreryPower(), d = unit(dir?.x ?? game.save.lastAim?.x ?? 0, dir?.y ?? game.save.lastAim?.y ?? 0, 1, 0);
   game.save.lastAim = d; let fired = false;
-  if (now >= (game.toolReadyAt || 0) && room(game) > 0 && count(game, "orb") < O.caps.orbs) {
+  const echoes = typeof game.takeRound === "function" ? game.glyphLoadout("tool").count("echo") : 0; // ROUNDS: a tap orb takes a round
+  const round = now >= (game.toolReadyAt || 0) && room(game) > 0 && count(game, "orb") < O.caps.orbs ? (typeof game.takeRound === "function" ? game.takeRound(echoes) : "ordinary") : null;
+  if (round) {
     game.toolReadyAt = now + O.tap.cooldown * 1000 * game.toolCooldownScale();
-    shot(game, "orb", c.x + d.x * .35, c.y + d.y * .35, d, O.tap.speed, O.tap.life, power * O.tap.share, { grow: O.tap.grow, shedAcc: 0, shedTurn: Math.atan2(d.y, d.x) });
+    shot(game, "orb", c.x + d.x * .35, c.y + d.y * .35, d, O.tap.speed, O.tap.life, power * O.tap.share * roundDamage(round), { grow: O.tap.grow, shedAcc: 0, shedTurn: Math.atan2(d.y, d.x), ...(round === "empowered" ? { empowered: true } : {}) });
     p.attackUntil = now + 160; stampAttackVisual(p, "orrery-tap", 160, d); fired = true;
     const tier = orbTier(game.glyphLoadout("tool").count("echo"));
     if (tier && S.halo && S.halo.where === game.orreryWhere()) { // the circling orbs fire, one laser each
@@ -264,6 +267,7 @@ export function orreryPress(game, now, dir, action = null) {
   }
   if (action && !S.charge) {
     if (now < (game.orreryLockUntil || 0)) { if (!fired) game.message = O.messages.locked; }
+    else if (typeof game.takeRound === "function" && !canFireRound(game.save, echoes)) { if (!fired) game.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`; } // ROUNDS: no charge with nothing to release
     else S.charge = { held: 0, action, dir: { x: d.x, y: d.y }, pulse: 0 };
   }
   return fired || !!S.charge;
@@ -308,7 +312,9 @@ export function tickOrrery(game, dt, now, held) {
 function bodyOf(game, e) { return typeof game.bodyRadius === "function" ? game.bodyRadius(e) : .38; }
 function release(game, c, now) {
   const O = ORRERY, S = state(game), o = centre(game), power = game.orreryPower(), d = c.dir;
-  if (room(game) > 0 && count(game, "big") < O.caps.bigs) shot(game, "big", o.x + d.x * .4, o.y + d.y * .4, d, O.big.speed, O.big.life, power * chargeShare(c.held), { knife: true, grow: O.big.grow });
+  if (room(game) > 0 && count(game, "big") < O.caps.bigs) { const round = typeof game.takeRound === "function" ? game.takeRound(game.glyphLoadout("tool").count("echo")) : "ordinary"; // ROUNDS: the great orb takes a round
+    if (!round) { S.charge = null; return; }
+    shot(game, "big", o.x + d.x * .4, o.y + d.y * .4, d, O.big.speed, O.big.life, power * chargeShare(c.held) * roundDamage(round), { knife: true, grow: O.big.grow, ...(round === "empowered" ? { empowered: true } : {}) }); }
   const h = S.halo;
   if (h && h.where === game.orreryWhere()) { h.idle = O.halo.idle; const volley = id(game, "volley"), ahead = nearest(game, o.x, o.y, O.cube.out, 6).filter((e) => (e.x + .5 - o.x) * d.x + (e.y + .45 - o.y) * d.y > 0); // forward: each laser at a foe ahead (a different one where it can), else a fan
     for (let i = 0; i < h.n && room(game) > 0 && count(game, "cube") < O.caps.lasers; i++) { const f = ahead.length ? ahead[i % ahead.length] : null, a = (i - (h.n - 1) / 2) * .18, cs = Math.cos(a), sn = Math.sin(a), ld = f ? unit(f.x + .5 - h.pts[i].x, f.y + .45 - h.pts[i].y, d.x, d.y) : { x: d.x * cs - d.y * sn, y: d.x * sn + d.y * cs };
@@ -367,6 +373,79 @@ function seek(game, p) {
 export function orreryOnHit(game, p, e, now) {
   if (p.orrery === "cube") { p.combo = (p.combo || 0) + 1; if (p.combo === 1 && p.cube.phase === "out") { p.cube.phase = "over"; p.cube.dist = 0; } if (p.combo >= 2) p.dead = true; }
   else if (p.orrery === "clone" && !p.combo) { p.combo = 1; p.comboAt = p.age; p.firstId = e.id; p.speed = 0; }
+}
+
+// ---------------------------------------------------------------- rounds
+// Rounds (Tim, 2026-11-11: "tools that fire should fire rounds... ordinary rounds are made automatically from cinder iron as you
+// shoot... each shot costs 2 cinder iron, +1 per active Echo... empowered rounds are found around the corridor... used first
+// and do more damage... with no cinder iron and no empowered rounds, the tool can't fire").
+// - Which tools: the firing tools (`tools`, by their RANGED_WEAPONS name). Hammerfall and the Great Sweep are brawler blows
+//   (melee), and so is the Sweep's Mirage of Blades: they take no rounds.
+// - Each accepted shot takes one round: an empowered round while any are held (`empowered.perShot` each, whatever the Echoes),
+//   else a round from the belt (`save.rounds.loaded`), else one made on the spot from `iron.base` cinder iron plus `iron.perEcho`
+//   for each Echo glyph in the tool (counted up to `iron.echoCap`, the Echo shots a tool actually fires). With none of these
+//   the shot is refused and the HUD says EMPTY. One press of the Blunderbuss is one round (its three pellets are one shell); an
+//   Echo copy and an awakened fan ride on the round that fired them. The Aether Orrery takes one per tap orb and one per
+//   charged great orb (its lasers, beams and pulses ride on those).
+// - An empowered round multiplies the shot's damage by `empowered.damage` (every copy of it: pellets, Echoes, fan, clone). It
+//   is a multiplier on the shot itself, so it composes with any global damage scale applied where shots land.
+// - Finds (`finds`): a crossing chest (`dungeon`) and a great tree's crown, reached at its Crown Rest (`crown`), each hold
+//   empowered rounds by chance, rolled by journey seed and place (version-pinned), and pay once (worldFlags). Other sources
+//   call grantEmpoweredRounds(save, n): the hook for the world caches' loot tables.
+// - `belt`: ordinary rounds a journey carries before it has to make any (a new journey, or one from before rounds). Saved as
+//   save.rounds = { v, empowered, loaded, ...unknown } (additive at schema 14; ensureRounds from freshSave and migrateSave).
+export const ROUNDS = {
+  v: 1,
+  tools: ["Spark Coil", "Lumen Spindle", "Needle Caster", "Blunderbuss", "Rift Bombard", "Aether Orrery"],
+  iron: { base: 2, perEcho: 1, echoCap: 2 },
+  empowered: { damage: 1.5, perShot: 1 },
+  belt: 40,
+  max: 999999,
+  finds: { version: 1, dungeon: { chance: .12, n: [6, 12] }, crown: { chance: .35, n: [12, 24] } },
+  messages: { empty: "Out of rounds: no empowered rounds and not enough cinder iron to make one", hud: "EMPTY" },
+};
+const ROUND_TOOLS = new Set(ROUNDS.tools);
+const whole = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(ROUNDS.max, n)) : 0; };
+export function ensureRounds(save) {
+  if (!save || typeof save !== "object") return null;
+  const raw = save.rounds && typeof save.rounds === "object" && !Array.isArray(save.rounds) ? save.rounds : null;
+  save.rounds = raw ? { ...raw, v: ROUNDS.v, empowered: whole(raw.empowered), loaded: whole(raw.loaded) } : { v: ROUNDS.v, empowered: 0, loaded: ROUNDS.belt }; // unknown fields kept
+  return save.rounds;
+}
+// Whether a tool's profile (items.ts rangedWeapon) fires rounds.
+export const usesRounds = (weapon) => !!weapon && !weapon.brawlerTool && ROUND_TOOLS.has(weapon.name);
+// The cinder iron one ordinary round takes with `echoes` Echo glyphs in the tool: 2, 3, 4.
+export const roundIronCost = (echoes) => ROUNDS.iron.base + ROUNDS.iron.perEcho * Math.min(ROUNDS.iron.echoCap, whole(echoes));
+const ironHeld = (save) => whole(save?.materials?.cinderIron);
+// Echo glyphs socketed in the equipped tool (the HUD's count; a shot counts its own loadout).
+export function toolEchoes(save) { const g = save?.equipment?.secondary?.glyphs; let n = 0; if (Array.isArray(g)) for (let i = 0; i < g.length; i++) if (g[i] === "echo") n++; return n; }
+// Ordinary rounds ready to fire: the belt plus what the cinder iron held would make.
+export const ordinaryRounds = (save, echoes) => whole(save?.rounds?.loaded) + Math.floor(ironHeld(save) / roundIronCost(echoes));
+export const canFireRound = (save, echoes) => whole(save?.rounds?.empowered) >= ROUNDS.empowered.perShot || ordinaryRounds(save, echoes) > 0;
+// Spend the round for one shot: "empowered", "ordinary", or null (nothing changed) when there is none. No allocation.
+export function spendRound(save, echoes) {
+  const r = save.rounds && typeof save.rounds === "object" ? save.rounds : ensureRounds(save);
+  if (whole(r.empowered) >= ROUNDS.empowered.perShot) { r.empowered = whole(r.empowered) - ROUNDS.empowered.perShot; return "empowered"; }
+  if (whole(r.loaded) > 0) { r.loaded = whole(r.loaded) - 1; return "ordinary"; }
+  const cost = roundIronCost(echoes), iron = ironHeld(save); if (iron < cost) return null;
+  save.materials.cinderIron = iron - cost; return "ordinary";
+}
+export const roundDamage = (kind) => kind === "empowered" ? ROUNDS.empowered.damage : 1;
+// The hook for any source of empowered rounds (finds here; the world caches' loot tables later). Returns the count now held.
+export function grantEmpoweredRounds(save, n) { const r = save.rounds && typeof save.rounds === "object" ? save.rounds : ensureRounds(save); r.empowered = whole(whole(r.empowered) + whole(n)); return r.empowered; }
+// How many empowered rounds the find `source` at `key` holds (0: none). Pure: the same journey seed and place answer the same.
+export function roundsFindRoll(seed, source, key) {
+  const F = ROUNDS.finds[source]; if (!F?.n) return 0;
+  const v = ROUNDS.finds.version; if ((hashSeed(`${seed}:rounds-find:v${v}:${source}:${key}`) % 10000) / 10000 >= F.chance) return 0;
+  return F.n[0] + hashSeed(`${seed}:rounds-count:v${v}:${source}:${key}`) % (F.n[1] - F.n[0] + 1);
+}
+export const roundsFindFlag = (source, key) => `rounds-find:${source}:${key}`;
+const shortCount = (n) => n >= 10000 ? `${Math.floor(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+// The tool button's compact count: "✦12·340" (empowered · ordinary), "340" with no empowered, "EMPTY" with none; null for a
+// tool that takes no rounds.
+export function roundsLabel(save, weapon) {
+  if (!usesRounds(weapon)) return null; const e = whole(save?.rounds?.empowered), o = ordinaryRounds(save, toolEchoes(save));
+  return e > 0 ? `✦${shortCount(e)}·${shortCount(o)}` : o > 0 ? shortCount(o) : ROUNDS.messages.hud;
 }
 
 // ---------------------------------------------------------------- drawing

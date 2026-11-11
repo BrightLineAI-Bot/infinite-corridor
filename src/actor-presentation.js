@@ -1,5 +1,5 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
-import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r896-d66b426b1554';
+import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r907-a00159304000';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
 // Player drone: its source sprite carries above the player but its simulation point eases behind.
@@ -63,6 +63,14 @@ export const ACTOR_PRESENTATION = Object.freeze({
   thornspitterBloom: profile(0, 1.15, 1.0, 'pack'),
   sinkmaw: profile(0, .75, .5, 'pack', true, { hidden: 'mound' }),
   cinderKite: profile(.2, .8, .6, 'pack'),
+  lamplighter: profile(0, 1.75, 1.6, 'pack'),
+  knellkeeper: profile(0, 1.45, 1.1, 'pack'),
+  spindriftMedusa: profile(.35, 1.1, .9, 'pack'),
+  prismStilt: profile(0, 1.9, 1.75, 'pack'),
+  rimeSentinel: profile(0, 1.7, 1.3, 'pack'),
+  lakeGlider: profile(0, .6, .45, 'pack'),
+  hookhanger: profile(0, 1.1, .8, 'pack'),
+  slagwright: profile(0, 1.6, 1.0, 'pack'),
 });
 export function actorProfile(actor) {
   const p = ACTOR_PRESENTATION[actor?.kind];
@@ -84,6 +92,7 @@ export const PACK_ACTION_FAMILIES = Object.freeze({
   devourPull: 'inhale', broodBirth: 'summon', fleshBloom: 'ranged', wispBewilder: 'howl', gorgeHowl: 'howl',
   // Adventure creatures' own modules (adventure-creatures.ts).
   ledgeDrop: 'leap', ledgeClimb: 'leap', vineVault: 'leap', vineRetreat: 'leap', censerLob: 'ranged', thornDarts: 'ranged', sinkFunnel: 'inhale', glassStrafe: 'dive',
+  lampFlare: 'ranged', bellToll: 'slam', tendrilRain: 'ranged', membranePulse: 'howl', phaseStep: 'teleport', icicleLine: 'ranged', glideRake: 'charge', pendulumSwing: 'sweep', slagPour: 'ranged', heavySweep: 'sweep', poleThrust: 'stab', prismBeam: 'beam',
 });
 const PACK_PHASES = new Set(['windup', 'strike', 'active', 'recover', 'track', 'lock', 'travel', 'erupt', 'stunned']);
 export function packActionPresentation(actor, modules, windupScale = 1.2, now = 0) {
