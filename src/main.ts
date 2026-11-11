@@ -13,7 +13,7 @@ import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountL
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCamera, closeViewCompassRotation, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCamera, closeViewCompassRotation, closeViewScreenToWorld, mountCloseViewControls, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors } from "./game.ts";
@@ -226,6 +226,7 @@ import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.ts"
 import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress } from "./threads.ts"; // release 627; arcana regions (2026-11-11)
 import { ILSE_MEETINGS, ilseMet } from "./ilse.ts"; // the Journal's Arcana tab
 import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.ts"; // release 605
+import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.ts"; // feel pass 1: fixed 60 Hz steps, interpolated drawing
 import { PROVING_GROUND_HANDOFF, provingGroundOptionRows, handoffRecord, writeHandoff } from "./proving-ground-handoff.ts"; // release 791
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
@@ -374,6 +375,8 @@ globalThis.corridorPerfReport = () => {
 const inventoryView = { slot: "all", tier: "all", sort: "score" };
 let last = performance.now(),
   clock = 0,
+  simClock = createSimClock(), // feel pass 1 (sim-clock.ts): the world's fixed steps and the draw's interpolation
+  prewarmHeld = null, // feel pass 1: the floor whose Close View walls are being built in their own task (one held frame a floor)
   mapView = { x: game.rx, y: game.ry, zoom: 1, selected: null, panX: 0, panY: 0 },
   mapMode = "atlas";
 let atlasDrag = null,
@@ -2569,19 +2572,23 @@ function frame(now) {
   const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
-  if (!viewportBefore || viewportBefore.world) measured("update", () => { const steer = !viewportSeq && closeViewSteer(game, input.state, now); try { game.update(dt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, now); } finally { if (steer) closeViewUnsteer(input.state); } }); // Close View: movement relative to the view
+  if (!viewportBefore || viewportBefore.world) measured("update", () => simClockStep(simClock, game, dt, now, (stepDt, stepNow) => { const steer = !viewportSeq && closeViewSteer(game, input.state, stepNow); try { game.update(stepDt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, stepNow); } finally { if (steer) closeViewUnsteer(input.state); } })); /* feel pass 1 (sim-clock.ts): the clamped frame dt feeds fixed 60 Hz steps, each at its own time */ // Close View: movement relative to the view
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   if (game.paused) return;
   const viewportStage = viewportFrame(probeInterval / 1000, now);
   warmCompassSignals();
   warmSpillTerrain();
-  measured("render", () => {
+  // Feel pass 1 (pre-warm): a floor just loaded whose Close View walls are not built yet keeps the last frame on screen for one
+  // frame, and the walls are built in a task of their own, so the floor's load and the walls' build fall in different frames.
+  const holdForWalls = !viewportStage && game.map !== prewarmHeld && closeViewPrewarmDue(game);
+  if (holdForWalls) { const g0 = game; prewarmHeld = game.map; setTimeout(() => { try { if (g0 === game) prewarmCloseView(game); } catch (error) { console.warn("Close View pre-warm failed", error); } }, 0); }
+  if (!holdForWalls) measured("render", () => {
     renderTimings.on = probe.running;
-    if (!viewportStage || viewportStage.world) {
+    if (!viewportStage || viewportStage.world) simClockDraw(simClock, game, () => { /* feel pass 1: drawn between the last two steps; every position is put back after */
       render(ctx, game, innerWidth, innerHeight, now);
       drawDungeonSystems();
       drawRangedEffects();
-    }
+    });
     if (viewportStage) drawViewportClosed(ctx, viewportStage, innerWidth, innerHeight, viewportSeq?.t || 0, viewportStage.live ? Object.assign(viewportLiveArt, { snapshot: canvas, sw: canvas.width, sh: canvas.height, noise: viewportArt.noise, scan: viewportArt.scan }) : viewportArt, currentQuality());
   });
   if (!viewportSeq) updateMessage(game.message); // the recovery's message waits until the Wayfarer wakes
@@ -2867,6 +2874,7 @@ addEventListener("freeze", () => {
 if (saveBlocked()) { optionCategory = "Journeys"; openOptions().then(() => optionMessage(`${saveBlocked()} Nothing you do now is saved to Journey ${getActiveSlot()}. Recover it, import a journey, or choose another slot.`, true)); }
 else if (game.paused) pausePanel.showModal();
 requestAnimationFrame(frame);
+setTimeout(() => { try { if (save.closeView === true) prewarmCloseViewGL(); } catch (error) { console.warn("Close View GPU pre-warm failed", error); } }, 1500); /* feel pass 1: with Close View on, its GPU programs are made while the journey settles, not on the first interior frame */
 function viewportReward(q){const bits=[];if(q.reward?.marks)bits.push(`${q.reward.marks} marks`);if(q.reward?.weaponSphere)bits.push(`${q.reward.weaponSphere} weapon sphere`);if(q.reward?.armorSphere)bits.push(`${q.reward.armorSphere} armor sphere`);if(q.reward?.draughts)bits.push(`${q.reward.draughts} draughts`);return bits.join(' · ')||'field knowledge'}
 function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();const viewport=ensureViewportState(save);viewport.read=true;body.replaceChildren();const heading=document.createElement('h2'),intro=document.createElement('p');heading.textContent='Viewport';intro.textContent='Viewport gathers what the Corridor permits Ember to see. Some reports are clear. Others become legible only through travel.';body.append(heading,intro);
  const groups=[['active','Active hunt'],['available','Hunts & emerging threats'],['dormant','Resting in the rotation'],['recent','Recent arrivals'],['archive','Completed records']];
