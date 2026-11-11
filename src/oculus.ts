@@ -10,7 +10,7 @@
 // The dais is presentation and a toggle only: no combat effect. It lives on the Game as runtime state (`game.oculus`), is
 // never saved, and is dropped on a change of map or when a pause outlasts it.
 import { buildSpot } from "./building.ts";
-import { CLOSE_VIEW_HOOKS, interiorMap, overworldCloseViewApplies, closeViewWanted } from "./close-view.ts";
+import { CLOSE_VIEW_HOOKS, CLOSE_VIEW_PLACES, closeViewPlaceAllowed, interiorMap, overworldCloseViewApplies, closeViewWanted } from "./close-view.ts";
 import { closeViewGLStats } from "./close-view-gl.ts";
 
 export const OCULUS = Object.freeze({
@@ -37,6 +37,9 @@ export const oculusTarget = (g) => (closeViewWanted(g) ? "top" : "close");
 export function oculusAvailable(g) {
   if (!g?.player || !g.map?.tiles?.length) return { ok: false, why: "The Oculus cannot open here." };
   if (oculusTarget(g) === "top") return { ok: true, to: "top", setting: indoorMap(g) && g.save?.closeView === true ? "closeView" : "overworldCloseView" };
+  // Tim, 2026-11-11: Close View is for the overworld, buildings, the Pentagon, the Stillworks, seed realms and the
+  // Deep (close-view.ts CLOSE_VIEW_PLACES); in an ordinary dungeon or crossing the Oculus stays shut, and no setting changes.
+  if (!closeViewPlaceAllowed(g)) return { ok: false, why: CLOSE_VIEW_PLACES.occluded };
   if (indoorMap(g)) return { ok: true, to: "close", setting: "closeView" }; // the interior view keeps its own fallbacks (2D view, overhead camera)
   if (!overworldCloseViewApplies({ save: { overworldCloseView: true }, player: g.player, map: g.map, area: g.area })) return { ok: false, why: "Close View cannot show this place; the Oculus stays shut." };
   if (!gpuReady()) return { ok: false, why: "Close View needs WebGL2 out here, and this device has none; the Oculus stays shut." };
