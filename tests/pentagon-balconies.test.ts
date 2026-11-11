@@ -130,7 +130,7 @@ const ground = (g, cx, cy) => { const G = new Array(96 * 96), exits = new Map();
   return { G, flood, at: (gx, gy) => G[gy * 96 + gx] }; };
 
 test('v7 in the game: the roof is walked all the way round from the outer stair; every balcony is a survivable drop from it; no step, drop or drone lift reaches a court', () => {
-  for (const seed of [SEED, 'S17', 'B2']) { const at = seed === SEED ? find() : findIn(game(seed)); if (!at) continue; const { cx, cy } = at, g = game(seed), P = pentagonPlan(seed, cx, cy, V7), { G, flood, at: tile } = ground(g, cx, cy);
+  for (const seed of [SEED, 'S17', 'B2']) { const at = seed === SEED ? find() : findIn(game(seed)); if (!at) continue; const { cx, cy } = at, g = game(seed), P = pentagonPlan(seed, cx, cy, g.pentagonVersion(cx, cy)), { G, flood, at: tile } = ground(g, cx, cy);
     assert.ok(G.every(Boolean)); const idx = (c) => c.gy * 96 + c.gx, roof = [], courts = [], outside = [];
     G.forEach((t, k) => { if (t.pentRoof) roof.push(k); else if (t.courtyard && t.pentagon) courts.push(k); else if (!t.greatBuilding && !t.blocked && regionAt(k % 96, (k / 96) | 0).kind === 'outside') outside.push(k); });
     assert.ok(roof.length > 900, `${seed}: ${roof.length} roof tiles`); for (const k of roof) { assert.equal(G[k].elev, R0); assert.equal(G[k].structure, 'buildingRoof'); }

@@ -3,6 +3,7 @@ import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, vert
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.ts';
+import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.ts'; // adventure creatures
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
@@ -366,9 +367,28 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
   companions['dungeonReciter:'+look]=parts;
 } // exact rule cells are the residual panel, never generic bars
 
+// Tim, 2026-11-11, in the Deep: what lies there and the Oculus stand in Close View as solid things, not as flat
+// marks or cards (close-view.ts CLOSE_VIEW_PROPS places them). Aperture crystals float and turn, lit from within; the Oculus's
+// dais is the standard view's blue; the Ember Door and the Deep Stair are stones with a lit face and a turning chevron. Their
+// glowing colours are entries of CLOSE_VIEW_ACTOR_LOOK.emissive (the violet 0xc58cff, the cyan 0x7fe7ff, ember 0xf3a55c, gold
+// 0xffd25a), so they are lit from within and resist the fog.
+const bipyramid=(n,up,down,upper)=>{const ring=[],faces=[];for(let i=0;i<n;i++){const a=(i+.5)*2*Math.PI/n;ring.push([Math.cos(a),Math.sin(a),0]);}for(let i=0;i<n;i++){const j=(i+1)%n;faces.push(upper?[ring[i],ring[j],[0,0,up]]:[ring[j],ring[i],[0,0,-down]]);}return faces;};
+const crystal=(lit,dark)=>{const parts=[part(bipyramid(6,.36,.3,true),0,0,0,.16,.16,1,lit),part(bipyramid(6,.36,.3,false),0,0,0,.16,.16,1,dark)];
+  for(let k=0;k<3;k++){const a=k*2*Math.PI/3,x=Math.cos(a)*.3,y=Math.sin(a)*.3,z=(k-1)*.09;parts.push(part(bipyramid(4,.09,.07,true),x,y,z,.045,.045,1,lit),part(bipyramid(4,.09,.07,false),x,y,z,.045,.045,1,dark));}
+  return parts;};
+const apertureCrystal=crystal(0xc58cff,0x6e3f9e),apertureRift=crystal(0x7fe7ff,0x1f6a72);
+const oculusDais=[part(prism(10),0,0,.04,.44,.44,.04,0x1c4a52),part(prism(10),0,0,.086,.34,.34,.008,0x7fe7ff),part(ellipsoid(6,2),0,0,.62,.05,.13,.24,0x7fe7ff,0,0,.62,0,true),part(ellipsoid(6,1),0,0,.62,.058,.05,.1,0x1c4a52,0,0,.62,0,true)];
+for(let i=0;i<8;i++){const a=i*Math.PI/4,c=Math.cos(a),s=Math.sin(a),w=.018,P=(r,d)=>[c*r-s*d,s*r+c*d,.098];oculusDais.push(part(membrane([P(.13,-w),P(.31,-w),P(.31,w),P(.13,w)]),0,0,0,1,1,1,0x123a40));}
+const wayStone=(glow,down)=>{const parts=[part(prism(4,.8),0,0,.23,.3*Math.SQRT2,.3*Math.SQRT2,.23,0x3e3c44),block(0,0,.48,.26,.26,.035,0x57555f)];
+  for(const [x,y,sx,sy] of [[.255,0,.006,.15],[-.255,0,.006,.15],[0,.255,.15,.006],[0,-.255,.15,.006]])parts.push(block(x,y,.24,sx,sy,.12,glow));
+  for(const side of [-1,1])parts.push(block(side*.1,0,.86,.13,.035,.035,glow,0,side*.1,.86,(down?1:-1)*side*-.785));
+  return parts;};
+const wayEmber=wayStone(0xf3a55c,false),wayDeep=wayStone(0xffd25a,true);
+export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep});
+
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
-  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
+  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS, ...CLOSE_VIEW_PROP_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));

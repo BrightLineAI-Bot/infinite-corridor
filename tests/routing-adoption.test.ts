@@ -50,7 +50,7 @@ test('a production-pinned keep pads only after the complete live load and resume
 
 test('Pentagon selection keeps atlas first, restores one namespace, adopts ten, and falls back to nine on conflict', () => {
   const s=freshSave();s.seed='PENT-ADOPT';
-  assert.equal(recoverPentagonVersion(s,20,0),10,'wholly new eligible namespace');
+  assert.equal(recoverPentagonVersion(s,20,0),11,'wholly new eligible namespace');
   s.consequences.dungeons['pentagon:PENT-ADOPT:20:0:v8:f1']={pentComplete:true};
   assert.equal(recoverPentagonVersion(s,20,0),8);
   s.session.activeDungeonId='pentagon:PENT-ADOPT:20:0:v8:f3';
@@ -61,16 +61,16 @@ test('Pentagon selection keeps atlas first, restores one namespace, adopts ten, 
   assert.equal(recoverPentagonVersion(s,20,0),7,'nine-cell atlas minimum is authoritative');
   assert.equal(s.consequences.dungeons['pentagon:PENT-ADOPT:20:0:v8:f1'].pentComplete,true,'no history rewrite');
   assert.ok(!s.consequences.dungeons['pentagon:PENT-ADOPT:20:0:v10:f1'],'no new reward namespace');
-  const future=freshSave();future.seed='PENT-ADOPT';future.session.activeDungeonId='pentagon:PENT-ADOPT:20:0:v11:f1';assert.equal(recoverPentagonVersion(future,20,0),9);
+  const future=freshSave();future.seed='PENT-ADOPT';future.session.activeDungeonId='pentagon:PENT-ADOPT:20:0:v12:f1';assert.equal(recoverPentagonVersion(future,20,0),9);
   future.session.activeDungeonId='pentagon:PENT-ADOPT:20:0:v1:f3';assert.equal(recoverPentagonVersion(future,20,0),9);
-  future.session.activeDungeonId='pentagon:PENT-ADOPT:20:80:v11:f1';assert.equal(recoverPentagonVersion(future,20,8),10,'another centre is not relevant by prefix');
+  future.session.activeDungeonId='pentagon:PENT-ADOPT:20:80:v12:f1';assert.equal(recoverPentagonVersion(future,20,8),11,'another centre is not relevant by prefix');
   future.session.activeDungeonId=null;future.consequences.dungeons['pentagon:PENT-ADOPT:20:8:v8:f1']=null;assert.equal(recoverPentagonVersion(future,20,8),9,'malformed supported canonical record');
-  const pinned=freshSave();pinned.seed='PENT-ADOPT';pinned.atlas={'8,8':{pentVersion:11}};assert.equal(recoverPentagonVersion(pinned,8,8),9,'future atlas pin preserves the legacy fallback');pinned.atlas['8,9']={pentVersion:6};assert.equal(recoverPentagonVersion(pinned,8,8),6,'a supported older pin remains the minimum');
+  const pinned=freshSave();pinned.seed='PENT-ADOPT';pinned.atlas={'8,8':{pentVersion:12}};assert.equal(recoverPentagonVersion(pinned,8,8),9,'future atlas pin preserves the legacy fallback');pinned.atlas['8,9']={pentVersion:6};assert.equal(recoverPentagonVersion(pinned,8,8),6,'a supported older pin remains the minimum');
 });
 
 test('failed or absent Pentagon placement pins literal legacy nine, never the candidate selector', () => {
   const s=freshSave();s.seed='NO-PENTAGON';const g=new Game(s,0);g.loadArea('overworld',false);assert.equal(g.map.pentagon,undefined);assert.equal(s.atlas['0,0'].pentVersion,9);
-  const h=freshSave();let enumerations=0;h.consequences.dungeons=new Proxy(h.consequences.dungeons,{ownKeys(){enumerations++;throw new Error('ALL_HISTORY_SCAN')}});assert.equal(recoverPentagonVersion(h,8,8),10);assert.equal(enumerations,0);
+  const h=freshSave();let enumerations=0;h.consequences.dungeons=new Proxy(h.consequences.dungeons,{ownKeys(){enumerations++;throw new Error('ALL_HISTORY_SCAN')}});assert.equal(recoverPentagonVersion(h,8,8),11);assert.equal(enumerations,0);
   const q=freshSave();q.seed='TIM1';const forced=new Game(q,0);assert.equal(forced.pentagonHere(-64,-24),true);const note=forced.noteRegion.bind(forced);let installed=0;forced.noteRegion=(...args)=>{const r=note(...args);if(forced.rx===-64&&forced.ry===-24){forced.map.greatBuilding={id:'fixture-existing-building',style:'keep'};installed++;}return r;};forced.rx=-64;forced.ry=-24;forced.loadArea('overworld',false);assert.equal(installed,1);assert.equal(forced.map.pentagon,undefined);assert.equal(forced.map.greatBuilding.id,'fixture-existing-building');assert.equal(q.atlas['-64,-24'].pentVersion,9);
 });
 
