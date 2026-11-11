@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 890 | Claude | claude/wayfarer-damage-10 | Wayfarer damage x0.9 across every source (WAYFARER_DAMAGE table); healing unscaled; damage text shows the scaled whole numbers | In flight. |
+| 891 | Claude | claude/building-respawns | Cleared building floors (keep, arcology, Pentagon chamber, room-maze cube) bring a pack of their own creatures back every 35 s of play, out of sight; small rewards only | In flight. |
+| 890 | Claude | claude/wayfarer-damage-10 | Wayfarer damage x0.9 across every source (WAYFARER_DAMAGE table); healing unscaled; damage text shows the scaled whole numbers | Merged as `be74e4f7eaee` (#558). |
 | 889 | Claude | claude/cv-camera-targeting | Close View presets farther back and higher (wide 5 tiles); one target priority, reach lock, sticky lock, smooth switches, lock ring and edge pointer | Merged as `1711f90d36f9` (#556). |
 | 888 | Claude | claude/wayfarer-passes | Close View Wayfarer: standard kit, silver pod robot, empowered pressure suit, readable jump/landing/hurt, aliveness pass, Wayfarer materials on tools | Merged as `62046802f210` (#555). |
 | 887 | Claude | claude/compass-facing | Close View compass follows the Wayfarer's body facing, not the camera; standard view stays north-up with an N/E/S/W dial | Merged as `c84d55569c78` (#554). |
