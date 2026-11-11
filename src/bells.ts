@@ -9,7 +9,7 @@
 // always holds the same bell; one already rung hangs silent. Rung bells are remembered in save.lore.bells (the bells rung,
 // as a string of digits; additive, normalised here). All writing is original to the game. Pure rules: no DOM.
 import { hashSeed } from "./random.ts";
-import { READING_BANDS } from "./lore.ts";
+import { READING_BANDS, arcanaRate, regionVersionOf } from "./lore.ts";
 
 // Release 577 (Tim: "they shouldn't just be trapped in specific dungeons... if I don't get the bell in one dungeon... it should
 // just go to another dungeon... randomly... until I get them... unless there's a way to... note in this square... where the
@@ -33,11 +33,13 @@ export const BELL_FINAL = "Seven figures come up a lane at dusk and stop at a do
 export function bellsRung(save) { return [...new Set(String(save?.lore?.bells || "").split("").filter((d) => BELL_GLIMPSES[d]))].sort().join(""); }
 const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 // Which bell (1–7) hangs in this crossing, or 0. Only ordinary crossings `minDepth` or more from the Refuge hold one. `rung`
-// (bellsRung) picks among the bells not yet rung; with all rung (or none given) it is the crossing's own bell.
-export function bellIn(seed, dungeonId, rung = "") {
+// (bellsRung) picks among the bells not yet rung; with all rung (or none given) it is the crossing's own bell. `region` is the
+// crossing's region version (lore.ts ARCANA_REGIONS, regionVersionOf): from 1 the same roll is made against the bells' home
+// rate (south-west, 25 to 50 out) or their stray rate elsewhere; 0, the default, is the rule every crossing pinned before keeps.
+export function bellIn(seed, dungeonId, rung = "", region = 0) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return 0;
-  const depth = Math.abs(Number(m[1])) + Math.abs(Number(m[2])); if (depth < BELLS.minDepth) return 0;
-  const h = hashSeed(`${seed}:seven-bells:v1:${dungeonId}`); if ((h % 10000) / 10000 >= BELLS.chance) return 0;
+  const rx = Number(m[1]), ry = Number(m[2]), depth = Math.abs(rx) + Math.abs(ry); if (depth < BELLS.minDepth) return 0;
+  const h = hashSeed(`${seed}:seven-bells:v1:${dungeonId}`); if ((h % 10000) / 10000 >= (region >= 1 ? arcanaRate("bells", rx, ry) : BELLS.chance)) return 0;
   const left = Array.from({ length: BELLS.count }, (_, i) => i + 1).filter((n) => !rung.includes(String(n)));
   return left.length ? left[(h >>> 9) % left.length] : 1 + ((h >>> 9) % BELLS.count);
 }
@@ -52,7 +54,7 @@ export function ensureBellState(save) {
 // Hangs the crossing's bell on open floor away from the entry. Returns the object or null.
 export function addBell(map, save, dungeonId) {
   if (!map?.tiles?.length || map.multiLevel || map.arena || map.underwater || map.objects?.some((o) => o.kind === "crackedBell")) return null;
-  const done = Object.entries(save?.lore?.bellAt || {}).find(([, id]) => id === dungeonId), n = done ? Number(done[0]) : bellIn(save?.seed, dungeonId, bellsRung(save)); if (!n) return null; // a crossing that rang a bell keeps it
+  const done = Object.entries(save?.lore?.bellAt || {}).find(([, id]) => id === dungeonId), n = done ? Number(done[0]) : bellIn(save?.seed, dungeonId, bellsRung(save), regionVersionOf(save, dungeonId)); if (!n) return null; // a crossing that rang a bell keeps it
   const w = map.width || 24, entry = map.entry || { x: 4, y: 5 }, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
   const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.structure && t.x > 1 && t.y > 1 && t.x < w - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= 6 && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|void|Gate/i.test(String(t.kind)));
   if (!open.length) return null;
