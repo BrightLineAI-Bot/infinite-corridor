@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 892: Close View: the overworld in true 3D (levels, ramps, cliffs, canyon and chasm depths), Great Tree branches float on limbs from the trunk, clouds on every quality tier, curved shores with foam, chests, caches, shrines, stones and portals as 3D models, houses with walls and roofs, no giant name labels; the standard view shows Close View's interior sconces and candles.
 - Release 891: Building respawns: keeps, arcologies, Pentagon chambers and cubes (room mazes) bring a pack of their own creatures back every 35 s of play on a floor once it is cleared, out of sight. They give half experience and seldom drop an item, and never keys, relics or other one-time rewards. Ordinary crossings and dungeons are unchanged.
 - Release 890: The Wayfarer deals 10% less damage across the board (swings, tools and guns, spells, brawler spells, echoes, clones, glyph bursts and burns); the character sheet and spell text show the new whole numbers. Enemy health and damage, healing and staggers are unchanged.
 - Release 889: Close View: the camera sits farther back and higher in every framing (wide 5 tiles back) and still pulls in at walls. Auto-target picks the close foe in front first, then foes attacking, then the nearest, without flipping. A foe in reach takes the lock so your swing lands. The lock holds a moment behind pillars, switches turn the view smoothly, and a ring marks each new lock, with an edge pointer when the target is off screen.
