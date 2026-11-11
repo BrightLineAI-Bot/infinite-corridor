@@ -33,10 +33,11 @@ test('the region table: every home is a known set with a compass sector, inside 
     assert.match(arcanaHint(id), new RegExp(`^${ARCANA_REGIONS.words[h.toward]} of the Refuge, ${h.from} to ${h.to} sections out$`)); }
   for (const id of THREAD_ORDER) if (THREADS[id].band === 'beyond') { assert.equal(ARCANA_REGIONS.sets[id], undefined, `${id}: the far realms are its region`); assert.equal(arcanaHint(id), null); }
   for (const id of THREAD_ORDER) if (THREADS[id].band !== 'beyond') assert.ok(ARCANA_REGIONS.sets[id], `${id} has a home`);
-  // A diagonal is a quadrant; a cardinal point is the Reading quarter: the Ferry Reaches and the Long Table are the ferry's and the clockmaker's homes exactly.
-  assert.ok(inArcanaHome('bells', -10, 20) && inArcanaHome('bells', -30, 0) && !inArcanaHome('bells', 10, 20) && !inArcanaHome('bells', -10, -20) && !inArcanaHome('bells', -5, 5));
-  for (let x = -40; x <= 40; x++) for (let y = -40; y <= 40; y++) { if (Math.abs(x) + Math.abs(y) > 40) continue;
-    assert.equal(inArcanaHome('ferry', x, y), Math.abs(x) + Math.abs(y) > 6 && readingAt(x, y) === 'riverThatRemembers', `${x},${y}`); assert.equal(inArcanaHome('clockmaker', x, y), readingAt(x, y) === 'threeBrothers', `${x},${y}`); }
+  // A diagonal is a quadrant; a cardinal point is the Reading's compass quarter. From 2026-11-11 (Tim) a home's distance is
+  // straight-line from the Refuge: the ferry's home is the north quarter from 7 to 18 out as the crow flies.
+  assert.ok(inArcanaHome('bells', -20, 20) && inArcanaHome('bells', -30, 0) && !inArcanaHome('bells', 10, 20) && !inArcanaHome('bells', -10, -20) && !inArcanaHome('bells', -5, 5) && !inArcanaHome('bells', -10, 20));
+  for (let x = -40; x <= 40; x++) for (let y = -40; y <= 40; y++) { const r = Math.hypot(x, y), north = -y >= Math.abs(x);
+    assert.equal(inArcanaHome('ferry', x, y), north && r >= 7 && r <= 18, `${x},${y}`); assert.equal(inArcanaHome('clockmaker', x, y), north && r >= 19 && r <= 35, `${x},${y}`); }
   assert.equal(arcanaRate('bells', -20, 20), .2); assert.equal(arcanaRate('bells', 20, 20), .02); assert.equal(arcanaRate('surveyor', 15, -15), .2);
   for (const r of READING_ORDER) { const g = readingRegion(r); assert.ok(g, r); assert.ok(readingRegionHint(r)); if (g.toward) assert.equal(readingAt(g.toward === 'e' ? g.from + 1 : g.toward === 'w' ? -g.from - 1 : 0, g.toward === 'n' ? -g.from - 1 : g.toward === 's' ? g.from + 1 : 0), r); }
 });
