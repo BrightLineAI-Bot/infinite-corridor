@@ -19,9 +19,9 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorTreeObject } from "./close-view-outdoor.ts"; // the open world's sky, ground and solids
+import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene } from "./close-view-outdoor.ts"; // the open world's sky, ground and solids
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -1394,7 +1394,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     } }
   const draws = captured || [];
   const meshTrees = useGL && plainWorld && g.area === "overworld" && closeViewOutdoorAvailable(); // standing trees are solids there (close-view-outdoor.ts), not cards
-  for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object))) continue;
+  const meshProps = useGL && (meshTrees || !(outdoor && flatWorld)) && closeViewPropsAvailable(); // and so are chests, caches, shrines, standing stones... (OUTDOOR.props)
+  for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object)) || (meshProps && !d.enemy && outdoorPropObject(d.object))) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
     const q = project(bxw, byw, interiorSurfaceHeight(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
@@ -2744,6 +2745,26 @@ function nearbyDoorTorches(g,px,py,reach,seen,limit){
   list.sort((a,b)=>a.dist-b.dist);
   return list.slice(0,limit);
 }
+// Which roofs to leave out this frame (OUTDOOR.buildings): writes the solids' runs to draw into F.runs (nRuns 0: draw it all).
+function roofRuns(F, scene, px, py, cx, cy) {
+  const roofs = scene.houses.roofs, base = scene.solids.roofStart, at = scene.solids.housesAt; let hidden = 0;
+  for (let i = 0; i < roofs.length; i++) { const r = roofs[i], pad = .4; if (roofHidden(r, px, py, cx, cy, pad)) hidden |= 1 << i; }
+  if (!hidden) return; let k = 0, a = 0, end = base; F.runs[0] = 0;
+  for (let i = 0; i < roofs.length && k < 15; i++) { const r = roofs[i], r0 = at + r.start, r1 = r0 + r.count; if (hidden & (1 << i)) { if (end > a) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; } a = r1; end = a; } else end = r1; }
+  if (end > a && k < 16) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; }
+  F.nRuns = Math.max(1, k); if (!k) { F.runs[0] = 0; F.runs[1] = 0; } }
+export function roofHidden(r, px, py, cx, cy, pad = .4) {
+  const x0 = r.x0 - pad, y0 = r.y0 - pad, x1 = r.x1 + pad, y1 = r.y1 + pad;
+  if (px > r.x0 && px < r.x1 && py > r.y0 && py < r.y1) return true; // inside it
+  if (cx > x0 && cx < x1 && cy > y0 && cy < y1) return true; // the camera over it
+  // between them: the segment from the camera to the Wayfarer's feet crosses its box (a slab test)
+  const dx = px - cx, dy = py - cy; let t0 = 0, t1 = 1;
+  if (Math.abs(dx) < 1e-9) { if (cx < x0 || cx > x1) return false; } else { const a = (x0 - cx) / dx, b = (x1 - cx) / dx; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
+  if (Math.abs(dy) < 1e-9) { if (cy < y0 || cy > y1) return false; } else { const a = (y0 - cy) / dy, b = (y1 - cy) / dy; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
+  return t0 <= t1;
+}
+const PROP_Z = { map: null }; // the floor whose props are being built (propZ reads its heights; no closure a frame)
+const propZ = (x, y) => interiorSurfaceHeight(PROP_Z.map, x, y);
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor) {
   try {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, At = CLOSE_VIEW.atmosphere, F = GLF, p = g.player;
@@ -2776,7 +2797,13 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     F.skyZ[0] = sk.zenith[0]; F.skyZ[1] = sk.zenith[1]; F.skyZ[2] = sk.zenith[2]; F.skyZ[3] = sk.clouds; F.skyH[0] = sk.horizon[0]; F.skyH[1] = sk.horizon[1]; F.skyH[2] = sk.horizon[2]; F.skyH[3] = sk.ridgeH;
     F.ridge[0] = sk.ridge[0]; F.ridge[1] = sk.ridge[1]; F.ridge[2] = sk.ridge[2]; F.ridge[3] = sk.rough;
     F.outW[0] = W2.base; F.outW[1] = W2.glance; F.outW[2] = W2.ripple; F.outW[3] = W2.rippleAmp; F.outR[0] = R2.foot; F.outR[1] = R2.dark; F.outR[2] = R2.lip; F.outR[3] = R2.light;
-    F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint; }
+    F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint;
+    F.outX[0] = OUTDOOR.ground.art; F.outX[1] = W2.shore; F.outX[2] = Q.relief ? W2.foam : W2.foam * .6; F.outX[3] = g.map.movers?.length ? 1 : 0; // rafts are drawn on the water by the ordinary art: keep it there
+    F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.relief ? 1 : 0; }
+  // a house's roof is left out while the Wayfarer is inside it, the camera is over it, or it stands between them
+  F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy);
+  // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
+  F.props = 0; if (!openWorld && !(outdoor && flatWorld)) { PROP_Z.map = g.map; const ps = propScene(g.map, propZ, seen); if (ps && ps.solids.verts > 0 && glProps(ps)) F.props = 1; }
   UNI.backdrop = BACKDROPS.get(stillworks ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.inlay = st.inlay;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
@@ -2852,6 +2879,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // outdoors: a soft shadow under each standing tree near the Wayfarer, cast a little away from the sun
   if (F.outdoor) { const Ts = OUTDOOR.treeShadow; for (const o of g.map.objects || []) { if (!outdoorTreeObject(o)) continue; const X = Number(o.x) + .5 - F.sun[0] * .35, Y = Number(o.y) + .72 - F.sun[1] * .35;
     if (Math.hypot(X - px, Y - py) > F.reach) continue; flatD(X, Y, Ts.r * OUTDOOR.trees[o.vegetationForm].r / OUTDOOR.trees.canopy.r + .15, 0, Ts.alpha, 0); } }
+  // a soft shadow under each prop drawn as a solid (OUTDOOR.props), a little away from the sun outdoors
+  if (F.outdoor || F.props) { const Ps = OUTDOOR.props.shadow, list = (F.outdoor ? outdoorScene(g.map)?.props : propScene(g.map, propZ, seen)?.props)?.objects; if (list) for (const o of list) {
+    const X = Number(o.x) + .5 - (F.outdoor ? F.sun[0] * .2 : 0), Y = Number(o.y) + .62 - (F.outdoor ? F.sun[1] * .2 : 0); if (Math.hypot(X - px, Y - py) > F.reach) continue; flatD(X, Y, Ps.r, 0, Ps.alpha, 0); } }
   // card props near the Wayfarer: cobwebs, chains, bones (the nearest `cards`), and the spikes of traps that are up
   { const P = At.props, C2 = st.cards, cap = Q.cards ?? P.cards; let used = 0; const H0 = Wl.height;
     for (let i = 0; i < st.nCards && used < cap; i++) { const o = i * CARD_FLOATS, X = C2[o + 1], Y = C2[o + 2]; if (Math.hypot(X - px, Y - py) > P.reach || Math.hypot(X - CAM.cx, Y - CAM.cy) < P.nearCam) continue; // never a card right at the lens if (seen && !seen(Math.floor(X + (C2[o] === 4 ? C2[o + 5] * .5 : 0)), Math.floor(Y + (C2[o] === 4 ? C2[o + 6] * .5 : 0)))) continue; used++;

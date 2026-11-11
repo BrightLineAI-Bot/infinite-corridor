@@ -32,7 +32,14 @@ export const OUTDOOR = f({
   // the foot of a raised level and of an outcrop: how wide (tiles) and how dark; the lip of a level: width and light
   relief: f({ foot: .38, dark: .34, lip: .1, light: .28, levels: 7 }),
   // water: how much of the sky it reflects head on and at a glance, ripple scale and strength, the sun's glint
-  water: f({ base: .12, glance: .62, ripple: 2.6, rippleAmp: .35, glint: 1.4 }),
+  water: f({ base: .12, glance: .62, ripple: 2.6, rippleAmp: .35, glint: 1.4,
+    // the shore (version 2, 2026-11-11): the coast follows a smooth field over the tiles' middles, wandering this far (tiles);
+    // the wet band on land and the foam on the water (tiles wide, and the foam's strength); deep water darkened by `deep`,
+    // shallow water lifted by `shallow`; clouds in the reflection (balanced and full tiers only)
+    wander: .5, shore: .2, foam: .6, deep: .42, shallow: .16 }),
+  // the ordinary art near the Wayfarer: how much of its tile-scale detail stays (the rest is its own colour, smoothed), so the
+  // ground reads as one surface and not a board of squares; the per-tile colour beyond is unchanged
+  ground: f({ art: .6 }),
   // the carried torch outdoors in daylight (a share of the theme's), and the vignette
   torch: .22, vignette: .32,
   // weather: cloud cover added, sun strength kept
@@ -113,11 +120,51 @@ export const OUTDOOR = f({
     shrub: f({ trunk: 0, trunkR: 0, crown: 2, r: .4, h: .5, lift: .02 }),
   }),
   treeShadow: f({ r: .62, alpha: .34 }),
+  // a crown's own shading: its underside, its lower band and its top (times the crown colour); a round crown's side lobe
+  treeShade: f({ under: .58, low: .82, top: 1.12, lobe: .42 }),
   // rough outcrops as mounds: an open edge at `rim` of the height, a shared corner at `inner` of the mean, heights varied by
   // up to `jitter` either way, the peak wandering this far (tiles) from the tile's middle
   mound: f({ rim: .5, inner: .92, jitter: .14, wander: .3 }),
   // bounds: at most this many solids in a section (the buffer never grows past it)
   maxOutcrops: 1600, maxTrees: 160,
+  // Props (version 2, 2026-11-11: "a full, detailed visual refinement pass on all the assets in Close View"): the world's
+  // common standing things built as solids instead of the ordinary view's sprite on a card. By kind: the recipe, its
+  // colours (body, dark, accent: the ordinary view's palette for the kind, so both views agree), how many of a section's
+  // props at most, the most vertices one may take, and the soft shadow under each (radius in tiles, darkness).
+  props: f({
+    max: 120, maxVerts: 480, shadow: f({ r: .46, alpha: .3 }),
+    kinds: f({
+      rock: f({ recipe: "boulder", colors: f(["#666a65", "#343735", "#90948b"]) }),
+      chest: f({ recipe: "chest", colors: f(["#8d6938", "#443326", "#b7a06a"]) }),
+      cache: f({ recipe: "chest", colors: f(["#9a8549", "#4a4229", "#c1ae72"]) }),
+      supplyCache: f({ recipe: "crate", colors: f(["#765f3c", "#2b251d", "#d7b96f"]) }),
+      weaponCache: f({ recipe: "armory", colors: f(["#5d4a36", "#26201a", "#b9c2c8"]) }),
+      shrine: f({ recipe: "shrine", colors: f(["#806f91", "#4d665f", "#8ed1c1"]) }),
+      checkpoint: f({ recipe: "pylon", colors: f(["#b8f5f2", "#315c65", "#72d7df"]) }),
+      ruinMarker: f({ recipe: "standingStone", colors: f(["#806b52", "#433a31", "#b09b79"]) }),
+      dungeon: f({ recipe: "portal", colors: f(["#62576b", "#332d39", "#63817a"]) }),
+    }),
+    // states that show a cache or chest opened (its lid thrown back), and that show a rock moved or broken (rubble)
+    opened: /^(used|open|opened|empty|looted|taken)$/, rubble: /^(moved|broken)$/,
+  }),
+  // Buildings (version 2): a shelter's or a hamlet's house stands up from its own tiles: walls along each tile's wallSides
+  // (as thick and as high as `wall`), a lintel over its door, and a roof over its footprint (a gable along its longer side,
+  // `pitch` rise a tile from the eaves, at most `ridge` above them; flat roofs a low slab with a parade). The roof is not
+  // drawn while the Wayfarer is inside, nor while the camera is over it or it stands between them (close-view.ts), so
+  // the inside reads as the ordinary view shows it. Colours by the house's family or district style: wall, roof, trim
+  // (the ordinary view's palette); mat: the walls' material (as the solids').
+  buildings: f({
+    wall: f({ h: 1.15, t: .14, lintel: .92 }), pitch: .42, ridge: 1.05, eave: .12, flat: .14, max: 12, perTile: 240,
+    looks: f({
+      timber: f({ wall: "#6a5a44", roof: "#3a3128", trim: "#8f7658", mat: 7 }), masonry: f({ wall: "#6f6a5e", roof: "#34332e", trim: "#8b8170", mat: 1 }),
+      ruinedGatehouse: f({ wall: "#6d6152", roof: "#302d29", trim: "#9a8168", mat: 1 }), cyberRelay: f({ wall: "#22424a", roof: "#152b31", trim: "#42b8b2", mat: 8 }),
+      alienGeometric: f({ wall: "#3a3a5c", roof: "#24243b", trim: "#a78cce", mat: 2 }), biomechanical: f({ wall: "#4a3444", roof: "#30222d", trim: "#9b647f", mat: 7 }),
+      city: f({ wall: "#55565c", roof: "#393a3f", trim: "#858188", mat: 1 }), arcology: f({ wall: "#24474f", roof: "#18333b", trim: "#58a0a6", mat: 8 }),
+      cloister: f({ wall: "#5a4650", roof: "#3b2d35", trim: "#9a737f", mat: 1 }), fortress: f({ wall: "#4a423b", roof: "#302b27", trim: "#9b8268", mat: 1 }),
+      other: f({ wall: "#56524a", roof: "#33302a", trim: "#8f7658", mat: 1 }),
+    }),
+    structures: /^(shack|district)(Wall|Interior|Door)$/,
+  }),
 });
 
 const rgb01 = (c) => [c[0] / 255, c[1] / 255, c[2] / 255];
@@ -243,21 +290,187 @@ export function outdoorMesh(map, sky) {
     const capBot = (A, apex, col, mat) => { for (let i = 0; i < A.length; i++) n = pushTri(V, n, A[(i + 1) % A.length], A[i], apex, col, mat); };
     centre(cx, cy, T.trunk * sc * .5); if (T.trunk > 0) band(ring(T.trunkR * sc * 1.3, 0, 5), ring(T.trunkR * sc * .8, (T.trunk + T.lift * .5) * sc, 5), bark, 5);
     const r = T.r * sc, z = T.lift * sc, H = T.h * sc;
-    if (T.crown === 0) { // a spindle: three stacked cones, each overhanging the next
-      for (let k = 0; k < 3; k++) { const z0 = z + k * H * .3, r0 = r * (1 - k * .26), A = ring(r0, z0, 7, k * .4); centre(cx, cy, z0 + H * .12); capBot(A, [cx, cy, z0 + H * .04], fc, 4); capTop(A, [cx, cy, z0 + H * (k === 2 ? .5 : .42)], k === 2 ? fc : cc, 4); }
+    // version 2 (2026-11-11): the crown is shaded within itself (OUTDOOR.treeShade: its underside and lower faces darker,
+    // its top catching the light) and a round crown carries a second, smaller lobe to one side, so no two read as the same ball
+    const Sh = OUTDOOR.treeShade, dk = cc.map((v) => v * Sh.under), lo = cc.map((v) => v * Sh.low), hi = fc.map((v) => Math.min(1, v * Sh.top));
+    if (T.crown === 0) { // a spindle: three stacked cones, each overhanging the next, and a slim tip
+      for (let k = 0; k < 3; k++) { const z0 = z + k * H * .3, r0 = r * (1 - k * .26), A = ring(r0, z0, 7, k * .4); centre(cx, cy, z0 + H * .12); capBot(A, [cx, cy, z0 + H * .04], dk, 4); capTop(A, [cx, cy, z0 + H * (k === 2 ? .5 : .42)], k === 2 ? hi : k === 1 ? cc : lo, 4); }
+      { const z0 = z + H * .82, A = ring(r * .2, z0, 5, 1.1); centre(cx, cy, z0 + H * .1); capTop(A, [cx, cy, z0 + H * .3], hi, 4); }
     } else { // a round crown: rings of a faceted ellipsoid
       const rings = 4, sides = 7, layers = []; for (let k = 1; k < rings; k++) { const a = k / rings * Math.PI, wob = 1 + .12 * (outdoorHash(k, Math.round(o.x * 4), Math.round(o.y * 4)) - .5); layers.push(ring(r * Math.sin(a) * wob, z + H * .5 * (1 - Math.cos(a)), sides, k * .45)); }
-      centre(cx, cy, z + H * .5); capBot(layers[0], [cx, cy, z], cc, 4); for (let k = 0; k < layers.length - 1; k++) band(layers[k], layers[k + 1], k === layers.length - 2 ? fc : cc, 4); capTop(layers[layers.length - 1], [cx, cy, z + H], fc, 4); }
+      centre(cx, cy, z + H * .5); capBot(layers[0], [cx, cy, z], dk, 4); for (let k = 0; k < layers.length - 1; k++) band(layers[k], layers[k + 1], k === layers.length - 2 ? hi : k === 0 ? lo : cc, 4); capTop(layers[layers.length - 1], [cx, cy, z + H], hi, 4);
+      { const la = rot + 2.1, lr = r * Sh.lobe, lx = cx + Math.cos(la) * r * .62, ly = cy + Math.sin(la) * r * .62, lz = z + H * .38; // the lobe
+        const lring = (rr, zz, ph) => { const out = []; for (let i = 0; i < 5; i++) { const a = rot + ph + i / 5 * 6.283; out.push([lx + Math.cos(a) * rr, ly + Math.sin(a) * rr, zz]); } return out; };
+        const A = lring(lr * .9, lz, 0), B = lring(lr * .75, lz + lr * 1.1, .6); centre(lx, ly, lz + lr * .6); capBot(A, [lx, ly, lz - lr * .45], dk, 4); band(A, B, cc, 4); capTop(B, [lx, ly, lz + lr * 1.55], hi, 4); } }
   }
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, outcrops, trees: trees.length };
+}
+
+// ---------------------------------------------------------------------------------------------- the props
+// A prop the solids draw instead of its card: a kind with a recipe, standing in the world (not hidden, not a strange one
+// waiting to be used, not carried). Pure.
+export function outdoorPropObject(o) {
+  if (!o || typeof o !== "object" || !OUTDOOR.props.kinds[o.kind] || o.strange || o.carried || o.hidden === true) return false;
+  if (o.kind === "cache" && o.state === "hidden") return false;
+  return Number.isFinite(Number(o.x)) && Number.isFinite(Number(o.y));
+}
+// What the props depend on: each one's kind, place and state (a cache opened, a rock broken). A number; nothing allocated.
+export function outdoorPropSignature(map, seen = null) {
+  let a = 0; const objs = map?.objects || [];
+  for (let i = 0; i < objs.length; i++) { const o = objs[i]; if (!outdoorPropObject(o) || (seen && !seen(Math.floor(o.x + .5), Math.floor(o.y + .5)))) continue; const st = String(o.state || ""), op = OUTDOOR.props.opened.test(st) ? 1 : OUTDOOR.props.rubble.test(st) ? 2 : 0;
+    a = (a + Math.imul(Math.round(o.x * 16) + 7, 73856093) + Math.imul(Math.round(o.y * 16) + 3, 19349663) + Math.imul(op + 1 + o.kind.length * 4, 83492791)) | 0; }
+  return a >>> 0;
+}
+// an eight-cornered solid (bottom four counter-clockwise from above, then the top four over them): six faces
+function hexa(V, n, P, col, mat, top = col) {
+  let x = 0, y = 0, z = 0; for (const p of P) { x += p[0]; y += p[1]; z += p[2]; } centre(x / 8, y / 8, z / 8);
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; n = pushQuad(V, n, P[i], P[j], P[j + 4], P[i + 4], col, mat); }
+  n = pushQuad(V, n, P[4], P[5], P[6], P[7], top, mat);
+  if (P[0][2] > .005 || P[1][2] > .005) n = pushQuad(V, n, P[3], P[2], P[1], P[0], col, mat); // a bottom only when it is off the ground
+  return n;
+}
+// A frame for a prop: local (u along its front, v toward its back, w up) to the world, turned by `rot` about its foot.
+const FRAME = { x: 0, y: 0, z: 0, c: 1, s: 0 };
+const at3 = (u, v, w) => [FRAME.x + u * FRAME.c - v * FRAME.s, FRAME.y + u * FRAME.s + v * FRAME.c, FRAME.z + w];
+// a box in the frame: centred at (u, v), from w0 up h; half widths a (along u) and b (along v); the top inset by `taper`
+function pbox(V, n, u, v, w0, a, b, h, col, mat, taper = 0, top = col) {
+  const ta = a * (1 - taper), tb = b * (1 - taper);
+  return hexa(V, n, [at3(u - a, v - b, w0), at3(u + a, v - b, w0), at3(u + a, v + b, w0), at3(u - a, v + b, w0),
+    at3(u - ta, v - tb, w0 + h), at3(u + ta, v - tb, w0 + h), at3(u + ta, v + tb, w0 + h), at3(u - ta, v + tb, w0 + h)], col, mat, top);
+}
+// a lumpy faceted stone: rings of `sides` points, each pushed in or out by the hash, round (u, v) in the frame
+function lump(V, n, u, v, w0, r, h, sides, seed, col, mat, top = col) {
+  const rings = [[.92, 0], [1, .38], [.7, .78]], pts = rings.map(([k, z], ri) => { const out = []; for (let i = 0; i < sides; i++) { const a = i / sides * 6.2832 + ri * .4, j = .78 + .4 * outdoorHash(seed, i, ri + 41);
+    out.push(at3(u + Math.cos(a) * r * k * j, v + Math.sin(a) * r * k * j * .86, w0 + h * z * (ri ? .85 + .3 * outdoorHash(seed, i, ri + 53) : 1))); } return out; });
+  const apex = at3(u + (outdoorHash(seed, 1, 61) - .5) * r * .4, v + (outdoorHash(seed, 2, 61) - .5) * r * .4, w0 + h);
+  { const c = at3(u, v, w0 + h * .45); centre(c[0], c[1], c[2]); }
+  for (let k = 0; k < 2; k++) for (let i = 0; i < sides; i++) { const j = (i + 1) % sides; n = pushQuad(V, n, pts[k][i], pts[k][j], pts[k + 1][j], pts[k + 1][i], k ? top : col, mat); }
+  for (let i = 0; i < sides; i++) n = pushTri(V, n, pts[2][i], pts[2][(i + 1) % sides], apex, top, mat);
+  return n;
+}
+const PROP_RECIPES = {
+  // a boulder of the kind's stone, lichen-pale on top (sealed); moved or broken: three stones in a little scatter
+  boulder(V, n, o, C, k) { if (OUTDOOR.props.rubble.test(String(o.state || ""))) { for (let i = 0; i < 3; i++) n = lump(V, n, (outdoorHash(k, i, 3) - .5) * .6, (outdoorHash(k, i, 5) - .5) * .4, 0, .12 + .06 * outdoorHash(k, i, 7), .12 + .08 * outdoorHash(k, i, 9), 5, k + i, C[1], 0, C[0]); return n; }
+    return lump(V, n, 0, 0, 0, .36 + .08 * outdoorHash(k, 1, 11), .44 + .16 * outdoorHash(k, 2, 13), 7, k, C[0], 0, C[2]); },
+  // a strongbox: a body with iron bands and a gold hasp; the lid domed, or thrown back when opened
+  chest(V, n, o, C, k) { const op = OUTDOOR.props.opened.test(String(o.state || "")), a = .3, b = .2, h = .26;
+    n = pbox(V, n, 0, 0, 0, a, b, h, C[0], 7); n = pbox(V, n, -a * .62, 0, 0, .025, b + .012, h + .012, C[1], 8); n = pbox(V, n, a * .62, 0, 0, .025, b + .012, h + .012, C[1], 8);
+    if (op) { n = hexa(V, n, [at3(-a, b, h), at3(a, b, h), at3(a, b + .04, h), at3(-a, b + .04, h), at3(-a, b - .02, h + .27), at3(a, b - .02, h + .27), at3(a, b + .1, h + .26), at3(-a, b + .1, h + .26)], C[0], 7);
+      n = pbox(V, n, 0, 0, h - .03, a - .03, b - .03, .02, [.06, .05, .04], 7); } // the open lid leaning back, and the dark inside
+    else { n = pbox(V, n, 0, 0, h, a + .01, b + .01, .07, C[0], 7, .18, C[0]); n = pbox(V, n, 0, -b - .012, h - .1, .045, .012, .12, C[2], 8); }
+    return n; },
+  // a supply crate: slats and a lid of rough planks, a bundle tied on top
+  crate(V, n, o, C, k) { const op = OUTDOOR.props.opened.test(String(o.state || "")), a = .3, b = .26, h = .34;
+    n = pbox(V, n, 0, 0, 0, a, b, h, C[0], 5); for (const w of [.05, h - .06]) n = pbox(V, n, 0, 0, w, a + .015, b + .015, .05, C[1], 5);
+    for (const u of [-a, a]) for (const v of [-b, b]) n = pbox(V, n, u * .96, v * .96, 0, .03, .03, h + .01, C[1], 5);
+    if (!op) n = pbox(V, n, .04, .02, h, .18, .1, .1, C[2], 7, .25); return n; },
+  // a weapons cache: a long chest, steel fittings, a hilt laid across it
+  armory(V, n, o, C, k) { const op = OUTDOOR.props.opened.test(String(o.state || "")), a = .38, b = .18, h = .24;
+    n = pbox(V, n, 0, 0, 0, a, b, h, C[0], 5); n = pbox(V, n, 0, 0, h, a + .01, b + .01, .05, C[1], 5, .1);
+    for (const u of [-a * .7, 0, a * .7]) n = pbox(V, n, u, 0, 0, .02, b + .012, h + .055, C[2], 8);
+    if (!op) { n = pbox(V, n, .02, 0, h + .05, .3, .025, .02, C[2], 8); n = pbox(V, n, -.2, 0, h + .05, .02, .09, .03, C[1], 8); }
+    return n; },
+  // a shrine: a stepped plinth, a carved column, and its ring of light above
+  shrine(V, n, o, C, k) { n = pbox(V, n, 0, 0, 0, .34, .3, .1, C[1], 1); n = pbox(V, n, 0, 0, .1, .24, .21, .08, C[1], 1, .1);
+    n = pbox(V, n, 0, 0, .18, .07, .07, .44, C[0], 1, .2); n = pbox(V, n, 0, 0, .62, .1, .1, .05, C[0], 1);
+    const R = .22, z = .9, seg = 8; for (let i = 0; i < seg; i++) { if (i === 6) continue; const a0 = i / seg * 6.2832, a1 = (i + 1) / seg * 6.2832, t = .028;
+      n = hexa(V, n, [at3(Math.cos(a0) * (R - t), -t, z + Math.sin(a0) * (R - t)), at3(Math.cos(a1) * (R - t), -t, z + Math.sin(a1) * (R - t)), at3(Math.cos(a1) * (R - t), t, z + Math.sin(a1) * (R - t)), at3(Math.cos(a0) * (R - t), t, z + Math.sin(a0) * (R - t)),
+        at3(Math.cos(a0) * (R + t), -t, z + Math.sin(a0) * (R + t)), at3(Math.cos(a1) * (R + t), -t, z + Math.sin(a1) * (R + t)), at3(Math.cos(a1) * (R + t), t, z + Math.sin(a1) * (R + t)), at3(Math.cos(a0) * (R + t), t, z + Math.sin(a0) * (R + t))], C[2], 9); }
+    return n; },
+  // a waystone pylon: a pale shaft on a dark footing, a lit band near its top and a crown stone
+  pylon(V, n, o, C, k) { n = pbox(V, n, 0, 0, 0, .3, .3, .14, C[1], 1, .15); n = pbox(V, n, 0, 0, .14, .09, .09, .78, C[0], 2, .25);
+    n = pbox(V, n, 0, 0, .7, .085, .085, .07, C[2], 9); n = lump(V, n, 0, 0, .92, .12, .2, 5, k, C[0], 2); return n; },
+  // a weathered standing stone, leaning a little, with a lighter face carved into it
+  standingStone(V, n, o, C, k) { const lean = (outdoorHash(k, 3, 17) - .5) * .12;
+    n = hexa(V, n, [at3(-.2, -.12, 0), at3(.2, -.12, 0), at3(.2, .12, 0), at3(-.2, .12, 0), at3(-.15 + lean, -.09, .95), at3(.13 + lean, -.09, .86), at3(.13 + lean, .09, .86), at3(-.15 + lean, .09, .95)], C[0], 0, C[2]);
+    n = pbox(V, n, lean * .5, -.125, .45, .11, .006, .22, C[2], 0); n = lump(V, n, .22, .1, 0, .1, .1, 5, k, C[1], 0); return n; },
+  // a way down: a stone portal, its threshold and the dark of the stair beyond
+  portal(V, n, o, C, k) { n = pbox(V, n, -.36, 0, 0, .09, .14, .95, C[0], 1, .08); n = pbox(V, n, .36, 0, 0, .09, .14, .95, C[0], 1, .08);
+    n = pbox(V, n, 0, 0, .95, .48, .17, .15, C[0], 1, .05); n = pbox(V, n, 0, 0, 1.1, .3, .12, .08, C[2], 1, .2);
+    n = pbox(V, n, 0, .04, 0, .27, .1, .9, [.03, .03, .04], 7); n = pbox(V, n, 0, -.2, 0, .32, .08, .04, C[1], 1); return n; },
+};
+// The props of a section (or a floor) as solids, in the same vertex layout as outdoorMesh. zAt(x, y): the floor's height
+// there (0 outdoors). Returns { data, verts, props, objects } (objects: the props drawn, for their shadows). Pure.
+export function outdoorProps(map, zAt = null, seen = null) {
+  const P = OUTDOOR.props, list = (map?.objects || []).filter((o) => outdoorPropObject(o) && (!seen || seen(Math.floor(o.x + .5), Math.floor(o.y + .5)))).slice(0, P.max);
+  const V = new Float32Array(list.length * P.maxVerts * OUTDOOR_FLOATS); let n = 0, kept = 0; const objects = [];
+  for (const o of list) { const K = P.kinds[o.kind], C = K.colors.map(hex01), k = (Math.round(o.x * 4) * 131 + Math.round(o.y * 4) * 7919) | 0, recipe = PROP_RECIPES[K.recipe];
+    const x = Number(o.x) + .5, y = Number(o.y) + .62, rot = Math.PI + (outdoorHash(k, 5, 19) - .5) * .5; // the front faces the bottom of the map, as the ordinary view draws it
+    FRAME.x = x; FRAME.y = y; FRAME.z = zAt ? Number(zAt(x, y)) || 0 : 0; FRAME.c = Math.cos(rot); FRAME.s = Math.sin(rot);
+    const n0 = n; n = recipe(V, n, o, C, k); if (n - n0 > P.maxVerts) throw new Error(`prop ${o.kind} over its vertex bound`); kept++; objects.push(o); }
+  return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, props: kept, objects };
+}
+
+// ---------------------------------------------------------------------------------------------- the buildings
+// The houses of a section (shelters and hamlets: tiles whose `structure` is a shack's or a district's wall, inside or door,
+// grouped by buildingId). Returns { data, verts, walls (vertices of walls, first), roofs: [{ id, start, count, x0, y0, x1, y1 }] }:
+// the walls of every house first, then each house's roof as its own run, so a roof can be left out while the rest is drawn.
+// Pure.
+export function outdoorBuildings(map) {
+  const B = OUTDOOR.buildings, w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Number(map?.height) || Math.floor(tiles.length / w));
+  const houses = new Map();
+  for (let i = 0; i < w * h; i++) { const t = tiles[i]; if (!t?.buildingId || !B.structures.test(String(t.structure || ""))) continue; let H = houses.get(t.buildingId);
+    if (!H) { if (houses.size >= B.max) continue; H = { id: t.buildingId, cells: [], x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, look: t.shelterFamily || t.districtStyle || "" }; houses.set(t.buildingId, H); }
+    const x = i % w, y = Math.floor(i / w); H.cells.push(i); H.x0 = Math.min(H.x0, x); H.y0 = Math.min(H.y0, y); H.x1 = Math.max(H.x1, x + 1); H.y1 = Math.max(H.y1, y + 1); }
+  if (!houses.size) return { data: new Float32Array(0), verts: 0, walls: 0, roofs: [] };
+  const objs = new Map(); for (const o of map?.objects || []) if (o && houses.has(o.id)) objs.set(o.id, o);
+  let cells = 0; for (const H of houses.values()) cells += H.cells.length; // the bound: a tile's walls and lintel (5 x 36), its roof (two quads) and four edge faces in two parts, a ridge a house
+  const V = new Float32Array((cells * B.perTile + houses.size * 36) * OUTDOOR_FLOATS); let n = 0; const roofs = [];
+  const lookOf = (H) => { const o = objs.get(H.id); return B.looks[o?.family] || B.looks[o?.districtStyle] || B.looks[H.look] || B.looks.other; };
+  const inHouse = (H, x, y) => x >= 0 && y >= 0 && x < w && y < h && tiles[y * w + x]?.buildingId === H.id;
+  const T = B.wall.t, Hw = B.wall.h, side = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
+  // the walls: a slab along each wall side, inside its tile; a lintel over a door
+  for (const H of houses.values()) { const L = lookOf(H), wc = hex01(L.wall), tc = hex01(L.trim);
+    for (const i of H.cells) { const t = tiles[i], x = i % w, y = Math.floor(i / w);
+      const slab = (dx, dy, z0, z1, col, top) => { // the wall on side (dx, dy) of tile (x, y), from z0 to z1
+        const xa = dx > 0 ? x + 1 - T : x, xb = dx < 0 ? x + T : x + 1, ya = dy > 0 ? y + 1 - T : y, yb = dy < 0 ? y + T : y + 1;
+        n = hexa(V, n, [[xa, ya, z0], [xb, ya, z0], [xb, yb, z0], [xa, yb, z0], [xa, ya, z1], [xb, ya, z1], [xb, yb, z1], [xa, yb, z1]], col, L.mat, top); };
+      for (const sd of t.wallSides || []) { const d = side[sd]; if (d) slab(d[0], d[1], 0, Hw, wc, tc); }
+      if (t.doorSide && side[t.doorSide]) { const d = side[t.doorSide]; slab(d[0], d[1], B.wall.lintel, Hw, tc, tc); } }
+    }
+  const walls = n;
+  // the roofs: one run a house. Gable: the height over (X, Y) falls from the ridge (the long axis' middle line) to the eaves.
+  for (const H of houses.values()) { const L = lookOf(H), rc = hex01(L.roof), tc = hex01(L.trim), o = objs.get(H.id), start = n;
+    const flat = o?.roofProfile === "flat" || o?.roofProfile === "stepped", alongX = H.x1 - H.x0 >= H.y1 - H.y0, half = (alongX ? H.y1 - H.y0 : H.x1 - H.x0) / 2, mid = alongX ? (H.y0 + H.y1) / 2 : (H.x0 + H.x1) / 2;
+    const zr = (X, Y) => flat ? Hw + B.flat : Hw + Math.min(B.ridge, Math.max(0, half - Math.abs((alongX ? Y : X) - mid)) * B.pitch);
+    const e = B.eave;
+    for (const i of H.cells) { const x = i % w, y = Math.floor(i / w);
+      // the roof over this tile, reaching `e` past its edges where the house ends (the eaves overhang)
+      const ox0 = inHouse(H, x - 1, y) ? 0 : e, ox1 = inHouse(H, x + 1, y) ? 0 : e, oy0 = inHouse(H, x, y - 1) ? 0 : e, oy1 = inHouse(H, x, y + 1) ? 0 : e;
+      const xa = x - ox0, xb = x + 1 + ox1, ya = y - oy0, yb = y + 1 + oy1, za = (X, Y) => zr(Math.min(Math.max(X, H.x0), H.x1), Math.min(Math.max(Y, H.y0), H.y1)) - (X < H.x0 || X > H.x1 || Y < H.y0 || Y > H.y1 ? e * B.pitch : 0);
+      // a gable crossing this tile is split at the ridge so both slopes stay planar
+      const r = mid, segs = []; if (!flat && (alongX ? (ya < r && yb > r) : (xa < r && xb > r))) { if (alongX) segs.push([xa, xb, ya, r], [xa, xb, r, yb]); else segs.push([xa, r, ya, yb], [r, xb, ya, yb]); } else segs.push([xa, xb, ya, yb]);
+      for (const [p0, p1, q0, q1] of segs) { centre((p0 + p1) / 2, (q0 + q1) / 2, -1); n = pushQuad(V, n, [p0, q0, za(p0, q0)], [p1, q0, za(p1, q0)], [p1, q1, za(p1, q1)], [p0, q1, za(p0, q1)], rc, 7); }
+      // the gable ends and fascia: where the house ends, a face from the wall's top up to the roof's edge
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) { if (inHouse(H, x + dx, y + dy)) continue;
+        const ax = dx > 0 ? x + 1 : x, bx = dx < 0 ? x : x + 1, ay = dy > 0 ? y + 1 : y, by = dy < 0 ? y : y + 1, A = dx !== 0 ? [ax, y] : [x, ay], Bp = dx !== 0 ? [ax, y + 1] : [x + 1, ay];
+        const pts = [A, Bp]; if (!flat && (alongX ? (dx !== 0 && A[1] < r && Bp[1] > r) : (dy !== 0 && A[0] < r && Bp[0] > r))) pts.splice(1, 0, alongX ? [ax, r] : [r, ay]);
+        centre(x + .5, y + .5, Hw * .5); for (let k = 0; k < pts.length - 1; k++) { const P0 = pts[k], P1 = pts[k + 1], z0 = zr(P0[0], P0[1]), z1 = zr(P1[0], P1[1]); if (z0 - Hw < .01 && z1 - Hw < .01) continue;
+          const fc = flat ? tc : hex01(L.wall), a0 = [P0[0], P0[1], Hw], a1 = [P1[0], P1[1], Hw];
+          n = z0 - Hw < .01 ? pushTri(V, n, a0, a1, [P1[0], P1[1], z1], fc, L.mat) : z1 - Hw < .01 ? pushTri(V, n, a0, a1, [P0[0], P0[1], z0], fc, L.mat) : pushQuad(V, n, a0, a1, [P1[0], P1[1], z1], [P0[0], P0[1], z0], fc, L.mat); } } }
+    if (!flat) { const len = alongX ? [H.x0 - e, H.x1 + e] : [H.y0 - e, H.y1 + e], z = Hw + Math.min(B.ridge, half * B.pitch); // the ridge beam
+      FRAME.x = alongX ? (len[0] + len[1]) / 2 : mid; FRAME.y = alongX ? mid : (len[0] + len[1]) / 2; FRAME.z = z - .03; FRAME.c = alongX ? 1 : 0; FRAME.s = alongX ? 0 : 1; n = pbox(V, n, 0, 0, 0, (len[1] - len[0]) / 2, .05, .08, tc, 5); }
+    roofs.push({ id: H.id, start, count: n - start, x0: H.x0, y0: H.y0, x1: H.x1, y1: H.y1 }); }
+  return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, walls, roofs };
 }
 
 // The outdoor scene of a section for the GPU: the sky, the per-tile ground and the static solids, rebuilt only when its
 // signature changes (a dig, a block, a felled tree). Cached per map.
 const SCENES = new WeakMap();
 export function outdoorScene(map) {
-  if (!map || typeof map !== "object") return null; const sig = outdoorSignature(map), sky = outdoorSky(map); let sc = SCENES.get(map);
-  if (sc && sc.sig === sig && sc.sky === sky) return sc;
-  const terrain = outdoorTerrainData(map), mesh = outdoorMesh(map, sky);
-  sc = { sig, sky, terrain, mesh, key: {} }; SCENES.set(map, sc); return sc; // key: a fresh object each rebuild (the GPU side uploads when it changes)
+  if (!map || typeof map !== "object") return null; const sig = outdoorSignature(map), psig = outdoorPropSignature(map), sky = outdoorSky(map); let sc = SCENES.get(map);
+  if (sc && sc.sig === sig && sc.psig === psig && sc.sky === sky) return sc;
+  const same = sc && sc.sig === sig && sc.sky === sky, terrain = same ? sc.terrain : outdoorTerrainData(map), mesh = same ? sc.mesh : outdoorMesh(map, sky), houses = same ? sc.houses : outdoorBuildings(map), props = outdoorProps(map);
+  sc = { sig, psig, sky, terrain, mesh, props, houses, solids: joinSolids(mesh, props, houses), key: {} }; SCENES.set(map, sc); return sc; // key: a fresh object each rebuild (the GPU side uploads when it changes)
+}
+// outcrops, trees, props and houses in one buffer, the roofs last (one draw call, or one a run when a roof is left out).
+// housesAt: where the houses begin in it (a roof's start is counted from there); roofStart: where the roofs begin.
+function joinSolids(a, b, c) { const verts = a.verts + b.verts + c.verts, housesAt = a.verts + b.verts; if (verts === a.verts) return { data: a.data, verts, housesAt, roofStart: verts };
+  const data = new Float32Array(verts * OUTDOOR_FLOATS); data.set(a.data, 0); data.set(b.data, a.verts * OUTDOOR_FLOATS); data.set(c.data, housesAt * OUTDOOR_FLOATS); return { data, verts, housesAt, roofStart: housesAt + c.walls }; }
+// The props of an interior floor for the GPU (the same solids, on the floor's own heights), rebuilt only when one changes.
+const PROP_SCENES = new WeakMap();
+export function propScene(map, zAt = null, seen = null) { // seen: what the fog of war has shown (null: everything); an unseen prop is not built
+  if (!map || typeof map !== "object") return null; const psig = outdoorPropSignature(map, seen); let sc = PROP_SCENES.get(map);
+  if (sc && sc.psig === psig) return sc; const props = outdoorProps(map, zAt, seen);
+  sc = { psig, props, solids: props, key: {} }; PROP_SCENES.set(map, sc); return sc;
 }
