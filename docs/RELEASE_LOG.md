@@ -21,6 +21,7 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 897 | Claude | claude/cv-briar-stag | Close View Briar Stag as one blended-skin animal with a planted four-legged gait and all twelve attacks on their clocks; blend skinning and lofts in the shared beast rig | In flight. |
 | 893 | Claude | claude/cv-lightning-giant | Close View beast slot (shared skinned rig, GPU-skinned program) and the Lightning Giant as a solid animated machine on its real attack clocks, drawn 1.25× | In flight. |
 | 887 | Claude | claude/compass-facing | Close View compass follows the Wayfarer's body facing, not the camera; standard view stays north-up with an N/E/S/W dial | In flight. |
 | 888 | Claude | claude/wayfarer-passes | Close View Wayfarer: standard kit, silver pod robot, empowered pressure suit, readable jump/landing/hurt, aliveness pass, Wayfarer materials on tools | In flight. |
