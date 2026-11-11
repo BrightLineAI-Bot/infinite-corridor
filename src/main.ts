@@ -31,7 +31,7 @@ import { drawPackPortrait } from "./monster-render.ts";
 import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome } from "./lore.ts";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
@@ -223,7 +223,7 @@ import {
 import { warmWayfindingSignals } from "./world.ts";
 import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.ts"; // release 431
 import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.ts"; // release 595
-import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress } from "./threads.ts"; // release 627; arcana regions (2026-11-11)
+import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress, arcanaUnlockFrom } from "./threads.ts"; // release 627; arcana regions (2026-11-11)
 import { ILSE_MEETINGS, ilseMet } from "./ilse.ts"; // the Journal's Arcana tab
 import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.ts"; // release 605
 import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.ts"; // feel pass 1: fixed 60 Hz steps, interpolated drawing
@@ -693,6 +693,7 @@ function activeQuests(){
   const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save),n=relaysUntilReturn(save),pieces=`Gate ${f.gate}: ${f.toNext||0}/${piecesToUnlock(f.gate)} pieces`;/* 2026-11-05: the Listener's cycle (LISTENER_CYCLE v2) */if(!f.quiet)add("The Far Array",`${pieces}${LISTENER_CYCLE.sealsCall?` · seals ${f.pieces}/${piecesNeeded(f.gate)}`:""}. A Listener waits at its Mouth: ${far.rx}, ${far.ry}.`,far);else if(!f.moves)add("The Far Array",`${pieces}. The Listener is away; answer ${n} more relay${n===1?"":"s"} and one returns to its Mouth at ${far.rx}, ${far.ry}.`,far);else add("The Far Array",`Gate unlocked (tier ${f.gate}). No coordinate for the next Mouth yet: answer ${n} more relay${n===1?"":"s"}.`,null)}
   // Pentagon finding (Tim, 2026-11-05: "it's completely on you to find it"): neither a hunt nor a followed sigil is a quest entry,
   // a compass target or an Atlas pin; the Journal's own lines say, in words, which way and how far.
+  if(save.arcana?.starter==="set"&&!(save.lore?.surveyor?.links||[]).length)add("The Cairn Keeper's errand","Go into any crossing: the first link of Abel Corwin's chain lies in the first one you enter.",null); // 2026-11-11: the first quest
   const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
   if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null);
   if(!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
@@ -1343,6 +1344,7 @@ function arcanaCard(out, title, count, total, where, read, ending, open = false,
   meta.textContent = count >= total ? `Complete · ${total} of ${total} ${hint?.unit || ""}`.trim() : count ? `${count} of ${total} ${unit} · ${home ? `the rest most likely lie ${where}` : pages ? `still to find: ${where}` : `the rest lie in ${where}`}${here}` : `Not begun · ${home ? `most likely ${where}` : pages ? `one in each Reading: ${where}` : `look in ${where}`}${here}`;
   dots.textContent = Array.from({ length: total }, (_, i) => i < count ? "●" : "○").join(" "); dots.setAttribute("aria-label", `${count} of ${total}`);
   card.append(h, meta, dots);
+  { const u = hint && arcanaUnlockFrom(hint.id), U = u && ARCANA_UNLOCKS[u]; if (U) { const p = document.createElement("p"); p.className = "options-note"; p.textContent = arcanaHas(save, u) ? `Opened: ${U.name}.` : `Completing it opens ${U.name}.`; card.append(p); } } // 2026-11-11: lore.ts ARCANA_UNLOCKS
   if (read.length || ending) { const d = document.createElement("details"), sum = document.createElement("summary"); sum.textContent = count >= total ? "Read it again" : "What you have read"; d.open = open; d.append(sum);
     for (const [label, text] of read) { const q = document.createElement("p"); if (label) { const b = document.createElement("strong"); b.textContent = `${label}. `; q.append(b); } q.append(text); d.append(q); }
     if (ending) { const q = document.createElement("p"), b = document.createElement("strong"); b.textContent = "The ending. "; q.append(b, ending); d.append(q); }
