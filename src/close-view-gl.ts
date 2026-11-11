@@ -116,7 +116,7 @@ uniform float u_terrain;
 uniform sampler2D u_ground; uniform vec4 u_gmap; uniform vec2 u_tex; // gmap: px per tile, x0, y0 (device px of world 0,0), the texture's last row of ground
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
 uniform vec4 u_ceil; uniform vec3 u_ceilRGB; uniform vec4 u_ceilK; // ceil: height, on (0/1), bay (tiles), detail (0/1); ceilK: kind, rib width, darkness above, -
-uniform vec4 u_hall; uniform vec3 u_backdrop[3]; // backdrop kind, open roof, skylight (1) or arena sky (2), shaft depth
+uniform vec4 u_space; /* seed realms: the cosmos below glass and through open bays (on, strength, nebula detail, -) */ uniform vec4 u_hall; uniform vec3 u_backdrop[3]; // backdrop kind, open roof, skylight (1) or arena sky (2), shaft depth
 uniform vec4 u_pit; uniform vec3 u_stone; uniform vec3 u_lip; uniform vec3 u_safe; uniform vec4 u_safeP; // pit: hole depth, chasm depth, darkening a tile, lip width; safeP: near, full, breath, on
 uniform vec4 u_lava; uniform vec3 u_lavaA; uniform vec3 u_lavaB; uniform vec3 u_lavaC; uniform vec3 u_chasm; // lava: scale, flow, light, light reach
 uniform vec3 u_inlayColors[3];
@@ -236,6 +236,10 @@ vec3 ceilMat(vec2 P, out float h, out float dark) {
     c = mix(plank, c, max(beam, joist)); h = beam * 1.0 + joist * 0.5; dark = (1.0 - max(beam, joist)) * u_ceilK.z;
   } else if (k < 2.5) { float w = P.x * 2.2 + sin(P.y * 1.3 + sin(P.x * 0.6)) * 0.25, rb = abs(fract(w) - 0.5); float rib = (1.0 - smoothstep(0.05, 0.12, rb)) * (0.75 + 0.25 * sin(P.y * 9.0 + floor(w))); // vertebrae: ribs knuckled along their length
     vec3 v = cells(P * 2.5); c = mix(vec3(0.06, 0.045, 0.05) * (0.7 + 0.5 * v.z), vec3(0.16, 0.11, 0.1), rib); h = rib - (1.0 - smoothstep(0.02, 0.06, v.y)) * 0.3; dark = (1.0 - rib) * u_ceilK.z;
+  } else if (k > 3.5) { // a starship's ceiling (seed realms): clean panels, a seam each tile, a light panel in each bay
+    vec2 f = abs(fract(P) - 0.5), b = fract(P / B); float seam = smoothstep(0.47, 0.49, max(f.x, f.y));
+    float lit = (1.0 - smoothstep(0.08, 0.1, abs(b.x - 0.5))) * (1.0 - smoothstep(0.3, 0.32, abs(b.y - 0.5)));
+    c = u_ceilRGB * (0.9 + 0.08 * vnoise(P * 20.0)); c = mix(c, u_ceilRGB * 0.4, seam); c = mix(c, vec3(1.2, 1.45, 1.6), lit); h = 1.0 - seam; dark = seam * 0.3 * u_ceilK.z;
   } else { // an old machine's underside: heavy girders each bay, deep dark coffers between, pipes, the odd dead lamp
     vec2 b = fract(P / B); float e = min(min(b.x, 1.0 - b.x), min(b.y, 1.0 - b.y)) * B; float girder = 1.0 - smoothstep(0.1, 0.12 + fwidth(e), e);
     float pipe = (1.0 - smoothstep(0.035, 0.05, abs(fract(P.y * 0.5 + 0.3) - 0.5))) * step(0.12, e), bolt = (1.0 - smoothstep(0.015, 0.025, abs(e - 0.06))) * step(0.5, fract((P.x + P.y) * 4.0));
@@ -315,6 +319,23 @@ vec3 hallBackdrop(vec3 ray) {
   }
   return c;
 }
+// Seed realms (the Drifting Ship): the cosmos seen through its glass, its windows and its open bay. The same sky above and
+// below, fixed to the view's direction (infinitely far): two layers of stars, a nebula (on the detail tiers) and a spiral galaxy.
+vec3 spaceSky(vec3 ray) {
+  vec3 d = normalize(ray); vec2 p = d.xy / (0.35 + abs(d.z));
+  vec3 c = vec3(0.006, 0.008, 0.02);
+  vec2 cell = p * 60.0, id = floor(cell); float s = step(0.955, hash12(id)) * (1.0 - smoothstep(0.03, 0.16, length(fract(cell) - 0.5 - (vec2(hash12(id + 7.0), hash12(id + 9.0)) - 0.5) * 0.5)));
+  c += vec3(0.85, 0.9, 1.0) * s * (0.4 + 0.6 * hash12(id + 3.0));
+  cell = p * 23.0; id = floor(cell); s = step(0.985, hash12(id + 11.0)) * (1.0 - smoothstep(0.02, 0.12, length(fract(cell) - 0.5))); c += vec3(1.0, 0.92, 0.8) * s;
+  float n = vnoise(p * 1.3 + 4.0); if (u_space.z > 0.5) n = n * 0.6 + vnoise(p * 3.1 - 2.0) * 0.4; // the nebula: one octave on the light tiers
+  c += mix(vec3(0.26, 0.06, 0.3), vec3(0.04, 0.18, 0.3), vnoise(p * 0.7 + 9.0)) * smoothstep(0.4, 0.85, n) * 0.7;
+  c += vec3(0.1, 0.1, 0.16) * exp(-abs(p.y + p.x * 0.3) * 2.5) * (0.6 + 0.4 * n); // a faint band of distant stars
+  for (int k = 0; k < 2; k++) { // two spiral galaxies, one large, one far off across the sky
+    vec2 g = (p - (k == 0 ? vec2(0.7, -0.45) : vec2(-1.1, 0.8))) * (k == 0 ? 0.45 : 1.1); g = vec2(g.x * 0.8 - g.y * 0.6, (g.x * 0.6 + g.y * 0.8) * 2.2); float r = length(g) + 1e-4, a = atan(g.y, g.x);
+    float arms = pow(0.5 + 0.5 * cos(2.0 * a - log(r) * 4.5), 4.0) * exp(-r * 4.5);
+    c += vec3(0.55, 0.62, 1.0) * arms * 1.1 + vec3(1.0, 0.86, 0.66) * exp(-r * r * 160.0) * 1.3 + vec3(0.6, 0.5, 0.85) * exp(-r * 6.0) * 0.3; }
+  return c * u_space.y;
+}
 void main() {
   vec2 css = vec2(gl_FragCoord.x, u_dev.y - gl_FragCoord.y) * (u_size / u_dev);
   float b = (css.x - u_pp.x) / u_F, a = (u_pp.y - css.y) / u_F;
@@ -327,6 +348,7 @@ void main() {
     if (fogK < 0.999) {
       vec3 dif, spe; vec3 W3 = vec3(P, 0.0);
       if ((m.r & 2u) == 2u) { col = u_fog; } // unseen: the dark keeps its secrets
+      else if (u_space.x > 0.5 && (m.r & 8u) == 8u) { vec4 sf = overlayAt(P); col = mix(mix(spaceSky(dir), sf.rgb, sf.a * (m.g == 3u ? 0.15 : 0.3)), u_fog, fogK * 0.5); } // seed realms: the cosmos below the glass
       else if (u_floorQ.w > 0.5) {
         vec4 surface = overlayAt(P);
         col = u_outdoor.x > 0.5 ? outdoorGround(P, dir, depth, surface) : atmos(u_fog * (1.0 - surface.a) + surface.rgb, W3, depth, u_amb);
@@ -360,11 +382,12 @@ void main() {
         // what lies on the floor: telegraphs, traps, marks (kept readable in the dark)
         vec4 ov = overlayAt(P); float lum = clamp(dot(dif, vec3(0.33)), 0.0, 1.0); col = col * (1.0 - ov.a) + ov.rgb * (0.5 + 0.5 * lum);
         col = atmos(col, W3, depth, dif); }
-    } else col = u_fog;
+    } else col = u_space.x > 0.5 && ((m.r & 8u) == 8u || any(lessThan(T, ivec2(0))) || any(greaterThanEqual(T, u_mapSize))) ? mix(spaceSky(dir), u_fog, 0.35) : u_fog; // seed realms: out of the bay, the cosmos goes on past the fog and the map
   } else if (dir.z > 1e-5 && u_ceil.y > 0.5 && u_terrain < .5) { float t = (u_ceil.x - u_hc) / dir.z; vec2 P = u_cam + dir.xy * t; uvec4 m = maskAt(ivec2(floor(P)));
     float depth = t;
     bool skylight = u_hall.z > 0.5 && (m.r & 4u) == 4u;
-    if ((m.r & 2u) == 0u && u_hall.x > 0.0 && (u_hall.y > 0.5 || skylight)) {
+    ivec2 CT = ivec2(floor(P)); if (u_space.x > 0.5 && ((m.r & 19u) == 16u || any(lessThan(CT, ivec2(0))) || any(greaterThanEqual(CT, u_mapSize)))) col = spaceSky(dir); // seed realms: an open bay looks out on the cosmos
+    else if ((m.r & 2u) == 0u && u_hall.x > 0.0 && (u_hall.y > 0.5 || skylight)) {
       col = hallBackdrop(dir);
     } else if ((m.r & 1u) == 1u && (m.r & 2u) == 0u) { vec3 W3 = vec3(P, u_ceil.x); float h = 0.0, dark = 0.0; vec3 c = u_ceilRGB;
       if (u_ceil.w > 0.5) c = ceilMat(P, h, dark);
@@ -447,6 +470,13 @@ void main() {
       c *= (0.78 + 0.34 * vnoise(surface * 12.0)) * (1.0 - seam * 0.46);
       h = 1.0 - seam * 0.65; shin = 18.0;
     }
+  } else if (mat > 5.5 && part < 4.5) { // a starship's panels (seed realms): brushed composite, crisp seams, a light strip and a kick strip
+    vec2 t = vec2(along, z * 0.8); vec2 tf = abs(fract(t) - 0.5); id = floor(t); float aa = fwidth(along) + 0.004;
+    float seam = smoothstep(0.475 - aa, 0.49, max(tf.x, tf.y)), brushed = 0.92 + 0.07 * vnoise(vec2(along * 42.0, z * 1.5 + id.x * 3.1));
+    c = c * brushed * (0.93 + 0.1 * hash12(id)); c = mix(c, u_mortar, seam * 0.85);
+    float strip = 1.0 - smoothstep(0.03, 0.045, abs(z - 1.95)), kick = 1.0 - smoothstep(0.015, 0.03, abs(z - 0.16));
+    c = mix(c, vec3(0.78, 0.92, 1.0), strip); if (z < 0.12) c *= 0.5; emit += u_glowRGB * (strip * 0.9 + kick * 0.45);
+    h = 1.0 - seam * 0.7; shin = 48.0; wet = 0.25;
   } else if (part > 3.5 && part < 4.5) { // an arch's face: the opening cut out, voussoirs round it, coursed stone above
     vec2 r = vec2((u - 0.5), z - u_arch.x); float rr = length(r); // the opening was cut out by the depth pass (WALL_DEPTH_FS): no discard here, so the early depth test holds
     if (u_arch.y < 0.01) { // a flat lintel: one long block over the way through
@@ -518,7 +548,7 @@ void main() {
     c = mix(c, c * u_damp, damp); wet = max(wet, damp * 0.8); c *= 1.0 - 0.2 * aline(z - dz, 0.012) * u_wallP.y; }
   // the grit (version 3's wear, painted once into an atlas)
   float gv = floor(v_meta.y / 4.0);
-  if (u_detail.x > 0.5 && part < 0.5 && gv > 0.5 && v_depth < u_detail.z) {
+  if (u_detail.x > 0.5 && part < 0.5 && gv > 0.5 && v_depth < u_detail.z && mat < 5.5) { // (a starship's panels stay clean)
     float inst = mod(floor(v_meta.y / 2.0), 2.0), flip = mod(v_meta.y, 2.0), uu = flip > 0.5 ? 1.0 - u : u;
     vec4 t = texture(u_grit, vec2(((gv * 2.0 + inst) + uu) * u_shimmer.w, 1.0 - z / max(top, 0.01)));
     float fade = 1.0 - clamp((v_depth - u_detail.y) / (u_detail.z - u_detail.y), 0.0, 1.0);
@@ -564,6 +594,25 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
   c *= a; if (c.a < 0.004) discard; outColor = c; }`;
 
 // Native models share the environment's camera, lights and fog.
+// Solid creatures (Tim, 2026-11-11: "firm and concrete, so they come into view easily"): a body takes the fog `fogLate` tiles
+// later than the walls behind it (still wholly fogged at the far end), so a creature a few tiles off stands out from the
+// stone instead of sinking into it. A body drawn below full opacity (a spectral kind, or a designed phase or departure;
+// close-view.ts closeViewCreatureIntrinsicAlpha) is screen-door dithered as before and also takes a cold rim light
+// (`spectralRim`, up to `spectralGlow` at `ghostFull` of the way to transparent) so a ghost still reads at a glance.
+// Materials (the refinement pass): `floor` is the least light a body takes (it was .28: a creature beyond the torch sank into
+// the dark); `rimWarm` is the old warm edge (times rim squared) and `rimCool` a cool back-edge (times rim cubed) that cuts every
+// silhouette out of a dark room; `emissive` lists the authored colours that are lit from within (embers, lantern glass, eyes,
+// sparks, rift seams): such a part takes `glow` of its own colour whatever the light, and only `emitFog` of the fog, so a
+// creature's eyes and embers are what you see first in the dark. Exact colours only (a part's colour, not a guess at it).
+export const CLOSE_VIEW_ACTOR_LOOK = Object.freeze({ fogLate: 2, spectralRim: Object.freeze([.45, .66, .92]), spectralGlow: .7, ghostFull: .4,
+  floor: .34, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
+  emissive: Object.freeze([0xf3a55c /* ember: Ashling cracks, the Wayfarer's lamp */, 0xefb15d /* Cinder Wisp core */, 0xd1e86a /* Hanged Choir lamps */,
+    0x9dff8a /* Grave Lantern glass */, 0xffc35a /* Cinder Seraph fire */, 0x7fe7ff /* Lumen Wraith light */, 0xff6b8a /* Veil Spinner eyes */,
+    0xc58cff /* Rift Lynx seams */, 0xffd25a /* Thunderhorn charge */, 0xff9d4a /* Siege Beetle furnace */, 0x5aa6ff /* Gloomwisp eyes */,
+    0x6ab4ff /* Gloomgorge maw */, 0xd88f80 /* Pallid Crawler eyes */, 0xc18a63 /* Ashen Hound eyes */,
+    0xc09b58 /* Spark Warden bars and staff */, 0xb896cf /* Void Sentinel eye */, 0xaab7aa /* Glass Mite mandibles */]) });
+const glc = (c) => `vec3(${glf((c >> 16) / 255)}, ${glf(((c >> 8) & 255) / 255)}, ${glf((c & 255) / 255)})`;
+const glf = (v) => Number(v).toFixed(4);
 const MODEL_VS = VS_COMMON + `
 in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in float a_alpha;
 out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_depth; out float v_alpha;
@@ -587,8 +636,17 @@ void main() {
   vec3 dif, spe;
   lightsAt(v_pos, normal, 14.0, dif, spe);
   float rim = 1.0 - max(0.0, dot(normal, toEye));
-  vec3 color = v_col * max(dif, vec3(0.28)) + spe * 0.25 + vec3(0.19, 0.15, 0.11) * rim * rim;
-  outColor = vec4(finish(atmos(color, v_pos, v_depth, dif)), 1.0);
+  const vec3 EMIT[${CLOSE_VIEW_ACTOR_LOOK.emissive.length}] = vec3[](${CLOSE_VIEW_ACTOR_LOOK.emissive.map(glc).join(', ')});
+  float emit = 0.0; for (int i = 0; i < ${CLOSE_VIEW_ACTOR_LOOK.emissive.length}; i++) { vec3 e = abs(v_col - EMIT[i]); if (e.r + e.g + e.b < 0.012) emit = 1.0; }
+  vec3 color = v_col * max(dif, vec3(${glf(CLOSE_VIEW_ACTOR_LOOK.floor)})) + spe * 0.25 + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
+    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim;
+  color = mix(color, max(color, v_col * ${glf(CLOSE_VIEW_ACTOR_LOOK.glow)}), emit);
+  float ghost = clamp((1.0 - v_alpha) / ${glf(CLOSE_VIEW_ACTOR_LOOK.ghostFull)}, 0.0, 1.0);
+  color += (v_col * 0.5 + vec3(${CLOSE_VIEW_ACTOR_LOOK.spectralRim.map(glf).join(', ')})) * (0.18 + rim * rim) * ghost * ${glf(CLOSE_VIEW_ACTOR_LOOK.spectralGlow)};
+  float late = u_fogP.x + ${glf(CLOSE_VIEW_ACTOR_LOOK.fogLate)}, f = clamp((v_depth - late) / max(u_fogP.y - late, 0.001), 0.0, 1.0); f = f * f * (3.0 - 2.0 * f);
+  float hz = u_finish.z > 0.5 ? (1.0 - exp(-v_depth * u_fogP.z)) * exp(-max(v_pos.z, 0.0) / u_fogP.w) : 0.0;
+  color = mix(color, u_haze + dif * u_finish.y, clamp(hz, 0.0, 0.8));
+  outColor = vec4(finish(mix(color, u_fog, f * (1.0 - emit * (1.0 - ${glf(CLOSE_VIEW_ACTOR_LOOK.emitFog)})))), 1.0);
 }`;
 
 // ---------------------------------------------------------------------------------------------- the open world's solids
@@ -629,7 +687,7 @@ precision highp float;
 precision highp int;
 uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; flat in highp uint v_rgb; out vec4 outColor;
 uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
-vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : vec3(1.0, 0.75, 0.35); } // warm, bioluminescent, ghost-light, a failing lamp
+vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : p < 3.5 ? vec3(1.0, 0.75, 0.35) : vec3(0.62, 0.86, 1.0); } // warm, bioluminescent, ghost-light, a failing lamp, a starship's light strip
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0), keep = 1.0 - fogK; vec3 lit = vec3(v_meta.w);
   if (k < 0.5) { a = v_meta.y * (1.0 - smoothstep(0.35, 1.0, r)); outColor = vec4(0.0, 0.0, 0.0, a); return; }
@@ -781,7 +839,8 @@ export function closeViewMask(map, seen = null, safe = null, out = null, remap =
     const open = t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || t.open === true || t.kind === "yardGrass";
     const vis = !seen || (t.blocked && seen.wall ? seen.wall(x, y) : seen(x, y)), code = vis ? closeViewHazardCode(t) : 0, mat = closeViewFloorMaterial(t);
     const sky = skylights.length && skylights.some((f) => Math.abs(f.x - x) <= 1 && Math.abs(f.y - y) <= 1);
-    data[o] = (open ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); const inlay = !t.blocked && map.hall && vis ? (t.sigil === "pupil" ? 4 : t.sigil ? 3 : t.inlay === 2 ? 2 : t.inlay === 1 ? 1 : 0) : 0;
+    const space = t.realm === "ship" && (t.kind === "shipGlass" || t.kind === "shipStarWindow" || (t.chasm && !t.catwalk)), bay = t.realm === "ship" && (t.catwalk || (t.chasm && !t.bored)); // seed realms: the cosmos below (space), and above an open bay and its catwalks (bay)
+    data[o] = (open || bay ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0) | (space ? 8 : 0) | (bay ? 16 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); const inlay = !t.blocked && map.hall && vis ? (t.sigil === "pupil" ? 4 : t.sigil ? 3 : t.inlay === 2 ? 2 : t.inlay === 1 ? 1 : 0) : 0;
     data[o + 3] = (t.blocked && !code ? 1 : 0) | (inlay << 1); if (code === 2) lava++; }
   return { data, w, h, lava };
 }
