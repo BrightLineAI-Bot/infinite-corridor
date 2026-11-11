@@ -174,7 +174,7 @@ test('791: the laboratory page never loads production persistence or names a pro
   for (const [name, text] of sources) assert.doesNotMatch(text, /["'`]\.\.\//, `${name} has a parent-path literal`);
   // Its worker never caches the published identity, and the production worker precaches the new module.
   assert.match(readFileSync(new URL('../proving-ground/sw.js', import.meta.url), 'utf8'), /release-identity\.json"\)\)return/);
-  for (const f of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(f, import.meta.url), 'utf8'), /src\/proving-ground-handoff\.js\?v=875/);
+  for (const f of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(f, import.meta.url), 'utf8'), /src\/proving-ground-handoff\.js\?v=880/);
   assert.match(readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8'), /'proving-ground-handoff'/);
 });
 
