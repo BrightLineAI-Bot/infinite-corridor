@@ -90,9 +90,15 @@ export const CLOSE_VIEW = Object.freeze({
   presets: Object.freeze({
     // version 2: each a little higher (Tim: "a slight default height increase is fine if it helps you read the room"), still
     // under the walls' tops, so a room's floor and its edges read; the pitch follows from the height and the aim point
-    standard: Object.freeze({ label: "Standard", height: 1.6, distance: 2.7, lookAhead: 2.4, lookHeight: .45, shoulder: .42, fov: 72 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
-    close: Object.freeze({ label: "Close (tight, low)", height: 1.35, distance: 2, lookAhead: 1.9, lookHeight: .55, shoulder: .32, fov: 66 }), // Bloodborne
-    wide: Object.freeze({ label: "Wide (further back)", height: 1.85, distance: 3.4, lookAhead: 2.6, lookHeight: .4, shoulder: .55, fov: 80 }), // Remnant / ESO
+    // version 3 (Tim, 2026-11-11: "needs to be farther out, a little bit farther back... I'm in the wide view and it still needs
+    // to be even farther back"; then wide at 5 tiles: "we can bring it back in if we need"): every preset pulled back and
+    // raised (was close 2 / 1.35, standard 2.7 / 1.6, wide 3.4 / 1.85, distance / height), wide the farthest, still under the walls' tops less craneClear; the aim point moved further ahead
+    // and lower so the pitch shows more of the floor beyond the Wayfarer, who stays framed low of centre. Walls still pull the
+    // boom in (CLOSE_VIEW.camera), so tight corridors keep the old close framing. `fogPush`: tiles the depth fog is pushed out
+    // with the longer boom, so the Wayfarer and the ground just past them are no foggier than at the old distance.
+    standard: Object.freeze({ label: "Standard", height: 1.9, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
+    close: Object.freeze({ label: "Close (tight, low)", height: 1.55, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
+    wide: Object.freeze({ label: "Wide (further back)", height: 2.15, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
   }),
   defaultPreset: "standard",
   fov: Object.freeze({ verticalMax: 100 }), // the horizontal fov (by preset) or this vertical one, whichever is narrower, sets the focal length
@@ -112,7 +118,10 @@ export const CLOSE_VIEW = Object.freeze({
   // game's own lock). A swipe along the crescent of `switchSwipe` px moves the lock to the next foe that way, within
   // `switchCone` degrees. It breaks when the foe dies (then it moves to the best foe within `rehop` tiles of where it fell, if
   // any), goes beyond range + `slack`, or stays out of sight `lostSec` seconds.
-  lock: Object.freeze({ near: 1.5 /* nearby framing slows, but never stops */, range: 11, cone: 70, wAngle: .6, wDist: .4, rate: 4.5, maxRate: 120, nearScale: .35, fallbackRange: 6, fallbackCone: 100, switchSwipe: 26, switchCone: 120, rehop: 4.5, slack: 1.5, lostSec: 1.2 }),
+  // Second targeting pass (Tim, 2026-11-11: "the targeting is still kind of weird... we need better targeting"): every locked
+  // swing is acceleration limited: it gathers speed at most `accel` degrees a second squared and eases into its goal (a switch or a fall no longer snaps the view from rest to full speed in one frame). `reverse`: how
+  // hard a swing already under way may be turned back the other way (degrees a second squared).
+  lock: Object.freeze({ near: 1.5 /* nearby framing slows, but never stops */, range: 11, cone: 70, wAngle: .6, wDist: .4, rate: 4.5, maxRate: 120, nearScale: .35, fallbackRange: 6, fallbackCone: 100, switchSwipe: 26, switchCone: 120, rehop: 4.5, slack: 1.5, lostSec: 1.2, accel: 900, reverse: 1800 }),
   // Target mode (Tim, 2026-11-11: "he never has to move the camera to find enemies"): the Target button switches auto-targeting
   // on (the button lit red) and off. While on, every `scanSec` seconds (a bounded pass over the floor's foes; the wall line is
   // walked only for a foe that would beat the best so far) it locks the best foe in sight anywhere round the Wayfarer within the
@@ -123,7 +132,20 @@ export const CLOSE_VIEW = Object.freeze({
   // Strafe (every lock): with the stick mostly sideways (its toward/away share under `strafeForward`) the Wayfarer circles at
   // the distance held when the strafe began: `strafeGain` x the radial error (tiles) is mixed in, at most `strafePull`.
   targetButton: Object.freeze({ on: "#ff2d2d", locked: "#ff8a78", off: "#ddd5c4", glow: "drop-shadow(0 0 6px #ff2d2dcc)" }), // the Target button's ink: target mode on (red), a tap lock alone, off
-  targetMode: Object.freeze({ scanSec: .2, wDist: .75, wAngle: .25, threatRange: 3.5, nearerBy: 1.5, switchHold: .9, rate: 9, maxRate: 270, strafeForward: .35, strafeGain: 4, strafePull: .6 }),
+  // Second pass (2026-11-11): one priority for every choice (the first lock, the next after a fall, a better foe while
+  // locked): score = wDist x (distance / range) + wAngle x (angle off the view / 180) - wClose x (how far inside threatRange)
+  // - wAggro if it has noticed the Wayfarer - wWindup if it is winding up a blow; lowest wins. So a foe close in front comes
+  // first, then one attacking, then the nearest. The first lock no longer prefers a far foe ahead and then flips to a near one
+  // behind a second later. Locked, a foe takes the lock only if its score beats the locked one's by `switchMargin`, at most
+  // once every switchHold; but a foe within `reach` tiles (a weapon's length) while the locked one is out of reach and
+  // `nearerBy` tiles further takes it after only `reachHold` seconds, so the swing goes at the foe in your face (a swipe
+  // choice keeps the full switchHold). In target mode the next foe after a fall is chosen by the same score, not by where the
+  // old one fell. `markSec`: a new lock's ring closes in on the foe over this long, from `markScale` times its brackets.
+  // `lostSec`: target mode's lock is sticky, held this long out of sight (the plain lock's lock.lostSec, 1.2, dropped a foe
+  // that stepped behind a pillar), and while it is hidden the view coasts to a stop rather than halting dead.
+  // `occludedAlpha`: the brackets' strength while the locked foe is briefly out of sight. `edge`: px inside the screen's edge
+  // for the pointer to a locked foe off screen.
+  targetMode: Object.freeze({ scanSec: .2, wDist: .55, wAngle: .3, wClose: .35, wAggro: .08, wWindup: .2, switchMargin: .1, reach: 2, reachHold: .25, threatRange: 3.5, nearerBy: 1.5, switchHold: .9, rate: 9, maxRate: 270, strafeForward: .35, strafeGain: 4, strafePull: .6, lostSec: 2.4, markSec: .4, markScale: 1.9, occludedAlpha: .38, edge: 26 }),
   // crescent: the pan rail, a thin arc round the outside of the action cluster, `gap` px beyond the cluster's half width, from
   // `from` degrees (screen angles: 0 is right, -90 up, 180 left) round over the top and down the left side to `to` degrees.
   // It is drawn `width` px wide at `idle` opacity (`active` while touched) and answers within `band` px of the arc; it sits
@@ -501,7 +523,7 @@ const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.c
   || openAirAt(g.map, g.player.x, g.player.y);
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
-const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   focal: 1, focalV: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
@@ -765,8 +787,11 @@ function turnCamera(g, now) {
     const L = CLOSE_VIEW.lock, d = Math.hypot(target.x - p.x, target.y - p.y), near = Math.max(L.nearScale, Math.min(1, (d - L.near * .5) / (L.near * .5)));
     if (d < .05) { CAM.yawV = 0; return; } // overlapping feet have no useful bearing; retain the lock without choosing an arbitrary yaw
     const T = CLOSE_VIEW.targetMode, rate = CAM.targetMode ? T.rate : L.rate, cap = CAM.targetMode ? T.maxRate : L.maxRate;
-    CAM.recentre = NaN; yawSpring(Math.atan2(target.y - p.y, target.x - p.x), rate * slow * near, cap * DEG * slow, dt); return; }
-  if (CAM.lockId && CAM.lostFor > 0) { CAM.yawV = 0; return; } // keep the brief LOS grace, not knowledge of movement through a wall
+    CAM.recentre = NaN; lockSpring(Math.atan2(target.y - p.y, target.x - p.x), rate * slow * near, cap * DEG * slow, L.accel * DEG * slow, L.reverse * DEG * slow, dt, now); return; }
+  if (CAM.lockId && CAM.lostFor > 0) { // keep the LOS grace, not knowledge of movement through a wall (target mode: the swing coasts to a stop)
+    if (!CAM.targetMode) { CAM.yawV = 0; return; }
+    const L = CLOSE_VIEW.lock, w0 = now - CAM.lockWAt <= 100 ? CAM.lockW : 0, w1 = Math.sign(w0) * Math.max(0, Math.abs(w0) - L.reverse * DEG * slow * dt);
+    CAM.yaw = wrap(CAM.yaw + (w0 + w1) * .5 * dt); CAM.lockW = w1; CAM.lockWAt = now; CAM.yawV = 0; return; }
   if (Number.isFinite(CAM.recentre)) { // a double tap on the crescent: swing round behind the Wayfarer (the walk's basis turns with it)
     const diff = wrap(CAM.recentre - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
     CAM.yaw = wrap(CAM.yaw + step); CAM.inputYaw = wrap(CAM.inputYaw + step); CAM.yawV = 0; CAM.pitchUser *= Math.exp(-6 * dt); if (Math.abs(diff) < .01) CAM.recentre = NaN; return; }
@@ -777,6 +802,17 @@ function turnCamera(g, now) {
   if (Math.abs(diff) > A.cone * DEG || Math.abs(diff) < A.deadband * DEG) { CAM.yawV *= Math.exp(-4 * dt); return; } // toward the camera, or near enough straight on
   const ease = CAM.panAt > -1e8 ? Math.min(1, (since - A.delay) / A.ramp) : 1;
   yawSpring(head, A.rate * slow * Math.max(.05, ease), A.maxRate * DEG * slow, dt);
+}
+// A locked swing (CLOSE_VIEW.lock.accel): the critically damped spring's step, its speed capped at `cap`, gathering speed at most
+// `accel` (radians a second squared) and never faster than it could stop by the goal; a swing already under way is turned
+// back at most `reverse`. CAM.lockW is the swing's speed last frame (stale after 100 ms: then it starts from rest).
+function lockSpring(goal, w, cap, accel, reverse, dt, now) {
+  const before = CAM.yaw, w0 = now - CAM.lockWAt <= 100 ? CAM.lockW : 0; yawSpring(goal, w, cap, dt);
+  let v = wrap(CAM.yaw - before) / dt; const stop = Math.sqrt(2 * accel * Math.abs(wrap(goal - before)));
+  if (Math.abs(v) > stop) v = Math.sign(v) * stop;
+  if (w0 !== 0 && Math.sign(v) !== Math.sign(w0)) v = Math.sign(w0) * Math.max(0, Math.abs(w0) - reverse * dt) || Math.sign(v) * Math.min(Math.abs(v), accel * dt);
+  else if (Math.abs(v) > Math.abs(w0) + accel * dt) v = Math.sign(v) * (Math.abs(w0) + accel * dt);
+  CAM.yaw = wrap(before + v * dt); CAM.yawV = v; CAM.lockW = v; CAM.lockWAt = now;
 }
 // One step of the view's yaw toward `goal` on a critically damped spring (rate w), its speed capped at `cap` radians a second.
 function yawSpring(goal, w, cap, dt) {
@@ -878,8 +914,8 @@ export function closeViewTargetActivate(g, now = 0) {
   if (CAM.targetMode) { CAM.targetMode = false; if (g.lockedTarget?.()) g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; g.message = "Auto-target off."; }
   else {
     CAM.targetMode = true; CAM.tmScan = 0; CAM.tmHeld = 0; target = g.lockedTarget?.() || null;
-    if (!lockable(target)) target = closeViewLockCandidate(g) || targetModeScan(g, null);
-    if (target) { g.lockTarget(target.id); CAM.lockId = target.id; CAM.lostFor = 0; } else { CAM.lockId = null; g.message = "Auto-target on: no foe in sight yet."; }
+    if (!lockable(target)) target = targetModeScan(g, null); // the same priority as every later choice (CLOSE_VIEW.targetMode)
+    if (target) { g.lockTarget(target.id); CAM.lockId = target.id; CAM.lostFor = 0; CAM.tmManual = false; } else { CAM.lockId = null; g.message = "Auto-target on: no foe in sight yet."; }
   }
   closeViewRecentre(g, now, { centered: true }); return target;
 }
@@ -888,16 +924,22 @@ export const closeViewTargetMode = () => CAM.targetMode; // is auto-targeting on
 // the best foe in sight within the lock's range anywhere round the Wayfarer; TM_SCAN.near the nearest one in sight within
 // threatRange. The wall line (sightTo) is walked only for a foe that would beat the best or nearest found so far. With reduced
 // motion only foes within the lock's cone of the view are taken (the view is never swung round behind on its own).
-const TM_SCAN = { best: null, near: null, nearD: Infinity };
+const TM_SCAN = { best: null, bestS: Infinity, near: null, nearD: Infinity };
+// A foe's target-mode priority (lower first; CLOSE_VIEW.targetMode): near, in front, close in, aware of the Wayfarer, winding up.
+function targetScore(e, d, off) {
+  const L = CLOSE_VIEW.lock, T = CLOSE_VIEW.targetMode;
+  return T.wDist * d / L.range + T.wAngle * off / Math.PI - T.wClose * Math.max(0, 1 - d / T.threatRange) - (e.aggro ? T.wAggro : 0) - (foeWindingUp(e) ? T.wWindup : 0);
+}
+export function closeViewTargetScore(g, e) { const p = g.player, ex = e.x + .5, ey = e.y + .75; return targetScore(e, Math.hypot(ex - footX(p), ey - footY(p)), Math.abs(wrap(Math.atan2(ey - footY(p), ex - footX(p)) - CAM.yaw))); }
 function targetModeScan(g, skip) {
   const L = CLOSE_VIEW.lock, T = CLOSE_VIEW.targetMode, p = g.player, px = footX(p), py = footY(p), reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); let bestS = Infinity;
-  TM_SCAN.best = TM_SCAN.near = null; TM_SCAN.nearD = Infinity;
+  TM_SCAN.best = TM_SCAN.near = null; TM_SCAN.nearD = TM_SCAN.bestS = Infinity;
   for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - px, ey - py); if (d > L.range) continue;
     const off = Math.abs(wrap(Math.atan2(ey - py, ex - px) - CAM.yaw)); if (reduce && off > L.cone * DEG) continue; // reduced motion: never an automatic swing round behind
-    const sc = T.wDist * d / L.range + T.wAngle * off / Math.PI, beats = sc < bestS, nearer = d <= T.threatRange && d < TM_SCAN.nearD;
+    const sc = targetScore(e, d, off), beats = sc < bestS, nearer = d <= T.threatRange && d < TM_SCAN.nearD;
     if (!(beats || nearer) || !sightTo(g.map, px, py, ex, ey)) continue;
     if (beats) { bestS = sc; TM_SCAN.best = e; } if (nearer) { TM_SCAN.nearD = d; TM_SCAN.near = e; } }
-  return TM_SCAN.best;
+  TM_SCAN.bestS = bestS; return TM_SCAN.best;
 }
 // A swipe along the crescent while locked: the next foe to the right (dir 1) or left (-1) of the locked one, as the camera sees them.
 export function closeViewLockSwitch(g, dir) {
@@ -906,32 +948,36 @@ export function closeViewLockSwitch(g, dir) {
     const be = Math.atan2(ey - py, ex - px); if (Math.abs(wrap(be - CAM.yaw)) > L.switchCone * DEG) continue; const rel = wrap(be - bt) * Math.sign(dir || 1); if (rel <= 0) continue; if (!sightTo(g.map, px, py, ex, ey)) continue;
     const visible = lockOnScreen(g, e); if (!visible && Math.hypot(ex - px, ey - py) > L.fallbackRange) continue;
     if ((visible && !bestVisible) || (visible === bestVisible && rel < bestA)) { bestA = rel; best = e; bestVisible = visible; } }
-  if (best) { g.lockTarget(best.id); CAM.lockId = best.id; CAM.lostFor = 0; CAM.tmHeld = 0; } return best; // a chosen foe is not overridden at once by a nearer threat
+  if (best) { g.lockTarget(best.id); CAM.lockId = best.id; CAM.lostFor = 0; CAM.tmHeld = 0; CAM.tmManual = true; } return best; // a chosen foe is not overridden at once by a nearer threat
 }
 // Each frame while locked: follow a lock made by a tap too; on the foe's fall move to the best foe near where it fell, or
 // release; release beyond range + slack or after lostSec out of sight. Returns the locked foe, or null.
+function takeLock(g, e) { g.lockTarget(e.id); CAM.lockId = e.id; CAM.lostFor = 0; CAM.tmHeld = 0; CAM.tmManual = false; return e; }
 function lockTick(g, dt) {
   const had = CAM.lockId, t = lockKeep(g, dt); if (!CAM.targetMode) return t;
   if (had && !CAM.lockId) CAM.tmScan = 0; // the lock just fell or broke: look for the next foe this frame
   // target mode: lock the next foe once nothing is locked (and none is briefly out of sight), and let a much nearer threat
   // take the lock; at most one bounded search every scanSec
-  const T = CLOSE_VIEW.targetMode; CAM.tmScan -= dt; CAM.tmHeld += dt;
-  if (CAM.lockId && CAM.lostFor > 0) return t;
-  if (!t) { if (CAM.tmScan > 0) return null; CAM.tmScan = T.scanSec; const next = targetModeScan(g, null); if (!next) return null; g.lockTarget(next.id); CAM.lockId = next.id; CAM.lostFor = 0; CAM.tmHeld = 0; return next; }
-  if (CAM.tmScan > 0 || CAM.tmHeld < T.switchHold) return t; CAM.tmScan = T.scanSec;
-  const p = g.player; targetModeScan(g, t.id); const n = TM_SCAN.near;
-  if (n && TM_SCAN.nearD + T.nearerBy < Math.hypot(t.x + .5 - footX(p), t.y + .75 - footY(p))) { g.lockTarget(n.id); CAM.lockId = n.id; CAM.lostFor = 0; CAM.tmHeld = 0; return n; }
+  const T = CLOSE_VIEW.targetMode, p = g.player; CAM.tmScan -= dt; CAM.tmHeld += dt;
+  if (CAM.lockId && CAM.lostFor > 0) { // the locked foe is briefly out of sight: held (sticky), unless a foe in reach is at the Wayfarer
+    if (CAM.tmScan > 0) return t; CAM.tmScan = T.scanSec; targetModeScan(g, CAM.lockId); return TM_SCAN.near && TM_SCAN.nearD <= T.reach ? takeLock(g, TM_SCAN.near) : t; }
+  if (!t) { if (CAM.tmScan > 0) return null; CAM.tmScan = T.scanSec; const next = targetModeScan(g, null); return next ? takeLock(g, next) : null; }
+  const hold = CAM.tmManual ? T.switchHold : Math.min(T.switchHold, T.reachHold);
+  if (CAM.tmScan > 0 || CAM.tmHeld < hold) return t; CAM.tmScan = T.scanSec;
+  targetModeScan(g, t.id); const n = TM_SCAN.near, d = Math.hypot(t.x + .5 - footX(p), t.y + .75 - footY(p));
+  if (n && TM_SCAN.nearD <= T.reach && d > T.reach && TM_SCAN.nearD + T.nearerBy < d) return takeLock(g, n); // a foe in reach while the lock is not
+  if (CAM.tmHeld >= T.switchHold && TM_SCAN.best && TM_SCAN.bestS + T.switchMargin < closeViewTargetScore(g, t)) return takeLock(g, TM_SCAN.best);
   return t;
 }
 function lockKeep(g, dt) {
   const L = CLOSE_VIEW.lock; let t = g.lockedTarget?.() || null;
   if (CAM.lockId && (!t || t.id !== CAM.lockId)) { const old = (g.enemies || []).find((e) => e.id === CAM.lockId);
-    if (!t && old && old.dead) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75, screen: false }); if (next) { g.lockTarget(next.id); t = next; } } }
+    if (!t && old && old.dead && !CAM.targetMode) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75, screen: false }); if (next) { g.lockTarget(next.id); t = next; } } }
   if (t && !lockable(t)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
   CAM.lockId = t ? t.id : null; if (!t) { CAM.lostFor = 0; return null; }
   const p = g.player, px = footX(p), py = footY(p), ex = t.x + .5, ey = t.y + .75;
   if (Math.hypot(ex - px, ey - py) > L.range + L.slack) { g.lockTarget(null); CAM.lockId = null; return null; }
-  CAM.lostFor = sightTo(g.map, px, py, ex, ey) ? 0 : CAM.lostFor + dt; if (CAM.lostFor > L.lostSec) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
+  CAM.lostFor = sightTo(g.map, px, py, ex, ey) ? 0 : CAM.lostFor + dt; if (CAM.lostFor > (CAM.targetMode ? CLOSE_VIEW.targetMode.lostSec : L.lostSec)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
   return CAM.lostFor > 0 ? null : t;
 }
 const LOCK_LOOK = { x: 0, y: 0 }; // presentation scratch, never a saved or committed action direction
@@ -1197,7 +1243,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
   const extended = overworldCloseViewApplies(g), flatWorld = extended && !interiorTerrain(g.map), outdoor = extended && openWorldScene(g);
   const plainWorld = outdoor && flatWorld && !g.map.building;
-  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
+  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
   const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : air.near + fogShift;
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
@@ -1588,12 +1634,23 @@ function aimChevron(gc, g, s, ts, W, H, gox = 0, goy = 0) {
   gc.setTransform(ts, 0, 0, ts, gox, goy); gc.fillStyle = M.color; gc.beginPath(); gc.moveTo(cx + ux * r, cy + uy * r); gc.lineTo(cx - ux * r * .6 - uy * r, cy - uy * r * .6 + ux * r); gc.lineTo(cx - ux * r * .15, cy - uy * r * .15); gc.lineTo(cx - ux * r * .6 + uy * r, cy - uy * r * .6 - ux * r); gc.closePath(); gc.fill();
 }
 // The locked target's brackets, round its billboard on the screen (combat-visuals draws them flat on the floor, under it).
+// Second targeting pass: a new lock's ring closes in on it (CLOSE_VIEW.targetMode.markSec; with reduced motion a still ring that
+// fades), the brackets stay, dimmed, while the foe is briefly out of sight, and a locked foe off screen gets a pointer at the edge.
 function lockBrackets(ctx, g, now) {
-  const t = g.lockedTarget?.(); if (!lockable(t) || CAM.lostFor > 0) return; const q = project(t.x + .5, t.y + .82, interiorSurfaceHeight(g.map, t.x + .5, t.y + .75)); if (!q) return;
+  const t = g.lockedTarget?.(); if (!lockable(t) || t.gloomVeil) { CAM.markId = null; return; } const T = CLOSE_VIEW.targetMode, reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
+  if (CAM.markId !== t.id) { CAM.markId = t.id; CAM.markAt = now; }
+  const q = project(t.x + .5, t.y + .82, interiorSurfaceHeight(g.map, t.x + .5, t.y + .75)), hidden = CAM.lostFor > 0;
+  if (!q || q.sx < 0 || q.sx > CAM.w || q.sy < 0 || q.sy > CAM.h) { // off screen: a pointer at the edge, the way to turn
+    const rel = wrap(Math.atan2(t.y + .75 - CAM.cy, t.x + .5 - CAM.cx) - CAM.yaw), ux = Math.sin(rel), uy = -Math.cos(rel), m = Math.max(Math.abs(ux) / (CAM.w / 2 - T.edge), Math.abs(uy) / (CAM.h / 2 - T.edge)) || 1;
+    const ex = CAM.w / 2 + ux / m, ey = CAM.h / 2 + uy / m, a = Math.atan2(uy, ux), s = 11;
+    ctx.save(); ctx.globalAlpha = hidden ? T.occludedAlpha : .9; ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * s, ey + Math.sin(a) * s); ctx.lineTo(ex + Math.cos(a + 2.4) * s, ey + Math.sin(a + 2.4) * s); ctx.lineTo(ex + Math.cos(a - 2.4) * s, ey + Math.sin(a - 2.4) * s); ctx.closePath();
+    ctx.fillStyle = "#ff6a5a"; ctx.fill(); ctx.strokeStyle = "#000a"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); return; }
   const k = CAM.F / q.depth, sc = actorScale(t), r = Math.min(Math.min(CAM.w, CAM.h) * .22, Math.max(.45, (Number(t.bodyRadius) || .4) + .2, sc * .4) * k), cx = q.sx, cy = q.sy - Math.min(.55 * sc * k, r * 1.1), e = r * .45; // never larger than a fifth of the screen, however near
-  ctx.save(); ctx.lineJoin = "round"; ctx.globalAlpha = .8 + .2 * Math.sin(now / 200);
+  const mk = (now - CAM.markAt) / (T.markSec * 1000);
+  if (mk >= 0 && mk < 1) { ctx.save(); ctx.globalAlpha = (1 - mk) * .9; ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r * (reduce ? 1.2 : 1 + (T.markScale - 1) * (1 - mk) * (1 - mk)), 0, 6.2832); ctx.stroke(); ctx.restore(); }
+  ctx.save(); ctx.lineJoin = "round"; ctx.globalAlpha = hidden ? T.occludedAlpha : .8 + .2 * Math.sin(now / 200);
   ctx.beginPath(); for (let i = 0; i < 4; i++) { const sx = i === 0 || i === 3 ? -1 : 1, sy = i < 2 ? -1 : 1; ctx.moveTo(cx + sx * r, cy + sy * (r - e)); ctx.lineTo(cx + sx * r, cy + sy * r); ctx.lineTo(cx + sx * (r - e), cy + sy * r); }
-  ctx.strokeStyle = "#0009"; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.strokeStyle = "#0009"; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 2.5; ctx.stroke(); if (hidden) { ctx.restore(); return; }
   // a pip over the foe (Elden Ring's lock dot): it is the one locked, at a glance
   const py = cy - r - Math.max(6, r * .25), pr = Math.max(4, r * .12); ctx.beginPath(); ctx.moveTo(cx, py - pr); ctx.lineTo(cx + pr, py); ctx.lineTo(cx, py + pr); ctx.lineTo(cx - pr, py); ctx.closePath();
   ctx.fillStyle = "#ff6a5a"; ctx.fill(); ctx.strokeStyle = "#000a"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
@@ -2183,7 +2240,10 @@ function buildStatic(map, geo, th) {
   return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: out.a.slice(0, out.n), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.n / WALL_FLOATS };
 }
 // How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.
-function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map)); if (!st) return Infinity; const w = st.w;
+function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map));
+  if (!st) { // no GPU scene built (the 2D view): the same doorway arches, from the floor itself, so the higher presets stay under them
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (interiorArchAt(map, x + i * .3, y + j * .3)) { const a = themeOf(map).arch; return a.spring + Math.max(0, a.radius) * .55 - .08; } return Infinity; }
+  const w = st.w;
   for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const tx = Math.floor(x + i * .3), ty = Math.floor(y + j * .3); if (tx >= 0 && ty >= 0 && tx < w && st.arch[ty * w + tx]) return st.archCap; } return Infinity; }
 function staticFor(map, geo, th) { let st = STATIC.get(geo); if (!st || st.th !== th) { st = buildStatic(map, geo, th); st.th = th; STATIC.set(geo, st); } return st; }
 // For tests and the lab: the floor's built things (counts, and the lights and props as plain lists).

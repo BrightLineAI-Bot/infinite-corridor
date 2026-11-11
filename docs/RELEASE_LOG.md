@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 888 | Claude | claude/wayfarer-passes | Close View Wayfarer: standard kit, silver pod robot, empowered pressure suit, readable jump/landing/hurt, aliveness pass, Wayfarer materials on tools | In flight. |
+| 889 | Claude | claude/cv-camera-targeting | Close View presets farther back and higher (wide 5 tiles); one target priority, reach lock, sticky lock, smooth switches, lock ring and edge pointer | In flight. |
+| 888 | Claude | claude/wayfarer-passes | Close View Wayfarer: standard kit, silver pod robot, empowered pressure suit, readable jump/landing/hurt, aliveness pass, Wayfarer materials on tools | Merged as `62046802f210` (#555). |
 | 887 | Claude | claude/compass-facing | Close View compass follows the Wayfarer's body facing, not the camera; standard view stays north-up with an N/E/S/W dial | Merged as `c84d55569c78` (#554). |
 | 886 | Claude | claude/arcana-live | Arcana region placement live (straight-line homes); Bell Toll and Lamplighter's Light earned on every save; the Cairn Keeper starts the Chain; nothing gated | Merged as `174ffb69bb4d` (#549). |
 | 885 | Claude | claude/sim-clock | Fixed 60 Hz simulation steps with interpolated drawing; Close View floor walls built off the entry frame (2–4× faster, byte-identical) | Merged as `0e5133f207af` (#553). |
