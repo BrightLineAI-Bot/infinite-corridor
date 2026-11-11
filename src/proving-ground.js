@@ -1,15 +1,15 @@
-import { currentDungeonDoors } from './game.js?v=r875-f410be5ab7b8';
-import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r875-f410be5ab7b8";
-import { serializeSave, deserializeSave } from './save-codec.js?v=r875-f410be5ab7b8';
-import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r875-f410be5ab7b8';
-import { drawRangedEffects } from "./combat-visuals.js?v=r875-f410be5ab7b8";
-import { drawOculusDais } from "./oculus.js?v=r875-f410be5ab7b8"; // release 874
-import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.js?v=r875-f410be5ab7b8"; // release 874: the lab's utility button
-import { createInput } from "./input.js?v=r875-f410be5ab7b8";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r875-f410be5ab7b8";
-import { CLOSE_VIEW_HOOKS, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r875-f410be5ab7b8"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r875-f410be5ab7b8";
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r875-f410be5ab7b8"; // release 791: Enter Proving Ground from Options
+import { currentDungeonDoors } from './game.js?v=r881-fc5a0d9d5e61';
+import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r881-fc5a0d9d5e61";
+import { serializeSave, deserializeSave } from './save-codec.js?v=r881-fc5a0d9d5e61';
+import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r881-fc5a0d9d5e61';
+import { drawRangedEffects } from "./combat-visuals.js?v=r881-fc5a0d9d5e61";
+import { drawOculusDais } from "./oculus.js?v=r881-fc5a0d9d5e61"; // release 874
+import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.js?v=r881-fc5a0d9d5e61"; // release 874: the lab's utility button
+import { createInput } from "./input.js?v=r881-fc5a0d9d5e61";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r881-fc5a0d9d5e61";
+import { CLOSE_VIEW_HOOKS, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r881-fc5a0d9d5e61"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r881-fc5a0d9d5e61";
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r881-fc5a0d9d5e61"; // release 791: Enter Proving Ground from Options
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";

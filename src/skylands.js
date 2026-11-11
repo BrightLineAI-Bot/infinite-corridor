@@ -21,7 +21,7 @@
 // the section. The first stands one level up, so a jump reaches it; from a platform a jump keeps its height over the gap
 // (game.ts, skyAir) and lands on the next. Creatures walk the ground beneath and cannot climb. A jump that ends over a gap
 // falls (from four levels, fatally). The skyway door stands on the top platform and opens only from there.
-import { hashSeed, byHash } from "./random.js?v=r875-f410be5ab7b8";
+import { hashSeed, byHash } from "./random.js?v=r881-fc5a0d9d5e61";
 
 export const SKYLANDS = {
   version: 3, /* release 585: 2 = the stone skyway ascent; 587: 3 = floating discs */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,
@@ -312,3 +312,65 @@ export function completeSkyland(save, tier) {
   for (const [k, v] of Object.entries(spheres)) if (v) save.materials[k] = (Number(save.materials[k]) || 0) + v;
   return { sigils, marks, ...spheres };
 }
+
+// Travel seeds (Tim, 2026-11-11: skyways and buoys "should work similarly... re-entering the gate can transfer you somewhere
+// else... keep that chance, but add seeds that make it guaranteed"). Relatively rare items held in save.seedPouch (additive at
+// schema 14; normalised by ensureSeeds from freshSave and migrateSave, unknown fields kept). A Fossilized Seed planted in the door
+// on a great tree's crown is a sure way to the crown of another great tree (game.ts plantFossilSeed). An Opal Seed given to the
+// Tide Bearer at the far end of a buoy's dive makes that dive's way up surface beside another buoy far off (game.ts
+// tideBearerAction; the passage waits in the dive's history as `opalPassage` until used). Pumice and Crimson Seeds are carried
+// only, for now: a later teleportation-shrine task spends them with consumeSeed. Without a seed every door keeps its old chance.
+export const SEEDS = {
+  kinds: ["fossilized", "opal", "pumice", "crimson"],
+  fossilized: { name: "Fossilized Seed", color: "#b9a27c", glint: "#f1e3c2", text: "A seed turned to stone in some older age. Planted in the door on a great tree's crown, it opens a sure way to the crown of another great tree." },
+  opal: { name: "Opal Seed", color: "#cfe6ee", glint: "#ffd9f2", text: "Milky and cool, and it shifts like water when turned. A Tide Bearer at the far end of a buoy's deep takes one, and the line then carries you up beside another buoy, far off." },
+  pumice: { name: "Pumice Seed", color: "#9a948c", glint: "#e2ddd4", text: "Light as ash and full of small holes. The teleportation shrines are said to know what it is for." },
+  crimson: { name: "Crimson Seed", color: "#b0303a", glint: "#ff9a8a", text: "Warm to the touch and red all through. The teleportation shrines are said to know what it is for." },
+};
+// Where seeds turn up (rolled by seed and place, so a place gives the same answer every time; a win is kept in worldFlags so it
+// is given once). `overworld`: a seed lying in a section first seen from this release (pinned per Atlas section as
+// `seedFindVersion`). `dungeon`: an opened crossing chest. `skyland`: a cleared Skyland. Conservative rates; tune here.
+export const SEED_FINDS = {
+  version: 1,
+  overworld: { chance: .02, weights: [["opal", 3], ["fossilized", 2], ["pumice", 2], ["crimson", 2]] },
+  dungeon: { chance: .05, weights: [["fossilized", 1]] },
+  skyland: { chance: .2, weights: [["fossilized", 1]] },
+};
+// How far a seed's crossing reaches: sections off from where it was planted (`hop`, in a direction of its own), the sections
+// searched round that spot (`radius`), and the most destinations built or previewed to verify one (`loads`). `near`: the
+// second search, round the tree or buoy itself, when nothing answers far off.
+export const SEED_TRAVEL = {
+  fossilized: { hop: [8, 24], radius: 6, near: 16, loads: 6 },
+  opal: { hop: [6, 18], radius: 6, loads: 10, near: 12 },
+};
+const SEED_KINDS = new Set(SEEDS.kinds);
+export function ensureSeeds(save) {
+  const q = save.seedPouch && typeof save.seedPouch === "object" && !Array.isArray(save.seedPouch) ? save.seedPouch : (save.seedPouch = {});
+  for (const k of SEEDS.kinds) q[k] = n0(q[k]);
+  const u = q.used && typeof q.used === "object" && !Array.isArray(q.used) ? q.used : (q.used = {});
+  for (const k of SEEDS.kinds) u[k] = n0(u[k]);
+  return q;
+}
+export const seedCount = (save, kind) => SEED_KINDS.has(kind) ? n0(save?.seedPouch?.[kind]) : 0;
+// Add `n` seeds of `kind`. Returns the new count (0 and nothing changed for an unknown kind).
+export function grantSeed(save, kind, n = 1) { if (!SEED_KINDS.has(kind)) return 0; const q = ensureSeeds(save); q[kind] += n0(n); return q[kind]; }
+// Spend one seed of `kind`. Returns true when one was held and is now gone (and counted in `used`), false otherwise.
+export function consumeSeed(save, kind) {
+  if (!SEED_KINDS.has(kind)) return false; const q = ensureSeeds(save); if (q[kind] < 1) return false;
+  q[kind] -= 1; q.used[kind] += 1; return true;
+}
+// Which seed (if any) the find `source` at `key` holds. Pure: the same seed, source and key always answer the same.
+export function seedFindRoll(seed, source, key) {
+  const F = SEED_FINDS[source]; if (!F?.weights) return null;
+  const h = hashSeed(`${seed}:seed-find:v${SEED_FINDS.version}:${source}:${key}`); if ((h % 10000) / 10000 >= F.chance) return null;
+  const total = F.weights.reduce((n, [, w]) => n + w, 0); let r = hashSeed(`${seed}:seed-kind:v${SEED_FINDS.version}:${source}:${key}`) % total;
+  for (const [k, w] of F.weights) { if (r < w) return k; r -= w; } return F.weights[0][0];
+}
+export const seedFindFlag = (source, key) => `seed-find:${source}:${key}`;
+// Where a seed's crossing aims: `hop` sections off from (rx, ry), in a direction drawn from `key`.
+export function seedHopTarget(key, rx, ry, [lo, hi]) {
+  const h = hashSeed(`${key}:seed-hop`), d = lo + h % (hi - lo + 1), a = ((h >>> 8) % 3600) / 3600 * Math.PI * 2;
+  return { rx: rx + Math.round(Math.cos(a) * d), ry: ry + Math.round(Math.sin(a) * d) };
+}
+// A Tide Bearer's passage as stored in the dive's history: version 1, a destination section and its buoy.
+export const validOpalPassage = (q) => q?.v === 1 && [q.rx, q.ry].every(Number.isSafeInteger) && Number.isFinite(q.x) && Number.isFinite(q.y) && q.x >= 0 && q.x < 32 && q.y >= -1 && q.y < 32;

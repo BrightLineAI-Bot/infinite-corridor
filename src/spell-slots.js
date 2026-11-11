@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r875-f410be5ab7b8";
+import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r881-fc5a0d9d5e61";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -71,7 +71,7 @@ export const SLOT_ACTIONS = Object.freeze({ a: "spell", b: "spell2", c: "spell3"
 // Release 874: the fixed utility button where the compass sat (bottom left). Each preset chooses what it does. "frame" is the
 // Submersible Frame ashore: the robot, its Empowered (power armor) mode and the drone are one control, the same frame
 // cycled by the same button (vehicle-gates.ts toggleMech; robot or drone is the frame's mode, chosen in Supplies).
-// Release r875-f410be5ab7b8 (Tim, 2026-11-11: "you can either have the robot... as a suit or as a drone... they should be... either, or you
+// Release 875 (Tim, 2026-11-11: "you can either have the robot... as a suit or as a drone... they should be... either, or you
 // can have one or the other"): the frame's two forms are separate choices, "robot" (the suit, with its power armor) and "drone".
 // Only one is ever out: the button calls up its own form and puts the other away first. A stored "frame" (release 874) reads as
 // the form the frame was set to (save.mech.mode).
@@ -79,7 +79,54 @@ export const UTILITY = Object.freeze({ choices: Object.freeze(["oculus", "build"
 export const frameForm = (save) => (save?.mech?.mode === "drone" ? "drone" : "robot");
 // Release 309 (Tim: "I want you to be able to put build in any one of those positions... items... spells... or build"): A and
 // B may also hold "build" or "item" (the preset's item), and the Build button may hold a castable. Additive at schema 14.
-export const SLOT_TOOLS = ["build", "item"];
+// Lantern (2026-11-11): "lantern" joins them, so A, B or C can hold it.
+export const SLOT_TOOLS = ["build", "item", "lantern"];
+// The Lantern (Tim, 2026-11-11: "a lantern... the Wayfarer can put on... assignable to one of the A/B/C option buttons...
+// Toggling it illuminates the area around the Wayfarer more"). Carried from the start: no source, no cost. Its slot's button
+// lights or shutters it (`save.lantern.lit`, additive at schema 14, normalised by ensureLantern from freshSave and migrateSave).
+// It never changes the darkness itself: where an area is dark (`places`), the renderer lifts that darkness by lanternLift(d)
+// around the Wayfarer, `strength` at the heart out to `inner` of `radius`, easing to nothing at `radius` and beyond. Close
+// View's torch reaches `closeReach` times as far. The Gloomvast's Dark and the Stormkraken's ink are a boss's moves, not a
+// place's dark, and are left as they are.
+export const LANTERN = Object.freeze({
+  name: "Lantern", symbol: "☼", color: "#f2c46a",
+  places: Object.freeze(["dungeon"]), // the areas it lights: every dungeon (caves, the Deep, Pentagons, chasms, labyrinths)
+  radius: 4.5, // tiles (Standard View): darkness is lifted within this, never beyond
+  inner: .35, // share of the radius lit at full strength
+  strength: .8, // share of the darkness lifted at the heart (the dark still reads)
+  glow: .14, glowRGB: "255,190,110", // its warm light over the floor (additive, at most this alpha)
+  closeReach: 1.4, // Close View: the torch reaches this many times as far while it is lit
+  maskPx: 96, // the one cached light mask (pixels a side)
+  maskStops: 8, // gradient stops sampled from lanternLift
+});
+// How much of the darkness the lit lantern lifts `d` tiles from the Wayfarer: 0..strength, exactly 0 at radius and beyond.
+export function lanternLift(d) {
+  const L = LANTERN, R = L.radius, r0 = R * L.inner;
+  if (!(d >= 0) || d >= R) return d < 0 ? L.strength : 0;
+  if (d <= r0) return L.strength;
+  const t = (d - r0) / (R - r0); return L.strength * (1 - t * t * (3 - 2 * t));
+}
+// The darkness left at distance d where an overlay would lay `dark` (0..1): lifted only within the radius, only while lit.
+export const litDarkness = (dark, d, lit = true) => (lit ? dark * (1 - lanternLift(d)) : dark);
+// The mask's gradient stops, [offset, alpha] from the centre (0) to the radius (1), sampled once.
+export const LANTERN_STOPS = Object.freeze(Array.from({ length: LANTERN.maskStops + 1 }, (_, i) => Object.freeze([i / LANTERN.maskStops, lanternLift(LANTERN.radius * i / LANTERN.maskStops) / LANTERN.strength])));
+export const lanternLit = (save) => save?.lantern?.lit === true;
+// Whether the lantern is lighting `area` now (lit, and the area is one of its dark places).
+export const lanternShines = (save, area) => lanternLit(save) && LANTERN.places.includes(area);
+// Close View: the torch's reach times this (1 unless the lantern shines here).
+export const lanternReach = (save, area) => (lanternShines(save, area) ? LANTERN.closeReach : 1);
+export function ensureLantern(save) {
+  if (!save || typeof save !== "object") return null;
+  const raw = save.lantern && typeof save.lantern === "object" && !Array.isArray(save.lantern) ? save.lantern : {};
+  save.lantern = { ...raw, lit: raw.lit === true }; // unknown fields kept
+  return save.lantern;
+}
+export function toggleLantern(save) {
+  const l = ensureLantern(save); l.lit = !l.lit;
+  return { ok: true, lit: l.lit, message: l.lit ? "The lantern is lit: the dark draws back around you." : "You shutter the lantern." };
+}
+// The name of a slot tool, for messages and labels.
+export const slotToolName = (t) => (t?.tool === "build" ? "Build" : t?.tool === "lantern" ? LANTERN.name : "Item");
 export const pairKey = (x, y) => [x, y].sort().join("+");
 
 // Castables the Wayfarer can slot now: every spell, every discipline with a rank, Aerial Step once learned.
@@ -164,7 +211,7 @@ export function togglePreset(save) {
   const ok = (k) => k && (SLOT_TOOLS.includes(k) || have.includes(k)); slots.a = ok(p.a) ? p.a : null; slots.b = ok(p.b) && p.b !== slots.a ? p.b : null;
   slots.c = ok(p.c) && p.c !== slots.a && p.c !== slots.b ? p.c : null; // release 874
   ms.presets[next] = { ...p, ...slots }; syncLegacy(save);
-  const name = (q) => { const c = slotted(save, q), t = !c && slotTool(save, q); return c ? c.name : t ? (t.tool === "build" ? "Build" : "Item") : "empty"; };
+  const name = (q) => { const c = slotted(save, q), t = !c && slotTool(save, q); return c ? c.name : t ? slotToolName(t) : "empty"; };
   return { ok: true, preset: next + 1, message: `Spell preset ${next + 1}: A ${name("a")} · B ${name("b")} · C ${name("c")}.` };
 }
 export function slotted(save, slot) {
@@ -187,7 +234,7 @@ export function setSlot(save, slot, key) {
   const p = activePairing(save);
   if (p && !save.magicSkills.pairingsSeen[p.key]) { save.magicSkills.pairingsSeen[p.key] = true; return { ok: true, message: `Pairing found: ${p.name} — ${p.text}`, pairing: p }; }
   const c = slotted(save, slot), t = slotTool(save, slot);
-  return { ok: true, message: c ? `${c.name} set in slot ${slot.toUpperCase()}.` : t ? `${t.tool === "build" ? "Build" : "The preset's item"} set in slot ${slot.toUpperCase()}.` : `Slot ${slot.toUpperCase()} emptied.` };
+  return { ok: true, message: c ? `${c.name} set in slot ${slot.toUpperCase()}.` : t ? `${t.tool === "item" ? "The preset's item" : slotToolName(t)} set in slot ${slot.toUpperCase()}.` : `Slot ${slot.toUpperCase()} emptied.` };
 }
 // Older systems read `equippedSpell` (spell glyph host) and `selected` (bound discipline); keep them following the slots.
 function syncLegacy(save) {

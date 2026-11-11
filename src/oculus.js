@@ -9,9 +9,9 @@
 // blend (close-view.ts closeViewFrame) is the warp, with a short flash in the HUD; both are skipped under Reduced Motion.
 // The dais is presentation and a toggle only: no combat effect. It lives on the Game as runtime state (`game.oculus`), is
 // never saved, and is dropped on a change of map or when a pause outlasts it.
-import { buildSpot } from "./building.js?v=r875-f410be5ab7b8";
-import { CLOSE_VIEW_HOOKS, interiorMap, overworldCloseViewApplies, closeViewWanted } from "./close-view.js?v=r875-f410be5ab7b8";
-import { closeViewGLStats } from "./close-view-gl.js?v=r875-f410be5ab7b8";
+import { buildSpot } from "./building.js?v=r881-fc5a0d9d5e61";
+import { CLOSE_VIEW_HOOKS, interiorMap, overworldCloseViewApplies, closeViewWanted } from "./close-view.js?v=r881-fc5a0d9d5e61";
+import { closeViewGLStats } from "./close-view-gl.js?v=r881-fc5a0d9d5e61";
 
 export const OCULUS = Object.freeze({
   seconds: 5, // the dais stands this long, then it is gone
@@ -44,7 +44,7 @@ export function oculusAvailable(g) {
 }
 // The tile for a dais: one ahead of the Wayfarer (oculusAhead), or the nearest free one to it (never the Wayfarer's own). Null if none.
 // `open(x, y)` says whether a tile is free walkable ground.
-// Release r875-f410be5ab7b8 (Tim, 2026-11-11: "the dais should appear just in front of where the character's facing"): "ahead" follows the
+// Release 875 (Tim, 2026-11-11: "the dais should appear just in front of where the character's facing"): "ahead" follows the
 // Wayfarer's own heading, to the nearest of eight directions, so a diagonal walk (Close View steers in any direction) opens it
 // on the diagonal. The heading is the last move; when the Wayfarer has turned since (an attack, a lock), the facing wins.
 const CARDINAL = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };

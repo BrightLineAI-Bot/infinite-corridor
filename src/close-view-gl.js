@@ -1,6 +1,6 @@
-import { MODEL_FLOATS } from "./close-view-models.js?v=r875-f410be5ab7b8";
-import { buildVisualRevision } from "./building.js?v=r875-f410be5ab7b8";
-import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r875-f410be5ab7b8';
+import { MODEL_FLOATS } from "./close-view-models.js?v=r881-fc5a0d9d5e61";
+import { buildVisualRevision } from "./building.js?v=r881-fc5a0d9d5e61";
+import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r881-fc5a0d9d5e61';
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's

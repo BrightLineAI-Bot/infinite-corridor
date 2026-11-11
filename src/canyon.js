@@ -17,8 +17,8 @@
 // - Caverns, a lava stream and an underground pool (each with a crossing), a ravine spanned by a bridge, the wreck in the
 //   deepest cavern, creatures in the caverns. The outer rock cannot be drilled.
 // Save: additive at schema 14 (the crater's dungeon history: `canyon` { caveIns, sealed, drilled: [tile indexes] }).
-import { hashSeed, rng } from "./random.js?v=r875-f410be5ab7b8";
-import { LETHAL_KINDS } from "./landscape.js?v=r875-f410be5ab7b8";
+import { hashSeed, rng } from "./random.js?v=r881-fc5a0d9d5e61";
+import { LETHAL_KINDS } from "./landscape.js?v=r881-fc5a0d9d5e61";
 
 export const CANYON = {
   version: 1,
@@ -44,7 +44,7 @@ export const CANYON = {
   messages: {
     entrance: "A crater gapes here: something fell from the sky and drove deep into the earth. The Canyon below is packed with clods you can drill through.",
     enter: "Call up the robot and push into a clod to drill it with the auger. Ringed clods are unstable: drill them in short bursts or they go green, yellow, red. Red caves in: find another way.",
-    needRobot: "The clods are too dense to dig by hand. Call up the robot: its auger drills them.",
+    needRobot: "The clods are too dense to push through by hand. Dig one out with a shovel (Act), or call up the robot: its auger drills them.",
     toYellow: "The clod groans: it has gone yellow. Drill in short bursts.",
     yellowToRed: "The clod cracks red. Break it and the ceiling comes down: find another way.",
     caveIn: (n, limit) => `The ceiling caves in! (${n} of ${limit}: one more and the crater may collapse)`,

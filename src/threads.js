@@ -7,9 +7,12 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r875-f410be5ab7b8";
-import { READING_BANDS } from "./lore.js?v=r875-f410be5ab7b8";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r875-f410be5ab7b8";
+import { hashSeed } from "./random.js?v=r881-fc5a0d9d5e61";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown } from "./lore.js?v=r881-fc5a0d9d5e61";
+import { BELLS, bellsRung } from "./bells.js?v=r881-fc5a0d9d5e61";
+import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r881-fc5a0d9d5e61";
+import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r881-fc5a0d9d5e61";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r881-fc5a0d9d5e61";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -300,14 +303,21 @@ const roll = (key) => (hashSeed(key) % 10000) / 10000;
 const firstTenGivesWay = (rx, ry, version) => version >= STORY_BUDGET.firstTenGivesWay && inBand("beyond", rx, ry);
 // Which thread this crossing holds, or null: one roll for whether it holds any, one for which of its band's threads. `version` is
 // the crossing's story version (storyVersionOf); 0, the default, is the rule every crossing entered before the budget keeps.
-export function threadIn(seed, dungeonId, version = 0) {
+// `region` is its region version (lore.ts ARCANA_REGIONS, regionVersionOf; read only from story version 1): from 1 the rolls for
+// whether it holds a piece are unchanged, and the pick of which thread weighs a thread at home here `homeWeight` times (homeWeight).
+export function threadIn(seed, dungeonId, version = 0, region = 0) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return null;
   const rx = Number(m[1]), ry = Number(m[2]); if (Math.abs(rx) + Math.abs(ry) < THREAD_RULES.minDepth) return null;
-  if (firstTenGivesWay(rx, ry, version)) return sharedThreadIn(seed, dungeonId, rx, ry, version);
-  if (roll(`${seed}:threads:v1:${dungeonId}`) >= THREAD_RULES.chance) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version) : laterThreadIn(seed, dungeonId, rx, ry);
-  const here = FIRST_THREADS.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version) : null;
-  return here[hashSeed(`${seed}:threads:which:v1:${dungeonId}`) % here.length];
+  const r = version >= 1 ? region : 0;
+  if (firstTenGivesWay(rx, ry, version)) return sharedThreadIn(seed, dungeonId, rx, ry, version, r);
+  if (roll(`${seed}:threads:v1:${dungeonId}`) >= THREAD_RULES.chance) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version, r) : laterThreadIn(seed, dungeonId, rx, ry);
+  const here = FIRST_THREADS.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version, r) : null;
+  const h = hashSeed(`${seed}:threads:which:v1:${dungeonId}`);
+  return r >= 1 ? weightedPick(here, h, (id) => homeWeight(id, rx, ry)) : here[h % here.length];
 }
+// Region version 1: a thread whose home (lore.ts ARCANA_REGIONS.sets) holds this section weighs `homeWeight`; any other, 1.
+export const homeWeight = (id, rx, ry) => inArcanaHome(id, rx, ry) ? ARCANA_REGIONS.homeWeight : 1;
+function weightedPick(list, h, weigh) { let k = h % list.reduce((n, id) => n + weigh(id), 0); for (const id of list) { k -= weigh(id); if (k < 0) return id; } return null; }
 // The story budget (STORY_BUDGET): the later threads sharing slots in a section at story version `version`, in THREAD_ORDER.
 export const sharedThreads = (version, rx, ry) => THREAD_ORDER.filter((id) => Object.entries(THREADS[id].shared || {}).some(([v, bands]) => Number(v) <= version && bands.some((b) => inBand(b, rx, ry))));
 // The chance of the shared roll, made only where the first ten's roll placed nothing: what the budget of `version` leaves there
@@ -324,10 +334,11 @@ export function threadWeight(id, version = STORY_BUDGET.version) {
   if (w && typeof w === "object") { for (const [v, x] of Object.entries(w)) if (Number(v) <= version) n = Number(x); } else if (version >= 2) n = Number(w);
   return Math.max(1, Math.floor(n) || 1);
 }
-function sharedThreadIn(seed, dungeonId, rx, ry, version) {
+function sharedThreadIn(seed, dungeonId, rx, ry, version, region = 0) {
   if (roll(`${seed}:threads:shared:v1:${dungeonId}`) >= sharedRate(rx, ry, version)) return null;
   const here = sharedThreads(version, rx, ry); if (!here.length) return null;
   const h = hashSeed(`${seed}:threads:shared:which:v1:${dungeonId}`);
+  if (region >= 1) return weightedPick(here, h, (id) => threadWeight(id, version) * homeWeight(id, rx, ry)); // region version 1: home threads weigh more
   if (version < 2) return here[h % here.length]; // version 1: an even share, exactly as release 773 chose
   let k = h % here.reduce((n, id) => n + threadWeight(id, version), 0);
   for (const id of here) { k -= threadWeight(id, version); if (k < 0) return id; }
@@ -370,6 +381,7 @@ function fifthThreadIn(seed, dungeonId, rx, ry) {
 }
 export function ensureThreadState(save) {
   const lore = (save.lore ||= {});
+  if (lore.arcanaClaimed !== undefined) lore.arcanaClaimed = Object.fromEntries(Object.entries(lore.arcanaClaimed && typeof lore.arcanaClaimed === "object" && !Array.isArray(lore.arcanaClaimed) ? lore.arcanaClaimed : {}).filter(([, v]) => v === true)); // arcana rewards claimed (2026-11-11); unknown set ids kept
   if (lore.threads !== undefined) { const out = {}; const raw = lore.threads && typeof lore.threads === "object" ? lore.threads : {};
     for (const id of THREAD_ORDER) if (Array.isArray(raw[id])) out[id] = raw[id].filter((d) => typeof d === "string").slice(0, THREADS[id].pieces.length);
     lore.threads = out; }
@@ -382,7 +394,7 @@ export const threadsStarted = (save) => THREAD_ORDER.filter((id) => threadFound(
 // (waiting); nothing when the thread is complete and none was found here.
 export function addThreadRelic(map, save, dungeonId) {
   if (!map?.tiles?.length || map.multiLevel || map.arena || map.underwater || map.objects?.some((o) => o.kind === "threadRelic")) return null;
-  const id = threadIn(save?.seed, dungeonId, storyVersionOf(save, dungeonId)); if (!id) return null;
+  const id = threadIn(save?.seed, dungeonId, storyVersionOf(save, dungeonId), regionVersionOf(save, dungeonId)); if (!id) return null;
   const T = THREADS[id], found = threadFound(save, id), here = found.indexOf(dungeonId), index = here >= 0 ? here : found.length; if (index >= T.pieces.length) return null;
   const w = map.width || 24, entry = map.entry || { x: 4, y: 5 }, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
   const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.structure && !t.chasm && t.x > 1 && t.y > 1 && t.x < w - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= 6 && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|canyon|void|Gate/i.test(String(t.kind)));
@@ -400,4 +412,39 @@ export function readThreadRelic(save, o) {
   o.state = "read"; o.index = at; o.name = `${T.title}, read`;
   const text = T.pieces[at], done = first && list.length >= T.pieces.length, n = list.length;
   return { ok: true, first, done, title: T.title, text, ending: T.ending, message: `${T.title}. ${text}${first ? (done ? ` ${T.ending}` : ` (${n} of ${T.pieces.length}.)`) : ""}` };
+}
+
+// The Arcana (2026-11-11; Tim: the Journal should show "5 of 6 bells found" and a hint of where the rest likely are). Every set
+// told across crossings, in the Journal's order: its count, its unit and where the rest most likely lie. With the regions live
+// (lore.ts ARCANA_REGIONS.live) a set with a home names it; otherwise the hint says where the set has always been placed. The
+// Torn Pages name the region of each Reading whose page is missing (a Reading not yet heard is not named). A thread with no home
+// (or with the regions not live) gives no hint here: the Journal words its band (main.ts ARCANA_BANDS). Pure: no DOM.
+export const ARCANA_SETS = {
+  bells: { title: "The Seven Bells", unit: "bells rung", total: () => BELLS.count, found: (s) => bellsRung(s).length, where: `ordinary crossings anywhere from ${BELLS.minDepth} sections out` },
+  surveyor: { title: "The Surveyor's Chain", unit: "links", total: () => SURVEYOR.links, found: (s) => surveyorFound(s), where: `crossings ${SURVEYOR.minRing} or more sections from the Refuge` },
+  pages: { title: TORN_PAGES.title, unit: "pages", total: () => READING_ORDER.length, found: (s) => pagesFound(s).length, where: "the crossings of each Reading" },
+};
+export function arcanaWhere(save, id, live = ARCANA_REGIONS.live) {
+  if (id === "pages") { const found = new Set(pagesFound(save)), left = READING_ORDER.filter((r) => !found.has(r)); if (!left.length) return null;
+    const known = left.filter((r) => readingKnown(save, r)), unheard = left.length - known.length;
+    return [...known.map((r) => `${READINGS[r].name} (${readingRegionHint(r)})`), ...(unheard ? [`${unheard} in Readings not yet heard`] : [])].join("; "); }
+  if (live && ARCANA_REGIONS.sets[id]) return arcanaHint(id);
+  return THREADS[id] ? null : ARCANA_SETS[id]?.where || null;
+}
+export function arcanaProgress(save, live = ARCANA_REGIONS.live) {
+  const row = (id, title, unit, found, total) => ({ id, title, unit, band: THREADS[id]?.band || null, found: Math.min(found, total), total, complete: found >= total, where: found >= total ? null : arcanaWhere(save, id, live), home: live ? ARCANA_REGIONS.sets[id] || null : null });
+  return [...THREAD_ORDER.map((id) => row(id, THREADS[id].title, "pieces", threadFound(save, id).length, THREADS[id].pieces.length)),
+    ...Object.entries(ARCANA_SETS).map(([id, S]) => row(id, S.title, S.unit, S.found(save), S.total()))];
+}
+// Completion rewards (2026-11-11): the hook only. `ARCANA_REWARDS[setId]` names what finishing a set unlocks ({ kind, id, label };
+// Tim chooses; none yet, so nothing is granted). settleArcanaRewards hands every complete set with a reward not yet claimed to
+// `grant(setId, reward)` once, and records it in save.lore.arcanaClaimed ({ setId: true }; additive, normalised by
+// ensureThreadState), so a set finished before its reward existed is paid the first time the hook runs after.
+export const ARCANA_REWARDS = {};
+export const arcanaComplete = (save) => arcanaProgress(save, false).filter((r) => r.complete).map((r) => r.id);
+export function settleArcanaRewards(save, grant = () => {}) {
+  const out = [];
+  for (const id of arcanaComplete(save)) { const reward = ARCANA_REWARDS[id]; if (!reward || save.lore?.arcanaClaimed?.[id]) continue;
+    ((save.lore ||= {}).arcanaClaimed ||= {})[id] = true; grant(id, reward); out.push(id); }
+  return out;
 }
