@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 885: The world now advances in steady 60 Hz steps and is drawn between them, so movement looks even at any screen refresh rate and dodges cover the same distance from 20 fps up. Entering an interior in Close View no longer builds its walls in the same frame as loading the floor, and the build is 2–4× faster.
 - Release 884: Close View creatures are solid: no more see-through, fading-in monsters inside view range (only the last 1.5 tiles before the fog's edge thin them). Ghosts by design (Lumen Wraith, Gloomwisp, Gloomgorge) stay ghostly with a cold rim, and every creature gets a brighter light floor, a cool rim light and glowing eyes and embers.
 - Release 883: Seed realms: offer a Pumice or Crimson Seed at a Watcher's shrine to enter the Hollow Husk (a haunted mining world bored hollow) or the Drifting Ship (robots, glass floors over the galaxy, an open hangar). Each is a large, one-time realm with Aperture Crystals, caches, a beacon to rise at, and Divine Viscera when its heart falls. It vanishes for good when you leave and sets you down elsewhere.
 - Release 882: Close View: every sword is held and swung in the Wayfarer's left hand (including the Verge Cleaver), guns and tools sit a little smaller in the right hand, the Blunderbuss is raised two-handed like a rifle and the Rift Bombard is held two-handed low at the hip when fired, and tool shots now leave the weapon's muzzle instead of the chest.

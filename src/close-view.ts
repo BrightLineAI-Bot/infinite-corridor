@@ -1835,15 +1835,16 @@ function hallHeight(map) {
     : CLOSE_VIEW.walls.height;
 }
 export const closeViewStaticStats = { builds: 0 };
+const STATIC_OUT = { a: new Float32Array(1 << 16), n: 0 }; // buildStatic's scratch vertex buffer, grown by doubling and kept between floors
 function buildStatic(map, geo, th) {
   closeViewStaticStats.builds++;
-  const out = [], lights = [], flames = [], cards = [], w = geo.w, h = geo.h, tiles = map.tiles, Fc = geo.faces, H = hallHeight(map), RB = CLOSE_VIEW.walls.rubble, tg = themeGL(th), src = th.light.sources;
+  const out = STATIC_OUT, lights = [], flames = [], cards = [], w = geo.w, h = geo.h, tiles = map.tiles, Fc = geo.faces, H = hallHeight(map), RB = CLOSE_VIEW.walls.rubble, tg = themeGL(th), src = th.light.sources;
   const solid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || isWall(tiles[y * w + x]);
   const busy = new Uint8Array(w * h); for (const o of map.objects || []) { const ox = Math.floor(Number(o.x) + .5), oy = Math.floor(Number(o.y) + .5); for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const x = ox + i, y = oy + j; if (x >= 0 && y >= 0 && x < w && y < h && (i === 0 && j === 0 || o.kind === "buildingStair" || o.kind === "exit" || o.kind === "dungeon")) busy[y * w + x] = 1; } }
   const free = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !solid(x, y) && !busy[y * w + x] && !closeViewHazardCode(tiles[y * w + x]) && !tiles[y * w + x].doorway;
   const salt = strHash(`${map.building?.base || map.name || ""}:${map.building?.floor ?? ""}:${map.building?.node ?? ""}:${w}x${h}`);
   const rnd = (a, b, c, k) => hash32(salt ^ hash32((a * 73856093) ^ (b * 19349663) ^ (c * 83492791) ^ (k * 2654435761))) / 4294967296;
-  const V = (X, Y, Z, along, u, z, top, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty, lift = true) => { out.push(X, Y, Z + (lift ? interiorGeometryHeight(map, tx, ty, X, Y) : 0), along, u, z, top, nx, ny, part, mat, c[0], c[1], c[2], deco, grit, bits, hsh, tx, ty); };
+  out.n = 0; const V = (X, Y, Z, along, u, z, top, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty, lift = true) => { let a = out.a, o = out.n; if (o + 20 > a.length) { const b = new Float32Array(a.length * 2); b.set(a); out.a = a = b; } a[o] = X; a[o + 1] = Y; a[o + 2] = Z + (lift ? interiorGeometryHeight(map, tx, ty, X, Y) : 0); a[o + 3] = along; a[o + 4] = u; a[o + 5] = z; a[o + 6] = top; a[o + 7] = nx; a[o + 8] = ny; a[o + 9] = part; a[o + 10] = mat; a[o + 11] = c[0]; a[o + 12] = c[1]; a[o + 13] = c[2]; a[o + 14] = deco; a[o + 15] = grit; a[o + 16] = bits; a[o + 17] = hsh; a[o + 18] = tx; a[o + 19] = ty; out.n = o + 20; }; // feel pass 1 (pre-warm): written straight into one reused Float32Array (the same float32 rounding Float32Array.from gave the array of pushes it replaces), not pushed into a growing array
   // a vertical quad from a to b, z0 to z1 (along a0 to a1 on the run; u 0 to 1 across)
   const quad = (ax, ay, bx, by, z0, z1, a0, a1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty) => {
     V(ax, ay, z0, a0, 0, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z0, a1, 1, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z1, a1, 1, z1, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty);
@@ -2179,7 +2180,7 @@ function buildStatic(map, geo, th) {
     for(let i=0;i<lights.length;i+=LIGHT_FLOATS) lights[i+2]+=interiorSurfaceHeight(map,lights[i],lights[i+1]);
     for(let i=0;i<flames.length;i+=FLAME_FLOATS) flames[i+2]+=interiorSurfaceHeight(map,flames[i],flames[i+1]);
   }
-  return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
+  return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: out.a.slice(0, out.n), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.n / WALL_FLOATS };
 }
 // How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.
 function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map)); if (!st) return Infinity; const w = st.w;
@@ -2187,6 +2188,21 @@ function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map)); if (!s
 function staticFor(map, geo, th) { let st = STATIC.get(geo); if (!st || st.th !== th) { st = buildStatic(map, geo, th); st.th = th; STATIC.set(geo, st); } return st; }
 // For tests and the lab: the floor's built things (counts, and the lights and props as plain lists).
 export function closeViewStatic(map) { const geo = wallGeometry(map), st = staticFor(map, geo, themeOf(map)); return { theme: closeViewThemeId(map?.building), verts: st.verts, lights: st.nLights, flames: st.nFlames, cards: st.nCards, data: st.data, lightList: st.lights, cardList: st.cards }; }
+// Feel pass 1 (pre-warm): a floor's walls (wallGeometry, then the static buffer) were built on the first Close View frame that
+// drew it, in the same frame as the floor's own load: 15-126 ms of CPU on a desktop, several times that on a phone, at the one
+// moment the player is moving through a door. closeViewPrewarmDue says the next Close View frame would build them; the host
+// (main.ts) then holds the last frame on screen and builds them in a task of their own (prewarmCloseView), so the load and the
+// build land in separate frames. The build is the very one the frame would have made (staticFor, cached per floor), so what is
+// drawn is byte-identical. A frame that comes before the task has run builds as before.
+export function closeViewPrewarmDue(g) {
+  if (!g?.map?.tiles || !g.player || CLOSE_VIEW_HOOKS.gl === false || qualityOf(g).gl !== true || !closeViewApplies(g)) return false;
+  const extended = overworldCloseViewApplies(g); if (extended && openWorldScene(g) && !interiorTerrain(g.map) && !g.map.building) return false; // renderCloseView's plainWorld: no static buffer
+  const geo = wallCache.get(g.map), st = geo && geo.tiles === g.map.tiles ? STATIC.get(geo) : null;
+  return !(st && st.th === themeOf(g.map));
+}
+export function prewarmCloseView(g) { if (!closeViewPrewarmDue(g)) return false; staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); return true; }
+// The GPU context and its programs, made ahead of the first Close View frame (the host calls it once, idle, with Close View on).
+export function prewarmCloseViewGL() { if (CLOSE_VIEW_HOOKS.gl === false) return false; try { return closeViewGLReady(makeCanvas); } catch { return false; } }
 
 // The light reaching a point, as one number (a creature's card, a prop's): the shader's falloff, from the carried light and the
 // frame's placed lights.
