@@ -85,7 +85,7 @@ function buildKnightMesh(tier) {
   { const dec = (b64, T) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
     const P = dec(KNIGHT_BODY.positions, Float32Array), N = dec(KNIGHT_BODY.normals, Int8Array), Bn = dec(KNIGHT_BODY.bone, Uint8Array), Wt = dec(KNIGHT_BODY.weight, Uint8Array), L = dec(KNIGHT_BODY.shade, Uint8Array), IX = dec(full ? KNIGHT_BODY.indices : low ? KNIGHT_BODY.indicesLow : KNIGHT_BODY.indicesBalanced, Uint16Array);
     const names = KNIGHT_BODY.bones, lerp = (a, b, t) => { const c = (sh2) => Math.round(((a >> sh2) & 255) + ((((b >> sh2) & 255) - ((a >> sh2) & 255)) * t)); return (c(16) << 16) | (c(8) << 8) | c(0); };
-    const base = (bn) => /hand|foot/.test(bn) ? [C.black, C.plate] : /arm|fore|thigh|shin/.test(bn) ? [C.deep, C.bright] : [C.deep, C.lit];
+    const base = (bn) => /hand|foot/.test(bn) ? [C.deep, C.lit] : /arm|fore|thigh|shin/.test(bn) ? [C.plate, C.bright] : [C.plate, C.bright];
     const ids = new Array(KNIGHT_BODY.vertexCount);
     for (let v = 0; v < KNIGHT_BODY.vertexCount; v++) { const a = names[Bn[v * 2]], b = names[Bn[v * 2 + 1]], [lo, hi] = base(a);
       ids[v] = B.vertexBlend(P[v * 3], P[v * 3 + 1], P[v * 3 + 2], N[v * 3] / 127, N[v * 3 + 1] / 127, N[v * 3 + 2] / 127, a, b, Wt[v] / 255, lerp(lo, hi, Math.pow(L[v] / 255, 1.2))); }
@@ -93,7 +93,7 @@ function buildKnightMesh(tier) {
   // ---- armour over it: knee cops, pointed sabatons; the faulds, tassets and tabard; the seams of light; the gorget
   for (const [s, tag] of [[-1, 'L'], [1, 'R']]) {
     const y = J0['thigh' + tag][1];
-    box('shin' + tag, C.knee, [J0['shin' + tag][0] + .045, y, knee], [.03, .04, .026], { taper: .3 }); // the knee cop
+    B.bone('shin' + tag).color(C.knee).ellipsoid({ at: at('shin' + tag, [J0['shin' + tag][0] + .042, y, knee]), radius: [.022, .036, .03], rings: low ? 2 : 3, seg: low ? 5 : 7 }); // the knee cop
     box('foot' + tag, C.black, [J0['foot' + tag][0] + .06, y, .022], [.07, .034, .02], { taper: .4, skew: .025 }); // the pointed sabaton
   }
   if (!low) for (const s of [-1, 1]) box('pelvis', C.deep, [.0, s * .085, hip - .02], [.05, .04, .045], { taper: -.2, F: [1, 0, 0], U: [0, s * .25, 1] }); // tassets
@@ -105,8 +105,9 @@ function buildKnightMesh(tier) {
   // ---- pauldrons: lean, swept, layered, angled down over the shoulders
   for (const [s, tag] of [[-1, 'L'], [1, 'R']]) {
     const y = J0['arm' + tag][1], ax = J0['arm' + tag][0];
-    B.bone('arm' + tag).color(s > 0 ? C.bright : C.dark).box({ at: at('arm' + tag, [ax, y + s * .015, sh + .03]), size: [.065, .055, .035], bevel: .25, taper: .3, F: [1, 0, 0], U: [0, s * .55, 1] });
-    if (!low) B.color(C.deep).box({ at: at('arm' + tag, [ax, y + s * .04, sh - .02]), size: [.055, .035, .024], bevel: .2, F: [1, 0, 0], U: [0, s * .85, 1] });
+    // a rounded shell over the shoulder, a lame below it, each a little out and down
+    B.bone('arm' + tag).color(s > 0 ? C.bright : C.plate).lathe({ at: at('arm' + tag, [ax - .005, y - s * .015, sh + .005]), F: [0, s * .55, .85], U: [1, 0, 0], rings: [[0, .072], [.022, .068], [.042, .05], [.055, .026], [.06, 0]], rs: .85, seg: low ? 5 : 9, caps: false });
+    if (!low) B.color(C.dark).lathe({ at: at('arm' + tag, [ax - .005, y + s * .012, sh - .035]), F: [0, s * .85, .5], U: [1, 0, 0], rings: [[0, .06], [.02, .055], [.03, 0]], rs: .85, seg: 8, caps: false });
     if (!low) box('fore' + tag, C.knee, [ax - .03, y, J0['fore' + tag][2]], [.022, .032, .022], { taper: .2 }); // the couter at the elbow
   }
   // the cannon in the left forearm: a barrel that slides out and opens, a red muzzle
@@ -132,7 +133,7 @@ function buildKnightMesh(tier) {
     B.bone('sword').color(C.blade).poly([at('sword', P(.035 + R.blade * .88, 0, -.024)), at('sword', P(.035 + R.blade, 0, 0)), at('sword', P(.035 + R.blade * .88, 0, .024))]);
     box('sword', C.red, P(.035 + R.blade * .44, 0, .028), [R.blade * .43, .009, .003], { bevel: 0, emit: E_SEAM }); } // the red edge
   // ---- the cape of motes: small dark facets streaming back off the shoulders, thinning toward the tail; a few red
-  const capeN = low ? 6 : full ? 72 : 36, cb = ['cape0', 'cape1', 'cape2', 'cape3'];
+  const capeN = low ? 4 : full ? 72 : 36, cb = ['cape0', 'cape1', 'cape2', 'cape3'];
   for (let i = 0; i < capeN; i++) {
     const f = (i + .5) / capeN, seg = Math.min(2, Math.floor(f * 3)), w = f * 3 - seg, a = cb[seg], b2 = cb[seg + 1];
     const pa = [bw[BI[a] * 3], bw[BI[a] * 3 + 1], bw[BI[a] * 3 + 2]], pb = [bw[BI[b2] * 3], bw[BI[b2] * 3 + 1], bw[BI[b2] * 3 + 2]];
