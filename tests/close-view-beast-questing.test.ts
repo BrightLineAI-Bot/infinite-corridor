@@ -106,3 +106,17 @@ test('enraged ember cracks, death, reduced motion', () => {
   const r = createQbTrack(), e2 = createCombatant('questingBeast', 10, 10, true, []); sampleQb(r, e2, env(e2, 1000, { reduce: true }));
   const a = Array.from(sampleQb(r, e2, env(e2, 1016, { reduce: true })).skin); assert.deepEqual(Array.from(sampleQb(r, e2, env(e2, 4000, { reduce: true })).skin), a);
 });
+
+test('wings: folded close along the back, spread wide to fly, the membrane joined to the body', () => {
+  const e = createCombatant('questingBeast', 10, 10, true, []), tr = createQbTrack(), S = scaleOf(e); let now = 1000;
+  let f = null; for (let i = 0; i < 30; i++) f = sampleQb(tr, e, env(e, now += 16, { reduce: true }));
+  const span = () => { const c = qbBone(tr, 'chest'), cf = Math.cos(tr.yaw), sf = Math.sin(tr.yaw); let w = 0;
+    for (const b of ['wingTipL', 'wingTipR', 'wingF1L', 'wingF1R', 'wingF2L', 'wingF2R']) { const p = qbBone(tr, b); w = Math.max(w, Math.abs(-(p[0] - c[0]) * sf + (p[1] - c[1]) * cf)); } return w; };
+  const folded = span(); assert.ok(folded < .45 * S, `folded wrists stay over the back (${(folded / S).toFixed(2)})`);
+  let open = 0; fight('qbPounce', 5, (g, e2, t2) => { if (e2.pack.attack === 'qbPounce' && e2.pack.phase === 'rise') { const c = qbBone(t2, 'chest'); for (const b of ['wingTipL', 'wingTipR']) { const p = qbBone(t2, b); open = Math.max(open, Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2])); } } });
+  assert.ok(open > .9 * S, `spread for the leap (${(open / S).toFixed(2)})`);
+  // the broad membrane is skinned to the body along its inner edge, so it can never come away from the flank
+  const m = qbMesh('full'), body = new Set(['chest', 'spine', 'pelvis'].map((n) => QB_SKELETON.index[n])), wing = new Set(['wingL', 'wingR'].map((n) => QB_SKELETON.index[n]));
+  let joined = 0; for (let v = 0; v < m.vertexCount; v++) { const a = m.skin[v * 4], b = m.skin[v * 4 + 2], w = m.skin[v * 4 + 3]; if (wing.has(a) && body.has(b) && w > .5) joined++; }
+  assert.ok(joined >= 8, `membrane vertices on the body: ${joined}`);
+});
