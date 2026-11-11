@@ -29,7 +29,7 @@ export const QB_RIG = Object.freeze({
     rakeL: { rear: -.04, head: -.4, swing: -.35, crouch: .1, lean: .1, wings: .15, paw: -.8, open: .8, reach: 1 },
     crouch: { rear: -.08, head: -.35, swing: 0, crouch: .2, lean: .05, wings: .25, paw: 0, open: .4 },
     rise: { rear: .3, head: .25, swing: 0, crouch: -.05, lean: 0, wings: 1, paw: 0, open: .7 },
-    dive: { rear: -.35, head: -.3, swing: 0, crouch: 0, lean: .2, wings: .7, paw: 0, open: 1 },
+    dive: { rear: -.35, head: -.3, swing: 0, crouch: 0, lean: .2, wings: .5, paw: 0, open: 1 },
     land: { rear: -.1, head: -.45, swing: 0, crouch: .22, lean: .12, wings: .4, paw: 0, open: .6 },
     rearUp: { rear: .55, head: .5, swing: 0, crouch: .05, lean: 0, wings: 1, paw: 0, open: 1 },
     slam: { rear: -.12, head: -.4, swing: 0, crouch: .16, lean: .12, wings: .6, paw: 0, open: .9 },
