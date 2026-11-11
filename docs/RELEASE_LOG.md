@@ -21,9 +21,16 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 889 | Claude | claude/cv-lightning-giant | Close View beast slot (shared skinned rig, GPU-skinned program) and the Lightning Giant as a solid animated machine on its real attack clocks, drawn 1.25× | In flight. |
+| 893 | Claude | claude/cv-lightning-giant | Close View beast slot (shared skinned rig, GPU-skinned program) and the Lightning Giant as a solid animated machine on its real attack clocks, drawn 1.25× | In flight. |
 | 887 | Claude | claude/compass-facing | Close View compass follows the Wayfarer's body facing, not the camera; standard view stays north-up with an N/E/S/W dial | In flight. |
 | 888 | Claude | claude/wayfarer-passes | Close View Wayfarer: standard kit, silver pod robot, empowered pressure suit, readable jump/landing/hurt, aliveness pass, Wayfarer materials on tools | In flight. |
+| 889 | Claude | claude/cv-camera-targeting | Close View presets farther back and higher (wide 5 tiles); one target priority, reach lock, sticky lock, smooth switches, lock ring and edge pointer | In flight. |
+| 890 | Claude | claude/wayfarer-damage-10 | Wayfarer damage x0.9 across every source (WAYFARER_DAMAGE table); healing unscaled; damage text shows the scaled whole numbers | In flight. |
+| 892 | Claude | claude/cv-world | Close View overworld terrain in 3D (levels, ramps, cliffs, canyon/chasm depths), floating Great Tree branches, clouds on every tier, shores and foam, 3D props and houses, no giant name labels; standard view shows interior sconces | In flight. |
+| 891 | Claude | claude/building-respawns | Cleared building floors (keep, arcology, Pentagon chamber, room-maze cube) bring a pack of their own creatures back every 35 s of play, out of sight; small rewards only | Merged as `8af65ea6152e` (#559). |
+| 890 | Claude | claude/wayfarer-damage-10 | Wayfarer damage x0.9 across every source (WAYFARER_DAMAGE table); healing unscaled; damage text shows the scaled whole numbers | Merged as `be74e4f7eaee` (#558). |
+| 889 | Claude | claude/cv-camera-targeting | Close View presets farther back and higher (wide 5 tiles); one target priority, reach lock, sticky lock, smooth switches, lock ring and edge pointer | Merged as `1711f90d36f9` (#556). |
+| 888 | Claude | claude/wayfarer-passes | Close View Wayfarer: standard kit, silver pod robot, empowered pressure suit, readable jump/landing/hurt, aliveness pass, Wayfarer materials on tools | Merged as `62046802f210` (#555). |
 | 887 | Claude | claude/compass-facing | Close View compass follows the Wayfarer's body facing, not the camera; standard view stays north-up with an N/E/S/W dial | Merged as `c84d55569c78` (#554). |
 | 886 | Claude | claude/arcana-live | Arcana region placement live (straight-line homes); Bell Toll and Lamplighter's Light earned on every save; the Cairn Keeper starts the Chain; nothing gated | Merged as `174ffb69bb4d` (#549). |
 | 885 | Claude | claude/sim-clock | Fixed 60 Hz simulation steps with interpolated drawing; Close View floor walls built off the entry frame (2–4× faster, byte-identical) | Merged as `0e5133f207af` (#553). |
@@ -248,6 +255,7 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 886 | r886-174ffb69bb4d | 2026-11-11 | Fable review (881→886, releases 882–886): no blockers; CI 3,636/3,636 on the candidate; dist parses and starts offline; r881 saves migrate (only `session.seedRealm` and `save.arcana` added); existing journeys generate identically apart from the Cairn Keeper at Ember Refuge. Notes: only player, enemies and projectiles are interpolated by the sim clock; leaving a seed realm by sigil leaves `activeDungeonId` naming it; tomb menu with a seed is a visible change; phone timing unmeasured. Live identity and Options → System verified. |
 | 881 | r881-fc5a0d9d5e61 | 2026-11-11 | Fable review (875→881, releases 876–881): no blockers; 3,597 tests pass; dist parses; r875 saves migrate identically apart from the new `lantern`/`seedPouch` keys; existing journeys generate identically; arcana regions off. Notes: seed finds shift later placements on new ground after pickup; an Opal passage skips the underwater gate; Fossilized planning untested on phones; a passer is consumed by a resume. Live identity verified. |
 | 875 | r875-f410be5ab7b8 | 2026-11-11 | Fable review (874→875) found one blocker: a `//` comment in a one-line HUD statement in src/main.ts hid code and dist/src/main.js did not parse; fixed in 3df885f9 with a block comment. Fable re-review: no blockers. Live identity verified. tests/dist-syntax.test.ts now parses every shipped module so this cannot recur. |
 | 874 | r874-00abe1a858bf | 2026-11-11 | Fable review (873→874): no blockers; 3,528 tests pass; ten pre-874 save shapes migrate with A/B intact, Build and the robot never lost, idempotent; dais never saved. Live identity verified. |

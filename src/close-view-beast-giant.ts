@@ -1,4 +1,4 @@
-// The Lightning Giant in Close View (release 889): the same machine as its standard-view art (lightning-giant-render.ts,
+// The Lightning Giant in Close View (release 891): the same machine as its standard-view art (lightning-giant-render.ts,
 // release 257: a big armoured, Armored Core-style robot that has lost one arm, a Tesla mace in the other, a booster in the
 // empty socket, three coil jets and a lead generator fanned like plumage over the back of its helm, a Tesla coil pylon on
 // the club shoulder, a glowing chest core), built as a solid skinned body on the shared beast rig (close-view-beast-rig.ts)

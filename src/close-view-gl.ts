@@ -1,7 +1,7 @@
 import { MODEL_FLOATS } from "./close-view-models.ts";
 import { buildVisualRevision } from "./building.ts";
 import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.ts';
-import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from './close-view-beast-gl.ts'; // release 889: world beasts' skinned bodies
+import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from './close-view-beast-gl.ts'; // release 891: world beasts' skinned bodies
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -127,6 +127,11 @@ uniform vec4 u_floorP; uniform vec3 u_floorRGB; uniform vec3 u_floorJ; uniform v
 // ripple strength; outR: a level's foot width, its darkness, the lip's width, its light; outD: detail strength, its near and
 // far fade, the sun's glint on water. terrainTex: one texel a tile (colour; flags: water, outcrop, level, surface class).
 uniform vec4 u_outdoor; uniform vec4 u_skyZ; uniform vec4 u_skyH; uniform vec4 u_ridge; uniform vec4 u_outW; uniform vec4 u_outR; uniform vec4 u_outD; uniform sampler2D u_terrainTex;
+// outX (the world pass, close-view-outdoor.ts OUTDOOR.ground and OUTDOOR.water): how much of the ordinary art's tile-scale
+// detail a land texel keeps (the rest is its own smoothed colour), the shore's wet band (tiles), foam strength, and 1 when
+// the water must keep the ordinary art (rafts drawn on it); outY: deep water's darkening, shallow water's lift, the
+// shoreline's wander (tiles), the reflection's clouds (1 balanced and full)
+uniform vec4 u_outX; uniform vec4 u_outY;
 uvec4 maskAt(ivec2 T) { if (T.x < 0 || T.y < 0 || T.x >= u_mapSize.x || T.y >= u_mapSize.y) return uvec4(0u, 0u, 0u, 1u); return texelFetch(u_mask, T, 0); }
 bool pitCode(uint g) { return g == 1u || g == 3u || g == 4u || g == 5u; }
 bool wallAt(ivec2 T) { return (maskAt(T).a & 1u) == 1u; }
@@ -254,8 +259,8 @@ vec3 outdoorSky(vec3 ray, bool full) {
   vec3 d = normalize(ray); float up = clamp(d.z, 0.0, 1.0), sd = max(dot(d, u_sun.xyz), 0.0);
   vec3 c = mix(u_skyH.rgb, u_skyZ.rgb, pow(up, 0.5)) + u_sunC * (0.16 * pow(sd, 5.0) + 0.45 * pow(sd, 60.0) + 2.0 * smoothstep(0.9993, 0.9997, sd));
   if (!full) return c;
-  if (u_skyZ.w > 0.0 && d.z > 0.0 && u_finish.z > 0.5) { vec2 q = d.xy / (d.z + 0.16) * 0.9 + vec2(u_time * 0.000006, u_time * 0.0000025);
-    float n = fbm(q * 1.5), cover = smoothstep(1.0 - u_skyZ.w * 0.7, 1.12 - u_skyZ.w * 0.45, n + 0.12);
+  if (u_skyZ.w > 0.0 && d.z > 0.0) { vec2 q = d.xy / (d.z + 0.16) * 0.9 + vec2(u_time * 0.000006, u_time * 0.0000025); // the low tier: one layer of noise, not three
+    float n = u_finish.z > 0.5 ? fbm(q * 1.5) : vnoise(q * 1.5) * 0.85 + 0.08, cover = smoothstep(1.0 - u_skyZ.w * 0.7, 1.12 - u_skyZ.w * 0.45, n + 0.12);
     vec3 cc = mix(u_skyH.rgb, vec3(1.0), 0.5) * (0.82 + 0.3 * n) + u_sunC * 0.18 * pow(sd, 3.0);
     c = mix(c, cc, cover * smoothstep(0.0, 0.14, d.z) * 0.85); }
   if (u_skyH.w > 0.0) { vec2 a = normalize(d.xy + vec2(1e-5)); float fw = 1.5 / u_F;
@@ -277,16 +282,29 @@ float outdoorDetail(vec2 P, uint cls, float hf) {
   if (cls == 6u) { vec3 k = cells(P * 1.6); return (k.z - 0.5) * 0.5 - (1.0 - smoothstep(0.01, 0.05, k.y)) * 0.35 * hf; }
   return (fbm(P * 2.5) - 0.5) * 0.8 + (vnoise(P * 37.0) - 0.5) * 0.3 * hf;
 }
-// the open ground: the ordinary art near, the section's own colours beyond, lit by the sun; water reflects the sky
-vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface) {
-  ivec2 T = ivec2(floor(P)); uint fl = outdoorFlags(T), cls = fl >> 5u; bool water = (fl & 1u) == 1u; float lv = float((fl >> 2u) & 7u);
+bool waterTile(ivec2 T) { return (outdoorFlags(T) & 1u) == 1u; }
+// how much water is at P, 0 to 1: the four nearest tile centres' water, blended bilinearly at a point wandered a little by
+// noise, so a coast is a curve and not a staircase (a water tile's own middle is always water, dry ground's always dry)
+float waterField(vec2 P) { vec2 Q0 = P - 0.5; ivec2 T0 = ivec2(floor(Q0)); // all four nearest middles alike (most of the ground, open water): no shore here, no noise
+  bool w0 = waterTile(T0), w1 = waterTile(T0 + ivec2(1, 0)), w2 = waterTile(T0 + ivec2(0, 1)), w3 = waterTile(T0 + ivec2(1, 1)); if (w0 == w1 && w0 == w2 && w0 == w3) return w0 ? 1.0 : 0.0;
+  vec2 Q = Q0 + (vec2(vnoise(P * 1.7), vnoise(P * 1.7 + 9.2)) - 0.5) * u_outY.z; vec2 b = floor(Q), f = fract(Q); f = f * f * (3.0 - 2.0 * f); ivec2 T = ivec2(b);
+  float a = waterTile(T) ? 1.0 : 0.0, c = waterTile(T + ivec2(1, 0)) ? 1.0 : 0.0, d = waterTile(T + ivec2(0, 1)) ? 1.0 : 0.0, e = waterTile(T + ivec2(1, 1)) ? 1.0 : 0.0;
+  return mix(mix(a, c, f.x), mix(d, e, f.x), f.y); }
+// the open ground: the ordinary art near (its tile lines softened into its own colour), the section's own colours beyond,
+// lit by the sun; water is the sky's mirror over a depth that darkens away from the shore, with a line of foam and a wet band
+vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface, float z) { // z: the ground's height there (the heightfield's top; 0 for the far plane)
+  ivec2 T = ivec2(floor(P)); uint fl = outdoorFlags(T), cls = fl >> 5u; float lv = float((fl >> 2u) & 7u);
   vec2 warp = vec2(vnoise(P * 0.9), vnoise(P * 0.9 + 17.3)) - 0.5; // the tiles' colours, their grid broken by a gentle warp
   vec3 farC = texture(u_terrainTex, (P + warp * 0.7) / vec2(u_mapSize)).rgb * (0.9 + 0.2 * vnoise(P * 0.45 + 3.1));
   vec2 dd = abs(P - u_player); float near = (1.0 - smoothstep(u_outdoor.y, u_outdoor.z, max(dd.x, dd.y))) * surface.a;
-  vec3 alb = mix(farC, surface.rgb / max(surface.a, 1e-3), near);
-  vec3 N = vec3(0.0, 0.0, 1.0), W3 = vec3(P, 0.0);
+  vec3 art = surface.rgb / max(surface.a, 1e-3);
+  float wf = waterField(P), wet = smoothstep(0.5 - u_outX.y, 0.5, wf); bool water = wf > 0.5;
+  if (near > 0.0 && u_outX.x < 0.999) art = mix(farC, art, water && u_outX.w < 0.5 ? 0.12 : u_outX.x); // the tile lines softened into the ground's own warped colour (no extra texture read)
+  vec3 alb = mix(farC, art, near);
+  vec3 N = vec3(0.0, 0.0, 1.0), W3 = vec3(P, z);
   if (u_outdoor.w > 0.5 && !water) { float fw = length(fwidth(P)), hf = 1.0 - smoothstep(0.012, 0.045, fw), amp = u_outD.x * (1.0 - smoothstep(u_outD.y, u_outD.z, depth));
     float det = outdoorDetail(P, cls, hf); alb *= 1.0 + amp * det; if (u_finish.z > 0.5) N = bump(N, W3, det * amp * 0.05); }
+  alb *= 1.0 - 0.32 * wet * (water ? 0.0 : 1.0); // the shore's wet band, darker
   vec3 dif, spe; lightsAt(W3, N, 0.0, dif, spe); vec3 col = alb * dif;
   if (u_finish.z > 0.5) { // relief: the foot of a higher level or an outcrop in soft shade, the lip of a level in light
     vec2 f = fract(P); float foot = 1.0, lip = 1.0;
@@ -294,11 +312,24 @@ vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface) {
       float e = i == 0 ? f.x : i == 1 ? 1.0 - f.x : i == 2 ? f.y : 1.0 - f.y; uint q = outdoorFlags(T + o); float ln = float((q >> 2u) & 7u);
       if (ln > lv || (q & 2u) == 2u) foot = min(foot, e); else if (ln < lv) lip = min(lip, e); }
     col *= 1.0 - u_outR.y * (1.0 - smoothstep(0.0, u_outR.x, foot)); col *= 1.0 + u_outR.w * (1.0 - smoothstep(0.0, u_outR.z, lip)); }
-  if (water) { vec3 n = vec3(0.0, 0.0, 1.0);
-    if (u_finish.z > 0.5) { vec2 q = P * u_outW.z; float t = u_time * 0.0004; n = normalize(vec3((vnoise(q + vec2(t, 0.0)) - vnoise(q + vec2(3.1, t))) * u_outW.w, (vnoise(q * 1.3 - vec2(t * 0.7, t)) - vnoise(q * 1.3 + 5.7)) * u_outW.w, 1.0)); }
+  if (water) { vec3 n = vec3(0.0, 0.0, 1.0); float t = u_time * 0.0004;
+    if (u_finish.z > 0.5) { vec2 q = P * u_outW.z; // two swells crossing, and a finer chop near the eye
+      vec2 sw = vec2(vnoise(q + vec2(t, 0.0)) - vnoise(q + vec2(3.1, t)), vnoise(q * 1.3 - vec2(t * 0.7, t)) - vnoise(q * 1.3 + 5.7));
+      if (depth < 9.0) sw += (vec2(vnoise(q * 2.7 - vec2(t * 1.9, 0.0)), vnoise(q * 2.9 + vec2(0.0, t * 1.6))) - 0.5) * 0.45 * (1.0 - smoothstep(6.0, 9.0, depth));
+      n = normalize(vec3(sw * u_outW.w, 1.0)); }
+    // the depth: how far into the water this is (its own field), and how much water lies two tiles round it
+    float ring = 0.0; for (int i = 0; i < 8; i++) { ivec2 o = i == 0 ? ivec2(2, 0) : i == 1 ? ivec2(-2, 0) : i == 2 ? ivec2(0, 2) : i == 3 ? ivec2(0, -2) : i == 4 ? ivec2(2, 2) : i == 5 ? ivec2(-2, 2) : i == 6 ? ivec2(2, -2) : ivec2(-2, -2); ring += waterTile(T + o) ? 0.125 : 0.0; }
+    float deep = smoothstep(0.5, 1.0, wf) * (0.35 + 0.65 * ring);
+    vec3 body = mix(alb * (1.0 + u_outY.y) + vec3(0.02, 0.05, 0.05), alb * (1.0 - u_outY.x), deep);
+    col = body * (dif * 0.75 + 0.25);
     vec3 v = normalize(dir), r = reflect(v, n); r.z = abs(r.z);
     float fres = u_outW.x + (u_outW.y - u_outW.x) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 4.0);
-    col = mix(col, outdoorSky(r, false), fres) + u_sunC * pow(max(dot(r, u_sun.xyz), 0.0), 140.0) * u_outD.w; }
+    col = mix(col, outdoorSky(r, u_outY.w > 0.5), fres) + u_sunC * pow(max(dot(r, u_sun.xyz), 0.0), 140.0) * u_outD.w;
+    // foam where the water meets the shore: a broken line that breathes (still with reduced motion)
+    float edge = 1.0 - smoothstep(0.5, 0.5 + u_outX.y * 0.9, wf);
+    if (edge > 0.001) { float br = vnoise(P * 6.0 + vec2(t * 2.5, -t * 1.7)) * 0.6 + vnoise(P * 15.0 - t * 3.0) * 0.4;
+      float foam = edge * smoothstep(0.35, 0.75, br + edge * 0.35) * u_outX.z; col = mix(col, vec3(0.92, 0.95, 0.96) * (dif * 0.6 + 0.4), clamp(foam, 0.0, 0.85)); }
+    if (u_outX.w > 0.5) col = mix(col, art * dif, near * 0.6); }
   return atmos(col, W3, depth, dif);
 }
 vec3 hallBackdrop(vec3 ray) {
@@ -352,7 +383,7 @@ void main() {
       else if (u_space.x > 0.5 && (m.r & 8u) == 8u) { vec4 sf = overlayAt(P); col = mix(mix(spaceSky(dir), sf.rgb, sf.a * (m.g == 3u ? 0.15 : 0.3)), u_fog, fogK * 0.5); } // seed realms: the cosmos below the glass
       else if (u_floorQ.w > 0.5) {
         vec4 surface = overlayAt(P);
-        col = u_outdoor.x > 0.5 ? outdoorGround(P, dir, depth, surface) : atmos(u_fog * (1.0 - surface.a) + surface.rgb, W3, depth, u_amb);
+        col = u_outdoor.x > 0.5 ? outdoorGround(P, dir, depth, surface, 0.0) : atmos(u_fog * (1.0 - surface.a) + surface.rgb, W3, depth, u_amb);
       }
       else if (m.g == 1u || m.g == 3u || m.g == 5u) { col = pitColor(P, dir, m.g, (m.b & 1u) == 1u); lightsAt(W3, vec3(0, 0, 1), 0.0, dif, spe); col = atmos(col, W3, depth, dif * 0.3); }
       else if (m.g == 2u) { col = atmos(lavaColor(P, T), W3, depth, vec3(0.0)); }
@@ -650,10 +681,37 @@ void main() {
   outColor = vec4(finish(mix(color, u_fog, f * (1.0 - emit * (1.0 - ${glf(CLOSE_VIEW_ACTOR_LOOK.emitFog)})))), 1.0);
 }`;
 
+// ---------------------------------------------------------------------------------------------- the open world's heightfield
+// The overworld's relief (close-view-outdoor.ts outdoorTerrainMesh): each tile's top at its level, shaded exactly as the
+// environment shades the open ground (the ordinary art near, the per-tile colour beyond, water, detail), and the faces down
+// every level's edge as earth and rock with strata, a pit's walls and floor darkening with depth. a_mat: the face's kind (0
+// top, 1 cliff, a branch's edge, underside or limb, 2 a pit's wall, 3 a pit's floor, 5 the ground in a great tree's shade). Drawn opaque with depth before the environment, which then shades only the
+// sky and what lies beyond the section.
+const TERRAIN_VS = VS_COMMON + `
+in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in float a_mat;
+out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_kind; out float v_depth;
+void main() { float d; gl_Position = project(a_pos, d); v_pos = a_pos; v_nrm = a_nrm; v_col = a_col; v_kind = a_mat; v_depth = d; }`;
+const TERRAIN_FS = ENV_FS.slice(0, ENV_FS.lastIndexOf("void main() {")) + `
+in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_kind; in float v_depth;
+void main() {
+  vec3 dir = v_pos - vec3(u_cam, u_hc);
+  if (v_kind < 0.5) { outColor = vec4(finish(outdoorGround(v_pos.xy, dir, v_depth, overlayAt(v_pos.xy), v_pos.z)), 1.0); return; }
+  if (v_kind > 4.5) { vec3 dif0, spe0; lightsAt(v_pos, vec3(0.0, 0.0, 1.0), 0.0, dif0, spe0); outColor = vec4(finish(atmos(v_col * (0.85 + 0.3 * vnoise(v_pos.xy * 2.0)) * dif0, v_pos, v_depth, dif0)), 1.0); return; } // the ground in a great tree's shade
+  vec3 N = normalize(v_nrm); vec2 q = vec2(dot(v_pos.xy, vec2(-N.y, N.x)), v_pos.z);
+  float n = fbm(q * vec2(1.7, 2.6)), strata = aline(fract(v_pos.z * 2.3 + n * 0.55) - 0.5, 0.07);
+  vec3 c = v_col * (0.5 + 0.38 * n) * (1.0 - 0.22 * strata) + vec3(0.02, 0.018, 0.015);
+  if (v_kind > 2.5 && v_kind < 3.5) c = mix(v_col * 0.18, vec3(0.015, 0.016, 0.022), 0.7); // a pit's floor, lost in the dark
+  float below = max(0.0, -v_pos.z), fall = exp(-below * 0.75); // a pit's walls: lit stone at the lip, lost in the dark as they go down
+  vec3 Nb = u_finish.z > 0.5 ? bump(N, v_pos, (n - strata * 0.4) * 0.05) : N; vec3 dif, spe; lightsAt(v_pos, Nb, 0.0, dif, spe);
+  vec3 col = v_kind > 1.5 && v_kind < 3.5 ? c * (dif * 0.55 + u_amb * 0.6 + 0.12) * fall * (0.75 + 0.25 * smoothstep(-0.25, 0.0, v_pos.z)) : c * dif;
+  outColor = vec4(finish(atmos(col, v_pos, v_depth, dif)), 1.0);
+}`;
+
 // ---------------------------------------------------------------------------------------------- the open world's solids
 // Outcrops and standing trees outdoors (close-view-outdoor.ts outdoorMesh): one static buffer a section, drawn opaque before
 // the environment so the ground is never shaded under them. a_mat: 0 rock, 1 masonry, 2 ice and crystal, 3 glass and
-// obsidian, 4 foliage, 5 bark and wood, 6 vitrified rubble.
+// obsidian, 4 foliage, 5 bark and wood, 6 vitrified rubble; the props (version 2): 7 painted or oiled wood and cloth,
+// 8 metal fittings, 9 a lit ring or band (its own light, a little of the scene's).
 const PROP_VS = VS_COMMON + `
 in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in float a_mat;
 out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_mat; out float v_depth;
@@ -663,7 +721,12 @@ in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_mat; in float v_depth;
 void main() {
   vec3 N = normalize(v_nrm), c = v_col; float h = 0.5, shin = 0.0, m = v_mat; bool level = abs(N.z) > 0.6;
   vec2 q = level ? v_pos.xy : vec2(dot(v_pos.xy, vec2(-N.y, N.x)), v_pos.z);
-  if (m < 0.5 || m > 5.5) { // rock and rubble: grain, plates and cracks, strata on the sides; rubble of the waste has a glassy sheen
+  if (m > 6.5) { // the props' own: painted wood (grain across), metal (bright, sharp highlight), a lit ring (glows)
+    if (m < 7.5) { float g = vnoise(vec2(q.x * 22.0, q.y * 2.2)); c *= 0.8 + 0.3 * g; h = g * 0.6; shin = 10.0; }
+    else if (m < 8.5) { float g = vnoise(q * 9.0); c *= 0.85 + 0.25 * g; h = g * 0.3; shin = 70.0; }
+    else { vec3 dif0, spe0; lightsAt(v_pos, N, 0.0, dif0, spe0); float pulse = 0.85 + 0.15 * sin(u_time * 0.003 + v_pos.x * 3.0 + v_pos.y * 2.0);
+      outColor = vec4(finish(atmos(c * (0.9 * pulse + 0.25 * dif0) + c * c * 0.35, v_pos, v_depth, dif0)), 1.0); return; }
+  } else if (m < 0.5 || m > 5.5) { // rock and rubble: grain, plates and cracks, strata on the sides; rubble of the waste has a glassy sheen
     float n = fbm(q * 2.4); vec3 k = cells(q * vec2(2.0, 3.0)); float crack = 1.0 - smoothstep(0.015, 0.06, k.y), strata = level ? 0.0 : aline(fract(v_pos.z * 2.6 + n * 0.5) - 0.5, 0.06);
     c *= (0.7 + 0.5 * n) * (0.85 + 0.25 * k.z) * (1.0 - 0.35 * crack) * (1.0 - 0.18 * strata); h = n - crack * 0.5; if (m > 5.5) shin = 18.0;
   } else if (m < 1.5) { vec2 id; float mortar; h = ashlar(q, 0.34, 0.66, 0.04, 0.45, id, mortar); c *= (0.78 + 0.32 * hash12(id)) * (0.85 + 0.25 * vnoise(q * 7.0 + id)); c = mix(c, c * 0.42, mortar);
@@ -796,7 +859,9 @@ export function closeViewGLReady(makeCanvas) {
     for (const k of ["ground", "mask", "grit"]) S.tex[k] = gl.createTexture();
     // The open world's solids are optional too (made after the critical resources): without them the overworld keeps its flat ground.
     try { S.prop = compile(gl, PROP_VS, PROP_FS); S.vbo.prop = gl.createBuffer(); S.vao.prop = layout(gl, S.prop, S.vbo.prop, 10, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3], ["a_mat", 1]]); S.tex.terrain = gl.createTexture(); } catch { S.prop = null; S.vbo.prop = S.vao.prop = S.tex.terrain = null; }
-    S.outdoorKey = null; S.outdoorVerts = 0;
+    // the overworld's heightfield (optional again: without it the open ground stays the flat plane and nothing is lifted)
+    try { if (!S.prop) throw new Error("no solids"); S.terr = compile(gl, TERRAIN_VS, TERRAIN_FS); S.vbo.terr = gl.createBuffer(); S.vao.terr = layout(gl, S.terr, S.vbo.terr, 10, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3], ["a_mat", 1]]); } catch { S.terr = null; S.vbo.terr = null; S.vao.terr = null; }
+    S.outdoorKey = null; S.outdoorVerts = 0; S.terrKey = null; S.terrVerts = 0;
     S.aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true;GPU_DIAGNOSTICS.contextLost=false; return true;
   } catch (err) { const message=String(err?.message||err);GPU_DIAGNOSTICS.lastFailure=message==='no WebGL2'?'no-webgl2':message==='no WebGL2 context'?'no-context':'initialization-failed';closeViewGLStats.failed = true; closeViewGLStats.reason = message.slice(0, 400); S.gl = null; return false; }
@@ -822,7 +887,7 @@ export const closeViewOutdoorAvailable = () => !!(S.gl && S.prop && S.tex.terrai
 export const prepareCloseViewBeastMesh = (mesh) => !!S.gl && !!S.beast && prepareBeastMesh(S.gl, S.beast, mesh);
 export const prepareCloseViewHeroGL = (asset) => {const ready=!!S.gl&&prepareHeroGL(S.gl,S.hero,asset);if(S.hero?.failed)GPU_DIAGNOSTICS.lastHeroFailure='upload-failed';return ready;};
 // For tests and the lab: forget the context (the next frame asks again).
-export function resetCloseViewGL() { GPU_DIAGNOSTICS.contextLost=false;if(S.gl) { disposeHeroGL(S.gl,S.hero,true); disposeBeastGL(S.gl,S.beast,true); } S.hero = null; S.beast = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit","terrain"])S.tex[k]=null; S.prop = null; S.vbo.prop = S.vao.prop = null; S.outdoorKey = null; S.outdoorVerts = 0; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
+export function resetCloseViewGL() { GPU_DIAGNOSTICS.contextLost=false;if(S.gl) { disposeHeroGL(S.gl,S.hero,true); disposeBeastGL(S.gl,S.beast,true); } S.hero = null; S.beast = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit","terrain"])S.tex[k]=null; S.prop = null; S.vbo.prop = S.vao.prop = null; S.outdoorKey = null; S.outdoorVerts = 0; S.terr = null; S.vbo.terr = S.vao.terr = null; S.terrKey = null; S.terrVerts = 0; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
 // r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
@@ -877,8 +942,23 @@ export function glOutdoor(scene) {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, T.w, T.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, T.data.subarray(0, T.w * T.h * 4));
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.prop); gl.bufferData(gl.ARRAY_BUFFER, scene.mesh.data, gl.STATIC_DRAW);
-  S.outdoorKey = scene.key; S.outdoorVerts = scene.mesh.verts; closeViewGLStats.outdoorBuilds = (closeViewGLStats.outdoorBuilds || 0) + 1; closeViewGLStats.outdoorVerts = S.outdoorVerts; return true;
+  const solids = scene.solids || scene.mesh; gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.prop); gl.bufferData(gl.ARRAY_BUFFER, solids.data, gl.STATIC_DRAW);
+  S.outdoorKey = scene.key; S.outdoorVerts = solids.verts; closeViewGLStats.outdoorBuilds = (closeViewGLStats.outdoorBuilds || 0) + 1; closeViewGLStats.outdoorVerts = S.outdoorVerts; return true;
+}
+// An interior floor's props (close-view-outdoor.ts propScene) in the same solids buffer and program, uploaded only when a
+// prop changes or the floor does. False without the optional program.
+export function glProps(scene) {
+  const gl = S.gl; if (!gl || !S.prop || !scene) return false; if (S.outdoorKey === scene.key) return true;
+  gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.prop); gl.bufferData(gl.ARRAY_BUFFER, scene.solids.data, gl.STATIC_DRAW);
+  S.outdoorKey = scene.key; S.outdoorVerts = scene.solids.verts; closeViewGLStats.propBuilds = (closeViewGLStats.propBuilds || 0) + 1; closeViewGLStats.outdoorVerts = S.outdoorVerts; return true;
+}
+export const closeViewPropsAvailable = () => !!(S.gl && S.prop); // props can be drawn as solids (else they stay cards)
+export const closeViewReliefAvailable = () => !!(S.gl && S.prop && S.tex.terrain && S.terr); // the overworld's heightfield can be drawn
+// The heightfield's triangles, uploaded only when the section's relief changes (a new section, a dig).
+export function glRelief(scene) {
+  const gl = S.gl; if (!gl || !S.terr || !scene?.ground) return false; if (S.terrKey === scene.ground) return true;
+  gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.terr); gl.bufferData(gl.ARRAY_BUFFER, scene.ground.data, gl.STATIC_DRAW); S.terrKey = scene.ground; S.terrVerts = scene.ground.verts;
+  closeViewGLStats.reliefBuilds = (closeViewGLStats.reliefBuilds || 0) + 1; closeViewGLStats.reliefVerts = S.terrVerts; return true;
 }
 // ---------------------------------------------------------------------------------------------- one frame
 // F: the frame's numbers, filled by close-view.ts (a preallocated object). ground: the ground canvas (what lies on the floor
@@ -888,7 +968,9 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1,
   // outdoors (close-view-outdoor.ts); sunC stays black and outdoor 0 indoors
-  outdoor: 0, sun: new Float32Array([0, 0, 1, 0]), sunC: new Float32Array(3), outdoorP: new Float32Array(4), skyZ: new Float32Array(4), skyH: new Float32Array(4), ridge: new Float32Array(4), outW: new Float32Array(4), outR: new Float32Array(4), outD: new Float32Array(4) };
+  outdoor: 0, sun: new Float32Array([0, 0, 1, 0]), sunC: new Float32Array(3), outdoorP: new Float32Array(4), skyZ: new Float32Array(4), skyH: new Float32Array(4), ridge: new Float32Array(4), outW: new Float32Array(4), outR: new Float32Array(4), outD: new Float32Array(4), outX: new Float32Array(4), outY: new Float32Array(4), props: 0,
+  // the solids drawn in runs (start, count) when a house's roof is left out; nRuns 0: the whole buffer in one call
+  runs: new Int32Array(2 * 16), nRuns: 0, relief: 0 };
 export function drawSceneGL(ground, U, models = null, hero = null, beasts = null) {
   const gl = S.gl; if (!closeViewGLFrameReady()) return false; const F = GLF; let calls = 0;
   try {
@@ -919,13 +1001,20 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
     gl.bindVertexArray(S.vao.wall); gl.drawArrays(gl.TRIANGLES, 0, S.staticVerts); calls++; gl.depthFunc(gl.LEQUAL); }
   // 1b. outdoors: the outcrops and trees, one static buffer, opaque, with depth
   const outdoor = F.outdoor > 0 && !!S.prop && S.outdoorKey !== null;
-  if (outdoor && S.outdoorVerts > 0) { gl.useProgram(S.prop.p); cam(S.prop); light(S.prop); gl.bindVertexArray(S.vao.prop); gl.drawArrays(gl.TRIANGLES, 0, S.outdoorVerts); calls++; }
+  const outdoorU = (P) => { const u = P.U; gl.uniform1i(u.u_ground, 0); gl.uniform1i(u.u_mask, 1); gl.uniform4f(u.u_gmap, F.gmapK, F.gmapX, F.gmapY, F.atlasY); gl.uniform2f(u.u_tex, ground.width, ground.height); gl.uniform2i(u.u_mapSize, S.maskW, S.maskH);
+    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY);
+    gl.uniform1i(u.u_terrainTex, outdoor ? 3 : 0); if (outdoor) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, S.tex.terrain); gl.activeTexture(gl.TEXTURE0); } };
+  // 1a. outdoors: the heightfield (its tops shaded as the open ground, its cliffs and pits), opaque, with depth
+  if (outdoor && F.relief > 0 && S.terr && S.terrVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.useProgram(S.terr.p); cam(S.terr); light(S.terr); outdoorU(S.terr);
+    gl.bindVertexArray(S.vao.terr); gl.drawArrays(gl.TRIANGLES, 0, S.terrVerts); calls++; }
+  if ((outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ gl.useProgram(S.prop.p); cam(S.prop); light(S.prop); gl.bindVertexArray(S.vao.prop);
+    if (F.nRuns > 0) { for (let i = 0; i < F.nRuns; i++) { const a = F.runs[i * 2], c = Math.min(F.runs[i * 2 + 1], S.outdoorVerts - a); if (c > 0) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } } // a roof left out: the rest in runs
+    else { gl.drawArrays(gl.TRIANGLES, 0, S.outdoorVerts); calls++; } }
   // 2. the environment: floor, ceiling, pits, lava; a full-screen triangle at the far plane, depth-tested and not written, so
   // the early depth test leaves every pixel a wall covers unshaded
   gl.depthMask(false); gl.useProgram(S.env.p); gl.uniform1f(S.env.U.u_terrain,F.terrain?1:0); cam(S.env); light(S.env); U.env(gl, S.env.U, F, S.lavaTiles);
   gl.uniform1i(S.env.U.u_ground, 0); gl.uniform1i(S.env.U.u_mask, 1); gl.uniform4f(S.env.U.u_gmap, F.gmapK, F.gmapX, F.gmapY, F.atlasY); gl.uniform2f(S.env.U.u_tex, ground.width, ground.height); gl.uniform2i(S.env.U.u_mapSize, S.maskW, S.maskH);
-  { const u = S.env.U; gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD);
-    gl.uniform1i(u.u_terrainTex, outdoor ? 3 : 0); if (outdoor) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, S.tex.terrain); gl.activeTexture(gl.TEXTURE0); } }
+  outdoorU(S.env);
   gl.bindVertexArray(S.vao.env); gl.drawArrays(gl.TRIANGLES, 0, 3); calls++;
   // 3. the floor's decals and the props drawn as cards (shadows, rings, cobwebs, chains, spikes, bones): blended, depth-tested, not written
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
