@@ -108,6 +108,7 @@ import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaI
 import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.ts";
 import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.ts"; // release 795: the grand halls' murals
+import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.ts"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
 import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -440,16 +441,20 @@ export function applyRoutingKeepAppearance(save, map) {
   return appearance;
 }
 
+// The newest Pentagon version this build can generate (adventures.ts: version 11), and the one genuinely new ground adopts
+// (version 11 while ADVENTURE_PENTAGON.live, else release 844's version 10).
+export const PENTAGON_MAX_VERSION = ADVENTURE_PENTAGON.version;
+export const pentagonNewVersion = () => ADVENTURE_PENTAGON.live ? ADVENTURE_PENTAGON.version : CLOSE_VIEW_ROOM_ROUTING.pentagonVersion;
 export function recoverPentagonVersion(save, cx, cy) {
-  const atlas = save.atlas || {}; let pinned = CLOSE_VIEW_ROOM_ROUTING.pentagonVersion, hasPin = false;
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = atlas[`${cx + dx},${cy + dy}`]?.pentVersion; if (v) { hasPin = true; pinned = Math.min(pinned, Number.isInteger(v) && v >= 1 && v <= 10 ? v : 9); } }
+  const atlas = save.atlas || {}, MAXV = PENTAGON_MAX_VERSION; let pinned = MAXV, hasPin = false;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = atlas[`${cx + dx},${cy + dy}`]?.pentVersion; if (v) { hasPin = true; pinned = Math.min(pinned, Number.isInteger(v) && v >= 1 && v <= MAXV ? v : 9); } }
   if (hasPin) return pinned;
   const candidates = [], D = save.consequences?.dungeons || {}, prefix = `pentagon:${save.seed}:${cx}:${cy}`; let malformedHistory = false;
-  for (let V = 1; V <= 10; V++) { const base = `${prefix}${V >= 2 ? `:v${V}` : ""}`, key = `${base}:f1`; if (Object.prototype.hasOwnProperty.call(D, key)) { if (D[key] && Object.getPrototypeOf(D[key]) === Object.prototype) candidates.push(V); else malformedHistory = true; } }
+  for (let V = 1; V <= MAXV; V++) { const base = `${prefix}${V >= 2 ? `:v${V}` : ""}`, key = `${base}:f1`; if (Object.prototype.hasOwnProperty.call(D, key)) { if (D[key] && Object.getPrototypeOf(D[key]) === Object.prototype) candidates.push(V); else malformedHistory = true; } }
   const active = String(save.session?.activeDungeonId || ""), p = parsePentagonId(active) || parsePentagonArenaId(active) || parsePentagonFinaleId(active);
-  if (p && p.seed === save.seed && p.cx === cx && p.cy === cy && Number.isInteger(p.V) && p.V >= 1 && p.V <= 10 && p.base === `pentagon:${save.seed}:${cx}:${cy}${p.V >= 2 ? `:v${p.V}` : ""}`) candidates.push(p.V);
-  const activeSite = active.startsWith(`${prefix}:`), malformed = activeSite && (!p || p.seed !== save.seed || p.cx !== cx || p.cy !== cy || !Number.isInteger(p.V) || p.V < 1 || p.V > 10 || p.base !== `${prefix}${p.V >= 2 ? `:v${p.V}` : ""}`);
-  const versions = [...new Set(candidates)]; return !malformed && !malformedHistory && versions.length === 1 ? versions[0] : malformed || malformedHistory || versions.length ? PENTAGON.version : CLOSE_VIEW_ROOM_ROUTING.pentagonVersion;
+  if (p && p.seed === save.seed && p.cx === cx && p.cy === cy && Number.isInteger(p.V) && p.V >= 1 && p.V <= MAXV && p.base === `pentagon:${save.seed}:${cx}:${cy}${p.V >= 2 ? `:v${p.V}` : ""}`) candidates.push(p.V);
+  const activeSite = active.startsWith(`${prefix}:`), malformed = activeSite && (!p || p.seed !== save.seed || p.cx !== cx || p.cy !== cy || !Number.isInteger(p.V) || p.V < 1 || p.V > MAXV || p.base !== `${prefix}${p.V >= 2 ? `:v${p.V}` : ""}`);
+  const versions = [...new Set(candidates)]; return !malformed && !malformedHistory && versions.length === 1 ? versions[0] : malformed || malformedHistory || versions.length ? PENTAGON.version : pentagonNewVersion();
 }
 export function generatePinnedDungeon(save, id, options = {}) {
   if (isSeedRealmId(id)) return generateSeedRealm(save.seed, id) || seedRealmFallback(id); // seed realms: laid from the id alone, never pinned or dressed
@@ -3822,6 +3827,8 @@ export class Game {
     if (this.area === "dungeon" && this.map?.underwater && this.leaveDungeon("Out of air — the line hauls you, half-drowned, back to the surface. Nothing carried was lost.")) {
       this.save.session.breath = DIVE.breath; p.hp = this.save.maxHp; p.invulnerableUntil = now + 2000; return;
     }
+    const rest = this.adventureRest(); // Pentagon v11: a fall within its walls wakes you at the Waystone you last rested at
+    if (rest) { this.goBuildingFloor(rest.id, rest.x, rest.y); p.invulnerableUntil = now + 2000; this.message = `${ADVENTURE_PENTAGON.waystone.woke}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; this.sync(); return true; }
     if (this.area === "dungeon") {
       const id = this.areaId(),
         deep = !!this.map?.deepDungeon || this.map?.recipe === "deep-v1",
@@ -4334,6 +4341,8 @@ export class Game {
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "buildingStair") return this.takeBuildingStair(o); // great buildings
     if (o.kind === "pentShortcut") return this.pentagonShortcut(o); // the Pentagon's shortcut links (v6)
+    if (o.kind === "pentWaystone") return this.restAtWaystone(o); // Pentagon v11: a Waystone, rest point and the place a fall wakes you
+    if (o.kind === "advVista") { const B = this.map.building; o.state = "read"; this.message = o.lore; journalOnce(this.save, `adventure-vista:${B?.base}:${B?.node}`, o.lore, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; } // Pentagon v11: a vista's view of the landmark
     if (o.kind === "pentFinaleWall") return this.pentagonFinaleWalk(o); // the finale's opened wall, either side
     if (o.kind === "pentDais") return this.pentagonDais(o, action); // and its dais: Transit, and its rerolls
     if (o.kind === "pentArenaGate") return this.pentagonArenaGate(o); // the Stillworks' gates (pentagon-arena.ts)
@@ -4854,7 +4863,8 @@ export class Game {
     const walk = this.area === "dungeon" && !!this.map?.pentFinale; // the Pentagon's finale: a fall from the walkway wakes you at its start (PENTAGON.finale)
     const hd = this.save.session.holeDeath; this.save.session.holeDeath = null;
     const hole = !walk && this.area === "dungeon" && this.map?.building && hd && hd.id === this.areaId() ? hd : null; // HOLE_DROPS: a fatal hole wakes you on that floor, where you came onto it
-    if (this.area === "dungeon" && !walk && !hole) {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
+    const rest = !walk && !hole ? this.adventureRest() : null; // Pentagon v11: wake at the Waystone last rested at (the Pentagon stays open, nothing abandoned)
+    if (this.area === "dungeon" && !walk && !hole && !rest) {if(String(this.save.session.activeDungeonId||'').startsWith('hunt-instance:'))abandonHuntInstance(this.save,this.save.session.activeDungeonId);abandonDungeon(this.save, this.areaId());}
     const c = this.safeCheckpoint(); // release 734 (F2): a null active checkpoint threw here on every frame
     this.save.worldFlags.deaths = (this.save.worldFlags.deaths || 0) + 1;
     this.save.session.displacementJourney=null;
@@ -4882,6 +4892,7 @@ export class Game {
     input.reset?.();
     if (hole) { p.x = hole.x; p.y = hole.y; relocateIfStranded(p, this.map, mapWidth(this.map, "dungeon")); p.invulnerableUntil = now + 2000; this.fallen = null; for (const e of this.enemies) if (!e.dead) e.aggro = false; this.snapshotArea(); this.message = `${HOLE_DROPS.messages.woke}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; this.sync(); return; } // the same floor; nothing lost (release 345)
     if (walk) { const e = this.map.entry || { x: 1, y: 7 }; p.x = e.x; p.y = e.y; p.invulnerableUntil = now + 2000; this.fallen = null; this.snapshotArea(); this.message = `${PENTAGON.finale.messages.fell}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; return; } // the same floor, at the walkway's start, beside the doorway back
+    if (rest) { this.fallen = null; this.goBuildingFloor(rest.id, rest.x, rest.y); this.player.invulnerableUntil = now + 2000; this.message = `${ADVENTURE_PENTAGON.waystone.woke}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; return; }
     this.snapshotArea(); // Capture the source coordinates BEFORE switching to the checkpoint.
     const crown = !!home && this.wakeOnCrown(home, now); // TREE_GLIDE.home: a glide from a great tree's crown wakes you back on that crown
     if (!crown) {
@@ -7906,6 +7917,24 @@ export class Game {
     H.labOpen = [...new Set([...(H.labOpen || []), o.gateKey])]; openRoomGate(this.map, o); this.message = ROOM_MAZES.messages.opens;
     this.defeatNotice = { title: "SHORTCUT", detail: `${this.map.name.split(" · ")[1] || "the door"} · ${this.labyrinthProgress()}`, kind: "discovery", sound: "shortcut" }; this.sync(); return { ok: true, message: this.message };
   }
+  // Pentagon v11 (adventures.ts ADVENTURE_PENTAGON.waystone): rest at a Waystone. Health and stamina fill, draughts top up, and it
+  // becomes the place a fall within this Pentagon wakes you (the base floor's history `advRest`: { id, x, y, name }).
+  restAtWaystone(o) {
+    const B = this.map?.building, Wy = ADVENTURE_PENTAGON.waystone; if (!B?.pentagon || !B.adventure) return { ok: false, message: (this.message = "The stone is cold.") };
+    const H = dungeonHistory(this.save, `${B.base}:f1`), id = this.areaId(), again = H.advRest?.id === id && H.advRest.x === o.x && H.advRest.y === o.y;
+    H.advRest = { id, x: o.x, y: o.y, name: o.name };
+    if (Wy.heal) { this.player.hp = this.save.maxHp; this.player.stamina = this.save.maxStamina; const c = this.save.consumables || (this.save.consumables = {}); if ((c.restorativeDraught || 0) < Wy.draughts) c.restorativeDraught = Wy.draughts; }
+    journalOnce(this.save, `adventure-waystone:${B.base}`, Wy.journal, PENTAGON.name);
+    this.message = again ? Wy.again : Wy.rest; if (!again) this.defeatNotice = { title: Wy.notice, detail: Wy.detail, kind: "discovery" };
+    this.sync(); return { ok: true, message: this.message };
+  }
+  // The Waystone a fall in this Pentagon (version 11) wakes you at, or null: only inside one of its chambers (not the finale's
+  // walk or arena), and only a rest point recorded for this same Pentagon.
+  adventureRest() {
+    if (this.area !== "dungeon") return null; const B = this.map?.building; if (!B?.pentagon || !B.adventure || B.finale || !isPentagonId(this.areaId())) return null;
+    const R = this.save.consequences?.dungeons?.[`${B.base}:f1`]?.advRest, p = R && parsePentagonId(R.id);
+    return p && p.base === B.base && Number.isFinite(R.x) && Number.isFinite(R.y) ? R : null;
+  }
   takeBuildingStair(o) {
     if (o.dir === "roofExit") return this.takeRoofExit(o); // release 746
     if (o.dir === "roof") { // up through the hatch, onto the roof: high ground on the section itself
@@ -7918,10 +7947,13 @@ export class Game {
       if (o.sigil) { const r = this.pentagonSigilDoor(o, this.map.building.base); if (r) return r; } // the Pentagon's sigil doors
       if (o.bossGate && !(H.pentBosses || []).includes(this.map.building.node)) { const k = this.enemies.find((e) => e.pentBoss && !e.dead); this.message = `${PENTAGON.messages.bossGate}${k ? `: ${k.packName}` : ""}.`; return { ok: false, message: this.message }; }
       if (o.plateLock && !(H.labOpen || []).includes(`plate:${this.map.building.node}`)) { if (!this.map.tiles.some((t) => t.plate && t.build === "stone")) { this.message = PENTAGON.messages.plate; return { ok: false, message: this.message }; } H.labOpen = [...new Set([...(H.labOpen || []), `plate:${this.map.building.node}`])]; } // the Pentagon's pressure plate: a block on it holds the door, and once through it stays wedged open
+      const advOpened = !!o.advShortcut && !!o.shortcutOpens && !(H.labOpen || []).includes(o.shortcutOpens); // Pentagon v11: a gate back to the Waystone
       if (o.shortcutOpens) { H.labOpen = [...new Set([...(H.labOpen || []), o.shortcutOpens])]; } // opened from the far side: open from the hall now too
       this.goBuildingFloor(o.toId, o.toX, o.toY, o); const B = this.map.building, where = this.map.name.split(" · ")[1] || "the next chamber";
       this.defeatNotice = { title: this.map.name.toUpperCase(), detail: `${B.roomMaze ? B.hint : B.vault ? LABYRINTHS.messages.vault : B.kind === "gaps" ? HOLE_DROPS.messages.gallery : B.kind === "court" ? "out under the sky, still inside" : "find the way on"} · ${this.labyrinthProgress()}`, kind: "danger" };
-      this.message = `${o.dir === "door" ? LABYRINTHS.messages.door : o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${where}.`; this.sync(); return { ok: true, message: this.message }; }
+      this.message = `${o.dir === "door" ? LABYRINTHS.messages.door : o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${where}.`;
+      if (advOpened) { const S = ADVENTURE_LINKS.shortcut; this.message = S.opens; this.defeatNotice = { title: S.notice, detail: "back to the Waystone", kind: "discovery", sound: "shortcut" }; journalOnce(this.save, `adventure-shortcut:${B.base}:${o.shortcutOpens}`, S.opens, PENTAGON.name); }
+      this.sync(); return { ok: true, message: this.message }; }
     this.goBuildingFloor(o.toId, o.toX, o.toY, o); const B = this.map.building, top = B.floor >= B.floors;
     this.defeatNotice = { title: this.map.name.toUpperCase(), detail: top ? BUILDINGS.messages.top : `floor ${B.floor} of ${B.floors}`, kind: "danger" };
     this.message = `${o.dir === "up" ? BUILDINGS.messages.climb : BUILDINGS.messages.descend} ${this.map.name.split(" · ")[1] || `floor ${B.floor}`}.`; this.sync(); return { ok: true, message: this.message };
