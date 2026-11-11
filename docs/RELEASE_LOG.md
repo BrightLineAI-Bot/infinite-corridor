@@ -21,6 +21,7 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 888 | Claude | claude/cv-lightning-giant | Close View beast slot (shared skinned rig, GPU-skinned program) and the Lightning Giant as a solid animated machine on its real attack clocks, drawn 1.25× | In flight. |
 | 887 | Claude | claude/compass-facing | Close View compass follows the Wayfarer's body facing, not the camera; standard view stays north-up with an N/E/S/W dial | In flight. |
 | 886 | Claude | claude/arcana-live | Arcana region placement live (straight-line homes); Bell Toll and Lamplighter's Light earned on every save; the Cairn Keeper starts the Chain; nothing gated | Merged as `174ffb69bb4d` (#549). |
 | 885 | Claude | claude/sim-clock | Fixed 60 Hz simulation steps with interpolated drawing; Close View floor walls built off the entry frame (2–4× faster, byte-identical) | Merged as `0e5133f207af` (#553). |
