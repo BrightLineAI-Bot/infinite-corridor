@@ -11,7 +11,7 @@
 import { STAG_ART } from "./briar-stag-render.ts";
 import { ATTACK_MODULES, BOSS_PACE, STAG } from "./monster-pack.ts";
 import {
-  defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
+  defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
 
@@ -290,7 +290,7 @@ function act(e, tr, now, target) {
 }
 
 // ------------------------------------------------------------------------------------------------ the pose
-const H = new Float64Array(3), T = new Float64Array(3), J = new Float64Array(3), POLE = new Float64Array(3), LOW = new Float64Array(3);
+const H = new Float64Array(3), T = new Float64Array(3), LEGBONES = new Int16Array(4), LENS = new Float64Array(3);
 export function sampleStag(tr, e, env) {
   const now = env.now, reduce = !!env.reduce, S = Math.max(.25, Math.min(4, Number(env.scale) || 1)), P = tr.pose, G = STAG_RIG;
   const gapMs = Number.isFinite(tr.at) ? now - tr.at : Infinity, dt = Number.isFinite(gapMs) ? Math.min(.1, Math.max(0, gapMs / 1000)) : 0; tr.at = now;
@@ -396,28 +396,10 @@ export function sampleStag(tr, e, env) {
     if (!L.hind && L.side > 0 && ACT.paw && !reduce && !dead) { const pw = Math.max(0, Math.sin(t * 9)); fz += pw * .12 * S; fx += cf * pw * .05 * S; fy += sf * pw * .05 * S; } // pawing
     if (dead) { const p = boneLocalToWorld(P, 'root', L.hind ? -.3 : .3, L.side * .12, G.hoof, T); fx = p[0]; fy = p[1]; fz = p[2] + .1 * S * (L.hind ? 0 : smooth(death / .3)); }
     T[0] = fx; T[1] = fy; T[2] = fz;
-    // the low joint (hock or knee): above the hoof; a lifted or folded foot bends it (hind: hock back, fore: hoof tucks back)
-    const bend = Math.min(1, lift * .9 + fold);
-    // the cannon's slope from upright (+: its top ahead of the hoof): the hock sits behind the hind hoof; a bent foreleg folds
-    // the hoof back under the knee
-    const lean = L.hind ? -.18 - .6 * bend : .04 + 1.2 * bend;
-    LOW[0] = T[0] + cf * Math.sin(lean) * can; LOW[1] = T[1] + sf * Math.sin(lean) * can; LOW[2] = T[2] + Math.cos(lean) * can;
-    // out of reach with the cannon upright (a long stride): tilt it toward the hip just enough, as a deer angles the whole leg
-    { const l12 = ((L.hind ? G.femur + G.tibia : G.humerus + G.radius) * S) * .985, d1 = Math.hypot(H[0] - LOW[0], H[1] - LOW[1], H[2] - LOW[2]);
-      if (d1 > l12) { const ht = Math.hypot(H[0] - T[0], H[1] - T[1], H[2] - T[2]) || 1, X = T[0] + (H[0] - T[0]) / ht * can, Y = T[1] + (H[1] - T[1]) / ht * can, Z = T[2] + (H[2] - T[2]) / ht * can;
-        let lo = 0, hi = 1; for (let it = 0; it < 10; it++) { const m = (lo + hi) / 2, mx = LOW[0] + (X - LOW[0]) * m, my = LOW[1] + (Y - LOW[1]) * m, mz = LOW[2] + (Z - LOW[2]) * m; if (Math.hypot(H[0] - mx, H[1] - my, H[2] - mz) > l12) lo = m; else hi = m; }
-        LOW[0] += (X - LOW[0]) * hi; LOW[1] += (Y - LOW[1]) * hi; LOW[2] += (Z - LOW[2]) * hi;
-        // back onto the cannon's length from the hoof (the blend runs along a chord)
-        const cl = Math.hypot(LOW[0] - T[0], LOW[1] - T[1], LOW[2] - T[2]) || 1; for (let q = 0; q < 3; q++) LOW[q] = T[q] + (LOW[q] - T[q]) / cl * can; } }
-    // pole: hind stifle forward, fore elbow back
-    POLE[0] = cf * (L.hind ? 1 : -1); POLE[1] = sf * (L.hind ? 1 : -1); POLE[2] = 0;
-    const l1 = (L.hind ? G.femur : G.humerus) * S, l2 = (L.hind ? G.tibia : G.radius) * S;
-    solveTwoBone(H, LOW, l1, l2, POLE, J);
-    aimWorld(P, top, -3, J[0] - H[0], J[1] - H[1], J[2] - H[2], cf, sf, 0); resolveBone(P, top);
-    const mid = BI[L.mid]; aimWorld(P, mid, -3, LOW[0] - J[0], LOW[1] - J[1], LOW[2] - J[2], cf, sf, 0); resolveBone(P, mid);
-    const lo = BI[L.low]; aimWorld(P, lo, -3, T[0] - LOW[0], T[1] - LOW[1], T[2] - LOW[2], cf, sf, 0); resolveBone(P, lo);
-    const hf = BI[L.hoof], toe = lift > 0 || fold > .05 ? -.6 * Math.max(lift, fold) : 0;
-    aimWorld(P, hf, 0, cf * Math.cos(toe), sf * Math.cos(toe), Math.sin(toe), 0, 0, 1); resolveBone(P, hf);
+    const bend = Math.min(1, lift * .9 + fold), toe = lift > 0 || fold > .05 ? -.6 * Math.max(lift, fold) : 0;
+    LEGBONES[0] = top; LEGBONES[1] = BI[L.mid]; LEGBONES[2] = BI[L.low]; LEGBONES[3] = BI[L.hoof];
+    LENS[0] = (L.hind ? G.femur : G.humerus) * S; LENS[1] = (L.hind ? G.tibia : G.radius) * S; LENS[2] = can;
+    poseAnimalLeg(P, LEGBONES, H, T, LENS, cf, sf, L.hind, bend, toe);
     tr.frame.feet[k * 2] = tr.gait.out[k * 4 + 3]; tr.frame.feet[k * 2 + 1] = lift;
   }
   writeSkin(P);

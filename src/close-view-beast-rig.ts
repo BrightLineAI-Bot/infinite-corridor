@@ -145,6 +145,33 @@ export function solveTwoBone(H, T, L1, L2, pole, J) {
   return d / (L1 + L2);
 }
 
+// A three-segment animal leg (release 891; the Stag, then every four-legged beast): upper and middle bones by two-bone IK, and a
+// lower bone (cannon, metatarsus) held near upright, ending at the foot target T. `hind` legs bend the knee forward with the
+// low joint (hock) behind the foot; forelegs bend the elbow back and fold the foot back under the knee. `bend` (0..1, a lifted
+// or folded foot) increases the low joint's slope. When the stride is longer than the upper bones reach with the lower one
+// upright, it tilts toward the hip just as far as needed and keeps its length. Bones: [top, mid, low, foot] indices; lens:
+// [upper, middle, lower] in world units; the top bone's parent must be resolved and H its origin.
+const LIMB_LOW = new Float64Array(3), LIMB_J = new Float64Array(3), LIMB_POLE = new Float64Array(3);
+export function poseAnimalLeg(pose, bones, H, T, lens, cf, sf, hind, bend = 0, toe = 0, lean0 = null) {
+  const [top, mid, low, foot] = bones, [l1, l2, can] = lens, LOW = LIMB_LOW, J = LIMB_J;
+  const lean = lean0 ?? (hind ? -.18 - .6 * bend : .04 + 1.2 * bend);
+  LOW[0] = T[0] + cf * Math.sin(lean) * can; LOW[1] = T[1] + sf * Math.sin(lean) * can; LOW[2] = T[2] + Math.cos(lean) * can;
+  const l12 = (l1 + l2) * .985, d1 = Math.hypot(H[0] - LOW[0], H[1] - LOW[1], H[2] - LOW[2]);
+  if (d1 > l12) {
+    const ht = Math.hypot(H[0] - T[0], H[1] - T[1], H[2] - T[2]) || 1, X = T[0] + (H[0] - T[0]) / ht * can, Y = T[1] + (H[1] - T[1]) / ht * can, Z = T[2] + (H[2] - T[2]) / ht * can;
+    let lo = 0, hi = 1;
+    for (let it = 0; it < 10; it++) { const m = (lo + hi) / 2, mx = LOW[0] + (X - LOW[0]) * m, my = LOW[1] + (Y - LOW[1]) * m, mz = LOW[2] + (Z - LOW[2]) * m; if (Math.hypot(H[0] - mx, H[1] - my, H[2] - mz) > l12) lo = m; else hi = m; }
+    LOW[0] += (X - LOW[0]) * hi; LOW[1] += (Y - LOW[1]) * hi; LOW[2] += (Z - LOW[2]) * hi;
+    const cl = Math.hypot(LOW[0] - T[0], LOW[1] - T[1], LOW[2] - T[2]) || 1; for (let q = 0; q < 3; q++) LOW[q] = T[q] + (LOW[q] - T[q]) / cl * can; // back onto its length (the blend runs along a chord)
+  }
+  LIMB_POLE[0] = cf * (hind ? 1 : -1); LIMB_POLE[1] = sf * (hind ? 1 : -1); LIMB_POLE[2] = 0;
+  solveTwoBone(H, LOW, l1, l2, LIMB_POLE, J);
+  aimWorld(pose, top, -3, J[0] - H[0], J[1] - H[1], J[2] - H[2], cf, sf, 0); resolveBone(pose, top);
+  aimWorld(pose, mid, -3, LOW[0] - J[0], LOW[1] - J[1], LOW[2] - J[2], cf, sf, 0); resolveBone(pose, mid);
+  aimWorld(pose, low, -3, T[0] - LOW[0], T[1] - LOW[1], T[2] - LOW[2], cf, sf, 0); resolveBone(pose, low);
+  aimWorld(pose, foot, 0, cf * Math.cos(toe), sf * Math.cos(toe), Math.sin(toe), 0, 0, 1); resolveBone(pose, foot);
+}
+
 // ------------------------------------------------------------------------------------------------ curves
 export const clamp01 = (x) => x < 0 ? 0 : x > 1 ? 1 : x;
 export const smooth = (x) => { x = clamp01(x); return x * x * (3 - 2 * x); };
