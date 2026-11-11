@@ -6,6 +6,7 @@ import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-vie
 import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.ts";
 import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.ts";
 import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.ts";
+import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.ts";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -14,10 +15,12 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   briarStag: Object.freeze({ mesh: stagMesh, createTrack: createStagTrack, sample: sampleStag, get scale() { return STAG_RIG.closeViewScale; } }),
   mountainTurtle: Object.freeze({ mesh: turtleMesh, createTrack: createTurtleTrack, sample: sampleTurtle, get scale() { return TURTLE_RIG.closeViewScale; } }),
   nanobotKnight: Object.freeze({ mesh: knightMesh, createTrack: createKnightTrack, sample: sampleKnight, get scale() { return KNIGHT_RIG.closeViewScale; } }),
+  // the world Void Walker; in its skiff it keeps the billboard (the boat is its art's)
+  voidWalker: Object.freeze({ mesh: walkerMesh, createTrack: createWalkerTrack, sample: sampleWalker, get scale() { return WALKER_RIG.closeViewScale; }, eligible: (e) => !e.marine }),
 });
 // Forms the body covers. Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
 export function closeViewBeastEligible(e) {
   return !!e && Object.hasOwn(CLOSE_VIEW_BEASTS, e.kind) && !e.dead && e.hp > 0 && !e.hidden && !e.gloomVeil && !e.illusion
-    && !e.mount && !e.astralAllyOf && !e.seaKind && !e.foundryForm;
+    && !e.mount && !e.astralAllyOf && !e.seaKind && !e.foundryForm && CLOSE_VIEW_BEASTS[e.kind].eligible?.(e) !== false;
 }
 export { BEAST_SLOT };
