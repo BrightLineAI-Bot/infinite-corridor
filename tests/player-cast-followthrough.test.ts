@@ -10,7 +10,7 @@ function sample(profile,phase,heldProfile,reducedMotion=false,state=createHeroPo
 }
 test('known free-hand follow-through preserves primary grip throughout both handed carries and motion settings',()=>{
  for(const held of['cinder-pike','verge-cleaver'])for(const reduced of[false,true]){
-  const idle=sample(null,0,held,reduced),socket=held==='verge-cleaver'?'leftSocket':'rightSocket';
+  const idle=sample(null,0,held,reduced),socket='rightSocket'; // both swords are held in the displayed left hand (source rightSocket)
   for(const profile of profiles)for(const phase of[0,.02,.08,.25,.5,.75,.95,1]){
    const a=sample(profile,phase,held,reduced);assert.deepEqual(a.frame[socket],idle.frame[socket],`${held}/${profile}/${phase} held socket`);
    assert.ok(a.frame.positionsNormals.every(Number.isFinite));assert.equal(a.frame.vertexCount,asset.vertexCount);assert.equal(a.frame.indexCount,asset.indexCount);
@@ -24,5 +24,5 @@ test('gesture recovery is stateless, reuses frame and solver buffers and leaves 
  for(const held of['cinder-pike','verge-cleaver'])for(const phase of[0,.3,.8,1])assert.deepEqual(sample('future-unknown-gesture',phase,held).frame.positionsNormals,sample(null,0,held).frame.positionsNormals);
 });
 test('known gestures articulate the free shoulder and neck without touching held-arm ancestors',()=>{
- for(const held of['cinder-pike','verge-cleaver']){const a=sample('focus-forward',.5,held),b=sample(null,0,held),shoulder=held==='verge-cleaver'?23:13;assert.notDeepEqual(a.state.pose.slice(shoulder*10,shoulder*10+10),b.state.pose.slice(shoulder*10,shoulder*10+10));assert.notDeepEqual(a.state.pose.slice(40,50),b.state.pose.slice(40,50));for(const n of[24,27,28,33])assert.deepEqual(a.state.pose.slice(n*10,n*10+10),b.state.pose.slice(n*10,n*10+10));}
+ for(const held of['cinder-pike','verge-cleaver']){const a=sample('focus-forward',.5,held),b=sample(null,0,held),shoulder=13;/* free source-left shoulder: both weapons are left-handed */assert.notDeepEqual(a.state.pose.slice(shoulder*10,shoulder*10+10),b.state.pose.slice(shoulder*10,shoulder*10+10));assert.notDeepEqual(a.state.pose.slice(40,50),b.state.pose.slice(40,50));for(const n of[24,27,28,33])assert.deepEqual(a.state.pose.slice(n*10,n*10+10),b.state.pose.slice(n*10,n*10+10));}
 });

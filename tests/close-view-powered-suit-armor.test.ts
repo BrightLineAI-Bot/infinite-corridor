@@ -76,7 +76,7 @@ test('native readiness fallback is adult-height, continuous and remains legacy-g
 
 test('powered equipment failure contract keeps preflight atomic and guards cues before renderer admission',()=>{
   const source=fs.readFileSync(new URL('../src/close-view.ts',import.meta.url),'utf8');
-  const write=source.indexOf('const equipped = writeCloseViewHeroEquipment'),fail=source.indexOf('if (state.heroFrame.powerSuit && equipped === offset) return;',write),right=source.indexOf('const right=state.heroFrame.rightSocket',fail),record=source.indexOf('recordHeroPresentation(player',right),admit=source.indexOf('state.hero = state.heroFrame; count++; imported = true;',record);
+  const write=source.indexOf('const equipped = writeCloseViewHeroEquipment'),fail=source.indexOf('if (state.heroFrame.powerSuit && equipped === offset) return;',write),right=source.indexOf('const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip]',fail),record=source.indexOf('recordHeroPresentation(player',right),admit=source.indexOf('state.hero = state.heroFrame; count++; imported = true;',record);
   assert.ok(write>=0&&write<fail&&fail<right&&right<record&&record<admit,'atomic armor reservation failure precedes both final-socket cue families and imported admission');
   const {frame}=sampled({powerSuit:true}),gear={profile:'great-sweep',rightSocket:frame.rightSocket,leftSocket:frame.leftSocket,alpha:1,tint:[1,1,1]},full=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS),end=writeCloseViewHeroEquipment(full,0,gear,frame),short=new Float32Array(end-1);
   assert.ok(end>0);assert.equal(writeCloseViewHeroEquipment(short,0,gear,frame),0);assert.ok(short.every(v=>v===0),'failed actual powered equipment preflight writes neither armor nor gear');
