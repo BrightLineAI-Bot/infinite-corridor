@@ -145,6 +145,33 @@ export function solveTwoBone(H, T, L1, L2, pole, J) {
   return d / (L1 + L2);
 }
 
+// A three-segment animal leg (release 891; the Stag, then every four-legged beast): upper and middle bones by two-bone IK, and a
+// lower bone (cannon, metatarsus) held near upright, ending at the foot target T. `hind` legs bend the knee forward with the
+// low joint (hock) behind the foot; forelegs bend the elbow back and fold the foot back under the knee. `bend` (0..1, a lifted
+// or folded foot) increases the low joint's slope. When the stride is longer than the upper bones reach with the lower one
+// upright, it tilts toward the hip just as far as needed and keeps its length. Bones: [top, mid, low, foot] indices; lens:
+// [upper, middle, lower] in world units; the top bone's parent must be resolved and H its origin.
+const LIMB_LOW = new Float64Array(3), LIMB_J = new Float64Array(3), LIMB_POLE = new Float64Array(3);
+export function poseAnimalLeg(pose, bones, H, T, lens, cf, sf, hind, bend = 0, toe = 0, lean0 = null) {
+  const [top, mid, low, foot] = bones, [l1, l2, can] = lens, LOW = LIMB_LOW, J = LIMB_J;
+  const lean = lean0 ?? (hind ? -.18 - .6 * bend : .04 + 1.2 * bend);
+  LOW[0] = T[0] + cf * Math.sin(lean) * can; LOW[1] = T[1] + sf * Math.sin(lean) * can; LOW[2] = T[2] + Math.cos(lean) * can;
+  const l12 = (l1 + l2) * .985, d1 = Math.hypot(H[0] - LOW[0], H[1] - LOW[1], H[2] - LOW[2]);
+  if (d1 > l12) {
+    const ht = Math.hypot(H[0] - T[0], H[1] - T[1], H[2] - T[2]) || 1, X = T[0] + (H[0] - T[0]) / ht * can, Y = T[1] + (H[1] - T[1]) / ht * can, Z = T[2] + (H[2] - T[2]) / ht * can;
+    let lo = 0, hi = 1;
+    for (let it = 0; it < 10; it++) { const m = (lo + hi) / 2, mx = LOW[0] + (X - LOW[0]) * m, my = LOW[1] + (Y - LOW[1]) * m, mz = LOW[2] + (Z - LOW[2]) * m; if (Math.hypot(H[0] - mx, H[1] - my, H[2] - mz) > l12) lo = m; else hi = m; }
+    LOW[0] += (X - LOW[0]) * hi; LOW[1] += (Y - LOW[1]) * hi; LOW[2] += (Z - LOW[2]) * hi;
+    const cl = Math.hypot(LOW[0] - T[0], LOW[1] - T[1], LOW[2] - T[2]) || 1; for (let q = 0; q < 3; q++) LOW[q] = T[q] + (LOW[q] - T[q]) / cl * can; // back onto its length (the blend runs along a chord)
+  }
+  LIMB_POLE[0] = cf * (hind ? 1 : -1); LIMB_POLE[1] = sf * (hind ? 1 : -1); LIMB_POLE[2] = 0;
+  solveTwoBone(H, LOW, l1, l2, LIMB_POLE, J);
+  aimWorld(pose, top, -3, J[0] - H[0], J[1] - H[1], J[2] - H[2], cf, sf, 0); resolveBone(pose, top);
+  aimWorld(pose, mid, -3, LOW[0] - J[0], LOW[1] - J[1], LOW[2] - J[2], cf, sf, 0); resolveBone(pose, mid);
+  aimWorld(pose, low, -3, T[0] - LOW[0], T[1] - LOW[1], T[2] - LOW[2], cf, sf, 0); resolveBone(pose, low);
+  aimWorld(pose, foot, 0, cf * Math.cos(toe), sf * Math.cos(toe), Math.sin(toe), 0, 0, 1); resolveBone(pose, foot);
+}
+
 // ------------------------------------------------------------------------------------------------ curves
 export const clamp01 = (x) => x < 0 ? 0 : x > 1 ? 1 : x;
 export const smooth = (x) => { x = clamp01(x); return x * x * (3 - 2 * x); };
@@ -180,7 +207,7 @@ export function createGait(feet) {
 // Standing, a foot that has drifted more than `stepAt` from its rest spot (the body turned or shuffled) is not slid home:
 // it is lifted and stepped there over `stepTime` seconds, one foot at a time (pass 2, 2026-11-11: a heavy body turns on
 // its feet). State slot 6 holds that step's progress (-1: none).
-export function stepGait(G, x, y, yaw, nowMs, { stride = 1, stance = .6, settle = 4, still = false, snapDistance = 2, stepAt = Infinity, stepTime = .4 } = {}) {
+export function stepGait(G, x, y, yaw, nowMs, { stride = 1, stance = .6, settle = 4, still = false, snapDistance = 2, stepAt = Infinity, stepTime = .4, maxStepping = 1 } = {}) {
   const dt = Number.isFinite(G.at) ? Math.min(.1, Math.max(0, (nowMs - G.at) / 1000)) : 0;
   const jump = !Number.isFinite(G.x) || Math.hypot(x - G.x, y - G.y) > snapDistance;
   const travelled = jump ? 0 : Math.hypot(x - G.x, y - G.y);
@@ -203,7 +230,7 @@ export function stepGait(G, x, y, yaw, nowMs, { stride = 1, stance = .6, settle 
         s[o + 6] = Math.min(1, s[o + 6] + dt / stepTime); const e = smooth(s[o + 6]);
         s[o + 4] = homeX; s[o + 5] = homeY; fx = mix(s[o + 2], homeX, e); fy = mix(s[o + 3], homeY, e); stepLift = Math.sin(Math.PI * e) * .6;
         if (s[o + 6] >= 1) { s[o] = homeX; s[o + 1] = homeY; s[o + 6] = -1; }
-      } else if (Number.isFinite(stepAt) && Math.hypot(homeX - s[o], homeY - s[o + 1]) > stepAt && !gaitStepping(G, k)) {
+      } else if (Number.isFinite(stepAt) && Math.hypot(homeX - s[o], homeY - s[o + 1]) > stepAt && gaitStepping(G, k) < maxStepping) {
         s[o + 2] = s[o]; s[o + 3] = s[o + 1]; s[o + 6] = 0; fx = s[o]; fy = s[o + 1];
       } else if (!Number.isFinite(stepAt)) { // no stepping asked for: settle home
         const k2 = dt > 0 ? Math.min(1, dt * 6) : 0; s[o] += (homeX - s[o]) * k2; s[o + 1] += (homeY - s[o + 1]) * k2; fx = s[o]; fy = s[o + 1];
@@ -225,7 +252,8 @@ export function stepGait(G, x, y, yaw, nowMs, { stride = 1, stance = .6, settle 
   return G;
 }
 
-function gaitStepping(G, except) { for (let k = 0; k < G.n; k++) if (k !== except && G.state[k * 8 + 6] >= 0) return true; return false; }
+// How many other feet are mid-step (a biped steps one at a time; a quadruped may move a diagonal pair).
+function gaitStepping(G, except) { let n = 0; for (let k = 0; k < G.n; k++) if (k !== except && G.state[k * 8 + 6] >= 0) n++; return n; }
 
 // ------------------------------------------------------------------------------------------------ the mesh builder
 // Parts are authored in a bone's local frame (f, r, u; relative to the bone origin) and stored in bind space. Each
@@ -239,10 +267,50 @@ export function meshBuilder(skeleton, detail = 1) {
   B.color = (hex, e = 0) => { color = [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255]; emit = e; return B; };
   const vert = (x, y, z, nx, ny, nz) => {
     const bx = skeleton.bindWorld[bone * 3], by = skeleton.bindWorld[bone * 3 + 1], bz = skeleton.bindWorld[bone * 3 + 2], l = Math.hypot(nx, ny, nz) || 1;
-    pos.push(x + bx, y + by, z + bz); nrm.push(nx / l, ny / l, nz / l); col.push(color[0], color[1], color[2]); skin.push(bone, emit);
+    pos.push(x + bx, y + by, z + bz); nrm.push(nx / l, ny / l, nz / l); col.push(color[0], color[1], color[2]); skin.push(bone, emit, bone, 0);
     return pos.length / 3 - 1;
   };
   B.vertex = vert;
+  // A vertex in model bind space (not bone-relative), blended between two bones: weight w on boneB (release 891: one
+  // continuous hide across joints instead of rigid parts meeting at a crease).
+  const vertBlend = (x, y, z, nx, ny, nz, ba, bb, w, r, g, b) => {
+    const l = Math.hypot(nx, ny, nz) || 1; pos.push(x, y, z); nrm.push(nx / l, ny / l, nz / l); col.push(r, g, b); skin.push(ba, emit, bb, w); return pos.length / 3 - 1; };
+  // A loft: one smooth skin swept through cross-sections along a path in model bind space. sections: [{ at: [f, r, u], rx
+  // (half width), rz (half height), bones: [a, b, w] (w on b) }]. The ring lies across the path; `tone(i, k, sinT)` may vary
+  // the colour (a darker belly, mottled bark). Ends close to a point when their radius is 0, or are capped.
+  B.loft = (o) => {
+    const S = o.sections, seg = Math.max(o.minSeg || 5, Math.round((o.seg || 12) * (detail >= 1 ? 1 : detail >= .6 ? .7 : .5))), rings = [];
+    const idx = (n) => { const i = skeleton.index[n]; if (i === undefined) throw new Error(`no bone ${n}`); return i; };
+    for (let i = 0; i < S.length; i++) {
+      const c = S[i].at, prev = S[Math.max(0, i - 1)].at, next = S[Math.min(S.length - 1, i + 1)].at;
+      let t = norm3(sub3(next, prev)); const up0 = o.up || [0, 0, 1];
+      let side = cross3(up0, t); if (Math.hypot(...side) < 1e-4) side = [0, 1, 0]; side = norm3(side); // r = u x f
+      const up = norm3(cross3(t, side)); // f x r = u
+      const [ba, bb, w] = S[i].bones, A = idx(ba), Bn = idx(bb ?? ba), rx = S[i].rx, rz = S[i].rz ?? rx;
+      // the slope of the section radius along the path tilts the normals (a tapering limb faces a little toward its end)
+      const rp = (S[Math.max(0, i - 1)].rx + (S[Math.max(0, i - 1)].rz ?? S[Math.max(0, i - 1)].rx)) / 2, rn = (S[Math.min(S.length - 1, i + 1)].rx + (S[Math.min(S.length - 1, i + 1)].rz ?? S[Math.min(S.length - 1, i + 1)].rx)) / 2;
+      const span = Math.hypot(...sub3(next, prev)) || 1, slope = (rp - rn) / span;
+      const row = [];
+      if (rx <= 1e-6) { row.push(vertBlend(c[0], c[1], c[2], t[0] * (i ? 1 : -1), t[1] * (i ? 1 : -1), t[2] * (i ? 1 : -1), A, Bn, w || 0, ...rgb(o.tone ? o.tone(i, 0, 0) : null))); rings.push(row); continue; }
+      for (let k = 0; k < seg; k++) {
+        const th = (k / seg) * Math.PI * 2, ct = Math.cos(th), st = Math.sin(th);
+        const p = [c[0] + side[0] * ct * rx + up[0] * st * rz, c[1] + side[1] * ct * rx + up[1] * st * rz, c[2] + side[2] * ct * rx + up[2] * st * rz];
+        const n = [side[0] * ct / rx + up[0] * st / rz, side[1] * ct / rx + up[1] * st / rz, side[2] * ct / rx + up[2] * st / rz], nl = Math.hypot(...n) || 1;
+        const nn = [n[0] / nl + t[0] * slope, n[1] / nl + t[1] * slope, n[2] / nl + t[2] * slope];
+        row.push(vertBlend(p[0], p[1], p[2], nn[0], nn[1], nn[2], A, Bn, w || 0, ...rgb(o.tone ? o.tone(i, k, st) : null)));
+      }
+      rings.push(row);
+    }
+    for (let i = 0; i < rings.length - 1; i++) { const a = rings[i], b = rings[i + 1];
+      for (let k = 0; k < seg; k++) { const k2 = (k + 1) % seg;
+        if (a.length === 1) B.tri(a[0], b[k2], b[k]); else if (b.length === 1) B.tri(a[k], a[k2], b[0]); else { B.tri(a[k], a[k2], b[k2]); B.tri(a[k], b[k2], b[k]); } } }
+    if (o.caps !== false) for (const [i, sgn] of [[0, -1], [rings.length - 1, 1]]) { const r = rings[i]; if (r.length < 3) continue;
+      const c = S[i].at, prev = S[Math.max(0, i - 1)].at, next = S[Math.min(S.length - 1, i + 1)].at, t = norm3(sub3(next, prev)), [ba, bb, w] = S[i].bones;
+      const ctr = vertBlend(c[0], c[1], c[2], t[0] * sgn, t[1] * sgn, t[2] * sgn, idx(ba), idx(bb ?? ba), w || 0, ...rgb(o.tone ? o.tone(i, 0, -1) : null));
+      for (let k = 0; k < seg; k++) { const k2 = (k + 1) % seg; sgn > 0 ? B.tri(r[k], r[k2], ctr) : B.tri(r[k2], r[k], ctr); } }
+    return B;
+  };
+  const rgb = (hex) => hex == null ? color : [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
   B.tri = (a, b, c) => { idx.push(a, b, c); B.triangles++; };
   // A flat polygon (points as [x,y,z] in bone-local), its normal from the winding (counter-clockwise seen from outside).
   B.poly = (pts, flip = false) => {
@@ -299,8 +367,9 @@ export function meshBuilder(skeleton, detail = 1) {
         const da = rings[i + 1][0] - rings[i][0], dr = rc - ra, len = Math.hypot(da, dr) || 1, tilt = -dr / len, radial = da / len;
         const vA = [], vC = [];
         for (let k = 0; k < seg; k++) {
-          const t = (k / seg) * Math.PI * 2 + (o.phase || 0), d = sub3(P(0, Math.cos(t) * rs, Math.sin(t) * us), P(0, 0, 0)), ax = sub3(P(1, 0, 0), P(0, 0, 0));
-          const n = add3(scale3(norm3(d), radial), scale3(norm3(ax), tilt));
+          // an elliptical section (rs, us) bends the normal toward the narrow axis: (cos t / rs, sin t / us), not the scaled offset
+          const t = (k / seg) * Math.PI * 2 + (o.phase || 0), d = sub3(P(0, Math.cos(t) / rs, Math.sin(t) / us), P(0, 0, 0)), ax = sub3(P(1, 0, 0), P(0, 0, 0));
+          const n = add3(scale3(d, radial), scale3(norm3(ax), tilt));
           vA.push(vert(...A[k], ...n)); vC.push(vert(...C[k], ...n));
         }
         for (let k = 0; k < seg; k++) { const k2 = (k + 1) % seg;
@@ -317,8 +386,19 @@ export function meshBuilder(skeleton, detail = 1) {
     return B;
   };
   // A sphere/ellipsoid along the frame's F axis: radius (f, r, u).
-  B.ellipsoid = (o) => { const n = Math.max(3, Math.round((o.rings || 5) * (detail >= 1 ? 1 : .7))), rings = []; for (let i = 0; i <= n; i++) { const t = -Math.PI / 2 + Math.PI * i / n; rings.push([Math.sin(t) * o.radius[0], Math.cos(t) * 1]); }
-    return B.lathe({ seg: 8, ...o, rings: rings.map(([a, r], i) => [a, i === 0 || i === n ? 0 : r]), rs: o.radius[1], us: o.radius[2], smooth: o.smooth !== false, caps: false }); };
+  B.ellipsoid = (o) => { // exact normals (x/a^2, y/b^2, z/c^2), smooth, along the frame's F axis with radii (f, r, u)
+    const P = frame(o), [a, b, c] = o.radius, n = Math.max(2, Math.round((o.rings || 5) * (detail >= 1 ? 1 : .7))), seg = Math.max(o.minSeg || 4, Math.round((o.seg || 8) * (detail >= 1 ? 1 : detail >= .6 ? .68 : .5)));
+    const O = P(0, 0, 0), Fd = sub3(P(1, 0, 0), O), Rd = sub3(P(0, 1, 0), O), Ud = sub3(P(0, 0, 1), O);
+    const ids = [];
+    for (let i = 0; i <= n; i++) { const phi = -Math.PI / 2 + Math.PI * i / n, sp = Math.sin(phi), cp = Math.cos(phi), row = [];
+      for (let k = 0; k < (i === 0 || i === n ? 1 : seg); k++) { const t = (k / seg) * Math.PI * 2 + (o.phase || 0), ct = Math.cos(t), st = Math.sin(t);
+        const p = P(sp * a, cp * ct * b, cp * st * c), nf = sp / a, nr = cp * ct / b, nu = cp * st / c;
+        row.push(vert(p[0], p[1], p[2], Fd[0] * nf + Rd[0] * nr + Ud[0] * nu, Fd[1] * nf + Rd[1] * nr + Ud[1] * nu, Fd[2] * nf + Rd[2] * nr + Ud[2] * nu)); }
+      ids.push(row); }
+    for (let i = 0; i < n; i++) { const A = ids[i], C = ids[i + 1];
+      for (let k = 0; k < seg; k++) { const k2 = (k + 1) % seg;
+        if (A.length === 1) B.tri(A[0], C[k2], C[k]); else if (C.length === 1) B.tri(A[k], A[k2], C[0]); else { B.tri(A[k], A[k2], C[k2]); B.tri(A[k], C[k2], C[k]); } } }
+    return B; };
   // An extruded flat profile: points [[a, b], ...] in the frame's (F, U) plane (counter-clockwise), thickness along R.
   B.slab = (o) => {
     const P = frame(o), h = o.thick / 2, pts = o.points, bv = detail >= .6 ? (o.bevel || 0) : 0, n = pts.length;

@@ -43,7 +43,7 @@ test('an atlas-free old Pentagon chamber prevents padding adoption in a new exte
   fixture.save.consequences.dungeons[key] = oldRecord;
   cross(fixture);
   const report = labReport(fixture).diagnostics.routingAdoption;
-  assert.equal(report.actual.version, 10);
+  assert.equal(report.actual.version, 11);
   assert.equal(report.actual.roomPaddingPin, null);
   assert.deepEqual(fixture.save.consequences.dungeons[key], oldRecord);
 });
@@ -57,10 +57,10 @@ test('routing adoption scratch scenarios start on an actual open boundary and do
 });
 
 test('normal movement crossing creates the fresh keep and Pentagon through production selectors with bounded live receipts',()=>{
-  for(const [id,family,version] of [['routing-adoption-new-keep','keep',5],['routing-adoption-new-pentagon','pentagon',10]]){const f=createLabFixture({lab:'close-view',scenario:id,now:1000}),g=cross(f),R=labReport(f).diagnostics.routingAdoption;
-    assert.equal(R.phase,'destination');assert.equal(R.target.family,family);assert.equal(R.actual.version,version);assert.equal(R.actual.roomPaddingPin,1);assert.ok(R.actual.base);assert.ok(R.actual.door);assert.deepEqual(R.protectedRecord,{generatorVersion:77,layoutVersion:66,futureCanary:{kept:true}});
-    if(family==='keep')assert.equal(g.save.consequences.dungeons[`${R.actual.base}:f1`].interiorVersion,5);else assert.equal(g.save.atlas[`${g.rx},${g.ry}`].pentVersion,10);
-    assert.equal(g.save.consequences.dungeons[`${R.actual.base}:f1`].roomPaddingVersion,1);
+  for(const [id,family,version] of [['routing-adoption-new-keep','keep',5],['routing-adoption-new-pentagon','pentagon',11]]){const f=createLabFixture({lab:'close-view',scenario:id,now:1000}),g=cross(f),R=labReport(f).diagnostics.routingAdoption;
+    assert.equal(R.phase,'destination');assert.equal(R.target.family,family);assert.equal(R.actual.version,version);assert.equal(R.actual.roomPaddingPin,family==='keep'?1:null);assert.ok(R.actual.base);assert.ok(R.actual.door);assert.deepEqual(R.protectedRecord,{generatorVersion:77,layoutVersion:66,futureCanary:{kept:true}});
+    if(family==='keep')assert.equal(g.save.consequences.dungeons[`${R.actual.base}:f1`].interiorVersion,5);else assert.equal(g.save.atlas[`${g.rx},${g.ry}`].pentVersion,11);
+    assert.equal(g.save.consequences.dungeons[`${R.actual.base}:f1`]?.roomPaddingVersion,family==='keep'?1:undefined);
     const door=g.map.objects.find(o=>o.id===R.actual.door);assert.ok(door);g.player.x=door.x;g.player.y=door.y;assert.equal(g.interact('enter',door.id).ok,true);assert.equal(g.area,'dungeon');let inside=labReport(f).diagnostics.routingAdoption;assert.equal(inside.phase,'interior');assert.equal(inside.actual.base,g.map.building.base);assert.equal(inside.actual.version,version);assert.equal(inside.actual.interiorPin,family==='keep'?5:null);assert.ok(g.leaveDungeon());assert.deepEqual([g.rx,g.ry],[f.adoptionSpec.destination.rx,f.adoptionSpec.destination.ry]);const returned=labReport(f).diagnostics.routingAdoption;assert.equal(returned.phase,'destination');assert.equal(returned.actual.version,version);const doorAgain=g.map.objects.find(o=>o.id===R.actual.door);g.player.x=doorAgain.x;g.player.y=doorAgain.y;assert.equal(g.interact('enter',doorAgain.id).ok,true);inside=labReport(f).diagnostics.routingAdoption;assert.equal(inside.phase,'interior');assert.equal(inside.actual.version,version);
   }
 });
