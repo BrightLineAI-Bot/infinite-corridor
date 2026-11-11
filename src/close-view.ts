@@ -292,11 +292,11 @@ export const CLOSE_VIEW = Object.freeze({
   // keeps and castles are cold dressed stone (`livedInShare` of them lived in: warmer, tapestries, some lights burning with
   // ghost-light); hives are chitin and resin with a dim bioluminescence; arcologies are an old machine's failing panels.
   // Every choice is a hash of the building and its floor: never stored, never per frame.
-  // wall.kind: 0 coursed stone, 1 packed dirt and timber, 2 chitin, 3 machine panels; stone: course height, block length,
+  // wall.kind: 0 coursed stone, 1 packed dirt and timber, 2 chitin, 3 machine panels, 6 a starship's clean panels; stone: course height, block length,
   // bevel, roughness (tiles); damp: height of the wet foot (tiles) and how wet; topFall: how bright the wall's top stays.
   // floor.kind: the shader's floorMat for an ordinary floor (0 flagstones, 6 dirt, 7 resin, 10 plating; a rug, planks or
   // mosaic keep their own); size: a flagstone's course; sewer: a channel down the middle of passages.
-  // ceiling.kind: 0 a ribbed vault (bays of `bay` tiles), 1 timber beams, 2 organic ribs, 3 conduits; dark: how far up into
+  // ceiling.kind: 0 a ribbed vault (bays of `bay` tiles), 1 timber beams, 2 organic ribs, 3 conduits, 4 a starship's clean panels; dark: how far up into
   // the dark the vault's webs go. arch: an arch over each doorway (spring height, radius: 0 a flat lintel; band: voussoirs).
   // pilaster: one every this many tiles along a straight wall (0 none); plinth, cornice: height, depth (tiles).
   // light: the carried light (colour, reach, strength, height) and the ambient; sources: placed lights on `share` of the wall
@@ -367,6 +367,19 @@ export const CLOSE_VIEW = Object.freeze({
       fog: Object.freeze({ rgb: Object.freeze([6, 8, 7]), near: 2.6, far: 12, haze: Object.freeze([.08, .7]), hazeRGB: Object.freeze([15, 18, 15]) }),
       grade: Object.freeze([.98, 1.02, .95, 1.1]), vignette: .5, deco1: Object.freeze([42, 46, 40]), deco2: Object.freeze([112, 110, 86]), glow: Object.freeze([170, 205, 140]),
       decor: Object.freeze({ vent: .07, roots: .05 }), props: Object.freeze({ rubble: .03, chain: .02, web: .15 }) }),
+    // Seed realms (seed-realms.ts, Tim 2026-11-11: "more sci-fi, instead of like a dirty old asylum or laboratory"): the Drifting
+    // Ship's own look. wall.kind 6: clean brushed composite panels with crisp seams, a light strip at head height and a kick strip
+    // (close-view-gl.ts); its lights are strips (hue 4: cool, no flame, no bracket); no damp, grit, webs or rubble.
+    starship: Object.freeze({ label: "Starship: clean composite panels and light strips",
+      wall: Object.freeze({ kind: 6, rgb: Object.freeze([120, 130, 142]), mortar: Object.freeze([16, 20, 26]), stone: Object.freeze([.34, .8, .02, .2]), damp: Object.freeze([0, 0]), dampRGB: Object.freeze([150, 160, 170]), topFall: .55 }),
+      floor: Object.freeze({ kind: 10, rgb: Object.freeze([78, 86, 96]), joint: Object.freeze([20, 24, 30]), rug: Object.freeze([40, 48, 60]), size: .6, wear: .1, wet: .35, sewer: false }),
+      ceiling: Object.freeze({ kind: 4, rgb: Object.freeze([62, 70, 80]), bay: 3, rib: .08, dark: .5 }),
+      arch: Object.freeze({ spring: 2.05, radius: 0, band: .2 }), pilaster: 0, plinth: Object.freeze([0, 0]), cornice: Object.freeze([0, 0]),
+      light: Object.freeze({ torch: Object.freeze([205, 225, 255]), reach: 6, strength: 1.7, height: 1.15, ambient: Object.freeze([12, 14, 18]),
+        sources: Object.freeze({ share: .14, spacing: 4, reach: 4.6, strength: 1.5, hue: 4, ghost: 0, candles: 0 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([4, 6, 10]), near: 3, far: 13, haze: Object.freeze([.04, .8]), hazeRGB: Object.freeze([10, 14, 22]) }),
+      grade: Object.freeze([.94, 1, 1.08, 1.08]), vignette: .5, deco1: Object.freeze([40, 48, 60]), deco2: Object.freeze([120, 160, 200]), glow: Object.freeze([140, 210, 255]),
+      decor: Object.freeze({}), props: Object.freeze({}) }),
     arcology: Object.freeze({ label: "Arcology: an old machine, failing",
       wall: Object.freeze({ kind: 3, rgb: Object.freeze([70, 76, 74]), mortar: Object.freeze([14, 15, 15]), stone: Object.freeze([.34, .8, .04, .4]), damp: Object.freeze([.6, .45]), dampRGB: Object.freeze([152, 158, 142]), topFall: .4 }),
       floor: Object.freeze({ kind: 10, rgb: Object.freeze([60, 64, 62]), joint: Object.freeze([12, 13, 13]), rug: Object.freeze([40, 40, 46]), size: .6, wear: .5, wet: .2, sewer: false }),
@@ -458,8 +471,10 @@ export function closeViewThemeId(b) {
 }
 export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "lived") < CLOSE_VIEW.themes.livedInShare; // for the lab: which keeps are lived in
 const THEME_OF = new WeakMap();
-export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
-const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
+const SEED_REALM_THEMES = Object.freeze({ ship: "starship", husk: "rootCellar" }); // seed realms (seed-realms.ts): the ship's clean panels, the husk's mine timbers
+const mapThemeId = (map) => SEED_REALM_THEMES[map?.seedRealm?.realm] || closeViewThemeId(map?.building);
+export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
+const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
 const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorMap(g.map);
 const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
 export function overworldCloseViewApplies(g) {
@@ -1749,6 +1764,7 @@ const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOS
   return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null, hall: null, backdrop: NO_BACKDROP, inlay: SIGIL_INLAY,
     env(gl, U, F, lavaTiles) { const q = UNI.q, th = UNI.th, tg = UNI.tg, C = th.ceiling, Fl = th.floor;
       gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling && !UNI.openArena ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
+      gl.uniform4f(U.u_space, UNI.space ? 1 : 0, 1, q.relief ? 1 : 0, 0); // seed realms: the cosmos through the ship's glass
       gl.uniform4f(U.u_hall, UNI.backdrop.kind, UNI.hall?.open ? 1 : 0, UNI.openArena ? 2 : UNI.hall?.sky ? 1 : 0, HALL_VIEW.shaftDepth);
       gl.uniform3fv(U.u_backdrop, UNI.backdrop.colors);
       gl.uniform3fv(U.u_inlayColors, UNI.inlay);
@@ -2010,8 +2026,8 @@ function buildStatic(map, geo, th) {
     // a placed light: a sconce on the wall (on a bracket), a pod in a hive's wall, a lamp in a machine's
     let lit = false;
     if (rnd(tx, ty, side, 1) < src.share && deco !== 3) { const lx = mx + nx * .2, ly = my + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - lx, lights[k + 1] - ly) >= src.spacing;
-      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
-        if (hue !== 1) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
+      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 || mat === 6 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
+        if (hue !== 1 && hue < 4) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
     // candles in an inside corner, on the floor
     if ((ab & 1) && src.candles > 0 && rnd(tx, ty, side, 6) < src.candles) { const ux = Math.sign(dx), uy = Math.sign(dy), cx = x0 + ux * .2 + nx * .2, cy = y0 + uy * .2 + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - cx, lights[k + 1] - cy) >= src.spacing * .5;
       if (ok) { lights.push(cx, cy, .35, src.reach * .7, src.strength * .7, 0, rnd(tx, ty, side, 7) * 6.283, 1);
@@ -2786,7 +2802,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
-  UNI.hall = g.map.hall?.tall ? g.map.hall : null;
+  UNI.hall = g.map.hall?.tall ? g.map.hall : null; UNI.space = g.map?.seedRealm?.realm === "ship";
   UNI.openArena = stillworks || outdoor;
   UNI.worldCapture = flatWorld;
   // the open world (close-view-outdoor.ts): its sky, sun and air, the ground's far field and its solids
