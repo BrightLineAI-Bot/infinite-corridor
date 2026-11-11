@@ -20,7 +20,8 @@ import { LIFT_PER_LEVEL as LIFT } from "./landscape.ts";
 import { grantTesseract } from "./tesseracts.ts";
 import { PENTAGON_HALLS, assignPentagonHalls, layPentagonHall, dressPentagonHall, pentagonChamberSigils } from "./pentagon-halls.ts";
 const PENTAGON_HALLS_FLOOR = (type) => PENTAGON_HALLS.types[type]?.floor || "flagFloor";
-import { ADVENTURE_PENTAGON as AP, ADVENTURE_THEMES, ADVENTURE_AREAS, ADVENTURE_LINKS, composeDistrict, adventureThemePick, adventureRoster, adventureAreaSize, layAdventureArea } from "./adventures.ts";
+import { ADVENTURE_PENTAGON as AP, ADVENTURE_THEMES, ADVENTURE_AREAS, ADVENTURE_LINKS, composeDistrict, adventureThemePick, adventureRoster, adventureAreaSize, layAdventureArea, adventureCreatureTheme } from "./adventures.ts";
+import { pickAdventureCreature, adventureSpawnSpot } from "./adventure-creatures.ts";
 
 export const PENTAGON = {
   version: 9, // 9: spacious branching ordinary chambers; 8: grand halls, murals and the Watcher's sigil (pentagon-halls.ts); earlier versions remain pinned. The legacy baseline: new ground takes 10 (release 844 room routing) or 11 (the adventure: adventures.ts ADVENTURE_PENTAGON), chosen in game.ts recoverPentagonVersion
@@ -655,7 +656,11 @@ export function generatePentagonChamber(seed, id, T = 1) { // `T`: the chamber's
   const boss = V2 && (q.lord || q.boss || q.warden); if (boss) { const down = q.ports.find((p) => p.kind === "pass" && plan.nodes.find((n) => n.id === p.to).n > q.n), toward = down ? down.inner : null, d = (c) => toward ? Math.abs(c.x - toward.x) + Math.abs(c.y - toward.y) : -(Math.abs(c.x - arrive.x) + Math.abs(c.y - arrive.y));
     const c = cells.filter((p) => !taken.has(p.y * W + p.x)).sort((a, b) => d(a) - d(b))[0]; if (c) { taken.add(c.y * W + c.x); const B = q.lord ? P.lord : q.warden ? P.warden : P.deepBoss, grow = q.lord || q.warden ? 1 : 1 + B.perFloor * hi;
       enemySpawns.push({ id: `${id}:lord`, kind: boss.kind, x: c.x, y: c.y, buildingGuard: true, boss: true, packGuardian: true, pentBoss: { name: boss.name, hp: B.hp * grow, damage: B.damage * grow, affixes: B.affixes } }); } }
-  for (let i = 0; i < ng; i++) { const c = take(); if (!c) break; enemySpawns.push({ id: `${id}:g${i}`, kind: roster[h(`k${i}`) % roster.length], x: c.x, y: c.y, buildingGuard: true }); }
+  // v11: a share of a chamber's ordinary guards are its theme's adventure creatures (adventure-creatures.ts), placed by habitat
+  // once the floor's heights are laid (below); the rest as before
+  const advModule = A ? adventureCreatureTheme(q.theme || "tomb") : null, advSlots = [];
+  for (let i = 0; i < ng; i++) { const c = take(); if (!c) break; const adv = advModule && (hashSeed(`${id}:adventure-slot:${i}`) % 1000) / 1000 < AP.creatures.share ? pickAdventureCreature(advModule, `${id}:g${i}`) : null;
+    if (adv) { advSlots.push({ i, c, kind: adv.kind }); continue; } enemySpawns.push({ id: `${id}:g${i}`, kind: roster[h(`k${i}`) % roster.length], x: c.x, y: c.y, buildingGuard: true }); }
   if (V2 ? vault : q.id === "h2") { const c = take(); if (c) objects.push({ id: "building-cache", kind: "chest", name: "The Regent's Hoard", x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache });
     const g = take(); if (g) enemySpawns.push({ id: `${id}:guardian`, kind: P.regent, x: g.x, y: g.y, buildingGuard: true, buildingGuardian: true, ...(V2 ? { boss: true, packGuardian: true, pentBoss: { name: "The Regent", ...P.regentBoss } } : {}) }); }
   const AD = AP.dread, advDread = A && (q.kind === "district" || q.kind === "waystone") ? Math.min(AD.max, q.kind === "waystone" ? AD.hub : AD.front + AD.perRow * (q.row || 0) + (q.layer === "upper" ? AD.upper : q.layer === "lower" ? AD.lower : 0)) : null;
@@ -670,6 +675,11 @@ export function generatePentagonChamber(seed, id, T = 1) { // `T`: the chamber's
   // route to the alcove too. It is never an interactable in the returned chamber.
   const terrain = addInteriorTerrain(finaleAlcove ? { ...chamber, objects: [...objects, { ...finaleAlcove.inner }] } : chamber, Pp.base, plan.V >= 9 ? 3 : 1, T);
   terrain.objects = objects;
+  if (advSlots.length) { // v11: by habitat (a perch, a vantage, open floor, a sand flat), near the slot's own spot, on floor reached from the way in
+    const TT = terrain.tiles, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? null : TT[y * W + x]), held = new Set([...objects, ...terrain.enemySpawns].map((o) => Math.round(o.y) * W + Math.round(o.x))), used = [];
+    const area = { width: W, height: H, open: (x, y) => { const t = at(x, y); return !!t && !t.blocked && !t.hole; }, level: (x, y) => at(x, y)?.elev || 0,
+      safe: (x, y) => { const t = at(x, y); return !!t && reach.has(y * W + x) && !t.doorway && !t.plate && !t.pentFinaleClear && !t.slope && !held.has(y * W + x) && !routingNearLanding(optionalLandings, x, y); } };
+    for (const { i, c, kind } of advSlots) { const p = adventureSpawnSpot(area, kind, c, used) || c; used.push(p); held.add(p.y * W + p.x); terrain.enemySpawns.push({ id: `${id}:g${i}`, kind, x: p.x, y: p.y, buildingGuard: true, adventureCreature: advModule }); } }
   return terrain;
 }
 

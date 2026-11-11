@@ -54,6 +54,9 @@ export const ADVENTURE_PENTAGON = {
   // Grand halls (pentagon-halls.ts: murals, sigils, backdrops) come back in v11 rebuilt for the camera (Tim, 2026-11-11): each
   // type laid larger (`size`), keeping only `columns` of its columns (a share, by hash) so the floor stays open; stands and shafts
   // as laid (a shaft is an open drop, which never stops the camera's boom).
+  // The adventure creatures (adventure-creatures.ts, release 894): the share of a v11 chamber's ordinary guard slots given to its
+  // theme's own creatures (by `creatures.module`; picked and placed by that module; scaled by Game.scaleToRegion).
+  creatures: { share: .5 },
   halls: { size: { ballroom: [55, 41], arena: [51, 45], gallery: [59, 33], colonnade: [53, 41], pitGallery: [51, 43] }, columns: .25 },
   // The camera (Tim, 2026-11-11: "Rather than making the camera have less view in the Pentagon, we should make the Pentagon areas
   // wider so there's more view... The camera view is essential"): Close View's wide boom hangs `boom` tiles behind the Wayfarer and

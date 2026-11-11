@@ -46,7 +46,7 @@ test('old Pentagons: their overworld sections and shortcut link ends are unchang
 });
 
 // Version 11 itself, pinned from this release on: a later change must take a new version, never alter these.
-const PINNED_V11 = { 'TIM1:8:8': 'ba926981e7c08a40a94478f5', 'PIN2:-16:24': '38669532bd1f1d845c0cde83' };
+const PINNED_V11 = { 'TIM1:8:8': '414effd55422aa35ff0162d7', 'PIN2:-16:24': '49576b63c77c40c2b6c484b6' };
 test('v11 Pentagons are pinned: plan and every chamber (terrain 2) regenerate byte for byte', () => {
   for (const [k, want] of Object.entries(PINNED_V11)) { const [seed, cx, cy] = k.split(':'), h = createHash('sha256'), P = pentagonPlan(seed, Number(cx), Number(cy), V); h.update(JSON.stringify(P));
     for (const q of P.nodes) h.update(JSON.stringify(generatePentagonChamber(seed, `${P.base}:f${q.n + 1}`, 2))); assert.equal(h.digest('hex').slice(0, 24), want, k); }
