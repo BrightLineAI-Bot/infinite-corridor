@@ -594,6 +594,25 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
   c *= a; if (c.a < 0.004) discard; outColor = c; }`;
 
 // Native models share the environment's camera, lights and fog.
+// Solid creatures (Tim, 2026-11-11: "firm and concrete, so they come into view easily"): a body takes the fog `fogLate` tiles
+// later than the walls behind it (still wholly fogged at the far end), so a creature a few tiles off stands out from the
+// stone instead of sinking into it. A body drawn below full opacity (a spectral kind, or a designed phase or departure;
+// close-view.ts closeViewCreatureIntrinsicAlpha) is screen-door dithered as before and also takes a cold rim light
+// (`spectralRim`, up to `spectralGlow` at `ghostFull` of the way to transparent) so a ghost still reads at a glance.
+// Materials (the refinement pass): `floor` is the least light a body takes (it was .28: a creature beyond the torch sank into
+// the dark); `rimWarm` is the old warm edge (times rim squared) and `rimCool` a cool back-edge (times rim cubed) that cuts every
+// silhouette out of a dark room; `emissive` lists the authored colours that are lit from within (embers, lantern glass, eyes,
+// sparks, rift seams): such a part takes `glow` of its own colour whatever the light, and only `emitFog` of the fog, so a
+// creature's eyes and embers are what you see first in the dark. Exact colours only (a part's colour, not a guess at it).
+export const CLOSE_VIEW_ACTOR_LOOK = Object.freeze({ fogLate: 2, spectralRim: Object.freeze([.45, .66, .92]), spectralGlow: .7, ghostFull: .4,
+  floor: .34, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
+  emissive: Object.freeze([0xf3a55c /* ember: Ashling cracks, the Wayfarer's lamp */, 0xefb15d /* Cinder Wisp core */, 0xd1e86a /* Hanged Choir lamps */,
+    0x9dff8a /* Grave Lantern glass */, 0xffc35a /* Cinder Seraph fire */, 0x7fe7ff /* Lumen Wraith light */, 0xff6b8a /* Veil Spinner eyes */,
+    0xc58cff /* Rift Lynx seams */, 0xffd25a /* Thunderhorn charge */, 0xff9d4a /* Siege Beetle furnace */, 0x5aa6ff /* Gloomwisp eyes */,
+    0x6ab4ff /* Gloomgorge maw */, 0xd88f80 /* Pallid Crawler eyes */, 0xc18a63 /* Ashen Hound eyes */,
+    0xc09b58 /* Spark Warden bars and staff */, 0xb896cf /* Void Sentinel eye */, 0xaab7aa /* Glass Mite mandibles */]) });
+const glc = (c) => `vec3(${glf((c >> 16) / 255)}, ${glf(((c >> 8) & 255) / 255)}, ${glf((c & 255) / 255)})`;
+const glf = (v) => Number(v).toFixed(4);
 const MODEL_VS = VS_COMMON + `
 in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in float a_alpha;
 out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_depth; out float v_alpha;
@@ -617,8 +636,17 @@ void main() {
   vec3 dif, spe;
   lightsAt(v_pos, normal, 14.0, dif, spe);
   float rim = 1.0 - max(0.0, dot(normal, toEye));
-  vec3 color = v_col * max(dif, vec3(0.28)) + spe * 0.25 + vec3(0.19, 0.15, 0.11) * rim * rim;
-  outColor = vec4(finish(atmos(color, v_pos, v_depth, dif)), 1.0);
+  const vec3 EMIT[${CLOSE_VIEW_ACTOR_LOOK.emissive.length}] = vec3[](${CLOSE_VIEW_ACTOR_LOOK.emissive.map(glc).join(', ')});
+  float emit = 0.0; for (int i = 0; i < ${CLOSE_VIEW_ACTOR_LOOK.emissive.length}; i++) { vec3 e = abs(v_col - EMIT[i]); if (e.r + e.g + e.b < 0.012) emit = 1.0; }
+  vec3 color = v_col * max(dif, vec3(${glf(CLOSE_VIEW_ACTOR_LOOK.floor)})) + spe * 0.25 + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
+    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim;
+  color = mix(color, max(color, v_col * ${glf(CLOSE_VIEW_ACTOR_LOOK.glow)}), emit);
+  float ghost = clamp((1.0 - v_alpha) / ${glf(CLOSE_VIEW_ACTOR_LOOK.ghostFull)}, 0.0, 1.0);
+  color += (v_col * 0.5 + vec3(${CLOSE_VIEW_ACTOR_LOOK.spectralRim.map(glf).join(', ')})) * (0.18 + rim * rim) * ghost * ${glf(CLOSE_VIEW_ACTOR_LOOK.spectralGlow)};
+  float late = u_fogP.x + ${glf(CLOSE_VIEW_ACTOR_LOOK.fogLate)}, f = clamp((v_depth - late) / max(u_fogP.y - late, 0.001), 0.0, 1.0); f = f * f * (3.0 - 2.0 * f);
+  float hz = u_finish.z > 0.5 ? (1.0 - exp(-v_depth * u_fogP.z)) * exp(-max(v_pos.z, 0.0) / u_fogP.w) : 0.0;
+  color = mix(color, u_haze + dif * u_finish.y, clamp(hz, 0.0, 0.8));
+  outColor = vec4(finish(mix(color, u_fog, f * (1.0 - emit * (1.0 - ${glf(CLOSE_VIEW_ACTOR_LOOK.emitFog)})))), 1.0);
 }`;
 
 // ---------------------------------------------------------------------------------------------- the open world's solids
