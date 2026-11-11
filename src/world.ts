@@ -1,4 +1,4 @@
-import{worldBeastsHeld}from'./world-beasts.ts';import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.ts';
+import{worldBeastsHeld}from'./world-beasts.ts';import{guideTarget,guideLairBeast}from'./waymark-guides.ts';import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.ts';
 import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.ts';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.ts';
 export{generateVariedDungeon,generateBespokeArena}from'./arenas.ts';
 import{arenaEligible}from'./arenas.ts';
@@ -145,9 +145,11 @@ function cachedRegionSignals(seed,rx,ry,generation){const key=`${seed}:g${genera
 // Release 167: each section crossing used to generate the five to ten newly in-range sections inside the crossing frame
 // (a visible hitch on a phone). main.ts calls this between frames to fill the cache, one section per call, for every
 // section the next crossing can ask about (radius 5). Returns true once all of them are cached.
-export function warmWayfindingSignals(seed,rx,ry,generation=1,limit=1){let done=0;for(let radius=0;radius<=5;radius++)for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){if(Math.abs(ox)+Math.abs(oy)!==radius||wayfindingSignalCache.has(`${seed}:g${generation}:${rx+ox},${ry+oy}`))continue;if(done>=limit)return false;cachedRegionSignals(seed,rx+ox,ry+oy,generation);done++}return true}
+export function warmWayfindingSignals(seed,rx,ry,generation=1,limit=1,save=null){if(guidedSection(save,rx,ry))return true;/* waymark guides: guided ground asks no neighbour */let done=0;for(let radius=0;radius<=5;radius++)for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){if(Math.abs(ox)+Math.abs(oy)!==radius||wayfindingSignalCache.has(`${seed}:g${generation}:${rx+ox},${ry+oy}`))continue;if(done>=limit)return false;cachedRegionSignals(seed,rx+ox,ry+oy,generation);done++}return true}
 export function wayfindingCacheStats(){return{size:wayfindingSignalCache.size,limit:WAYFINDING_SIGNAL_CACHE_LIMIT,hits:wayfindingSignalHits,misses:wayfindingSignalMisses}}
 export function clearWayfindingCache(){wayfindingSignalCache.clear();wayfindingSignalHits=wayfindingSignalMisses=0}
+// Is (rx,ry) guided ground (atlas `guideVersion`, written on the first visit from the waymark guides on)?
+export const guidedSection=(save,rx,ry)=>!!save?.atlas?.[`${rx},${ry}`]?.guideVersion;
 // Every wayfinding target around (rx,ry), before wayfindingCues picks one per kind (release 153: the compass ranks them all).
 export function wayfindingTargets(seed,rx,ry,generation=1,save=null){
   const targets=[],seen=new Set(),add=(kind,x,y,name)=>{const key=`${kind}:${x},${y}`;if((x!==rx||y!==ry)&&!seen.has(key)){seen.add(key);targets.push({kind,rx:x,ry:y,name})}};
@@ -158,6 +160,13 @@ export function wayfindingTargets(seed,rx,ry,generation=1,save=null){
   const echo=save?.story?.arcs?.cartographersEcho?.site;if(echo&&!save.story.arcs.cartographersEcho.completed)add('story',echo.rx,echo.ry,'the Unwritten Meridian');
   for(const c of Object.values(save?.checkpoints||{}))if(Number.isFinite(c?.rx)&&Number.isFinite(c?.ry))add('beacon',c.rx,c.ry,c.name||'Wayglass');
   if(!save?.worldFlags?.worldBossDead)add('danger',0,0,'a great enemy');
+  // Waymark guides (waymark-guides.ts): on a section first seen with the guides, amber leads to a skyway, violet to a Watcher's
+  // Shrine and red (with the held beasts above) to a world beast's lair, each the nearest unvisited host within reach. No
+  // neighbouring section is built for it. Ground seen before keeps the release 153 marks below (crossings and unusual sites).
+  if(guidedSection(save,rx,ry)){const seen=(x,y)=>!!save.atlas?.[`${x},${y}`];
+    const sky=guideTarget(seed,'skyway',rx,ry,seen),shrine=guideTarget(seed,'shrine',rx,ry,seen),lair=guideTarget(seed,'lair',rx,ry,(x,y)=>seen(x,y)||!guideLairBeast(save,x,y));
+    if(sky)add('crossing',sky.rx,sky.ry,sky.name);if(lair)add('danger',lair.rx,lair.ry,lair.name);if(shrine)add('event',shrine.rx,shrine.ry,shrine.name);
+    return targets}
   for(let radius=1;radius<=4;radius++)for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
     if(Math.abs(ox)+Math.abs(oy)!==radius)continue;
     const signals=cachedRegionSignals(seed,rx+ox,ry+oy,generation);
@@ -172,9 +181,10 @@ export function wayfindingCues(seed,rx,ry,generation=1,save=null,region=null){
     const matches=targets.filter(t=>t.kind===kind).sort((a,b)=>(Math.abs(a.rx-rx)+Math.abs(a.ry-ry))-(Math.abs(b.rx-rx)+Math.abs(b.ry-ry)));
     if(matches[0])chosen.push(matches[0]);
   }
-  const map=region||generateRegion(seed,rx,ry,generation),spots=[[14,13],[17,13],[19,16],[17,19],[13,18],[11,15],[20,19]];
-  return chosen.slice(0,4).map((target,i)=>{
+  const map=region||generateRegion(seed,rx,ry,generation),spots=[[14,13],[17,13],[19,16],[17,19],[13,18],[11,15],[20,19]],guided=guidedSection(save,rx,ry);
+  return chosen.slice(0,guided?5:4).map((target,i)=>{/* guided ground: room for all three guides beside a story and a Wayglass */
     const spot=spots.slice(i).concat(spots.slice(0,i)).find(([x,y])=>!map.tiles[y*32+x]?.blocked)||[16,16],dx=Math.sign(target.rx-rx),dy=Math.sign(target.ry-ry);
+    if(guided)return{id:`waymark-${target.kind}`,kind:'wayfindingCue',signalKind:target.kind,x:spot[0],y:spot[1],dirX:(target.rx-rx)*32+16-(spot[0]+.5),dirY:(target.ry-ry)*32+16-(spot[1]+.55),targetRx:target.rx,targetRy:target.ry,name:target.name,state:'quiet',actions:[],guide:true};/* waymark guides: the true bearing to the destination section's middle */
     return{id:`waymark-${target.kind}`,kind:'wayfindingCue',signalKind:target.kind,x:spot[0],y:spot[1],dirX:dx,dirY:dy,targetRx:target.rx,targetRy:target.ry,name:target.name,state:'quiet',actions:[]};
   });
 }
