@@ -1004,6 +1004,8 @@ body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #ev
 .close-lock .bull-ring { transition: fill-opacity .15s; }
 .close-lock[aria-pressed="true"]::before { border-color: #ff6a5a; box-shadow: inset 0 0 0 2px #151411, 0 0 12px #ff6a5aaa; }
 .close-lock[aria-pressed="true"] .bull-ring { fill-opacity: .38; }
+.close-lock[data-target-mode="on"]::before { border-color: #ff2d2d; background: radial-gradient(circle at 45% 35%, #6a1a16, #2a0c0a 72%); box-shadow: inset 0 0 0 2px #151411, 0 0 14px #ff2d2dcc; } /* target mode: auto-targeting on, lit red */
+.close-lock[data-target-mode="on"] .bull-ring { fill-opacity: .6; }
 
 /* Shared dungeon route panel: readable route rows on narrow screens and a bounded discovered-room list. */
 .dungeon-wayfinding { text-align:left; font-size:.86rem; line-height:1.5; overflow-wrap:anywhere; }
