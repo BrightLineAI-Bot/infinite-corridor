@@ -182,3 +182,22 @@ test('in a GPU frame on the test tile the heightfield is drawn and the Wayfarer 
   for (let i = 0; i < 3; i++) render(screen, g, 390, 844, (T += 16)); assert.equal(closeViewShowing(g), true);
   assert.ok((closeViewGLStats as any).reliefVerts > 0, 'the heightfield is uploaded');
 }));
+
+// Tim, 2026-11-11: "The branches should float. They should extend from the tree like normal branches on a real tree."
+import { outdoorFloating } from '../src/close-view-outdoor.ts';
+test('a great tree\'s branches float on limbs from the trunk; the trunk stays a column; nothing changes underfoot', () => {
+  const g: any = createLabFixture({ lab: 'landscape', scenario: 'great-tree-summit', now: 1000 }).game, before = JSON.stringify(g.map.tiles), R: any = outdoorRelief(g.map), m = outdoorTerrainMesh(g.map, R);
+  checkSolids(m.data, m.verts, 'great tree heightfield', 5, -OUTDOOR.terrain.pitDepth); assert.equal(JSON.stringify(g.map.tiles), before, 'the map is untouched');
+  const w = R.w, F = OUTDOOR_FLOATS, branches = g.map.tiles.filter(outdoorFloating), trunk = g.map.tiles.filter((t: any) => t.kind === 'canopyTrunk'); assert.ok(branches.length > 10 && trunk.length > 0);
+  let shade = 0, under = 0;
+  for (let v = 0; v < m.verts; v++) { const o = v * F; if (m.data[o + 9] === 5) { shade++; assert.equal(m.data[o + 2], 0, 'the shade lies on the ground'); } if (m.data[o + 5] < -.99) under++; }
+  assert.equal(shade, branches.length * 6, 'the ground in shade under each branch'); assert.ok(under >= branches.length * 6, 'each deck has an underside');
+  // a branch tile's straight edge faces are its deck's thickness, never a column down to the ground
+  for (let v = 0; v + 5 < m.verts; v += 6) { const o = v * F; if (m.data[o + 9] !== 1 || Math.abs(m.data[o + 5]) > .01 || Math.abs(m.data[o + 3]) + Math.abs(m.data[o + 4]) < .99) continue;
+    const nx = m.data[o + 3], ny = m.data[o + 4], cx = (m.data[o] + m.data[o + 2 * F]) / 2 - nx * .01, cy = (m.data[o + 1] + m.data[o + 2 * F + 1]) / 2 - ny * .01, t = g.map.tiles[Math.floor(cy) * w + Math.floor(cx)];
+    if (!outdoorFloating(t)) continue; const z = (q: number) => m.data[(v + q) * F + 2], spanA = z(5) - z(0), spanB = z(2) - z(1); // each end: from the deck's foot to its top
+    assert.ok(spanA <= OUTDOOR.terrain.deck + 1e-4 && spanB <= OUTDOOR.terrain.deck + 1e-4, `a branch edge is a deck, not a column (${spanA}, ${spanB})`); }
+  // the trunk still reaches the ground, and what stands on a branch stands at its height
+  assert.ok(Array.from({ length: m.verts }, (_, v) => v).some((v) => m.data[v * F + 9] === 1 && m.data[v * F + 2] === 0), 'faces reach the ground (the trunk)');
+  const b = branches[0]; assert.ok(outdoorSurfaceZ(R, b.x + .5, b.y + .5) > 1);
+});

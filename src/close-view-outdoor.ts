@@ -133,7 +133,12 @@ export const OUTDOOR = f({
   // view's LIFT_PER_LEVEL, a great tree's levels taller), a ramp tile slopes between its neighbours, a level's edge is a
   // cliff face, and a canyon, chasm or abyss is a real hole `pitDepth` deep with walls darkening toward its floor. Water lies
   // `waterDrop` below its bank. Built once a section; the solids (outcrops, trees, props, houses) stand on it.
-  terrain: f({ pitDepth: 3.2, waterDrop: .06, maxTiles: 16384 }),
+  terrain: f({ pitDepth: 3.2, waterDrop: .06, maxTiles: 16384,
+    // a great tree's branches and leaf pads (Tim, 2026-11-11: "The branches should float. They should extend from the tree
+    // like normal branches on a real tree"): a deck `deck` thick with an underside, and a limb under it that tapers from
+    // `limbRoot` wide at the trunk to `limbTip` at the deck, rising `limbRise` from the trunk to the deck; the ground under
+    // them is in the tree's shade (`shade`). The trunk stays a column.
+    deck: .3, limbRoot: .34, limbTip: .14, limbRise: .7, limbReach: 7, shade: .62 }),
   pitKinds: /canyon|abyss|chasm/i,
   // Props (version 2, 2026-11-11: "a full, detailed visual refinement pass on all the assets in Close View"): the world's
   // common standing things built as solids instead of the ordinary view's sprite on a card. By kind: the recipe, its
@@ -344,10 +349,14 @@ export function outdoorSurfaceZ(R, x, y) {
 // The heightfield as triangles (OUTDOOR_FLOATS a vertex: position, normal, the tile's colour, kind: 0 a top, 1 a cliff
 // face, 2 a pit's wall, 3 a pit's floor). Each tile's top, and a face down every edge where it stands above its neighbour
 // (or the section's edge, down to the ground beyond). Pure.
+// A great tree's branch or leaf pad: it floats, held by a limb from the trunk, with nothing under it. Pure.
+export const outdoorFloating = (t) => !!t && t.canopy === true && t.kind !== "canopyTrunk" && !t.blocked && (Number(t.elev) || 0) > 0;
 export function outdoorTerrainMesh(map, R = outdoorRelief(map)) {
-  if (!R) return { data: new Float32Array(0), verts: 0 }; const { w, h, top, ramp, corner } = R, tiles = map.tiles || [], W = w + 1;
-  if (w * h > OUTDOOR.terrain.maxTiles) return { data: new Float32Array(0), verts: 0 };
-  const V = new Float32Array(w * h * 30 * OUTDOOR_FLOATS); let n = 0;
+  if (!R) return { data: new Float32Array(0), verts: 0 }; const { w, h, top, ramp, corner } = R, tiles = map.tiles || [], W = w + 1, Tr = OUTDOOR.terrain;
+  if (w * h > Tr.maxTiles) return { data: new Float32Array(0), verts: 0 };
+  const float = new Uint8Array(w * h); let floats = 0; for (let i = 0; i < w * h; i++) if (outdoorFloating(tiles[i])) { float[i] = 1; floats++; }
+  const trunks = []; if (floats) for (let i = 0; i < w * h; i++) if (tiles[i]?.kind === "canopyTrunk") trunks.push(i);
+  const V = new Float32Array((w * h * 30 + floats * 66) * OUTDOOR_FLOATS); let n = 0;
   const put = (p, nx, ny, nz, c, k) => { const o = n * OUTDOOR_FLOATS; V[o] = p[0]; V[o + 1] = p[1]; V[o + 2] = p[2]; V[o + 3] = nx; V[o + 4] = ny; V[o + 5] = nz; V[o + 6] = c[0]; V[o + 7] = c[1]; V[o + 8] = c[2]; V[o + 9] = k; n++; };
   const tri = (a, b, c, col, k) => { const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2]; let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l; if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; } put(a, nx, ny, nz, col, k); put(b, nx, ny, nz, col, k); put(c, nx, ny, nz, col, k); };
   const zc = (i, x, y) => ramp[i] ? corner[y * W + x] : top[i];
@@ -356,12 +365,33 @@ export function outdoorTerrainMesh(map, R = outdoorRelief(map)) {
     const col = hex01(ATLAS_TILE_COLORS[t?.kind] || ATLAS_TILE_COLORS.blocked), pit = top[i] < -OUTDOOR.terrain.pitDepth + 1e-6;
     const a = [x, y, zc(i, x, y)], b = [x + 1, y, zc(i, x + 1, y)], c = [x + 1, y + 1, zc(i, x + 1, y + 1)], d = [x, y + 1, zc(i, x, y + 1)];
     tri(a, b, c, col, pit ? 3 : 0); tri(a, c, d, col, pit ? 3 : 0);
+    const fl = float[i] === 1;
+    if (fl) floatingParts(x, y, a, b, c, d, col);
     for (const [dx, dy, ax, ay, bx, by] of SIDES) { const X = x + dx, Y = y + dy, inside = X >= 0 && Y >= 0 && X < w && Y < h, j = Y * w + X;
       const za = zc(i, x + ax, y + ay), zb = zc(i, x + bx, y + by); let qa, qb; // the neighbour's height along the same edge
-      if (!inside) { qa = qb = 0; } else if (outdoorOutcrop(tiles[j])) continue; else { qa = zc(j, x + ax, y + ay); qb = zc(j, x + bx, y + by); }
+      if (!inside) { qa = qb = 0; } else if (outdoorOutcrop(tiles[j])) continue; else if (float[j]) { qa = qb = 0; } /* a branch beside: the face goes down to the ground behind it */ else { qa = zc(j, x + ax, y + ay); qb = zc(j, x + bx, y + by); }
+      if (fl) { qa = Math.max(qa, za - Tr.deck); qb = Math.max(qb, zb - Tr.deck); } // a branch's edge is only its deck's thickness
       if (za <= qa + .005 && zb <= qb + .005) continue; const lowA = Math.min(qa, za), lowB = Math.min(qb, zb), k = Math.min(qa, qb) < -.5 ? 2 : 1, cc = inside && Math.min(qa, qb) < -.5 ? col : col;
       const P0 = [x + ax, y + ay, lowA], P1 = [x + bx, y + by, lowB], P2 = [x + bx, y + by, zb], P3 = [x + ax, y + ay, za];
       put(P0, dx, dy, 0, cc, k); put(P1, dx, dy, 0, cc, k); put(P2, dx, dy, 0, cc, k); put(P0, dx, dy, 0, cc, k); put(P2, dx, dy, 0, cc, k); put(P3, dx, dy, 0, cc, k); } }
+  // a branch: its deck's underside, the shaded ground below it, and the limb that holds it, from the nearest trunk
+  function floatingParts(x, y, a, b, c, d, col) {
+    const dk = Tr.deck, bark = col.map((v) => v * .78), under = [a, b, c, d].map((p) => [p[0], p[1], p[2] - dk]);
+    put(under[0], 0, 0, -1, bark, 1); put(under[2], 0, 0, -1, bark, 1); put(under[1], 0, 0, -1, bark, 1); put(under[0], 0, 0, -1, bark, 1); put(under[3], 0, 0, -1, bark, 1); put(under[2], 0, 0, -1, bark, 1);
+    const g = [.32, .3, .24].map((v, k) => v * Tr.shade + (col[k] * .1)); put([x, y, 0], 0, 0, 1, g, 5); put([x + 1, y, 0], 0, 0, 1, g, 5); put([x + 1, y + 1, 0], 0, 0, 1, g, 5); put([x, y, 0], 0, 0, 1, g, 5); put([x + 1, y + 1, 0], 0, 0, 1, g, 5); put([x, y + 1, 0], 0, 0, 1, g, 5);
+    let best = -1, bd = Infinity; for (const j of trunks) { const d2 = (j % w + .5 - x - .5) ** 2 + (Math.floor(j / w) + .5 - y - .5) ** 2; if (d2 < bd) { bd = d2; best = j; } }
+    if (best < 0 || Math.sqrt(bd) > Tr.limbReach) return;
+    const zt = (a[2] + b[2] + c[2] + d[2]) / 4 - dk, tip = [x + .5, y + .5, zt - .02], root = [best % w + .5, Math.floor(best / w) + .5, Math.max(.2, zt - Tr.limbRise)];
+    limb(root, tip, Tr.limbRoot, Tr.limbTip, bark); }
+  // a tapering square limb from p to q (half widths r0 and r1), its four sides
+  function limb(p, q, r0, r1, col) {
+    const ax = q[0] - p[0], ay = q[1] - p[1], az = q[2] - p[2], L = Math.hypot(ax, ay, az) || 1, fx = ax / L, fy = ay / L, fz = az / L;
+    let ux = -fy, uy = fx, uz = 0; const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul; if (ul < 1e-6) { ux = 1; uy = 0; }
+    const vx = fy * uz - fz * uy, vy = fz * ux - fx * uz, vz = fx * uy - fy * ux; // up, across the limb
+    const ring = (o, r) => [[o[0] + (ux + vx) * r, o[1] + (uy + vy) * r, o[2] + (uz + vz) * r], [o[0] + (-ux + vx) * r, o[1] + (-uy + vy) * r, o[2] + (-uz + vz) * r], [o[0] + (-ux - vx) * r, o[1] + (-uy - vy) * r, o[2] + (-uz - vz) * r], [o[0] + (ux - vx) * r, o[1] + (uy - vy) * r, o[2] + (uz - vz) * r]];
+    const A = ring(p, r0), B = ring(q, r1), mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, mz = (p[2] + q[2]) / 2;
+    for (let k = 0; k < 4; k++) { const k1 = (k + 1) % 4, P = [A[k], A[k1], B[k1], B[k]]; let nx = (P[0][0] + P[2][0]) / 2 - mx, ny = (P[0][1] + P[2][1]) / 2 - my, nz = (P[0][2] + P[2][2]) / 2 - mz; const d = nx * fx + ny * fy + nz * fz; nx -= d * fx; ny -= d * fy; nz -= d * fz; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+      put(P[0], nx, ny, nz, col, 1); put(P[1], nx, ny, nz, col, 1); put(P[2], nx, ny, nz, col, 1); put(P[0], nx, ny, nz, col, 1); put(P[2], nx, ny, nz, col, 1); put(P[3], nx, ny, nz, col, 1); } }
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n };
 }
 

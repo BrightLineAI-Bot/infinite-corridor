@@ -626,7 +626,7 @@ void main() {
 // The overworld's relief (close-view-outdoor.ts outdoorTerrainMesh): each tile's top at its level, shaded exactly as the
 // environment shades the open ground (the ordinary art near, the per-tile colour beyond, water, detail), and the faces down
 // every level's edge as earth and rock with strata, a pit's walls and floor darkening with depth. a_mat: the face's kind (0
-// top, 1 cliff, 2 a pit's wall, 3 a pit's floor). Drawn opaque with depth before the environment, which then shades only the
+// top, 1 cliff, a branch's edge, underside or limb, 2 a pit's wall, 3 a pit's floor, 5 the ground in a great tree's shade). Drawn opaque with depth before the environment, which then shades only the
 // sky and what lies beyond the section.
 const TERRAIN_VS = VS_COMMON + `
 in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in float a_mat;
@@ -637,13 +637,14 @@ in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_kind; in float v_depth;
 void main() {
   vec3 dir = v_pos - vec3(u_cam, u_hc);
   if (v_kind < 0.5) { outColor = vec4(finish(outdoorGround(v_pos.xy, dir, v_depth, overlayAt(v_pos.xy), v_pos.z)), 1.0); return; }
+  if (v_kind > 4.5) { vec3 dif0, spe0; lightsAt(v_pos, vec3(0.0, 0.0, 1.0), 0.0, dif0, spe0); outColor = vec4(finish(atmos(v_col * (0.85 + 0.3 * vnoise(v_pos.xy * 2.0)) * dif0, v_pos, v_depth, dif0)), 1.0); return; } // the ground in a great tree's shade
   vec3 N = normalize(v_nrm); vec2 q = vec2(dot(v_pos.xy, vec2(-N.y, N.x)), v_pos.z);
   float n = fbm(q * vec2(1.7, 2.6)), strata = aline(fract(v_pos.z * 2.3 + n * 0.55) - 0.5, 0.07);
   vec3 c = v_col * (0.5 + 0.38 * n) * (1.0 - 0.22 * strata) + vec3(0.02, 0.018, 0.015);
-  if (v_kind > 2.5) c = mix(v_col * 0.18, vec3(0.015, 0.016, 0.022), 0.7); // a pit's floor, lost in the dark
+  if (v_kind > 2.5 && v_kind < 3.5) c = mix(v_col * 0.18, vec3(0.015, 0.016, 0.022), 0.7); // a pit's floor, lost in the dark
   float below = max(0.0, -v_pos.z), fall = exp(-below * 0.75); // a pit's walls: lit stone at the lip, lost in the dark as they go down
   vec3 Nb = u_finish.z > 0.5 ? bump(N, v_pos, (n - strata * 0.4) * 0.05) : N; vec3 dif, spe; lightsAt(v_pos, Nb, 0.0, dif, spe);
-  vec3 col = v_kind > 1.5 ? c * (dif * 0.55 + u_amb * 0.6 + 0.12) * fall * (0.75 + 0.25 * smoothstep(-0.25, 0.0, v_pos.z)) : c * dif;
+  vec3 col = v_kind > 1.5 && v_kind < 3.5 ? c * (dif * 0.55 + u_amb * 0.6 + 0.12) * fall * (0.75 + 0.25 * smoothstep(-0.25, 0.0, v_pos.z)) : c * dif;
   outColor = vec4(finish(atmos(col, v_pos, v_depth, dif)), 1.0);
 }`;
 
