@@ -10,6 +10,7 @@ import { ASTRAL, startAstralMove } from '../src/astral-worm.ts';
 import { ASTRAL_PAIR } from '../src/astral-encounters.ts';
 import { ECHOES, echoEvent } from '../src/echoes.ts';
 import { PACK_KINDS } from '../src/monster-pack.ts';
+import { wayfarerDamage } from '../src/combat.ts';
 const input={state:{x:0,y:0},consume:()=>false};
 const roll=(key,denominator=100000)=>(hashSeed(key)%denominator)/denominator;
 function alignment(seed){const n=roll(`${seed}:astral-pair:v1:0`);return n<ASTRAL.allyWalkerChance?'ally':n<ASTRAL.allyWalkerChance+ASTRAL.hostileWalkerChance?'hostile':null;}
@@ -182,13 +183,13 @@ test('Mirror Echo cannot directly swap a naturally mounted Walker out from under
 test('natural marine hostile rider safely dismounts above ocean water without receiving or changing player boat ownership',()=>{
   const {g,save,actor:owner,rider}=naturalOverworld('astralWorm',{role:'hostile',mounted:true,marine:true});
   const boat=JSON.stringify(save.boat);advance(g);tickAstralBoarding(rider,ASTRAL_BOARDING_TOTAL,g.astralMountHost());assert.equal(rider.astralMount?.status,'mounted');assert.equal(owner.marine,true);
-  const hit=Math.ceil(rider.astralMount.knockoffDamage);g.glyphWorld(100).damage(rider,hit);
+  let hit=Math.ceil(rider.astralMount.knockoffDamage);while(wayfarerDamage(hit)<rider.astralMount.knockoffDamage)hit++;g.glyphWorld(100).damage(rider,hit);
   assert.equal(rider.astralMount.status,'dismounted');assert.equal(g.astralLandingOpen(rider,{x:rider.x,y:rider.y}),true);
-  assert.equal(JSON.stringify(save.boat),boat);assert.equal(rider.hp,rider.maxHp-hit);assert.equal(owner.hp,owner.maxHp);
+  assert.equal(JSON.stringify(save.boat),boat);assert.equal(rider.hp,rider.maxHp-wayfarerDamage(hit));assert.equal(owner.hp,owner.maxHp);
   const at={x:rider.x,y:rider.y};const moved=g.packWorld(.05,200).move(rider,.1,0);assert.equal(moved,true);assert.ok(rider.x>at.x);
 });
 
-for(const lethal of [false,true])test(`natural mirage ${lethal?'death':'wound'} immediately before save is authoritative after reload`,()=>{const {g,owner}=natural(null);Object.assign(g.player,{x:owner.x,y:owner.y});advance(g);startAstralMove(owner.astral,'mirage',g.player);advance(g,100);const clone=g.enemies.find(e=>e.astralOwner===owner.id);assert(clone);const hp=clone.hp;g.glyphWorld(110).damage(clone,lethal?hp+100:31);const expected=lethal?0:hp-31;const restored=new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(110)))),1000);const live=restored.enemies.find(e=>e.id===clone.id&&!e.dead);if(lethal)assert.equal(live,undefined);else assert.equal(live.hp,expected);advance(restored,1050);const after=restored.enemies.find(e=>e.id===clone.id&&!e.dead);if(lethal)assert.equal(after,undefined);else assert.equal(after.hp,expected);assert.equal(g.save.currency,restored.save.currency);});
+for(const lethal of [false,true])test(`natural mirage ${lethal?'death':'wound'} immediately before save is authoritative after reload`,()=>{const {g,owner}=natural(null);Object.assign(g.player,{x:owner.x,y:owner.y});advance(g);startAstralMove(owner.astral,'mirage',g.player);advance(g,100);const clone=g.enemies.find(e=>e.astralOwner===owner.id);assert(clone);const hp=clone.hp;g.glyphWorld(110).damage(clone,lethal?hp+100:31);const expected=lethal?0:hp-28;const restored=new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(110)))),1000);const live=restored.enemies.find(e=>e.id===clone.id&&!e.dead);if(lethal)assert.equal(live,undefined);else assert.equal(live.hp,expected);advance(restored,1050);const after=restored.enemies.find(e=>e.id===clone.id&&!e.dead);if(lethal)assert.equal(after,undefined);else assert.equal(after.hp,expected);assert.equal(g.save.currency,restored.save.currency);});
 
 test('natural ocean mirage drain heals only post-hull player HP loss, never intercepted damage',()=>{
  const {g,save,actor:o}=naturalOverworld('astralWorm',{marine:true});

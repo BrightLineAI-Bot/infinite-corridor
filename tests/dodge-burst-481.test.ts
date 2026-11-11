@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game, DODGE_BURST } from '../src/game.ts';
-import { createCombatant } from '../src/combat.ts';
+import { createCombatant, wayfarerDamage } from '../src/combat.ts';
 import { echoPlan, hostLoadout, ARMOR_GLYPHS } from '../src/glyphs.ts';
 import { GLIMPSE_MAX_SEEN } from '../src/glimpses.ts';
 
@@ -32,7 +32,7 @@ test('Volatile in the armor widens a burst; Chain makes the first foe hit erupt 
   assert.match(ARMOR_GLYPHS.volatile.text, /wider/); assert.match(ARMOR_GLYPHS.chain.text, /again/);
   const chain = arena(['chain']); chain.g.enemies = [foe('near', 11, 10), foe('beyond', 12.6, 10)]; const dealt = chain.g.dodgeBurst(10.5, 10.45, 1.8, 20);
   assert.ok(chain.g.enemies[1].hp < 5000, 'the second burst around the first foe reaches one beyond the first burst');
-  assert.equal(chain.g.enemies[1].hp, 5000 - Math.round(dealt * ARMOR_GLYPHS.chain.burstChain), 'at 60% of the burst');
+  assert.equal(chain.g.enemies[1].hp, 5000 - wayfarerDamage(Math.round(dealt * ARMOR_GLYPHS.chain.burstChain)), 'at 60% of the burst');
   assert.ok(DODGE_BURST.chainRadius > 0);
 });
 
