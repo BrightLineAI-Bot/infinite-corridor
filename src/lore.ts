@@ -140,3 +140,76 @@ export function nextReadingLine(save, readingId, rand, { pieceChance = .35, voic
   const fresh = lines.filter(([v, i]) => !heardLine(save, v, i)), pool = fresh.length ? fresh : lines, [voice, line] = pool[Math.floor(rand() * pool.length)];
   return { voice, line, text: RECITATIONS[voice][line] };
 }
+
+// Arcana regions (2026-11-11; Tim: "if you want to do the bell quest, go to the south-west quadrant, roughly 25 to 50 tiles
+// out"; the Journal should say how many are found and where the rest likely are; "don't make it so restrictive the map feels
+// less free"). Each story set told across crossings has a home: a compass sector around the Refuge (90 degrees centred on
+// `toward`; a diagonal is a quadrant, a cardinal point the Reading quarter of lore.ts readingAt) and a stretch of distance
+// (`from` to `to` sections walked, |rx| + |ry|, as every story band is measured). Nothing is fenced: a set still turns up
+// elsewhere, only rarely.
+//   - The Seven Bells and the Surveyor's Chain keep their own rolls: `home` per crossing in the home region, `stray` elsewhere
+//     (from where they began: bells 3 out, the chain 8 out straight-line). The same seeded roll as before decides, so inside its
+//     home a set holds every crossing it held before and more.
+//   - A thread keeps its band and the story budget (threads.ts): exactly the same crossings hold a thread piece, at the same
+//     density; only which thread a slot offers changes. A thread at home there weighs `homeWeight` times its usual share.
+//   - The Torn Pages were already regional (each Reading's page lies in that Reading); their hint names where each missing
+//     Reading lies. The far threads (band `beyond`) have no home: past 1000 the far realms are their region.
+// A crossing is pinned to a region version the first time its dungeon history is pinned (game.ts pinDungeonLayout,
+// `regionVersion`): one generated, visited or pinned before keeps version 0 and exactly what it offered. `live` gates the
+// pin: while false no crossing is pinned to version 1 and every placement is exactly as before (the switch is the
+// coordinator's: existing tests assume a fresh crossing rolls the old way). Never edit a home once live; a new home is a new
+// version.
+export const ARCANA_REGIONS = {
+  version: 1, live: false, homeWeight: 8,
+  headings: { e: 0, ne: 45, n: 90, nw: 135, w: 180, sw: -135, s: -90, se: -45 },
+  words: { n: "north", ne: "north-east", e: "east", se: "south-east", s: "south", sw: "south-west", w: "west", nw: "north-west" },
+  sets: {
+    bells: { toward: "sw", from: 25, to: 50, home: .2, stray: .02 },
+    surveyor: { toward: "ne", from: 18, to: 45, home: .2, stray: .02 },
+    lamplighter: { toward: "s", from: 3, to: 18 },
+    letters: { toward: "w", from: 3, to: 12 },
+    ferry: { toward: "n", from: 7, to: 18 }, // the Ferry Reaches
+    choir: { toward: "e", from: 19, to: 35 }, // the Autumn Galleries
+    clockmaker: { toward: "n", from: 19, to: 35 }, // the Long Table
+    orchard: { toward: "w", from: 19, to: 35 }, // the Ash Orchards
+    moth: { toward: "e", from: 36, to: 70 },
+    library: { toward: "s", from: 36, to: 70 },
+    cartographer: { toward: "n", from: 36, to: 150 },
+    sleeper: { toward: "w", from: 36, to: 150 },
+    beekeeper: { toward: "e", from: 3, to: 18 }, // the Clear Country's fields
+    toolmaker: { toward: "w", from: 7, to: 24 }, // the Whetstone Hills
+    tollKeys: { toward: "s", from: 19, to: 40 }, // the Low Rooms
+    wellDigger: { toward: "n", from: 36, to: 80 },
+    weaver: { toward: "w", from: 36, to: 80 },
+    mirror: { toward: "e", from: 36, to: 80 },
+  },
+};
+// Whether section (rx, ry) lies in set `id`'s home (false for a set with none).
+export function inArcanaHome(id, rx, ry) {
+  const h = ARCANA_REGIONS.sets[id], x = Number(rx) || 0, y = Number(ry) || 0, d = Math.abs(x) + Math.abs(y);
+  if (!h || d < h.from || d > h.to || !d) return false;
+  const a = Math.atan2(-y, x) * 180 / Math.PI, off = Math.abs((((a - ARCANA_REGIONS.headings[h.toward]) % 360) + 540) % 360 - 180); // north is up the Atlas (ry < 0)
+  return off <= 45 + 1e-9;
+}
+// The chance of a set with its own roll (bells, surveyor) in a crossing at (rx, ry) at region version 1.
+export const arcanaRate = (id, rx, ry) => { const h = ARCANA_REGIONS.sets[id]; return inArcanaHome(id, rx, ry) ? h.home : h.stray; };
+// Where the rest of a set most likely lie, in words: "south-west of the Refuge, 25 to 50 sections out". Null with no home.
+export function arcanaHint(id) { const h = ARCANA_REGIONS.sets[id]; return h ? `${ARCANA_REGIONS.words[h.toward]} of the Refuge, ${h.from} to ${h.to} sections out` : null; }
+// The region version a crossing's history takes the first time it is pinned: 0 for one generated, visited or pinned before
+// (or while the regions are not live), else the current version. Never changes once set.
+export const regionVersionFor = (seenBefore, live = ARCANA_REGIONS.live) => !seenBefore && live ? ARCANA_REGIONS.version : 0;
+// A crossing's region version, as pinned (0 when missing).
+export const regionVersionOf = (save, dungeonId) => { const v = Number(save?.consequences?.dungeons?.[dungeonId]?.regionVersion); return Number.isInteger(v) && v > 0 ? v : 0; };
+// Where a Reading lies, as a region: its compass quarter (none for the Smoke Meadows and the Far Sleep, which ring the Refuge) and
+// its stretch of distance. The Torn Pages' hint names these for the pages still missing.
+export function readingRegion(id) {
+  if (id === "longCampaign") return { toward: null, from: 0, to: READING_BANDS.campaign };
+  if (id === "dreamlands") return { toward: null, from: READING_BANDS.far + 1, to: null };
+  for (const [band, qs] of Object.entries(QUARTERS)) for (const [q, r] of Object.entries(qs)) if (r === id) return band === "middle" ? { toward: q, from: READING_BANDS.campaign + 1, to: READING_BANDS.middle } : { toward: q, from: READING_BANDS.middle + 1, to: READING_BANDS.far };
+  return null;
+}
+export function readingRegionHint(id) {
+  const r = readingRegion(id); if (!r) return null;
+  if (!r.toward) return r.to === null ? `every way, ${r.from} sections out and more` : `every way, within ${r.to} sections of the Refuge`;
+  return `${ARCANA_REGIONS.words[r.toward]}, ${r.from} to ${r.to} sections out`;
+}

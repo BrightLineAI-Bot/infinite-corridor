@@ -9,6 +9,7 @@
 // gives at most one link. Part two (his statue at the edge of the Far Sleep, and the last map) is still to come.
 // State: save.lore.surveyor = { links: [index...], where: { index: dungeonId } } (additive; ensureSurveyor). Pure rules: no DOM.
 import { hashSeed } from "./random.ts";
+import { arcanaRate, regionVersionOf } from "./lore.ts";
 
 export const SURVEYOR = { links: 12, chance: .14, minRing: 8, minFromEntry: 6 };
 // His field notes, one per link, in the order they are found. Original writing for the game. The lengths of the same
@@ -39,16 +40,18 @@ export function ensureSurveyor(save) {
 export const surveyorFound = (save) => ensureSurveyor(save).links.length;
 const nextLink = (s) => Array.from({ length: SURVEYOR.links }, (_, i) => i).find((i) => !s.links.includes(i));
 const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
-// Whether a crossing holds a link (before the Wayfarer takes it): ordinary crossings, `minRing` sections out or more.
-export function surveyorCrossing(seed, dungeonId) {
+// Whether a crossing holds a link (before the Wayfarer takes it): ordinary crossings, `minRing` sections out or more. `region`
+// is the crossing's region version (lore.ts ARCANA_REGIONS): from 1 the same roll is made against the chain's home rate
+// (north-east, 18 to 45 out) or its stray rate elsewhere; 0, the default, is the rule every crossing pinned before keeps.
+export function surveyorCrossing(seed, dungeonId, region = 0) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return false;
-  if (Math.hypot(Number(m[1]), Number(m[2])) < SURVEYOR.minRing) return false;
-  return (hashSeed(`${seed}:surveyor:v1:${dungeonId}`) % 10000) / 10000 < SURVEYOR.chance;
+  const rx = Number(m[1]), ry = Number(m[2]); if (Math.hypot(rx, ry) < SURVEYOR.minRing) return false;
+  return (hashSeed(`${seed}:surveyor:v1:${dungeonId}`) % 10000) / 10000 < (region >= 1 ? arcanaRate("surveyor", rx, ry) : SURVEYOR.chance);
 }
 // Lays the crossing's link on open floor away from the entry. Returns the object or null.
 export function addSurveyorLink(map, save, dungeonId) {
   if (!map?.tiles?.length || map.multiLevel || map.arena || map.underwater || map.objects?.some((o) => o.kind === "surveyorLink")) return null;
-  if (!surveyorCrossing(save?.seed, dungeonId)) return null;
+  if (!surveyorCrossing(save?.seed, dungeonId, regionVersionOf(save, dungeonId))) return null;
   const s = ensureSurveyor(save); if (Object.values(s.where).includes(dungeonId) || nextLink(s) === undefined) return null;
   const w = map.width || 24, entry = map.entry || { x: 4, y: 5 }, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
   const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.structure && t.x > 1 && t.y > 1 && t.x < w - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= SURVEYOR.minFromEntry && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|void|Gate/i.test(String(t.kind)));
