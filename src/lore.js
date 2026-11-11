@@ -4,7 +4,7 @@
 // fragments (about 20, differing by Reading) listed in the Reciter's Tome; a Reading whose fragments are all found is
 // mastered. Lines a player has heard are remembered (one bitset per voice), so nobody repeats a line until
 // that voice is exhausted. Pure data and rules: no DOM, no randomness beyond the seeded `pick` passed in.
-import { RECITATIONS } from "./recitations.js?v=r881-fc5a0d9d5e61";
+import { RECITATIONS } from "./recitations.js?v=r886-174ffb69bb4d";
 
 export const LORE_VERSION = 1;
 // Distance bands, in sections from the origin (|rx| + |ry|).
@@ -145,8 +145,10 @@ export function nextReadingLine(save, readingId, rand, { pieceChance = .35, voic
 // out"; the Journal should say how many are found and where the rest likely are; "don't make it so restrictive the map feels
 // less free"). Each story set told across crossings has a home: a compass sector around the Refuge (90 degrees centred on
 // `toward`; a diagonal is a quadrant, a cardinal point the Reading quarter of lore.ts readingAt) and a stretch of distance
-// (`from` to `to` sections walked, |rx| + |ry|, as every story band is measured). Nothing is fenced: a set still turns up
-// elsewhere, only rarely.
+// (`from` to `to` sections out). Nothing is fenced: a set still turns up elsewhere, only rarely.
+// Live from 2026-11-11 (Tim: the distance is straight-line from 0,0, the Refuge: rings around it, and the sectors of a ring
+// hold different sets). The homes are measured straight-line (Math.hypot); the story bands, the Readings and the Torn Pages
+// keep their own measure (sections walked). Nothing was pinned to version 1 before the switch, so this is still version 1.
 //   - The Seven Bells and the Surveyor's Chain keep their own rolls: `home` per crossing in the home region, `stray` elsewhere
 //     (from where they began: bells 3 out, the chain 8 out straight-line). The same seeded roll as before decides, so inside its
 //     home a set holds every crossing it held before and more.
@@ -156,11 +158,10 @@ export function nextReadingLine(save, readingId, rand, { pieceChance = .35, voic
 //     Reading lies. The far threads (band `beyond`) have no home: past 1000 the far realms are their region.
 // A crossing is pinned to a region version the first time its dungeon history is pinned (game.ts pinDungeonLayout,
 // `regionVersion`): one generated, visited or pinned before keeps version 0 and exactly what it offered. `live` gates the
-// pin: while false no crossing is pinned to version 1 and every placement is exactly as before (the switch is the
-// coordinator's: existing tests assume a fresh crossing rolls the old way). Never edit a home once live; a new home is a new
-// version.
+// pin: while false no crossing is pinned to version 1 and every placement is exactly as before. Never edit a home now it is
+// live; a new home is a new version.
 export const ARCANA_REGIONS = {
-  version: 1, live: false, homeWeight: 8,
+  version: 1, live: true, homeWeight: 8,
   headings: { e: 0, ne: 45, n: 90, nw: 135, w: 180, sw: -135, s: -90, se: -45 },
   words: { n: "north", ne: "north-east", e: "east", se: "south-east", s: "south", sw: "south-west", w: "west", nw: "north-west" },
   sets: {
@@ -186,7 +187,7 @@ export const ARCANA_REGIONS = {
 };
 // Whether section (rx, ry) lies in set `id`'s home (false for a set with none).
 export function inArcanaHome(id, rx, ry) {
-  const h = ARCANA_REGIONS.sets[id], x = Number(rx) || 0, y = Number(ry) || 0, d = Math.abs(x) + Math.abs(y);
+  const h = ARCANA_REGIONS.sets[id], x = Number(rx) || 0, y = Number(ry) || 0, d = Math.hypot(x, y); // straight-line from the Refuge
   if (!h || d < h.from || d > h.to || !d) return false;
   const a = Math.atan2(-y, x) * 180 / Math.PI, off = Math.abs((((a - ARCANA_REGIONS.headings[h.toward]) % 360) + 540) % 360 - 180); // north is up the Atlas (ry < 0)
   return off <= 45 + 1e-9;
@@ -212,4 +213,35 @@ export function readingRegionHint(id) {
   const r = readingRegion(id); if (!r) return null;
   if (!r.toward) return r.to === null ? `every way, ${r.from} sections out and more` : `every way, within ${r.to} sections of the Refuge`;
   return `${ARCANA_REGIONS.words[r.toward]}, ${r.from} to ${r.to} sections out`;
+}
+
+// Arcana unlocks (2026-11-11; Tim: "don't invent lots of new passives"; the Seven Bells give a bell toll, the Lamplighter's Round
+// a bigger light radius; then, of tying the other sets to things now given freely: "leave them as free for now, we can come back
+// to this later"). Nothing is locked anywhere: these are the two passives a journey earns, every journey (one from before
+// included), by finishing their set. Each entry: `kind`, `name`, `from` (the set whose completion earns it), `text`. Earned ones
+// are kept in save.arcana.unlocked. A `gated` flag a save may carry from a preview build is ignored.
+export const ARCANA_UNLOCKS = {
+  "passive:bell-toll": { kind: "passive", name: "Bell Toll", from: "bells", text: "A heavy blow tolls like a cracked bell: every foe near it reels." },
+  "passive:lamplight": { kind: "passive", name: "Lamplighter's Light", from: "lamplighter", text: "Whatever light you see by reaches farther into the dark." },
+};
+// The new passives' numbers (Tim chose both): Bell Toll on a heavy blow (one that takes at least `share` of the foe's health,
+// and at least `minDamage`), at most once every `cooldown` s, stuns foes within `radius` tiles (bosses and elites `bossShare` of
+// it); Lamplighter's Light lengthens any light radius (the labyrinths' sight, a lantern's reach): radius * `mult` + `add`.
+export const ARCANA_PASSIVES = {
+  "bell-toll": { share: .2, minDamage: 12, cooldown: 4, radius: 2.4, stun: .5, bossShare: .25 },
+  lamplight: { mult: 1, add: 2 },
+};
+const arcanaState = (save) => (save?.arcana && typeof save.arcana === "object" ? save.arcana : null);
+// Whether the unlock has been earned on this journey.
+export const arcanaHas = (save, id) => arcanaState(save)?.unlocked?.[id] === true;
+// Any light radius, with Lamplighter's Light once earned (labyrinths' sight; the lantern may read it too).
+export function lightRadius(save, base) { const L = ARCANA_PASSIVES.lamplight; return arcanaHas(save, "passive:lamplight") ? base * L.mult + L.add : base; }
+// Normalises save.arcana (additive at schema 14; absent stays absent; unknown fields and unknown unlock ids are kept).
+export function ensureArcanaState(save) {
+  if (save.arcana === undefined) return save;
+  const a = save.arcana && typeof save.arcana === "object" && !Array.isArray(save.arcana) ? save.arcana : {};
+  const unlocked = Object.fromEntries(Object.entries(a.unlocked && typeof a.unlocked === "object" ? a.unlocked : {}).filter(([, v]) => v === true));
+  save.arcana = { ...a, unlocked }; // an old `gated` flag is kept as it was, and read by nothing
+  if (a.starter !== undefined && !["set", "done"].includes(a.starter)) delete save.arcana.starter;
+  return save;
 }

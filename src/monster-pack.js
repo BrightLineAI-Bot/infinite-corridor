@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r881-fc5a0d9d5e61";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r886-174ffb69bb4d";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,9 +8,9 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r881-f
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r881-fc5a0d9d5e61";
-import { hashSeed, byHash } from "./random.js?v=r881-fc5a0d9d5e61";
-import { updateAstralActor } from "./astral-worm.js?v=r881-fc5a0d9d5e61";
+import { stageOneBeastReference } from "./stages.js?v=r886-174ffb69bb4d";
+import { hashSeed, byHash } from "./random.js?v=r886-174ffb69bb4d";
+import { updateAstralActor } from "./astral-worm.js?v=r886-174ffb69bb4d";
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -642,6 +642,43 @@ export const MONSTER_PACK = {
     palette: ["#6e2a2e", "#1a0a0b", "#e8d9c2", "#ff4a4a"], render: "gnawingMaw", tags: ["flesh", "wall"],
     lore: "A mouth that lives inside the masonry. It breathes in, and the room leans toward it.",
   },
+  // Seed realms (seed-realms.ts, Tim 2026-11-11): the Hollow Husk's dead and the Drifting Ship's robots. Found only there
+  // (prototypeOnly keeps them out of the crossings' ecologies and the Echoes); drawn by seed-realm-render.ts.
+  hollowMiner: { id: "hollowMiner", prototypeOnly: true, noEcho: true, name: "Hollow Miner", epithet: "Still on Shift",
+    stats: [52, 10, 0], form: { scale: 1.05 }, sizeClass: "medium", movement: "hover", brain: "duelist",
+    attacks: ["longStab", "groundRupture"], bossAttacks: [],
+    palette: ["#a9c4c9", "#1d2a30", "#ffd27a", "#f4fbff"], render: "hollowMiner", tags: ["spirit", "earth"],
+    lore: "A miner's ghost, lamp still lit, pick still swinging. It does not know the world it dug is gone; it only knows you are in the way." },
+  veinWraith: { id: "veinWraith", prototypeOnly: true, noEcho: true, name: "Vein Wraith", epithet: "The Ore That Walked Away",
+    stats: [40, 9, 6], form: { scale: .95 }, sizeClass: "medium", movement: "fly", brain: "orbit",
+    attacks: ["sweepBeam", "bite"], bossAttacks: [],
+    palette: ["#7fd8c4", "#123032", "#c8fff0", "#ffffff"], render: "veinWraith", tags: ["spirit", "crystal", "flying"],
+    lore: "A seam of glowing ore that tore itself out of the rock when the miners came. It drifts over the drop and burns a line across whoever it watches." },
+  lastForeman: { id: "lastForeman", prototypeOnly: true, noEcho: true, unique: true, name: "The Last Foreman", epithet: "Who Kept Them Digging",
+    stats: [110, 15, 0], form: { scale: 1.75 }, sizeClass: "huge", movement: "hover", brain: "juggernaut",
+    attacks: ["shockwave", "longStab", "groundRupture"], bossAttacks: ["sigilScatter", "phaseCharge"],
+    palette: ["#c9b48a", "#2a2018", "#ffb347", "#fff2d0"], render: "lastForeman", tags: ["spirit", "earth"],
+    lore: "The husk's last overseer, grown huge on the drills it ordered sunk. Its lamps still sweep the dark for idle hands." },
+  deckSentry: { id: "deckSentry", prototypeOnly: true, noEcho: true, name: "Deck Sentry", epithet: "An Eye on Every Deck",
+    stats: [38, 8, 6], form: { scale: .85 }, sizeClass: "small", movement: "hover", brain: "kite",
+    attacks: ["sweepBeam", "bite"], bossAttacks: [],
+    palette: ["#b8c4cc", "#262c33", "#ff4a4a", "#ffe0e0"], render: "deckSentry", tags: ["construct", "robot"],
+    lore: "A ball of armour on a humming field, one red lens wide open. It keeps its distance and keeps you in its beam." },
+  hullWarden: { id: "hullWarden", prototypeOnly: true, noEcho: true, name: "Hull Warden", epithet: "Security, Long Unrelieved",
+    stats: [70, 11, 0], form: { scale: 1.2 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: ["clawSweep", "shockwave"], bossAttacks: [],
+    palette: ["#8d98a3", "#1c2127", "#5ad1ff", "#e8fbff"], render: "hullWarden", tags: ["construct", "robot"],
+    lore: "A tall security frame with a shock baton. It still walks its rounds, and it still stops anyone who has no pass." },
+  riveter: { id: "riveter", prototypeOnly: true, noEcho: true, name: "Riveter", epithet: "Repairs in Progress",
+    stats: [34, 8, 7], form: { scale: .9 }, sizeClass: "small", movement: "skitter", brain: "artillery",
+    attacks: ["mortarVolley", "bite"], bossAttacks: [],
+    palette: ["#c9a24a", "#2a2214", "#ffcf6a", "#fff4d6"], render: "riveter", tags: ["construct", "robot"],
+    lore: "A six-legged repair crawler. It used to fix the hull; now it lobs hot rivets at anything that moves." },
+  helmSovereign: { id: "helmSovereign", prototypeOnly: true, noEcho: true, unique: true, name: "The Helm Sovereign", epithet: "Holding Course",
+    stats: [120, 16, 5], form: { scale: 1.85 }, sizeClass: "huge", movement: "walk", brain: "juggernaut",
+    attacks: ["ramCharge", "sweepBeam", "shockwave"], bossAttacks: ["mortarVolley", "groundRupture"],
+    palette: ["#d0d6de", "#1a1e26", "#ff3b5c", "#ffe3ea"], render: "helmSovereign", tags: ["construct", "robot"],
+    lore: "The ship's mind, given a body to defend the helm. It has held the same course for longer than anyone aboard has lived." },
 };
 
 // Unreleased fixture-only entries are explicitly addressable, but not part of the player catalog,

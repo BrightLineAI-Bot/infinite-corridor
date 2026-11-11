@@ -8,9 +8,9 @@
 // floor; and it may break through only into floor you could already walk to, so no sealed or guarded part is ever
 // opened early. Hunts, portals, dives and crossings are temporary places and are never dug.
 // Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r881-fc5a0d9d5e61";
-import { LETHAL_KINDS, interiorTerrain, interiorTileLevel, canStep } from "./landscape.js?v=r881-fc5a0d9d5e61";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r881-fc5a0d9d5e61";
+import { hashSeed } from "./random.js?v=r886-174ffb69bb4d";
+import { LETHAL_KINDS, interiorTerrain, interiorTileLevel, canStep } from "./landscape.js?v=r886-174ffb69bb4d";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r886-174ffb69bb4d";
 
 // Balance (data, not literals in the logic).
 export const DIG = {
@@ -83,7 +83,7 @@ export const DIG_GATES = {
   },
 };
 export const isInteriorArea = (areaKey) => typeof areaKey === "string" && DIG_GATES.interiors.test(areaKey);
-const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:|skyland:)/;
+const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:|skyland:|seedrealm:)/; // seed realms: never kept
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // save.digging: { shovel: uses left (0 = none), iron: iron-shovel uses left (release 379), dug: { areaKey: ["x,y", …] }, spots: { "rx,ry": true } }; save.materials.stone.

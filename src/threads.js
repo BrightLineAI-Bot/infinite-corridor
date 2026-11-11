@@ -7,12 +7,12 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r881-fc5a0d9d5e61";
-import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown } from "./lore.js?v=r881-fc5a0d9d5e61";
-import { BELLS, bellsRung } from "./bells.js?v=r881-fc5a0d9d5e61";
-import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r881-fc5a0d9d5e61";
-import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r881-fc5a0d9d5e61";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r881-fc5a0d9d5e61";
+import { hashSeed } from "./random.js?v=r886-174ffb69bb4d";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r886-174ffb69bb4d";
+import { BELLS, bellsRung } from "./bells.js?v=r886-174ffb69bb4d";
+import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r886-174ffb69bb4d";
+import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r886-174ffb69bb4d";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r886-174ffb69bb4d";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -381,6 +381,7 @@ function fifthThreadIn(seed, dungeonId, rx, ry) {
 }
 export function ensureThreadState(save) {
   const lore = (save.lore ||= {});
+  ensureArcanaState(save); // the arcana unlocks (2026-11-11; lore.ts ARCANA_UNLOCKS)
   if (lore.arcanaClaimed !== undefined) lore.arcanaClaimed = Object.fromEntries(Object.entries(lore.arcanaClaimed && typeof lore.arcanaClaimed === "object" && !Array.isArray(lore.arcanaClaimed) ? lore.arcanaClaimed : {}).filter(([, v]) => v === true)); // arcana rewards claimed (2026-11-11); unknown set ids kept
   if (lore.threads !== undefined) { const out = {}; const raw = lore.threads && typeof lore.threads === "object" ? lore.threads : {};
     for (const id of THREAD_ORDER) if (Array.isArray(raw[id])) out[id] = raw[id].filter((d) => typeof d === "string").slice(0, THREADS[id].pieces.length);
@@ -436,8 +437,8 @@ export function arcanaProgress(save, live = ARCANA_REGIONS.live) {
   return [...THREAD_ORDER.map((id) => row(id, THREADS[id].title, "pieces", threadFound(save, id).length, THREADS[id].pieces.length)),
     ...Object.entries(ARCANA_SETS).map(([id, S]) => row(id, S.title, S.unit, S.found(save), S.total()))];
 }
-// Completion rewards (2026-11-11): the hook only. `ARCANA_REWARDS[setId]` names what finishing a set unlocks ({ kind, id, label };
-// Tim chooses; none yet, so nothing is granted). settleArcanaRewards hands every complete set with a reward not yet claimed to
+// Completion rewards (2026-11-11): the general hook. `ARCANA_REWARDS[setId]` names anything more finishing a set grants
+// ({ kind, id, label }; empty: the unlocks Tim chose are lore.ts ARCANA_UNLOCKS, settled by settleArcanaUnlocks below). settleArcanaRewards hands every complete set with a reward not yet claimed to
 // `grant(setId, reward)` once, and records it in save.lore.arcanaClaimed ({ setId: true }; additive, normalised by
 // ensureThreadState), so a set finished before its reward existed is paid the first time the hook runs after.
 export const ARCANA_REWARDS = {};
@@ -448,3 +449,16 @@ export function settleArcanaRewards(save, grant = () => {}) {
     ((save.lore ||= {}).arcanaClaimed ||= {})[id] = true; grant(id, reward); out.push(id); }
   return out;
 }
+
+// Whether the set `from` is complete.
+export const arcanaDone = (save, from) => !!arcanaProgress(save, false).find((r) => r.id === from)?.complete;
+// Earns every passive whose set is complete and not yet earned, once each: save.arcana.unlocked[id] (created on first use;
+// additive). `grant(id, unlock)` announces it. A set finished before is paid the first time this runs. Returns the ids earned.
+export function settleArcanaUnlocks(save, grant = () => {}) {
+  const out = [];
+  for (const [id, u] of Object.entries(ARCANA_UNLOCKS)) { if (arcanaHas(save, id) || !arcanaDone(save, u.from)) continue;
+    const a = (save.arcana && typeof save.arcana === "object" ? save.arcana : (save.arcana = {})); (a.unlocked ||= {})[id] = true; grant(id, u); out.push(id); }
+  return out;
+}
+// The passive a set earns, or null (for the Arcana cards: "Completing it opens ...").
+export const arcanaUnlockFrom = (from) => Object.entries(ARCANA_UNLOCKS).find(([, u]) => u.from === from)?.[0] || null;
