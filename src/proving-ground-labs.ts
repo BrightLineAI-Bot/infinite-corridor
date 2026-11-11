@@ -384,6 +384,7 @@ function closeViewFixture(scenario, seed, now) {
       return result;
     };
     game.enemies = [];
+    game.respawnOff = true; // a quiet floor stays quiet: no building respawns (fractured.ts RESPAWN) in this lab
   }
   let entry = game.map.entry || { x: 4, y: 5 };
   if ((spec.id === "grand-hall" || spec.id === "pit-gallery") && game.map.hall) {
