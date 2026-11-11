@@ -8,7 +8,7 @@ import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { PENTAGON, pentagonPlan, generatePentagonChamber } from '../src/pentagon.ts';
 import { ADVENTURE_CREATURES, isAdventureKind } from '../src/adventure-creatures.ts';
-import { ADVENTURE_PENTAGON as AP, adventureCreatureTheme } from '../src/adventures.ts';
+import { ADVENTURE_PENTAGON as AP, adventureCreatureTheme, adventureThemes } from '../src/adventures.ts';
 
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 test('v11 chambers: about half their ordinary guards are their ward\'s adventure creatures, placed on reachable floor, perchers often raised', () => {
@@ -22,7 +22,7 @@ test('v11 chambers: about half their ordinary guards are their ward\'s adventure
         const t = m.tiles[e.y * W + e.x]; assert.ok(!t.blocked && !t.doorway && !t.slope); if (t.elev) raised++; }
       assert.ok(m.enemySpawns.length <= 9, `${seed} ${q.id}: ${m.enemySpawns.length} placed`); } }
   assert.ok(adv / slots > AP.creatures.share - .1 && adv / slots < AP.creatures.share + .1, `${adv} of ${slots}`); assert.ok(raised > adv * .3, `${raised} of ${adv} raised`);
-  assert.equal(kinds.size, Object.values(ADVENTURE_CREATURES).flat().length, [...kinds].join(' '));
+  assert.equal(kinds.size, new Set(adventureThemes(AP.version).flatMap((t) => ADVENTURE_CREATURES[adventureCreatureTheme(t)].map((c) => c.kind))).size, [...kinds].join(' ')); // every creature of the themes enabled at this version
 });
 test('older Pentagons never place an adventure creature', () => {
   for (const V of [8, 9, 10]) { const P = pentagonPlan('OLD1', 8, 8, V); for (const q of P.nodes) assert.ok(!generatePentagonChamber('OLD1', `${P.base}:f${q.n + 1}`, 2).enemySpawns.some((e) => e.adventureCreature || isAdventureKind(e.kind)), `v${V} ${q.id}`); }
