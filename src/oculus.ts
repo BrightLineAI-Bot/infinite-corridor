@@ -3,7 +3,7 @@
 // will warp you to close view if you step on it, or warp you to abstract view when in close view. It will be called the
 // Oculus"). One of the utility button's choices (spell-slots.ts UTILITY).
 //
-// Pressing it opens a dais about one tile ahead of the Wayfarer (the nearest free walkable tile when that one is blocked).
+// Pressing it opens a dais one tile ahead of where the Wayfarer faces (release 875: eight directions) (the nearest free walkable tile when that one is blocked).
 // Stepping onto it switches the camera through the existing Close View settings: inside interiors the indoor switch
 // (save.closeView), everywhere else the release-867 Overworld Close View switch (save.overworldCloseView). Close View's own
 // blend (close-view.ts closeViewFrame) is the warp, with a short flash in the HUD; both are skipped under Reduced Motion.
@@ -42,10 +42,22 @@ export function oculusAvailable(g) {
   if (!gpuReady()) return { ok: false, why: "Close View needs WebGL2 out here, and this device has none; the Oculus stays shut." };
   return { ok: true, to: "close", setting: "overworldCloseView" };
 }
-// The tile for a dais: one ahead of the Wayfarer, or the nearest free one to it (never the Wayfarer's own). Null if none.
+// The tile for a dais: one ahead of the Wayfarer (oculusAhead), or the nearest free one to it (never the Wayfarer's own). Null if none.
 // `open(x, y)` says whether a tile is free walkable ground.
+// Release 875 (Tim, 2026-11-11: "the dais should appear just in front of where the character's facing"): "ahead" follows the
+// Wayfarer's own heading, to the nearest of eight directions, so a diagonal walk (Close View steers in any direction) opens it
+// on the diagonal. The heading is the last move; when the Wayfarer has turned since (an attack, a lock), the facing wins.
+const CARDINAL = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+export function oculusAhead(p) {
+  const f = CARDINAL[p?.facing] || CARDINAL.down, v = p?.lastMoveVector, m = v ? Math.hypot(v.x, v.y) : 0, me = playerTile(p);
+  if (m > .04) {
+    const a = Math.round(Math.atan2(v.y, v.x) / (Math.PI / 4)) * (Math.PI / 4), dx = Math.round(Math.cos(a)), dy = Math.round(Math.sin(a));
+    if ((f[0] && dx === f[0]) || (f[1] && dy === f[1])) return { x: me.x + dx, y: me.y + dy }; // it agrees with the facing
+  }
+  return buildSpot(p);
+}
 export function oculusSpot(p, open, search = OCULUS.search) {
-  const at = buildSpot(p), me = playerTile(p), free = (x, y) => !(x === me.x && y === me.y) && open(x, y);
+  const at = oculusAhead(p), me = playerTile(p), free = (x, y) => !(x === me.x && y === me.y) && open(x, y);
   if (free(at.x, at.y)) return at;
   for (let r = 1; r <= search; r++) {
     let best = null, bestD = Infinity;

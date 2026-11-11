@@ -71,7 +71,12 @@ export const SLOT_ACTIONS = Object.freeze({ a: "spell", b: "spell2", c: "spell3"
 // Release 874: the fixed utility button where the compass sat (bottom left). Each preset chooses what it does. "frame" is the
 // Submersible Frame ashore: the robot, its Empowered (power armor) mode and the drone are one control, the same frame
 // cycled by the same button (vehicle-gates.ts toggleMech; robot or drone is the frame's mode, chosen in Supplies).
-export const UTILITY = Object.freeze({ choices: Object.freeze(["oculus", "build", "frame"]), default: "build", names: Object.freeze({ oculus: "Oculus", build: "Build", frame: "Robot / Drone" }) });
+// Release 875 (Tim, 2026-11-11: "you can either have the robot... as a suit or as a drone... they should be... either, or you
+// can have one or the other"): the frame's two forms are separate choices, "robot" (the suit, with its power armor) and "drone".
+// Only one is ever out: the button calls up its own form and puts the other away first. A stored "frame" (release 874) reads as
+// the form the frame was set to (save.mech.mode).
+export const UTILITY = Object.freeze({ choices: Object.freeze(["oculus", "build", "robot", "drone"]), default: "build", names: Object.freeze({ oculus: "Oculus", build: "Build", robot: "Robot", drone: "Drone" }) });
+export const frameForm = (save) => (save?.mech?.mode === "drone" ? "drone" : "robot");
 // Release 309 (Tim: "I want you to be able to put build in any one of those positions... items... spells... or build"): A and
 // B may also hold "build" or "item" (the preset's item), and the Build button may hold a castable. Additive at schema 14.
 export const SLOT_TOOLS = ["build", "item"];
@@ -92,13 +97,13 @@ export function ensureSlots(save) {
   // Release 291: each preset also said what the Build button did: "build", or "item" with the item it uses (additive).
   // Release 874: the Build button became slot C (`c`) and the fixed utility button (`utility`). A preset from before 874
   // keeps what its Build button held: a spell, a discipline or an item moves to C; the Submersible Frame (the robot) moves
-  // to the utility button as "frame"; plain Build stays Build, on the utility button, with C empty. `button` is kept as it
+  // to the utility button (release 875: as "robot" or "drone"); plain Build stays Build, on the utility button, with C empty. `button` is kept as it
   // was, no longer read, so nothing written before is lost.
   const pair = (q) => {
     if (!q || typeof q !== "object") return null;
     const legacy = q.button === "item" ? "item" : CASTABLES[q.button] ? q.button : "build", item = BUTTON_ITEMS.includes(q.item) ? q.item : null, frame = legacy === "item" && item === "submersible";
     const c = Object.hasOwn(q, "c") ? valid(q.c) : legacy === "build" || frame ? null : legacy;
-    const utility = UTILITY.choices.includes(q.utility) ? q.utility : Object.hasOwn(q, "utility") ? UTILITY.default : frame ? "frame" : UTILITY.default;
+    const utility = UTILITY.choices.includes(q.utility) ? q.utility : q.utility === "frame" || (!Object.hasOwn(q, "utility") && frame) ? frameForm(save) : UTILITY.default; // release 875: "frame" became its form
     const out = { ...q, a: valid(q.a), b: valid(q.b), c, utility, item }; // release 874: other fields (an older `button`, unknown ones) are kept
     if (!(q.build && typeof q.build === "object")) delete out.build; // release 393: `build` (build-presets.ts) rides along
     return out;
@@ -142,7 +147,7 @@ export function assignPresetItem(save, i, type) {
 }
 // What slot C does now, the release-291 way: { mode: "build" }, { mode: "item", item } or { mode: "cast", key }.
 export function activeButton(save) { const b = presetButton(save); return b.button === "item" ? { mode: "item", item: b.item } : CASTABLES[b.button] ? { mode: "cast", key: b.button } : { mode: "build" }; }
-// Release 874: the utility button of preset i ("oculus", "build" or "frame"), and setting it. The active preset's applies.
+// Release 874: the utility button of preset i ("oculus", "build", "robot" or "drone"), and setting it. The active preset's applies.
 export function presetUtility(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const u = save.magicSkills.presets[i]?.utility; return UTILITY.choices.includes(u) ? u : UTILITY.default; }
 export function setPresetUtility(save, i, choice) {
   ensureSlots(save); const p = save.magicSkills.presets[i];
