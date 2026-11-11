@@ -50,14 +50,14 @@ test('the mesh: bounded per tier, one bone a vertex, the cloud an optional secti
     assert.equal(m.indices.length, m.triangles * 3); assert.ok(m.vertexCount < 65536);
     for (const i of m.indices) assert.ok(i < m.vertexCount);
     for (let v = 0; v < m.vertexCount; v++) {
-      const b = m.skin[v * 2], e = m.skin[v * 2 + 1];
+      const b = m.skin[v * 4], e = m.skin[v * 4 + 1];
       assert.ok(Number.isInteger(b) && b >= 0 && b < GIANT_SKELETON.count); assert.ok([0, 1, 2, 3, 4].includes(e));
       assert.ok(Math.abs(Math.hypot(m.normals[v * 3], m.normals[v * 3 + 1], m.normals[v * 3 + 2]) - 1) < 1e-3);
     }
     assert.strictEqual(giantMesh(tier), m, 'built once and cached');
   }
   // the emissive parts are details, never most of the body
-  const m = giantMesh('full'); let lit = 0; for (let v = 0; v < m.vertexCount; v++) if (m.skin[v * 2 + 1] > 0) lit++;
+  const m = giantMesh('full'); let lit = 0; for (let v = 0; v < m.vertexCount; v++) if (m.skin[v * 4 + 1] > 0) lit++;
   assert.ok(lit / m.vertexCount < .35);
 });
 

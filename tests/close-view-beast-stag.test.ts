@@ -37,7 +37,7 @@ test('the mesh: bounded per tier, valid, cached', () => {
     const m = stagMesh(tier);
     assert.ok(m.coreTriangles <= BEAST_SLOT.triangles[tier], `${tier}: ${m.coreTriangles}`); assert.ok(m.coreTriangles < prev); prev = m.coreTriangles;
     for (const i of m.indices) assert.ok(i < m.vertexCount);
-    for (let v = 0; v < m.vertexCount; v++) { assert.ok(m.skin[v * 2] < STAG_SKELETON.count); assert.ok(Math.abs(Math.hypot(m.normals[v * 3], m.normals[v * 3 + 1], m.normals[v * 3 + 2]) - 1) < 1e-3); }
+    for (let v = 0; v < m.vertexCount; v++) { assert.ok(m.skin[v * 4] < STAG_SKELETON.count); assert.ok(Math.abs(Math.hypot(m.normals[v * 3], m.normals[v * 3 + 1], m.normals[v * 3 + 2]) - 1) < 1e-3); }
     assert.strictEqual(stagMesh(tier), m);
   }
   assert.equal(CLOSE_VIEW_BEASTS.briarStag.scale, 1.25);
@@ -138,4 +138,18 @@ test('at play with the Stalker it bounds round', () => {
   const e = createCombatant('briarStag', 10, 10, true, []), tr = createStagTrack(); let now = 1000; e.playing = true;
   for (let i = 0; i < 120; i++) { const a = i / 60 * 1.7; e.x = 10 + Math.cos(a) * 2.2; e.y = 10 + Math.sin(a) * 1.5; e.hopLift = Math.abs(Math.sin(a * 2)) * .6; sampleStag(tr, e, env(e, now += 16)); }
   assert.ok(tr.gallop > .8 && finite(tr.frame.skin));
+});
+
+test('turning on the spot: hooves are stepped round, a diagonal pair at a time, never slid', () => {
+  const e = createCombatant('briarStag', 10, 10, true, []), tr = createStagTrack(); let now = 1000, steps = 0, worst = 0;
+  const target = (deg) => ({ x: e.x + Math.cos(deg * Math.PI / 180) * 6, y: e.y + Math.sin(deg * Math.PI / 180) * 6 });
+  for (let i = 0; i < 30; i++) sampleStag(tr, e, env(e, now += 16, { target: target(0) }));
+  const last = FEET.map((n) => stagBone(tr, n));
+  for (let i = 0; i < 200; i++) {
+    sampleStag(tr, e, env(e, now += 16, { target: target(140) }));
+    for (let k = 0; k < 4; k++) { const p = stagBone(tr, FEET[k]), moved = Math.hypot(p[0] - last[k][0], p[1] - last[k][1]);
+      if (tr.frame.feet[k * 2] === 1) assert.ok(moved < 2e-3, `${FEET[k]} holds while planted`); else if (moved > 1e-3) steps++; last[k] = p;
+      worst = Math.max(worst, Math.hypot(p[0] - stagBone(tr, FEET[k].startsWith('hoofH') ? 'pelvis' : 'chest')[0], p[1] - stagBone(tr, FEET[k].startsWith('hoofH') ? 'pelvis' : 'chest')[1])); }
+  }
+  assert.ok(steps > 20, 'stepped'); assert.ok(worst < .45 * SCALE, `hooves stay under the body (${(worst / SCALE).toFixed(2)} u)`);
 });

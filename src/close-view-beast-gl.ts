@@ -8,13 +8,15 @@
 import { BEAST_SLOT } from "./close-view-beast-rig.ts";
 
 const glf = (v) => Number(v).toFixed(4), NB = BEAST_SLOT.maxBones * 3;
-export const BEAST_VERTEX_FLOATS = 11; // position 3, normal 3, colour 3, bone 1, emissive channel 1
+export const BEAST_VERTEX_FLOATS = 13; // position 3, normal 3, colour 3, skin 4 (bone, emissive channel, second bone, its weight)
 export const BEAST_VERTEX_BODY = `
-in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in vec2 a_skin;
+in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in vec4 a_skin;
 uniform vec4 u_bones[${NB}];
 out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_depth; flat out int v_emit;
 void main() {
-  int b = int(a_skin.x + .5) * 3; vec4 r0 = u_bones[b], r1 = u_bones[b + 1], r2 = u_bones[b + 2]; vec4 p = vec4(a_pos, 1.0);
+  // two-bone linear blend: rows of bone a mixed toward bone b by its weight (rigid parts have weight 0)
+  int b = int(a_skin.x + .5) * 3, c = int(a_skin.z + .5) * 3; float w = a_skin.w;
+  vec4 r0 = mix(u_bones[b], u_bones[c], w), r1 = mix(u_bones[b + 1], u_bones[c + 1], w), r2 = mix(u_bones[b + 2], u_bones[c + 2], w); vec4 p = vec4(a_pos, 1.0);
   vec3 P = vec3(dot(r0, p), dot(r1, p), dot(r2, p));
   v_nrm = vec3(dot(r0.xyz, a_nrm), dot(r1.xyz, a_nrm), dot(r2.xyz, a_nrm));
   float d; gl_Position = project(P, d); v_pos = P; v_col = a_col; v_depth = d; v_emit = int(a_skin.y + .5);
@@ -68,12 +70,12 @@ export function prepareBeastMesh(gl, s, mesh) {
       data[o] = mesh.positions[i * 3]; data[o + 1] = mesh.positions[i * 3 + 1]; data[o + 2] = mesh.positions[i * 3 + 2];
       data[o + 3] = mesh.normals[i * 3]; data[o + 4] = mesh.normals[i * 3 + 1]; data[o + 5] = mesh.normals[i * 3 + 2];
       data[o + 6] = mesh.colors[i * 3]; data[o + 7] = mesh.colors[i * 3 + 1]; data[o + 8] = mesh.colors[i * 3 + 2];
-      data[o + 9] = mesh.skin[i * 2]; data[o + 10] = mesh.skin[i * 2 + 1]; }
+      data[o + 9] = mesh.skin[i * 4]; data[o + 10] = mesh.skin[i * 4 + 1]; data[o + 11] = mesh.skin[i * 4 + 2]; data[o + 12] = mesh.skin[i * 4 + 3]; }
     r = { vao: gl.createVertexArray(), vbo: gl.createBuffer(), ibo: gl.createBuffer() };
     if (!r.vao || !r.vbo || !r.ibo) throw new Error('beast resources');
     gl.bindVertexArray(r.vao); gl.bindBuffer(gl.ARRAY_BUFFER, r.vbo); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
     const A = s.program.A; let off = 0;
-    for (const [name, size] of [['a_pos', 3], ['a_nrm', 3], ['a_col', 3], ['a_skin', 2]]) { const loc = A[name]; if (loc !== undefined && loc >= 0) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, BEAST_VERTEX_FLOATS * 4, off * 4); } off += size; }
+    for (const [name, size] of [['a_pos', 3], ['a_nrm', 3], ['a_col', 3], ['a_skin', 4]]) { const loc = A[name]; if (loc !== undefined && loc >= 0) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, BEAST_VERTEX_FLOATS * 4, off * 4); } off += size; }
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.ibo); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
     if (typeof gl.getError === 'function') { const error = gl.getError(); if (typeof error === 'number' && error !== gl.NO_ERROR) throw new Error('beast upload'); }
     s.meshes.set(mesh, r); s.uploadBytes += data.byteLength + mesh.indices.byteLength; return true;

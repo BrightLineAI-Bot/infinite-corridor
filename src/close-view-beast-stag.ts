@@ -21,7 +21,7 @@ export const STAG_RIG = Object.freeze({
   closeViewScale: 1.25,
   hip: .58, shoulder: .6, femur: .2, tibia: .23, hindCannon: .15, humerus: .2, radius: .22, foreCannon: .17, hoof: .035, halfWidth: .11,
   walk: Object.freeze({ stride: .6, stance: .62 }), gallop: Object.freeze({ stride: 1.6, stance: .38 }),
-  settle: 6, stepAt: .09, stepTime: .32, footLift: .14, bob: .02, turnRate: 4.5, attackTurnRate: 10, blendMs: 140, deathMs: 2400, landMs: 520, hitMs: 320, impactMs: 380,
+  settle: 6, stepAt: .08, stepTime: .26, standTurnRate: 2.6, standTurnMax: 1.7, footLift: .14, bob: .02, turnRate: 4.5, attackTurnRate: 10, blendMs: 140, deathMs: 2400, landMs: 520, hitMs: 320, impactMs: 380,
   breathe: Object.freeze({ rate: 1.6, chest: .012 }),
   // Body poses (after the standard view's POSES): rear (+ body pitch up about the hind hips), head (+ raises), swing (head
   // turned, + to its right), tuck (forelegs folded), squat (haunches dropped), open (mouth), crouch (whole body down), lean
@@ -33,7 +33,7 @@ export const STAG_RIG = Object.freeze({
     hookR: { rear: -.03, head: -.4, swing: .75, tuck: 0, squat: .1, open: 0, crouch: .03, lean: .04 },
     loadL: { rear: -.02, head: -.75, swing: .55, tuck: 0, squat: .2, open: 0, crouch: .05, lean: 0 },
     loadR: { rear: -.02, head: -.75, swing: -.55, tuck: 0, squat: .2, open: 0, crouch: .05, lean: 0 },
-    toss: { rear: .14, head: .55, swing: 0, tuck: .1, squat: 0, open: .3, crouch: -.02, lean: -.02 },
+    toss: { rear: .16, head: .5, swing: 0, tuck: .1, squat: 0, open: .3, crouch: -.02, lean: -.02 },
     tossLoad: { rear: -.06, head: -.95, swing: 0, tuck: 0, squat: .35, open: 0, crouch: .07, lean: .08 },
     charge: { rear: -.05, head: -.85, swing: 0, tuck: 0, squat: 0, open: 0, crouch: .02, lean: .08 },
     rear: { rear: .62, head: .35, swing: 0, tuck: .6, squat: .25, open: .5, crouch: 0, lean: 0 },
@@ -44,8 +44,8 @@ export const STAG_RIG = Object.freeze({
     leap: { rear: .12, head: .2, swing: 0, tuck: 1, squat: 0, open: 0, crouch: 0, lean: 0 },
     fall: { rear: -.15, head: -.3, swing: 0, tuck: .2, squat: 0, open: 0, crouch: 0, lean: .1 },
     land: { rear: -.12, head: -.35, swing: 0, tuck: .3, squat: .7, open: 0, crouch: .12, lean: .05 },
-    bellow: { rear: .2, head: .7, swing: 0, tuck: 0, squat: .2, open: 1, crouch: 0, lean: -.03 },
-    mend: { rear: .12, head: .85, swing: 0, tuck: 0, squat: .1, open: 0, crouch: 0, lean: 0 },
+    bellow: { rear: .2, head: .55, swing: 0, tuck: 0, squat: .2, open: 1, crouch: 0, lean: -.03 },
+    mend: { rear: .14, head: .62, swing: 0, tuck: 0, squat: .1, open: 0, crouch: 0, lean: 0 },
     paw: { rear: -.03, head: -.6, swing: 0, tuck: 0, squat: .25, open: 0, crouch: .03, lean: 0 },
     dazed: { rear: -.06, head: -.55, swing: .2, tuck: 0, squat: .3, open: .2, crouch: .1, lean: .05 },
   }),
@@ -125,36 +125,42 @@ function antler(B, C, side, depth, tips) {
 function buildStagMesh(tier) {
   const C = palette(), d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(STAG_SKELETON, d);
   const F = [1, 0, 0], U = [0, 0, 1], DOWN = [0, 0, -1];
-  // Hindquarters: a round rump and haunches (the standard view's muscled haunch), a bark furrow or two, the short upturned tail.
-  B.bone('pelvis').color(C.hide).ellipsoid({ at: [-.03, 0, .02], radius: [.22, .15, .17], rings: 6, seg: 12 });
-  if (!low) for (const s of [-1, 1]) B.color(C.hideLight).ellipsoid({ at: [-.02, s * .1, -.04], radius: [.15, .06, .17], rings: 5, seg: 9 });
-  B.bone('tail').color(C.hideDark).lathe({ at: [0, 0, 0], F: [-.6, 0, .8], rings: [[0, .04], [.06, .045], [.1, 0]], seg: 6 });
-  // Barrel: a long, deep body, the belly tucking up toward the flank, darker underneath; bark furrows round it.
-  B.bone('spine').color(C.hide).ellipsoid({ at: [-.02, 0, -.02], radius: [.27, .16, .19], rings: 6, seg: 12 });
-  B.color(C.belly).ellipsoid({ at: [0, 0, -.11], radius: [.22, .12, .08], rings: 4, seg: 10 });
-  if (!low) for (const x of full ? [-.2, -.08, .04, .16] : [-.12, .08]) B.color(C.bark).lathe({ at: [x, 0, -.02], F: [1, 0, -.2], rings: [[0, .195], [.012, .195]], rs: .83, seg: 12, caps: false });
-  // Chest and shoulders: deep chest, the withers, shoulder muscle over the foreleg roots.
-  B.bone('chest').color(C.hide).ellipsoid({ at: [.02, 0, .02], radius: [.2, .15, .21], rings: 6, seg: 12 });
-  if (!low) for (const s of [-1, 1]) B.color(C.hideLight).ellipsoid({ at: [.02, s * .09, -.02], radius: [.11, .06, .16], rings: 5, seg: 9 });
-  B.color(C.hide).ellipsoid({ at: [-.02, 0, .17], radius: [.14, .1, .07], rings: 4, seg: 9 }); // withers
+  // The hide (Tim, 2026-11-11: "he just looks like ... a bunch of component like segments ... cobbled together"): one continuous
+  // skin swept from the tail to the nose, through rump, haunch, flank, barrel, chest, withers, neck, skull and muzzle,
+  // blended across the pelvis, spine, chest, neck and head bones, so the body bends as one animal. Bark mottling and the darker
+  // belly are colours on that same skin, not separate parts.
+  // the standard view's shading as hide colour, continuous (no patches): lighter along the back and over the haunch and
+  // shoulder masses, a darker belly, and soft bark furrows running round the barrel
+  const lerpHex = (a, b, t) => { t = Math.max(0, Math.min(1, t)); const ch = (sh) => Math.round(((a >> sh) & 255) + ((((b >> sh) & 255) - ((a >> sh) & 255)) * t)); return (ch(16) << 16) | (ch(8) << 8) | ch(0); };
+  const mott = (i, k, st) => {
+    const muscle = Math.max(Math.exp(-((i - 4) ** 2) / 2), Math.exp(-((i - 9) ** 2) / 2)) * (1 - Math.min(1, Math.abs(st) / .7));
+    const furrow = .5 + .5 * Math.sin(i * 2.6 + Math.sin(k * 1.3) * .8);
+    let c = lerpHex(C.hide, C.hideLight, Math.max(0, (st - .2) / .8) * .9 + muscle * .55);
+    c = lerpHex(c, C.hideDark, furrow * .3);
+    return st < -.3 ? lerpHex(c, C.belly, Math.min(1, (-.3 - st) / .4)) : c;
+  };
+  const BODY = [ // [f, u, half width, half height, bone a, bone b, weight on b]
+    [-.575, .635, 0, 0, 'pelvis'], [-.55, .63, .065, .075, 'pelvis'], [-.5, .62, .115, .135, 'pelvis'], [-.42, .61, .155, .185, 'pelvis'],
+    [-.32, .6, .168, .205, 'pelvis'], [-.2, .6, .162, .2, 'pelvis', 'spine', .45], [-.06, .6, .158, .205, 'spine'], [.08, .6, .165, .22, 'spine', 'chest', .35],
+    [.2, .61, .162, .228, 'chest'], [.3, .63, .152, .228, 'chest'], [.38, .68, .128, .195, 'chest', 'neck', .3], [.43, .77, .102, .138, 'neck'],
+    [.5, .86, .084, .104, 'neck', 'neck2', .5], [.57, .92, .071, .086, 'neck2'], [.63, .97, .066, .075, 'neck2', 'head', .6], [.69, .995, .06, .07, 'head'],
+    [.75, .985, .054, .061, 'head'], [.81, .96, .045, .05, 'head'], [.86, .94, .035, .039, 'head'], [.895, .925, .022, .026, 'head'], [.908, .918, 0, 0, 'head']];
+  B.color(C.hide).loft({ seg: low ? 12 : 16, sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })),
+    tone: (i, k, st) => i >= BODY.length - 4 ? (st > -.2 ? C.muzzle : C.hideDark) : mott(i, k, st), caps: false });
+  B.bone('tail').color(C.hideDark).lathe({ at: [-.02, 0, 0], F: [-.6, 0, .8], rings: [[0, .035], [.05, .04], [.09, 0]], seg: 6 });
   // The bramble vine along the back with thorns raking backward (pelvis to withers).
-  const vine = (bone, pts) => { B.bone(bone); for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], dir = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(...dir);
+  const vine = (bone, pts) => { if (low) return; B.bone(bone); for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], dir = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(...dir);
     B.color(C.bramble).lathe({ at: a, F: dir, rings: [[0, .016], [l, .016]], seg: 5, caps: false });
     if (!low) B.color(C.thorn).lathe({ at: [(a[0] + b[0]) / 2, a[1], (a[2] + b[2]) / 2 + .01], F: [-.6, 0, .8], rings: [[0, .009], [.045, 0]], seg: 4, caps: false }); } };
   vine('pelvis', [[-.2, 0, .17], [-.1, .01, .19], [0, -.01, .19], [.1, 0, .2]]);
   vine('spine', [[-.12, 0, .17], [0, .01, .18], [.12, -.01, .18], [.24, 0, .19]]);
   vine('chest', [[-.06, 0, .21], [.04, .01, .23], [.12, 0, .2]]);
   // Neck: a tapered column, wide where it meets the shoulders, with a moss mane along its crest and a lighter throat.
-  B.bone('neck').color(C.hide).lathe({ at: [-.04, 0, -.05], F: [.7, 0, .7], rings: [[0, .13], [.1, .115], [.2, .095]], rs: .78, seg: 10 });
-  for (let i = 0; i < (low ? 2 : 4); i++) { const f = -.04 + i * (low ? .1 : .055); B.color(i % 2 ? C.mossLight : C.moss).ellipsoid({ at: [f * .7 - .02, 0, .035 + f * .7], radius: [.05, .028, .03], rings: 3, seg: 6, F: [.7, 0, .7], U: [-.7, 0, .7] }); } // moss mane
-  B.bone('neck2').color(C.hide).lathe({ at: [-.03, 0, -.02], F: [.85, 0, .5], rings: [[0, .095], [.18, .075]], rs: .8, seg: 9 });
-  for (let i = 0; i < (low ? 1 : 3); i++) { const f = -.04 + i * .06; B.color(i % 2 ? C.moss : C.mossLight).ellipsoid({ at: [f * .85, 0, .04 + f * .5], radius: [.045, .025, .026], rings: 3, seg: 6, F: [.85, 0, .5], U: [-.5, 0, .85] }); }
-  if (!low) B.color(C.mossLight).ellipsoid({ at: [-.1, 0, .14], radius: [.07, .03, .03], rings: 3, seg: 6, F: [1, 0, -.2] });
+  B.bone('neck'); for (let i = 0; i < (low ? 2 : 4); i++) { const f = -.04 + i * (low ? .1 : .055); B.color(i % 2 ? C.mossLight : C.moss).ellipsoid({ at: [f * .7 - .02, 0, .035 + f * .7], radius: [.05, .028, .03], rings: 3, seg: 6, F: [.7, 0, .7], U: [-.7, 0, .7] }); } // moss mane
+  B.bone('neck2'); for (let i = 0; i < (low ? 1 : 3); i++) { const f = -.04 + i * .06; B.color(i % 2 ? C.moss : C.mossLight).ellipsoid({ at: [f * .85, 0, .04 + f * .5], radius: [.045, .025, .026], rings: 3, seg: 6, F: [.85, 0, .5], U: [-.5, 0, .85] }); }
+  if (!low) B.color(C.mossLight).ellipsoid({ at: [-.08, 0, .1], radius: [.06, .035, .03], rings: 3, seg: 6, F: [.7, 0, .7], U: [-.7, 0, .7] }); // moss at the withers
   // Head: a long deer skull (brow, tapering muzzle, dark muzzle tip and nostrils), the brow ridge, glowing green eyes, ears.
-  B.bone('head').color(C.hide).ellipsoid({ at: [.03, 0, 0], radius: [.1, .065, .065], rings: 5, seg: 10 });
-  B.color(C.hide).lathe({ at: [.08, 0, -.015], F: [1, 0, -.35], rings: [[0, .055], [.1, .04], [.16, .028]], rs: .85, seg: 9 });
-  B.color(C.muzzle).ellipsoid({ at: [.23, 0, -.07], radius: [.035, .03, .025], rings: 3, seg: 7 });
-  for (const s of [-1, 1]) {
+  B.bone('head'); for (const s of [-1, 1]) {
     B.color(C.bark).box({ at: [.06, s * .045, .035], size: [.04, .012, .008], bevel: 0, F: [1, s * .3, -.1] }); // brow ridge
     B.color(C.eye, E_EYE).ellipsoid({ at: [.055, s * .058, .015], radius: [.016, .008, .011], rings: 3, seg: 6 });
   }
@@ -180,21 +186,17 @@ function buildStagMesh(tier) {
         B.bone('antler' + s); }
     });
   }
-  // Legs: a muscled upper limb tapering to a slim cannon, a knee or hock, a cloven hoof with fetlock moss.
+  // Legs: each one limb of hide that starts inside the body and blends through hip or shoulder, stifle or elbow, hock or knee,
+  // a muscled top tapering to a slim cannon, then the cloven hoof and its fetlock moss.
+  const HIND = [[.64, .06, .09, 'p'], [.55, .07, .1, 'p', 't', .5], [.46, .066, .095, 't'], [.37, .046, .06, 't', 'm', .5], [.25, .033, .043, 'm'], [.14, .025, .031, 'm', 'l', .5], [.1, .02, .024, 'l'], [0, .018, .02, 'l'], [-.025, .02, .024, 'l']];
+  const FORE = [[.68, .06, .09, 'p'], [.57, .063, .086, 'p', 't', .5], [.47, .05, .066, 't'], [.37, .036, .046, 't', 'm', .5], [.26, .03, .036, 'm'], [.16, .024, .03, 'm', 'l', .5], [.1, .019, .022, 'l'], [0, .018, .02, 'l'], [-.02, .02, .023, 'l']];
   for (const L of LEGS) {
-    const tone = C.hide;
-    if (L.hind) {
-      B.bone(L.top).color(tone).lathe({ at: [.03, 0, .02], F: DOWN, rings: [[0, .085], [.12, .07], [R.femur, .05]], rs: .75, seg: 9 });
-      B.bone(L.mid).color(tone).lathe({ at: [0, 0, 0], F: DOWN, rings: [[0, .05], [.1, .038], [R.tibia, .028]], rs: .8, seg: 8 });
-      B.color(C.hideDark).ellipsoid({ at: [0, 0, -R.tibia], radius: [.03, .028, .03], rings: 3, seg: 6 }); // hock
-    } else {
-      B.bone(L.top).color(tone).lathe({ at: [0, 0, .02], F: DOWN, rings: [[0, .07], [.1, .055], [R.humerus, .042]], rs: .8, seg: 9 });
-      B.bone(L.mid).color(tone).lathe({ at: [0, 0, 0], F: DOWN, rings: [[0, .042], [.1, .033], [R.radius, .027]], rs: .85, seg: 8 });
-      B.color(C.hideDark).ellipsoid({ at: [0, 0, -R.radius], radius: [.028, .025, .03], rings: 3, seg: 6 }); // knee
-    }
+    const at = STAG_SKELETON.bindWorld, top = BI[L.top] * 3, x = at[top], y = at[top + 1], parent = L.hind ? 'pelvis' : 'chest';
+    const name = (c) => c === 'p' ? parent : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
+    B.color(C.hide).loft({ seg: 10, up: [1, 0, 0], sections: (L.hind ? HIND : FORE).map(([u, rx, rz, a, b, w]) => ({ at: [x + (L.hind && u > .4 ? .015 : 0), y, u], rx, rz, bones: [name(a), name(b ?? a), w || 0] })),
+      tone: (i) => i >= 6 ? C.hideDark : lerpHex(C.hide, C.hideDark, .18 + .06 * i) });
     const can = L.hind ? R.hindCannon : R.foreCannon;
-    B.bone(L.low).color(C.hideDark).lathe({ at: [0, 0, 0], F: DOWN, rings: [[0, .022], [can, .019]], seg: 6, caps: false });
-    if (!low) B.color(C.moss).ellipsoid({ at: [0, 0, -can + .01], radius: [.03, .03, .014], rings: 3, seg: 6 });
+    if (!low) B.bone(L.low).color(C.moss).ellipsoid({ at: [0, 0, -can + .012], radius: [.028, .028, .013], rings: 3, seg: 6 });
     for (const s of low ? [0] : [-1, 1]) B.bone(L.hoof).color(C.hoof).box({ at: [.012, s * .013, -.018], size: [.028, low ? .022 : .011, .018], bevel: 0, taper: .3, skew: .006 });
   }
   return B.done();
@@ -307,7 +309,7 @@ export function sampleStag(tr, e, env) {
   else if (ACT.watch && env.target && !dead) { const tx = env.target.x - e.x, ty = env.target.y - e.y; if (Math.hypot(tx, ty) > .3) want = Math.atan2(ty, tx); }
   if (!Number.isFinite(want)) want = e.facingX < 0 ? Math.PI : 0;
   if (!Number.isFinite(tr.yaw)) tr.yaw = want;
-  if (!dead) { const delta = Math.atan2(Math.sin(want - tr.yaw), Math.cos(want - tr.yaw)), rate = e.pack?.attack ? G.attackTurnRate : G.turnRate * (e.stagHunt > 0 ? 1.4 : 1); tr.yaw += Math.max(-1, Math.min(1, dt * rate)) * delta; }
+  if (!dead) { const delta = Math.atan2(Math.sin(want - tr.yaw), Math.cos(want - tr.yaw)), rate = e.pack?.attack ? G.attackTurnRate : (tr.gait.moving < .1 ? G.standTurnRate : G.turnRate) * (e.stagHunt > 0 ? 1.4 : 1); let turn = Math.max(-1, Math.min(1, dt * rate)) * delta; if (!e.pack?.attack && tr.gait.moving < .1) turn = Math.max(-G.standTurnMax * dt, Math.min(G.standTurnMax * dt, turn)); tr.yaw += turn; }
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
   // crossfade between acts (never across a contact: those live inside an act's timeline)
   const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}:${e.pack.data?.mode || ''}:${e.pack.data?.stage || ''}` : e.playing ? 'play' : dead ? 'death' : 'move';
@@ -344,7 +346,7 @@ export function sampleStag(tr, e, env) {
   const gs = gallop ? G.gallop : G.walk, phases = gallop ? GALLOP_PHASE : WALK_PHASE;
   for (let k = 0; k < 4; k++) { tr.gait.offsets[k] = phases[k]; tr.gait.side[k] = LEGS[k].side * (G.halfWidth + .01) * S; tr.gait.fore[k] = (LEGS[k].hind ? -.3 : .3) * S; }
   const still = (ACT.still && !gallop) || air > .1 || dead || e.fleeFade != null;
-  stepGait(tr.gait, env.x, env.y, yaw, now, { stride: gs.stride * S, stance: gs.stance, settle: G.settle, still, snapDistance: 3 * S, stepAt: G.stepAt * S, stepTime: G.stepTime });
+  stepGait(tr.gait, env.x, env.y, yaw, now, { stride: gs.stride * S, stance: gs.stance, settle: G.settle, still, snapDistance: 3 * S, stepAt: G.stepAt * S, stepTime: G.stepTime, maxStepping: 2 });
   const moving = tr.gait.moving, cyc = tr.gait.phase * Math.PI * 2;
   // root
   resetPose(P);
@@ -364,13 +366,14 @@ export function sampleStag(tr, e, env) {
   setEuler(P, BI.pelvis, 0, -W[0] + W[7] + gallopPitch, -sway * 1.5 + daze * .06); resolveBone(P, BI.pelvis);
   setEuler(P, BI.tail, (reduce ? 0 : .15 * Math.sin(t * 2.3)) * (1 - stun), -.3 * W[0] - .2 * tr.gallop, 0); resolveBone(P, BI.tail);
   setEuler(P, BI.spine, (reduce ? 0 : -moving * .04 * Math.sin(cyc)), .1 * W[4], 0); resolveBone(P, BI.spine);
-  setEuler(P, BI.chest, W[2] * .15, -.05 * W[4], 0); P.scl[BI.chest] = 1 + breathe * G.breathe.chest * .5; resolveBone(P, BI.chest);
+  // the shoulders roll into a sweep of the crown
+  setEuler(P, BI.chest, W[2] * .18, -.05 * W[4], -W[2] * .14); P.scl[BI.chest] = 1 + breathe * G.breathe.chest * .5; resolveBone(P, BI.chest);
   // neck and head: raise/lower and turn (the hooks swing the crown sideways); ears flick; jaw opens to bellow
   const headUp = W[1], headSwing = W[2];
   let look = 0;
   if (env.target && !dead && !ACT.contact) { const lx = env.target.x - e.x, ly = env.target.y - e.y, a = Math.atan2(ly, lx) - yaw; look = Math.max(-.6, Math.min(.6, Math.atan2(Math.sin(a), Math.cos(a)))) * .6; }
-  setEuler(P, BI.neck, headSwing * .45 + look * .4, -headUp * .55 + bob * 3, 0); resolveBone(P, BI.neck);
-  setEuler(P, BI.neck2, headSwing * .35 + look * .3, -headUp * .4, 0); resolveBone(P, BI.neck2);
+  setEuler(P, BI.neck, headSwing * .45 + look * .4, -headUp * .45 + bob * 3, 0); resolveBone(P, BI.neck);
+  setEuler(P, BI.neck2, headSwing * .35 + look * .3, -headUp * .33, 0); resolveBone(P, BI.neck2);
   setEuler(P, BI.head, headSwing * .2 + look * .3, -headUp * .25 + .2 + (reduce ? 0 : .02 * wobble(t * .7, 2)), headSwing * .25); resolveBone(P, BI.head);
   setEuler(P, BI.jaw, 0, .45 * W[5] * (1 + (reduce ? 0 : .1 * Math.sin(t * 25)) * W[5]), 0); resolveBone(P, BI.jaw);
   for (const [n, s] of [['earL', -1], ['earR', 1]]) { const flick = reduce ? 0 : Math.max(0, Math.sin(t * .9 + s * 1.7)) ** 30 * .5; setEuler(P, BI[n], s * (.25 + flick), .5 * Math.max(0, -W[1]), s * .2); resolveBone(P, BI[n]); }
@@ -403,7 +406,9 @@ export function sampleStag(tr, e, env) {
     { const l12 = ((L.hind ? G.femur + G.tibia : G.humerus + G.radius) * S) * .985, d1 = Math.hypot(H[0] - LOW[0], H[1] - LOW[1], H[2] - LOW[2]);
       if (d1 > l12) { const ht = Math.hypot(H[0] - T[0], H[1] - T[1], H[2] - T[2]) || 1, X = T[0] + (H[0] - T[0]) / ht * can, Y = T[1] + (H[1] - T[1]) / ht * can, Z = T[2] + (H[2] - T[2]) / ht * can;
         let lo = 0, hi = 1; for (let it = 0; it < 10; it++) { const m = (lo + hi) / 2, mx = LOW[0] + (X - LOW[0]) * m, my = LOW[1] + (Y - LOW[1]) * m, mz = LOW[2] + (Z - LOW[2]) * m; if (Math.hypot(H[0] - mx, H[1] - my, H[2] - mz) > l12) lo = m; else hi = m; }
-        LOW[0] += (X - LOW[0]) * hi; LOW[1] += (Y - LOW[1]) * hi; LOW[2] += (Z - LOW[2]) * hi; } }
+        LOW[0] += (X - LOW[0]) * hi; LOW[1] += (Y - LOW[1]) * hi; LOW[2] += (Z - LOW[2]) * hi;
+        // back onto the cannon's length from the hoof (the blend runs along a chord)
+        const cl = Math.hypot(LOW[0] - T[0], LOW[1] - T[1], LOW[2] - T[2]) || 1; for (let q = 0; q < 3; q++) LOW[q] = T[q] + (LOW[q] - T[q]) / cl * can; } }
     // pole: hind stifle forward, fore elbow back
     POLE[0] = cf * (L.hind ? 1 : -1); POLE[1] = sf * (L.hind ? 1 : -1); POLE[2] = 0;
     const l1 = (L.hind ? G.femur : G.humerus) * S, l2 = (L.hind ? G.tibia : G.radius) * S;
