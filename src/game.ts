@@ -34,14 +34,14 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, activeUtility, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS } from "./spell-slots.ts";
+import { ensureSlots, slotted, pairingMods, slotReadiness, activeUtility, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS } from "./spell-slots.ts";
 import { pressOculus, tickOculus } from "./oculus.ts"; // release 874: the Oculus, a utility-button choice
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
 import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered } from "./vehicle-gates.ts";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered, setMechMode } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY, isSeaKind } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
@@ -6839,9 +6839,23 @@ export class Game {
   // Submersible Frame (as the frame on an item button did: robot, Empowered, drone) or the Oculus.
   pressUtility(now = this.lastUpdateNow || 0, moving = false) {
     const u = activeUtility(this.save);
-    if (u === "frame") return this.useButtonItem("submersible", now);
+    if (u === "robot" || u === "drone") return this.pressFrame(u, now);
     if (u === "oculus") return pressOculus(this, now, (x, y) => footprintOpen(this.map, mapWidth(this.map, this.area), x, y));
     return this.pressBuild(moving);
+  }
+  // Release 875 (Tim: the robot suit or the drone, "either, or... one or the other"): the utility button names one form. Ashore,
+  // when the frame is set to the other form, the press first puts that one away (if it is out) and turns the frame to this
+  // form: a second press calls it up; with nothing out, one press does both. At sea the frame is the robot as before.
+  pressFrame(want, now = this.lastUpdateNow || 0) {
+    const m = this.save.mech;
+    if (!aboard(this.save) && frameForm(this.save) !== want) {
+      const out = m?.active === true;
+      if (out && this.droneLift) { this.message = "The drone is carrying you: land before the frame changes form."; return false; }
+      if (out && frameForm(this.save) === "robot" && this.wading() && !canSwim(this.save)) { this.message = "No footing here: wade the robot ashore before folding it away."; return false; }
+      const r = setMechMode(this.save, want); if (!r.ok) { this.message = r.message; return false; }
+      if (out) { this.cancelConsumeVisual('form-change'); this.sync(); this.message = want === "drone" ? "The robot folds away; the frame turns to the drone." : "The drone docks; the frame turns to the robot."; return true; }
+    }
+    return this.useButtonItem("submersible", now);
   }
   // The Build action, from whichever button holds it (release 269 mend, 267 build mode, 265 walls and blocks).
   pressBuild(moving = false) {

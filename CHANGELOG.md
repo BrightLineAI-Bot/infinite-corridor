@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 875: Robot and Drone are separate utility choices. Each preset's utility button can be Oculus, Build, Robot (the suit, with its power armor) or Drone, and only one form is ever out: the Drone button puts the robot away and turns the frame to the drone (and back). A release-874 "Robot / Drone" button becomes whichever form the frame was set to. The Oculus dais now opens just ahead of where the Wayfarer faces, diagonals included.
 - Release 874: Oculus and slot C. The compass's bottom-left place is now a fixed utility button, chosen per preset in the Arcanum (Oculus, Build, or Robot / Drone). The Oculus opens a glowing dais for 5 s; step onto it to switch between Close View and the top-down view. The old Build button is now slot C: A, B and C each take a spell, discipline, Build or item, so three spells can be equipped. The compass moves to the top-right corner.
 
 - Release 873: interior jump platforms on new floors (buildings, compounds, castles, labyrinths, Pentagon chambers) no longer seal off guards, stand on creatures' spawns, or drop you into a pocket you can't climb out of. Floors you have already explored stay as they were.

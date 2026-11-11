@@ -25,8 +25,8 @@ function world(seed = 'OCULUS') {
 }
 const withGpu = (ok, fn) => { const was = OCULUS_HOOKS.gpu; OCULUS_HOOKS.gpu = () => ok; try { return fn(); } finally { OCULUS_HOOKS.gpu = was; } };
 
-test('the utility choices are data: Oculus, Build and Robot / Drone (one frame); Build is the default', () => {
-  assert.deepEqual([...UTILITY.choices], ['oculus', 'build', 'frame']); assert.equal(UTILITY.default, 'build');
+test('the utility choices are data: Oculus, Build and Robot and Drone (release 875: separate); Build is the default', () => {
+  assert.deepEqual([...UTILITY.choices], ['oculus', 'build', 'robot', 'drone']); assert.equal(UTILITY.default, 'build');
   for (const u of UTILITY.choices) assert.ok(UTILITY.names[u]);
   assert.equal(OCULUS.seconds, 5, 'the dais stands 5 s (Tim)'); assert.ok(OCULUS.cooldown > 0);
 });
@@ -34,10 +34,10 @@ test('the utility choices are data: Oculus, Build and Robot / Drone (one frame);
 test('each preset keeps its utility choice through a save and a preset swap; an unknown choice falls back to Build', () => {
   const s = freshSave(); ensureSlots(s);
   assert.equal(presetUtility(s, 0), 'build'); assert.equal(presetUtility(s, 1), 'build'); assert.equal(activeUtility(s), 'build');
-  assert.equal(setPresetUtility(s, 1, 'oculus').ok, true); assert.equal(setPresetUtility(s, 0, 'frame').ok, true);
-  assert.equal(setPresetUtility(s, 0, 'zap').ok, false); assert.equal(presetUtility(s, 0), 'frame', 'unchanged');
-  const back = roundTrip(s); assert.equal(presetUtility(back, 0), 'frame'); assert.equal(presetUtility(back, 1), 'oculus');
-  togglePreset(back); assert.equal(activeUtility(back), 'oculus'); togglePreset(back); assert.equal(activeUtility(back), 'frame');
+  assert.equal(setPresetUtility(s, 1, 'oculus').ok, true); assert.equal(setPresetUtility(s, 0, 'robot').ok, true);
+  assert.equal(setPresetUtility(s, 0, 'zap').ok, false); assert.equal(presetUtility(s, 0), 'robot', 'unchanged');
+  const back = roundTrip(s); assert.equal(presetUtility(back, 0), 'robot'); assert.equal(presetUtility(back, 1), 'oculus');
+  togglePreset(back); assert.equal(activeUtility(back), 'oculus'); togglePreset(back); assert.equal(activeUtility(back), 'robot');
   const odd = freshSave(); odd.magicSkills.presets[0].utility = 'teleporter'; ensureSlots(odd); assert.equal(presetUtility(odd, 0), 'build');
 });
 
@@ -53,7 +53,7 @@ test('an old save migrates: A and B kept, C empty, utility Build; a Build button
   assert.deepEqual(m.magicSkills.slots, { a: 'spell:ember-ring', b: 'skill:quickening', c: null }, 'A and B kept, C empty');
   assert.equal(m.version, 14); assert.equal(m.magicSkills.futureSlotThing, 'kept', 'unknown fields kept');
   assert.equal(p[0].utility, 'build'); assert.equal(p[0].c, null); assert.equal(p[0].button, 'build', 'the old field is kept'); assert.equal(p[0].extra, 7);
-  assert.equal(p[1].utility, 'frame', 'the robot on the old Build button moves to the utility button'); assert.equal(p[1].c, null); assert.equal(p[1].item, 'submersible');
+  assert.equal(p[1].utility, 'robot', 'the robot on the old Build button moves to the utility button'); assert.equal(p[1].c, null); assert.equal(p[1].item, 'submersible');
   assert.deepEqual([p[1].a, p[1].b], ['spell:cinder-dart', null]);
   // a spell or an item on the old Build button moves to C
   const o2 = JSON.parse(JSON.stringify(learned)); o2.magicSkills.slots = { a: 'spell:cinder-dart', b: null }; o2.magicSkills.preset = 0;
@@ -94,7 +94,7 @@ test('the utility button: Build builds (and keeps the old Build key), the frame 
   g.update(.016, once('utility'), 1000); assert.equal(s.aimMode, 'build', 'Build on the utility button turns build mode on');
   s.aimMode = null; g.update(.016, once('build'), 1100); assert.equal(s.aimMode, 'build', 'the older build action reaches it too');
   const r = freshSave(); r.seed = 'UTIL-R'; r.perception.aperture = 3255; r.farArray = { listeners: 3, gate: 3 }; r.consumables.submersible = 1; r.materials = { ...(r.materials || {}), cinderIron: 5 };
-  const h = new Game(r, 0); h.rx = 3; h.ry = 3; h.loadArea('overworld'); h.enemies = []; setPresetUtility(r, 0, 'frame');
+  const h = new Game(r, 0); h.rx = 3; h.ry = 3; h.loadArea('overworld'); h.enemies = []; setPresetUtility(r, 0, 'robot');
   let t = 1000; h.update(.05, once('utility'), t); assert.ok(h.mechUp(), `built and up: ${h.message}`);
   t += 100; h.update(.05, once('utility'), t); assert.equal(r.mech.empowered, true, 'a second press: Empowered (the power armor)');
   t += 100; h.update(.05, once('utility'), t); assert.equal(h.mechUp(), false, 'a third press stows it');

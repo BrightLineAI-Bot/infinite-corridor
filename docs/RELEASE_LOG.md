@@ -21,6 +21,7 @@ Main is at r874 (`00abe1a858bf`); production serves `r874-00abe1a858bf`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 875 | Claude | claude/robot-drone-utility-dais-facing | Robot and Drone as separate utility choices (one at a time); Oculus dais ahead of the facing | In flight. |
 | 874 | Claude | claude/oculus-utility-button | Oculus utility button (Oculus/Build/Robot-Drone per preset), slot C with three spells, compass top right | Merged as `00abe1a858bf` (#539). Published in r874. |
 | 873 | Claude | claude/interior-platform-reach | Interior terrain v2: jump platforms never create one-way pockets or sealed guards | Merged as `d4a0b43a1879` (#537). Published in r873. |
 | 872 | Claude | claude/overworld-close-view-fidelity / #536 | Overworld Close View sky, ground, water and standing solids | Merged as `62f86eace9c7`. Published in r873. |
