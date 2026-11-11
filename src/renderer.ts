@@ -2716,6 +2716,8 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
           } else if (o.kind === "seedFind") { drawSeedFind(ctx, o, s, now); // travel seeds
+          } else if (o.kind === "worldCache") { const L = o.cacheElev ? groundLift(o.x, o.y) * s : 0; if (L) { ctx.save(); ctx.translate(0, -L); } drawWorldCache(ctx, o, s, now); if (L) ctx.restore(); // world caches (world.ts WORLD_CACHES)
+          } else if (o.kind === "cacheLever") { drawPentLever(ctx, o, s, now); // and the lever that lifts an alcove's bars
           } else if (o.kind === "tideBearer") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); drawTideLantern(ctx, o, s, now); // travel seeds
           } else if (o.kind === "threadRelic") { drawThreadRelic(ctx, o, s, now); // release 627
           } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
@@ -3333,5 +3335,39 @@ function drawTideLantern(ctx, o, s, now) {
   ctx.save(); ctx.strokeStyle = "#cfe6ee"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); ctx.moveTo(cx, cy - s * .22); ctx.lineTo(cx, cy - s * .1); ctx.stroke();
   ctx.fillStyle = `rgba(150,220,235,${.35 + .35 * pulse})`; ctx.beginPath(); ctx.arc(cx, cy, s * .1, 0, 7); ctx.fill(); ctx.stroke();
   ctx.fillStyle = "#e2f4f8"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("TIDE BEARER", (o.x + .5) * s, (o.y - .3) * s); ctx.textAlign = "start";
+  ctx.restore();
+}
+
+// World caches (world.ts WORLD_CACHES): a few flat shapes each, no gradients and no per-frame strings. A find still waiting
+// shows a small glint; a corpse, a throne and an alcove stay once emptied, a find on a ledge or a climb's top is gone.
+function cacheGlint(ctx, cx, cy, s, now) {
+  ctx.globalAlpha = .55 + .45 * Math.sin(now / 380 + cx); ctx.strokeStyle = "#ffe9a8"; ctx.lineWidth = Math.max(1, s * .03);
+  ctx.beginPath(); ctx.moveTo(cx - s * .09, cy); ctx.lineTo(cx + s * .09, cy); ctx.moveTo(cx, cy - s * .09); ctx.lineTo(cx, cy + s * .09); ctx.stroke(); ctx.globalAlpha = 1;
+}
+function drawWorldCache(ctx, o, s, now) {
+  const x = o.x * s, y = o.y * s, cx = x + s * .5, live = o.state !== "used"; ctx.save();
+  if (o.spot === "corpse") {
+    ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(cx, y + s * .8, s * .38, s * .12, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#4a4038"; ctx.beginPath(); ctx.ellipse(cx + s * .04, y + s * .7, s * .32, s * .13, -.15, 0, 7); ctx.fill(); // a cloak, fallen flat
+    ctx.fillStyle = "#d8cfbd"; ctx.beginPath(); ctx.arc(cx - s * .26, y + s * .64, s * .09, 0, 7); ctx.fill(); // the skull
+    ctx.strokeStyle = "#cbbfa8"; ctx.lineWidth = Math.max(1, s * .03); ctx.beginPath(); for (const k of [-.08, .04, .16]) { ctx.moveTo(cx + s * k, y + s * .6); ctx.lineTo(cx + s * (k + .04), y + s * .8); } ctx.stroke(); // ribs
+    if (live) cacheGlint(ctx, cx + s * .2, y + s * .74, s, now);
+  } else if (o.spot === "throne") {
+    ctx.fillStyle = "#00000044"; ctx.fillRect(x + s * .14, y + s * .82, s * .72, s * .1);
+    ctx.fillStyle = "#4f483f"; ctx.fillRect(x + s * .24, y - s * .32, s * .52, s * .7); // the high back
+    ctx.fillStyle = "#6b6255"; ctx.fillRect(x + s * .16, y + s * .38, s * .68, s * .2); ctx.fillRect(x + s * .12, y + s * .22, s * .1, s * .5); ctx.fillRect(x + s * .78, y + s * .22, s * .1, s * .5); // seat and arms
+    ctx.fillStyle = "#211d19"; ctx.fillRect(x + s * .22, y + s * .58, s * .56, s * .26); // the dark beneath
+    ctx.fillStyle = "#a08a52"; ctx.fillRect(x + s * .44, y - s * .26, s * .12, s * .12); // a worn crest
+    if (live) cacheGlint(ctx, cx, y + s * .72, s, now);
+  } else if (o.spot === "lever") {
+    ctx.fillStyle = "#15120f"; ctx.beginPath(); ctx.moveTo(x + s * .18, y + s * .85); ctx.lineTo(x + s * .18, y + s * .05); ctx.arc(cx, y + s * .05, s * .32, Math.PI, 0); ctx.lineTo(x + s * .82, y + s * .85); ctx.closePath(); ctx.fill(); // the recess
+    ctx.strokeStyle = "#6e665a"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.stroke();
+    if (live) cacheGlint(ctx, cx, y + s * .55, s, now);
+    if (o.state === "sealed") drawBars(ctx, o, s);
+  } else if (live) { // a ledge's or a climb's find: a small bundle
+    ctx.fillStyle = "#00000044"; ctx.beginPath(); ctx.ellipse(cx, y + s * .82, s * .2, s * .07, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#7a5a36"; ctx.fillRect(x + s * .34, y + s * .56, s * .32, s * .24); ctx.fillStyle = "#5c4227"; ctx.fillRect(x + s * .34, y + s * .56, s * .32, s * .07);
+    cacheGlint(ctx, cx + s * .1, y + s * .5, s, now);
+  }
   ctx.restore();
 }

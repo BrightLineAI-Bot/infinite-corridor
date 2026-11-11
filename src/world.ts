@@ -3,6 +3,7 @@ import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-du
 export{generateVariedDungeon,generateBespokeArena}from'./arenas.ts';
 import{arenaEligible}from'./arenas.ts';
 import{annotateDungeon}from'./dungeon-framework.ts';
+import{reachableFrom,canReturnTo,LETHAL_KINDS,elevationAt}from'./landscape.ts';import{grantSeed,SEEDS}from'./skylands.ts';import{ensureTheDeep}from'./the-deep.ts';import{isClod}from'./canyon.ts';/* world caches */
 import{APERTURE_BANDS}from'./items.ts';import{hashSeed,rng,pick}from'./random.ts';import{storySiteFor}from'./story.ts';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
@@ -230,3 +231,141 @@ export function generateDeepDungeon(seed,id=deepDungeonId(seed),options={}){
  return annotateDungeon({seed,id,recipe:'deep-v1',name:'The Threefold Deep',identity:'sealed deep dungeon',danger:'three wing wardens',width,height,entry,hub,anchors:{entry,hub,returns},wings:bosses.map(q=>({id:q.wingId,minibossId:q.id,returnAnchorId:`deep-v1-return-${q.wingId}`})),finalArena:{id:'deep-v1-final-arena',sealedBy:gate.id,bossId:'deep-v1-final-boss'},finalGate:gate,finalGateId:gate.id,finalGateTiles,finalEnemyIds:enemySpawns.map(q=>q.id),pits,tiles,objects,enemySpawns},{generatorVersion:1,sizeProfile:'threefold'});
 }
 export function generateDungeon(seed,id=`dungeon:${seed}:g1`,options){if(isDeepDungeonId(id))return generateDeepDungeon(seed,id,options);const{recipe,name,identity,danger}=dungeonDescriptor(id),r=rng(`${seed}:dungeon:v2:${id}`),tiles=[];for(let y=0;y<24;y++)for(let x=0;x<24;x++){let open;if(recipe==='hollow')open=(x>2&&x<10&&y>2&&y<10)||(x>13&&x<21&&y>3&&y<11)||(x>5&&x<19&&y>14&&y<22)||(y===7&&x>=9&&x<=14)||(x===16&&y>=10&&y<=15);else if(recipe==='cistern')open=(x>2&&x<21&&y>2&&y<8)||(x>4&&x<10&&y>7&&y<21)||(x>13&&x<21&&y>13&&y<21)||(y===16&&x>=9&&x<=14);else open=(x>2&&x<21&&y>2&&y<9)||(x>2&&x<8&&y>8&&y<21)||(x>11&&x<21&&y>13&&y<21)||(y===16&&x>=7&&x<=12);tiles.push({x,y,kind:open?'floor':'wall',blocked:!open,detail:(x+y)%4})}const entry={x:4,y:5},objects=[{id:'dungeon-chest',kind:'chest',x:18,y:recipe==='hollow'?7:5,state:'closed',actions:['open'],rewardSource:`${recipe}-cache`},{id:'dungeon-exit',kind:'exit',...entry,state:'open',actions:['exit']},supply(seed,id,0,tiles,24)];if(recipe==='cistern')objects.push({id:'vault-cache',kind:'supplyCache',supplyType:'restorativeDraught',x:15,y:18,state:'ready',actions:['collect']});if(id===dungeonId(seed,Number(id.match(/:g(\d+)/)?.[1]||1)))objects.push({id:'relay-terminal',kind:'relayTerminal',name:'Crossing Terminal',x:17,y:19,state:'ready',actions:['inspect','restore','sever']});if(recipe==='cistern')objects.push({id:'cistern-vine',kind:'vine',x:8,y:16,toX:15,toY:16,state:'ready',actions:['swing']});if(recipe==='kiln')objects.push({id:'kiln-vent',kind:'trap',trapType:'fire',x:12,y:16,dirX:1,dirY:0,phase:'armed',timer:0,hits:{},clue:'scorch'});else if(recipe!=='hollow')objects.push({id:'crossing-spikes',kind:'trap',trapType:'spikes',x:15,y:16,phase:'armed',timer:0,hits:{},clue:'seams'});const enemySpawns=[{kind:'ashling',x:8,y:8},{kind:'sparkWarden',x:16,y:16},{kind:'hollowMarshal',x:10+Math.floor(r()*5),y:18,boss:true}];if(recipe==='kiln')enemySpawns.push({kind:'sparkWarden',x:18,y:6,elite:true});return annotateDungeon({seed,id,recipe,name,identity,danger,tiles,objects,enemySpawns},{generatorVersion:2,sizeProfile:'legacy-compact'})}
+
+// ---------------------------------------------------------------- World caches (Tim, 2026-11-11)
+// "Sometimes it's just going to be an item somewhere in the dungeon — underneath a corpse, or underneath a throne, or behind a
+// lever you pull — and there's an item." Items set about the world give exploring a goal beyond getting stronger. A cache is a
+// find spot and a loot roll, placed at area load (never in a generator's output) and only where the ground was first seen from
+// this version on: dungeons whose history pins `cacheVersion` (pinDungeonLayout: a crossing never entered before) and Atlas
+// sections pinned `cacheVersion` (first seen from now on). Rolled from the seed and the place, so a place always holds the same
+// thing; taken once (worldFlags `world-cache:<key>:<i>`), a lever pulled once (`world-cache-lever:<key>:<i>`).
+//
+// Spots. In a dungeon floor: `corpse` (the remains of some wayfarer, out in the open), `throne` (a seat set back against a wall
+// with room before it; the item lies beneath) and `lever` (a barred alcove in a wall, and an old lever elsewhere on the same
+// floor that lifts the bars). Out in the world: `corpse`, `ledge` (a raised edge over a drop, reached the long way round) and
+// `climbTop` (the highest ground in the section, well above the way in). Every spot is on ground the Wayfarer can walk to and back
+// from by the real movement rules (one level up with a jump, any drop down, no lethal ground, no thin walls), from the floor's
+// entry or, out in the world, from the section's middle where it joins an edge. A dungeon spot is on the entry's own level.
+// Balance lives here; the loot tiers set rarity (seeds are uncommon on a corpse, likelier under a throne, likeliest behind bars).
+export const WORLD_CACHES={
+ version:1,
+ // How often a place holds a cache: `chance` of one, then `second` of another; the spots weighted.
+ dungeon:{chance:.4,second:.25,spots:[['corpse',5],['throne',2],['lever',3]],minFromEntry:5},
+ overworld:{chance:.12,second:0,spots:[['corpse',3],['ledge',3],['climbTop',2]]},
+ spots:{
+  corpse:{name:'Fallen wayfarer',take:'Search the remains',loot:'common',found:'Beneath the remains of some wayfarer who got no further'},
+  throne:{name:'Empty throne',take:'Look beneath the throne',loot:'fine',found:'Pushed far back beneath the throne, where no one sitting there would see it'},
+  lever:{name:'Barred alcove',take:'Reach into the alcove',loot:'rare',found:'At the back of the alcove, behind where the bars stood',lever:'Old lever',pull:'Pull the lever',reach:[5,18],
+   sealed:'Iron bars close the alcove, and something glints behind them. A lever somewhere on this floor must lift them',opened:'Somewhere close, iron grinds on stone: bars lift from an alcove'},
+  ledge:{name:'Something on a ledge',take:'Pick it up',loot:'common',found:'Up on the ledge, where no one walking below would find it',drop:2},
+  climbTop:{name:'Something at the top',take:'Pick it up',loot:'fine',found:'At the very top, where only a climber comes',rise:2},
+ },
+ // Loot tiers: [item, count, weight]. Items: the existing supplies (save.consumables), a Return Ember (the Deep's way out,
+ // save.theDeep.embers), marks (save.currency) and the travel seeds (`seed:<kind>`, skylands.ts SEEDS).
+ loot:{
+  common:[['restorativeDraught',1,40],['restorativeDraught',2,14],['ironbarkTonic',1,12],['lumenPhial',1,12],['marks',30,14],['crossingSigil',1,2],['returnEmber',1,3],['seed:pumice',1,1],['seed:opal',1,1]],
+  fine:[['restorativeDraught',2,18],['highPotion',1,12],['ironbarkTonic',2,10],['lumenPhial',2,10],['clearrootAmpoule',1,8],['marks',80,12],['crossingSigil',1,8],['returnEmber',1,8],['seed:opal',1,2],['seed:fossilized',1,2],['seed:pumice',1,2],['seed:crimson',1,2]],
+  rare:[['maxPotion',1,10],['highPotion',2,12],['crossingSigil',1,14],['returnEmber',2,10],['clearrootAmpoule',2,8],['marks',200,12],['seed:fossilized',1,5],['seed:opal',1,5],['seed:pumice',1,4],['seed:crimson',1,4]],
+ },
+ items:{restorativeDraught:'Restorative Draught',highPotion:'High Potion',maxPotion:'Max Potion',ironbarkTonic:'Ironbark Tonic',lumenPhial:'Lumen Phial',clearrootAmpoule:'Clearroot Ampoule',crossingSigil:'Crossing Sigil',returnEmber:'Return Ember',marks:'marks'},
+ // Dungeons never given caches: arenas and runs made afresh (Skylands, hunts, the Far Array, the Deep's floors, annexes), and
+ // the Pentagons, whose chambers are laid out around their own levers, relics and shortcut links.
+ skipIds:/^(arena:|hunt-|elite-portal:|displacement:|skyland:|far-array:|the-deep:|pentagon|proving)|aperture-annex/,
+};
+export const cacheFlag=(key,i)=>`world-cache:${key}:${i}`;
+export const cacheLeverFlag=(key,i)=>`world-cache-lever:${key}:${i}`;
+const cacheHash=(seed,key,what)=>hashSeed(`${seed}:world-cache:v${WORLD_CACHES.version}:${key}:${what}`);
+const cacheWeighted=(list,h)=>{let total=0;for(const e of list)total+=e[e.length-1];let r=h%total;for(const e of list){const w=e[e.length-1];if(r<w)return e;r-=w}return list[0]};
+// The spots a place rolls (before any is fitted to the ground): [{ i, spot }]. Pure.
+export function cachePlan(seed,scope,key){
+ const C=WORLD_CACHES[scope];if(!C?.spots)return[];const roll=(w)=>(cacheHash(seed,key,w)%10000)/10000;
+ const n=roll('n')<C.chance?(roll('n2')<C.second?2:1):0,out=[];
+ for(let i=0;i<n;i++)out.push({i,spot:cacheWeighted(C.spots,cacheHash(seed,key,`spot:${i}`))[0]});
+ return out;
+}
+// What the cache `i` at `key` holds, from its spot's tier: { item, count }. Pure.
+export function cacheLoot(seed,key,i,spot){const [item,count]=cacheWeighted(WORLD_CACHES.loot[WORLD_CACHES.spots[spot]?.loot||'common'],cacheHash(seed,key,`loot:${i}:${spot}`));return{item,count}}
+export const cacheItemName=(item)=>item.startsWith('seed:')?SEEDS[item.slice(5)]?.name||'seed':WORLD_CACHES.items[item]||item;
+export const cacheLootText=({item,count})=>item==='marks'?`${count} marks`:`${count>1?`${count} × `:'a '}${cacheItemName(item)}`;
+export const cacheDungeonAllowed=(id,map)=>!!map?.tiles?.length&&!map.arena&&!map.underwater&&!map.pentFinale&&!map.pentArena&&!map.skyland&&!map.deepFloor&&!WORLD_CACHES.skipIds.test(String(id||''));
+// Give a cache's loot. Returns false (and gives nothing) for an item it does not know.
+export function grantCacheLoot(save,{item,count}){
+ const n=Math.max(1,Math.floor(Number(count)||1));
+ if(item.startsWith('seed:'))return grantSeed(save,item.slice(5),n)>0;
+ if(item==='returnEmber'){ensureTheDeep(save);save.theDeep.embers+=n;return true}
+ if(item==='marks'){save.currency=(Number(save.currency)||0)+n;return true}
+ if(!WORLD_CACHES.items[item])return false;
+ save.consumables||={};save.consumables[item]=(Number(save.consumables[item])||0)+n;return true;
+}
+const CACHE_N4=[[1,0],[-1,0],[0,1],[0,-1]];
+const cacheGround=(t)=>!!t&&!t.blocked&&!t.structure&&!t.environment&&!t.buildingId&&!t.chasm&&!t.pit&&!t.door&&!t.perch&&!LETHAL_KINDS.has(t.kind)&&!/water|shallow|ocean|sea|mire|bog|pool|lava|void|abyss|canyon|river|pit|Gate|ice/i.test(String(t.kind));
+const cacheWall=(t)=>!!t&&t.blocked&&!isClod(t)&&!t.door&&!t.environment&&!/water|lava|void|abyss|canyon|river|Gate/i.test(String(t.kind));
+// Lay the caches `scope` ('dungeon' or 'overworld') rolls for `key` on `map` (which must be the place as loaded), with their
+// state from the save's flags. Returns the objects added (none when the place rolls none or no spot fits), with `pins`: where
+// each was laid ({ i, spot, x, y, lx, ly }). The caller keeps the pins (Atlas entry, dungeon history) and passes them back on
+// the next load, so a cache never moves when the things around it change (a cue, a quest mark, a seed taken). Deterministic:
+// the same seed, key, ground and pins give the same objects. Bounded: a few breadth-first sweeps of the map, once per load.
+export const validCachePin=(q)=>!!q&&Number.isInteger(q.i)&&q.i>=0&&!!WORLD_CACHES.spots[q.spot]&&Number.isInteger(q.x)&&Number.isInteger(q.y)&&(q.spot!=='lever'||Number.isInteger(q.lx)&&Number.isInteger(q.ly));
+export function placeWorldCaches(map,save,scope,key,pins=null){
+ const plan=cachePlan(save.seed,scope,key);if(!plan.length||!map?.tiles?.length)return[];
+ const W=Math.max(1,Number(map.width)||(scope==='dungeon'?24:32)),H=Math.floor(map.tiles.length/W),T=map.tiles,at=(x,y)=>x<0||y<0||x>=W||y>=H?null:T[y*W+x];
+ // The ground a cache may stand on: walkable there and back. Dungeon: the entry's own level, joined to the entry on that level.
+ // Overworld: the real rules (reachableFrom / canReturnTo, thin walls included) from the ground nearest the middle, which must
+ // itself be joined both ways to a section edge.
+ // Fitted lazily: a place whose caches all lie where their pins say needs no sweep at all.
+ const ok=new Uint8Array(W*H),dist=new Int32Array(W*H).fill(-1),busy=new Set();let start=null,ready=0;
+ const prep=()=>{if(ready)return ready>0;ready=-1;
+ if(scope==='dungeon'){
+  const e=map.entry;if(!e)return false;const sx=Math.round(e.x),sy=Math.round(e.y),s0=at(sx,sy);if(!s0||s0.blocked)return false;
+  // A barred or sealed door laid as an object (a room maze's gate, a sealed gate) counts as shut, whatever its tile says.
+  const shut=new Set();for(const o of map.objects||[])if(o.blocked||(o.kind==='labGate'||o.kind==='sealedGate')&&o.state!=='open')shut.add(Math.round(o.y)*W+Math.round(o.x));
+  const lvl=(x,y)=>elevationAt(map,W,x,y),base=lvl(sx,sy),open=(t)=>t&&!t.blocked&&!t.chasm&&!t.pit&&!LETHAL_KINDS.has(t.kind)&&!shut.has(t.y*W+t.x)&&Math.abs(lvl(t.x,t.y)-base)<1e-6;
+  const q=[sy*W+sx];ok[q[0]]=1;dist[q[0]]=0;start={x:sx,y:sy};
+  for(let h=0;h<q.length;h++){const i=q[h],x=i%W,y=(i-x)/W;for(const[dx,dy]of CACHE_N4){const j=(y+dy)*W+x+dx,b=at(x+dx,y+dy);if(!b||ok[j]||!open(b))continue;ok[j]=1;dist[j]=dist[i]+1;q.push(j)}}
+ }else{
+  const mid=T.filter(cacheGround).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16)||a.y-b.y||a.x-b.x)[0];if(!mid)return false;
+  const go=reachableFrom(map,W,H,mid,true),back=canReturnTo(map,W,H,mid,true);let edge=false;
+  for(let i=0;i<go.length;i++)if(go[i]&&back[i]){ok[i]=1;const x=i%W,y=(i-x)/W;if(x===0||y===0||x===W-1||y===H-1)edge=true}
+  if(!edge)return false;start=mid;
+ }
+ for(const o of map.objects||[]){const ox=Math.round(o.x),oy=Math.round(o.y);for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)busy.add((oy+dy)*W+ox+dx)}
+ ready=1;return true};
+ // a canyon's diggable clods are no walls for a cache, and no find stands beside one (Act there digs, so it must not pull or search)
+ const nearClod=(t)=>{for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if(isClod(at(t.x+dx,t.y+dy)))return true;return false};
+ const free=(t)=>ok[t.y*W+t.x]&&cacheGround(t)&&!busy.has(t.y*W+t.x)&&t.x>1&&t.y>1&&t.x<W-2&&t.y<H-2&&!nearClod(t);
+ const C=WORLD_CACHES[scope],far=(t)=>scope==='dungeon'?dist[t.y*W+t.x]>=C.minFromEntry:Math.hypot(t.x-start.x,t.y-start.y)>=4;
+ const pickOf=(list,what)=>list.length?list[cacheHash(save.seed,key,what)%list.length]:null,el=(t)=>Number(t?.elev)||0;
+ const spotFor={
+  corpse:(i)=>!prep()?null:pickOf(T.filter(t=>free(t)&&far(t)),`at:${i}:corpse`),
+  throne:(i)=>!prep()?null:pickOf(T.filter(t=>free(t)&&far(t)&&cacheWall(at(t.x,t.y-1))&&[[-1,0],[1,0],[0,1],[-1,1],[1,1]].every(([dx,dy])=>{const n=at(t.x+dx,t.y+dy);return n&&ok[n.y*W+n.x]})),`at:${i}:throne`),
+  lever:(i)=>{if(!prep())return null;
+   const niche=(t)=>cacheWall(at(t.x,t.y-1))&&CACHE_N4.filter(([dx,dy])=>cacheWall(at(t.x+dx,t.y+dy))).length>=3,walled=T.filter(t=>free(t)&&far(t)&&cacheWall(at(t.x,t.y-1)));
+   const deep=walled.filter(niche),alcove=pickOf(deep.length?deep:walled,`at:${i}:alcove`);if(!alcove)return null;
+   const R=WORLD_CACHES.spots.lever.reach,d=new Int32Array(W*H).fill(-1),q=[alcove.y*W+alcove.x];d[q[0]]=0;
+   for(let h=0;h<q.length;h++){const k=q[h],x=k%W,y=(k-x)/W;if(d[k]>=R[1])continue;for(const[dx,dy]of CACHE_N4){const j=(y+dy)*W+x+dx;if(!at(x+dx,y+dy)||!ok[j]||d[j]>=0)continue;d[j]=d[k]+1;q.push(j)}}
+   const lever=pickOf(T.filter(t=>free(t)&&d[t.y*W+t.x]>=R[0]&&CACHE_N4.some(([dx,dy])=>cacheWall(at(t.x+dx,t.y+dy)))),`at:${i}:lever`);
+   return lever?{...alcove,lever}:null;
+  },
+  ledge:(i)=>{if(!prep())return null;const D=WORLD_CACHES.spots.ledge.drop;return pickOf(T.filter(t=>free(t)&&far(t)&&el(t)>el(start)&&CACHE_N4.some(([dx,dy])=>{const n=at(t.x+dx,t.y+dy);return n&&!n.blocked&&el(n)<=el(t)-D})),`at:${i}:ledge`)},
+  climbTop:(i)=>{if(!prep())return null;let top=-Infinity;for(const t of T)if(free(t))top=Math.max(top,el(t));if(top-el(start)<WORLD_CACHES.spots.climbTop.rise)return null;
+   return pickOf(T.filter(t=>free(t)&&el(t)===top&&!CACHE_N4.some(([dx,dy])=>el(at(t.x+dx,t.y+dy))>top)),`at:${i}:climbTop`)},
+ };
+ const made=[],newPins=[],flags=save.worldFlags||{};
+ for(const{i,spot:rolled}of plan){
+  // A spot that does not fit this ground falls back to a corpse (which fits almost anywhere); its loot is rolled for the spot laid.
+  const pin=Array.isArray(pins)?pins.find(q=>validCachePin(q)&&q.i===i):null,stand=(x,y)=>{const q=at(x,y);return q&&!q.blocked&&!LETHAL_KINDS.has(q.kind)&&!q.chasm?q:null};
+  let spot=rolled,t=null;
+  if(pin&&stand(pin.x,pin.y)&&(pin.spot!=='lever'||stand(pin.lx,pin.ly))){spot=pin.spot;t=pin.spot==='lever'?{...stand(pin.x,pin.y),lever:stand(pin.lx,pin.ly)}:stand(pin.x,pin.y)}
+  else{t=spotFor[spot]?.(i);if(!t&&spot!=='corpse'){spot='corpse';t=spotFor.corpse(i)}}
+  if(!t)continue;
+  newPins.push({i,spot,x:t.x,y:t.y,...(t.lever?{lx:t.lever.x,ly:t.lever.y}:{})});
+  const S=WORLD_CACHES.spots[spot],loot=cacheLoot(save.seed,key,i,spot),taken=!!flags[cacheFlag(key,i)],pulled=!!flags[cacheLeverFlag(key,i)];
+  const o={id:`world-cache:${key}:${i}`,kind:'worldCache',spot,name:S.name,x:t.x,y:t.y,cacheKey:key,cacheIndex:i,item:loot.item,count:loot.count,
+   state:taken?'used':spot==='lever'&&!pulled?'sealed':'waiting',actions:['take'],actionLabels:{take:S.take},...(scope==='overworld'&&(spot==='ledge'||spot==='climbTop')?{cacheElev:el(t)}:{})};
+  (map.objects||=[]).push(o);made.push(o);
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)busy.add((t.y+dy)*W+t.x+dx);
+  if(t.lever){const L=t.lever;const lv={id:`world-cache-lever:${key}:${i}`,kind:'cacheLever',name:S.lever,x:L.x,y:L.y,cacheKey:key,cacheIndex:i,state:pulled||taken?'pulled':'ready',actions:pulled||taken?[]:['pull'],actionLabels:{pull:S.pull}};
+   map.objects.push(lv);made.push(lv);for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)busy.add((L.y+dy)*W+L.x+dx)}
+ }
+ made.pins=newPins;return made;
+}

@@ -31,8 +31,8 @@ export const inventoryDigest = files => sha256(JSON.stringify(Object.fromEntries
 
 function versionText(text, token) {
   return text.replaceAll("?v=908", `?v=${token}`).replaceAll('const release = "908"', `const release = "${token}"`)
-    .replaceAll('"Game release":"908"', `"Game release":"${token}"`).replaceAll("${CACHE_PREFIX}v908", "${CACHE_PREFIX}" + token)
-    .replaceAll("${PREFIX}pg1-r908", "${PREFIX}" + token)
+    .replaceAll('"Game release":"908"', `"Game release":"${token}"`).replaceAll("${CACHE_PREFIX}v907", "${CACHE_PREFIX}" + token)
+    .replaceAll("${PREFIX}pg1-r907", "${PREFIX}" + token)
     .replace(/\brelease\s*:\s*908\b/g, `release: "${token}"`).replaceAll("Release 908", `Release ${token}`);
 }
 

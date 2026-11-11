@@ -23,6 +23,13 @@ import {
   sectionExits,
   wayfindingCues,
   structureOccupancy,
+  WORLD_CACHES,
+  placeWorldCaches,
+  cacheDungeonAllowed,
+  cacheFlag,
+  cacheLeverFlag,
+  grantCacheLoot,
+  cacheLootText,
 } from "./world.ts";
 
 function applyFallenTreeCrossings(map) {
@@ -311,6 +318,8 @@ export function pinDungeonLayout(save, id) {
   if (history.monsterPack === undefined) history.monsterPack = visited() ? 0 : MONSTER_PACK_VERSION;
   // Release 289: the Watcher's sigil and tombs only in dungeons first entered from now on.
   if (history.watcherVersion === undefined) history.watcherVersion = visited() ? 0 : WATCHER.version;
+  // World caches (world.ts WORLD_CACHES): a corpse, a throne or a barred alcove only in crossings first entered from now on.
+  if (history.cacheVersion === undefined) history.cacheVersion = visited() ? 0 : WORLD_CACHES.version;
   // Relay Network: decided once, before the first visit; crossings entered before this release never gain a relay.
   if ((isPentagonFinaleId(id) || isPentagonArenaId(id)) && history.relayNode === undefined) history.relayNode = false; // the Pentagon's finale (its arena and its walkway) holds no relay node, decided before the first visit pins one
   relayNodeDecision(save, id, history, `dungeon:${save.seed}:g${save.worldGeneration}`);
@@ -3087,6 +3096,7 @@ export class Game {
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
         ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
         ...(prior ? {} : { seedFindVersion: SEED_FINDS.version }), // travel seeds: a seed may lie only on ground first seen from now on
+        ...(prior ? {} : { cacheVersion: WORLD_CACHES.version }), // world caches (world.ts WORLD_CACHES): new ground only
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : {}), // great keeps: sections first seen from 683 until the great buildings
         ...(prior ? (prior.arcVersion ? { arcVersion: prior.arcVersion } : {}) : {}), // and the ruined arcologies (685)
@@ -3346,6 +3356,7 @@ export class Game {
     }
     if (area === "overworld")
       this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
+    this.placeCaches(); // world caches (world.ts WORLD_CACHES): last, over the place as loaded; new ground and new crossings only
     this.hordeTimer = 0; if (area === "dungeon") this.applyHorde(); // release 269: a horde dungeon holds only its Revenants
     this.mireTimer = 0; this.mirePool = 0;
     if (area !== "dungeon" || this.clockArea !== "dungeon") this.dungeonClock = 0; this.clockArea = area; // release 271: Revenants hunt after GATE_REVENANT.huntAfter s in a dungeon
@@ -4105,6 +4116,7 @@ export class Game {
   // it reaches it first; nothing down on the ground below the roof is reached from up there, and a hatch is not reached from below.
   reachOf(o) {
     const p = this.player, n = Math.hypot(o.x - p.x, o.y - p.y);
+    if (o.cacheElev && n < 2 && elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y) < o.cacheElev) return Infinity; // world caches: a ledge's or a climb's find is reached from up there
     if (this.area !== "overworld" || !this.map?.greatBuilding) return n;
     const W = mapWidth(this.map, this.area), fx = Math.floor(p.x + .5), fy = Math.floor(p.y + .75), roof = (x, y) => this.map.tiles[y * W + x]?.structure === "buildingRoof", up = roof(fx, fy);
     if (o.roofHatch) { if (!up) return Infinity; const c = Math.max(Math.abs(Math.round(o.x) - fx), Math.abs(Math.round(o.y) - fy)); return c <= 1 ? c * .25 : n; }
@@ -4318,6 +4330,8 @@ export class Game {
     if (o.kind === "canopyGate" && action === "plantFossil") return this.plantFossilSeed(o); // travel seeds: a sure way to another crown
     if (o.kind === "canopyGate" && !action && o.state === "open" && seedCount(this.save, "fossilized") > 0) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name} — enter, or plant a ${SEEDS.fossilized.name}.`) }; }
     if (o.kind === "seedFind") return this.takeSeedFind(o);
+    if (o.kind === "worldCache") return this.takeWorldCache(o); // world caches
+    if (o.kind === "cacheLever") return this.pullCacheLever(o);
     if (o.realmObject && this.area === "dungeon" && this.map?.seedRealm) return this.useRealmObject(o, action); // seed realms
     if (o.kind === "tideBearer") return this.tideBearerAction(o, action);
     if (o.completionExit) {
@@ -5030,6 +5044,46 @@ export class Game {
     journalOnce(this.save, `seed:${o.seed}`, `You found a ${S.name} lying in the open at ${key}. ${S.text}`, "Seeds");
     this.message = `A ${S.name}, lying here in the open. Strange place for one. (${n} held.) ${S.text}`;
     this.sync(); return { ok: true, message: this.message, seed: o.seed };
+  }
+  // World caches (world.ts WORLD_CACHES). Laid at load over the place as it stands, on ground first seen (or a crossing first
+  // entered) from WORLD_CACHES.version; their state comes from worldFlags, so a find taken or a lever pulled stays so.
+  placeCaches() {
+    const M = this.map; if (!M?.tiles?.length || M.objects.some((o) => o.kind === "worldCache")) return [];
+    if (this.area === "overworld") {
+      const key = `${this.rx},${this.ry}`; if (this.save.atlas?.[key]?.cacheVersion !== WORLD_CACHES.version || M.settlement || M.hamlet || M.farDomain || M.huntersRaft) return [];
+      const seen = this.save.atlas[key], made = placeWorldCaches(M, this.save, "overworld", key, seen.caches);
+      if (made.pins?.length && JSON.stringify(made.pins) !== JSON.stringify(seen.caches)) seen.caches = made.pins; // where they lie, kept: they never move
+      return made;
+    }
+    if (this.area !== "dungeon") return [];
+    const id = this.areaId(), h = this.save.consequences?.dungeons?.[id]; if (h?.cacheVersion !== WORLD_CACHES.version || !cacheDungeonAllowed(id, M)) return [];
+    const at = this.areaStateId(), kept = h.caches && typeof h.caches === "object" && !Array.isArray(h.caches) ? h.caches : null, made = placeWorldCaches(M, this.save, "dungeon", at, kept?.[at]);
+    if (made.pins?.length && JSON.stringify(made.pins) !== JSON.stringify(kept?.[at])) (h.caches = kept || {})[at] = made.pins;
+    return made;
+  }
+  takeWorldCache(o) {
+    const s = this.save, flag = cacheFlag(o.cacheKey, o.cacheIndex), S = WORLD_CACHES.spots[o.spot];
+    if (!S || s.worldFlags[flag] || o.state === "used") { o.state = "used"; return { ok: false, message: (this.message = "Nothing is left here.") }; }
+    if (o.spot === "lever" && !s.worldFlags[cacheLeverFlag(o.cacheKey, o.cacheIndex)]) {
+      const L = this.map.objects.find((q) => q.kind === "cacheLever" && q.cacheKey === o.cacheKey && q.cacheIndex === o.cacheIndex), dx = L ? L.x - o.x : 0, dy = L ? L.y - o.y : 0;
+      const dir = L ? `${Math.abs(dy) * 2 > Math.abs(dx) ? (dy < 0 ? "north" : "south") : ""}${Math.abs(dx) * 2 > Math.abs(dy) ? (dx > 0 ? "east" : "west") : ""}` : "";
+      return { ok: false, sealed: true, message: (this.message = `${S.sealed}${dir ? `, somewhere to the ${dir}` : ""}.`) };
+    }
+    if (o.cacheElev && elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y) < o.cacheElev) return { ok: false, message: (this.message = "It lies above you. Find the way up.") };
+    const loot = { item: o.item, count: o.count };
+    s.worldFlags[flag] = true; o.state = "used"; grantCacheLoot(s, loot);
+    const seed = String(o.item).startsWith("seed:") ? o.item.slice(5) : null, text = cacheLootText(loot);
+    if (seed && SEEDS[seed]) journalOnce(s, `seed:${seed}`, `You found a ${SEEDS[seed].name}. ${SEEDS[seed].text}`, "Seeds");
+    (this.questNotices ||= []).push({ title: "FOUND", detail: `${text} · ${S.name.toLowerCase()}`, kind: "discovery" });
+    this.message = `${S.found}: ${text}.`;
+    this.sync(); return { ok: true, message: this.message, item: o.item, count: o.count };
+  }
+  pullCacheLever(o) {
+    const s = this.save, flag = cacheLeverFlag(o.cacheKey, o.cacheIndex), S = WORLD_CACHES.spots.lever;
+    if (s.worldFlags[flag] || o.state === "pulled") { o.state = "pulled"; o.actions = []; return { ok: false, message: (this.message = "The lever is already down.") }; }
+    s.worldFlags[flag] = true; o.state = "pulled"; o.actions = [];
+    for (const q of this.map.objects) if (q.kind === "worldCache" && q.cacheKey === o.cacheKey && q.cacheIndex === o.cacheIndex && q.state === "sealed") q.state = "waiting";
+    this.message = `${S.opened}.`; this.sync(); return { ok: true, message: this.message };
   }
   // A Fossilized Seed's crossing: another great tree's crown, `SEED_TRAVEL.fossilized.hop` sections off in a direction drawn from the
   // tree and the seeds already planted. Candidates are found as treeCrownHop finds them (cheap tests first), then built in isolated
