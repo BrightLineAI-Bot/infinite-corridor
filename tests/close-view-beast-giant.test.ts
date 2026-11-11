@@ -199,3 +199,11 @@ test('turning on the spot: feet are lifted and stepped, never slid while planted
   assert.ok(steps > 10, 'the feet stepped round');
   assert.ok(Math.abs(Math.atan2(Math.sin(tr.yaw - 2.094), Math.cos(tr.yaw - 2.094))) < .05, 'it turned to face');
 });
+
+test('sparse frames (a hidden tab, a slow phone) show the act as it is now, never a stale blend', () => {
+  const e = createCombatant('lightningGiant', 10, 10, true, []), tr = createGiantTrack(); let now = 1000;
+  for (let i = 0; i < 20; i++) sampleGiant(tr, e, env(e, now += 16));
+  e.pack = { attack: 'giantMenace', phase: 'active', t: 20, seq: 1, paced: false, data: { mode: 'stalk', hold: 2 } };
+  sampleGiant(tr, e, env(e, now += 600));
+  assert.ok(boneLocalToWorld(tr.pose, 'club', GIANT_RIG.club, 0, 0)[2] > giantBone(tr, 'head')[2], 'the club is already up');
+});

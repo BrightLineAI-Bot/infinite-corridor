@@ -25,7 +25,7 @@ export const GIANT_RIG = Object.freeze({
   // its standard-view size (presentation only: its body radius, reach, hit areas and timings are the game's and do not change).
   closeViewScale: 1.25,
   // Signature shapes held at the standard view's emphasis: the helm with its jet plumage and the shoulder coil (pass 1).
-  headScale: 1.14, pylonScale: 1.35,
+  headScale: 1.14, pylonScale: 1.35, cloudScale: 1.45,
   hip: .56, thigh: .265, shin: .265, ankle: .06, hipWidth: .14, upperArm: .21, foreArm: .2, club: .62,
   stride: .62, stance: .6, stepAt: .085, stepTime: .42, footLift: .12, bob: .034, sway: .03, twistGain: 1.25, impactMs: 420, settle: 4,
   turnRate: 3.2, attackTurnRate: 9, blendMs: 150, deathMs: 2600, landMs: 420, hitMs: 360,
@@ -53,7 +53,7 @@ export const GIANT_RIG = Object.freeze({
     upswing: { grip: [.32, .04, .1], dir: [.62, -.05, .78], twist: -.2, pitch: -.05, crouch: .02, shift: .06, lean: .04 },
     upswingHigh: { grip: [.12, .02, .34], dir: [-.2, -.05, .98], twist: -.1, pitch: -.14, crouch: -.01, shift: .02, lean: 0 },
     air: { grip: [.06, .06, .3], dir: [.2, .1, .97], twist: 0, pitch: -.08, crouch: 0, shift: 0, lean: 0 },
-    dazed: { grip: [.16, .08, -.33], dir: [.3, .25, -.92], twist: .1, pitch: .22, crouch: .09, shift: .02, lean: .03 },
+    dazed: { grip: [.15, .1, -.34], dir: [.22, .3, -.93], twist: .14, pitch: .32, crouch: .15, shift: .03, lean: .05 },
   }),
 });
 const POSE_KEYS = ['grip', 'dir', 'twist', 'pitch', 'crouch', 'shift', 'lean'];
@@ -373,7 +373,7 @@ function act(e, tr, now, target) {
 // target (the Wayfarer, for the head and arcs), dead (true once the game killed it) }. Returns the track's frame, or null.
 export function sampleGiant(tr, e, env) {
   const now = env.now, reduce = !!env.reduce, S = Math.max(.25, Math.min(4, Number(env.scale) || 1)), P = tr.pose, G = GIANT_RIG;
-  const dt = Number.isFinite(tr.at) ? Math.min(.1, Math.max(0, (now - tr.at) / 1000)) : 0; tr.at = now;
+  const gapMs = Number.isFinite(tr.at) ? now - tr.at : Infinity, dt = Number.isFinite(gapMs) ? Math.min(.1, Math.max(0, gapMs / 1000)) : 0; tr.at = now;
   const dead = !!env.dead;
   if (dead && tr.deathAt == null) tr.deathAt = now;
   if (!dead) { tr.deathAt = null; tr.x = env.x; tr.y = env.y; tr.z = env.z; tr.scale = S; }
@@ -394,7 +394,8 @@ export function sampleGiant(tr, e, env) {
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
   // crossfade between acts (a new attack, a new sub-mode): never across a contact, which lives inside one act's timeline
   const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}:${e.pack.data?.mode || ''}:${e.pack.data?.strikes || 0}` : e.giantThrust ? 'thrust' : dead ? 'death' : 'move';
-  if (tr.key === '') { tr.shown.set(V); tr.from.set(V); tr.key = key; }
+  // A first sight, or a gap longer than the blend (a hidden tab, sparse frames): show the act as it is now, never a stale pose.
+  if (tr.key === '' || !(gapMs <= G.blendMs)) { if (key !== tr.key) tr.blendAt = -Infinity; tr.shown.set(V); tr.from.set(V); tr.key = key; }
   else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.key = key; }
   const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / G.blendMs);
   for (let k = 0; k < K; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
@@ -406,11 +407,13 @@ export function sampleGiant(tr, e, env) {
   if (tr.airWas > .05 && air <= .05) { tr.landAt = now; tr.landHard = Math.min(1, tr.airWas / 1.2 + .4); }
   tr.airWas = air;
   const hitT = (now - tr.hitAt) / 1000, hit = hitT < G.hitMs / 1000 ? kick(hitT, 18, 11) : 0;
-  W2[7] -= .1 * hit; W2[6] -= .12 * hit * tr.hitSide; W2[8] += .02 * Math.abs(hit);
+  W2[7] -= .17 * hit; W2[6] -= .2 * hit * tr.hitSide; W2[8] += .035 * Math.abs(hit); // the blow rocks it back, away from the side it came from
   const landT = (now - tr.landAt) / 1000, land = landT < G.landMs / 1000 ? Math.max(0, kick(landT, 9, 7)) * tr.landHard : 0;
   W2[8] += .11 * land; W2[7] += .12 * land;
   const stun = dead ? 0 : Math.max(0, Math.min(1, Number(e.poiseBreak) || 0));
   if (stun > 0) { const dz = POSE_VEC.dazed; for (let k = 0; k < K; k++) W2[k] += (dz[k] - W2[k]) * stun; normDir(W2); }
+  const daze = stun > 0 && !reduce ? stun * Math.sin(t * 4.2) : 0; // it sways on its heels, dazed (the standard view's sway)
+  W2[6] += .1 * daze;
   // a blow landing shudders through the whole machine (pass 2): the rising edge of each contact
   if (ACT.contact && !tr.contactWas) { tr.impactAt = now; tr.impactK = /Slam|Menace|slamFall/.test(ACT.phase) || e.giantPose === 'slamDown' ? 1 : .55; }
   tr.contactWas = ACT.contact;
@@ -441,7 +444,7 @@ export function sampleGiant(tr, e, env) {
   }
   setEuler(P, BI.root, yaw, topple, 0); P.scl[BI.root] = S;
   resolveBone(P, BI.root, x, y, rootZ);
-  P.scl[BI.cloud] = cloud ? 1 : 0; setOffset(P, BI.cloud, 0, 0, -.02); resolveBone(P, BI.cloud);
+  P.scl[BI.cloud] = cloud ? G.cloudScale : 0; setOffset(P, BI.cloud, 0, 0, -.02); resolveBone(P, BI.cloud);
   // pelvis: crouch, weight forward, the gait's bob (down at each plant) and sway over the stance foot, breathing
   const breathe = reduce ? 0 : Math.sin(t * Math.PI * 2 * G.breathe.rate / 2.4);
   const bob = moving * G.bob * (.5 - .5 * Math.cos(cyc * 2)), sway = moving * G.sway * Math.sin(cyc);
@@ -451,7 +454,7 @@ export function sampleGiant(tr, e, env) {
   resolveBone(P, BI.pelvis);
   // legs (resolved below, after the upper body: they hang from the pelvis already resolved)
   // spine and chest: twist toward the blow, lean, counter-rotate the stride, breathe
-  setEuler(P, BI.spine, W2[6] * .32 - (reduce ? 0 : moving * .07 * Math.sin(cyc)), W2[7] * .4, sway * .6); resolveBone(P, BI.spine);
+  setEuler(P, BI.spine, W2[6] * .32 - (reduce ? 0 : moving * .07 * Math.sin(cyc)), W2[7] * .4, sway * .6 + daze * .09); resolveBone(P, BI.spine);
   setEuler(P, BI.chest, W2[6] * .46, W2[7] * .6, sway * 1.1 + settleShift * 2); // the shoulders roll against the stride setOffset(P, BI.chest, 0, 0, breathe * G.breathe.lift);
   P.scl[BI.chest] = 1 + breathe * G.breathe.chest * .4; resolveBone(P, BI.chest);
   // head: looks where it will strike (or at the Wayfarer), steadied against the stride, within a machine's neck

@@ -2445,7 +2445,7 @@ export function resolveCloseViewPlayerFacing(trackYaw, desiredYaw, { elapsed = 0
 // Release 887: world beasts with a skinned Close View body (close-view-beasts.ts). Nearest first, up to BEAST_SLOT.maxBeasts;
 // each admitted beast's billboard is suppressed (its floor effects and telegraphs stay where they are drawn now). A slain
 // beast's track plays its death to the end from where it fell. Render-only: nothing here touches the game.
-const BEAST_TARGET = { x: 0, y: 0 }, BEAST_ENV = { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: BEAST_TARGET, dead: false };
+const BEAST_FADE = 2.4, BEAST_TARGET = { x: 0, y: 0 }, BEAST_ENV = { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: BEAST_TARGET, dead: false };
 function admitBeasts(g, draws, n, Q, now, reduce) {
   const B = MODEL_STATE.beasts, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low';
   B.count = 0; if (B.map !== g.map) { B.map = g.map; B.tracks.clear(); }
@@ -2459,7 +2459,9 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     BEAST_ENV.x = boardWX[it]; BEAST_ENV.y = boardWY[it]; BEAST_ENV.z = interiorSurfaceHeight(g.map, foe.x + .5, foe.y + .75); BEAST_ENV.scale = Math.max(.6, Number(foe.scale) || 1) * (spec.scale || 1);
     BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = false;
     const frame = spec.sample(track, foe, BEAST_ENV); if (!frame) continue;
-    frame.alpha *= Math.max(0, Math.min(1, boardB[it] ?? 1)); track.seen = now;
+    // A beast stands solid through most of the distance fade ordinary creatures take (pass 3, 2026-11-11: a boss the height of
+    // a house that thins at mid range loses its scale); it still fades out at the fog's edge.
+    frame.alpha *= Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); track.seen = now;
     B.items[B.count++] = frame; MODEL_STATE.admitted.add(it);
   }
   for (const [foe, track] of B.tracks) {
@@ -2472,6 +2474,8 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     if (foe.dead || now - (track.seen ?? -Infinity) > 120) B.tracks.delete(foe);
   }
 }
+// Read-only, for tests and the lab: this frame's admitted beast frames and their render tracks.
+export const closeViewBeasts = () => MODEL_STATE.beasts;
 // A soft contact shadow under each admitted beast and a darker print under each planted foot, on the ground layer.
 function drawBeastShadows(gc, s) {
   const B = MODEL_STATE.beasts;
