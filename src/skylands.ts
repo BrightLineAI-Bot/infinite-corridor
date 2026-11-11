@@ -49,6 +49,7 @@ export function ensureSkylands(save) {
   return q;
 }
 export const SKYWAY = { version: 2, platforms: [5, 4, 3], size: 2, gap: 1, area: [4, 27], clear: 1, tries: 120 }; // the most platforms that fit
+const SOFT_GROUND = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !(t.elev > 0) && !t.pit && !/ocean|lava|void|abyss|canyon|river|deep|toxicWater|lakeWater/i.test(String(t.kind)); // waymark guides' last pass: walkable ground a fall cannot hurt, bog and shallows included
 const OPEN_GROUND = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !(t.elev > 0) && !/water|ocean|shallows|lava|void|abyss|canyon|river|mire|bog|pool/i.test(String(t.kind));
 // Lays the ascent in `map` (32×32 tiles). Returns the top platform's door spot { x, y, elev } or null when no room was found.
 export function buildSkyway(map, seed, rx, ry) {
@@ -81,16 +82,41 @@ export function buildSkyway(map, seed, rx, ry) {
 // discs floating over open ground, each one level higher, `spacing` tiles apart centre to centre. The ground under them is left as
 // it is, so creatures walk beneath. The discs are a layer of their own: game.ts keeps the Wayfarer's `skyLevel`; a jump that
 // ends over a disc no more than one level above where it began lands on it, walking off a disc falls (four levels: fatal).
-export const SKY_DISCS = { count: [5, 4, 3], radius: 1.15, spacing: 2.6, area: [4, 27], clear: 1, tries: 120, bob: .06 };
-export function buildSkyDiscs(map, seed, rx, ry) {
+export const SKY_DISCS = { count: [5, 4, 3], radius: 1.15, spacing: 2.6, area: [4, 27], clear: 1, tries: 120, bob: .06,
+  guided: { turns: [0, 1, 7], clearable: ["tree", "rock", "wayfindingCue"] } }; // waymark guides: a guided skyway host's full search (chain bends tried), and what may stand under a disc
+// `guided` (waymark-guides.ts, a section hosting a guided skyway): the same random search first; failing that, every start tile
+// (in a seeded order), direction and bend (`guided.turns`, one bend repeated along the chain) is tried, longest chain first, with
+// trees, rocks and creatures' starting spots allowed under the discs (trees and rocks there are cleared). Bounded: one 32×32
+// grid of free tiles, at most 3 passes × 3 lengths × 576 starts × 8 directions × 3 bends. Unguided: exactly as before.
+export function buildSkyDiscs(map, seed, rx, ry, guided = false) {
   const D = SKY_DISCS, [lo, hi] = D.area, W = 32, at = (x, y) => map.tiles?.[y * W + x], h = (k) => hashSeed(`${seed}:sky-discs:v1:${rx}:${ry}:${k}`);
   const ex = map.exits || {}, near = (c, v) => Number.isFinite(c) && Math.abs(v - c) <= 1;
   const exitLine = (x, y) => (near(ex.north, x) && y <= 16) || (near(ex.south, x) && y >= 16) || (near(ex.west, y) && x <= 16) || (near(ex.east, y) && x >= 16);
   const free = (x, y) => x >= lo && y >= lo && x <= hi && y <= hi && OPEN_GROUND(at(x, y)) && !exitLine(x, y) && !(x >= 13 && x <= 19 && y >= 13 && y <= 19)
     && !(map.objects || []).some((o) => Math.hypot(o.x - x, o.y - y) < D.clear) && !(map.enemySpawns || []).some((o) => Math.hypot(o.x - x, o.y - y) < D.clear);
+  const first = discSearch(map, D, D.tries, free, h, lo, hi); if (first || !guided) return first;
+  const C = D.guided, soft = (o) => C.clearable.includes(o.kind), ok = new Uint8Array(W * W), hard = (map.objects || []).filter((o) => !soft(o));
+  for (const [lanes, ground] of [[true, OPEN_GROUND], [false, OPEN_GROUND], [false, SOFT_GROUND]]) { // the exit lanes kept clear first; then, as the discs float and the ground beneath stays open, over them too; then over bog and shallows as well
+  for (let y = lo; y <= hi; y++) for (let x = lo; x <= hi; x++) ok[y * W + x] = ground(at(x, y)) && !(lanes && exitLine(x, y)) && !(x >= 13 && x <= 19 && y >= 13 && y <= 19) && !hard.some((o) => Math.hypot(o.x - x, o.y - y) < D.clear) ? 1 : 0;
+  const fits = (cx, cy) => { for (let y = Math.floor(cy - D.radius); y <= Math.floor(cy + D.radius); y++) for (let x = Math.floor(cx - D.radius); x <= Math.floor(cx + D.radius); x++) if (Math.hypot(x + .5 - cx, y + .5 - cy) <= D.radius + .2 && !(x >= 0 && y >= 0 && x < W && y < W && ok[y * W + x])) return false; return true; };
+  const DIRS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]], starts = [];
+  for (let y = lo; y <= hi; y++) for (let x = lo; x <= hi; x++) if (ok[y * W + x]) starts.push([x, y]);
+  starts.sort((a, b) => hashSeed(`${seed}:sky-discs:guide:v1:${rx}:${ry}:${a}`) - hashSeed(`${seed}:sky-discs:guide:v1:${rx}:${ry}:${b}`));
+  for (const count of D.count) for (const [sx, sy] of starts) for (let d0 = 0; d0 < 8; d0++) for (const turn of C.turns) {
+    let cx = sx + .5, cy = sy + .5, dir = d0, good = true; const discs = [];
+    for (let k = 0; k < count && good; k++) { if (k) { dir = (dir + turn) % 8; const [dx, dy] = DIRS[dir], n = Math.hypot(dx, dy); cx += dx / n * D.spacing; cy += dy / n * D.spacing; } good = fits(cx, cy); discs.push({ x: cx, y: cy, r: D.radius, level: k + 1 }); }
+    if (!good || discs.some((a, i) => discs.some((b, j) => j > i + 1 && Math.hypot(a.x - b.x, a.y - b.y) < D.spacing))) continue;
+    map.skyDiscs = discs.map((q) => ({ ...q, x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 }));
+    map.objects = (map.objects || []).filter((o) => !(soft(o) && map.skyDiscs.some((q) => Math.hypot(o.x - q.x, o.y - q.y) <= q.r + D.clear)));
+    return map.skyDiscs.at(-1);
+  }
+  }
+  return null;
+}
+function discSearch(map, D, tries, free, h, lo, hi) {
   const under = (cx, cy) => { const out = []; for (let y = Math.floor(cy - D.radius); y <= Math.floor(cy + D.radius); y++) for (let x = Math.floor(cx - D.radius); x <= Math.floor(cx + D.radius); x++) if (Math.hypot(x + .5 - cx, y + .5 - cy) <= D.radius + .2) out.push([x, y]); return out; };
   const DIRS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
-  for (const count of D.count) for (let t = 0; t < D.tries; t++) {
+  for (const count of D.count) for (let t = 0; t < tries; t++) {
     let cx = lo + 1.5 + h(`x${count}:${t}`) % (hi - lo - 2), cy = lo + 1.5 + h(`y${count}:${t}`) % (hi - lo - 2), dir = h(`d${count}:${t}`) % 8; const discs = [];
     for (let k = 0; k < count; k++) {
       if (k) { dir = (dir + [0, 1, 7, 2, 6][h(`turn${count}:${t}:${k}`) % 5]) % 8; const [dx, dy] = DIRS[dir], n = Math.hypot(dx, dy); cx += dx / n * D.spacing; cy += dy / n * D.spacing; }

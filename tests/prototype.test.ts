@@ -337,7 +337,7 @@ test("exact resume retains section player and enemy state", () => {
   g.enemies[0].hp = 3;
   const r = new Game(
     deserializeSave(serializeSave(g.exportSnapshot(200))),
-    903,
+    900,
   );
   assert.deepEqual(
     [r.rx, r.ry, r.player.x, r.player.y, r.enemies[0].hp],
@@ -2279,7 +2279,7 @@ test("structure repair stays at generation boundaries and shared occupancy drive
 
 test("journal renders the same minimalist trail marks used on the floor",()=>{
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8"),html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
-  assert.match(source,/function trailMark/);assert.match(source,/Open ring — Wayglass/);assert.match(source,/Open chevron — Crossing/);assert.match(source,/Hollow triangle — Major danger/);assert.match(source,/Open spiral — Unusual site/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
+  assert.match(source,/function trailMark/);assert.match(source,/Open ring — Wayglass/);assert.match(source,/Open chevron — Skyway/);assert.match(source,/Hollow triangle — World boss/);assert.match(source,/Open spiral — Watcher's Shrine/);assert.match(source,/MAJOR THREAT/);assert.match(source,/SITE REACHED/);assert.match(html,/id="eventBanner"/);
 });
 
 test("world discovery banners identify their destination and suppress activated Wayglasses",()=>{
@@ -2404,12 +2404,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 903 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 904 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "903"/);assert.match(html,/styles\.css\?v=903/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v903`/);assert.match(sw,/styles\.css\?v=903/);assert.match(sw,/proving-ground-labs\.js\?v=903/);assert.match(sw,/dungeon-framework\.js\?v=903/);assert.match(sw,/renderer\.js\?v=903/);
-  assert.match(build,/release='903'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "904"/);assert.match(html,/styles\.css\?v=904/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v904`/);assert.match(sw,/styles\.css\?v=904/);assert.match(sw,/proving-ground-labs\.js\?v=904/);assert.match(sw,/dungeon-framework\.js\?v=904/);assert.match(sw,/renderer\.js\?v=904/);
+  assert.match(build,/release='904'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });
@@ -2806,7 +2806,7 @@ test("multi-level transitions preserve exact destinations and separate level sna
 });
 
 test("multi-level objectives open only the final floor gate and death returns to its level anchor",()=>{
- const s=freshSave(),id=deepV2Id(s.seed,1,2,-5,"descent");s.session.activeDungeonId=id;s.session.activeDungeonLevelId="mouth";s.session.dungeonReturn={rx:2,ry:-5,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);const guardian=g.enemies.find(e=>e.objectiveId==="survey-warden");guardian.dead=true;g.defeatEnemy(guardian);let down=g.map.objects.find(o=>o.toLevelId==="pressure");Object.assign(g.player,{x:down.x,y:down.y});g.interact("travel",down.id);const engine=g.map.objects.find(o=>o.objectiveId==="depth-engine");Object.assign(g.player,{x:engine.x,y:engine.y});g.interact("activate",engine.id);const anchor=g.map.objects.find(o=>o.kind==="deepAnchor"&&o.unlockObjectiveId==="depth-engine");Object.assign(g.player,{x:anchor.x,y:anchor.y});g.interact("recover",anchor.id);down=g.map.objects.find(o=>o.toLevelId==="lowest");Object.assign(g.player,{x:down.x,y:down.y});g.interact("travel",down.id);assert.equal(g.map.objects.find(o=>o.kind==="sealedGate").state,"open");g.recoverFromDeath(903);assert.equal(s.session.activeDungeonLevelId,"pressure");assert.deepEqual([g.player.x,g.player.y],[anchor.x,anchor.y]);
+ const s=freshSave(),id=deepV2Id(s.seed,1,2,-5,"descent");s.session.activeDungeonId=id;s.session.activeDungeonLevelId="mouth";s.session.dungeonReturn={rx:2,ry:-5,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);const guardian=g.enemies.find(e=>e.objectiveId==="survey-warden");guardian.dead=true;g.defeatEnemy(guardian);let down=g.map.objects.find(o=>o.toLevelId==="pressure");Object.assign(g.player,{x:down.x,y:down.y});g.interact("travel",down.id);const engine=g.map.objects.find(o=>o.objectiveId==="depth-engine");Object.assign(g.player,{x:engine.x,y:engine.y});g.interact("activate",engine.id);const anchor=g.map.objects.find(o=>o.kind==="deepAnchor"&&o.unlockObjectiveId==="depth-engine");Object.assign(g.player,{x:anchor.x,y:anchor.y});g.interact("recover",anchor.id);down=g.map.objects.find(o=>o.toLevelId==="lowest");Object.assign(g.player,{x:down.x,y:down.y});g.interact("travel",down.id);assert.equal(g.map.objects.find(o=>o.kind==="sealedGate").state,"open");g.recoverFromDeath(900);assert.equal(s.session.activeDungeonLevelId,"pressure");assert.deepEqual([g.player.x,g.player.y],[anchor.x,anchor.y]);
 });
 
 test("physical shortcuts reveal open collision and persist without exposing mandatory finales",()=>{
@@ -2942,7 +2942,7 @@ test("journey creation and rename use in-panel forms without native prompt or st
 test("global settings normalize safe mobile quality without touching saves",()=>{
   const settings=normalizeSettings({quality:"nonsense",controlSensitivity:99,safeMode:true});
   assert.equal(settings.quality,"auto");assert.equal(settings.controlSensitivity,1.8);
-  assert.equal(effectiveQuality(settings,{width:1400,height:903,deviceMemory:8,hardwareConcurrency:8}),"low");
+  assert.equal(effectiveQuality(settings,{width:1400,height:900,deviceMemory:8,hardwareConcurrency:8}),"low");
   assert.equal(effectiveQuality(normalizeSettings({quality:"auto"}),{width:390,height:844,deviceMemory:4,hardwareConcurrency:4}),"low");
 });
 
@@ -3018,7 +3018,7 @@ test("multifloor snapshots restore partial health and identical enemy scaling",(
 
 test("every story assigned to a multifloor entrance installs a reachable initiator",()=>{
   const expected={ghost:["storyGhost"],relic:["storyRelic","storyGhost"],mechanism:["storyTone"],actor:["storyActor"],scene:["storyScene"]},seen=new Set();
-  for(let i=0;i<903;i++)for(const archetype of["descent","fortress"]){const seed=`MULTISTORY-${i}`,rx=i%17-8,ry=Math.floor(i/17)%17-8,id=deepV2Id(seed,1,rx,ry,archetype),level=deepV2Levels(id)[0].id,map=generateDeepV2Dungeon(seed,id,{levelId:level}),kind=map.storyPackage?.initiator;if(!kind)continue;seen.add(kind);const reach=reachableDungeonCells(map,map.entry);for(const objectKind of expected[kind]){const objects=map.objects.filter(o=>o.kind===objectKind);assert.ok(objects.length,`${archetype} ${kind} missing ${objectKind}`);assert.ok(objects.some(o=>reach.has(`${o.x},${o.y}`)),`${archetype} ${kind} initiator unreachable`)}}assert.ok(seen.has("ghost")&&seen.has("relic")&&seen.has("actor")&&seen.has("scene"));for(const kind of seen)assert.ok(expected[kind]);
+  for(let i=0;i<900;i++)for(const archetype of["descent","fortress"]){const seed=`MULTISTORY-${i}`,rx=i%17-8,ry=Math.floor(i/17)%17-8,id=deepV2Id(seed,1,rx,ry,archetype),level=deepV2Levels(id)[0].id,map=generateDeepV2Dungeon(seed,id,{levelId:level}),kind=map.storyPackage?.initiator;if(!kind)continue;seen.add(kind);const reach=reachableDungeonCells(map,map.entry);for(const objectKind of expected[kind]){const objects=map.objects.filter(o=>o.kind===objectKind);assert.ok(objects.length,`${archetype} ${kind} missing ${objectKind}`);assert.ok(objects.some(o=>reach.has(`${o.x},${o.y}`)),`${archetype} ${kind} initiator unreachable`)}}assert.ok(seen.has("ghost")&&seen.has("relic")&&seen.has("actor")&&seen.has("scene"));for(const kind of seen)assert.ok(expected[kind]);
 });
 
 test("deep physical shortcuts seal and open complete traversable cuts",()=>{
@@ -3039,7 +3039,7 @@ test("dead temporary summons are culled while authored defeated enemies persist"
 });
 
 test("provoked enemies detour around a straight blocking wall",()=>{
-  const map={tiles:Array.from({length:100},(_,i)=>{const x=i%10,y=Math.floor(i/10),wall=x===5&&y<8;return{x,y,kind:wall?"wall":"floor",blocked:wall}})},enemy=createCombatant("ashling",3,5),player={x:7,y:5};enemy.id="detour-test";enemy.aggro=true;for(let i=0;i<903;i++)updateEnemyAI(enemy,player,map,10,1/60,i*16);assert.ok(enemy.x>5,`enemy stalled at ${enemy.x},${enemy.y}`);
+  const map={tiles:Array.from({length:100},(_,i)=>{const x=i%10,y=Math.floor(i/10),wall=x===5&&y<8;return{x,y,kind:wall?"wall":"floor",blocked:wall}})},enemy=createCombatant("ashling",3,5),player={x:7,y:5};enemy.id="detour-test";enemy.aggro=true;for(let i=0;i<900;i++)updateEnemyAI(enemy,player,map,10,1/60,i*16);assert.ok(enemy.x>5,`enemy stalled at ${enemy.x},${enemy.y}`);
 });
 
 test("renderer culls section actors roofs hazards and ambient markers to the camera",()=>{
