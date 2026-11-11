@@ -2801,6 +2801,26 @@ const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
 export function closeViewCompassRotation(dx,dy,yaw=-Math.PI/2){
   return Math.round((Math.atan2(dy,dx)-yaw)*180/Math.PI);
 }
+// Tim (2026-11-11): in Close View the compass turns with the way the Wayfarer faces, not with the camera (ahead is the top of
+// the dial); the standard view keeps it north-up, like the map.
+// `rate`: how fast (per second) the dial eases toward a new facing; a change smaller than `deadband` degrees while the dial
+// is at rest is ignored (so a body's small sway never makes it shimmer); once turning it settles to within `settle` degrees.
+export const COMPASS_FACING = Object.freeze({ rate: 10, deadband: 4, settle: .5, maxStep: .1 });
+// The Wayfarer's body yaw as Close View draws it, or NaN while an attack, cast, dodge or stagger turns the body for a moment
+// (the compass then keeps the way they were going). Callers check closeViewShowing first.
+export function closeViewBodyFacingYaw(){ return CAM.valid && !CAM.bodyTransient && Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : NaN; }
+// One HUD frame of the compass's facing frame. `frame` ({yaw, turning, ready}) is kept by the caller and changed in place;
+// `target` is the facing yaw (radians, world: 0 east, -PI/2 north). Reduced motion snaps instead of easing. Returns frame.yaw.
+export function compassFacingStep(frame, target, dt, reduce = false) {
+  if (!Number.isFinite(target)) return frame.yaw;
+  if (!frame.ready || !Number.isFinite(frame.yaw)) { frame.yaw = target; frame.turning = false; frame.ready = true; return frame.yaw; }
+  const F = COMPASS_FACING, diff = wrap(target - frame.yaw), size = Math.abs(diff) / DEG;
+  if (!frame.turning && size < F.deadband) return frame.yaw;
+  if (reduce || size < F.settle) { frame.yaw = target; frame.turning = false; return frame.yaw; }
+  frame.turning = true;
+  frame.yaw = wrap(frame.yaw + diff * Math.min(1, F.rate * Math.min(F.maxStep, Math.max(0, Number(dt) || 0))));
+  return frame.yaw;
+}
 export function closeViewDoorTorchPosition(map, door) {
   const w=map.width||32,h=map.height||Math.floor(map.tiles.length/w);
   const free=(x,y)=>x>=0&&y>=0&&x<w&&y<h&&!map.tiles[y*w+x]?.blocked;
