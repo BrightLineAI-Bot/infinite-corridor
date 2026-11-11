@@ -299,8 +299,9 @@ export function meshBuilder(skeleton, detail = 1) {
         const da = rings[i + 1][0] - rings[i][0], dr = rc - ra, len = Math.hypot(da, dr) || 1, tilt = -dr / len, radial = da / len;
         const vA = [], vC = [];
         for (let k = 0; k < seg; k++) {
-          const t = (k / seg) * Math.PI * 2 + (o.phase || 0), d = sub3(P(0, Math.cos(t) * rs, Math.sin(t) * us), P(0, 0, 0)), ax = sub3(P(1, 0, 0), P(0, 0, 0));
-          const n = add3(scale3(norm3(d), radial), scale3(norm3(ax), tilt));
+          // an elliptical section (rs, us) bends the normal toward the narrow axis: (cos t / rs, sin t / us), not the scaled offset
+          const t = (k / seg) * Math.PI * 2 + (o.phase || 0), d = sub3(P(0, Math.cos(t) / rs, Math.sin(t) / us), P(0, 0, 0)), ax = sub3(P(1, 0, 0), P(0, 0, 0));
+          const n = add3(scale3(d, radial), scale3(norm3(ax), tilt));
           vA.push(vert(...A[k], ...n)); vC.push(vert(...C[k], ...n));
         }
         for (let k = 0; k < seg; k++) { const k2 = (k + 1) % seg;
@@ -317,8 +318,19 @@ export function meshBuilder(skeleton, detail = 1) {
     return B;
   };
   // A sphere/ellipsoid along the frame's F axis: radius (f, r, u).
-  B.ellipsoid = (o) => { const n = Math.max(3, Math.round((o.rings || 5) * (detail >= 1 ? 1 : .7))), rings = []; for (let i = 0; i <= n; i++) { const t = -Math.PI / 2 + Math.PI * i / n; rings.push([Math.sin(t) * o.radius[0], Math.cos(t) * 1]); }
-    return B.lathe({ seg: 8, ...o, rings: rings.map(([a, r], i) => [a, i === 0 || i === n ? 0 : r]), rs: o.radius[1], us: o.radius[2], smooth: o.smooth !== false, caps: false }); };
+  B.ellipsoid = (o) => { // exact normals (x/a^2, y/b^2, z/c^2), smooth, along the frame's F axis with radii (f, r, u)
+    const P = frame(o), [a, b, c] = o.radius, n = Math.max(2, Math.round((o.rings || 5) * (detail >= 1 ? 1 : .7))), seg = Math.max(o.minSeg || 4, Math.round((o.seg || 8) * (detail >= 1 ? 1 : detail >= .6 ? .68 : .5)));
+    const O = P(0, 0, 0), Fd = sub3(P(1, 0, 0), O), Rd = sub3(P(0, 1, 0), O), Ud = sub3(P(0, 0, 1), O);
+    const ids = [];
+    for (let i = 0; i <= n; i++) { const phi = -Math.PI / 2 + Math.PI * i / n, sp = Math.sin(phi), cp = Math.cos(phi), row = [];
+      for (let k = 0; k < (i === 0 || i === n ? 1 : seg); k++) { const t = (k / seg) * Math.PI * 2 + (o.phase || 0), ct = Math.cos(t), st = Math.sin(t);
+        const p = P(sp * a, cp * ct * b, cp * st * c), nf = sp / a, nr = cp * ct / b, nu = cp * st / c;
+        row.push(vert(p[0], p[1], p[2], Fd[0] * nf + Rd[0] * nr + Ud[0] * nu, Fd[1] * nf + Rd[1] * nr + Ud[1] * nu, Fd[2] * nf + Rd[2] * nr + Ud[2] * nu)); }
+      ids.push(row); }
+    for (let i = 0; i < n; i++) { const A = ids[i], C = ids[i + 1];
+      for (let k = 0; k < seg; k++) { const k2 = (k + 1) % seg;
+        if (A.length === 1) B.tri(A[0], C[k2], C[k]); else if (C.length === 1) B.tri(A[k], A[k2], C[0]); else { B.tri(A[k], A[k2], C[k2]); B.tri(A[k], C[k2], C[k]); } } }
+    return B; };
   // An extruded flat profile: points [[a, b], ...] in the frame's (F, U) plane (counter-clockwise), thickness along R.
   B.slab = (o) => {
     const P = frame(o), h = o.thick / 2, pts = o.points, bv = detail >= .6 ? (o.bevel || 0) : 0, n = pts.length;
