@@ -2745,29 +2745,14 @@ const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
 export function closeViewCompassRotation(dx,dy,yaw=-Math.PI/2){
   return Math.round((Math.atan2(dy,dx)-yaw)*180/Math.PI);
 }
-// Tim (2026-11-11): the compass turns with the way the Wayfarer faces, not with the camera. Ahead is the top of the dial.
+// Tim (2026-11-11): in Close View the compass turns with the way the Wayfarer faces, not with the camera (ahead is the top of
+// the dial); the standard view keeps it north-up, like the map.
 // `rate`: how fast (per second) the dial eases toward a new facing; a change smaller than `deadband` degrees while the dial
 // is at rest is ignored (so a body's small sway never makes it shimmer); once turning it settles to within `settle` degrees.
-// Outside Close View the body only faces four ways, so the way they are going is read from their walk: `walkSmooth` (per second)
-// eases a velocity estimate, `walkMin` (tiles a second) is the least speed that counts as walking, and a step longer than
-// `walkJump` tiles in one frame (a crossing, a door, a warp) is no walk at all.
-export const COMPASS_FACING = Object.freeze({ rate: 10, deadband: 4, settle: .5, maxStep: .1, walkSmooth: 8, walkMin: .6, walkJump: 2 });
+export const COMPASS_FACING = Object.freeze({ rate: 10, deadband: 4, settle: .5, maxStep: .1 });
 // The Wayfarer's body yaw as Close View draws it, or NaN while an attack, cast, dodge or stagger turns the body for a moment
 // (the compass then keeps the way they were going). Callers check closeViewShowing first.
 export function closeViewBodyFacingYaw(){ return CAM.valid && !CAM.bodyTransient && Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : NaN; }
-// The way the Wayfarer is going outside Close View (radians, world), kept in `frame` ({vx, vy, x, y, facing, held}): their
-// walk while they walk, else the last way they walked, else the way the body faces (`facing`: up, down, left or right).
-const COMPASS_FACING_YAW = Object.freeze({ up: -Math.PI / 2, down: Math.PI / 2, left: Math.PI, right: 0 });
-export function compassWalkHeading(frame, x, y, facing, dt) {
-  const F = COMPASS_FACING, t = Math.max(0, Math.min(F.maxStep, Number(dt) || 0)), dx = x - frame.x, dy = y - frame.y;
-  if (!Number.isFinite(frame.x) || !(t > 0) || Math.hypot(dx, dy) > F.walkJump) { frame.vx = frame.vy = 0; }
-  else { const k = Math.min(1, F.walkSmooth * t); frame.vx += (dx / t - frame.vx) * k; frame.vy += (dy / t - frame.vy) * k; }
-  frame.x = x; frame.y = y;
-  if (Math.hypot(frame.vx, frame.vy) >= F.walkMin) frame.held = Math.atan2(frame.vy, frame.vx);
-  else if (facing !== frame.facing || !Number.isFinite(frame.held)) frame.held = COMPASS_FACING_YAW[facing] ?? -Math.PI / 2; // turned on the spot
-  frame.facing = facing;
-  return frame.held;
-}
 // One HUD frame of the compass's facing frame. `frame` ({yaw, turning, ready}) is kept by the caller and changed in place;
 // `target` is the facing yaw (radians, world: 0 east, -PI/2 north). Reduced motion snaps instead of easing. Returns frame.yaw.
 export function compassFacingStep(frame, target, dt, reduce = false) {

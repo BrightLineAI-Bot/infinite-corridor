@@ -1,11 +1,12 @@
-// Tim (2026-11-11): the Wayfarer's compass turns with the way the Wayfarer faces, not with the Close View camera.
+// Tim (2026-11-11): in Close View the Wayfarer's compass turns with the way the Wayfarer faces, not with the camera; the
+// standard view stays north-up ("north up is just standard for the map").
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { COMPASS_FACING, closeViewCompassRotation, compassFacingStep, compassWalkHeading } from "../src/close-view.ts";
+import { COMPASS_FACING, closeViewCompassRotation, compassFacingStep } from "../src/close-view.ts";
 
 const norm = d => ((d % 360) + 360) % 360;
-const frame = () => ({ yaw: NaN, turning: false, ready: false, vx: 0, vy: 0, x: NaN, y: NaN, facing: null, held: NaN });
+const frame = () => ({ yaw: NaN, turning: false, ready: false });
 const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
 const read = name => { const body = main.match(new RegExp("^function " + name + "\\([^\\n]*\\n[\\s\\S]*?^}", "m")); assert.ok(body, name); return body[0]; };
 
@@ -13,9 +14,9 @@ const read = name => { const body = main.match(new RegExp("^function " + name + 
 function harness() {
   const f = { ...frame(), map: null, at: NaN, target: NaN }, cam = { showing: false, body: NaN };
   const game = { area: "overworld", rx: 0, ry: 0, map: {}, player: { x: 16, y: 16, facing: "up" } }, settings = { reduceMotion: false, safeMode: false }, dial = {};
-  const make = new Function("game", "settings", "compassFrame", "navCompassDial", "hudSet", "compassHeading", "closeViewShowing", "closeViewBodyFacingYaw", "closeViewCompassRotation", "compassFacingStep", "compassWalkHeading",
+  const make = new Function("game", "settings", "compassFrame", "navCompassDial", "hudSet", "compassHeading", "closeViewShowing", "closeViewBodyFacingYaw", "closeViewCompassRotation", "compassFacingStep",
     read("updateCompassFrame") + "\n" + read("compassRotation") + "\n" + read("updateNavigationArrow") + "\nreturn {updateCompassFrame,compassRotation,updateNavigationArrow};");
-  const api = make(game, settings, f, dial, (el, key, value) => { el[key] = value; }, () => "", () => cam.showing, () => cam.body, closeViewCompassRotation, compassFacingStep, compassWalkHeading);
+  const api = make(game, settings, f, dial, (el, key, value) => { el[key] = value; }, () => "", () => cam.showing, () => cam.body, closeViewCompassRotation, compassFacingStep);
   return { ...api, f, cam, game, settings, dial };
 }
 
@@ -41,17 +42,20 @@ test("A swing that turns the body for a moment keeps the compass on the way the 
   assert.equal(h.f.yaw, 0);
 });
 
-test("The standard view turns the compass with the Wayfarer's walk and keeps it when they stop", () => {
-  const h = harness(); h.game.player.facing = "right";
-  h.updateCompassFrame(0); assert.equal(h.f.yaw, 0, "standing still: the way the body faces");
-  for (let t = 16; t <= 1600; t += 16) { h.game.player.x += .05; h.game.player.y -= .05; h.game.player.facing = t % 32 ? "up" : "right"; h.updateCompassFrame(t); } // north-east, facing flickering
-  assert.ok(Math.abs(h.f.yaw + Math.PI / 4) < 1 * Math.PI / 180, `walk heading ${h.f.yaw}`);
-  for (let t = 1616; t <= 3000; t += 16) h.updateCompassFrame(t); // stopped
-  assert.ok(Math.abs(h.f.yaw + Math.PI / 4) < 1 * Math.PI / 180);
-  h.game.player.facing = "down"; for (let t = 3016; t <= 5000; t += 16) h.updateCompassFrame(t); // turned on the spot
-  assert.ok(Math.abs(h.f.yaw - Math.PI / 2) < 1e-9);
-  h.game.player.x += 20; h.updateCompassFrame(5016); // a jump across the section is no walk
-  assert.ok(Math.abs(h.f.yaw - Math.PI / 2) < 1e-9);
+test("The standard view keeps the compass north-up whatever the Wayfarer faces", () => {
+  const h = harness(), arrow = {}, north = { kind: "guidance", area: "overworld", rx: 0, ry: -1, name: "North" };
+  h.cam.body = 0; // Close View not showing: its body yaw is never used
+  for (const facing of ["up", "right", "down", "left"]) {
+    h.game.player.facing = facing;
+    for (let t = 0; t < 600; t += 16) h.updateCompassFrame(t);
+    h.updateNavigationArrow(arrow, north);
+    assert.equal(h.f.yaw, -Math.PI / 2); assert.equal(h.dial.transform, "rotate(0deg)"); assert.equal(arrow.transform, "rotate(0deg)");
+  }
+  // Leaving Close View eases back to north-up.
+  h.cam.showing = true; h.updateCompassFrame(1000); for (let t = 1016; t < 1300; t += 16) h.updateCompassFrame(t);
+  assert.equal(h.f.yaw, 0);
+  h.cam.showing = false; for (let t = 1316; t < 3000; t += 16) h.updateCompassFrame(t);
+  assert.equal(h.f.yaw, -Math.PI / 2); assert.equal(h.dial.transform, "rotate(0deg)");
 });
 
 test("A door marker points at the door's world bearing in the facing frame", () => {
@@ -92,10 +96,10 @@ test("Facing jitter does not shimmer the dial; a real turn eases; reduced motion
   h.cam.body = Math.PI / 2; h.updateCompassFrame(16); assert.equal(h.f.yaw, Math.PI / 2);
 });
 
-test("The walk tracker and facing step allocate nothing per frame", () => {
+test("The facing step allocates nothing per frame", () => {
   assert.ok(Object.isFrozen(COMPASS_FACING));
   const f = { ...frame() }; const keys = Object.keys(f).join();
-  for (let i = 0; i < 50; i++) { compassWalkHeading(f, i * .1, 0, "right", 1 / 60); compassFacingStep(f, f.held, 1 / 60); }
+  for (let i = 0; i < 50; i++) compassFacingStep(f, i * .05, 1 / 60);
   assert.equal(Object.keys(f).join(), keys);
   assert.doesNotMatch(read("updateCompassFrame"), /\{\s*\w+\s*:|\[\s*\w/); // no object or array literals in the frame update
 });
