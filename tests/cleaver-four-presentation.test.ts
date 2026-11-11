@@ -50,7 +50,7 @@ test('legacy carry is retained and unknown motion stays inert rather than replay
 
 test('final held owner selects the same free spell arm as its actual weapon grip',()=>{
   for(const profile of ['verge-cleaver','rift-bombard','blunderbuss','lumen-spindle','','fist','hammer'])for(const provenance of [null,stage(4),{kind:'legacy',step:1},{kind:'opaque'}]){
-    const roles=cleaverHandRoles(profile,provenance),right=profile==='verge-cleaver'&&(!provenance||provenance.kind==='cleaver-four');assert.equal(roles.grip,right?'leftSocket':'rightSocket');assert.equal(roles.free,right?'rightSocket':'leftSocket');
+    const roles=cleaverHandRoles(profile,provenance),right=['rift-bombard','blunderbuss','lumen-spindle','hammer'].includes(profile);assert.equal(roles.grip,right?'leftSocket':'rightSocket');assert.equal(roles.free,right?'rightSocket':'leftSocket');
     const s=createHeroPoseState(asset),a=createHeroFrame(asset),b=createHeroFrame(asset),i={...base,primaryCarryStage:provenance,handProfile:profile,heldProfile:profile==='verge-cleaver'||['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)?'verge-cleaver':null};
     sampleCloseViewHero(asset,s,{...i,action:{kind:'cast',profile:'unknown',phase:.3,durationMs:360}},a);sampleCloseViewHero(asset,s,{...i,action:{kind:'cast',profile:'fan-release',phase:.3,durationMs:360}},b);
     assert.deepEqual(a[roles.grip],b[roles.grip],`${profile} weapon hand remains fixed`);assert.notDeepEqual(a[roles.free],b[roles.free],`${profile} free cast hand really moves`);
@@ -77,7 +77,7 @@ function withProjectionGPU(options:any,run:(x:any)=>void){const old=(globalThis 
 function productionFrame(screen:any,g:any,now:number,log:any[]){let plan:any=null;const layer=(c:any,w:number,h:number,p:any)=>{plan=p;drawRangedEffects(c,g,w,h,p);};CLOSE_VIEW_HOOKS.groundLayers.push(layer);try{render(screen,g,390,844,now);if(!closeViewShowing(g))drawRangedEffects(screen,g,390,844);}finally{CLOSE_VIEW_HOOKS.groundLayers.splice(CLOSE_VIEW_HOOKS.groundLayers.indexOf(layer),1);}return {showing:closeViewShowing(g),plan,copies:log.filter(q=>q[0]==='drawImage').length,arcs:log.filter(q=>q[0]==='arc').length};}
 
 
-test('actual accepted Cleaver -> Fire submits its release cue at the resolved free right source socket',async()=>{
+test('actual accepted Cleaver -> Fire submits its release cue at the resolved free left source socket',async()=>{
   const names=['window','fetch','createImageBitmap'],old=new Map(names.map(n=>[n,globalThis[n]]));globalThis.window={};globalThis.createImageBitmap=async()=>({width:1024,height:1024});globalThis.fetch=async url=>{const b=fs.readFileSync(new URL(url));return {ok:true,json:async()=>JSON.parse(b.toString()),arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),blob:async()=>new Blob([b])};};
   try{assert.ok(await loadCloseViewHero());withProjectionGPU({},({screen,log})=>{
     const {game:g}=createLabFixture({lab:'combat-assets',scenario:'cleaver-echo-inspection',now:100000});g.enemies=[];g.presentation={effectiveQuality:'full',reduceMotion:false};for(const t of g.map.tiles){t.blocked=false;t.environment=false;t.openAir=false;t.courtyard=false;}g.save.lastAim={x:1,y:0};g.player.facing='right';g.updateDungeonDiscovery(true);
@@ -86,7 +86,7 @@ test('actual accepted Cleaver -> Fire submits its release cue at the resolved fr
     const flash=[];for(let j=GLB.nGlowStart;j<GLB.nDecal;j++){const i=j*DECAL_FLOATS;if(GLB.decal[i+5]===11&&GLB.decal[i+7]===0xff7a2a)flash.push(Array.from(GLB.decal.slice(i,i+3)));}assert.equal(flash.length,36,'five canonical heads plus one actual free-hand flash');
     const center=[0,1,2].map(k=>flash.slice(0,6).reduce((v,p)=>v+p[k],0)/6),s=createHeroPoseState(asset),f=createHeroFrame(asset),carry=primaryCarryStage(g.player.attackVisual,g.player.primaryCombo,false);
     sampleCloseViewHero(asset,s,{...base,x:g.player.x+.5,y:g.player.y+.82,nowMs:100316,handProfile:'verge-cleaver',primaryCarryStage:carry,action:{kind:'cast',profile:record.profile,phase:16/record.durationMs,durationMs:record.durationMs,yaw:0}},f);
-    assert.ok(Math.hypot(...center.map((v,k)=>v-f.rightSocket[12+k]))<1e-5,'renderer cue uses the same source-right free arm the spell solver moved');assert.ok(Math.hypot(...center.map((v,k)=>v-f.leftSocket[12+k]))>.1,'never borrows the occupied Cleaver grip');assert.deepEqual({player:g.player,projectiles:g.projectiles,combo:g.player.primaryCombo},snapshot);
+    assert.ok(Math.hypot(...center.map((v,k)=>v-f.leftSocket[12+k]))<1e-5,'renderer cue uses the same source-left free arm the spell solver moved');assert.ok(Math.hypot(...center.map((v,k)=>v-f.rightSocket[12+k]))>.1,'never borrows the occupied left-hand Cleaver grip');assert.deepEqual({player:g.player,projectiles:g.projectiles,combo:g.player.primaryCombo},snapshot);
   });}finally{for(const n of names){if(old.get(n)===undefined)delete globalThis[n];else globalThis[n]=old.get(n);}}
 });
 

@@ -75,7 +75,7 @@ test('missing imported assets retain native startup and ordinary physical releas
   const at=g.pendingToolUse.releaseAt;g.releasePendingToolUse(at);draw(h,g,at+16);assert.equal(h.gl.heroUploads,0);assert.equal(closeViewGLStats.projectedShots,1);assert.equal(flashes().length,0,'native fallback never borrows an unavailable imported hand');
 }));
 
-test('actual named releases flash at release+16, retain canonical heads and connect only once naturally forward',async()=>loaded(()=>{
+test('actual named releases flash at release+16, retain canonical heads and draw young heads from the muzzle',async()=>loaded(()=>{
   for(const kind of ['rift-bombard','blunderbuss','lumen-spindle'])withGPU({},h=>{
     const g=game(kind);assert.equal(g.fireSecondary(start,{x:1,y:0}),true);const startup=g.pendingToolUse.startupMs,releaseAt=g.pendingToolUse.releaseAt;
     const beginning=draw(h,g,start),raising=draw(h,g,start+startup*.6);assert.notDeepEqual(raising.hero,beginning.hero,kind+' visibly raises before emission');
@@ -83,7 +83,7 @@ test('actual named releases flash at release+16, retain canonical heads and conn
     g.releasePendingToolUse(releaseAt);const shot=g.projectiles.find((q:any)=>q.id===g.player.attackVisual.toolShotId);assert.ok(shot);
     travel(g,.016);const before=structuredClone(g.projectiles);draw(h,g,releaseAt+16);assert.deepEqual(g.projectiles,before,'rendering never moves the real head');
     assert.equal(flashes().length,6,kind+' actual release flash');assert.equal(links().length,0,kind+' canonical first head remains behind fully raised muzzle');
-    updateProjectiles(g.projectiles,[],g.map,g.map.width,.059);draw(h,g,releaseAt+75);assert.equal(links().length,6,kind+' actual unobstructed head eventually crosses the muzzle');assert.equal(flashes().length,0);
+    updateProjectiles(g.projectiles,[],g.map,g.map.width,.059);draw(h,g,releaseAt+75);assert.equal(links().length,0,kind+' the young head itself leaves the drawn muzzle, so no connector is needed');assert.equal(flashes().length,0);
     assert.ok(GLB.nDecal<=GLB.decal.length/DECAL_FLOATS);
   });
 }));
