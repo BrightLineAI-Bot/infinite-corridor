@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 882: The arcana go live: sets have straight-line home regions around the Refuge. A new journey's first quest is the Cairn Keeper's errand, whose first chain link opens spell slot C. Finishing sets opens Grave Sun, Fire Burst, weapon and tool awakening, Aerial Step and a second capstone, and earns Bell Toll (the Seven Bells) and Lamplighter's Light (the Lamplighter's Round). Journeys begun before keep everything they had.
 - Release 881: Great trees climb reliably: the Wayfarer keeps to a branch's middle under a drifting thumb, a jump up a step lands on it, and branch edges over a drop are rimmed in gold; in the standard view the Wayfarer no longer floats above raised Pentagon and building floors; craters no longer show a false "settles you" notice, and the clod hint names the shovel.
 - Release 880: Lantern: the Wayfarer now carries a lantern that you can put in slot A, B or C from the Arcanum. Tap its button to light or shutter it. Lit, it pushes back the dark around you in dungeons (the Pentagons' dread and the Starfield's gloom) and lengthens your torch in Close View.
 - Release 879: Travel seeds: a Fossilized Seed planted in a great tree's crown door is a sure way to another great tree's crown; an Opal Seed given to the Tide Bearer at the far end of a dive makes its line surface beside another buoy; Pumice and Crimson Seeds can be found and carried. Seeds are rare: lying in the open on new ground, in crossing chests and from Skyland clears (Pack → Supplies).
