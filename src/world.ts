@@ -3,7 +3,7 @@ import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-du
 export{generateVariedDungeon,generateBespokeArena}from'./arenas.ts';
 import{arenaEligible}from'./arenas.ts';
 import{annotateDungeon}from'./dungeon-framework.ts';
-import{reachableFrom,canReturnTo,LETHAL_KINDS,elevationAt}from'./landscape.ts';import{grantSeed,SEEDS}from'./skylands.ts';import{ensureTheDeep}from'./the-deep.ts';/* world caches */
+import{reachableFrom,canReturnTo,LETHAL_KINDS,elevationAt}from'./landscape.ts';import{grantSeed,SEEDS}from'./skylands.ts';import{ensureTheDeep}from'./the-deep.ts';import{isClod}from'./canyon.ts';/* world caches */
 import{APERTURE_BANDS}from'./items.ts';import{hashSeed,rng,pick}from'./random.ts';import{storySiteFor}from'./story.ts';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
@@ -289,7 +289,7 @@ export function grantCacheLoot(save,{item,count}){
 }
 const CACHE_N4=[[1,0],[-1,0],[0,1],[0,-1]];
 const cacheGround=(t)=>!!t&&!t.blocked&&!t.structure&&!t.environment&&!t.buildingId&&!t.chasm&&!t.pit&&!t.door&&!t.perch&&!LETHAL_KINDS.has(t.kind)&&!/water|shallow|ocean|sea|mire|bog|pool|lava|void|abyss|canyon|river|pit|Gate|ice/i.test(String(t.kind));
-const cacheWall=(t)=>!!t&&t.blocked&&!t.door&&!t.environment&&!/water|lava|void|abyss|canyon|river|Gate/i.test(String(t.kind));
+const cacheWall=(t)=>!!t&&t.blocked&&!isClod(t)&&!t.door&&!t.environment&&!/water|lava|void|abyss|canyon|river|Gate/i.test(String(t.kind));
 // Lay the caches `scope` ('dungeon' or 'overworld') rolls for `key` on `map` (which must be the place as loaded), with their
 // state from the save's flags. Returns the objects added (none when the place rolls none or no spot fits), with `pins`: where
 // each was laid ({ i, spot, x, y, lx, ly }). The caller keeps the pins (Atlas entry, dungeon history) and passes them back on
@@ -320,7 +320,9 @@ export function placeWorldCaches(map,save,scope,key,pins=null){
  }
  for(const o of map.objects||[]){const ox=Math.round(o.x),oy=Math.round(o.y);for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)busy.add((oy+dy)*W+ox+dx)}
  ready=1;return true};
- const free=(t)=>ok[t.y*W+t.x]&&cacheGround(t)&&!busy.has(t.y*W+t.x)&&t.x>1&&t.y>1&&t.x<W-2&&t.y<H-2;
+ // a canyon's diggable clods are no walls for a cache, and no find stands beside one (Act there digs, so it must not pull or search)
+ const nearClod=(t)=>{for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if(isClod(at(t.x+dx,t.y+dy)))return true;return false};
+ const free=(t)=>ok[t.y*W+t.x]&&cacheGround(t)&&!busy.has(t.y*W+t.x)&&t.x>1&&t.y>1&&t.x<W-2&&t.y<H-2&&!nearClod(t);
  const C=WORLD_CACHES[scope],far=(t)=>scope==='dungeon'?dist[t.y*W+t.x]>=C.minFromEntry:Math.hypot(t.x-start.x,t.y-start.y)>=4;
  const pickOf=(list,what)=>list.length?list[cacheHash(save.seed,key,what)%list.length]:null,el=(t)=>Number(t?.elev)||0;
  const spotFor={
