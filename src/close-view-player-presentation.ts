@@ -154,6 +154,19 @@ export function ordinaryJumpPresentation(game, now, lift, baseMs) {
   return {v:1,elapsedMs,remainingMs,durationMs,lift,rise:Math.min(1,elapsedMs/(baseMs*.5)),fall:Math.max(0,1-remainingMs/(baseMs*.5))};
 }
 
+// Read-only touchdown handoff: the short absorb after an ordinary jump, read from the jump's own
+// finished clock (jumpUntil). No new timer or state; null outside the window or in any other mode.
+export const ORDINARY_LANDING_MS = 220;
+export function ordinaryLandingPresentation(game, now) {
+  const g=game,p=g?.player,clock=g?.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now;
+  if(!p||!(p.hp>0)||!Number.isFinite(clock)||!Number.isFinite(g.jumpUntil)||!Number.isFinite(g.jumpStart)||!(g.jumpStart<g.jumpUntil))return null;
+  const age=clock-g.jumpUntil;if(!(age>=0&&age<ORDINARY_LANDING_MS))return null;
+  if(g.droneLift||g.mechBoosting||g.glide||g.swimming||g.save?.boat?.aboard||g.mountRide?.()||g.mechUp?.()||g.droneUp?.())return null;
+  const form=playerFormPresentation(g);if(form&&form.kind!=='playerIronFists')return null;
+  if(clock<(p.stunnedUntil||0)||clock<(p.dodgeUntil||0))return null;
+  return age/ORDINARY_LANDING_MS;
+}
+
 // Read-only defeat handoff for the ordinary on-foot body. The short ordinary
 // death beat supplies the authored motion clock; a longer fallen window keeps
 // its endpoint instead of stretching or replaying the fall.

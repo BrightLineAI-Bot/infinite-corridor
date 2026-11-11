@@ -219,20 +219,41 @@ function solveLeg(state,pose,left,target,weight,data) {
   matrixQuat(q,20,g,38*16);qinv(q,24,q,20);qmul(pose,o+3,q,24,q,16);
 }
 // Ordinary-air articulation consumes captured physical clocks; it never supplies world lift.
-function ordinaryAirPose(asset,state,pose,air,reducedMotion){
+// Authored beats (Tim, 2026-11-11, a readable full sequence): a crouched push at takeoff, knees
+// tucked and arms lifted out for balance through the rise and hang, then legs reaching down,
+// arms settling and the chest leaning in to meet the ground. Legs read only the fixed rise/fall
+// clocks; every layer is scaled by the connection envelope, so both ends are the ground pose.
+const AIR_POSE = Object.freeze({ tuck: .19, tuckLead: .03, tuckBack: .06, armRaise: .34, armOut: .22, elbow: .30, arch: .05, landLean: .09 });
+function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false){
   if(air?.v!==1)return;
   const elapsed=Number(air.elapsedMs),remaining=Number(air.remainingMs),duration=Number(air.durationMs),rise=Number(air.rise),fall=Number(air.fall),lift=Number(air.lift);
   if(!Number.isFinite(elapsed)||!Number.isFinite(remaining)||!Number.isFinite(duration)||!Number.isFinite(rise)||!Number.isFinite(fall)||!Number.isFinite(lift)||elapsed<0||remaining<0||duration<=0||elapsed>duration||remaining>duration||rise<0||rise>1||fall<0||fall>1||lift<0)return;
   const connection=smoothstep(elapsed/60)*smoothstep(remaining/60);if(!(connection>0))return;
-  const fold=smoothstep(rise/.65)*(1-smoothstep(fall/.8));
+  const fold=smoothstep(rise/.55)*(1-smoothstep(fall/.75));
   const takeoff=smoothstep(elapsed/18)*(1-smoothstep(elapsed/70)),flourish=reducedMotion?.55:1;
+  const raise=smoothstep(rise/.40)*(1-smoothstep(fall/.90))*connection*flourish,land=smoothstep((fall-.35)/.55)*connection*flourish,A=AIR_POSE;
   const layer=state.hammerLayer,data=state.hammerLegData,g=state.global,target=state.primaryTarget;
   layer.set(pose);build(asset,state,pose);
   // Preserve each current source sole/ankle frame before solving the independent foot roots.
   for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);for(let k=0;k<3;k++){data[o+k]=target[k];data[o+3+k]=g[foot*16+12+k]-target[k];}matrixQuat(data,o+6,g,foot*16);}
-  rotateX(layer,27,.07*takeoff*flourish);rotateX(layer,24,.045*takeoff*flourish);rotateX(layer,4,-.03*takeoff*flourish);
-  for(let side=0;side<2;side++){const left=side===0,o=side*10;target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+.14*fold;target[2]=data[o+2]-.055*fold;solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
+  rotateX(layer,27,.07*takeoff*flourish-A.arch*raise*(1-land)+A.landLean*land);rotateX(layer,24,.045*takeoff*flourish+.04*land);rotateX(layer,4,-.03*takeoff*flourish-.04*land);
+  // Arms lift forward and out for balance, elbows soften; a two-handed polearm keeps its frame.
+  if(!twoHanded&&raise>0)for(const [shoulder,elbow,out] of [[12,11,-1],[22,21,1]]){rotateX(layer,shoulder,-A.armRaise*raise);rotateZ(layer,shoulder,out*A.armOut*raise);rotateX(layer,elbow,-A.elbow*raise);}
+  for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold;target[2]=data[o+2]-A.tuckBack*fold;solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
   pose.set(layer);state.clip='derived-ordinary-jump';state.clipTime=elapsed/duration;
+}
+const HURT_FLINCH = Object.freeze({ peak: .22, chest: .16, upper: .08, head: .14, twist: .07, guard: .30, elbow: .35 });
+// Touchdown absorb after an ordinary jump: the pelvis sinks and recovers over the accepted landing
+// clock while both soles stay planted (flat) where they are. Presentation only; u is 0..1.
+const LAND_POSE = Object.freeze({ drop: .13, lean: .16, neck: -.07, arms: .16 });
+function landingAbsorbPose(asset,state,pose,u,reducedMotion){
+  if(!(u>0&&u<1))return;
+  const k=(u<.28?smoothstep(u/.28):1-smoothstep((u-.28)/.72))*(reducedMotion?.6:1);if(!(k>0))return;
+  const data=state.hammerLegData,g=state.global,target=state.primaryTarget;build(asset,state,pose);
+  for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);for(let k2=0;k2<3;k2++){data[o+k2]=target[k2];data[o+3+k2]=g[foot*16+12+k2]-target[k2];}matrixQuat(data,o+6,g,foot*16);}
+  pose[33*10+1]-=LAND_POSE.drop*k;rotateX(pose,27,LAND_POSE.lean*k);rotateX(pose,4,LAND_POSE.neck*k);rotateZ(pose,12,-LAND_POSE.arms*k);rotateZ(pose,22,LAND_POSE.arms*k);
+  for(let side=0;side<2;side++){const left=side===0,o=side*10;target[0]=data[o];target[1]=data[o+1];target[2]=data[o+2];solveLeg(state,pose,left,target,k,state.hammerLegSides[side]);}
+  state.clip='derived-landing';state.clipTime=u;
 }
 function soleMinimum(points,q,o) {
   const x=q[o],y=q[o+1],z=q[o+2],w=q[o+3],rx=2*(x*y+z*w),ry=1-2*(x*x+z*z),rz=2*(y*z-x*w);let low=Infinity;
@@ -678,6 +699,9 @@ export function sampleCloseViewHero(asset, state, input, out) {
       if (kind === 'dodge') { build(asset, state, state.other); const b = asset.meta.reference.bodyNode * 16; dx = -(state.global[b + 12] - state.rollX) * weight; dz = -(state.global[b + 14] - state.rollZ) * weight; }
 
       if(clip){if(!fistProfile||weight>0)blend(state.pose, state.other, weight);if(!fistProfile){state.clip = clip.name; state.clipTime = time;}}
+      // The source RecieveHit is faint at Close View distance: add a sharp flinch (chest and head snap
+      // back, guard arms rise) that peaks early and eases out. Same accepted clock, zero at both ends.
+      if(clip&&kind==='hit'&&profile==='hurt'&&weight>0){const f=weight*(p<HURT_FLINCH.peak?smoothstep(p/HURT_FLINCH.peak):1-smoothstep((p-HURT_FLINCH.peak)/(1-HURT_FLINCH.peak)));rotateX(state.pose,27,-HURT_FLINCH.chest*f);rotateX(state.pose,24,-HURT_FLINCH.upper*f);rotateX(state.pose,4,-HURT_FLINCH.head*f);rotateZ(state.pose,24,HURT_FLINCH.twist*f);rotateX(state.pose,12,-HURT_FLINCH.guard*f);rotateX(state.pose,22,-HURT_FLINCH.guard*f);rotateX(state.pose,11,-HURT_FLINCH.elbow*f);rotateX(state.pose,21,-HURT_FLINCH.elbow*f);}
     } else if (kind === 'melee' && profile === 'hammer') {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
@@ -724,11 +748,12 @@ export function sampleCloseViewHero(asset, state, input, out) {
       }
       else { // Legacy jumps keep their brace; reviewed ordinary-air records add connected legs.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
-        ordinaryAirPose(asset,state,state.pose,action.jumpAir,input.reducedMotion);
+        ordinaryAirPose(asset,state,state.pose,action.jumpAir,input.reducedMotion,input.heldProfile==='cinder-pike');
       }
       if(state.clip!=='derived-ordinary-jump'&&!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
     }
   }
+  if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;
   const scale = input.height / state.referenceHeight, yaw = action && Number.isFinite(action.yaw) ? action.yaw : input.yaw, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.
