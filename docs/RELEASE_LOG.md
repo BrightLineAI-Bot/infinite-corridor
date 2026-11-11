@@ -21,8 +21,9 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 898 | Claude | claude/cv-mountain-turtle | Close View Mountain Turtle: weathered ziggurat shell, stone-drum neck, all attacks on their clocks, ice shield and tornado | In flight. |
-| 897 | Claude | claude/adventure-worlds | New Pentagons (v11): five themed districts of winding, looping areas, Waystone hub (rest, respawn, travel), mural grand halls, Watcher-sigil floor mosaics, adventure creatures; older Pentagons unchanged | In flight. |
+| 899 | Claude | claude/adventure-creatures-2 | Eight creatures for Lamplit City, Alien Capital, Frost Citadel and Ember Foundry (prototype-only until those themes are enabled); a buried Sinkmaw's dimple in Close View | In flight. |
+| 898 | Claude | claude/cv-mountain-turtle | Close View Mountain Turtle: weathered ziggurat shell, stone-drum neck, all attacks on their clocks, ice shield and tornado | Merged as `6d24fa3ed89f` (#564). |
+| 897 | Claude | claude/adventure-worlds | New Pentagons (v11): five themed districts of winding, looping areas, Waystone hub (rest, respawn, travel), mural grand halls, Watcher-sigil floor mosaics, adventure creatures; older Pentagons unchanged | Merged as `3a8b3254e22d` (#565). |
 | 896 | Claude | claude/cv-briar-stag | Close View Briar Stag as one blended-skin animal with a planted four-legged gait and all twelve attacks on their clocks; blend skinning and lofts in the shared beast rig | Merged as `d66b426b1554` (#562). |
 | 895 | Claude | claude/cv-dungeon-themes | Deep themes in Close View; Close View allowed by place (refused in crossings, dive sites, grottoes with an on-entry message); floating Aperture crystals; 3D blue Oculus dais | Merged as `6e9c7f854ec5` (#563). |
 | 894 | Claude | claude/adventure-creatures | Six new creatures (two each for Tomb, Verdant Ruin, Ash Waste) built for tall open ground; prototype-only until adventure Pentagons place them; Proving Ground 'Adventure heights' ground | Merged as `16a335d78d6a` (#561). |
