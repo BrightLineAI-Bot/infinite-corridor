@@ -19,10 +19,14 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT } from "./close-view-beasts.ts"; // release 889: world beasts' skinned bodies
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorTreeObject } from "./close-view-outdoor.ts"; // the open world's sky, ground and solids
+import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING } from "./close-view-outdoor.ts";
+// The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
+// creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
+const RELIEF = { map: null, R: null };
+const surfaceZ = (map, x, y) => map && map === RELIEF.map ? outdoorSurfaceZ(RELIEF.R, x, y) : interiorSurfaceHeight(map, x, y); // the open world's sky, ground and solids
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -48,6 +52,118 @@ import { OUTDOOR, outdoorScene, outdoorTreeObject } from "./close-view-outdoor.t
 // Higher-fidelity monster art plugs in at drawBillboard: today it replays the top-down sprite closure; a phase-2 creature
 // would register a `closeViewArt(ctx, e, view)` drawer (see CLOSE_VIEW_HOOKS.art) that draws itself from the camera's angle.
 //
+// The Deep's own look in Close View (Tim, 2026-11-11, in THE DEEP · FLOOR 1: the standard view is "beautiful and
+// picturesque" (a mossy floor, teal mushrooms, dark cracked stone, purple specks) and Close View showed the walls as "plain brown
+// brick blocks... garish, low-res, obviously out of place"; "the dungeon themes need to extend to the Close View walls").
+// One theme for each environment a Deep floor is laid in (the-deep.ts THE_DEEP.themes, underlands.ts UNDER_THEMES), its palette
+// taken from that environment's standard-view tiles (landscape-render.ts), and `deepStone` for a floor with none.
+// wall.kind 7 is the Deep's living rock (close-view-gl.ts): boulders split by cracks, moss (wall.dampRGB), glowing spots (glow)
+// and spore flecks (deco2), by `cave`: [moss, glowing spots, flecks, glow strength, glowing cracks, boulder scale]; ceiling.kind
+// 5 is that rock overhead. `arch.none`: no masonry arch over a cave's passages. `features`: a blocked tile of the environment
+// (a glowcap, an ice spire, a crystal spire, a temple pillar...) stands as what it is instead of as a block of wall (`form`:
+// cap, shard, column, knot, pipe, slab; pool: nothing, the floor shows it). `growth`: small glowing caps or shards at the foot
+// of the wall under each of the theme's glowing lights (light hue 5: the theme's own `glow`, no flame or bracket). `ownWalls`:
+// every wall tile takes the theme's material (a star hive's "hiveWall" tiles are not the compounds' chitin).
+// Colours are 0..255. A theme is a hash-free function of the floor's environment: never stored, never per frame.
+const frozen = (o) => { for (const v of Object.values(o)) if (v && typeof v === "object" && !Object.isFrozen(v)) frozen(v); return Object.freeze(o); };
+const deepTheme = (label, t) => frozen({ label, ownWalls: true, arch: { spring: 1.8, radius: 0, band: .2, none: true }, pilaster: 0, plinth: [0, 0], cornice: [0, 0], vignette: .56, decor: {}, props: {}, ...t });
+const caveWall = (rgb, mortar, moss, topFall = .32) => ({ kind: 7, rgb, mortar, stone: [.3, .7, .04, .8], damp: [0, 0], dampRGB: moss, topFall });
+const caveFloor = (rgb) => ({ kind: 6, rgb, joint: rgb.map((v) => Math.round(v * .35)), rug: rgb, size: .6, wear: .25, wet: .25, sewer: false });
+const caveCeiling = (rgb) => ({ kind: 5, rgb, bay: 2, rib: .1, dark: .8 });
+const glowLights = (share, strength = 1.4) => ({ share, spacing: 4, reach: 3.8, strength, hue: 5, ghost: 0, candles: 0 });
+export const CLOSE_VIEW_DEEP = frozen({
+  version: 1,
+  byEnv: { fungal: "deepFungal", chasm: "deepChasm", lavaBog: "deepLava", river: "deepRiver", frozen: "deepFrozen", boneCrypt: "deepCrypt", starHive: "deepStarHive", geode: "deepGeode", mosaic: "deepMosaic", rootwood: "deepRootwood", brass: "deepBrass" },
+  none: "deepStone",
+  // feature and growth sizes (tiles): a giant cap's stem and cap; a shard cluster's count, height and lean; a column's radius
+  shapes: { cap: { stem: [.12, .09], height: [.9, 1.35], cap: [.46, .36, .12], capH: [.12, .16] }, shard: { n: 4, height: [.7, 1.5], r: [.1, .17], lean: .22 },
+    column: { r: .34, sides: 8 }, knot: { r: [.3, .17], flares: 4 }, pipe: { r: .13, at: [.3, .66] }, slab: { half: [.38, .44], height: .72 },
+    growth: { n: 3, cap: [.07, .13], height: [.12, .34], shard: [.18, .42] } },
+  themes: {
+    deepFungal: deepTheme("The Deep: a fungal hollow (mossy dark stone, glowing caps, drifting spores)", {
+      wall: caveWall([52, 62, 50], [8, 11, 8], [64, 108, 70], .3), floor: caveFloor([42, 51, 38]), ceiling: caveCeiling([30, 38, 32]),
+      light: { torch: [236, 220, 180], reach: 5.6, strength: 1.6, height: 1.15, ambient: [8, 12, 11], sources: glowLights(.14, 1.5) },
+      fog: { rgb: [4, 8, 7], near: 2.6, far: 12.5, haze: [.1, .7], hazeRGB: [12, 26, 22] }, grade: [.95, 1.04, 1, 1.08], vignette: .55,
+      deco1: [44, 76, 50], deco2: [196, 155, 232], glow: [111, 216, 184], cave: [.6, .1, .7, .9, 0, 1.5],
+      features: { glowcap: { form: "cap", rgb: [111, 216, 184], stem: [215, 207, 184], under: [62, 156, 132], glow: .5 } },
+      growth: { form: "cap", rgb: [111, 216, 184], stem: [200, 192, 170], under: [62, 156, 132], glow: .6 }, props: { rubble: .03 } }),
+    deepChasm: deepTheme("The Deep: a chasm's ledges (grey-violet rock over the drop)", {
+      wall: caveWall([64, 60, 70], [10, 9, 12], [86, 82, 96]), floor: caveFloor([63, 58, 64]), ceiling: caveCeiling([36, 34, 40]),
+      light: { torch: [236, 214, 180], reach: 5.6, strength: 1.6, height: 1.15, ambient: [9, 9, 12], sources: glowLights(.06, 1.2) },
+      fog: { rgb: [6, 6, 8], near: 2.6, far: 12, haze: [.09, .8], hazeRGB: [16, 15, 20] }, grade: [.97, .98, 1.04, 1.1],
+      deco1: [50, 46, 56], deco2: [150, 140, 180], glow: [150, 140, 210], cave: [.12, .03, .25, .5, 0, 1.3],
+      growth: { form: "shard", rgb: [150, 140, 210], glow: .5 }, props: { rubble: .07 } }),
+    deepLava: deepTheme("The Deep: a lava bog (scorched rock with glowing seams)", {
+      wall: caveWall([72, 60, 54], [26, 10, 4], [92, 86, 82]), floor: caveFloor([90, 81, 76]), ceiling: caveCeiling([40, 32, 28]),
+      light: { torch: [255, 196, 140], reach: 5.6, strength: 1.6, height: 1.15, ambient: [12, 8, 6], sources: glowLights(.1, 1.5) },
+      fog: { rgb: [10, 6, 4], near: 2.6, far: 12, haze: [.12, .6], hazeRGB: [26, 12, 6] }, grade: [1.06, .97, .9, 1.1],
+      deco1: [60, 40, 30], deco2: [255, 138, 58], glow: [255, 120, 50], cave: [.2, .05, .4, .9, .8, 1.4],
+      growth: { form: "shard", rgb: [255, 120, 50], glow: .7 }, props: { rubble: .06 } }),
+    deepRiver: deepTheme("The Deep: an underground river (wet coursed stone, a green tide line)", {
+      wall: { kind: 0, rgb: [56, 70, 72], mortar: [12, 16, 17], stone: [.3, .7, .05, .7], damp: [1, .8], dampRGB: [100, 160, 140], topFall: .32 },
+      floor: { kind: 0, rgb: [60, 70, 72], joint: [15, 18, 19], rug: [40, 48, 50], size: .6, wear: .4, wet: .5, sewer: false }, ceiling: { kind: 0, rgb: [40, 50, 52], bay: 2, rib: .09, dark: .8 },
+      arch: { spring: 1.72, radius: .5, band: .15 }, plinth: [.18, .06],
+      light: { torch: [240, 214, 170], reach: 5.6, strength: 1.6, height: 1.15, ambient: [8, 11, 12], sources: { share: .08, spacing: 5, reach: 3.8, strength: 1.3, hue: 1, ghost: 0, candles: 0 } },
+      fog: { rgb: [5, 8, 9], near: 2.6, far: 12, haze: [.12, .6], hazeRGB: [12, 20, 22] }, grade: [.94, 1, 1.04, 1.1],
+      deco1: [40, 60, 56], deco2: [120, 170, 150], glow: [90, 220, 190], decor: { roots: .06 }, props: { rubble: .04, web: .25 } }),
+    deepFrozen: deepTheme("The Deep: a frozen grotto (blue ice, frost on every ledge)", {
+      wall: caveWall([112, 150, 178], [36, 62, 84], [214, 232, 246], .45), floor: caveFloor([180, 196, 210]), ceiling: caveCeiling([70, 92, 112]),
+      light: { torch: [230, 236, 255], reach: 5.6, strength: 1.5, height: 1.15, ambient: [11, 13, 16], sources: glowLights(.08, 1.2) },
+      fog: { rgb: [8, 11, 15], near: 2.8, far: 12.5, haze: [.1, .8], hazeRGB: [24, 30, 38] }, grade: [.94, 1, 1.08, 1.08],
+      deco1: [90, 120, 150], deco2: [236, 248, 255], glow: [170, 220, 255], cave: [.4, .03, .5, .5, 0, 1.2],
+      features: { iceSpire: { form: "shard", rgb: [196, 228, 246], glow: .25 } }, growth: { form: "shard", rgb: [190, 226, 250], glow: .4 } }),
+    deepCrypt: deepTheme("The Deep: a bone crypt (old coursed stone, skull niches, sarcophagi)", {
+      wall: { kind: 0, rgb: [72, 64, 56], mortar: [18, 15, 12], stone: [.27, .62, .05, .9], damp: [.7, .6], dampRGB: [120, 128, 116], topFall: .3 },
+      floor: { kind: 0, rgb: [74, 66, 57], joint: [16, 14, 12], rug: [60, 30, 26], size: .58, wear: .6, wet: .2, sewer: false }, ceiling: { kind: 0, rgb: [52, 46, 40], bay: 2, rib: .09, dark: .85 },
+      arch: { spring: 1.72, radius: .5, band: .15 }, pilaster: 4, plinth: [.2, .07], cornice: [.16, .08], vignette: .6,
+      light: { torch: [255, 182, 124], reach: 5.4, strength: 1.7, height: 1.15, ambient: [10, 9, 10], sources: { share: .08, spacing: 5, reach: 4, strength: 1.5, hue: 0, ghost: .3, candles: .35 } },
+      fog: { rgb: [6, 5, 5], near: 2.4, far: 11.5, haze: [.1, .7], hazeRGB: [16, 14, 13] }, grade: [1, .96, .9, 1.14],
+      deco1: [60, 30, 26], deco2: [207, 195, 173], glow: [255, 150, 80], decor: { niche: .22, roots: .04 }, props: { bones: .1, urn: .05, coffin: .03, web: .45 },
+      features: { sarcophagus: { form: "slab", rgb: [128, 116, 100] } } }),
+    deepStarHive: deepTheme("The Deep: a star hive (violet alien rock, crystal spires, glowing pools)", {
+      wall: caveWall([64, 46, 90], [16, 10, 26], [92, 62, 138], .3), floor: caveFloor([43, 29, 64]), ceiling: caveCeiling([38, 26, 54]),
+      light: { torch: [226, 206, 255], reach: 5.6, strength: 1.6, height: 1.15, ambient: [10, 8, 14], sources: glowLights(.12, 1.4) },
+      fog: { rgb: [7, 5, 10], near: 2.6, far: 12, haze: [.1, .7], hazeRGB: [20, 12, 30] }, grade: [.98, .94, 1.08, 1.1],
+      deco1: [58, 40, 94], deco2: [95, 247, 209], glow: [192, 139, 255], cave: [.45, .08, .4, .85, 0, 1.6],
+      features: { crystalSpire: { form: "shard", rgb: [192, 139, 255], glow: .55 }, alienPool: { form: "pool" } }, growth: { form: "shard", rgb: [192, 139, 255], glow: .6 } }),
+    deepGeode: deepTheme("The Deep: a geode (dark rock studded with violet crystal)", {
+      wall: caveWall([62, 56, 78], [12, 10, 18], [86, 74, 110]), floor: caveFloor([58, 51, 70]), ceiling: caveCeiling([40, 36, 52]),
+      light: { torch: [230, 220, 255], reach: 5.6, strength: 1.6, height: 1.15, ambient: [9, 8, 13], sources: glowLights(.12, 1.4) },
+      fog: { rgb: [6, 5, 9], near: 2.6, far: 12, haze: [.08, .8], hazeRGB: [16, 13, 24] }, grade: [.98, .95, 1.06, 1.1],
+      deco1: [77, 58, 120], deco2: [183, 160, 232], glow: [154, 122, 208], cave: [.1, .16, .5, .95, 0, 1.4],
+      features: { geodeCluster: { form: "shard", rgb: [180, 140, 240], glow: .55 } }, growth: { form: "shard", rgb: [180, 140, 240], glow: .6 } }),
+    deepMosaic: deepTheme("The Deep: a buried temple (sandstone, a teal and gold frieze, pillars)", {
+      wall: { kind: 0, rgb: [138, 122, 92], mortar: [44, 36, 24], stone: [.3, .75, .04, .5], damp: [.4, .35], dampRGB: [150, 150, 130], topFall: .45 },
+      floor: { kind: 0, rgb: [120, 104, 80], joint: [40, 34, 24], rug: [47, 111, 115], size: .7, wear: .3, wet: .1, sewer: false }, ceiling: { kind: 0, rgb: [96, 86, 66], bay: 3, rib: .11, dark: .75 },
+      arch: { spring: 1.72, radius: .5, band: .15 }, pilaster: 3, plinth: [.22, .07], cornice: [.18, .09], vignette: .5,
+      light: { torch: [255, 200, 140], reach: 5.8, strength: 1.5, height: 1.15, ambient: [12, 11, 9], sources: { share: .1, spacing: 5, reach: 4.4, strength: 1.5, hue: 0, ghost: 0, candles: .2 } },
+      fog: { rgb: [8, 7, 5], near: 2.8, far: 12.5, haze: [.07, .8], hazeRGB: [22, 19, 14] }, grade: [1.04, 1, .92, 1.08],
+      deco1: [47, 111, 115], deco2: [226, 194, 106], glow: [255, 200, 120], decor: { banner: .1, niche: .03 }, props: { urn: .06, rubble: .03, web: .2 },
+      features: { templePillar: { form: "column", rgb: [185, 171, 138] } } }),
+    deepRootwood: deepTheme("The Deep: a root hollow (packed earth and great roots)", {
+      wall: { kind: 1, rgb: [60, 44, 28], mortar: [20, 15, 10], stone: [.3, .7, .05, .9], damp: [.5, .4], dampRGB: [120, 150, 90], topFall: .3 },
+      floor: caveFloor([59, 52, 36]), ceiling: { kind: 1, rgb: [50, 36, 24], bay: 1, rib: .1, dark: .8 },
+      light: { torch: [255, 176, 110], reach: 5.4, strength: 1.6, height: 1.15, ambient: [9, 9, 7], sources: { share: .08, spacing: 5, reach: 3.8, strength: 1.4, hue: 1, ghost: 0, candles: .25 } },
+      fog: { rgb: [6, 6, 4], near: 2.4, far: 11.5, haze: [.12, .6], hazeRGB: [16, 16, 10] }, grade: [1.04, 1, .86, 1.1],
+      deco1: [60, 44, 28], deco2: [138, 164, 90], glow: [150, 230, 120], decor: { roots: .5 }, props: { rubble: .04, web: .4 },
+      features: { rootKnot: { form: "knot", rgb: [110, 76, 44] } } }),
+    deepBrass: deepTheme("The Deep: a brass works (riveted panels, pipes, failing lamps)", {
+      wall: { kind: 3, rgb: [138, 106, 52], mortar: [42, 30, 14], stone: [.34, .8, .04, .4], damp: [.5, .4], dampRGB: [150, 140, 110], topFall: .4 },
+      floor: { kind: 10, rgb: [110, 90, 56], joint: [30, 22, 10], rug: [70, 54, 26], size: .6, wear: .5, wet: .2, sewer: false }, ceiling: { kind: 3, rgb: [70, 56, 30], bay: 2, rib: .1, dark: .7 },
+      arch: { spring: 2.05, radius: 0, band: .35 }, pilaster: 4, plinth: [.14, .05], cornice: [.12, .06],
+      light: { torch: [255, 206, 150], reach: 5.6, strength: 1.5, height: 1.15, ambient: [11, 10, 8], sources: { share: .1, spacing: 5, reach: 4.2, strength: 1.4, hue: 3, ghost: 0, candles: 0 } },
+      fog: { rgb: [7, 6, 4], near: 2.6, far: 12, haze: [.08, .8], hazeRGB: [20, 16, 10] }, grade: [1.04, 1, .9, 1.1],
+      deco1: [70, 54, 26], deco2: [216, 184, 120], glow: [255, 190, 110], decor: { vent: .12 }, props: { rubble: .04, chain: .03, web: .15 },
+      features: { brassPipe: { form: "pipe", rgb: [224, 188, 120] } } }),
+    deepStone: deepTheme("The Deep: raw rock (cracked stone, a little moss, faint glow)", {
+      wall: caveWall([68, 66, 62], [12, 11, 10], [58, 76, 60]), floor: caveFloor([64, 62, 58]), ceiling: caveCeiling([38, 36, 34]),
+      light: { torch: [240, 214, 170], reach: 5.6, strength: 1.6, height: 1.15, ambient: [9, 10, 11], sources: glowLights(.06, 1.3) },
+      fog: { rgb: [6, 7, 7], near: 2.6, far: 12, haze: [.08, .8], hazeRGB: [15, 17, 17] }, grade: [.98, 1, 1, 1.1],
+      deco1: [50, 50, 46], deco2: [150, 140, 170], glow: [120, 200, 180], cave: [.28, .03, .25, .6, 0, 1.4],
+      growth: { form: "cap", rgb: [120, 200, 180], stem: [180, 176, 160], under: [60, 120, 104], glow: .5 }, props: { rubble: .05 } }),
+  },
+});
+
 // Every number is in CLOSE_VIEW. Distances are in tiles; angles in degrees.
 export const CLOSE_VIEW = Object.freeze({
   version: 5, // 5 (2026-11-06, release 794): atmosphere: a theme per building kind (CLOSE_VIEW.themes), procedural stone, placed light, fog and haze, a camera that never looks through a wall; 4 (2026-11-06, release 793): the GPU scene (CLOSE_VIEW.gl; close-view-gl.ts): a floor that holds still, a ceiling, detailed walls, pits with depth, lava, smooth motion; 3 (2026-11-06, release 790): the walls' surface (CLOSE_VIEW.grit) and the bullseye lock; 2 (2026-11-06, Tim: "the walls kind of moved or weren't stable... a more stable view"): the stability pass
@@ -55,7 +171,7 @@ export const CLOSE_VIEW = Object.freeze({
     minDistance: 1, // the boom's usual shortest... (a wall closer than this pulls it in further: the camera is never inside a wall)
     closest: .3, // ...and its absolute shortest
     crane: .75, // ...and for each tile it is pulled in, it rises this much (never above the walls' tops less `craneClear`), so
-    craneClear: .25, // the Wayfarer stays a figure in the view, not a wall of cloth
+    craneClear: .2, // the Wayfarer stays a figure in the view, not a wall of cloth (was .25 before the 2026-11-11 height pass)
     nearFade: Object.freeze([1.6, .55]), // (version 5, the GPU scene: never fainter than atmosphere.nearFade) // nearer than this (camera depth), the Wayfarer is drawn this faint, so the way ahead shows
     center: .5, // the aim point's place on screen, as a share of the height from the top
     boomPad: .32, // the camera keeps this far off a wall
@@ -82,6 +198,14 @@ export const CLOSE_VIEW = Object.freeze({
     // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
     // bound encloses the Wayfarer's .82-scale, 1.68-tile hood, including its walking bob.
     framing: Object.freeze({ bodyHeight: 1.45, margin: .05, pitchMin: -1.2, pitchMax: 1.35 }),
+    // Outdoors over the heightfield (2026-11-11): the line from the Wayfarer's chest to the camera must clear the ground behind
+    // them. Rather than only cutting the boom where a ledge rises into that line, the crane first rises, up to `riseMax` tiles
+    // over the preset's outdoorHeight, so the camera looks down over the ledge; only a ledge too tall and too close for that
+    // shortens the boom, and then to the longest length the risen crane can see over. The rise is taken at once (it grows
+    // smoothly as the Wayfarer backs toward a ledge) and let down on the crane's spring.
+    // `horizonRoom`: outdoors the crane is held low enough that the Wayfarer's feet and this many degrees of sky above the
+    // horizon both fit the screen's height (outdoorCrane; it binds only in a short landscape view).
+    outdoor: Object.freeze({ riseMax: 2.2, horizonRoom: 4, minHeight: 1.2 }), // minHeight: never lower than this however short the view
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -91,9 +215,22 @@ export const CLOSE_VIEW = Object.freeze({
   presets: Object.freeze({
     // version 2: each a little higher (Tim: "a slight default height increase is fine if it helps you read the room"), still
     // under the walls' tops, so a room's floor and its edges read; the pitch follows from the height and the aim point
-    standard: Object.freeze({ label: "Standard", height: 1.6, distance: 2.7, lookAhead: 2.4, lookHeight: .45, shoulder: .42, fov: 72 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
-    close: Object.freeze({ label: "Close (tight, low)", height: 1.35, distance: 2, lookAhead: 1.9, lookHeight: .55, shoulder: .32, fov: 66 }), // Bloodborne
-    wide: Object.freeze({ label: "Wide (further back)", height: 1.85, distance: 3.4, lookAhead: 2.6, lookHeight: .4, shoulder: .55, fov: 80 }), // Remnant / ESO
+    // version 3 (Tim, 2026-11-11: "needs to be farther out, a little bit farther back... I'm in the wide view and it still needs
+    // to be even farther back"; then wide at 5 tiles: "we can bring it back in if we need"): every preset pulled back and
+    // raised (was close 2 / 1.35, standard 2.7 / 1.6, wide 3.4 / 1.85, distance / height), wide the farthest, still under the walls' tops less craneClear; the aim point moved further ahead
+    // and lower so the pitch shows more of the floor beyond the Wayfarer, who stays framed low of centre. Walls still pull the
+    // boom in (CLOSE_VIEW.camera), so tight corridors keep the old close framing. `fogPush`: tiles the depth fog is pushed out
+    // with the longer boom, so the Wayfarer and the ground just past them are no foggier than at the old distance.
+    // version 4 (Tim, 2026-11-11: "higher camera in general", after the overworld's levels became 1.2 tiles tall and a cliff at
+    // the Wayfarer's back pulled the camera in to their shoulder): indoors each preset is raised toward the cap (was close 1.55,
+    // standard 1.9, wide 2.15; the walls' tops less craneClear, 2.2, and the arch and hall caps still bound it). Outdoors (the
+    // overworld, courts and roofs: no ceiling) the crane stands at `outdoorHeight`, high enough that a level or two of ledge
+    // behind the Wayfarer is looked down over (CLOSE_VIEW.camera.outdoor) rather than cutting the boom. The look point is kept:
+    // the pitch outdoors is about 20-24 degrees, so in portrait the horizon still sits in the upper third of the screen and the
+    // Wayfarer's feet at about two thirds of the way down.
+    standard: Object.freeze({ label: "Standard", height: 2.05, outdoorHeight: 3, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
+    close: Object.freeze({ label: "Close (tight, low)", height: 1.8, outdoorHeight: 2.6, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
+    wide: Object.freeze({ label: "Wide (further back)", height: 2.2, outdoorHeight: 3.4, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
   }),
   defaultPreset: "standard",
   fov: Object.freeze({ verticalMax: 100 }), // the horizontal fov (by preset) or this vertical one, whichever is narrower, sets the focal length
@@ -113,7 +250,10 @@ export const CLOSE_VIEW = Object.freeze({
   // game's own lock). A swipe along the crescent of `switchSwipe` px moves the lock to the next foe that way, within
   // `switchCone` degrees. It breaks when the foe dies (then it moves to the best foe within `rehop` tiles of where it fell, if
   // any), goes beyond range + `slack`, or stays out of sight `lostSec` seconds.
-  lock: Object.freeze({ near: 1.5 /* nearby framing slows, but never stops */, range: 11, cone: 70, wAngle: .6, wDist: .4, rate: 4.5, maxRate: 120, nearScale: .35, fallbackRange: 6, fallbackCone: 100, switchSwipe: 26, switchCone: 120, rehop: 4.5, slack: 1.5, lostSec: 1.2 }),
+  // Second targeting pass (Tim, 2026-11-11: "the targeting is still kind of weird... we need better targeting"): every locked
+  // swing is acceleration limited: it gathers speed at most `accel` degrees a second squared and eases into its goal (a switch or a fall no longer snaps the view from rest to full speed in one frame). `reverse`: how
+  // hard a swing already under way may be turned back the other way (degrees a second squared).
+  lock: Object.freeze({ near: 1.5 /* nearby framing slows, but never stops */, range: 11, cone: 70, wAngle: .6, wDist: .4, rate: 4.5, maxRate: 120, nearScale: .35, fallbackRange: 6, fallbackCone: 100, switchSwipe: 26, switchCone: 120, rehop: 4.5, slack: 1.5, lostSec: 1.2, accel: 900, reverse: 1800 }),
   // Target mode (Tim, 2026-11-11: "he never has to move the camera to find enemies"): the Target button switches auto-targeting
   // on (the button lit red) and off. While on, every `scanSec` seconds (a bounded pass over the floor's foes; the wall line is
   // walked only for a foe that would beat the best so far) it locks the best foe in sight anywhere round the Wayfarer within the
@@ -124,7 +264,20 @@ export const CLOSE_VIEW = Object.freeze({
   // Strafe (every lock): with the stick mostly sideways (its toward/away share under `strafeForward`) the Wayfarer circles at
   // the distance held when the strafe began: `strafeGain` x the radial error (tiles) is mixed in, at most `strafePull`.
   targetButton: Object.freeze({ on: "#ff2d2d", locked: "#ff8a78", off: "#ddd5c4", glow: "drop-shadow(0 0 6px #ff2d2dcc)" }), // the Target button's ink: target mode on (red), a tap lock alone, off
-  targetMode: Object.freeze({ scanSec: .2, wDist: .75, wAngle: .25, threatRange: 3.5, nearerBy: 1.5, switchHold: .9, rate: 9, maxRate: 270, strafeForward: .35, strafeGain: 4, strafePull: .6 }),
+  // Second pass (2026-11-11): one priority for every choice (the first lock, the next after a fall, a better foe while
+  // locked): score = wDist x (distance / range) + wAngle x (angle off the view / 180) - wClose x (how far inside threatRange)
+  // - wAggro if it has noticed the Wayfarer - wWindup if it is winding up a blow; lowest wins. So a foe close in front comes
+  // first, then one attacking, then the nearest. The first lock no longer prefers a far foe ahead and then flips to a near one
+  // behind a second later. Locked, a foe takes the lock only if its score beats the locked one's by `switchMargin`, at most
+  // once every switchHold; but a foe within `reach` tiles (a weapon's length) while the locked one is out of reach and
+  // `nearerBy` tiles further takes it after only `reachHold` seconds, so the swing goes at the foe in your face (a swipe
+  // choice keeps the full switchHold). In target mode the next foe after a fall is chosen by the same score, not by where the
+  // old one fell. `markSec`: a new lock's ring closes in on the foe over this long, from `markScale` times its brackets.
+  // `lostSec`: target mode's lock is sticky, held this long out of sight (the plain lock's lock.lostSec, 1.2, dropped a foe
+  // that stepped behind a pillar), and while it is hidden the view coasts to a stop rather than halting dead.
+  // `occludedAlpha`: the brackets' strength while the locked foe is briefly out of sight. `edge`: px inside the screen's edge
+  // for the pointer to a locked foe off screen.
+  targetMode: Object.freeze({ scanSec: .2, wDist: .55, wAngle: .3, wClose: .35, wAggro: .08, wWindup: .2, switchMargin: .1, reach: 2, reachHold: .25, threatRange: 3.5, nearerBy: 1.5, switchHold: .9, rate: 9, maxRate: 270, strafeForward: .35, strafeGain: 4, strafePull: .6, lostSec: 2.4, markSec: .4, markScale: 1.9, occludedAlpha: .38, edge: 26 }),
   // crescent: the pan rail, a thin arc round the outside of the action cluster, `gap` px beyond the cluster's half width, from
   // `from` degrees (screen angles: 0 is right, -90 up, 180 left) round over the top and down the left side to `to` degrees.
   // It is drawn `width` px wide at `idle` opacity (`active` while touched) and answers within `band` px of the arc; it sits
@@ -401,6 +554,7 @@ export const CLOSE_VIEW = Object.freeze({
       fog: Object.freeze({ rgb: Object.freeze([5, 7, 7]), near: 2.6, far: 12, haze: Object.freeze([.08, .8]), hazeRGB: Object.freeze([12, 16, 15]) }),
       grade: Object.freeze([.92, 1.02, .98, 1.1]), vignette: .56, deco1: Object.freeze([30, 34, 32]), deco2: Object.freeze([90, 96, 80]), glow: Object.freeze([150, 220, 160]),
       decor: Object.freeze({ vent: .1 }), props: Object.freeze({ rubble: .06, chain: .02, web: .25 }) }),
+    ...CLOSE_VIEW_DEEP.themes, // 2026-11-11: the Deep (CLOSE_VIEW_DEEP)
   }),
   // The atmosphere's budget and feel (version 5). `lights`: placed sources lit a frame at most (the nearest in reach; per tier
   // in quality.*.lights); `flicker`: their gentle breathing (amount, period ms), held still with reduced motion; `flame`: a
@@ -483,13 +637,45 @@ export function closeViewThemeId(b) {
 export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "lived") < CLOSE_VIEW.themes.livedInShare; // for the lab: which keeps are lived in
 const THEME_OF = new WeakMap();
 const SEED_REALM_THEMES = Object.freeze({ ship: "starship", husk: "rootCellar" }); // seed realms (seed-realms.ts): the ship's clean panels, the husk's mine timbers
-const mapThemeId = (map) => SEED_REALM_THEMES[map?.seedRealm?.realm] || closeViewThemeId(map?.building);
+// 2026-11-11: a floor of the Deep takes its environment's theme (CLOSE_VIEW_DEEP; `none` for a floor laid without one); another
+// dungeon laid in one of those environments (a Proving Ground fixture) takes it too. Buildings keep theirs.
+export function closeViewDeepThemeId(map) {
+  const D = CLOSE_VIEW_DEEP, env = D.byEnv[map?.theme];
+  if (Number(map?.deepFloor) > 0) return env || D.none;
+  return !map?.building && env ? env : null;
+}
+const mapThemeId = (map) => SEED_REALM_THEMES[map?.seedRealm?.realm] || closeViewDeepThemeId(map) || closeViewThemeId(map?.building);
 export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
 const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
 const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorMap(g.map);
 const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
+// Where Close View may be used (Tim, 2026-11-11: "Close View is for closer exploration and souls-like combat when
+// you want it"): the overworld, every building interior (keeps, castles, compounds, great buildings, hives, arcologies, the
+// Pentagon and its arenas, a keep's Cube labyrinth), the Stillworks, seed realms, the Skylands (and a great tree's canopy),
+// the Deep's endless descent (the Listener's Descent too), and the Proving Ground's scratch fixtures. Dive sites and grottoes,
+// and ordinary dungeons and crossings (their annexes, the Threefold Deep, the Starfield Deep Annex, hunts and portals), are
+// refused: there the Oculus answers with `occluded`, the same words show once as you walk in with Close View on
+// (closeViewOccludedOnEntry), and both save switches are left exactly as they were, so Close View comes back on leaving.
+export const CLOSE_VIEW_PLACES = Object.freeze({ version: 1, occluded: "The view is occluded.",
+  allowed: Object.freeze({ overworld: true, keep: true, pentagon: true, cube: true, hive: true, arcology: true, stillworks: true, seedRealm: true, deep: true, sky: true, lab: true, underwater: false, crossing: false }) });
+// What kind of place the Game stands in, for the table above. Pure.
+export function closeViewPlace(g) {
+  if (!g || g.area !== "dungeon") return "overworld";
+  const m = g.map && typeof g.map === "object" ? g.map : {}, b = m.building && typeof m.building === "object" ? m.building : null;
+  if (m.stillworks) return "stillworks";
+  if (m.seedRealm) return "seedRealm";
+  if (Number(m.deepFloor) > 0) return "deep"; // the-deep.ts: a floor of a Deep Shaft or the Listener's Descent
+  if (b) return b.pentagon || m.pentArena ? "pentagon" : b.labyrinth ? "cube" : b.style === "hive" ? "hive" : b.style === "apartment" ? "arcology" : "keep";
+  if (m.skyCloud || m.canopy) return "sky"; // Skylands, a great tree's canopy
+  if (m.underwater) return "underwater"; // dive sites and grottoes (Tim, 2026-11-11: no Close View there)
+  if (String(m.id || "").startsWith("proving:")) return "lab";
+  return "crossing";
+}
+export const closeViewPlaceAllowed = (g) => CLOSE_VIEW_PLACES.allowed[closeViewPlace(g)] === true;
+// On entering a place (Game.loadArea, once per entry): the HUD's words when Close View is on and this place refuses it, else null.
+export const closeViewOccludedOnEntry = (g) => g?.area === "dungeon" && (g.save?.overworldCloseView === true || g.save?.closeView === true) && !closeViewPlaceAllowed(g) ? CLOSE_VIEW_PLACES.occluded : null;
 export function overworldCloseViewApplies(g) {
-  if (g?.save?.overworldCloseView !== true || !g.player || indoorCloseViewTile(g)) return false;
+  if (g?.save?.overworldCloseView !== true || !g.player || indoorCloseViewTile(g) || !closeViewPlaceAllowed(g)) return false;
   const map = g.map, count = map?.tiles?.length, width = Number(map?.width) || (g.area === "dungeon" ? 24 : 32);
   const height = Number(map?.height) || count / width;
   return Number.isSafeInteger(count) && count > 0 && count <= 16384
@@ -502,7 +688,7 @@ const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.c
   || openAirAt(g.map, g.player.x, g.player.y);
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
-const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   focal: 1, focalV: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
@@ -766,8 +952,11 @@ function turnCamera(g, now) {
     const L = CLOSE_VIEW.lock, d = Math.hypot(target.x - p.x, target.y - p.y), near = Math.max(L.nearScale, Math.min(1, (d - L.near * .5) / (L.near * .5)));
     if (d < .05) { CAM.yawV = 0; return; } // overlapping feet have no useful bearing; retain the lock without choosing an arbitrary yaw
     const T = CLOSE_VIEW.targetMode, rate = CAM.targetMode ? T.rate : L.rate, cap = CAM.targetMode ? T.maxRate : L.maxRate;
-    CAM.recentre = NaN; yawSpring(Math.atan2(target.y - p.y, target.x - p.x), rate * slow * near, cap * DEG * slow, dt); return; }
-  if (CAM.lockId && CAM.lostFor > 0) { CAM.yawV = 0; return; } // keep the brief LOS grace, not knowledge of movement through a wall
+    CAM.recentre = NaN; lockSpring(Math.atan2(target.y - p.y, target.x - p.x), rate * slow * near, cap * DEG * slow, L.accel * DEG * slow, L.reverse * DEG * slow, dt, now); return; }
+  if (CAM.lockId && CAM.lostFor > 0) { // keep the LOS grace, not knowledge of movement through a wall (target mode: the swing coasts to a stop)
+    if (!CAM.targetMode) { CAM.yawV = 0; return; }
+    const L = CLOSE_VIEW.lock, w0 = now - CAM.lockWAt <= 100 ? CAM.lockW : 0, w1 = Math.sign(w0) * Math.max(0, Math.abs(w0) - L.reverse * DEG * slow * dt);
+    CAM.yaw = wrap(CAM.yaw + (w0 + w1) * .5 * dt); CAM.lockW = w1; CAM.lockWAt = now; CAM.yawV = 0; return; }
   if (Number.isFinite(CAM.recentre)) { // a double tap on the crescent: swing round behind the Wayfarer (the walk's basis turns with it)
     const diff = wrap(CAM.recentre - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
     CAM.yaw = wrap(CAM.yaw + step); CAM.inputYaw = wrap(CAM.inputYaw + step); CAM.yawV = 0; CAM.pitchUser *= Math.exp(-6 * dt); if (Math.abs(diff) < .01) CAM.recentre = NaN; return; }
@@ -778,6 +967,17 @@ function turnCamera(g, now) {
   if (Math.abs(diff) > A.cone * DEG || Math.abs(diff) < A.deadband * DEG) { CAM.yawV *= Math.exp(-4 * dt); return; } // toward the camera, or near enough straight on
   const ease = CAM.panAt > -1e8 ? Math.min(1, (since - A.delay) / A.ramp) : 1;
   yawSpring(head, A.rate * slow * Math.max(.05, ease), A.maxRate * DEG * slow, dt);
+}
+// A locked swing (CLOSE_VIEW.lock.accel): the critically damped spring's step, its speed capped at `cap`, gathering speed at most
+// `accel` (radians a second squared) and never faster than it could stop by the goal; a swing already under way is turned
+// back at most `reverse`. CAM.lockW is the swing's speed last frame (stale after 100 ms: then it starts from rest).
+function lockSpring(goal, w, cap, accel, reverse, dt, now) {
+  const before = CAM.yaw, w0 = now - CAM.lockWAt <= 100 ? CAM.lockW : 0; yawSpring(goal, w, cap, dt);
+  let v = wrap(CAM.yaw - before) / dt; const stop = Math.sqrt(2 * accel * Math.abs(wrap(goal - before)));
+  if (Math.abs(v) > stop) v = Math.sign(v) * stop;
+  if (w0 !== 0 && Math.sign(v) !== Math.sign(w0)) v = Math.sign(w0) * Math.max(0, Math.abs(w0) - reverse * dt) || Math.sign(v) * Math.min(Math.abs(v), accel * dt);
+  else if (Math.abs(v) > Math.abs(w0) + accel * dt) v = Math.sign(v) * (Math.abs(w0) + accel * dt);
+  CAM.yaw = wrap(before + v * dt); CAM.yawV = v; CAM.lockW = v; CAM.lockWAt = now;
 }
 // One step of the view's yaw toward `goal` on a critically damped spring (rate w), its speed capped at `cap` radians a second.
 function yawSpring(goal, w, cap, dt) {
@@ -851,7 +1051,7 @@ const lockable = (e) => !!e && !e.dead && !e.hidden && !e.ambient && !e.astralAl
 // Within each group, weigh angle and distance. Explicit rehop searches use their own center/cone without screen ranking.
 function lockOnScreen(g, e) {
   if (!CAM.valid || CAM.map !== g.map) return false;
-  const q = project(e.x + .5, e.y + .75, interiorSurfaceHeight(g.map, e.x + .5, e.y + .75) + .7 * actorScale(e));
+  const q = project(e.x + .5, e.y + .75, surfaceZ(g.map, e.x + .5, e.y + .75) + .7 * actorScale(e));
   return !!q && q.sx >= 0 && q.sx <= CAM.w && q.sy >= 0 && q.sy <= CAM.h;
 }
 export function closeViewLockCandidate(g, { yaw = CAM.yaw, cone = CLOSE_VIEW.lock.cone, range = CLOSE_VIEW.lock.range, ox = null, oy = null, skip = null, screen = true } = {}) {
@@ -879,8 +1079,8 @@ export function closeViewTargetActivate(g, now = 0) {
   if (CAM.targetMode) { CAM.targetMode = false; if (g.lockedTarget?.()) g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; g.message = "Auto-target off."; }
   else {
     CAM.targetMode = true; CAM.tmScan = 0; CAM.tmHeld = 0; target = g.lockedTarget?.() || null;
-    if (!lockable(target)) target = closeViewLockCandidate(g) || targetModeScan(g, null);
-    if (target) { g.lockTarget(target.id); CAM.lockId = target.id; CAM.lostFor = 0; } else { CAM.lockId = null; g.message = "Auto-target on: no foe in sight yet."; }
+    if (!lockable(target)) target = targetModeScan(g, null); // the same priority as every later choice (CLOSE_VIEW.targetMode)
+    if (target) { g.lockTarget(target.id); CAM.lockId = target.id; CAM.lostFor = 0; CAM.tmManual = false; } else { CAM.lockId = null; g.message = "Auto-target on: no foe in sight yet."; }
   }
   closeViewRecentre(g, now, { centered: true }); return target;
 }
@@ -889,16 +1089,22 @@ export const closeViewTargetMode = () => CAM.targetMode; // is auto-targeting on
 // the best foe in sight within the lock's range anywhere round the Wayfarer; TM_SCAN.near the nearest one in sight within
 // threatRange. The wall line (sightTo) is walked only for a foe that would beat the best or nearest found so far. With reduced
 // motion only foes within the lock's cone of the view are taken (the view is never swung round behind on its own).
-const TM_SCAN = { best: null, near: null, nearD: Infinity };
+const TM_SCAN = { best: null, bestS: Infinity, near: null, nearD: Infinity };
+// A foe's target-mode priority (lower first; CLOSE_VIEW.targetMode): near, in front, close in, aware of the Wayfarer, winding up.
+function targetScore(e, d, off) {
+  const L = CLOSE_VIEW.lock, T = CLOSE_VIEW.targetMode;
+  return T.wDist * d / L.range + T.wAngle * off / Math.PI - T.wClose * Math.max(0, 1 - d / T.threatRange) - (e.aggro ? T.wAggro : 0) - (foeWindingUp(e) ? T.wWindup : 0);
+}
+export function closeViewTargetScore(g, e) { const p = g.player, ex = e.x + .5, ey = e.y + .75; return targetScore(e, Math.hypot(ex - footX(p), ey - footY(p)), Math.abs(wrap(Math.atan2(ey - footY(p), ex - footX(p)) - CAM.yaw))); }
 function targetModeScan(g, skip) {
   const L = CLOSE_VIEW.lock, T = CLOSE_VIEW.targetMode, p = g.player, px = footX(p), py = footY(p), reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); let bestS = Infinity;
-  TM_SCAN.best = TM_SCAN.near = null; TM_SCAN.nearD = Infinity;
+  TM_SCAN.best = TM_SCAN.near = null; TM_SCAN.nearD = TM_SCAN.bestS = Infinity;
   for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - px, ey - py); if (d > L.range) continue;
     const off = Math.abs(wrap(Math.atan2(ey - py, ex - px) - CAM.yaw)); if (reduce && off > L.cone * DEG) continue; // reduced motion: never an automatic swing round behind
-    const sc = T.wDist * d / L.range + T.wAngle * off / Math.PI, beats = sc < bestS, nearer = d <= T.threatRange && d < TM_SCAN.nearD;
+    const sc = targetScore(e, d, off), beats = sc < bestS, nearer = d <= T.threatRange && d < TM_SCAN.nearD;
     if (!(beats || nearer) || !sightTo(g.map, px, py, ex, ey)) continue;
     if (beats) { bestS = sc; TM_SCAN.best = e; } if (nearer) { TM_SCAN.nearD = d; TM_SCAN.near = e; } }
-  return TM_SCAN.best;
+  TM_SCAN.bestS = bestS; return TM_SCAN.best;
 }
 // A swipe along the crescent while locked: the next foe to the right (dir 1) or left (-1) of the locked one, as the camera sees them.
 export function closeViewLockSwitch(g, dir) {
@@ -907,32 +1113,36 @@ export function closeViewLockSwitch(g, dir) {
     const be = Math.atan2(ey - py, ex - px); if (Math.abs(wrap(be - CAM.yaw)) > L.switchCone * DEG) continue; const rel = wrap(be - bt) * Math.sign(dir || 1); if (rel <= 0) continue; if (!sightTo(g.map, px, py, ex, ey)) continue;
     const visible = lockOnScreen(g, e); if (!visible && Math.hypot(ex - px, ey - py) > L.fallbackRange) continue;
     if ((visible && !bestVisible) || (visible === bestVisible && rel < bestA)) { bestA = rel; best = e; bestVisible = visible; } }
-  if (best) { g.lockTarget(best.id); CAM.lockId = best.id; CAM.lostFor = 0; CAM.tmHeld = 0; } return best; // a chosen foe is not overridden at once by a nearer threat
+  if (best) { g.lockTarget(best.id); CAM.lockId = best.id; CAM.lostFor = 0; CAM.tmHeld = 0; CAM.tmManual = true; } return best; // a chosen foe is not overridden at once by a nearer threat
 }
 // Each frame while locked: follow a lock made by a tap too; on the foe's fall move to the best foe near where it fell, or
 // release; release beyond range + slack or after lostSec out of sight. Returns the locked foe, or null.
+function takeLock(g, e) { g.lockTarget(e.id); CAM.lockId = e.id; CAM.lostFor = 0; CAM.tmHeld = 0; CAM.tmManual = false; return e; }
 function lockTick(g, dt) {
   const had = CAM.lockId, t = lockKeep(g, dt); if (!CAM.targetMode) return t;
   if (had && !CAM.lockId) CAM.tmScan = 0; // the lock just fell or broke: look for the next foe this frame
   // target mode: lock the next foe once nothing is locked (and none is briefly out of sight), and let a much nearer threat
   // take the lock; at most one bounded search every scanSec
-  const T = CLOSE_VIEW.targetMode; CAM.tmScan -= dt; CAM.tmHeld += dt;
-  if (CAM.lockId && CAM.lostFor > 0) return t;
-  if (!t) { if (CAM.tmScan > 0) return null; CAM.tmScan = T.scanSec; const next = targetModeScan(g, null); if (!next) return null; g.lockTarget(next.id); CAM.lockId = next.id; CAM.lostFor = 0; CAM.tmHeld = 0; return next; }
-  if (CAM.tmScan > 0 || CAM.tmHeld < T.switchHold) return t; CAM.tmScan = T.scanSec;
-  const p = g.player; targetModeScan(g, t.id); const n = TM_SCAN.near;
-  if (n && TM_SCAN.nearD + T.nearerBy < Math.hypot(t.x + .5 - footX(p), t.y + .75 - footY(p))) { g.lockTarget(n.id); CAM.lockId = n.id; CAM.lostFor = 0; CAM.tmHeld = 0; return n; }
+  const T = CLOSE_VIEW.targetMode, p = g.player; CAM.tmScan -= dt; CAM.tmHeld += dt;
+  if (CAM.lockId && CAM.lostFor > 0) { // the locked foe is briefly out of sight: held (sticky), unless a foe in reach is at the Wayfarer
+    if (CAM.tmScan > 0) return t; CAM.tmScan = T.scanSec; targetModeScan(g, CAM.lockId); return TM_SCAN.near && TM_SCAN.nearD <= T.reach ? takeLock(g, TM_SCAN.near) : t; }
+  if (!t) { if (CAM.tmScan > 0) return null; CAM.tmScan = T.scanSec; const next = targetModeScan(g, null); return next ? takeLock(g, next) : null; }
+  const hold = CAM.tmManual ? T.switchHold : Math.min(T.switchHold, T.reachHold);
+  if (CAM.tmScan > 0 || CAM.tmHeld < hold) return t; CAM.tmScan = T.scanSec;
+  targetModeScan(g, t.id); const n = TM_SCAN.near, d = Math.hypot(t.x + .5 - footX(p), t.y + .75 - footY(p));
+  if (n && TM_SCAN.nearD <= T.reach && d > T.reach && TM_SCAN.nearD + T.nearerBy < d) return takeLock(g, n); // a foe in reach while the lock is not
+  if (CAM.tmHeld >= T.switchHold && TM_SCAN.best && TM_SCAN.bestS + T.switchMargin < closeViewTargetScore(g, t)) return takeLock(g, TM_SCAN.best);
   return t;
 }
 function lockKeep(g, dt) {
   const L = CLOSE_VIEW.lock; let t = g.lockedTarget?.() || null;
   if (CAM.lockId && (!t || t.id !== CAM.lockId)) { const old = (g.enemies || []).find((e) => e.id === CAM.lockId);
-    if (!t && old && old.dead) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75, screen: false }); if (next) { g.lockTarget(next.id); t = next; } } }
+    if (!t && old && old.dead && !CAM.targetMode) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75, screen: false }); if (next) { g.lockTarget(next.id); t = next; } } }
   if (t && !lockable(t)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
   CAM.lockId = t ? t.id : null; if (!t) { CAM.lostFor = 0; return null; }
   const p = g.player, px = footX(p), py = footY(p), ex = t.x + .5, ey = t.y + .75;
   if (Math.hypot(ex - px, ey - py) > L.range + L.slack) { g.lockTarget(null); CAM.lockId = null; return null; }
-  CAM.lostFor = sightTo(g.map, px, py, ex, ey) ? 0 : CAM.lostFor + dt; if (CAM.lostFor > L.lostSec) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
+  CAM.lostFor = sightTo(g.map, px, py, ex, ey) ? 0 : CAM.lostFor + dt; if (CAM.lostFor > (CAM.targetMode ? CLOSE_VIEW.targetMode.lostSec : L.lostSec)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
   return CAM.lostFor > 0 ? null : t;
 }
 const LOCK_LOOK = { x: 0, y: 0 }; // presentation scratch, never a saved or committed action direction
@@ -1105,7 +1315,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   if (!closeViewShowing(g) || !CAM.valid || Math.abs(CAM.w - w) > 1 || Math.abs(CAM.h - h) > 1) return null;
   // a creature: the tap within `pick.pad` px of its drawn body; of several, the one whose body centre is nearest the finger
   const K = CLOSE_VIEW.pick; let best = null, bestD = Infinity;
-  for (const e of g.enemies || []) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const q = project(e.x + .5, e.y + .82, interiorSurfaceHeight(g.map, e.x + .5, e.y + .75)); if (!q || (q.sx - CAM.ppx) * 0 !== 0) continue;
+  for (const e of g.enemies || []) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const q = project(e.x + .5, e.y + .82, surfaceZ(g.map, e.x + .5, e.y + .75)); if (!q || (q.sx - CAM.ppx) * 0 !== 0) continue;
     const sc = actorScale(e), k = CAM.F / q.depth, hw = K.bodyWidth * .5 * sc * k + K.pad, top = q.sy - K.bodyTop * sc * k - K.pad, bottom = q.sy + K.pad * .6, cy = q.sy - K.bodyTop * .5 * sc * k;
     if (x < q.sx - hw || x > q.sx + hw || y < top || y > bottom) continue;
     const d = Math.hypot(x - q.sx, y - cy); if (d < bestD) { best = e; bestD = d; } }
@@ -1133,9 +1343,9 @@ function terrainFloorRay(map, x, y) {
   let previous=0;
   for(let i=1;i<=640;i++) {
     const t=i*.025, p=point(t); if(wallAt(map,p.x,p.y)) return null;
-    if(p.z<=interiorSurfaceHeight(map,p.x,p.y)) {
+    if(p.z<=surfaceZ(map,p.x,p.y)) {
       let lo=previous,hi=t;
-      for(let k=0;k<14;k++){const mid=(lo+hi)*.5,q=point(mid);if(q.z>interiorSurfaceHeight(map,q.x,q.y))lo=mid;else hi=mid;}
+      for(let k=0;k<14;k++){const mid=(lo+hi)*.5,q=point(mid);if(q.z>surfaceZ(map,q.x,q.y))lo=mid;else hi=mid;}
       const q=point(hi); return {x:q.x,y:q.y,depth:hi};
     }
     previous=t;
@@ -1198,7 +1408,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
   const extended = overworldCloseViewApplies(g), flatWorld = extended && !interiorTerrain(g.map), outdoor = extended && openWorldScene(g);
   const plainWorld = outdoor && flatWorld && !g.map.building;
-  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
+  const Cp = closeViewPreset(g), camH = lerp(E.height, outdoor && Number.isFinite(Cp.outdoorHeight) ? outdoorCrane(Cp, w, h) : Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
   const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : air.near + fogShift;
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
@@ -1209,6 +1419,9 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
   if (useGL && !closeViewGLFrameReady()) return abortCloseViewGLFrame();
   if (extended && !useGL) return false;
+  // the heightfield outdoors: the open world's own scene, with the GPU able to draw it (else the flat ground, as before)
+  const relief = useGL && outdoor && flatWorld && g.area === "overworld" && !g.map.building && closeViewReliefAvailable() && closeViewOutdoorAvailable();
+  RELIEF.map = relief ? g.map : null; RELIEF.R = relief ? outdoorRelief(g.map) : null;
   if (useGL && !plainWorld) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
   if (!useGL && stillworksCloseView(g.map)) return false; // cover and upright gates need the depth buffer
@@ -1224,6 +1437,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Tx = Math.round(W / 2 - p.x * s), Ty = Math.round(H / 2 - p.y * s), gox = Math.round(Tx * ts) - Tx * ts, goy = Math.round(Ty * ts) - Ty * ts, dxL = (Tx - (W / 2 - p.x * s)) * ts, dyL = (Ty - (H / 2 - p.y * s)) * ts;
   gc.setTransform(ts, 0, 0, ts, gox, goy); gc.imageSmoothingEnabled = false; captured = null; capturedPlayer = null; capturing = true; bareFloor = useGL && !flatWorld; worldCapture = flatWorld;
   try { baseRender(gc, g, W, H, now);
+    if (useGL && flatWorld && themeOf(g.map)?.features) featureFloor(g, gc, s, ts, gox, goy, Tx, Ty, R); // 2026-11-11
     if (shots) {
       shots.now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
       // Effect producers hand over exact source references and body-only closures. Even a cap-overflow body
@@ -1241,6 +1455,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     }
     for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = worldCapture = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
+  if (capturedPlayer && RELIEF.map === g.map) presentLeap(g, now, capturedPlayer); // the taller levels: a jump that reaches the ledge, a drop that falls
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
   const t1 = tm ? performance.now() : 0;
@@ -1300,24 +1515,32 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
     if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
   }
-  const playerZ = interiorSurfaceHeight(g.map, footX(p), footY(p)) +
-    Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
+  const playerZ = RELIEF.map === g.map && LEAP.map === g.map ? LEAP.base + Math.max(0, capturedPlayer?.lift || 0) // over the heightfield the camera follows the Wayfarer's footing, not each jump's arc
+    : surfaceZ(g.map, footX(p), footY(p)) + Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
-  const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
+  const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? surfaceZ(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
   let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
-  if (interiorTerrain(g.map) || hasStoneBuilds(g.map)) {
+  if (outdoor && RELIEF.map === g.map) { // look down over a ledge behind (CLOSE_VIEW.camera.outdoor): the crane rises before the boom is cut
+    const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), L0 = Math.hypot(dx, dy), steps = Math.max(1, Math.ceil(L0 / .08)), top = camH + C.outdoor.riseMax;
+    let m = 0, keep = L0, need = 0;
+    for (let i = 1; i <= steps; i++) { const s = L0 * i / steps, rise = surfaceZ(g.map, footX(p) + dx * i / steps, footY(p) + dy * i / steps) + .12 - playerZ;
+      const mm = Math.max(m, (rise - .6) / s), req = Math.max(.6 + mm * s, rise, need); if (req > top) { keep = L0 * (i - 1) / steps; break; } m = mm; need = req; }
+    if (keep < L0 - 1e-6) { const k = keep / L0; CAM.cx = footX(p) + dx * k; CAM.cy = footY(p) + dy * k; CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0; }
+    need += .02; if (need > CAM.crane) { CAM.crane = need; CAM.craneV = 0; } terrainCameraZ = playerZ + Math.max(craneUp, need); // a hair over the line, so the check below agrees
+  }
+  if (interiorTerrain(g.map) || hasStoneBuilds(g.map) || RELIEF.map === g.map) { // the camera's line to the Wayfarer never dips under the ground
     const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
     for (let i = 1; i <= steps; i++) {
       const k = i / steps, x = footX(p) + dx * k, y = footY(p) + dy * k, z = playerZ + .6 + (terrainCameraZ - playerZ - .6) * k;
-      if (z < interiorSurfaceHeight(g.map, x, y) + .12 || z > cap(x, y)) {
+      if (z < surfaceZ(g.map, x, y) + .12 || z > cap(x, y)) {
         const keep = Math.max(0, (i - 1) / steps);
         CAM.cx = footX(p) + dx * keep; CAM.cy = footY(p) + dy * keep;
         CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0;
         terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy)); break;
       }
     }
-    terrainCameraZ = Math.max(interiorSurfaceHeight(g.map, CAM.cx, CAM.cy) + .12, terrainCameraZ);
+    terrainCameraZ = Math.max(surfaceZ(g.map, CAM.cx, CAM.cy) + .12, terrainCameraZ);
   }
   const eyeDX = footX(p) - CAM.cx, eyeDY = footY(p) - CAM.cy;
   const compression = Math.min(1, Math.hypot(eyeDX, eyeDY) / Math.max(.15, camD));
@@ -1420,9 +1643,10 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     } }
   const draws = captured || [];
   const meshTrees = useGL && plainWorld && g.area === "overworld" && closeViewOutdoorAvailable(); // standing trees are solids there (close-view-outdoor.ts), not cards
-  for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object))) continue;
+  const meshProps = useGL && (meshTrees || !(outdoor && flatWorld)) && closeViewPropsAvailable(); // and so are chests, caches, shrines, standing stones... (OUTDOOR.props)
+  for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object)) || (meshProps && !d.enemy && outdoorPropObject(d.object))) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
-    const q = project(bxw, byw, interiorSurfaceHeight(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
+    const q = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
@@ -1590,12 +1814,23 @@ function aimChevron(gc, g, s, ts, W, H, gox = 0, goy = 0) {
   gc.setTransform(ts, 0, 0, ts, gox, goy); gc.fillStyle = M.color; gc.beginPath(); gc.moveTo(cx + ux * r, cy + uy * r); gc.lineTo(cx - ux * r * .6 - uy * r, cy - uy * r * .6 + ux * r); gc.lineTo(cx - ux * r * .15, cy - uy * r * .15); gc.lineTo(cx - ux * r * .6 + uy * r, cy - uy * r * .6 - ux * r); gc.closePath(); gc.fill();
 }
 // The locked target's brackets, round its billboard on the screen (combat-visuals draws them flat on the floor, under it).
+// Second targeting pass: a new lock's ring closes in on it (CLOSE_VIEW.targetMode.markSec; with reduced motion a still ring that
+// fades), the brackets stay, dimmed, while the foe is briefly out of sight, and a locked foe off screen gets a pointer at the edge.
 function lockBrackets(ctx, g, now) {
-  const t = g.lockedTarget?.(); if (!lockable(t) || CAM.lostFor > 0) return; const q = project(t.x + .5, t.y + .82, interiorSurfaceHeight(g.map, t.x + .5, t.y + .75)); if (!q) return;
+  const t = g.lockedTarget?.(); if (!lockable(t) || t.gloomVeil) { CAM.markId = null; return; } const T = CLOSE_VIEW.targetMode, reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
+  if (CAM.markId !== t.id) { CAM.markId = t.id; CAM.markAt = now; }
+  const q = project(t.x + .5, t.y + .82, surfaceZ(g.map, t.x + .5, t.y + .75)), hidden = CAM.lostFor > 0;
+  if (!q || q.sx < 0 || q.sx > CAM.w || q.sy < 0 || q.sy > CAM.h) { // off screen: a pointer at the edge, the way to turn
+    const rel = wrap(Math.atan2(t.y + .75 - CAM.cy, t.x + .5 - CAM.cx) - CAM.yaw), ux = Math.sin(rel), uy = -Math.cos(rel), m = Math.max(Math.abs(ux) / (CAM.w / 2 - T.edge), Math.abs(uy) / (CAM.h / 2 - T.edge)) || 1;
+    const ex = CAM.w / 2 + ux / m, ey = CAM.h / 2 + uy / m, a = Math.atan2(uy, ux), s = 11;
+    ctx.save(); ctx.globalAlpha = hidden ? T.occludedAlpha : .9; ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * s, ey + Math.sin(a) * s); ctx.lineTo(ex + Math.cos(a + 2.4) * s, ey + Math.sin(a + 2.4) * s); ctx.lineTo(ex + Math.cos(a - 2.4) * s, ey + Math.sin(a - 2.4) * s); ctx.closePath();
+    ctx.fillStyle = "#ff6a5a"; ctx.fill(); ctx.strokeStyle = "#000a"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); return; }
   const k = CAM.F / q.depth, sc = actorScale(t), r = Math.min(Math.min(CAM.w, CAM.h) * .22, Math.max(.45, (Number(t.bodyRadius) || .4) + .2, sc * .4) * k), cx = q.sx, cy = q.sy - Math.min(.55 * sc * k, r * 1.1), e = r * .45; // never larger than a fifth of the screen, however near
-  ctx.save(); ctx.lineJoin = "round"; ctx.globalAlpha = .8 + .2 * Math.sin(now / 200);
+  const mk = (now - CAM.markAt) / (T.markSec * 1000);
+  if (mk >= 0 && mk < 1) { ctx.save(); ctx.globalAlpha = (1 - mk) * .9; ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r * (reduce ? 1.2 : 1 + (T.markScale - 1) * (1 - mk) * (1 - mk)), 0, 6.2832); ctx.stroke(); ctx.restore(); }
+  ctx.save(); ctx.lineJoin = "round"; ctx.globalAlpha = hidden ? T.occludedAlpha : .8 + .2 * Math.sin(now / 200);
   ctx.beginPath(); for (let i = 0; i < 4; i++) { const sx = i === 0 || i === 3 ? -1 : 1, sy = i < 2 ? -1 : 1; ctx.moveTo(cx + sx * r, cy + sy * (r - e)); ctx.lineTo(cx + sx * r, cy + sy * r); ctx.lineTo(cx + sx * (r - e), cy + sy * r); }
-  ctx.strokeStyle = "#0009"; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.strokeStyle = "#0009"; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = "#ff6a5a"; ctx.lineWidth = 2.5; ctx.stroke(); if (hidden) { ctx.restore(); return; }
   // a pip over the foe (Elden Ring's lock dot): it is the one locked, at a glance
   const py = cy - r - Math.max(6, r * .25), pr = Math.max(4, r * .12); ctx.beginPath(); ctx.moveTo(cx, py - pr); ctx.lineTo(cx + pr, py); ctx.lineTo(cx, py + pr); ctx.lineTo(cx - pr, py); ctx.closePath();
   ctx.fillStyle = "#ff6a5a"; ctx.fill(); ctx.strokeStyle = "#000a"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
@@ -1615,6 +1850,17 @@ function relativeFacing(p, aim = null) {
 // The atlas is a band of the ground canvas below its texture (the captured closures can only draw into the canvas they were
 // captured with), so the texture is copied once a frame when the atlas is first written, not once per actor.
 const SPRITES = { used: 0 };
+// The ordinary view writes names and titles beside its sprites (a villager's name and role, VIEWPORT, WRECK, SHIPWRIGHT).
+// On a card the camera magnifies them many times and the card's edge cuts them, so a town filled the view with giant
+// clipped words. While a thing's or a person's card is painted only a glyph or two is kept (a quest giver's "!" or "…"); longer
+// text is not. A creature's card keeps its words (a pack's name, BLOCKED): they are part of the fight.
+const CARD_TEXT = { fill: null, stroke: null, ctx: null, ownFill: false, ownStroke: false };
+function cardFillText(t, x, y, m) { if (String(t).length <= 2) CARD_TEXT.fill.call(this, t, x, y, m); }
+function cardStrokeText(t, x, y, m) { if (String(t).length <= 2) CARD_TEXT.stroke.call(this, t, x, y, m); }
+function quietCardText(ac) { const own = Object.prototype.hasOwnProperty; CARD_TEXT.ctx = ac; CARD_TEXT.fill = ac.fillText; CARD_TEXT.stroke = ac.strokeText; CARD_TEXT.ownFill = own.call(ac, "fillText"); CARD_TEXT.ownStroke = own.call(ac, "strokeText");
+  if (typeof CARD_TEXT.fill === "function") ac.fillText = cardFillText; if (typeof CARD_TEXT.stroke === "function") ac.strokeText = cardStrokeText; }
+function restoreCardText() { const ac = CARD_TEXT.ctx; if (!ac) return; CARD_TEXT.ctx = null;
+  if (CARD_TEXT.ownFill) ac.fillText = CARD_TEXT.fill; else delete ac.fillText; if (CARD_TEXT.ownStroke) ac.strokeText = CARD_TEXT.stroke; else delete ac.strokeText; }
 function nativeBoardTop(foe, scale, height = 0) {
   const p = actorPresentation(foe);
   return Math.max(CLOSE_VIEW.actors.height * scale, height, p ? p.head + .95 * p.scale : 0);
@@ -1623,6 +1869,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
   const A = CLOSE_VIEW.actors, ac = GROUND.ctx; if (!ac) return false;
   const Y0 = GROUND.atlasY, AW = GROUND.canvas.width, AH = GROUND.canvas.height - Y0; let x = 0, y = 0, rowH = 0;
   ac.setTransform(1, 0, 0, 1, 0, 0); ac.clearRect(0, Y0, AW, AH);
+  try {
   let first = true; for (let oi = n - 1; oi >= 0; oi--) { const it = order[oi]; if (itemKind[it] !== 1) continue; // nearest first: they get the room
     const d = draws[itemRef[it]], nativeBody = native?.has(it), foe = boardFoe[it];
     const residual = nativeBody && typeof d.nativeDecorations === 'function' && (d.nativeEffects || foe?.fracRank === 'rare' && foe.packName || foe?.fracWarden || foe?.warded || foe?.affixes?.length || foe?.poiseBreak > 0 || foe?.pack?.phase === 'stunned');
@@ -1644,9 +1891,10 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     if (d.lift && !interiorTerrain(g.map)) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1) ac.globalAlpha = d.alpha;
     const art = foe && CLOSE_VIEW_HOOKS.art[foe.kind]; // (boardFoe is written afresh for every item each frame)
     // phase 2: a creature with close-view art draws itself, from the camera's side (view: where it stands relative to the camera)
-    try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && !nativeBody && facing === "up") backOfHood(ac, p, s); } finally { ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
+    if (!foe && !player && !residual && !d.nativeAux && d.object) quietCardText(ac); // a creature's status words (BLOCKED, a pack's name) stay; a place's or a person's name does not
+    try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && !nativeBody && facing === "up") backOfHood(ac, p, s); } finally { restoreCardText(); ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
     x += pw + 2; rowH = Math.max(rowH, ph + 2); }
-  SPRITES.used = y + rowH; return true;
+  SPRITES.used = y + rowH; } finally { restoreCardText(); } return true;
 }
 // Version 3 (Tim: "monsters phasing in and out of view depending on where the camera is"). Version 2 sorted a billboard
 // among the walls by its depth against each face's middle depth only, so a creature standing in front of a wall face that
@@ -1741,6 +1989,20 @@ function flatPass(g, draws, gc, s, ts, gox, goy, Tx, Ty) {
   closeViewStats.flat = drawn;
 }
 export const closeViewFlatObject = flatObject; // for tests
+// 2026-11-11: where a feature of the Deep stands as itself (CLOSE_VIEW_DEEP features: a giant cap, a crystal spire), the
+// ground texture under it shows a neighbouring floor tile instead of the tile's own top-down art (a mushroom painted flat
+// under the standing one). Within the view's reach only; one canvas copy a feature tile, nothing allocated.
+const FEATURE_FLOOR_STEPS = [[0, 1], [0, -1], [-1, 0], [1, 0]];
+function featureFloor(g, gc, s, ts, gox, goy, Tx, Ty, R) {
+  const map = g.map, FT = themeOf(map).features, w = Math.max(1, Number(map.width) || 32), h = Math.floor(map.tiles.length / w), px = Math.floor(g.player.x), py = Math.floor(g.player.y), k = s * ts;
+  gc.save(); gc.setTransform(1, 0, 0, 1, 0, 0); gc.imageSmoothingEnabled = false;
+  const r = Math.ceil(R) + 1;
+  for (let y = Math.max(0, py - r); y <= Math.min(h - 1, py + r); y++) for (let x = Math.max(0, px - r); x <= Math.min(w - 1, px + r); x++) {
+    const f = FT[map.tiles[y * w + x]?.kind]; if (!f || f.form === "pool") continue;
+    for (const [dx, dy] of FEATURE_FLOOR_STEPS) { const nx = x + dx, ny = y + dy, t = nx >= 0 && ny >= 0 && nx < w && ny < h ? map.tiles[ny * w + nx] : null; if (!t || t.blocked || closeViewHazardCode(t)) continue;
+      gc.drawImage(GROUND.canvas, Math.round((Tx + nx * s) * ts + gox), Math.round((Ty + ny * s) * ts + goy), Math.round(k), Math.round(k), Math.round((Tx + x * s) * ts + gox), Math.round((Ty + y * s) * ts + goy), Math.round(k), Math.round(k)); break; } }
+  gc.restore();
+}
 
 // Pure admission/geometry seam used by the GPU frame and focused regression tests. Echo ribbons are raised through
 // the air; unlike the 2D fallback they never enter the floor overlay. The callback receives one depth-tested kind-11
@@ -1755,7 +2017,7 @@ export function closeViewEchoRibbons(g, map, quality = "balanced", reduce = fals
     if (!valid(q)) return;
     const d=Math.hypot(q.dx,q.dy),dx=q.dx/d,dy=q.dy/d,n=K.segments,shape=q.shape==='thrust'?'thrust':'sweep',half=(Number(q.arc)||100)*Math.PI/360;
     const stage=memory?primaryVisualStage(q):null,step=stage?.step||(memory&&q.primaryMotion==null?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0),offset=stage?.kind==='cleaver-four'?(stage.direction>0?-.28:.28):step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
-    const ground=Number.isFinite(q.support)?q.support*LIFT_PER_LEVEL:interiorSurfaceHeight(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
+    const ground=Number.isFinite(q.support)?q.support*(RELIEF.map===map?OUTDOOR.terrain.level:LIFT_PER_LEVEL):surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
     const point = i => { const t=i/n,b=shape==='thrust'?angle:start+(end-start)*t,r=shape==='thrust'?.18+(q.range-.18)*t:q.range,x=q.x+Math.cos(b)*r,y=q.y+Math.sin(b)*r,z=ground+K.height[0]+(K.height[1]-K.height[0])*Math.sin(Math.PI*t),tx=shape==='thrust'?dx:-Math.sin(b),ty=shape==='thrust'?dy:Math.cos(b),w=width*(shape==='thrust'?(1-t*.82):(.72+.28*Math.sin(Math.PI*t))); return {x,y,z,nx:-ty*w,ny:tx*w}; };
     let a=point(0); for(let i=1;i<=n;i++){const b=point(i),alpha=Math.max(0,Math.min(1,fade))*spec.alpha; emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x+b.nx,b.y+b.ny,b.z,1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x-a.nx,a.y-a.ny,a.z,-1,1,alpha,spec.color,1);vertices+=6;a=b;} paths++;
   };
@@ -1776,10 +2038,11 @@ const THEME_GL = new Map(); // theme id -> its colours as 0..1 arrays (made once
 function themeGL(th) {
   let t = THEME_GL.get(th); if (t) return t; const W = th.wall, Fl = th.floor, L = th.light;
   t = { wall: rgb01(W.rgb), mortar: rgb01(W.mortar), damp: rgb01(W.dampRGB), floor: rgb01(Fl.rgb), joint: rgb01(Fl.joint), rug: rgb01(Fl.rug), ceil: rgb01(th.ceiling.rgb), deco1: rgb01(th.deco1), deco2: rgb01(th.deco2), glow: rgb01(th.glow || [255, 150, 80]),
-    torch: rgb01(L.torch), amb: rgb01(L.ambient), fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB) };
+    torch: rgb01(L.torch), amb: rgb01(L.ambient), fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB),
+    caveA: Float32Array.from((th.cave || []).slice(0, 4).concat([0, 0, 0, 0]).slice(0, 4)), caveB: Float32Array.from([th.cave?.[4] || 0, th.cave?.[5] || 1.5, 0, 0]) }; // 2026-11-11: the Deep's living rock
   THEME_GL.set(th, t); return t;
 }
-const HUE_RGB = [[1, .62, .32], [.3, .95, .8], [.55, .72, 1], [1, .78, .42]]; // a placed light's colour by hue: warm, bioluminescent, ghost-light, a failing lamp
+const HUE_RGB = [[1, .62, .32], [.3, .95, .8], [.55, .72, 1], [1, .78, .42]]; // a placed light's colour by hue: warm, bioluminescent, ghost-light, a failing lamp (hue 5, 2026-11-11: the theme's own glow)
 const SIGIL_COLORS = [[.22, .19, .3], [.65, .53, .82], [.92, .78, .99]];
 const SIGIL_INLAY = Float32Array.from(SIGIL_COLORS.flat());
 const NO_BACKDROP = { kind: 0, colors: new Float32Array(9) };
@@ -1797,13 +2060,15 @@ const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOS
       gl.uniform4f(U.u_pit, Pt.hole, Pt.chasm, Pt.dark, Pt.lip); gl.uniform3fv(U.u_stone, stone); gl.uniform3fv(U.u_lip, lip); gl.uniform3fv(U.u_safe, safe); gl.uniform3fv(U.u_chasm, chasm);
       const breath = UNI.reduce ? 1 : 1 - R.pulseDepth * (.5 + .5 * Math.sin(UNI.now / R.pulse * Math.PI * 2)); gl.uniform4f(U.u_safeP, R.near, R.full, R.alpha * breath, UNI.safeOn ? 1 : 0);
       gl.uniform4f(U.u_lava, Lv.scale, Lv.flow, Lv.light, q.lavaLight && lavaTiles > 0 ? 3 / Lv.reach : 0); gl.uniform3fv(U.u_lavaA, lavaA); gl.uniform3fv(U.u_lavaB, lavaB); gl.uniform3fv(U.u_lavaC, lavaC);
+      gl.uniform4fv(U.u_cave, tg.caveA); gl.uniform4fv(U.u_caveB, tg.caveB); gl.uniform3fv(U.u_caveGlow, tg.glow); gl.uniform3fv(U.u_caveFleck, tg.deco2); // 2026-11-11
       gl.uniform4f(U.u_floorP, Fl.kind, Fl.size, Fl.wear, Fl.sewer ? 1 : 0); gl.uniform3fv(U.u_floorRGB, tg.floor); gl.uniform3fv(U.u_floorJ, tg.joint); gl.uniform3fv(U.u_rug, tg.rug); gl.uniform4f(U.u_floorQ, q.bump ? 1 : 0, Fl.wet, q.relief ? 1 : 0, UNI.worldCapture ? 1 : 0); },
     wall(gl, U, F) { const q = UNI.q, th = UNI.th, tg = UNI.tg, Wl = th.wall, A = th.arch;
       gl.uniform4f(U.u_detail, q.detail ? 1 : 0, q.detailNear, q.detailFar, GRIT.light); gl.uniform1fv(U.u_gritA, gritA); gl.uniform4f(U.u_shimmer, un.shimmer || 0, un.period || 1, UNI.reduce ? 1 : 0, GRIT.size[0] / (GRIT.size[0] * GRIT.instances * 9));
       gl.uniform4f(U.u_stoneP, Wl.stone[0], Wl.stone[1], q.relief ? Wl.stone[2] : Wl.stone[2] * .5, Wl.stone[3]); gl.uniform4f(U.u_wallP, Wl.damp[0], Wl.damp[1], q.bump ? 1 : 0, Wl.topFall);
-      gl.uniform3fv(U.u_mortar, tg.mortar); gl.uniform3fv(U.u_damp, tg.damp); gl.uniform3fv(U.u_deco1, tg.deco1); gl.uniform3fv(U.u_deco2, tg.deco2); gl.uniform4f(U.u_arch, A.spring, A.radius, A.band, 0); gl.uniform3fv(U.u_glowRGB, tg.glow); },
+      gl.uniform3fv(U.u_mortar, tg.mortar); gl.uniform3fv(U.u_damp, tg.damp); gl.uniform3fv(U.u_deco1, tg.deco1); gl.uniform3fv(U.u_deco2, tg.deco2); gl.uniform4f(U.u_arch, A.spring, A.radius, A.band, 0); gl.uniform3fv(U.u_glowRGB, tg.glow);
+      gl.uniform4fv(U.u_cave, tg.caveA); gl.uniform4fv(U.u_caveB, tg.caveB); gl.uniform3fv(U.u_caveGlow, tg.glow); gl.uniform3fv(U.u_caveFleck, tg.deco2); }, // 2026-11-11
     arch(gl, U) { const A = UNI.th.arch; gl.uniform4f(U.u_arch, A.spring, A.radius, A.band, 0); },
-    decal(gl, U) { gl.uniform3fv(U.u_ring, ring); gl.uniform3fv(U.u_glow, ring); } }; })();
+    decal(gl, U) { gl.uniform3fv(U.u_ring, ring); gl.uniform3fv(U.u_glow, ring); if (UNI.tg) gl.uniform3fv(U.u_hue5, UNI.tg.glow); } }; })();
 function gritAtlas() { // every variant's painted instances side by side, once
   const [TW, TH] = GRIT.size, c = makeCanvas(), x = c?.getContext?.("2d"); if (!x) return null; c.width = TW * GRIT.instances * 9; c.height = TH; x.clearRect(0, 0, c.width, c.height);
   for (let v = 1; v < Math.min(9, GRIT.variants.length); v++) for (let k = 0; k < GRIT.instances; k++) { const t = gritTexture(v, k); if (t) x.drawImage(t, (v * GRIT.instances + k) * TW, 0); }
@@ -1829,6 +2094,14 @@ const HALL_VIEW = Object.freeze({ minHeight: 6, maxHeight: 14, tierHeight: .65, 
 const BACKDROPS = new Map(PENTAGON_BACKDROPS.map(({ id, palette }, i) => [
   id, { kind: i + 1, colors: Float32Array.from(palette.flatMap((hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255))) },
 ]));
+// The preset's outdoor crane height, no higher than lets the Wayfarer's feet and the horizon (with `horizonRoom` degrees of sky)
+// share the screen's height: in portrait the full outdoorHeight; in a short landscape view about the old height (the horizon
+// matters more there than the extra height).
+function outdoorCrane(Cp, w, h) {
+  const C = CLOSE_VIEW.camera, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const span = 2 * Math.atan(h * (.5 - C.framing.margin) / F) - C.outdoor.horizonRoom * DEG;
+  return Math.max(C.outdoor.minHeight, Math.min(Cp.outdoorHeight, Cp.distance * Math.tan(Math.max(.05, Math.min(1.4, span)))));
+}
 function hallHeight(map) {
   if (interiorTerrain(map)) return interiorCeilingHeight(map);
   const height = map.hall?.ceilingHeight;
@@ -2010,11 +2283,44 @@ function buildStatic(map, geo, th) {
     }
   }
   const arch = new Uint8Array(w * h), capped = new Uint8Array(w * h), D = th.decor || {}, Pr = th.props || {}, PL = th.plinth, CO = th.cornice, PIL = th.pilaster;
+  // 2026-11-11 (CLOSE_VIEW_DEEP): a tile that is one of the theme's features stands as itself, built once below (featured), and
+  // the Deep's glowing lights grow a small cluster at the wall's foot (growths). Neither exists for any other theme.
+  const FT = th.features || null, featureOf = (x, y) => (FT && x >= 0 && y >= 0 && x < w && y < h && FT[tiles[y * w + x]?.kind]) || null, featured = FT ? new Uint8Array(w * h) : null, growths = [];
+  const featureCol = (rgb) => rgb.map((v) => v / 255);
+  // a tapered n-sided post from (r0, z0) to (r1, z1), its top leaning by (lx, ly); cap 1: a top, 2: an underside. Its normals are
+  // short (.6): the wall pass then never culls a face of it by its side (a tapered face is not one plane with the wall's normal).
+  const frustum = (cx, cy, r0, r1, z0, z1, n, rot, col, deco, hsh, tx, ty, cap = 0, lx = 0, ly = 0) => {
+    for (let k = 0; k < n; k++) { const a0 = rot + k * 2 * Math.PI / n, a1 = rot + (k + 1) * 2 * Math.PI / n, am = (a0 + a1) / 2, fx = Math.cos(am) * .6, fy = Math.sin(am) * .6;
+      const P = [[cx + Math.cos(a0) * r0, cy + Math.sin(a0) * r0, z0, 0], [cx + Math.cos(a1) * r0, cy + Math.sin(a1) * r0, z0, 1], [cx + lx + Math.cos(a1) * r1, cy + ly + Math.sin(a1) * r1, z1, 1], [cx + lx + Math.cos(a0) * r1, cy + ly + Math.sin(a0) * r1, z1, 0]];
+      for (const i of [0, 1, 2, 0, 2, 3]) { const [X, Y, Z, u] = P[i]; V(X, Y, Z, (k + u) * .35, u, Z, z1, fx, fy, 12, 0, col, deco, 0, 0, hsh, tx, ty); } }
+    for (const [on, z, r, ox, oy, part] of [[cap & 1, z1, r1, lx, ly, 12], [cap & 2, z0, r0, 0, 0, 12.25]]) { if (!on || !(r > 0)) continue;
+      for (let k = 1; k < n - 1; k++) for (const j of [0, k, k + 1]) { const a = rot + j * 2 * Math.PI / n, X = cx + ox + Math.cos(a) * r, Y = cy + oy + Math.sin(a) * r; V(X, Y, z, X + Y, .5, z, z, 0, 0, part, 0, col, deco, 0, 0, hsh, tx, ty); } } };
+  const SH = CLOSE_VIEW_DEEP.shapes;
+  // a giant cap (a glowcap); a cluster of crystal shards; a temple's column; a great root; brass pipes; a sarcophagus
+  const buildFeature = (f, x, y) => { const hsh = (x * 31 + y * 17) % 997, r = (k) => rnd(x, y, 0, 60 + k), cx = x + .5, cy = y + .5, col = featureCol(f.rgb || [128, 128, 128]), glow = f.glow || 0;
+    if (f.form === "cap") { const S = SH.cap, hh = S.height[0] + (S.height[1] - S.height[0]) * r(0), lean = (r(1) - .5) * .12, rot = r(2) * 6.283, ch = S.capH[0] + (S.capH[1] - S.capH[0]) * r(3), stem = featureCol(f.stem || f.rgb), under = featureCol(f.under || f.rgb);
+      frustum(cx, cy, S.stem[0], S.stem[1], 0, hh, 7, rot, stem, glow * .15, hsh, x, y, 0, lean, lean * .5);
+      frustum(cx + lean, cy + lean * .5, S.cap[0], S.cap[1], hh, hh + ch * .45, 9, rot, col, glow, hsh, x, y, 2);
+      frustum(cx + lean, cy + lean * .5, S.cap[1], S.cap[2], hh + ch * .45, hh + ch, 9, rot, col, glow, hsh, x, y, 1);
+      frustum(cx + lean, cy + lean * .5, S.cap[0] * .96, S.stem[1] * 1.2, hh - .005, hh + .02, 9, rot, under, glow * .5, hsh, x, y, 0); }
+    else if (f.form === "shard") { const S = SH.shard; for (let k = 0; k < S.n; k++) { const a = r(10 + k) * 6.283, d = k ? .12 + r(20 + k) * .2 : 0, hh = (S.height[0] + (S.height[1] - S.height[0]) * r(30 + k)) * (k ? .7 : 1), rr = S.r[0] + (S.r[1] - S.r[0]) * r(40 + k), ox = Math.cos(a) * d, oy = Math.sin(a) * d;
+        frustum(cx + ox, cy + oy, rr, rr * .55, 0, hh * .82, 5, a, col, glow, hsh, x, y, 0, ox * S.lean * 2, oy * S.lean * 2); frustum(cx + ox * (1 + S.lean * 2), cy + oy * (1 + S.lean * 2), rr * .55, 0, hh * .82, hh, 5, a, col, glow * 1.2, hsh, x, y, 0); } }
+    else if (f.form === "column") { const S = SH.column; frustum(cx, cy, S.r * 1.25, S.r * 1.25, 0, .16, S.sides, 0, col, 0, hsh, x, y, 1); frustum(cx, cy, S.r, S.r * .94, .16, H - .2, S.sides, 0, col, 0, hsh, x, y, 0); frustum(cx, cy, S.r * 1.2, S.r * 1.3, H - .2, H, S.sides, 0, col, 0, hsh, x, y, 2); }
+    else if (f.form === "knot") { const S = SH.knot, rot = r(0) * 6.283; frustum(cx, cy, S.r[0], S.r[1], 0, H * .55, 7, rot, col, 0, hsh, x, y, 0, (r(1) - .5) * .16, (r(2) - .5) * .16); frustum(cx + (r(1) - .5) * .16, cy + (r(2) - .5) * .16, S.r[1], S.r[0] * .9, H * .55, H, 7, rot, col, 0, hsh, x, y, 0);
+      for (let k = 0; k < S.flares; k++) { const a = rot + k * 6.283 / S.flares + r(3 + k) * .5; frustum(cx + Math.cos(a) * .18, cy + Math.sin(a) * .18, .1, .04, 0, .32, 5, a, col, 0, hsh, x, y, 0, Math.cos(a) * .22, Math.sin(a) * .22); } }
+    else if (f.form === "pipe") { const S = SH.pipe, v = ((x + y) & 1) === 0; for (const at of S.at) { const px = v ? x + at : cx, py = v ? cy : y + at; frustum(px, py, S.r, S.r, 0, H, 8, 0, col, .04, hsh, x, y, 0); for (const z of [.5, 1.5]) frustum(px, py, S.r * 1.25, S.r * 1.25, z, z + .08, 8, 0, col.map((c) => c * .55), 0, hsh, x, y, 3); } }
+    else if (f.form === "slab") { const S = SH.slab, ax = (x + y) & 1 ? S.half[0] : S.half[1], ay = (x + y) & 1 ? S.half[1] : S.half[0]; box(cx, cy, ax, ay, 0, S.height, 7, 0, col, hsh, x, y); box(cx, cy, ax + .04, ay + .04, S.height, S.height + .1, 7, 0, col.map((c) => c * .85), hsh, x, y); } };
+  // the theme's glowing growth at a wall's foot: small caps or shards (CLOSE_VIEW_DEEP.shapes.growth), never on a tile's centre line
+  const buildGrowth = (gx, gy, nx, ny, k0, tx, ty) => { const G = th.growth, S = SH.growth, col = featureCol(G.rgb), stem = featureCol(G.stem || G.rgb), under = featureCol(G.under || G.rgb), hsh = (tx * 31 + ty * 17) % 997;
+    for (let k = 0; k < S.n; k++) { const r = (j) => rnd(tx, ty, k0 + k, 70 + j), along = (r(0) - .5) * .5, out = .06 + r(1) * .16, X = gx + (ny !== 0 ? along : 0) + nx * out, Y = gy + (nx !== 0 ? along : 0) + ny * out, sz = 1 - k * .22;
+      if (G.form === "cap") { const hh = (S.height[0] + (S.height[1] - S.height[0]) * r(2)) * sz, cr = (S.cap[0] + (S.cap[1] - S.cap[0]) * r(3)) * sz; frustum(X, Y, cr * .28, cr * .22, 0, hh, 5, 0, stem, G.glow * .2, hsh, tx, ty); frustum(X, Y, cr, cr * .35, hh, hh + cr * .55, 7, r(4) * 6.283, col, G.glow, hsh, tx, ty, 3); }
+      else { const hh = (S.shard[0] + (S.shard[1] - S.shard[0]) * r(2)) * sz, rr = .035 + .03 * r(3); frustum(X, Y, rr, 0, 0, hh, 4, r(4) * 6.283, col, G.glow, hsh, tx, ty, 0, nx * .06 + (r(5) - .5) * .08, ny * .06 + (r(6) - .5) * .08); } } };
   const iron = [.09, .085, .08], wax = [.72, .66, .52], clay = [.36, .27, .2], wood = [.2, .13, .08];
   const stillworks = stillworksCloseView(map);
   const arenaStone = [.105, .12, .16], pillarStone = [.16, .19, .25], lattice = [.37, .56, .67];
   for (let i = 0; i < geo.count; i++) { const o = i * 10, x0 = Fc[o], y0 = Fc[o + 1], x1 = Fc[o + 2], y1 = Fc[o + 3], nx = Fc[o + 4], ny = Fc[o + 5], tx = Fc[o + 6], ty = Fc[o + 7], st = Fc[o + 8], tier = tiles[ty * w + tx]?.tier === true, low = Fc[o + 9] || tier;
-    const door = st === STYLE_INDEX.door, mat = door ? 5 : MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = tier ? HALL_VIEW.tierHeight : low ? RB : H;
+    if (FT && featureOf(tx, ty)) { featured[ty * w + tx] = 1; continue; } // 2026-11-11: built as itself below
+    const door = st === STYLE_INDEX.door, mat = door ? 5 : !th.ownWalls && MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = tier ? HALL_VIEW.tierHeight : low ? RB : H;
     const a0 = ny !== 0 ? x0 : y0, a1 = ny !== 0 ? x1 : y1, grit = (geo.detail[i] || 0) * 4 + (geo.detailInst[i] & 15) * 2 + (geo.detailInst[i] & 16 ? 1 : 0), cb = geo.corner[i] & 3, ab = geo.ao[i] & 3, bits = cb + ab * 4, side = nx > 0 ? 1 : nx < 0 ? 3 : ny > 0 ? 2 : 0, hsh = ((tx * 73 + ty * 151 + side * 37) % 997 + 997) % 997;
     const dx = x1 - x0, dy = y1 - y0, fx = tx + nx, fy = ty + ny, front = free(fx, fy), exterior = tx - nx < 0 || ty - ny < 0 || tx - nx >= w || ty - ny >= h, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
     if (stillworks) {
@@ -2053,7 +2359,8 @@ function buildStatic(map, geo, th) {
     // a placed light: a sconce on the wall (on a bracket), a pod in a hive's wall, a lamp in a machine's
     let lit = false;
     if (rnd(tx, ty, side, 1) < src.share && deco !== 3) { const lx = mx + nx * .2, ly = my + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - lx, lights[k + 1] - ly) >= src.spacing;
-      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 || mat === 6 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
+      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 5 ? .42 : hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 || mat === 6 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
+        if (hue === 5 && th.growth) growths.push(mx, my, nx, ny, side, tx, ty); // 2026-11-11: the light is a cluster of glowing growth at the wall's foot
         if (hue !== 1 && hue < 4) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
     // candles in an inside corner, on the floor
     if ((ab & 1) && src.candles > 0 && rnd(tx, ty, side, 6) < src.candles) { const ux = Math.sign(dx), uy = Math.sign(dy), cx = x0 + ux * .2 + nx * .2, cy = y0 + uy * .2 + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - cx, lights[k + 1] - cy) >= src.spacing * .5;
@@ -2079,7 +2386,7 @@ function buildStatic(map, geo, th) {
   // arches over doorways: a passage one tile wide through a wall between two rooms takes an arch at each end, with its soffit
   const A = th.arch, stoneMat = th.wall.kind === 1 ? 1 : th.wall.kind, acol = th.wall.kind === 1 ? wood : tg.wall, round = A.radius > .01;
   const roomy = (x, y, ew) => ew ? !solid(x - 1, y) || !solid(x + 1, y) : !solid(x, y - 1) || !solid(x, y + 1);
-  for (let y = 0; !stillworks && y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue;
+  for (let y = 0; !stillworks && !A.none && y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue; // A.none (the Deep's caves): no masonry arches
     const direction = interiorTerrain(map) ? interiorArchAt(map, x, y) : null;
     const ns = interiorTerrain(map) ? direction === "ns"
       : solid(x - 1, y) && solid(x + 1, y) && !solid(x, y - 1) && !solid(x, y + 1) && roomy(x, y - 1, true) && roomy(x, y + 1, true);
@@ -2095,7 +2402,14 @@ function buildStatic(map, geo, th) {
       for (const q of [a, b, c2, a, c2, d2]) V(q[0], q[1], q[2], 0, q[3], q[2], H, 0, 0, 5, stoneMat, acol, 0, 0, 0, hsh, x, y); } }
   // Tile-sized beam sections use the same discovery mask as their ceiling plane. At a
   // crossing the short sections butt against the long one and share no bottom faces.
-  if (!stillworks && !map.hall?.open) {
+  // 2026-11-11: the features and growths (CLOSE_VIEW_DEEP), and the faces of the walls beside a feature (a wall face is only
+  // made where a wall meets open floor, and a feature tile counts as wall in the shared geometry).
+  if (FT) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!featured[y * w + x]) continue; const f = featureOf(x, y); buildFeature(f, x, y);
+    for (const [nx, ny] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const X = x + nx, Y = y + ny; if (X < 0 || Y < 0 || X >= w || Y >= h || !isWall(tiles[Y * w + X]) || featureOf(X, Y)) continue;
+      const ax = nx > 0 ? x + 1 : nx < 0 ? x : ny > 0 ? x + 1 : x, ay = ny > 0 ? y + 1 : ny < 0 ? y : nx > 0 ? y : y + 1, bx = nx > 0 ? x + 1 : nx < 0 ? x : ny > 0 ? x : x + 1, by = ny > 0 ? y + 1 : ny < 0 ? y : nx > 0 ? y + 1 : y;
+      quad(ax, ay, bx, by, 0, H, ny !== 0 ? ax : ay, ny !== 0 ? bx : by, -nx, -ny, 0, th.wall.kind, tg.wall, 0, 0, 0, (X * 73 + Y * 151) % 997, X, Y); } }
+  for (let i = 0; i < growths.length; i += 7) buildGrowth(growths[i], growths[i + 1], growths[i + 2], growths[i + 3], growths[i + 4] * 7, growths[i + 5], growths[i + 6]);
+  if (!stillworks && !map.hall?.open && th.ceiling.kind !== 5) { // the Deep's rock overhead (kind 5) has no beams
     const { data: mask } = closeViewMask(map);
     const covered = new Uint8Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -2179,16 +2493,53 @@ function buildStatic(map, geo, th) {
             V(X,Y,Z,X+Y,u,Z,H,-nx,-ny,0,th.wall.kind,tg.wall,0,0,0,0,x,y,false);
       }
     }
-    for(let i=0;i<lights.length;i+=LIGHT_FLOATS) lights[i+2]+=interiorSurfaceHeight(map,lights[i],lights[i+1]);
-    for(let i=0;i<flames.length;i+=FLAME_FLOATS) flames[i+2]+=interiorSurfaceHeight(map,flames[i],flames[i+1]);
+    for(let i=0;i<lights.length;i+=LIGHT_FLOATS) lights[i+2]+=surfaceZ(map,lights[i],lights[i+1]);
+    for(let i=0;i<flames.length;i+=FLAME_FLOATS) flames[i+2]+=surfaceZ(map,flames[i],flames[i+1]);
   }
   return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: out.a.slice(0, out.n), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.n / WALL_FLOATS };
 }
 // How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.
-function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map)); if (!st) return Infinity; const w = st.w;
+function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map));
+  if (!st) { // no GPU scene built (the 2D view): the same doorway arches, from the floor itself, so the higher presets stay under them
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (interiorArchAt(map, x + i * .3, y + j * .3)) { const a = themeOf(map).arch; return a.spring + Math.max(0, a.radius) * .55 - .08; } return Infinity; }
+  const w = st.w;
   for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const tx = Math.floor(x + i * .3), ty = Math.floor(y + j * .3); if (tx >= 0 && ty >= 0 && tx < w && st.arch[ty * w + tx]) return st.archCap; } return Infinity; }
 function staticFor(map, geo, th) { let st = STATIC.get(geo); if (!st || st.th !== th) { st = buildStatic(map, geo, th); st.th = th; STATIC.set(geo, st); } return st; }
 // For tests and the lab: the floor's built things (counts, and the lights and props as plain lists).
+// Standard-view parity (2026-11-11: "for everything that is native to Close View, make sure it shows well in the standard
+// view as well"): Close View lights an interior with sconces and candles it places itself (buildStatic, from the floor alone).
+// The ordinary view draws the same lights where they stand: each flame, a warm pool round it on the floor (a cached sprite a
+// hue, added in light), a gentle flicker (still with reduced motion). Only interiors Close View can show, only what the fog
+// of war has shown, only in view. CLOSE_VIEW_STD_LIGHTS: the pool's radius (tiles) and strength, a flame's size, how far a
+// wall flame is drawn up the wall.
+export const CLOSE_VIEW_STD_LIGHTS = Object.freeze({ pool: 1.6, alpha: .26, candleAlpha: .16, flame: .11, lift: .28, sprite: 64 });
+const STD_LIGHT = { seenMap: null, seen: null, sprites: [], failed: false };
+const STD_FLAME_CSS = HUE_RGB.map((c) => `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 200)},${Math.round(c[2] * 150)})`);
+function stdGlowSprite(hue) {
+  let c = STD_LIGHT.sprites[hue]; if (c || STD_LIGHT.failed) return c || null; const N = CLOSE_VIEW_STD_LIGHTS.sprite;
+  try { c = makeCanvas(); if (!c) { STD_LIGHT.failed = true; return null; } c.width = N; c.height = N; const x = c.getContext("2d"); const col = HUE_RGB[hue] || HUE_RGB[0], rgb = col.map((v) => Math.round(v * 255)).join(",");
+    const gr = x.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2); gr.addColorStop(0, `rgba(${rgb},1)`); gr.addColorStop(.35, `rgba(${rgb},.45)`); gr.addColorStop(1, `rgba(${rgb},0)`); x.fillStyle = gr; x.fillRect(0, 0, N, N); }
+  catch { STD_LIGHT.failed = true; return null; } STD_LIGHT.sprites[hue] = c; return c;
+}
+export function drawCloseViewLightsStd(ctx, g, s, now, l, t, r, b) {
+  const map = g?.map; if (!map || g.area !== "dungeon" || !interiorMap(map) || stillworksCloseView(map) || !Array.isArray(map.tiles)) return 0;
+  let st; try { st = staticFor(map, wallGeometry(map), themeOf(map)); } catch { return 0; }
+  if (STD_LIGHT.seenMap !== map) { STD_LIGHT.seenMap = map; STD_LIGHT.seen = glSeen(map); } const seen = STD_LIGHT.seen, S = CLOSE_VIEW_STD_LIGHTS;
+  const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), At = CLOSE_VIEW.atmosphere, L = st.lights, Fl = st.flames; let drawn = 0;
+  if (typeof ctx.drawImage !== "function" || typeof ctx.ellipse !== "function") return 0;
+  const near = (x, y, pad) => x > l - pad && x < r + pad && y > t - pad && y < b + pad && (!seen || seen(Math.floor(x), Math.floor(y)));
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < st.nLights; i++) { const o = i * LIGHT_FLOATS, x = L[o], y = L[o + 1]; if (!near(x, y, S.pool)) continue; const hue = L[o + 5] | 0, sp = stdGlowSprite(hue); if (!sp) break;
+    const fl = reduce ? 1 : 1 + At.flicker[0] * Math.sin(now / At.flicker[1] + L[o + 6]), R = S.pool * (L[o + 7] === 1 ? .75 : 1);
+    ctx.globalAlpha = Math.max(0, Math.min(1, (L[o + 7] === 1 ? S.candleAlpha : S.alpha) * L[o + 4] * fl)); ctx.drawImage(sp, (x - R) * s, (y - R) * s, 2 * R * s, 2 * R * s); drawn++; }
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  for (let i = 0; i < st.nFlames; i++) { const o = i * FLAME_FLOATS, x = Fl[o], y = Fl[o + 1]; if (!near(x, y, 1)) continue; const k = Fl[o + 3], up = Fl[o + 2] > 1 ? S.lift : .06;
+    const wob = reduce ? 1 : 1 + .12 * Math.sin(now / 90 + Fl[o + 5]), fx = x * s, fy = (y - up) * s, fw = S.flame * k * s, fh = S.flame * 1.9 * k * wob * s;
+    if (Fl[o + 2] > 1) { ctx.fillStyle = "#1c1814"; ctx.fillRect(fx - fw * .7, fy + fh * .1, fw * 1.4, fw * .6); } // the sconce's cup
+    ctx.fillStyle = STD_FLAME_CSS[Fl[o + 4] | 0] || STD_FLAME_CSS[0]; ctx.beginPath(); ctx.ellipse(fx, fy - fh * .35, fw * .55, fh * .6, 0, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = "#fff4d8"; ctx.beginPath(); ctx.ellipse(fx, fy - fh * .2, fw * .25, fh * .3, 0, 0, 6.2832); ctx.fill(); }
+  ctx.restore(); return drawn;
+}
 export function closeViewStatic(map) { const geo = wallGeometry(map), st = staticFor(map, geo, themeOf(map)); return { theme: closeViewThemeId(map?.building), verts: st.verts, lights: st.nLights, flames: st.nFlames, cards: st.nCards, data: st.data, lightList: st.lights, cardList: st.cards }; }
 // Feel pass 1 (pre-warm): a floor's walls (wallGeometry, then the static buffer) were built on the first Close View frame that
 // drew it, in the same frame as the floor's own load: 15-126 ms of CPU on a desktop, several times that on a phone, at the one
@@ -2240,13 +2591,13 @@ export function selectProjectedShots(g, q, reduce = false) {
   for (const p of g.projectiles || []) {
     if (PROJECTED_ENTRIES.length === limit) break;
     if (validFire(p) && Math.hypot(p.x-g.player.x,p.y-g.player.y)<SHOT_DRAW.maxRange && dungeonPointDiscovered(g.map,p)) {
-      const z=interiorSurfaceHeight(g.map,p.x,p.y)+SHOT_DRAW.height;if(!finite(z))continue;const geom={x:p.x,y:p.y,z,tail:null},d=Math.hypot(p.dx,p.dy),trailTime=Math.min(SHOT_DRAW.trailSeconds,p.age),length=Math.min(SHOT_DRAW.maxTrail,p.speed*trailTime);
-      if(!reduce&&d>1e-4&&length>0){const x=p.x-p.dx*length/d,y=p.y-p.dy*length/d,tz=interiorSurfaceHeight(g.map,x,y)+SHOT_DRAW.height;if(finite(x)&&finite(y)&&finite(tz)&&toolCueSegmentOpen(g.map,p.x,p.y,x,y))geom.tail={x,y,z:tz};}
+      const z=surfaceZ(g.map,p.x,p.y)+SHOT_DRAW.height;if(!finite(z))continue;const geom={x:p.x,y:p.y,z,tail:null},d=Math.hypot(p.dx,p.dy),trailTime=Math.min(SHOT_DRAW.trailSeconds,p.age),length=Math.min(SHOT_DRAW.maxTrail,p.speed*trailTime);
+      if(!reduce&&d>1e-4&&length>0){const x=p.x-p.dx*length/d,y=p.y-p.dy*length/d,tz=surfaceZ(g.map,x,y)+SHOT_DRAW.height;if(finite(x)&&finite(y)&&finite(tz)&&toolCueSegmentOpen(g.map,p.x,p.y,x,y))geom.tail={x,y,z:tz};}
       admit("fire",p,geom.tail?12:6,geom);
     }
   }
   const orbit=g.orbit?.flight;
-  if(PROJECTED_ENTRIES.length<limit&&validOrbit(g,orbit)&&Math.hypot(orbit.x-g.player.x,orbit.y-g.player.y)<SHOT_DRAW.maxRange&&dungeonPointDiscovered(g.map,orbit)){const z=interiorSurfaceHeight(g.map,orbit.x,orbit.y)+SHOT_DRAW.height;if(finite(z))admit("orbit",orbit,6,{x:orbit.x,y:orbit.y,z});}
+  if(PROJECTED_ENTRIES.length<limit&&validOrbit(g,orbit)&&Math.hypot(orbit.x-g.player.x,orbit.y-g.player.y)<SHOT_DRAW.maxRange&&dungeonPointDiscovered(g.map,orbit)){const z=surfaceZ(g.map,orbit.x,orbit.y)+SHOT_DRAW.height;if(finite(z))admit("orbit",orbit,6,{x:orbit.x,y:orbit.y,z});}
   PROJECTED_SHOTS.entries = PROJECTED_ENTRIES;
   PROJECTED_SHOTS.orbit = PROJECTED_ENTRIES.some(e=>e.kind==="orbit") ? orbit : null;
   return PROJECTED_SHOTS;
@@ -2277,13 +2628,36 @@ function shotMuzzleWeight(g, shot) {
     for (let i = 0; i < S.slots; i++) { const q = R.refs[i]; if (!q || q.dead || !(q.age < S.settle)) { R.refs[i] = null; if (slot < 0) slot = i; } }
     if (slot < 0) return 0;
     const back = shot.speed * age, d = Math.hypot(shot.dx, shot.dy) || 1;
-    if (!closeViewMuzzleOffset(MUZZLE_OFF, shot, MODEL_STATE.muzzle, interiorSurfaceHeight(g.map, shot.x - shot.dx / d * back, shot.y - shot.dy / d * back))) return 0;
+    if (!closeViewMuzzleOffset(MUZZLE_OFF, shot, MODEL_STATE.muzzle, surfaceZ(g.map, shot.x - shot.dx / d * back, shot.y - shot.dy / d * back))) return 0;
     R.refs[slot] = shot; R.offset[slot * 3] = MUZZLE_OFF[0]; R.offset[slot * 3 + 1] = MUZZLE_OFF[1]; R.offset[slot * 3 + 2] = MUZZLE_OFF[2];
   }
   MUZZLE_OFF[0] = R.offset[slot * 3]; MUZZLE_OFF[1] = R.offset[slot * 3 + 1]; MUZZLE_OFF[2] = R.offset[slot * 3 + 2];
   return closeViewMuzzleWeight(age, S.settle);
 }
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
+// Tim, 2026-11-11, in the Deep: props drawn as solid models in the GPU scene (close-view-models.ts
+// CLOSE_VIEW_PROP_MODELS), after the creatures and outside their cap: at most `cap` a frame, nearest first. Aperture crystals (the
+// overlay's Veiled Inscription and Deep Lattice Relic, violet; the Unseen Crossing, cyan) float `hover` tiles up, bobbing `bob`
+// tiles over `bobSec` seconds and turning once in `turnSec` (held still under Reduced Motion), sized by their tier (`scale`). The
+// Oculus's dais is always the standard view's blue, turning once in `dais.turnSec`, opening and fading as its 2D mark does
+// (`open`, `fade`: oculus.ts OCULUS). The Ember Door and the Deep Stair stand as lit stones. The nearest glowing prop also lights
+// the place round it (`light`: reach, strength; `glow`: its colour), taking one of the placed-light slots.
+export const CLOSE_VIEW_PROPS = Object.freeze({ version: 1, cap: 6,
+  crystal: Object.freeze({ hover: .78, bob: .07, bobSec: 2.6, turnSec: 9, scale: Object.freeze([1, 1, 1.12, 1.3]) }),
+  objects: Object.freeze({ apertureMemory: "apertureCrystal", apertureRelic: "apertureCrystal", apertureDoor: "apertureRift", emberDoor: "wayEmber", deepStair: "wayDeep" }),
+  dais: Object.freeze({ turnSec: 4, open: .25, fade: .8 }),
+  light: Object.freeze({ reach: 2.2, strength: .8, height: .7 }),
+  glow: Object.freeze({ apertureCrystal: Object.freeze([.77, .55, 1]), apertureRift: Object.freeze([.5, .9, 1]), oculusDais: Object.freeze([.5, .9, 1]), wayEmber: Object.freeze([.95, .64, .36]), wayDeep: Object.freeze([1, .82, .35]) }) });
+// A prop's pose this frame: how high it floats above the floor (lift), its turn (yaw) and its size (scale). Pure.
+export function closeViewPropPose(kind, o, now, reduce = false) {
+  const P = CLOSE_VIEW_PROPS, t = reduce ? 0 : (Number(now) || 0) / 1000, seed = (((Number(o?.x) || 0) * 7 + (Number(o?.y) || 0) * 13) % 17 + 17) % 17, TAU = Math.PI * 2;
+  if (kind === "apertureCrystal" || kind === "apertureRift") { const C = P.crystal;
+    return { lift: C.hover + (reduce ? 0 : C.bob * Math.sin((t / C.bobSec + seed / 17) * TAU)), yaw: seed / 17 * TAU + t / C.turnSec * TAU, scale: C.scale[Math.max(0, Math.min(3, Math.floor(Number(o?.visualTier) || 0)))] }; }
+  if (kind === "oculusDais") return { lift: 0, yaw: t / P.dais.turnSec * TAU, scale: 1 };
+  return { lift: 0, yaw: seed * Math.PI / 2, scale: 1 };
+}
+// Whether this frame's GPU scene draws the props as models: main.ts then leaves their flat marks off the floor texture.
+export const closeViewDrawsProps = () => capturing && closeViewStats.gl === 1;
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
 const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkRadians: 5.4, castMs: ACTION_MOTION.castMs, turnRate: 12, strideSpeed: 4, windupMs: 450 });
 const PLAYER_VISUAL_KIND = Object.freeze({
@@ -2305,8 +2679,8 @@ export function closeViewPrimaryWeaponKind(item) {
 }
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
-  vertices: new Float32Array((MODEL_LIMIT.full * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), // + the imported hero's suit reservation
-  beasts: { count: 0, items: [], tracks: new Map() }, // release 889: skinned world-beast bodies this frame (close-view-beasts.ts)
+  vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11) and the imported hero's suit reservation
+  beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
@@ -2456,7 +2830,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier))) continue;
     let track = B.tracks.get(foe); if (!track) { track = spec.createTrack(); B.tracks.set(foe, track); }
     // the standard view's own scale (u = tile x scale), times the beast's Close View presentation factor
-    BEAST_ENV.x = boardWX[it]; BEAST_ENV.y = boardWY[it]; BEAST_ENV.z = interiorSurfaceHeight(g.map, foe.x + .5, foe.y + .75); BEAST_ENV.scale = Math.max(.6, Number(foe.scale) || 1) * (spec.scale || 1);
+    BEAST_ENV.x = boardWX[it]; BEAST_ENV.y = boardWY[it]; BEAST_ENV.z = surfaceZ(g.map, foe.x + .5, foe.y + .75); BEAST_ENV.scale = Math.max(.6, Number(foe.scale) || 1) * (spec.scale || 1);
     BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = false;
     const frame = spec.sample(track, foe, BEAST_ENV); if (!frame) continue;
     // A beast stands solid through most of the distance fade ordinary creatures take (pass 3, 2026-11-11: a boss the height of
@@ -2643,7 +3017,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     // stomp (and its normal native fallback) has empty held gear in this pass.
     const formKind = who === player && form ? playerFormModelKey(form, visualProfile==='hammer'?'hammer':held) : null;
     const actor = { kind: (pose==='shovelDig'?'playerShovel':formKind) || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
-      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
+      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: surfaceZ(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
       primaryStep: visualRecord?.primaryStep, primaryMotion: visualRecord?.primaryMotion, primaryStage, meleeAction, cleaverFrame,
@@ -2660,7 +3034,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       actionPhase: presentation?.stagger ? 'stunned' : monsterAction?.semantic?.phase,
       actionProgress: monsterAction?.semantic?.progress || 0,
       alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (who === player ? 1 : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
-      attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: interiorSurfaceHeight(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
+      attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: surfaceZ(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
       poison: who === player && g.save.elites?.status?.poison > 0, muzzleOut: who === player ? state.nativeMuzzle : null };
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
     track.winding = winding;
@@ -2675,7 +3049,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         const input = state.heroInput, action = state.heroAction;
         input.nowMs = poseTime - (g.presentationPausedMs || 0); input.reducedMotion = reduce;
         input.x = actor.x; input.y = actor.y;
-        input.groundZ = interiorSurfaceHeight(g.map, who.x + .5, who.y + .75);
+        input.groundZ = surfaceZ(g.map, who.x + .5, who.y + .75);
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         input.powerSuit = form?.kind === 'playerPowerSuit';
@@ -2776,9 +3150,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const dx=x-track.x,dy=y-track.y,dist=Math.hypot(dx,dy),elapsed=Math.max(0,Math.min(.1,(now-track.at)/1000));
     if(dist>.002&&dist<3){track.phase=(track.phase+dist*MODEL_TIMING.walkRadians)%(Math.PI*2);track.yaw=Math.atan2(dy,dx);}
     const pace=elapsed>0&&dist<3?Math.min(1,dist/elapsed/MODEL_TIMING.strideSpeed):0;
-    const actor={x,y,z:interiorSurfaceHeight(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
+    const actor={x,y,z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
-      z:interiorSurfaceHeight(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it]))};
+      z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it]))};
     if(!append(actor))return;Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
     closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
   };
@@ -2805,6 +3179,21 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(itemKind[it]===1&&d?.nativeAux)admitAux(it,d);
     else if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
   }
+  // 2026-11-11: the props (CLOSE_VIEW_PROPS), outside the creature cap; the Oculus's dais first, then the nearest objects.
+  const PR = CLOSE_VIEW_PROPS; let props = 0; state.glintOn = false;
+  const prop = (kind, X, Y, o, alpha = 1, grow = 1) => {
+    if (props >= PR.cap) return false; const pose = closeViewPropPose(kind, o, now, reduce), Z = interiorSurfaceHeight(g.map, X, Y);
+    const next = writeCloseViewModel(state.vertices, offset, { kind, x: X, y: Y, z: Z + pose.lift, yaw: pose.yaw, phase: 0, pace: 0, amount: 0, pose: 'idle', alpha, reduceMotion: reduce, scale: pose.scale * grow });
+    if (next === offset) return false; offset = next; props++;
+    const G = PR.glow[kind]; if (G && !state.glintOn) { const q = state.glint; q[0] = X; q[1] = Y; q[2] = Z + Math.max(pose.lift, PR.light.height); q[3] = G[0]; q[4] = G[1]; q[5] = G[2]; q[6] = alpha; state.glintOn = true; }
+    return true; };
+  const oc = g.oculus;
+  if (oc && oc.map === g.map && Number.isFinite(oc.x) && Number.isFinite(oc.y)) { const D = PR.dais, age = (now - oc.born) / 1000, left = (oc.until - now) / 1000, alpha = Math.max(0, Math.min(1, left / D.fade)), grow = reduce ? 1 : Math.max(.25, Math.min(1, age / D.open));
+    if (alpha > 0) prop('oculusDais', oc.x + .5, oc.y + .5, oc, alpha, grow); }
+  for (let oi = n - 1; oi >= 0 && props < PR.cap; oi--) { const it = order[oi]; if (itemKind[it] !== 1 || state.admitted.has(it)) continue;
+    const o = draws[itemRef[it]]?.object, kind = o && PR.objects[o.kind]; if (!kind || !Number.isFinite(Number(o.x)) || !Number.isFinite(Number(o.y))) continue;
+    if (prop(kind, Number(o.x) + .5, Number(o.y) + .5, o)) state.admitted.add(it); }
+  state.props = closeViewGLStats.props = props;
   for (const [who, track] of state.tracks) {
     if (who.kind === 'voidWalker' && who.dead) { state.tracks.delete(who); continue; }
     if (who.dead && who.hp <= 0 && !who.noRewards) {
@@ -2847,7 +3236,7 @@ export function writePlacedSpellLight(frame, fx, map, slot) {
   if(!fx||!Object.hasOwn(PLACED_SPELL_LIGHT,fx.kind)||!Number.isInteger(slot)||slot<0||slot>=8)return false;
   const color=PLACED_SPELL_LIGHT[fx.kind],tile=map.tiles[Math.floor(fx.y)*(map.width||32)+Math.floor(fx.x)];
   const roof=interiorArchAt(map,fx.x,fx.y)||tile?.doorway?Math.min(interiorCeilingHeight(map),INTERIOR_TRAVERSAL.archClearance):interiorCeilingHeight(map);
-  const ground=interiorSurfaceHeight(map,fx.x,fx.y),roofZ=(interiorTerrain(map)?ground:0)+roof-.15;
+  const ground=surfaceZ(map,fx.x,fx.y),roofZ=(interiorTerrain(map)?ground:0)+roof-.15;
   const o=slot*4;frame.lp[o]=fx.x;frame.lp[o+1]=fx.y;frame.lp[o+2]=Math.max(ground,Math.min(ground+.65,roofZ));
   frame.lp[o+3]=Math.min(4,Math.max(1,fx.radius));
   frame.lc[o]=color[0];frame.lc[o+1]=color[1];frame.lc[o+2]=color[2];
@@ -2903,6 +3292,53 @@ function nearbyDoorTorches(g,px,py,reach,seen,limit){
   list.sort((a,b)=>a.dist-b.dist);
   return list.slice(0,limit);
 }
+// Which roofs to leave out this frame (OUTDOOR.buildings): writes the solids' runs to draw into F.runs (nRuns 0: draw it all).
+function roofRuns(F, scene, px, py, cx, cy) {
+  const roofs = scene.houses.roofs, base = scene.solids.roofStart, at = scene.solids.housesAt; let hidden = 0;
+  for (let i = 0; i < roofs.length; i++) { const r = roofs[i], pad = .4; if (roofHidden(r, px, py, cx, cy, pad)) hidden |= 1 << i; }
+  if (!hidden) return; let k = 0, a = 0, end = base; F.runs[0] = 0;
+  for (let i = 0; i < roofs.length && k < 15; i++) { const r = roofs[i], r0 = at + r.start, r1 = r0 + r.count; if (hidden & (1 << i)) { if (end > a) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; } a = r1; end = a; } else end = r1; }
+  if (end > a && k < 16) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; }
+  F.nRuns = Math.max(1, k); if (!k) { F.runs[0] = 0; F.runs[1] = 0; } }
+export function roofHidden(r, px, py, cx, cy, pad = .4) {
+  const x0 = r.x0 - pad, y0 = r.y0 - pad, x1 = r.x1 + pad, y1 = r.y1 + pad;
+  if (px > r.x0 && px < r.x1 && py > r.y0 && py < r.y1) return true; // inside it
+  if (cx > x0 && cx < x1 && cy > y0 && cy < y1) return true; // the camera over it
+  // between them: the segment from the camera to the Wayfarer's feet crosses its box (a slab test)
+  const dx = px - cx, dy = py - cy; let t0 = 0, t1 = 1;
+  if (Math.abs(dx) < 1e-9) { if (cx < x0 || cx > x1) return false; } else { const a = (x0 - cx) / dx, b = (x1 - cx) / dx; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
+  if (Math.abs(dy) < 1e-9) { if (cy < y0 || cy > y1) return false; } else { const a = (y0 - cy) / dy, b = (y1 - cy) / dy; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
+  return t0 <= t1;
+}
+// The Wayfarer's leaps and drops over the overworld's taller levels (OUTDOOR.terrain version 3). Gameplay is unchanged: one
+// jump a level, the tile under the feet decides the footing. What is drawn: the footing (`base`) rises toward the ledge the
+// jump is carrying them onto (the ground where their motion will put them when the jump ends), so the arc clears the ledge
+// before the feet cross onto it, never popping up; the arc itself is scaled from the ordinary jump's (JUMP.arc tiles at its
+// peak) to `arcPeak` of a level; stepping or jumping off a ledge, the footing falls under `gravity` until it meets the
+// ground. A difference of `snap` or less (a ramp's slope, a pebble of noise) is followed at once. Presentation only: it
+// writes the frame's captured Wayfarer card's jumpLift (a fresh object each frame), never the game.
+export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, gravity: 28, snap: .18, rise: 16, reset: 2.5 });
+const LEAP = { map: null, base: 0, v: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0 };
+export function presentLeap(g, now, d) {
+  const K = CLOSE_VIEW_LEAP, p = g.player, fx = footX(p), fy = footY(p), ground = surfaceZ(g.map, fx, fy), clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  const special = !!(g.droneLift || g.mechBoosting || g.glide || g.swimming || g.save?.boat?.aboard || g.mountRide?.() || g.skyAir != null);
+  if (LEAP.map !== g.map || !Number.isFinite(LEAP.x) || Math.hypot(fx - LEAP.x, fy - LEAP.y) > K.reset || special) { LEAP.base = ground; LEAP.v = 0; LEAP.vx = LEAP.vy = 0; LEAP.t = clock; }
+  const dt = Math.max(0, Math.min(.1, (clock - LEAP.t) / 1000));
+  if (dt > 0) { const k = Math.min(1, dt * 12); LEAP.vx += ((fx - LEAP.x) / dt - LEAP.vx) * k; LEAP.vy += ((fy - LEAP.y) / dt - LEAP.vy) * k; }
+  LEAP.map = g.map; LEAP.t = clock; LEAP.x = fx; LEAP.y = fy; if (special) return;
+  const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0); let arc = 0;
+  if (jumping) { const left = Math.max(0, ((g.jumpUntil || 0) - clock) / 1000), ahead = surfaceZ(g.map, fx + LEAP.vx * left, fy + LEAP.vy * left), target = Math.max(ground, ahead);
+    if (target > LEAP.base) LEAP.base += (target - LEAP.base) * Math.min(1, dt * K.rise); // rising toward the ledge it is carrying them onto
+    arc = lift / K.arcFrom * K.arcPeak * OUTDOOR.terrain.level; }
+  if (ground >= LEAP.base) { if (!jumping || ground - LEAP.base <= K.snap) LEAP.base = ground; LEAP.v = 0; } // stepped up without a leap (a ramp, a lift): on it at once
+  else if (LEAP.base - ground <= K.snap && !jumping) { LEAP.base = ground; LEAP.v = 0; }
+  else if (!jumping) { LEAP.v += K.gravity * dt; LEAP.base = Math.max(ground, LEAP.base - LEAP.v * dt); if (LEAP.base <= ground) LEAP.v = 0; } // off a ledge: a fall
+  const z = Math.max(ground, LEAP.base + arc); d.jumpLift = Math.max(0, z - ground - Math.max(0, Number(d.lift) || 0));
+  return z;
+}
+export const closeViewLeap = () => ({ base: LEAP.base, v: LEAP.v }); // for tests
+const PROP_Z = { map: null }; // the floor whose props are being built (propZ reads its heights; no closure a frame)
+const propZ = (x, y) => interiorSurfaceHeight(PROP_Z.map, x, y);
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor) {
   try {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, Cs = CLOSE_VIEW.contact, Wl = CLOSE_VIEW.walls, Lt = CLOSE_VIEW.light, At = CLOSE_VIEW.atmosphere, F = GLF, p = g.player;
@@ -2917,7 +3353,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = fogNear - CLOSE_VIEW.fog.near;
   F.fogNear = air || flatWorld ? fogNear : Fo.near + fogK; F.fogFar = air || flatWorld ? fogFar : Fo.far + fogK; F.reach = F.fogFar + 2;
   F.fog.set(air?.fog || tg.fog); F.haze.set(air?.haze || tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = (air?.hazeBand || Fo.haze)[0]; F.fogP[3] = (air?.hazeBand || Fo.haze)[1];
-  F.amb.set(air?.ambient || tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + interiorSurfaceHeight(g.map, footX(p), footY(p)); F.torchP[3] = .3;
+  F.amb.set(air?.ambient || tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + surfaceZ(g.map, footX(p), footY(p)); F.torchP[3] = .3;
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
@@ -2926,16 +3362,27 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   UNI.worldCapture = flatWorld;
   // the open world (close-view-outdoor.ts): its sky, sun and air, the ground's far field and its solids
   F.outdoor = 0; F.sunC.fill(0);
-  const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map) : null;
+  const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map, RELIEF.map === g.map) : null;
   if (openWorld && glOutdoor(openWorld)) { const sk = openWorld.sky, view = OUTDOOR.view[g.presentation?.effectiveQuality] || OUTDOOR.view.balanced, half = GROUND.W / (2 * s), W2 = OUTDOOR.water, R2 = OUTDOOR.relief, D2 = OUTDOOR.detail;
     F.outdoor = 1; F.fogNear = view.near; F.fogFar = view.far; F.reach = F.fogFar + 2; F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar;
-    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= OUTDOOR.torch;
+    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= sk.torch ?? OUTDOOR.torch;
     F.grade[0] = sk.grade[0]; F.grade[1] = sk.grade[1]; F.grade[2] = sk.grade[2]; F.grade[3] = 1 / sk.grade[3]; F.finish[0] = Q.vignette ? OUTDOOR.vignette : OUTDOOR.vignette * .6;
     F.outdoorP[1] = half - OUTDOOR.blend.inner; F.outdoorP[2] = half - OUTDOOR.blend.outer; F.outdoorP[3] = Q.detail ? 1 : 0;
     F.skyZ[0] = sk.zenith[0]; F.skyZ[1] = sk.zenith[1]; F.skyZ[2] = sk.zenith[2]; F.skyZ[3] = sk.clouds; F.skyH[0] = sk.horizon[0]; F.skyH[1] = sk.horizon[1]; F.skyH[2] = sk.horizon[2]; F.skyH[3] = sk.ridgeH;
     F.ridge[0] = sk.ridge[0]; F.ridge[1] = sk.ridge[1]; F.ridge[2] = sk.ridge[2]; F.ridge[3] = sk.rough;
     F.outW[0] = W2.base; F.outW[1] = W2.glance; F.outW[2] = W2.ripple; F.outW[3] = W2.rippleAmp; F.outR[0] = R2.foot; F.outR[1] = R2.dark; F.outR[2] = R2.lip; F.outR[3] = R2.light;
-    F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint; }
+    F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint;
+    F.outX[0] = OUTDOOR.ground.art; F.outX[1] = W2.shore; F.outX[2] = Q.relief ? W2.foam : W2.foam * .6; F.outX[3] = g.map.movers?.length ? 1 : 0; // rafts are drawn on the water by the ordinary art: keep it there
+    F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.motes ? 1 : 0; // clouds in the water: the full tier only
+    // the sky's mood: stars, the clouds' undersides, the moon, a distant flash (none with reduced motion) and the clouds' colour
+    const flash = reduce ? 0 : outdoorLightning(now, sk.lightning || 0); F.mood[0] = sk.stars || 0; F.mood[1] = sk.cloudDark || 0; F.mood[2] = sk.moon || 0; F.mood[3] = flash;
+    if (sk.cloud) { F.moodC[0] = sk.cloud[0]; F.moodC[1] = sk.cloud[1]; F.moodC[2] = sk.cloud[2]; } else F.moodC.fill(1); F.moodC[3] = flash > 0 ? LIGHTNING.az : 0;
+    if (flash > 0) { const lift = 1 + OUTDOOR.lightning.lift * flash; F.amb[0] *= lift; F.amb[1] *= lift; F.amb[2] *= lift; } }
+  // a house's roof is left out while the Wayfarer is inside it, the camera is over it, or it stands between them
+  F.relief = F.outdoor && openWorld.ground && glRelief(openWorld) ? 1 : 0;
+  F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy);
+  // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
+  F.props = 0; if (!openWorld && !(outdoor && flatWorld)) { PROP_Z.map = g.map; const ps = propScene(g.map, propZ, seen); if (ps && ps.solids.verts > 0 && glProps(ps)) F.props = 1; }
   UNI.backdrop = BACKDROPS.get(stillworks ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.inlay = st.inlay;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
@@ -2946,21 +3393,24 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const K = Math.min(8, Q.lights ?? At.lights), L = st.lights, px = F.px, py = F.py;
   const spellLight=K>0?nearestPlacedSpellLight(g.effects,g.map,px,py,F.reach,seen):null;
   const torchLights=nearbyDoorTorches(g,px,py,F.reach,seen,Math.min(2,K-(spellLight?1:0)));
-  const staticLimit=K-(spellLight?1:0)-torchLights.length;let nk = 0;
+  const glintSlot=MODEL_STATE.glintOn&&models&&K>2?1:0; // 2026-11-11: one slot for the nearest glowing prop
+  const staticLimit=K-(spellLight?1:0)-torchLights.length-glintSlot;let nk = 0;
   for (let i = 0; i < st.nLights; i++) { const o = i * LIGHT_FLOATS, d = Math.hypot(L[o] - px, L[o + 1] - py); if (d > F.reach + L[o + 3]) continue; if (seen && !seen(Math.floor(L[o]), Math.floor(L[o + 1]))) continue;
     if (nk < staticLimit) { PICK.idx[nk] = i; PICK.d[nk] = d; nk++; } else if(staticLimit>0) { let wi = 0; for (let j = 1; j < nk; j++) if (PICK.d[j] > PICK.d[wi]) wi = j; if (d < PICK.d[wi]) { PICK.idx[wi] = i; PICK.d[wi] = d; } } }
   for (let i = 1; i < nk; i++) { const di = PICK.d[i], ii = PICK.idx[i]; let j = i - 1; while (j >= 0 && PICK.d[j] > di) { PICK.d[j + 1] = PICK.d[j]; PICK.idx[j + 1] = PICK.idx[j]; j--; } PICK.d[j + 1] = di; PICK.idx[j + 1] = ii; } // nearest first (the shader's highlights take the first two)
   const famp = At.flicker[0], fper = At.flicker[1];
-  for (let j = 0; j < nk; j++) { const o = PICK.idx[j] * LIGHT_FLOATS, hue = HUE_RGB[L[o + 5]] || HUE_RGB[0], ph = L[o + 6], fail = L[o + 5] === 3;
+  for (let j = 0; j < nk; j++) { const o = PICK.idx[j] * LIGHT_FLOATS, hue = L[o + 5] === 5 ? tg.glow : HUE_RGB[L[o + 5]] || HUE_RGB[0], ph = L[o + 6], fail = L[o + 5] === 3;
     const fl = reduce ? 1 : 1 + famp * (fail ? 2.2 : 1) * (Math.sin(now / fper + ph) * .6 + Math.sin(now / (fper * .37) + ph * 2.1) * .4) - (fail && Math.sin(now / 1700 + ph * 3) > .93 ? .6 : 0);
     F.lp[j * 4] = L[o]; F.lp[j * 4 + 1] = L[o + 1]; F.lp[j * 4 + 2] = L[o + 2]; F.lp[j * 4 + 3] = L[o + 3]; F.lc[j * 4] = hue[0]; F.lc[j * 4 + 1] = hue[1]; F.lc[j * 4 + 2] = hue[2]; F.lc[j * 4 + 3] = L[o + 4] * Math.max(0, fl); }
   F.nl = nk;
   // Append after static lights: PICK, first-two highlights, halos and motes keep
   // their original static indices. No additional cards or rendering passes.
   if(spellLight&&writePlacedSpellLight(F,spellLight,g.map,nk))F.nl++;
+  // 2026-11-11: the nearest glowing prop (a floating crystal, the Oculus's dais, a lit way stone) lights the place round it
+  if(glintSlot&&F.nl<K){const q=MODEL_STATE.glint,i=F.nl++*4,L2=CLOSE_VIEW_PROPS.light;F.lp[i]=q[0];F.lp[i+1]=q[1];F.lp[i+2]=q[2];F.lp[i+3]=L2.reach;F.lc[i]=q[3];F.lc[i+1]=q[4];F.lc[i+2]=q[5];F.lc[i+3]=L2.strength*q[6];}
   for(const torch of torchLights){
     const i=F.nl++*4;
-    F.lp[i]=torch.x;F.lp[i+1]=torch.y;F.lp[i+2]=interiorSurfaceHeight(g.map,torch.x,torch.y)+.82;F.lp[i+3]=1.8;
+    F.lp[i]=torch.x;F.lp[i+1]=torch.y;F.lp[i+2]=surfaceZ(g.map,torch.x,torch.y)+.82;F.lp[i+3]=1.8;
     F.lc[i]=torch.arrival?.21:.55;F.lc[i+1]=torch.arrival?.65:.26;F.lc[i+2]=1;F.lc[i+3]=.68;
   }
   // billboards (far to near), and their floor decals
@@ -2969,7 +3419,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const room = (verts) => { if ((dv + verts) * DECAL_FLOATS > D.length) D = glEnsure("decal", dv + verts + 600); };
   let boardBase = 0;
   const BV = (X, Y, Z, u, v, a, fl, gh, li) => { const b = bv * BOARD_FLOATS; B[b] = X; B[b + 1] = Y; B[b + 2] = Z + boardBase; B[b + 3] = u; B[b + 4] = v; B[b + 5] = a; B[b + 6] = fl; B[b + 7] = gh; B[b + 8] = li; bv++; };
-  const DV = (X, Y, Z, lx, ly, kind, a, wd, li, absolute = false) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z + (absolute ? 0 : interiorSurfaceHeight(g.map, X, Y)); D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
+  const DV = (X, Y, Z, lx, ly, kind, a, wd, li, absolute = false) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z + (absolute ? 0 : surfaceZ(g.map, X, Y)); D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
   const flatD = (X, Y, r, kind, a, wd, li = 1) => { room(6); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y - r, .01, 1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y + r, .01, -1, 1, kind, a, wd, li); };
   const shadow = (X, Y, sc, opacity = 1) => {
     let lx = px, ly = py, best = lightLevel(F, X, Y, .4);
@@ -2992,12 +3442,12 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     DV(bx + wx, by + wy, .008, 1, 1, 10, a, 0, 0);
     DV(ax + wx, ay + wy, .008, -1, 1, 10, a, 0, 0);
   };
-  const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : interiorSurfaceHeight(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
+  const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : surfaceZ(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
   const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = MODEL_STATE.admitted.has(it) ? nativeBoardTop(foe, sc, draws[itemRef[it]].nativeHeight) : Math.max(A.height * sc,draws[itemRef[it]].nativeHeight||0), X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
     const draw = draws[itemRef[it]];
-    boardBase = interiorSurfaceHeight(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07))
+    boardBase = surfaceZ(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07))
       + (interiorTerrain(g.map) ? closeViewActorLift(draw, MODEL_STATE.admitted.has(it)) : 0);
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const residual = MODEL_STATE.admitted.has(it);
@@ -3011,6 +3461,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // outdoors: a soft shadow under each standing tree near the Wayfarer, cast a little away from the sun
   if (F.outdoor) { const Ts = OUTDOOR.treeShadow; for (const o of g.map.objects || []) { if (!outdoorTreeObject(o)) continue; const X = Number(o.x) + .5 - F.sun[0] * .35, Y = Number(o.y) + .72 - F.sun[1] * .35;
     if (Math.hypot(X - px, Y - py) > F.reach) continue; flatD(X, Y, Ts.r * OUTDOOR.trees[o.vegetationForm].r / OUTDOOR.trees.canopy.r + .15, 0, Ts.alpha, 0); } }
+  // a soft shadow under each prop drawn as a solid (OUTDOOR.props), a little away from the sun outdoors
+  if (F.outdoor || F.props) { const Ps = OUTDOOR.props.shadow, list = (F.outdoor ? openWorld?.props : propScene(g.map, propZ, seen)?.props)?.objects; if (list) for (const o of list) {
+    const X = Number(o.x) + .5 - (F.outdoor ? F.sun[0] * .2 : 0), Y = Number(o.y) + .62 - (F.outdoor ? F.sun[1] * .2 : 0); if (Math.hypot(X - px, Y - py) > F.reach) continue; flatD(X, Y, Ps.r, 0, Ps.alpha, 0); } }
   // card props near the Wayfarer: cobwebs, chains, bones (the nearest `cards`), and the spikes of traps that are up
   { const P = At.props, C2 = st.cards, cap = Q.cards ?? P.cards; let used = 0; const H0 = Wl.height;
     for (let i = 0; i < st.nCards && used < cap; i++) { const o = i * CARD_FLOATS, X = C2[o + 1], Y = C2[o + 2]; if (Math.hypot(X - px, Y - py) > P.reach || Math.hypot(X - CAM.cx, Y - CAM.cy) < P.nearCam) continue; // never a card right at the lens if (seen && !seen(Math.floor(X + (C2[o] === 4 ? C2[o + 5] * .5 : 0)), Math.floor(Y + (C2[o] === 4 ? C2[o + 6] * .5 : 0)))) continue; used++;
@@ -3027,7 +3480,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   if (g.playerFire?.left > 0) for (let oi = 0; oi < n; oi++) {
     const it = order[oi], draw = draws[itemRef[it]];
     if (itemKind[it] !== 1 || draw !== capturedPlayer || !MODEL_STATE.admitted.has(it)) continue;
-    const X = boardWX[it], Y = boardWY[it], support = interiorSurfaceHeight(g.map, X, Y - .07) + closeViewActorLift(draw, true);
+    const X = boardWX[it], Y = boardWY[it], support = surfaceZ(g.map, X, Y - .07) + closeViewActorLift(draw, true);
     const statusNow = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
     const knocked = statusNow < (g.player.stunnedUntil || 0), form = playerFormPresentation(g), body = knocked ? .35 : form ? form.head * .52 : .72;
     for (let i = 0; i < 3; i++) {
@@ -3089,13 +3542,13 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // Accepted release cue follows this frame's actual final socket. It never moves the shot.
   if(MODEL_STATE.toolEmissionReady&&MODEL_STATE.toolRelease){const release=MODEL_STATE.toolRelease,releaseNow=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,elapsed=Math.max(0,release.durationMs-Math.max(0,(g.player.actionVisualUntil||0)-releaseNow)),age=toolUseReleaseAge(release,elapsed);
     if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
-    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot&&!(shotMuzzleWeight(g,shot)>0)){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
+    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot&&!(shotMuzzleWeight(g,shot)>0)){const head=projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
   // Spells arbitrate the same single release lane after final-pose sampling. Fire may link only its
   // immutable accepted central source; Orbit deliberately has no connector.
   if(!MODEL_STATE.toolEmissionReady&&MODEL_STATE.spellEmissionReady&&MODEL_STATE.spellRelease){const release=MODEL_STATE.spellRelease,at=MODEL_STATE.spellEmission,releaseNow=g.paused&&finite(g.pauseStarted)?g.pauseStarted:now,duration=release.durationMs||MODEL_TIMING.castMs,age=Math.max(0,duration-Math.max(0,(g.player.castUntil||0)-releaseNow));
     if(age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.spellAlpha,r=.045;room(6);card(at[0],at[1],at[2]-r,at[2]+r,r,11,a,release.profile==='orbit-launch'?0xb48cff:0xff7a2a,0,true);}
-    if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=interiorSurfaceHeight(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
+    if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=surfaceZ(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
   }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
   for (const entry of shots?.entries || []) {
@@ -3104,7 +3557,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       const X=entry.geom.x,Y=entry.geom.y,z=entry.geom.z,size=shot.radius>1.1?.32:.22,color=shot.perfect?0xffd86a:0xb48cff;
       room(6);card(X,Y,z-size,z+size,size,11,SHOT_DRAW.headAlpha,color,0,true);continue;
     }
-    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),mw=fire?0:shotMuzzleWeight(g,shot),X=head.x+MUZZLE_OFF[0]*mw,Y=head.y+MUZZLE_OFF[1]*mw,z=head.z+MUZZLE_OFF[2]*mw,magic = shot.damageType === "magic";
+    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y)),mw=fire?0:shotMuzzleWeight(g,shot),X=head.x+MUZZLE_OFF[0]*mw,Y=head.y+MUZZLE_OFF[1]*mw,z=head.z+MUZZLE_OFF[2]*mw,magic = shot.damageType === "magic";
     const size = fire?.2:(magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1));
     const hue = fire?"#ff7a2a":standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
@@ -3114,7 +3567,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       if (d > 1e-4) {
         const trailTime = Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
         const length = Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
-        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tw=mw>0?closeViewMuzzleWeight((shot.age||0)-trailTime):0,tx=tail.x+MUZZLE_OFF[0]*tw,ty=tail.y+MUZZLE_OFF[1]*tw,tz=tail.z+MUZZLE_OFF[2]*tw,r = size * .75;
+        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,surfaceZ(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tw=mw>0?closeViewMuzzleWeight((shot.age||0)-trailTime):0,tx=tail.x+MUZZLE_OFF[0]*tw,ty=tail.y+MUZZLE_OFF[1]*tw,tz=tail.z+MUZZLE_OFF[2]*tw,r = size * .75;
         room(6);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);

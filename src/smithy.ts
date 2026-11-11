@@ -14,7 +14,7 @@ import { normalizeSockets, socketCount, GLYPHS } from "./glyphs.ts";
 
 export const SMITHY = {
   unlock: { salvage: 1, reforge: 1, socket: 2, masterwork: 3 },
-  salvage: { iron: { common: 1, rare: 1, epic: 2, relic: 2 }, sphereChance: .15 }, // release 607 (Tim: the economy is "almost without consequence"): was 1/2/3/4
+  salvage: { iron: { common: 1, rare: 2, epic: 3, relic: 4 }, sphereChance: .15 }, // 2026-11-11 (Tim: tools fire rounds made from cinder iron, so "salvaging weapons should yield cinder iron again"): back to 1/2/3/4 (release 607 made it 1/1/2/2)
   reforge: { iron: 3, marks: 40 },
   socket: { iron: 4, lumenDust: 6 },
   masterwork: { iron: 12, marks: 120 },

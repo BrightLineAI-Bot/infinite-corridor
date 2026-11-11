@@ -43,7 +43,7 @@ test('old Pentagons: every plan and chamber of versions 1-7 regenerates byte for
 
 test('the version: new ground uses the current Pentagon; grand halls and sigils began in v8, and a section pinned to 7 keeps 7', () => {
   assert.equal(PENTAGON.version, 9); assert.equal(PENTAGON_HALLS.since, V8); assert.equal(PENTAGON_SIGILS.since, V8);
-  const { cx, cy } = find(), g = game(); g.rx = cx; g.ry = cy + 1; g.loadArea('overworld', false); assert.equal(g.map.pentagon.V, CLOSE_VIEW_ROOM_ROUTING.pentagonVersion); assert.ok(g.map.objects.filter((o) => o.pentagonDoor).every((o) => o.dungeonId.includes(`:v${CLOSE_VIEW_ROOM_ROUTING.pentagonVersion}:`)));
+  const { cx, cy } = find(), g = game(); g.rx = cx; g.ry = cy + 1; g.loadArea('overworld', false); assert.equal(g.map.pentagon.V, 11); assert.ok(g.map.objects.filter((o) => o.pentagonDoor).every((o) => o.dungeonId.includes(`:v11:`)));
   const s = freshSave(); s.seed = SEED; s.atlas = { [`${cx + 1},${cy + 1}`]: { pentVersion: 7 } }; const old = new Game(s, 0); old.rx = cx; old.ry = cy + 1; old.loadArea('overworld', false); assert.equal(old.map.pentagon.V, 7);
 });
 
