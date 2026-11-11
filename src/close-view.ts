@@ -19,7 +19,8 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
 import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ } from "./close-view-outdoor.ts";
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
@@ -1489,12 +1490,13 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const turnFacing = relativeFacing(p, closeViewIdleLockAim(g, now)), inlay = Q.inlay, bands = Q.bands, gdet = geo.detail, ginst = geo.detailInst, gjoint = geo.joint; closeViewStats.detailed = 0; spriteDpr = useGL ? Math.min(CLOSE_VIEW.atmosphere.sprite.cap, Math.max(1, Number(globalThis.devicePixelRatio) || 1)) * Math.max(.85, Q.sprite) : Math.max(.75, Math.min(2, Number(globalThis.devicePixelRatio) || 1) * Q.sprite); // version 5: the GPU scene draws cards at the screen's own resolution
   let models;
   try { models = useGL ? buildActorModels(g, draws, n, Q, now, reduce) : null; } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; }
-  const hasNativeModels = useGL && (models || MODEL_STATE.hero);
+  const hasNativeModels = useGL && (models || MODEL_STATE.hero || MODEL_STATE.beasts.count);
   if (hasNativeModels) for (const it of MODEL_STATE.admitted) {
     const d = draws[itemRef[it]]; if (typeof d.nativeFloor !== 'function') continue;
     gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty);
     try { d.nativeFloor(g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now); } finally { gc.restore(); }
   }
+  if (useGL && MODEL_STATE.beasts.count) { gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty); try { drawBeastShadows(gc, s); } finally { gc.restore(); } }
   let packed;
   try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; }
   if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor)) return abortCloseViewGLFrame(); }
@@ -2419,6 +2421,7 @@ export function closeViewPrimaryWeaponKind(item) {
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array((MODEL_LIMIT.full * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), // + the imported hero's suit reservation
+  beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
@@ -2553,6 +2556,48 @@ export function resolveCloseViewPlayerFacing(trackYaw, desiredYaw, { elapsed = 0
   if (!stunned) displayedYaw = snap ? desiredYaw : wrap(trackYaw + wrap(desiredYaw - trackYaw) * (1 - Math.exp(-Math.max(0, elapsed) * MODEL_TIMING.turnRate)));
   if (Number.isFinite(overrideYaw)) displayedYaw = overrideYaw;
   return { desiredYaw: wrap(desiredYaw), displayedYaw: wrap(displayedYaw), transient: !!transient };
+}
+// Release 887: world beasts with a skinned Close View body (close-view-beasts.ts). Nearest first, up to BEAST_SLOT.maxBeasts;
+// each admitted beast's billboard is suppressed (its floor effects and telegraphs stay where they are drawn now). A slain
+// beast's track plays its death to the end from where it fell. Render-only: nothing here touches the game.
+const BEAST_FADE = 2.4, BEAST_TARGET = { x: 0, y: 0 }, BEAST_ENV = { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: BEAST_TARGET, dead: false };
+function admitBeasts(g, draws, n, Q, now, reduce) {
+  const B = MODEL_STATE.beasts, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low';
+  B.count = 0; if (B.map !== g.map) { B.map = g.map; B.tracks.clear(); }
+  BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y;
+  for (let oi = n - 1; oi >= 0 && B.count < BEAST_SLOT.maxBeasts; oi--) {
+    const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
+    if (!foe || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe) || draws[itemRef[it]]?.enemy !== foe) continue;
+    const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier))) continue;
+    let track = B.tracks.get(foe); if (!track) { track = spec.createTrack(); B.tracks.set(foe, track); }
+    // the standard view's own scale (u = tile x scale), times the beast's Close View presentation factor
+    BEAST_ENV.x = boardWX[it]; BEAST_ENV.y = boardWY[it]; BEAST_ENV.z = surfaceZ(g.map, foe.x + .5, foe.y + .75); BEAST_ENV.scale = Math.max(.6, Number(foe.scale) || 1) * (spec.scale || 1);
+    BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = false;
+    const frame = spec.sample(track, foe, BEAST_ENV); if (!frame) continue;
+    // A beast stands solid through most of the distance fade ordinary creatures take (pass 3, 2026-11-11: a boss the height of
+    // a house that thins at mid range loses its scale); it still fades out at the fog's edge.
+    frame.alpha *= Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); track.seen = now;
+    B.items[B.count++] = frame; MODEL_STATE.admitted.add(it);
+  }
+  for (const [foe, track] of B.tracks) {
+    if (track.seen === now) continue;
+    if (foe.dead && B.count < BEAST_SLOT.maxBeasts && track.seen != null && now - track.seen < 4000) {
+      const spec = CLOSE_VIEW_BEASTS[foe.kind]; BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = true;
+      const frame = spec.mesh(tier) && prepareCloseViewBeastMesh(spec.mesh(tier)) ? spec.sample(track, foe, BEAST_ENV) : null;
+      if (frame) { B.items[B.count++] = frame; continue; }
+    }
+    if (foe.dead || now - (track.seen ?? -Infinity) > 120) B.tracks.delete(foe);
+  }
+}
+// Read-only, for tests and the lab: this frame's admitted beast frames and their render tracks.
+export const closeViewBeasts = () => MODEL_STATE.beasts;
+// A soft contact shadow under each admitted beast and a darker print under each planted foot, on the ground layer.
+function drawBeastShadows(gc, s) {
+  const B = MODEL_STATE.beasts;
+  for (let i = 0; i < B.count; i++) {
+    const f = B.items[i], k = Math.max(0, f.shadow) * f.alpha, r = .42 * f.scale * s;
+    gc.fillStyle = `rgba(4,6,10,${(.42 * k).toFixed(3)})`; gc.beginPath(); gc.ellipse(f.x * s, f.y * s, r, r * .62, f.yaw, 0, Math.PI * 2); gc.fill();
+  }
 }
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
@@ -2885,6 +2930,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     } else if (now - track.at > 120 || who.dead) state.tracks.delete(who);
   }
   closeViewGLStats.models = count;
+  admitBeasts(g, draws, n, Q, now, reduce);
   return offset ? state.vertices.subarray(0, offset) : null;
 }
 // Five canonical stationary spells only. Recipes are immutable module data;
@@ -3227,7 +3273,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   }
   closeViewGLStats.projectedShots = shots?.entries?.length || 0;
   GLB.nDecal = dv;
-  if (!drawSceneGL(GROUND.canvas, UNI, models, MODEL_STATE.hero)) return false;
+  if (!drawSceneGL(GROUND.canvas, UNI, models, MODEL_STATE.hero, MODEL_STATE.beasts)) return false;
   ctx.save(); try { ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.drawImage(closeViewGLCanvas(), 0, 0, F.devW, F.devH, 0, 0, w, h); } finally { ctx.restore(); }
   return true;
   } catch { return false; }
