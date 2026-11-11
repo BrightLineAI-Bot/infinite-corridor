@@ -1576,6 +1576,16 @@ function relativeFacing(p, aim = null) {
 // The atlas is a band of the ground canvas below its texture (the captured closures can only draw into the canvas they were
 // captured with), so the texture is copied once a frame when the atlas is first written, not once per actor.
 const SPRITES = { used: 0 };
+// The ordinary view writes names and titles beside its sprites (a villager's name and role, VIEWPORT, WRECK, SHIPWRIGHT).
+// On a card the camera magnifies them many times and the card's edge cuts them, so a town filled the view with giant
+// clipped words. While the cards are painted only a glyph or two is kept (a quest giver's "!" or "…"); longer text is not.
+const CARD_TEXT = { fill: null, stroke: null, ctx: null, ownFill: false, ownStroke: false };
+function cardFillText(t, x, y, m) { if (String(t).length <= 2) CARD_TEXT.fill.call(this, t, x, y, m); }
+function cardStrokeText(t, x, y, m) { if (String(t).length <= 2) CARD_TEXT.stroke.call(this, t, x, y, m); }
+function quietCardText(ac) { const own = Object.prototype.hasOwnProperty; CARD_TEXT.ctx = ac; CARD_TEXT.fill = ac.fillText; CARD_TEXT.stroke = ac.strokeText; CARD_TEXT.ownFill = own.call(ac, "fillText"); CARD_TEXT.ownStroke = own.call(ac, "strokeText");
+  if (typeof CARD_TEXT.fill === "function") ac.fillText = cardFillText; if (typeof CARD_TEXT.stroke === "function") ac.strokeText = cardStrokeText; }
+function restoreCardText() { const ac = CARD_TEXT.ctx; if (!ac) return; CARD_TEXT.ctx = null;
+  if (CARD_TEXT.ownFill) ac.fillText = CARD_TEXT.fill; else delete ac.fillText; if (CARD_TEXT.ownStroke) ac.strokeText = CARD_TEXT.stroke; else delete ac.strokeText; }
 function nativeBoardTop(foe, scale, height = 0) {
   const p = actorPresentation(foe);
   return Math.max(CLOSE_VIEW.actors.height * scale, height, p ? p.head + .95 * p.scale : 0);
@@ -1584,6 +1594,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
   const A = CLOSE_VIEW.actors, ac = GROUND.ctx; if (!ac) return false;
   const Y0 = GROUND.atlasY, AW = GROUND.canvas.width, AH = GROUND.canvas.height - Y0; let x = 0, y = 0, rowH = 0;
   ac.setTransform(1, 0, 0, 1, 0, 0); ac.clearRect(0, Y0, AW, AH);
+  quietCardText(ac); try {
   let first = true; for (let oi = n - 1; oi >= 0; oi--) { const it = order[oi]; if (itemKind[it] !== 1) continue; // nearest first: they get the room
     const d = draws[itemRef[it]], nativeBody = native?.has(it), foe = boardFoe[it];
     const residual = nativeBody && typeof d.nativeDecorations === 'function' && (d.nativeEffects || foe?.fracRank === 'rare' && foe.packName || foe?.fracWarden || foe?.warded || foe?.affixes?.length || foe?.poiseBreak > 0 || foe?.pack?.phase === 'stunned');
@@ -1607,7 +1618,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     // phase 2: a creature with close-view art draws itself, from the camera's side (view: where it stands relative to the camera)
     try { if (residual) d.nativeDecorations(); else if (art) { ac.setTransform(1, 0, 0, 1, x, Y0 + y); art(ac, foe, { width: pw, height: ph, scale: q * s, footX: hw * s * q, footY: top * s * q, yawToCamera: Math.atan2(CAM.cy - foe.y - .82, CAM.cx - foe.x - .5) }); } else d.fn(); if (player && !nativeBody && facing === "up") backOfHood(ac, p, s); } finally { ac.restore(); if (who) { who.x = wx; who.y = wy; } if (player) p.facing = wasFacing; }
     x += pw + 2; rowH = Math.max(rowH, ph + 2); }
-  SPRITES.used = y + rowH; return true;
+  SPRITES.used = y + rowH; } finally { restoreCardText(); } return true;
 }
 // Version 3 (Tim: "monsters phasing in and out of view depending on where the camera is"). Version 2 sorted a billboard
 // among the walls by its depth against each face's middle depth only, so a creature standing in front of a wall face that
