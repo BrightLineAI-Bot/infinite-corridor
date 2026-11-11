@@ -1,5 +1,6 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES } from './close-view-player-forms.ts';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
+const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
 import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
 import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
@@ -521,7 +522,7 @@ export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   clipPose(asset, asset.clips.Roll, .08, s.other); build(asset, s, s.other); const b = asset.meta.reference.bodyNode * 16; s.rollX = s.global[b + 12]; s.rollZ = s.global[b + 14];
   return s;
 }
-export function createHeroFrame(asset) { return { asset, positionsNormals: new Float32Array(asset.vertexCount * 6), vertexCount: asset.vertexCount, indexCount: asset.indexCount, alpha: 1, tint: new Float32Array([1, 1, 1]), hitFlash: 0, leftSocket: new Float32Array(16), rightSocket: new Float32Array(16), powerSuit: false, suitPositionsNormals: new Float32Array(CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES * 3 * 6), suitVertexCount: 0, kitPositionsNormals: new Float32Array(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES * 3 * 6), kitVertexCount: 0, ready: false }; }
+export function createHeroFrame(asset) { return { asset, positionsNormals: new Float32Array(asset.vertexCount * 6), vertexCount: asset.vertexCount, indexCount: asset.indexCount, alpha: 1, tint: new Float32Array([1, 1, 1]), hitFlash: 0, leftSocket: new Float32Array(16), rightSocket: new Float32Array(16), powerSuit: false, suitPositionsNormals: new Float32Array(CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES * 3 * 6), suitVertexCount: 0, kitPositionsNormals: new Float32Array(KIT_BUFFER_TRIANGLES * 3 * 6), kitVertexCount: 0, kitSet: '', ready: false }; }
 
 // Source action intervals/contact markers are visual only; no event is emitted here.
 export const HERO_CLIP_POLICY = Object.freeze({ melee: 'Dagger_Attack', hammer: 'Dagger_Attack2', punch: 'Punch', dodge: 'Roll', hit: 'RecieveHit', death: 'Death', interact: 'PickUp', contact: .18, sourceContact: .35 });
@@ -643,7 +644,7 @@ function samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p)
   if(count<0)return false;out.suitVertexCount=count;return true;
 }
 export function sampleCloseViewHero(asset, state, input, out) {
-  out.ready = false;out.powerSuit=false;out.suitVertexCount=0;out.kitVertexCount=0;state.worldScale=input.height/state.referenceHeight;
+  out.ready = false;out.powerSuit=false;out.suitVertexCount=0;out.kitVertexCount=0;out.kitSet='';state.worldScale=input.height/state.referenceHeight;
   if (out.asset !== asset || !Number.isFinite(input.nowMs) || !Number.isFinite(input.x) || !Number.isFinite(input.y) || !Number.isFinite(input.groundZ) || !Number.isFinite(input.liftZ) || !Number.isFinite(input.yaw) || !(input.height > 0) || !Number.isFinite(input.height)) return false;
   // Input speed is tiles/second; the existing gait phase is already distance-driven radians.
   const speed = Math.max(0,Number(input.speed)||0), phase = ((Number(input.gaitPhase) || 0) / TAU % 1 + 1) % 1;
@@ -760,8 +761,9 @@ export function sampleCloseViewHero(asset, state, input, out) {
   for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - state.minY, z = v[i + 2] + dz; dst[i] = input.x + (z * cy - x * sy) * scale; dst[i + 1] = input.y + (z * sy + x * cy) * scale; dst[i + 2] = input.groundZ + input.liftZ + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
   socket(out.leftSocket, state.global, asset.meta.sockets.left.node * 16, scale, cy, sy, input, dx, dz, state.minY); socket(out.rightSocket, state.global, asset.meta.sockets.right.node * 16, scale, cy, sy, input, dx, dz, state.minY);
   if(input.powerSuit===true){if(!samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p))return false;out.powerSuit=true;}
-  // The standard kit is opt-in per caller and never stacks on the suit armor; a bad piece only drops the kit.
-  else if(input.wayfarerKit===true&&out.kitPositionsNormals?.length===CLOSE_VIEW_WAYFARER_KIT_TRIANGLES*18){const count=sampleSkinnedOverlay(CLOSE_VIEW_WAYFARER_KIT,asset,state,input,out.kitPositionsNormals,scale,cy,sy,dx,dz,knocked,p);out.kitVertexCount=count>0?count:0;}
+  // The kit is opt-in per caller: the standard Wayfarer kit, or on the suit its helmet and pack
+  // (never the standard kit over the suit armor). A bad piece only drops the kit.
+  if(input.wayfarerKit===true&&out.kitPositionsNormals?.length===KIT_BUFFER_TRIANGLES*18){const set=out.powerSuit?CLOSE_VIEW_SUIT_KIT:CLOSE_VIEW_WAYFARER_KIT,count=sampleSkinnedOverlay(set,asset,state,input,out.kitPositionsNormals,scale,cy,sy,dx,dz,knocked,p);if(count>0){out.kitVertexCount=count;out.kitSet=out.powerSuit?'suit':'standard';}}
   if(knocked&&p>0)applyKnockdown(out,input,cy,sy,p,state.downClearance*scale);
   out.alpha = clamp(Number.isFinite(input.alpha) ? input.alpha : 1); out.hitFlash = clamp(Number(input.hitFlash) || 0); for (let k = 0; k < 3; k++) out.tint[k] = Number.isFinite(input.tint?.[k]) ? input.tint[k] : 1;
   out.ready = true; return true;

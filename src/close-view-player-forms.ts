@@ -87,7 +87,8 @@ for (const side of [-1,1]) powerSuit.push(
 // their .014-.03 source-unit stand-off becomes roughly .008-.018 tile at the approved height.
 const armor = [];
 const armorQuad = (node,color,a,b,c,d) => armor.push({node,color,vertices:[a,b,c,a,c,d]});
-const G=0x35423b,L=0x493d34,B=0x9b7950,A=0xd39a58;
+// Graphite pressure-suit plates after the standard view's empowered suit (drawPowerSuit).
+const G=0x474c53,L=0x2a2d31,B=0x7c828a,A=0xd39a58;
 // Torso: four front facets, three back facets.
 armorQuad(24,G,[-.18,1.58,.235],[0,1.56,.255],[0,1.78,.255],[-.17,1.82,.235]);
 armorQuad(24,G,[0,1.56,.255],[.18,1.58,.235],[.17,1.82,.235],[0,1.78,.255]);
@@ -139,8 +140,8 @@ const KIT = Object.freeze({
   plate:0x4a5450, rim:0x8f6d47, iron:0x2a2e30, dark:0x1b1f20, light:0xf09040, lightGlow:1.6,
   canvas:0x5e4d3c, leather:0x3b2f27, roll:0x4f5b52, strap:0x2b2420,
 });
-const kit=[];
-const kitAdd=(node,color,core,vertices,glow=1)=>kit.push({node,color,glow,core,vertices});
+const kit=[],suitKit=[];let kitTarget=kit;
+const kitAdd=(node,color,core,vertices,glow=1)=>kitTarget.push({node,color,glow,core,vertices});
 // Curved shell: rows of [y, centreX, centreZ, radiusX, radiusZ]; columns are angles from the front
 // (+z) toward the piece's outer side. Outer face plus the rim between outer and inner surfaces.
 // A row may add [spread] to scale its angles; `bump` raises chosen columns (a breastplate ridge).
@@ -198,9 +199,35 @@ for(const [side,thigh,shin] of [[1,30,29],[-1,32,31]]){
   for(let i=0;i<4;i++)v.push(cop[i],cop[(i+1)%4],tip);
   kitAdd(shin,KIT.rim,[kx,ky,kz-.08],v);
 }
-for(const part of kit){const v=part.vertices,c=part.core;for(let i=0;i<v.length;i+=3){const a=v[i],b=v[i+1],d=v[i+2],ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],wx=d[0]-a[0],wy=d[1]-a[1],wz=d[2]-a[2],nx=uy*wz-uz*wy,ny=uz*wx-ux*wz,nz=ux*wy-uy*wx,mx=(a[0]+b[0]+d[0])/3-c[0],my=(a[1]+b[1]+d[1])/3-c[1],mz=(a[2]+b[2]+d[2])/3-c[2];if(nx*mx+ny*my+nz*mz<0){v[i+1]=d;v[i+2]=b;}}}
+// The empowered suit's own additions, after drawPowerSuit: a smooth helmet with one smoked visor
+// band and a side module with a stub antenna, and a compact life-support pack with hoses to the
+// chest and a dim amber status light. The helmet is bound to the Head bone around the rendered
+// head (measured in its bind space) and encloses the mask and hair.
+kitTarget=suitKit;
+{
+  const HC=[0,2.19,-.055],HR=[.20,.225,.27],sides=8,lat=[-.55,-.05,.40,.85],ring=l=>Array.from({length:sides},(_,i)=>{const a=(i+.5)*Math.PI*2/sides;return[HC[0]+Math.cos(l)*Math.sin(a)*HR[0],HC[1]+Math.sin(l)*HR[1],HC[2]+Math.cos(l)*Math.cos(a)*HR[2]];}),rings=lat.map(ring),top=[HC[0],HC[1]+HR[1],HC[2]],shell=[];
+  for(let r=0;r<rings.length-1;r++)for(let i=0;i<sides;i++){const j=(i+1)%sides;shell.push(rings[r][i],rings[r][j],rings[r+1][j],rings[r][i],rings[r+1][j],rings[r+1][i]);}
+  for(let i=0;i<sides;i++)shell.push(rings.at(-1)[i],rings.at(-1)[(i+1)%sides],top);
+  kitAdd(3,0x50565e,HC,shell);
+  // Visor: a wrap of four facets just proud of the helmet across the front.
+  const vis=(l,a,k=1.035)=>[HC[0]+Math.cos(l)*Math.sin(a)*HR[0]*k,HC[1]+Math.sin(l)*HR[1]*k,HC[2]+Math.cos(l)*Math.cos(a)*HR[2]*k],band=[];
+  for(let i=0;i<4;i++){const a0=(-1+i/2)*1.05,a1=(-1+(i+1)/2)*1.05;band.push(vis(-.06,a0),vis(-.06,a1),vis(.24,a1),vis(-.06,a0),vis(.24,a1),vis(.24,a0));}
+  kitAdd(3,0x15222a,HC,band);
+  kitBox(3,0x3b4047,HC[0]-HR[0]*.98,HC[1]+.03,HC[2]-.02,.03,.05,.05,[]);
+  kitAdd(3,0x2a2d32,[HC[0]-HR[0],HC[1]+.15,HC[2]],[[HC[0]-HR[0]*.98,HC[1]+.07,HC[2]-.03],[HC[0]-HR[0]*.98,HC[1]+.07,HC[2]-.005],[HC[0]-HR[0]*.98-.004,HC[1]+.24,HC[2]-.02]]);
+}
+kitBox(24,0x3a3f45,0,1.72,-.29,.125,.17,.075,['front']);
+kitAdd(24,0xd39a58,[0,1.72,-.29],[[.05,1.82,-.367],[.09,1.82,-.367],[.09,1.85,-.367],[.05,1.82,-.367],[.09,1.85,-.367],[.05,1.85,-.367]],1.5);
+for(const side of [-1,1]){
+  const w=.018,a=[side*.13,1.66,-.26],b=[side*.215,1.70,-.06],c=[side*.15,1.80,.17],pt=p=>[[p[0],p[1]-w,p[2]],[p[0],p[1]+w,p[2]]],[a0,a1]=pt(a),[b0,b1]=pt(b),[c0,c1]=pt(c);
+  kitAdd(24,0x202328,[0,1.74,-.02],[a0,a1,b1,a0,b1,b0,b0,b1,c1,b0,c1,c0]);
+}
+kitTarget=kit;
+for(const part of [...kit,...suitKit]){const v=part.vertices,c=part.core;for(let i=0;i<v.length;i+=3){const a=v[i],b=v[i+1],d=v[i+2],ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],wx=d[0]-a[0],wy=d[1]-a[1],wz=d[2]-a[2],nx=uy*wz-uz*wy,ny=uz*wx-ux*wz,nz=ux*wy-uy*wx,mx=(a[0]+b[0]+d[0])/3-c[0],my=(a[1]+b[1]+d[1])/3-c[1],mz=(a[2]+b[2]+d[2])/3-c[2];if(nx*mx+ny*my+nz*mz<0){v[i+1]=d;v[i+2]=b;}}}
 export const CLOSE_VIEW_WAYFARER_KIT = Object.freeze(kit.map(({node,color,glow,vertices})=>Object.freeze({node,color,glow,vertices:Object.freeze(vertices)})));
 export const CLOSE_VIEW_WAYFARER_KIT_TRIANGLES = kit.reduce((n,p)=>n+p.vertices.length/3,0);
+export const CLOSE_VIEW_SUIT_KIT = Object.freeze(suitKit.map(({node,color,glow,vertices})=>Object.freeze({node,color,glow,vertices:Object.freeze(vertices)})));
+export const CLOSE_VIEW_SUIT_KIT_TRIANGLES = suitKit.reduce((n,p)=>n+p.vertices.length/3,0);
 
 // Ember Form grows into a guarded striking form. Curved cinder plates and flame crests change its
 // outline; the hot seams remain readable when reduced motion suppresses secondary sway.
