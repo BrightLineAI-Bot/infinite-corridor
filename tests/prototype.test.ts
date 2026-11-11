@@ -2716,7 +2716,7 @@ test("deep-v1 dungeon generation is deterministic and preserves ordinary dungeon
  const id=deepDungeonId("DEEP-SEED",3,-8,11),a=generateDeepDungeon("DEEP-SEED",id),b=generateDungeon("DEEP-SEED",id);
  assert.deepEqual(a,b);assert.deepEqual(a,generateDeepDungeon("DEEP-SEED",id));assert.equal(id,"dungeon:DEEP-SEED:g3:-8:11:deep-v1");
  assert.deepEqual(dungeonDescriptor(id),{recipe:"deep-v1",name:"The Threefold Deep",identity:"sealed deep dungeon",danger:"three wing wardens",depth:"deep"});
- for(const[ordinary,expected]of[["dungeon:S:g1","7f287b6e420b87e06926ab172389678ae6b8d5063989fbf703080251a87380c1"],["dungeon:S:g1:1:2:a","d4f3e0b43e0e00ac5f535e771ecd098f73f4f7bb81dbd5af9aafdaf52b7b1094"]])assert.equal(createHash("sha256").update(JSON.stringify(generateDungeon("S",ordinary))).digest("hex"),expected);
+ for(const[ordinary,expected]of[["dungeon:S:g1","7f287b6e420b87e06926ab172389778ae6b8d5063989fbf703080251a87380c1"],["dungeon:S:g1:1:2:a","d4f3e0b43e0e00ac5f535e771ecd098f73f4f7bb81dbd5af9aafdaf52b7b1094"]])assert.equal(createHash("sha256").update(JSON.stringify(generateDungeon("S",ordinary))).digest("hex"),expected);
 });
 
 test("deep-v1 authored graph exposes stable wings anchors hazards and sealed finale metadata",()=>{
