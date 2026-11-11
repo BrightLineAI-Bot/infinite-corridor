@@ -112,6 +112,17 @@ export const CLOSE_VIEW = Object.freeze({
   // `switchCone` degrees. It breaks when the foe dies (then it moves to the best foe within `rehop` tiles of where it fell, if
   // any), goes beyond range + `slack`, or stays out of sight `lostSec` seconds.
   lock: Object.freeze({ near: 1.5 /* nearby framing slows, but never stops */, range: 11, cone: 70, wAngle: .6, wDist: .4, rate: 4.5, maxRate: 120, nearScale: .35, fallbackRange: 6, fallbackCone: 100, switchSwipe: 26, switchCone: 120, rehop: 4.5, slack: 1.5, lostSec: 1.2 }),
+  // Target mode (Tim, 2026-11-11: "he never has to move the camera to find enemies"): the Target button switches auto-targeting
+  // on (the button lit red) and off. While on, every `scanSec` seconds (a bounded pass over the floor's foes; the wall line is
+  // walked only for a foe that would beat the best so far) it locks the best foe in sight anywhere round the Wayfarer within the
+  // lock's range, by wDist x (distance / range) + wAngle x (angle off the view / 180): the camera and the Wayfarer turn to it.
+  // When the lock falls, breaks or is lost, it locks the next one. A foe that comes within `threatRange` tiles and `nearerBy`
+  // tiles nearer than the locked one takes the lock, at most once every `switchHold` seconds (a manual swipe restarts that
+  // wait). Locked in target mode the view holds the foe harder: spring `rate`, at most `maxRate` degrees a second.
+  // Strafe (every lock): with the stick mostly sideways (its toward/away share under `strafeForward`) the Wayfarer circles at
+  // the distance held when the strafe began: `strafeGain` x the radial error (tiles) is mixed in, at most `strafePull`.
+  targetButton: Object.freeze({ on: "#ff2d2d", locked: "#ff8a78", off: "#ddd5c4", glow: "drop-shadow(0 0 6px #ff2d2dcc)" }), // the Target button's ink: target mode on (red), a tap lock alone, off
+  targetMode: Object.freeze({ scanSec: .2, wDist: .75, wAngle: .25, threatRange: 3.5, nearerBy: 1.5, switchHold: .9, rate: 9, maxRate: 270, strafeForward: .35, strafeGain: 4, strafePull: .6 }),
   // crescent: the pan rail, a thin arc round the outside of the action cluster, `gap` px beyond the cluster's half width, from
   // `from` degrees (screen angles: 0 is right, -90 up, 180 left) round over the top and down the left side to `to` degrees.
   // It is drawn `width` px wide at `idle` opacity (`active` while touched) and answers within `band` px of the arc; it sits
@@ -464,7 +475,7 @@ const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.c
   || openAirAt(g.map, g.player.x, g.player.y);
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
-const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   focal: 1, focalV: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
@@ -714,6 +725,7 @@ function turnCamera(g, now) {
     const t = Math.max(0, (now - CAM.qtT0) / 1000), w = 5 / CAM.qtDur, k = t >= CAM.qtDur * 1.4 ? 1 : 1 - (1 + w * t) * Math.exp(-w * t);
     CAM.yaw = wrap(CAM.qtFrom + wrap(CAM.qtTo - CAM.qtFrom) * k); CAM.yawV = 0; CAM.pitchUser *= Math.exp(-12 * dt); if (k >= 1) { CAM.qtT0 = -1; CAM.yaw = CAM.qtTo; CAM.pitchUser = 0; } return; }
   const target = lockTick(g, dt);
+  if (!CAM.targetRecentre && !Number.isFinite(CAM.recentre)) CAM.basisFollow = false; // the swing is over: latch where it ended
   if (CAM.targetRecentre) {
     const goal = Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : CAM.recentre, diff = wrap(goal - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
     CAM.yaw = wrap(CAM.yaw + step); if (Math.hypot(CAM.sx, CAM.sy) < CLOSE_VIEW.input.idle) CAM.inputYaw = CAM.yaw;
@@ -726,7 +738,8 @@ function turnCamera(g, now) {
     // within `near` tiles the swing fades out, so a foe at arm's length (or slipping past) never whips the view round
     const L = CLOSE_VIEW.lock, d = Math.hypot(target.x - p.x, target.y - p.y), near = Math.max(L.nearScale, Math.min(1, (d - L.near * .5) / (L.near * .5)));
     if (d < .05) { CAM.yawV = 0; return; } // overlapping feet have no useful bearing; retain the lock without choosing an arbitrary yaw
-    CAM.recentre = NaN; yawSpring(Math.atan2(target.y - p.y, target.x - p.x), L.rate * slow * near, L.maxRate * DEG * slow, dt); return; }
+    const T = CLOSE_VIEW.targetMode, rate = CAM.targetMode ? T.rate : L.rate, cap = CAM.targetMode ? T.maxRate : L.maxRate;
+    CAM.recentre = NaN; yawSpring(Math.atan2(target.y - p.y, target.x - p.x), rate * slow * near, cap * DEG * slow, dt); return; }
   if (CAM.lockId && CAM.lostFor > 0) { CAM.yawV = 0; return; } // keep the brief LOS grace, not knowledge of movement through a wall
   if (Number.isFinite(CAM.recentre)) { // a double tap on the crescent: swing round behind the Wayfarer (the walk's basis turns with it)
     const diff = wrap(CAM.recentre - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
@@ -782,6 +795,7 @@ export function closeViewPlayerFacingYaw(g, now = 0, baseYaw = NaN, { phase = nu
   const a = g.save?.lastAim; return a && (a.x || a.y) ? Math.atan2(a.y, a.x) : FACING_YAW[p.facing] ?? CAM.yaw;
 }
 export function closeViewRecentre(g, now = 0, { centered = false } = {}) {
+  CAM.basisFollow = true; CAM.basisHold = false; // a held stick walks relative to the view through the whole swing
   CAM.centeredRear = !!centered; CAM.targetRecentre = !!centered; CAM.targetRevision = CAM.bodyRevision; CAM.recentre = centered ? closeViewPlayerFacingYaw(g, now) : (() => { const a = g?.save?.lastAim; return a && (a.x || a.y) ? Math.atan2(a.y, a.x) : FACING_YAW[g?.player?.facing] ?? CAM.yaw; })(); CAM.panAt = now;
   if (centered) { CAM.qtT0 = -1; CAM.yawV = 0; CAM.pitchUser = 0; }
 }
@@ -793,6 +807,8 @@ export function closeViewStickBack(sx = CAM.sx, sy = CAM.sy) { const Q = CLOSE_V
 export function closeViewQuickTurn(g, now = 0) {
   const Q = CLOSE_VIEW.quickTurn; if (!g?.player || CAM.qtT0 >= 0 || now - CAM.qtAt < Q.cooldown * 1000) return false;
   if (g.lockedTarget?.()) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; } // locked: the turn breaks the lock
+  CAM.targetMode = false; // and leaves target mode: an auto-lock would swing the view straight back round
+  CAM.basisFollow = false; CAM.basisHold = Math.hypot(CAM.sx, CAM.sy) >= CLOSE_VIEW.input.idle; // the held stick keeps walking the same way until it is let go
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), to = wrap(CAM.yaw + Math.PI);
   CAM.qtFrom = CAM.yaw; CAM.qtTo = to; CAM.qtT0 = now; CAM.qtAt = now; CAM.qtDur = reduce ? Q.reducedSeconds : Q.seconds; CAM.recentre = NaN; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.yawV = 0; CAM.panAt = now + CAM.qtDur * 1000;
   const fx = Math.cos(to), fy = Math.sin(to); g.player.facing = Math.abs(fx) >= Math.abs(fy) ? (fx >= 0 ? "right" : "left") : (fy >= 0 ? "down" : "up");
@@ -827,10 +843,35 @@ export function closeViewLockToggle(g) {
   const e = closeViewLockCandidate(g); if (!e) { g.message = "Nothing to lock on to in view."; return null; }
   g.lockTarget(e.id); CAM.lockId = e.id; CAM.lostFor = 0; return e;
 }
-// The mounted Target command preserves the existing pre-recenter acquisition/toggle, then requests an open-ground centered rear view.
+// The mounted Target command switches target mode (CLOSE_VIEW.targetMode) on or off, then requests an open-ground centered
+// rear view. On: a lock already made (a tap on a foe) is kept, else the best foe in front of the camera (the existing
+// pre-recenter acquisition), else the best one in sight anywhere round the Wayfarer. Off: the lock is released.
 export function closeViewTargetActivate(g, now = 0) {
   if (!g || g.paused || !closeViewShowing(g)) return null;
-  const target = closeViewLockToggle(g); closeViewRecentre(g, now, { centered: true }); return target;
+  let target = null;
+  if (CAM.targetMode) { CAM.targetMode = false; if (g.lockedTarget?.()) g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; g.message = "Auto-target off."; }
+  else {
+    CAM.targetMode = true; CAM.tmScan = 0; CAM.tmHeld = 0; target = g.lockedTarget?.() || null;
+    if (!lockable(target)) target = closeViewLockCandidate(g) || targetModeScan(g, null);
+    if (target) { g.lockTarget(target.id); CAM.lockId = target.id; CAM.lostFor = 0; } else { CAM.lockId = null; g.message = "Auto-target on: no foe in sight yet."; }
+  }
+  closeViewRecentre(g, now, { centered: true }); return target;
+}
+export const closeViewTargetMode = () => CAM.targetMode; // is auto-targeting on (the Target button lit red)?
+// Target mode's search: one pass over the floor's foes (bounded by the game's own actor caps), allocation free. TM_SCAN.best is
+// the best foe in sight within the lock's range anywhere round the Wayfarer; TM_SCAN.near the nearest one in sight within
+// threatRange. The wall line (sightTo) is walked only for a foe that would beat the best or nearest found so far. With reduced
+// motion only foes within the lock's cone of the view are taken (the view is never swung round behind on its own).
+const TM_SCAN = { best: null, near: null, nearD: Infinity };
+function targetModeScan(g, skip) {
+  const L = CLOSE_VIEW.lock, T = CLOSE_VIEW.targetMode, p = g.player, px = footX(p), py = footY(p), reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); let bestS = Infinity;
+  TM_SCAN.best = TM_SCAN.near = null; TM_SCAN.nearD = Infinity;
+  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - px, ey - py); if (d > L.range) continue;
+    const off = Math.abs(wrap(Math.atan2(ey - py, ex - px) - CAM.yaw)); if (reduce && off > L.cone * DEG) continue; // reduced motion: never an automatic swing round behind
+    const sc = T.wDist * d / L.range + T.wAngle * off / Math.PI, beats = sc < bestS, nearer = d <= T.threatRange && d < TM_SCAN.nearD;
+    if (!(beats || nearer) || !sightTo(g.map, px, py, ex, ey)) continue;
+    if (beats) { bestS = sc; TM_SCAN.best = e; } if (nearer) { TM_SCAN.nearD = d; TM_SCAN.near = e; } }
+  return TM_SCAN.best;
 }
 // A swipe along the crescent while locked: the next foe to the right (dir 1) or left (-1) of the locked one, as the camera sees them.
 export function closeViewLockSwitch(g, dir) {
@@ -839,11 +880,24 @@ export function closeViewLockSwitch(g, dir) {
     const be = Math.atan2(ey - py, ex - px); if (Math.abs(wrap(be - CAM.yaw)) > L.switchCone * DEG) continue; const rel = wrap(be - bt) * Math.sign(dir || 1); if (rel <= 0) continue; if (!sightTo(g.map, px, py, ex, ey)) continue;
     const visible = lockOnScreen(g, e); if (!visible && Math.hypot(ex - px, ey - py) > L.fallbackRange) continue;
     if ((visible && !bestVisible) || (visible === bestVisible && rel < bestA)) { bestA = rel; best = e; bestVisible = visible; } }
-  if (best) { g.lockTarget(best.id); CAM.lockId = best.id; CAM.lostFor = 0; } return best;
+  if (best) { g.lockTarget(best.id); CAM.lockId = best.id; CAM.lostFor = 0; CAM.tmHeld = 0; } return best; // a chosen foe is not overridden at once by a nearer threat
 }
 // Each frame while locked: follow a lock made by a tap too; on the foe's fall move to the best foe near where it fell, or
 // release; release beyond range + slack or after lostSec out of sight. Returns the locked foe, or null.
 function lockTick(g, dt) {
+  const had = CAM.lockId, t = lockKeep(g, dt); if (!CAM.targetMode) return t;
+  if (had && !CAM.lockId) CAM.tmScan = 0; // the lock just fell or broke: look for the next foe this frame
+  // target mode: lock the next foe once nothing is locked (and none is briefly out of sight), and let a much nearer threat
+  // take the lock; at most one bounded search every scanSec
+  const T = CLOSE_VIEW.targetMode; CAM.tmScan -= dt; CAM.tmHeld += dt;
+  if (CAM.lockId && CAM.lostFor > 0) return t;
+  if (!t) { if (CAM.tmScan > 0) return null; CAM.tmScan = T.scanSec; const next = targetModeScan(g, null); if (!next) return null; g.lockTarget(next.id); CAM.lockId = next.id; CAM.lostFor = 0; CAM.tmHeld = 0; return next; }
+  if (CAM.tmScan > 0 || CAM.tmHeld < T.switchHold) return t; CAM.tmScan = T.scanSec;
+  const p = g.player; targetModeScan(g, t.id); const n = TM_SCAN.near;
+  if (n && TM_SCAN.nearD + T.nearerBy < Math.hypot(t.x + .5 - footX(p), t.y + .75 - footY(p))) { g.lockTarget(n.id); CAM.lockId = n.id; CAM.lostFor = 0; CAM.tmHeld = 0; return n; }
+  return t;
+}
+function lockKeep(g, dt) {
   const L = CLOSE_VIEW.lock; let t = g.lockedTarget?.() || null;
   if (CAM.lockId && (!t || t.id !== CAM.lockId)) { const old = (g.enemies || []).find((e) => e.id === CAM.lockId);
     if (!t && old && old.dead) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75, screen: false }); if (next) { g.lockTarget(next.id); t = next; } } }
@@ -928,9 +982,13 @@ function clearanceOffset(g, fx, fy, ax, ay, centered, dt, mix) {
   return CAM.rigActive ? d : 0;
 }
 
-// Turn a stick (or keys) into world movement: camera-relative, with the basis latched for the whole gesture. Pushing up walks
-// the way the view looks; while the finger stays down the basis holds, so a turn of the view under a held stick never bends
-// the walk; when the stick is let go the basis re-latches to the view. Returns true when it changed the state (restore it with
+// Turn a stick (or keys) into world movement, camera-relative: pushing up walks the way the view looks. The basis is latched
+// for the gesture against the view's slow automatic chase (the assist turns toward where you already walk; a basis that
+// followed it would bend the walk into a spiral), but follows every turn you or a command make: a pan turns it at once, and
+// through a Target or double-tap recenter it follows the view frame by frame (Tim, 2026-11-11: a Target recenter kept the
+// stick on the old view, so he kept walking the old way). Locked on, the basis is the bearing to the foe (up walks at it,
+// sideways circles it at the distance held, CLOSE_VIEW.targetMode.strafe*). After a quick turnaround the held stick keeps the
+// basis it had until it is let go (it keeps walking the same way). Returns true when it changed the state (restore it with
 // closeViewUnsteer after Game.update, so the input's own smoothing never sees the turned vector).
 export function closeViewSteer(g, state, now = NaN) {
   CAM.steered = false; if (!state || !closeViewApplies(g) || MODE.cur !== 1) return false;
@@ -938,8 +996,9 @@ export function closeViewSteer(g, state, now = NaN) {
   // main keeps sampling input during pause but skips rendering. Remember that pause here too, so the
   // first resumed render can preserve the camera's timers even when there were no paused frames.
   if (g.paused) { if (!Number.isFinite(CAM.pausedAt)) CAM.pausedAt = Number.isFinite(g.pauseStarted) ? g.pauseStarted : CAM.lastNow; CAM.dt = 0; return false; }
-  const sx = Number(state.x) || 0, sy = Number(state.y) || 0;
-  if (Math.hypot(sx, sy) < CLOSE_VIEW.input.idle && !g.lockedTarget?.()) { CAM.inputYaw = CAM.yaw;
+  const sx = Number(state.x) || 0, sy = Number(state.y) || 0, mag = Math.hypot(sx, sy), idle = mag < CLOSE_VIEW.input.idle;
+  if (idle) CAM.basisHold = false; if (CAM.basisFollow && !CAM.basisHold) CAM.inputYaw = CAM.yaw;
+  if (idle && !g.lockedTarget?.()) { CAM.inputYaw = CAM.yaw;
     // Neutral camera orbit never chooses an attack direction. Untargeted actions start
     // in front of the displayed body; Game still owns lock, auto aim and explicit taps.
     // Keep accepted action descriptors and their committed release direction in charge.
@@ -955,14 +1014,22 @@ export function closeViewSteer(g, state, now = NaN) {
       }
     } }
   // locked: the stick is target-relative (up walks at the foe, sideways circles it)
-  { const t = CAM.lockId && g.lockedTarget?.(); if (lockable(t) && CAM.lostFor === 0) CAM.inputYaw = Math.atan2(t.y + .75 - footY(g.player), t.x + .5 - footX(g.player)); }
+  let pull = 0;
+  { const t = CAM.lockId && g.lockedTarget?.(); if (lockable(t) && CAM.lostFor === 0) { const T = CLOSE_VIEW.targetMode, dx = t.x + .5 - footX(g.player), dy = t.y + .75 - footY(g.player), d = Math.hypot(dx, dy);
+    CAM.inputYaw = Math.atan2(dy, dx);
+    // strafe: mostly sideways, hold the distance the strafe began at (a straight sideways step drifts outward each frame)
+    if (idle || d < .05 || Math.abs(sy) / mag > T.strafeForward || CAM.strafeId !== t.id || !Number.isFinite(CAM.strafeR)) { CAM.strafeR = d; CAM.strafeId = t.id; }
+    else pull = Math.max(-T.strafePull, Math.min(T.strafePull, (d - CAM.strafeR) * T.strafeGain)) * Math.abs(sx) / mag; }
+    else CAM.strafeId = null; }
   const fx = Math.cos(CAM.inputYaw), fy = Math.sin(CAM.inputYaw), rx = -fy, ry = fx;
-  CAM.sx = sx; CAM.sy = sy; state.x = rx * sx - fx * sy; state.y = ry * sx - fy * sy; CAM.steered = true; return true;
+  let wx = rx * sx - fx * sy, wy = ry * sx - fy * sy;
+  if (pull) { wx += fx * pull * mag; wy += fy * pull * mag; const k = mag / Math.hypot(wx, wy); wx *= k; wy *= k; } // same speed, bent toward (or away from) the foe
+  CAM.sx = sx; CAM.sy = sy; state.x = wx; state.y = wy; CAM.steered = true; return true;
 }
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
 export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.dist, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
-export function resetCloseViewCamera() { CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; }
+export function resetCloseViewCamera() { CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; }
 globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats }; // read by the browser harness and the lab's console (diagnostics only)
 // Close View drew the last frame of this area: the host then leaves out its own top-down overlays (they were drawn onto the
 // ground texture through CLOSE_VIEW_HOOKS.groundLayers).
@@ -2911,7 +2978,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   // version 4: `outer`, the wider band beyond the arc (never drawn), where it is clear of everything else
   outer.setAttribute("fill", "none"); outer.setAttribute("stroke", "transparent"); outer.setAttribute("stroke-width", String(K.reach)); outer.setAttribute("stroke-linecap", "butt"); outer.style.pointerEvents = "stroke"; outer.style.touchAction = "none"; outer.style.cursor = "ew-resize";
   svg.append(rail, hit, outer); actions.insertBefore(svg, cluster); // before the cluster: beneath its buttons
-  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Target and recenter behind the Wayfarer: tap again to release; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false");
+  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Target and recenter behind the Wayfarer: auto-targets foe after foe while lit red; tap again to turn it off; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false"); lock.setAttribute("data-target-mode", "off");
   // version 3 (Tim): a bullseye, concentric rings and a centre dot; locked, the inner ring fills (styles.css .close-lock)
   lock.innerHTML = '<svg class="bullseye" viewBox="0 0 24 24" width="52%" height="52%" aria-hidden="true" style="pointer-events:none;position:relative"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle class="bull-ring" cx="12" cy="12" r="6.2" fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg>';
   Object.assign(lock.style, { position: "absolute", width: `${K.lockSize}px`, height: `${K.lockSize}px`, padding: "0", borderRadius: "50%", border: "0", background: "none", color: "#ddd5c4", display: "none", placeItems: "center", pointerEvents: "auto", touchAction: "manipulation", zIndex: "2" });
@@ -2924,7 +2991,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
   const touchDevice = () => !!(host.navigator?.maxTouchPoints || host.matchMedia?.("(any-pointer: coarse)")?.matches);
   let moveId = null;
   const clearMovePad = () => { moveId = null; movePad.setAttribute("data-active", "false"); };
-  let cx = 0, cy = 0, R = 0, laidAt = -1e9, shown = false, locked = false, id = null, lastA = 0, lastR = 0, downAt = 0, moved = 0, lastTap = -1e9, swipe = 0, switched = false, lastMoveAt = 0, mode = "drag";
+  let autoShown = false, cx = 0, cy = 0, R = 0, laidAt = -1e9, shown = false, locked = false, id = null, lastA = 0, lastR = 0, downAt = 0, moved = 0, lastTap = -1e9, swipe = 0, switched = false, lastMoveAt = 0, mode = "drag";
   const now = () => (host.performance || performance).now();
   // version 4: the turn is fed in, then eased onto the view by sync() (once a frame); a release applies what is left
   const PEND = { dx: 0, dy: 0, at: -1 };
@@ -3074,5 +3141,7 @@ export function mountCloseViewControls(getGame, host = globalThis) {
       if (id !== null || (mode === "drag" && dragId !== null)) { CAM.panAt = t; if (!g.lockedTarget?.()) CAM.yawV = 0; } // suppress unlocked assist, never erase the selected-target spring's velocity
       if (closeViewTurning()) PEND.dx = PEND.dy = 0;
       if (PEND.dx || PEND.dy) { const sm = mode === "drag" ? D.smooth : K.smooth, take = 1 - Math.exp(-sm * dt), ex = PEND.dx * take, ey = PEND.dy * take; PEND.dx -= ex; PEND.dy -= ey; if (Math.abs(PEND.dx) < .01) PEND.dx = 0; if (Math.abs(PEND.dy) < .01) PEND.dy = 0; closeViewPan(ex, ey, t); } }
-    const on = !!g.lockedTarget?.(); if (on !== locked) { locked = on; lock.setAttribute("aria-pressed", String(on)); lock.style.color = on ? "#ff8a78" : "#ddd5c4"; } } };
+    // the button's state: lit red while target mode is on (auto-targeting), the old warm tint for a lock made by a tap alone
+    const on = !!g.lockedTarget?.(), auto = CAM.targetMode; if (on !== locked || auto !== autoShown) { locked = on; autoShown = auto; lock.setAttribute("aria-pressed", String(on || auto)); lock.setAttribute("data-target-mode", auto ? "on" : "off");
+      lock.style.color = auto ? CLOSE_VIEW.targetButton.on : on ? CLOSE_VIEW.targetButton.locked : CLOSE_VIEW.targetButton.off; lock.style.filter = auto ? CLOSE_VIEW.targetButton.glow : "none"; } } };
 }
