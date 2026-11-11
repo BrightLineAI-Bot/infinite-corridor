@@ -2331,7 +2331,16 @@ export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100, landOnArr
 // dodge goes along one of the four axes (a branch is one tile wide: a diagonal dodge drifted off it), and a sky hop flies
 // straight: while the Wayfarer is in the air over the gap only the stick's larger axis moves it, so a thumb's drift cannot carry
 // it off the line between the twin tips. Aim off an edge and you still go off it.
-export const TREE_FOOTING = { dodgeAxes: 4, straightHop: true, gapBelow: 1 }; // gapBelow: in the air this many levels or more under the launch height counts as over the gap
+export const TREE_FOOTING = { dodgeAxes: 4, straightHop: true, gapBelow: 1, stepLands: true }; // gapBelow: in the air this many levels or more under the launch height counts as over the gap. stepLands (2026-11-11): a jump from a branch up onto the next branch ends there, as a hop does past a gap; the long sky jump (JUMP.sky) carried a held stick on past a turn and off the branch
+// loadArea's notice when the Wayfarer's position had to be moved onto open ground.
+export const SETTLED_MESSAGE = "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
+// The keel (Tim, 2026-11-11: "potentially impossible to traverse a tree to get to the top... substantially broken"): a branch is one
+// tile wide, and the Wayfarer came off each turn near its edge, so a thumb a few degrees off the branch walked off it. On a great
+// tree's tile whose side is not level with it (a drop, the step a turn came from, the crown's rim), a stick held along the tile
+// (its smaller axis at most `lean` of the larger) steers to the tile's middle line instead of drifting: the sideways part becomes
+// a pull to the middle, `pull` per tile off it, at most `max` of the stick. A jump keeps the line of the tile it left from.
+// Push clearly sideways and you still step off (falls stay lethal; no brink guard). The crown's inside is left free.
+export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 export function jumpLift(g, now) {
   const until = g?.jumpUntil || 0; if (!(now < until)) return 0;
   if (g.mechBoosting) return JUMP.arc;
@@ -2917,7 +2926,7 @@ export class Game {
         : sectionTerrain(this.save.seed, this.rx, this.ry, this.save.worldGeneration, this.sectionTerrainSteps()); // perf pack: kept terrain (see sectionTerrain)
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.skyLevel=0;this.discAir=null;/* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;/* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry);} // release 289: sections first seen from now on
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
@@ -3249,9 +3258,7 @@ export class Game {
       } else if (!e.seaKind) relocateIfStranded(e, this.map, areaWidth);
       refreshMarineBeast(e, this.map, areaWidth, area);
     }
-    if (playerRelocated)
-      this.message =
-        "The changed Corridor settles you onto the nearest stable ground. Your progress and carried items remain intact.";
+    if (playerRelocated) this.message = SETTLED_MESSAGE;
     if (area === 'dungeon' && !this.map.arena && !this.save.session.activeDisplacement && !String(loadingId).startsWith('hunt-')) this.prepareDungeonCompletion();
     if (area === 'dungeon' && this.save.session.activeDisplacement) { const h = dungeonHistory(this.save, this.areaId()); if (!h.thresholdOpen) { const fell = this.enemies.find((e) => e.dead && !e.worldBeast && !e.questingBeast && (e.boss || isCrossingGuardian(e)) && (e.boss || !this.enemies.some((q) => !q.dead && isCrossingGuardian(q)))); if (fell) { h.thresholdOpen = true; h.thresholdDoor = { x: Math.round(fell.x), y: Math.round(fell.y) }; } } this.raiseThresholdDoor(); } // release 451: also for a guardian felled before this release
     this.reconcileConsequences();
@@ -3473,7 +3480,7 @@ export class Game {
       fatalFallPending: this._fatalFallPending === true,
       // Exact resume of a jump in the air (found with TREE_GLIDE.home.reached): the height it left from and the sky-hop height it
       // holds; before, a jump off a great crown saved mid-air resumed at the ground's height and its fall (or freefall) was lost.
-      jumpAir: clock < (this.jumpUntil || 0) && !this.droneLift ? { from: Number.isFinite(this.jumpFrom) ? this.jumpFrom : null, skyAir: Number.isFinite(this.skyAir) ? this.skyAir : null, scale: Number(this.skyAirScale) || null, dur: Number(this.jumpDur) || null, liftDrop: this.liftDrop === true, hopGap: this.skyHopGap === true } : null,
+      jumpAir: clock < (this.jumpUntil || 0) && !this.droneLift ? { from: Number.isFinite(this.jumpFrom) ? this.jumpFrom : null, skyAir: Number.isFinite(this.skyAir) ? this.skyAir : null, scale: Number(this.skyAirScale) || null, dur: Number(this.jumpDur) || null, liftDrop: this.liftDrop === true, hopGap: this.skyHopGap === true, ...(this.keelLine ? { keel: { x: this.keelLine.x, y: this.keelLine.y } } : {}) } : null,
       curses: cursesOut(p.curses, clock), // release 737: the haunt curses, with what each has left (and the health FRAIL holds back)
     };
   }
@@ -3524,6 +3531,28 @@ export class Game {
     if (!contacts || contacts.clip(p.x, p.y, dx, dy) === 1) { p.x = x; p.y = y; return true; }
     return moveAxis(p, dx, dy, this.map, mapWidth(this.map, this.area), false, null, false, contacts);
   }
+  // TREE_KEEL: the stick, steered to the middle line of the great-tree branch under the feet when it is held along the branch.
+  // The stick's smaller axis as the keel steers it (a pull toward the middle line), or null to leave the stick alone. In a jump
+  // from a branch the line is that branch's (`keelLine`, set at the press), whatever is under the feet. No allocation per frame.
+  treeKeel(x, y, dodging = false, dt = 1 / 60, now = 0) {
+    const p = this.player, w = mapWidth(this.map, this.area), tiles = this.map.tiles, air = now < (this.jumpUntil || 0), line = air ? this.keelLine : null;
+    if (!line) this.keelLine = null;
+    if (air && !TREE_FOOTING.straightHop) return null; // in the air the keel is part of the straight hop: off with it
+    const u = line ? tiles[line.y * w + line.x] : tileUnder(this.map, w, p.x, p.y);
+    if (!u?.canopy || u.blocked) return null;
+    const alongX = Math.abs(x) >= Math.abs(y), major = Math.abs(alongX ? x : y), minor = alongX ? y : x;
+    if (!(major > 0) || Math.abs(minor) > TREE_KEEL.lean * major) return null;
+    const off = alongX ? (u.y - .25) - p.y : u.x - p.x;
+    if (line) { if (Math.abs(off) >= 1) return null; } // a jump that has left the line's own row or column is not steered back to it
+    else { // only where a side is not level with the tile: a drop, the step a turn came from, the crown's rim
+      const e = u.elev || 0, ax = u.x - (alongX ? 0 : 1), ay = u.y - (alongX ? 1 : 0), bx = u.x + (alongX ? 0 : 1), by = u.y + (alongX ? 1 : 0), h = Math.floor(tiles.length / w);
+      const a = ax < 0 || ay < 0 || ax >= w || ay >= h ? null : tiles[ay * w + ax], b = bx < 0 || by < 0 || bx >= w || by >= h ? null : tiles[by * w + bx];
+      const level = (n) => !!n && (n.blocked || (!LETHAL_KINDS.has(n.kind) && (n.elev || 0) === e)); // a wall beside it cannot be stepped into
+      if (level(a) && level(b)) return null;
+    }
+    const speed = (dodging ? 4.8 : 2.4) * (1 + (characterStats(this.save).moveSpeed || 0)), most = Math.abs(off) / Math.max(1e-6, speed * Math.max(dt, 1e-3));
+    return Math.sign(off) * Math.min(Math.abs(off) * TREE_KEEL.pull, TREE_KEEL.max, most) * major;
+  }
   planGroundedPlayerMove(dx, dy, width, now, carrier = null) {
     const contacts = actorContactContext(this, this.player, dx, dy); if (!contacts) return null;
     const probe = contacts.probe, p = this.player, from = tileUnder(this.map, width, p.x, p.y), jumping = now < (this.jumpUntil || 0);
@@ -3558,7 +3587,7 @@ export class Game {
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
-    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.ledgeHint = null; this.poisonSoak = 0;
+    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
     this.endGloomDarks(); // the Gloomvast's Dark ends with a death or a journey by Wayglass
@@ -3586,6 +3615,7 @@ export class Game {
   restoreJumpAir(j, now) {
     if (!j || typeof j !== "object" || !(this.jumpUntil > now)) return; const n = (v) => v != null && Number.isFinite(Number(v)) ? Number(v) : null;
     if (n(j.from) != null) this.jumpFrom = n(j.from); if (n(j.skyAir) != null) this.skyAir = n(j.skyAir); if (n(j.scale) > 0) this.skyAirScale = n(j.scale); if (n(j.dur) > 0) this.jumpDur = n(j.dur); this.liftDrop = j.liftDrop === true; this.skyHopGap = j.hopGap === true;
+    const k = j.keel; this.keelLine = k && typeof k === "object" && Number.isInteger(k.x) && Number.isInteger(k.y) ? { x: k.x, y: k.y } : null; // TREE_KEEL: the branch the jump left from
   }
   // Release 734 (S6/F2): where a death or Wayglass travel lands. A checkpoint with a null or NaN coordinate (a damaged save)
   // threw on every death or stranded the Wayfarer at x=null; the active one is repaired to the Ember Refuge instead.
@@ -4443,7 +4473,7 @@ export class Game {
       const horde = rollHorde(this.save, this.save.session.activeDungeonId, h, h.ladder ? ladderRoll(this.save.seed, this.save.session.activeDungeonId, "horde", h.ladder.tier) : undefined); // release 269: decided on the first visit; 319: by the ladder
       h.visits++;
       h.visitOpen = true;
-      this.loadArea("dungeon");
+      { const was = this.message; this.loadArea("dungeon"); if (this.message === SETTLED_MESSAGE) this.message = was; } // the position loadArea judged was the door's on the land outside, never where you arrive (just below): a crater, mostly clods, said "settles you" on every entry
       if (horde?.left > 0) this.message = `The crossing is thick with Gate Revenants: ${horde.left} remain.`;
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
@@ -8747,6 +8777,7 @@ export class Game {
         if (mount) this.jumpDur *= MOUNT_BEASTS[mount.beast].jump;
         this.jumpStart = now;
         this.jumpUntil = now + this.jumpDur;
+        { const u = TREE_KEEL.on && this.area === "overworld" && this.map?.canopy ? tileUnder(this.map, width0, p.x, p.y) : null; this.keelLine = u?.canopy && !u.blocked ? { x: u.x, y: u.y } : null; } // TREE_KEEL: a jump from a branch keeps to that branch's line
         this.cancelConsumeVisual('jump');
         this.cancelAttackPresentation(now);
         cancelCastVisual(p);
@@ -8777,6 +8808,7 @@ export class Game {
       const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
       if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
     }
+    if (TREE_KEEL.on && this.area === "overworld" && this.map?.canopy && !this.droneLift && !this.glide && (Math.abs(x) > .15 || Math.abs(y) > .15)) { const k = this.treeKeel(x, y, dodging, dt, now); if (k !== null) { if (Math.abs(x) >= Math.abs(y)) y = k; else x = k; } }
     const swimming = this.swimsHere(footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y)), underfoot = this.map.landscape ? tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind : null;
     const sailing = this.area === "overworld" && aboard(this.save);
     let speed = (dodging ? 4.8 : 2.4) * (1 + characterStats(this.save).moveSpeed) * (!dodging && now < (p.slowUntil || 0) ? (p.slowFactor || .5) : 1) * (this.map.underwater ? DIVE.speed : 1) * (sailing ? BOAT.speed : swimming ? (this.mechUp() ? MECH_WATER.speed : TIDEMANTLE.speed) : dodging ? (p.dodgeMired ? STAG.mire.dodgeSpeed : 1) : mireSpeed(underfoot)) * (!dodging && !sailing && !swimming && this.mountRide() ? MOUNT_BEASTS[this.mountRide().beast].speed : 1), // release 748: riding (dodges unchanged)
@@ -8902,6 +8934,7 @@ export class Game {
         const u = tileUnder(this.map, width, p.x, p.y);
         if (u && !u.skyPlatform && landed <= this.skyAir - TREE_FOOTING.gapBelow) this.skyHopGap = true;
         else if (this.skyHopGap && u?.skyPlatform && landed >= this.skyAir && landed <= this.skyAir + 1) { this.jumpUntil = now; p.jumping = false; }
+        else if (TREE_FOOTING.stepLands && this.map?.canopy && u?.canopy && u.skyPlatform && landed > this.skyAir && landed <= this.skyAir + 1) { this.jumpUntil = now; p.jumping = false; } // TREE_FOOTING.stepLands
       }
       if (!p.jumping) this.skyHopGap = false;
       if (p.jumping && this.skyAir != null && landed < this.skyAir) hurt = 0; // still in the air over a skyway gap

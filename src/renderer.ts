@@ -2373,6 +2373,9 @@ function drawScreenOverlay(ctx, w, h) {
   ctx.drawImage(o.canvas, 0, 0, w, h);
   return true;
 }
+// The standard view's floor (renderer.ts render): `flatInterior`, a versioned interior heightfield (landscape.ts interiorTerrain)
+// is painted flat here, so its actors are drawn on the flat floor rather than lifted by levels nobody sees.
+export const STANDARD_VIEW_FLOOR = { flatInterior: true };
 export function render(ctx, g, w, h, now) {
   if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) return; // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
@@ -2402,14 +2405,19 @@ export function render(ctx, g, w, h, now) {
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
   const flatCapture = worldCapture || (g.map?.interiorTerrain?.version === 1 || g.map?.building) && closeViewCapturing();
-  const groundLift = (x, y) => (flatCapture ? 0 : g.map?.landscape || g.map?.building ? liftAt(g.map, mw, x, y) : 0);
-  const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
+  // STANDARD_VIEW_FLOOR (Tim, 2026-11-11: in the Pentagons "the character seems to be kind of like floating above the ground"):
+  // this view paints a versioned interior heightfield's floor flat (its tiles carry no landscape lift), so whoever stands on its
+  // raised half is drawn on that flat floor too; a hop or the drone is drawn by its height over the floor under it, as Close
+  // View's flat capture does. Close View draws the heights themselves.
+  const flatFloor = flatCapture || STANDARD_VIEW_FLOOR.flatInterior && interiorTerrain(g.map);
+  const groundLift = (x, y) => (flatFloor ? 0 : g.map?.landscape || g.map?.building ? liftAt(g.map, mw, x, y) : 0);
+  const crystalLift = e => flatFloor ? 0 : crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
   const interior = interiorTerrain(g.map);
   const supportLevel = interior ? interiorSurfaceLevel(g.map, p.x + .5, p.y + .75) : 0;
   const hopLift = interior && g.skyAir != null && jumping
-    ? Math.max(flatCapture ? 0 : supportLevel, g.skyAir - (flatCapture ? supportLevel : 0)) * LIFT_PER_LEVEL
+    ? Math.max(flatFloor ? 0 : supportLevel, g.skyAir - (flatFloor ? supportLevel : 0)) * LIFT_PER_LEVEL
     : g.area === "overworld" && g.skyAir != null && jumping
       ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1) - (worldCapture ? liftAt(g.map, mw, p.x, p.y) : 0))
       : null;

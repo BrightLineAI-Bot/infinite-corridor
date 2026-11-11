@@ -576,7 +576,22 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w, flat = false) {
     if (!t.mushroom) { ctx.fillStyle = "#0000004d"; ctx.fillRect(px, y * s + s - 2, s + 1, 2); } // contact shadow at the cliff foot (a cap stands on its stalk)
   }
   if (t.slope && t.kind !== "mountainTrail" && t.kind !== "castleStair") { ctx.fillStyle = "#ffffff18"; ctx.fillRect(px, py, s, s * .2); }
+  if (lift > 0 && t.canopy) canopyRim(ctx, t, x, y, px, py, s, tiles, w);
   return true;
+}
+// CANOPY_RIM (Tim, 2026-11-11: make it "visually clear where platforms end"): a great tree's wood is rimmed in pale gold along
+// every side where it ends over a drop that hurts (`drop` levels or more, or nothing to stand on): the open edges of a branch,
+// a tip, the crown's rim. A side that steps on to the next branch, or a level or one-level step, has no rim, so the rims run
+// like rails along the climb. Painted with the tile into the ground cache: nothing per frame.
+export const CANOPY_RIM = { drop: 2, edge: "#f3d98ccc", inset: "#2a180c99", width: .075 };
+function canopyRim(ctx, t, x, y, px, py, s, tiles, w) {
+  const R = CANOPY_RIM, e = t.elev || 0, th = Math.max(1.5, s * R.width), at = (dx, dy) => (x + dx < 0 || x + dx >= w) ? null : tiles?.[(y + dy) * w + x + dx];
+  const ends = (n) => !n || (!n.blocked && (e - (n.elev || 0) >= R.drop || LETHAL_UNDER.has(n.kind))); // a wall beside it cannot be stepped into
+  const n = ends(at(0, -1)), so = ends(at(0, 1)), we = ends(at(-1, 0)), ea = ends(at(1, 0)); if (!n && !so && !we && !ea) return;
+  ctx.fillStyle = R.inset; // a dark line just inside the gold, so the rim reads on pale leaves and dark bark alike
+  if (n) ctx.fillRect(px, py + th, s + .5, th * .6); if (so) ctx.fillRect(px, py + s - th * 1.6, s + .5, th * .6); if (we) ctx.fillRect(px + th, py, th * .6, s + .5); if (ea) ctx.fillRect(px + s - th * 1.6, py, th * .6, s + .5);
+  ctx.fillStyle = R.edge;
+  if (n) ctx.fillRect(px, py, s + .5, th); if (so) ctx.fillRect(px, py + s - th, s + .5, th); if (we) ctx.fillRect(px, py, th, s + .5); if (ea) ctx.fillRect(px + s - th, py, th, s + .5);
 }
 
 // Great-tree review (Tim, 2026-11-05: "When you get to the trunk, I just fell through... to the tops of the platforms and then
