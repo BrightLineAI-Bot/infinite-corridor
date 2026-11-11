@@ -293,7 +293,7 @@ setTimeout(() => {
     $("#spellInfo").textContent =
       `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
     $("#toolInfo").textContent =
-      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
+      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${game.roundsSummary?.() || "" /* tool rounds (game.ts roundsSummary) */}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
     act?.classList.toggle("selected", save.aimMode === "act");
@@ -2130,7 +2130,7 @@ function openPack(tab) {
       : inventoryView.sort === "power" ? b.item.power-a.item.power : itemScore(b.item)-itemScore(a.item));
   { const bar = document.createElement("div"); bar.className = "inventory-tools";
     if (!gearPick) bar.append(uiButton("Select all", () => { gearPick = new Set(visibleItems.map((q) => q.item)); openPack(); }));
-    else { const n = gearPick.size, iron = [...gearPick].reduce((t, q) => t + Math.max(1, ITEM_TIERS.indexOf(itemTier(q)) + 1), 0), go = uiButton(`Salvage selected (${n}) · ${iron} iron`, () => { const r = salvageInventoryItems(save, [...gearPick]); gearPick = null; game.message = `Salvaged ${r.count} piece${r.count === 1 ? "" : "s"} for ${r.iron} cinder iron.`; persist(); openPack(); }); go.disabled = !n;
+    else { const n = gearPick.size, iron = [...gearPick].reduce((t, q) => t + (SMITHY.salvage.iron[itemTier(q)] ?? 1), 0) /* the same table salvage pays from */, go = uiButton(`Salvage selected (${n}) · ${iron} iron`, () => { const r = salvageInventoryItems(save, [...gearPick]); gearPick = null; game.message = `Salvaged ${r.count} piece${r.count === 1 ? "" : "s"} for ${r.iron} cinder iron.`; persist(); openPack(); }); go.disabled = !n;
       const tip = document.createElement("span"); tip.className = "options-note"; tip.textContent = "Tap a piece to leave it out (or put it back).";
       bar.append(go, uiButton("Select all", () => { gearPick = new Set(visibleItems.map((q) => q.item)); openPack(); }), uiButton("Cancel", () => { gearPick = null; openPack(); }), tip); }
     body.append(bar); }
@@ -2427,7 +2427,9 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     if (!button) continue;
     const cooling = state.remaining > 0,
       fraction = cooling ? Math.min(1, state.remaining / state.duration) : 0,
-      label = cooling
+      label = action === "tool" && state.rounds /* tool-forms.ts ROUNDS: the round count stays up through the short shot cooldown */
+      ? state.rounds
+      : cooling
       ? `${state.remaining.toFixed(state.remaining < 1 ? 1 : 0)}s`
       : action === "potion"
         ? `×${state.count}`
@@ -2440,6 +2442,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     hudSet(button,"class:cooling",cooling);
     hudSet(button,"class:unavailable",state.available === false);
     hudSet(button,"data-cooldown",label);
+    if (action === "tool") hudSet(button,"class:empowered",state.empowered === true && !!state.rounds); /* gold count while empowered rounds are held */
     hudSet(button,"aria-label",`${action} ${label}`);
   }
   { const pb = hudEl('[data-action="potion"]'); if (pb) hudSet(pb, "data-tier", potionToDrink(save)); } // release 339: the bottle takes the tier's colour

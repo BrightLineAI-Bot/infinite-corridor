@@ -1057,3 +1057,5 @@ body.reduce-motion #oculusWarp { display: none; }
 }
 /* An item in a slot (A, B or C) shows its drawn icon at the symbol's size. */
 .buttons button.spell .slot-sym svg { display: block; width: 22px; height: 22px; margin: 0 auto; pointer-events: none; }
+/* Tool rounds (tool-forms.ts ROUNDS): the count turns gold while empowered rounds are held. */
+.buttons button.tool.empowered::after { color: #ffd86a; text-shadow: 0 0 3px #b8860b; }
