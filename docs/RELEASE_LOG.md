@@ -21,6 +21,7 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 908 | Claude | claude/cv-nanobot-knight | Close View Nanobot Knight on a converted RPG Character Pack human body (slender, 1.75 x the Wayfarer), plate, cone helm, greatsword, cannon, swarm cape; all attacks on their clocks | In flight. |
 | 905 | Claude | claude/cv-questing-beast | Close View Questing Beast: furred jackal-like body, real folding wings with a body membrane, all attacks on their clocks; beast budget 5000/3000/1200 | In flight. |
 | 904 | Claude | claude/waymark-guides | Trail marks on new ground lead to one real destination of their kind about 8-10 sections ahead (amber chevron: skyway; red triangle: world boss; violet spiral: Watcher's Shrine); smaller Pentagon sigil; the small gold pentagon cue is no longer laid on guided ground; Journal symbol cards renamed | In flight. |
 | 903 | Claude | claude/region-daily-1111 | New region type on new ground only: glaciated far mountain ranges (30+ sections out) with icefalls, crevasse fields and snow bridges, seracs, melt pools and frozen caches; landscape version 24 | Merged as `1c4e9c4bd612` (#570). |
