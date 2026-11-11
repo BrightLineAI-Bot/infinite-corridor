@@ -90,7 +90,7 @@ const WALK_PHASE = [0, .25, .5, .75], GALLOP_PHASE = [0, .58, .12, .7];
 // ------------------------------------------------------------------------------------------------ the body
 // The standard view's palette ["#4a4650", "#141218", "#ff4a3a", "#f2ece0"], with the near-black lifted so a lit 3D body reads.
 const C = Object.freeze({ hide: 0x575261, hideLight: 0x777082, dark: 0x302c36, belly: 0x36313c, ember: 0xff4a3a, emberHot: 0xffb59a, core: 0xfff1d8,
-  bone: 0xf2ece0, boneDark: 0x8c8478, horn: 0x2a2530, claw: 0x0e0d10, membrane: 0x221d27, membraneEdge: 0x4e222b, wingBone: 0x2e2a34, scale: 0x3a3542, plate: 0x433d4c, fur: 0x6a6375, furDark: 0x3a3541, furLight: 0x938b9f, earIn: 0x5a3038 });
+  bone: 0xf2ece0, boneDark: 0x8c8478, horn: 0x2a2530, claw: 0x0e0d10, membrane: 0x221d27, membraneEdge: 0x4e222b, wingBone: 0x2e2a34, scale: 0x3a3542, plate: 0x433d4c, fur: 0x6a6375, furDark: 0x3a3541, furLight: 0x7a7386, earIn: 0x5a3038 });
 function buildQbMesh(tier) {
   const d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(QB_SKELETON, d), bw = QB_SKELETON.bindWorld;
   const lerpHex = (a, b, t) => { t = clamp01(t); const ch = (sh) => Math.round(((a >> sh) & 255) + ((((b >> sh) & 255) - ((a >> sh) & 255)) * t)); return (ch(16) << 16) | (ch(8) << 8) | ch(0); };
@@ -143,7 +143,7 @@ function buildQbMesh(tier) {
       for (let q = 0; q < n; q++) for (const s of [-1, 1]) {
         const h = ((((k * 73856093) ^ (q * 19349663) ^ (s > 0 ? 83492791 : 0)) >>> 0) % 1000) / 1000, th = ruff ? (-.75 + 1.95 * ((q + h * .7) / n)) * Math.PI / 2 : (.05 + .9 * ((q + h * .7) / n)) * Math.PI / 2 * 1.05; // the ruff wraps under the chest
         const ct = Math.cos(th) * s, st = Math.sin(th), p = [f + (h - .5) * .05, ct * rx * .99, u + st * rz * .99], nn = norm([0, ct / rx, st / rz]);
-        const back = ruff ? norm([tb[0] * .45 + nn[0] * .3, nn[1] * .5, -1]) : norm([tb[0] - nn[0] * .2, -nn[1] * .15 + tb[1], tb[2] - .35 - nn[2] * .2]), len = (ruff ? .13 : haunch ? .095 : .08) * (.8 + .5 * h);
+        const back = ruff ? norm([tb[0] * .45 + nn[0] * .3, nn[1] * .5, -1]) : norm([tb[0] - nn[0] * .2, -nn[1] * .15 + tb[1], tb[2] - .35 - nn[2] * .2]), len = (ruff ? .13 : haunch ? .085 : .065) * (.8 + .5 * h);
         tuft(wb >= .5 ? bb : ba, p, nn, back, len, ruff ? .024 : .018, h < .35 ? C.furDark : h > .8 ? C.furLight : C.fur);
       }
     }
@@ -154,9 +154,10 @@ function buildQbMesh(tier) {
         tuft(L.top, p, norm(nn), [-.25, 0, -1], .075 + .03 * h, .017, h < .4 ? C.furDark : C.fur); }
       // and shorter shag down the shin and forearm
       const m = BI[L.mid] * 3, x1 = bw[m], y1 = bw[m + 1], z1 = bw[m + 2];
-      for (let q = 0; q < Math.round(6 * dens); q++) { const h = ((q * 40503 + 17) >>> 0) % 1000 / 1000, a = (q + .5) / 6 * Math.PI * 2, z = z1 - .04 - .12 * h, r = L.hind ? .095 : .08;
-        const nn = [Math.cos(a) * .8, Math.sin(a), 0], p = [x1 + Math.cos(a) * r * .8, y1 + Math.sin(a) * r, z];
-        tuft(L.mid, p, norm(nn), [-.2, 0, -1], .05 + .02 * h, .013, h < .5 ? C.furDark : C.fur); } }
+      // feathering down the back of the shin and forearm, swept back (pass: the lower legs were bare)
+      for (let q = 0; q < Math.round(7 * dens); q++) { const h = ((q * 40503 + 17) >>> 0) % 1000 / 1000, a = Math.PI + (q / 6 - .5) * 1.6, z = z1 - .03 - .2 * (q / 6), r = (L.hind ? .075 : .062) * (1 - .3 * q / 6);
+        const nn = [Math.cos(a), Math.sin(a) * .7, 0], p = [x1 + Math.cos(a) * r, y1 + Math.sin(a) * r * .8, z];
+        tuft(L.mid, p, norm(nn), [-1, 0, -.55], .07 + .03 * h, .016, h < .5 ? C.furDark : C.fur); } }
     for (let i = 0; i < TAIL - 1; i++) { const b = 'tail' + i, bi = BI[b] * 3; for (let q = 0; q < Math.round(4 * dens); q++) for (const s of [-1, 1]) {
       const p = [bw[bi] - .05 * q, bw[bi + 1] + s * .035, bw[bi + 2] + .02], nn = norm([0, s, .6]); tuft(b, p, nn, [-1, 0, -.15], .09, .016, q % 2 ? C.furDark : C.fur); } }
   }
