@@ -46,7 +46,7 @@ test('old Pentagons: their overworld sections and shortcut link ends are unchang
 });
 
 // Version 11 itself, pinned from this release on: a later change must take a new version, never alter these.
-const PINNED_V11 = { 'TIM1:8:8': '78e912738268f42475cc2fc3', 'PIN2:-16:24': 'aaf23c8a471e19d521fdf2ab' };
+const PINNED_V11 = { 'TIM1:8:8': 'ba926981e7c08a40a94478f5', 'PIN2:-16:24': '38669532bd1f1d845c0cde83' };
 test('v11 Pentagons are pinned: plan and every chamber (terrain 2) regenerate byte for byte', () => {
   for (const [k, want] of Object.entries(PINNED_V11)) { const [seed, cx, cy] = k.split(':'), h = createHash('sha256'), P = pentagonPlan(seed, Number(cx), Number(cy), V); h.update(JSON.stringify(P));
     for (const q of P.nodes) h.update(JSON.stringify(generatePentagonChamber(seed, `${P.base}:f${q.n + 1}`, 2))); assert.equal(h.digest('hex').slice(0, 24), want, k); }
@@ -156,11 +156,11 @@ test('v11 chambers are deterministic, themed and named for their ward', () => {
 test('the camera: the wide boom fits behind the Wayfarer on a walking line across most of every open area; cramped ones are named exceptions', () => {
   const C = AP.camera, by = {}; let clear = 0, walkable = 0;
   assert.deepEqual(C.cramped, ['undercroft', 'side']); assert.ok(C.boom >= 5 && C.pad > 0);
-  for (const { seed, P } of plans(8, 'K')) for (const q of P.nodes) { if (!q.area || C.cramped.includes(q.area)) continue; const r = adventureCameraClearance(chamber(seed, P, q));
-    (by[q.area] ||= [0, 0]); by[q.area][0] += r.clear; by[q.area][1] += r.walkable; clear += r.clear; walkable += r.walkable; }
+  for (const { seed, P } of plans(8, 'K')) for (const q of P.nodes) { const kind = q.hall ? 'hall' : q.area; if (!kind || C.cramped.includes(kind)) continue; const r = adventureCameraClearance(chamber(seed, P, q));
+    (by[kind] ||= [0, 0]); by[kind][0] += r.clear; by[kind][1] += r.walkable; clear += r.clear; walkable += r.walkable; }
   assert.ok(clear / walkable >= C.share, `open areas: ${(clear / walkable).toFixed(2)} of walkable tiles clear`);
   for (const [a, [c, w]] of Object.entries(by)) assert.ok(c / w >= C.least, `${a}: ${(c / w).toFixed(2)} clear`);
-  assert.ok(Object.keys(by).length >= 7, Object.keys(by).join(' '));
+  assert.ok(Object.keys(by).length >= 8 && by.hall, Object.keys(by).join(' '));
   // a straight corridor (the boom keeps a third of a tile off each wall) is clear where five tiles run on both ways; a small room nowhere
   const room = (W, H, open) => ({ width: W, height: H, tiles: Array.from({ length: W * H }, (_, k) => ({ x: k % W, y: (k / W) | 0, blocked: !open(k % W, (k / W) | 0) })) });
   assert.equal(adventureCameraClearance(room(30, 9, (x, y) => y === 4 && x > 0 && x < 29)).clear, 18, 'a long corridor: clear where five tiles run on both ways');

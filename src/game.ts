@@ -350,6 +350,14 @@ function labyrinthState(save, map) {
   if (map.building.roomMaze) for (const o of map.objects) if (o.kind === "labGate" && opened.includes(o.gateKey)) openRoomGate(map, o); // a room maze's barred doors, once opened from the far side
   return map;
 }
+// Pentagon v11 (adventures.ts ADVENTURE_PENTAGON.waystone): a Waystone's actions as this journey left them: rest, and travel to
+// each other Waystone of this Pentagon already rested at (the base history's `advWaystones`), labelled with its name.
+function adventureWaystoneState(save, map) {
+  for (const o of map?.objects || []) { if (o.kind !== "pentWaystone") continue;
+    const list = save.consequences?.dungeons?.[`${o.pentBase}:f1`]?.advWaystones, others = (Array.isArray(list) ? list : []).filter((w) => w && w.id !== o.chamberId && typeof w.id === "string" && Number.isFinite(w.x) && Number.isFinite(w.y));
+    o.actions = ["rest", ...others.map((w) => `travel:${w.waystone}`)]; o.actionLabels = { ...(o.actionLabels || {}), ...Object.fromEntries(others.map((w) => [`travel:${w.waystone}`, ADVENTURE_PENTAGON.waystone.travel(w.name)])) }; }
+  return map;
+}
 // TOWER_SEAL (great-buildings.ts): a compound or castle floor holding the tower's key, as this journey left it: once taken (kept on
 // the tower's first floor's history, `labKeys`) the key is gone.
 function towerKeyState(save, map) {
@@ -492,7 +500,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   else if (isPentagonId(id)) {
     const raw = generatePentagonChamber(save.seed, id, interiorTerrainVersion(history, fresh));
     if (raw?.building?.V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion) planPinnedRoomPadding(save, id, raw);
-    map = pentagonMuralsState(save, labyrinthState(save, raw));
+    map = adventureWaystoneState(save, pentagonMuralsState(save, labyrinthState(save, raw))); // v11: the Waystones' travel
     history.gatePredatorSpawnThreshold = 0;
   }
   else if (isBuildingId(id) || isCompoundId(id) || isLabyrinthId(id) || isCastleId(id)) {
@@ -2871,6 +2879,7 @@ export class Game {
       };
     this.save.session.areas[this.areaStateId()] = {
       encounterVersion:this.map.encounterVersion||0,
+      ...(this.map.building?.adventure ? { advRespawn: Number(this.save.consequences?.dungeons?.[`${this.map.building.base}:f1`]?.advRespawn) || 0 } : {}), // Pentagon v11: the rests this chamber's dead have seen
       leftAt: Number(this.save.playSeconds) || 0, // release 651: when it was last held, for Fractured mode's return
       enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast && !e.fracReinforcement && !e.roofDweller && !e.gloomOrbOf /* the Gloomvast's decoys are laid again from its Dark; */ /* roof-dwellers.ts: made again from the plan; the slain are on the Pentagon's history */).map((e) => { const dead = deadFoeRecord(e); if (dead !== e) return dead; /* perf pack: a dead, rewarded foe is kept as a tombstone */ return ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } }); }), // release 259: the Blob's remnant is never saved
       objects,
@@ -3163,10 +3172,12 @@ export class Game {
     if (s) {
       const by = new Map((s.enemies || []).map((e) => [e.id, e]));
       const refill = !!this.fracturedHere(area) && Number.isFinite(Number(s.leftAt)) && (Number(this.save.playSeconds) || 0) - Number(s.leftAt) >= FRACTURED.repopulate; // release 651: away long enough, it fills up again
+      const B = area === "dungeon" ? this.map.building : null, risen = !!B?.adventure && !B.trial && (Number(this.save.consequences?.dungeons?.[`${B.base}:f1`]?.advRespawn) || 0) > (Number(s.advRespawn) || 0); // Pentagon v11: a Waystone rest since this chamber was left
       this.enemies = this.enemies.map((e) => {
         const restored = by.get(e.id);
         if (!restored) return e.fractured ? this.scaleToRegion(e) : e; // balance pack (tim.md 1): a Fractured pack new to known ground
         if (refill && restored.dead && fracturedOrdinary(restored)) return this.scaleToRegion(e); // and a refill
+        if (risen && restored.dead && e.buildingGuard && !e.boss && !e.pentBoss && !e.buildingGuardian && !e.packGuardian && fracturedOrdinary(e)) return e; // its ordinary creatures stand again (as generated)
         const merged = {
           ...e,
           ...(isTombstone(restored) ? tombstoneBlanks(restored, e) : null), // perf pack: a tombstone's empty identity stays empty
@@ -4341,7 +4352,7 @@ export class Game {
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "buildingStair") return this.takeBuildingStair(o); // great buildings
     if (o.kind === "pentShortcut") return this.pentagonShortcut(o); // the Pentagon's shortcut links (v6)
-    if (o.kind === "pentWaystone") return this.restAtWaystone(o); // Pentagon v11: a Waystone, rest point and the place a fall wakes you
+    if (o.kind === "pentWaystone") return String(action || "").startsWith("travel:") ? this.travelWaystone(o, Number(String(action).slice(7))) : this.restAtWaystone(o); // Pentagon v11: a Waystone: rest (and wake here), or travel to another
     if (o.kind === "advVista") { const B = this.map.building; o.state = "read"; this.message = o.lore; journalOnce(this.save, `adventure-vista:${B?.base}:${B?.node}`, o.lore, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; } // Pentagon v11: a vista's view of the landmark
     if (o.kind === "pentFinaleWall") return this.pentagonFinaleWalk(o); // the finale's opened wall, either side
     if (o.kind === "pentDais") return this.pentagonDais(o, action); // and its dais: Transit, and its rerolls
@@ -7923,10 +7934,18 @@ export class Game {
     const B = this.map?.building, Wy = ADVENTURE_PENTAGON.waystone; if (!B?.pentagon || !B.adventure) return { ok: false, message: (this.message = "The stone is cold.") };
     const H = dungeonHistory(this.save, `${B.base}:f1`), id = this.areaId(), again = H.advRest?.id === id && H.advRest.x === o.x && H.advRest.y === o.y;
     H.advRest = { id, x: o.x, y: o.y, name: o.name };
+    const list = Array.isArray(H.advWaystones) ? H.advWaystones : (H.advWaystones = []); if (!list.some((w) => w?.id === id)) list.push({ id, x: o.x, y: o.y, name: o.name, waystone: o.waystone || 1 }); // the Waystones rested at, for travel
+    if (Wy.respawn) { H.advRespawn = (Number(H.advRespawn) || 0) + 1; const p = this.player, at = { x: p.x, y: p.y }; this.snapshotArea(); this.loadArea("dungeon", false); p.x = at.x; p.y = at.y; } // the Pentagon's ordinary creatures stand again: this chamber now, the others as you come to them
     if (Wy.heal) { this.player.hp = this.save.maxHp; this.player.stamina = this.save.maxStamina; const c = this.save.consumables || (this.save.consumables = {}); if ((c.restorativeDraught || 0) < Wy.draughts) c.restorativeDraught = Wy.draughts; }
     journalOnce(this.save, `adventure-waystone:${B.base}`, Wy.journal, PENTAGON.name);
-    this.message = again ? Wy.again : Wy.rest; if (!again) this.defeatNotice = { title: Wy.notice, detail: Wy.detail, kind: "discovery" };
+    this.message = `${again ? Wy.again : Wy.rest}${Wy.respawn ? ` ${Wy.risen}` : ""}`; if (!again) this.defeatNotice = { title: Wy.notice, detail: Wy.detail, kind: "discovery" };
     this.sync(); return { ok: true, message: this.message };
+  }
+  // Pentagon v11: from a Waystone to another of the same Pentagon already rested at (ADVENTURE_PENTAGON.waystone.travel).
+  travelWaystone(o, n) {
+    const B = this.map?.building, H = B?.adventure ? this.save.consequences?.dungeons?.[`${B.base}:f1`] : null, w = (H?.advWaystones || []).find((q) => q?.waystone === n && q.id !== this.areaId());
+    if (!w || !isPentagonId(w.id) || parsePentagonId(w.id)?.base !== B.base) return { ok: false, message: (this.message = "The stone knows no other Waystone yet.") };
+    this.goBuildingFloor(w.id, w.x, w.y); this.message = ADVENTURE_PENTAGON.waystone.travelled(w.name); this.sync(); return { ok: true, message: this.message };
   }
   // The Waystone a fall in this Pentagon (version 11) wakes you at, or null: only inside one of its chambers (not the finale's
   // walk or arena), and only a rest point recorded for this same Pentagon.

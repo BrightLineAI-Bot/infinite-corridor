@@ -42,9 +42,19 @@ export const ADVENTURE_PENTAGON = {
     journal: "A Waystone in the Pentagon: rest against it, and a fall within these walls wakes you there.",
     notice: "WAYSTONE", detail: "rest point · you will wake here",
     heal: true, draughts: 2, // a rest fills health and stamina, and tops restorative draughts up to this many
+    // Tim, 2026-11-11: "Dark Souls style": every rest brings the Pentagon's ordinary creatures back (never a boss, lord, keeper,
+    // warden or the Regent, nor a trial chamber's; keys, levers, shortcuts and caches stay as they are). The base history counts
+    // the rests (`advRespawn`); a chamber left before the latest rest is filled again when you next come in (game.ts loadArea).
+    respawn: true, risen: "Behind you, in the halls you cleared, things stir and stand again.",
+    // and in a vast Pentagon, travel between the Waystones you have rested at (`advWaystones` on the base history)
+    travel: (name) => `Travel · ${name}`, travelled: (name) => `The stone's warmth pulls at you, and you stand against ${name}.`,
   },
   cache: { name: "A district cache", lore: "A chest left behind by whoever held this ward last." },
   hub: { size: [47, 43], name: "The Waystone Hall" },
+  // Grand halls (pentagon-halls.ts: murals, sigils, backdrops) come back in v11 rebuilt for the camera (Tim, 2026-11-11): each
+  // type laid larger (`size`), keeping only `columns` of its columns (a share, by hash) so the floor stays open; stands and shafts
+  // as laid (a shaft is an open drop, which never stops the camera's boom).
+  halls: { size: { ballroom: [55, 41], arena: [51, 45], gallery: [59, 33], colonnade: [53, 41], pitGallery: [51, 43] }, columns: .25 },
   // The camera (Tim, 2026-11-11: "Rather than making the camera have less view in the Pentagon, we should make the Pentagon areas
   // wider so there's more view... The camera view is essential"): Close View's wide boom hangs `boom` tiles behind the Wayfarer and
   // keeps `pad` off a wall to either side (close-view.ts boomLength; drops do not stop it). A walkable tile is clear when it stands
@@ -107,22 +117,22 @@ export const ADVENTURE_THEMES = {
   city: { name: "Lamplit City", since: null, weight: 1, palette: { stone: "#3a3e42", floor: "#5b5d5e", light: "#e0a040", fog: "#101418" },
     tiles: { wall: "aptWall", under: "cellarWall", path: "tileFloor", floor: ["flagFloor", "concreteFloor"], accent: "carpetFloor", low: "cellarFloor" },
     remap: remap("aptWall", "cellarWall", "carpetFloor", "tileFloor", "flagFloor", "cellarFloor"), cv: { fog: "#101418", backdrop: "dimDome", kit: "city" },
-    landmark: { name: "the cathedral spire", lore: "Over the gables, a cathedral spire and its clock." }, creatures: { roster: ["hangedChoir", "mirrorShade", "graveLantern"], newcomers: [] }, bosses: ["hangedChoir", "mirrorShade"],
+    landmark: { name: "the cathedral spire", lore: "Over the gables, a cathedral spire and its clock." }, creatures: { module: "lamplitCity", roster: ["hangedChoir", "mirrorShade", "graveLantern"], newcomers: [] }, bosses: ["hangedChoir", "mirrorShade"],
     wards: ["The Cathedral Ward"], areas: { street: ["The Gaslit Street"], plaza: ["The Market"], court: ["The Close"], vista: ["The Belfry Ledge"], gallery: ["The Rooftops"], undercroft: ["The Canals"], side: ["A Shuttered Shop"], keep: ["The Clock Tower"] } },
   alien: { name: "Alien Capital", since: null, weight: 1, palette: { stone: "#3a2a44", floor: "#3d3046", light: "#70e0f0", fog: "#0c0814" },
     tiles: { wall: "hiveWall", under: "hiveWall", path: "chitinFloor", floor: ["crystalFloor", "fleshFloor"], accent: "crystalFloor", low: "fleshFloor" },
     remap: remap("hiveWall", "hiveWall", "crystalFloor", "chitinFloor", "fleshFloor", "fleshFloor"), cv: { fog: "#0c0814", backdrop: "starVault", kit: "alien" },
-    landmark: { name: "the spire palace", lore: "A spire palace under twin moons." }, creatures: { roster: ["glassMite", "veilMoth", "coilStalker", "cinderWisp"], newcomers: [] }, bosses: ["veilSpinner", "mirrorShade"],
+    landmark: { name: "the spire palace", lore: "A spire palace under twin moons." }, creatures: { module: "alienCapital", roster: ["glassMite", "veilMoth", "coilStalker", "cinderWisp"], newcomers: [] }, bosses: ["veilSpinner", "mirrorShade"],
     wards: ["The Membrane Ward"], areas: { street: ["The Ribbed Way"], plaza: ["The Pool of Glass"], court: ["The Hive Court"], vista: ["The Spire Balcony"], gallery: ["The Floating Walk"], undercroft: ["The Brood Tunnels"], side: ["A Sealed Pod"], keep: ["The Spire Hall"] } },
   frost: { name: "Frost Citadel", since: null, weight: 1, palette: { stone: "#25352f", floor: "#3a4a66", light: "#d0e8ff", fog: "#0a1018" },
     tiles: { wall: "cisternWall", under: "cellarWall", path: "tileFloor", floor: ["crystalFloor", "flagFloor"], accent: "crystalFloor", low: "cellarFloor" },
     remap: remap("cisternWall", "cellarWall", "crystalFloor", "tileFloor", "flagFloor", "cellarFloor"), cv: { fog: "#0a1018", backdrop: "paleWell", kit: "frost" },
-    landmark: { name: "the castle across the lake", lore: "A castle across a frozen lake." }, creatures: { roster: ["ashenHound", "mirrorShade", "graveLantern"], newcomers: [] }, bosses: ["thunderhorn", "riftLynx"],
+    landmark: { name: "the castle across the lake", lore: "A castle across a frozen lake." }, creatures: { module: "frostCitadel", roster: ["ashenHound", "mirrorShade", "graveLantern"], newcomers: [] }, bosses: ["thunderhorn", "riftLynx"],
     wards: ["The Rime Ward"], areas: { street: ["The Wall Walk"], plaza: ["The Frozen Yard"], court: ["The Snow Court"], vista: ["The Lake Battlement"], gallery: ["The Ice Bridge"], undercroft: ["The Cold Cellars"], side: ["A Frozen Larder"], keep: ["The Rime Keep"] } },
   foundry: { name: "Ember Foundry", since: null, weight: 1, palette: { stone: "#36231f", floor: "#594039", light: "#ff8030", fog: "#180c06" },
     tiles: { wall: "kilnWall", under: "kilnWall", path: "plankFloor", floor: ["kilnFloor", "concreteFloor"], accent: "kilnFloor", low: "kilnFloor" },
     remap: remap("kilnWall", "kilnWall", "kilnFloor", "plankFloor", "concreteFloor", "kilnFloor"), cv: { fog: "#180c06", backdrop: "abyssalShaft", kit: "foundry" },
-    landmark: { name: "the great crucible", lore: "The great crucible, glowing." }, creatures: { roster: ["ashling", "cinderWisp", "sparkWarden"], newcomers: [] }, bosses: ["cinderSeraph", "siegeBeetle"],
+    landmark: { name: "the great crucible", lore: "The great crucible, glowing." }, creatures: { module: "emberFoundry", roster: ["ashling", "cinderWisp", "sparkWarden"], newcomers: [] }, bosses: ["cinderSeraph", "siegeBeetle"],
     wards: ["The Crucible Ward"], areas: { street: ["The Chain Way"], plaza: ["The Casting Floor"], court: ["The Slag Court"], vista: ["The Crane Ledge"], gallery: ["The Catwalks"], undercroft: ["The Flues"], side: ["A Tool Store"], keep: ["The Crucible"] } },
 };
 // The themes enabled in adventure Pentagon version V, in table order.

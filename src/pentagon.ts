@@ -18,7 +18,8 @@ import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest } from ".
 import { carveMaze } from "./labyrinths.ts";
 import { LIFT_PER_LEVEL as LIFT } from "./landscape.ts";
 import { grantTesseract } from "./tesseracts.ts";
-import { assignPentagonHalls, layPentagonHall, dressPentagonHall, pentagonChamberSigils } from "./pentagon-halls.ts";
+import { PENTAGON_HALLS, assignPentagonHalls, layPentagonHall, dressPentagonHall, pentagonChamberSigils } from "./pentagon-halls.ts";
+const PENTAGON_HALLS_FLOOR = (type) => PENTAGON_HALLS.types[type]?.floor || "flagFloor";
 import { ADVENTURE_PENTAGON as AP, ADVENTURE_THEMES, ADVENTURE_AREAS, ADVENTURE_LINKS, composeDistrict, adventureThemePick, adventureRoster, adventureAreaSize, layAdventureArea } from "./adventures.ts";
 
 export const PENTAGON = {
@@ -431,10 +432,10 @@ export function pentagonPlan(seed, cx, cy, V = 1) {
   // relics, one a chamber in seven of them
   const relicRooms = nodes.filter((q) => q.kind !== "heart" && q.kind !== "sealed").sort(() => r() - .5).slice(0, P.relics.length); relicRooms.forEach((q, i) => (q.relic = i));
   // v8: a few ring chambers are grand halls, larger (pentagon-halls.ts): their size is their own (`q.W`, `q.H`), by hashes only
-  if (V >= 8 && !adv) assignPentagonHalls(key, nodes, V);
-  // v11: every other chamber is an open area too (the camera's room: adventures.ts ADVENTURE_PENTAGON.camera), not a hall of rooms;
+  if (V >= 8) for (const q of assignPentagonHalls(key, nodes, V)) if (adv && AP.halls.size[q.hall.type]) [q.W, q.H] = AP.halls.size[q.hall.type]; // v11: larger, for the camera
+  // v11: every chamber but a grand hall is an open area too (the camera's room: adventures.ts ADVENTURE_PENTAGON.camera), not a hall of rooms;
   // the rings' halls are plazas and courts, the Heart's floors keeps, a reliquary a side room, a sealed chamber a court
-  if (adv) for (const q of nodes) if (!q.area) { q.area = { outer: "plaza", inner: "court", heart: "keep", secret: "side", sealed: "court" }[q.kind] || "street"; [q.W, q.H] = adventureAreaSize(`${key}:${q.id}`, q.area); }
+  if (adv) for (const q of nodes) if (!q.area && !q.hall) { q.area = { outer: "plaza", inner: "court", heart: "keep", secret: "side", sealed: "court" }[q.kind] || "street"; [q.W, q.H] = adventureAreaSize(`${key}:${q.id}`, q.area); }
   // ports: each chamber's doors on its walls (world doors top and bottom, ring doors left and right, the Heart's ladders inside)
   const [W0, H0] = V >= 9 ? [45, 39] : P.size;
   for (const q of nodes) { const W = q.W || W0, H = q.H || H0, used = new Set(), slot = (side, k) => { for (let j = 0; j < 30; j++) { const h = hashSeed(`${key}:port:${q.id}:${k}:${j}`), along = side === "top" || side === "bottom" ? W : H, p = 3 + 2 * (h % Math.floor((along - 6) / 2)), x = side === "left" ? 0 : side === "right" ? W - 1 : p, y = side === "top" ? 0 : side === "bottom" ? H - 1 : p, id = `${x},${y}`;
@@ -596,6 +597,7 @@ export function generatePentagonChamber(seed, id, T = 1) { // `T`: the chamber's
   else { const layout = plan.V === CLOSE_VIEW_ROOM_ROUTING.pentagonVersion ? layCloseViewRooms : plan.V >= 9 ? layFloorV3 : layFloor;
     const F = layout(plan.V >= 9 ? base : laid, 1, W, H, S, arrive, open.flatMap((p) => [{ x: p.x, y: p.y, v: 2 }, { ...p.inner, v: 2 }])); grid = F.grid; room = F.room; mat = F.mat; routing = F.routing || null; }
   const tiles = q.hall ? layPentagonHall(base, q.hall.type, W, H, open, arrive, S.wall) : [];
+  if (q.hall && A) for (let k = 0; k < tiles.length; k++) { const t = tiles[k]; if (t.column && (hashSeed(`${base}:keep-column:${t.x},${t.y}`) % 1000) / 1000 >= AP.halls.columns) tiles[k] = { x: t.x, y: t.y, kind: PENTAGON_HALLS_FLOOR(q.hall.type), blocked: false, doorway: false, detail: (t.x * 7 + t.y * 3) % 4, hall: t.hall }; } // v11: most columns taken out (open floor for the camera)
   const AT = area ? theme.tiles : null, low = area && ADVENTURE_AREAS[q.area]?.low, surfKind = AT ? [AT.path, AT.floor[0], AT.floor[1] || AT.floor[0], AT.accent, AT.low] : null;
   if (!q.hall) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x, v = grid[k], cellar = q.floorKind === "cellar";
     if (area) { tiles.push(v === 5 ? { x, y, kind: "hallVoid", blocked: true, hallVoid: true, detail: (x * 3 + y) % 4 } : v === 1 ? { x, y, kind: low ? AT.under : AT.wall, blocked: true, detail: (x * 3 + y) % 4 } : { x, y, kind: surfKind[area.surf[k]] || AT.path, blocked: false, doorway: v === 2, detail: (x * 7 + y * 3) % 4 }); continue; }
@@ -632,7 +634,7 @@ export function generatePentagonChamber(seed, id, T = 1) { // `T`: the chamber's
   cells.sort(byHash((a) => `${pid}:c:${a.x},${a.y}`)); /* v8: an ordinary chamber places as v7 does (`pid`, the v7 id) */ const take = () => { const c = cells.find((p) => !taken.has(p.y * W + p.x)); if (c) taken.add(c.y * W + c.x); return c; };
   // v11: the Waystone (in the hall's round, or a vast Pentagon's second, deep in), a vista's view, a side area's or an untried keep's cache
   if (A) { const near = (to) => { if (!to) return take(); let best = null; for (const c of cells) if (!taken.has(c.y * W + c.x)) { const d = Math.abs(c.x - to.x) + Math.abs(c.y - to.y); if (!best || d < best.d) best = { c, d }; } if (best) taken.add(best.c.y * W + best.c.x); return best?.c || null; }, Wy = AP.waystone;
-    if (q.waystone) { const c = near(area?.centre); if (c) objects.push({ id: "adv-waystone", kind: "pentWaystone", waystone: q.waystone, name: q.waystone === 1 ? Wy.name : Wy.deepName, x: c.x, y: c.y, state: "ready", actions: ["rest"], lore: Wy.lore }); }
+    if (q.waystone) { const c = near(area?.centre); if (c) objects.push({ id: "adv-waystone", kind: "pentWaystone", waystone: q.waystone, pentBase: Pp.base, chamberId: id, name: q.waystone === 1 ? Wy.name : Wy.deepName, x: c.x, y: c.y, state: "ready", actions: ["rest"], lore: Wy.lore }); }
     if (q.area === "vista") { const c = near(area?.landmark); if (c) objects.push({ id: "adv-vista", kind: "advVista", name: `A view · ${theme.landmark.name}`, x: c.x, y: c.y, state: "waiting", actions: ["look"], lore: theme.landmark.lore }); }
     if (q.side || (q.area === "keep" && !q.trial)) { const c = take(); if (c) objects.push({ id: "adv-cache", kind: "chest", advCache: true, name: AP.cache.name, x: c.x, y: c.y, state: "closed", actions: ["open"], rewardSource: S.cache, lore: AP.cache.lore }); } }
   // the pressure plate beside its door, and rubble to build with
