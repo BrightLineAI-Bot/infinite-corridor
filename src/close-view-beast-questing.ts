@@ -122,9 +122,9 @@ function buildQbMesh(tier) {
       const [f, u, rx, rz, ba, bb, wb] = BODY[k], prev = BODY[k + 1], next = BODY[k - 1], tb = norm([next[0] - prev[0], 0, next[1] - prev[1]]); // toward the tail
       const ruff = k >= 9 && k <= 13 ? 1 : 0, haunch = k >= 2 && k <= 4 ? 1 : 0, n = Math.round((7 + 5 * ruff + 3 * haunch) * dens);
       for (let q = 0; q < n; q++) for (const s of [-1, 1]) {
-        const h = ((((k * 73856093) ^ (q * 19349663) ^ (s > 0 ? 83492791 : 0)) >>> 0) % 1000) / 1000, th = (.05 + .9 * ((q + h * .7) / n)) * Math.PI / 2 * (ruff ? 1.25 : 1.05);
+        const h = ((((k * 73856093) ^ (q * 19349663) ^ (s > 0 ? 83492791 : 0)) >>> 0) % 1000) / 1000, th = ruff ? (-.75 + 1.95 * ((q + h * .7) / n)) * Math.PI / 2 : (.05 + .9 * ((q + h * .7) / n)) * Math.PI / 2 * 1.05; // the ruff wraps under the chest
         const ct = Math.cos(th) * s, st = Math.sin(th), p = [f + (h - .5) * .05, ct * rx * .99, u + st * rz * .99], nn = norm([0, ct / rx, st / rz]);
-        const back = norm([tb[0] - nn[0] * .2, -nn[1] * .15 + tb[1], tb[2] - .35 - nn[2] * .2]), len = (ruff ? .13 : haunch ? .095 : .08) * (.8 + .5 * h);
+        const back = ruff ? norm([tb[0] * .45 + nn[0] * .3, nn[1] * .5, -1]) : norm([tb[0] - nn[0] * .2, -nn[1] * .15 + tb[1], tb[2] - .35 - nn[2] * .2]), len = (ruff ? .13 : haunch ? .095 : .08) * (.8 + .5 * h);
         tuft(wb >= .5 ? bb : ba, p, nn, back, len, ruff ? .024 : .018, h < .35 ? C.furDark : h > .8 ? C.furLight : C.fur);
       }
     }
@@ -132,7 +132,12 @@ function buildQbMesh(tier) {
     for (const L of LEGS) { const t = BI[L.top] * 3, x0 = bw[t], y0 = bw[t + 1], z0 = bw[t + 2];
       for (let q = 0; q < Math.round(8 * dens); q++) { const h = ((q * 2654435761) >>> 0) % 1000 / 1000, a = q / 8 * Math.PI * 2, z = z0 - .06 - .14 * h, r = L.hind ? .085 : .07;
         const nn = [Math.cos(a) * .8, Math.sin(a), 0], p = [x0 + Math.cos(a) * r * .8, y0 + Math.sin(a) * r, z];
-        tuft(L.top, p, norm(nn), [-.25, 0, -1], .075 + .03 * h, .017, h < .4 ? C.furDark : C.fur); } }
+        tuft(L.top, p, norm(nn), [-.25, 0, -1], .075 + .03 * h, .017, h < .4 ? C.furDark : C.fur); }
+      // and shorter shag down the shin and forearm
+      const m = BI[L.mid] * 3, x1 = bw[m], y1 = bw[m + 1], z1 = bw[m + 2];
+      for (let q = 0; q < Math.round(6 * dens); q++) { const h = ((q * 40503 + 17) >>> 0) % 1000 / 1000, a = (q + .5) / 6 * Math.PI * 2, z = z1 - .04 - .12 * h, r = L.hind ? .095 : .08;
+        const nn = [Math.cos(a) * .8, Math.sin(a), 0], p = [x1 + Math.cos(a) * r * .8, y1 + Math.sin(a) * r, z];
+        tuft(L.mid, p, norm(nn), [-.2, 0, -1], .05 + .02 * h, .013, h < .5 ? C.furDark : C.fur); } }
     for (let i = 0; i < TAIL - 1; i++) { const b = 'tail' + i, bi = BI[b] * 3; for (let q = 0; q < Math.round(4 * dens); q++) for (const s of [-1, 1]) {
       const p = [bw[bi] - .05 * q, bw[bi + 1] + s * .035, bw[bi + 2] + .02], nn = norm([0, s, .6]); tuft(b, p, nn, [-1, 0, -.15], .09, .016, q % 2 ? C.furDark : C.fur); } }
   }
