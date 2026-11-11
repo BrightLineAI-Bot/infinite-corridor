@@ -14,8 +14,8 @@ import {
 
 export const QB_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)
-  hip: .84, femur: .3, tibia: .3, hindMeta: .2, humerus: .28, radius: .3, foreMeta: .17, paw: .04, halfWidth: .12,
-  walk: Object.freeze({ stride: .75, stance: .6 }), gallop: Object.freeze({ stride: 1.9, stance: .36 }), gallopSpeed: 3,
+  hip: .84, femur: .3, tibia: .32, hindMeta: .2, humerus: .28, radius: .3, foreMeta: .17, paw: .04, halfWidth: .12,
+  walk: Object.freeze({ stride: .62, stance: .6 }), gallop: Object.freeze({ stride: 1.9, stance: .36 }), gallopSpeed: 3,
   settle: 7, stepAt: .09, stepTime: .22, standTurnRate: 3.5, standTurnMax: 2.4, turnRate: QB_MOVES.turnRate * .6, attackTurnRate: 12,
   footLift: .16, bob: .022, blendMs: 110, deathMs: 2300, landMs: 450, hitMs: 300, impactMs: 360,
   // rear (+ body up about the hind hips), head (+ raises), swing (head turned, + right), crouch (body down), lean (+ nose down),
@@ -23,10 +23,10 @@ export const QB_RIG = Object.freeze({
   poses: Object.freeze({
     idle: { rear: 0, head: 0, swing: 0, crouch: 0, lean: 0, wings: 0, paw: 0, open: .1 },
     stalk: { rear: -.03, head: -.25, swing: 0, crouch: .06, lean: .06, wings: .05, paw: 0, open: .15 },
-    loadR: { rear: .08, head: -.15, swing: -.3, crouch: .08, lean: -.02, wings: .2, paw: 1, open: .5 },
-    rakeR: { rear: -.04, head: -.4, swing: .35, crouch: .1, lean: .1, wings: .15, paw: -.6, open: .8 },
-    loadL: { rear: .08, head: -.15, swing: .3, crouch: .08, lean: -.02, wings: .2, paw: -1, open: .5 },
-    rakeL: { rear: -.04, head: -.4, swing: -.35, crouch: .1, lean: .1, wings: .15, paw: .6, open: .8 },
+    loadR: { rear: .08, head: -.15, swing: -.3, crouch: .08, lean: -.02, wings: .2, paw: 1, open: .5, reach: 0 },
+    rakeR: { rear: -.04, head: -.4, swing: .35, crouch: .1, lean: .1, wings: .15, paw: .8, open: .8, reach: 1 },
+    loadL: { rear: .08, head: -.15, swing: .3, crouch: .08, lean: -.02, wings: .2, paw: -1, open: .5, reach: 0 },
+    rakeL: { rear: -.04, head: -.4, swing: -.35, crouch: .1, lean: .1, wings: .15, paw: -.8, open: .8, reach: 1 },
     crouch: { rear: -.08, head: -.35, swing: 0, crouch: .2, lean: .05, wings: .25, paw: 0, open: .4 },
     rise: { rear: .3, head: .25, swing: 0, crouch: -.05, lean: 0, wings: 1, paw: 0, open: .7 },
     dive: { rear: -.35, head: -.3, swing: 0, crouch: 0, lean: .2, wings: .7, paw: 0, open: 1 },
@@ -38,7 +38,7 @@ export const QB_RIG = Object.freeze({
     dazed: { rear: -.06, head: -.55, swing: .15, crouch: .16, lean: .06, wings: .15, paw: 0, open: .4 },
   }),
 });
-const PK = ['rear', 'head', 'swing', 'crouch', 'lean', 'wings', 'paw', 'open'], K = PK.length;
+const PK = ['rear', 'head', 'swing', 'crouch', 'lean', 'wings', 'paw', 'open', 'reach'], K = PK.length;
 const POSE_VEC = Object.freeze(Object.fromEntries(Object.entries(QB_RIG.poses).map(([n, p]) => [n, Float64Array.from(PK.map((k) => p[k] || 0))])));
 
 // ------------------------------------------------------------------------------------------------ skeleton
@@ -339,17 +339,18 @@ export function sampleQb(tr, e, env) {
     const strikePaw = !L.hind && ((L.side > 0 && W[6] > .05) || (L.side < 0 && W[6] < -.05)) ? Math.abs(W[6]) : 0; // the raking forepaw
     const fold = L.hind ? Math.max(ACT.airTuck * .7, air > .15 ? .5 : 0) : Math.max(air > .15 ? .6 : 0, W[0] > .3 ? (W[0] - .2) * 1.5 : 0);
     if (still && !dead && (fold > .05 || air > .15 || strikePaw > 0)) {
-      const rest = (L.hind ? -.42 : .36) * S, reach = strikePaw > 0 ? (.25 + .1 * Math.sign(W[6] * L.side)) * strikePaw : 0, ax = x + cf * (rest + reach * S), ay = y + sf * (rest + reach * S);
+      // the striking paw: cocked high and back (reach 0), or raked out forward and low (reach 1)
+      const rest = (L.hind ? -.42 : .36) * S, rk = clamp01(W[8]), reach = strikePaw > 0 ? (-.05 + .4 * rk) * strikePaw : 0, ax = x + cf * (rest + reach * S), ay = y + sf * (rest + reach * S);
       fx = ax - sf * L.side * G.halfWidth * S; fy = ay + cf * L.side * G.halfWidth * S;
       const len = (L.hind ? G.femur + G.tibia + G.hindMeta : G.humerus + G.radius + G.foreMeta) * S;
-      fz = Math.max(env.z + pawH, H[2] - len * (1 - .45 * Math.max(fold, strikePaw * .7)));
+      fz = Math.max(env.z + pawH, H[2] - len * (1 - .45 * Math.max(fold, strikePaw * (.75 - .45 * rk))));
     }
     if (dead) { const p = boneLocalToWorld(P, 'root', L.hind ? -.42 : .36, L.side * .14, G.paw, T); fx = p[0]; fy = p[1]; fz = p[2]; }
     T[0] = fx; T[1] = fy; T[2] = fz;
     LEGBONES[0] = top; LEGBONES[1] = BI[L.mid]; LEGBONES[2] = BI[L.low]; LEGBONES[3] = BI[L.paw];
     LENS[0] = (L.hind ? G.femur : G.humerus) * S; LENS[1] = (L.hind ? G.tibia : G.radius) * S; LENS[2] = can;
     const bend = Math.min(1, lift * .9 + fold + strikePaw), toe = lift > 0 || fold > .05 || strikePaw ? -.5 * Math.max(lift, fold, strikePaw) : 0;
-    poseAnimalLeg(P, LEGBONES, H, T, LENS, cf, sf, L.hind, bend, toe, L.hind ? -.35 - .5 * bend : .1 + 1.1 * bend);
+    poseAnimalLeg(P, LEGBONES, H, T, LENS, cf, sf, L.hind, bend, toe, L.hind ? -.25 - .5 * bend : .1 + 1.1 * bend);
     tr.frame.feet[k * 2] = tr.gait.out[k * 4 + 3]; tr.frame.feet[k * 2 + 1] = lift;
   }
   writeSkin(P);
