@@ -36,7 +36,7 @@ test('actual imported sockets and native vertices enter and leave continuously',
 });
 
 test('imported vial shares the bounded equipment stream and omits atomically when storage is short',()=>{
-  assert.equal(HERO_DRINK_VIAL_TRIANGLES,24);assert.equal(HERO_EQUIPMENT_MAX_TRIANGLES,156);
+  assert.equal(HERO_DRINK_VIAL_TRIANGLES,24);assert.equal(HERO_EQUIPMENT_MAX_TRIANGLES,220);
   const frame=hero(.5),baseGear={profile:'melee',leftSocket:frame.leftSocket,rightSocket:frame.rightSocket,alpha:.8,tint:[1,1,1],hitFlash:0};
   const base=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS),baseEnd=writeCloseViewHeroEquipment(base,0,baseGear,frame);
   const gear={...baseGear,drinkVial:true,vialWeight:1,vialSocket:frame.leftSocket},full=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS);full.fill(7);

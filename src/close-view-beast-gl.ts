@@ -1,4 +1,4 @@
-// The beast slot's GPU side (release 887; close-view-beast-rig.ts has the why). One program, shared by every beast kind:
+// The beast slot's GPU side (release 889; close-view-beast-rig.ts has the why). One program, shared by every beast kind:
 // a beast's mesh is uploaded once per GL context (static buffers: bind-space position, normal, colour, bone and emissive
 // channel); a frame uploads only its bone matrices (uniforms) and a few material numbers, then draws it in the scene's two
 // actor phases (the silhouette behind walls, then the lit body), exactly like the native models it stands among.

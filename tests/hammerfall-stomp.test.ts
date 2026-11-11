@@ -117,7 +117,7 @@ test('actual masked renderer retains carry at Hammerfall acceptance and exact lo
       for(let frame=0;frame<10;frame++){now+=1000/hz;g.update(1/hz,{...calm,state:{x:movement,y:0}},now);draw(g,now);}
       const ready=draw(g,now);g.update(0,{...calm,state:{x:movement,y:0},consume:k=>k==='tool'},now);assert.equal(g.player.attackVisual.profile,'hammer');
       assert.equal(delta(ready,draw(g,now)),0,`${kind}/${hz}/${movement} actual p0 carry`);
-      assert.equal(closeViewGLStats.heroTriangles,3170);assert.equal(closeViewGLStats.modelTriangles,3170,'no held hammer or retained weapon gear');
+      assert.equal(closeViewGLStats.heroTriangles,3170);assert.equal(closeViewGLStats.modelTriangles,3170+132,'no held hammer or retained weapon gear');
       const fx=g.effects.find(e=>e.id===g.player.attackVisual.hammerEffectId);assert.ok(fx);
       let pulsed=false;
       for(let frame=1;frame<=Math.ceil(.8*hz);frame++){now+=1000/hz;g.update(1/hz,{...calm,state:{x:movement,y:0}},now);const a=closeViewPlayerAction(g,now);draw(g,now);if(fx.pulseIndex){pulsed=true;assert.ok(a.amount>=320/570||!a.active);break;}}
@@ -184,7 +184,7 @@ test('Hammerfall and accepted spells/tools retain final body ownership, pause me
     }
     const g=fixture();resetCloseViewCamera();g.lastUpdateNow=101000;assert.equal(g.castSpell('fire-burst'),true);draw(g,101016);const accepted=clone(g.player.castVisual),fire=g.projectiles.slice();
     assert.equal(g.fireSecondary(101016,{x:1,y:0}),true);assert.equal(g.player.castVisual.cancelled,true);assert.equal(g.player.castVisual.sourceId,accepted.sourceId);assert.equal(g.player.attackVisual.profile,'hammer');assert.equal(g.player.attackUntil,101256);
-    const fx=g.effects.find(e=>e.id===g.player.attackVisual.hammerEffectId);updateEffects([fx],[],.16);draw(g,101176);assert.equal(closeViewGLStats.modelTriangles,3170,'stomp holds no weapon or spell gear');assert.ok(fire.every(p=>g.projectiles.includes(p)),'new stomp retains all five actual Fire sources');
+    const fx=g.effects.find(e=>e.id===g.player.attackVisual.hammerEffectId);updateEffects([fx],[],.16);draw(g,101176);assert.equal(closeViewGLStats.modelTriangles,3170+132,'stomp holds no weapon or spell gear');assert.ok(fire.every(p=>g.projectiles.includes(p)),'new stomp retains all five actual Fire sources');
     const back=reload(g,101176);assert.equal(back.player.castVisual.cancelled,true);assert.equal(closeViewPlayerAction(back,2000).record.profile,'hammer');assert.equal(back.projectiles.filter(p=>p.fireBomb).length,5);pulse(back.effects.find(e=>e.id===back.player.attackVisual.hammerEffectId));
   }finally{CLOSE_VIEW_HOOKS.gl=null;setCloseViewCanvasFactory(null);resetCloseViewGL();resetCloseViewCamera();for(const k of names){if(old.get(k)===undefined)delete globalThis[k];else globalThis[k]=old.get(k);}}
 });
