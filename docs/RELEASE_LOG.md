@@ -21,7 +21,8 @@ Main is at r875 (`f410be5ab7b8`); production serves `r875-f410be5ab7b8`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 878 | Claude | claude/region-arcana | Region homes for bells, chain and threads (version-gated, switch off), Journal counts with units and hints, Torn Pages region hints, arcana reward hook | In flight. |
+| 879 | Claude | claude/seeds-travel | Fossilized seed sure hop between great-tree crowns; Opal seed and the Tide Bearer at every dive; Pumice and Crimson seeds carried; rare finds | In flight. |
+| 878 | Claude | claude/region-arcana | Region homes for bells, chain and threads (version-gated, switch off), Journal counts with units and hints, Torn Pages region hints, arcana reward hook | Merged as `efa75cf3d286` (#545). |
 | 877 | Claude | claude/lock-on | Close View target mode (red button, auto next-foe lock, nearer-threat switch), lock-on strafe, stick follows camera through Target recenter | Merged as `9c94e503733b` (#544). |
 | 876 | Claude | claude/beast-retreat | World-beast passers only between hunts, once, free beasts only; FRESH TRACKS once per leg | Merged as `006c7c6cf9f3` (#543). |
 | 875 | Claude | claude/robot-drone-utility-dais-facing | Robot and Drone as separate utility choices (one at a time); Oculus dais ahead of the facing | Merged as `f410be5ab7b8` (#541). Published in r875. |
