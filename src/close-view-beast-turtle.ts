@@ -76,12 +76,18 @@ function buildTurtleMesh(tier) {
   const h = (a, b = 0) => ((((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000) / 1000;
   // ---- the plinth it all stands on: worn dark stone, the rim of the plastron
   B.bone('body').color(C.deep).box({ at: at('body', [0, 0, .21]), size: [.57, .48, .045], bevel: .3 });
+  if (!low) B.color(C.dark).box({ at: at('body', [0, 0, .252]), size: [.565, .475, .006], bevel: 0 }); // the worn rim
   // ---- the four terraces: each a block of fitted stone with sloped faces, a lit ledge on top
   for (let i = 0; i < 4; i++) {
     const [L, Wd, z0] = TERRACES[i];
     B.bone('body').color(i % 2 ? C.mid : C.dark).box({ at: at('body', [0, 0, z0 + COURSE / 2]), size: [L, Wd, COURSE / 2], taper: .07, bevel: .14 });
     B.color(C.ledge).box({ at: at('body', [0, 0, z0 + COURSE + .004]), size: [L * .93, Wd * .93, .006], bevel: 0 });
+    // snow lies on the upper ledges, drifted against the course above
+    if (i >= 1) B.color(C.snow).box({ at: at('body', [-.01 * i, .005, z0 + COURSE + .011]), size: [L * (.86 - .04 * i), Wd * (.86 - .04 * i), .003], bevel: 0 });
     if (low) continue;
+    // weathering: a dark band where rain runs off the ledge above, low on each course
+    for (const sx of [-1, 1]) B.color(C.deep).box({ at: at('body', [sx * (L * .985 + .002), 0, z0 + COURSE * .12]), size: [.002, Wd * .97, COURSE * .1], bevel: 0 });
+    for (const sy of [-1, 1]) B.color(C.deep).box({ at: at('body', [0, sy * (Wd * .985 + .002), z0 + COURSE * .12]), size: [L * .97, .002, COURSE * .1], bevel: 0 });
     // block joints: dark seams down each face, staggered course to course; a seam along the middle of the course
     const seams = full ? 2 : 1;
     for (const sx of [-1, 1]) for (let j = -seams; j <= seams; j++) { const y = (j + (i % 2) * .5) * Wd * (full ? .36 : .6); if (Math.abs(y) > Wd * .9) continue;
