@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 902 | Claude | claude/tool-rounds | Firing tools spend empowered rounds, then a 40-round belt, then a round made from cinder iron (2 +1 per Echo glyph, max 4); empowered rounds x1.5 found in crossing chests and on great-tree crowns; salvage pays iron again | In flight. |
+| 903 | Claude | claude/region-daily-1111 | New region type on new ground only: glaciated far mountain ranges (30+ sections out) with icefalls, crevasse fields and snow bridges, seracs, melt pools and frozen caches; landscape version 24 | In flight. |
+| 902 | Claude | claude/tool-rounds | Firing tools spend empowered rounds, then a 40-round belt, then a round made from cinder iron (2 +1 per Echo glyph, max 4); empowered rounds x1.5 found in crossing chests and on great-tree crowns; salvage pays iron again | Merged as `286d352927fc` (#569). |
 | 901 | Claude | claude/varied-skies | Close View sky moods (sunrise, day, sunset, night, overcast, storm) chosen per 3x3 block of sections, blended with each region's sky; more vivid alien, fen, waste and fire skies | Merged as `0a1ebe76c3f6` (#568). |
 | 900 | Claude | claude/cv-terrain-height | Close View overworld levels 1.2 tiles tall (pits deeper, Great Tree steps taller), jumps that rise to the ledge and drops that fall; a higher camera everywhere that rises over ledges behind you | Merged as `f2cca46394f3` (#567). |
 | 899 | Claude | claude/adventure-creatures-2 | Eight creatures for Lamplit City, Alien Capital, Frost Citadel and Ember Foundry (prototype-only until those themes are enabled); a buried Sinkmaw's dimple in Close View | Merged as `190dd6ae6a5c` (#566). |
