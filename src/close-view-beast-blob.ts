@@ -31,7 +31,7 @@ function lerpHex(a, b, t) { t = clamp01(t); const ch = (sh) => Math.round(((a >>
 const PROFILE = [[0, 1], [.1, 1.07], [.28, 1.09], [.46, 1.02], [.62, .9], [.76, .72], [.87, .5], [.95, .28], [.99, .1], [1, .02]];
 const surf = (h) => { let k = 0; while (k < PROFILE.length - 2 && PROFILE[k + 1][0] < h) k++; const [h0, r0] = PROFILE[k], [h1, r1] = PROFILE[k + 1]; return r0 + (r1 - r0) * (h - h0) / (h1 - h0 || 1); };
 // the three eyes on the front of the mound: [azimuth (0 = toward its aim), height share, size]
-const EYES = [[-.42, .5, .085], [0, .58, .11], [.42, .5, .085]];
+const EYES = [[-.42, .44, .085], [0, .5, .11], [.42, .44, .085]];
 function buildBlobMesh(tier) {
   const low = tier === 'low', full = tier === 'full', B = meshBuilder(BLOB_SKELETON, full ? 1 : low ? .4 : .7);
   // the mound: a sheet round the lobes (each vertex between the two lobes either side of it, by azimuth), pale at the crown
