@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 885 | Claude | claude/sim-clock | Fixed 60 Hz simulation steps with interpolated drawing; Close View floor walls built off the entry frame (2–4× faster, byte-identical) | In flight. |
+| 886 | Claude | claude/arcana-live | Arcana region placement live (straight-line homes); Bell Toll and Lamplighter's Light earned on every save; the Cairn Keeper starts the Chain; nothing gated | In flight. |
+| 885 | Claude | claude/sim-clock | Fixed 60 Hz simulation steps with interpolated drawing; Close View floor walls built off the entry frame (2–4× faster, byte-identical) | Merged as `0e5133f207af` (#553). |
 | 884 | Claude | claude/cv-creatures | Close View creatures fully opaque within view range (designed ghosts stay ghostly), brighter light floor, cool rim and glowing parts | Merged as `51db683090cf` (#552). |
 | 883 | Claude | claude/seed-dungeons | Pumice and Crimson Seeds offered at a Watcher's shrine open one-time realms (Hollow Husk, Drifting Ship) with new creatures, crystals, caches, a beacon and Divine Viscera; never kept | Merged as `23d96f405dd8` (#551). |
 | 882 | Claude | claude/weapon-hands | Close View: all swords in the left hand, tools in the right and smaller, Blunderbuss shouldered and Rift Bombard low at the hip two-handed, tool shots from the muzzle | Merged as `eec2aff3df39` (#550). |

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 886: The arcana go live: sets have straight-line home regions around the Refuge, and the Journal counts each set and says where the rest most likely lie. Finishing the Seven Bells earns Bell Toll and finishing the Lamplighter's Round earns Lamplighter's Light, on every journey. The Cairn Keeper at Ember Refuge starts the Surveyor's Chain: the first crossing you enter after speaking with her holds its first link. Nothing that was free is locked.
 - Release 885: The world now advances in steady 60 Hz steps and is drawn between them, so movement looks even at any screen refresh rate and dodges cover the same distance from 20 fps up. Entering an interior in Close View no longer builds its walls in the same frame as loading the floor, and the build is 2–4× faster.
 - Release 884: Close View creatures are solid: no more see-through, fading-in monsters inside view range (only the last 1.5 tiles before the fog's edge thin them). Ghosts by design (Lumen Wraith, Gloomwisp, Gloomgorge) stay ghostly with a cold rim, and every creature gets a brighter light floor, a cool rim light and glowing eyes and embers.
 - Release 883: Seed realms: offer a Pumice or Crimson Seed at a Watcher's shrine to enter the Hollow Husk (a haunted mining world bored hollow) or the Drifting Ship (robots, glass floors over the galaxy, an open hangar). Each is a large, one-time realm with Aperture Crystals, caches, a beacon to rise at, and Divine Viscera when its heart falls. It vanishes for good when you leave and sets you down elsewhere.
