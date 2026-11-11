@@ -84,10 +84,13 @@ test('imported Wayfarer fires right-hand tools from the posed muzzle; rifles tak
     if (kind in CLOSE_VIEW_RIFLE_GRIP) { assert.equal(state.clip, 'derived-rifle-grip'); assert.ok(support, `${kind} support hand reaches the barrel`); }
     else assert.ok(!support, `${kind} stays one-handed`);
   }
-  // Raise: the rifle starts low and is raised to the shoulder line through the accepted envelope.
-  const low = hero({ heldProfile: 'salvage-blade', handProfile: 'rift-bombard', action: { ...toolRecord('rift-bombard', 0), kind: 'ranged', profile: 'rift-bombard', phase: 0, yaw: 0 } });
-  const high = hero({ heldProfile: 'salvage-blade', handProfile: 'rift-bombard', action: { ...toolRecord('rift-bombard', 260), kind: 'ranged', profile: 'rift-bombard', phase: 260 / 720, yaw: 0 } });
-  assert.ok(high.frame.leftSocket[14] - low.frame.leftSocket[14] > .2, 'the bombard is raised while firing');
+  // Blunderbuss: raised to the shoulder line. Rift Bombard: two hands on it, low at the hip/waist, muzzle forward.
+  const fire = (kind: string) => { const r = toolRecord(kind, 260); return hero({ heldProfile: 'salvage-blade', handProfile: kind, action: { ...r, kind: 'ranged', profile: kind, phase: 260 / r.durationMs, yaw: 0 } }).frame; };
+  const bombard = fire('rift-bombard'), blunderbuss = fire('blunderbuss');
+  const bombardMuzzle = closeViewHeldMuzzlePoint(new Float32Array(3), 'rift-bombard', bombard.leftSocket)!;
+  assert.ok(bombard.leftSocket[14] < .92 && bombard.leftSocket[14] > .6, `bombard trigger hand at the hip/waist (${bombard.leftSocket[14]})`);
+  assert.ok(Math.abs(bombardMuzzle[2] - bombard.leftSocket[14]) < .12, 'bombard barrel held level, muzzle forward');
+  assert.ok(blunderbuss.leftSocket[14] - bombard.leftSocket[14] > .15, 'the Blunderbuss is shouldered higher than the low Bombard');
 });
 
 test('imported swords stay in the displayed left hand, including every Verge Cleaver cut', () => {

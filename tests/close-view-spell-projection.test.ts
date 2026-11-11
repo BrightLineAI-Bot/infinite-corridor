@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { CLOSE_VIEW_HOOKS, closeViewCueSegmentOpen, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { CLOSE_VIEW_HOOKS, CLOSE_VIEW_SHOT_MUZZLE, closeViewCueSegmentOpen, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
 import { closeViewGLStats, GLB, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
 import { drawToolForms } from '../src/tool-forms.ts';
 import { drawOrbit, ORBIT } from '../src/orbit-volley.ts';
@@ -151,7 +151,8 @@ test('all three authored tool muzzles flash and forward connectors obey full 3D 
       const at=[0,1,2].map(axis=>flash.reduce((sum,p)=>sum+p[axis],0)/6),shot=g.projectiles.find((p:any)=>p.id===g.player.attackVisual.toolShotId);
       assert.ok(shot,`${kind}: exact accepted source`);
       // Move only this test source along its accepted forward ray; canonical production geometry stays untouched.
-      shot.x=at[0]+.1;shot.y=at[1];draw();assert.equal(vertices(0xffd38a).length,6,`${kind}: nearby forward head connects`);
+      shot.x=at[0]+.1;shot.y=at[1];draw();assert.equal(vertices(0xffd38a).length,0,`${kind}: a young head is drawn leaving the muzzle, so no connector`);
+      shot.age=CLOSE_VIEW_SHOT_MUZZLE.settle;draw();assert.equal(vertices(0xffd38a).length,6,`${kind}: nearby forward settled head connects`);
       shot.x=at[0]+.899;
       const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),xy=Math.hypot(head.x-at[0],head.y-at[1]),span=Math.hypot(head.x-at[0],head.y-at[1],head.z-at[2]);
       assert.ok(xy<.9&&span>.9,`${kind}: witness passes XY but exceeds full 3D (${xy}, ${span})`);

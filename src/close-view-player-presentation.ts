@@ -27,11 +27,12 @@ export const CLOSE_VIEW_HELD_GEAR = Object.freeze({
   'orrery-release': Object.freeze({ hand: 'right', scale: .85, grip: 'one' }),
 });
 // Rifle-grip tuning (imported source space, metres of the fitted rig; native recipe radians).
-// raise: added to the accepted tool motion's shoulder-relative target (side is toward the
+// raise: added to the accepted tool motion's shoulder-relative target (negative up lowers it) (side is toward the
 // body's centre line), weighted by its raise envelope. support: the point the support hand
 // takes, along the barrel from the grip in recipe units (.79 = grip) and below it.
 export const CLOSE_VIEW_RIFLE_GRIP = Object.freeze({
-  'rift-bombard': Object.freeze({ raise: Object.freeze([.12, .21, -.04]), pitch: .10, support: Object.freeze([1.20, .045]), supportYaw: .55, supportPitch: -.35, nativeRaise: .28, nativeReach: .92, nativeInward: .55 }),
+  // Tim 2026-11-11: the Bombard is held low, two hands on it down by the hip/waist, muzzle forward.
+  'rift-bombard': Object.freeze({ raise: Object.freeze([.07, -.26, -.12]), pitch: 0, support: Object.freeze([1.20, .045]), supportYaw: .55, supportPitch: -.35, nativeRaise: -.35, nativeReach: .92, nativeInward: .55 }),
   blunderbuss: Object.freeze({ raise: Object.freeze([.11, .19, -.06]), pitch: .10, support: Object.freeze([1.22, .04]), supportYaw: .55, supportPitch: -.35, nativeRaise: .28, nativeReach: .92, nativeInward: .55 }),
 });
 export const closeViewHeldGear = (profile) => Object.hasOwn(CLOSE_VIEW_HELD_GEAR, profile) ? CLOSE_VIEW_HELD_GEAR[profile] : null;

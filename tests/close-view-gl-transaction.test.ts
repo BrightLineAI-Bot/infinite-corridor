@@ -6,7 +6,7 @@ import { render, standingOnRoof } from '../src/renderer.ts';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { drawRangedEffects, standardProjectileColor } from '../src/combat-visuals.ts';
-import { CLOSE_VIEW_HOOKS, closeViewShowing, closeViewCamera, closeViewRenderDiagnostics, closeViewCapturing, closeViewBareFloor, closeViewCueSegmentOpen, closeViewSteer, closeViewWorldCapture, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { CLOSE_VIEW_HOOKS, CLOSE_VIEW_SHOT_MUZZLE, closeViewShowing, closeViewCamera, closeViewRenderDiagnostics, closeViewCapturing, closeViewBareFloor, closeViewCueSegmentOpen, closeViewSteer, closeViewWorldCapture, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
 import { closeViewGLStats, GLB, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
 import { loadCloseViewHero } from '../src/close-view-hero.ts';
 import { projectileVisualPoint } from '../src/actor-presentation.ts';
@@ -280,7 +280,8 @@ test('actual named tools retain muzzle cues and yield to final hit, dodge and kn
       draw();const flash=vertices(0xffc56b);assert.equal(flash.length,6,kind+' accepted +16ms flash');
       const at=[0,1,2].map(k=>flash.reduce((sum,v)=>sum+v[k],0)/6),shot=g.projectiles.find((p:any)=>p.id===g.player.attackVisual.toolShotId);
       assert.ok(shot,kind+' retains its exact accepted source');
-      shot.x=at[0]+.1;shot.y=at[1];draw();assert.equal(vertices(0xffd38a).length,6,kind+' nearby forward connector');
+      shot.x=at[0]+.1;shot.y=at[1];draw();assert.equal(vertices(0xffd38a).length,0,kind+' a young head is drawn leaving the muzzle, so no connector');
+      shot.age=CLOSE_VIEW_SHOT_MUZZLE.settle;draw();assert.equal(vertices(0xffd38a).length,6,kind+' nearby forward connector once the head has settled');
       const accepted=structuredClone(g.player.attackVisual),heads=closeViewGLStats.projectedShots;
       for(const [label,patch] of [['hit',{hitFlash:.18}],['dodge',{dodgeUntil:100276,dodgeX:1,dodgeY:0}],['knockdown',{stunnedAt:100000,stunnedUntil:101000}]] as const){
         const shifted=Object.fromEntries(Object.entries(patch).map(([k,v])=>[k,typeof v==='number'&&v>=100000?v+(releasedAt-100000):v]));const prior=Object.fromEntries(Object.keys(shifted).map(k=>[k,g.player[k]]));Object.assign(g.player,shifted);

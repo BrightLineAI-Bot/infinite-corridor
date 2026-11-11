@@ -25,14 +25,14 @@ test('shared right-handed frames keep the native Cleaver inside its existing mes
   for(const q of [carry,...ends])assert.ok(mesh(frame(q)).every(Number.isFinite));
 });
 
-test('native blade witnesses rise, cross level, fall, and cross level low with anatomical-right signs',()=>{
+test('native blade witnesses rise, cross level, fall, and cross level low with anatomical-left signs',()=>{
   const [c,a,b,d,e]=[carry,...ends].map(weaponWitness);
   assert.ok(a.tip[2]>c.tip[2]+.35,'first cut rises');
   assert.ok(Math.abs(b.tip[2]-a.tip[2])<.05,'second cut stays shoulder-level');
   assert.ok(d.tip[2]<b.tip[2]-.20,'third cut falls');
   assert.ok(Math.abs(e.tip[2]-d.tip[2])<.05,'fourth cut stays level low');
-  assert.ok(c.center[1]>.15,'native carry uses the same anatomical right as the imported rig');
-  assert.ok(b.center[1]>a.center[1]+.35&&e.center[1]>d.center[1]+.20,'native and imported use the same lateral signs');
+  assert.ok(c.center[1]<-.15,'native carry uses the same anatomical left as the imported rig');
+  assert.ok(b.center[1]<a.center[1]-.35&&e.center[1]<d.center[1]-.20,'native and imported use the same lateral signs');
   assert.ok(Math.abs(b.tip[2]-b.center[2])<.14&&b.tip[0]>b.center[0]+.25,'the shoulder cut carries the blade forward near level');
 });
 
