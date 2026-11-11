@@ -374,6 +374,15 @@ export function openSeaShare(seed, rx, ry, version = LANDSCAPE_VERSION) {
   if (seaShares.size >= 4096) seaShares.clear();
   seaShares.set(key, n / 256); return n / 256;
 }
+// Waymark guides (waymark-guides.ts): openSeaSection's answer from 16 samples when they settle it by `margin` either side of
+// OPEN_SEA.minWater, else from the full 256. Never reads the share cache, so its answer does not depend on what was asked before.
+// About a sixteenth of the cost on most sections; additive (openSeaSection is unchanged).
+export function openSeaQuick(seed, rx, ry, margin = .2, version = LANDSCAPE_VERSION) {
+  if (version < 2 || Math.abs(rx) + Math.abs(ry) < OPEN_SEA.minDepth) return false;
+  let n = 0; for (let y = 4; y < 32; y += 8) for (let x = 4; x < 32; x += 8) if (seaLevel(seed, rx * 32 + x, ry * 32 + y, version).o > T.ocean) n++;
+  const q = n / 16; if (q < OPEN_SEA.minWater - margin) return false; if (q > OPEN_SEA.minWater + margin) return true;
+  return openSeaSection(seed, rx, ry, version);
+}
 export function applyLandscape(map, seed, rx, ry, { explored = false, version = LANDSCAPE_VERSION, openSea = false, hamlet = false, buoy = true, coherence = 0 } = {}) {
   if (!map || map.landscape || explored || map.settlement || Math.abs(rx) + Math.abs(ry) <= 1 || map.tiles?.length !== 1024) return map;
   const full = openSea && version >= 2 && Math.abs(rx) + Math.abs(ry) >= OPEN_SEA.minDepth && openSeaShare(seed, rx, ry, version) >= OPEN_SEA.minWater;

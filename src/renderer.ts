@@ -1759,14 +1759,21 @@ export function drawWaymarkIcon(ctx,signalKind,s){
 function waymark(ctx,o,s){
   const cx=(o.x+.5)*s,cy=(o.y+.55)*s,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);drawWaymarkIcon(ctx,o.signalKind,s);ctx.restore();
 }
-// Pentagon finding (pentagon.ts PENTAGON_FINDING): a five-sided sigil cut into the ground, wider than a tile, one of its points
-// drawn out long into an arrowhead along the true bearing to its Pentagon (dirX, dirY); a dark cut under a gold line, so it reads on
-// any ground. Paths only, nothing allocated.
+// Pentagon finding (pentagon.ts PENTAGON_FINDING): a five-sided sigil cut into the ground, one of its points drawn out long into
+// an arrowhead along the true bearing to its Pentagon (dirX, dirY); a dark cut under a gold line, so it reads on any ground.
+// Paths only, nothing allocated. Waymark guides (Tim, 2026-11-11: "make the huge one much smaller"): sized by PENTAGON_SIGIL_MARK
+// (radius .62 and point 2.3 radii before, about a tile and a half from centre to tip; now under two thirds of a tile).
+export const PENTAGON_SIGIL_MARK = { radius: .3, point: 2.05, barb: 1.6, ring: .42, cut: .1, line: .05 }; // radii in tiles, the rest in radii / tiles
+export const pentagonSigilReach = (M = PENTAGON_SIGIL_MARK) => M.radius * M.point; // tiles from the sigil's centre to its tip
 function pentagonSigilMark(ctx,o,s){
-  const cx=(o.x+.5)*s,cy=(o.y+.5)*s,r=s*.62,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);ctx.lineJoin="round";
-  const path=()=>{ctx.beginPath();ctx.moveTo(r*2.3,0);for(let i=1;i<5;i++){const t=i*Math.PI*2/5;ctx.lineTo(Math.cos(t)*r,Math.sin(t)*r)}ctx.closePath();ctx.moveTo(r*2.3,0);ctx.lineTo(r*1.75,-r*.32);ctx.moveTo(r*2.3,0);ctx.lineTo(r*1.75,r*.32);ctx.moveTo(r*.42,0);ctx.arc(0,0,r*.42,0,Math.PI*2)};
-  path();ctx.fillStyle="rgba(20,14,4,.28)";ctx.fill();ctx.strokeStyle="rgba(16,10,2,.6)";ctx.lineWidth=Math.max(3,s*.16);ctx.stroke();
-  ctx.strokeStyle=o.state==="read"?"#e7c46a":"#ffd36a";ctx.lineWidth=Math.max(1.5,s*.07);ctx.stroke();ctx.restore();
+  const cx=(o.x+.5)*s,cy=(o.y+.5)*s,a=Math.atan2(o.dirY,o.dirX);ctx.save();ctx.translate(cx,cy);ctx.rotate(a);drawPentagonSigilIcon(ctx,s,o.state==="read");ctx.restore();
+}
+// The sigil at the origin pointing along +x, `s` pixels a tile (the ground mark above, and the Journal's symbol card).
+export function drawPentagonSigilIcon(ctx,s,read=false){
+  const M=PENTAGON_SIGIL_MARK,r=s*M.radius,p=r*M.point,b=r*M.barb;ctx.save();ctx.lineJoin="round";
+  const path=()=>{ctx.beginPath();ctx.moveTo(p,0);for(let i=1;i<5;i++){const t=i*Math.PI*2/5;ctx.lineTo(Math.cos(t)*r,Math.sin(t)*r)}ctx.closePath();ctx.moveTo(p,0);ctx.lineTo(b,-r*.32);ctx.moveTo(p,0);ctx.lineTo(b,r*.32);ctx.moveTo(r*M.ring,0);ctx.arc(0,0,r*M.ring,0,Math.PI*2)};
+  path();ctx.fillStyle="rgba(20,14,4,.28)";ctx.fill();ctx.strokeStyle="rgba(16,10,2,.6)";ctx.lineWidth=Math.max(2.5,s*M.cut);ctx.stroke();
+  ctx.strokeStyle=read?"#e7c46a":"#ffd36a";ctx.lineWidth=Math.max(1.5,s*M.line);ctx.stroke();ctx.restore();
 }
 function shelterSigil(ctx,cx,cy,r,glyph){
   const kind=Math.abs(glyph||0)%4;ctx.beginPath();
