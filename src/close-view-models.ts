@@ -389,14 +389,17 @@ export function modelSupported(kind) {
 // the creature-shared plum iron and soot become blued gunmetal, the dark coat-cloth grips warm
 // leather, the Blunderbuss stock walnut. Bake-time copies only: native fallback recipes and their
 // pinned bytes are untouched, and no tool gains or loses a triangle.
-const WAYFARER_TOOL_COLORS = new Map([[iron, 0x3a4246], [coal, 0x24282b], [leather, 0x5a4330], [0x46392e, 0x5b4130], [0x171a20, 0x121517]]);
+const WAYFARER_TOOL_COLORS = new Map([[iron, 0x3a4246], [coal, 0x24282b], [leather, 0x5a4330], [0x46392e, 0x5b4130]]);
 function wayfarerToolMaterials(parts) {
   const key = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255].map(Math.fround).join();
   const map = new Map([...WAYFARER_TOOL_COLORS].map(([from, to]) => [key(from), [(to >> 16) / 255, ((to >> 8) & 255) / 255, (to & 255) / 255]]));
   return Object.freeze(parts.map(p => { const mesh = Float32Array.from(p.mesh); for (let i = 0; i < mesh.length; i += MESH_FLOATS) { const to = map.get([mesh[i + 6], mesh[i + 7], mesh[i + 8]].join()); if (to) { mesh[i + 6] = to[0]; mesh[i + 7] = to[1]; mesh[i + 8] = to[2]; } } return { ...p, mesh }; }));
 }
 const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster)});
-export const HERO_EQUIPMENT_MAX_TRIANGLES = 156;
+// Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
+// (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
+// fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.
+export const HERO_EQUIPMENT_MAX_TRIANGLES = 220, HERO_SLOT_EXTRA_TRIANGLES = 64;
 export const HERO_DRINK_VIAL_TRIANGLES=24;
 // One bake-time heptagonal tapered bottle: visible at close range, but small enough
 // to share the existing equipment stream without another asset or draw call.
@@ -453,7 +456,7 @@ export function writeCloseViewHeroEquipment(out,offset,gear,frame) {
 // gauntlets or the drink vial never compete with it. Atomic: all of the kit or none of it. The
 // largest held gear (96) plus the vial (24) plus this reservation keeps the whole imported hero
 // equipment inside one ordinary 256-triangle actor slot of the shared model buffer.
-// On the suit, armor (60) + gear (<=96) + the suit's helmet and pack stay inside the same slot.
+// On the suit, armor (124) + gear (<=96) + helmet and pack (97) fit one slot plus HERO_SLOT_EXTRA_TRIANGLES.
 export const HERO_KIT_MAX_TRIANGLES = 136;
 const kitRgb=list=>{const rgb=new Float32Array(list.length*3);list.forEach((p,i)=>{const g=p.glow||1;rgb[i*3]=(p.color>>16)/255*g;rgb[i*3+1]=((p.color>>8)&255)/255*g;rgb[i*3+2]=(p.color&255)/255*g;});return rgb;};
 const KIT_SETS=Object.freeze({standard:Object.freeze({list:CLOSE_VIEW_WAYFARER_KIT,triangles:CLOSE_VIEW_WAYFARER_KIT_TRIANGLES,rgb:kitRgb(CLOSE_VIEW_WAYFARER_KIT),suit:false}),suit:Object.freeze({list:CLOSE_VIEW_SUIT_KIT,triangles:CLOSE_VIEW_SUIT_KIT_TRIANGLES,rgb:kitRgb(CLOSE_VIEW_SUIT_KIT),suit:true})});

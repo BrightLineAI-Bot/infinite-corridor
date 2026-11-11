@@ -243,17 +243,14 @@ function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false){
   for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold;target[2]=data[o+2]-A.tuckBack*fold;solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
   pose.set(layer);state.clip='derived-ordinary-jump';state.clipTime=elapsed/duration;
 }
-const HURT_FLINCH = Object.freeze({ peak: .22, chest: .16, upper: .08, head: .14, twist: .07, guard: .30, elbow: .35 });
+const HURT_FLINCH = Object.freeze({ lateral: .16, peak: .22, chest: .16, upper: .08, head: .14, twist: .07, guard: .30, elbow: .35 });
 // Touchdown absorb after an ordinary jump: the pelvis sinks and recovers over the accepted landing
 // clock while both soles stay planted (flat) where they are. Presentation only; u is 0..1.
 const LAND_POSE = Object.freeze({ drop: .13, lean: .16, neck: -.07, arms: .16 });
 function landingAbsorbPose(asset,state,pose,u,reducedMotion){
   if(!(u>0&&u<1))return;
   const k=(u<.28?smoothstep(u/.28):1-smoothstep((u-.28)/.72))*(reducedMotion?.6:1);if(!(k>0))return;
-  const data=state.hammerLegData,g=state.global,target=state.primaryTarget;build(asset,state,pose);
-  for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);for(let k2=0;k2<3;k2++){data[o+k2]=target[k2];data[o+3+k2]=g[foot*16+12+k2]-target[k2];}matrixQuat(data,o+6,g,foot*16);}
-  pose[33*10+1]-=LAND_POSE.drop*k;rotateX(pose,27,LAND_POSE.lean*k);rotateX(pose,4,LAND_POSE.neck*k);rotateZ(pose,12,-LAND_POSE.arms*k);rotateZ(pose,22,LAND_POSE.arms*k);
-  for(let side=0;side<2;side++){const left=side===0,o=side*10;target[0]=data[o];target[1]=data[o+1];target[2]=data[o+2];solveLeg(state,pose,left,target,k,state.hammerLegSides[side]);}
+  plantedCrouch(asset,state,pose,k,LAND_POSE.drop);rotateX(pose,27,LAND_POSE.lean*k);rotateX(pose,4,LAND_POSE.neck*k);rotateZ(pose,12,-LAND_POSE.arms*k);rotateZ(pose,22,LAND_POSE.arms*k);
   state.clip='derived-landing';state.clipTime=u;
 }
 function soleMinimum(points,q,o) {
@@ -404,7 +401,7 @@ function castPose(state,pose,profile,p,sourceLeft=true){
   const tail=1-p,flow=16*p*p*tail*tail;
   const x=g[s+12]+(spec[0]+spec[5]*flow)*side,y=g[s+13]+spec[1]+follow*.035+spec[6]*flow,z=g[s+14]+spec[2]+follow*.045+spec[7]*flow;
   t[0]=g[grip+12]+(x-g[grip+12])*commit;t[1]=g[grip+13]+(y-g[grip+13])*commit;t[2]=g[grip+14]+(z-g[grip+14])*commit;
-  rotateX(pose,sourceLeft?13:23,-.05*flow*commit);rotateZ(pose,sourceLeft?13:23,-side*.07*flow*commit);rotateY(pose,4,-side*.025*flow*commit);
+  rotateX(pose,sourceLeft?13:23,-.05*flow*commit);rotateY(pose,27,-side*.10*flow*commit);rotateX(pose,27,.05*flow*commit);rotateZ(pose,sourceLeft?13:23,-side*.07*flow*commit);rotateY(pose,4,-side*.025*flow*commit);
   solveArm(state,pose,sourceLeft,t,spec[3]*commit*side,spec[4]*commit);
 }
 
@@ -415,6 +412,7 @@ const TOOL_BODY_LOAD=Object.freeze({
   'lumen-spindle':Object.freeze({twist:.018,brace:.025,guard:.035}),
   'great-sweep':Object.freeze({twist:.13,brace:.07,guard:.12}),
 });
+const TOOL_LIFE = Object.freeze({ load: 1.6, kick: .16, head: .06 });
 function phasedToolBodyLoad(pose,profile,p,action,A=SOURCE_RIGHT_ARM){
   const recipe=TOOL_BODY_LOAD[profile];if(!recipe||action?.toolMotion?.v!==1||action?.toolUse?.v!==1)return;
   // toolPose already validates the receipt. Reuse its scalar clock fields without another phase object.
@@ -428,7 +426,9 @@ function phasedToolBodyLoad(pose,profile,p,action,A=SOURCE_RIGHT_ARM){
   if(!(u>0&&u<1))return;
   const tail=1-u,pulse=before?16*u*u*tail*tail:(729/16)*u*u*tail*tail*tail*tail;
   // Authored for a source-right (displayed-left) hold; a right-hand tool mirrors the twist.
-  const direction=(profile==='great-sweep'&&action.toolMotion.direction===-1?-1:1)*-A.sign,twist=recipe.twist*pulse*direction*(before?-1:1),brace=recipe.brace*pulse*(before?.65:-1);
+  const direction=(profile==='great-sweep'&&action.toolMotion.direction===-1?-1:1)*-A.sign,twist=recipe.twist*TOOL_LIFE.load*pulse*direction*(before?-1:1),brace=recipe.brace*TOOL_LIFE.load*pulse*(before?.65:-1);
+  // Release recoil: the firing shoulder kicks up and the head rides back with it.
+  if(!before&&profile!=='great-sweep'){rotateX(pose,A.shoulder,TOOL_LIFE.kick*pulse);rotateX(pose,4,-TOOL_LIFE.head*pulse);}
   // The independent leg hierarchy and both grip solutions are unchanged at entry/release/expiry.
   rotateY(pose,28,twist*.35);rotateY(pose,27,twist);rotateY(pose,24,twist*.65);
   rotateX(pose,27,brace*.4);rotateX(pose,24,brace);rotateY(pose,4,-twist*.6);
@@ -583,6 +583,7 @@ function weightedMeleePose(asset,state,pose,motion) {
 }
 // Descriptor-owned counter-load and settling around the canonical contact pose.
 // Endpoints and contact are exact zeros: no new clock, root travel, leg solver or grip pass.
+const MELEE_LIFE = 2.2;
 function weightedMeleeLoad(pose, motion) {
   const p=motion.progress,c=motion.contact;
   if(!(p>0&&p<1)||p===c)return;
@@ -590,7 +591,8 @@ function weightedMeleeLoad(pose, motion) {
   // A flat-ended pulse gives acceleration into the load and deceleration out of follow-through.
   const pulse=16*u*u*(1-u)*(1-u),fist=motion.kind==='iron-fists',jab=motion.move==='jab',upper=motion.move==='uppercut';
   const direction=fist?motion.lead:CLEAVER_ARM.sign*(motion.cutIndex<=2?-1:1),load=direction*pulse*(before?-1:1);
-  const scale=jab?.55:upper?1.10:1;
+  // Stronger anticipation and follow-through around the unchanged contact pose (zero at contact).
+  const scale=(jab?.55:upper?1.10:1)*MELEE_LIFE;
   // Hips are a torso parent; the independent thigh/foot hierarchy is intentionally untouched.
   rotateY(pose,28,.045*load*scale);rotateY(pose,27,.085*load*scale);rotateY(pose,24,.065*load*scale);
   rotateX(pose,27,(before?(upper?-.055:.035):.025)*pulse*scale);
@@ -643,6 +645,27 @@ function samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p)
   const count=sampleSkinnedOverlay(CLOSE_VIEW_POWER_SUIT_ARMOR,asset,state,input,out.suitPositionsNormals,scale,cy,sy,dx,dz,knocked,p);
   if(count<0)return false;out.suitVertexCount=count;return true;
 }
+// Aliveness (Tim, 2026-11-11: "the character should be alive... responsive... a living thing").
+// Additive, clock-driven layers on the accepted locomotion pose: breathing, a slow weight shift and
+// glances while standing; a lean into acceleration and back when stopping; the chest and head
+// leading a turn in place. All are zero at a zero clock, and reduced motion freezes the idle clock.
+const LIFE = Object.freeze({ breathS: 3.6, breath: .024, shiftS: 5.3, shift: .032, lookS: 8.3, look: .075, accel: .13, accelHead: .05, turnChest: .16, turnHead: .18, turnHips: .035 });
+function alivePose(pose,idleSec,speed,input){
+  const still=1-Math.min(1,speed/1.2);
+  if(still>0&&idleSec>0){const b=Math.sin(TAU*idleSec/LIFE.breathS),w=Math.sin(TAU*idleSec/LIFE.shiftS),l=Math.sin(TAU*idleSec/LIFE.lookS)*Math.sin(TAU*idleSec/(LIFE.lookS*.41));
+    rotateX(pose,24,-LIFE.breath*b*still);rotateZ(pose,28,LIFE.shift*w*still);rotateZ(pose,27,-LIFE.shift*.7*w*still);rotateY(pose,4,LIFE.look*l*still);}
+  const a=clamp(Number(input.accel)||0,-1,1);if(a&&!input.reducedMotion){rotateX(pose,27,LIFE.accel*a);rotateX(pose,4,-LIFE.accelHead*a);}
+  const t=clamp(Number(input.turn)||0,-1,1)*still;if(t){rotateY(pose,27,LIFE.turnChest*t);rotateY(pose,4,LIFE.turnHead*t);rotateZ(pose,28,LIFE.turnHips*t);}
+}
+// Planted crouch: the pelvis sinks while both soles stay where they are (flattening by k).
+function plantedCrouch(asset,state,pose,k,drop){
+  if(!(k>0))return;const data=state.hammerLegData,g=state.global,target=state.primaryTarget;build(asset,state,pose);
+  for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);for(let q=0;q<3;q++){data[o+q]=target[q];data[o+3+q]=g[foot*16+12+q]-target[q];}matrixQuat(data,o+6,g,foot*16);}
+  pose[33*10+1]-=drop*k;
+  for(let side=0;side<2;side++){const left=side===0,o=side*10;target[0]=data[o];target[1]=data[o+1];target[2]=data[o+2];solveLeg(state,pose,left,target,k,state.hammerLegSides[side]);}
+}
+const PICKUP_POSE = Object.freeze({ drop: .36, chestDrop: .17, bend: .46, upper: .22, reach: .30 });
+const DRINK_LIFE = Object.freeze({ tilt: .26, arch: .10, shoulder: .08 });
 export function sampleCloseViewHero(asset, state, input, out) {
   out.ready = false;out.powerSuit=false;out.suitVertexCount=0;out.kitVertexCount=0;out.kitSet='';state.worldScale=input.height/state.referenceHeight;
   if (out.asset !== asset || !Number.isFinite(input.nowMs) || !Number.isFinite(input.x) || !Number.isFinite(input.y) || !Number.isFinite(input.groundZ) || !Number.isFinite(input.liftZ) || !Number.isFinite(input.yaw) || !(input.height > 0) || !Number.isFinite(input.height)) return false;
@@ -657,8 +680,10 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const shovelDigging=action?.kind==='interact'&&(action.profile==='shovel-dig'||action.profile==='iron-shovel-dig');
   const placingStone=action?.kind==='interact'&&action.profile==='stone-place';
   const locomotionLayer=action?.kind==='drink'||(action?.kind==='interact'&&(action.profile==='cache-pickup'||chestOpening||shovelDigging||placingStone));
-  clipPose(asset, asset.clips.Idle, input.reducedMotion || action&&!timedAction&&!hammerAction&&!locomotionLayer ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
+  const idleFrozen = input.reducedMotion || action&&!timedAction&&!hammerAction&&!locomotionLayer, idleSec = idleFrozen ? 0 : idleMs / 1000;
+  clipPose(asset, asset.clips.Idle, idleFrozen ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
+  if(!knocked)alivePose(state.pose,idleSec,speed,input);
   const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
     meleeMotion=action?.kind==='melee'?sampleMeleeActionPose(action.meleeAction,p,action?.primaryStage?.step??action?.primaryMotion?.step??action?.primaryStep??action?.fistStep,action?.fistLead):null;
   let clip = null, weight = 0, time = 0, dx = 0, dz = 0;
@@ -702,7 +727,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
       if(clip){if(!fistProfile||weight>0)blend(state.pose, state.other, weight);if(!fistProfile){state.clip = clip.name; state.clipTime = time;}}
       // The source RecieveHit is faint at Close View distance: add a sharp flinch (chest and head snap
       // back, guard arms rise) that peaks early and eases out. Same accepted clock, zero at both ends.
-      if(clip&&kind==='hit'&&profile==='hurt'&&weight>0){const f=weight*(p<HURT_FLINCH.peak?smoothstep(p/HURT_FLINCH.peak):1-smoothstep((p-HURT_FLINCH.peak)/(1-HURT_FLINCH.peak)));rotateX(state.pose,27,-HURT_FLINCH.chest*f);rotateX(state.pose,24,-HURT_FLINCH.upper*f);rotateX(state.pose,4,-HURT_FLINCH.head*f);rotateZ(state.pose,24,HURT_FLINCH.twist*f);rotateX(state.pose,12,-HURT_FLINCH.guard*f);rotateX(state.pose,22,-HURT_FLINCH.guard*f);rotateX(state.pose,11,-HURT_FLINCH.elbow*f);rotateX(state.pose,21,-HURT_FLINCH.elbow*f);}
+      if(clip&&kind==='hit'&&profile==='hurt'&&weight>0){const f=weight*(p<HURT_FLINCH.peak?smoothstep(p/HURT_FLINCH.peak):1-smoothstep((p-HURT_FLINCH.peak)/(1-HURT_FLINCH.peak)));const front=Number.isFinite(input.hurtFront)?clamp(input.hurtFront,-1,1):1,side=Number.isFinite(input.hurtSide)?clamp(input.hurtSide,-1,1):0;rotateX(state.pose,27,-HURT_FLINCH.chest*f*front);rotateX(state.pose,24,-HURT_FLINCH.upper*f*front);rotateX(state.pose,4,-HURT_FLINCH.head*f*front);rotateZ(state.pose,27,HURT_FLINCH.lateral*f*side);rotateY(state.pose,24,-HURT_FLINCH.twist*f*side);rotateZ(state.pose,24,HURT_FLINCH.twist*f*(1-Math.abs(side)));rotateX(state.pose,12,-HURT_FLINCH.guard*f);rotateX(state.pose,22,-HURT_FLINCH.guard*f);rotateX(state.pose,11,-HURT_FLINCH.elbow*f);rotateX(state.pose,21,-HURT_FLINCH.elbow*f);}
     } else if (kind === 'melee' && profile === 'hammer') {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
@@ -727,6 +752,11 @@ export function sampleCloseViewHero(asset, state, input, out) {
           rotateX(state.pose,freeLeft?7:18,(chestOpening ? -.22+.48*lift : .16)*reach);
         }
         rotateX(state.pose,4,(chestOpening ? .28-.12*lift : .21)*reach);
+        // A real crouch and reach (Tim, 2026-11-11): knees bend with the soles planted, the waist
+        // folds, and the free hand goes down to the floor; a chest only needs half the depth.
+        const c=reach*(chestOpening?.5:1);plantedCrouch(asset,state,state.pose,c,(chestOpening?PICKUP_POSE.chestDrop:PICKUP_POSE.drop));
+        rotateX(state.pose,27,PICKUP_POSE.bend*c);rotateX(state.pose,24,PICKUP_POSE.upper*c);
+        if(heldPrimary!=='cinder-pike'&&!chestOpening)rotateX(state.pose,roles.free==='leftSocket'?12:22,-PICKUP_POSE.reach*c);
       }
       state.clip=chestOpening?'derived-chest-open':'derived-cache-pickup';state.clipTime=p;
     } else if(kind==='drink') {
@@ -734,7 +764,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
       if(drink.weight>0){state.other.set(state.pose);build(asset,state,state.other);const shoulder=(freeLeft?12:22)*16;
         t[0]=state.global[shoulder+12]+(freeLeft?.10:-.10);t[1]=state.global[shoulder+13]+.38*drink.arm;t[2]=state.global[shoulder+14]+.20*drink.arm;
         solveArm(state,state.other,freeLeft,t,freeLeft?-.12:.12,-.72*drink.arm);
-        rotateX(state.other,24,.08*drink.head);rotateX(state.other,4,-.12*drink.head-.05*drink.sip);blend(state.pose,state.other,drink.weight);}
+        rotateX(state.other,24,.08*drink.head);rotateX(state.other,4,-.12*drink.head-DRINK_LIFE.tilt*drink.sip);rotateX(state.other,27,-DRINK_LIFE.arch*drink.sip);rotateZ(state.other,freeLeft?13:23,(freeLeft?-1:1)*DRINK_LIFE.shoulder*drink.sip);blend(state.pose,state.other,drink.weight);}
       state.clip='derived-drink';state.clipTime=p;
     } else if (kind === 'ranged' || kind === 'cast' || kind === 'jump') {
       // Explicit derivative pose layers: this source contains no ranged/cast/jump clips.

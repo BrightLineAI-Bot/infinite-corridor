@@ -127,8 +127,6 @@ function orientOverlay(list,core){
       if(nx*mx+ny*my+nz*mz<0){v[i+1]=d;v[i+2]=b;}}}
 }
 orientOverlay(armor,node=>node===24||node===4?[0,1.76,-.02]:node===12||node===22?[.36*(node===12?1:-1),1.76,0]:node===30||node===32?[.16*(node===30?1:-1),1.04,-.03]:[.19*(node===29?1:-1),.45,-.005]);
-export const CLOSE_VIEW_POWER_SUIT_ARMOR = Object.freeze(armor);
-export const CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES = armor.reduce((n,p)=>n+p.vertices.length/3,0);
 
 // The standard Wayfarer kit (Tim, 2026-11-11: the loose-gear look, a chest piece with a few lights
 // on one side, a back pack and thigh/shin plates, as his everyday look). Bind-space, skinned one bone
@@ -222,8 +220,22 @@ for(const side of [-1,1]){
   const w=.018,a=[side*.13,1.66,-.26],b=[side*.215,1.70,-.06],c=[side*.15,1.80,.17],pt=p=>[[p[0],p[1]-w,p[2]],[p[0],p[1]+w,p[2]]],[a0,a1]=pt(a),[b0,b1]=pt(b),[c0,c1]=pt(c);
   kitAdd(24,0x202328,[0,1.74,-.02],[a0,a1,b1,a0,b1,b0,b0,b1,c1,b0,c1,c0]);
 }
+// The suit's plates, rebuilt as solid shells like the standard kit (Tim, 2026-11-11): a graphite
+// breastplate carrying the amber sigil, a collar, pauldrons, thigh plates and greaves with knee
+// plates. Same bones and colours as the earlier card overlay; every plate now has a rim.
+const suitArmor=[];kitTarget=suitArmor;
+kitShell(24,G,B,1,[[1.935,0,-.02,.20,.20,.78],[1.765,0,-.02,.22,.20,1],[1.585,0,-.02,.205,.195,.82]],[-52,-18,18,52],.03,.026);
+for(const part of armor)if(part.color===A)kitAdd(24,A,[0,1.76,-.02],part.vertices.map(v=>[v[0],v[1],v[2]-.012]));
+for(const part of armor)if(part.node===4)kitAdd(4,part.color,[0,1.76,-.02],part.vertices);
+for(const [side,node] of [[1,12],[-1,22]])kitShell(node,G,B,side,[[1.88,side*.36,-.01,.075,.10],[1.67,side*.38,-.01,.11,.13]],[-50,30,110],.03,.022);
+for(const [side,thigh,shin] of [[1,30,29],[-1,32,31]]){
+  kitShell(thigh,G,B,side,[[1.17,side*.165,-.03,.11,.145],[.88,side*.165,-.03,.10,.135]],[-18,40,98],.03,.024);
+  kitShell(shin,G,B,side,[[.60,side*.19,-.01,.12,.13],[.29,side*.185,-.01,.10,.11]],[-60,8,76],.035,.024,null,false);
+}
 kitTarget=kit;
-for(const part of [...kit,...suitKit]){const v=part.vertices,c=part.core;for(let i=0;i<v.length;i+=3){const a=v[i],b=v[i+1],d=v[i+2],ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],wx=d[0]-a[0],wy=d[1]-a[1],wz=d[2]-a[2],nx=uy*wz-uz*wy,ny=uz*wx-ux*wz,nz=ux*wy-uy*wx,mx=(a[0]+b[0]+d[0])/3-c[0],my=(a[1]+b[1]+d[1])/3-c[1],mz=(a[2]+b[2]+d[2])/3-c[2];if(nx*mx+ny*my+nz*mz<0){v[i+1]=d;v[i+2]=b;}}}
+for(const part of [...kit,...suitKit,...suitArmor]){const v=part.vertices,c=part.core;for(let i=0;i<v.length;i+=3){const a=v[i],b=v[i+1],d=v[i+2],ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],wx=d[0]-a[0],wy=d[1]-a[1],wz=d[2]-a[2],nx=uy*wz-uz*wy,ny=uz*wx-ux*wz,nz=ux*wy-uy*wx,mx=(a[0]+b[0]+d[0])/3-c[0],my=(a[1]+b[1]+d[1])/3-c[1],mz=(a[2]+b[2]+d[2])/3-c[2];if(nx*mx+ny*my+nz*mz<0){v[i+1]=d;v[i+2]=b;}}}
+export const CLOSE_VIEW_POWER_SUIT_ARMOR = Object.freeze(suitArmor.map(({node,color,vertices})=>Object.freeze({node,color,vertices:Object.freeze(vertices)})));
+export const CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES = suitArmor.reduce((n,p)=>n+p.vertices.length/3,0);
 export const CLOSE_VIEW_WAYFARER_KIT = Object.freeze(kit.map(({node,color,glow,vertices})=>Object.freeze({node,color,glow,vertices:Object.freeze(vertices)})));
 export const CLOSE_VIEW_WAYFARER_KIT_TRIANGLES = kit.reduce((n,p)=>n+p.vertices.length/3,0);
 export const CLOSE_VIEW_SUIT_KIT = Object.freeze(suitKit.map(({node,color,glow,vertices})=>Object.freeze({node,color,glow,vertices:Object.freeze(vertices)})));
