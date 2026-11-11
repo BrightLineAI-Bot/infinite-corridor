@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 887: In Close View the Wayfarer's compass now turns with the way the Wayfarer faces, not the camera: ahead is up, a turning N marks true north, and quest, waypoint and door-point needles keep their true bearings. It turns smoothly and snaps under Reduce motion. The standard view stays north-up, now with a dial showing N and E/S/W ticks.
 - Release 886: The arcana go live: sets have straight-line home regions around the Refuge, and the Journal counts each set and says where the rest most likely lie. Finishing the Seven Bells earns Bell Toll and finishing the Lamplighter's Round earns Lamplighter's Light, on every journey. The Cairn Keeper at Ember Refuge starts the Surveyor's Chain: the first crossing you enter after speaking with her holds its first link. Nothing that was free is locked.
 - Release 885: The world now advances in steady 60 Hz steps and is drawn between them, so movement looks even at any screen refresh rate and dodges cover the same distance from 20 fps up. Entering an interior in Close View no longer builds its walls in the same frame as loading the floor, and the build is 2–4× faster.
 - Release 884: Close View creatures are solid: no more see-through, fading-in monsters inside view range (only the last 1.5 tiles before the fog's edge thin them). Ghosts by design (Lumen Wraith, Gloomwisp, Gloomgorge) stay ghostly with a cold rim, and every creature gets a brighter light floor, a cool rim light and glowing eyes and embers.

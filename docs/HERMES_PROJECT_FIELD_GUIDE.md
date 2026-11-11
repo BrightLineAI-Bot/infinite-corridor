@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 887 — The compass turns with the Wayfarer in Close View
+
+Tim, 2026-11-11: the compass should turn with the Wayfarer's facing, not the camera; then, for the standard view: "keep it north up... north up is just standard for the map." Tim's direction covers updating the Close View half of the r869 compass test.
+
+**CODE:** `src/main.ts` `updateCompassFrame()` runs once per HUD frame from `updateNavigationCompass()` and keeps `compassFrame`, which it updates in place. While Close View is showing, the target is `closeViewBodyFacingYaw()` from `src/close-view.ts`: the drawn body yaw, or the previous target while an action briefly turns the body (`CAM.bodyTransient`). Otherwise the target is north (−π/2). `compassFacingStep()` eases toward the target with a deadband, or snaps under Reduce motion or safe mode, using the values in `COMPASS_FACING`. `compassRotation()` passes that yaw to `closeViewCompassRotation()` for the guidance, manual and door-point needles, and the `.nav-dial` built in JS (N plus E/S/W ticks) rotates by the bearing of north. This replaces the r869 camera-yaw frame.
+
+**BOUNDARY:** Presentation only. No save field and no generation change; door-point selection and the true-north fallback are unchanged. The standard view is north-up as before r869. The compass never reads the Close View camera, and the camera's own yaw logic is untouched. While paused the compass doesn't update, and a long gap is capped so it never jumps.
+
 ## Release 886 — The arcana go live: home regions, two earned passives and the Cairn Keeper
 
 Tim, 2026-11-11: bands are straight-line from 0,0; use existing passives and spells rather than many new ones (Seven Bells → bell toll; Lamplighter's Round → bigger light radius); a first quest can start at the Refuge. Of tying other sets to things now given freely (slot C, spells, awakening, capstones): "leave them as free for now, we can come back to this later." Tim approved editing the three existing tests that assumed the old placement.
