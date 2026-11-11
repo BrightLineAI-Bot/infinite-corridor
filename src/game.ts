@@ -61,7 +61,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack } from "./fractured.ts";
 import { tickAffixes, rollAffixes } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -789,13 +789,16 @@ export function grantOrreryGear(save) {
 // without consequence"; he took the recommendation): salvage pays SMITHY.salvage.iron by tier (1/1/2/2, was 1/2/3/4), and a
 // piece salvaged only because the pack was full (`auto`) pays no iron at all, just its glyph dust. Kill and clear marks halve
 // (ECONOMY.marks; dungeon-completion.ts CLEAR_MARKS).
-export const ECONOMY = { autoSalvageIron: 0, marks: { boss: 6, aperture: 3, common: 1 } };
+// 2026-11-11 (Tim: tools fire rounds made from cinder iron; "salvaging weapons should yield cinder iron again"): the full pack's
+// salvage pays again, `autoSalvageShare` of the tier's SMITHY.salvage.iron (rounded down, at least 1); release 607 paid it none.
+export const ECONOMY = { autoSalvageShare: 1, marks: { boss: 6, aperture: 3, common: 1 } };
 const salvageIron = (item) => SMITHY.salvage.iron[itemTier(item)] ?? 1;
+const autoSalvageIron = (item) => ECONOMY.autoSalvageShare > 0 ? Math.max(1, Math.floor(salvageIron(item) * ECONOMY.autoSalvageShare)) : 0;
 export function salvageInventoryItem(save, index, auto = false) {
   const item = save.inventory?.[index];
   if (!item) return null;
   save.inventory.splice(index, 1);
-  const iron = auto ? ECONOMY.autoSalvageIron : salvageIron(item);
+  const iron = auto ? autoSalvageIron(item) : salvageIron(item);
   save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
   save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
   for (const g of item.glyphs || []) if (g) save.glyphs[g] = (save.glyphs[g] || 0) + 1; // socketed glyphs come back
@@ -831,7 +834,7 @@ export function storeInventoryItem(save, item, keep = false) {
   const fresh = isBrawlerGear(item) && !save.inventory.some((q) => q?.name === item.name) && !Object.values(save.equipment || {}).some((q) => q?.name === item.name);
   const weakest = packVictim(save, fresh);
   if (!fresh && !keep && packKeep(item) < packKeep(save.inventory[weakest])) { // release 545: a drop below everything you keep is salvaged; at the same keep the oldest goes instead
-    const iron = ECONOMY.autoSalvageIron; // release 607: a full pack's salvage pays no iron
+    const iron = autoSalvageIron(item); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none)
     save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
     save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
     return { stored: false, salvaged: item, iron };
@@ -2027,6 +2030,9 @@ export function actionReadiness(game, now = 0) {
       remaining: attack / 1000,
       duration: 0.36,
       active: !!game.save.toolMode,
+      rounds: roundsLabel(game.save, rangedWeapon(game.save.equipment?.secondary)), // tool-forms.ts ROUNDS: the compact count, or null
+      empowered: (game.save.rounds?.empowered || 0) > 0,
+      available: !usesRounds(rangedWeapon(game.save.equipment?.secondary)) || canFireRound(game.save, toolEchoes(game.save)),
     },
     dodge: {
       remaining: 0,
@@ -4562,6 +4568,7 @@ export class Game {
     } else if (r.transition === "chest") {
       this.obtainDrop(o.rewardSource || "chest");
       if (this.area === "dungeon" && !this.map?.skyland) { const sk = this.grantSeedFind("dungeon", `${this.areaStateId()}:${o.id}`); if (sk) this.message = `${this.message} Among it lies a ${SEEDS[sk].name}.`; } // travel seeds (SEED_FINDS.dungeon)
+      if (this.area === "dungeon" && !this.map?.skyland) { const n = this.grantRoundsFind("dungeon", `${this.areaStateId()}:${o.id}`); if (n) this.message = `${this.message} Packed in it: ${n} empowered rounds.`; } // ROUNDS.finds.dungeon
       const B = this.map?.building; // Tesseract glyphs (release 729): a labyrinth's vault, the Pentagon's reliquaries and the Regent's hoard
       if (B && o.id === "building-cache" && B.vault && B.labyrinth && !B.pentagon && B.style === TURTLE_SHELL.style) this.payShellVault(B); // the Shell-Labyrinth: a Tesseract glyph or Divine Viscera
       else if (B && o.id === "building-cache" && B.vault && B.labyrinth && !B.pentagon) this.awardTesseract(`${B.base}:vault`, "labyrinth");
@@ -4965,6 +4972,28 @@ export class Game {
   // Release 311 (Tim: "these buoys... are connected... go to one buoy, and then go to another buoy... if you traverse the
   // dungeon"): the dive buoy the grotto's deep current carries you to — the nearest other buoy section, rings outward from
   // the one you dove at (dive:<seed>:<rx>:<ry>), found with the same rule diveSite uses. Returns a dungeonReturn place.
+  // Rounds (tool-forms.ts ROUNDS): the round for one shot of a firing tool with `echoes` Echo glyphs: "empowered", "ordinary", or
+  // null when there is none (the shot is refused and the message says why).
+  takeRound(echoes = 0) {
+    const kind = spendRound(this.save, echoes);
+    if (!kind) this.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`;
+    else if (kind === "empowered" && !(this.save.rounds.empowered > 0)) this.message = "The last empowered round is spent: ordinary rounds from cinder iron now.";
+    return kind;
+  }
+  // The TOOL line's rounds: empowered and ordinary rounds ready, and the cinder iron one ordinary round takes ("" for a tool without rounds).
+  roundsSummary() {
+    if (!usesRounds(rangedWeapon(this.save.equipment?.secondary))) return ""; const e = this.save.rounds?.empowered || 0, echoes = toolEchoes(this.save);
+    return ` · rounds ${e ? `✦${e} empowered + ` : ""}${ordinaryRounds(this.save, echoes)} (${roundIronCost(echoes)} iron each)`;
+  }
+  // Empowered rounds found at a place (ROUNDS.finds[source]), given once (worldFlags). Returns the number given (0: none).
+  grantRoundsFind(source, key) {
+    const flag = roundsFindFlag(source, key); if (this.save.worldFlags[flag]) return 0;
+    const n = roundsFindRoll(this.save.seed, source, key); this.save.worldFlags[flag] = true; if (!n) return 0;
+    const held = grantEmpoweredRounds(this.save, n);
+    (this.questNotices ||= []).push({ title: "EMPOWERED ROUNDS", detail: `+${n} · ${held} held · used first, ×${ROUNDS.empowered.damage} damage`, kind: "discovery" });
+    journalOnce(this.save, "rounds:empowered", `You found empowered rounds. A firing tool spends them before any ordinary round, and each hits ${Math.round((ROUNDS.empowered.damage - 1) * 100)}% harder.`, "Rounds");
+    return n;
+  }
   // Travel seeds (skylands.ts SEEDS). A seed found is given once: its place's win is kept in worldFlags (seedFindFlag).
   grantSeedFind(source, key) {
     const kind = seedFindRoll(this.save.seed, source, key), flag = seedFindFlag(source, key);
@@ -7052,6 +7081,7 @@ export class Game {
     const toolKind = acceptedToolKind;
     const delayed=!!toolKind&&this.closeViewActionEligible(),effectiveCooldown=360*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=delayed?toolUseStartupMs(toolKind,effectiveCooldown):null;
     if(delayed&&startupMs==null)return false;
+    const round=usesRounds(weapon)?this.takeRound(glyphs.count("echo")):"none";if(!round)return false; // tool-forms.ts ROUNDS: empowered first, then the belt, then cinder iron
     const preparedProjectiles=delayed?[]:this.projectiles;
     const priorTool=normalizeAttackVisual(this.player.attackVisual),priorDeadline=attackVisualDeadline(this.player,priorTool);
     const priorPose=toolKind&&priorTool?.toolKind===toolKind&&priorTool.toolMotion?.v===1&&!priorTool.presentationCancelled&&priorDeadline>now
@@ -7096,6 +7126,7 @@ export class Game {
     const shot = preparedProjectiles[preparedProjectiles.length - 1];
     if(toolVisual&&toolKind){toolVisual.toolShotId=shot.id;if(toolKind==='rift-bombard')shot.visualFlight={v:1,duration:shot.life};}
     shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
+    if (round === "empowered") { shot.damage = Math.max(1, Math.round(shot.damage * roundDamage(round))); shot.empowered = true; } // ROUNDS.empowered.damage: before the copies below, so pellets, Echoes, fan and clone carry it
     if (weapon.path === "boomerang" && weapon.name === "Lumen Spindle" && fieldOn(this.save, "lumen-sunburst")) { shot.ricochet = SUNBURST.ricochets; shot.sunburst = true; } // Sunburst Ricochet: copies below (fan, Echo, clone) ricochet too
     if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const C = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + C.damage))); shot.scale = C.scale; shot.grow = C.grow; if (shot.blastRadius) shot.blastRadius *= C.blast; } // release 515: Charged Air
     if (weapon.pellets) { // release 533 (tool-forms.ts): the Blunderbuss's three-pellet cone, or with Arc Wave one wide wave
@@ -7468,6 +7499,7 @@ export class Game {
   touchCrownRest() {
     const o = this.map.objects.find((q) => q.kind === "crownRest"), p = this.player; if (!o || Math.hypot(p.x - o.x, p.y - o.y) > .9) return false;
     { const w = mapWidth(this.map, this.area), at = this.map.tiles[o.y * w + o.x], under = tileUnder(this.map, w, p.x, p.y); if (at && under && (under.elev || 0) !== (at.elev || 0)) return false; } // only on the crown itself (TREE_GLIDE): not from the ground or a branch just beside it
+    if (!o.keepRest && o.roundsChecked !== true) { o.roundsChecked = true; const n = this.grantRoundsFind("crown", `${this.rx},${this.ry}`); if (n) { const rest = this.takeCrownRest(o); this.message = `${rest ? `${this.message} ` : ""}Tucked into the crown: ${n} empowered rounds.`; return true; } } // ROUNDS.finds.crown: a great tree's crown (checked once per visit, paid once)
     return this.takeCrownRest(o);
   }
   // A Crown (or Keep) Rest becomes the active rest point and is kept among the rest points. False when it already was. Also used by
