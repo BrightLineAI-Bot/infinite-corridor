@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { BELLS, BELL_GLIMPSES, BELL_FINAL, bellIn, bellsRung, addBell, ringBell } from '../src/bells.ts';
+import { regionVersionFor } from '../src/lore.ts'; // arcana regions live (2026-11-11)
 
 const seed = 'BELLS431';
 // Ordinary crossings (rx, ry) at depth 3..18 that hold a bell, scanning a fixed range.
@@ -44,7 +45,7 @@ test('ringing a bell: once, remembered, the seventh ends the thread; the record 
 });
 
 test('found in a real crossing, rung through Act, journalled (not among Active quests), and built', () => {
-  const s = freshSave(); s.seed = seed; const c = crossings()[0]; s.session.activeDungeonId = c.id; s.session.dungeonReturn = { rx: c.rx, ry: c.ry, x: 16, y: 16 };
+  const s = freshSave(); s.seed = seed; const c = crossings().find((q) => bellIn(seed, q.id, '', regionVersionFor(false))); s.session.activeDungeonId = c.id; s.session.dungeonReturn = { rx: c.rx, ry: c.ry, x: 16, y: 16 };
   const g = new Game(s, 0); g.loadArea('dungeon', false); const o = g.map.objects.find((q) => q.kind === 'crackedBell');
   assert.ok(o, 'the bell hangs there'); g.enemies = []; Object.assign(g.player, { x: o.x, y: o.y + .2 });
   const r = g.interact('ring', o.id); assert.ok(r.ok && r.first, g.message); assert.ok(s.narrative.journal.some((j) => j.title === 'The Seven Bells'));

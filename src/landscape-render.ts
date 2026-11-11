@@ -15,7 +15,7 @@ export function setLandscapeClock(now) { clock = now / 1000; }
 let staticPass = false;
 export function setLandscapeStaticPass(on) { staticPass = !!on; }
 const ANIMATED_KINDS = new Set(["lava", "seaCurrent", "deepOcean", "lakeWater", "toxicWater", "toxicMire", "swampWater", "ocean", "shallows", "glowcap", "fungusFloor", "abyss", "alienMoss", "alienPool", "crystalSpire", "alienPlatform", "geodeCluster", "templePool", "starVoid"]);
-export function landscapeTileAnimated(t) { return !!t?.landscape && !!PAINT[t.kind] && ANIMATED_KINDS.has(t.kind); }
+export function landscapeTileAnimated(t) { return !!t?.landscape && !!PAINT[t.kind] && ANIMATED_KINDS.has(t.kind) && !t.crevasse; } // a glacier crevasse is drawn once, in the ground cache
 export function landscapeTileLift(t, s) { return t?.landscape ? Math.max(0, (t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) * s : 0; }
 export function animateLandscapeTile(ctx, t, x, y, s) { if (landscapeTileAnimated(t) && t.kind !== "skyBridge") animate(ctx, t, x * s, y * s - landscapeTileLift(t, s), s); }
 export function landscapeCacheSize() { return cache.size; }
@@ -300,6 +300,18 @@ const ruleFrame = (c, s, col, w) => { c.strokeStyle = col; c.lineWidth = w; c.st
 PAINT.ruleCell = (c, s, r) => { const K = RULEWORK; c.fillStyle = grad(c, 0, 0, s, s, [[0, K.cell[0]], [1, K.cell[1]]]); c.fillRect(0, 0, s, s); ruleFrame(c, s, K.line + "dd", Math.max(1, s * .04)); ruleFrame(c, s * .999, K.line + "33", Math.max(2, s * .12)); c.fillStyle = "#ffffff0c"; c.fillRect(2, 2, s - 4, s * .3); if (r() < .3) { c.fillStyle = K.line + "55"; c.fillRect(s * .45, s * .45, s * .1, s * .1); } };
 PAINT.ruleNode = (c, s, r) => { const K = RULEWORK; c.fillStyle = grad(c, 0, 0, s, s, [[0, K.node[0]], [1, K.node[1]]]); c.fillRect(0, 0, s, s); ruleFrame(c, s, K.nodeLine, Math.max(1.2, s * .05)); ruleFrame(c, s, K.nodeLine + "44", Math.max(2.5, s * .16)); c.fillStyle = K.core; const q = s * (.16 + r() * .04); c.fillRect(s / 2 - q / 2, s / 2 - q / 2, q, q); c.fillStyle = K.nodeLine + "66"; c.fillRect(s / 2 - .5, s * .2, 1, s * .6); c.fillRect(s * .2, s / 2 - .5, s * .6, 1); };
 PAINT.ruleMonolith = (c, s, r) => { const K = RULEWORK; c.fillStyle = grad(c, 0, 0, s, s, [[0, K.stone[0]], [1, K.stone[1]]]); c.fillRect(0, 0, s, s); c.fillStyle = "#ffffff12"; c.fillRect(0, 0, s, Math.max(1, s * .05)); c.fillStyle = K.glyph + "cc"; const x = s * (.3 + r() * .4); c.fillRect(x, s * .2, 1, s * .6); for (let k = 0; k < 3; k++) { const y = s * (.25 + k * .2 + r() * .05); c.fillRect(x - s * .12 * (k % 2 ? 1 : 0), y, s * .12, 1); } };
+// The Rimeglaciers (landscape version 24): glacier ice veined blue, wind-packed firn, moraine gravel streaks, turquoise melt
+// pools, snow bridges, serac towers and crevasses (lethal `abyss` tiles marked `crevasse`, painted here as a blue-black slot in
+// the ice instead of the violet void, and never animated). All drawn once into the static ground cache.
+const RIME = { iceA: "#cfe9f6", iceB: "#9ccbe6", vein: "#6fa8d0", glint: "#ffffff", firnA: "#f7fbfe", firnB: "#e2edf5", drift: "#c9dbe9", gravelA: "#8d8f96", gravelB: "#5f6169", stone: ["#b0aca4", "#4a4c52", "#77777d"], meltA: "#7fe3f2", meltB: "#2aa5cf", bridgeA: "#fbfdff", bridgeB: "#d6e6f1", seracA: "#f2fbff", seracB: "#7fb8dc", seracC: "#3d82b8", slot: ["#2d6f9e", "#0b2238", "#03080f"] };
+const iceVeins = (c, s, r, col, n = 3) => { c.strokeStyle = col; c.lineWidth = 1; for (let k = 0; k < n; k++) { let x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); for (let j = 0; j < 3; j++) { x += (r() - .5) * s * .45; y += (r() - .3) * s * .3; c.lineTo(x, y); } c.stroke(); } };
+PAINT.glacierIce = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, RIME.iceA], [1, RIME.iceB]]); c.fillRect(0, 0, s, s); iceVeins(c, s, r, RIME.vein + "88"); c.fillStyle = RIME.glint + "aa"; c.fillRect(s * (.1 + r() * .5), s * (.1 + r() * .3), s * .28, 1); c.fillStyle = "#ffffff55"; for (let k = 0; k < 4; k++) c.fillRect(r() * s, r() * s, 1, 1); };
+PAINT.firn = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, RIME.firnA], [1, RIME.firnB]]); c.fillRect(0, 0, s, s); c.fillStyle = RIME.drift + "aa"; for (let k = 0; k < 3; k++) { c.beginPath(); c.ellipse(r() * s, r() * s, s * (.18 + r() * .2), s * .05, -.3, 0, TAU); c.fill(); } c.fillStyle = "#ffffff"; for (let k = 0; k < 5; k++) c.fillRect(r() * s, r() * s, 1, 1); };
+PAINT.moraine = (c, s, r) => { PAINT.glacierIce(c, s, r); c.fillStyle = RIME.gravelB + "66"; c.fillRect(s * .12, 0, s * .76, s); for (let k = 0; k < 16; k++) { const R = s * (.025 + r() * .05); c.fillStyle = RIME.stone[k % 3]; c.beginPath(); c.ellipse(s * (.15 + r() * .7), r() * s, R * 1.3, R, 0, 0, TAU); c.fill(); } };
+PAINT.meltPool = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s * .4, s, [[0, RIME.meltA], [1, RIME.meltB]]); c.fillRect(0, 0, s, s); c.strokeStyle = "#e9fdff77"; c.lineWidth = 1; for (let k = 0; k < 2; k++) { const y = s * (.25 + r() * .5), x = r() * s * .5; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + s * .2, y - 2, x + s * .4, y); c.stroke(); } c.fillStyle = "#ffffff30"; c.beginPath(); c.ellipse(s * (.3 + r() * .4), s * (.3 + r() * .3), s * .18, s * .06, 0, 0, TAU); c.fill(); c.fillStyle = "#ffffffaa"; c.fillRect(s * r(), s * r(), 1.5, 1); }; // one sheet of meltwater across its tiles
+PAINT.snowBridge = (c, s, r) => { c.fillStyle = grad(c, 0, 0, 0, s, [[0, RIME.slot[1]], [1, RIME.slot[2]]]); c.fillRect(0, 0, s, s); c.fillStyle = grad(c, 0, 0, s, 0, [[0, RIME.bridgeB], [.5, RIME.bridgeA], [1, RIME.bridgeB]]); c.fillRect(s * .08, 0, s * .84, s); c.fillStyle = RIME.drift + "cc"; for (let k = 0; k < 3; k++) c.fillRect(s * (.12 + r() * .6), s * (.1 + k * .3), s * .2, 1.5); c.fillStyle = "#00000033"; c.fillRect(s * .08, 0, 1.5, s); c.fillRect(s * .9, 0, 1.5, s); };
+PAINT.serac = (c, s, r) => { PAINT.glacierIce(c, s, r); c.fillStyle = grad(c, 0, 0, s, s, [[0, RIME.seracA], [.55, RIME.seracB], [1, RIME.seracC]]); c.beginPath(); c.moveTo(s * .08, s * .92); c.lineTo(s * .2, s * .18); c.lineTo(s * .46, s * .04); c.lineTo(s * .66, s * .22); c.lineTo(s * .9, s * .12); c.lineTo(s * .94, s * .9); c.closePath(); c.fill(); c.strokeStyle = "#ffffffcc"; c.lineWidth = Math.max(1, s * .04); c.beginPath(); c.moveTo(s * .2, s * .18); c.lineTo(s * .46, s * .04); c.lineTo(s * .66, s * .22); c.stroke(); c.strokeStyle = RIME.seracC + "aa"; c.lineWidth = 1; c.beginPath(); c.moveTo(s * .46, s * .1); c.lineTo(s * (.4 + r() * .2), s * .85); c.stroke(); };
+PAINT.crevasse = (c, s, r) => { c.fillStyle = grad(c, 0, 0, 0, s, [[0, RIME.slot[0]], [.45, RIME.slot[1]], [1, RIME.slot[2]]]); c.fillRect(0, 0, s, s); c.fillStyle = "#9fd3f066"; for (let k = 0; k < 4; k++) c.fillRect(r() * s, s * (.05 + r() * .3), 1, s * (.1 + r() * .2)); c.fillStyle = "#ffffffcc"; c.fillRect(0, 0, s, Math.max(1, s * .05)); };
 // Release 723: the Thornglass Caldera (far-domains.ts): black basalt seamed with fire, a worn fighting floor, ground strewn with
 // shards, and crystals as tall as towers bursting out of the rock (drawn whole on their tile, in the static ground cache).
 const crack = (c, s, r, n, col) => { c.strokeStyle = col; c.lineWidth = Math.max(1, s * .035); for (let i = 0; i < n; i++) { let x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += (r() - .5) * s * .5; y += (r() - .5) * s * .5; c.lineTo(x, y); } c.stroke(); } };
@@ -488,7 +500,7 @@ function hexagon(c, x, y, rad) { c.beginPath(); for (let i = 0; i < 6; i++) { co
 function flagstones(c, s, r, a, b) { c.fillStyle = b; c.fillRect(0, 0, s, s); for (let y = 0; y < s; y += s / 2) for (let x = 0; x < s; x += s / 2) { c.fillStyle = r() < .5 ? a : "#827a71"; c.fillRect(x + 1, y + 1, s / 2 - 2, s / 2 - 2); } }
 function bricks(c, s, r) { c.strokeStyle = "#2c2926"; c.lineWidth = 1; for (let row = 0, y = 0; y < s; y += s / 4, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(s, y); c.stroke(); for (let x = (row % 2) * s / 4; x < s; x += s / 2) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + s / 4); c.stroke(); } } }
 
-const FACE = { terraces: ["#ece0c6", "#c08f5a"], reckoning: ["#262c52", "#090a12"], arcology: ["#3a3e46", "#14161a"], underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"], pillars: ["#b8744a", "#6e3b22"], fog: ["#5d6762", "#323836"], jungle: ["#2c4a24", "#14240f"], trunk: ["#6b4a2c", "#2e1d10"], biomech: ["#3f434b", "#1b1c20"], salt: ["#cfc8b6", "#8f8877"], crystal: ["#5a7a8a", "#2a3d48"], fungal: ["#4f3d52", "#241b26"], petrified: ["#6f6c66", "#3a3834"], savanna: ["#a8873a", "#5e4a1c"], reef: ["#c9a888", "#7a5c44"], amber: ["#8f4c22", "#4a2410"], obsidian: ["#2a2830", "#0c0b0e"] }; // 591: sandstone mesa walls
+const FACE = { glacier: ["#dff3fc", "#7fb6da"], terraces: ["#ece0c6", "#c08f5a"], reckoning: ["#262c52", "#090a12"], arcology: ["#3a3e46", "#14161a"], underlands: ["#2e2a33", "#0d0b10"], volcanic: ["#3a2b25", "#140d0b"], mountains: ["#4f4a45", "#26231f"], desert: ["#a8743d", "#6b4422"], alien: ["#4a3878", "#1d1533"], dream: ["#c9c2dc", "#7d7698"], castle: ["#57504a", "#2a2623"], coast: ["#a68b56", "#6d5933"], pillars: ["#b8744a", "#6e3b22"], fog: ["#5d6762", "#323836"], jungle: ["#2c4a24", "#14240f"], trunk: ["#6b4a2c", "#2e1d10"], biomech: ["#3f434b", "#1b1c20"], salt: ["#cfc8b6", "#8f8877"], crystal: ["#5a7a8a", "#2a3d48"], fungal: ["#4f3d52", "#241b26"], petrified: ["#6f6c66", "#3a3834"], savanna: ["#a8873a", "#5e4a1c"], reef: ["#c9a888", "#7a5c44"], amber: ["#8f4c22", "#4a2410"], obsidian: ["#2a2830", "#0c0b0e"] }; // 591: sandstone mesa walls
 
 function makeCanvas(size) {
   if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(size, size);
@@ -557,13 +569,14 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w, flat = false) {
     ctx.fillRect(px, py + s, s + 1, lift + 1);
     ctx.fillStyle = "#00000033"; for (let k = 1; k < Math.ceil(level); k++) ctx.fillRect(px, py + s + k * LIFT_PER_LEVEL * s - 1, s + 1, 1.5);
     if (t.kind === "snowPeak" || t.kind === "snowRock") { ctx.fillStyle = "#f4f8fbcc"; ctx.fillRect(px, py + s, s + 1, Math.min(lift, s * .12)); }
+    if (t.landscape === "glacier") { ctx.fillStyle = "#ffffffb3"; ctx.fillRect(px, py + s, s + 1, Math.min(lift, s * .07)); ctx.fillStyle = "#e6f7ffaa"; const d = t.detail || 0; for (let k = 0; k < 2; k++) { const dx = s * ((d * (k + 5) % 83) / 83 * .84 + .06), len = Math.min(lift, s * (.18 + ((d >> k) % 4) * .07)); ctx.beginPath(); ctx.moveTo(px + dx - s * .05, py + s); ctx.lineTo(px + dx + s * .05, py + s); ctx.lineTo(px + dx, py + s + len); ctx.fill(); } } // the Rimeglaciers: a snow lip and icicles under each icefall
     if (t.landscape === "terraces") { ctx.fillStyle = "#fffdf6cc"; const d = t.detail || 0; for (let k = 0; k < 3; k++) { const dx = s * ((d * (k + 3) % 89) / 89 * .86 + .04), len = Math.min(lift, s * (.12 + ((d >> k) % 5) * .05)); ctx.fillRect(px + dx, py + s, Math.max(1.5, s * .06), len); } } // Terrace Springs: white flowstone dripping from each lip
     if (south && (south.elev || 0) < (t.elev || 0)) { ctx.fillStyle = "#00000022"; ctx.fillRect(px, y * s + s, s + 1, s * .18); } // cast shadow
   }
-  const tex = topTexture(t.kind, variant, s);
+  const paint = t.crevasse ? "crevasse" : t.kind, tex = topTexture(paint, variant, s); // the Rimeglaciers: a crevasse is an icy slot, not the violet void
   if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5);
-  else { ctx.save(); ctx.translate(px, py); PAINT[t.kind](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
-  if (!staticPass) animate(ctx, t, px, py, s);
+  else { ctx.save(); ctx.translate(px, py); PAINT[paint](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
+  if (!staticPass && !t.crevasse) animate(ctx, t, px, py, s);
   if (t.landscape === "thornglass") thornGlow(ctx, t, x, y, s, tiles, w); // release 723
   else if (t.landscape === "arena") arenaGlow(ctx, t, x, y, s, tiles, w); // release 724
   if (t.canopy && (t.look != null || treeSeasonNow)) drawTreeWear(ctx, t, px, py, s); // release 645: the tree package's bark tints and leaves
@@ -576,7 +589,22 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w, flat = false) {
     if (!t.mushroom) { ctx.fillStyle = "#0000004d"; ctx.fillRect(px, y * s + s - 2, s + 1, 2); } // contact shadow at the cliff foot (a cap stands on its stalk)
   }
   if (t.slope && t.kind !== "mountainTrail" && t.kind !== "castleStair") { ctx.fillStyle = "#ffffff18"; ctx.fillRect(px, py, s, s * .2); }
+  if (lift > 0 && t.canopy) canopyRim(ctx, t, x, y, px, py, s, tiles, w);
   return true;
+}
+// CANOPY_RIM (Tim, 2026-11-11: make it "visually clear where platforms end"): a great tree's wood is rimmed in pale gold along
+// every side where it ends over a drop that hurts (`drop` levels or more, or nothing to stand on): the open edges of a branch,
+// a tip, the crown's rim. A side that steps on to the next branch, or a level or one-level step, has no rim, so the rims run
+// like rails along the climb. Painted with the tile into the ground cache: nothing per frame.
+export const CANOPY_RIM = { drop: 2, edge: "#f3d98ccc", inset: "#2a180c99", width: .075 };
+function canopyRim(ctx, t, x, y, px, py, s, tiles, w) {
+  const R = CANOPY_RIM, e = t.elev || 0, th = Math.max(1.5, s * R.width), at = (dx, dy) => (x + dx < 0 || x + dx >= w) ? null : tiles?.[(y + dy) * w + x + dx];
+  const ends = (n) => !n || (!n.blocked && (e - (n.elev || 0) >= R.drop || LETHAL_UNDER.has(n.kind))); // a wall beside it cannot be stepped into
+  const n = ends(at(0, -1)), so = ends(at(0, 1)), we = ends(at(-1, 0)), ea = ends(at(1, 0)); if (!n && !so && !we && !ea) return;
+  ctx.fillStyle = R.inset; // a dark line just inside the gold, so the rim reads on pale leaves and dark bark alike
+  if (n) ctx.fillRect(px, py + th, s + .5, th * .6); if (so) ctx.fillRect(px, py + s - th * 1.6, s + .5, th * .6); if (we) ctx.fillRect(px + th, py, th * .6, s + .5); if (ea) ctx.fillRect(px + s - th * 1.6, py, th * .6, s + .5);
+  ctx.fillStyle = R.edge;
+  if (n) ctx.fillRect(px, py, s + .5, th); if (so) ctx.fillRect(px, py + s - th, s + .5, th); if (we) ctx.fillRect(px, py, th, s + .5); if (ea) ctx.fillRect(px + s - th, py, th, s + .5);
 }
 
 // Great-tree review (Tim, 2026-11-05: "When you get to the trunk, I just fell through... to the tops of the platforms and then
@@ -635,7 +663,7 @@ function animate(ctx, t, px, py, s) {
 }
 
 // Atlas colour for a section's landscape (null when plain).
-export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a", forest: "#2f5a34", frost: "#dce9f2", lunar: "#b4b7bf", volcanic: "#3a2420", terraces: "#bfe0d8", reckoning: "#2c3270" })[biome] || null; }
+export function landscapeAtlasColor(biome) { return ({ mountains: "#d9e3ea", desert: "#d6b26e", coast: "#3f7fa3", alien: "#9a6fe0", dream: "#b9a8e8", castle: "#8a7f73", sea: "#1d4f7a", isles: "#4f9fb0", lake: "#4a90c8", swamp: "#5d6b3c", blight: "#7cbf3a", forest: "#2f5a34", frost: "#dce9f2", lunar: "#b4b7bf", volcanic: "#3a2420", terraces: "#bfe0d8", reckoning: "#2c3270", glacier: "#8fc6e4" })[biome] || null; }
 
 // Pit edges: every walkable tile beside lava, a chasm, a canyon or deep water gets a crumbling, lit lip on that side
 // and a shadow falling into the hazard, so a drop is never a surprise. Runs for every map, landscape or not.

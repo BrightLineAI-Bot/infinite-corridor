@@ -1,3 +1,4 @@
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
 import { FAR_FOLK } from "./far-realms.ts";
@@ -29,12 +30,13 @@ import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-rend
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced } from "./monster-pack.ts";
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
+import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -341,8 +343,10 @@ function hallInlay(ctx, t, x, y, s) { const px = x * s, py = y * s; ctx.fillStyl
 // Release 289: a tile of the Watcher's sigil (watcher.ts): pale violet inlaid stone, the eye's pupil brightest; in arenas a
 // border and tesserae of small tiles around it; on a shrine, the raised platforms (their faces are the landscape's own).
 const SIGIL_INLAY = { lid: ["#b8b0d855", "#e6e0ff66"], ring: ["#b8b0d855", "#e6e0ff66"], eye: ["#a79ed066", "#e6e0ff55"], pupil: ["#d8d0ff99", "#ffffffaa"], orbit: ["#9f96c855", "#d8d2f855"], tools: ["#a79ed055", "#e6e0ff55"], border: ["#c9a15c44", "#e2c04f55"], tessera: ["#6d5f8a33", "#b8b0d833"] };
+const tintCache = new Map(), SIGIL_TINT_ALPHA = { tessera: ["1c", "30"], border: ["55", "88"], pupil: ["cc", "ff"] }; // Pentagon v11: a mosaic in its theme's light (adventures.ts mosaics)
+const sigilColours = (t) => { if (!t.sigilTint) return SIGIL_INLAY[t.sigil] || SIGIL_INLAY.ring; const k = `${t.sigilTint}:${t.sigil}`; let c = tintCache.get(k); if (!c) { const [a, b] = SIGIL_TINT_ALPHA[t.sigil] || ["88", "cc"]; c = [`${t.sigilTint}${a}`, `${t.sigilTint}${b}`]; if (tintCache.size < 64) tintCache.set(k, c); } return c; };
 function sigilInlay(ctx, t, x, y, s) {
-  const [fill, edge] = SIGIL_INLAY[t.sigil] || SIGIL_INLAY.ring, px = x * s, py = y * s - (t.landscape ? landscapeTileLift(t, s) : 0), d = Number.isFinite(t.detail) ? t.detail : h(x, y);
+  const [fill, edge] = sigilColours(t), px = x * s, py = y * s - (t.landscape ? landscapeTileLift(t, s) : 0), d = Number.isFinite(t.detail) ? t.detail : h(x, y);
   if (t.sigil === "tessera") { for (let k = 0; k < 4; k++) { ctx.fillStyle = (d + k) % 3 ? fill : edge; ctx.fillRect(px + s * (.08 + (k % 2) * .44), py + s * (.08 + Math.floor(k / 2) * .44), s * .38, s * .38); } return; }
   ctx.fillStyle = fill; ctx.fillRect(px + s * .06, py + s * .06, s * .88, s * .88);
   ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, s * .04); ctx.strokeRect(px + s * .1, py + s * .1, s * .8, s * .8);
@@ -529,6 +533,7 @@ function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=nu
   if (drawStillworksTile(ctx, t, x, y, s)) return; // the Stillworks (pentagon-arena-render.ts): cached sprites per band and edge
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w, closeViewWorldCapture())) return;
   if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
+  if (t?.realm && drawRealmTile(ctx, t, x, y, s, map, w)) return; // seed realms (seed-realm-render.ts)
   if (t?.chasm) { drawStarChasm(ctx, t, x, y, s); if (t.kind === "starShard") drawStarShard(ctx, t, x, y, s); return; } // release 593; the Pentagon's finale: a stone adrift
   if (t?.kind === "starWalk" || t?.kind === "starDais") { drawStarWalk(ctx, t, x, y, s, map, w); return; } // the Pentagon's finale: the walkway among the stars
   const p = PAL[t.kind] || PAL.ash,
@@ -2006,6 +2011,21 @@ function drawPentRubble(ctx, o, s) {
   for (const [dx, dy, r, c] of [[.3, .66, .17, "#6b6152"], [.62, .7, .2, "#5a5144"], [.46, .5, .15, "#7d7262"], [.72, .52, .1, "#4c453a"], [.22, .48, .09, "#82776a"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x + s * (dx - r), y + s * (dy + r * .6)); ctx.lineTo(x + s * (dx - r * .5), y + s * (dy - r)); ctx.lineTo(x + s * (dx + r * .7), y + s * (dy - r * .7)); ctx.lineTo(x + s * (dx + r), y + s * (dy + r * .6)); ctx.closePath(); ctx.fill(); }
   ctx.restore();
 }
+// Pentagon v11 (adventures.ts): a Waystone, a waist-high standing stone in a ring of light (brighter once rested at: the light is the
+// ward's theme light), and a vista's mark, a small lit arrow pointing out over the drop. Cached gradients are not needed: one each a map.
+function drawWaystone(ctx, o, s, now, light = "#d8a85a") {
+  const cx = (o.x + .5) * s, y = o.y * s, pulse = .5 + .5 * Math.sin(now / 700); ctx.save();
+  ctx.globalAlpha = .35 + .25 * pulse; ctx.strokeStyle = light; ctx.lineWidth = Math.max(1.5, s * .06); ctx.beginPath(); ctx.ellipse(cx, y + s * .8, s * .62, s * .24, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.fillStyle = "#00000066"; ctx.beginPath(); ctx.ellipse(cx, y + s * .82, s * .3, s * .1, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#7d776a"; ctx.beginPath(); ctx.moveTo(cx - s * .2, y + s * .82); ctx.lineTo(cx - s * .16, y + s * .08); ctx.quadraticCurveTo(cx, y - s * .06, cx + s * .16, y + s * .1); ctx.lineTo(cx + s * .22, y + s * .82); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#5c574d"; ctx.fillRect(cx + s * .04, y + s * .14, s * .14, s * .66);
+  ctx.globalAlpha = .55 + .45 * pulse; ctx.fillStyle = light; ctx.beginPath(); ctx.arc(cx - s * .02, y + s * .36, s * .07, 0, 7); ctx.fill(); ctx.fillRect(cx - s * .04, y + s * .46, s * .04, s * .2); ctx.restore();
+}
+function drawVistaMark(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, y = o.y * s, lit = o.state !== "read", glow = .5 + .5 * Math.sin(now / 600); ctx.save();
+  ctx.fillStyle = "#3f3a33"; ctx.fillRect(cx - s * .22, y + s * .62, s * .44, s * .2); ctx.globalAlpha = lit ? .6 + .4 * glow : .5; ctx.strokeStyle = "#e8d8a0"; ctx.lineWidth = Math.max(1.5, s * .07);
+  ctx.beginPath(); ctx.moveTo(cx - s * .2, y + s * .48); ctx.lineTo(cx, y + s * .2); ctx.lineTo(cx + s * .2, y + s * .48); ctx.stroke(); ctx.restore();
+}
 function drawPentRelic(ctx, o, s, now) {
   const cx = (o.x + .5) * s, y = o.y * s, lit = o.state !== "read", glow = .5 + .5 * Math.sin(now / 520); ctx.save();
   ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, y + s * .86, s * .32, s * .1, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#3f3a33"; ctx.fillRect(cx - s * .26, y + s * .66, s * .52, s * .18); // the plinth
@@ -2124,6 +2144,36 @@ function drawDread(ctx, w, h, share) {
   if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
     const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${.5 + share * .35})`); v.addColorStop(1, `rgba(2,2,6,${.8 + share * .18})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
   ctx.drawImage(o.canvas, 0, 0, w, h);
+}
+// Release 593: the Starfield penumbra, clear to `inner` tiles round the screen's centre and `dark` by `outer`: the same
+// drawing as render()'s own line (kept there as it was), for the Lantern to draw through its layer.
+function drawChasmPenumbra(ctx, w, h, s) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); }
+// LANTERN (spell-slots.ts): one cached mask (warm light whose alpha is lanternLift, sampled in LANTERN_STOPS) and one reused
+// screen-sized layer. Nothing is made per frame: the mask once, the layer once and again only when the screen resizes.
+const lanternRender = { mask: null, layer: null, lx: null };
+function lanternMask() {
+  if (lanternRender.mask) return lanternRender.mask;
+  const c = makeGroundCanvas(), x = c?.getContext?.("2d"); if (!x) return null; const D = LANTERN.maskPx, r = D / 2; c.width = c.height = D;
+  const gr = x.createRadialGradient(r, r, 0, r, r, r); for (const [o, a] of LANTERN_STOPS) gr.addColorStop(o, `rgba(${LANTERN.glowRGB},${a.toFixed(3)})`);
+  x.fillStyle = gr; x.fillRect(0, 0, D, D); return (lanternRender.mask = c);
+}
+// Its warm light on the floor round the Wayfarer at (x, y) (world or screen pixels), added over what is drawn.
+function drawLanternGlow(ctx, x, y, s) {
+  const m = lanternMask(); if (!m) return; const R = LANTERN.radius * s;
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = LANTERN.glow; ctx.drawImage(m, x - R, y - R, 2 * R, 2 * R); ctx.restore();
+}
+// A screen darkness overlay (`draw(ctx, w, h, arg)`): unlit, drawn as it always was; lit, drawn into the layer, the lantern's
+// light taken out of it round (x, y) in screen pixels (destination-out: lanternLift of the darkness, none beyond the radius),
+// and the layer laid over the screen. The overlay itself is unchanged.
+export function drawLanternDark(ctx, w, h, s, lit, x, y, draw, arg) {
+  const cw = ctx.canvas?.width, ch = ctx.canvas?.height, m = lit && cw > 0 && ch > 0 && typeof ctx.drawImage === "function" ? lanternMask() : null;
+  if (!m) { draw(ctx, w, h, arg); return; }
+  if (!lanternRender.layer) { const c = makeGroundCanvas(), lx = c?.getContext?.("2d"); if (!lx) { draw(ctx, w, h, arg); return; } lanternRender.layer = c; lanternRender.lx = lx; }
+  const c = lanternRender.layer, lx = lanternRender.lx; if (c.width !== cw) c.width = cw; if (c.height !== ch) c.height = ch;
+  lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = "source-over"; lx.globalAlpha = 1; lx.clearRect(0, 0, cw, ch); lx.setTransform(cw / w, 0, 0, ch / h, 0, 0);
+  draw(lx, w, h, arg);
+  const R = LANTERN.radius * s; lx.globalCompositeOperation = "destination-out"; lx.globalAlpha = LANTERN.strength; lx.drawImage(m, x - R, y - R, 2 * R, 2 * R); lx.globalCompositeOperation = "source-over"; lx.globalAlpha = 1;
+  ctx.drawImage(c, 0, 0, w, h);
 }
 // A great building's ladder (Tim: "a ladder to the next floor and you just climb the ladder"): up, a ladder standing against
 // the dark of the hatch above it; down, a hatch in the floor with the ladder's top showing. Its edge is lit.
@@ -2342,6 +2392,9 @@ function drawScreenOverlay(ctx, w, h) {
   ctx.drawImage(o.canvas, 0, 0, w, h);
   return true;
 }
+// The standard view's floor (renderer.ts render): `flatInterior`, a versioned interior heightfield (landscape.ts interiorTerrain)
+// is painted flat here, so its actors are drawn on the flat floor rather than lifted by levels nobody sees.
+export const STANDARD_VIEW_FLOOR = { flatInterior: true };
 export function render(ctx, g, w, h, now) {
   if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) return; // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
@@ -2371,14 +2424,19 @@ export function render(ctx, g, w, h, now) {
   const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
   const flatCapture = worldCapture || (g.map?.interiorTerrain?.version === 1 || g.map?.building) && closeViewCapturing();
-  const groundLift = (x, y) => (flatCapture ? 0 : g.map?.landscape || g.map?.building ? liftAt(g.map, mw, x, y) : 0);
-  const crystalLift = e => crystalFlightLift(g.map, mw, e.x, e.y);
+  // STANDARD_VIEW_FLOOR (Tim, 2026-11-11: in the Pentagons "the character seems to be kind of like floating above the ground"):
+  // this view paints a versioned interior heightfield's floor flat (its tiles carry no landscape lift), so whoever stands on its
+  // raised half is drawn on that flat floor too; a hop or the drone is drawn by its height over the floor under it, as Close
+  // View's flat capture does. Close View draws the heights themselves.
+  const flatFloor = flatCapture || STANDARD_VIEW_FLOOR.flatInterior && interiorTerrain(g.map);
+  const groundLift = (x, y) => (flatFloor ? 0 : g.map?.landscape || g.map?.building ? liftAt(g.map, mw, x, y) : 0);
+  const crystalLift = e => flatFloor ? 0 : crystalFlightLift(g.map, mw, e.x, e.y);
   const marineAt = e => g.area === "overworld" && isMarineTile(tileUnder(g.map, mw, e.x, e.y));
   ctx.save();
   const interior = interiorTerrain(g.map);
   const supportLevel = interior ? interiorSurfaceLevel(g.map, p.x + .5, p.y + .75) : 0;
   const hopLift = interior && g.skyAir != null && jumping
-    ? Math.max(flatCapture ? 0 : supportLevel, g.skyAir - (flatCapture ? supportLevel : 0)) * LIFT_PER_LEVEL
+    ? Math.max(flatFloor ? 0 : supportLevel, g.skyAir - (flatFloor ? supportLevel : 0)) * LIFT_PER_LEVEL
     : g.area === "overworld" && g.skyAir != null && jumping
       ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1) - (worldCapture ? liftAt(g.map, mw, p.x, p.y) : 0))
       : null;
@@ -2408,6 +2466,7 @@ export function render(ctx, g, w, h, now) {
     if (worldCapture && g.map.movers?.length) drawRafts(ctx, g, s, now);
     if (!worldCapture && g.area === "overworld" && g.map?.canopy?.box) drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, g.map.canopy.box, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw, activeBuildingId, scarSurface)); } // great-tree review
   drawVoidScarOverlay(ctx,g,s,mw,mh,{l,t,r,b},scarSurface);
+  if (g.area === "dungeon" && g.map?.seedRealm) drawRealmCosmos(ctx, g, s, { l, t, r, b }, now, p.x + .5, p.y + .5 - viewLift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // seed realms: the galaxy through the glass
   if (g.area === "dungeon" && g.map?.stillworks) drawStillworksLight(ctx, g, s, now, budget.quality, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), !stillworksCapture); // its great order, the heart's figure, the light falling inward, the counting in the grain
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
@@ -2551,6 +2610,7 @@ export function render(ctx, g, w, h, now) {
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
           else if (o.kind === "warpDais") drawWarpDais(ctx, o, s, now); // release 301
+          else if (o.realmObject) drawRealmObject(ctx, o, s, now); // seed realms
           else if (g.area === "dungeon" && wayKind(o, g.map) || (o.kind === "deepTransition")) drawWayMarker(ctx, o, s, now, o.kind === "deepTransition" ? (o.direction === "down" ? "down" : "up") : wayKind(o, g.map) === "down" ? "down" : "up", o.kind === "emberDoor"); // a way: a marker stone with a chevron
           else if (o.kind === "buildingStair") drawBuildingStair(ctx, o, s, now); // great buildings
           else if (o.kind === "labKey") drawLabKey(ctx, o, s, now); // a labyrinth's key
@@ -2560,6 +2620,8 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentInscription") drawPentInscription(ctx, o, s, now); // the marks in its walls
           else if (o.kind === "pentMural") drawPentMural(ctx, o, s, now); // release 795: where a grand hall's mural is read
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
+          else if (o.kind === "pentWaystone") drawWaystone(ctx, o, s, now, g.map?.building?.adventure?.palette?.light); // Pentagon v11: a Waystone (adventures.ts)
+          else if (o.kind === "advVista") drawVistaMark(ctx, o, s, now); // and a vista's view
           else if (o.kind === "towerLever") {} // TOWER_SEAL: drawn on the tower's top with its roof (greatBlocks)
           else if (o.kind === "labGate") { if (o.state !== "open") drawBars(ctx, o, s); } // a room maze's barred door (labyrinths.ts ROOM_MAZES)
           else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
@@ -2709,7 +2771,7 @@ export function render(ctx, g, w, h, now) {
             ctx.restore();
           }
           if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
             ctx,
@@ -2894,6 +2956,7 @@ export function render(ctx, g, w, h, now) {
   for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && seenInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
   for (const o of g.map.objects) if (o.pentagonDoor && o.barred && !o.opened && visibleInCamera(o, l, t, r, b)) drawBars(ctx, o, s); // v6: an exterior shortcut door, bolted from within
   if (g.area === "dungeon" && (g.map.murals || g.map.sigils)) drawHallMarks(ctx, g.map, s, l, t, r, b); // release 795: murals carved in a grand hall's walls, the Watcher's sigil over doors, on banners and columns
+  if (g.area === "dungeon" && !closeViewCapturing()) drawCloseViewLightsStd(ctx, g, s, now, l, t, r, b); // the sconces and candles Close View places in an interior, in this view too (close-view.ts)
   if (g.shortcutBurst) drawShortcutBurst(ctx, g, s, now); // a shortcut just opened
   // Release 573: behind a giant tree the Wayfarer shows through, faint.
   if (!worldCapture && g.area === "overworld" && (g.map.objects.some((o) => o.vegetationForm === "giant" && o.state === "standing" && giantTreeHides(o, p)) || (cn && (cn.trees || [cn]).some((tr) => p.y < tr.y0 && Math.abs(p.x + .5 - (tr.x0 + tr.size / 2)) < tr.size / 2 + 1.2)))) { // 633: or behind the great tree's trunk
@@ -3002,6 +3065,7 @@ export function render(ctx, g, w, h, now) {
       ctx.arc(cx + Math.cos(spin) * s * 0.52, cy + Math.sin(spin) * s * 0.52, 2, 0, 7);
       ctx.fill();
     }
+  if (!closeViewCapturing() && lanternShines(g.save, g.area)) drawLanternGlow(ctx, (p.x + .5) * s, (p.y + .55 - viewLift) * s, s); // LANTERN: its warm light on the floor (under the fog of war)
   if (g.area === "dungeon") drawLabFog(ctx, g, s, { l, t, r, b }, budget.quality); // LAB_FOG: a labyrinth chamber's fog of war, over everything on its floor
   if (g.area === "dungeon") drawWayMarks(ctx, g, s, now); // which way is down and which is out, plainly marked
   ctx.restore();
@@ -3027,7 +3091,9 @@ export function render(ctx, g, w, h, now) {
     ctx.save(); ctx.fillStyle = "#0a0610b0"; ctx.fillRect(bx - 2, by - 2, bw + 4, 10); ctx.fillStyle = warden ? "#ff4a7a" : m.kills >= m.need ? `rgba(255,120,170,${.6 + .4 * Math.sin(now / 120)})` : "#c06aff"; ctx.fillRect(bx, by, bw * Math.min(1, k), 6);
     ctx.strokeStyle = "#ffffff40"; ctx.lineWidth = 1; ctx.strokeRect(bx - .5, by - .5, bw + 1, 7); ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#f2e6ff"; ctx.strokeStyle = "#000c"; ctx.lineWidth = 3;
     const label = warden ? "FRACTURE WARDEN" : m.kills >= m.need ? "THE FRACTURE TEARS" : `FRACTURE ${m.kills}/${m.need}`; ctx.strokeText(label, w / 2, by + 19); ctx.fillText(label, w / 2, by + 19); ctx.restore(); } }
-  if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
+  const lanternLit = lanternShines(g.save, g.area), lanternX = w / 2 + .5 * s, lanternY = h / 2 + .55 * s; // LANTERN: where its light lifts the screen's dark
+  if (g.area === "dungeon" && g.map?.chasm && lanternLit) drawLanternDark(ctx, w, h, s, lanternLit, lanternX, lanternY, drawChasmPenumbra, s); // LANTERN: the penumbra below, drawn through the Lantern's layer
+  else if (g.area === "dungeon" && g.map?.chasm) { const P = CHASM_STARS.penumbra, cx = w / 2, cy = h / 2, gr = ctx.createRadialGradient(cx, cy, s * P.inner, cx, cy, s * P.outer); gr.addColorStop(0, "rgba(4,3,14,0)"); gr.addColorStop(1, `rgba(4,3,14,${P.dark})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); } // release 593: the penumbra
   if (budget.weather && SEASON && !g.map.weather && SEASONS.weather[SEASON]) { // release 679: the season's weather in the woods (light: a few motes)
     const kind = SEASONS.weather[SEASON], count = budget.quality === "full" ? 18 : 9;
     for (let i = 0; i < count; i++) { const f = (motion * (.05 + (i % 4) * .012) + i * .29) % 1, x = ((i * 127 + g.rx * 37 + Math.sin(motion * .7 + i) * 26) % w + w) % w, y = f * (h + 20) - 10;
@@ -3066,7 +3132,7 @@ export function render(ctx, g, w, h, now) {
       y = ((i * 73 + Math.sin(phase * 0.07) * 45) % (h + 60)) - 30;
     ctx.fillRect(x, y, i % 3 === 0 ? 3 : 2, 1);
   }
-  if (g.area === "dungeon" && g.map?.building?.dread) drawDread(ctx, w, h, g.map.building.dread); // the Pentagon's dread (v2)
+  if (g.area === "dungeon" && g.map?.building?.dread) drawLanternDark(ctx, w, h, s, lanternLit, lanternX, lanternY, drawDread, g.map.building.dread); // the Pentagon's dread (v2), the Lantern's light through it
   if (!drawScreenOverlay(ctx, w, h)) {
     ctx.fillStyle = "#5c4a3b0c";
     ctx.fillRect(0, 0, w, h);

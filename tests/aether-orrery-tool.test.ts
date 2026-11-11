@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game, grantOrreryGear, GAME_CLOCKS, RESUME_GAME_CLOCKS } from '../src/game.ts';
-import { createCombatant } from '../src/combat.ts';
+import { createCombatant, wayfarerDamage } from '../src/combat.ts';
 import { rangedWeapon, isValidItem, APERTURE_BANDS } from '../src/items.ts';
 import { ORRERY, orreryPress, tickOrrery, orbTier, chargeShare, overcharged, beamsTouching, inTriangle, inCone, segDist, drawOrrery } from '../src/tool-forms.ts';
 
@@ -53,7 +53,7 @@ test('tap: a fast orb that bursts on its foe and sheds slow pellets that also da
   assert.ok(new Set(p.map((q) => Math.atan2(q.dy, q.dx).toFixed(2))).size === p.length, 'in different directions');
   // pellets damage: one aimed straight at a foe
   const { g: h } = arena([], {}, [[11.5, 10]]); h.projectiles.push({ id: 'pel', x: 10.5, y: 10.45, dx: 1, dy: 0, speed: ORRERY.pellet.speed, life: 1, damage: 7, damageType: 'magic', path: 'straight', age: 0, hits: {}, pierce: 0, glyphHost: null, orrery: 'pellet', minor: true });
-  frames(h, 40, idle, 1000); assert.ok(lost(h.enemies[0]) >= 7, 'a pellet hit');
+  frames(h, 40, idle, 1000); assert.ok(lost(h.enemies[0]) >= 6, 'a pellet hit');
   // the orb itself
   const { g: k } = arena([], {}, [[12, 10]]); k.fireSecondary(1000, { x: 1, y: 0 }); frames(k, 30, idle, 1000); assert.ok(lost(k.enemies[0]) >= orb.damage - 1, 'the orb hit');
 });
@@ -74,7 +74,7 @@ test('release: a great orb that passes through every foe, stronger the longer it
   let t = frames(g, 1, input('tool', 'tool'), 1000); t = frames(g, Math.round(ORRERY.charge.full * 60), input(null, 'tool'), t);
   const coneOnly = g.enemies.map(lost); t = frames(g, 1, idle, t);
   const big = of(g, 'big')[0]; assert.ok(big && big.knife && big.damage > 0, 'the great orb'); assert.equal(g.orrery.charge, null);
-  t = frames(g, 90, idle, t); assert.ok(g.enemies.every((e, i) => lost(e) - coneOnly[i] >= big.damage - 1), 'it passed through all three');
+  t = frames(g, 90, idle, t); assert.ok(g.enemies.every((e, i) => lost(e) - coneOnly[i] >= wayfarerDamage(big.damage) - 1), 'it passed through all three');
   assert.ok(chargeShare(ORRERY.charge.full) > chargeShare(ORRERY.charge.grace + .05)); assert.equal(chargeShare(99), ORRERY.big.max);
 });
 
@@ -168,7 +168,7 @@ test('Shadow Clone: its own orb fires straight two-hit lasers; while charging a 
 
 test('bounded: 60 s of every press and charge with the cooldown wiped each frame stays within the caps, with no NaN', () => {
   const foes = Array.from({ length: 10 }, (_, i) => [12 + (i % 5), 8 + Math.floor(i / 5) * 3]);
-  const { g } = arena(['echo', 'echo', 'echo'], { Focus: 300 }, foes); g.shadowClone = { ox: -1, oy: 1.5, until: 1e12 };
+  const { g } = arena(['echo', 'echo', 'echo'], { Focus: 300 }, foes); g.save.materials.cinderIron = 1e6; /* tool rounds: every tap and great orb takes a round */ g.shadowClone = { ox: -1, oy: 1.5, until: 1e12 };
   for (const e of g.enemies) { e.hp = e.maxHp = 1e12; }
   let t = 1000, peak = 0, pellets = 0, lasers = 0, bigs = 0;
   for (let f = 0; f < 60 * 60; f++) {
