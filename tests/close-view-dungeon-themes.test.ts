@@ -15,6 +15,9 @@ import { CLOSE_VIEW_HOOKS, setCloseViewCanvasFactory, resetCloseViewCamera, clos
 import { closeViewGLStats, resetCloseViewGL, CLOSE_VIEW_ACTOR_LOOK } from '../src/close-view-gl.ts';
 import { writeCloseViewModel, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelTriangleCount, CLOSE_VIEW_PROP_MODELS } from '../src/close-view-models.ts';
 import { OCULUS, OCULUS_HOOKS, oculusAvailable, pressOculus } from '../src/oculus.ts';
+import { generateDeepDungeon, deepDungeonId } from '../src/world.ts';
+import { generateDiveSite } from '../src/diving.ts';
+import { generateGrotto } from '../src/grottoes.ts';
 
 // No server/browser/transport: this exercises the actual render transaction with a storage-aware GL.
 class TransactionGL {
@@ -146,10 +149,14 @@ test('Close View is allowed by place kind; ordinary dungeons refuse it, saying t
   assert.equal(place('dungeon', { building: { pentagon: true } }), 'pentagon'); assert.equal(place('dungeon', { building: { labyrinth: true, style: 'keep' } }), 'cube');
   assert.equal(place('dungeon', { building: { style: 'hive' } }), 'hive'); assert.equal(place('dungeon', { building: { style: 'apartment' } }), 'arcology');
   assert.equal(place('dungeon', { stillworks: {}, building: { arena: true } }), 'stillworks'); assert.equal(place('dungeon', { seedRealm: { realm: 'husk' } }), 'seedRealm');
-  assert.equal(place('dungeon', { deepFloor: 7, theme: 'fungal' }), 'deep'); assert.equal(place('dungeon', { skyCloud: true }), 'openAir'); assert.equal(place('dungeon', { underwater: true }), 'openAir');
+  assert.equal(place('dungeon', { deepFloor: 7, theme: 'fungal' }), 'deep'); assert.equal(place('dungeon', { skyCloud: true }), 'sky'); assert.equal(place('dungeon', { canopy: { top: 3 } }), 'sky');
+  // Tim, 2026-11-11: dive sites and grottoes refuse it; the Threefold Deep and the Starfield Deep Annex are ordinary dungeons
+  assert.equal(place('dungeon', generateDiveSite('S', 'dive:S:1:1')), 'underwater'); assert.equal(place('dungeon', generateGrotto('S', 'grotto:S:1:1')), 'underwater');
+  assert.equal(place('dungeon', generateDeepDungeon('S', deepDungeonId('S'))), 'crossing', 'the Threefold Deep');
+  assert.equal(place('dungeon', { id: 'dungeon:S:g1:4:5:x:annex3', theme: 'geode' }), 'crossing', 'a Starfield Deep Annex floor');
   assert.equal(place('dungeon', { id: 'proving:combat:ashling:0' }), 'lab');
   for (const id of ['dungeon:S:1:2:hollow', 'the-deep-v1:x', 'hunt-instance:x', 'elite-portal:x', 'x:annex2']) assert.equal(place('dungeon', { id, theme: 'fungal' }), 'crossing', id);
-  for (const [k, v] of Object.entries(P.allowed)) assert.equal(v, k !== 'crossing', k);
+  for (const [k, v] of Object.entries(P.allowed)) assert.equal(v, k !== 'crossing' && k !== 'underwater', k);
   assert.equal(P.occluded, 'The view is occluded.');
   // in a crossing: the switch stays on but does not apply; the Oculus refuses with the HUD message and changes nothing
   const { g, save } = crossing(), before = JSON.stringify({ c: save.closeView, w: save.overworldCloseView });
@@ -213,4 +220,17 @@ test('the Oculus\'s dais in Close View is the standard view\'s blue, whichever w
   assert.equal(OCULUS.colors.close.rim, '#1c4a52'); assert.equal(CV.CLOSE_VIEW_PROPS.dais.open, OCULUS.open); assert.equal(CV.CLOSE_VIEW_PROPS.dais.fade, OCULUS.fade);
   assert.ok(Object.keys(CLOSE_VIEW_PROP_MODELS).includes('oculusDais') && modelTriangleCount('oculusDais') <= 256);
   const a = CV.closeViewPropPose('oculusDais', { x: 1, y: 1, to: 'top' }, 500), b = CV.closeViewPropPose('oculusDais', { x: 1, y: 1, to: 'close' }, 500); assert.deepEqual(a, b, 'the same dais toward either view');
+});
+
+test('walking into a refused place with Close View on says the view is occluded, once per entry; allowed places say nothing', () => {
+  const C = CV.CLOSE_VIEW_PLACES.occluded, save: any = freshSave(); save.seed = 'DEEP-885'; save.overworldCloseView = true;
+  const g: any = new Game(save, 100000); g.installSystems();
+  const enter = (id: string) => { g.message = ''; save.session.activeDungeonId = id; save.session.dungeonReturn = { rx: g.rx, ry: g.ry, x: 16, y: 16 }; g.loadArea('dungeon', false); return g.message; };
+  const said = enter(deepDungeonId('DEEP-885')); assert.ok(said.includes(C), `the Threefold Deep: ${said}`);
+  assert.equal(said.split(C).length - 1, 1, 'said once'); assert.equal(save.overworldCloseView, true, 'the setting is kept');
+  for (let i = 0; i < 20; i++) g.update(.016, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, 100000 + i * 16);
+  assert.equal(String(g.message).split(C).length - 1 <= 1, true, 'not repeated every frame');
+  g.message = ''; g.loadArea('overworld', false); assert.equal(String(g.message).includes(C), false, 'nothing on the overworld');
+  const deep = deepGame('fungal'); assert.equal(String(deep.message).includes(C), false, 'nothing in the Deep');
+  save.overworldCloseView = false; save.closeView = false; assert.equal(enter(deepDungeonId('DEEP-885')).includes(C), false, 'nothing with Close View off');
 });

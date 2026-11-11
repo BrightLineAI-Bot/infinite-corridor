@@ -635,12 +635,13 @@ const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorM
 const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
 // Where Close View may be used (Tim, 2026-11-11: "Close View is for closer exploration and souls-like combat when
 // you want it"): the overworld, every building interior (keeps, castles, compounds, great buildings, hives, arcologies, the
-// Pentagon and its arenas, a keep's Cube labyrinth), the Stillworks, seed realms, the open-air places (Skylands, dive sites and
-// grottoes, a great tree's canopy), the Deep's endless descent (the Listener's Descent too), and the Proving Ground's scratch
-// fixtures. Ordinary dungeons and crossings (and their annexes, hunts and portals) are refused: there the Oculus answers with
-// `occluded`, and both save switches are left exactly as they were, so Close View comes back on leaving.
+// Pentagon and its arenas, a keep's Cube labyrinth), the Stillworks, seed realms, the Skylands (and a great tree's canopy),
+// the Deep's endless descent (the Listener's Descent too), and the Proving Ground's scratch fixtures. Dive sites and grottoes,
+// and ordinary dungeons and crossings (their annexes, the Threefold Deep, the Starfield Deep Annex, hunts and portals), are
+// refused: there the Oculus answers with `occluded`, the same words show once as you walk in with Close View on
+// (closeViewOccludedOnEntry), and both save switches are left exactly as they were, so Close View comes back on leaving.
 export const CLOSE_VIEW_PLACES = Object.freeze({ version: 1, occluded: "The view is occluded.",
-  allowed: Object.freeze({ overworld: true, keep: true, pentagon: true, cube: true, hive: true, arcology: true, stillworks: true, seedRealm: true, deep: true, openAir: true, lab: true, crossing: false }) });
+  allowed: Object.freeze({ overworld: true, keep: true, pentagon: true, cube: true, hive: true, arcology: true, stillworks: true, seedRealm: true, deep: true, sky: true, lab: true, underwater: false, crossing: false }) });
 // What kind of place the Game stands in, for the table above. Pure.
 export function closeViewPlace(g) {
   if (!g || g.area !== "dungeon") return "overworld";
@@ -649,11 +650,14 @@ export function closeViewPlace(g) {
   if (m.seedRealm) return "seedRealm";
   if (Number(m.deepFloor) > 0) return "deep"; // the-deep.ts: a floor of a Deep Shaft or the Listener's Descent
   if (b) return b.pentagon || m.pentArena ? "pentagon" : b.labyrinth ? "cube" : b.style === "hive" ? "hive" : b.style === "apartment" ? "arcology" : "keep";
-  if (m.skyCloud || m.underwater || m.canopy) return "openAir";
+  if (m.skyCloud || m.canopy) return "sky"; // Skylands, a great tree's canopy
+  if (m.underwater) return "underwater"; // dive sites and grottoes (Tim, 2026-11-11: no Close View there)
   if (String(m.id || "").startsWith("proving:")) return "lab";
   return "crossing";
 }
 export const closeViewPlaceAllowed = (g) => CLOSE_VIEW_PLACES.allowed[closeViewPlace(g)] === true;
+// On entering a place (Game.loadArea, once per entry): the HUD's words when Close View is on and this place refuses it, else null.
+export const closeViewOccludedOnEntry = (g) => g?.area === "dungeon" && (g.save?.overworldCloseView === true || g.save?.closeView === true) && !closeViewPlaceAllowed(g) ? CLOSE_VIEW_PLACES.occluded : null;
 export function overworldCloseViewApplies(g) {
   if (g?.save?.overworldCloseView !== true || !g.player || indoorCloseViewTile(g) || !closeViewPlaceAllowed(g)) return false;
   const map = g.map, count = map?.tiles?.length, width = Number(map?.width) || (g.area === "dungeon" ? 24 : 32);
