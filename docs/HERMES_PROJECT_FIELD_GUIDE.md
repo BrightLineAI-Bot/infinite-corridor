@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 900 — Close View: taller ledges and a higher camera
+
+Tim, 2026-11-11: "it just looks silly having these 3 or 4 high stacked platforms that are only about hip height for the Wayfarer... in the overworld the blocks need to be higher... gives us things to jump onto." Then: "higher camera in general." Tim approved updating the Pentagon-entry pitch pin for the camera height again; the 892 refinement test now reads the level height from the data table.
+
+**CODE:** `src/close-view-outdoor.ts`: `OUTDOOR.terrain` version 3 (`level` 1.2, `canopyLevel` 0.9, `pitDepth` 4.6, `waterDrop` 0.08) and `outdoorLevelHeight(t)`; great-building roof tiles keep `LIFT_PER_LEVEL × roofLift`. `src/close-view.ts`: `CLOSE_VIEW_LEAP` (arcFrom .42, arcPeak .72, gravity 28, snap .18, rise 16, reset 2.5) and `presentLeap` once per frame over the heightfield; `CLOSE_VIEW.presets` version 4 (indoor heights 1.8/2.05/2.2, `outdoorHeight` 2.6/3/3.4 limited by `outdoorCrane()`, `camera.outdoor.horizonRoom` 4°, `minHeight` 1.2, `riseMax` 2.2, `craneClear` .2); before the terrain sight loop the crane rises until the chest-to-camera line clears the ground, then cuts the boom.
+
+**BOUNDARY:** Presentation only: the standard view's `LIFT_PER_LEVEL`, `liftAt`, `canStep` (one jump per level), falls, fall damage, collision, traversal, generation and saves are unchanged. The leap state is per frame and never saved. Distances, wall pull-in, hall and arch caps, FOV and locking are unchanged; the rise is bounded per frame. In a short landscape view outdoors the close preset sits lower so the horizon shows. Phone frame rate unmeasured.
+
 ## Release 899 — Adventure creatures: the second set, for the four later themes
 
 Tim, 2026-11-11: creatures for the other floors too, so each theme has its own unique creatures; no bosses ("I don't want you to really build bosses"). The Sinkmaw's dimple and ripples should show in Close View; the Gallery Lurker keeps clinging to walls.

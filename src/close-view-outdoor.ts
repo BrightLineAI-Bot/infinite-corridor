@@ -164,7 +164,16 @@ export const OUTDOOR = f({
   // view's LIFT_PER_LEVEL, a great tree's levels taller), a ramp tile slopes between its neighbours, a level's edge is a
   // cliff face, and a canyon, chasm or abyss is a real hole `pitDepth` deep with walls darkening toward its floor. Water lies
   // `waterDrop` below its bank. Built once a section; the solids (outcrops, trees, props, houses) stand on it.
-  terrain: f({ pitDepth: 3.2, waterDrop: .06, maxTiles: 16384,
+  //
+  // Version 3 (Tim, 2026-11-11: "these 3 or 4 high stacked platforms that are only about hip height for the Wayfarer...
+  // things need more vertical distance"): Close View no longer borrows the ordinary view's drawn lift (.34 a tile, a knee's
+  // height to a 1.8-tile Wayfarer). One level is `level` tall: 1.2, the Wayfarer's chest, so a single step is a ledge you
+  // jump onto and four stacked levels stand well over their head. A great tree's levels (one a branch tile, climbed as a
+  // spiral of slopes) are `canopyLevel`: .9, a little taller than the old 2 x .34 so its decks step clearly, gentler than a
+  // ground level so a branch stays a walkable slope; its 25 levels make a crown about 22 tiles up. Holes are deeper to
+  // match (`pitDepth`). A great building's roof keeps the ordinary view's own lift (roofLift), since its facade is drawn to it.
+  // Gameplay is untouched: one jump a level, the same steps, falls and collision; only what is drawn is taller.
+  terrain: f({ level: 1.2, canopyLevel: .9, pitDepth: 4.6, waterDrop: .08, maxTiles: 16384,
     // a great tree's branches and leaf pads (Tim, 2026-11-11: "The branches should float. They should extend from the tree
     // like normal branches on a real tree"): a deck `deck` thick with an underside, and a limb under it that tapers from
     // `limbRoot` wide at the trunk to `limbTip` at the deck, rising `limbRise` from the trunk to the deck; the ground under
@@ -384,6 +393,9 @@ export function outdoorMesh(map, sky, relief = null) { // R: the section's relie
 }
 
 // ---------------------------------------------------------------------------------------------- the heightfield
+// How tall one of this tile's levels is drawn in Close View (OUTDOOR.terrain): a ground level, a great tree's, or a great
+// building roof's own lift (the ordinary view's).
+export function outdoorLevelHeight(t) { const T = OUTDOOR.terrain; return t?.canopy ? T.canopyLevel : t?.roofLift ? LIFT_PER_LEVEL * tileLiftScale(t) : T.level; }
 export const outdoorPit = (t) => !!t && (t.chasm === true || OUTDOOR.pitKinds.test(String(t.kind || "")));
 // A section's relief: each tile's top (in tiles of height), and each tile corner's height for the ramps. Cached per map and
 // signature; pure. A pit's top is -pitDepth; water's is its bank's less waterDrop.
@@ -392,12 +404,12 @@ export function outdoorRelief(map) {
   if (!map || typeof map !== "object") return null; const sig = outdoorSignature(map), known = RELIEFS.get(map); if (known && known.sig === sig) return known;
   const w = Math.max(1, Number(map.width) || 32), tiles = map.tiles || [], h = Math.max(1, Number(map.height) || Math.floor(tiles.length / w)), T = OUTDOOR.terrain;
   const top = new Float32Array(w * h), ramp = new Uint8Array(w * h), corner = new Float32Array((w + 1) * (h + 1));
-  for (let i = 0; i < w * h; i++) { const t = tiles[i], k = LIFT_PER_LEVEL * tileLiftScale(t), e = Number(t?.elev) || 0;
+  for (let i = 0; i < w * h; i++) { const t = tiles[i], k = outdoorLevelHeight(t), e = Number(t?.elev) || 0;
     if (outdoorPit(t)) top[i] = -T.pitDepth; else if (t?.slope) { ramp[i] = 1; top[i] = (e - .5) * k; } else top[i] = e * k - (isWater(t) ? T.waterDrop : 0); }
   // a ramp's corners take the mean of the level tops round them, held between its foot and its head
   for (let cy = 0; cy <= h; cy++) for (let cx = 0; cx <= w; cx++) { let sum = 0, n = 0, lo = Infinity, hi = -Infinity;
     for (let j = -1; j <= 0; j++) for (let i = -1; i <= 0; i++) { const x = cx + i, y = cy + j; if (x < 0 || y < 0 || x >= w || y >= h) continue; const q = y * w + x;
-      if (ramp[q]) { const t = tiles[q], k = LIFT_PER_LEVEL * tileLiftScale(t), e = Number(t?.elev) || 0; lo = Math.min(lo, (e - 1) * k); hi = Math.max(hi, e * k); } else if (top[q] > -T.pitDepth + 1e-6) { sum += top[q]; n++; } }
+      if (ramp[q]) { const t = tiles[q], k = outdoorLevelHeight(t), e = Number(t?.elev) || 0; lo = Math.min(lo, (e - 1) * k); hi = Math.max(hi, e * k); } else if (top[q] > -T.pitDepth + 1e-6) { sum += top[q]; n++; } }
     let z = n ? sum / n : (lo + hi) / 2; if (hi > -Infinity) z = Math.max(lo, Math.min(hi, n ? z : (lo + hi) / 2)); corner[cy * (w + 1) + cx] = Number.isFinite(z) ? z : 0; }
   const R = { sig, w, h, top, ramp, corner }; RELIEFS.set(map, R); return R;
 }
