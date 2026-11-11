@@ -19,9 +19,13 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene } from "./close-view-outdoor.ts"; // the open world's sky, ground and solids
+import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ } from "./close-view-outdoor.ts";
+// The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
+// creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
+const RELIEF = { map: null, R: null };
+const surfaceZ = (map, x, y) => map && map === RELIEF.map ? outdoorSurfaceZ(RELIEF.R, x, y) : interiorSurfaceHeight(map, x, y); // the open world's sky, ground and solids
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -825,7 +829,7 @@ const lockable = (e) => !!e && !e.dead && !e.hidden && !e.ambient && !e.astralAl
 // Within each group, weigh angle and distance. Explicit rehop searches use their own center/cone without screen ranking.
 function lockOnScreen(g, e) {
   if (!CAM.valid || CAM.map !== g.map) return false;
-  const q = project(e.x + .5, e.y + .75, interiorSurfaceHeight(g.map, e.x + .5, e.y + .75) + .7 * actorScale(e));
+  const q = project(e.x + .5, e.y + .75, surfaceZ(g.map, e.x + .5, e.y + .75) + .7 * actorScale(e));
   return !!q && q.sx >= 0 && q.sx <= CAM.w && q.sy >= 0 && q.sy <= CAM.h;
 }
 export function closeViewLockCandidate(g, { yaw = CAM.yaw, cone = CLOSE_VIEW.lock.cone, range = CLOSE_VIEW.lock.range, ox = null, oy = null, skip = null, screen = true } = {}) {
@@ -1079,7 +1083,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   if (!closeViewShowing(g) || !CAM.valid || Math.abs(CAM.w - w) > 1 || Math.abs(CAM.h - h) > 1) return null;
   // a creature: the tap within `pick.pad` px of its drawn body; of several, the one whose body centre is nearest the finger
   const K = CLOSE_VIEW.pick; let best = null, bestD = Infinity;
-  for (const e of g.enemies || []) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const q = project(e.x + .5, e.y + .82, interiorSurfaceHeight(g.map, e.x + .5, e.y + .75)); if (!q || (q.sx - CAM.ppx) * 0 !== 0) continue;
+  for (const e of g.enemies || []) { if (e.dead || e.hidden || e.ambient || e.astralAllyOf) continue; const q = project(e.x + .5, e.y + .82, surfaceZ(g.map, e.x + .5, e.y + .75)); if (!q || (q.sx - CAM.ppx) * 0 !== 0) continue;
     const sc = actorScale(e), k = CAM.F / q.depth, hw = K.bodyWidth * .5 * sc * k + K.pad, top = q.sy - K.bodyTop * sc * k - K.pad, bottom = q.sy + K.pad * .6, cy = q.sy - K.bodyTop * .5 * sc * k;
     if (x < q.sx - hw || x > q.sx + hw || y < top || y > bottom) continue;
     const d = Math.hypot(x - q.sx, y - cy); if (d < bestD) { best = e; bestD = d; } }
@@ -1107,9 +1111,9 @@ function terrainFloorRay(map, x, y) {
   let previous=0;
   for(let i=1;i<=640;i++) {
     const t=i*.025, p=point(t); if(wallAt(map,p.x,p.y)) return null;
-    if(p.z<=interiorSurfaceHeight(map,p.x,p.y)) {
+    if(p.z<=surfaceZ(map,p.x,p.y)) {
       let lo=previous,hi=t;
-      for(let k=0;k<14;k++){const mid=(lo+hi)*.5,q=point(mid);if(q.z>interiorSurfaceHeight(map,q.x,q.y))lo=mid;else hi=mid;}
+      for(let k=0;k<14;k++){const mid=(lo+hi)*.5,q=point(mid);if(q.z>surfaceZ(map,q.x,q.y))lo=mid;else hi=mid;}
       const q=point(hi); return {x:q.x,y:q.y,depth:hi};
     }
     previous=t;
@@ -1183,6 +1187,9 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
   if (useGL && !closeViewGLFrameReady()) return abortCloseViewGLFrame();
   if (extended && !useGL) return false;
+  // the heightfield outdoors: the open world's own scene, with the GPU able to draw it (else the flat ground, as before)
+  const relief = useGL && outdoor && flatWorld && g.area === "overworld" && !g.map.building && closeViewReliefAvailable() && closeViewOutdoorAvailable();
+  RELIEF.map = relief ? g.map : null; RELIEF.R = relief ? outdoorRelief(g.map) : null;
   if (useGL && !plainWorld) staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); // arch clearance must exist before the first GPU camera frame
   if (interiorTerrain(g.map) && (!useGL || staticFor(g.map, wallGeometry(g.map), themeOf(g.map)).verts > 200000)) return false; // the ordinary view is the safe non-WebGL heightfield renderer
   if (!useGL && stillworksCloseView(g.map)) return false; // cover and upright gates need the depth buffer
@@ -1274,24 +1281,24 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
     if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
   }
-  const playerZ = interiorSurfaceHeight(g.map, footX(p), footY(p)) +
+  const playerZ = surfaceZ(g.map, footX(p), footY(p)) +
     Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
-  const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? interiorSurfaceHeight(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
+  const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? surfaceZ(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
   let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
-  if (interiorTerrain(g.map) || hasStoneBuilds(g.map)) {
+  if (interiorTerrain(g.map) || hasStoneBuilds(g.map) || RELIEF.map === g.map) { // the camera's line to the Wayfarer never dips under the ground
     const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
     for (let i = 1; i <= steps; i++) {
       const k = i / steps, x = footX(p) + dx * k, y = footY(p) + dy * k, z = playerZ + .6 + (terrainCameraZ - playerZ - .6) * k;
-      if (z < interiorSurfaceHeight(g.map, x, y) + .12 || z > cap(x, y)) {
+      if (z < surfaceZ(g.map, x, y) + .12 || z > cap(x, y)) {
         const keep = Math.max(0, (i - 1) / steps);
         CAM.cx = footX(p) + dx * keep; CAM.cy = footY(p) + dy * keep;
         CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0;
         terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy)); break;
       }
     }
-    terrainCameraZ = Math.max(interiorSurfaceHeight(g.map, CAM.cx, CAM.cy) + .12, terrainCameraZ);
+    terrainCameraZ = Math.max(surfaceZ(g.map, CAM.cx, CAM.cy) + .12, terrainCameraZ);
   }
   const eyeDX = footX(p) - CAM.cx, eyeDY = footY(p) - CAM.cy;
   const compression = Math.min(1, Math.hypot(eyeDX, eyeDY) / Math.max(.15, camD));
@@ -1397,7 +1404,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const meshProps = useGL && (meshTrees || !(outdoor && flatWorld)) && closeViewPropsAvailable(); // and so are chests, caches, shrines, standing stones... (OUTDOOR.props)
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object)) || (meshProps && !d.enemy && outdoorPropObject(d.object))) continue;
     const bxw = d.x + .5, byw = d.y + .82; if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer) continue;
-    const q = project(bxw, byw, interiorSurfaceHeight(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
+    const q = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
@@ -1553,7 +1560,7 @@ function aimChevron(gc, g, s, ts, W, H, gox = 0, goy = 0) {
 }
 // The locked target's brackets, round its billboard on the screen (combat-visuals draws them flat on the floor, under it).
 function lockBrackets(ctx, g, now) {
-  const t = g.lockedTarget?.(); if (!lockable(t) || CAM.lostFor > 0) return; const q = project(t.x + .5, t.y + .82, interiorSurfaceHeight(g.map, t.x + .5, t.y + .75)); if (!q) return;
+  const t = g.lockedTarget?.(); if (!lockable(t) || CAM.lostFor > 0) return; const q = project(t.x + .5, t.y + .82, surfaceZ(g.map, t.x + .5, t.y + .75)); if (!q) return;
   const k = CAM.F / q.depth, sc = actorScale(t), r = Math.min(Math.min(CAM.w, CAM.h) * .22, Math.max(.45, (Number(t.bodyRadius) || .4) + .2, sc * .4) * k), cx = q.sx, cy = q.sy - Math.min(.55 * sc * k, r * 1.1), e = r * .45; // never larger than a fifth of the screen, however near
   ctx.save(); ctx.lineJoin = "round"; ctx.globalAlpha = .8 + .2 * Math.sin(now / 200);
   ctx.beginPath(); for (let i = 0; i < 4; i++) { const sx = i === 0 || i === 3 ? -1 : 1, sy = i < 2 ? -1 : 1; ctx.moveTo(cx + sx * r, cy + sy * (r - e)); ctx.lineTo(cx + sx * r, cy + sy * r); ctx.lineTo(cx + sx * (r - e), cy + sy * r); }
@@ -1728,7 +1735,7 @@ export function closeViewEchoRibbons(g, map, quality = "balanced", reduce = fals
     if (!valid(q)) return;
     const d=Math.hypot(q.dx,q.dy),dx=q.dx/d,dy=q.dy/d,n=K.segments,shape=q.shape==='thrust'?'thrust':'sweep',half=(Number(q.arc)||100)*Math.PI/360;
     const stage=memory?primaryVisualStage(q):null,step=stage?.step||(memory&&q.primaryMotion==null?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0),offset=stage?.kind==='cleaver-four'?(stage.direction>0?-.28:.28):step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
-    const ground=Number.isFinite(q.support)?q.support*LIFT_PER_LEVEL:interiorSurfaceHeight(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
+    const ground=Number.isFinite(q.support)?q.support*LIFT_PER_LEVEL:surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
     const point = i => { const t=i/n,b=shape==='thrust'?angle:start+(end-start)*t,r=shape==='thrust'?.18+(q.range-.18)*t:q.range,x=q.x+Math.cos(b)*r,y=q.y+Math.sin(b)*r,z=ground+K.height[0]+(K.height[1]-K.height[0])*Math.sin(Math.PI*t),tx=shape==='thrust'?dx:-Math.sin(b),ty=shape==='thrust'?dy:Math.cos(b),w=width*(shape==='thrust'?(1-t*.82):(.72+.28*Math.sin(Math.PI*t))); return {x,y,z,nx:-ty*w,ny:tx*w}; };
     let a=point(0); for(let i=1;i<=n;i++){const b=point(i),alpha=Math.max(0,Math.min(1,fade))*spec.alpha; emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x+b.nx,b.y+b.ny,b.z,1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x-a.nx,a.y-a.ny,a.z,-1,1,alpha,spec.color,1);vertices+=6;a=b;} paths++;
   };
@@ -2150,8 +2157,8 @@ function buildStatic(map, geo, th) {
             V(X,Y,Z,X+Y,u,Z,H,-nx,-ny,0,th.wall.kind,tg.wall,0,0,0,0,x,y,false);
       }
     }
-    for(let i=0;i<lights.length;i+=LIGHT_FLOATS) lights[i+2]+=interiorSurfaceHeight(map,lights[i],lights[i+1]);
-    for(let i=0;i<flames.length;i+=FLAME_FLOATS) flames[i+2]+=interiorSurfaceHeight(map,flames[i],flames[i+1]);
+    for(let i=0;i<lights.length;i+=LIGHT_FLOATS) lights[i+2]+=surfaceZ(map,lights[i],lights[i+1]);
+    for(let i=0;i<flames.length;i+=FLAME_FLOATS) flames[i+2]+=surfaceZ(map,flames[i],flames[i+1]);
   }
   return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
 }
@@ -2230,13 +2237,13 @@ export function selectProjectedShots(g, q, reduce = false) {
   for (const p of g.projectiles || []) {
     if (PROJECTED_ENTRIES.length === limit) break;
     if (validFire(p) && Math.hypot(p.x-g.player.x,p.y-g.player.y)<SHOT_DRAW.maxRange && dungeonPointDiscovered(g.map,p)) {
-      const z=interiorSurfaceHeight(g.map,p.x,p.y)+SHOT_DRAW.height;if(!finite(z))continue;const geom={x:p.x,y:p.y,z,tail:null},d=Math.hypot(p.dx,p.dy),trailTime=Math.min(SHOT_DRAW.trailSeconds,p.age),length=Math.min(SHOT_DRAW.maxTrail,p.speed*trailTime);
-      if(!reduce&&d>1e-4&&length>0){const x=p.x-p.dx*length/d,y=p.y-p.dy*length/d,tz=interiorSurfaceHeight(g.map,x,y)+SHOT_DRAW.height;if(finite(x)&&finite(y)&&finite(tz)&&toolCueSegmentOpen(g.map,p.x,p.y,x,y))geom.tail={x,y,z:tz};}
+      const z=surfaceZ(g.map,p.x,p.y)+SHOT_DRAW.height;if(!finite(z))continue;const geom={x:p.x,y:p.y,z,tail:null},d=Math.hypot(p.dx,p.dy),trailTime=Math.min(SHOT_DRAW.trailSeconds,p.age),length=Math.min(SHOT_DRAW.maxTrail,p.speed*trailTime);
+      if(!reduce&&d>1e-4&&length>0){const x=p.x-p.dx*length/d,y=p.y-p.dy*length/d,tz=surfaceZ(g.map,x,y)+SHOT_DRAW.height;if(finite(x)&&finite(y)&&finite(tz)&&toolCueSegmentOpen(g.map,p.x,p.y,x,y))geom.tail={x,y,z:tz};}
       admit("fire",p,geom.tail?12:6,geom);
     }
   }
   const orbit=g.orbit?.flight;
-  if(PROJECTED_ENTRIES.length<limit&&validOrbit(g,orbit)&&Math.hypot(orbit.x-g.player.x,orbit.y-g.player.y)<SHOT_DRAW.maxRange&&dungeonPointDiscovered(g.map,orbit)){const z=interiorSurfaceHeight(g.map,orbit.x,orbit.y)+SHOT_DRAW.height;if(finite(z))admit("orbit",orbit,6,{x:orbit.x,y:orbit.y,z});}
+  if(PROJECTED_ENTRIES.length<limit&&validOrbit(g,orbit)&&Math.hypot(orbit.x-g.player.x,orbit.y-g.player.y)<SHOT_DRAW.maxRange&&dungeonPointDiscovered(g.map,orbit)){const z=surfaceZ(g.map,orbit.x,orbit.y)+SHOT_DRAW.height;if(finite(z))admit("orbit",orbit,6,{x:orbit.x,y:orbit.y,z});}
   PROJECTED_SHOTS.entries = PROJECTED_ENTRIES;
   PROJECTED_SHOTS.orbit = PROJECTED_ENTRIES.some(e=>e.kind==="orbit") ? orbit : null;
   return PROJECTED_SHOTS;
@@ -2552,7 +2559,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     // stomp (and its normal native fallback) has empty held gear in this pass.
     const formKind = who === player && form ? playerFormModelKey(form, visualProfile==='hammer'?'hammer':held) : null;
     const actor = { kind: (pose==='shovelDig'?'playerShovel':formKind) || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
-      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: interiorSurfaceHeight(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
+      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: surfaceZ(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
       primaryStep: visualRecord?.primaryStep, primaryMotion: visualRecord?.primaryMotion, primaryStage, meleeAction, cleaverFrame,
@@ -2569,7 +2576,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       actionPhase: presentation?.stagger ? 'stunned' : monsterAction?.semantic?.phase,
       actionProgress: monsterAction?.semantic?.progress || 0,
       alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (presentation?.alpha ?? 1) * (who === player ? 1 : boardB[it]))),
-      attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: interiorSurfaceHeight(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
+      attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: surfaceZ(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
       poison: who === player && g.save.elites?.status?.poison > 0 };
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
     track.winding = winding;
@@ -2584,7 +2591,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         const input = state.heroInput, action = state.heroAction;
         input.nowMs = poseTime - (g.presentationPausedMs || 0); input.reducedMotion = reduce;
         input.x = actor.x; input.y = actor.y;
-        input.groundZ = interiorSurfaceHeight(g.map, who.x + .5, who.y + .75);
+        input.groundZ = surfaceZ(g.map, who.x + .5, who.y + .75);
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         input.powerSuit = form?.kind === 'playerPowerSuit';
@@ -2675,9 +2682,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const dx=x-track.x,dy=y-track.y,dist=Math.hypot(dx,dy),elapsed=Math.max(0,Math.min(.1,(now-track.at)/1000));
     if(dist>.002&&dist<3){track.phase=(track.phase+dist*MODEL_TIMING.walkRadians)%(Math.PI*2);track.yaw=Math.atan2(dy,dx);}
     const pace=elapsed>0&&dist<3?Math.min(1,dist/elapsed/MODEL_TIMING.strideSpeed):0;
-    const actor={x,y,z:interiorSurfaceHeight(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
+    const actor={x,y,z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
-      z:interiorSurfaceHeight(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it]))};
+      z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it]))};
     if(!append(actor))return;Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
     closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
   };
@@ -2745,7 +2752,7 @@ export function writePlacedSpellLight(frame, fx, map, slot) {
   if(!fx||!Object.hasOwn(PLACED_SPELL_LIGHT,fx.kind)||!Number.isInteger(slot)||slot<0||slot>=8)return false;
   const color=PLACED_SPELL_LIGHT[fx.kind],tile=map.tiles[Math.floor(fx.y)*(map.width||32)+Math.floor(fx.x)];
   const roof=interiorArchAt(map,fx.x,fx.y)||tile?.doorway?Math.min(interiorCeilingHeight(map),INTERIOR_TRAVERSAL.archClearance):interiorCeilingHeight(map);
-  const ground=interiorSurfaceHeight(map,fx.x,fx.y),roofZ=(interiorTerrain(map)?ground:0)+roof-.15;
+  const ground=surfaceZ(map,fx.x,fx.y),roofZ=(interiorTerrain(map)?ground:0)+roof-.15;
   const o=slot*4;frame.lp[o]=fx.x;frame.lp[o+1]=fx.y;frame.lp[o+2]=Math.max(ground,Math.min(ground+.65,roofZ));
   frame.lp[o+3]=Math.min(4,Math.max(1,fx.radius));
   frame.lc[o]=color[0];frame.lc[o+1]=color[1];frame.lc[o+2]=color[2];
@@ -2815,7 +2822,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = fogNear - CLOSE_VIEW.fog.near;
   F.fogNear = air || flatWorld ? fogNear : Fo.near + fogK; F.fogFar = air || flatWorld ? fogFar : Fo.far + fogK; F.reach = F.fogFar + 2;
   F.fog.set(air?.fog || tg.fog); F.haze.set(air?.haze || tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = (air?.hazeBand || Fo.haze)[0]; F.fogP[3] = (air?.hazeBand || Fo.haze)[1];
-  F.amb.set(air?.ambient || tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + interiorSurfaceHeight(g.map, footX(p), footY(p)); F.torchP[3] = .3;
+  F.amb.set(air?.ambient || tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + surfaceZ(g.map, footX(p), footY(p)); F.torchP[3] = .3;
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
@@ -2824,7 +2831,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   UNI.worldCapture = flatWorld;
   // the open world (close-view-outdoor.ts): its sky, sun and air, the ground's far field and its solids
   F.outdoor = 0; F.sunC.fill(0);
-  const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map) : null;
+  const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map, RELIEF.map === g.map) : null;
   if (openWorld && glOutdoor(openWorld)) { const sk = openWorld.sky, view = OUTDOOR.view[g.presentation?.effectiveQuality] || OUTDOOR.view.balanced, half = GROUND.W / (2 * s), W2 = OUTDOOR.water, R2 = OUTDOOR.relief, D2 = OUTDOOR.detail;
     F.outdoor = 1; F.fogNear = view.near; F.fogFar = view.far; F.reach = F.fogFar + 2; F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar;
     F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= OUTDOOR.torch;
@@ -2837,6 +2844,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     F.outX[0] = OUTDOOR.ground.art; F.outX[1] = W2.shore; F.outX[2] = Q.relief ? W2.foam : W2.foam * .6; F.outX[3] = g.map.movers?.length ? 1 : 0; // rafts are drawn on the water by the ordinary art: keep it there
     F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.motes ? 1 : 0; } // clouds in the water: the full tier only
   // a house's roof is left out while the Wayfarer is inside it, the camera is over it, or it stands between them
+  F.relief = F.outdoor && openWorld.ground && glRelief(openWorld) ? 1 : 0;
   F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy);
   // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
   F.props = 0; if (!openWorld && !(outdoor && flatWorld)) { PROP_Z.map = g.map; const ps = propScene(g.map, propZ, seen); if (ps && ps.solids.verts > 0 && glProps(ps)) F.props = 1; }
@@ -2864,7 +2872,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   if(spellLight&&writePlacedSpellLight(F,spellLight,g.map,nk))F.nl++;
   for(const torch of torchLights){
     const i=F.nl++*4;
-    F.lp[i]=torch.x;F.lp[i+1]=torch.y;F.lp[i+2]=interiorSurfaceHeight(g.map,torch.x,torch.y)+.82;F.lp[i+3]=1.8;
+    F.lp[i]=torch.x;F.lp[i+1]=torch.y;F.lp[i+2]=surfaceZ(g.map,torch.x,torch.y)+.82;F.lp[i+3]=1.8;
     F.lc[i]=torch.arrival?.21:.55;F.lc[i+1]=torch.arrival?.65:.26;F.lc[i+2]=1;F.lc[i+3]=.68;
   }
   // billboards (far to near), and their floor decals
@@ -2873,7 +2881,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const room = (verts) => { if ((dv + verts) * DECAL_FLOATS > D.length) D = glEnsure("decal", dv + verts + 600); };
   let boardBase = 0;
   const BV = (X, Y, Z, u, v, a, fl, gh, li) => { const b = bv * BOARD_FLOATS; B[b] = X; B[b + 1] = Y; B[b + 2] = Z + boardBase; B[b + 3] = u; B[b + 4] = v; B[b + 5] = a; B[b + 6] = fl; B[b + 7] = gh; B[b + 8] = li; bv++; };
-  const DV = (X, Y, Z, lx, ly, kind, a, wd, li, absolute = false) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z + (absolute ? 0 : interiorSurfaceHeight(g.map, X, Y)); D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
+  const DV = (X, Y, Z, lx, ly, kind, a, wd, li, absolute = false) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z + (absolute ? 0 : surfaceZ(g.map, X, Y)); D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
   const flatD = (X, Y, r, kind, a, wd, li = 1) => { room(6); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y - r, .01, 1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y + r, .01, -1, 1, kind, a, wd, li); };
   const shadow = (X, Y, sc, opacity = 1) => {
     let lx = px, ly = py, best = lightLevel(F, X, Y, .4);
@@ -2896,12 +2904,12 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     DV(bx + wx, by + wy, .008, 1, 1, 10, a, 0, 0);
     DV(ax + wx, ay + wy, .008, -1, 1, 10, a, 0, 0);
   };
-  const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : interiorSurfaceHeight(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
+  const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : surfaceZ(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
   const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = MODEL_STATE.admitted.has(it) ? nativeBoardTop(foe, sc, draws[itemRef[it]].nativeHeight) : Math.max(A.height * sc,draws[itemRef[it]].nativeHeight||0), X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? At.nearFade : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
     const draw = draws[itemRef[it]];
-    boardBase = interiorSurfaceHeight(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07))
+    boardBase = surfaceZ(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07))
       + (interiorTerrain(g.map) ? closeViewActorLift(draw, MODEL_STATE.admitted.has(it)) : 0);
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const residual = MODEL_STATE.admitted.has(it);
@@ -2916,7 +2924,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   if (F.outdoor) { const Ts = OUTDOOR.treeShadow; for (const o of g.map.objects || []) { if (!outdoorTreeObject(o)) continue; const X = Number(o.x) + .5 - F.sun[0] * .35, Y = Number(o.y) + .72 - F.sun[1] * .35;
     if (Math.hypot(X - px, Y - py) > F.reach) continue; flatD(X, Y, Ts.r * OUTDOOR.trees[o.vegetationForm].r / OUTDOOR.trees.canopy.r + .15, 0, Ts.alpha, 0); } }
   // a soft shadow under each prop drawn as a solid (OUTDOOR.props), a little away from the sun outdoors
-  if (F.outdoor || F.props) { const Ps = OUTDOOR.props.shadow, list = (F.outdoor ? outdoorScene(g.map)?.props : propScene(g.map, propZ, seen)?.props)?.objects; if (list) for (const o of list) {
+  if (F.outdoor || F.props) { const Ps = OUTDOOR.props.shadow, list = (F.outdoor ? openWorld?.props : propScene(g.map, propZ, seen)?.props)?.objects; if (list) for (const o of list) {
     const X = Number(o.x) + .5 - (F.outdoor ? F.sun[0] * .2 : 0), Y = Number(o.y) + .62 - (F.outdoor ? F.sun[1] * .2 : 0); if (Math.hypot(X - px, Y - py) > F.reach) continue; flatD(X, Y, Ps.r, 0, Ps.alpha, 0); } }
   // card props near the Wayfarer: cobwebs, chains, bones (the nearest `cards`), and the spikes of traps that are up
   { const P = At.props, C2 = st.cards, cap = Q.cards ?? P.cards; let used = 0; const H0 = Wl.height;
@@ -2934,7 +2942,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   if (g.playerFire?.left > 0) for (let oi = 0; oi < n; oi++) {
     const it = order[oi], draw = draws[itemRef[it]];
     if (itemKind[it] !== 1 || draw !== capturedPlayer || !MODEL_STATE.admitted.has(it)) continue;
-    const X = boardWX[it], Y = boardWY[it], support = interiorSurfaceHeight(g.map, X, Y - .07) + closeViewActorLift(draw, true);
+    const X = boardWX[it], Y = boardWY[it], support = surfaceZ(g.map, X, Y - .07) + closeViewActorLift(draw, true);
     const statusNow = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
     const knocked = statusNow < (g.player.stunnedUntil || 0), form = playerFormPresentation(g), body = knocked ? .35 : form ? form.head * .52 : .72;
     for (let i = 0; i < 3; i++) {
@@ -2996,13 +3004,13 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // Accepted release cue follows this frame's actual final socket. It never moves the shot.
   if(MODEL_STATE.toolEmissionReady&&MODEL_STATE.toolRelease){const release=MODEL_STATE.toolRelease,releaseNow=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,elapsed=Math.max(0,release.durationMs-Math.max(0,(g.player.actionVisualUntil||0)-releaseNow)),age=toolUseReleaseAge(release,elapsed);
     if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
-    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot){const head=projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
+    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot){const head=projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
   // Spells arbitrate the same single release lane after final-pose sampling. Fire may link only its
   // immutable accepted central source; Orbit deliberately has no connector.
   if(!MODEL_STATE.toolEmissionReady&&MODEL_STATE.spellEmissionReady&&MODEL_STATE.spellRelease){const release=MODEL_STATE.spellRelease,at=MODEL_STATE.spellEmission,releaseNow=g.paused&&finite(g.pauseStarted)?g.pauseStarted:now,duration=release.durationMs||MODEL_TIMING.castMs,age=Math.max(0,duration-Math.max(0,(g.player.castUntil||0)-releaseNow));
     if(age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.spellAlpha,r=.045;room(6);card(at[0],at[1],at[2]-r,at[2]+r,r,11,a,release.profile==='orbit-launch'?0xb48cff:0xff7a2a,0,true);}
-    if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=interiorSurfaceHeight(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
+    if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=surfaceZ(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
   }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
   for (const entry of shots?.entries || []) {
@@ -3011,7 +3019,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       const X=entry.geom.x,Y=entry.geom.y,z=entry.geom.z,size=shot.radius>1.1?.32:.22,color=shot.perfect?0xffd86a:0xb48cff;
       room(6);card(X,Y,z-size,z+size,size,11,SHOT_DRAW.headAlpha,color,0,true);continue;
     }
-    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
+    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y)),X=head.x,Y=head.y,z=head.z,magic = shot.damageType === "magic";
     const size = fire?.2:(magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1));
     const hue = fire?"#ff7a2a":standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
@@ -3021,7 +3029,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       if (d > 1e-4) {
         const trailTime = Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
         const length = Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
-        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,interiorSurfaceHeight(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tx=tail.x,ty=tail.y,tz=tail.z,r = size * .75;
+        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,surfaceZ(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tx=tail.x,ty=tail.y,tz=tail.z,r = size * .75;
         room(6);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);

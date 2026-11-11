@@ -22,12 +22,12 @@ import { resetCloseViewGL, closeViewGLStats } from '../src/close-view-gl.ts';
 
 function section(rx: number, ry: number) { const s = freshSave(); s.seed = 'CINDER-VERGE-47'; const g: any = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld', false); return g; }
 const sha = (a: Float32Array) => createHash('sha256').update(Buffer.from(a.buffer, a.byteOffset, a.byteLength)).digest('hex');
-function checkSolids(data: Float32Array, verts: number, label: string, maxMat = 9) {
+function checkSolids(data: Float32Array, verts: number, label: string, maxMat = 9, floor = 0) {
   assert.equal(data.length, verts * OUTDOOR_FLOATS, label); assert.equal(verts % 3, 0, `${label}: whole triangles`);
   for (let v = 0; v < verts; v++) { const o = v * OUTDOOR_FLOATS;
     assert.ok(Math.abs(Math.hypot(data[o + 3], data[o + 4], data[o + 5]) - 1) < 1e-4, `${label}: unit normal`);
     for (let k = 0; k < OUTDOOR_FLOATS; k++) assert.ok(Number.isFinite(data[o + k]), `${label}: finite`);
-    assert.ok(data[o + 2] >= -1e-6, `${label}: nothing below the ground`); assert.ok(Number.isInteger(data[o + 9]) && data[o + 9] >= 0 && data[o + 9] <= maxMat, `${label}: material ${data[o + 9]}`); }
+    assert.ok(data[o + 2] >= floor - 1e-6, `${label}: nothing below the ground`); assert.ok(Number.isInteger(data[o + 9]) && data[o + 9] >= 0 && data[o + 9] <= maxMat, `${label}: material ${data[o + 9]}`); }
 }
 
 test('props are bounded, deterministic solids in the kind\'s own palette; generation and the map are untouched', () => {
@@ -158,3 +158,27 @@ test('the shaders carry the shore, the softened ground and the props\' materials
   for (const k of ['wander', 'shore', 'foam', 'deep', 'shallow']) assert.ok(Number.isFinite((OUTDOOR.water as any)[k]), k);
   assert.ok(OUTDOOR.ground.art > 0 && OUTDOOR.ground.art <= 1);
 });
+
+// The overworld's heightfield (Tim, 2026-11-11: "it doesn't show the different heights of things... the depths of holes in
+// canyons, chasms... Everything — the heights and the levels — must be shown in 3 dimensions").
+import { outdoorRelief, outdoorTerrainMesh, outdoorSurfaceZ, outdoorPit } from '../src/close-view-outdoor.ts';
+import { LIFT_PER_LEVEL } from '../src/landscape.ts';
+test('the test tile\'s plateau stands at its levels, its stair slopes, its canyon is a hole with walls', () => {
+  const g: any = createLabFixture({ lab: 'test-tile', scenario: '', now: 1000 }).game, before = JSON.stringify(g.map.tiles), R: any = outdoorRelief(g.map);
+  assert.ok(Math.abs(outdoorSurfaceZ(R, 26.5, 4.5) - 2 * LIFT_PER_LEVEL) < 1e-6, 'the core at level 2');
+  assert.ok(Math.abs(outdoorSurfaceZ(R, 24.5, 2.5) - LIFT_PER_LEVEL) < 1e-6, 'the ring at level 1');
+  const s0 = outdoorSurfaceZ(R, 24.05, 4.5), s1 = outdoorSurfaceZ(R, 24.95, 4.5); assert.ok(s1 > s0 + .05, `the stair climbs (${s0} to ${s1})`);
+  const canyon = g.map.tiles.find((t: any) => t.kind === 'canyon'); assert.ok(outdoorPit(canyon)); assert.ok(R.top[canyon.y * R.w + canyon.x] <= -OUTDOOR.terrain.pitDepth + 1e-6, 'the canyon is a hole');
+  const m = outdoorTerrainMesh(g.map, R); checkSolids(m.data, m.verts, 'heightfield', 3, -OUTDOOR.terrain.pitDepth); assert.equal(JSON.stringify(g.map.tiles), before, 'the map is untouched');
+  const kinds = new Set<number>(); let deepest = 0; for (let v = 0; v < m.verts; v++) { kinds.add(m.data[v * OUTDOOR_FLOATS + 9]); deepest = Math.min(deepest, m.data[v * OUTDOOR_FLOATS + 2]); }
+  assert.deepEqual([...kinds].sort(), [0, 1, 2, 3], 'tops, cliffs, a pit\'s walls and its floor'); assert.ok(Math.abs(deepest + OUTDOOR.terrain.pitDepth) < 1e-6);
+  assert.ok(m.verts <= R.w * R.h * 30, 'within its bound'); assert.equal(outdoorTerrainMesh(g.map, R).verts, m.verts, 'deterministic');
+  // the solids stand on it: a scene with relief lifts what stands on the plateau, and keeps its own ground mesh
+  const flat: any = outdoorScene(g.map), lifted: any = outdoorScene(g.map, true); assert.ok(lifted.ground && lifted.ground.verts === m.verts); assert.equal(flat.ground, null);
+});
+test('in a GPU frame on the test tile the heightfield is drawn and the Wayfarer stands on the plateau', () => withGPU(() => {
+  const g: any = createLabFixture({ lab: 'test-tile', scenario: '', now: 1000 }).game; g.save.overworldCloseView = true; g.presentation = { effectiveQuality: 'low', reduceMotion: true };
+  g.player.x = 26; g.player.y = 4; g.enemies = []; const screen = ctx2d([]); screen.canvas = { width: 390, height: 844 }; let T = 70000;
+  for (let i = 0; i < 3; i++) render(screen, g, 390, 844, (T += 16)); assert.equal(closeViewShowing(g), true);
+  assert.ok((closeViewGLStats as any).reliefVerts > 0, 'the heightfield is uploaded');
+}));

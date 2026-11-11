@@ -19,6 +19,7 @@
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
 import { ATLAS_TILE_COLORS } from "./atlas-colors.ts";
+import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.ts";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -127,6 +128,13 @@ export const OUTDOOR = f({
   mound: f({ rim: .5, inner: .92, jitter: .14, wander: .3 }),
   // bounds: at most this many solids in a section (the buffer never grows past it)
   maxOutcrops: 1600, maxTrees: 160,
+  // The heightfield (version 2, Tim 2026-11-11: "it doesn't show the different heights of things... the depths of holes in
+  // canyons, chasms... Everything just looks kind of flat"). Every walkable tile stands at its level's height (the ordinary
+  // view's LIFT_PER_LEVEL, a great tree's levels taller), a ramp tile slopes between its neighbours, a level's edge is a
+  // cliff face, and a canyon, chasm or abyss is a real hole `pitDepth` deep with walls darkening toward its floor. Water lies
+  // `waterDrop` below its bank. Built once a section; the solids (outcrops, trees, props, houses) stand on it.
+  terrain: f({ pitDepth: 3.2, waterDrop: .06, maxTiles: 16384 }),
+  pitKinds: /canyon|abyss|chasm/i,
   // Props (version 2, 2026-11-11: "a full, detailed visual refinement pass on all the assets in Close View"): the world's
   // common standing things built as solids instead of the ordinary view's sprite on a card. By kind: the recipe, its
   // colours (body, dark, accent: the ordinary view's palette for the kind, so both views agree), how many of a section's
@@ -143,6 +151,7 @@ export const OUTDOOR = f({
       checkpoint: f({ recipe: "pylon", colors: f(["#b8f5f2", "#315c65", "#72d7df"]) }),
       ruinMarker: f({ recipe: "standingStone", colors: f(["#806b52", "#433a31", "#b09b79"]) }),
       dungeon: f({ recipe: "portal", colors: f(["#62576b", "#332d39", "#63817a"]) }),
+      watcherTomb: f({ recipe: "tomb", colors: f(["#c9c6d8", "#5a566c", "#e8f4ff"]) }),
     }),
     // states that show a cache or chest opened (its lid thrown back), and that show a rock moved or broken (rubble)
     opened: /^(used|open|opened|empty|looted|taken)$/, rubble: /^(moved|broken)$/,
@@ -216,10 +225,10 @@ export function outdoorTerrainData(map, out = null) {
   return { data, w, h };
 }
 
-// What the static scene depends on: which tiles block and which trees stand. A pass over the tiles and objects.
+// What the static scene depends on: which tiles block, their levels, and which trees stand. A pass over the tiles and objects.
 export function outdoorSignature(map) {
   let a = 0, b = 0; const tiles = map?.tiles || [];
-  for (let i = 0; i < tiles.length; i++) if (tiles[i]?.blocked) a = (a + Math.imul(i + 1, 2654435761)) | 0;
+  for (let i = 0; i < tiles.length; i++) { const t = tiles[i]; if (t?.blocked) a = (a + Math.imul(i + 1, 2654435761)) | 0; if (t?.elev) a = (a + Math.imul(i + 7, 40503) * ((t.elev * 4 | 0) + (t.slope ? 1 : 0))) | 0; }
   const objs = map?.objects || []; for (let i = 0; i < objs.length; i++) if (outdoorTreeObject(objs[i])) b = (b + Math.imul(Math.round(objs[i].x * 16) + 1, 40503) + Math.imul(Math.round(objs[i].y * 16) + 1, 9973)) | 0;
   return tiles.length * 4294967296 + ((a ^ Math.imul(b, 0x9e3779b1)) >>> 0); // a number: nothing allocated per frame
 }
@@ -243,11 +252,11 @@ const outcropRule = (kind) => { for (const r of OUTDOOR.outcrops) if (r.test.tes
 export function outdoorOutcropHeight(t) { const r = outcropRule(String(t?.kind || "")); return r.h + r.jitter * outdoorHash(t?.x | 0, t?.y | 0, 7) + (r.perLevel || 0) * (Number(t?.elev) || 0); }
 
 // The static solids of a section: outcrops and standing trees. Returns { data, verts, outcrops, trees }. Pure.
-export function outdoorMesh(map, sky) {
+export function outdoorMesh(map, sky, relief = null) { // R: the section's relief (outdoorRelief): outcrops rise from their level, trees stand on theirs
   const w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Number(map?.height) || Math.floor(tiles.length / w));
   const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? null : tiles[y * w + x];
   const heights = new Float32Array(w * h); let outcrops = 0;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = tiles[y * w + x]; if (outdoorOutcrop(t) && outcrops < OUTDOOR.maxOutcrops) { heights[y * w + x] = outdoorOutcropHeight(t); outcrops++; } }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = tiles[y * w + x]; if (outdoorOutcrop(t) && outcrops < OUTDOOR.maxOutcrops) { heights[y * w + x] = outdoorOutcropHeight(t) + (relief ? Math.max(0, relief.top[y * w + x]) : 0); outcrops++; } }
   const trees = (map?.objects || []).filter(outdoorTreeObject).slice(0, OUTDOOR.maxTrees);
   const V = new Float32Array((outcrops * 72 + trees.length * 240) * OUTDOOR_FLOATS); let n = 0;
   const frost = sky?.frost || 0;
@@ -282,7 +291,8 @@ export function outdoorMesh(map, sky) {
     n = pushQuad(V, n, [tx0, ty0, H], [tx0, ty1, H], [tx1, ty1, H], [tx1, ty0, H], top, r.mat); }
   // trees: a tapered trunk and a faceted crown, turned and sized a little by their place
   const crown = sky?.crown || [.2, .4, .2], bark = sky?.bark || [.33, .24, .16];
-  for (const o of trees) { const T = OUTDOOR.trees[o.vegetationForm], cx = Number(o.x) + .5, cy = Number(o.y) + .72, hs = outdoorHash(Math.round(o.x * 4), Math.round(o.y * 4), 11), sc = .85 + .35 * hs, rot = hs * 6.283;
+  for (const o of trees) { const t0 = n; treeSolid(o); if (relief) { const dz = outdoorSurfaceZ(relief, Number(o.x) + .5, Number(o.y) + .72); if (dz) for (let v = t0; v < n; v++) V[v * OUTDOOR_FLOATS + 2] += dz; } }
+  function treeSolid(o) { const T = OUTDOOR.trees[o.vegetationForm], cx = Number(o.x) + .5, cy = Number(o.y) + .72, hs = outdoorHash(Math.round(o.x * 4), Math.round(o.y * 4), 11), sc = .85 + .35 * hs, rot = hs * 6.283;
     const tint = .85 + .3 * outdoorHash(Math.round(o.x * 4), Math.round(o.y * 4), 13), cc = crown.map((v, i) => Math.min(1, v * tint * (i === 1 ? 1.04 : 1))), fc = frost > 0 ? cc.map((v) => v + (.9 - v) * frost * .55) : cc;
     const ring = (r, z, sides, ph = 0) => { const out = []; for (let i = 0; i < sides; i++) { const a = rot + ph + i / sides * 6.283; out.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r, z]); } return out; };
     const band = (A, B, col, mat) => { for (let i = 0; i < A.length; i++) { const j = (i + 1) % A.length; n = pushQuad(V, n, A[i], A[j], B[j], B[i], col, mat); } };
@@ -304,6 +314,55 @@ export function outdoorMesh(map, sky) {
         const A = lring(lr * .9, lz, 0), B = lring(lr * .75, lz + lr * 1.1, .6); centre(lx, ly, lz + lr * .6); capBot(A, [lx, ly, lz - lr * .45], dk, 4); band(A, B, cc, 4); capTop(B, [lx, ly, lz + lr * 1.55], hi, 4); } }
   }
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, outcrops, trees: trees.length };
+}
+
+// ---------------------------------------------------------------------------------------------- the heightfield
+export const outdoorPit = (t) => !!t && (t.chasm === true || OUTDOOR.pitKinds.test(String(t.kind || "")));
+// A section's relief: each tile's top (in tiles of height), and each tile corner's height for the ramps. Cached per map and
+// signature; pure. A pit's top is -pitDepth; water's is its bank's less waterDrop.
+const RELIEFS = new WeakMap();
+export function outdoorRelief(map) {
+  if (!map || typeof map !== "object") return null; const sig = outdoorSignature(map), known = RELIEFS.get(map); if (known && known.sig === sig) return known;
+  const w = Math.max(1, Number(map.width) || 32), tiles = map.tiles || [], h = Math.max(1, Number(map.height) || Math.floor(tiles.length / w)), T = OUTDOOR.terrain;
+  const top = new Float32Array(w * h), ramp = new Uint8Array(w * h), corner = new Float32Array((w + 1) * (h + 1));
+  for (let i = 0; i < w * h; i++) { const t = tiles[i], k = LIFT_PER_LEVEL * tileLiftScale(t), e = Number(t?.elev) || 0;
+    if (outdoorPit(t)) top[i] = -T.pitDepth; else if (t?.slope) { ramp[i] = 1; top[i] = (e - .5) * k; } else top[i] = e * k - (isWater(t) ? T.waterDrop : 0); }
+  // a ramp's corners take the mean of the level tops round them, held between its foot and its head
+  for (let cy = 0; cy <= h; cy++) for (let cx = 0; cx <= w; cx++) { let sum = 0, n = 0, lo = Infinity, hi = -Infinity;
+    for (let j = -1; j <= 0; j++) for (let i = -1; i <= 0; i++) { const x = cx + i, y = cy + j; if (x < 0 || y < 0 || x >= w || y >= h) continue; const q = y * w + x;
+      if (ramp[q]) { const t = tiles[q], k = LIFT_PER_LEVEL * tileLiftScale(t), e = Number(t?.elev) || 0; lo = Math.min(lo, (e - 1) * k); hi = Math.max(hi, e * k); } else if (top[q] > -T.pitDepth + 1e-6) { sum += top[q]; n++; } }
+    let z = n ? sum / n : (lo + hi) / 2; if (hi > -Infinity) z = Math.max(lo, Math.min(hi, n ? z : (lo + hi) / 2)); corner[cy * (w + 1) + cx] = Number.isFinite(z) ? z : 0; }
+  const R = { sig, w, h, top, ramp, corner }; RELIEFS.set(map, R); return R;
+}
+// The ground's height under (x, y) for what stands there (0 over a pit: what crosses one flies or falls). Pure.
+export function outdoorSurfaceZ(R, x, y) {
+  if (!R) return 0; const tx = Math.floor(x), ty = Math.floor(y); if (tx < 0 || ty < 0 || tx >= R.w || ty >= R.h) return 0; const i = ty * R.w + tx;
+  if (!R.ramp[i]) return R.top[i] < -1 ? 0 : Math.max(0, R.top[i]) + Math.min(0, R.top[i]);
+  const fx = x - tx, fy = y - ty, W = R.w + 1, c = R.corner, a = c[ty * W + tx], b = c[ty * W + tx + 1], d = c[(ty + 1) * W + tx], e = c[(ty + 1) * W + tx + 1];
+  return (a * (1 - fx) + b * fx) * (1 - fy) + (d * (1 - fx) + e * fx) * fy;
+}
+// The heightfield as triangles (OUTDOOR_FLOATS a vertex: position, normal, the tile's colour, kind: 0 a top, 1 a cliff
+// face, 2 a pit's wall, 3 a pit's floor). Each tile's top, and a face down every edge where it stands above its neighbour
+// (or the section's edge, down to the ground beyond). Pure.
+export function outdoorTerrainMesh(map, R = outdoorRelief(map)) {
+  if (!R) return { data: new Float32Array(0), verts: 0 }; const { w, h, top, ramp, corner } = R, tiles = map.tiles || [], W = w + 1;
+  if (w * h > OUTDOOR.terrain.maxTiles) return { data: new Float32Array(0), verts: 0 };
+  const V = new Float32Array(w * h * 30 * OUTDOOR_FLOATS); let n = 0;
+  const put = (p, nx, ny, nz, c, k) => { const o = n * OUTDOOR_FLOATS; V[o] = p[0]; V[o + 1] = p[1]; V[o + 2] = p[2]; V[o + 3] = nx; V[o + 4] = ny; V[o + 5] = nz; V[o + 6] = c[0]; V[o + 7] = c[1]; V[o + 8] = c[2]; V[o + 9] = k; n++; };
+  const tri = (a, b, c, col, k) => { const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2]; let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l; if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; } put(a, nx, ny, nz, col, k); put(b, nx, ny, nz, col, k); put(c, nx, ny, nz, col, k); };
+  const zc = (i, x, y) => ramp[i] ? corner[y * W + x] : top[i];
+  const SIDES = [[0, -1, 0, 0, 1, 0], [1, 0, 1, 0, 1, 1], [0, 1, 1, 1, 0, 1], [-1, 0, 0, 1, 0, 0]]; // neighbour, then the edge's ends (counter-clockwise from above)
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, t = tiles[i]; if (outdoorOutcrop(t)) continue; // an outcrop's own solid covers it
+    const col = hex01(ATLAS_TILE_COLORS[t?.kind] || ATLAS_TILE_COLORS.blocked), pit = top[i] < -OUTDOOR.terrain.pitDepth + 1e-6;
+    const a = [x, y, zc(i, x, y)], b = [x + 1, y, zc(i, x + 1, y)], c = [x + 1, y + 1, zc(i, x + 1, y + 1)], d = [x, y + 1, zc(i, x, y + 1)];
+    tri(a, b, c, col, pit ? 3 : 0); tri(a, c, d, col, pit ? 3 : 0);
+    for (const [dx, dy, ax, ay, bx, by] of SIDES) { const X = x + dx, Y = y + dy, inside = X >= 0 && Y >= 0 && X < w && Y < h, j = Y * w + X;
+      const za = zc(i, x + ax, y + ay), zb = zc(i, x + bx, y + by); let qa, qb; // the neighbour's height along the same edge
+      if (!inside) { qa = qb = 0; } else if (outdoorOutcrop(tiles[j])) continue; else { qa = zc(j, x + ax, y + ay); qb = zc(j, x + bx, y + by); }
+      if (za <= qa + .005 && zb <= qb + .005) continue; const lowA = Math.min(qa, za), lowB = Math.min(qb, zb), k = Math.min(qa, qb) < -.5 ? 2 : 1, cc = inside && Math.min(qa, qb) < -.5 ? col : col;
+      const P0 = [x + ax, y + ay, lowA], P1 = [x + bx, y + by, lowB], P2 = [x + bx, y + by, zb], P3 = [x + ax, y + ay, za];
+      put(P0, dx, dy, 0, cc, k); put(P1, dx, dy, 0, cc, k); put(P2, dx, dy, 0, cc, k); put(P0, dx, dy, 0, cc, k); put(P2, dx, dy, 0, cc, k); put(P3, dx, dy, 0, cc, k); } }
+  return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n };
 }
 
 // ---------------------------------------------------------------------------------------------- the props
@@ -384,6 +443,16 @@ const PROP_RECIPES = {
   standingStone(V, n, o, C, k) { const lean = (outdoorHash(k, 3, 17) - .5) * .12;
     n = hexa(V, n, [at3(-.2, -.12, 0), at3(.2, -.12, 0), at3(.2, .12, 0), at3(-.2, .12, 0), at3(-.15 + lean, -.09, .95), at3(.13 + lean, -.09, .86), at3(.13 + lean, .09, .86), at3(-.15 + lean, .09, .95)], C[0], 0, C[2]);
     n = pbox(V, n, lean * .5, -.125, .45, .11, .006, .22, C[2], 0); n = lump(V, n, .22, .1, 0, .1, .1, 5, k, C[1], 0); return n; },
+  // the Watcher's tomb or shrine: a pale sarcophagus on a dark plinth, its headstone carved with the eye, a halo over it
+  // until it is opened (then the lid lies aside and the halo is gone)
+  tomb(V, n, o, C, k) { const op = OUTDOOR.props.opened.test(String(o.state || ""));
+    n = pbox(V, n, 0, 0, 0, .42, .3, .1, C[1], 1, .05); n = pbox(V, n, 0, .02, .1, .34, .22, .26, C[0], 1, .04);
+    n = op ? pbox(V, n, .3, .05, .1, .3, .2, .05, C[0], 1, .05) : pbox(V, n, 0, .02, .36, .36, .24, .06, C[0], 1, .12);
+    n = pbox(V, n, 0, .3, .1, .3, .05, .62, C[0], 1, .1); n = pbox(V, n, 0, .245, .5, .09, .008, .09, C[2], 9);
+    if (!op) { const R = .3, z = 1.22, seg = 8; for (let i = 0; i < seg; i++) { const a0 = i / seg * 6.2832, a1 = (i + 1) / seg * 6.2832, t = .025;
+      n = hexa(V, n, [at3(Math.cos(a0) * (R - t), Math.sin(a0) * (R - t), z - t), at3(Math.cos(a1) * (R - t), Math.sin(a1) * (R - t), z - t), at3(Math.cos(a1) * (R + t), Math.sin(a1) * (R + t), z - t), at3(Math.cos(a0) * (R + t), Math.sin(a0) * (R + t), z - t),
+        at3(Math.cos(a0) * (R - t), Math.sin(a0) * (R - t), z + t), at3(Math.cos(a1) * (R - t), Math.sin(a1) * (R - t), z + t), at3(Math.cos(a1) * (R + t), Math.sin(a1) * (R + t), z + t), at3(Math.cos(a0) * (R + t), Math.sin(a0) * (R + t), z + t)], C[2], 9); } }
+    return n; },
   // a way down: a stone portal, its threshold and the dark of the stair beyond
   portal(V, n, o, C, k) { n = pbox(V, n, -.36, 0, 0, .09, .14, .95, C[0], 1, .08); n = pbox(V, n, .36, 0, 0, .09, .14, .95, C[0], 1, .08);
     n = pbox(V, n, 0, 0, .95, .48, .17, .15, C[0], 1, .05); n = pbox(V, n, 0, 0, 1.1, .3, .12, .08, C[2], 1, .2);
@@ -406,7 +475,7 @@ export function outdoorProps(map, zAt = null, seen = null) {
 // grouped by buildingId). Returns { data, verts, walls (vertices of walls, first), roofs: [{ id, start, count, x0, y0, x1, y1 }] }:
 // the walls of every house first, then each house's roof as its own run, so a roof can be left out while the rest is drawn.
 // Pure.
-export function outdoorBuildings(map) {
+export function outdoorBuildings(map, R = null) { // R: the relief (each wall stands on its tile's level, a roof on its house's first)
   const B = OUTDOOR.buildings, w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Number(map?.height) || Math.floor(tiles.length / w));
   const houses = new Map();
   for (let i = 0; i < w * h; i++) { const t = tiles[i]; if (!t?.buildingId || !B.structures.test(String(t.structure || ""))) continue; let H = houses.get(t.buildingId);
@@ -421,12 +490,13 @@ export function outdoorBuildings(map) {
   const T = B.wall.t, Hw = B.wall.h, side = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
   // the walls: a slab along each wall side, inside its tile; a lintel over a door
   for (const H of houses.values()) { const L = lookOf(H), wc = hex01(L.wall), tc = hex01(L.trim);
-    for (const i of H.cells) { const t = tiles[i], x = i % w, y = Math.floor(i / w);
+    for (const i of H.cells) { const t = tiles[i], x = i % w, y = Math.floor(i / w), w0 = n;
       const slab = (dx, dy, z0, z1, col, top) => { // the wall on side (dx, dy) of tile (x, y), from z0 to z1
         const xa = dx > 0 ? x + 1 - T : x, xb = dx < 0 ? x + T : x + 1, ya = dy > 0 ? y + 1 - T : y, yb = dy < 0 ? y + T : y + 1;
         n = hexa(V, n, [[xa, ya, z0], [xb, ya, z0], [xb, yb, z0], [xa, yb, z0], [xa, ya, z1], [xb, ya, z1], [xb, yb, z1], [xa, yb, z1]], col, L.mat, top); };
       for (const sd of t.wallSides || []) { const d = side[sd]; if (d) slab(d[0], d[1], 0, Hw, wc, tc); }
-      if (t.doorSide && side[t.doorSide]) { const d = side[t.doorSide]; slab(d[0], d[1], B.wall.lintel, Hw, tc, tc); } }
+      if (t.doorSide && side[t.doorSide]) { const d = side[t.doorSide]; slab(d[0], d[1], B.wall.lintel, Hw, tc, tc); }
+      const dz = R ? Math.max(0, R.top[i]) : 0; if (dz) for (let v = w0; v < n; v++) V[v * OUTDOOR_FLOATS + 2] += dz; }
     }
   const walls = n;
   // the roofs: one run a house. Gable: the height over (X, Y) falls from the ridge (the long axis' middle line) to the eaves.
@@ -450,6 +520,7 @@ export function outdoorBuildings(map) {
           n = z0 - Hw < .01 ? pushTri(V, n, a0, a1, [P1[0], P1[1], z1], fc, L.mat) : z1 - Hw < .01 ? pushTri(V, n, a0, a1, [P0[0], P0[1], z0], fc, L.mat) : pushQuad(V, n, a0, a1, [P1[0], P1[1], z1], [P0[0], P0[1], z0], fc, L.mat); } } }
     if (!flat) { const len = alongX ? [H.x0 - e, H.x1 + e] : [H.y0 - e, H.y1 + e], z = Hw + Math.min(B.ridge, half * B.pitch); // the ridge beam
       FRAME.x = alongX ? (len[0] + len[1]) / 2 : mid; FRAME.y = alongX ? mid : (len[0] + len[1]) / 2; FRAME.z = z - .03; FRAME.c = alongX ? 1 : 0; FRAME.s = alongX ? 0 : 1; n = pbox(V, n, 0, 0, 0, (len[1] - len[0]) / 2, .05, .08, tc, 5); }
+    const dz = R ? Math.max(0, R.top[H.cells[0]]) : 0; if (dz) for (let v = start; v < n; v++) V[v * OUTDOOR_FLOATS + 2] += dz;
     roofs.push({ id: H.id, start, count: n - start, x0: H.x0, y0: H.y0, x1: H.x1, y1: H.y1 }); }
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, walls, roofs };
 }
@@ -457,11 +528,12 @@ export function outdoorBuildings(map) {
 // The outdoor scene of a section for the GPU: the sky, the per-tile ground and the static solids, rebuilt only when its
 // signature changes (a dig, a block, a felled tree). Cached per map.
 const SCENES = new WeakMap();
-export function outdoorScene(map) {
+export function outdoorScene(map, relief = false) { // relief: build the heightfield and stand the solids on it (the GPU can draw it)
   if (!map || typeof map !== "object") return null; const sig = outdoorSignature(map), psig = outdoorPropSignature(map), sky = outdoorSky(map); let sc = SCENES.get(map);
-  if (sc && sc.sig === sig && sc.psig === psig && sc.sky === sky) return sc;
-  const same = sc && sc.sig === sig && sc.sky === sky, terrain = same ? sc.terrain : outdoorTerrainData(map), mesh = same ? sc.mesh : outdoorMesh(map, sky), houses = same ? sc.houses : outdoorBuildings(map), props = outdoorProps(map);
-  sc = { sig, psig, sky, terrain, mesh, props, houses, solids: joinSolids(mesh, props, houses), key: {} }; SCENES.set(map, sc); return sc; // key: a fresh object each rebuild (the GPU side uploads when it changes)
+  if (sc && sc.sig === sig && sc.psig === psig && sc.sky === sky && sc.relief === relief) return sc;
+  const same = sc && sc.sig === sig && sc.sky === sky && sc.relief === relief, R = relief ? outdoorRelief(map) : null, terrain = same ? sc.terrain : outdoorTerrainData(map), mesh = same ? sc.mesh : outdoorMesh(map, sky, R), houses = same ? sc.houses : outdoorBuildings(map, R);
+  const props = outdoorProps(map, R ? (x, y) => outdoorSurfaceZ(R, x, y) : null), ground = same ? sc.ground : R ? outdoorTerrainMesh(map, R) : null;
+  sc = { sig, psig, sky, relief, R, terrain, mesh, props, houses, ground, solids: joinSolids(mesh, props, houses), key: {} }; SCENES.set(map, sc); return sc; // key: a fresh object each rebuild (the GPU side uploads when it changes)
 }
 // outcrops, trees, props and houses in one buffer, the roofs last (one draw call, or one a run when a roof is left out).
 // housesAt: where the houses begin in it (a roof's start is counted from there); roofStart: where the roofs begin.
