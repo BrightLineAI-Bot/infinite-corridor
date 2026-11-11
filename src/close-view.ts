@@ -2158,6 +2158,39 @@ function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map)); if (!s
   for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const tx = Math.floor(x + i * .3), ty = Math.floor(y + j * .3); if (tx >= 0 && ty >= 0 && tx < w && st.arch[ty * w + tx]) return st.archCap; } return Infinity; }
 function staticFor(map, geo, th) { let st = STATIC.get(geo); if (!st || st.th !== th) { st = buildStatic(map, geo, th); st.th = th; STATIC.set(geo, st); } return st; }
 // For tests and the lab: the floor's built things (counts, and the lights and props as plain lists).
+// Standard-view parity (2026-11-11: "for everything that is native to Close View, make sure it shows well in the standard
+// view as well"): Close View lights an interior with sconces and candles it places itself (buildStatic, from the floor alone).
+// The ordinary view draws the same lights where they stand: each flame, a warm pool round it on the floor (a cached sprite a
+// hue, added in light), a gentle flicker (still with reduced motion). Only interiors Close View can show, only what the fog
+// of war has shown, only in view. CLOSE_VIEW_STD_LIGHTS: the pool's radius (tiles) and strength, a flame's size, how far a
+// wall flame is drawn up the wall.
+export const CLOSE_VIEW_STD_LIGHTS = Object.freeze({ pool: 1.6, alpha: .26, candleAlpha: .16, flame: .11, lift: .28, sprite: 64 });
+const STD_LIGHT = { seenMap: null, seen: null, sprites: [], failed: false };
+const STD_FLAME_CSS = HUE_RGB.map((c) => `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 200)},${Math.round(c[2] * 150)})`);
+function stdGlowSprite(hue) {
+  let c = STD_LIGHT.sprites[hue]; if (c || STD_LIGHT.failed) return c || null; const N = CLOSE_VIEW_STD_LIGHTS.sprite;
+  try { c = makeCanvas(); if (!c) { STD_LIGHT.failed = true; return null; } c.width = N; c.height = N; const x = c.getContext("2d"); const col = HUE_RGB[hue] || HUE_RGB[0], rgb = col.map((v) => Math.round(v * 255)).join(",");
+    const gr = x.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2); gr.addColorStop(0, `rgba(${rgb},1)`); gr.addColorStop(.35, `rgba(${rgb},.45)`); gr.addColorStop(1, `rgba(${rgb},0)`); x.fillStyle = gr; x.fillRect(0, 0, N, N); }
+  catch { STD_LIGHT.failed = true; return null; } STD_LIGHT.sprites[hue] = c; return c;
+}
+export function drawCloseViewLightsStd(ctx, g, s, now, l, t, r, b) {
+  const map = g?.map; if (!map || g.area !== "dungeon" || !interiorMap(map) || stillworksCloseView(map) || !Array.isArray(map.tiles)) return 0;
+  let st; try { st = staticFor(map, wallGeometry(map), themeOf(map)); } catch { return 0; }
+  if (STD_LIGHT.seenMap !== map) { STD_LIGHT.seenMap = map; STD_LIGHT.seen = glSeen(map); } const seen = STD_LIGHT.seen, S = CLOSE_VIEW_STD_LIGHTS;
+  const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), At = CLOSE_VIEW.atmosphere, L = st.lights, Fl = st.flames; let drawn = 0;
+  const near = (x, y, pad) => x > l - pad && x < r + pad && y > t - pad && y < b + pad && (!seen || seen(Math.floor(x), Math.floor(y)));
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < st.nLights; i++) { const o = i * LIGHT_FLOATS, x = L[o], y = L[o + 1]; if (!near(x, y, S.pool)) continue; const hue = L[o + 5] | 0, sp = stdGlowSprite(hue); if (!sp) break;
+    const fl = reduce ? 1 : 1 + At.flicker[0] * Math.sin(now / At.flicker[1] + L[o + 6]), R = S.pool * (L[o + 7] === 1 ? .75 : 1);
+    ctx.globalAlpha = Math.max(0, Math.min(1, (L[o + 7] === 1 ? S.candleAlpha : S.alpha) * L[o + 4] * fl)); ctx.drawImage(sp, (x - R) * s, (y - R) * s, 2 * R * s, 2 * R * s); drawn++; }
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  for (let i = 0; i < st.nFlames; i++) { const o = i * FLAME_FLOATS, x = Fl[o], y = Fl[o + 1]; if (!near(x, y, 1)) continue; const k = Fl[o + 3], up = Fl[o + 2] > 1 ? S.lift : .06;
+    const wob = reduce ? 1 : 1 + .12 * Math.sin(now / 90 + Fl[o + 5]), fx = x * s, fy = (y - up) * s, fw = S.flame * k * s, fh = S.flame * 1.9 * k * wob * s;
+    if (Fl[o + 2] > 1) { ctx.fillStyle = "#1c1814"; ctx.fillRect(fx - fw * .7, fy + fh * .1, fw * 1.4, fw * .6); } // the sconce's cup
+    ctx.fillStyle = STD_FLAME_CSS[Fl[o + 4] | 0] || STD_FLAME_CSS[0]; ctx.beginPath(); ctx.ellipse(fx, fy - fh * .35, fw * .55, fh * .6, 0, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = "#fff4d8"; ctx.beginPath(); ctx.ellipse(fx, fy - fh * .2, fw * .25, fh * .3, 0, 0, 6.2832); ctx.fill(); }
+  ctx.restore(); return drawn;
+}
 export function closeViewStatic(map) { const geo = wallGeometry(map), st = staticFor(map, geo, themeOf(map)); return { theme: closeViewThemeId(map?.building), verts: st.verts, lights: st.nLights, flames: st.nFlames, cards: st.nCards, data: st.data, lightList: st.lights, cardList: st.cards }; }
 
 // The light reaching a point, as one number (a creature's card, a prop's): the shader's falloff, from the carried light and the
