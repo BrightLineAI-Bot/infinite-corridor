@@ -94,7 +94,6 @@ function buildTurtleMesh(tier) {
       B.color(C.line).box({ at: at('body', [sx * (L * .965 + .003), y, z0 + COURSE / 2]), size: [.004, .005, COURSE * .47], bevel: 0 }); }
     for (const sy of [-1, 1]) for (let j = -seams - 1; j <= seams + 1; j++) { const x = (j + (i % 2) * .5) * L * (full ? .3 : .45); if (Math.abs(x) > L * .9) continue;
       B.color(C.line).box({ at: at('body', [x, sy * (Wd * .965 + .003), z0 + COURSE / 2]), size: [.005, .004, COURSE * .47], bevel: 0 }); }
-    if (full) for (const sy of [-1, 1]) B.color(C.line).box({ at: at('body', [0, sy * (Wd * .965 + .003), z0 + COURSE * .5]), size: [L * .95, .004, .003], bevel: 0 });
     // lichen on the stone
     if (full) for (let j = 0; j < 3; j++) { const sy = j % 2 ? 1 : -1, x = (h(i, j) * 2 - 1) * L * .75;
       B.color(C.lichen).box({ at: at('body', [x, sy * (Wd * .965 + .004), z0 + COURSE * (.25 + .5 * h(j, i))]), size: [.03 + .02 * h(i + 5, j), .004, .012], bevel: 0 }); }
@@ -128,13 +127,18 @@ function buildTurtleMesh(tier) {
     B.color(C.skin).loft({ seg: low ? 6 : 9, sections: S.map(([zz, r, a, bb, w]) => ({ at: [x, y, zz], rx: r, rz: r, bones: [b[a], b[bb ?? a], w || 0] })), up: [1, 0, 0],
       tone: (i, k, st) => i >= 6 ? C.skinDark : i % 2 ? C.skin : C.skinLit, caps: false });
     for (const c of low ? [0] : [-1, 0, 1]) B.bone(L.foot).color(C.nail).lathe({ at: at(L.foot, [x + .1, y + c * .05, .016]), F: [1, c * .3, -.25], rings: [[0, .02], [.035, 0]], seg: 4, caps: false }); }
-  // the neck: thick folds rising out from under the front of the shell, arching up and coming down forward to the head
-  const NECK = [[.34, .24, .125, .11, 'body'], [.42, .27, .12, .105, 'body', 'neck0', .7], [.48, .34, .11, .1, 'neck0', 'neck1', .5], [.53, .41, .1, .092, 'neck1'],
-    [.59, .46, .093, .086, 'neck1', 'neck2', .5], [.66, .48, .086, .08, 'neck2'], [.72, .468, .082, .078, 'neck2', 'head', .5], [.76, .452, .08, .077, 'head']];
-  B.color(C.skin).loft({ seg: low ? 7 : 12, sections: NECK.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })), tone: fold, caps: false });
+  // the neck (Tim, 2026-11-11: "more segmented, like it's made of stone"): a chain of faceted stone drums along the arch, each
+  // carried by its own bone so the neck bends block by block, a dark seam where one drum meets the next, the top of each lit
+  const ARCH = [[.34, .245, .122, 'body'], [.43, .285, .116, 'neck0'], [.5, .36, .108, 'neck0'], [.55, .425, .1, 'neck1'], [.61, .47, .093, 'neck1'], [.68, .485, .087, 'neck2'], [.745, .462, .082, 'head']];
+  const arch = low ? ARCH.filter((_, j) => j % 2 === 0) : ARCH;
+  for (let j = 0; j < arch.length - 1; j++) {
+    const [f0, u0, r0, bone] = arch[j], [f1, u1, r1] = arch[j + 1], d = [f1 - f0, 0, u1 - u0], len = Math.hypot(d[0], d[2]), r = (r0 + r1) / 2;
+    B.bone(bone).color(j % 2 ? C.mid : C.lit).lathe({ at: at(bone, [f0, 0, u0]), F: d, U: [0, 0, 1], rings: [[-.01, r * .9], [len * .2, r], [len * .75, r * .98], [len + .006, r * .88]], rs: 1.05, seg: low ? 5 : 6, smooth: false, phase: j * .4, caps: j === 0 });
+    if (!low) B.color(C.line).lathe({ at: at(bone, [f1, 0, u1]), F: d, U: [0, 0, 1], rings: [[-.008, r * .9], [.008, r * .9]], rs: 1.05, seg: 6, smooth: false, phase: j * .4, caps: false }); // the seam
+  }
   // the head: a heavy wedge, flat-topped and broad behind the eyes, narrowing to a dark hooked beak
   const HEAD = [[.74, .452, .082, .08], [.8, .462, .088, .088], [.87, .458, .082, .08], [.93, .443, .068, .066], [.98, .428, .05, .048], [1.01, .418, .03, .03], [1.032, .41, 0, 0]];
-  B.color(C.skinLit).loft({ seg: low ? 7 : 12, sections: HEAD.map(([f, u, rx, rz]) => ({ at: [f, 0, u], rx, rz, bones: ['head', 'head', 0] })), tone: (i, k, st) => i >= 4 ? C.beak : st < -.3 ? C.skinDark : C.skinLit });
+  B.color(C.skinLit).loft({ seg: low ? 7 : 12, sections: HEAD.map(([f, u, rx, rz]) => ({ at: [f, 0, u], rx, rz, bones: ['head', 'head', 0] })), tone: (i, k, st) => i >= 4 ? C.beak : st < -.3 ? C.mid : st > .5 ? C.ledge : C.lit }); // stone, like the neck
   // the lower jaw (it drops for the comet), and the cold light inside the mouth
   B.color(C.skinDark).loft({ seg: low ? 5 : 8, sections: [[.78, .405, .062, .026], [.86, .395, .06, .025], [.94, .388, .046, .019], [.99, .383, .022, .01], [1.012, .38, 0, 0]].map(([f, u, rx, rz]) => ({ at: [f, 0, u], rx, rz, bones: ['jaw', 'jaw', 0] })),
     tone: (i) => i >= 3 ? C.beak : C.skinDark });
