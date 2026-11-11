@@ -11,7 +11,7 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.ts";
 import { stageOneBeastReference } from "./stages.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
-import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop } from "./adventure-creatures.ts"; // adventure creatures (Tim, 2026-11-11)
+import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.ts"; // adventure creatures (Tim, 2026-11-11)
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -46,6 +46,7 @@ export const BRAINS = {
   perch: { id: "perch", name: "Holds a ledge, then drops", preferred: [1.2, 2.2] },
   vantage: { id: "vantage", name: "Keeps the high ground", preferred: [4.5, 7], retreat: 3 },
   loop: { id: "loop", name: "Flies a patrol loop", preferred: [3.4, 5.4] },
+  patrol: { id: "patrol", name: "Walks its beat, lamp first", preferred: [1.2, 2.6], cone: true }, // roused only near, or inside its lamp's cone (ADV.lamp)
 };
 
 // Telegraphed abilities. Times are seconds; `damage` multiplies the creature's damage;
@@ -83,6 +84,19 @@ export const ATTACK_MODULES = {
   vineRetreat: { id: "vineRetreat", name: "Vine Retreat", range: [0, 3.2], cooldown: 5.5, windup: .45, active: .55, recover: .4, damage: 0, gate: "retreat", tags: ["movement", "height"], text: "Swings away up to higher ground, out of reach of your blade." },
   sinkFunnel: { id: "sinkFunnel", name: "Sink Funnel", range: [0, 2.9], cooldown: 6.5, windup: .9, active: 1.2, recover: 1.2, damage: 1.3, gate: "level", requires: "burrows", tags: ["ground", "control", "burrow"], text: "The sand dimples and rings close in: the ground opens into a funnel that drags you to its mouth. Run out against it, or stand higher than it." },
   glassStrafe: { id: "glassStrafe", name: "Glass Strafe", range: [2, 9], cooldown: 5.5, windup: .8, active: .8, recover: .7, damage: .8, jumpable: true, requires: "flying", tags: ["ground", "air"], text: "Banks and runs low down the marked lane, dropping hot glass that bursts a moment later. Jump the bursts or leave the lane." },
+  // The second set (adventure-creatures.ts, Tim 2026-11-11: the other four themes; no bosses).
+  lampFlare: { id: "lampFlare", name: "Lamp Flare", range: [2.5, 8], cooldown: 5, windup: .75, recover: .7, damage: .9, jumpable: true, heightReach: true, tags: ["ground", "ranged", "fire", "height"], text: "Swings its lamp back and throws it onto the marked spot: it bursts and the ground burns a while. From higher up it throws farther." },
+  bellToll: { id: "bellToll", name: "Bell Toll", range: [0, 4.5], cooldown: 6, windup: .85, recover: .9, damage: .9, jumpable: true, heightReach: true, tags: ["ground", "height"], text: "Strikes its bell: three rings roll out along the ground, one after another. Jump them, or stand higher than the bell." },
+  tendrilRain: { id: "tendrilRain", name: "Tendril Rain", range: [2, 8], cooldown: 4.8, windup: .7, recover: .7, damage: .8, tags: ["ground", "ranged"], text: "Marks the ground under you, ahead of you and beside you; stinging tendrils drop onto each mark in turn." },
+  membranePulse: { id: "membranePulse", name: "Membrane Pulse", range: [0, 2.2], cooldown: 4, windup: .6, recover: .7, damage: .8, tags: ["ground"], text: "Its bell swells and pulses: everything close round it is stung. Step out of the ring." },
+  phaseStep: { id: "phaseStep", name: "Phase Step", range: [0, 3.5], cooldown: 6, windup: .45, active: .25, recover: .35, damage: 0, gate: "retreat", tags: ["movement", "teleport", "height"], text: "Shimmers and steps up onto higher ground, out of reach of your blade." },
+  icicleLine: { id: "icicleLine", name: "Icicle Line", range: [2, 7.5], cooldown: 5, windup: .8, recover: .7, damage: .75, jumpable: true, heightReach: true, tags: ["ground", "ranged", "ice", "height"], text: "Raises its spear: icicles fall one after another down the marked lane and leave the ground slick. From higher up the lane runs farther." },
+  glideRake: { id: "glideRake", name: "Glide Rake", range: [2.5, 8], cooldown: 5, windup: .75, active: .7, recover: .8, damage: 1.15, los: true, tags: ["charge"], text: "Crouches and skates the marked lane, raking whatever it meets; off a wall it rebounds once. It leaves slick ice behind." },
+  pendulumSwing: { id: "pendulumSwing", name: "Pendulum", range: [0, 6], cooldown: 5, windup: .85, active: .65, recover: 1, damage: 1.15, gate: "above", tags: ["charge", "height"], text: "From its chain above it swings down the marked lane through you and out the other side. Then it has to climb back." },
+  poleThrust: { id: "poleThrust", name: "Pole Thrust", range: [0, 3.2], cooldown: 2.4, windup: .6, recover: .8, damage: 1.1, los: true, tags: ["melee"], text: "Draws back its long pole or spear and drives it straight down the marked line." },
+  prismBeam: { id: "prismBeam", name: "Prism Beam", range: [2.2, 8], cooldown: 6, windup: .85, active: 1.45, recover: .8, damage: .45, los: true, tags: ["ranged", "beam"], text: "Its lens gathers light, then a beam sweeps across the ground in front of it; walls cut it short." },
+  heavySweep: { id: "heavySweep", name: "Heavy Sweep", range: [0, 2.2], cooldown: 2.2, windup: .55, recover: .75, damage: 1.1, los: true, tags: ["melee"], text: "Draws back its bell, its ladle or its hook, and sweeps a wide arc in front of it." },
+  slagPour: { id: "slagPour", name: "Slag Pour", range: [2, 7.5], cooldown: 5.5, windup: .8, recover: .8, damage: .45, heightReach: true, tags: ["ground", "ranged", "fire", "height"], text: "Tips its ladle at the marked spot: molten slag pools there, burns, and runs on down to lower ground. From higher up it reaches farther." },
   // The Questing Beast's own kit (release 187, Tim 2026-10-18: "attack attack attack", energy as well as claws).
   // Short windups and recoveries; it chases between them. Orbs are dodged (the dodge's i-frames) or outrun; the wave is jumped.
   qbRend: { id: "qbRend", name: "Rend", range: [0, 2.3], cooldown: .9, windup: .22, recover: .2, damage: 1, los: true, tags: ["melee"], text: "A fast, wide rake of claws." },
@@ -729,6 +743,47 @@ export const MONSTER_PACK = {
     attacks: ["glassStrafe", "bite"], bossAttacks: ["diveBomb"],
     palette: ["#b0643a", "#2b1a12", "#ffd27a", "#f4e6cc"], render: "cinderKite", tags: ["beast", "flying", "desert"],
     lore: "A rust-red sail of skin on bone ribs that turns the same slow loop over the waste all day. When it sees you it banks, comes in low, and the sand behind it starts to glitter." },
+  // The second set (Tim, 2026-11-11: two for each of the other four themes, each theme its own; no bosses).
+  lamplighter: { id: "lamplighter", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Lamplighter", epithet: "Keeper of the Night Beat",
+    stats: [44, 10, 0], form: { scale: 1.1 }, sizeClass: "medium", movement: "walk", brain: "patrol",
+    attacks: ["poleThrust", "lampFlare"], bossAttacks: ["sigilScatter"],
+    palette: ["#4a4f58", "#16181c", "#f0a840", "#fff0c8"], render: "lamplighter", tags: ["spirit", "fire", "city"],
+    lore: "A long coat, a tall hat, a lamp on a pole twice its height. It walks the same streets every night, and its lamp finds you before its eyes do." },
+  knellkeeper: { id: "knellkeeper", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Knellkeeper", epithet: "The Bell Above the Square",
+    stats: [52, 10, 0], form: { scale: 1.2 }, sizeClass: "large", movement: "walk", brain: "vantage",
+    attacks: ["bellToll", "heavySweep"], bossAttacks: ["shockwave"],
+    palette: ["#5c5248", "#1e1a16", "#c8a050", "#f2e4c0"], render: "knellkeeper", tags: ["construct", "city"],
+    lore: "A hunched bell-ringer grown into its bell: bronze where its back should be. It keeps the belfries and the high squares, and every toll rolls down the streets below." },
+  spindriftMedusa: { id: "spindriftMedusa", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Spindrift Medusa", epithet: "It Drifts Between the Plates",
+    stats: [34, 8, 6], form: { scale: 1.05 }, sizeClass: "medium", movement: "hover", brain: "kite",
+    attacks: ["tendrilRain", "membranePulse"], bossAttacks: ["sweepBeam"],
+    palette: ["#5a3a7a", "#1a0e26", "#70e0f0", "#e8fbff"], render: "spindriftMedusa", tags: ["beast", "flying", "alien"],
+    lore: "A glass bell of violet membrane, lit from inside, trailing a curtain of fine tendrils. It rises and sinks with the floating plates as if it were one of them." },
+  prismStilt: { id: "prismStilt", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Prism Stilt", epithet: "The Lens on Three Legs",
+    stats: [40, 9, 6], form: { scale: 1.2 }, sizeClass: "large", movement: "blink", brain: "vantage",
+    attacks: ["prismBeam", "phaseStep", "bite"], bossAttacks: ["blinkStrike"],
+    palette: ["#4a5a6a", "#141a22", "#a0f0ff", "#ffffff"], render: "prismStilt", tags: ["construct", "alien"],
+    lore: "Three needle legs under a cut-crystal head. It steps from plate to plate without crossing the space between, and where it looks, the light burns." },
+  rimeSentinel: { id: "rimeSentinel", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Rime Sentinel", epithet: "It Never Left the Wall",
+    stats: [46, 10, 6], form: { scale: 1.15 }, sizeClass: "medium", movement: "walk", brain: "vantage",
+    attacks: ["icicleLine", "poleThrust"], bossAttacks: ["groundRupture"],
+    palette: ["#6a7e94", "#1a2430", "#bfe8ff", "#f4fbff"], render: "rimeSentinel", tags: ["spirit", "ice", "frost"],
+    lore: "A sentry frozen at its post so long the frost became its armour. It still holds its spear, and it still keeps the wall walk." },
+  lakeGlider: { id: "lakeGlider", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Lake Glider", epithet: "It Skates Under the Moon",
+    stats: [38, 10, 0], form: { scale: 1.05 }, sizeClass: "medium", movement: "skitter", brain: "juggernaut",
+    attacks: ["glideRake", "bite"], bossAttacks: ["shockwave"],
+    palette: ["#8aa0b4", "#202a36", "#e0f4ff", "#ffffff"], render: "lakeGlider", tags: ["beast", "ice", "frost"],
+    lore: "Long, low and pale, on blade-shaped legs. It crosses the frozen lake in long silent glides, and it does not stop for you." },
+  hookhanger: { id: "hookhanger", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Hookhanger", epithet: "It Rides the Crane Chains",
+    stats: [42, 10, 0], form: { scale: 1.05 }, sizeClass: "medium", movement: "skitter", brain: "perch",
+    attacks: ["pendulumSwing", "heavySweep", "ledgeClimb"], bossAttacks: ["shockwave"],
+    palette: ["#5a4a40", "#1c1612", "#ff8030", "#ffd8b0"], render: "hookhanger", tags: ["construct", "climber", "foundry"],
+    lore: "A soot-black thing of chain and hook that hangs from the crane rails over the catwalks. It drops into a swing, and the swing goes straight through you." },
+  slagwright: { id: "slagwright", prototypeOnly: true, adventureKin: true, noEcho: true, name: "Slagwright", epithet: "The Ladle on the Catwalk",
+    stats: [48, 9, 6], form: { scale: 1.15 }, sizeClass: "medium", movement: "walk", brain: "vantage",
+    attacks: ["slagPour", "heavySweep"], bossAttacks: ["firefall"],
+    palette: ["#4a3a32", "#1a120e", "#ff7a20", "#ffe0a0"], render: "slagwright", tags: ["construct", "fire", "foundry"],
+    lore: "A foundry hand of riveted plate with a ladle as long as a man. It works the high catwalks, and what it pours runs down to everyone below." },
 };
 
 // Unreleased fixture-only entries are explicitly addressable, but not part of the player catalog,
@@ -885,13 +940,13 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
 // damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
-export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, gloomfall: .1, gloomMote: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0, censerPot: .3, glassShard: .3, thornDart: .3 /* adventure creatures */ }, fallbackPad: .2 };
+export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, gloomfall: .1, gloomMote: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0, censerPot: .3, glassShard: .3, thornDart: .3, tendrilFall: .3, icicle: .3, slagPool: .1, lampFire: .1 /* adventure creatures */ }, fallbackPad: .2 };
 export function effectFootprint(f) {
-  if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash") return 0;
+  if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash" || f.kind === "tollRing") return 0; // a toll ring is a ring, drawn as one
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
 }
 // Attacks that hurt with the body itself, and what their hit test adds to the body's radius.
-export const BODY_HIT = { blobEngulf: .5, turtleDash: .5, turtleSpin: "spin", turtleCyclone: .5, turtleStomp: "stomp", wormSuction: .8, devourPull: .9, phaseCharge: .55, ramCharge: .55, qbPounce: .6, qbBarrage: .6, vastPlunge: .6 };
+export const BODY_HIT = { glideRake: ADV.glide.hit, pendulumSwing: ADV.pendulum.hit, blobEngulf: .5, turtleDash: .5, turtleSpin: "spin", turtleCyclone: .5, turtleStomp: "stomp", wormSuction: .8, devourPull: .9, phaseCharge: .55, ramCharge: .55, qbPounce: .6, qbBarrage: .6, vastPlunge: .6 };
 export function bodyHitFootprint(e) {
   const s = e?.pack, pad = s?.attack && BODY_HIT[s.attack]; if (pad == null || e.dead || e.hidden) return null;
   const extra = pad === "spin" ? TURTLE.spinRadius : pad === "stomp" ? TURTLE.stompRadius : pad;
@@ -3064,7 +3119,7 @@ function advGate(e, s, w, gate) {
 // A Gallery Lurker set beside a wall on level ground starts clinging to it (once; after a reload it decides again).
 function advInit(e, w) {
   if (!e.advHome) e.advHome = { x: e.x, y: e.y };
-  if (e.kind === "galleryLurker" && e.advCling == null) {
+  if (e.brain === "perch" && e.advCling == null) { // a percher (Gallery Lurker, Hookhanger)
     const here = levelAt(w, e); let wall = false, ledge = false;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { if (!w.open(e.x + dx, e.y + dy)) wall = true; else if (levelAt(w, { x: e.x + dx, y: e.y + dy }) < here) ledge = true; }
     e.advCling = wall && !ledge; e.hopLift = e.advCling ? ADV.perch.clingLift : 0;
@@ -3075,32 +3130,46 @@ function advKiteLift(e, s, dt) {
   const K = ADV.kite, target = s.attack === "glassStrafe" && s.phase !== "recover" ? K.low : s.attack === "diveBomb" ? 0 : K.altitude, now = Number(e.hopLift) || 0;
   e.hopLift = now + Math.max(-K.ease * dt, Math.min(K.ease * dt, target - now));
 }
-// Not yet roused: the Kite flies its loop; the Sinkmaw lies buried; the percher and the keepers hold still. The Leaper wanders.
+// A loop walked (or flown): toward the current waypoint at `speed` of its movement's pace; at a waypoint, or blocked, on to the next.
+function advWalkLoop(e, w, route, K) {
+  if (!Array.isArray(e.advLoop) || !e.advLoop.length) { e.advLoop = route(e.id, e.advHome, w); e.advLeg = 0; }
+  const leg = (Number(e.advLeg) || 0) % e.advLoop.length, q = e.advLoop[leg], dx = q.x - e.x, dy = q.y - e.y, dd = Math.hypot(dx, dy);
+  if (dd <= (K.arrive ?? K.near ?? .6)) { e.advLeg = (leg + 1) % e.advLoop.length; return; }
+  const step = Math.min(dd, .82 * K.speed * (MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk).speed * (e.speedMultiplier || 1) * w.dt);
+  if (!w.move(e, dx / dd * step, dy / dd * step, { phase: false })) e.advLeg = (leg + 1) % e.advLoop.length; // blocked: on to the next point
+  e.advHeading = { x: dx / dd, y: dy / dd }; if (Math.abs(dx) > .05) e.facingX = dx > 0 ? 1 : -1;
+}
+// The Lamplighter sees you close by, or inside its lamp's cone with a clear line.
+function advSees(e, w, p, d) {
+  const L = ADV.lamp, h = e.advHeading || { x: e.facingX || 1, y: 0 }; if (d < L.near) return true; if (d > L.sight) return false;
+  return ((p.x - e.x) * h.x + (p.y - e.y) * h.y) / (d || 1) >= Math.cos(L.cone * Math.PI / 180) && w.los(e, w.player);
+}
+// The Medusa drifts higher when the Wayfarer stands above it.
+function advHoverLift(e, w, p) {
+  const M = ADV.medusa, target = M.altitude + Math.min(M.maxLift, Math.max(0, levelAt(w, p) - levelAt(w, e)) * M.perLevel), now = Number(e.hopLift) || 0;
+  e.hopLift = now + Math.max(-M.ease * w.dt, Math.min(M.ease * w.dt, target - now));
+}
+// Not yet roused: the Kite flies its loop, the Lamplighter walks its beat; the Sinkmaw lies buried; the Medusa drifts; the percher and
+// the keepers hold still. The Leaper and the Glider wander.
 function advIdle(e, s, w) {
   advInit(e, w);
-  if (e.kind === "cinderKite") {
-    advKiteLift(e, s, w.dt);
-    if (!Array.isArray(e.advLoop) || !e.advLoop.length) { e.advLoop = kiteLoop(e.id, e.advHome, w); e.advLeg = 0; }
-    const K = ADV.kite, leg = (Number(e.advLeg) || 0) % e.advLoop.length, q = e.advLoop[leg], dx = q.x - e.x, dy = q.y - e.y, dd = Math.hypot(dx, dy);
-    if (dd <= K.near) { e.advLeg = (leg + 1) % e.advLoop.length; return true; }
-    const step = Math.min(dd, .82 * K.speed * MOVEMENT_MODES.fly.speed * (e.speedMultiplier || 1) * w.dt);
-    if (!w.move(e, dx / dd * step, dy / dd * step, { phase: false })) e.advLeg = (leg + 1) % e.advLoop.length; // blocked: on to the next point
-    if (Math.abs(dx) > .05) e.facingX = dx > 0 ? 1 : -1;
-    return true;
-  }
+  if (e.kind === "cinderKite") { advKiteLift(e, s, w.dt); advWalkLoop(e, w, kiteLoop, ADV.kite); return true; }
+  if (e.kind === "lamplighter") { advWalkLoop(e, w, lampLoop, ADV.lamp); return true; }
+  if (e.kind === "spindriftMedusa") { advHoverLift(e, w, center(w.player)); return true; }
   if (e.kind === "sinkmaw") { e.untargetable = !!e.advBuried; return true; }
-  return e.kind !== "vinehookLeaper";
+  return e.kind !== "vinehookLeaper" && e.kind !== "lakeGlider";
 }
 // Roused, each frame before it moves or picks an attack. True when it is done for this frame.
 function advTick(e, s, w, p, d) {
   advInit(e, w);
-  if (e.kind === "galleryLurker") {
+  if (e.brain === "perch") {
     e.advPerched = !s.attack && (!!e.advCling || levelAt(w, e) - levelAt(w, p) >= ADV.perch.minRise);
     if (!s.attack) s.advGround = e.advPerched ? 0 : (s.advGround || 0) + w.dt;
   } else if (e.kind === "sinkmaw") {
     if (!s.attack && !e.advBuried) { s.advUp = (s.advUp || 0) + w.dt; if (s.advUp >= ADV.sink.rebury && d >= ADV.sink.clear) { e.advBuried = true; s.advUp = 0; } }
     if (e.advBuried) e.untargetable = true;
-  } else if (e.kind === "cinderKite") {
+  } else if (e.kind === "spindriftMedusa") advHoverLift(e, w, p);
+  else if (e.kind === "cinderKite") {
     advKiteLift(e, s, w.dt);
     const H = e.advHome; if (!s.attack && Math.hypot(e.x - H.x, e.y - H.y) > ADV.kite.leash) { e.aggro = false; return true; } // back to its loop
   }
@@ -3157,6 +3226,108 @@ Object.assign(RUN, {
     if (w.open(nx, ny)) { e.x = nx; e.y = ny; } // a wall ends its run where it stands
     while (s.data.dropped < K.shards && k >= (s.data.dropped + .5) / K.shards) { w.addEffect({ kind: "glassShard", owner: e.id, x: e.x, y: e.y, radius: K.shardRadius, arming: K.arming + s.data.dropped * K.step, damage: damageOf(e, "glassStrafe"), jumpable: true }); s.data.dropped++; }
     if (s.t <= 0) { s.tele = null; e.advPose = null; toPhase(s, "recover", A.recover); }
+  },
+});
+
+// ---- the second set (Tim, 2026-11-11: the other four themes). Lob, ring, rain, lane, rake, swing, pour: every one marked first.
+const pctr = (e) => ({ x: e.x, y: e.y });
+function advReachOf(e, w, id) { return heightReach(id, levelAt(w, e) - levelAt(w, w.player)); }
+// The Glider's rake, one step: along its aim; a wall turns it (once per ADV.glide.rebounds) or ends the run; it leaves slicks behind.
+function glideStep(e, s, w, step) {
+  const G = ADV.glide, a = s.data.aim, nx = e.x + a.x * step, ny = e.y + a.y * step;
+  if (w.open(nx, ny)) { e.x = nx; e.y = ny; s.data.run += step; }
+  else if (s.data.rebounds > 0) {
+    const bx = !w.open(e.x + a.x * step, e.y), by = !w.open(e.x, e.y + a.y * step); s.data.rebounds--;
+    s.data.aim = { x: bx || !by ? -a.x : a.x, y: by || !bx ? -a.y : a.y }; s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, Math.max(.5, G.length - s.data.run)), width: G.width };
+  } else return false;
+  if (s.data.slicks < G.slicks && s.data.run >= (s.data.slicks + .5) * G.length / G.slicks) { const S = ADV.icicles.slick; w.addEffect({ kind: "iceSlick", owner: e.id, x: e.x, y: e.y, radius: S.radius, arming: 0, life: S.life, total: S.life, damage: 0, slow: S.slow }); s.data.slicks++; }
+  return true;
+}
+Object.assign(START, {
+  phaseStep(e, s, w) { advLeapStart(e, s, w, "phaseStep"); },
+  poleThrust(e, s) { s.tele = { type: "rect", aim: s.data.aim, length: 3.2, width: .45 }; e.advPose = "thrust"; },
+  prismBeam(e, s, w) { START.sweepBeam(e, s, w); }, // the Prism Stilt's own module, the Sweeping Beam's shape
+  heavySweep(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + 1.5, arc: 130 }; },
+  lampFlare(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; e.advPose = "throw"; },
+  bellToll(e, s, w) { s.data.radius = ADV.toll.radius + advReachOf(e, w, "bellToll"); s.tele = { type: "ring", radius: s.data.radius }; e.advPose = "raise"; },
+  tendrilRain(e, s, w) {
+    const M = ADV.medusa, p = s.data.target, v = playerVelocity(w), side = hashSeed(`${e.id}:${s.seq}:tendrils`) % 2 ? 1 : -1, a = unit(p.x - e.x, p.y - e.y);
+    s.data.marks = [{ x: p.x, y: p.y }, { x: p.x + v.x * M.lead, y: p.y + v.y * M.lead }, { x: p.x - a.y * side * M.spread, y: p.y + a.x * side * M.spread }].slice(0, M.count); s.tele = { type: "spit", target: { ...p } }; e.advPose = "swell";
+  },
+  membranePulse(e, s) { s.tele = { type: "ring", radius: ADV.medusa.pulse }; e.advPose = "swell"; },
+  icicleLine(e, s, w) { const I = ADV.icicles, a = s.data.aim; s.data.len = rayLength(w, e, a, I.reach + advReachOf(e, w, "icicleLine")); s.tele = { type: "lane", aim: a, length: s.data.len, width: I.width }; e.advPose = "raise"; },
+  glideRake(e, s, w) { const G = ADV.glide, a = s.data.aim; Object.assign(s.data, { run: 0, slicks: 0, rebounds: G.rebounds }); s.tele = { type: "lane", aim: a, length: rayLength(w, e, a, G.length), width: G.width }; e.advPose = "crouch"; },
+  pendulumSwing(e, s, w) {
+    const P = ADV.pendulum, p = s.data.target, a = s.data.aim, far = { x: p.x + a.x * P.over, y: p.y + a.y * P.over }, to = (w.open(far.x, far.y) ? far : nearestOpen(w, far.x, far.y, 1.5)) || nearestOpen(w, p.x, p.y, 2) || pctr(e);
+    Object.assign(s.data, { from: pctr(e), to, fromLift: Number(e.hopLift) || 0 }); s.tele = { type: "lane", aim: a, length: Math.hypot(to.x - e.x, to.y - e.y), width: P.width }; e.advPose = "lean";
+  },
+  slagPour(e, s) { s.tele = { type: "spit", target: { ...s.data.target } }; e.advPose = "tip"; },
+});
+Object.assign(RUN, {
+  phaseStep(e, s, w) { advLeapRun(e, s, w, "phaseStep"); },
+  poleThrust(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return; const a = s.data.aim;
+    resolveMelee(e, s, w, "poleThrust", (p) => { const dx = p.x - e.x, dy = p.y - e.y, f = dx * a.x + dy * a.y, l = Math.abs(dx * a.y - dy * a.x); return f >= -.2 && f <= 3.5 && l <= .45 + .35; });
+    s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.poleThrust.recover);
+  },
+  prismBeam(e, s, w) {
+    const A = ATTACK_MODULES.prismBeam;
+    if (s.phase === "windup") { if (s.t <= 0) { toPhase(s, "active", A.active); s.data.total = s.t; s.tele.charging = false; } return; }
+    if (s.phase !== "active") return;
+    const k = 1 - Math.max(0, s.t) / s.data.total; s.data.angle = s.data.from + (s.data.to - s.data.from) * k;
+    const dir = { x: Math.cos(s.data.angle), y: Math.sin(s.data.angle) }, len = rayLength(w, e, dir, 8); s.tele = { type: "beam", angle: s.data.angle, length: len, charging: false }; s.data.tick -= w.dt;
+    if (s.data.tick <= 0 && segmentDistance(center(w.player), e, { x: e.x + dir.x * len, y: e.y + dir.y * len }) <= .55) { w.hurt(e, damageOf(e, "prismBeam"), { jumpable: false, source: "prismBeam", beam: true }); s.data.tick = .32; }
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  heavySweep(e, s, w) { if (s.phase === "windup" && s.t <= 0) { resolveMelee(e, s, w, "heavySweep", (p) => inArc(e, p, s.data.aim, bodyRadius(e) + 1.5 + .3, 130)); s.tele = null; toPhase(s, "recover", ATTACK_MODULES.heavySweep.recover); } },
+  lampFlare(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const L = ADV.lamp, at = nearestOpen(w, s.data.target.x, s.data.target.y, 1.5);
+    if (at) w.addEffect({ kind: "censerPot", lamp: true, owner: e.id, x: at.x, y: at.y, radius: L.radius2, arming: L.arming, damage: damageOf(e, "lampFlare"), jumpable: true, from: pctr(e), fire: { radius: L.fire.radius, life: L.fire.life, damage: Math.max(1, Math.ceil(e.damage * L.fire.bite)) } });
+    s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.lampFlare.recover);
+  },
+  bellToll(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const T = ADV.toll, top = levelAt(w, e); for (let i = 0; i < T.rings; i++) w.addEffect({ kind: "tollRing", owner: e.id, x: e.x, y: e.y, radius: s.data.radius, arming: i * T.every, life: T.life, total: T.life, damage: damageOf(e, "bellToll"), jumpable: true, maxLevel: top });
+    s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.bellToll.recover);
+  },
+  tendrilRain(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const M = ADV.medusa; s.data.marks.forEach((q, i) => { const at = nearestOpen(w, q.x, q.y, 1); if (at) w.addEffect({ kind: "tendrilFall", owner: e.id, x: at.x, y: at.y, radius: M.radius, arming: M.arming + i * M.step, damage: damageOf(e, "tendrilRain") }); });
+    s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.tendrilRain.recover);
+  },
+  membranePulse(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    if (distance(center(w.player), e) <= ADV.medusa.pulse + .3) w.hurt(e, damageOf(e, "membranePulse"), { jumpable: false, source: "membranePulse" });
+    w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: ADV.medusa.pulse, arming: 0, life: .4, damage: 0 }); s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.membranePulse.recover);
+  },
+  icicleLine(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const I = ADV.icicles, a = s.data.aim; for (let i = 0; i < I.count; i++) { const k = (i + 1) / I.count, q = { x: e.x + a.x * s.data.len * k, y: e.y + a.y * s.data.len * k }; if (w.open(q.x, q.y)) w.addEffect({ kind: "icicle", owner: e.id, x: q.x, y: q.y, radius: I.radius, arming: I.arming + i * I.step, damage: damageOf(e, "icicleLine"), jumpable: true }); }
+    s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.icicleLine.recover);
+  },
+  glideRake(e, s, w) {
+    const A = ATTACK_MODULES.glideRake, G = ADV.glide;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    const going = glideStep(e, s, w, G.length / A.active * w.dt); if (Math.abs(s.data.aim.x) > .05) e.facingX = s.data.aim.x > 0 ? 1 : -1;
+    if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + G.hit) { s.hitOnce = true; w.hurt(e, damageOf(e, "glideRake"), { jumpable: false, source: "glideRake" }); }
+    if (s.t <= 0 || !going || s.data.run >= G.length) { s.tele = null; e.advPose = null; toPhase(s, "recover", A.recover); }
+  },
+  pendulumSwing(e, s, w) {
+    const A = ATTACK_MODULES.pendulumSwing, P = ADV.pendulum;
+    if (s.phase === "windup") { if (s.t <= 0) { e.advCling = false; e.advPerched = false; e.aloft = true; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    const k = 1 - Math.max(0, s.t) / A.active, f = s.data.from, T = s.data.to;
+    e.x = f.x + (T.x - f.x) * k; e.y = f.y + (T.y - f.y) * k; e.hopLift = s.data.fromLift * (1 - k) * (1 - Math.sin(k * Math.PI)) + Math.sin(k * Math.PI) * P.arc * .4; if (Math.abs(T.x - f.x) > .05) e.facingX = T.x > f.x ? 1 : -1;
+    if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + P.hit) { s.hitOnce = true; w.hurt(e, damageOf(e, "pendulumSwing"), { jumpable: false, source: "pendulumSwing" }); }
+    if (s.t <= 0) { e.x = T.x; e.y = T.y; e.hopLift = 0; e.aloft = false; s.advGround = 0; s.advScan = null; s.tele = null; e.advPose = null; toPhase(s, "recover", A.recover); }
+  },
+  slagPour(e, s, w) {
+    if (s.phase !== "windup" || s.t > 0) return;
+    const L = ADV.slag, at = nearestOpen(w, s.data.target.x, s.data.target.y, 1.5);
+    if (at) w.addEffect({ kind: "slagPool", owner: e.id, x: at.x, y: at.y, radius: L.radius, arming: L.arming, life: L.life, total: L.life, damage: damageOf(e, "slagPour"), steps: L.steps, flowIn: L.flowEvery });
+    s.tele = null; e.advPose = null; toPhase(s, "recover", ATTACK_MODULES.slagPour.recover);
   },
 });
 
@@ -3599,7 +3770,7 @@ export function updatePackMonster(e, w) {
   // you attack him, he'll aggro"): a roaming dungeon Crystal ignores the Wayfarer until touched or hurt (hits alert it).
   const calmCrystal = roaming && e.kind === "psychicCrystal";
   if (calmCrystal && !e.aggro) { if (d < CRYSTAL.touchAggro || (Number.isFinite(s.calmHp) && e.hp < s.calmHp)) e.aggro = true; s.calmHp = e.hp; }
-  else if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player))) e.aggro = true;
+  else if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase)) || (e.kind === "sinkmaw" ? e.advBuried !== false : !!e.advBuried);
   if (!e.aggro) {
     if (def.adventureKin && advIdle(e, s, w)) return; // adventure-creatures.ts: a loop, a burial, a perch
@@ -3995,7 +4166,7 @@ function tickGateEffect(f, w) {
 // Ground effects: arming, detonation (once, if the player is inside), webs that slow, and rings.
 // Release 748 (Tim, 2026-11-04): what lies on the ground (pools, trails, webs, tar, brambles) is met at the Wayfarer's feet; on a
 // mount that is the mount's feet (`w.feet`), while blows, shots, blasts and beams meet the rider where drawn (`w.player`).
-export const GROUND_EFFECTS = new Set(["web", "ooze", "lava", "flameTrail", "frostTrail", "flesh", "briar", "darkPool", "doomTar", "mire", "censerSmoke"]);
+export const GROUND_EFFECTS = new Set(["web", "ooze", "lava", "flameTrail", "frostTrail", "flesh", "briar", "darkPool", "doomTar", "mire", "censerSmoke", "iceSlick", "slagPool", "lampFire"]);
 export function tickPackEffects(effects, w) {
   if (!(w.dt > 0)) return effects;
   const body = center(w.player), feet = w.feet ? center(w.feet()) : body, p = body;
@@ -4114,10 +4285,26 @@ export function tickPackEffects(effects, w) {
       const before = { x: f.x, y: f.y }, open = w.projectileOpen || w.tileOpen; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
       if (open && !open(f.x + .5, f.y + .5)) f.life = 0;
       else if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "thornDarts" }); }
-    } else if (f.kind === "censerPot") { // the Censer Warden's pot bursts, and leaves smoke that slows
-      if (!f.detonated) { f.detonated = true; f.life = .35; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "censerLob" });
-        const S = ADV.censer.smoke; w.addEffect({ kind: "censerSmoke", owner: f.owner, x: f.x, y: f.y, radius: S.radius, arming: 0, life: S.life, total: S.life, damage: 0, slow: S.slow }); }
-    } else if (f.kind === "censerSmoke") { if (distance(p, f) <= f.radius) w.slow?.(f.slow, .25);
+    } else if (f.kind === "censerPot") { // the Censer Warden's pot bursts, and leaves smoke that slows (the Lamplighter's lamp: fire)
+      if (!f.detonated) { f.detonated = true; f.life = .35; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: f.lamp ? "lampFlare" : "censerLob" });
+        const S = ADV.censer.smoke; if (f.fire) w.addEffect({ kind: "lampFire", owner: f.owner, x: f.x, y: f.y, radius: f.fire.radius, arming: 0, life: f.fire.life, total: f.fire.life, damage: f.fire.damage });
+        else w.addEffect({ kind: "censerSmoke", owner: f.owner, x: f.x, y: f.y, radius: S.radius, arming: 0, life: S.life, total: S.life, damage: 0, slow: S.slow }); }
+    } else if (f.kind === "censerSmoke" || f.kind === "iceSlick") { if (distance(p, f) <= f.radius) w.slow?.(f.slow, .25);
+    } else if (f.kind === "icicle") { // the Rime Sentinel's icicle bursts, and leaves the ground slick
+      if (!f.detonated) { f.detonated = true; f.life = .35; if (distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "icicleLine" });
+        const S = ADV.icicles.slick; w.addEffect({ kind: "iceSlick", owner: f.owner, x: f.x, y: f.y, radius: S.radius, arming: 0, life: S.life, total: S.life, damage: 0, slow: S.slow }); }
+    } else if (f.kind === "tollRing") { // the Knellkeeper's ring rolls out; it never touches ground higher than the bell
+      const r = f.radius * (1 - Math.max(0, f.life) / (f.total || 1)); f.ring = r;
+      if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < ADV.toll.band && (Number(w.elevation?.(p.x, p.y)) || 0) <= (f.maxLevel || 0) + ADV.toll.above) { f.hit = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "bellToll" }); }
+    } else if (f.kind === "lampFire") { // the Lamplighter's spilled lamp burns a while
+      if (distance(p, f) <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + ADV.lamp.fire.tick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "lampFlare", beam: true }); }
+    } else if (f.kind === "slagPool") { // the Slagwright's slag: it burns, then runs on down to lower ground (ADV.slag)
+      if (distance(p, f) <= f.radius + .1 && !(f.nextBite > f.age)) { f.nextBite = f.age + ADV.slag.tick; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "slagPour", beam: true }); }
+      f.flowIn = (f.flowIn ?? 0) - w.dt;
+      if (f.steps > 0 && f.flowIn <= 0 && w.elevation) { const here = Number(w.elevation(f.x, f.y)) || 0; let best = null;
+        for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { const q = { x: Math.round(f.x) + dx, y: Math.round(f.y) + dy }, lv = Number(w.elevation(q.x, q.y)) || 0; if (lv < here && w.open(q.x, q.y) && (!best || lv < best.lv)) best = { ...q, lv }; }
+        if (best) w.addEffect({ kind: "slagPool", owner: f.owner, x: best.x, y: best.y, radius: f.radius, arming: .35, life: ADV.slag.life, total: ADV.slag.life, damage: f.damage, steps: f.steps - 1, flowIn: ADV.slag.flowEvery });
+        f.steps = 0; }
     } else if (f.kind === "thorn" || f.kind === "clawBeam") {
       const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
       if (w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;

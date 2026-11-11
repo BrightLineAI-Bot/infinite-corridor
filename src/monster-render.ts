@@ -2,7 +2,7 @@
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
 import { SEED_REALM_BODIES } from "./seed-realm-render.ts"; // seed realms
-import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect } from "./adventure-creature-render.ts"; // adventure creatures
+import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.ts"; // adventure creatures
 import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.ts";
 import { MORPH_FORM, beamAngle } from "./listener-morph.ts";
 
@@ -1652,6 +1652,7 @@ export function drawNativePackEffects(ctx, e, s, now, presentation = {}, anchors
   ctx.restore();
 }
 export function drawNativePackFloor(ctx, e, s, now, quiet = false) {
+  if (e.kind === 'sinkmaw' && e.hidden && e.advBuried && !e.dead) { drawSinkmawDimple(ctx, (e.x + .5) * s, (e.y + .82) * s, s * Math.max(.6, Number(e.scale) || 1), MONSTER_PACK.sinkmaw.palette, quiet ? 0 : now / 1000); return; } // Tim (2026-11-11): its dimple and ripples on the Close View floor too
   if (e.kind !== 'sunderjaw' || !e.hidden || e.gloomVeil || e.dead) return;
   const u = s * Math.max(.6, Number(e.scale) || 1), k = (e.x + .5) * s, b = (e.y + .82) * s, t = quiet ? 0 : now / 1000, p = MONSTER_PACK.sunderjaw.palette;
   ctx.save(); ctx.fillStyle = p[1] + 'cc'; ctx.beginPath(); ctx.ellipse(k, b, u * .45, u * .35, 0, 0, TAU); ctx.fill();
