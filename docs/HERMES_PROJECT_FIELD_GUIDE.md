@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 899 — Adventure creatures: the second set, for the four later themes
+
+Tim, 2026-11-11: creatures for the other floors too, so each theme has its own unique creatures; no bosses ("I don't want you to really build bosses"). The Sinkmaw's dimple and ripples should show in Close View; the Gallery Lurker keeps clinging to walls.
+
+**CODE:** `ADVENTURE_CREATURES` covers all seven themes; new keys `lamplitCity`, `alienCapital`, `frostCitadel`, `emberFoundry` (aliases `city`, `alien`, `frost`, `foundry`). `ADV` gains `lamp`, `toll`, `medusa`, `icicles`, `glide`, `pendulum`, `slag`; `loopRoute`/`lampLoop` give the patrol beat. `monster-pack.ts`: the `patrol` brain notices only inside its lamp cone (`advSees`); percher behaviour keyed on the `perch` brain; twelve modules (`lampFlare`, `poleThrust`, `bellToll`, `heavySweep`, `tendrilRain`, `membranePulse`, `phaseStep`, `prismBeam`, `icicleLine`, `glideRake`, `pendulumSwing`, `slagPour`); effects `tollRing`, `tendrilFall`, `icicle`, `iceSlick`, `lampFire`, `slagPool` drawn in `adventure-creature-render.ts`. `drawNativePackFloor` draws a buried Sinkmaw (`drawSinkmawDimple`). Close View models in `close-view-adventure-models.ts` (146–220 triangles).
+
+**BOUNDARY:** Same isolation as the first set: only an enabled adventure theme or the Proving Ground places them, through `Game.scaleToRegion`; the four themes stay `since: null`, so no Pentagon places them yet. Toll rings never touch ground higher than the bell; slag only runs downhill, at most `ADV.slag.steps`; a glide rebounds at most `ADV.glide.rebounds` and leaves at most `ADV.glide.slicks` slicks; the Medusa never pushes. Every damaging move telegraphs at least 0.4 s; no hit exceeds the strongest ordinary pack hit. No save change. Phone cost unmeasured.
+
 ## Release 898 — Close View beasts: the Mountain Turtle
 
 Tim, 2026-11-11: continue through the beasts, each with visual and movement passes; of the Turtle, "make the turtle's neck more segmented, like it's made of stone" and "make his shell more weathered".

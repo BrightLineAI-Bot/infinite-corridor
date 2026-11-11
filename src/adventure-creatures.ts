@@ -17,7 +17,7 @@ export const ADVENTURE_CREATURE_VERSION = 1;
 
 // The themes' rosters. `habitat` says where a spawn belongs (adventureSpawnSpot): `perch` high ground or a wall, `vantage` high ground
 // with a view, `open` any open floor, `sand` flat open ground with room round it, `sky` open ground under open sky (it flies a loop over
-// its home). `weight` is its share of a theme's picks; `pack` how many come together.
+// its home), `flat` level open ground with room round it (a patrol's streets, a frozen yard). `weight` is its share of a theme's picks; `pack` how many come together.
 export const ADVENTURE_CREATURES = Object.freeze({
   tomb: Object.freeze([
     Object.freeze({ kind: "galleryLurker", role: "ambusher", habitat: "perch", weight: 3, pack: [1, 2] }),
@@ -31,6 +31,23 @@ export const ADVENTURE_CREATURES = Object.freeze({
     Object.freeze({ kind: "sinkmaw", role: "ambusher", habitat: "sand", weight: 2, pack: [1, 1] }),
     Object.freeze({ kind: "cinderKite", role: "patrol", habitat: "sky", weight: 3, pack: [1, 2] }),
   ]),
+  // The second set (Tim, 2026-11-11: "creatures for the other four themes... so each theme has its own unique creatures"; no bosses).
+  lamplitCity: Object.freeze([
+    Object.freeze({ kind: "lamplighter", role: "patrol", habitat: "flat", weight: 3, pack: [1, 1] }),
+    Object.freeze({ kind: "knellkeeper", role: "ranged", habitat: "vantage", weight: 2, pack: [1, 1] }),
+  ]),
+  alienCapital: Object.freeze([
+    Object.freeze({ kind: "spindriftMedusa", role: "ranged", habitat: "sky", weight: 3, pack: [1, 2] }),
+    Object.freeze({ kind: "prismStilt", role: "hunter", habitat: "vantage", weight: 2, pack: [1, 1] }),
+  ]),
+  frostCitadel: Object.freeze([
+    Object.freeze({ kind: "rimeSentinel", role: "ranged", habitat: "vantage", weight: 2, pack: [1, 2] }),
+    Object.freeze({ kind: "lakeGlider", role: "hunter", habitat: "flat", weight: 3, pack: [1, 2] }),
+  ]),
+  emberFoundry: Object.freeze([
+    Object.freeze({ kind: "hookhanger", role: "ambusher", habitat: "perch", weight: 3, pack: [1, 2] }),
+    Object.freeze({ kind: "slagwright", role: "ranged", habitat: "vantage", weight: 2, pack: [1, 1] }),
+  ]),
 });
 export const ADVENTURE_THEME_IDS = Object.freeze(Object.keys(ADVENTURE_CREATURES));
 export const ADVENTURE_KINDS = Object.freeze(ADVENTURE_THEME_IDS.flatMap((t) => ADVENTURE_CREATURES[t].map((q) => q.kind)));
@@ -38,7 +55,8 @@ export const ADVENTURE_THEME_OF = Object.freeze(Object.fromEntries(ADVENTURE_THE
 export const isAdventureKind = (kind) => Object.hasOwn(ADVENTURE_THEME_OF, kind);
 // A theme's roster by its id, forgiving spelling ("verdant-ruin", "Verdant Ruin", "ash_waste" all resolve). Unknown themes: [].
 const squash = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-const THEME_ALIASES = Object.freeze({ tomb: "tomb", cursedtomb: "tomb", verdantruin: "verdantRuin", verdant: "verdantRuin", jungle: "verdantRuin", ashwaste: "ashWaste", ash: "ashWaste", desert: "ashWaste" });
+const THEME_ALIASES = Object.freeze({ tomb: "tomb", cursedtomb: "tomb", verdantruin: "verdantRuin", verdant: "verdantRuin", jungle: "verdantRuin", ashwaste: "ashWaste", ash: "ashWaste", desert: "ashWaste",
+  lamplitcity: "lamplitCity", city: "lamplitCity", aliencapital: "alienCapital", alien: "alienCapital", frostcitadel: "frostCitadel", frost: "frostCitadel", emberfoundry: "emberFoundry", foundry: "emberFoundry" });
 export function adventureCreaturesFor(theme) { const id = THEME_ALIASES[squash(theme)]; return id ? ADVENTURE_CREATURES[id] : []; }
 // A deterministic pick from a theme's roster for one spawn slot (`key` a stable id: the area and the slot).
 export function pickAdventureCreature(theme, key) {
@@ -63,11 +81,13 @@ export const ADV = Object.freeze({
     ledgeClimb: Object.freeze({ to: "spot", arc: .7, climbLift: .35, damage: false, cling: true, pose: "coil", search: "perch" }),
     vineVault: Object.freeze({ to: "player", track: .4, radius: 1.15, arc: .9, climbLift: .45, perLevel: .08, maxBonus: .24, damage: true, pose: "crouch" }),
     vineRetreat: Object.freeze({ to: "spot", arc: 1, climbLift: .45, damage: false, cling: false, pose: "crouch", search: "retreat" }),
+    phaseStep: Object.freeze({ to: "spot", arc: 0, climbLift: 0, damage: false, cling: false, pose: "blink", search: "retreat" }), // the Prism Stilt steps up a plate: no hop, a shimmer
   }),
   // The Leaper's retreat: high ground near the Wayfarer if there is any, else open ground `flat` tiles from them.
   retreat: Object.freeze({ radii: Object.freeze([3, 4.5]), dirs: 12, flat: [3, 5] }),
   // Height reach: a ranged attack reaches `per` tiles farther for each level its owner stands above the Wayfarer, up to `max`.
-  reach: Object.freeze({ censerLob: Object.freeze({ per: 1, max: 3 }), thornDarts: Object.freeze({ per: 1.2, max: 3.6 }) }),
+  reach: Object.freeze({ censerLob: Object.freeze({ per: 1, max: 3 }), thornDarts: Object.freeze({ per: 1.2, max: 3.6 }), lampFlare: Object.freeze({ per: 1, max: 3 }),
+    bellToll: Object.freeze({ per: .8, max: 2.4 }), icicleLine: Object.freeze({ per: 1, max: 3 }), slagPour: Object.freeze({ per: 1, max: 3 }) }),
   // The Censer Warden's pots: one at the Wayfarer, one where they are going (`lead` seconds ahead). Each bursts after `arming` and
   // leaves smoke that slows (no damage) for `life` seconds.
   censer: Object.freeze({ lead: 1.1, arming: Object.freeze([1.05, 1.3]), radius: 1.05, smoke: Object.freeze({ radius: 1.15, life: 3, slow: .65 }) }),
@@ -84,6 +104,28 @@ export const ADV = Object.freeze({
   // a `lane` tiles long, `width` wide, dropping `shards` of hot glass that burst after `arming` (+ `step` each).
   kite: Object.freeze({ points: 6, radius: Object.freeze([3.5, 5.5]), speed: 1.6, near: .6, leash: 11, altitude: 1.3, low: .45, ease: 2.2,
     lane: 7, width: .7, shards: 4, shardRadius: .8, arming: .55, step: .14 }),
+  // ---- the second set
+  // The Lamplighter walks a loop of `points` waypoints `radius` round its home at `speed` (a waypoint reached within `arrive`); it is roused by the Wayfarer within `near`, or
+  // within `sight` inside its lamp's cone (`cone` degrees either side of its heading, with a clear line). Its thrown lamp bursts like a
+  // pot and leaves a burning patch (`fire`: radius, life, a bite every `tick` seconds of `bite` x its damage).
+  lamp: Object.freeze({ points: 5, radius: Object.freeze([3, 4.5]), speed: .55, arrive: .5, near: 2, sight: 6.5, cone: 40, step: .6, arming: 1.05, radius2: 1, fire: Object.freeze({ radius: 1, life: 2.4, bite: .3, tick: .6 }) }),
+  // The Knellkeeper's toll: `rings` rings `every` seconds apart rolling out to `radius` (+ height reach) over `life` seconds each.
+  // A ring never touches ground higher than the bell (`above` levels): climb to it.
+  toll: Object.freeze({ rings: 3, every: .45, radius: 4.2, life: .8, band: .5, above: .25 }),
+  // The Spindrift Medusa: tendrils on `count` marks (the Wayfarer, `lead` seconds ahead, then round them `spread` tiles), each after
+  // `arming` (+ `step`); its pulse hurts within `pulse` of it. It drifts at `altitude`, higher (by `perLevel` a level, up to `maxLift`)
+  // when the Wayfarer stands above it.
+  medusa: Object.freeze({ count: 3, lead: 1, spread: 1.6, arming: .85, step: .15, radius: .9, pulse: 2.1, altitude: .9, perLevel: .35, maxLift: 1.6, ease: 1.5 }),
+  // The Rime Sentinel's icicles: `count` down a lane `reach` long (+ height reach), each after `arming` (+ `step`), each leaving a slick.
+  icicles: Object.freeze({ count: 5, reach: 6.5, arming: .65, step: .12, radius: .75, width: .6, slick: Object.freeze({ radius: .9, life: 2.5, slow: .6 }) }),
+  // The Lake Glider's rake: a lane `length` long, `width` wide, flown in `active` seconds; off a wall it rebounds `rebounds` times; it
+  // leaves at most `slicks` slick patches (ADV.icicles.slick) along its run. `hit`: past its body.
+  glide: Object.freeze({ length: 6.5, width: .6, rebounds: 1, slicks: 4, hit: .55 }),
+  // The Hookhanger's pendulum: from its perch it swings `over` tiles past the Wayfarer along the marked lane, `arc` tiles high mid-swing.
+  pendulum: Object.freeze({ over: 2, arc: .9, hit: .55, width: .8 }),
+  // The Slagwright's pour: a pool `radius` wide after `arming`, burning (`tick` seconds a bite) for `life`; every `flowEvery` seconds it
+  // runs on to a lower neighbouring floor, at most `steps` times (a level down, never up, never onto closed ground).
+  slag: Object.freeze({ radius: .85, arming: .6, life: 3.5, tick: .6, flowEvery: .45, steps: 3 }),
 });
 
 // ---------------------------------------------------------------- helpers (pure; `w` is the pack world: open, elevation, tileOpen)
@@ -121,8 +163,11 @@ export function findRetreat(e, w, p, seq = 0) {
 }
 // The Cinder Kite's loop round `home`: `points` waypoints at alternating radii, the turning direction and start angle from its id.
 // Points over closed ground are dropped; at least two are kept (else the loop is a lazy circle on its home).
-export function kiteLoop(id, home, w) {
-  const K = ADV.kite, h = hashSeed(`${id}:kite-loop`), turn = (h % 628) / 100, dir = (h >>> 10) % 2 ? 1 : -1, out = [];
+export function kiteLoop(id, home, w) { return loopRoute(id, home, w, ADV.kite, "kite-loop"); }
+// The Lamplighter's beat round its home (the same rule, its own numbers and hash).
+export function lampLoop(id, home, w) { return loopRoute(id, home, w, ADV.lamp, "lamp-loop"); }
+export function loopRoute(id, home, w, K, tag) {
+  const h = hashSeed(`${id}:${tag}`), turn = (h % 628) / 100, dir = (h >>> 10) % 2 ? 1 : -1, out = [];
   for (let i = 0; i < K.points; i++) {
     const a = turn + dir * i * TAU / K.points, r = K.radius[(i + (h >>> 12)) % 2], q = { x: home.x + Math.cos(a) * r, y: home.y + Math.sin(a) * r };
     if (!w || w.open(q.x, q.y)) out.push({ x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 });
@@ -147,7 +192,7 @@ export function adventureSpawnSpot(area, kind, near, used = []) {
     if (!ok(x, y)) continue;
     const rise = area.level(x, y) - base;
     if (habitat === "perch" || habitat === "vantage") { if (rise >= S.perchRise && roomy(x, y, 0)) return { x, y }; if (!fallback && habitat === "perch" && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !area.open(x + dx, y + dy))) fallback = { x, y }; if (!fallback && habitat === "vantage" && roomy(x, y, S.room)) fallback = { x, y }; continue; }
-    if (habitat === "sand") { if (roomy(x, y, S.sandRoom)) return { x, y }; continue; }
+    if (habitat === "sand" || habitat === "flat") { if (roomy(x, y, S.sandRoom)) return { x, y }; continue; }
     if (roomy(x, y, S.room)) return { x, y };
   }
   return fallback;
