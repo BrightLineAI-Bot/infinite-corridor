@@ -692,11 +692,14 @@ function layAdventureMosaic(map, id, q, theme) {
   const M = AP.mosaics, want = q.hall ? M.hall : M[q.area] ?? 0; if (!want || (hashSeed(`${id}:mosaic`) % 1000) / 1000 >= want) return null;
   const W = map.width, T = map.tiles, tint = theme.palette.light;
   if (T.some((t) => t.sigil)) { for (const t of T) if (t.sigil) t.sigilTint = tint; map.watcherPlaced = true; return null; } // a hall that inlays the sigil itself (ballroom, arena) keeps its own, in the ward's light
-  const ok = (t, x, y, cx, cy) => !!t && !t.blocked && !t.doorway && !t.plate && !t.slope && !t.hole && !t.pentFinaleClear && !t.inlay && !t.sigil && (t.elev || 0) === (T[cy * W + cx]?.elev || 0);
+  const open = (t) => !!t && !t.blocked && !t.doorway && !t.plate && !t.slope && !t.hole && !t.pentFinaleClear && !t.inlay && !t.sigil, ok = (t, x, y, cx, cy) => open(t) && (t.elev || 0) === (T[cy * W + cx]?.elev || 0);
+  const Hh = map.height, S = new Int32Array((W + 1) * (Hh + 1)); // a summed table of the tiles that may not carry it: a box is tested in O(1) before the full test
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) S[(y + 1) * (W + 1) + x + 1] = (open(T[y * W + x]) ? 0 : 1) + S[y * (W + 1) + x + 1] + S[(y + 1) * (W + 1) + x] - S[y * (W + 1) + x];
+  const boxClear = (x0, y0, x1, y1) => S[(y1 + 1) * (W + 1) + x1 + 1] - S[y0 * (W + 1) + x1 + 1] - S[(y1 + 1) * (W + 1) + x0] + S[y0 * (W + 1) + x0] === 0;
   const H = map.height, mx = (W >> 1) + (hashSeed(`${id}:mosaic-jx`) % 5) - 2, my = (H >> 1) + (hashSeed(`${id}:mosaic-jy`) % 5) - 2, m = M.margin, spots = [];
   for (let y = 1 - SIGIL_BOUNDS.minY + m; y < H - 1 - SIGIL_BOUNDS.maxY - m; y++) for (let x = 1 - SIGIL_BOUNDS.minX + m; x < W - 1 - SIGIL_BOUNDS.maxX - m; x++) spots.push({ x, y, d: (x - mx) ** 2 + (y - my) ** 2 });
   spots.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x); // every spot, nearest the (seeded) middle first: at most a chamber's tiles
-  const spot = spots.find((p) => sigilFits(map, W, p.x, p.y, ok, m)); if (!spot) return null;
+  const spot = spots.find((p) => boxClear(p.x + SIGIL_BOUNDS.minX - m, p.y + SIGIL_BOUNDS.minY - m, p.x + SIGIL_BOUNDS.maxX + m, p.y + SIGIL_BOUNDS.maxY + m) && sigilFits(map, W, p.x, p.y, ok, m)); if (!spot) return null;
   inlaySigil(map, W, spot.x, spot.y, { mosaic: true });
   for (let y = spot.y + SIGIL_BOUNDS.minY - 1; y <= spot.y + SIGIL_BOUNDS.maxY + 1; y++) for (let x = spot.x + SIGIL_BOUNDS.minX - 1; x <= spot.x + SIGIL_BOUNDS.maxX + 1; x++) { const t = T[y * W + x]; if (t?.sigil) t.sigilTint = tint; }
   (map.sigils ||= []).push({ x: spot.x, y: spot.y, kind: "inlay", mosaic: true, scale: SIGIL_BOUNDS.maxY - SIGIL_BOUNDS.minY + 1 });
