@@ -7,6 +7,7 @@ import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-be
 import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.ts";
 import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.ts";
 import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.ts";
+import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.ts";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -16,6 +17,9 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   mountainTurtle: Object.freeze({ mesh: turtleMesh, createTrack: createTurtleTrack, sample: sampleTurtle, get scale() { return TURTLE_RIG.closeViewScale; } }),
   questingBeast: Object.freeze({ mesh: qbMesh, createTrack: createQbTrack, sample: sampleQb, get scale() { return QB_RIG.closeViewScale; } }),
   nanobotKnight: Object.freeze({ mesh: knightMesh, createTrack: createKnightTrack, sample: sampleKnight, get scale() { return KNIGHT_RIG.closeViewScale; } }),
+  // the two dragons share one body in their own art's colours
+  crimsonTyrant: Object.freeze({ mesh: tyrantMesh, createTrack: () => createDragonTrack('crimsonTyrant'), sample: sampleDragon, get scale() { return DRAGON_RIG.closeViewScale; } }),
+  doomChaser: Object.freeze({ mesh: doomMesh, createTrack: () => createDragonTrack('doomChaser'), sample: sampleDragon, get scale() { return DRAGON_RIG.closeViewScale; } }),
 });
 // Forms the body covers. Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
 export function closeViewBeastEligible(e) {
