@@ -22,7 +22,7 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ } from "./close-view-outdoor.ts";
+import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING } from "./close-view-outdoor.ts";
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -3064,7 +3064,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map, RELIEF.map === g.map) : null;
   if (openWorld && glOutdoor(openWorld)) { const sk = openWorld.sky, view = OUTDOOR.view[g.presentation?.effectiveQuality] || OUTDOOR.view.balanced, half = GROUND.W / (2 * s), W2 = OUTDOOR.water, R2 = OUTDOOR.relief, D2 = OUTDOOR.detail;
     F.outdoor = 1; F.fogNear = view.near; F.fogFar = view.far; F.reach = F.fogFar + 2; F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar;
-    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= OUTDOOR.torch;
+    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= sk.torch ?? OUTDOOR.torch;
     F.grade[0] = sk.grade[0]; F.grade[1] = sk.grade[1]; F.grade[2] = sk.grade[2]; F.grade[3] = 1 / sk.grade[3]; F.finish[0] = Q.vignette ? OUTDOOR.vignette : OUTDOOR.vignette * .6;
     F.outdoorP[1] = half - OUTDOOR.blend.inner; F.outdoorP[2] = half - OUTDOOR.blend.outer; F.outdoorP[3] = Q.detail ? 1 : 0;
     F.skyZ[0] = sk.zenith[0]; F.skyZ[1] = sk.zenith[1]; F.skyZ[2] = sk.zenith[2]; F.skyZ[3] = sk.clouds; F.skyH[0] = sk.horizon[0]; F.skyH[1] = sk.horizon[1]; F.skyH[2] = sk.horizon[2]; F.skyH[3] = sk.ridgeH;
@@ -3072,7 +3072,11 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     F.outW[0] = W2.base; F.outW[1] = W2.glance; F.outW[2] = W2.ripple; F.outW[3] = W2.rippleAmp; F.outR[0] = R2.foot; F.outR[1] = R2.dark; F.outR[2] = R2.lip; F.outR[3] = R2.light;
     F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint;
     F.outX[0] = OUTDOOR.ground.art; F.outX[1] = W2.shore; F.outX[2] = Q.relief ? W2.foam : W2.foam * .6; F.outX[3] = g.map.movers?.length ? 1 : 0; // rafts are drawn on the water by the ordinary art: keep it there
-    F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.motes ? 1 : 0; } // clouds in the water: the full tier only
+    F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.motes ? 1 : 0; // clouds in the water: the full tier only
+    // the sky's mood: stars, the clouds' undersides, the moon, a distant flash (none with reduced motion) and the clouds' colour
+    const flash = reduce ? 0 : outdoorLightning(now, sk.lightning || 0); F.mood[0] = sk.stars || 0; F.mood[1] = sk.cloudDark || 0; F.mood[2] = sk.moon || 0; F.mood[3] = flash;
+    if (sk.cloud) { F.moodC[0] = sk.cloud[0]; F.moodC[1] = sk.cloud[1]; F.moodC[2] = sk.cloud[2]; } else F.moodC.fill(1); F.moodC[3] = flash > 0 ? LIGHTNING.az : 0;
+    if (flash > 0) { const lift = 1 + OUTDOOR.lightning.lift * flash; F.amb[0] *= lift; F.amb[1] *= lift; F.amb[2] *= lift; } }
   // a house's roof is left out while the Wayfarer is inside it, the camera is over it, or it stands between them
   F.relief = F.outdoor && openWorld.ground && glRelief(openWorld) ? 1 : 0;
   F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy);

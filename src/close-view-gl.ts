@@ -132,6 +132,9 @@ uniform vec4 u_outdoor; uniform vec4 u_skyZ; uniform vec4 u_skyH; uniform vec4 u
 // the water must keep the ordinary art (rafts drawn on it); outY: deep water's darkening, shallow water's lift, the
 // shoreline's wander (tiles), the reflection's clouds (1 balanced and full)
 uniform vec4 u_outX; uniform vec4 u_outY;
+// the sky's mood (close-view-outdoor.ts OUTDOOR.moods): mood: stars, the clouds' dark undersides, the moon (1: its disc for the
+// sun's), a distant lightning flash now (0-1; 0 with reduced motion); moodC: the clouds' colour, the flash's azimuth (radians)
+uniform vec4 u_mood; uniform vec4 u_moodC;
 uvec4 maskAt(ivec2 T) { if (T.x < 0 || T.y < 0 || T.x >= u_mapSize.x || T.y >= u_mapSize.y) return uvec4(0u, 0u, 0u, 1u); return texelFetch(u_mask, T, 0); }
 bool pitCode(uint g) { return g == 1u || g == 3u || g == 4u || g == 5u; }
 bool wallAt(ivec2 T) { return (maskAt(T).a & 1u) == 1u; }
@@ -254,15 +257,28 @@ vec3 ceilMat(vec2 P, out float h, out float dark) {
     h = girder + rib * 0.5 + pipe * 0.7; dark = (1.0 - max(girder, max(pipe, rib))) * u_ceilK.z; }
   return c;
 }
-// the open sky: horizon to zenith, the sun and its glow, clouds drifting (still with reduced motion), the far ridge line
+// the open sky: horizon to zenith, the sun (or the moon) and its glow, stars, clouds drifting (still with reduced motion), a
+// distant lightning flash in a storm, the far ridge line
 vec3 outdoorSky(vec3 ray, bool full) {
   vec3 d = normalize(ray); float up = clamp(d.z, 0.0, 1.0), sd = max(dot(d, u_sun.xyz), 0.0);
-  vec3 c = mix(u_skyH.rgb, u_skyZ.rgb, pow(up, 0.5)) + u_sunC * (0.16 * pow(sd, 5.0) + 0.45 * pow(sd, 60.0) + 2.0 * smoothstep(0.9993, 0.9997, sd));
+  float disc = smoothstep(0.9993, 0.9997, sd);
+  vec3 c = mix(u_skyH.rgb, u_skyZ.rgb, pow(up, 0.5)) + u_sunC * (0.16 * pow(sd, 5.0) + 0.45 * pow(sd, 60.0) + 2.0 * disc * (1.0 - u_mood.z));
+  float cover = 0.0;
+  if (u_mood.x > 0.0 && d.z > 0.0) { vec2 sp = d.xy / (d.z + 0.35) * 70.0; vec2 cell = floor(sp); float h = hash12(cell); // stars: one hash a cell, fixed to the sky
+    vec2 o = vec2(hash12(cell + 7.1), hash12(cell + 3.3)) * 0.6 + 0.2; float r = length(fract(sp) - o);
+    float star = step(0.965, h) * smoothstep(0.16, 0.0, r) * (0.45 + 0.55 * fract(h * 37.0)) * (0.8 + 0.2 * sin(u_time * 0.002 + h * 60.0));
+    c += vec3(0.85, 0.9, 1.0) * star * u_mood.x * smoothstep(0.02, 0.3, d.z); }
+  if (u_mood.z > 0.5) { float m = smoothstep(0.99935, 0.99965, sd); c = mix(c, vec3(0.86, 0.88, 0.95) * (0.85 + 0.15 * vnoise(d.xy * 900.0)), m); } // the moon's disc
   if (!full) return c;
   if (u_skyZ.w > 0.0 && d.z > 0.0) { vec2 q = d.xy / (d.z + 0.16) * 0.9 + vec2(u_time * 0.000006, u_time * 0.0000025); // the low tier: one layer of noise, not three
-    float n = u_finish.z > 0.5 ? fbm(q * 1.5) : vnoise(q * 1.5) * 0.85 + 0.08, cover = smoothstep(1.0 - u_skyZ.w * 0.7, 1.12 - u_skyZ.w * 0.45, n + 0.12);
-    vec3 cc = mix(u_skyH.rgb, vec3(1.0), 0.5) * (0.82 + 0.3 * n) + u_sunC * 0.18 * pow(sd, 3.0);
+    float n = u_finish.z > 0.5 ? fbm(q * 1.5) : vnoise(q * 1.5) * 0.85 + 0.08; cover = smoothstep(1.0 - u_skyZ.w * 0.7, 1.12 - u_skyZ.w * 0.45, n + 0.12);
+    vec3 cc = mix(u_skyH.rgb, u_moodC.rgb, 0.5) * (0.82 + 0.3 * n) * (1.0 - u_mood.y * (1.0 - n) * 0.85) + u_sunC * 0.18 * pow(sd, 3.0);
     c = mix(c, cc, cover * smoothstep(0.0, 0.14, d.z) * 0.85); }
+  if (u_mood.w > 0.0) { float sa = mod(atan(d.y, d.x) - u_moodC.w + 3.14159265, 6.2831853) - 3.14159265, a = abs(sa); // distant lightning: the clouds lit from within near its bearing
+    float g = u_mood.w * exp(-a * a * 9.0) * exp(-max(d.z, 0.0) * 5.0);
+    c += vec3(0.62, 0.68, 0.9) * g * (0.35 + 1.1 * cover);
+    if (u_finish.z > 0.5 && u_mood.w > 0.55) { float off = (vnoise(vec2(d.z * 60.0, u_moodC.w * 10.0)) - 0.5) * 0.05 + (vnoise(vec2(d.z * 210.0, u_moodC.w * 3.0)) - 0.5) * 0.012; // its bolt (detail tiers)
+      c += vec3(0.9, 0.93, 1.0) * smoothstep(0.004, 0.0, abs(sa - off)) * step(0.0, d.z) * (1.0 - smoothstep(0.12, 0.2, d.z)) * u_mood.w; } }
   if (u_skyH.w > 0.0) { vec2 a = normalize(d.xy + vec2(1e-5)); float fw = 1.5 / u_F;
     float far = u_skyH.w * 0.62 * (0.4 + 0.6 * vnoise(a * 5.0 + 11.0)); // a paler, farther range behind
     c = mix(c, mix(u_ridge.rgb, u_skyH.rgb, 0.62), 1.0 - smoothstep(far - fw, far + fw, d.z));
@@ -968,7 +984,7 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1,
   // outdoors (close-view-outdoor.ts); sunC stays black and outdoor 0 indoors
-  outdoor: 0, sun: new Float32Array([0, 0, 1, 0]), sunC: new Float32Array(3), outdoorP: new Float32Array(4), skyZ: new Float32Array(4), skyH: new Float32Array(4), ridge: new Float32Array(4), outW: new Float32Array(4), outR: new Float32Array(4), outD: new Float32Array(4), outX: new Float32Array(4), outY: new Float32Array(4), props: 0,
+  outdoor: 0, sun: new Float32Array([0, 0, 1, 0]), sunC: new Float32Array(3), outdoorP: new Float32Array(4), skyZ: new Float32Array(4), skyH: new Float32Array(4), ridge: new Float32Array(4), outW: new Float32Array(4), outR: new Float32Array(4), outD: new Float32Array(4), outX: new Float32Array(4), outY: new Float32Array(4), mood: new Float32Array(4), moodC: new Float32Array(4), props: 0,
   // the solids drawn in runs (start, count) when a house's roof is left out; nRuns 0: the whole buffer in one call
   runs: new Int32Array(2 * 16), nRuns: 0, relief: 0 };
 export function drawSceneGL(ground, U, models = null, hero = null, beasts = null) {
@@ -1002,7 +1018,7 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   // 1b. outdoors: the outcrops and trees, one static buffer, opaque, with depth
   const outdoor = F.outdoor > 0 && !!S.prop && S.outdoorKey !== null;
   const outdoorU = (P) => { const u = P.U; gl.uniform1i(u.u_ground, 0); gl.uniform1i(u.u_mask, 1); gl.uniform4f(u.u_gmap, F.gmapK, F.gmapX, F.gmapY, F.atlasY); gl.uniform2f(u.u_tex, ground.width, ground.height); gl.uniform2i(u.u_mapSize, S.maskW, S.maskH);
-    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY);
+    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY); gl.uniform4fv(u.u_mood, F.mood); gl.uniform4fv(u.u_moodC, F.moodC);
     gl.uniform1i(u.u_terrainTex, outdoor ? 3 : 0); if (outdoor) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, S.tex.terrain); gl.activeTexture(gl.TEXTURE0); } };
   // 1a. outdoors: the heightfield (its tops shaded as the open ground, its cliffs and pits), opaque, with depth
   if (outdoor && F.relief > 0 && S.terr && S.terrVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.useProgram(S.terr.p); cam(S.terr); light(S.terr); outdoorU(S.terr);
