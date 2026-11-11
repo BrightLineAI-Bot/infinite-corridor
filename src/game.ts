@@ -34,7 +34,7 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, activeUtility, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS } from "./spell-slots.ts";
+import { ensureSlots, slotted, pairingMods, slotReadiness, activeUtility, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS, toggleLantern } from "./spell-slots.ts";
 import { pressOculus, tickOculus } from "./oculus.ts"; // release 874: the Oculus, a utility-button choice
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
@@ -6962,6 +6962,7 @@ export class Game {
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
   castSlot(slot, now = this.lastUpdateNow || 0) {
     const t = slotTool(this.save, slot);
+    if (t?.tool === "lantern") { const r = toggleLantern(this.save); this.message = r.message; return true; } // the Lantern (spell-slots.ts LANTERN): light or shutter it
     if (t) return t.tool === "build" ? this.pressBuild(false) : this.useButtonItem(t.item, now);
     const c = slotted(this.save, slot);
     if (!c) { this.message = `Slot ${slot.toUpperCase()} is empty — fill it in the Arcanum.`; return false; }
