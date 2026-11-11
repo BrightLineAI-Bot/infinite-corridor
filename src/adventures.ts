@@ -62,7 +62,9 @@ export const ADVENTURE_PENTAGON = {
 // open air, close-view.ts OPEN_AIR_KINDS, such as a labyrinth court's yardGrass: these are indoors); `remap` turns the keep
 // style's kinds (great-buildings.ts layFloorV3, pentagon-halls.ts) into the theme's for ring chambers and halls. `creatures`:
 // `roster` existing kinds; `newcomers` [{ kind, since }]: the hook for creatures built for these worlds; a newcomer joins the
-// roster only in adventure Pentagons of version `since` or later, so a Pentagon already generated keeps its guards.
+// roster only in adventure Pentagons of version `since` or later, so a Pentagon already generated keeps its guards. `module`: the
+// theme's id in the adventure creatures module (adventure-creatures.ts ADVENTURE_CREATURES: tomb, verdantRuin, ashWaste), the
+// key its creatures are wired by (their spawns go through Game.scaleToRegion); `adventureCreatureTheme` reads it.
 const remap = (wall, under, a, b, c, low) => ({ keepWall: wall, cellarWall: under, mosaicFloor: a, flagFloor: b, carpetFloor: c, plankFloor: b, tileFloor: c, cellarFloor: low });
 export const ADVENTURE_THEMES = {
   tomb: { name: "Tomb", since: 11, weight: 1,
@@ -71,7 +73,7 @@ export const ADVENTURE_THEMES = {
     remap: remap("keepWall", "cellarWall", "mosaicFloor", "flagFloor", "carpetFloor", "cellarFloor"),
     cv: { fog: "#14110e", backdrop: "dimDome", kit: "tomb" },
     landmark: { name: "the Heart's well", lore: "Far below the terrace, the Heart's well opens in the central court: a ring of black stone that swallows the lamplight." },
-    creatures: { roster: ["weepingSaint", "hangedChoir", "graveLantern", "pallidCrawler", "mirrorShade", "ashling"], newcomers: [] },
+    creatures: { module: "tomb", roster: ["weepingSaint", "hangedChoir", "graveLantern", "pallidCrawler", "mirrorShade", "ashling"], newcomers: [] },
     bosses: ["weepingSaint", "hangedChoir", "amalgam", "mirrorShade", "graveLantern", "pallidCrawler"],
     wards: ["The Ossuary Ward", "The Ward of Lamps", "The Mourners' Ward", "The Sepulchre Ward"],
     areas: { street: ["Lamp Row", "The Bier Walk", "Mourners' Lane", "The Long Nave"], plaza: ["The Reliquary Square", "The Plaza of Urns"], court: ["The Cloister of Saints", "The Quiet Court"],
@@ -83,7 +85,7 @@ export const ADVENTURE_THEMES = {
     remap: remap("hedgeWall", "cisternWall", "mosaicFloor", "cisternFloor", "flagFloor", "cellarFloor"),
     cv: { fog: "#0e1a12", backdrop: "latticeSky", kit: "verdant" },
     landmark: { name: "the stepped ziggurat", lore: "Over the canopy, the stepped ziggurat at the Pentagon's heart catches the light on its sun disc: you could steer by it." },
-    creatures: { roster: ["rootBrute", "groveMoth", "mossBlob", "coilStalker", "veilMoth"], newcomers: [] },
+    creatures: { module: "verdantRuin", roster: ["rootBrute", "groveMoth", "mossBlob", "coilStalker", "veilMoth"], newcomers: [] },
     bosses: ["veilSpinner", "thunderhorn", "siegeBeetle", "riftLynx", "sunderjaw"],
     wards: ["The Green Ward", "The Rootbound Ward", "The Ward of Falls", "The Sun-Disc Ward"],
     areas: { street: ["The Root Arcade", "The Vine Walk", "The Mossed Lane", "The Briar Run"], plaza: ["The Square of the Fig", "The Flooded Square"], court: ["The Fern Cloister", "The Overgrown Court"],
@@ -95,7 +97,7 @@ export const ADVENTURE_THEMES = {
     remap: remap("fortressDeepWall", "kilnWall", "concreteFloor", "kilnFloor", "plankFloor", "cellarFloor"),
     cv: { fog: "#1a120c", backdrop: "paleWell", kit: "ash" },
     landmark: { name: "the buried colossus", lore: "Past the drop, the skull of a buried colossus breaks the ash at the Pentagon's heart, its eye sockets full of dusk." },
-    creatures: { roster: ["ashling", "ashenHound", "cinderWisp", "glassMite", "emberBlob", "sparkWarden"], newcomers: [] },
+    creatures: { module: "ashWaste", roster: ["ashling", "ashenHound", "cinderWisp", "glassMite", "emberBlob", "sparkWarden"], newcomers: [] },
     bosses: ["cinderSeraph", "lumenWraith", "sunderjaw", "gnawingMaw", "siegeBeetle"],
     wards: ["The Cinder Ward", "The Ward of Bones", "The Dune Ward", "The Rust Ward"],
     areas: { street: ["The Ash Road", "The Bone Arch Way", "The Rust Lane", "The Dune Cut"], plaza: ["The Square of Glass", "The Wreck Yard"], court: ["The Kiln Court", "The Bleached Court"],
@@ -127,6 +129,8 @@ export const ADVENTURE_THEMES = {
 export const adventureThemes = (V) => Object.keys(ADVENTURE_THEMES).filter((k) => ADVENTURE_THEMES[k].since != null && ADVENTURE_THEMES[k].since <= V);
 // A theme's guard kinds in adventure Pentagon version V: its roster, then each newcomer whose `since` has come.
 export const adventureRoster = (theme, V) => { const T = ADVENTURE_THEMES[theme] || ADVENTURE_THEMES.tomb; return [...T.creatures.roster, ...T.creatures.newcomers.filter((c) => c.since != null && c.since <= V).map((c) => c.kind)]; };
+// The id the adventure creatures module knows a theme by (null for a theme it does not cover yet).
+export const adventureCreatureTheme = (theme) => ADVENTURE_THEMES[theme]?.creatures.module || null;
 // A Pentagon's themes: a primary one and an accent, seeded (never from the region round it); `accent` districts take the
 // accent theme, the rest the primary. Returns { primary, accent, districts: [theme per district] }.
 export function adventureThemePick(key, V, n = 5) {

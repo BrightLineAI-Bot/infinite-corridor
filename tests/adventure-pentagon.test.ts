@@ -11,7 +11,7 @@ import { Game, recoverPentagonVersion, PENTAGON_MAX_VERSION } from '../src/game.
 import { PENTAGON, pentagonPlan, generatePentagonChamber, placePentagonSection, pentagonLinkEnds } from '../src/pentagon.ts';
 import { CLOSE_VIEW_ROOM_ROUTING } from '../src/close-view-room-routing.ts';
 import { CREATURE_FORMS } from '../src/combat.ts';
-import { ADVENTURE_PENTAGON as AP, ADVENTURE_THEMES, ADVENTURE_AREAS, adventureThemes, adventureRoster, adventureThemePick, composeDistrict, adventureCycles, edgeDisjointRoutes, solveAdventurePlan, layAdventureArea, adventureCameraClearance } from '../src/adventures.ts';
+import { ADVENTURE_PENTAGON as AP, ADVENTURE_THEMES, ADVENTURE_AREAS, adventureThemes, adventureRoster, adventureThemePick, composeDistrict, adventureCycles, edgeDisjointRoutes, solveAdventurePlan, layAdventureArea, adventureCameraClearance, adventureCreatureTheme } from '../src/adventures.ts';
 
 const V = AP.version, N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const plans = (n, pre = 'A', v = V) => Array.from({ length: n }, (_, i) => ({ seed: `${pre}${i}`, P: pentagonPlan(`${pre}${i}`, i * 8, -i * 8 + (i % 3) * 8, v) }));
@@ -82,6 +82,7 @@ test('themes: seven rows as data, Tomb, Verdant Ruin and Ash Waste enabled; tile
     assert.ok(Array.isArray(T.creatures.newcomers), `${k}: a newcomers hook`); for (const b of T.bosses) assert.ok(PENTAGON.bosses[b], `${k}: ${b} has a boss name`);
     for (const a of Object.keys(ADVENTURE_AREAS)) if (a !== 'waystone') assert.ok(T.areas[a]?.length, `${k}: names for ${a}`); }
   assert.deepEqual(adventureRoster('tomb', V), ADVENTURE_THEMES.tomb.creatures.roster);
+  assert.deepEqual(adventureThemes(V).map(adventureCreatureTheme), ['tomb', 'verdantRuin', 'ashWaste'], 'the creatures module ids');
 });
 test('themes: random by seed, mixed across districts (one accent theme), every enabled theme turns up as primary', () => {
   const primary = {}; let accented = 0;
