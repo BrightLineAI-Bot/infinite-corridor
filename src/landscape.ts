@@ -20,7 +20,7 @@ import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.ts";
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 23; // the Reckoning Fields (REGIONS_V23, applyReckoning: self-similar figures computed from each region's site, raised plates, monoliths); 22: the canopy grove (trees.ts TREES_V21: several great trees joined at crown height by branch bridges, one climbed; walk hops only over open ground, no two-tile gaps); 772: Terrace Springs (REGIONS_V21, applyTerraces: stepped sinter terraces, spring pools, hot springs); 768: the last spires back (trees.ts TREES_V20: every side may be three tiles again; a tree is laid only where every climb tile is drawn, with canopyRepaint); 764: tall spires again (trees.ts TREES_V19: groves tried first and harder, tall spires, then the earlier spire reach, every readable turn); 758: great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 24; // the Rimeglaciers (REGIONS_V24, applyGlacier: stepped ice sheets with icefalls, crevasse fields and snow bridges, seracs, moraine, melt pools); 23: the Reckoning Fields (REGIONS_V23, applyReckoning: self-similar figures computed from each region's site, raised plates, monoliths); 22: the canopy grove (trees.ts TREES_V21: several great trees joined at crown height by branch bridges, one climbed; walk hops only over open ground, no two-tile gaps); 772: Terrace Springs (REGIONS_V21, applyTerraces: stepped sinter terraces, spring pools, hot springs); 768: the last spires back (trees.ts TREES_V20: every side may be three tiles again; a tree is laid only where every climb tile is drawn, with canopyRepaint); 764: tall spires again (trees.ts TREES_V19: groves tried first and harder, tall spires, then the earlier spire reach, every readable turn); 758: great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
 export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : t?.roofLift || 1); // a great building's roof is drawn at the top of its facade (great-buildings.ts)
@@ -49,7 +49,7 @@ export const BIOMES = {
   blight: { id: "blight", name: "Blight Mire", atlas: "#7cbf3a" },
 };
 // Release 573: ground laid by a region rather than by the landscape fields (biomeFor never reports these).
-export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" }, pillars: { id: "pillars", name: "Pillar Lands", atlas: "#b9784c" }, fog: { id: "fog", name: "Fog Moors", atlas: "#7f8a86" }, jungle: { id: "jungle", name: "Jungle", atlas: "#1f6b2c" }, biomech: { id: "biomech", name: "Carapace Wastes", atlas: "#4a4f57" }, salt: { id: "salt", name: "Salt Marsh", atlas: "#e4dfd0" }, crystal: { id: "crystal", name: "Crystal Fields", atlas: "#8fd3e8" }, fungal: { id: "fungal", name: "Sporewood", atlas: "#7a4f8a" }, petrified: { id: "petrified", name: "Petrified Wood", atlas: "#8d8a82" }, savanna: { id: "savanna", name: "Savanna", atlas: "#c9a84a" }, reef: { id: "reef", name: "Reef Flats", atlas: "#e48f7a" }, amber: { id: "amber", name: "Amberwood", atlas: "#b8652a" }, obsidian: { id: "obsidian", name: "Obsidian Fields", atlas: "#1d1b22" }, terraces: { id: "terraces", name: "Terrace Springs", atlas: "#bfe0d8" }, reckoning: { id: "reckoning", name: "Reckoning Fields", atlas: "#2c3270" } };
+export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" }, pillars: { id: "pillars", name: "Pillar Lands", atlas: "#b9784c" }, fog: { id: "fog", name: "Fog Moors", atlas: "#7f8a86" }, jungle: { id: "jungle", name: "Jungle", atlas: "#1f6b2c" }, biomech: { id: "biomech", name: "Carapace Wastes", atlas: "#4a4f57" }, salt: { id: "salt", name: "Salt Marsh", atlas: "#e4dfd0" }, crystal: { id: "crystal", name: "Crystal Fields", atlas: "#8fd3e8" }, fungal: { id: "fungal", name: "Sporewood", atlas: "#7a4f8a" }, petrified: { id: "petrified", name: "Petrified Wood", atlas: "#8d8a82" }, savanna: { id: "savanna", name: "Savanna", atlas: "#c9a84a" }, reef: { id: "reef", name: "Reef Flats", atlas: "#e48f7a" }, amber: { id: "amber", name: "Amberwood", atlas: "#b8652a" }, obsidian: { id: "obsidian", name: "Obsidian Fields", atlas: "#1d1b22" }, terraces: { id: "terraces", name: "Terrace Springs", atlas: "#bfe0d8" }, reckoning: { id: "reckoning", name: "Reckoning Fields", atlas: "#2c3270" }, glacier: { id: "glacier", name: "Rimeglacier", atlas: "#8fc6e4" } };
 // Waterbodies (version 2) balance table. `continent` bends the ocean field so whole seas form; `island` lifts land back
 // out of open water; `deep` is how far above the ocean threshold deep water starts.
 export const WATERBODIES = {
@@ -66,11 +66,13 @@ export const DEEP_WATER = ["ocean", "deepOcean", "lakeWater", "swampWater", "tox
 const TERRACE_WALKABLE = ["sinterTerrace", "sinterRim", "springPool", "springMat", "springFringe"];
 // The Reckoning Fields (version 23): the walkable kinds (applyReckoning); `ruleMonolith` is blocked.
 const RECKONING_WALKABLE = ["ruleSlate", "ruleCell", "ruleNode"];
+// The Rimeglaciers (version 24): the walkable kinds (applyGlacier); `serac` is blocked and a crevasse is lethal `abyss` (`crevasse` set).
+const GLACIER_WALKABLE = ["glacierIce", "firn", "moraine", "meltPool", "snowBridge"];
 // Thresholds tuned so roughly a third of sections carry a landscape feature (see tests/landscape.test.ts).
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
 const WALKABLE_LANDSCAPE = new Set(["craterFloor", /* Canyon craters */ "arcFloor", "arcStair", /* the ruined arcologies (keeps.ts) */ "snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool", "canopyBranch", "canopyCrown", "canopyLeaf", ...MUSHROOM_KINDS, "thornBasalt", "thornFloor", "thornShards", ...DOMAIN_WALKABLE, ...TERRACE_WALKABLE, ...RECKONING_WALKABLE]); // 721: great mushroom caps; 723: the Thornglass Caldera (far-domains.ts) // 631: canopy trees (canopyTrunk is blocked) // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool", "canopyBranch", "canopyCrown", "canopyLeaf", ...MUSHROOM_KINDS, "thornBasalt", "thornFloor", "thornShards", ...DOMAIN_WALKABLE, ...TERRACE_WALKABLE, ...RECKONING_WALKABLE, ...GLACIER_WALKABLE]); // 721: great mushroom caps; 723: the Thornglass Caldera (far-domains.ts) // 631: canopy trees (canopyTrunk is blocked) // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
 
 // ---------------------------------------------------------------- noise
 // Perf pack (worldgen WG-09): a lattice value is hashSeed(`${key}:${ix}:${iy}`), and a section needs about 70k of them, each
@@ -132,7 +134,7 @@ export const REGIONS = { heartland: 12, fadeIn: 4, cell: 9, jitter: .8, weightSp
     alien: { alien: .3, ocean: -.2 }, swamp: { wet: .11, ocean: -.2, desert: -.3 }, lakes: { lake: .2, ocean: -.15 }, dream: { ocean: -.2, mountain: -.2 },
     ashfields: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 }, glasslands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
     emberlands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
-    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ pillars: { ocean: -.3, wet: -.4, lake: -.3, desert: -.15, mountain: -.2, alien: -.2 }, /* 591 */ fog: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15, lake: -.1 }, /* 617 */ jungle: { ocean: -.2, desert: -.4, alien: -.25, mountain: -.15, wet: .04 }, biomech: { ocean: -.3, wet: -.35, lake: -.3, desert: -.2, alien: -.2, mountain: -.2 }, salt: { ocean: -.18, desert: -.1, alien: -.3, mountain: -.25, lake: -.1 }, crystal: { ocean: -.3, wet: -.35, lake: -.25, desert: -.25, alien: -.1, mountain: -.15 }, fungal: { ocean: -.25, desert: -.4, alien: -.15, mountain: -.2, wet: -.05 }, /* 625 */ petrified: { ocean: -.25, wet: -.3, lake: -.2, desert: -.15, alien: -.25, mountain: -.15 }, savanna: { ocean: -.25, wet: -.3, desert: -.05, alien: -.3, mountain: -.25 }, reef: { ocean: -.1, desert: -.3, alien: -.2, mountain: -.3, lake: .05 }, amber: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15 }, obsidian: { ocean: -.3, wet: -.4, lake: -.3, desert: -.2, alien: -.15, mountain: -.1 }, /* 629 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 }, terraces: { ocean: -.3, wet: -.4, lake: -.3, desert: -.3, alien: -.25, mountain: -.2 } /* version 21 */, reckoning: { ocean: -.3, wet: -.45, lake: -.35, desert: -.3, alien: -.3, mountain: -.3 } /* version 23 */ }, // release 573 (version 5)
+    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ pillars: { ocean: -.3, wet: -.4, lake: -.3, desert: -.15, mountain: -.2, alien: -.2 }, /* 591 */ fog: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15, lake: -.1 }, /* 617 */ jungle: { ocean: -.2, desert: -.4, alien: -.25, mountain: -.15, wet: .04 }, biomech: { ocean: -.3, wet: -.35, lake: -.3, desert: -.2, alien: -.2, mountain: -.2 }, salt: { ocean: -.18, desert: -.1, alien: -.3, mountain: -.25, lake: -.1 }, crystal: { ocean: -.3, wet: -.35, lake: -.25, desert: -.25, alien: -.1, mountain: -.15 }, fungal: { ocean: -.25, desert: -.4, alien: -.15, mountain: -.2, wet: -.05 }, /* 625 */ petrified: { ocean: -.25, wet: -.3, lake: -.2, desert: -.15, alien: -.25, mountain: -.15 }, savanna: { ocean: -.25, wet: -.3, desert: -.05, alien: -.3, mountain: -.25 }, reef: { ocean: -.1, desert: -.3, alien: -.2, mountain: -.3, lake: .05 }, amber: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15 }, obsidian: { ocean: -.3, wet: -.4, lake: -.3, desert: -.2, alien: -.15, mountain: -.1 }, /* 629 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 }, terraces: { ocean: -.3, wet: -.4, lake: -.3, desert: -.3, alien: -.25, mountain: -.2 } /* version 21 */, reckoning: { ocean: -.3, wet: -.45, lake: -.35, desert: -.3, alien: -.3, mountain: -.3 } /* version 23 */, glacier: { ocean: -.3, wet: -.4, lake: -.25, desert: -.45, alien: -.3, mountain: -.06 } /* version 24: a few peaks stand through the ice */ }, // release 573 (version 5)
   plains: { ashfields: "ash", glasslands: "glass", emberlands: "ember" } };
 const REGION_TOTAL = REGIONS.types.reduce((n, [, w]) => n + w, 0), siteCache = new Map();
 function regionSite(seed, cx, cy) {
@@ -196,6 +198,18 @@ function v23RegionType(seed, id, type) {
   let roll = (hashSeed(`${seed}:region-site:v23:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V23.to) { if ((roll -= p) < 0) return t; }
   return type;
 }
+// The Rimeglaciers (landscape version 24; the daily world-regions work; Tim's list: "great ice world", "great mountain ranges").
+// A mountain region, or one still wild or bare plains after the version 23 roll, whose site lies at least `minRing` sections
+// (straight line) from Ember Refuge, may become a rimeglacier, on its own hash, so every other region keeps the type it had and
+// the near world never shows one. Mountain regions are the large pool (about 9% of regions): the range is buried in ice, and
+// its highest peaks still stand through it (REGIONS.lean.glacier keeps a little of the mountain field).
+export const REGIONS_V24 = { from: ["mountains", "wild", "ashfields", "glasslands", "emberlands"], to: [["glacier", .4]], minRing: 30 };
+function v24RegionType(seed, id, type) {
+  if (!REGIONS_V24.from.includes(type)) return type;
+  const [cx, cy] = String(id).split(",").map(Number), q = regionSite(seed, cx, cy); if (Math.hypot(q.x, q.y) < REGIONS_V24.minRing) return type;
+  let roll = (hashSeed(`${seed}:region-site:v24:${id}`) % 10007) / 10007; for (const [t, p] of REGIONS_V24.to) { if ((roll -= p) < 0) return t; }
+  return type;
+}
 function wildRegionType(seed, id, version = 5) {
   let roll = (hashSeed(`${seed}:region-site:v5:${id}`) % 10007) / 10007;
   for (const [t, p] of REGIONS_V5.wildTo) { if ((roll -= p) < 0) return t; }
@@ -215,6 +229,7 @@ export function regionAt(seed, sx, sy, version = 4) {
   if (version >= 11) type = v11RegionType(seed, best.id, type); // release 629
   if (version >= 21) type = v21RegionType(seed, best.id, type); // Terrace Springs
   if (version >= 23) type = v23RegionType(seed, best.id, type); // the Reckoning Fields
+  if (version >= 24) type = v24RegionType(seed, best.id, type); // the Rimeglaciers
   if (version >= 15) { const civ = farCivAt(seed, sx, sy); if (civ && version >= civ.landSince) type = civ.land; } // release 716: a civilisation's country is its own land (717: from its own version)
   const ring = Math.hypot(sx, sy), fade = Math.max(0, Math.min(1, (ring - REGIONS.heartland) / REGIONS.fadeIn)); // the heartland round Ember Refuge keeps the old mix
   return { id: best.id, type: fade > 0 ? type : "wild", hold: Math.min(1, (second - bd) / REGIONS.blend) * fade, gap: fade > 0 ? second - bd : Infinity };
@@ -230,7 +245,7 @@ export const REGION_NAMES = {
     mountains: ["Peaks", "Spine", "Heights", "Teeth", "Range"], desert: ["Waste", "Dunes", "Barrens", "Sands", "Erg"], alien: ["Garden", "Bloom", "Lattice", "Strangeland", "Reef"],
     swamp: ["Fen", "Mire", "Bog", "Sump", "Marsh"], lakes: ["Meres", "Lakes", "Tarns", "Waters"], isles: ["Isles", "Archipelago", "Scatter", "Keys"],
     dream: ["Sleep", "Reverie", "Dreaming", "Slumber"], ashfields: ["Ashfields", "Cinderplain", "Greys"], glasslands: ["Glasslands", "Shards", "Mirrorfields"],
-    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], fog: ["Moor", "Mists", "Fogs", "Greyfells", "Murk", "Hollows"], jungle: ["Jungle", "Canopy", "Green Deep", "Vines", "Rainwood"], biomech: ["Carapace", "Ossuary", "Engine", "Ribwork", "Husk"], salt: ["Saltings", "Brines", "Salt Pans", "Salt Marsh", "Flats"], crystal: ["Prisms", "Facets", "Geodes", "Crystal Fields", "Lattice Fields"], fungal: ["Sporewood", "Caps", "Mycelium", "Gills", "Rotwood"], petrified: ["Stonewood", "Petrified Wood", "Grey Grove", "Fossil Wood"], savanna: ["Savanna", "Grasslands", "Veldt", "Long Grass", "Plains"], reef: ["Reef", "Coral Flats", "Shoals", "Tidelands"], amber: ["Amberwood", "Autumn Wood", "Leaffall", "Russet Wood"], obsidian: ["Obsidian", "Black Glass", "Mirrors", "Quicksilver Fields"], pillars: ["Pillars", "Mesas", "Tablelands", "Hoodoos", "Stone Forest", "Tepuis"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"], terraces: ["Springs", "Terraces", "Basins", "Steps", "Wells", "Sinters"], reckoning: ["Reckoning", "Sieve", "Recursion", "Proof", "Tessellation", "Rulework"] },
+    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], fog: ["Moor", "Mists", "Fogs", "Greyfells", "Murk", "Hollows"], jungle: ["Jungle", "Canopy", "Green Deep", "Vines", "Rainwood"], biomech: ["Carapace", "Ossuary", "Engine", "Ribwork", "Husk"], salt: ["Saltings", "Brines", "Salt Pans", "Salt Marsh", "Flats"], crystal: ["Prisms", "Facets", "Geodes", "Crystal Fields", "Lattice Fields"], fungal: ["Sporewood", "Caps", "Mycelium", "Gills", "Rotwood"], petrified: ["Stonewood", "Petrified Wood", "Grey Grove", "Fossil Wood"], savanna: ["Savanna", "Grasslands", "Veldt", "Long Grass", "Plains"], reef: ["Reef", "Coral Flats", "Shoals", "Tidelands"], amber: ["Amberwood", "Autumn Wood", "Leaffall", "Russet Wood"], obsidian: ["Obsidian", "Black Glass", "Mirrors", "Quicksilver Fields"], pillars: ["Pillars", "Mesas", "Tablelands", "Hoodoos", "Stone Forest", "Tepuis"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"], terraces: ["Springs", "Terraces", "Basins", "Steps", "Wells", "Sinters"], reckoning: ["Reckoning", "Sieve", "Recursion", "Proof", "Tessellation", "Rulework"], glacier: ["Glacier", "Icefall", "Ice Sheet", "Icecap", "Rimefield", "Crevasses"] },
 };
 export function regionName(seed, region) {
   const h = hashSeed(`${seed}:region-name:v1:${region.id}`), N = REGION_NAMES, nouns = N.nouns[region.type] || N.nouns.wild;
@@ -240,6 +255,11 @@ export function regionName(seed, region) {
 // bounded cache, so generating a section costs a few hundred lookups, not thousands.
 const leanCache = new Map();
 function regionTile(seed, gx, gy, version = 4) {
+  if (version >= 24) { // version 24: the version 23 tile, rolled once more (outside the heartland) for the Rimeglaciers
+    const key = `${seed}:24:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
+    const b = regionTile(seed, gx, gy, 23); r = b.gap === Infinity ? b : { ...b, type: v24RegionType(seed, b.id, b.type) };
+    leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); return r;
+  }
   if (version >= 23) { // version 23: the version 21 tile, rolled once more (outside the heartland) for the Reckoning Fields
     const key = `${seed}:23:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
     const b = regionTile(seed, gx, gy, 21); r = b.gap === Infinity ? b : { ...b, type: v23RegionType(seed, b.id, b.type) };
@@ -464,6 +484,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   if (version >= 10 && !full) touched += applyPaletteRegions(map, seed, rx, ry, mask, hamlet, version); // release 625; 629: version-aware
   if (version >= 21 && !full) touched += applyTerraces(map, seed, rx, ry, mask, hamlet); // Terrace Springs
   if (version >= 23 && !full) touched += applyReckoning(map, seed, rx, ry, mask, hamlet); // the Reckoning Fields
+  if (version >= 24 && !full) touched += applyGlacier(map, seed, rx, ry, mask, hamlet, walls); // the Rimeglaciers
   if (biome === "castle") touched += buildCastle(map, seed, rx, ry, protectedMask(map, { spawns: false, ruins: false, decor: false }));
   if (!touched) return map;
   if (biome === "mountains" && hashSeed(`${seed}:land:volcano:${rx}:${ry}`) % 3 === 0) buildVolcano(map, seed, rx, ry, mask);
@@ -488,6 +509,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   else if (map.firelands) map.weather = "embers"; // release 583
   else if (map.fogMoor) map.weather = "fog"; // release 617
   if (version >= 5) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 5).type === "frost") t.kind = "snowRock"; // release 573: frost mountains are snowbound
+  if (map.glacier) for (const t of map.tiles) if (t.landscape === "mountains" && (t.kind === "alpineGrass" || t.kind === "mountainRock") && regionTile(seed, rx * 32 + t.x, ry * 32 + t.y, 24).type === "glacier") t.kind = "snowRock"; // version 24: the peaks through the ice are snowbound
   if (map.pillarlands) buildMesas(map, seed, rx, ry); // release 591: last, so nothing after it ramps or lowers them
   if (version >= 14 && !full && !(version >= TREES_V18.version && dreamsHere(seed, rx, ry, DREAM_VERSION, version))) { const region = treeRegion(map); if (region) growTrees(map, seed, rx, ry, { ground: canopyGround(map, region), reachable: plazaReach, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }, walls), version, region }); } // release 672; version 18: not where the Far Sleep dreams, which paved the tree over (mendCanopy clears the older ones)
   else if (version >= 13 && !full && map.paletteRegion) growTrees(map, seed, rx, ry, { ground: canopyGround(map), reachable: plazaReach, trapped: (m) => trappedTiles(m, 32, 32, { x: 16, y: 16 }, walls) }); // release 645: the tree package
@@ -742,6 +764,107 @@ function applyReckoning(map, seed, rx, ry, mask, hamlet) {
   if ((h("cache") % 1000) / 1000 < K.cache.chance) {
     const seen = reachableFromPlaza(map), top = mine.filter((t) => t.elev >= K.cache.minLevel && !t.blocked && seen[idx(t.x, t.y)] && t.x >= 2 && t.y >= 2 && t.x <= 29 && t.y <= 29 && !objAt.has(idx(t.x, t.y)));
     if (top.length) { const at = top[h("cache-at") % top.length]; map.objects.push({ id: `reckoning-cache-${rx}-${ry}`, kind: "chest", name: K.cache.name, x: at.x, y: at.y, state: "closed", actions: ["open"], rewardSource: "chest" }); }
+  }
+  return touched;
+}
+// The Rimeglaciers (landscape version 24; the daily world-regions work, Tim 2026-10-29: "great ice world... great mountain
+// ranges... rich and vibrant... without decreasing performance"). Bare ground in a glacier region is laid as an ice sheet that
+// flows one way: each region hashes a flow bearing (`flowTurns` of a half turn), and every pattern is read in that frame from
+// world coordinates, so a glacier runs on unbroken over section borders. One fbm field steps the sheet into `height.levels`
+// icefalls (blue `glacierIce` below `firnFrom`, white `firn` above); `moraine` gravel streaks run along the flow; wadeable
+// `meltPool`s lie in the low ice. Crevasse fields (where `field` noise rises) cut slots across the flow every `period` tiles:
+// lethal (`abyss`, marked `crevasse`; the brink guard stops a walk into one, as at every chasm), spanned where `bridge` noise
+// rises by walkable `snowBridge`s. Blocked `serac` towers (drawn `seracRise` levels above their ice, at most `seracMax`) stand
+// on the raised ice. The same raster sweeps as Terrace Springs cap every tile at one level above its lowest walkable neighbour
+// (protected ground stays 0), so every step of ice is one jump. Then nothing may be cut off: every tile the plaza reached both
+// ways before the crevasses and seracs must still be reached both ways (the real rule: climb one, drop any, lethal ground
+// excluded, thin walls counted on new ground); where one is lost, the shortest run of new hazard from reached ground to it is
+// turned back (a crevasse to a snow bridge, a serac to ice), `repairs` times at most, and if that is not enough every hazard is
+// undone. Nothing lies next to protected ground. `cache.chance` of sections with a top firn plate hold a cache on one the plaza
+// reaches. Hamlet sections keep the ice's colours but stay flat (no icefalls, crevasses, seracs or cache). Generation only:
+// drawn into the static ground cache; no weather, nothing animated.
+export const GLACIER = {
+  flowTurns: 8, height: { scale: 20, from: .4, band: .075, levels: 3 }, firnFrom: 2,
+  moraine: { across: 2.4, along: 15, band: .03 }, melt: { scale: 3.3, above: .77 },
+  crevasse: { period: 6, sharp: .92, wobble: 1.6, wobbleScale: 9, field: { scale: 8, above: .44 }, bridge: { scale: 3.2, above: .66 } },
+  serac: { scale: 1.35, above: .89, minLevel: 1, rise: 2 }, seracMax: 10, repairs: 48,
+  cache: { chance: .35, minLevel: 3, name: "A cache frozen in the firn" },
+};
+// A glacier region's flow frame: the unit vector along the flow. Cached per region id (bounded).
+const glacierFlows = new Map();
+export function glacierFlow(seed, id) {
+  const key = `${seed}:${id}`; let f = glacierFlows.get(key); if (f) return f;
+  const a = (hashSeed(`${seed}:glacier:v1:${id}:flow`) % GLACIER.flowTurns) / GLACIER.flowTurns * Math.PI; f = { ux: Math.cos(a), uy: Math.sin(a) };
+  if (glacierFlows.size >= 1024) glacierFlows.clear(); glacierFlows.set(key, f); return f;
+}
+// The ice at a global tile, from the region's flow: its natural level (before the sweeps), kind, and whether a crevasse (and a
+// bridge over it) lies there. Pure; a few noise reads.
+export function glacierAt(seed, f, gx, gy) {
+  const G = GLACIER, H = G.height, C = G.crevasse, u = gx * f.ux + gy * f.uy, v = -gx * f.uy + gy * f.ux;
+  const level = Math.max(0, Math.min(H.levels, Math.floor((fbm(`${seed}:glacier:height`, gx / H.scale, gy / H.scale) - H.from) / H.band)));
+  const moraine = Math.abs(valueNoise(`${seed}:glacier:moraine`, v / G.moraine.across, u / G.moraine.along) - .5) < G.moraine.band;
+  const melt = level === 0 && valueNoise(`${seed}:glacier:melt`, gx / G.melt.scale, gy / G.melt.scale) > G.melt.above;
+  const phase = (u + (valueNoise(`${seed}:glacier:wobble`, v / C.wobbleScale, u / C.wobbleScale) - .5) * 2 * C.wobble) / C.period * 2 * Math.PI;
+  const crevasse = Math.sin(phase) > C.sharp && valueNoise(`${seed}:glacier:field`, gx / C.field.scale, gy / C.field.scale) > C.field.above;
+  const bridge = crevasse && valueNoise(`${seed}:glacier:bridge`, v / C.bridge.scale, u / C.bridge.scale) > C.bridge.above;
+  return { level, kind: melt ? "meltPool" : moraine ? "moraine" : level >= G.firnFrom ? "firn" : "glacierIce", crevasse, bridge };
+}
+function applyGlacier(map, seed, rx, ry, mask, hamlet, walls = false) {
+  const G = GLACIER, lv = new Int8Array(1024).fill(-1), natural = [], mine = []; let touched = 0; // lv: each glacier tile's level (-1: not one)
+  for (const t of map.tiles) {
+    const lake = t.landscape === "lake" && (t.kind === "lakeWater" || t.kind === "shallows"); // a lake in the ice is frozen over
+    if (t.structure || t.buildingId || (!lake && (t.blocked || t.landscape || !BARE_GROUND.has(t.kind)))) continue;
+    const gx = rx * 32 + t.x, gy = ry * 32 + t.y, r = regionTile(seed, gx, gy, 24); if (r.type !== "glacier") continue;
+    const i = idx(t.x, t.y), a = glacierAt(seed, glacierFlow(seed, r.id), gx, gy);
+    Object.assign(t, lake ? { kind: "lakeIce", blocked: false } : { kind: a.kind }, { landscape: "glacier", elev: 0, detail: terraceDetail(gx, gy) }); touched++;
+    lv[i] = hamlet || mask[i] || lake ? 0 : a.level;
+    if (!mask[i] && !lake) { mine.push(t); natural.push(a); }
+  }
+  if (!touched) return 0;
+  map.glacier = true;
+  for (let pass = 0, changed = true; changed && pass < 8; pass++) { changed = false; // every step is one level (as applyTerraces)
+    for (let k = 0; k < 2048; k++) { const i = k < 1024 ? k : 2047 - k; if (lv[i] <= 0) continue; const x = i % 32, y = (i - x) / 32; let lo = 99;
+      for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const j = idx(nx, ny), n = map.tiles[j], e = lv[j] >= 0 ? lv[j] : !n.blocked && !LETHAL_KINDS.has(n.kind) ? n.elev || 0 : 99; if (e < lo) lo = e; }
+      if (lv[i] > lo + 1) { lv[i] = lo + 1; changed = true; } } }
+  for (let i = 0; i < 1024; i++) if (lv[i] >= 0) { const t = map.tiles[i]; t.elev = lv[i]; if (t.kind === "firn" && lv[i] < G.firnFrom || t.kind === "meltPool" && lv[i] > 0) t.kind = "glacierIce"; } // firn only on the high ice, melt only in the low
+  if (hamlet || !mine.length) return touched;
+  // The hazards: crevasses (lethal) and seracs (blocked), never on or beside protected ground, an object or a spawn.
+  const start = { x: 16, y: 16 }, both = () => { const go = reachableFrom(map, 32, 32, start, walls), back = canReturnTo(map, 32, 32, start, walls); for (let i = 0; i < 1024; i++) go[i] &= back[i]; return go; };
+  const busy = new Set([...(map.objects || []), ...(map.enemySpawns || [])].map((o) => idx(Math.round(o.x), Math.round(o.y))));
+  const clear = (t) => !busy.has(idx(t.x, t.y)) && t.x > 0 && t.y > 0 && t.x < 31 && t.y < 31 && N4.every(([dx, dy]) => !mask[idx(t.x + dx, t.y + dy)] && !map.tiles[idx(t.x + dx, t.y + dy)].structure && !map.tiles[idx(t.x + dx, t.y + dy)].buildingId);
+  const before = both(), hazard = new Map(); // tile index -> what it was
+  const h = (k) => hashSeed(`${seed}:glacier:v1:${rx}:${ry}:${k}`);
+  for (let k = 0; k < mine.length; k++) {
+    const t = mine[k], a = natural[k], i = idx(t.x, t.y); if (!clear(t)) continue;
+    if (a.crevasse && !a.bridge) { hazard.set(i, { kind: t.kind, elev: t.elev }); Object.assign(t, { kind: "abyss", crevasse: true, elev: 0 }); } // drawn at the foot of the ice either side: a slot
+    else if (a.crevasse) t.kind = "snowBridge";
+  }
+  const seracs = mine.filter((t) => !hazard.has(idx(t.x, t.y)) && (t.elev || 0) >= G.serac.minLevel && t.kind !== "snowBridge" && clear(t) && valueNoise(`${seed}:glacier:serac`, (rx * 32 + t.x) / G.serac.scale, (ry * 32 + t.y) / G.serac.scale) > G.serac.above)
+    .sort((p, q) => (h(`s${p.x},${p.y}`) % 9973) - (h(`s${q.x},${q.y}`) % 9973)).slice(0, G.seracMax);
+  for (const t of seracs) { hazard.set(idx(t.x, t.y), { kind: t.kind, elev: t.elev }); Object.assign(t, { kind: "serac", blocked: true, elev: Math.min(MAX_LEVEL, (t.elev || 0) + G.serac.rise) }); }
+  const undo = (i) => { const t = map.tiles[i], was = hazard.get(i); if (t.crevasse) { delete t.crevasse; t.kind = "snowBridge"; } else t.kind = was.kind; t.blocked = false; t.elev = was.elev; hazard.delete(i); };
+  let lost = true;
+  for (let n = 0; n < G.repairs && lost; n++) {
+    const now = both(); let target = -1; lost = false;
+    for (let i = 0; i < 1024; i++) if (before[i] && !now[i] && !hazard.has(i)) { lost = true; break; }
+    if (!lost) break;
+    // the shortest run of new hazard from reached ground to lost ground (breadth first, through hazard tiles only)
+    const from = new Int16Array(1024).fill(-1), q = []; for (const i of hazard.keys()) { const x = i % 32, y = (i - x) / 32; if (N4.some(([dx, dy]) => now[idx(x + dx, y + dy)] && x + dx >= 0 && x + dx < 32 && y + dy >= 0 && y + dy < 32)) { from[i] = i; q.push(i); } }
+    q.sort((p, r) => p - r);
+    for (let k = 0; k < q.length && target < 0; k++) { const i = q[k], x = i % 32, y = (i - x) / 32;
+      for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = idx(nx, ny); if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue;
+        if (before[j] && !now[j] && !hazard.has(j)) { target = i; break; }
+        if (hazard.has(j) && from[j] < 0) { from[j] = i; q.push(j); } } }
+    if (target < 0) break;
+    for (let i = target; ; i = from[i]) { const up = from[i]; undo(i); if (up === i) break; }
+  }
+  if (lost) { const now = both(); for (let i = 0; i < 1024; i++) if (before[i] && !now[i] && !hazard.has(i)) { for (const j of [...hazard.keys()]) undo(j); break; } }
+  const cuts = [...hazard.keys()].filter((i) => map.tiles[i].crevasse).length, towers = [...hazard.keys()].filter((i) => map.tiles[i].kind === "serac");
+  if (cuts) map.crevasses = cuts;
+  if (towers.length) map.seracs = towers.map((i) => ({ x: i % 32, y: i >> 5 }));
+  if ((h("cache") % 1000) / 1000 < G.cache.chance) {
+    const seen = both(), top = mine.filter((t) => t.elev >= G.cache.minLevel && t.kind === "firn" && !t.blocked && seen[idx(t.x, t.y)] && t.x >= 2 && t.y >= 2 && t.x <= 29 && t.y <= 29 && !busy.has(idx(t.x, t.y)));
+    if (top.length) { const at = top[h("cache-at") % top.length]; map.objects.push({ id: `glacier-cache-${rx}-${ry}`, kind: "chest", name: G.cache.name, x: at.x, y: at.y, state: "closed", actions: ["open"], rewardSource: "chest" }); }
   }
   return touched;
 }
@@ -1578,7 +1701,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (diff === 1) return !!entity.jumping;
   return diff < 0; // dropping off a ledge: the game applies fall damage by height
 }
-export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "arcWall", "clodPlain", "clodGreen", "clodYellow", "clodRed", "craterWall", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo", "moorStone", "canopyTrunk", "thornCrystal", "springVent", "ruleMonolith", ...DOMAIN_BLOCKED, ...PALETTE_BLOCKERS].includes(kind); }
+export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "arcWall", "clodPlain", "clodGreen", "clodYellow", "clodRed", "craterWall", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo", "moorStone", "canopyTrunk", "thornCrystal", "springVent", "ruleMonolith", "serac", ...DOMAIN_BLOCKED, ...PALETTE_BLOCKERS].includes(kind); }
 export function elevationAt(map, width, x, y) { return legacyInteriorBuildLevel(map, tileUnder(map, width, x, y)) || (map?.landscape ? interiorTerrain(map) ? interiorSurfaceLevel(map, x + .5, y + .75) : (tileUnder(map, width, x, y)?.elev || 0) : 0); }
 
 // ---------------------------------------------------------------- the Far Sleep (release 305)

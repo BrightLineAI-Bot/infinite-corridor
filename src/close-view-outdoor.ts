@@ -87,7 +87,7 @@ export const OUTDOOR = f({
   // which sky a section's ground takes (its landscape biome or region ground; else its most common tile)
   skyOf: f({ desert: "desert", mountains: "cold", frost: "cold", coast: "sea", sea: "sea", isles: "sea", lake: "temperate", swamp: "fen", blight: "fen",
     alien: "wild", castle: "temperate", forest: "temperate", jungle: "temperate", savanna: "desert", salt: "desert", pillars: "desert", lunar: "moon",
-    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
+    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
     petrified: "waste", reef: "sea", snowField: "cold", glass: "waste", ash: "waste", ember: "waste" }),
   // Sky moods (Tim, 2026-11-11: "We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have
   // stormy, overcast."). A mood is laid over the region's sky, not instead of it: each biome colour is scaled by `light` and
@@ -123,7 +123,7 @@ export const OUTDOOR = f({
   surfaces: f([
     f(["grass", /grass|moss|forest|jungle|meadow|savanna|fen|bog|loam|refuge|canopyLeaf|fringe|mat$/i]),
     f(["sand", /sand|dune|beach|salt|mesa|desert|pillarGround|reefFlat/i]),
-    f(["snow", /snow|ice|frost|peak|sinter|seaIce/i]),
+    f(["snow", /snow|ice|frost|peak|sinter|seaIce|firn|serac/i]),
     f(["rock", /rock|crag|stone|trail|basalt|rim|slope|crater|shale|moon|hoodoo/i]),
     f(["paved", /court|city|floor|stair|battlement|dock|bridge|platform|cloister|arc|rule/i]),
     f(["glass", /glass|crystal|obsidian|quicksilver|prism/i]),
