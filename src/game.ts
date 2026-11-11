@@ -100,7 +100,7 @@ import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exit
 import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
 import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
-import { LABYRINTHS, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.ts";
+import { LABYRINTHS, LAB_FOG, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.ts";
 import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.ts"; // the Mountain Turtle's shell and its labyrinth
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
@@ -142,10 +142,10 @@ import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
 import { addBell, ringBell, BELL_GLIMPSES } from "./bells.ts";
 import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.ts"; // release 595
-import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards } from "./threads.ts"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11)
+import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, settleArcanaUnlocks } from "./threads.ts"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11)
 import { addMargin, readMargin } from "./margins.ts";
-import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection } from "./surveyor.ts"; // release 505; 551: part two
-import { READINGS, readingKnown, bookProgress, regionVersionFor } from "./lore.ts";
+import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper } from "./surveyor.ts"; // release 505; 551: part two
+import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius } from "./lore.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
@@ -2923,6 +2923,7 @@ export class Game {
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
     if(area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="warpDais"&&this.save.worldFlags[`warp-dais:${this.areaId()}:${o.id}`])o.state="attuned"; // release 301
     if(area==="dungeon"&&this.map.arenaKind==="dive"&&this.map.lair&&!this.map.objects.some(o=>o.kind==="diveOnward")){const w=mapWidth(this.map,area),L=this.map.lair,spot=[[-3,0],[3,0],[-3,2],[3,2],[0,3],[-2,-2],[2,-2]].map(([dx,dy])=>({x:L.x+dx,y:L.y+dy})).find(q=>{const t=this.map.tiles[q.y*w+q.x];return t&&!t.blocked&&!this.map.objects.some(o=>o.x===q.x&&o.y===q.y)});if(spot)this.map.objects.push({id:`${this.areaId()}:onward`,kind:"diveOnward",name:"Deep current",x:spot.x,y:spot.y,state:"open",actions:["follow"]})} // release 311: a grotto's lair holds a current to the next buoy
+    if(area==="overworld"){addCairnKeeper(this.map,this.rx,this.ry);/* 2026-11-11: the Cairn Keeper's errand */}this.settleArcana();/* 2026-11-11: sets and milestones finished (or finished before) open their unlocks */
     if(area==="overworld"){plantRefugeLands(this.map,this.rx,this.ry,this.refugeLandsWhere());for(const o of this.map.objects)if(o.talkKey)o.line=talkLine(o,this.refugeLandsWhere(),Number(this.save.worldFlags[o.talkKey])||0)} // release 265: the farm, the quarry and the farmer
     if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
     if(area==="dungeon"&&isArrayRun(loadingId)&&ensureFarArray(this.save).activeRun?.id===loadingId){const run=this.save.farArray.activeRun,spawns=this.map.enemySpawns,multi=!!this.map.multiLevel,g=spawns.find(e=>e.dungeonRole==="finalBoss")||spawns.find(e=>e.dungeonRole==="gateWarden")||(multi?null:spawns.find(e=>e.boss)||spawns[spawns.length-1]);if(g){const boss=runBossSpawn(this.save,{x:g.x,y:g.y});if(boss){spawns.splice(spawns.indexOf(g),1);if(!spawns.some(e=>e.id===boss.id))spawns.push({...boss,objectiveId:g.objectiveId||null})}}if(!this.map.objects.some(o=>o.kind==="arrayPylon"))this.map.objects.push(...arrayPylons(this.map,`${loadingId}:${this.map.levelId||""}`,mapWidth(this.map,area)));this.map.name=runName(run,run.gate)}
@@ -3824,7 +3825,17 @@ export class Game {
   // Arcana rewards (threads.ts ARCANA_REWARDS, 2026-11-11): the hook run when a set is finished. No set names a reward yet, so
   // nothing is granted; when one does, its kind is applied here and announced, once (save.lore.arcanaClaimed).
   settleArcana() {
-    return settleArcanaRewards(this.save, (id, reward) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: reward.label || id, kind: "quest" }); });
+    const paid = settleArcanaRewards(this.save, (id, reward) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: reward.label || id, kind: "quest" }); });
+    // 2026-11-11: the unlocks the sets and milestones open (lore.ts ARCANA_UNLOCKS), once each, announced and journalled.
+    const opened = settleArcanaUnlocks(this.save, (id, u) => { if (!u.fresh && !this.save.arcana?.gated) return; /* already open on a journey from before the gates: recorded, not announced */ (this.questNotices ||= []).push({ title: "ARCANA", detail: `${u.name} opens`, kind: "quest" }); journalOnce(this.save, `arcana:${id}`, `${u.name} opens to you.${u.text ? ` ${u.text}` : ""}`, "Arcana"); });
+    return [...paid, ...opened];
+  }
+  // Bell Toll (lore.ts ARCANA_PASSIVES, earned with the Seven Bells): a heavy blow stuns every foe near the one struck.
+  bellToll(e, dealt, now) {
+    const B = ARCANA_PASSIVES["bell-toll"]; if (!arcanaHas(this.save, "passive:bell-toll") || dealt < Math.max(B.minDamage, B.share * (Number(e.maxHp) || 0)) || now < (this.bellTollAt || 0)) return false;
+    this.bellTollAt = now + B.cooldown * 1000; const x = e.x + .5, y = e.y + .45; (this.glyphVisuals ||= []).push({ kind: "burst", x, y, radius: B.radius, life: .45, max: .45 });
+    for (const q of this.enemies) if (!q.dead && !q.untargetable && q.kind !== "npc" && !q.staggerImmune && Math.hypot(q.x + .5 - x, q.y + .45 - y) <= B.radius + .2) q.hitStun = Math.max(q.hitStun || 0, q.boss || q.eliteId ? B.stun * B.bossShare : B.stun);
+    return true;
   }
   sync() {
     Object.assign(this.save.session, {
@@ -4244,6 +4255,7 @@ export class Game {
     // Release 361 (Tim: "I like the mouth being open as a random dungeon... it just gives you another dungeon each time"): a quiet
     // Mouth, and every old one, still opens a run; the Listener waits only at the current Mouth once it has moved.
     if(o.kind==='listeningStone')return{ok:true,message:this.message=o.lore}; // release 373
+    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor") || "out past the black stone"); this.message = `${o.name}: ${r.message}`; if (r.started) journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); this.sync(); return r; } // 2026-11-11
     if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
     if(o.kind==='townSmith'){this.smithyRequested=o.id;/* release 441: Act opens the forge (main.ts polls this, as for shops) */}if(o.kind==='townSmith')return{ok:true,smithy:true,message:this.message=`${o.name}: “Bring me what you carry. I can break it down, reforge it, cut it a socket, or make it a masterwork, as the Listeners fall.”`}; // release 395
     if(o.kind==='listenerDais'){ // release 375: to the Listening Hall
@@ -4361,7 +4373,7 @@ export class Game {
     // Release 215: touching a strange thing opens a Glimpse.
     if (o.kind === "digSpot" && (action || validActions(o, this.save)[0]) === "dig") { const c = ensureShovel(this.save); if (!c.ok) { this.message = c.message; return { ok: false, message: this.message }; } const r = digSpot(this.save, o, this.rx, this.ry); this.message = (c.crafted ? c.message + " " : "") + r.message; this.sync(); return r; }
     if (o.kind === "watcherTomb") return this.touchWatcherTomb(o); // release 289
-    if (o.kind === "surveyorLink") { const r = takeSurveyorLink(this.save, o, this.areaId()); this.message = r.message; if (r.ok) journalOnce(this.save, `surveyor:${r.index}`, `Link ${r.total} of ${SURVEYOR.links}. "${r.note}"`, "The Surveyor's Chain"); if (r.ok && r.total >= SURVEYOR.links) { const at = surveyorStatueSection(this.save); this.message += ` On your Atlas the twelve crossings join into one chain, and it runs on to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`; journalOnce(this.save, "surveyor:map", `Laid end to end, the crossings where the links lay draw a chain across the Atlas. It runs on past the last of them to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`, "The Surveyor's Chain"); this.settleArcana(); } this.sync(); return r; } // release 505; 551: the last map
+    if (o.kind === "surveyorLink") { const r = takeSurveyorLink(this.save, o, this.areaId()); this.message = r.message; if (r.ok) { journalOnce(this.save, `surveyor:${r.index}`, `Link ${r.total} of ${SURVEYOR.links}. "${r.note}"`, "The Surveyor's Chain"); if (r.total === 1) this.settleArcana(); } if (r.ok && r.total >= SURVEYOR.links) { const at = surveyorStatueSection(this.save); this.message += ` On your Atlas the twelve crossings join into one chain, and it runs on to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`; journalOnce(this.save, "surveyor:map", `Laid end to end, the crossings where the links lay draw a chain across the Atlas. It runs on past the last of them to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`, "The Surveyor's Chain"); this.settleArcana(); } this.sync(); return r; } // release 505; 551: the last map
     if (o.kind === "surveyorStatue") { const r = visitSurveyorStatue(this.save, o); this.message = r.message; if (r.first) journalOnce(this.save, "surveyor:statue", r.message, "The Surveyor's Chain"); this.sync(); return r; } // release 551
     if (o.kind === "marginNote") { const r = readMargin(this.save, o); this.message = r.message; if (r.ok) { const reading = READINGS[o.readingId], known = readingKnown(this.save, o.readingId), prog = bookProgress(this.save, o.readingId); if (r.first) { journalOnce(this.save, `margin:${o.readingId}:${o.margin}`, r.message, known ? `Margins · ${reading.name}` : "Margins"); this.message += known ? ` (A margin of ${reading.name}: ${prog.found} of ${prog.total} fragments.)` : " (A fragment of a book you have not heard yet.)"; } } this.sync(); return r; } // release 455
     if (o.kind === "tornPage") { const r = readTornPage(this.save, o); this.message = r.message; if (r.first) { journalOnce(this.save, `torn-page:${o.reading}`, `A torn page: "${r.text}…"`, "The Torn Pages"); if (r.done) { journalOnce(this.save, "torn-page:book", PAGES_FINAL, "The Torn Pages"); this.settleArcana(); } } this.sync(); return r; } // release 595
@@ -6699,6 +6711,7 @@ export class Game {
       }
       glyphHit(this.glyphWorld(now), glyphs, e, dealt, { echo: isEcho });
       onConstellationMelee(this, e, now);
+      if (!isEcho && !scattered) this.bellToll(e, dealt + imbued, now); // 2026-11-11: Bell Toll
     }
     if (!isEcho) this.cloneSwing(profile, { x: geometry.dx, y: geometry.dy }, now); // release 365: the Shadow Clone swings too
     // Awakened primary: every third swing releases a piercing crescent that carries the weapon's glyphs.
@@ -7695,7 +7708,7 @@ export class Game {
       return;
     }
     if (!labFogOn(this.map)) return; const h = dungeonHistory(this.save, this.areaId()), t = labFogTile(this.player);
-    labFogLook(this.map, t.x, t.y, h.labFog); labFogStore(this.map, h);
+    this.map.lightRadius = lightRadius(this.save, LAB_FOG.radius); /* 2026-11-11: Lamplighter's Light */ labFogLook(this.map, t.x, t.y, h.labFog); labFogStore(this.map, h);
   }
   // HOLE_DROPS (labyrinths.ts): where the Wayfarer came onto this building floor (`save.session.floorEntry`), noted on the first
   // frame on a floor, however they came: a door, a ladder, a hatch, a safe drop or a reload.
@@ -8719,7 +8732,7 @@ export class Game {
       // next platform (one level up at most) can be reached; a jump that ends over the gap falls from that height.
       const skyFrom = tileUnder(this.map, width, p.x, p.y);
       if (skyFrom?.kind === "canopyTrunk") this.lastCrownAt = now; // release 637: the glider opens only from the crown
-      if (skyFrom?.kind === "canopyTrunk" && !this.save.glider) { this.save.glider = true; this.message = GLIDE.found; journalOnce(this.save, "glider:found", GLIDE.found, "The Great Trees"); } // release 635
+      if (skyFrom?.kind === "canopyTrunk" && !this.save.glider) { this.save.glider = true; this.message = GLIDE.found; journalOnce(this.save, "glider:found", GLIDE.found, "The Great Trees"); this.settleArcana(); } // release 635
       if (p.jumping && (skyFrom?.skyPlatform || (interiorTerrain(this.map) && skyFrom?.interiorPlatform))) { this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0); this.skyAirScale = tileLiftScale(skyFrom); } // skyAirScale: the launching platform's drawn scale, so the hop is drawn at its height over the gap (renderer.ts)
       p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
       let fallStart = this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;

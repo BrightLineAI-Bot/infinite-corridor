@@ -8,7 +8,7 @@
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
 import { hashSeed } from "./random.ts";
-import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown } from "./lore.ts";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.ts";
 import { BELLS, bellsRung } from "./bells.ts";
 import { SURVEYOR, surveyorFound } from "./surveyor.ts";
 import { TORN_PAGES, pagesFound } from "./torn-pages.ts";
@@ -381,6 +381,7 @@ function fifthThreadIn(seed, dungeonId, rx, ry) {
 }
 export function ensureThreadState(save) {
   const lore = (save.lore ||= {});
+  ensureArcanaState(save); // the arcana unlocks (2026-11-11; lore.ts ARCANA_UNLOCKS)
   if (lore.arcanaClaimed !== undefined) lore.arcanaClaimed = Object.fromEntries(Object.entries(lore.arcanaClaimed && typeof lore.arcanaClaimed === "object" && !Array.isArray(lore.arcanaClaimed) ? lore.arcanaClaimed : {}).filter(([, v]) => v === true)); // arcana rewards claimed (2026-11-11); unknown set ids kept
   if (lore.threads !== undefined) { const out = {}; const raw = lore.threads && typeof lore.threads === "object" ? lore.threads : {};
     for (const id of THREAD_ORDER) if (Array.isArray(raw[id])) out[id] = raw[id].filter((d) => typeof d === "string").slice(0, THREADS[id].pieces.length);
@@ -436,8 +437,8 @@ export function arcanaProgress(save, live = ARCANA_REGIONS.live) {
   return [...THREAD_ORDER.map((id) => row(id, THREADS[id].title, "pieces", threadFound(save, id).length, THREADS[id].pieces.length)),
     ...Object.entries(ARCANA_SETS).map(([id, S]) => row(id, S.title, S.unit, S.found(save), S.total()))];
 }
-// Completion rewards (2026-11-11): the hook only. `ARCANA_REWARDS[setId]` names what finishing a set unlocks ({ kind, id, label };
-// Tim chooses; none yet, so nothing is granted). settleArcanaRewards hands every complete set with a reward not yet claimed to
+// Completion rewards (2026-11-11): the general hook. `ARCANA_REWARDS[setId]` names anything more finishing a set grants
+// ({ kind, id, label }; empty: the unlocks Tim chose are lore.ts ARCANA_UNLOCKS, settled by settleArcanaUnlocks below). settleArcanaRewards hands every complete set with a reward not yet claimed to
 // `grant(setId, reward)` once, and records it in save.lore.arcanaClaimed ({ setId: true }; additive, normalised by
 // ensureThreadState), so a set finished before its reward existed is paid the first time the hook runs after.
 export const ARCANA_REWARDS = {};
@@ -448,3 +449,28 @@ export function settleArcanaRewards(save, grant = () => {}) {
     ((save.lore ||= {}).arcanaClaimed ||= {})[id] = true; grant(id, reward); out.push(id); }
   return out;
 }
+
+// Milestones that open an unlock (lore.ts ARCANA_UNLOCKS `from`), beside the sets: the first link of Abel Corwin's chain (the
+// Cairn Keeper's errand, the journey's first quest), the crown of a first great tree (the leaf glider found there), and a first
+// skyway of the Skylands cleared.
+export const ARCANA_MILESTONES = {
+  firstLink: { name: "The Cairn Keeper's errand", done: (s) => surveyorFound(s) >= 1 },
+  firstGreatTree: { name: "The crown of a great tree", done: (s) => !!s?.glider },
+  firstSkyway: { name: "A skyway cleared", done: (s) => (Number(s?.skylands?.clears) || 0) >= 1 },
+};
+// Whether the set or milestone `from` is complete.
+export function arcanaDone(save, from) {
+  if (ARCANA_MILESTONES[from]) return ARCANA_MILESTONES[from].done(save);
+  return !!arcanaProgress(save, false).find((r) => r.id === from)?.complete;
+}
+// Opens every unlock whose set or milestone is complete and not yet earned, once each: save.arcana.unlocked[id] (created on
+// first use; additive). `grant(id, unlock)` announces it. On a journey from before the gates, what was free stays open
+// anyway; earning it still records it (and the two new passives work only once earned). Returns the ids opened.
+export function settleArcanaUnlocks(save, grant = () => {}) {
+  const out = [];
+  for (const [id, u] of Object.entries(ARCANA_UNLOCKS)) { if (arcanaHas(save, id) || !arcanaDone(save, u.from)) continue;
+    const a = (save.arcana && typeof save.arcana === "object" ? save.arcana : (save.arcana = {})); (a.unlocked ||= {})[id] = true; grant(id, u); out.push(id); }
+  return out;
+}
+// The unlock a set or milestone opens, or null (for the Arcana cards: "Completing it opens ...").
+export const arcanaUnlockFrom = (from) => Object.entries(ARCANA_UNLOCKS).find(([, u]) => u.from === from)?.[0] || null;

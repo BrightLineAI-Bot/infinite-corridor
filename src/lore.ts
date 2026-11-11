@@ -145,8 +145,10 @@ export function nextReadingLine(save, readingId, rand, { pieceChance = .35, voic
 // out"; the Journal should say how many are found and where the rest likely are; "don't make it so restrictive the map feels
 // less free"). Each story set told across crossings has a home: a compass sector around the Refuge (90 degrees centred on
 // `toward`; a diagonal is a quadrant, a cardinal point the Reading quarter of lore.ts readingAt) and a stretch of distance
-// (`from` to `to` sections walked, |rx| + |ry|, as every story band is measured). Nothing is fenced: a set still turns up
-// elsewhere, only rarely.
+// (`from` to `to` sections out). Nothing is fenced: a set still turns up elsewhere, only rarely.
+// Live from 2026-11-11 (Tim: the distance is straight-line from 0,0, the Refuge: rings around it, and the sectors of a ring
+// hold different sets). The homes are measured straight-line (Math.hypot); the story bands, the Readings and the Torn Pages
+// keep their own measure (sections walked). Nothing was pinned to version 1 before the switch, so this is still version 1.
 //   - The Seven Bells and the Surveyor's Chain keep their own rolls: `home` per crossing in the home region, `stray` elsewhere
 //     (from where they began: bells 3 out, the chain 8 out straight-line). The same seeded roll as before decides, so inside its
 //     home a set holds every crossing it held before and more.
@@ -156,11 +158,10 @@ export function nextReadingLine(save, readingId, rand, { pieceChance = .35, voic
 //     Reading lies. The far threads (band `beyond`) have no home: past 1000 the far realms are their region.
 // A crossing is pinned to a region version the first time its dungeon history is pinned (game.ts pinDungeonLayout,
 // `regionVersion`): one generated, visited or pinned before keeps version 0 and exactly what it offered. `live` gates the
-// pin: while false no crossing is pinned to version 1 and every placement is exactly as before (the switch is the
-// coordinator's: existing tests assume a fresh crossing rolls the old way). Never edit a home once live; a new home is a new
-// version.
+// pin: while false no crossing is pinned to version 1 and every placement is exactly as before. Never edit a home now it is
+// live; a new home is a new version.
 export const ARCANA_REGIONS = {
-  version: 1, live: false, homeWeight: 8,
+  version: 1, live: true, homeWeight: 8,
   headings: { e: 0, ne: 45, n: 90, nw: 135, w: 180, sw: -135, s: -90, se: -45 },
   words: { n: "north", ne: "north-east", e: "east", se: "south-east", s: "south", sw: "south-west", w: "west", nw: "north-west" },
   sets: {
@@ -186,7 +187,7 @@ export const ARCANA_REGIONS = {
 };
 // Whether section (rx, ry) lies in set `id`'s home (false for a set with none).
 export function inArcanaHome(id, rx, ry) {
-  const h = ARCANA_REGIONS.sets[id], x = Number(rx) || 0, y = Number(ry) || 0, d = Math.abs(x) + Math.abs(y);
+  const h = ARCANA_REGIONS.sets[id], x = Number(rx) || 0, y = Number(ry) || 0, d = Math.hypot(x, y); // straight-line from the Refuge
   if (!h || d < h.from || d > h.to || !d) return false;
   const a = Math.atan2(-y, x) * 180 / Math.PI, off = Math.abs((((a - ARCANA_REGIONS.headings[h.toward]) % 360) + 540) % 360 - 180); // north is up the Atlas (ry < 0)
   return off <= 45 + 1e-9;
@@ -212,4 +213,52 @@ export function readingRegionHint(id) {
   const r = readingRegion(id); if (!r) return null;
   if (!r.toward) return r.to === null ? `every way, ${r.from} sections out and more` : `every way, within ${r.to} sections of the Refuge`;
   return `${ARCANA_REGIONS.words[r.toward]}, ${r.from} to ${r.to} sections out`;
+}
+
+// Arcana unlocks (2026-11-11; Tim: "don't invent lots of new passives; use the passives and spells that already exist"; tie
+// the sets to unlocking Arcanum things that were simply given, not those the Infinite tiers, the Listener or the Gates already
+// gate; "some unlocks should stay straightforward, others distributed through the game"; never take away anything a journey
+// already has). Each entry: `kind` (slot, spell, passive, awaken), its `name`, `from` (the set or milestone whose completion
+// opens it: a thread id, bells, surveyor, or a milestone of threads.ts ARCANA_MILESTONES), and the `clue` the Arcanum shows
+// while it is closed ({where} is the set's home, arcanaHint). `fresh: true` marks the two passives that are new (Tim chose
+// them): every journey earns those. Everything else was free before, so it is closed only on a journey that began gated
+// (save.arcana.gated, set when a journey is created: persistence.ts); a journey from before keeps everything open.
+// Unlock ids: "slot:c", "spell:<id>", "passive:<id>", "cap:<id>", "awaken:<slot>".
+export const ARCANA_UNLOCKS = {
+  "slot:c": { kind: "slot", name: "Spell slot C", from: "firstLink", clue: "The Cairn Keeper, by the cairn at the west edge of Ember Refuge, has an errand for someone with good legs. Speak with her." },
+  "passive:bell-toll": { kind: "passive", fresh: true, name: "Bell Toll", from: "bells", text: "A heavy blow tolls like a cracked bell: every foe near it reels.", clue: "Seven cracked bells hang in crossings {where}. Ring them all." },
+  "passive:lamplight": { kind: "passive", fresh: true, name: "Lamplighter's Light", from: "lamplighter", text: "Whatever light you see by reaches farther into the dark.", clue: "Someone kept a round of lamps lit, in crossings {where}. Follow the round to its end." },
+  "spell:grave-sun": { kind: "spell", name: "Grave Sun", from: "letters", clue: "Letters were sent into the Corridor and never answered. They lie in crossings {where}. Read them all." },
+  "spell:fire-burst": { kind: "spell", name: "Fire Burst", from: "beekeeper", clue: "An old beekeeper left her jars in crossings {where}. Find every jar." },
+  "awaken:primary": { kind: "awaken", name: "Awakening a weapon", from: "surveyor", clue: "Sela will not wake a weapon for someone who has not measured anything. Abel Corwin's chain lies in crossings {where}: gather all twelve links." },
+  "awaken:secondary": { kind: "awaken", name: "Awakening a tool", from: "toolmaker", clue: "A toolmaker went on making handles the year the iron did not come. They lie in crossings {where}. Find them all." },
+  "cap:aerial-step": { kind: "passive", name: "Aerial Step", from: "firstGreatTree", clue: "Climb a great tree to its crown, and you will know how to step across empty air." },
+  "cap:second": { kind: "passive", name: "A second capstone", from: "firstSkyway", clue: "A branch takes its second capstone only from someone who has cleared a skyway of the Skylands." },
+};
+// The new passives' numbers (Tim chose both): Bell Toll on a heavy blow (one that takes at least `share` of the foe's health,
+// and at least `minDamage`), at most once every `cooldown` s, stuns foes within `radius` tiles (bosses and elites `bossShare` of
+// it); Lamplighter's Light lengthens any light radius (the labyrinths' sight, a lantern's reach): radius * `mult` + `add`.
+export const ARCANA_PASSIVES = {
+  "bell-toll": { share: .2, minDamage: 12, cooldown: 4, radius: 2.4, stun: .5, bossShare: .25 },
+  lamplight: { mult: 1, add: 2 },
+};
+const arcanaState = (save) => (save?.arcana && typeof save.arcana === "object" ? save.arcana : null);
+// Whether the unlock has been earned on this journey.
+export const arcanaHas = (save, id) => arcanaState(save)?.unlocked?.[id] === true;
+// Whether it is open: earned, or (for what was free before) the journey did not begin gated.
+export function arcanaOpen(save, id) { const u = ARCANA_UNLOCKS[id]; if (!u) return true; return arcanaHas(save, id) || (!u.fresh && !arcanaState(save)?.gated); }
+// What the Arcanum says of a closed unlock: its clue, with the set's home named.
+export function arcanaClue(id) { const u = ARCANA_UNLOCKS[id]; if (!u) return ""; return u.clue.replace("{where}", arcanaHint(u.from) || "across the Corridor"); }
+// Any light radius, with Lamplighter's Light once earned (labyrinths' sight; the lantern may read it too).
+export function lightRadius(save, base) { const L = ARCANA_PASSIVES.lamplight; return arcanaHas(save, "passive:lamplight") ? base * L.mult + L.add : base; }
+// A new journey begins gated (persistence.ts, when a journey is created). Returns the save.
+export function beginArcanaGates(save) { save.arcana = { ...(arcanaState(save) || {}), gated: 1, unlocked: { ...(arcanaState(save)?.unlocked || {}) } }; return save; }
+// Normalises save.arcana (additive at schema 14; absent stays absent; unknown fields and unknown unlock ids are kept).
+export function ensureArcanaState(save) {
+  if (save.arcana === undefined) return save;
+  const a = save.arcana && typeof save.arcana === "object" && !Array.isArray(save.arcana) ? save.arcana : {};
+  const unlocked = Object.fromEntries(Object.entries(a.unlocked && typeof a.unlocked === "object" ? a.unlocked : {}).filter(([, v]) => v === true));
+  save.arcana = { ...a, unlocked }; if (a.gated !== undefined) save.arcana.gated = a.gated ? 1 : 0;
+  if (a.starter !== undefined && !["set", "done"].includes(a.starter)) delete save.arcana.starter;
+  return save;
 }
