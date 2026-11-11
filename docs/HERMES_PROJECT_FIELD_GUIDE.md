@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 906 — Close View weapons: Verge Cleaver hilt, Rift Bombard grenade launcher in black and blue
+
+Tim, 2026-11-11: the Cleaver's hilt should fit the hand; the Rift Bombard "should look like a grenade launcher", held low at the hip, with "blue accents... black and blue"; the Salvage Blade "doesn't need a guard, it's good just the way it is". He OK'd the pinned-test updates this needs.
+
+**CODE:** `src/close-view-models.ts`: `CLOSE_VIEW_HERO_WEAPON_FORM` holds every key dimension (cleaver grip, guard and pommel; bombard bore, collar, drum, grip and support handle; salvage grip and pommel); `RIFT_BOMBARD_COLOURS` (body 0x17191e, grip 0x101114, accent 0x2f6fd8, glow 0x5aa6ff, an existing lit actor colour, so the shader is unchanged). Imported Cleaver 96 tris, Bombard 96, Blunderbuss 92, Salvage Blade 58 (budgets unchanged); the Bombard's muzzle point moves onto its raised bore axis (`TOOL_MUZZLE_LOCAL`). New `tests/close-view-weapon-forms.test.ts`; `cleaver-four-presentation`, `close-view-native-pike-carry` (Cleaver hash) and `close-view-tool-refinement` (grenade launcher bore) re-pinned with Tim's OK.
+
+**BOUNDARY:** Presentation only: no damage, timing, contact, reach, projectile or save changes; triangle budgets and the hero model buffer are unchanged; the standard view is untouched.
+
 ## Release 905 — Close View beasts: the Questing Beast, its wings and fur
 
 Tim, 2026-11-11: of the Questing Beast, wings "like Gore Magala ... flowing, almost like a cape", then "they should still be able to unfurl and fly ... a membrane that connects them to the back"; "more muscular, more texture"; "the legs look almost comically small ... he's too smooth ... more furry ... like a jackal with wings and horns".
