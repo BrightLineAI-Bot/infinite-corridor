@@ -233,12 +233,14 @@ const heroVergeCleaver = (() => {
 // selects them from accepted production events. All begin at the canonical (.17,-.25,.79) grip.
 // Rift Bombard (Tim, 2026-11-11: it should look like a grenade launcher, held low at the hip with
 // two hands): 96 triangles. Recipe +Z is the barrel, -X is up and +Y outward while it is fired.
-// A fat bore with a brass muzzle collar and a rift-lit throat, a revolving drum with lit faces where
-// the support hand closes, a raked walnut pistol grip through the trigger fist, a side handle for the
+// A fat bore with a blue muzzle collar and a rift-lit throat, a revolving drum with lit faces where
+// the support hand closes, a raked black pistol grip through the trigger fist, a side handle for the
 // support hand and a top strap back over the fist.
+// Its palette (Tim, 2026-11-11: "blue accents... black and blue"): a black body and grips, a blue collar, a blue-lit throat and drum (glow is a lit actor colour, close-view-gl.ts CLOSE_VIEW_ACTOR_LOOK.emissive).
+export const RIFT_BOMBARD_COLOURS = Object.freeze({ body: 0x17191e, grip: 0x101114, accent: 0x2f6fd8, glow: 0x5aa6ff });
 const riftBombard = (() => {
-  const F = CLOSE_VIEW_HERO_WEAPON_FORM.bombard, X = F.axisX, Y = -.25, [g0x, g0z, g1x, g1z] = F.grip, S = F.support;
-  const drumWall = heldTube([[X, Y, F.drum[0], F.drumRadius], [X, Y, F.drum[1], F.drumRadius]], 6, WAYFARER_GUNMETAL, { phase: 0, flat: true });
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.bombard, C = RIFT_BOMBARD_COLOURS, X = F.axisX, Y = -.25, [g0x, g0z, g1x, g1z] = F.grip, S = F.support;
+  const drumWall = heldTube([[X, Y, F.drum[0], F.drumRadius], [X, Y, F.drum[1], F.drumRadius]], 6, C.body, { phase: 0, flat: true });
   const drumFaces = [];
   for (const z of F.drum) { const ring = Array.from({ length: 6 }, (_, i) => [X + Math.cos(i * Math.PI / 3) * F.drumRadius, Y + Math.sin(i * Math.PI / 3) * F.drumRadius, z]);
     for (let i = 1; i < 5; i++) drumFaces.push([ring[0], ring[i], ring[i + 1]]); }
@@ -250,17 +252,17 @@ const riftBombard = (() => {
   { const z = F.collar[1] - .004, n = Array.from({ length: 6 }, (_, i) => { const a = (i + .5) * Math.PI / 3; return [X + Math.cos(a) * F.bore, Y + Math.sin(a) * F.bore, z]; });
     for (let i = 1; i < 5; i++) bore.push([n[0], n[i], n[i + 1]]); }
   // The strap's underside clears the trigger fist (measured top at recipe x .046).
-  const strapZ = [.62, F.drum[0]], strap = block(.018, Y, (strapZ[0] + strapZ[1]) / 2, .028, .030, (strapZ[1] - strapZ[0]) / 2, WAYFARER_GUNMETAL, -2, 0, 1.19);
+  const strapZ = [.62, F.drum[0]], strap = block(.018, Y, (strapZ[0] + strapZ[1]) / 2, .028, .030, (strapZ[1] - strapZ[0]) / 2, C.body, -2, 0, 1.19);
   return Object.freeze([
-    heldTube([[g1x, Y, g1z, F.gripRadius, F.gripRadius * .75], [g0x, Y, g0z, F.gripRadius * .85, F.gripRadius * .7]], 6, WAYFARER_WALNUT, { ref: [0, 0, 1], caps: 1 }),
+    heldTube([[g1x, Y, g1z, F.gripRadius, F.gripRadius * .75], [g0x, Y, g0z, F.gripRadius * .85, F.gripRadius * .7]], 6, C.grip, { ref: [0, 0, 1], caps: 1 }),
     strap,
     drumWall,
-    heldFacets(drumFaces, RIFT_SEAM, c => [0, 0, c[2] - (F.drum[0] + F.drum[1]) / 2]),
-    heldTube([[X, Y, F.drum[1] - .005, F.barrelRadius], [X, Y, F.collar[0] + .005, F.barrelRadius]], 6, WAYFARER_GUNMETAL),
-    heldTube([[X, Y, F.collar[0], F.collarRadius], [X, Y, F.collar[1], F.collarRadius]], 6, brass),
-    heldFacets(annulus, brass, () => [0, 0, 1]),
-    heldFacets(bore, RIFT_SEAM, () => [0, 0, 1]),
-    heldTube([[S[0], S[1], S[3], .019], [S[0], S[2], S[3], .017]], 4, WAYFARER_WALNUT, { ref: [0, 0, 1] }),
+    heldFacets(drumFaces, C.glow, c => [0, 0, c[2] - (F.drum[0] + F.drum[1]) / 2]),
+    heldTube([[X, Y, F.drum[1] - .005, F.barrelRadius], [X, Y, F.collar[0] + .005, F.barrelRadius]], 6, C.body),
+    heldTube([[X, Y, F.collar[0], F.collarRadius], [X, Y, F.collar[1], F.collarRadius]], 6, C.accent),
+    heldFacets(annulus, C.accent, () => [0, 0, 1]),
+    heldFacets(bore, C.glow, () => [0, 0, 1]),
+    heldTube([[S[0], S[1], S[3], .019], [S[0], S[2], S[3], .017]], 4, C.grip, { ref: [0, 0, 1] }),
   ]);
 })();
 // Closed forged blade: the sharp outer ring retains the original broken outline;

@@ -125,10 +125,10 @@ test('the Rift Bombard reads as a hip-held grenade launcher with its muzzle on t
   const F = CLOSE_VIEW_HERO_WEAPON_FORM.bombard, k = .82 * closeViewHeldScale('rift-bombard'), out = gear('rift-bombard');
   let reach = -Infinity; for (let i = 0; i < out.length; i += MODEL_FLOATS) reach = Math.max(reach, out[i]);
   assert.ok(Math.abs(reach - (1.585 - .79) * k) < 1e-6, 'muzzle face unchanged');
-  // The rift-lit throat and drum faces use an emissive actor colour; the bore centre is the muzzle point.
-  assert.ok(CLOSE_VIEW_ACTOR_LOOK.emissive.includes(0xc58cff) && CLOSE_VIEW_ACTOR_LOOK.emissive.includes(0xf3a55c));
+  // The blue-lit throat (RIFT_BOMBARD_COLOURS.glow) and drum faces use an emissive actor colour; the bore centre is the muzzle point.
+  assert.ok(CLOSE_VIEW_ACTOR_LOOK.emissive.includes(0x5aa6ff) && CLOSE_VIEW_ACTOR_LOOK.emissive.includes(0xf3a55c));
   const throat: number[][] = [];
-  for (let i = 0; i < out.length; i += MODEL_FLOATS) if (isColor(out, i, 0xc58cff) && out[i] > (1.5 - .79) * k) throat.push([out[i], out[i + 1], out[i + 2]]);
+  for (let i = 0; i < out.length; i += MODEL_FLOATS) if (isColor(out, i, 0x5aa6ff) && out[i] > (1.5 - .79) * k) throat.push([out[i], out[i + 1], out[i + 2]]);
   assert.equal(throat.length, 12);
   const centre = [0, 1, 2].map(c => (Math.min(...throat.map(p => p[c])) + Math.max(...throat.map(p => p[c]))) / 2), muzzle = closeViewHeldMuzzlePoint(new Float32Array(3), 'rift-bombard', identity)!;
   assert.ok(Math.abs(muzzle[1] - centre[1]) < 1e-6 && Math.abs(muzzle[2] - centre[2]) < 1e-6 && Math.abs(muzzle[0] - reach) < 1e-6, 'shots leave the bore');

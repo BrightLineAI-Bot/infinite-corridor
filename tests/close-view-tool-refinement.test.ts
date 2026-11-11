@@ -37,17 +37,12 @@ test('Blunderbuss retains its muzzle plane with a recessed open bore within the 
   assert.equal(cap.length,12);assert.ok(cap.every(p=>near(p[0],(1.43-.79)*KB)),'dark bore terminates behind the muzzle');
 });
 
-test('Bombard exposes six separate cylinder mouths while retaining its fixed reach and 96-triangle ceiling',()=>{
+test('Bombard is a grenade launcher with a lit bore on the muzzle face, its fixed reach and 96-triangle ceiling',()=>{
   const out=mesh('rift-bombard');assert.equal(out.length/30,96);assert.equal(96+60,156);
   const vertices=Array.from({length:out.length/10},(_,i)=>Array.from(out.slice(i*10,i*10+10)));
-  const mouths=vertices.filter(p=>near(p[6],0x17/255)&&near(p[7],0x1a/255)&&near(p[8],0x20/255));
-  assert.equal(mouths.length,36);
-  for(let i=0;i<6;i++){
-    const a=(i+.5)*Math.PI/3,group=mouths.slice(i*6,i*6+6);
-    assert.ok(group.every(p=>near(p[0],(1.301-.79)*KR)));
-    const y=group.reduce((n,p)=>n+p[1],0)/6,z=group.reduce((n,p)=>n+p[2],0)/6;
-    assert.ok(near(y,-Math.cos(a)*.083*KR));assert.ok(near(z,-Math.sin(a)*.083*KR));
-  }
+  // The blue-lit throat (RIFT_BOMBARD_COLOURS.glow, 0x5aa6ff) sits just inside the muzzle face; the drum faces share its colour.
+  const lit=vertices.filter(p=>near(p[6],0x5a/255)&&near(p[7],0xa6/255)&&near(p[8],0xff/255));
+  assert.equal(lit.filter(p=>p[0]>(1.5-.79)*KR).length,12);assert.equal(lit.length,36);
   assert.ok(near(Math.max(...vertices.map(p=>p[0])),.6519*closeViewHeldScale('rift-bombard')));
 });
 
