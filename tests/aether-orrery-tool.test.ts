@@ -168,7 +168,7 @@ test('Shadow Clone: its own orb fires straight two-hit lasers; while charging a 
 
 test('bounded: 60 s of every press and charge with the cooldown wiped each frame stays within the caps, with no NaN', () => {
   const foes = Array.from({ length: 10 }, (_, i) => [12 + (i % 5), 8 + Math.floor(i / 5) * 3]);
-  const { g } = arena(['echo', 'echo', 'echo'], { Focus: 300 }, foes); g.shadowClone = { ox: -1, oy: 1.5, until: 1e12 };
+  const { g } = arena(['echo', 'echo', 'echo'], { Focus: 300 }, foes); g.save.materials.cinderIron = 1e6; /* tool rounds: every tap and great orb takes a round */ g.shadowClone = { ox: -1, oy: 1.5, until: 1e12 };
   for (const e of g.enemies) { e.hp = e.maxHp = 1e12; }
   let t = 1000, peak = 0, pellets = 0, lasers = 0, bigs = 0;
   for (let f = 0; f < 60 * 60; f++) {

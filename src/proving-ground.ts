@@ -7,7 +7,7 @@ import { drawOculusDais } from "./oculus.ts"; // release 874
 import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.ts"; // release 874: the lab's utility button
 import { createInput } from "./input.ts";
 import { render, renderScaleForViewport, screenToWorld } from "./renderer.ts";
-import { CLOSE_VIEW_HOOKS, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.ts"; // the Close View lab
+import { CLOSE_VIEW_HOOKS, closeViewDrawsProps, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.ts"; // the Close View lab
 import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.ts";
 import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.ts"; // feel pass 1: fixed steps and interpolated drawing, as in the game
 import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.ts"; // release 791: Enter Proving Ground from Options
@@ -56,7 +56,7 @@ document.addEventListener("keydown",event=>{if(event.key==="`"&&!event.target?.c
 try{setPanelCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1")}catch{setPanelCollapsed(false)}
 globalThis.provingGroundGame=()=>game;const closePan=mountCloseViewControls(()=>game); // Close View: the pan crescent and its lock button
  // developer handle (the lab's scratch game only), for headless checks such as the Close View blend
-CLOSE_VIEW_HOOKS.groundLayers.push((c,W,H,projectedShots)=>{if(game){drawRangedEffects(c,game,W,H,projectedShots);if(game.oculus)labOculus(c,W,H,performance.now())}});
+CLOSE_VIEW_HOOKS.groundLayers.push((c,W,H,projectedShots)=>{if(game){drawRangedEffects(c,game,W,H,projectedShots);if(game.oculus&&!closeViewDrawsProps())labOculus(c,W,H,performance.now())/* 2026-11-11: the GPU scene stands the dais up */}});
 // Release 874: the Oculus's dais in the lab (its scratch save's utility button), drawn as the game draws it.
 function labOculus(c,W,H,now){const o=game?.oculus;if(!o||o.map!==game.map)return;const s=Math.round(Math.max(28,Math.min(44,W/12))),p=game.player;drawOculusDais(c,o,now,x=>W/2+(x-p.x)*s,y=>H/2+(y-p.y)*s,s,!!(game.presentation?.reduceMotion||game.presentation?.safeMode))}
 let journeyRecord=null,fixture=null,game=null,paused=false,last=performance.now(),simClock=createSimClock(),lastDiagnostic=0,teleportSignature="",comparison=null,input=createInput(document,globalThis,{controlSmoothing:38});

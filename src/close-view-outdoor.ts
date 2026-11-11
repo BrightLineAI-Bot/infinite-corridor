@@ -20,6 +20,7 @@
 // objects, about a thousand reads) and the palette lookup (cached per map).
 import { ATLAS_TILE_COLORS } from "./atlas-colors.ts";
 import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.ts";
+import { hashSeed } from "./random.ts";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -49,7 +50,7 @@ export const OUTDOOR = f({
   // degrees (azimuth 0 east, 90 south); ambient: the light from the sky; clouds: cover 0-1; ridge: height (radians above
   // the horizon) and roughness; grade: tint and gamma (as the themes); trees: crown, bark and the cold dusting (0-1).
   skies: f({
-    waste: f({ zenith: [74, 102, 138], horizon: [196, 170, 150], haze: [182, 160, 142], ridge: [92, 84, 86], ridgeH: .055, rough: .7,
+    waste: f({ zenith: [62, 104, 166], horizon: [226, 182, 146], haze: [206, 168, 138], ridge: [98, 82, 80], ridgeH: .055, rough: .7,
       sun: [255, 214, 170], sunAz: 210, sunEl: 34, sunK: .62, ambient: [.5, .52, .58], clouds: .35, grade: [1.02, 1, .97, 1.02],
       crown: [74, 92, 58], bark: [70, 52, 38], frost: 0 }),
     temperate: f({ zenith: [62, 118, 188], horizon: [184, 206, 222], haze: [170, 192, 206], ridge: [78, 98, 104], ridgeH: .05, rough: .6,
@@ -64,35 +65,65 @@ export const OUTDOOR = f({
     sea: f({ zenith: [58, 112, 178], horizon: [178, 208, 226], haze: [168, 198, 216], ridge: [120, 150, 168], ridgeH: .012, rough: .3,
       sun: [255, 240, 214], sunAz: 215, sunEl: 38, sunK: .64, ambient: [.5, .58, .66], clouds: .5, grade: [.98, 1, 1.03, 1],
       crown: [60, 112, 64], bark: [96, 72, 50], frost: 0 }),
-    fen: f({ zenith: [84, 104, 112], horizon: [168, 176, 152], haze: [150, 160, 136], ridge: [70, 80, 64], ridgeH: .04, rough: .5,
+    fen: f({ zenith: [58, 112, 128], horizon: [196, 206, 150], haze: [168, 180, 132], ridge: [62, 82, 60], ridgeH: .04, rough: .5,
       sun: [236, 230, 190], sunAz: 205, sunEl: 30, sunK: .45, ambient: [.5, .54, .5], clouds: .7, grade: [1, 1.02, .96, 1.03],
       crown: [58, 82, 44], bark: [62, 54, 38], frost: 0 }),
-    wild: f({ zenith: [44, 36, 92], horizon: [170, 136, 196], haze: [150, 120, 180], ridge: [70, 52, 104], ridgeH: .06, rough: .8,
-      sun: [226, 210, 255], sunAz: 240, sunEl: 30, sunK: .5, ambient: [.52, .48, .62], clouds: .3, grade: [1, .98, 1.04, 1.02],
+    wild: f({ zenith: [56, 26, 150], horizon: [236, 120, 196], haze: [204, 112, 186], ridge: [48, 92, 120], ridgeH: .06, rough: .8,
+      sun: [255, 206, 246], sunAz: 240, sunEl: 30, sunK: .58, ambient: [.56, .48, .66], clouds: .3, grade: [1, .98, 1.04, 1.02],
       crown: [120, 70, 150], bark: [70, 50, 80], frost: 0 }),
-    moon: f({ zenith: [14, 16, 28], horizon: [86, 90, 110], haze: [80, 84, 100], ridge: [50, 52, 62], ridgeH: .06, rough: .9,
+    moon: f({ stars: .8, zenith: [14, 16, 28], horizon: [86, 90, 110], haze: [80, 84, 100], ridge: [50, 52, 62], ridgeH: .06, rough: .9,
       sun: [226, 232, 255], sunAz: 250, sunEl: 40, sunK: .62, ambient: [.4, .42, .5], clouds: 0, grade: [.97, 1, 1.05, 1],
       crown: [90, 96, 110], bark: [60, 60, 66], frost: .2 }),
-    fire: f({ zenith: [52, 40, 46], horizon: [200, 120, 82], haze: [170, 104, 76], ridge: [52, 36, 34], ridgeH: .07, rough: .9,
+    fire: f({ zenith: [74, 34, 40], horizon: [240, 128, 70], haze: [196, 104, 66], ridge: [52, 36, 34], ridgeH: .07, rough: .9,
       sun: [255, 170, 110], sunAz: 200, sunEl: 22, sunK: .55, ambient: [.54, .44, .42], clouds: .5, grade: [1.04, .98, .94, 1.03],
       crown: [70, 60, 40], bark: [52, 38, 30], frost: 0 }),
     spring: f({ zenith: [72, 132, 196], horizon: [222, 226, 220], haze: [214, 220, 214], ridge: [190, 176, 150], ridgeH: .05, rough: .5,
       sun: [255, 240, 214], sunAz: 220, sunEl: 44, sunK: .62, ambient: [.54, .58, .62], clouds: .3, grade: [1, 1, 1, 1],
       crown: [70, 110, 62], bark: [90, 70, 50], frost: 0 }),
-    rule: f({ zenith: [10, 12, 30], horizon: [60, 70, 140], haze: [52, 60, 120], ridge: [20, 22, 46], ridgeH: .05, rough: .2,
+    rule: f({ stars: .6, zenith: [10, 12, 30], horizon: [60, 70, 140], haze: [52, 60, 120], ridge: [20, 22, 46], ridgeH: .05, rough: .2,
       sun: [190, 200, 255], sunAz: 250, sunEl: 36, sunK: .5, ambient: [.42, .44, .58], clouds: 0, grade: [.98, 1, 1.06, 1],
       crown: [60, 70, 130], bark: [30, 32, 50], frost: 0 }),
   }),
   // which sky a section's ground takes (its landscape biome or region ground; else its most common tile)
   skyOf: f({ desert: "desert", mountains: "cold", frost: "cold", coast: "sea", sea: "sea", isles: "sea", lake: "temperate", swamp: "fen", blight: "fen",
     alien: "wild", castle: "temperate", forest: "temperate", jungle: "temperate", savanna: "desert", salt: "desert", pillars: "desert", lunar: "moon",
-    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
+    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
     petrified: "waste", reef: "sea", snowField: "cold", glass: "waste", ash: "waste", ember: "waste" }),
+  // Sky moods (Tim, 2026-11-11: "We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have
+  // stormy, overcast."). A mood is laid over the region's sky, not instead of it: each biome colour is scaled by `light` and
+  // moved `mix` of the way to the mood's own (zenith, horizon; the haze and fog follow the horizon, the far ridge darkens with
+  // it). sun: the light's colour (`sunMix` of the way from the region's), azimuth and elevation in degrees (null: the
+  // region's) and strength (times the region's); at night the light is the moon (`moon` 1 draws its disc instead of the sun's).
+  // ambient and grade multiply the region's; clouds is cover added; cloud: the clouds' colour, cloudDark how dark their
+  // undersides are; stars 0-1; lightning: the strength of distant flashes (never with reduced motion); torch: the carried
+  // light's share outdoors (OUTDOOR.torch by day). weight: how often a section takes it.
+  moods: f({
+    sunrise: f({ weight: 12, zenith: [72, 104, 178], horizon: [255, 176, 128], mix: .55, light: 1, sun: [255, 176, 112], sunMix: .8, sunAz: 15, sunEl: 7, sunK: .85,
+      ambient: [.94, .84, .82], grade: [1.04, .99, .95, 1], clouds: 0, cloud: [255, 200, 176], cloudDark: 0, stars: .1, moon: 0, lightning: 0, torch: .3 }),
+    day: f({ weight: 34, zenith: [96, 150, 220], horizon: [214, 228, 240], mix: 0, light: 1, sun: [255, 244, 224], sunMix: 0, sunAz: null, sunEl: null, sunK: 1,
+      ambient: [1, 1, 1], grade: [1, 1, 1, 1], clouds: 0, cloud: [255, 255, 255], cloudDark: 0, stars: 0, moon: 0, lightning: 0, torch: .22 }),
+    sunset: f({ weight: 14, zenith: [70, 52, 132], horizon: [255, 124, 76], mix: .6, light: .96, sun: [255, 138, 76], sunMix: .85, sunAz: 195, sunEl: 6, sunK: .8,
+      ambient: [.96, .76, .74], grade: [1.06, .97, .92, 1], clouds: .05, cloud: [255, 150, 136], cloudDark: 0, stars: .15, moon: 0, lightning: 0, torch: .35 }),
+    night: f({ weight: 16, zenith: [6, 10, 30], horizon: [30, 44, 82], mix: .78, light: .55, sun: [176, 196, 244], sunMix: 1, sunAz: 235, sunEl: 38, sunK: .36,
+      ambient: [.46, .52, .72], grade: [.94, .98, 1.08, 1], clouds: -.1, cloud: [62, 72, 104], cloudDark: .4, stars: 1, moon: 1, lightning: 0, torch: 1 }),
+    overcast: f({ weight: 14, zenith: [132, 140, 152], horizon: [184, 188, 192], mix: .62, light: .95, sun: [236, 236, 236], sunMix: .5, sunAz: null, sunEl: null, sunK: .35,
+      ambient: [1.02, 1.02, 1.04], grade: [.98, 1, 1.02, 1], clouds: .55, cloud: [214, 218, 224], cloudDark: .25, stars: 0, moon: 0, lightning: 0, torch: .3 }),
+    storm: f({ weight: 10, zenith: [34, 40, 56], horizon: [88, 96, 110], mix: .72, light: .7, sun: [200, 210, 230], sunMix: .6, sunAz: null, sunEl: null, sunK: .16,
+      ambient: [.74, .78, .9], grade: [.96, .99, 1.04, 1], clouds: .75, cloud: [72, 78, 94], cloudDark: .7, stars: 0, moon: 0, lightning: 1, torch: .5 }),
+  }),
+  // how a section's own weather weighs the moods (missing: 1): rain is overcast or a storm, a sunbreak is never grey
+  moodWeather: f({ rain: f({ storm: 3, overcast: 2, night: .5, day: 0, sunrise: 0, sunset: 0 }), snow: f({ overcast: 2.5, storm: .3 }),
+    sunbreak: f({ storm: 0, overcast: 0, night: 0 }) }),
+  // a mood holds over a block of `cell` x `cell` sections (it changes as the Wayfarer travels); `version` names the choice
+  moodCell: 3, moodVersion: 1,
+  // distant lightning (storm): a flash may fall in each `slot` ms (`chance`), as a double flicker (`flicker`: ms apart, the
+  // second's share, the decay ms); the ground's ambient lifts by `lift` at its peak
+  lightning: f({ slot: 2600, chance: .45, flicker: f([110, .65, 70]), lift: .25 }),
   // surface classes for the ground detail (the shader's outdoorDetail): the first pattern a tile's kind matches
   surfaces: f([
     f(["grass", /grass|moss|forest|jungle|meadow|savanna|fen|bog|loam|refuge|canopyLeaf|fringe|mat$/i]),
     f(["sand", /sand|dune|beach|salt|mesa|desert|pillarGround|reefFlat/i]),
-    f(["snow", /snow|ice|frost|peak|sinter|seaIce/i]),
+    f(["snow", /snow|ice|frost|peak|sinter|seaIce|firn|serac/i]),
     f(["rock", /rock|crag|stone|trail|basalt|rim|slope|crater|shale|moon|hoodoo/i]),
     f(["paved", /court|city|floor|stair|battlement|dock|bridge|platform|cloister|arc|rule/i]),
     f(["glass", /glass|crystal|obsidian|quicksilver|prism/i]),
@@ -133,7 +164,16 @@ export const OUTDOOR = f({
   // view's LIFT_PER_LEVEL, a great tree's levels taller), a ramp tile slopes between its neighbours, a level's edge is a
   // cliff face, and a canyon, chasm or abyss is a real hole `pitDepth` deep with walls darkening toward its floor. Water lies
   // `waterDrop` below its bank. Built once a section; the solids (outcrops, trees, props, houses) stand on it.
-  terrain: f({ pitDepth: 3.2, waterDrop: .06, maxTiles: 16384,
+  //
+  // Version 3 (Tim, 2026-11-11: "these 3 or 4 high stacked platforms that are only about hip height for the Wayfarer...
+  // things need more vertical distance"): Close View no longer borrows the ordinary view's drawn lift (.34 a tile, a knee's
+  // height to a 1.8-tile Wayfarer). One level is `level` tall: 1.2, the Wayfarer's chest, so a single step is a ledge you
+  // jump onto and four stacked levels stand well over their head. A great tree's levels (one a branch tile, climbed as a
+  // spiral of slopes) are `canopyLevel`: .9, a little taller than the old 2 x .34 so its decks step clearly, gentler than a
+  // ground level so a branch stays a walkable slope; its 25 levels make a crown about 22 tiles up. Holes are deeper to
+  // match (`pitDepth`). A great building's roof keeps the ordinary view's own lift (roofLift), since its facade is drawn to it.
+  // Gameplay is untouched: one jump a level, the same steps, falls and collision; only what is drawn is taller.
+  terrain: f({ level: 1.2, canopyLevel: .9, pitDepth: 4.6, waterDrop: .08, maxTiles: 16384,
     // a great tree's branches and leaf pads (Tim, 2026-11-11: "The branches should float. They should extend from the tree
     // like normal branches on a real tree"): a deck `deck` thick with an underside, and a limb under it that tapers from
     // `limbRoot` wide at the trunk to `limbTip` at the deck, rising `limbRise` from the trunk to the deck; the ground under
@@ -202,20 +242,51 @@ export function outdoorSkyId(map) {
   if (!id) { const n = {}; let best = "", bn = 0; for (const t of map?.tiles || []) { const k = t?.landscape || t?.kind; if (!k) continue; n[k] = (n[k] || 0) + 1; if (n[k] > bn) { bn = n[k]; best = k; } } id = OUTDOOR.skyOf[best] || "waste"; }
   if (map && typeof map === "object") SKY_OF.set(map, id); return id;
 }
-// The sky's numbers for the GPU, made once per sky and weather (0-1 colours, the sun's direction).
+// The section's sky mood (OUTDOOR.moods): a weighted pick hashed from the journey's seed and the block of sections it lies in,
+// weighed by the section's weather. Pure and cached per map; nothing generated or saved changes.
+const MOOD_OF = new WeakMap(), MOOD_IDS = Object.keys(OUTDOOR.moods);
+export function outdoorMoodId(map) {
+  const known = map && typeof map === "object" ? MOOD_OF.get(map) : null; if (known && known.weather === map.weather) return known.id;
+  const id = moodFor(map?.seed, map?.rx, map?.ry, map?.weather); if (map && typeof map === "object") MOOD_OF.set(map, { weather: map.weather, id }); return id;
+}
+export function moodFor(seed, rx, ry, weather) {
+  const c = OUTDOOR.moodCell, cx = Math.floor((Number(rx) || 0) / c), cy = Math.floor((Number(ry) || 0) / c), w = OUTDOOR.moodWeather[weather] || null;
+  let total = 0; for (const id of MOOD_IDS) total += OUTDOOR.moods[id].weight * (w?.[id] ?? 1);
+  if (!(total > 0)) return "day";
+  let r = hashSeed(`${seed ?? ""}:sky-mood:v${OUTDOOR.moodVersion}:${cx}:${cy}`) / 4294967296 * total;
+  for (const id of MOOD_IDS) { r -= OUTDOOR.moods[id].weight * (w?.[id] ?? 1); if (r < 0) return id; }
+  return MOOD_IDS[MOOD_IDS.length - 1];
+}
+// The sky's numbers for the GPU, made once per sky, weather and mood (0-1 colours, the sun's direction).
 const SKY_GL = new Map(), SKY_MAP = new WeakMap();
 export function outdoorSky(map) {
   const known = map && typeof map === "object" ? SKY_MAP.get(map) : null; if (known && known.weather === map.weather) return known.sky;
-  const sky = skyFor(map); if (map && typeof map === "object") SKY_MAP.set(map, { weather: map.weather, sky }); return sky;
+  const sky = outdoorSkyMix(outdoorSkyId(map), outdoorMoodId(map), map?.weather); if (map && typeof map === "object") SKY_MAP.set(map, { weather: map.weather, sky }); return sky;
 }
-function skyFor(map) {
-  const id = outdoorSkyId(map), weather = OUTDOOR.weather[map?.weather] || OUTDOOR.weather.still, key = `${id}:${map?.weather || "still"}`;
-  let s = SKY_GL.get(key); if (s) return s; const k = OUTDOOR.skies[id] || OUTDOOR.skies.waste;
-  const az = k.sunAz * DEG, el = k.sunEl * DEG, sunK = k.sunK * weather.sun;
-  s = f({ id, zenith: rgb01(k.zenith), horizon: rgb01(k.horizon), haze: rgb01(k.haze), ridge: rgb01(k.ridge), ridgeH: k.ridgeH, rough: k.rough,
-    sun: f([Math.cos(az) * Math.cos(el), Math.sin(az) * Math.cos(el), Math.sin(el)]), sunC: rgb01(k.sun).map((v) => v * sunK), ambient: k.ambient,
-    clouds: Math.max(0, Math.min(1, k.clouds + weather.clouds)), grade: k.grade, crown: rgb01(k.crown), bark: rgb01(k.bark), frost: k.frost });
+const lerp = (a, b, t) => a + (b - a) * t;
+const tint = (c, m, M) => f([0, 1, 2].map((i) => lerp(c[i] / 255 * m.light, M[i] / 255, m.mix)));
+// a region's sky under a mood (exported for tests: every pair is complete and finite)
+export function outdoorSkyMix(id, moodId = "day", weatherId = "still") {
+  const key = `${id}:${weatherId || "still"}:${moodId}`; let s = SKY_GL.get(key); if (s) return s;
+  const k = OUTDOOR.skies[id] || OUTDOOR.skies.waste, m = OUTDOOR.moods[moodId] || OUTDOOR.moods.day, weather = OUTDOOR.weather[weatherId] || OUTDOOR.weather.still;
+  const az = (m.sunAz ?? k.sunAz) * DEG, el = (m.sunEl ?? k.sunEl) * DEG, sunK = k.sunK * weather.sun * m.sunK;
+  const sunC = [0, 1, 2].map((i) => lerp(k.sun[i], m.sun[i], m.sunMix) / 255 * sunK);
+  s = f({ id: k === OUTDOOR.skies[id] ? id : "waste", mood: m === OUTDOOR.moods[moodId] ? moodId : "day", zenith: tint(k.zenith, m, m.zenith), horizon: tint(k.horizon, m, m.horizon), haze: tint(k.haze, m, m.horizon),
+    ridge: f([0, 1, 2].map((i) => lerp(k.ridge[i] / 255 * m.light, m.horizon[i] / 255 * .45, m.mix * .6))), ridgeH: k.ridgeH, rough: k.rough,
+    sun: f([Math.cos(az) * Math.cos(el), Math.sin(az) * Math.cos(el), Math.sin(el)]), sunC: f(sunC), ambient: f(k.ambient.map((v, i) => v * m.ambient[i])),
+    clouds: Math.max(0, Math.min(1, k.clouds + weather.clouds + m.clouds)), grade: f(k.grade.map((v, i) => v * m.grade[i])), crown: rgb01(k.crown), bark: rgb01(k.bark), frost: k.frost,
+    cloud: rgb01(m.cloud), cloudDark: m.cloudDark, stars: Math.max(m.stars, k.stars || 0), moon: m.moon, lightning: m.lightning, torch: m.torch });
   SKY_GL.set(key, s); return s;
+}
+// Distant lightning at `now` ms for a sky of `strength` (0: none): 0-1, and its azimuth (radians) in LIGHTNING.az. A pure
+// function of the time (the same flashes on every device); no allocation. Callers pass 0 with reduced motion.
+export const LIGHTNING = { k: 0, az: 0 };
+const boltHash = (n) => { let h = Math.imul(n | 0, 0x9e3779b1) ^ 0x85ebca6b; h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d); h = Math.imul(h ^ (h >>> 12), 0x297a2d39); return (h ^ (h >>> 15)) >>> 0; };
+export function outdoorLightning(now, strength) {
+  LIGHTNING.k = 0; if (!(strength > 0) || !Number.isFinite(now)) return 0; const L = OUTDOOR.lightning, slot = Math.floor(now / L.slot), h = boltHash(slot);
+  if ((h & 1023) / 1024 >= L.chance) return 0; const t = now - slot * L.slot - ((h >>> 10) & 1023) / 1024 * L.slot * .6; if (t < 0) return 0;
+  const gap = L.flicker[0], second = L.flicker[1], decay = L.flicker[2], k = Math.exp(-t / decay) + (t >= gap ? second * Math.exp(-(t - gap) / decay) : 0);
+  if (k < .003) return 0; LIGHTNING.az = ((h >>> 20) & 1023) / 1024 * Math.PI * 2; LIGHTNING.k = Math.min(1, k) * Math.min(1, strength); return LIGHTNING.k;
 }
 
 // One texel a tile: RGB the tile's atlas colour; A its flags: bit 0 water, bit 1 an outcrop, bits 2-4 its height level
@@ -322,6 +393,9 @@ export function outdoorMesh(map, sky, relief = null) { // R: the section's relie
 }
 
 // ---------------------------------------------------------------------------------------------- the heightfield
+// How tall one of this tile's levels is drawn in Close View (OUTDOOR.terrain): a ground level, a great tree's, or a great
+// building roof's own lift (the ordinary view's).
+export function outdoorLevelHeight(t) { const T = OUTDOOR.terrain; return t?.canopy ? T.canopyLevel : t?.roofLift ? LIFT_PER_LEVEL * tileLiftScale(t) : T.level; }
 export const outdoorPit = (t) => !!t && (t.chasm === true || OUTDOOR.pitKinds.test(String(t.kind || "")));
 // A section's relief: each tile's top (in tiles of height), and each tile corner's height for the ramps. Cached per map and
 // signature; pure. A pit's top is -pitDepth; water's is its bank's less waterDrop.
@@ -330,12 +404,12 @@ export function outdoorRelief(map) {
   if (!map || typeof map !== "object") return null; const sig = outdoorSignature(map), known = RELIEFS.get(map); if (known && known.sig === sig) return known;
   const w = Math.max(1, Number(map.width) || 32), tiles = map.tiles || [], h = Math.max(1, Number(map.height) || Math.floor(tiles.length / w)), T = OUTDOOR.terrain;
   const top = new Float32Array(w * h), ramp = new Uint8Array(w * h), corner = new Float32Array((w + 1) * (h + 1));
-  for (let i = 0; i < w * h; i++) { const t = tiles[i], k = LIFT_PER_LEVEL * tileLiftScale(t), e = Number(t?.elev) || 0;
+  for (let i = 0; i < w * h; i++) { const t = tiles[i], k = outdoorLevelHeight(t), e = Number(t?.elev) || 0;
     if (outdoorPit(t)) top[i] = -T.pitDepth; else if (t?.slope) { ramp[i] = 1; top[i] = (e - .5) * k; } else top[i] = e * k - (isWater(t) ? T.waterDrop : 0); }
   // a ramp's corners take the mean of the level tops round them, held between its foot and its head
   for (let cy = 0; cy <= h; cy++) for (let cx = 0; cx <= w; cx++) { let sum = 0, n = 0, lo = Infinity, hi = -Infinity;
     for (let j = -1; j <= 0; j++) for (let i = -1; i <= 0; i++) { const x = cx + i, y = cy + j; if (x < 0 || y < 0 || x >= w || y >= h) continue; const q = y * w + x;
-      if (ramp[q]) { const t = tiles[q], k = LIFT_PER_LEVEL * tileLiftScale(t), e = Number(t?.elev) || 0; lo = Math.min(lo, (e - 1) * k); hi = Math.max(hi, e * k); } else if (top[q] > -T.pitDepth + 1e-6) { sum += top[q]; n++; } }
+      if (ramp[q]) { const t = tiles[q], k = outdoorLevelHeight(t), e = Number(t?.elev) || 0; lo = Math.min(lo, (e - 1) * k); hi = Math.max(hi, e * k); } else if (top[q] > -T.pitDepth + 1e-6) { sum += top[q]; n++; } }
     let z = n ? sum / n : (lo + hi) / 2; if (hi > -Infinity) z = Math.max(lo, Math.min(hi, n ? z : (lo + hi) / 2)); corner[cy * (w + 1) + cx] = Number.isFinite(z) ? z : 0; }
   const R = { sig, w, h, top, ramp, corner }; RELIEFS.set(map, R); return R;
 }
