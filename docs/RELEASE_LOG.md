@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 884 | Claude | claude/cv-creatures | Close View creatures fully opaque within view range (designed ghosts stay ghostly), brighter light floor, cool rim and glowing parts | In flight. |
+| 885 | Claude | claude/sim-clock | Fixed 60 Hz simulation steps with interpolated drawing; Close View floor walls built off the entry frame (2–4× faster, byte-identical) | In flight. |
+| 884 | Claude | claude/cv-creatures | Close View creatures fully opaque within view range (designed ghosts stay ghostly), brighter light floor, cool rim and glowing parts | Merged as `51db683090cf` (#552). |
 | 883 | Claude | claude/seed-dungeons | Pumice and Crimson Seeds offered at a Watcher's shrine open one-time realms (Hollow Husk, Drifting Ship) with new creatures, crystals, caches, a beacon and Divine Viscera; never kept | Merged as `23d96f405dd8` (#551). |
 | 882 | Claude | claude/weapon-hands | Close View: all swords in the left hand, tools in the right and smaller, Blunderbuss shouldered and Rift Bombard low at the hip two-handed, tool shots from the muzzle | Merged as `eec2aff3df39` (#550). |
 | 881 | Claude | claude/sv-trees-chasm | Great-tree keel steering, step landings and gold branch rims; standard view draws actors on flat interior floors; crater false notice and shovel hint | Merged as `fc5a0d9d5e61` (#548). |
