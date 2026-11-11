@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 889 — Close View camera farther back; targeting pass 2
+
+Tim, 2026-11-11: Close View camera farther back (also in wide), targeting still not there; then "5 tiles is probably fine... we can bring it back in if we need." Tim approved updating the pinned Pentagon-entry pitch in tests/close-view-tight-corner.test.ts. A boss camera that widens for big bosses may follow once he has played this.
+
+**CODE:** `CLOSE_VIEW.presets` version 3 (`src/close-view.ts`): close 2.6/1.55, standard 3.5/1.9, wide 5/2.15 (distance/height) with a farther, lower aim point; each preset has a `fogPush` added to `fogShift` for interior depth fog. `archCapAt` falls back to `interiorArchAt` with the theme's arch cap when no GPU scene exists. Targeting: `targetScore` is the single target-mode priority (weights `wDist`, `wAngle`, `wClose`, `wAggro`, `wWindup` in `CLOSE_VIEW.targetMode`); `lockTick` switches on `switchMargin` after `switchHold`, or to a foe within `reach` after `reachHold` (a swipe keeps the full hold); `targetMode.lostSec` 2.4 makes the target-mode lock sticky with a coasting yaw; `lockSpring` limits locked yaw speed-up (`lock.accel`) and reversal (`lock.reverse`); `lockBrackets` draws the acquisition ring, dimmed brackets while hidden and an off-screen edge pointer.
+
+**BOUNDARY:** Camera collision, sight cuts, FOV, follow and overworld fog are unchanged; tight rooms keep their wall-limited boom. The plain tap lock keeps its 1.2 s hold and dead stop. Hit rules, game.ts lock/aim code and saves are untouched. Reduced motion restricts automatic locks to the view cone and scales every rate. New CAM fields are runtime only. Phone feel unmeasured.
+
 ## Release 888 — Close View Wayfarer passes: everyday kit, a living body, readable jumps
 
 Tim, 2026-11-11: several Wayfarer passes in Close View (animations, timing, look, phone budget); "the character should be alive"; stronger melee and pickup poses; the loose-gear look as the everyday Wayfarer. Tim approved updating the pinned triangle-count and pose tests to the new numbers.
