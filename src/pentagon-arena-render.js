@@ -12,7 +12,7 @@
 // Static layers are cached: each floor and formation tile is a sprite (a few variants per density band and edge), the heart's
 // figure and the standing lattices are sprites, and the land beyond the map is a pattern of the same formations; the per-frame
 // work is a handful of strokes, bounded by the quality tier, and still under reduced motion.
-import { PENTAGON_ARENA } from "./pentagon-arena.js?v=r873-d4a0b43a1879";
+import { PENTAGON_ARENA } from "./pentagon-arena.js?v=r874-00abe1a858bf";
 
 export const STILLWORKS_ART = {
   res: 3, // sprite pixels per screen pixel at most (devicePixelRatio, capped)

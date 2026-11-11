@@ -18,7 +18,7 @@
 //
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
-import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r873-d4a0b43a1879";
+import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r874-00abe1a858bf";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
