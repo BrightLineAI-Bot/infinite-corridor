@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 901 — Close View: varied skies
+
+Tim, 2026-11-11: "The skies can be different colors... We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have stormy, overcast." He also disliked the dull purple-grey alien sky.
+
+**CODE:** `src/close-view-outdoor.ts`: `OUTDOOR.moods` (sunrise, day, sunset, night, overcast, storm) with weight, colours and `mix`/`light`, light colour and direction, ambient and grade, cloud cover, colour and `cloudDark`, `stars`, `moon`, `lightning`, `torch`; `OUTDOOR.moodWeather`; `moodCell` 3 and `moodVersion` 1; `moodFor(seed, rx, ry, weather)`, `outdoorMoodId(map)` (cached), `outdoorSkyMix(biome, mood, weather)`; vivid `wild`, fen, waste and fire skies; `OUTDOOR.lightning` and `outdoorLightning(now, strength)` (pure, allocation-free). `src/close-view-gl.ts`: `u_mood`/`u_moodC` (preallocated `GLF.mood`/`GLF.moodC`): stars, moon disc, mood-coloured clouds with dark undersides, lightning glow, a bolt on detail tiers only. `src/close-view.ts` `glScene` fills them; the torch's outdoor share follows the mood; a flash lifts ambient light.
+
+**BOUNDARY:** Rendering only: generation, saves, collision, combat, balance and the standard view are unchanged. The mood is chosen when a section's sky is first built and changes only with its weather. No per-frame allocation; the low tier keeps one cloud noise layer and draws no bolt; Reduced Motion holds clouds, star twinkle and lightning still. Without WebGL2 the flat ground and cards are used as before. Retuning the moods reshuffles which sections take which mood; bump `moodVersion` when changing the choice. Phone frame rate unmeasured.
+
 ## Release 900 — Close View: taller ledges and a higher camera
 
 Tim, 2026-11-11: "it just looks silly having these 3 or 4 high stacked platforms that are only about hip height for the Wayfarer... in the overworld the blocks need to be higher... gives us things to jump onto." Then: "higher camera in general." Tim approved updating the Pentagon-entry pitch pin for the camera height again; the 892 refinement test now reads the level height from the data table.
