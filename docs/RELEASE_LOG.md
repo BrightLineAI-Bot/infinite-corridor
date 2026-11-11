@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 894 | Claude | claude/adventure-creatures | Six new creatures (two each for Tomb, Verdant Ruin, Ash Waste) built for tall open ground; prototype-only until adventure Pentagons place them; Proving Ground 'Adventure heights' ground | In flight. |
+| 895 | Claude | claude/cv-dungeon-themes | Deep themes in Close View; Close View allowed by place (refused in crossings, dive sites, grottoes with an on-entry message); floating Aperture crystals; 3D blue Oculus dais | In flight. |
+| 894 | Claude | claude/adventure-creatures | Six new creatures (two each for Tomb, Verdant Ruin, Ash Waste) built for tall open ground; prototype-only until adventure Pentagons place them; Proving Ground 'Adventure heights' ground | Merged as `16a335d78d6a` (#561). |
 | 893 | Claude | claude/cv-lightning-giant | Close View beast slot (shared skinned rig, GPU-skinned program) and the Lightning Giant as a solid animated machine on its real attack clocks, drawn 1.25× | Merged as `31d33d89dd96` (#557). |
 | 892 | Claude | claude/cv-world | Close View overworld terrain in 3D (levels, ramps, cliffs, canyon/chasm depths), floating Great Tree branches, clouds on every tier, shores and foam, 3D props and houses, no giant name labels; standard view shows interior sconces | Merged as `e6a756178bad` (#560). |
 | 891 | Claude | claude/building-respawns | Cleared building floors (keep, arcology, Pentagon chamber, room-maze cube) bring a pack of their own creatures back every 35 s of play, out of sight; small rewards only | Merged as `8af65ea6152e` (#559). |

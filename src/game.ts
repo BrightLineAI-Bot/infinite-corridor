@@ -99,6 +99,7 @@ import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
+import { closeViewOccludedOnEntry } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
 import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
 import { LABYRINTHS, LAB_FOG, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.ts";
@@ -3321,6 +3322,7 @@ export class Game {
     this.hordeTimer = 0; if (area === "dungeon") this.applyHorde(); // release 269: a horde dungeon holds only its Revenants
     this.mireTimer = 0; this.mirePool = 0;
     if (area !== "dungeon" || this.clockArea !== "dungeon") this.dungeonClock = 0; this.clockArea = area; // release 271: Revenants hunt after GATE_REVENANT.huntAfter s in a dungeon
+    { const occluded = closeViewOccludedOnEntry(this); if (occluded) this.message = this.message && !this.message.includes(occluded) ? `${this.message} ${occluded}` : occluded; } // Close View places (2026-11-11): said once as you walk in
   }
   // Release 269: the Gate Revenant horde (revenant-horde.ts). In a horde dungeon every other creature is gone, and up to
   // HORDE.active Revenants stand at once, drawn from the dungeon's remaining count.
