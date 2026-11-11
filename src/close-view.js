@@ -1,26 +1,26 @@
-import { rangedWeapon } from './items.js?v=r874-00abe1a858bf';
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r874-00abe1a858bf";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r874-00abe1a858bf";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r874-00abe1a858bf";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r874-00abe1a858bf";
-import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r874-00abe1a858bf";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r874-00abe1a858bf";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r874-00abe1a858bf';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r874-00abe1a858bf";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.js?v=r874-00abe1a858bf';
-import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r874-00abe1a858bf';
-import { fistCharge } from './brawler-spells.js?v=r874-00abe1a858bf';
-import { dronePos } from "./affixes.js?v=r874-00abe1a858bf";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r874-00abe1a858bf";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r874-00abe1a858bf";
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r874-00abe1a858bf";
-import { knockdownPose } from "./lightning-giant-render.js?v=r874-00abe1a858bf";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r874-00abe1a858bf";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r874-00abe1a858bf";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r874-00abe1a858bf";
-import { SIGIL_CELLS } from "./watcher.js?v=r874-00abe1a858bf";
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r874-00abe1a858bf"; // version 4: the GPU scene
-import { OUTDOOR, outdoorScene, outdoorTreeObject } from "./close-view-outdoor.js?v=r874-00abe1a858bf"; // the open world's sky, ground and solids
+import { rangedWeapon } from './items.js?v=r875-f410be5ab7b8';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r875-f410be5ab7b8";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r875-f410be5ab7b8";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r875-f410be5ab7b8";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r875-f410be5ab7b8";
+import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r875-f410be5ab7b8";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint } from "./close-view-models.js?v=r875-f410be5ab7b8";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r875-f410be5ab7b8';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight } from "./actor-presentation.js?v=r875-f410be5ab7b8";
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.js?v=r875-f410be5ab7b8';
+import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r875-f410be5ab7b8';
+import { fistCharge } from './brawler-spells.js?v=r875-f410be5ab7b8';
+import { dronePos } from "./affixes.js?v=r875-f410be5ab7b8";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r875-f410be5ab7b8";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r875-f410be5ab7b8";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r875-f410be5ab7b8";
+import { knockdownPose } from "./lightning-giant-render.js?v=r875-f410be5ab7b8";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r875-f410be5ab7b8";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r875-f410be5ab7b8";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r875-f410be5ab7b8";
+import { SIGIL_CELLS } from "./watcher.js?v=r875-f410be5ab7b8";
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r875-f410be5ab7b8"; // version 4: the GPU scene
+import { OUTDOOR, outdoorScene, outdoorTreeObject } from "./close-view-outdoor.js?v=r875-f410be5ab7b8"; // the open world's sky, ground and solids
 
 // Close View (Tim, 2026-11-06: "a more intimate viewpoint for the character... when you get into the Pentagon, we feel like
 // you're in Bloodborne... you're close in, walking through, instead of having this super high perspective... the camera's in
@@ -236,7 +236,7 @@ export const CLOSE_VIEW = Object.freeze({
   // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r874-00abe1a858bf's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r875-f410be5ab7b8's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -396,7 +396,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r874-00abe1a858bf's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r875-f410be5ab7b8's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -484,7 +484,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r874-00abe1a858bf's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r875-f410be5ab7b8's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
@@ -1022,7 +1022,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r874-00abe1a858bf's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r875-f410be5ab7b8's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);

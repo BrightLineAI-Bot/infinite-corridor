@@ -1,15 +1,15 @@
-import { currentDungeonDoors } from './game.js?v=r874-00abe1a858bf';
-import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r874-00abe1a858bf";
-import { serializeSave, deserializeSave } from './save-codec.js?v=r874-00abe1a858bf';
-import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r874-00abe1a858bf';
-import { drawRangedEffects } from "./combat-visuals.js?v=r874-00abe1a858bf";
-import { drawOculusDais } from "./oculus.js?v=r874-00abe1a858bf"; // release 874
-import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.js?v=r874-00abe1a858bf"; // release 874: the lab's utility button
-import { createInput } from "./input.js?v=r874-00abe1a858bf";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r874-00abe1a858bf";
-import { CLOSE_VIEW_HOOKS, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r874-00abe1a858bf"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r874-00abe1a858bf";
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r874-00abe1a858bf"; // release 791: Enter Proving Ground from Options
+import { currentDungeonDoors } from './game.js?v=r875-f410be5ab7b8';
+import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r875-f410be5ab7b8";
+import { serializeSave, deserializeSave } from './save-codec.js?v=r875-f410be5ab7b8';
+import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r875-f410be5ab7b8';
+import { drawRangedEffects } from "./combat-visuals.js?v=r875-f410be5ab7b8";
+import { drawOculusDais } from "./oculus.js?v=r875-f410be5ab7b8"; // release 874
+import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.js?v=r875-f410be5ab7b8"; // release 874: the lab's utility button
+import { createInput } from "./input.js?v=r875-f410be5ab7b8";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r875-f410be5ab7b8";
+import { CLOSE_VIEW_HOOKS, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r875-f410be5ab7b8"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r875-f410be5ab7b8";
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r875-f410be5ab7b8"; // release 791: Enter Proving Ground from Options
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";
@@ -27,14 +27,14 @@ const panel=document.createElement("aside");panel.id="provingGroundPanel";panel.
   <div class="proving-grid"><label>Seed <input id="seedInput" maxlength="80"></label><label>Variant <input id="variantInput" type="number" min="0" max="999"></label><label id="sizeProfileLabel">Size <select id="sizeProfileSelect"><option value="compact">Compact</option><option value="standard" selected>Standard</option><option value="extended">Extended</option></select></label><label id="revealModeLabel">Reveal <select id="revealModeSelect"><option value="normal">Normal discovery</option><option value="explored">Explored only</option><option value="full">Full diagnostic topology</option></select></label></div>
   <div class="proving-buttons"><button id="scenarioPrevious">Previous</button><button id="scenarioNext">Next</button><button id="scenarioGenerate" class="pg-start">Start test</button><button id="scenarioReset">Reset same</button><button id="scenarioCompare">Compare same seed</button><button id="scenarioEntrance">Start at entrance</button><button id="scenarioPause">Pause</button><button id="scenarioRoutes" disabled>View routes</button></div>
   <label><input id="pgOverworldCloseView" type="checkbox"> Overworld Close View</label>
-  <label>Utility button <select id="pgUtility"><option value="build">Build</option><option value="oculus">Oculus</option><option value="frame">Robot / Drone</option></select></label>
+  <label>Utility button <select id="pgUtility"><option value="build">Build</option><option value="oculus">Oculus</option><option value="robot">Robot</option><option value="drone">Drone</option></select></label>
   <label>Developer teleport <select id="teleportSelect"><option value="">Select target…</option></select></label>
   <pre id="fixtureDiagnostics" aria-live="polite"></pre><p>Use the movement control, WASD, or arrow keys. In Close View, use the left joystick to move and drag the scene to look. Production combat and Act controls remain available below.</p>
   <div class="proving-buttons"><button id="fixtureCopy">Copy recipe/report</button><button id="fixtureExit">Exit to normal game</button></div>
  </section>`;document.body.append(panel);
 const overworldCloseViewToggle=panel.querySelector("#pgOverworldCloseView");
 overworldCloseViewToggle.checked=query.get("overworldCloseView")==="1";
-// Release r874-00abe1a858bf: the scratch save's utility button (both presets), so the Oculus can be tried on any fixture; ?utility=oculus.
+// Release 874: the scratch save's utility button (both presets), so the Oculus can be tried on any fixture; ?utility=oculus.
 const utilitySelect=panel.querySelector("#pgUtility");utilitySelect.value=UTILITY.choices.includes(query.get("utility"))?query.get("utility"):UTILITY.default;
 const applyLabUtility=()=>{if(game)for(let i=0;i<PRESETS;i++)setPresetUtility(game.save,i,utilitySelect.value)};
 const interactionDialog=document.createElement("dialog");interactionDialog.id="pgInteraction";interactionDialog.innerHTML=`<form method="dialog"><h2></h2><p class="pg-interaction-lore"></p><p class="pg-interaction-status" aria-live="polite"></p><div class="pg-interaction-actions"></div><button value="cancel">Return to world</button></form>`;document.body.append(interactionDialog);interactionDialog.hidden=false;
@@ -56,7 +56,7 @@ try{setPanelCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1")}catch{setPanelCo
 globalThis.provingGroundGame=()=>game;const closePan=mountCloseViewControls(()=>game); // Close View: the pan crescent and its lock button
  // developer handle (the lab's scratch game only), for headless checks such as the Close View blend
 CLOSE_VIEW_HOOKS.groundLayers.push((c,W,H,projectedShots)=>{if(game){drawRangedEffects(c,game,W,H,projectedShots);if(game.oculus)labOculus(c,W,H,performance.now())}});
-// Release r874-00abe1a858bf: the Oculus's dais in the lab (its scratch save's utility button), drawn as the game draws it.
+// Release 874: the Oculus's dais in the lab (its scratch save's utility button), drawn as the game draws it.
 function labOculus(c,W,H,now){const o=game?.oculus;if(!o||o.map!==game.map)return;const s=Math.round(Math.max(28,Math.min(44,W/12))),p=game.player;drawOculusDais(c,o,now,x=>W/2+(x-p.x)*s,y=>H/2+(y-p.y)*s,s,!!(game.presentation?.reduceMotion||game.presentation?.safeMode))}
 let journeyRecord=null,fixture=null,game=null,paused=false,last=performance.now(),lastDiagnostic=0,teleportSignature="",comparison=null,input=createInput(document,globalThis,{controlSmoothing:38});
 let recoveryEpoch=0,recoveryBinding=null,recoveryRecord=null,recoveryArmed=false,recoveryBusy=false,recoveryStatus='unavailable',recoveryNote='',recoveryResetActive=false;

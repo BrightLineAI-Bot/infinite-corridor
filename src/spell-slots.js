@@ -4,7 +4,7 @@
 // always-on bonus while both are in place, discovered the first time the pair is slotted. Spells now keep their own
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
-import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r874-00abe1a858bf";
+import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.js?v=r875-f410be5ab7b8";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -60,7 +60,7 @@ export const PAIRINGS = {
   "rift+ward": { name: "Anchorage", text: "Take 4% less damage; stamina returns 2 per second faster.", mods: { guard: .04, stamina: 2 } },
   "force+rift": { name: "Breach", text: "Spells deal 8% more damage; recover 5% faster.", mods: { spellDamage: .08, cooldown: .05 } },
 };
-// Release r874-00abe1a858bf (Tim, 2026-11-10: "a new C button replacing the build button... you can still use items in slots A, B, or C";
+// Release 874 (Tim, 2026-11-10: "a new C button replacing the build button... you can still use items in slots A, B, or C";
 // then "the player can now equip 3 spells across A, B and C"): a third slot, C, in the Build button's old place. It holds
 // what A and B hold (a spell, a discipline, Build or the preset's item); all three may be spells. Like B, C is open at once.
 // The Pairing stays the attributes of A and B. Additive at schema 14: a save without C gets an empty C (or what its preset's
@@ -68,10 +68,15 @@ export const PAIRINGS = {
 export const SLOTS = ["a", "b", "c"];
 // The input action each slot's button sends (input.ts keys F, G and C).
 export const SLOT_ACTIONS = Object.freeze({ a: "spell", b: "spell2", c: "spell3" });
-// Release r874-00abe1a858bf: the fixed utility button where the compass sat (bottom left). Each preset chooses what it does. "frame" is the
+// Release 874: the fixed utility button where the compass sat (bottom left). Each preset chooses what it does. "frame" is the
 // Submersible Frame ashore: the robot, its Empowered (power armor) mode and the drone are one control, the same frame
 // cycled by the same button (vehicle-gates.ts toggleMech; robot or drone is the frame's mode, chosen in Supplies).
-export const UTILITY = Object.freeze({ choices: Object.freeze(["oculus", "build", "frame"]), default: "build", names: Object.freeze({ oculus: "Oculus", build: "Build", frame: "Robot / Drone" }) });
+// Release r875-f410be5ab7b8 (Tim, 2026-11-11: "you can either have the robot... as a suit or as a drone... they should be... either, or you
+// can have one or the other"): the frame's two forms are separate choices, "robot" (the suit, with its power armor) and "drone".
+// Only one is ever out: the button calls up its own form and puts the other away first. A stored "frame" (release 874) reads as
+// the form the frame was set to (save.mech.mode).
+export const UTILITY = Object.freeze({ choices: Object.freeze(["oculus", "build", "robot", "drone"]), default: "build", names: Object.freeze({ oculus: "Oculus", build: "Build", robot: "Robot", drone: "Drone" }) });
+export const frameForm = (save) => (save?.mech?.mode === "drone" ? "drone" : "robot");
 // Release 309 (Tim: "I want you to be able to put build in any one of those positions... items... spells... or build"): A and
 // B may also hold "build" or "item" (the preset's item), and the Build button may hold a castable. Additive at schema 14.
 export const SLOT_TOOLS = ["build", "item"];
@@ -90,15 +95,15 @@ export function ensureSlots(save) {
   // Release 261 spell presets (Tim: "two different presets for the spells... I'll just toggle it"): two saved slot sets;
   // the slots always hold the active one. Additive at schema 14: a save without presets starts with both as its slots.
   // Release 291: each preset also said what the Build button did: "build", or "item" with the item it uses (additive).
-  // Release r874-00abe1a858bf: the Build button became slot C (`c`) and the fixed utility button (`utility`). A preset from before 874
+  // Release 874: the Build button became slot C (`c`) and the fixed utility button (`utility`). A preset from before 874
   // keeps what its Build button held: a spell, a discipline or an item moves to C; the Submersible Frame (the robot) moves
-  // to the utility button as "frame"; plain Build stays Build, on the utility button, with C empty. `button` is kept as it
+  // to the utility button (release 875: as "robot" or "drone"); plain Build stays Build, on the utility button, with C empty. `button` is kept as it
   // was, no longer read, so nothing written before is lost.
   const pair = (q) => {
     if (!q || typeof q !== "object") return null;
     const legacy = q.button === "item" ? "item" : CASTABLES[q.button] ? q.button : "build", item = BUTTON_ITEMS.includes(q.item) ? q.item : null, frame = legacy === "item" && item === "submersible";
     const c = Object.hasOwn(q, "c") ? valid(q.c) : legacy === "build" || frame ? null : legacy;
-    const utility = UTILITY.choices.includes(q.utility) ? q.utility : Object.hasOwn(q, "utility") ? UTILITY.default : frame ? "frame" : UTILITY.default;
+    const utility = UTILITY.choices.includes(q.utility) ? q.utility : q.utility === "frame" || (!Object.hasOwn(q, "utility") && frame) ? frameForm(save) : UTILITY.default; // release 875: "frame" became its form
     const out = { ...q, a: valid(q.a), b: valid(q.b), c, utility, item }; // release 874: other fields (an older `button`, unknown ones) are kept
     if (!(q.build && typeof q.build === "object")) delete out.build; // release 393: `build` (build-presets.ts) rides along
     return out;
@@ -120,7 +125,7 @@ export const PRESETS = 2;
 // your preset... next to each item in the supplies menu... preset 1 or preset 2... if preset 1 is set to build, then only
 // preset 2 will be selectable"). The items the Build button can use.
 export const BUTTON_ITEMS = ["ironbarkTonic", "lumenPhial", "clearrootAmpoule", "submersible"]; // release 311: the submersible frame (Tim: "this one should get its own option to place in the... preset slot") // release 293 (Tim): not the draught, which has its own Potion button; release 295: nor the Hull Shield, which Build already deploys at sea (hold)
-// Release r874-00abe1a858bf: what was the Build button is slot C. These keep the release-291/309 reading of it: "item", a castable key,
+// Release 874: what was the Build button is slot C. These keep the release-291/309 reading of it: "item", a castable key,
 // or "build" for anything else (C empty or holding Build).
 const legacyButton = (c) => (c === "item" ? "item" : CASTABLES[c] ? c : "build");
 export function presetButton(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const p = save.magicSkills.presets[i]; return { button: legacyButton(p.c), item: p.item || null }; }
@@ -142,7 +147,7 @@ export function assignPresetItem(save, i, type) {
 }
 // What slot C does now, the release-291 way: { mode: "build" }, { mode: "item", item } or { mode: "cast", key }.
 export function activeButton(save) { const b = presetButton(save); return b.button === "item" ? { mode: "item", item: b.item } : CASTABLES[b.button] ? { mode: "cast", key: b.button } : { mode: "build" }; }
-// Release r874-00abe1a858bf: the utility button of preset i ("oculus", "build" or "frame"), and setting it. The active preset's applies.
+// Release 874: the utility button of preset i ("oculus", "build", "robot" or "drone"), and setting it. The active preset's applies.
 export function presetUtility(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const u = save.magicSkills.presets[i]?.utility; return UTILITY.choices.includes(u) ? u : UTILITY.default; }
 export function setPresetUtility(save, i, choice) {
   ensureSlots(save); const p = save.magicSkills.presets[i];

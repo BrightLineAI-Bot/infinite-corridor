@@ -1021,7 +1021,7 @@ body.viewport-closed #hud,body.viewport-closed #actions,body.viewport-closed #ev
 
 body.proving-ground #pgRoutes[open] { display:block!important; max-width:min(92vw,38rem); color:#e9f7f5; background:#111923; border:1px solid #43c9bf; }
 
-/* Release r874-00abe1a858bf (Tim, 2026-11-10): the fixed utility button takes the compass's place beside A and B. Its icon says what the
+/* Release 874 (Tim, 2026-11-10): the fixed utility button takes the compass's place beside A and B. Its icon says what the
    active preset put on it: the hammer (Build), the frame (Robot / Drone) or the Oculus. Slot C takes Build's oval in the
    cluster. The compass moves to the top right corner of the screen; the HUD box ends 294-340 px in, so the two never meet
    on 360-430 px phones. */

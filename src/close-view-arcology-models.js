@@ -1,5 +1,5 @@
 // Five authored Arcology/Hive bodies. These are registry recipes only; presentation metadata controls admission.
-import { bevel, taper, ellipsoid, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r874-00abe1a858bf';
+import { bevel, taper, ellipsoid, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r875-f410be5ab7b8';
 
 // Palettes are the original renderer's primary, shadow and accent colors.
 const glass = 0x607c79, glassDark = 0x283b3b, glassEdge = 0xaab7aa;
