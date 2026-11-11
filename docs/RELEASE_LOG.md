@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 886 | Claude | claude/arcana-live | Arcana region placement live (straight-line homes); Bell Toll and Lamplighter's Light earned on every save; the Cairn Keeper starts the Chain; nothing gated | In flight. |
+| 887 | Claude | claude/compass-facing | Close View compass follows the Wayfarer's body facing, not the camera; standard view stays north-up with an N/E/S/W dial | In flight. |
+| 886 | Claude | claude/arcana-live | Arcana region placement live (straight-line homes); Bell Toll and Lamplighter's Light earned on every save; the Cairn Keeper starts the Chain; nothing gated | Merged as `174ffb69bb4d` (#549). |
 | 885 | Claude | claude/sim-clock | Fixed 60 Hz simulation steps with interpolated drawing; Close View floor walls built off the entry frame (2–4× faster, byte-identical) | Merged as `0e5133f207af` (#553). |
 | 884 | Claude | claude/cv-creatures | Close View creatures fully opaque within view range (designed ghosts stay ghostly), brighter light floor, cool rim and glowing parts | Merged as `51db683090cf` (#552). |
 | 883 | Claude | claude/seed-dungeons | Pumice and Crimson Seeds offered at a Watcher's shrine open one-time realms (Hollow Husk, Drifting Ship) with new creatures, crystals, caches, a beacon and Divine Viscera; never kept | Merged as `23d96f405dd8` (#551). |
