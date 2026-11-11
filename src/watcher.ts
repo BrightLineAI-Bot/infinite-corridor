@@ -52,13 +52,13 @@ export function sigilFits(map, width, cx, cy, ok, margin = 1) {
   return true;
 }
 // The first spot (scanning outward from the map's centre, seeded) where the sigil fits.
-export function sigilSpot(map, width, seedKey, ok, margin = 1) {
+export function sigilSpot(map, width, seedKey, ok, margin = 1, limit = 220) {
   const h = Math.floor(map.tiles.length / width), mx = Math.floor(width / 2), my = Math.floor(h / 2), r = rng(seedKey), jx = Math.floor(r() * 5) - 2, jy = Math.floor(r() * 5) - 2;
   const spots = [];
   const m = Math.max(0, margin);
   for (let y = 1 - SIGIL_BOUNDS.minY + m; y < h - 1 - SIGIL_BOUNDS.maxY - m; y++) for (let x = 1 - SIGIL_BOUNDS.minX + m; x < width - 1 - SIGIL_BOUNDS.maxX - m; x++) spots.push([x, y]);
   spots.sort((a, b) => Math.hypot(a[0] - mx - jx, a[1] - my - jy) - Math.hypot(b[0] - mx - jx, b[1] - my - jy));
-  for (const [x, y] of spots.slice(0, 220)) if (sigilFits(map, width, x, y, ok, margin)) return { x, y };
+  for (const [x, y] of spots.slice(0, limit)) if (sigilFits(map, width, x, y, ok, margin)) return { x, y };
   return null;
 }
 // Marks the sigil's tiles (`tile.sigil = part`); with `shrine`, raises them as platforms (elev + lift).
@@ -82,14 +82,18 @@ const occupied = (map) => new Set((map.objects || []).map((o) => `${Math.round(o
 export function watcherTomb(id, x, y, where) { return { id, kind: "watcherTomb", name: "Pristine Tomb of the Watcher", x, y, state: "sealed", actions: ["touch"], where }; }
 
 // Overworld: a shrine ruin (rare) and a tomb in a shelter (rare). Only for sections first seen from release 289 on.
-export function placeWatcherOverworld(map, width, seed, rx, ry) {
+// `guided` (waymark-guides.ts): this section hosts a guided Watcher's Shrine, so the shrine roll always passes, and if the ruin
+// finds no flat ground of one level, it looks again on any open ground (the platforms still rise one jump at a time from it).
+export function placeWatcherOverworld(map, width, seed, rx, ry, guided = false) {
   if (!map?.tiles || (rx === 0 && ry === 0) || map.watcherPlaced || map.farDomain) return null; map.watcherPlaced = true; // once per loaded map (723: never in a domain)
   const objectsAt = occupied(map), level = (t) => t.elev || 0;
   let shrine = null;
-  if (map.landscape && rng(`${seed}:watcher-shrine:v1:${rx}:${ry}`)() < WATCHER.shrine) {
+  if ((map.landscape && rng(`${seed}:watcher-shrine:v1:${rx}:${ry}`)() < WATCHER.shrine) || guided) { // a guided host has its shrine on any ground (some sections, a great building's or the old heartland's, have no landscape)
     // The ruin claims flat open ground; trees, rocks and wayfinding marks within it are cleared, anything else rules a spot out.
     const solid = new Set((map.objects || []).filter((o) => !CLEARABLE.has(o.kind)).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
-    const spot = sigilSpot(map, width, `${seed}:watcher-shrine-spot:v1:${rx}:${ry}`, (t, x, y, cx, cy) => walkableFloor(t) && !solid.has(`${x},${y}`) && !!t.landscape && level(t) === level(map.tiles[cy * width + cx]), -1);
+    let spot = sigilSpot(map, width, `${seed}:watcher-shrine-spot:v1:${rx}:${ry}`, (t, x, y, cx, cy) => walkableFloor(t) && !solid.has(`${x},${y}`) && !!t.landscape && level(t) === level(map.tiles[cy * width + cx]), -1);
+    let lone = null; if (!spot && guided) ({ spot, lone } = guidedShrineSpot(map, width, seed, rx, ry, solid));
+    if (lone) { shrine = lone; map.objects.push({ ...watcherTomb(`watcher-tomb-shrine-${rx}-${ry}`, lone.x, lone.y, "shrine"), lone: true }); } // no room for the ruin at all: the tomb stands alone, still the shrine
     if (spot) {
       const inside = (o) => o.x >= spot.x + SIGIL_BOUNDS.minX - .5 && o.x <= spot.x + SIGIL_BOUNDS.maxX + .5 && o.y >= spot.y + SIGIL_BOUNDS.minY - .5 && o.y <= spot.y + SIGIL_BOUNDS.maxY + .5;
       map.objects = (map.objects || []).filter((o) => !(CLEARABLE.has(o.kind) && inside(o)));
@@ -102,6 +106,20 @@ export function placeWatcherOverworld(map, width, seed, rx, ry) {
     if (cells.length) { const [, x, y] = cells[hashSeed(`${seed}:watcher-shelter-spot:v1:${rx}:${ry}`) % cells.length]; shelter = { x, y }; (map.objects ||= []).push(watcherTomb(`watcher-tomb-shelter-${rx}-${ry}`, x, y, "shelter")); }
   }
   return { shrine, shelter };
+}
+
+// A guided shrine's fallback spot (and, failing that, `lone`, a tile for the tomb alone): the eye on open walkable ground the edges can reach, every sigil tile walkable floor, the
+// nearest such spot to the middle (seeded jitter as sigilSpot). Bounded: every eye spot the sigil's bounds allow (a few hundred), one flood fill.
+function guidedShrineSpot(map, width, seed, rx, ry, solid) {
+  const h = Math.floor(map.tiles.length / width), reach = new Uint8Array(map.tiles.length), queue = [];
+  const open = (t) => !!t && !t.blocked && !t.structure && !t.environment && !t.pit;
+  for (let n = 0; n < width; n++) for (const [x, y] of [[n, 0], [n, h - 1], [0, n], [width - 1, n]]) { const i = y * width + x; if (x < width && y < h && open(map.tiles[i]) && !reach[i]) { reach[i] = 1; queue.push(i); } }
+  for (let k = 0; k < queue.length; k++) { const i = queue[k], x = i % width, y = (i - x) / width; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, j = ny * width + nx; if (nx >= 0 && ny >= 0 && nx < width && ny < h && !reach[j] && open(map.tiles[j]) && Math.abs((map.tiles[j].elev || 0) - (map.tiles[i].elev || 0)) <= 1) { reach[j] = 1; queue.push(j); } } }
+  const spot = sigilSpot(map, width, `${seed}:watcher-shrine-spot:guide:v1:${rx}:${ry}`, (t, x, y) => walkableFloor(t) && !solid.has(`${x},${y}`) && !!reach[y * width + x] && !t.pit, -1, Infinity);
+  if (spot) return { spot, lone: null };
+  const taken = occupied(map); let lone = null, best = Infinity; // the last resort: the reachable open floor tile nearest the middle, nothing standing on it
+  for (let y = 4; y < h - 4; y++) for (let x = 4; x < width - 4; x++) { const i = y * width + x, d = Math.hypot(x - 16, y - 16); if (d < best && reach[i] && walkableFloor(map.tiles[i]) && !map.tiles[i].pit && !taken.has(`${x},${y}`)) { best = d; lone = { x, y }; } }
+  return { spot: null, lone };
 }
 
 // Dungeons: a floor inlay (rare), a mosaic in arenas, and a tomb in bone crypts (some). Only for dungeons first entered from
