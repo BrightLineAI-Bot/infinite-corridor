@@ -8,6 +8,7 @@ import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close
 import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.ts";
 import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.ts";
 import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.ts";
+import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.ts";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -20,6 +21,9 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   // the two dragons share one body in their own art's colours
   crimsonTyrant: Object.freeze({ mesh: tyrantMesh, createTrack: () => createDragonTrack('crimsonTyrant'), sample: sampleDragon, get scale() { return DRAGON_RIG.closeViewScale; } }),
   doomChaser: Object.freeze({ mesh: doomMesh, createTrack: () => createDragonTrack('doomChaser'), sample: sampleDragon, get scale() { return DRAGON_RIG.closeViewScale; } }),
+  // the Ashen Moth and its far kin the Grove Moth share one body (the standard view draws both with drawAshenMoth)
+  ashenMoth: Object.freeze({ mesh: mothMesh, createTrack: createMothTrack, sample: sampleMoth, get scale() { return MOTH_RIG.closeViewScale; } }),
+  groveMoth: Object.freeze({ mesh: mothMesh, createTrack: createMothTrack, sample: sampleMoth, get scale() { return MOTH_RIG.closeViewScale; } }),
 });
 // Forms the body covers. Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
 export function closeViewBeastEligible(e) {
